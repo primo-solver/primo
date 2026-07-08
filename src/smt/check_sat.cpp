@@ -16,6 +16,7 @@
 #include "sat/lit.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/equality/congruence_closure.hpp"
 #include "theory/equality/euf_solver.hpp"
 
 namespace primo::smt {
@@ -439,23 +440,68 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
   return CheckSatOutcome{map_sat_result(backend.solve()), ""};
 }
 
-void assert_theory_atom(theory::equality::EufSolver& solver, const core::TermManager& terms,
-                        core::TermId atom, bool value, core::TermId true_term,
-                        core::TermId false_term) {
-  const core::Term& term = terms.get(atom);
-  if (term.kind == core::TermKind::Equality) {
-    if (value) {
-      solver.assert_equal(term.children.at(0), term.children.at(1));
-    } else {
-      solver.assert_distinct(term.children.at(0), term.children.at(1));
-    }
-    return;
+struct AssignedTheoryAtom {
+  int var = 0;
+  bool value = false;
+  core::TermId term = 0;
+};
+
+sat::Lit blocking_lit(const AssignedTheoryAtom& atom) {
+  return atom.value ? sat::Lit{-atom.var} : sat::Lit{atom.var};
+}
+
+bool add_theory_equality(theory::equality::CongruenceClosure& closure,
+                         const core::TermManager& terms, const AssignedTheoryAtom& atom,
+                         core::TermId true_term, core::TermId false_term,
+                         sat::Clause& equality_reason) {
+  const core::Term& term = terms.get(atom.term);
+  if (term.kind == core::TermKind::Equality && atom.value) {
+    closure.assert_equal(term.children.at(0), term.children.at(1));
+    equality_reason.push_back(blocking_lit(atom));
+    return true;
   }
   if (term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort()) {
-    solver.assert_equal(atom, value ? true_term : false_term);
-    return;
+    closure.assert_equal(atom.term, atom.value ? true_term : false_term);
+    equality_reason.push_back(blocking_lit(atom));
+    return true;
   }
-  throw UnsupportedInput("unsupported theory atom");
+  return false;
+}
+
+std::optional<sat::Clause> find_theory_conflict(const core::TermManager& terms,
+                                                const std::vector<AssignedTheoryAtom>& atoms,
+                                                core::TermId true_term, core::TermId false_term) {
+  theory::equality::CongruenceClosure closure(terms);
+  sat::Clause equality_reason;
+  std::vector<AssignedTheoryAtom> disequalities;
+
+  closure.add_term(true_term);
+  closure.add_term(false_term);
+  for (const AssignedTheoryAtom& atom : atoms) {
+    const core::Term& term = terms.get(atom.term);
+    if (term.kind == core::TermKind::Equality && !atom.value) {
+      disequalities.push_back(atom);
+      continue;
+    }
+    if (!add_theory_equality(closure, terms, atom, true_term, false_term, equality_reason)) {
+      throw UnsupportedInput("unsupported theory atom");
+    }
+  }
+
+  if (closure.are_equal(true_term, false_term)) {
+    return equality_reason;
+  }
+
+  for (const AssignedTheoryAtom& atom : disequalities) {
+    const core::Term& term = terms.get(atom.term);
+    if (closure.are_equal(term.children.at(0), term.children.at(1))) {
+      sat::Clause conflict = equality_reason;
+      conflict.push_back(blocking_lit(atom));
+      return conflict;
+    }
+  }
+
+  return std::nullopt;
 }
 
 CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions) {
@@ -474,26 +520,25 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       return CheckSatOutcome{map_sat_result(sat_result), ""};
     }
 
-    theory::equality::EufSolver solver(terms);
-    solver.assert_distinct(true_term, false_term);
-    sat::Clause conflict_clause;
+    std::vector<AssignedTheoryAtom> assigned_atoms;
     for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
       const std::optional<bool> assignment = backend.value(var);
       if (!assignment.has_value()) {
         return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom"};
       }
-      assert_theory_atom(solver, terms, atom.term, assignment.value(), true_term, false_term);
-      conflict_clause.push_back(assignment.value() ? sat::Lit{-var} : sat::Lit{var});
+      assigned_atoms.push_back(AssignedTheoryAtom{var, assignment.value(), atom.term});
     }
 
-    if (solver.is_satisfiable()) {
+    std::optional<sat::Clause> conflict_clause =
+        find_theory_conflict(terms, assigned_atoms, true_term, false_term);
+    if (!conflict_clause.has_value()) {
       return CheckSatOutcome{CheckSatResult::Sat, ""};
     }
-    if (conflict_clause.empty()) {
+    if (conflict_clause->empty()) {
       return CheckSatOutcome{CheckSatResult::Unsat, ""};
     }
-    backend.add_clause(conflict_clause);
+    backend.add_clause(conflict_clause.value());
   }
 }
 
