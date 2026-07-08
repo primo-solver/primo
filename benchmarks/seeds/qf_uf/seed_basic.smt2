@@ -1,0 +1,5 @@
+(set-logic QF_UF)
+(declare-sort A 0)
+(declare-fun a () A)
+(assert (= a a))
+(check-sat)
