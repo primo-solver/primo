@@ -15,6 +15,7 @@
 #include "sat/lit.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/equality/euf_solver.hpp"
 
 namespace primo::smt {
 
@@ -70,7 +71,8 @@ class Frontend {
       return terms_.mk_implies(build_term(expr.list[1]), build_term(expr.list[2]));
     }
     if (head == "=") {
-      throw UnsupportedInput("equality atoms require the EUF solver");
+      require_arity(expr, 3, "=");
+      return terms_.mk_eq(build_term(expr.list[1]), build_term(expr.list[2]));
     }
 
     const auto symbol = symbols_.lookup_symbol(head);
@@ -271,6 +273,72 @@ CheckSatResult map_sat_result(sat::SatResult result) {
   return CheckSatResult::Unknown;
 }
 
+bool is_euf_literal(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::BoolValue) {
+    return true;
+  }
+  if (term.kind == core::TermKind::Equality) {
+    return true;
+  }
+  if (term.kind == core::TermKind::Not) {
+    return terms.get(term.children.at(0)).kind == core::TermKind::Equality;
+  }
+  return false;
+}
+
+bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Equality) {
+    return true;
+  }
+  for (const core::TermId child : term.children) {
+    if (contains_equality(terms, child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+CheckSatOutcome solve_euf_conjunction(const core::TermManager& terms,
+                                      const std::vector<core::TermId>& assertions) {
+  theory::equality::EufSolver solver(terms);
+  for (const core::TermId assertion : assertions) {
+    if (!is_euf_literal(terms, assertion)) {
+      return CheckSatOutcome{CheckSatResult::Unsupported,
+                             "Boolean abstraction for theory atoms is not implemented yet"};
+    }
+
+    const core::Term& term = terms.get(assertion);
+    if (term.kind == core::TermKind::BoolValue) {
+      if (!term.bool_value) {
+        return CheckSatOutcome{CheckSatResult::Unsat, ""};
+      }
+      continue;
+    }
+    if (term.kind == core::TermKind::Equality) {
+      solver.assert_equal(term.children.at(0), term.children.at(1));
+      continue;
+    }
+
+    const core::Term& equality = terms.get(term.children.at(0));
+    solver.assert_distinct(equality.children.at(0), equality.children.at(1));
+  }
+
+  return CheckSatOutcome{solver.is_satisfiable() ? CheckSatResult::Sat : CheckSatResult::Unsat, ""};
+}
+
+CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
+                                          const std::vector<core::TermId>& assertions) {
+  sat::CadicalBackend backend;
+  BooleanClausifier clausifier(backend, terms);
+  for (const core::TermId assertion : assertions) {
+    clausifier.assert_formula(assertion);
+  }
+
+  return CheckSatOutcome{map_sat_result(backend.solve()), ""};
+}
+
 }  // namespace
 
 CheckSatOutcome check_sat_smtlib(std::string_view input) {
@@ -287,13 +355,15 @@ CheckSatOutcome check_sat_smtlib(std::string_view input) {
       return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command"};
     }
 
-    sat::CadicalBackend backend;
-    BooleanClausifier clausifier(backend, frontend.terms());
+    bool has_equality = false;
     for (const core::TermId assertion : assertions) {
-      clausifier.assert_formula(assertion);
+      has_equality = has_equality || contains_equality(frontend.terms(), assertion);
+    }
+    if (has_equality) {
+      return solve_euf_conjunction(frontend.terms(), assertions);
     }
 
-    return CheckSatOutcome{map_sat_result(backend.solve()), ""};
+    return solve_boolean_conjunction(frontend.terms(), assertions);
   } catch (const UnsupportedInput& error) {
     return CheckSatOutcome{CheckSatResult::Unsupported, error.what()};
   } catch (const smtlib::ParseError& error) {

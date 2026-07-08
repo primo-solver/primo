@@ -68,3 +68,7 @@ add_test(NAME primo_sat_backend_tests COMMAND primo_sat_backend_tests)
 add_executable(primo_boolean_solver_tests tests/unit/boolean_solver_tests.cpp)
 target_link_libraries(primo_boolean_solver_tests PRIVATE primo_core)
 add_test(NAME primo_boolean_solver_tests COMMAND primo_boolean_solver_tests)
+
+add_executable(primo_euf_solver_tests tests/unit/euf_solver_tests.cpp)
+target_link_libraries(primo_euf_solver_tests PRIVATE primo_core)
+add_test(NAME primo_euf_solver_tests COMMAND primo_euf_solver_tests)

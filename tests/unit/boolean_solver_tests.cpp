@@ -54,12 +54,38 @@ void repeated_negation_reuses_the_child_literal() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
-void equality_is_still_unsupported_until_euf_is_wired() {
+void reflexive_equality_is_sat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort A 0)
     (declare-fun a () A)
     (assert (= a a))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void pure_euf_disequality_contradiction_is_unsat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (assert (= a b))
+    (assert (not (= a b)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void mixed_boolean_and_euf_is_not_wired_yet() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun p () Bool)
+    (assert (or p (= a b)))
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsupported);
@@ -72,6 +98,8 @@ int main() {
   pure_boolean_unsat();
   implication_is_clausified();
   repeated_negation_reuses_the_child_literal();
-  equality_is_still_unsupported_until_euf_is_wired();
+  reflexive_equality_is_sat();
+  pure_euf_disequality_contradiction_is_unsat();
+  mixed_boolean_and_euf_is_not_wired_yet();
   return 0;
 }
