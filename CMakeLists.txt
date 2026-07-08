@@ -45,3 +45,7 @@ target_include_directories(primo PRIVATE src)
 
 enable_testing()
 add_test(NAME primo_version COMMAND primo --version)
+
+add_executable(primo_core_tests tests/unit/core_tests.cpp)
+target_link_libraries(primo_core_tests PRIVATE primo_core)
+add_test(NAME primo_core_tests COMMAND primo_core_tests)
