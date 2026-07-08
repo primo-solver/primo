@@ -78,6 +78,29 @@ void pure_euf_disequality_contradiction_is_unsat() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void let_bound_terms_are_resolved() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun f (A) A)
+    (assert (let ((?x (f a))) (= ?x ?x)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void distinct_lowers_to_pairwise_disequalities() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (assert (distinct a a))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void mixed_boolean_and_euf_is_not_wired_yet() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -100,6 +123,8 @@ int main() {
   repeated_negation_reuses_the_child_literal();
   reflexive_equality_is_sat();
   pure_euf_disequality_contradiction_is_unsat();
+  let_bound_terms_are_resolved();
+  distinct_lowers_to_pairwise_disequalities();
   mixed_boolean_and_euf_is_not_wired_yet();
   return 0;
 }

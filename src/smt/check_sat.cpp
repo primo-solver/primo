@@ -1,5 +1,6 @@
 #include "smt/check_sat.hpp"
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -36,6 +37,10 @@ class Frontend {
       if (expr.atom == "false") {
         return terms_.mk_bool(false);
       }
+      const auto bound = lookup_bound_term(expr.atom);
+      if (bound.has_value()) {
+        return bound.value();
+      }
       const auto symbol = symbols_.lookup_symbol(expr.atom);
       if (!symbol.has_value()) {
         throw UnsupportedInput("unknown symbol: " + expr.atom);
@@ -70,9 +75,15 @@ class Frontend {
       require_arity(expr, 3, "=>");
       return terms_.mk_implies(build_term(expr.list[1]), build_term(expr.list[2]));
     }
+    if (head == "let") {
+      return build_let(expr);
+    }
     if (head == "=") {
       require_arity(expr, 3, "=");
       return terms_.mk_eq(build_term(expr.list[1]), build_term(expr.list[2]));
+    }
+    if (head == "distinct") {
+      return build_distinct(expr);
     }
 
     const auto symbol = symbols_.lookup_symbol(head);
@@ -119,10 +130,64 @@ class Frontend {
   const core::TermManager& terms() const { return terms_; }
 
  private:
+  std::optional<core::TermId> lookup_bound_term(const std::string& name) const {
+    for (auto scope = let_scopes_.rbegin(); scope != let_scopes_.rend(); ++scope) {
+      const auto found = scope->find(name);
+      if (found != scope->end()) {
+        return found->second;
+      }
+    }
+    return std::nullopt;
+  }
+
   static void require_arity(const smtlib::SExpr& expr, std::size_t arity, std::string_view op) {
     if (expr.list.size() != arity) {
       throw UnsupportedInput(std::string(op) + " has wrong arity");
     }
+  }
+
+  core::TermId build_let(const smtlib::SExpr& expr) {
+    require_arity(expr, 3, "let");
+    if (expr.list[1].kind != smtlib::SExpr::Kind::List) {
+      throw UnsupportedInput("let bindings must be a list");
+    }
+
+    std::unordered_map<std::string, core::TermId> scope;
+    for (const smtlib::SExpr& binding : expr.list[1].list) {
+      if (binding.kind != smtlib::SExpr::Kind::List || binding.list.size() != 2 ||
+          binding.list[0].kind != smtlib::SExpr::Kind::Atom) {
+        throw UnsupportedInput("malformed let binding");
+      }
+      const std::string& name = binding.list[0].atom;
+      if (!scope.emplace(name, build_term(binding.list[1])).second) {
+        throw UnsupportedInput("duplicate let binding: " + name);
+      }
+    }
+
+    let_scopes_.push_back(std::move(scope));
+    const core::TermId body = build_term(expr.list[2]);
+    let_scopes_.pop_back();
+    return body;
+  }
+
+  core::TermId build_distinct(const smtlib::SExpr& expr) {
+    std::vector<core::TermId> terms;
+    for (std::size_t i = 1; i < expr.list.size(); ++i) {
+      terms.push_back(build_term(expr.list[i]));
+    }
+    std::vector<core::TermId> disequalities;
+    for (std::size_t i = 0; i < terms.size(); ++i) {
+      for (std::size_t j = i + 1; j < terms.size(); ++j) {
+        disequalities.push_back(terms_.mk_not(terms_.mk_eq(terms[i], terms[j])));
+      }
+    }
+    if (disequalities.empty()) {
+      return terms_.mk_bool(true);
+    }
+    if (disequalities.size() == 1) {
+      return disequalities.front();
+    }
+    return terms_.mk_and(std::move(disequalities));
   }
 
   core::SortId lookup_sort_name(const std::string& name) const {
@@ -150,6 +215,7 @@ class Frontend {
 
   core::SymbolTable symbols_;
   core::TermManager terms_{symbols_};
+  std::vector<std::unordered_map<std::string, core::TermId>> let_scopes_;
   bool saw_check_sat_ = false;
 };
 
@@ -289,6 +355,18 @@ bool is_euf_literal(const core::TermManager& terms, core::TermId term_id) {
   return false;
 }
 
+void collect_conjuncts(const core::TermManager& terms, core::TermId term_id,
+                       std::vector<core::TermId>& conjuncts) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::And) {
+    for (const core::TermId child : term.children) {
+      collect_conjuncts(terms, child, conjuncts);
+    }
+    return;
+  }
+  conjuncts.push_back(term_id);
+}
+
 bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.kind == core::TermKind::Equality) {
@@ -305,7 +383,12 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
 CheckSatOutcome solve_euf_conjunction(const core::TermManager& terms,
                                       const std::vector<core::TermId>& assertions) {
   theory::equality::EufSolver solver(terms);
+  std::vector<core::TermId> conjuncts;
   for (const core::TermId assertion : assertions) {
+    collect_conjuncts(terms, assertion, conjuncts);
+  }
+
+  for (const core::TermId assertion : conjuncts) {
     if (!is_euf_literal(terms, assertion)) {
       return CheckSatOutcome{CheckSatResult::Unsupported,
                              "Boolean abstraction for theory atoms is not implemented yet"};
