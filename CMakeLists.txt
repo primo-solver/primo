@@ -18,6 +18,20 @@ else()
   message(FATAL_ERROR "CLI11 not found. Run `make contrib-cli11` or install CLI11 so CLI/CLI.hpp is available.")
 endif()
 
+find_path(ANTLR4_RUNTIME_INCLUDE_DIR
+  NAMES antlr4-runtime.h
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include/antlr4-runtime"
+)
+find_library(ANTLR4_RUNTIME_LIBRARY
+  NAMES antlr4-runtime
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib"
+)
+if(ANTLR4_RUNTIME_INCLUDE_DIR AND ANTLR4_RUNTIME_LIBRARY)
+  message(STATUS "Found ANTLR4 runtime: ${ANTLR4_RUNTIME_LIBRARY}")
+else()
+  message(FATAL_ERROR "ANTLR4 C++ runtime not found. Run `make contrib-antlr4`.")
+endif()
+
 find_path(IPASIR_UP_INCLUDE_DIR
   NAMES ipasir_up.h ipasir.h
   HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include"
@@ -57,7 +71,9 @@ file(GLOB_RECURSE PRIMO_LIBRARY_SOURCES CONFIGURE_DEPENDS
 )
 
 add_library(primo_core ${PRIMO_LIBRARY_SOURCES})
-target_include_directories(primo_core PUBLIC src)
+target_include_directories(primo_core PUBLIC src "${ANTLR4_RUNTIME_INCLUDE_DIR}")
+target_compile_definitions(primo_core PUBLIC ANTLR4CPP_STATIC=1)
+target_link_libraries(primo_core PUBLIC "${ANTLR4_RUNTIME_LIBRARY}")
 if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=1)
   target_include_directories(primo_core PUBLIC "${IPASIR_UP_INCLUDE_DIR}")

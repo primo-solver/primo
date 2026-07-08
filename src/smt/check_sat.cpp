@@ -92,6 +92,8 @@ class Frontend {
 
   void process_command(const smtlib::Command& command, std::vector<core::TermId>& assertions) {
     switch (command.kind) {
+      case smtlib::CommandKind::Ignored:
+        return;
       case smtlib::CommandKind::SetLogic:
         if (command.logic != "QF_UF") {
           throw UnsupportedInput("unsupported logic: " + command.logic);

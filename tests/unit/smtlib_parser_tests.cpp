@@ -67,6 +67,31 @@ void parses_nested_boolean_assertion() {
   assert(assertion.list[0].is_atom("and"));
 }
 
+void parses_benchmark_metadata_and_quoted_symbols() {
+  Parser parser(R"(
+    (set-info :smt-lib-version 2.6)
+    (set-info :source "generated benchmark")
+    (set-option :print-success false)
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-const |+i| U)
+    (declare-fun |<=i| (U U) Bool)
+    (assert (let ((?x |+i|)) (|<=i| ?x ?x)))
+    (check-sat)
+    (exit)
+  )");
+  const auto commands = parser.parse_commands();
+  assert(commands.size() == 10);
+  assert(commands[0].kind == CommandKind::Ignored);
+  assert(commands[1].kind == CommandKind::Ignored);
+  assert(commands[2].kind == CommandKind::Ignored);
+  assert(commands[5].kind == CommandKind::DeclareFun);
+  assert(commands[5].name == "|+i|");
+  assert(commands[7].kind == CommandKind::Assert);
+  assert(commands[7].assertion.list[0].is_atom("let"));
+  assert(commands[9].kind == CommandKind::Ignored);
+}
+
 void rejects_malformed_or_unsupported_input() {
   expect_parse_error([] { Parser("(check-sat extra)").parse_commands(); });
   expect_parse_error([] { Parser("(declare-sort A 1)").parse_commands(); });
@@ -79,6 +104,7 @@ void rejects_malformed_or_unsupported_input() {
 int main() {
   parses_qf_uf_smoke_shape();
   parses_nested_boolean_assertion();
+  parses_benchmark_metadata_and_quoted_symbols();
   rejects_malformed_or_unsupported_input();
   return 0;
 }

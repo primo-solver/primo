@@ -8,6 +8,7 @@
 namespace primo::smtlib {
 
 enum class CommandKind {
+  Ignored,
   SetLogic,
   DeclareSort,
   DeclareFun,

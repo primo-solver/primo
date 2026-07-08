@@ -1,10 +1,11 @@
-.PHONY: build test smoke compare fuzz bench docs lint format check contrib contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
+.PHONY: build test smoke compare fuzz bench docs lint format check contrib contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
 
 BUILD_DIR ?= build
 PRIMO ?= $(BUILD_DIR)/primo
 CONTRIB_PREFIX ?= contrib/local
 PYTHON ?= python3
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
+CPP_FORMAT_FILES := $$(find src -name '*.cpp' -o -name '*.hpp' -o -name '*.h' | grep -v '^src/smtlib/antlr/')
 
 build:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_PREFIX_PATH=$(CURDIR)/$(CONTRIB_PREFIX)
@@ -39,7 +40,7 @@ docs:
 lint:
 	$(PYTHON) -m py_compile scripts/*.py contrib/*.py
 	@if command -v clang-format >/dev/null 2>&1; then \
-		clang-format --dry-run --Werror $$(find src -name '*.cpp' -o -name '*.hpp'); \
+		clang-format --dry-run --Werror $(CPP_FORMAT_FILES); \
 	else \
 		echo "clang-format is not installed; skipping C++ format check."; \
 	fi
@@ -51,7 +52,7 @@ lint:
 
 format:
 	@if command -v clang-format >/dev/null 2>&1; then \
-		clang-format -i $$(find src -name '*.cpp' -o -name '*.hpp'); \
+		clang-format -i $(CPP_FORMAT_FILES); \
 	else \
 		echo "clang-format is not installed; skipping C++ formatting."; \
 	fi
@@ -63,7 +64,10 @@ format:
 
 check: lint test
 
-contrib: contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical
+contrib: contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical
+
+contrib-antlr4:
+	$(PYTHON) contrib/install_antlr4.py --prefix $(CONTRIB_PREFIX)
 
 contrib-cli11:
 	$(PYTHON) contrib/install_cli11.py --prefix $(CONTRIB_PREFIX)

@@ -1,42 +1,114 @@
 #include "smtlib/parser.hpp"
 
+#include <antlr4-runtime.h>
+
 #include <sstream>
 #include <utility>
 
+#include "smtlib/antlr/SMTLIBv2Lexer.h"
+#include "smtlib/antlr/SMTLIBv2Parser.h"
+
 namespace primo::smtlib {
+
+namespace {
+
+class ThrowingErrorListener final : public antlr4::BaseErrorListener {
+ public:
+  void syntaxError(antlr4::Recognizer* /*recognizer*/, antlr4::Token* offendingSymbol,
+                   std::size_t /*line*/, std::size_t charPositionInLine, const std::string& msg,
+                   std::exception_ptr /*exception*/) override {
+    const std::size_t offset =
+        offendingSymbol == nullptr ? charPositionInLine : offendingSymbol->getStartIndex();
+    throw ParseError(msg, offset);
+  }
+};
+
+class TokenSExprParser {
+ public:
+  explicit TokenSExprParser(const std::vector<antlr4::Token*>& tokens) : tokens_(tokens) {}
+
+  std::vector<SExpr> parse_all() {
+    std::vector<SExpr> expressions;
+    while (!at_end()) {
+      expressions.push_back(parse_one());
+    }
+    return expressions;
+  }
+
+ private:
+  bool at_end() const {
+    return cursor_ >= tokens_.size() || tokens_[cursor_]->getType() == antlr4::Token::EOF;
+  }
+
+  const antlr4::Token& current() const {
+    if (at_end()) {
+      throw ParseError("unexpected end of input", 0);
+    }
+    return *tokens_[cursor_];
+  }
+
+  SExpr parse_one() {
+    const antlr4::Token& token = current();
+    if (token.getType() == SMTLIBv2Lexer::ParOpen) {
+      ++cursor_;
+      std::vector<SExpr> elements;
+      while (!at_end() && current().getType() != SMTLIBv2Lexer::ParClose) {
+        elements.push_back(parse_one());
+      }
+      if (at_end()) {
+        throw ParseError("unexpected end of input in list", token.getStartIndex());
+      }
+      ++cursor_;
+      return SExpr::make_list(std::move(elements));
+    }
+    if (token.getType() == SMTLIBv2Lexer::ParClose) {
+      throw ParseError("unexpected closing parenthesis", token.getStartIndex());
+    }
+    ++cursor_;
+    return SExpr::make_atom(token.getText());
+  }
+
+  const std::vector<antlr4::Token*>& tokens_;
+  std::size_t cursor_ = 0;
+};
+
+}  // namespace
 
 ParseError::ParseError(std::string message, std::size_t offset)
     : std::runtime_error(std::move(message)), offset_(offset) {}
 
 std::size_t ParseError::offset() const { return offset_; }
 
-Parser::Parser(std::string_view input) : lexer_(input) { advance(); }
+Parser::Parser(std::string_view input) : input_(input) {}
 
 std::vector<Command> Parser::parse_commands() {
   std::vector<Command> commands;
-  while (current_.kind != TokenKind::End) {
-    commands.push_back(parse_command(parse_sexpr()));
+  for (const SExpr& expr : parse_sexprs()) {
+    commands.push_back(parse_command(expr));
   }
   return commands;
 }
 
-SExpr Parser::parse_sexpr() {
-  if (current_.kind == TokenKind::Symbol) {
-    std::string atom = current_.text;
-    advance();
-    return SExpr::make_atom(std::move(atom));
+std::vector<SExpr> Parser::parse_sexprs() const {
+  antlr4::ANTLRInputStream input(input_);
+  SMTLIBv2Lexer lexer(&input);
+  antlr4::CommonTokenStream tokens(&lexer);
+  SMTLIBv2Parser parser(&tokens);
+  ThrowingErrorListener errors;
+  lexer.removeErrorListeners();
+  parser.removeErrorListeners();
+  lexer.addErrorListener(&errors);
+  parser.addErrorListener(&errors);
+
+  parser.start_();
+  if (parser.getNumberOfSyntaxErrors() != 0) {
+    throw ParseError("SMT-LIB parse failed", 0);
   }
 
-  expect(TokenKind::LParen, "S-expression");
-  std::vector<SExpr> elements;
-  while (current_.kind != TokenKind::RParen) {
-    if (current_.kind == TokenKind::End) {
-      fail("unexpected end of input in list");
-    }
-    elements.push_back(parse_sexpr());
-  }
-  expect(TokenKind::RParen, "list");
-  return SExpr::make_list(std::move(elements));
+  tokens.fill();
+  const std::vector<antlr4::Token*> token_vector = tokens.getTokens();
+  TokenSExprParser sexprs(token_vector);
+  return sexprs.parse_all();
 }
 
 Command Parser::parse_command(const SExpr& expr) const {
@@ -44,6 +116,10 @@ Command Parser::parse_command(const SExpr& expr) const {
     throw ParseError("command must be a non-empty list", 0);
   }
   const std::string head = require_atom(expr.list[0], "command head");
+
+  if (head == "set-info" || head == "set-option" || head == "exit") {
+    return Command{CommandKind::Ignored};
+  }
 
   if (head == "set-logic") {
     if (expr.list.size() != 2) {
@@ -62,6 +138,17 @@ Command Parser::parse_command(const SExpr& expr) const {
     Command command;
     command.kind = CommandKind::DeclareSort;
     command.name = require_atom(expr.list[1], "sort name");
+    return command;
+  }
+
+  if (head == "declare-const") {
+    if (expr.list.size() != 3) {
+      throw ParseError("declare-const expects name and result sort", 0);
+    }
+    Command command;
+    command.kind = CommandKind::DeclareFun;
+    command.name = require_atom(expr.list[1], "constant name");
+    command.result_sort = require_atom(expr.list[2], "result sort");
     return command;
   }
 
@@ -106,28 +193,6 @@ std::string Parser::require_atom(const SExpr& expr, std::string_view context) co
     throw ParseError(out.str(), 0);
   }
   return expr.atom;
-}
-
-void Parser::advance() { current_ = lexer_.next(); }
-
-bool Parser::match(TokenKind kind) {
-  if (current_.kind != kind) {
-    return false;
-  }
-  advance();
-  return true;
-}
-
-void Parser::expect(TokenKind kind, std::string_view context) {
-  if (!match(kind)) {
-    std::ostringstream out;
-    out << "expected token while parsing " << context;
-    fail(out.str());
-  }
-}
-
-[[noreturn]] void Parser::fail(std::string message) const {
-  throw ParseError(std::move(message), current_.offset);
 }
 
 }  // namespace primo::smtlib

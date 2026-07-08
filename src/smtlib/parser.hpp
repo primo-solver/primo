@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "smtlib/commands.hpp"
-#include "smtlib/lexer.hpp"
 
 namespace primo::smtlib {
 
@@ -27,16 +26,11 @@ class Parser {
   std::vector<Command> parse_commands();
 
  private:
-  SExpr parse_sexpr();
+  std::vector<SExpr> parse_sexprs() const;
   Command parse_command(const SExpr& expr) const;
   std::string require_atom(const SExpr& expr, std::string_view context) const;
-  void advance();
-  bool match(TokenKind kind);
-  void expect(TokenKind kind, std::string_view context);
-  [[noreturn]] void fail(std::string message) const;
 
-  Lexer lexer_;
-  Token current_;
+  std::string input_;
 };
 
 }  // namespace primo::smtlib
