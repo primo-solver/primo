@@ -37,6 +37,13 @@ file(GLOB_RECURSE PRIMO_LIBRARY_SOURCES CONFIGURE_DEPENDS
 
 add_library(primo_core ${PRIMO_LIBRARY_SOURCES})
 target_include_directories(primo_core PUBLIC src)
+if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
+  target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=1)
+  target_include_directories(primo_core PUBLIC "${IPASIR_UP_INCLUDE_DIR}")
+  target_link_libraries(primo_core PUBLIC "${CADICAL_LIBRARY}")
+else()
+  target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=0)
+endif()
 
 add_executable(primo src/main.cpp)
 target_link_libraries(primo PRIVATE primo_core)
@@ -53,3 +60,7 @@ add_test(NAME primo_core_tests COMMAND primo_core_tests)
 add_executable(primo_smtlib_parser_tests tests/unit/smtlib_parser_tests.cpp)
 target_link_libraries(primo_smtlib_parser_tests PRIVATE primo_core)
 add_test(NAME primo_smtlib_parser_tests COMMAND primo_smtlib_parser_tests)
+
+add_executable(primo_sat_backend_tests tests/unit/sat_backend_tests.cpp)
+target_link_libraries(primo_sat_backend_tests PRIVATE primo_core)
+add_test(NAME primo_sat_backend_tests COMMAND primo_sat_backend_tests)

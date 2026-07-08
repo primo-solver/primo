@@ -20,7 +20,7 @@ def run(command: list[str], cwd: Path | None = None) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, default=Path("contrib/local"))
-    parser.add_argument("--tag", default="3.0.0")
+    parser.add_argument("--tag", default="rel-3.0.0")
     parser.add_argument("--repo", default=REPO)
     args = parser.parse_args()
 
@@ -38,11 +38,30 @@ def main() -> int:
         run(["git", "clone", args.repo, str(source)])
 
     run(["git", "checkout", args.tag], cwd=source)
-    run(["./configure", f"--prefix={args.prefix.resolve()}"], cwd=source)
+    run(["./configure"], cwd=source)
     run(["make", "-j"], cwd=source)
-    run(["make", "install"], cwd=source)
 
-    bin_path = args.prefix / "bin" / "cadical"
+    include_dir = args.prefix / "include"
+    lib_dir = args.prefix / "lib"
+    bin_dir = args.prefix / "bin"
+    include_dir.mkdir(parents=True, exist_ok=True)
+    lib_dir.mkdir(parents=True, exist_ok=True)
+    bin_dir.mkdir(parents=True, exist_ok=True)
+
+    shutil.copy2(source / "src" / "ipasir.h", include_dir / "ipasir.h")
+    shutil.copy2(source / "src" / "cadical.hpp", include_dir / "cadical.hpp")
+
+    library_candidates = list(source.glob("build/libcadical.a")) + list(source.glob("build/*/libcadical.a"))
+    if not library_candidates:
+        raise SystemExit("CaDiCaL build did not produce libcadical.a")
+    shutil.copy2(library_candidates[0], lib_dir / "libcadical.a")
+
+    binary_candidates = list(source.glob("build/cadical")) + list(source.glob("build/*/cadical"))
+    if binary_candidates:
+        shutil.copy2(binary_candidates[0], bin_dir / "cadical")
+        (bin_dir / "cadical").chmod(0o755)
+
+    bin_path = bin_dir / "cadical"
     if bin_path.exists():
         subprocess.run([str(bin_path), "--version"], check=False)
     else:
