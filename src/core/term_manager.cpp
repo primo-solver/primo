@@ -49,33 +49,101 @@ TermId TermManager::mk_eq(TermId lhs, TermId rhs) {
   if (lhs_term.sort != rhs_term.sort) {
     throw std::invalid_argument("equality sort mismatch");
   }
+  if (lhs == rhs) {
+    return mk_bool(true);
+  }
   return intern(Key{TermKind::Equality, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false});
 }
 
 TermId TermManager::mk_not(TermId child) {
-  require_bool(child);
+  const Term& child_term = require_term(child);
+  if (child_term.sort != symbols_.bool_sort()) {
+    throw std::invalid_argument("expected Boolean term");
+  }
+  if (child_term.kind == TermKind::BoolValue) {
+    return mk_bool(!child_term.bool_value);
+  }
+  if (child_term.kind == TermKind::Not) {
+    return child_term.children.at(0);
+  }
   return intern(Key{TermKind::Not, symbols_.bool_sort(), kInvalidSymbolId, {child}, false});
 }
 
 TermId TermManager::mk_and(std::vector<TermId> children) {
+  std::vector<TermId> simplified;
+  simplified.reserve(children.size());
   for (const TermId child : children) {
-    require_bool(child);
+    const Term& child_term = require_term(child);
+    if (child_term.sort != symbols_.bool_sort()) {
+      throw std::invalid_argument("expected Boolean term");
+    }
+    if (child_term.kind == TermKind::BoolValue) {
+      if (!child_term.bool_value) {
+        return mk_bool(false);
+      }
+      continue;
+    }
+    if (child_term.kind == TermKind::And) {
+      simplified.insert(simplified.end(), child_term.children.begin(), child_term.children.end());
+      continue;
+    }
+    simplified.push_back(child);
+  }
+  if (simplified.empty()) {
+    return mk_bool(true);
+  }
+  if (simplified.size() == 1) {
+    return simplified.front();
   }
   return intern(
-      Key{TermKind::And, symbols_.bool_sort(), kInvalidSymbolId, std::move(children), false});
+      Key{TermKind::And, symbols_.bool_sort(), kInvalidSymbolId, std::move(simplified), false});
 }
 
 TermId TermManager::mk_or(std::vector<TermId> children) {
+  std::vector<TermId> simplified;
+  simplified.reserve(children.size());
   for (const TermId child : children) {
-    require_bool(child);
+    const Term& child_term = require_term(child);
+    if (child_term.sort != symbols_.bool_sort()) {
+      throw std::invalid_argument("expected Boolean term");
+    }
+    if (child_term.kind == TermKind::BoolValue) {
+      if (child_term.bool_value) {
+        return mk_bool(true);
+      }
+      continue;
+    }
+    if (child_term.kind == TermKind::Or) {
+      simplified.insert(simplified.end(), child_term.children.begin(), child_term.children.end());
+      continue;
+    }
+    simplified.push_back(child);
+  }
+  if (simplified.empty()) {
+    return mk_bool(false);
+  }
+  if (simplified.size() == 1) {
+    return simplified.front();
   }
   return intern(
-      Key{TermKind::Or, symbols_.bool_sort(), kInvalidSymbolId, std::move(children), false});
+      Key{TermKind::Or, symbols_.bool_sort(), kInvalidSymbolId, std::move(simplified), false});
 }
 
 TermId TermManager::mk_implies(TermId lhs, TermId rhs) {
-  require_bool(lhs);
-  require_bool(rhs);
+  const Term& lhs_term = require_term(lhs);
+  const Term& rhs_term = require_term(rhs);
+  if (lhs_term.sort != symbols_.bool_sort() || rhs_term.sort != symbols_.bool_sort()) {
+    throw std::invalid_argument("expected Boolean term");
+  }
+  if (lhs == rhs) {
+    return mk_bool(true);
+  }
+  if (lhs_term.kind == TermKind::BoolValue) {
+    return lhs_term.bool_value ? rhs : mk_bool(true);
+  }
+  if (rhs_term.kind == TermKind::BoolValue) {
+    return rhs_term.bool_value ? mk_bool(true) : mk_not(lhs);
+  }
   return intern(Key{TermKind::Implies, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false});
 }
 

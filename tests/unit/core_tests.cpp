@@ -102,11 +102,39 @@ void Boolean_terms_are_hash_consed() {
   assert(!terms.get(f0).bool_value);
 }
 
+void trivial_boolean_terms_are_simplified() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto q_symbol = symbols.declare_constant("q", symbols.bool_sort());
+  TermManager terms(symbols);
+
+  const auto a = terms.mk_constant(a_symbol);
+  const auto p = terms.mk_constant(p_symbol);
+  const auto q = terms.mk_constant(q_symbol);
+  const auto t = terms.mk_bool(true);
+  const auto f = terms.mk_bool(false);
+
+  assert(terms.mk_eq(a, a) == t);
+  assert(terms.mk_not(t) == f);
+  assert(terms.mk_not(terms.mk_not(p)) == p);
+  assert(terms.mk_and({t, p}) == p);
+  assert(terms.mk_and({p, f, q}) == f);
+  assert(terms.mk_or({f, p}) == p);
+  assert(terms.mk_or({p, t, q}) == t);
+  assert(terms.mk_implies(t, p) == p);
+  assert(terms.mk_implies(f, p) == t);
+  assert(terms.mk_implies(p, f) == terms.mk_not(p));
+  assert(terms.mk_implies(p, p) == t);
+}
+
 }  // namespace
 
 int main() {
   symbol_table_tracks_sorts_and_symbols();
   term_manager_hash_conses_and_checks_sorts();
   Boolean_terms_are_hash_consed();
+  trivial_boolean_terms_are_simplified();
   return 0;
 }
