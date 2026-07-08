@@ -81,6 +81,8 @@ TermId TermManager::mk_implies(TermId lhs, TermId rhs) {
 
 const Term& TermManager::get(TermId id) const { return require_term(id); }
 
+const SymbolTable& TermManager::symbols() const { return symbols_; }
+
 std::size_t TermManager::size() const { return terms_.size(); }
 
 std::size_t TermManager::KeyHash::operator()(const Key& key) const {

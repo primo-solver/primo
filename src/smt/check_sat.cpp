@@ -95,9 +95,6 @@ class Frontend {
       args.push_back(build_term(expr.list[i]));
     }
     const core::TermId term = terms_.mk_app(symbol.value(), std::move(args));
-    if (terms_.get(term).sort == symbols_.bool_sort()) {
-      throw UnsupportedInput("predicate applications require Boolean abstraction");
-    }
     return term;
   }
 
@@ -128,6 +125,7 @@ class Frontend {
   bool saw_check_sat() const { return saw_check_sat_; }
   const core::SymbolTable& symbols() const { return symbols_; }
   const core::TermManager& terms() const { return terms_; }
+  core::TermManager& terms() { return terms_; }
 
  private:
   std::optional<core::TermId> lookup_bound_term(const std::string& name) const {
@@ -221,13 +219,23 @@ class Frontend {
 
 class BooleanClausifier {
  public:
+  struct TheoryAtom {
+    sat::Lit lit;
+    core::TermId term;
+  };
+
   explicit BooleanClausifier(sat::IpasirUpBackend& backend, const core::TermManager& terms)
       : backend_(backend), terms_(terms) {}
 
   void assert_formula(core::TermId term) {
+    if (terms_.get(term).sort != terms_.symbols().bool_sort()) {
+      throw UnsupportedInput("assertion is not Boolean");
+    }
     const sat::Lit lit = encode(term);
     backend_.add_clause(sat::Clause{lit});
   }
+
+  const std::vector<TheoryAtom>& theory_atoms() const { return theory_atoms_; }
 
  private:
   sat::Lit encode(core::TermId term_id) {
@@ -265,8 +273,14 @@ class BooleanClausifier {
         encode_implies(lit, encode(term.children.at(0)), encode(term.children.at(1)));
         return lit;
       case core::TermKind::Application:
+        if (term.sort != terms_.symbols().bool_sort()) {
+          throw UnsupportedInput("non-Boolean function application in Boolean context");
+        }
+        theory_atoms_.push_back(TheoryAtom{lit, term_id});
+        return lit;
       case core::TermKind::Equality:
-        throw UnsupportedInput("theory atom reached Boolean-only clausifier");
+        theory_atoms_.push_back(TheoryAtom{lit, term_id});
+        return lit;
       case core::TermKind::BoolValue:
       case core::TermKind::Constant:
       case core::TermKind::Not:
@@ -324,6 +338,7 @@ class BooleanClausifier {
   sat::IpasirUpBackend& backend_;
   const core::TermManager& terms_;
   std::unordered_map<core::TermId, sat::Lit> lit_by_term_;
+  std::vector<TheoryAtom> theory_atoms_;
   sat::Lit true_lit_{0};
 };
 
@@ -424,6 +439,64 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
   return CheckSatOutcome{map_sat_result(backend.solve()), ""};
 }
 
+void assert_theory_atom(theory::equality::EufSolver& solver, const core::TermManager& terms,
+                        core::TermId atom, bool value, core::TermId true_term,
+                        core::TermId false_term) {
+  const core::Term& term = terms.get(atom);
+  if (term.kind == core::TermKind::Equality) {
+    if (value) {
+      solver.assert_equal(term.children.at(0), term.children.at(1));
+    } else {
+      solver.assert_distinct(term.children.at(0), term.children.at(1));
+    }
+    return;
+  }
+  if (term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort()) {
+    solver.assert_equal(atom, value ? true_term : false_term);
+    return;
+  }
+  throw UnsupportedInput("unsupported theory atom");
+}
+
+CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  sat::CadicalBackend backend;
+  BooleanClausifier clausifier(backend, terms);
+  for (const core::TermId assertion : assertions) {
+    clausifier.assert_formula(assertion);
+  }
+
+  const core::TermId true_term = terms.mk_bool(true);
+  const core::TermId false_term = terms.mk_bool(false);
+
+  while (true) {
+    const sat::SatResult sat_result = backend.solve();
+    if (sat_result != sat::SatResult::Sat) {
+      return CheckSatOutcome{map_sat_result(sat_result), ""};
+    }
+
+    theory::equality::EufSolver solver(terms);
+    solver.assert_distinct(true_term, false_term);
+    sat::Clause conflict_clause;
+    for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      const std::optional<bool> assignment = backend.value(var);
+      if (!assignment.has_value()) {
+        return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom"};
+      }
+      assert_theory_atom(solver, terms, atom.term, assignment.value(), true_term, false_term);
+      conflict_clause.push_back(assignment.value() ? sat::Lit{-var} : sat::Lit{var});
+    }
+
+    if (solver.is_satisfiable()) {
+      return CheckSatOutcome{CheckSatResult::Sat, ""};
+    }
+    if (conflict_clause.empty()) {
+      return CheckSatOutcome{CheckSatResult::Unsat, ""};
+    }
+    backend.add_clause(conflict_clause);
+  }
+}
+
 }  // namespace
 
 CheckSatOutcome check_sat_smtlib(std::string_view input) {
@@ -440,15 +513,22 @@ CheckSatOutcome check_sat_smtlib(std::string_view input) {
       return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command"};
     }
 
-    bool has_equality = false;
-    for (const core::TermId assertion : assertions) {
-      has_equality = has_equality || contains_equality(frontend.terms(), assertion);
-    }
+    const bool has_equality = [&] {
+      for (const core::TermId assertion : assertions) {
+        if (contains_equality(frontend.terms(), assertion)) {
+          return true;
+        }
+      }
+      return false;
+    }();
     if (has_equality) {
-      return solve_euf_conjunction(frontend.terms(), assertions);
+      return solve_qf_uf(frontend.terms(), assertions);
     }
-
-    return solve_boolean_conjunction(frontend.terms(), assertions);
+    try {
+      return solve_boolean_conjunction(frontend.terms(), assertions);
+    } catch (const UnsupportedInput&) {
+      return solve_qf_uf(frontend.terms(), assertions);
+    }
   } catch (const UnsupportedInput& error) {
     return CheckSatOutcome{CheckSatResult::Unsupported, error.what()};
   } catch (const smtlib::ParseError& error) {

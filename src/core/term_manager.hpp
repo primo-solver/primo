@@ -23,6 +23,7 @@ class TermManager {
   TermId mk_implies(TermId lhs, TermId rhs);
 
   const Term& get(TermId id) const;
+  const SymbolTable& symbols() const;
   std::size_t size() const;
 
  private:

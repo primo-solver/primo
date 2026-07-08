@@ -101,7 +101,7 @@ void distinct_lowers_to_pairwise_disequalities() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
-void mixed_boolean_and_euf_is_not_wired_yet() {
+void mixed_boolean_and_euf_can_be_sat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort A 0)
@@ -111,7 +111,37 @@ void mixed_boolean_and_euf_is_not_wired_yet() {
     (assert (or p (= a b)))
     (check-sat)
   )");
-  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void mixed_boolean_and_euf_conflict_is_unsat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun p () Bool)
+    (assert (or p (= a b)))
+    (assert (not p))
+    (assert (not (= a b)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void predicate_applications_respect_congruence() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun p (A) Bool)
+    (assert (= a b))
+    (assert (p a))
+    (assert (not (p b)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
 }
 
 }  // namespace
@@ -125,6 +155,8 @@ int main() {
   pure_euf_disequality_contradiction_is_unsat();
   let_bound_terms_are_resolved();
   distinct_lowers_to_pairwise_disequalities();
-  mixed_boolean_and_euf_is_not_wired_yet();
+  mixed_boolean_and_euf_can_be_sat();
+  mixed_boolean_and_euf_conflict_is_unsat();
+  predicate_applications_respect_congruence();
   return 0;
 }
