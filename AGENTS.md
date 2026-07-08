@@ -30,6 +30,8 @@ This solver is implemented from papers and original design notes.
 
 Do not copy code from existing SMT solvers.
 
+If a required paper is hard to access or download, stop and tell the user which paper is needed. Do not substitute a blog post, secondary summary, or guessed details for the unavailable paper.
+
 Every nontrivial algorithmic component must cite the paper, book chapter, or design note it is based on.
 
 For each such component, include:
@@ -64,6 +66,15 @@ In particular:
 - SAT literals must not directly contain terms.
 - Theory solvers must communicate via theory literals and explanations.
 - All terms must be created through the term manager.
+
+## Coding practices
+
+- Use C++20.
+- Keep C++ source formatted with `clang-format` using the repository `.clang-format`.
+- Keep Python scripts runnable with the standard library unless a dependency is documented.
+- Run `make lint` before committing implementation changes.
+- Run `make check` before committing behavior changes when feasible.
+- Prefer small, coherent commits after each working milestone.
 
 ## Core invariants
 

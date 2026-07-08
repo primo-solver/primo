@@ -20,3 +20,15 @@ Primo is organized as layered components with explicit data ownership.
 ## Initial status
 
 This repository is an implementation scaffold. The architectural boundaries are present, but solver functionality is not implemented yet.
+
+## Optional tools
+
+Local optional tools live under `contrib/local` and are installed with:
+
+```bash
+make contrib-z3
+make contrib-cvc5
+make contrib-cadical
+```
+
+Downloaded archives and build trees under `contrib/downloads`, `contrib/src`, and `contrib/local` are not committed.

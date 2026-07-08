@@ -45,6 +45,19 @@ make build
 
 This configures CMake in `build/` and builds the `primo` executable. The current executable is a scaffold and reports unsupported solving explicitly.
 
+## Optional dependencies
+
+Optional solver dependencies install under `contrib/local`:
+
+```bash
+make contrib-z3      # install z3-solver into the active Python environment and expose z3
+make contrib-cvc5    # download a cvc5 release binary
+make contrib-cadical # clone/build/install CaDiCaL
+make contrib         # all of the above
+```
+
+`make build` searches `contrib/local` for CaDiCaL/IPASIR headers and libraries. `make compare` and `make fuzz` prepend `contrib/local/bin` to `PATH`.
+
 ## Run
 
 ```bash
@@ -56,6 +69,16 @@ This configures CMake in `build/` and builds the `primo` executable. The current
 ```bash
 make test
 ```
+
+## Coding checks
+
+```bash
+make lint
+make format
+make check
+```
+
+`make lint` always checks Python syntax. It also runs `clang-format --dry-run` and `ruff check` when those tools are installed. `make check` runs lint and tests.
 
 ## Fuzz
 

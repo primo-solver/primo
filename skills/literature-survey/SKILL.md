@@ -52,6 +52,7 @@ Write summaries to `docs/literature.md`.
 Do not claim to have read a paper unless the paper text or notes are available.
 When uncertain, mark the claim as uncertain.
 Prefer primary sources over blog posts.
+If a required paper cannot be downloaded or accessed, ask the user to provide it instead of relying on secondary summaries.
 
 Separate:
 

@@ -2,8 +2,6 @@
 
 namespace primo::cli {
 
-int run_driver() {
-  return 2;
-}
+int run_driver() { return 2; }
 
 }  // namespace primo::cli

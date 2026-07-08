@@ -34,3 +34,13 @@ The SAT layer owns Primo's propositional variables, literals, clauses, assumptio
 ## References
 
 See `docs/papers/ipasir-up.md`.
+
+## Local installation
+
+CaDiCaL can be installed into `contrib/local` with:
+
+```bash
+make contrib-cadical
+```
+
+`make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` and reports whether CaDiCaL/IPASIR headers and libraries were found.
