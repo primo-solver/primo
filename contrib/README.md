@@ -20,13 +20,15 @@ make contrib
 make contrib-z3
 make contrib-cvc5
 make contrib-cadical
+make contrib-cli11
 ```
 
 ## Tool roles
 
+- CLI11 is downloaded as the single header used by the solver executable.
 - Z3 is installed through `pip install z3-solver` into the active Python environment and a `contrib/local/bin/z3` wrapper is created when possible.
 - cvc5 is downloaded from GitHub releases into `contrib/local/bin/cvc5`.
 - CaDiCaL is cloned and built from its GitHub release tag, then installed into `contrib/local`.
 
 `make compare` and `make fuzz` prepend `contrib/local/bin` to `PATH`.
-`make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` so CMake can find local CaDiCaL/IPASIR headers and libraries.
+`make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` so CMake can find local CLI11 and CaDiCaL/IPASIR headers and libraries.

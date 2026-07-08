@@ -1,8 +1,12 @@
 #pragma once
 
+#include <string_view>
+
 #include "sat/ipasir_up.hpp"
 
 namespace primo::sat {
+
+std::string_view cadical_signature();
 
 class CadicalBackend final : public IpasirUpBackend {
  public:

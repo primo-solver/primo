@@ -8,6 +8,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/contrib/local")
 
+find_path(CLI11_INCLUDE_DIR
+  NAMES CLI/CLI.hpp
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include"
+)
+if(CLI11_INCLUDE_DIR)
+  message(STATUS "Found CLI11: ${CLI11_INCLUDE_DIR}")
+else()
+  message(FATAL_ERROR "CLI11 not found. Run `make contrib-cli11` or install CLI11 so CLI/CLI.hpp is available.")
+endif()
+
 find_path(IPASIR_UP_INCLUDE_DIR
   NAMES ipasir_up.h ipasir.h
   HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include"
@@ -23,6 +33,17 @@ if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   message(STATUS "  CaDiCaL library: ${CADICAL_LIBRARY}")
 else()
   message(STATUS "IPASIR-UP/CaDiCaL not found; SAT backend remains a scaffold")
+endif()
+
+execute_process(
+  COMMAND git rev-parse --short HEAD
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+  OUTPUT_VARIABLE PRIMO_GIT_REVISION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET
+)
+if(NOT PRIMO_GIT_REVISION)
+  set(PRIMO_GIT_REVISION "unknown")
 endif()
 
 file(GLOB_RECURSE PRIMO_LIBRARY_SOURCES CONFIGURE_DEPENDS
@@ -47,8 +68,8 @@ endif()
 
 add_executable(primo src/main.cpp)
 target_link_libraries(primo PRIVATE primo_core)
-
-target_include_directories(primo PRIVATE src)
+target_compile_definitions(primo PRIVATE PRIMO_GIT_REVISION="${PRIMO_GIT_REVISION}")
+target_include_directories(primo PRIVATE src "${CLI11_INCLUDE_DIR}")
 
 enable_testing()
 add_test(NAME primo_version COMMAND primo --version)

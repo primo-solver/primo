@@ -9,6 +9,14 @@
 
 namespace primo::sat {
 
+std::string_view cadical_signature() {
+#if PRIMO_HAVE_IPASIR
+  return ipasir_signature();
+#else
+  return "unavailable";
+#endif
+}
+
 CadicalBackend::CadicalBackend() {
 #if PRIMO_HAVE_IPASIR
   solver_ = ipasir_init();

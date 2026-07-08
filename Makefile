@@ -1,4 +1,4 @@
-.PHONY: build test smoke compare fuzz bench docs lint format check contrib contrib-z3 contrib-cvc5 contrib-cadical clean
+.PHONY: build test smoke compare fuzz bench docs lint format check contrib contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
 
 BUILD_DIR ?= build
 PRIMO ?= $(BUILD_DIR)/primo
@@ -63,7 +63,10 @@ format:
 
 check: lint test
 
-contrib: contrib-z3 contrib-cvc5 contrib-cadical
+contrib: contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical
+
+contrib-cli11:
+	$(PYTHON) contrib/install_cli11.py --prefix $(CONTRIB_PREFIX)
 
 contrib-z3:
 	$(PYTHON) contrib/install_z3.py --prefix $(CONTRIB_PREFIX)

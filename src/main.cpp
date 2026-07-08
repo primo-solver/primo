@@ -1,16 +1,18 @@
+#include <CLI/CLI.hpp>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
 
-namespace {
+#ifndef PRIMO_GIT_REVISION
+#define PRIMO_GIT_REVISION "unknown"
+#endif
 
-void print_usage(const char* argv0) {
-  std::cout << "usage: " << argv0 << " [--help] [--version] [file.smt2 ...]\n";
-}
+namespace {
 
 bool can_read_file(const std::string& path) {
   std::ifstream input(path);
@@ -24,22 +26,39 @@ std::string read_file(const std::string& path) {
   return contents.str();
 }
 
+std::string version_text() {
+  std::ostringstream version;
+  version << "primo 0.1.0\n";
+  version << "git: " << PRIMO_GIT_REVISION << "\n";
+  version << "cadical: " << primo::sat::cadical_signature();
+  return version.str();
+}
+
+void print_startup_banner() {
+  std::cerr << "primo git " << PRIMO_GIT_REVISION << "\n";
+  std::cerr << "cadical " << primo::sat::cadical_signature() << "\n";
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   std::vector<std::string> files;
+  bool quiet = false;
 
-  for (int i = 1; i < argc; ++i) {
-    std::string arg = argv[i];
-    if (arg == "--help" || arg == "-h") {
-      print_usage(argv[0]);
-      return 0;
-    }
-    if (arg == "--version") {
-      std::cout << "primo scaffold 0.1.0\n";
-      return 0;
-    }
-    files.push_back(arg);
+  CLI::App app{"Primo SMT solver scaffold"};
+  app.add_flag("-q,--quiet", quiet, "Suppress startup version banner");
+  app.add_option("files", files, "SMT-LIB input files. Reads stdin when omitted")
+      ->type_name("FILE");
+  app.set_version_flag("--version", version_text());
+
+  try {
+    app.parse(argc, argv);
+  } catch (const CLI::ParseError& error) {
+    return app.exit(error);
+  }
+
+  if (!quiet) {
+    print_startup_banner();
   }
 
   if (files.empty()) {
