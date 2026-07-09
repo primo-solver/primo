@@ -1,4 +1,4 @@
-.PHONY: build test smoke compare fuzz bench docs docs-venv lint format check contrib contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
+.PHONY: build test smoke compare fuzz bench docs docs-venv docs-serve lint format check contrib contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
 
 BUILD_DIR ?= build
 PRIMO ?= $(BUILD_DIR)/primo
@@ -38,6 +38,9 @@ $(DOCS_JUPYTER_BOOK): requirements-docs.txt
 
 docs: $(DOCS_JUPYTER_BOOK)
 	cd docs && $(DOCS_JUPYTER_BOOK) build --html --ci
+
+docs-serve: docs
+	$(PYTHON) -m http.server 8000 -d docs/_build/html
 
 lint:
 	$(PYTHON) -m py_compile scripts/*.py contrib/*.py
