@@ -71,10 +71,6 @@ std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> collect_dise
   return disequalities;
 }
 
-bool contains(const std::vector<core::TermId>& terms, core::TermId term) {
-  return std::find(terms.begin(), terms.end(), term) != terms.end();
-}
-
 bool all_pairwise_disequal(
     const std::vector<core::TermId>& values,
     const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities) {
