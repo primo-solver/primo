@@ -45,6 +45,21 @@ For each such component, include:
 
 Code comments should identify algorithmic basis without overclaiming.
 
+## Documentation synchronization rule
+
+Documentation is part of the implementation, not a follow-up task.
+
+Do not consider a solver change complete unless the relevant documentation is up to date. For changes to parser, terms, symbols, SAT integration, clausification, theory solving, options, build behavior, or solver control flow:
+
+- update the nearest page under `docs/`
+- describe the implemented C++ types, ownership, lifetime, invariants, and limitations
+- explain whether paper-backed ideas are implemented, partially implemented, or only planned
+- keep examples and supported-fragment claims synchronized with the code
+- run `make docs`
+- commit documentation together with the implementation or in an adjacent commit
+
+If documentation cannot be updated in the same task, state that as a blocker in the final response.
+
 ## Architectural rules
 
 Preserve these boundaries:
