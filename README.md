@@ -96,11 +96,15 @@ make bench
 
 ## Docs
 
-Documentation is written in MyST Markdown and built with Jupyter Book 2 / MyST.
+Documentation is written in MyST Markdown and built with Jupyter Book.
 
 ```bash
 make docs
 ```
+
+This uses `scripts/build_docs.sh`, which creates `.venv-docs` and installs
+`docs/requirements.txt` when needed. The generated HTML is written to
+`docs/_build/html`.
 
 Use notebooks only for executable experiments and benchmark reports.
 

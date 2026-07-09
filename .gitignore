@@ -69,6 +69,7 @@ vcpkg_installed/
 Testing/
 .cache/
 .venv/
+.venv-docs/
 
 # local optional dependencies
 contrib/local/

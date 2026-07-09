@@ -2,7 +2,15 @@
 
 Primo is a clean-room, paper-grounded SMT solver developed with LLM assistance.
 
-This documentation is authored in MyST Markdown and built with Jupyter Book 2 / MyST.
+This documentation is authored in MyST Markdown and built with Jupyter Book.
+
+Build it from the repository root with:
+
+```bash
+scripts/build_docs.sh
+```
+
+The generated HTML is written under `docs/_build/html`.
 
 ## Documentation policy
 

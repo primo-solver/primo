@@ -1,0 +1,18 @@
+format: jb-book
+root: index
+chapters:
+  - file: architecture
+  - file: sat-ipasir-up
+  - file: dpllt
+  - file: euf
+  - file: arithmetic
+  - file: difference_logic
+  - file: debugging
+  - file: experiments
+  - file: literature
+  - file: papers/ipasir-up
+  - file: papers/cvc4-architecture
+  - file: papers/fast-congruence-closure
+  - file: papers/fast-linear-arithmetic-dpllt
+  - file: papers/difference-constraint-propagation
+  - file: reference/llm2smt-retrospective

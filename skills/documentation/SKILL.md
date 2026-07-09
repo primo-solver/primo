@@ -9,12 +9,13 @@ description: Write code-grounded architecture, algorithm, invariant, representat
 
 Document the solver so that future code changes preserve the architecture, representations, paper-grounded design choices, and invariants.
 
-Use Jupyter Book 2 / MyST as the documentation workhorse:
+Use classic Jupyter Book, matching the `llm2smt` `lra` branch documentation setup:
 
 - author normal docs in MyST Markdown
-- maintain `docs/myst.yml` and `docs/index.md`
+- maintain `docs/_config.yml`, `docs/_toc.yml`, and `docs/index.md`
 - use notebooks only for executable experiments and benchmark reports
 - keep the documentation buildable with `make docs`
+- keep `scripts/build_docs.sh` as the canonical build wrapper
 
 ## Documentation types
 
@@ -81,7 +82,7 @@ Explain:
 - how to add a regression test
 - how to run fuzzing
 - how to run benchmarks
-- how to build the MyST/Jupyter Book documentation
+- how to build the Jupyter Book documentation
 
 ## Required Representation Sections
 

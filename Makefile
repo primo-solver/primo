@@ -4,9 +4,7 @@ BUILD_DIR ?= build
 PRIMO ?= $(BUILD_DIR)/primo
 CONTRIB_PREFIX ?= contrib/local
 PYTHON ?= python3
-DOCS_VENV ?= .venv
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
-DOCS_JUPYTER_BOOK := $(DOCS_VENV)/bin/jupyter-book
 CPP_FORMAT_FILES := $$(find src -name '*.cpp' -o -name '*.hpp' -o -name '*.h' | grep -v '^src/smtlib/antlr/')
 
 build:
@@ -29,15 +27,12 @@ bench: build
 	$(PYTHON) scripts/bench.py benchmarks/smoke/qf_uf/*.smt2 --solver ./$(PRIMO) --timeout 5 --out results/bench.csv
 
 docs-venv:
-	$(PYTHON) -m venv $(DOCS_VENV)
-	$(DOCS_VENV)/bin/python -m pip install --upgrade pip
-	$(DOCS_VENV)/bin/python -m pip install -r requirements-docs.txt
+	$(PYTHON) -m venv .venv-docs
+	.venv-docs/bin/python -m pip install --upgrade pip
+	.venv-docs/bin/python -m pip install -r docs/requirements.txt
 
-docs: requirements-docs.txt
-	@if [ ! -x "$(DOCS_JUPYTER_BOOK)" ] || [ requirements-docs.txt -nt "$(DOCS_JUPYTER_BOOK)" ]; then \
-		$(MAKE) docs-venv; \
-	fi
-	cd docs && ../$(DOCS_JUPYTER_BOOK) build --html --ci
+docs:
+	bash scripts/build_docs.sh
 
 docs-serve: docs
 	$(PYTHON) -m http.server 8000 -d docs/_build/html
