@@ -1,7 +1,10 @@
 #include <cassert>
+#include <utility>
 #include <vector>
 
+#include "core/ids.hpp"
 #include "core/symbol_table.hpp"
+#include "core/term.hpp"
 #include "core/term_manager.hpp"
 #include "smt/preprocessing.hpp"
 
@@ -116,11 +119,62 @@ void moving_terms_are_rejected() {
   assert(result.constraints.empty());
 }
 
+void equality_bridge_derives_common_branch_consequence() {
+  Fixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId z = fixture.constant(fixture.z);
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+
+  const primo::core::TermId left =
+      fixture.terms.mk_and({fixture.terms.mk_eq(x, y), fixture.terms.mk_eq(y, z)});
+  const primo::core::TermId right =
+      fixture.terms.mk_and({fixture.terms.mk_eq(x, a), fixture.terms.mk_eq(a, z)});
+  const primo::core::TermId unrelated =
+      fixture.terms.mk_and({fixture.terms.mk_eq(x, b), fixture.terms.mk_eq(b, z)});
+  const std::vector<primo::core::TermId> assertions{fixture.terms.mk_or({left, right, unrelated})};
+
+  primo::smt::EqualityBridge bridge(fixture.terms);
+  const primo::smt::EqualityBridgeResult result = bridge.bridge(assertions);
+
+  assert(result.skipped_or_nodes == 0);
+  assert(result.equalities.size() == 1);
+  const primo::core::Term& derived = fixture.terms.get(result.equalities.front());
+  assert(derived.kind == primo::core::TermKind::Equality);
+  assert((derived.children == std::vector{x, z} || derived.children == std::vector{z, x}));
+}
+
+void unit_equality_propagation_simplifies_disequality() {
+  Fixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId z = fixture.constant(fixture.z);
+
+  const std::vector<primo::core::TermId> assertions{
+      fixture.terms.mk_eq(x, y),
+      fixture.terms.mk_eq(y, z),
+      fixture.terms.mk_not(fixture.terms.mk_eq(x, z)),
+  };
+
+  const std::vector<primo::core::TermId> simplified =
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions);
+
+  assert(simplified.size() == assertions.size() + 1);
+  assert(simplified[0] == assertions[0]);
+  assert(simplified[1] == assertions[1]);
+  assert(simplified[2] == assertions[2]);
+  assert(fixture.terms.get(simplified[3]).kind == primo::core::TermKind::BoolValue);
+  assert(!fixture.terms.get(simplified[3]).bool_value);
+}
+
 }  // namespace
 
 int main() {
   symmetric_fixed_terms_get_value_precedence();
   asymmetric_value_use_is_rejected();
   moving_terms_are_rejected();
+  equality_bridge_derives_common_branch_consequence();
+  unit_equality_propagation_simplifies_disequality();
   return 0;
 }

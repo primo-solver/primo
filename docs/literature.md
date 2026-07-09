@@ -66,6 +66,47 @@ permutation. Terms containing the permuted constants are therefore rejected.
 Benchmark-driven decision on whether the option should remain experimental or
 become part of a tuned QF_UF preset.
 
+## Generating minimum transitivity constraints in P-time for deciding Equality Logic
+
+Ofer Strichman and Mirron Rozanov, SMT Workshop 2005.
+
+Paper text is not currently checked into this workspace. The title and authors
+come from the SMT-LIB equality-diamond benchmark metadata.
+
+### Relevance
+
+The SMT-LIB `eq_diamond` QF_UF benchmarks are crafted equality-logic formulas
+where each disjunction branch implies the same endpoint equality. A lazy EUF
+loop without preprocessing can explore exponentially many branch combinations.
+
+### Algorithm
+
+Primo does not implement the paper's full minimum-transitivity-constraint
+generation. The implemented `--eq-bridge` pass is narrower: for each `or`
+subformula, compute equality closure inside every branch and add only equalities
+that are implied by all branches.
+
+### Data structures
+
+The pass uses a local union-find over `core::TermId` values per disjunction
+branch and emits ordinary hash-consed equality terms as new assertions.
+
+### Implementation notes
+
+Implemented as default-off `--eq-bridge` in `src/smt/preprocessing.*`. See
+[](preprocessing.md).
+
+### Risks
+
+The pass is intentionally capped by branch count and pair checks. It is a
+targeted equality-diamond optimization, not a general replacement for theory
+propagation or a full transitivity-constraint generator.
+
+### Possible milestone
+
+Obtain the paper and decide whether a more general minimum-transitivity
+constraint pass is worth implementing.
+
 ## Using SAT and SMT Solvers for Finite Model Finding with Sorts
 
 Giles Reger and Martin Suda.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -19,6 +20,8 @@ struct CheckSatOutcome {
 
 struct CheckSatOptions {
   bool uf_symmetry_breaking = false;
+  bool eq_bridge = false;
+  std::size_t preprocessing_passes = 1;
 };
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options = {});

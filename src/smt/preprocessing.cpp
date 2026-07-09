@@ -30,6 +30,44 @@ struct SymmetryGroup {
   std::vector<SymmetryTerm> terms;
 };
 
+struct BranchEqualityClosure {
+  std::unordered_map<core::TermId, core::TermId> parent;
+  std::unordered_set<core::TermId> nodes;
+
+  core::TermId find(core::TermId term) {
+    core::TermId root = term;
+    while (true) {
+      const auto parent_it = parent.find(root);
+      if (parent_it == parent.end()) {
+        break;
+      }
+      root = parent_it->second;
+    }
+    while (term != root) {
+      const auto parent_it = parent.find(term);
+      const core::TermId next = parent_it->second;
+      parent_it->second = root;
+      term = next;
+    }
+    return root;
+  }
+
+  void unite(core::TermId lhs, core::TermId rhs) {
+    nodes.insert(lhs);
+    nodes.insert(rhs);
+    lhs = find(lhs);
+    rhs = find(rhs);
+    if (lhs != rhs) {
+      parent[lhs] = rhs;
+    }
+  }
+
+  bool same(core::TermId lhs, core::TermId rhs) { return find(lhs) == find(rhs); }
+};
+
+constexpr std::size_t kMaxBridgeBranches = 64;
+constexpr std::size_t kMaxBridgePairChecks = 200000;
+
 std::pair<core::TermId, core::TermId> ordered_pair(core::TermId lhs, core::TermId rhs) {
   if (rhs < lhs) {
     std::swap(lhs, rhs);
@@ -47,6 +85,165 @@ void collect_conjuncts(const core::TermManager& terms, core::TermId term,
     return;
   }
   conjuncts.push_back(term);
+}
+
+void collect_branch_equalities(const core::TermManager& terms, core::TermId branch,
+                               BranchEqualityClosure& closure) {
+  std::vector<core::TermId> work{branch};
+  while (!work.empty()) {
+    const core::TermId term = work.back();
+    work.pop_back();
+    const core::Term& node = terms.get(term);
+    if (node.kind == core::TermKind::Equality) {
+      closure.unite(node.children.at(0), node.children.at(1));
+      continue;
+    }
+    if (node.kind == core::TermKind::And) {
+      work.insert(work.end(), node.children.begin(), node.children.end());
+    }
+  }
+}
+
+void collect_or_branches(const core::TermManager& terms, core::TermId term,
+                         std::vector<core::TermId>& branches) {
+  std::vector<core::TermId> work{term};
+  while (!work.empty()) {
+    const core::TermId current = work.back();
+    work.pop_back();
+    const core::Term& node = terms.get(current);
+    if (node.kind == core::TermKind::Or) {
+      work.insert(work.end(), node.children.begin(), node.children.end());
+      continue;
+    }
+    branches.push_back(current);
+  }
+}
+
+void bridge_or_node(core::TermManager& terms, core::TermId term, EqualityBridgeResult& result) {
+  std::vector<core::TermId> branches;
+  collect_or_branches(terms, term, branches);
+  if (branches.size() < 2) {
+    return;
+  }
+  if (branches.size() > kMaxBridgeBranches) {
+    ++result.skipped_or_nodes;
+    return;
+  }
+
+  std::vector<BranchEqualityClosure> closures(branches.size());
+  for (std::size_t i = 0; i < branches.size(); ++i) {
+    collect_branch_equalities(terms, branches[i], closures[i]);
+  }
+
+  std::unordered_set<core::TermId> shared = closures.front().nodes;
+  for (std::size_t i = 1; i < closures.size(); ++i) {
+    std::unordered_set<core::TermId> next_shared;
+    for (const core::TermId candidate : shared) {
+      if (closures[i].nodes.contains(candidate)) {
+        next_shared.insert(candidate);
+      }
+    }
+    shared = std::move(next_shared);
+    if (shared.empty()) {
+      return;
+    }
+  }
+
+  const std::vector<core::TermId> shared_nodes(shared.begin(), shared.end());
+  const std::size_t pair_count = shared_nodes.size() * (shared_nodes.size() - 1U) / 2U;
+  if (pair_count > kMaxBridgePairChecks / branches.size()) {
+    ++result.skipped_or_nodes;
+    return;
+  }
+
+  std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> emitted;
+  for (std::size_t i = 0; i < shared_nodes.size(); ++i) {
+    for (std::size_t j = i + 1; j < shared_nodes.size(); ++j) {
+      const core::TermId lhs = shared_nodes[i];
+      const core::TermId rhs = shared_nodes[j];
+      bool common = true;
+      for (BranchEqualityClosure& closure : closures) {
+        if (!closure.same(lhs, rhs)) {
+          common = false;
+          break;
+        }
+      }
+      if (common && emitted.insert(ordered_pair(lhs, rhs)).second) {
+        result.equalities.push_back(terms.mk_eq(lhs, rhs));
+      }
+    }
+  }
+}
+
+void collect_equality_bridges(core::TermManager& terms, core::TermId assertion,
+                              EqualityBridgeResult& result) {
+  std::vector<core::TermId> work{assertion};
+  while (!work.empty()) {
+    const core::TermId term = work.back();
+    work.pop_back();
+    const core::Term& node = terms.get(term);
+    if (node.kind == core::TermKind::Or) {
+      bridge_or_node(terms, term, result);
+      continue;
+    }
+    if (node.kind == core::TermKind::And) {
+      work.insert(work.end(), node.children.begin(), node.children.end());
+    }
+  }
+}
+
+void collect_unit_equalities(const core::TermManager& terms, core::TermId assertion,
+                             BranchEqualityClosure& closure) {
+  std::vector<core::TermId> work{assertion};
+  while (!work.empty()) {
+    const core::TermId term = work.back();
+    work.pop_back();
+    const core::Term& node = terms.get(term);
+    if (node.kind == core::TermKind::Equality) {
+      closure.unite(node.children.at(0), node.children.at(1));
+      continue;
+    }
+    if (node.kind == core::TermKind::And) {
+      work.insert(work.end(), node.children.begin(), node.children.end());
+    }
+  }
+}
+
+core::TermId simplify_with_equalities(core::TermManager& terms, core::TermId term,
+                                      BranchEqualityClosure& closure) {
+  const core::Term& node = terms.get(term);
+  switch (node.kind) {
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+    case core::TermKind::Application:
+      return term;
+    case core::TermKind::Equality:
+      return closure.same(node.children.at(0), node.children.at(1)) ? terms.mk_bool(true) : term;
+    case core::TermKind::Not: {
+      const core::TermId child = simplify_with_equalities(terms, node.children.at(0), closure);
+      return terms.mk_not(child);
+    }
+    case core::TermKind::And: {
+      std::vector<core::TermId> children;
+      children.reserve(node.children.size());
+      for (const core::TermId child : node.children) {
+        children.push_back(simplify_with_equalities(terms, child, closure));
+      }
+      return terms.mk_and(std::move(children));
+    }
+    case core::TermKind::Or: {
+      std::vector<core::TermId> children;
+      children.reserve(node.children.size());
+      for (const core::TermId child : node.children) {
+        children.push_back(simplify_with_equalities(terms, child, closure));
+      }
+      return terms.mk_or(std::move(children));
+    }
+    case core::TermKind::Implies:
+      return terms.mk_implies(simplify_with_equalities(terms, node.children.at(0), closure),
+                              simplify_with_equalities(terms, node.children.at(1), closure));
+  }
+  return term;
 }
 
 std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> collect_disequalities(
@@ -348,6 +545,45 @@ void add_value_precedence_constraints(core::TermManager& terms, const SymmetryGr
 }
 
 }  // namespace
+
+EqualityBridge::EqualityBridge(core::TermManager& terms) : terms_(terms) {}
+
+EqualityBridgeResult EqualityBridge::bridge(const std::vector<core::TermId>& assertions) {
+  EqualityBridgeResult result;
+  for (const core::TermId assertion : assertions) {
+    collect_equality_bridges(terms_, assertion, result);
+  }
+  return result;
+}
+
+std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
+                                                    const std::vector<core::TermId>& assertions) {
+  // This is a deliberately small preprocessing closure, not a theory-solver
+  // shortcut. Unit equalities already asserted at top level, including facts
+  // derived by the equality bridge, are used to simplify equality atoms in the
+  // whole formula before Boolean abstraction.
+  BranchEqualityClosure closure;
+  for (const core::TermId assertion : assertions) {
+    collect_unit_equalities(terms, assertion, closure);
+  }
+
+  std::vector<core::TermId> simplified;
+  simplified.reserve(assertions.size());
+  std::unordered_set<core::TermId> emitted;
+  for (const core::TermId assertion : assertions) {
+    if (emitted.insert(assertion).second) {
+      simplified.push_back(assertion);
+    }
+    const core::TermId consequence = simplify_with_equalities(terms, assertion, closure);
+    const core::Term& consequence_node = terms.get(consequence);
+    const bool true_consequence =
+        consequence_node.kind == core::TermKind::BoolValue && consequence_node.bool_value;
+    if (consequence != assertion && !true_consequence && emitted.insert(consequence).second) {
+      simplified.push_back(consequence);
+    }
+  }
+  return simplified;
+}
 
 UfSymmetryBreaker::UfSymmetryBreaker(core::TermManager& terms) : terms_(terms) {}
 

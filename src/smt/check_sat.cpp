@@ -505,6 +505,19 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(assertions);
       assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
     }
+    for (std::size_t pass = 0; pass < options.preprocessing_passes; ++pass) {
+      const std::vector<core::TermId> before = assertions;
+      if (options.eq_bridge) {
+        EqualityBridge bridge(frontend.terms());
+        EqualityBridgeResult bridge_result = bridge.bridge(assertions);
+        assertions.insert(assertions.end(), bridge_result.equalities.begin(),
+                          bridge_result.equalities.end());
+      }
+      assertions = propagate_unit_equalities(frontend.terms(), assertions);
+      if (assertions == before) {
+        break;
+      }
+    }
 
     const bool has_equality = [&] {
       for (const core::TermId assertion : assertions) {

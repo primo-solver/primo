@@ -79,6 +79,12 @@ Experimental QF_UF finite-domain symmetry breaking is available with:
 ./build/primo --uf-symmetry-breaking input.smt2
 ```
 
+Equality-diamond preprocessing is available with:
+
+```bash
+./build/primo --eq-bridge --preprocessing-passes 3 input.smt2
+```
+
 ## Test
 
 ```bash

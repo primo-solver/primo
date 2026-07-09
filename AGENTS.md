@@ -13,6 +13,9 @@ The old repository may be used only for:
 - writing retrospectives
 - checking which development practices failed or succeeded
 
+The local reference checkout is normally at `/tmp/llm2smt` on this workspace.
+Check that path first when comparing against LLM2SMT behavior.
+
 Do not copy source code, generated code, parser grammars, build files, comments, tests, or documentation text from LLM2SMT or from other SMT solvers.
 
 When implementing an algorithm, use:

@@ -144,6 +144,31 @@ void predicate_applications_respect_congruence() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void equality_bridge_solves_diamond_chain() {
+  primo::smt::CheckSatOptions options;
+  options.eq_bridge = true;
+  options.preprocessing_passes = 3;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun x0 () A)
+    (declare-fun y0 () A)
+    (declare-fun z0 () A)
+    (declare-fun x1 () A)
+    (declare-fun y1 () A)
+    (declare-fun z1 () A)
+    (declare-fun x2 () A)
+    (assert (and
+      (or (and (= x0 y0) (= y0 x1)) (and (= x0 z0) (= z0 x1)))
+      (or (and (= x1 y1) (= y1 x2)) (and (= x1 z1) (= z1 x2)))
+      (not (= x0 x2))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 }  // namespace
 
 int main() {
@@ -158,5 +183,6 @@ int main() {
   mixed_boolean_and_euf_can_be_sat();
   mixed_boolean_and_euf_conflict_is_unsat();
   predicate_applications_respect_congruence();
+  equality_bridge_solves_diamond_chain();
   return 0;
 }

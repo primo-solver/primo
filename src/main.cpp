@@ -50,6 +50,11 @@ int main(int argc, char** argv) {
   app.add_flag("-q,--quiet", quiet, "Suppress startup version banner");
   app.add_flag("--uf-symmetry-breaking", solver_options.uf_symmetry_breaking,
                "Enable experimental QF_UF symmetry breaking over invariant finite-domain values");
+  app.add_flag("--eq-bridge", solver_options.eq_bridge,
+               "Add equalities implied by every branch of selected QF_UF disjunctions");
+  app.add_option("--preprocessing-passes", solver_options.preprocessing_passes,
+                 "Number of QF_UF preprocessing passes to run")
+      ->check(CLI::Range(0, 100));
   app.add_option("files", files, "SMT-LIB input files. Reads stdin when omitted")
       ->type_name("FILE");
   app.set_version_flag("--version", version_text());
