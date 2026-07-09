@@ -26,5 +26,6 @@ The generated HTML is written under `docs/_build/html`.
 - IPASIR-UP/CaDiCaL SAT backend integration
 - Lazy DPLL(T)
 - EUF/congruence closure
+- QF_UF preprocessing and finite-domain symmetry breaking
 - Future arithmetic theories
 - Debugging, experiments, and literature

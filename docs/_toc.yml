@@ -5,6 +5,7 @@ chapters:
   - file: sat-ipasir-up
   - file: dpllt
   - file: euf
+  - file: preprocessing
   - file: arithmetic
   - file: difference_logic
   - file: debugging
@@ -13,6 +14,8 @@ chapters:
   - file: papers/ipasir-up
   - file: papers/cvc4-architecture
   - file: papers/fast-congruence-closure
+  - file: papers/smt-symmetry-breaking
+  - file: papers/finite-model-finding-sorts
   - file: papers/fast-linear-arithmetic-dpllt
   - file: papers/difference-constraint-propagation
   - file: reference/llm2smt-retrospective

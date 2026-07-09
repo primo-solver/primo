@@ -23,6 +23,7 @@ The first target is QF_UF:
 - lazy DPLL(T)
 - congruence closure
 - equality and disequality reasoning
+- default-off finite-domain UF symmetry breaking
 - eventual model generation
 
 ## Later targets
@@ -43,7 +44,7 @@ Primo is a new solver. LLM2SMT may be used as a reference artifact only, not as 
 make build
 ```
 
-This configures CMake in `build/` and builds the `primo` executable. The current executable is a scaffold and reports unsupported solving explicitly.
+This configures CMake in `build/` and builds the `primo` executable.
 
 ## Optional dependencies
 
@@ -62,6 +63,12 @@ make contrib         # all of the above
 
 ```bash
 ./build/primo benchmarks/smoke/qf_uf/direct_equality_contradiction.smt2
+```
+
+Experimental QF_UF finite-domain symmetry breaking is available with:
+
+```bash
+./build/primo --uf-symmetry-breaking input.smt2
 ```
 
 ## Test

@@ -14,6 +14,7 @@
 #include "sat/clause.hpp"
 #include "sat/ipasir_up.hpp"
 #include "sat/lit.hpp"
+#include "smt/preprocessing.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
 #include "theory/equality/congruence_closure.hpp"
@@ -544,7 +545,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 
 }  // namespace
 
-CheckSatOutcome check_sat_smtlib(std::string_view input) {
+CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options) {
   try {
     smtlib::Parser parser(input);
     const std::vector<smtlib::Command> commands = parser.parse_commands();
@@ -556,6 +557,12 @@ CheckSatOutcome check_sat_smtlib(std::string_view input) {
     }
     if (!frontend.saw_check_sat()) {
       return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command"};
+    }
+
+    if (options.uf_symmetry_breaking) {
+      UfSymmetryBreaker symmetry_breaker(frontend.terms());
+      UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(assertions);
+      assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
     }
 
     const bool has_equality = [&] {

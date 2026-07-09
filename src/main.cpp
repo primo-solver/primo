@@ -44,9 +44,12 @@ void print_startup_banner() {
 int main(int argc, char** argv) {
   std::vector<std::string> files;
   bool quiet = false;
+  primo::smt::CheckSatOptions solver_options;
 
   CLI::App app{"Primo SMT solver scaffold"};
   app.add_flag("-q,--quiet", quiet, "Suppress startup version banner");
+  app.add_flag("--uf-symmetry-breaking", solver_options.uf_symmetry_breaking,
+               "Enable experimental QF_UF symmetry breaking over invariant finite-domain values");
   app.add_option("files", files, "SMT-LIB input files. Reads stdin when omitted")
       ->type_name("FILE");
   app.set_version_flag("--version", version_text());
@@ -64,7 +67,8 @@ int main(int argc, char** argv) {
   if (files.empty()) {
     std::ostringstream contents;
     contents << std::cin.rdbuf();
-    const primo::smt::CheckSatOutcome outcome = primo::smt::check_sat_smtlib(contents.str());
+    const primo::smt::CheckSatOutcome outcome =
+        primo::smt::check_sat_smtlib(contents.str(), solver_options);
     std::cout << primo::smt::to_string(outcome.result) << "\n";
     if (!outcome.message.empty()) {
       std::cerr << outcome.message << "\n";
@@ -78,7 +82,8 @@ int main(int argc, char** argv) {
       std::cerr << "error: cannot read input file: " << file << "\n";
       return 1;
     }
-    const primo::smt::CheckSatOutcome outcome = primo::smt::check_sat_smtlib(read_file(file));
+    const primo::smt::CheckSatOutcome outcome =
+        primo::smt::check_sat_smtlib(read_file(file), solver_options);
     std::cout << primo::smt::to_string(outcome.result) << "\n";
     if (!outcome.message.empty()) {
       std::cerr << file << ": " << outcome.message << "\n";

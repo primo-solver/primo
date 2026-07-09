@@ -7,7 +7,7 @@ Primo is organized as layered components with explicit data ownership. This page
 - `smtlib/` parses SMT-LIB commands into lightweight syntax objects.
 - `core/` owns sorts, symbols, and hash-consed terms.
 - `sat/` owns propositional variables, literals, clauses, assumptions, and the CaDiCaL/IPASIR backend adapter.
-- `smt/` owns SMT-LIB command processing, Boolean abstraction, clausification, and the current lazy QF_UF loop.
+- `smt/` owns SMT-LIB command processing, QF_UF preprocessing, Boolean abstraction, clausification, and the current lazy QF_UF loop.
 - `theory/` owns equality reasoning and congruence closure.
 
 ## Boundaries
@@ -136,6 +136,7 @@ Implemented now:
 - Boolean clausification for assertions.
 - Lazy QF_UF checking over equality atoms and Boolean predicate applications.
 - Non-incremental congruence closure for the current SAT assignment.
+- Default-off finite-domain UF symmetry breaking with `--uf-symmetry-breaking`.
 
 Not implemented yet:
 
@@ -150,6 +151,7 @@ Not implemented yet:
 - IPASIR-UP motivates the SAT-backend interface, but the current backend is a direct CaDiCaL/IPASIR-style adapter in `src/sat/`.
 - Congruence-closure papers motivate the EUF direction. The current implementation has congruence closure and disequality checking, but it does not yet implement explanation-producing union-find or the full fast algorithms described in the literature notes.
 - DPLL(T) papers motivate the lazy SAT/theory loop. Primo currently implements a simple lazy loop that rebuilds/checks theory consistency from each SAT assignment rather than an incremental propagating theory solver.
+- SMT symmetry-breaking and finite-model value-precedence papers motivate the default-off QF_UF preprocessing pass. Primo implements only the conservative constant-permutation and value-precedence subset described in `docs/preprocessing.md`.
 
 ## Optional Tools
 
