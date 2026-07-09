@@ -26,7 +26,8 @@ class EqualityBridge {
 };
 
 std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
-                                                    const std::vector<core::TermId>& assertions);
+                                                    const std::vector<core::TermId>& assertions,
+                                                    std::size_t* consequences_added = nullptr);
 
 struct UfSymmetryBreakingResult {
   std::vector<core::TermId> constraints;

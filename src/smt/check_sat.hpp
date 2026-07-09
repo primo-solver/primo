@@ -4,6 +4,8 @@
 #include <string>
 #include <string_view>
 
+#include "util/statistics.hpp"
+
 namespace primo::smt {
 
 enum class CheckSatResult {
@@ -16,6 +18,7 @@ enum class CheckSatResult {
 struct CheckSatOutcome {
   CheckSatResult result = CheckSatResult::Unknown;
   std::string message;
+  util::Statistics statistics;
 };
 
 struct CheckSatOptions {

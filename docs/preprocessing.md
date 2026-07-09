@@ -157,7 +157,6 @@ Deferred:
 
 - finite-domain at-most-one clauses and equality definitions from llm2smt;
 - proof support for generated preprocessing lemmas;
-- stats printing for accepted/rejected groups;
 - SyMT-style graph automorphism detection;
 - benchmark-driven default-on decision.
 

@@ -85,6 +85,13 @@ Equality-diamond preprocessing is available with:
 ./build/primo --eq-bridge --preprocessing-passes 3 input.smt2
 ```
 
+Solver statistics can be printed to stderr while keeping stdout as the SMT
+result:
+
+```bash
+./build/primo --stats input.smt2
+```
+
 ## Test
 
 ```bash

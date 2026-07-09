@@ -1,11 +1,17 @@
 #include "smt/preprocessing.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
+
+#include "core/ids.hpp"
+#include "core/term.hpp"
+#include "core/term_manager.hpp"
 
 namespace primo::smt {
 
@@ -557,7 +563,8 @@ EqualityBridgeResult EqualityBridge::bridge(const std::vector<core::TermId>& ass
 }
 
 std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
-                                                    const std::vector<core::TermId>& assertions) {
+                                                    const std::vector<core::TermId>& assertions,
+                                                    std::size_t* consequences_added) {
   // This is a deliberately small preprocessing closure, not a theory-solver
   // shortcut. Unit equalities already asserted at top level, including facts
   // derived by the equality bridge, are used to simplify equality atoms in the
@@ -570,6 +577,7 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   std::vector<core::TermId> simplified;
   simplified.reserve(assertions.size());
   std::unordered_set<core::TermId> emitted;
+  std::size_t added = 0;
   for (const core::TermId assertion : assertions) {
     if (emitted.insert(assertion).second) {
       simplified.push_back(assertion);
@@ -580,7 +588,11 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
         consequence_node.kind == core::TermKind::BoolValue && consequence_node.bool_value;
     if (consequence != assertion && !true_consequence && emitted.insert(consequence).second) {
       simplified.push_back(consequence);
+      ++added;
     }
+  }
+  if (consequences_added != nullptr) {
+    *consequences_added = added;
   }
   return simplified;
 }

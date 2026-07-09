@@ -16,6 +16,11 @@ void pure_boolean_sat() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":input.assertions") == 1);
+  assert(result.statistics.get(":preprocessing.passes") == 1);
+  assert(result.statistics.get(":solver.boolean") == 1);
+  assert(result.statistics.get(":solver.qf-uf") == 0);
+  assert(result.statistics.get(":sat.solve-calls") == 1);
 }
 
 void pure_boolean_unsat() {
@@ -167,6 +172,10 @@ void equality_bridge_solves_diamond_chain() {
   )",
       options);
   assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":preprocessing.passes") >= 1);
+  assert(result.statistics.get(":preprocessing.eq-bridge.equalities") >= 2);
+  assert(result.statistics.get(":preprocessing.unit-equality.consequences") >= 1);
+  assert(result.statistics.get(":solver.qf-uf") == 1);
 }
 
 }  // namespace

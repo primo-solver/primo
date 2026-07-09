@@ -1,5 +1,7 @@
 #include "smt/check_sat.hpp"
 
+#include <cstddef>
+#include <exception>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -8,21 +10,44 @@
 #include <utility>
 #include <vector>
 
+#include "core/ids.hpp"
 #include "core/symbol_table.hpp"
+#include "core/term.hpp"
 #include "core/term_manager.hpp"
 #include "sat/cadical_backend.hpp"
 #include "sat/clause.hpp"
 #include "sat/ipasir_up.hpp"
 #include "sat/lit.hpp"
 #include "smt/preprocessing.hpp"
+#include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
 #include "theory/equality/congruence_closure.hpp"
-#include "theory/equality/euf_solver.hpp"
+#include "util/statistics.hpp"
 
 namespace primo::smt {
 
 namespace {
+
+constexpr std::string_view kStatAssertionsInitial = ":input.assertions";
+constexpr std::string_view kStatAssertionsFinal = ":preprocessing.assertions";
+constexpr std::string_view kStatPreprocessingPasses = ":preprocessing.passes";
+constexpr std::string_view kStatPreprocessingChangedPasses = ":preprocessing.changed-passes";
+constexpr std::string_view kStatEqBridgeEqualities = ":preprocessing.eq-bridge.equalities";
+constexpr std::string_view kStatEqBridgeSkippedOrNodes =
+    ":preprocessing.eq-bridge.skipped-or-nodes";
+constexpr std::string_view kStatUnitEqualityConsequences =
+    ":preprocessing.unit-equality.consequences";
+constexpr std::string_view kStatUfSymmetryAcceptedSets = ":preprocessing.uf-symmetry.accepted-sets";
+constexpr std::string_view kStatUfSymmetryConstraints = ":preprocessing.uf-symmetry.constraints";
+constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
+    ":preprocessing.uf-symmetry.rejected-noninvariant";
+constexpr std::string_view kStatSolverBoolean = ":solver.boolean";
+constexpr std::string_view kStatSolverQfUf = ":solver.qf-uf";
+constexpr std::string_view kStatSatSolveCalls = ":sat.solve-calls";
+constexpr std::string_view kStatTheoryAtoms = ":euf.theory-atoms";
+constexpr std::string_view kStatTheoryChecks = ":euf.checks";
+constexpr std::string_view kStatTheoryConflicts = ":euf.theory-conflicts";
 
 class UnsupportedInput : public std::runtime_error {
  public:
@@ -372,14 +397,18 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
 }
 
 CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
-                                          const std::vector<core::TermId>& assertions) {
+                                          const std::vector<core::TermId>& assertions,
+                                          util::Statistics& statistics) {
+  statistics.increment(kStatSolverBoolean);
   sat::CadicalBackend backend;
   BooleanClausifier clausifier(backend, terms);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
 
-  return CheckSatOutcome{map_sat_result(backend.solve()), ""};
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  statistics.increment(kStatSatSolveCalls);
+  return CheckSatOutcome{map_sat_result(backend.solve()), "", statistics};
 }
 
 struct AssignedTheoryAtom {
@@ -446,28 +475,34 @@ std::optional<sat::Clause> find_theory_conflict(const core::TermManager& terms,
   return std::nullopt;
 }
 
-CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
+                            util::Statistics& statistics) {
+  statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend;
   BooleanClausifier clausifier(backend, terms);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
 
   const core::TermId true_term = terms.mk_bool(true);
   const core::TermId false_term = terms.mk_bool(false);
 
   while (true) {
+    statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
     if (sat_result != sat::SatResult::Sat) {
-      return CheckSatOutcome{map_sat_result(sat_result), ""};
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics};
     }
+    statistics.increment(kStatTheoryChecks);
 
     std::vector<AssignedTheoryAtom> assigned_atoms;
     for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
       const std::optional<bool> assignment = backend.value(var);
       if (!assignment.has_value()) {
-        return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom"};
+        return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
+                               statistics};
       }
       assigned_atoms.push_back(AssignedTheoryAtom{var, assignment.value(), atom.term});
     }
@@ -475,10 +510,11 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     std::optional<sat::Clause> conflict_clause =
         find_theory_conflict(terms, assigned_atoms, true_term, false_term);
     if (!conflict_clause.has_value()) {
-      return CheckSatOutcome{CheckSatResult::Sat, ""};
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
     }
+    statistics.increment(kStatTheoryConflicts);
     if (conflict_clause->empty()) {
-      return CheckSatOutcome{CheckSatResult::Unsat, ""};
+      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics};
     }
     backend.add_clause(conflict_clause.value());
   }
@@ -487,6 +523,24 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 }  // namespace
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options) {
+  util::Statistics statistics;
+  statistics.set(kStatAssertionsInitial, 0);
+  statistics.set(kStatAssertionsFinal, 0);
+  statistics.set(kStatPreprocessingPasses, 0);
+  statistics.set(kStatPreprocessingChangedPasses, 0);
+  statistics.set(kStatEqBridgeEqualities, 0);
+  statistics.set(kStatEqBridgeSkippedOrNodes, 0);
+  statistics.set(kStatUnitEqualityConsequences, 0);
+  statistics.set(kStatUfSymmetryAcceptedSets, 0);
+  statistics.set(kStatUfSymmetryConstraints, 0);
+  statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
+  statistics.set(kStatSolverBoolean, 0);
+  statistics.set(kStatSolverQfUf, 0);
+  statistics.set(kStatSatSolveCalls, 0);
+  statistics.set(kStatTheoryAtoms, 0);
+  statistics.set(kStatTheoryChecks, 0);
+  statistics.set(kStatTheoryConflicts, 0);
+
   try {
     smtlib::Parser parser(input);
     const std::vector<smtlib::Command> commands = parser.parse_commands();
@@ -496,28 +550,39 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     for (const smtlib::Command& command : commands) {
       frontend.process_command(command, assertions);
     }
+    statistics.set(kStatAssertionsInitial, assertions.size());
     if (!frontend.saw_check_sat()) {
-      return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command"};
+      return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command", statistics};
     }
 
     if (options.uf_symmetry_breaking) {
       UfSymmetryBreaker symmetry_breaker(frontend.terms());
       UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(assertions);
       assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
+      statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
+      statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
+      statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
     }
     for (std::size_t pass = 0; pass < options.preprocessing_passes; ++pass) {
       const std::vector<core::TermId> before = assertions;
+      statistics.increment(kStatPreprocessingPasses);
       if (options.eq_bridge) {
         EqualityBridge bridge(frontend.terms());
         EqualityBridgeResult bridge_result = bridge.bridge(assertions);
         assertions.insert(assertions.end(), bridge_result.equalities.begin(),
                           bridge_result.equalities.end());
+        statistics.increment(kStatEqBridgeEqualities, bridge_result.equalities.size());
+        statistics.increment(kStatEqBridgeSkippedOrNodes, bridge_result.skipped_or_nodes);
       }
-      assertions = propagate_unit_equalities(frontend.terms(), assertions);
+      std::size_t unit_consequences = 0;
+      assertions = propagate_unit_equalities(frontend.terms(), assertions, &unit_consequences);
+      statistics.increment(kStatUnitEqualityConsequences, unit_consequences);
       if (assertions == before) {
         break;
       }
+      statistics.increment(kStatPreprocessingChangedPasses);
     }
+    statistics.set(kStatAssertionsFinal, assertions.size());
 
     const bool has_equality = [&] {
       for (const core::TermId assertion : assertions) {
@@ -528,19 +593,19 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       return false;
     }();
     if (has_equality) {
-      return solve_qf_uf(frontend.terms(), assertions);
+      return solve_qf_uf(frontend.terms(), assertions, statistics);
     }
     try {
-      return solve_boolean_conjunction(frontend.terms(), assertions);
+      return solve_boolean_conjunction(frontend.terms(), assertions, statistics);
     } catch (const UnsupportedInput&) {
-      return solve_qf_uf(frontend.terms(), assertions);
+      return solve_qf_uf(frontend.terms(), assertions, statistics);
     }
   } catch (const UnsupportedInput& error) {
-    return CheckSatOutcome{CheckSatResult::Unsupported, error.what()};
+    return CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics};
   } catch (const smtlib::ParseError& error) {
-    return CheckSatOutcome{CheckSatResult::Unsupported, error.what()};
+    return CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics};
   } catch (const std::exception& error) {
-    return CheckSatOutcome{CheckSatResult::Unsupported, error.what()};
+    return CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics};
   }
 }
 

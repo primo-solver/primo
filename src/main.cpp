@@ -7,6 +7,7 @@
 
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
+#include "util/statistics.hpp"
 
 #ifndef PRIMO_GIT_REVISION
 #define PRIMO_GIT_REVISION "unknown"
@@ -39,15 +40,24 @@ void print_startup_banner() {
   std::cerr << "cadical " << primo::sat::cadical_signature() << "\n";
 }
 
+void print_outcome(const primo::smt::CheckSatOutcome& outcome, bool print_stats) {
+  std::cout << primo::smt::to_string(outcome.result) << "\n";
+  if (print_stats) {
+    primo::util::print_statistics(std::cerr, outcome.statistics);
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   std::vector<std::string> files;
   bool quiet = false;
+  bool print_stats = false;
   primo::smt::CheckSatOptions solver_options;
 
   CLI::App app{"Primo SMT solver scaffold"};
   app.add_flag("-q,--quiet", quiet, "Suppress startup version banner");
+  app.add_flag("--stats", print_stats, "Print solver statistics to stderr");
   app.add_flag("--uf-symmetry-breaking", solver_options.uf_symmetry_breaking,
                "Enable experimental QF_UF symmetry breaking over invariant finite-domain values");
   app.add_flag("--eq-bridge", solver_options.eq_bridge,
@@ -74,7 +84,7 @@ int main(int argc, char** argv) {
     contents << std::cin.rdbuf();
     const primo::smt::CheckSatOutcome outcome =
         primo::smt::check_sat_smtlib(contents.str(), solver_options);
-    std::cout << primo::smt::to_string(outcome.result) << "\n";
+    print_outcome(outcome, print_stats);
     if (!outcome.message.empty()) {
       std::cerr << outcome.message << "\n";
     }
@@ -89,7 +99,7 @@ int main(int argc, char** argv) {
     }
     const primo::smt::CheckSatOutcome outcome =
         primo::smt::check_sat_smtlib(read_file(file), solver_options);
-    std::cout << primo::smt::to_string(outcome.result) << "\n";
+    print_outcome(outcome, print_stats);
     if (!outcome.message.empty()) {
       std::cerr << file << ": " << outcome.message << "\n";
     }
