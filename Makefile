@@ -6,7 +6,7 @@ CONTRIB_PREFIX ?= contrib/local
 PYTHON ?= python3
 DOCS_VENV ?= .venv
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
-DOCS_JUPYTER_BOOK := $(CURDIR)/$(DOCS_VENV)/bin/jupyter-book
+DOCS_JUPYTER_BOOK := $(DOCS_VENV)/bin/jupyter-book
 CPP_FORMAT_FILES := $$(find src -name '*.cpp' -o -name '*.hpp' -o -name '*.h' | grep -v '^src/smtlib/antlr/')
 
 build:
@@ -33,11 +33,11 @@ docs-venv:
 	$(DOCS_VENV)/bin/python -m pip install --upgrade pip
 	$(DOCS_VENV)/bin/python -m pip install -r requirements-docs.txt
 
-$(DOCS_JUPYTER_BOOK): requirements-docs.txt
-	$(MAKE) docs-venv
-
-docs: $(DOCS_JUPYTER_BOOK)
-	cd docs && $(DOCS_JUPYTER_BOOK) build --html --ci
+docs: requirements-docs.txt
+	@if [ ! -x "$(DOCS_JUPYTER_BOOK)" ] || [ requirements-docs.txt -nt "$(DOCS_JUPYTER_BOOK)" ]; then \
+		$(MAKE) docs-venv; \
+	fi
+	cd docs && ../$(DOCS_JUPYTER_BOOK) build --html --ci
 
 docs-serve: docs
 	$(PYTHON) -m http.server 8000 -d docs/_build/html
