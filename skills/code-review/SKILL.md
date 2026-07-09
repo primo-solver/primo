@@ -42,7 +42,15 @@ with the current build directory while the repo is still establishing its
 baseline:
 
 ```bash
-git ls-files | rg '^(src|tests)/.*\.cpp$' | rg -v '^src/smtlib/antlr/' | xargs clang-tidy -p build
+make tidy
+```
+
+Also run the include-cleaner check as an advisory scan and inspect its output
+for real spurious includes. Do not treat paired `.cpp`/`.hpp` self-includes as
+automatically removable just because the `.cpp` file has no out-of-line symbols:
+
+```bash
+make include-cleaner
 ```
 
 If a command is not available or not applicable, say why in the final response.
@@ -123,7 +131,9 @@ Check every tracked non-generated C++ file:
 - public headers expose only what callers need
 - implementation-only types stay in `.cpp` anonymous namespaces
 - comments explain why and invariants, not what obvious code does
-- non-obvious algorithms have a short comment naming the source paper/design
+- non-obvious algorithms have a short comment naming the source paper/design;
+  do not rely on documentation alone when a reader needs the invariant in the
+  implementation file
 - error messages identify the unsupported input or violated invariant
 - code follows existing ownership, lifetime, and exception style
 - tests do not hide behavior behind overbuilt fixtures

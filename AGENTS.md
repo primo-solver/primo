@@ -90,7 +90,7 @@ In particular:
 - Run `make lint` before committing implementation changes.
 - Run `make check` before committing behavior changes when feasible.
 - Run the `smt-code-review` skill as a pre-commit self-review for implementation changes. At this stage, review all tracked non-generated project files, not only the diff. The review must include ordinary hygiene: unused includes, dead helpers, missing or misleading comments, narrow API surface, formatting, and lint readiness.
-- If `clang-tidy` is available, run it on all tracked non-generated `.cpp` files while the project is establishing its baseline. Later, after the whole-tree baseline is clean, diff-focused clang-tidy plus periodic whole-tree sweeps is acceptable. If clang-tidy is not run, state why.
+- If `clang-tidy` is available, run it on all tracked non-generated `.cpp` files while the project is establishing its baseline. Also run `misc-include-cleaner` as an advisory scan and inspect it for real unused includes; paired `.cpp`/`.hpp` self-includes are not automatically removable. Later, after the whole-tree baseline is clean, diff-focused clang-tidy plus periodic whole-tree sweeps is acceptable. If clang-tidy is not run, state why.
 - Prefer small, coherent commits after each working milestone.
 
 ## Core invariants

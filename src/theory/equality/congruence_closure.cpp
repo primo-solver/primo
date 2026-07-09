@@ -1,6 +1,6 @@
 #include "theory/equality/congruence_closure.hpp"
 
-#include <stdexcept>
+#include <cstddef>
 
 namespace primo::theory::equality {
 
@@ -39,6 +39,10 @@ bool CongruenceClosure::are_equal(core::TermId lhs, core::TermId rhs) {
 }
 
 void CongruenceClosure::saturate() {
+  // Scaffold implementation of ground congruence closure: after every merge,
+  // rescan all registered term pairs and merge applications whose arguments
+  // are already class-equal. The fast Nieuwenhuis-Oliveras use-list/lookup
+  // algorithm is documented but deliberately deferred.
   while (dirty_) {
     dirty_ = false;
     for (std::size_t i = 0; i < terms_seen_.size(); ++i) {

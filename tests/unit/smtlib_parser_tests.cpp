@@ -1,5 +1,4 @@
 #include <cassert>
-#include <stdexcept>
 #include <string>
 
 #include "smtlib/parser.hpp"

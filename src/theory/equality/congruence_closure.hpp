@@ -19,7 +19,6 @@ class CongruenceClosure {
  private:
   void saturate();
   bool congruent(core::TermId lhs, core::TermId rhs) const;
-  void require_term(core::TermId term) const;
 
   const core::TermManager& terms_;
   UnionFind classes_;
