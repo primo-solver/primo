@@ -123,10 +123,10 @@ turning them into regression tests.
 
 ### Algorithm
 
-The paper combines random SMT formula generation with delta debugging for
-failure-inducing formulas. Primo currently uses YinYang/typefuzz as the
-generator and keeps reduction as a separate workflow through
-`scripts/minimize_smt2.py`.
+The paper combines grammar-based random SMT formula generation with delta
+debugging for failure-inducing formulas. Primo uses YinYang/typefuzz for
+seed-based mutation and FuzzSMT for independent grammar-based generation.
+Reduction is handled through ddSMT when it is installed.
 
 ### Data structures
 
@@ -135,9 +135,9 @@ reference solver results, timeout, and failure class.
 
 ### Implementation notes
 
-Use `scripts/yinyang_fuzz.sh` for generated runs, `scripts/compare_with_z3.py`
-for differential classification, and `scripts/minimize_smt2.py` for reducing
-failing inputs.
+Use `scripts/yinyang_fuzz.sh` for seed mutation, `make fuzzsmt` for FuzzSMT
+`QF_UF` generation, `scripts/compare_with_z3.py` for differential
+classification, and `scripts/minimize_smt2.py` for ddSMT-backed reduction.
 
 ### Risks
 

@@ -1,4 +1,4 @@
-.PHONY: build test asan-build asan-test smoke compare fuzz bench docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
+.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -102,7 +102,10 @@ format:
 
 check: lint test
 
-contrib: contrib-required contrib-z3 contrib-cvc5
+fuzzsmt: build contrib-fuzzsmt contrib-z3
+	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./$(PRIMO) --refs z3 --logic QF_UF --count 20 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt
+
+contrib: contrib-required contrib-z3 contrib-cvc5 contrib-fuzzsmt contrib-ddsmt
 
 contrib-required: contrib-antlr4 contrib-cli11 contrib-cadical
 
@@ -129,6 +132,12 @@ contrib-cadical: $(CADICAL_STAMP)
 $(CADICAL_STAMP): contrib/install_cadical.py
 	$(PYTHON) contrib/install_cadical.py --prefix $(CONTRIB_PREFIX)
 	touch $(CADICAL_STAMP)
+
+contrib-fuzzsmt:
+	$(PYTHON) contrib/install_fuzzsmt.py --prefix $(CONTRIB_PREFIX)
+
+contrib-ddsmt:
+	$(PYTHON) contrib/install_ddsmt.py --prefix $(CONTRIB_PREFIX)
 
 clean:
 	rm -rf $(BUILD_DIR) results fuzz-results _build docs/_build

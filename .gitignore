@@ -70,6 +70,10 @@ Testing/
 .cache/
 .venv/
 .venv-docs/
+fuzz-results/
+yinyang_bugs/
+yinyang_scratch/
+slurm_logs/
 
 # local optional dependencies
 contrib/local/

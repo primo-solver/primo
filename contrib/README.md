@@ -37,6 +37,8 @@ make contrib-cvc5
 make contrib-cadical
 make contrib-cli11
 make contrib-antlr4
+make contrib-fuzzsmt
+make contrib-ddsmt
 ```
 
 ## Tool roles
@@ -46,6 +48,10 @@ make contrib-antlr4
 - Z3 is installed through `pip install z3-solver` into the active Python environment and a `contrib/local/bin/z3` wrapper is created when possible.
 - cvc5 is downloaded from GitHub releases into `contrib/local/bin/cvc5`.
 - CaDiCaL is cloned and built from its GitHub release tag, then installed into `contrib/local`.
+- FuzzSMT is cloned from the public release repository and exposed as
+  `contrib/local/bin/fuzzsmt`.
+- ddSMT is installed through `pip install ddsmt` and exposed as
+  `contrib/local/bin/ddsmt`.
 
 `make compare` and `make fuzz` prepend `contrib/local/bin` to `PATH`.
 `make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` so CMake can find local ANTLR4, CLI11, and CaDiCaL/IPASIR headers and libraries.

@@ -48,9 +48,17 @@ Current entry points:
   solver;
 - `make fuzz` runs the same path when `typefuzz` is installed and otherwise
   records a clear local skip;
+- `make fuzzsmt` runs Brummayer's FuzzSMT generator for `QF_UF`, compares
+  Primo with Z3, and copies disagreements or crashes under
+  `fuzz-results/qf_uf-fuzzsmt/bugs`;
 - `scripts/compare_with_z3.py` classifies Primo/reference outcomes;
-- `scripts/minimize_smt2.py` is the local reducer hook for failure-inducing
-  SMT-LIB files.
+- `scripts/minimize_smt2.py` delegates to ddSMT when `ddsmt` is installed and
+  otherwise copies the input unchanged with a clear message.
+
+Use YinYang for mutation of real SMT-LIB seeds and FuzzSMT for grammar-based
+black-box generation. Both are useful: YinYang stays close to benchmark shapes,
+while FuzzSMT stresses frontend and Core/QF_UF coverage with independently
+generated formulas.
 
 Long fuzzing campaigns should run on SLURM, not on developer workstations.
 Preserve generated failures under `yinyang_bugs/` until each one is copied back,
