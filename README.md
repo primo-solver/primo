@@ -44,7 +44,9 @@ Primo is a new solver. LLM2SMT may be used as a reference artifact only, not as 
 make build
 ```
 
-This configures CMake in `build/` and builds the `primo` executable.
+This configures CMake in `build/` and builds the `primo` executable. CMake
+emits `build/compile_commands.json` by default for tools such as `clang-tidy`
+and editor language servers.
 
 ## Optional dependencies
 
