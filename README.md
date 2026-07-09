@@ -85,6 +85,12 @@ Experimental QF_UF finite-domain symmetry breaking is available with:
 make test
 ```
 
+AddressSanitizer uses a separate Debug build directory:
+
+```bash
+make asan-test
+```
+
 ## Coding checks
 
 ```bash

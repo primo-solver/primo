@@ -1,6 +1,7 @@
-.PHONY: build test smoke compare fuzz bench docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
+.PHONY: build test asan-build asan-test smoke compare fuzz bench docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
 
 BUILD_DIR ?= build
+ASAN_BUILD_DIR ?= build-asan
 PRIMO ?= $(BUILD_DIR)/primo
 CONTRIB_PREFIX ?= contrib/local
 PYTHON ?= python3
@@ -17,6 +18,13 @@ build: contrib-required
 
 test: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
+
+asan-build: contrib-required
+	cmake -S . -B $(ASAN_BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$(CURDIR)/$(CONTRIB_PREFIX) -DPRIMO_SANITIZERS=address
+	cmake --build $(ASAN_BUILD_DIR)
+
+asan-test: asan-build
+	ASAN_OPTIONS=detect_leaks=1:strict_init_order=1 ctest --test-dir $(ASAN_BUILD_DIR) --output-on-failure
 
 smoke: build
 	$(PYTHON) scripts/run_smtlib.py benchmarks/smoke/qf_uf/*.smt2 --solver ./$(PRIMO) --timeout 5
