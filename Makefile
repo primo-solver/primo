@@ -1,10 +1,12 @@
-.PHONY: build test smoke compare fuzz bench docs lint format check contrib contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
+.PHONY: build test smoke compare fuzz bench docs docs-venv lint format check contrib contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
 
 BUILD_DIR ?= build
 PRIMO ?= $(BUILD_DIR)/primo
 CONTRIB_PREFIX ?= contrib/local
 PYTHON ?= python3
+DOCS_VENV ?= .venv
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
+PATH_WITH_DOCS_VENV := $(CURDIR)/$(DOCS_VENV)/bin:$(PATH)
 CPP_FORMAT_FILES := $$(find src -name '*.cpp' -o -name '*.hpp' -o -name '*.h' | grep -v '^src/smtlib/antlr/')
 
 build:
@@ -26,16 +28,21 @@ fuzz: build
 bench: build
 	$(PYTHON) scripts/bench.py benchmarks/smoke/qf_uf/*.smt2 --solver ./$(PRIMO) --timeout 5 --out results/bench.csv
 
+docs-venv:
+	$(PYTHON) -m venv $(DOCS_VENV)
+	$(DOCS_VENV)/bin/python -m pip install --upgrade pip
+	$(DOCS_VENV)/bin/python -m pip install -r requirements-docs.txt
+
 docs:
-	@if command -v jupyter-book >/dev/null 2>&1; then \
-		jupyter-book build docs; \
+	@PATH="$(PATH_WITH_DOCS_VENV)" sh -c 'if command -v jupyter-book >/dev/null 2>&1; then \
+		cd docs && jupyter-book build --html --ci; \
 	elif command -v jupyter >/dev/null 2>&1 && jupyter book --help >/dev/null 2>&1; then \
-		jupyter book build docs; \
+		cd docs && jupyter book build --html --ci; \
 	elif command -v myst >/dev/null 2>&1; then \
-		myst build docs --html; \
+		cd docs && myst build --html --ci; \
 	else \
-		echo "Jupyter Book/MyST is not installed; skipping docs build."; \
-	fi
+		echo "Jupyter Book/MyST is not installed. Run: make docs-venv"; \
+	fi'
 
 lint:
 	$(PYTHON) -m py_compile scripts/*.py contrib/*.py
@@ -82,4 +89,4 @@ contrib-cadical:
 	$(PYTHON) contrib/install_cadical.py --prefix $(CONTRIB_PREFIX)
 
 clean:
-	rm -rf $(BUILD_DIR) results fuzz-results docs/_build
+	rm -rf $(BUILD_DIR) results fuzz-results _build docs/_build

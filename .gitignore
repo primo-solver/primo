@@ -43,6 +43,8 @@
 build/
 Build/
 build-*/
+_build/
+docs/_build/
 
 # CMake generated files
 CMakeFiles/
@@ -66,6 +68,7 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+.venv/
 
 # local optional dependencies
 contrib/local/
