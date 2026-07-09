@@ -47,7 +47,7 @@ find_path(CLI11_INCLUDE_DIR
 if(CLI11_INCLUDE_DIR)
   message(STATUS "Found CLI11: ${CLI11_INCLUDE_DIR}")
 else()
-  message(FATAL_ERROR "CLI11 not found. Run `make contrib-cli11` or install CLI11 so CLI/CLI.hpp is available.")
+  message(FATAL_ERROR "CLI11 not found. Run `make contrib-required` or install CLI11 so CLI/CLI.hpp is available.")
 endif()
 
 find_path(ANTLR4_RUNTIME_INCLUDE_DIR
@@ -61,7 +61,7 @@ find_library(ANTLR4_RUNTIME_LIBRARY
 if(ANTLR4_RUNTIME_INCLUDE_DIR AND ANTLR4_RUNTIME_LIBRARY)
   message(STATUS "Found ANTLR4 runtime: ${ANTLR4_RUNTIME_LIBRARY}")
 else()
-  message(FATAL_ERROR "ANTLR4 C++ runtime not found. Run `make contrib-antlr4`.")
+  message(FATAL_ERROR "ANTLR4 C++ runtime not found. Run `make contrib-required`.")
 endif()
 
 find_path(IPASIR_UP_INCLUDE_DIR

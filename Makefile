@@ -1,4 +1,4 @@
-.PHONY: build test smoke compare fuzz bench docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
+.PHONY: build test smoke compare fuzz bench docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical clean
 
 BUILD_DIR ?= build
 PRIMO ?= $(BUILD_DIR)/primo
@@ -7,8 +7,11 @@ PYTHON ?= python3
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
 CPP_FORMAT_FILES := $$(find src tests \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) | grep -v '^src/smtlib/antlr/')
 CPP_TIDY_FILES := $$(git ls-files | rg '^(src|tests)/.*\.cpp$$' | rg -v '^src/smtlib/antlr/')
+CLI11_STAMP := $(CONTRIB_PREFIX)/.cli11.stamp
+ANTLR4_STAMP := $(CONTRIB_PREFIX)/.antlr4.stamp
+CADICAL_STAMP := $(CONTRIB_PREFIX)/.cadical.stamp
 
-build:
+build: contrib-required
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_PREFIX_PATH=$(CURDIR)/$(CONTRIB_PREFIX)
 	cmake --build $(BUILD_DIR)
 
@@ -79,13 +82,21 @@ format:
 
 check: lint test
 
-contrib: contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical
+contrib: contrib-required contrib-z3 contrib-cvc5
 
-contrib-antlr4:
+contrib-required: contrib-antlr4 contrib-cli11 contrib-cadical
+
+contrib-antlr4: $(ANTLR4_STAMP)
+
+$(ANTLR4_STAMP): contrib/install_antlr4.py
 	$(PYTHON) contrib/install_antlr4.py --prefix $(CONTRIB_PREFIX)
+	touch $(ANTLR4_STAMP)
 
-contrib-cli11:
+contrib-cli11: $(CLI11_STAMP)
+
+$(CLI11_STAMP): contrib/install_cli11.py
 	$(PYTHON) contrib/install_cli11.py --prefix $(CONTRIB_PREFIX)
+	touch $(CLI11_STAMP)
 
 contrib-z3:
 	$(PYTHON) contrib/install_z3.py --prefix $(CONTRIB_PREFIX)
@@ -93,8 +104,11 @@ contrib-z3:
 contrib-cvc5:
 	$(PYTHON) contrib/install_cvc5.py --prefix $(CONTRIB_PREFIX)
 
-contrib-cadical:
+contrib-cadical: $(CADICAL_STAMP)
+
+$(CADICAL_STAMP): contrib/install_cadical.py
 	$(PYTHON) contrib/install_cadical.py --prefix $(CONTRIB_PREFIX)
+	touch $(CADICAL_STAMP)
 
 clean:
 	rm -rf $(BUILD_DIR) results fuzz-results _build docs/_build

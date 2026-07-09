@@ -44,22 +44,28 @@ Primo is a new solver. LLM2SMT may be used as a reference artifact only, not as 
 make build
 ```
 
-This configures CMake in `build/` and builds the `primo` executable. CMake
-emits `build/compile_commands.json` by default for tools such as `clang-tidy`
-and editor language servers.
+This bootstraps required local dependencies under `contrib/local`, configures
+CMake in `build/`, and builds the `primo` executable. CMake emits
+`build/compile_commands.json` by default for tools such as `clang-tidy` and
+editor language servers.
 
-## Optional dependencies
+## Dependencies
 
-Optional solver dependencies install under `contrib/local`:
+Required build dependencies are installed automatically by `make build`:
+
+```bash
+make contrib-required # ANTLR4 runtime, CLI11, CaDiCaL/IPASIR
+```
+
+Optional reference solver dependencies also install under `contrib/local`:
 
 ```bash
 make contrib-z3      # install z3-solver into the active Python environment and expose z3
 make contrib-cvc5    # download a cvc5 release binary
-make contrib-cadical # clone/build/install CaDiCaL
 make contrib         # all of the above
 ```
 
-`make build` searches `contrib/local` for CaDiCaL/IPASIR headers and libraries. `make compare` and `make fuzz` prepend `contrib/local/bin` to `PATH`.
+`make compare` and `make fuzz` prepend `contrib/local/bin` to `PATH`.
 
 ## Run
 

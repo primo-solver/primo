@@ -1,12 +1,27 @@
-# Optional local dependencies
+# Local dependencies
 
-The project keeps optional third-party tools under `contrib/local`.
+The project keeps local third-party tools under `contrib/local`.
 
 These files are intentionally not committed:
 
 - `contrib/local/`
 - `contrib/src/`
 - `contrib/downloads/`
+
+## Fresh checkout
+
+`make build`, `make test`, and `make check` bootstrap the required local
+dependencies automatically:
+
+```bash
+make contrib-required
+```
+
+This installs:
+
+- ANTLR4 C++ runtime and Java tool jar
+- CLI11 single header
+- CaDiCaL/IPASIR headers and static library
 
 ## Install all optional tools
 
