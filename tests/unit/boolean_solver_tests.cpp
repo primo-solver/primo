@@ -87,6 +87,44 @@ void repeated_negation_reuses_the_child_literal() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void boolean_equality_is_propositional_equivalence() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (= p q))
+    (assert p)
+    (assert (not q))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.boolean") == 1);
+  assert(result.statistics.get(":solver.qf-uf") == 0);
+}
+
+void self_contradictory_boolean_equality_is_unsat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (assert (= p (not p)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void boolean_distinct_is_propositional_xor() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (distinct p q))
+    (assert p)
+    (assert q)
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void reflexive_equality_is_sat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -276,6 +314,9 @@ int main() {
   implication_is_right_associative();
   xor_is_clausified();
   repeated_negation_reuses_the_child_literal();
+  boolean_equality_is_propositional_equivalence();
+  self_contradictory_boolean_equality_is_unsat();
+  boolean_distinct_is_propositional_xor();
   reflexive_equality_is_sat();
   pure_euf_disequality_contradiction_is_unsat();
   chainable_equality_is_expanded();

@@ -276,7 +276,7 @@ class Frontend {
     core::TermId previous = build_term(expr.list[1]);
     for (std::size_t i = 2; i < expr.list.size(); ++i) {
       const core::TermId current = build_term(expr.list[i]);
-      equalities.push_back(terms_.mk_eq(previous, current));
+      equalities.push_back(build_pairwise_equality(previous, current));
       previous = current;
     }
     return terms_.mk_and(std::move(equalities));
@@ -290,7 +290,7 @@ class Frontend {
     std::vector<core::TermId> disequalities;
     for (std::size_t i = 0; i < terms.size(); ++i) {
       for (std::size_t j = i + 1; j < terms.size(); ++j) {
-        disequalities.push_back(terms_.mk_not(terms_.mk_eq(terms[i], terms[j])));
+        disequalities.push_back(build_pairwise_disequality(terms[i], terms[j]));
       }
     }
     if (disequalities.empty()) {
@@ -300,6 +300,29 @@ class Frontend {
       return disequalities.front();
     }
     return terms_.mk_and(std::move(disequalities));
+  }
+
+  core::TermId build_pairwise_equality(core::TermId lhs, core::TermId rhs) {
+    const core::SortId lhs_sort = terms_.get(lhs).sort;
+    if (lhs_sort != terms_.get(rhs).sort) {
+      throw UnsupportedInput("equality sort mismatch");
+    }
+    if (lhs_sort == symbols_.bool_sort()) {
+      return terms_.mk_and({terms_.mk_implies(lhs, rhs), terms_.mk_implies(rhs, lhs)});
+    }
+    return terms_.mk_eq(lhs, rhs);
+  }
+
+  core::TermId build_pairwise_disequality(core::TermId lhs, core::TermId rhs) {
+    const core::SortId lhs_sort = terms_.get(lhs).sort;
+    if (lhs_sort != terms_.get(rhs).sort) {
+      throw UnsupportedInput("distinct sort mismatch");
+    }
+    if (lhs_sort == symbols_.bool_sort()) {
+      return terms_.mk_or(
+          {terms_.mk_and({lhs, terms_.mk_not(rhs)}), terms_.mk_and({terms_.mk_not(lhs), rhs})});
+    }
+    return terms_.mk_not(terms_.mk_eq(lhs, rhs));
   }
 
   core::SortId lookup_sort_name(const std::string& name) const {
