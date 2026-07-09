@@ -33,7 +33,19 @@ compare: build
 	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/compare_with_z3.py benchmarks/smoke/qf_uf/*.smt2 --solver ./$(PRIMO) --refs z3 cvc5 --timeout 5 --out results/compare.csv
 
 fuzz: build
-	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/fuzz_external.py --fuzzer yinyang --seeds benchmarks/seeds/qf_uf --solver ./$(PRIMO) --refs z3 cvc5 --logic QF_UF --count 1 --timeout 5 --out fuzz-results/qf_uf-yinyang
+	@if PATH="$(PATH_WITH_CONTRIB)" command -v typefuzz >/dev/null 2>&1; then \
+		PATH="$(PATH_WITH_CONTRIB)" scripts/yinyang_fuzz.sh \
+			--seeds benchmarks/seeds/qf_uf \
+			--solver './$(PRIMO) --quiet' \
+			--ref 'z3 model_validate=true' \
+			--seconds 60 \
+			--iterations 5 \
+			--solver-timeout 5 \
+			--bugs fuzz-results/qf_uf-yinyang/bugs \
+			--scratch fuzz-results/qf_uf-yinyang/scratch; \
+	else \
+		PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/fuzz_external.py --fuzzer yinyang --seeds benchmarks/seeds/qf_uf --solver ./$(PRIMO) --refs z3 cvc5 --logic QF_UF --count 1 --timeout 5 --out fuzz-results/qf_uf-yinyang; \
+	fi
 
 bench: build
 	$(PYTHON) scripts/bench.py benchmarks/smoke/qf_uf/*.smt2 --solver ./$(PRIMO) --timeout 5 --out results/bench.csv

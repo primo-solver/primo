@@ -149,6 +149,23 @@ void predicate_applications_respect_congruence() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void annotated_assertions_are_solved() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort Z 0)
+    (declare-fun circuit () Bool)
+    (declare-fun input () Bool)
+    (declare-fun reg () Bool)
+    (declare-fun flash () Z)
+    (declare-fun nf () Z)
+    (assert (! circuit :named hyp1))
+    (assert (! (= nf flash) :named hyp2))
+    (assert (! (not (or (and input (not reg)) (not input) reg)) :named goal))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void equality_bridge_solves_diamond_chain() {
   primo::smt::CheckSatOptions options;
   options.eq_bridge = true;
@@ -192,6 +209,7 @@ int main() {
   mixed_boolean_and_euf_can_be_sat();
   mixed_boolean_and_euf_conflict_is_unsat();
   predicate_applications_respect_congruence();
+  annotated_assertions_are_solved();
   equality_bridge_solves_diamond_chain();
   return 0;
 }

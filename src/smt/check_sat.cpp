@@ -102,6 +102,12 @@ class Frontend {
       require_arity(expr, 3, "=>");
       return terms_.mk_implies(build_term(expr.list[1]), build_term(expr.list[2]));
     }
+    if (head == "!") {
+      if (expr.list.size() < 2) {
+        throw UnsupportedInput("annotated term has no body");
+      }
+      return build_term(expr.list[1]);
+    }
     if (head == "let") {
       return build_let(expr);
     }

@@ -120,7 +120,18 @@ make check
 make fuzz
 ```
 
-External fuzzers are optional and are skipped clearly when missing.
+External fuzzers are optional locally and are skipped clearly when missing.
+Real campaigns should run on SLURM with `scripts/yinyang_fuzz.sh`, for example
+from a synced cluster checkout:
+
+```bash
+scripts/yinyang_fuzz.sh \
+  --seeds benchmarks/seeds/qf_uf \
+  --solver 'build/primo --quiet' \
+  --ref 'z3 model_validate=true' \
+  --seconds 3600 \
+  --iterations 200
+```
 
 ## Benchmark
 
