@@ -51,6 +51,9 @@ struct BranchEqualityClosure {
     }
     while (term != root) {
       const auto parent_it = parent.find(term);
+      if (parent_it == parent.end()) {
+        break;
+      }
       const core::TermId next = parent_it->second;
       parent_it->second = root;
       term = next;
