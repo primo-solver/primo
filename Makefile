@@ -6,7 +6,7 @@ CONTRIB_PREFIX ?= contrib/local
 PYTHON ?= python3
 DOCS_VENV ?= .venv
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
-PATH_WITH_DOCS_VENV := $(CURDIR)/$(DOCS_VENV)/bin:$(PATH)
+DOCS_JUPYTER_BOOK := $(CURDIR)/$(DOCS_VENV)/bin/jupyter-book
 CPP_FORMAT_FILES := $$(find src -name '*.cpp' -o -name '*.hpp' -o -name '*.h' | grep -v '^src/smtlib/antlr/')
 
 build:
@@ -33,16 +33,11 @@ docs-venv:
 	$(DOCS_VENV)/bin/python -m pip install --upgrade pip
 	$(DOCS_VENV)/bin/python -m pip install -r requirements-docs.txt
 
-docs:
-	@PATH="$(PATH_WITH_DOCS_VENV)" sh -c 'if command -v jupyter-book >/dev/null 2>&1; then \
-		cd docs && jupyter-book build --html --ci; \
-	elif command -v jupyter >/dev/null 2>&1 && jupyter book --help >/dev/null 2>&1; then \
-		cd docs && jupyter book build --html --ci; \
-	elif command -v myst >/dev/null 2>&1; then \
-		cd docs && myst build --html --ci; \
-	else \
-		echo "Jupyter Book/MyST is not installed. Run: make docs-venv"; \
-	fi'
+$(DOCS_JUPYTER_BOOK): requirements-docs.txt
+	$(MAKE) docs-venv
+
+docs: $(DOCS_JUPYTER_BOOK)
+	cd docs && $(DOCS_JUPYTER_BOOK) build --html --ci
 
 lint:
 	$(PYTHON) -m py_compile scripts/*.py contrib/*.py
