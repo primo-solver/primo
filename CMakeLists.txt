@@ -7,7 +7,38 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(PRIMO_WARNINGS_AS_ERRORS "Treat Primo C++ compiler warnings as errors" ON)
+
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/contrib/local")
+
+function(primo_enable_warnings target)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive-)
+    if(PRIMO_WARNINGS_AS_ERRORS)
+      target_compile_options(${target} PRIVATE /WX)
+    endif()
+  else()
+    target_compile_options(${target} PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+      -Wconversion
+      -Wsign-conversion
+      -Wshadow
+      -Wold-style-cast
+      -Wcast-align
+      -Wunused
+      -Woverloaded-virtual
+      -Wnull-dereference
+      -Wdouble-promotion
+      -Wformat=2
+      -Wimplicit-fallthrough
+    )
+    if(PRIMO_WARNINGS_AS_ERRORS)
+      target_compile_options(${target} PRIVATE -Werror)
+    endif()
+  endif()
+endfunction()
 
 find_path(CLI11_INCLUDE_DIR
   NAMES CLI/CLI.hpp
@@ -70,47 +101,67 @@ file(GLOB_RECURSE PRIMO_LIBRARY_SOURCES CONFIGURE_DEPENDS
   src/theory/*.cpp
   src/util/*.cpp
 )
+file(GLOB_RECURSE PRIMO_GENERATED_SOURCES CONFIGURE_DEPENDS
+  src/smtlib/antlr/*.cpp
+)
+if(PRIMO_GENERATED_SOURCES)
+  if(MSVC)
+    set_source_files_properties(${PRIMO_GENERATED_SOURCES} PROPERTIES COMPILE_OPTIONS /w)
+  else()
+    set_source_files_properties(${PRIMO_GENERATED_SOURCES} PROPERTIES COMPILE_OPTIONS -w)
+  endif()
+endif()
 
 add_library(primo_core ${PRIMO_LIBRARY_SOURCES})
-target_include_directories(primo_core PUBLIC src "${ANTLR4_RUNTIME_INCLUDE_DIR}")
+primo_enable_warnings(primo_core)
+target_include_directories(primo_core PUBLIC src)
+target_include_directories(primo_core SYSTEM PUBLIC "${ANTLR4_RUNTIME_INCLUDE_DIR}")
 target_compile_definitions(primo_core PUBLIC ANTLR4CPP_STATIC=1)
 target_link_libraries(primo_core PUBLIC "${ANTLR4_RUNTIME_LIBRARY}")
 if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=1)
-  target_include_directories(primo_core PUBLIC "${IPASIR_UP_INCLUDE_DIR}")
+  target_include_directories(primo_core SYSTEM PUBLIC "${IPASIR_UP_INCLUDE_DIR}")
   target_link_libraries(primo_core PUBLIC "${CADICAL_LIBRARY}")
 else()
   target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=0)
 endif()
 
 add_executable(primo src/main.cpp)
+primo_enable_warnings(primo)
 target_link_libraries(primo PRIVATE primo_core)
 target_compile_definitions(primo PRIVATE PRIMO_GIT_REVISION="${PRIMO_GIT_REVISION}")
-target_include_directories(primo PRIVATE src "${CLI11_INCLUDE_DIR}")
+target_include_directories(primo PRIVATE src)
+target_include_directories(primo SYSTEM PRIVATE "${CLI11_INCLUDE_DIR}")
 
 enable_testing()
 add_test(NAME primo_version COMMAND primo --version)
 
 add_executable(primo_core_tests tests/unit/core_tests.cpp)
+primo_enable_warnings(primo_core_tests)
 target_link_libraries(primo_core_tests PRIVATE primo_core)
 add_test(NAME primo_core_tests COMMAND primo_core_tests)
 
 add_executable(primo_smtlib_parser_tests tests/unit/smtlib_parser_tests.cpp)
+primo_enable_warnings(primo_smtlib_parser_tests)
 target_link_libraries(primo_smtlib_parser_tests PRIVATE primo_core)
 add_test(NAME primo_smtlib_parser_tests COMMAND primo_smtlib_parser_tests)
 
 add_executable(primo_sat_backend_tests tests/unit/sat_backend_tests.cpp)
+primo_enable_warnings(primo_sat_backend_tests)
 target_link_libraries(primo_sat_backend_tests PRIVATE primo_core)
 add_test(NAME primo_sat_backend_tests COMMAND primo_sat_backend_tests)
 
 add_executable(primo_boolean_solver_tests tests/unit/boolean_solver_tests.cpp)
+primo_enable_warnings(primo_boolean_solver_tests)
 target_link_libraries(primo_boolean_solver_tests PRIVATE primo_core)
 add_test(NAME primo_boolean_solver_tests COMMAND primo_boolean_solver_tests)
 
 add_executable(primo_euf_solver_tests tests/unit/euf_solver_tests.cpp)
+primo_enable_warnings(primo_euf_solver_tests)
 target_link_libraries(primo_euf_solver_tests PRIVATE primo_core)
 add_test(NAME primo_euf_solver_tests COMMAND primo_euf_solver_tests)
 
 add_executable(primo_preprocessing_tests tests/unit/preprocessing_tests.cpp)
+primo_enable_warnings(primo_preprocessing_tests)
 target_link_libraries(primo_preprocessing_tests PRIVATE primo_core)
 add_test(NAME primo_preprocessing_tests COMMAND primo_preprocessing_tests)

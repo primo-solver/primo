@@ -358,32 +358,6 @@ CheckSatResult map_sat_result(sat::SatResult result) {
   return CheckSatResult::Unknown;
 }
 
-bool is_euf_literal(const core::TermManager& terms, core::TermId term_id) {
-  const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::BoolValue) {
-    return true;
-  }
-  if (term.kind == core::TermKind::Equality) {
-    return true;
-  }
-  if (term.kind == core::TermKind::Not) {
-    return terms.get(term.children.at(0)).kind == core::TermKind::Equality;
-  }
-  return false;
-}
-
-void collect_conjuncts(const core::TermManager& terms, core::TermId term_id,
-                       std::vector<core::TermId>& conjuncts) {
-  const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::And) {
-    for (const core::TermId child : term.children) {
-      collect_conjuncts(terms, child, conjuncts);
-    }
-    return;
-  }
-  conjuncts.push_back(term_id);
-}
-
 bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.kind == core::TermKind::Equality) {
@@ -395,39 +369,6 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
     }
   }
   return false;
-}
-
-CheckSatOutcome solve_euf_conjunction(const core::TermManager& terms,
-                                      const std::vector<core::TermId>& assertions) {
-  theory::equality::EufSolver solver(terms);
-  std::vector<core::TermId> conjuncts;
-  for (const core::TermId assertion : assertions) {
-    collect_conjuncts(terms, assertion, conjuncts);
-  }
-
-  for (const core::TermId assertion : conjuncts) {
-    if (!is_euf_literal(terms, assertion)) {
-      return CheckSatOutcome{CheckSatResult::Unsupported,
-                             "Boolean abstraction for theory atoms is not implemented yet"};
-    }
-
-    const core::Term& term = terms.get(assertion);
-    if (term.kind == core::TermKind::BoolValue) {
-      if (!term.bool_value) {
-        return CheckSatOutcome{CheckSatResult::Unsat, ""};
-      }
-      continue;
-    }
-    if (term.kind == core::TermKind::Equality) {
-      solver.assert_equal(term.children.at(0), term.children.at(1));
-      continue;
-    }
-
-    const core::Term& equality = terms.get(term.children.at(0));
-    solver.assert_distinct(equality.children.at(0), equality.children.at(1));
-  }
-
-  return CheckSatOutcome{solver.is_satisfiable() ? CheckSatResult::Sat : CheckSatResult::Unsat, ""};
 }
 
 CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,

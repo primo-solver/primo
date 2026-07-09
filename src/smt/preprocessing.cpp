@@ -335,7 +335,11 @@ void add_value_precedence_constraints(core::TermManager& terms, const SymmetryGr
     }
 
     const std::size_t max_j = std::min(i, group.values.size() - 1);
-    std::vector<SymmetryTerm> previous_terms(group.terms.begin(), group.terms.begin() + i);
+    std::vector<SymmetryTerm> previous_terms;
+    previous_terms.reserve(i);
+    for (std::size_t previous_index = 0; previous_index < i; ++previous_index) {
+      previous_terms.push_back(group.terms[previous_index]);
+    }
     for (std::size_t j = 1; j <= max_j; ++j) {
       result.constraints.push_back(first_use_requires_previous_value(
           terms, term, previous_terms, group.values[j], group.values[j - 1]));

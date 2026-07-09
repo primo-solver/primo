@@ -118,7 +118,9 @@ Command Parser::parse_command(const SExpr& expr) const {
   const std::string head = require_atom(expr.list[0], "command head");
 
   if (head == "set-info" || head == "set-option" || head == "exit") {
-    return Command{CommandKind::Ignored};
+    Command command;
+    command.kind = CommandKind::Ignored;
+    return command;
   }
 
   if (head == "set-logic") {
@@ -180,7 +182,9 @@ Command Parser::parse_command(const SExpr& expr) const {
     if (expr.list.size() != 1) {
       throw ParseError("check-sat expects no arguments", 0);
     }
-    return Command{CommandKind::CheckSat};
+    Command command;
+    command.kind = CommandKind::CheckSat;
+    return command;
   }
 
   throw ParseError("unsupported command: " + head, 0);
