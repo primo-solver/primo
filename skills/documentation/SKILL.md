@@ -84,6 +84,20 @@ Explain:
 - how to run benchmarks
 - how to build the Jupyter Book documentation
 
+## Documentation gate
+
+Do not treat an implementation task as complete until the documentation says how the implemented representation works.
+
+For any change to parser, terms, symbols, SAT integration, clausification, theory solving, options, or solver control flow:
+
+1. identify the nearest documentation page before editing code
+2. update that page with the implemented C++ types, ownership, invariants, and limitations
+3. explain how paper-backed ideas are used, partially used, or deferred
+4. run `make docs`
+5. commit documentation with the implementation or in an adjacent commit
+
+If the implementation intentionally omits documentation, state that explicitly in the final answer as a remaining blocker.
+
 ## Required Representation Sections
 
 When documenting a core subsystem, include a "Representation" section. Answer these questions explicitly when relevant:

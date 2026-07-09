@@ -329,7 +329,8 @@ primo/
     validate_model.py
 
   docs/
-    myst.yml
+    _config.yml
+    _toc.yml
     index.md
     architecture.md
     dpllt.md
@@ -374,12 +375,12 @@ Use `.hpp` and `.cpp` for C++ source files unless a narrower local convention is
 Documentation workhorse:
 
 ```text
-Use Jupyter Book 2 / MyST as the documentation system.
+Use classic Jupyter Book, matching the `llm2smt` `lra` branch documentation setup.
 Author normal documentation as MyST Markdown files.
 Use notebooks only for executable experiments, benchmark analysis, and plotted reports.
 Do not put ordinary architecture, design, or paper notes in notebooks.
 The documentation must build locally with `make docs`.
-If Jupyter Book/MyST is not installed, `make docs` should print a clear message.
+`make docs` should call `scripts/build_docs.sh`, which creates `.venv-docs` when needed and builds static HTML under `docs/_build/html`.
 ```
 
 ---
@@ -1390,21 +1391,22 @@ Do not overinterpret small benchmark sets.
 ```markdown
 ---
 name: smt-documentation
-description: Write architecture, algorithm, invariant, and user documentation for the SMT solver.
+description: Write code-grounded architecture, algorithm, invariant, representation, paper-traceability, and user documentation for the SMT solver. Use when documentation should explain concrete implementation details such as term storage, ownership, memory management, hash-consing, SAT/theory interfaces, or how papers inform the code.
 ---
 
 # SMT solver documentation skill
 
 ## Goal
 
-Document the solver so that future code changes preserve the architecture and invariants.
+Document the solver so that future code changes preserve the architecture, representations, paper-grounded design choices, and invariants.
 
-Use Jupyter Book 2 / MyST as the documentation workhorse:
+Use classic Jupyter Book, matching the `llm2smt` `lra` branch documentation setup:
 
 - author normal docs in MyST Markdown
-- maintain `docs/myst.yml` and `docs/index.md`
+- maintain `docs/_config.yml`, `docs/_toc.yml`, and `docs/index.md`
 - use notebooks only for executable experiments and benchmark reports
 - keep the documentation buildable with `make docs`
+- keep `scripts/build_docs.sh` as the canonical build wrapper
 
 ## Documentation types
 
@@ -1413,9 +1415,21 @@ Use Jupyter Book 2 / MyST as the documentation workhorse:
 Explain:
 
 - module boundaries
-- ownership of data structures
+- ownership and lifetime of data structures
+- memory management strategy
+- value identity versus object identity
+- mutability and aliasing rules
+- hash-consing or interning strategy
+- stable and unstable identifiers
 - major invariants
 - extension points
+
+Architecture docs must be code-grounded. Before writing or revising an architecture page:
+
+1. read the relevant headers and implementations
+2. cite the concrete local types, methods, and files being described
+3. describe what is implemented now, not the intended future design
+4. include known limitations and unsupported paths
 
 ### Algorithm docs
 
@@ -1429,6 +1443,15 @@ Explain:
 - model generation
 - push/pop
 - explanation generation
+
+Algorithm docs must connect mechanisms to representations. For each algorithmic component, include:
+
+- concrete state owned by the component
+- input and output types
+- invariants before and after each public operation
+- how errors, unsupported input, and unknown results are represented
+- complexity expectations when they are known or inferable
+- where the implementation intentionally diverges from the paper
 
 ### User docs
 
@@ -1450,7 +1473,55 @@ Explain:
 - how to add a regression test
 - how to run fuzzing
 - how to run benchmarks
-- how to build the MyST/Jupyter Book documentation
+- how to build the Jupyter Book documentation
+
+## Documentation gate
+
+Do not treat an implementation task as complete until the documentation says how the implemented representation works.
+
+For any change to parser, terms, symbols, SAT integration, clausification, theory solving, options, or solver control flow:
+
+1. identify the nearest documentation page before editing code
+2. update that page with the implemented C++ types, ownership, invariants, and limitations
+3. explain how paper-backed ideas are used, partially used, or deferred
+4. run `make docs`
+5. commit documentation with the implementation or in an adjacent commit
+
+If the implementation intentionally omits documentation, state that explicitly in the final answer as a remaining blocker.
+
+## Required Representation Sections
+
+When documenting a core subsystem, include a "Representation" section. Answer these questions explicitly when relevant:
+
+- What are the primary C++ types and where are they defined?
+- Who owns the memory?
+- Are objects moved, copied, interned, or referenced by numeric ids?
+- Which ids or references remain stable after insertion?
+- What is hash-consed, canonicalized, or deduplicated?
+- What equality notion is used: syntactic identity, semantic equality, SAT literal equality, or congruence equality?
+- Which operations may allocate new state?
+- Which operations are pure queries?
+- What invalid states are prevented by constructors or checked dynamically?
+
+For term documentation specifically, cover:
+
+- term node storage
+- `TermId` stability
+- hash-consing keys
+- sort checking
+- Boolean simplification
+- interaction with symbol declarations
+- how applications, equalities, and Boolean connectives are represented
+
+## Paper Traceability
+
+Every page that mentions a paper-backed component must include a "Paper Traceability" or "Sources and Implementation Status" section:
+
+- list the relevant papers or notes
+- state which ideas are implemented now
+- state which ideas are only planned or deliberately deferred
+- map each implemented idea to the local module or type where it appears
+- avoid implying that a paper was fully implemented when only a small interface or stub exists
 
 ## Style
 
@@ -1461,9 +1532,12 @@ Every nontrivial algorithm doc should include:
 
 - input
 - output
+- representation
 - invariants
+- ownership and lifetime
 - failure modes
 - one worked example
+- sources and implementation status
 
 ## Output format
 
@@ -1471,8 +1545,11 @@ When documenting a feature:
 
 1. identify what changed
 2. update the nearest relevant doc
-3. add examples if useful
-4. check that docs do not claim unsupported features
+3. read the relevant source files and document the actual representation
+4. add or update paper traceability if papers motivate the design
+5. add examples if useful
+6. check that docs do not claim unsupported features
+7. run `make docs` when documentation tooling is available
 ```
 
 ## 15.6 `skills/literature-survey/SKILL.md`
@@ -1787,7 +1864,7 @@ TODO.
 
 ## Docs
 
-Documentation is written in MyST Markdown and built with Jupyter Book 2 / MyST.
+Documentation is written in MyST Markdown and built with Jupyter Book.
 
 ```bash
 make docs
@@ -1804,42 +1881,40 @@ See `docs/papers/` and `docs/literature.md`.
 
 # 17. Documentation system
 
-Use Jupyter Book 2 / MyST as the documentation workhorse.
+Use classic Jupyter Book, matching the `llm2smt` `lra` branch documentation setup.
 
-If Python tooling is used to manage documentation dependencies, include Jupyter Book/MyST in a docs or development dependency group. Do not require a global install when the project's package manager can provide the tool.
+If Python tooling is used to manage documentation dependencies, include Jupyter Book in `docs/requirements.txt`. Do not require a global install.
 
-Create `docs/myst.yml`.
+Create `docs/_config.yml`.
 
 ```yaml
-version: 1
-project:
-  title: Primo
-  description: Clean-room, paper-grounded SMT solver documentation.
-  authors:
-    - name: Primo contributors
-  toc:
-    - file: index.md
-    - file: architecture.md
-    - file: sat-ipasir-up.md
-    - file: dpllt.md
-    - file: euf.md
-    - file: arithmetic.md
-    - file: difference_logic.md
-    - file: debugging.md
-    - file: experiments.md
-    - file: literature.md
-    - title: Papers
-      children:
-        - file: papers/ipasir-up.md
-        - file: papers/cvc4-architecture.md
-        - file: papers/fast-congruence-closure.md
-        - file: papers/fast-linear-arithmetic-dpllt.md
-        - file: papers/difference-constraint-propagation.md
-    - title: Reference
-      children:
-        - file: reference/llm2smt-retrospective.md
-site:
-  template: book-theme
+title: Primo
+author: Primo contributors
+only_build_toc_files: true
+execute:
+  execute_notebooks: "off"
+```
+
+Create `docs/_toc.yml`.
+
+```yaml
+format: jb-book
+root: index
+chapters:
+  - file: architecture
+  - file: sat-ipasir-up
+  - file: dpllt
+  - file: euf
+  - file: arithmetic
+  - file: difference_logic
+  - file: debugging
+  - file: literature
+  - file: papers/ipasir-up
+  - file: papers/cvc4-architecture
+  - file: papers/fast-congruence-closure
+  - file: papers/fast-linear-arithmetic-dpllt
+  - file: papers/difference-constraint-propagation
+  - file: reference/llm2smt-retrospective
 ```
 
 Create `docs/index.md`.
@@ -1849,7 +1924,7 @@ Create `docs/index.md`.
 
 Primo is a clean-room, paper-grounded SMT solver developed with LLM assistance.
 
-This documentation is authored in MyST Markdown and built with Jupyter Book 2 / MyST.
+This documentation is authored in MyST Markdown and built with Jupyter Book.
 
 ## Documentation policy
 
@@ -2374,8 +2449,9 @@ make bench:
 
 make docs:
   builds the MyST/Jupyter Book documentation site
-  prefer `jupyter book build docs`
-  alternatively use `myst build docs --html` if the scaffold standardizes on the MyST CLI
+  call `scripts/build_docs.sh`
+  create `.venv-docs` when needed
+  build static HTML under `docs/_build/html`
 
 make clean:
   removes local build artifacts and results
@@ -2397,7 +2473,8 @@ When creating the scaffold, proceed in this order:
    TODO.md
 
 2. Create docs:
-   docs/myst.yml
+   docs/_config.yml
+   docs/_toc.yml
    docs/index.md
    docs/architecture.md
    docs/sat-ipasir-up.md
