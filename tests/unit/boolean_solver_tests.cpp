@@ -47,6 +47,34 @@ void implication_is_clausified() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void implication_is_right_associative() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (assert p)
+    (assert q)
+    (assert (=> p q r))
+    (assert (not r))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void xor_is_clausified() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert p)
+    (assert q)
+    (assert (xor p q))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void repeated_negation_reuses_the_child_literal() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -78,6 +106,20 @@ void pure_euf_disequality_contradiction_is_unsat() {
     (declare-fun b () A)
     (assert (= a b))
     (assert (not (= a b)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void chainable_equality_is_expanded() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (assert (= a b c))
+    (assert (not (= a c)))
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
@@ -166,6 +208,36 @@ void annotated_assertions_are_solved() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void boolean_ite_is_eliminated() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun c () Bool)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert c)
+    (assert p)
+    (assert (not (ite c p q)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void term_ite_is_eliminated() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun c () Bool)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () U)
+    (assert c)
+    (assert (= x (ite c a b)))
+    (assert (not (= x a)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void equality_bridge_solves_diamond_chain() {
   primo::smt::CheckSatOptions options;
   options.eq_bridge = true;
@@ -201,15 +273,20 @@ int main() {
   pure_boolean_sat();
   pure_boolean_unsat();
   implication_is_clausified();
+  implication_is_right_associative();
+  xor_is_clausified();
   repeated_negation_reuses_the_child_literal();
   reflexive_equality_is_sat();
   pure_euf_disequality_contradiction_is_unsat();
+  chainable_equality_is_expanded();
   let_bound_terms_are_resolved();
   distinct_lowers_to_pairwise_disequalities();
   mixed_boolean_and_euf_can_be_sat();
   mixed_boolean_and_euf_conflict_is_unsat();
   predicate_applications_respect_congruence();
   annotated_assertions_are_solved();
+  boolean_ite_is_eliminated();
+  term_ite_is_eliminated();
   equality_bridge_solves_diamond_chain();
   return 0;
 }

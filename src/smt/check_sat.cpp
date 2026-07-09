@@ -30,6 +30,8 @@ namespace primo::smt {
 namespace {
 
 constexpr std::string_view kStatAssertionsInitial = ":input.assertions";
+constexpr std::string_view kStatFrontendBooleanItes = ":frontend.ite.boolean";
+constexpr std::string_view kStatFrontendAuxiliaryItes = ":frontend.ite.auxiliaries";
 constexpr std::string_view kStatAssertionsFinal = ":preprocessing.assertions";
 constexpr std::string_view kStatPreprocessingPasses = ":preprocessing.passes";
 constexpr std::string_view kStatPreprocessingChangedPasses = ":preprocessing.changed-passes";
@@ -99,8 +101,10 @@ class Frontend {
       return terms_.mk_or(std::move(children));
     }
     if (head == "=>") {
-      require_arity(expr, 3, "=>");
-      return terms_.mk_implies(build_term(expr.list[1]), build_term(expr.list[2]));
+      return build_implies(expr);
+    }
+    if (head == "xor") {
+      return build_xor(expr);
     }
     if (head == "!") {
       if (expr.list.size() < 2) {
@@ -108,12 +112,14 @@ class Frontend {
       }
       return build_term(expr.list[1]);
     }
+    if (head == "ite") {
+      return build_ite(expr);
+    }
     if (head == "let") {
       return build_let(expr);
     }
     if (head == "=") {
-      require_arity(expr, 3, "=");
-      return terms_.mk_eq(build_term(expr.list[1]), build_term(expr.list[2]));
+      return build_equality(expr);
     }
     if (head == "distinct") {
       return build_distinct(expr);
@@ -147,7 +153,13 @@ class Frontend {
         declare_fun(command);
         return;
       case smtlib::CommandKind::Assert:
-        assertions.push_back(build_term(command.assertion));
+        side_assertions_.clear();
+        {
+          const core::TermId assertion = build_term(command.assertion);
+          assertions.insert(assertions.end(), side_assertions_.begin(), side_assertions_.end());
+          assertions.push_back(assertion);
+        }
+        side_assertions_.clear();
         return;
       case smtlib::CommandKind::CheckSat:
         saw_check_sat_ = true;
@@ -159,6 +171,8 @@ class Frontend {
   const core::SymbolTable& symbols() const { return symbols_; }
   const core::TermManager& terms() const { return terms_; }
   core::TermManager& terms() { return terms_; }
+  std::size_t boolean_ites() const { return boolean_ites_; }
+  std::size_t auxiliary_ites() const { return auxiliary_ites_; }
 
  private:
   std::optional<core::TermId> lookup_bound_term(const std::string& name) const {
@@ -199,6 +213,73 @@ class Frontend {
     const core::TermId body = build_term(expr.list[2]);
     let_scopes_.pop_back();
     return body;
+  }
+
+  core::TermId build_ite(const smtlib::SExpr& expr) {
+    require_arity(expr, 4, "ite");
+    const core::TermId condition = build_term(expr.list[1]);
+    if (terms_.get(condition).sort != symbols_.bool_sort()) {
+      throw UnsupportedInput("ite condition is not Boolean");
+    }
+    const core::TermId then_term = build_term(expr.list[2]);
+    const core::TermId else_term = build_term(expr.list[3]);
+    const core::SortId result_sort = terms_.get(then_term).sort;
+    if (result_sort != terms_.get(else_term).sort) {
+      throw UnsupportedInput("ite branch sort mismatch");
+    }
+    if (result_sort == symbols_.bool_sort()) {
+      ++boolean_ites_;
+      return terms_.mk_or({terms_.mk_and({condition, then_term}),
+                           terms_.mk_and({terms_.mk_not(condition), else_term})});
+    }
+
+    const core::TermId auxiliary = fresh_auxiliary_constant(result_sort, "ite");
+    ++auxiliary_ites_;
+    side_assertions_.push_back(terms_.mk_implies(condition, terms_.mk_eq(auxiliary, then_term)));
+    side_assertions_.push_back(
+        terms_.mk_implies(terms_.mk_not(condition), terms_.mk_eq(auxiliary, else_term)));
+    return auxiliary;
+  }
+
+  core::TermId build_implies(const smtlib::SExpr& expr) {
+    if (expr.list.size() < 3) {
+      throw UnsupportedInput("=> has wrong arity");
+    }
+    core::TermId result = build_term(expr.list.back());
+    for (std::size_t i = expr.list.size() - 2; i >= 1; --i) {
+      result = terms_.mk_implies(build_term(expr.list[i]), result);
+      if (i == 1) {
+        break;
+      }
+    }
+    return result;
+  }
+
+  core::TermId build_xor(const smtlib::SExpr& expr) {
+    if (expr.list.size() < 3) {
+      throw UnsupportedInput("xor has wrong arity");
+    }
+    core::TermId result = build_term(expr.list[1]);
+    for (std::size_t i = 2; i < expr.list.size(); ++i) {
+      const core::TermId rhs = build_term(expr.list[i]);
+      result = terms_.mk_or({terms_.mk_and({result, terms_.mk_not(rhs)}),
+                             terms_.mk_and({terms_.mk_not(result), rhs})});
+    }
+    return result;
+  }
+
+  core::TermId build_equality(const smtlib::SExpr& expr) {
+    if (expr.list.size() < 3) {
+      throw UnsupportedInput("= has wrong arity");
+    }
+    std::vector<core::TermId> equalities;
+    core::TermId previous = build_term(expr.list[1]);
+    for (std::size_t i = 2; i < expr.list.size(); ++i) {
+      const core::TermId current = build_term(expr.list[i]);
+      equalities.push_back(terms_.mk_eq(previous, current));
+      previous = current;
+    }
+    return terms_.mk_and(std::move(equalities));
   }
 
   core::TermId build_distinct(const smtlib::SExpr& expr) {
@@ -244,9 +325,24 @@ class Frontend {
     }
   }
 
+  core::TermId fresh_auxiliary_constant(core::SortId sort, std::string_view prefix) {
+    while (true) {
+      const std::string name =
+          std::string{"$primo_"} + std::string{prefix} + "_" + std::to_string(auxiliary_counter_++);
+      if (symbols_.lookup_symbol(name).has_value()) {
+        continue;
+      }
+      return terms_.mk_constant(symbols_.declare_constant(name, sort));
+    }
+  }
+
   core::SymbolTable symbols_;
   core::TermManager terms_{symbols_};
   std::vector<std::unordered_map<std::string, core::TermId>> let_scopes_;
+  std::vector<core::TermId> side_assertions_;
+  std::size_t auxiliary_counter_ = 0;
+  std::size_t boolean_ites_ = 0;
+  std::size_t auxiliary_ites_ = 0;
   bool saw_check_sat_ = false;
 };
 
@@ -531,6 +627,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options) {
   util::Statistics statistics;
   statistics.set(kStatAssertionsInitial, 0);
+  statistics.set(kStatFrontendBooleanItes, 0);
+  statistics.set(kStatFrontendAuxiliaryItes, 0);
   statistics.set(kStatAssertionsFinal, 0);
   statistics.set(kStatPreprocessingPasses, 0);
   statistics.set(kStatPreprocessingChangedPasses, 0);
@@ -557,6 +655,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       frontend.process_command(command, assertions);
     }
     statistics.set(kStatAssertionsInitial, assertions.size());
+    statistics.set(kStatFrontendBooleanItes, frontend.boolean_ites());
+    statistics.set(kStatFrontendAuxiliaryItes, frontend.auxiliary_ites());
     if (!frontend.saw_check_sat()) {
       return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command", statistics};
     }

@@ -107,6 +107,48 @@ propagation or a full transitivity-constraint generator.
 Obtain the paper and decide whether a more general minimum-transitivity
 constraint pass is worth implementing.
 
+## Fuzzing and delta-debugging SMT solvers
+
+Robert Brummayer and Armin Biere, *Fuzzing and delta-debugging SMT solvers*,
+SMT 2009. DOI:
+[`10.1145/1670412.1670413`](https://dl.acm.org/doi/10.1145/1670412.1670413).
+Public PDF:
+[`BrummayerBiere-SMT09.pdf`](https://fmv.jku.at/papers/BrummayerBiere-SMT09.pdf).
+
+### Relevance
+
+This is the debugging model Primo should use for solver validation: fuzz
+SMT-LIB formulas, compare with trusted solvers, and minimize failures before
+turning them into regression tests.
+
+### Algorithm
+
+The paper combines random SMT formula generation with delta debugging for
+failure-inducing formulas. Primo currently uses YinYang/typefuzz as the
+generator and keeps reduction as a separate workflow through
+`scripts/minimize_smt2.py`.
+
+### Data structures
+
+The key artifact is an SMT-LIB file plus metadata describing Primo's result,
+reference solver results, timeout, and failure class.
+
+### Implementation notes
+
+Use `scripts/yinyang_fuzz.sh` for generated runs, `scripts/compare_with_z3.py`
+for differential classification, and `scripts/minimize_smt2.py` for reducing
+failing inputs.
+
+### Risks
+
+Fuzzing without minimization produces bug piles that are hard to act on. Every
+SLURM fuzzing campaign should have a collection and reduction step.
+
+### Possible milestone
+
+Automate SLURM artifact collection and run reduction on every new
+`yinyang_bugs/` formula.
+
 ## Using SAT and SMT Solvers for Finite Model Finding with Sorts
 
 Giles Reger and Martin Suda.

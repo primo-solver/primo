@@ -13,6 +13,8 @@ Statistics are intentionally stable, colon-prefixed keys so benchmark scripts ca
 compare runs mechanically. Current counters include:
 
 - `:input.assertions`;
+- `:frontend.ite.boolean`;
+- `:frontend.ite.auxiliaries`;
 - `:preprocessing.assertions`;
 - `:preprocessing.passes`;
 - `:preprocessing.changed-passes`;
@@ -32,6 +34,28 @@ compare runs mechanically. Current counters include:
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are
 documented; add a new key instead of changing the meaning of an old one.
+
+## Fuzzing and Reduction
+
+Primo follows the Brummayer-Biere SMT fuzzing/debugging pattern: generate or
+mutate well-sorted SMT-LIB formulas, compare Primo against trusted reference
+solvers, and reduce each crash, timeout, unsupported-input regression, or answer
+disagreement to a smaller reproducer.
+
+Current entry points:
+
+- `scripts/yinyang_fuzz.sh` runs YinYang/typefuzz against Primo and a reference
+  solver;
+- `make fuzz` runs the same path when `typefuzz` is installed and otherwise
+  records a clear local skip;
+- `scripts/compare_with_z3.py` classifies Primo/reference outcomes;
+- `scripts/minimize_smt2.py` is the local reducer hook for failure-inducing
+  SMT-LIB files.
+
+Long fuzzing campaigns should run on SLURM, not on developer workstations.
+Preserve generated failures under `yinyang_bugs/` until each one is copied back,
+classified, minimized, and either turned into a regression test or documented as
+an unsupported feature.
 
 ## Result failures
 
