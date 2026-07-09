@@ -1,8 +1,8 @@
-#include "smtlib/parser.hpp"
-
 #include <cassert>
 #include <stdexcept>
 #include <string>
+
+#include "smtlib/parser.hpp"
 
 using primo::smtlib::CommandKind;
 using primo::smtlib::ParseError;

@@ -1,9 +1,9 @@
-#include "core/symbol_table.hpp"
-#include "core/term_manager.hpp"
-
 #include <cassert>
 #include <stdexcept>
 #include <vector>
+
+#include "core/symbol_table.hpp"
+#include "core/term_manager.hpp"
 
 using primo::core::SortKind;
 using primo::core::SymbolKind;

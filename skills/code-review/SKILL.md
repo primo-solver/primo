@@ -6,10 +6,25 @@ description: Review SMT solver code and diffs before commit for ordinary C++ hyg
 # SMT solver code review skill
 
 When reviewing code, prioritize correctness over style, but always do an
-old-fashioned hygiene pass. The goal is to catch the small problems that make
-later solver work unpleasant: spurious includes, dead helpers, unclear local
-invariants, broad APIs, missing comments around non-obvious algorithms, stale
-docs, and lint gaps.
+old-fashioned hygiene pass. At Primo's current stage, review all tracked,
+non-generated project files, not only the diff. The goal is to establish a clean
+baseline before the codebase grows. Later, after the baseline is clean and
+documented, reviews may be diff-focused with periodic whole-tree sweeps.
+
+The old-fashioned pass catches the small problems that make later solver work
+unpleasant: spurious includes, dead helpers, unclear local invariants, broad
+APIs, missing comments around non-obvious algorithms, stale docs, and lint gaps.
+
+## Review scope
+
+The current review scope is all tracked non-generated files:
+
+- include source, tests, scripts, docs, skills, build metadata, and benchmark
+  smoke/seed files
+- exclude generated parser files under `src/smtlib/antlr/`
+- exclude build outputs, virtual environments, `docs/_build`, `contrib/local`,
+  `contrib/downloads`, `contrib/src`, and untracked scratch data under `tmp/`
+- use the diff as a focus area, not as the boundary of review
 
 ## Required commands
 
@@ -22,11 +37,12 @@ make test
 make docs
 ```
 
-If `clang-tidy` is available and the change touched C++, run it on the changed
-non-generated `.cpp` files with the current build directory:
+If `clang-tidy` is available, run it over tracked non-generated `.cpp` files
+with the current build directory while the repo is still establishing its
+baseline:
 
 ```bash
-clang-tidy -p build <changed-source.cpp>
+git ls-files | rg '^(src|tests)/.*\.cpp$' | rg -v '^src/smtlib/antlr/' | xargs clang-tidy -p build
 ```
 
 If a command is not available or not applicable, say why in the final response.
@@ -99,7 +115,7 @@ Check:
 
 ### Old-fashioned C++ hygiene
 
-Check every changed non-generated C++ file:
+Check every tracked non-generated C++ file:
 
 - includes are necessary and self-contained; remove spurious headers
 - no unused local helpers, variables, aliases, structs, or dead branches remain

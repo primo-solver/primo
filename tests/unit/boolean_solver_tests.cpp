@@ -1,9 +1,9 @@
-#include "smt/check_sat.hpp"
-
 #include <cassert>
 
-using primo::smt::CheckSatResult;
+#include "smt/check_sat.hpp"
+
 using primo::smt::check_sat_smtlib;
+using primo::smt::CheckSatResult;
 
 namespace {
 

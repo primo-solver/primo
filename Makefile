@@ -5,7 +5,7 @@ PRIMO ?= $(BUILD_DIR)/primo
 CONTRIB_PREFIX ?= contrib/local
 PYTHON ?= python3
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
-CPP_FORMAT_FILES := $$(find src -name '*.cpp' -o -name '*.hpp' -o -name '*.h' | grep -v '^src/smtlib/antlr/')
+CPP_FORMAT_FILES := $$(find src tests \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) | grep -v '^src/smtlib/antlr/')
 
 build:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_PREFIX_PATH=$(CURDIR)/$(CONTRIB_PREFIX)

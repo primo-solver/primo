@@ -1,6 +1,6 @@
-#include "sat/cadical_backend.hpp"
-
 #include <cassert>
+
+#include "sat/cadical_backend.hpp"
 
 using primo::sat::CadicalBackend;
 using primo::sat::Clause;

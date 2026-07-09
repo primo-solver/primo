@@ -1,8 +1,8 @@
+#include <cassert>
+
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "theory/equality/euf_solver.hpp"
-
-#include <cassert>
 
 using primo::theory::equality::EufSolver;
 
