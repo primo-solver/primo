@@ -47,3 +47,32 @@ and OpenSMT when those columns are present.
 Headline performance reports must separate Goel, NEQ, PEQ, QG, and SEQ solved
 counts. `--euf-prop=online` is excluded from headline numbers until it has zero
 errors/crashes and zero wrong answers on the exact set and the QF_UF fuzz gate.
+
+## Full QF_UF Archive
+
+`scripts/bench_qf_uf_full.py` runs the full extracted `sandbox/QF_UF.tar.zst`
+archive. The expected layout is `tmp/QF_UF/<family>/**/*.smt2`, produced by
+extracting the archive's `non-incremental/QF_UF` subtree into `tmp/QF_UF`.
+
+Use the full archive harness for headline QF_UF runs:
+
+```bash
+python3 scripts/bench_qf_uf_full.py \
+  --root tmp/QF_UF \
+  --solver ./build/primo \
+  --solver-arg=--quiet \
+  --timeout 2 \
+  --shards 32 \
+  --shard-index 0 \
+  --out results/qf-uf-full/shard-0.csv \
+  --summary results/qf-uf-full/shard-0-summary.csv
+```
+
+On SLURM, run one shard per array task and merge shard CSVs after all tasks
+complete. The CSV records file, family, solver status, answer, SMT-LIB
+`:status` expectation, wrong-answer flag, elapsed seconds, timeout flag, exit
+code, and a short stderr prefix. The summary records solved, wrong-answer,
+status, answer, family, and PAR2 counts. Any performance report based on this
+archive must include the SLURM job id, timeout, commit, merged CSV path, family
+summary, wrong-answer count, and comparison against the previous full-archive
+Primo run.
