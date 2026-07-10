@@ -273,7 +273,11 @@ bool FlatCongruenceClosure::check_disequality_index(std::size_t disequality_inde
 
 bool FlatCongruenceClosure::check_disequality_indices(
     const std::vector<std::size_t>& disequality_indices) {
-  for (const std::size_t disequality_index : disequality_indices) {
+  std::vector<std::size_t> ordered_indices = disequality_indices;
+  std::sort(ordered_indices.begin(), ordered_indices.end());
+  ordered_indices.erase(std::unique(ordered_indices.begin(), ordered_indices.end()),
+                        ordered_indices.end());
+  for (const std::size_t disequality_index : ordered_indices) {
     if (check_disequality_index(disequality_index)) {
       return true;
     }
