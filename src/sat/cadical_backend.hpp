@@ -4,6 +4,11 @@
 
 #include "sat/ipasir_up.hpp"
 
+namespace CaDiCaL {
+class ExternalPropagator;
+class Solver;
+}  // namespace CaDiCaL
+
 namespace primo::sat {
 
 std::string_view cadical_signature();
@@ -22,9 +27,12 @@ class CadicalBackend final : public IpasirUpBackend {
   SatResult solve() override;
   std::optional<bool> value(int var) const override;
   bool failed(Lit lit) const override;
+  void connect_external_propagator(CaDiCaL::ExternalPropagator* propagator);
+  void disconnect_external_propagator();
+  void add_observed_var(int var);
 
  private:
-  void* solver_ = nullptr;
+  CaDiCaL::Solver* solver_ = nullptr;
   int max_var_ = 0;
   SatResult last_result_ = SatResult::Unknown;
 };

@@ -21,6 +21,9 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.eq-bridge.equalities`;
 - `:preprocessing.eq-bridge.skipped-or-nodes`;
 - `:preprocessing.unit-equality.consequences`;
+- `:preprocessing.finite-domain.domains`;
+- `:preprocessing.finite-domain.amo-clauses`;
+- `:preprocessing.equality-definitions`;
 - `:preprocessing.uf-symmetry.accepted-sets`;
 - `:preprocessing.uf-symmetry.constraints`;
 - `:preprocessing.uf-symmetry.rejected-noninvariant`;
@@ -29,7 +32,19 @@ compare runs mechanically. Current counters include:
 - `:sat.solve-calls`;
 - `:euf.theory-atoms`;
 - `:euf.checks`;
-- `:euf.theory-conflicts`.
+- `:euf.theory-conflicts`;
+- `:euf.propagation.rounds`;
+- `:euf.propagation.candidates`;
+- `:euf.propagation.delivered`;
+- `:euf.propagation.reason-lits`;
+- `:euf.propagation.budget`;
+- `:euf.propagation.delivery-budget`;
+- `:euf.propagation.budget-cutoffs`;
+- `:euf.propagation.hit-rate-cutoffs`.
+
+The propagation counters are used by both `--euf-prop=model` and
+`--euf-prop=online`. In online mode, one round corresponds to a callback pass
+that inspects currently unassigned observed theory atoms.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are
@@ -52,6 +67,10 @@ Current entry points:
   Primo with Z3, and copies disagreements or crashes under
   `fuzz-results/qf_uf-fuzzsmt/bugs`;
 - `scripts/compare_with_z3.py` classifies Primo/reference outcomes;
+- `scripts/bench_interesting_qf_uf.py` records `file,status,answer,seconds`
+  plus family and PAR2 summary rows for the current hard QF_UF target families
+  under `tmp/QF_UF`; pass `--expected expected.csv` with `file,answer` columns
+  to count checked wrong answers;
 - `scripts/minimize_smt2.py` delegates to ddSMT when `ddsmt` is installed and
   otherwise copies the input unchanged with a clear message.
 

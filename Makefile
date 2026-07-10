@@ -1,4 +1,4 @@
-.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -49,6 +49,9 @@ fuzz: build
 
 bench: build
 	$(PYTHON) scripts/bench.py benchmarks/smoke/qf_uf/*.smt2 --solver ./$(PRIMO) --timeout 5 --out results/bench.csv
+
+bench-interesting-qf-uf: build
+	$(PYTHON) scripts/bench_interesting_qf_uf.py --solver ./$(PRIMO) --solver-arg=--quiet --timeout 30 --manifest benchmarks/interesting-qf-uf.txt --out results/interesting-qf-uf.csv
 
 docs-venv:
 	$(PYTHON) -m venv .venv-docs

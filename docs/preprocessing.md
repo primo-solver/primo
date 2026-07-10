@@ -1,17 +1,50 @@
 # Preprocessing
 
-Primo currently has two default-off QF_UF preprocessing passes and one
-default-enabled unit propagation cleanup in `src/smt/preprocessing.*`:
+Primo currently exposes QF_UF preprocessing through
+`--qf-uf-preprocess=off|basic|strong`. The default is `basic`.
 
-- equality bridging under disjunctions, enabled with `--eq-bridge`;
-- unit equality propagation, enabled by the default preprocessing loop;
-- symmetry breaking over finite-domain choice disjunctions, enabled with
-  `--uf-symmetry-breaking`.
+- `off` disables the preprocessing loop;
+- `basic` runs unit equality propagation;
+- `strong` enables repeated preprocessing, equality bridging, finite-domain
+  at-most-one clauses, finite-domain equality definitions, and finite-domain
+  symmetry breaking.
+
+The exact `interesting.html` reproduction profile is:
 
 ```bash
+./build/primo --qf-uf-profile=tuned-interesting --euf-prop=model input.smt2
+```
+
+It is equivalent to:
+
+```bash
+./build/primo --qf-uf-preprocess=strong --uf-symmetry-breaking \
+  --preprocessing-passes 4 --eq-bridge \
+  --prop-interval 32 --prop-assign-threshold 0.25 \
+  --prop-delivery-budget 1000 input.smt2
+```
+
+The profile is opt-in. It does not enable `--euf-prop=online`; online
+propagation remains experimental until exact-set and fuzz runs have zero
+crashes and zero wrong answers.
+
+The individual legacy switches remain available for experiments:
+
+- equality bridging under disjunctions, enabled with `--eq-bridge` or
+  `--qf-uf-preprocess=strong`;
+- unit equality propagation, enabled by the `basic` and `strong` preprocessing
+  loops;
+- finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong`;
+- symmetry breaking over finite-domain choice disjunctions, enabled with
+  `--uf-symmetry-breaking` or `--qf-uf-preprocess=strong`.
+
+```bash
+./build/primo --qf-uf-preprocess=off input.smt2
+./build/primo --qf-uf-preprocess=strong input.smt2
 ./build/primo --eq-bridge input.smt2
 ./build/primo --uf-symmetry-breaking input.smt2
 ./build/primo --eq-bridge --preprocessing-passes 3 input.smt2
+./build/primo --eq-bridge --preprocess-passes 3 input.smt2
 ```
 
 Both passes are deliberately separate from congruence closure. They create
@@ -26,7 +59,9 @@ pre-SAT contradiction with the final disequality.
 
 `--preprocessing-passes N` controls the repeated preprocessing loop. Each pass
 can add bridge facts and then simplify with unit equalities. The default is one
-pass; `0` disables the loop.
+pass; `0` disables the loop unless the `strong` preset is selected. Strong
+preprocessing runs at least three passes because bridge facts and finite-domain
+clauses can expose further unit-equality simplifications.
 
 ## Equality Bridge
 
@@ -66,6 +101,45 @@ The implementation is intentionally conservative:
 - it only adds equalities implied by every branch;
 - it caps branch count and pair checks per `or` node;
 - generated bridge equalities are ordinary `TermId` equality assertions.
+
+## Finite-Domain Clauses
+
+The finite-domain recognizer looks for explicit choice disjunctions of the form:
+
+```text
+(or (= t c0) (= t c1) ... (= t cn))
+```
+
+and requires top-level pairwise disequalities among all candidate values. For
+each recognized domain, `strong` preprocessing appends SAT-visible at-most-one
+clauses:
+
+```text
+(or (not (= t ci)) (not (= t cj)))
+```
+
+for every pair of distinct values. These are ordinary EUF theory lemmas: if
+`ci` and `cj` are explicitly asserted disequal, a single term cannot equal both
+values. The pass is intentionally narrow. It does not infer disequalities hidden
+under Boolean structure and it does not perform finite-model search.
+
+When two or more terms share the same recognized finite domain, `strong`
+preprocessing also appends equality-definition clauses over existing equality
+atoms. For every pair of terms `s, t` and every value `ci`, the generated clauses
+state that:
+
+- if `s = ci` and `t = ci`, then `s = t`;
+- if `s = t` and `s = ci`, then `t = ci`;
+- if `s = t` and `t = ci`, then `s = ci`.
+
+Together with the explicit choice disjunctions and at-most-one clauses, these
+clauses expose finite-domain equality structure to SAT without fresh Boolean
+variables or SAT/theory shortcuts. They are counted by
+`:preprocessing.equality-definitions`.
+
+Choice disjunctions may be nested `or` trees. The recognizer flattens the `or`
+node before checking that every branch is an equality between the same candidate
+term and one explicit value.
 
 ## UF Symmetry Breaking
 
@@ -140,10 +214,13 @@ assertions.
 
 Implemented:
 
+- preset CLI option `--qf-uf-preprocess=off|basic|strong`;
 - equality bridging under disjunctions;
 - unit equality propagation from top-level equalities;
 - configurable repeated preprocessing loop with `--preprocessing-passes`;
 - finite-domain choice recognition from explicit disjunctions;
+- finite-domain at-most-one clauses in the strong preset;
+- finite-domain equality-definition clauses in the strong preset;
 - top-level pairwise disequality requirement;
 - syntactic constant-permutation invariance check;
 - moving-term rejection;
@@ -155,7 +232,6 @@ Implemented:
 
 Deferred:
 
-- finite-domain at-most-one clauses and equality definitions from llm2smt;
 - proof support for generated preprocessing lemmas;
 - SyMT-style graph automorphism detection;
 - benchmark-driven default-on decision.
@@ -176,6 +252,9 @@ LLM2SMT `lra`; no LLM2SMT code was copied.
 - Reger and Suda, *Using SAT and SMT Solvers for Finite Model Finding with
   Sorts*, is the source for value-ordering/value-precedence constraints in
   finite-model encodings.
+- Bradley and Manna, *The Calculus of Computation*, Chapter 9, is the
+  background reference for ground EUF reasoning used by the finite-domain
+  at-most-one lemmas.
 
 See [](papers/smt-symmetry-breaking.md) and
 [](papers/finite-model-finding-sorts.md).

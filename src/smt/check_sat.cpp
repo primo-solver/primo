@@ -1,12 +1,15 @@
 #include "smt/check_sat.hpp"
 
+#include <algorithm>
 #include <cstddef>
+#include <deque>
 #include <exception>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -22,8 +25,12 @@
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
-#include "theory/equality/congruence_closure.hpp"
+#include "theory/equality/explained_congruence_closure.hpp"
 #include "util/statistics.hpp"
+
+#if PRIMO_HAVE_IPASIR
+#include <cadical.hpp>
+#endif
 
 namespace primo::smt {
 
@@ -40,6 +47,13 @@ constexpr std::string_view kStatEqBridgeSkippedOrNodes =
     ":preprocessing.eq-bridge.skipped-or-nodes";
 constexpr std::string_view kStatUnitEqualityConsequences =
     ":preprocessing.unit-equality.consequences";
+constexpr std::string_view kStatFiniteDomainDomains = ":preprocessing.finite-domain.domains";
+constexpr std::string_view kStatFiniteDomainAmoClauses = ":preprocessing.finite-domain.amo-clauses";
+constexpr std::string_view kStatFiniteDomainEvaluatedEqualities =
+    ":preprocessing.finite-domain.evaluated-equalities";
+constexpr std::string_view kStatFiniteDomainEvaluationCutoffs =
+    ":preprocessing.finite-domain.evaluation-cutoffs";
+constexpr std::string_view kStatEqualityDefinitions = ":preprocessing.equality-definitions";
 constexpr std::string_view kStatUfSymmetryAcceptedSets = ":preprocessing.uf-symmetry.accepted-sets";
 constexpr std::string_view kStatUfSymmetryConstraints = ":preprocessing.uf-symmetry.constraints";
 constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
@@ -50,6 +64,14 @@ constexpr std::string_view kStatSatSolveCalls = ":sat.solve-calls";
 constexpr std::string_view kStatTheoryAtoms = ":euf.theory-atoms";
 constexpr std::string_view kStatTheoryChecks = ":euf.checks";
 constexpr std::string_view kStatTheoryConflicts = ":euf.theory-conflicts";
+constexpr std::string_view kStatEufPropagationRounds = ":euf.propagation.rounds";
+constexpr std::string_view kStatEufPropagationCandidates = ":euf.propagation.candidates";
+constexpr std::string_view kStatEufPropagationDelivered = ":euf.propagation.delivered";
+constexpr std::string_view kStatEufPropagationReasonLits = ":euf.propagation.reason-lits";
+constexpr std::string_view kStatEufPropagationBudget = ":euf.propagation.budget";
+constexpr std::string_view kStatEufPropagationDeliveryBudget = ":euf.propagation.delivery-budget";
+constexpr std::string_view kStatEufPropagationBudgetCutoffs = ":euf.propagation.budget-cutoffs";
+constexpr std::string_view kStatEufPropagationHitRateCutoffs = ":euf.propagation.hit-rate-cutoffs";
 
 class UnsupportedInput : public std::runtime_error {
  public:
@@ -537,38 +559,477 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
 }
 
 struct AssignedTheoryAtom {
-  int var = 0;
+  int lit = 0;
   bool value = false;
   core::TermId term = 0;
 };
 
 sat::Lit blocking_lit(const AssignedTheoryAtom& atom) {
-  return atom.value ? sat::Lit{-atom.var} : sat::Lit{atom.var};
+  return atom.value ? sat::Lit{-atom.lit} : sat::Lit{atom.lit};
 }
 
-bool add_theory_equality(theory::equality::CongruenceClosure& closure,
-                         const core::TermManager& terms, const AssignedTheoryAtom& atom,
-                         core::TermId true_term, core::TermId false_term,
-                         sat::Clause& equality_reason) {
+sat::Lit assigned_lit(const AssignedTheoryAtom& atom) {
+  return atom.value ? sat::Lit{atom.lit} : sat::Lit{-atom.lit};
+}
+
+bool add_explained_theory_equality(theory::equality::ExplainedCongruenceClosure& closure,
+                                   const core::TermManager& terms, const AssignedTheoryAtom& atom,
+                                   core::TermId true_term, core::TermId false_term) {
   const core::Term& term = terms.get(atom.term);
   if (term.kind == core::TermKind::Equality && atom.value) {
-    closure.assert_equal(term.children.at(0), term.children.at(1));
-    equality_reason.push_back(blocking_lit(atom));
+    closure.assert_equal(term.children.at(0), term.children.at(1), {blocking_lit(atom)});
     return true;
   }
   if (term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort()) {
-    closure.assert_equal(atom.term, atom.value ? true_term : false_term);
-    equality_reason.push_back(blocking_lit(atom));
+    closure.assert_equal(atom.term, atom.value ? true_term : false_term, {blocking_lit(atom)});
     return true;
   }
   return false;
 }
 
+std::optional<std::size_t> resolve_budget(AutoBudget budget, std::size_t theory_atoms) {
+  switch (budget.kind) {
+    case AutoBudget::Kind::Auto:
+      return theory_atoms;
+    case AutoBudget::Kind::Unlimited:
+      return std::nullopt;
+    case AutoBudget::Kind::Fixed:
+      return budget.value;
+  }
+  return theory_atoms;
+}
+
+std::optional<std::size_t> resolve_delivery_budget(AutoBudget budget, std::size_t candidate_budget,
+                                                   std::size_t theory_atoms) {
+  switch (budget.kind) {
+    case AutoBudget::Kind::Auto:
+      return std::max<std::size_t>(1, std::min(theory_atoms, candidate_budget / 2 + 1));
+    case AutoBudget::Kind::Unlimited:
+      return std::nullopt;
+    case AutoBudget::Kind::Fixed:
+      if (budget.value == 0) {
+        return std::nullopt;
+      }
+      return budget.value;
+  }
+  return std::max<std::size_t>(1, std::min(theory_atoms, candidate_budget / 2 + 1));
+}
+
+std::string clause_key(const sat::Clause& clause) {
+  std::string key;
+  for (const sat::Lit lit : clause) {
+    key += std::to_string(lit.value);
+    key += ',';
+  }
+  return key;
+}
+
+std::optional<std::vector<sat::Lit>> candidate_explanation(
+    theory::equality::ExplainedCongruenceClosure& closure, const core::TermManager& terms,
+    const AssignedTheoryAtom& atom, core::TermId true_term, core::TermId false_term) {
+  const core::Term& term = terms.get(atom.term);
+  if (term.kind == core::TermKind::Equality) {
+    if (!atom.value) {
+      return std::nullopt;
+    }
+    return closure.explain_equal(term.children.at(0), term.children.at(1));
+  }
+  if (term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort()) {
+    return closure.explain_equal(atom.term, atom.value ? true_term : false_term);
+  }
+  throw UnsupportedInput("unsupported theory atom");
+}
+
+std::optional<sat::Clause> model_propagation_clause_for(
+    const core::TermManager& terms, const std::vector<AssignedTheoryAtom>& atoms,
+    std::size_t candidate_index, core::TermId true_term, core::TermId false_term) {
+  theory::equality::ExplainedCongruenceClosure explained(terms);
+  explained.add_term(true_term);
+  explained.add_term(false_term);
+
+  for (std::size_t i = 0; i < atoms.size(); ++i) {
+    if (i == candidate_index) {
+      continue;
+    }
+    const AssignedTheoryAtom& atom = atoms[i];
+    const core::Term& term = terms.get(atom.term);
+    if (term.kind == core::TermKind::Equality && !atom.value) {
+      continue;
+    }
+    if (!add_explained_theory_equality(explained, terms, atom, true_term, false_term)) {
+      throw UnsupportedInput("unsupported theory atom");
+    }
+  }
+
+  const AssignedTheoryAtom& candidate = atoms[candidate_index];
+  std::optional<std::vector<sat::Lit>> reason =
+      candidate_explanation(explained, terms, candidate, true_term, false_term);
+  if (!reason.has_value()) {
+    return std::nullopt;
+  }
+  reason->push_back(assigned_lit(candidate));
+  return reason;
+}
+
+struct ModelPropagationResult {
+  std::vector<sat::Clause> clauses;
+  std::size_t candidates = 0;
+  std::size_t reason_lits = 0;
+  std::size_t candidate_budget = 0;
+  std::size_t delivery_budget = 0;
+  bool budget_cutoff = false;
+  bool hit_rate_cutoff = false;
+};
+
+#if PRIMO_HAVE_IPASIR
+class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
+ public:
+  OnlineEufPropagator(const core::TermManager& terms,
+                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                      core::TermId true_term, core::TermId false_term,
+                      const CheckSatOptions& options, util::Statistics& statistics)
+      : terms_(terms),
+        theory_atoms_(theory_atoms),
+        true_term_(true_term),
+        false_term_(false_term),
+        options_(options),
+        statistics_(statistics) {
+    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      observed_vars_.insert(var);
+    }
+  }
+
+  void notify_assignment(const std::vector<int>& lits) override {
+    for (const int lit : lits) {
+      const int var = lit > 0 ? lit : -lit;
+      if (!observed_vars_.contains(var)) {
+        continue;
+      }
+      if (assignment_by_var_.contains(var)) {
+        continue;
+      }
+      assignment_by_var_[var] = lit > 0;
+      trail_.push_back(lit);
+      pending_vars_.erase(var);
+    }
+    pending_.clear();
+  }
+
+  void notify_new_decision_level() override { level_starts_.push_back(trail_.size()); }
+
+  void notify_backtrack(size_t new_level) override {
+    const std::size_t keep = new_level < level_starts_.size() ? level_starts_[new_level] : 0;
+    while (trail_.size() > keep) {
+      const int lit = trail_.back();
+      trail_.pop_back();
+      const int var = lit > 0 ? lit : -lit;
+      assignment_by_var_.erase(var);
+      pending_vars_.erase(var);
+    }
+    level_starts_.resize(std::min<std::size_t>(new_level + 1, level_starts_.size()));
+    if (level_starts_.empty()) {
+      level_starts_.push_back(0);
+    }
+    pending_.clear();
+    pending_vars_.clear();
+    reasons_.clear();
+  }
+
+  bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
+
+  int cb_propagate() override {
+    if (pending_.empty()) {
+      compute_pending_propagations();
+    }
+    if (pending_.empty()) {
+      return 0;
+    }
+    const int lit = pending_.front();
+    pending_.pop_front();
+    pending_vars_.erase(lit > 0 ? lit : -lit);
+    return lit;
+  }
+
+  int cb_add_reason_clause_lit(int propagated_lit) override {
+    const int var = propagated_lit > 0 ? propagated_lit : -propagated_lit;
+    if (!reasons_.contains(var)) {
+      compute_reason_for(propagated_lit);
+    }
+    const auto found = reasons_.find(var);
+    if (found == reasons_.end()) {
+      return 0;
+    }
+    Reason& reason = found->second;
+    if (reason.active_lit != propagated_lit) {
+      reason.active_lit = propagated_lit;
+      reason.index = 0;
+    }
+    if (reason.index == 0) {
+      ++reason.index;
+      return propagated_lit;
+    }
+    const std::size_t antecedent_index = reason.index - 1;
+    if (antecedent_index >= reason.antecedents.size()) {
+      reason.index = 0;
+      reason.active_lit = 0;
+      return 0;
+    }
+    ++reason.index;
+    return reason.antecedents[antecedent_index];
+  }
+
+  bool cb_has_external_clause(bool& /*is_forgettable*/) override { return false; }
+
+  int cb_add_external_clause_lit() override { return 0; }
+
+ private:
+  struct Reason {
+    std::vector<int> antecedents;
+    std::size_t index = 0;
+    int active_lit = 0;
+  };
+
+  const BooleanClausifier::TheoryAtom* atom_for_var(int var) const {
+    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+      const int atom_var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      if (atom_var == var) {
+        return &atom;
+      }
+    }
+    return nullptr;
+  }
+
+  std::vector<AssignedTheoryAtom> current_assigned_atoms() const {
+    std::vector<AssignedTheoryAtom> atoms;
+    atoms.reserve(assignment_by_var_.size());
+    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      const auto assignment = assignment_by_var_.find(var);
+      if (assignment == assignment_by_var_.end()) {
+        continue;
+      }
+      const bool atom_value = atom.lit.value > 0 ? assignment->second : !assignment->second;
+      atoms.push_back(AssignedTheoryAtom{atom.lit.value, atom_value, atom.term});
+    }
+    return atoms;
+  }
+
+  bool reason_is_valid_for_current_assignment(int propagated_lit, const sat::Clause& clause) const {
+    if (clause.empty()) {
+      return false;
+    }
+    std::size_t propagated_count = 0;
+    for (const sat::Lit lit : clause) {
+      if (lit.value == propagated_lit) {
+        ++propagated_count;
+        continue;
+      }
+      const int var = lit.value > 0 ? lit.value : -lit.value;
+      if (!observed_vars_.contains(var)) {
+        return false;
+      }
+      const auto assignment = assignment_by_var_.find(var);
+      if (assignment == assignment_by_var_.end()) {
+        return false;
+      }
+      const bool literal_is_true = lit.value > 0 ? assignment->second : !assignment->second;
+      if (literal_is_true) {
+        return false;
+      }
+    }
+    return propagated_count == 1;
+  }
+
+  bool store_reason(int propagated_lit, const sat::Clause& clause) {
+    if (!reason_is_valid_for_current_assignment(propagated_lit, clause)) {
+      return false;
+    }
+    std::vector<int> antecedents;
+    antecedents.reserve(clause.size());
+    for (const sat::Lit lit : clause) {
+      if (lit.value != propagated_lit) {
+        antecedents.push_back(lit.value);
+      }
+    }
+    const int var = propagated_lit > 0 ? propagated_lit : -propagated_lit;
+    reasons_[var] = Reason{std::move(antecedents), 0, 0};
+    return true;
+  }
+
+  void compute_reason_for(int propagated_lit) {
+    const int var = propagated_lit > 0 ? propagated_lit : -propagated_lit;
+    const BooleanClausifier::TheoryAtom* atom = atom_for_var(var);
+    if (atom == nullptr) {
+      return;
+    }
+    const bool value = propagated_lit == atom->lit.value;
+    const core::Term& term = terms_.get(atom->term);
+    if (term.kind == core::TermKind::Equality && !value) {
+      return;
+    }
+
+    std::vector<AssignedTheoryAtom> atoms;
+    for (const AssignedTheoryAtom& assigned : current_assigned_atoms()) {
+      const int assigned_var = assigned.lit > 0 ? assigned.lit : -assigned.lit;
+      if (assigned_var != var) {
+        atoms.push_back(assigned);
+      }
+    }
+    atoms.push_back(AssignedTheoryAtom{atom->lit.value, value, atom->term});
+    std::optional<sat::Clause> clause =
+        model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_, false_term_);
+    if (clause.has_value()) {
+      (void)store_reason(propagated_lit, clause.value());
+    }
+  }
+
+  void compute_pending_propagations() {
+    statistics_.increment(kStatEufPropagationRounds);
+    if (options_.euf_propagation_interval > 1 &&
+        (statistics_.get(kStatEufPropagationRounds) - 1) % options_.euf_propagation_interval != 0) {
+      return;
+    }
+    const std::vector<AssignedTheoryAtom> assigned = current_assigned_atoms();
+    const std::size_t theory_atoms = theory_atoms_.size();
+    if (theory_atoms > 0 &&
+        static_cast<double>(assigned.size()) / static_cast<double>(theory_atoms) >
+            options_.euf_propagation_assign_threshold) {
+      statistics_.increment(kStatEufPropagationHitRateCutoffs);
+      return;
+    }
+    const std::optional<std::size_t> candidate_limit =
+        resolve_budget(options_.euf_propagation_budget, theory_atoms);
+    const std::size_t candidate_budget = candidate_limit.value_or(theory_atoms);
+    const std::optional<std::size_t> delivery_limit =
+        resolve_delivery_budget(options_.euf_propagation_delivery, candidate_budget, theory_atoms);
+    statistics_.increment(kStatEufPropagationBudget, candidate_limit.value_or(0));
+    statistics_.increment(kStatEufPropagationDeliveryBudget, delivery_limit.value_or(0));
+
+    std::size_t inspected = 0;
+    std::size_t delivered = 0;
+    constexpr std::size_t kMinInspectionsBeforeHitRateCutoff = 16;
+    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+      if (candidate_limit.has_value() && inspected >= candidate_limit.value()) {
+        statistics_.increment(kStatEufPropagationBudgetCutoffs);
+        break;
+      }
+      if (delivery_limit.has_value() && delivered >= delivery_limit.value()) {
+        statistics_.increment(kStatEufPropagationBudgetCutoffs);
+        break;
+      }
+      if (inspected >= kMinInspectionsBeforeHitRateCutoff && delivered == 0 &&
+          options_.euf_propagation_budget.kind == AutoBudget::Kind::Auto) {
+        statistics_.increment(kStatEufPropagationHitRateCutoffs);
+        break;
+      }
+
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      if (assignment_by_var_.contains(var) || pending_vars_.contains(var) ||
+          reasons_.contains(var)) {
+        continue;
+      }
+      ++inspected;
+      if (try_online_candidate(assigned, atom, true) ||
+          try_online_candidate(assigned, atom, false)) {
+        ++delivered;
+      }
+    }
+    statistics_.increment(kStatEufPropagationCandidates, inspected);
+  }
+
+  bool try_online_candidate(const std::vector<AssignedTheoryAtom>& assigned,
+                            const BooleanClausifier::TheoryAtom& atom, bool value) {
+    const core::Term& term = terms_.get(atom.term);
+    if (term.kind == core::TermKind::Equality && !value) {
+      return false;
+    }
+    std::vector<AssignedTheoryAtom> atoms = assigned;
+    atoms.push_back(AssignedTheoryAtom{atom.lit.value, value, atom.term});
+    std::optional<sat::Clause> clause =
+        model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_, false_term_);
+    if (!clause.has_value()) {
+      return false;
+    }
+    const int propagated_lit = value ? atom.lit.value : -atom.lit.value;
+    const int var = propagated_lit > 0 ? propagated_lit : -propagated_lit;
+    if (!store_reason(propagated_lit, clause.value())) {
+      return false;
+    }
+    pending_.push_back(propagated_lit);
+    pending_vars_.insert(var);
+    statistics_.increment(kStatEufPropagationDelivered);
+    statistics_.increment(kStatEufPropagationReasonLits, reasons_[var].antecedents.size());
+    return true;
+  }
+
+  const core::TermManager& terms_;
+  const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
+  core::TermId true_term_ = core::kInvalidTermId;
+  core::TermId false_term_ = core::kInvalidTermId;
+  const CheckSatOptions& options_;
+  util::Statistics& statistics_;
+  std::unordered_set<int> observed_vars_;
+  std::unordered_map<int, bool> assignment_by_var_;
+  std::vector<int> trail_;
+  std::vector<std::size_t> level_starts_{0};
+  std::deque<int> pending_;
+  std::unordered_set<int> pending_vars_;
+  std::unordered_map<int, Reason> reasons_;
+};
+#endif
+
+ModelPropagationResult learn_model_propagations(const core::TermManager& terms,
+                                                const std::vector<AssignedTheoryAtom>& atoms,
+                                                core::TermId true_term, core::TermId false_term,
+                                                const CheckSatOptions& options,
+                                                std::unordered_set<std::string>& learned_clauses) {
+  ModelPropagationResult result;
+  const std::size_t theory_atoms = atoms.size();
+  const std::optional<std::size_t> candidate_limit =
+      resolve_budget(options.euf_propagation_budget, theory_atoms);
+  const std::size_t candidate_budget = candidate_limit.value_or(theory_atoms);
+  const std::optional<std::size_t> delivery_limit =
+      resolve_delivery_budget(options.euf_propagation_delivery, candidate_budget, theory_atoms);
+  result.candidate_budget = candidate_limit.value_or(0);
+  result.delivery_budget = delivery_limit.value_or(0);
+
+  constexpr std::size_t kMinInspectionsBeforeHitRateCutoff = 16;
+  for (std::size_t i = 0; i < atoms.size(); ++i) {
+    if (candidate_limit.has_value() && result.candidates >= candidate_limit.value()) {
+      result.budget_cutoff = true;
+      break;
+    }
+    if (delivery_limit.has_value() && result.clauses.size() >= delivery_limit.value()) {
+      result.budget_cutoff = true;
+      break;
+    }
+    if (result.candidates >= kMinInspectionsBeforeHitRateCutoff && result.clauses.empty() &&
+        options.euf_propagation_budget.kind == AutoBudget::Kind::Auto) {
+      result.hit_rate_cutoff = true;
+      break;
+    }
+
+    ++result.candidates;
+    std::optional<sat::Clause> clause =
+        model_propagation_clause_for(terms, atoms, i, true_term, false_term);
+    if (!clause.has_value()) {
+      continue;
+    }
+    const std::string key = clause_key(clause.value());
+    if (!learned_clauses.insert(key).second) {
+      continue;
+    }
+    result.reason_lits += clause->empty() ? 0 : clause->size() - 1;
+    result.clauses.push_back(std::move(clause.value()));
+  }
+  return result;
+}
+
 std::optional<sat::Clause> find_theory_conflict(const core::TermManager& terms,
                                                 const std::vector<AssignedTheoryAtom>& atoms,
                                                 core::TermId true_term, core::TermId false_term) {
-  theory::equality::CongruenceClosure closure(terms);
-  sat::Clause equality_reason;
+  theory::equality::ExplainedCongruenceClosure closure(terms);
   std::vector<AssignedTheoryAtom> disequalities;
 
   closure.add_term(true_term);
@@ -579,19 +1040,22 @@ std::optional<sat::Clause> find_theory_conflict(const core::TermManager& terms,
       disequalities.push_back(atom);
       continue;
     }
-    if (!add_theory_equality(closure, terms, atom, true_term, false_term, equality_reason)) {
+    if (!add_explained_theory_equality(closure, terms, atom, true_term, false_term)) {
       throw UnsupportedInput("unsupported theory atom");
     }
   }
 
-  if (closure.are_equal(true_term, false_term)) {
-    return equality_reason;
+  if (std::optional<std::vector<sat::Lit>> reason = closure.explain_equal(true_term, false_term);
+      reason.has_value()) {
+    return reason.value();
   }
 
   for (const AssignedTheoryAtom& atom : disequalities) {
     const core::Term& term = terms.get(atom.term);
-    if (closure.are_equal(term.children.at(0), term.children.at(1))) {
-      sat::Clause conflict = equality_reason;
+    if (std::optional<std::vector<sat::Lit>> reason =
+            closure.explain_equal(term.children.at(0), term.children.at(1));
+        reason.has_value()) {
+      sat::Clause conflict = reason.value();
       conflict.push_back(blocking_lit(atom));
       return conflict;
     }
@@ -601,7 +1065,7 @@ std::optional<sat::Clause> find_theory_conflict(const core::TermManager& terms,
 }
 
 CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
-                            util::Statistics& statistics) {
+                            const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend;
   BooleanClausifier clausifier(backend, terms);
@@ -612,6 +1076,26 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 
   const core::TermId true_term = terms.mk_bool(true);
   const core::TermId false_term = terms.mk_bool(false);
+  std::unordered_set<std::string> learned_model_propagations;
+
+#if PRIMO_HAVE_IPASIR
+  std::optional<OnlineEufPropagator> online_propagator;
+  if (options.euf_propagation == EufPropagationMode::Online) {
+    online_propagator.emplace(terms, clausifier.theory_atoms(), true_term, false_term, options,
+                              statistics);
+    backend.connect_external_propagator(&online_propagator.value());
+    for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      backend.add_observed_var(var);
+    }
+  }
+#else
+  if (options.euf_propagation == EufPropagationMode::Online) {
+    return CheckSatOutcome{CheckSatResult::Unsupported,
+                           "online EUF propagation requires CaDiCaL external propagators",
+                           statistics};
+  }
+#endif
 
   while (true) {
     statistics.increment(kStatSatSolveCalls);
@@ -629,7 +1113,28 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
         return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
                                statistics};
       }
-      assigned_atoms.push_back(AssignedTheoryAtom{var, assignment.value(), atom.term});
+      const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
+      assigned_atoms.push_back(AssignedTheoryAtom{atom.lit.value, atom_value, atom.term});
+    }
+
+    if (options.euf_propagation == EufPropagationMode::Model) {
+      statistics.increment(kStatEufPropagationRounds);
+      ModelPropagationResult propagation = learn_model_propagations(
+          terms, assigned_atoms, true_term, false_term, options, learned_model_propagations);
+      statistics.increment(kStatEufPropagationCandidates, propagation.candidates);
+      statistics.increment(kStatEufPropagationDelivered, propagation.clauses.size());
+      statistics.increment(kStatEufPropagationReasonLits, propagation.reason_lits);
+      statistics.increment(kStatEufPropagationBudget, propagation.candidate_budget);
+      statistics.increment(kStatEufPropagationDeliveryBudget, propagation.delivery_budget);
+      if (propagation.budget_cutoff) {
+        statistics.increment(kStatEufPropagationBudgetCutoffs);
+      }
+      if (propagation.hit_rate_cutoff) {
+        statistics.increment(kStatEufPropagationHitRateCutoffs);
+      }
+      for (const sat::Clause& clause : propagation.clauses) {
+        backend.add_clause(clause);
+      }
     }
 
     std::optional<sat::Clause> conflict_clause =
@@ -658,6 +1163,11 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatEqBridgeEqualities, 0);
   statistics.set(kStatEqBridgeSkippedOrNodes, 0);
   statistics.set(kStatUnitEqualityConsequences, 0);
+  statistics.set(kStatFiniteDomainDomains, 0);
+  statistics.set(kStatFiniteDomainAmoClauses, 0);
+  statistics.set(kStatFiniteDomainEvaluatedEqualities, 0);
+  statistics.set(kStatFiniteDomainEvaluationCutoffs, 0);
+  statistics.set(kStatEqualityDefinitions, 0);
   statistics.set(kStatUfSymmetryAcceptedSets, 0);
   statistics.set(kStatUfSymmetryConstraints, 0);
   statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
@@ -667,6 +1177,14 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatTheoryAtoms, 0);
   statistics.set(kStatTheoryChecks, 0);
   statistics.set(kStatTheoryConflicts, 0);
+  statistics.set(kStatEufPropagationRounds, 0);
+  statistics.set(kStatEufPropagationCandidates, 0);
+  statistics.set(kStatEufPropagationDelivered, 0);
+  statistics.set(kStatEufPropagationReasonLits, 0);
+  statistics.set(kStatEufPropagationBudget, 0);
+  statistics.set(kStatEufPropagationDeliveryBudget, 0);
+  statistics.set(kStatEufPropagationBudgetCutoffs, 0);
+  statistics.set(kStatEufPropagationHitRateCutoffs, 0);
 
   try {
     smtlib::Parser parser(input);
@@ -684,7 +1202,18 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command", statistics};
     }
 
-    if (options.uf_symmetry_breaking) {
+    const bool strong_preprocessing = options.qf_uf_preprocess == QfUfPreprocessMode::Strong;
+    const bool preprocessing_enabled = options.qf_uf_preprocess != QfUfPreprocessMode::Off;
+    const bool use_eq_bridge = options.eq_bridge || strong_preprocessing;
+    const bool use_finite_domain_evaluation = false;
+    const bool use_finite_domain_amo = strong_preprocessing;
+    const bool use_finite_domain_equality_definitions = strong_preprocessing;
+    const bool use_symmetry_breaking = options.uf_symmetry_breaking || strong_preprocessing;
+    const std::size_t preprocessing_passes =
+        strong_preprocessing ? std::max<std::size_t>(options.preprocessing_passes, 3)
+                             : options.preprocessing_passes;
+
+    if (use_symmetry_breaking) {
       UfSymmetryBreaker symmetry_breaker(frontend.terms());
       UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(assertions);
       assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
@@ -692,16 +1221,41 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
       statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
     }
-    for (std::size_t pass = 0; pass < options.preprocessing_passes; ++pass) {
+    for (std::size_t pass = 0; preprocessing_enabled && pass < preprocessing_passes; ++pass) {
       const std::vector<core::TermId> before = assertions;
       statistics.increment(kStatPreprocessingPasses);
-      if (options.eq_bridge) {
+      if (use_eq_bridge) {
         EqualityBridge bridge(frontend.terms());
         EqualityBridgeResult bridge_result = bridge.bridge(assertions);
         assertions.insert(assertions.end(), bridge_result.equalities.begin(),
                           bridge_result.equalities.end());
         statistics.increment(kStatEqBridgeEqualities, bridge_result.equalities.size());
         statistics.increment(kStatEqBridgeSkippedOrNodes, bridge_result.skipped_or_nodes);
+      }
+      if (use_finite_domain_evaluation) {
+        FiniteDomainEvaluator evaluator(frontend.terms());
+        FiniteDomainEvaluationResult evaluation_result = evaluator.simplify(assertions);
+        assertions = std::move(evaluation_result.assertions);
+        statistics.increment(kStatFiniteDomainEvaluatedEqualities,
+                             evaluation_result.equalities_simplified);
+        statistics.increment(kStatFiniteDomainEvaluationCutoffs,
+                             evaluation_result.enumeration_cutoffs);
+      }
+      if (use_finite_domain_amo) {
+        FiniteDomainAtMostOne finite_domain(frontend.terms());
+        FiniteDomainAtMostOneResult finite_domain_result = finite_domain.generate(assertions);
+        assertions.insert(assertions.end(), finite_domain_result.clauses.begin(),
+                          finite_domain_result.clauses.end());
+        statistics.increment(kStatFiniteDomainDomains, finite_domain_result.domains);
+        statistics.increment(kStatFiniteDomainAmoClauses, finite_domain_result.clauses.size());
+      }
+      if (use_finite_domain_equality_definitions) {
+        FiniteDomainEqualityDefinitions equality_definitions(frontend.terms());
+        FiniteDomainEqualityDefinitionsResult equality_definition_result =
+            equality_definitions.generate(assertions);
+        assertions.insert(assertions.end(), equality_definition_result.clauses.begin(),
+                          equality_definition_result.clauses.end());
+        statistics.increment(kStatEqualityDefinitions, equality_definition_result.clauses.size());
       }
       std::size_t unit_consequences = 0;
       assertions = propagate_unit_equalities(frontend.terms(), assertions, &unit_consequences);
@@ -722,12 +1276,12 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       return false;
     }();
     if (has_equality) {
-      return solve_qf_uf(frontend.terms(), assertions, statistics);
+      return solve_qf_uf(frontend.terms(), assertions, options, statistics);
     }
     try {
       return solve_boolean_conjunction(frontend.terms(), assertions, statistics);
     } catch (const UnsupportedInput&) {
-      return solve_qf_uf(frontend.terms(), assertions, statistics);
+      return solve_qf_uf(frontend.terms(), assertions, options, statistics);
     }
   } catch (const UnsupportedInput& error) {
     return CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics};

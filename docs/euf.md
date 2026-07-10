@@ -23,9 +23,36 @@ loop:
   add a blocking theory-conflict clause and repeat
 ```
 
-The current conflict clause blocks the whole set of equality premises used for
-the rebuilt check. This is correct but coarse. Explanation-minimal conflict
-clauses are deferred until the congruence closure module records proof forests.
+The current conflict clause is justified by the explained congruence closure.
+Reasons are sound but not guaranteed minimum; the optimized proof-forest
+structure from the fast congruence-closure literature is still deferred.
+
+`--euf-prop=off|model|online`,
+`--euf-prop-budget=auto|unlimited|N`, and
+`--euf-prop-delivery=auto|unlimited|N` are the public option shape for
+propagation work. The default is `off`.
+
+For compatibility with the predecessor benchmark command, Primo also accepts
+`--prop-delivery-budget N`; `0` means unlimited delivery. `--prop-interval N`
+and `--prop-assign-threshold X` are accepted for online propagation experiments.
+The tuned interesting-set profile sets them to `32` and `0.25` respectively.
+
+`model` is implemented as a conservative post-model lemma learner. After each
+SAT model, Primo rebuilds explained EUF closures that omit one candidate theory
+atom at a time. If the remaining assigned equalities and Boolean predicate facts
+already imply the candidate's current value, Primo adds a SAT clause from the
+explained premise literals to the candidate literal. Reasons come from the
+explicit explanation graph and are sound, but not guaranteed minimum.
+
+`online` connects a CaDiCaL external propagator through the SAT adapter. It
+observes only EUF-relevant SAT variables: equality atoms and Boolean predicate
+applications. The propagator tracks assignments and backtracking notifications,
+then asks the explained closure for entailed unassigned theory literals and
+their reason clauses. This is an initial online subset; it still reconstructs
+closures during callbacks and is experimental/unsafe for headline benchmark
+numbers until exact `interesting.html` and fuzz runs show zero crashes and zero
+wrong answers. It does not choose decisions and it does not inject arbitrary
+external clauses.
 
 ## Term Interface
 
@@ -67,6 +94,16 @@ with the same symbol and their corresponding children are already equal. This is
 quadratic over seen terms and rebuilds from each SAT assignment; it is adequate
 for the scaffold but not the final QF_UF engine.
 
+`src/theory/equality/explained_congruence_closure.*` is the first
+explanation-capable EUF state. It keeps a union-find plus an explicit equality
+edge graph. Explicit assigned equalities add edges labelled by the corresponding
+SAT blocking literal. Congruence merges add edges labelled by the union of child
+equality explanations. This is not the optimized proof-forest structure from
+Nieuwenhuis and Oliveras, but it provides independently checkable reason
+literals for the current lazy conflict clauses and model-time propagation
+lemmas. The closure borrows term storage from `core::TermManager`; all terms it
+will inspect must already exist when the closure is constructed.
+
 ## EufSolver
 
 `src/theory/equality/euf_solver.*` is a batch checker:
@@ -76,16 +113,18 @@ for the scaffold but not the final QF_UF engine.
 - `is_satisfiable()` rebuilds a `CongruenceClosure`, applies equalities, and
   rejects the assignment if any recorded disequality becomes equal.
 
-The lazy SMT loop currently uses `CongruenceClosure` directly so it can build
-SAT blocking clauses over assigned theory atoms.
+The lazy SMT loop uses `ExplainedCongruenceClosure` so conflict and model
+propagation clauses carry reason literals rather than all assigned theory
+premises.
 
 ## Preprocessing Interaction
 
-`--uf-symmetry-breaking` runs before QF_UF solving. It appends value-precedence
-assertions over equality terms when finite-domain values are provably symmetric
-by a syntactic constant-permutation check. These generated assertions are then
-handled by the same Boolean clausifier and congruence-closure loop as ordinary
-user assertions.
+`--qf-uf-preprocess=strong` runs before QF_UF solving. It appends bridge
+equalities, finite-domain at-most-one clauses, and value-precedence assertions
+when their recognizers can prove the required local conditions. These generated
+assertions are then handled by the same Boolean clausifier and
+congruence-closure loop as ordinary user assertions. `--uf-symmetry-breaking`
+and `--eq-bridge` remain available as narrower experimental switches.
 
 See [](preprocessing.md) for the finite-domain symmetry-breaking design.
 
@@ -97,17 +136,25 @@ Implemented:
 - recursive term registration;
 - congruence closure for constants and applications;
 - equality and disequality checking;
+- explanation graph for explicit and congruence equality reasons;
 - lazy Boolean/EUF integration with CaDiCaL;
 - Boolean predicate applications participating in EUF by equality to
   `true`/`false`;
-- default-off finite-domain UF symmetry breaking.
+- model-time EUF propagation lemmas with deterministic inspection and delivery
+  budgets;
+- experimental online EUF propagation through CaDiCaL observed-variable
+  callbacks;
+- basic QF_UF preprocessing by default;
+- strong preset with finite-domain AMO clauses and default-off UF symmetry
+  breaking.
 
 Deferred:
 
 - incremental backtracking congruence closure;
 - use lists and lookup tables from the fast congruence-closure literature;
-- explanation-producing proof forests;
-- theory propagation;
+- optimized explanation-producing proof forests;
+- richer online conflict-clause injection;
+- minimal theory-propagation reasons;
 - proof output for preprocessing-generated lemmas;
 - model construction.
 
@@ -116,7 +163,8 @@ Deferred:
 Nieuwenhuis and Oliveras, *Fast Congruence Closure and Extensions*, motivates
 the EUF direction and the eventual data structures: use lists, congruence
 lookup, pending merges, and explanations. Primo currently implements only the
-basic ground congruence behavior, not the optimized algorithm.
+basic ground congruence behavior and a simple explanation graph, not the
+optimized incremental algorithm.
 
 Déharbe et al., *Exploiting symmetry in SMT problems*, and Reger and Suda,
 *Using SAT and SMT Solvers for Finite Model Finding with Sorts*, motivate the

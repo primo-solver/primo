@@ -8,6 +8,29 @@
 
 namespace primo::smt {
 
+enum class QfUfPreprocessMode {
+  Off,
+  Basic,
+  Strong,
+};
+
+enum class EufPropagationMode {
+  Off,
+  Model,
+  Online,
+};
+
+struct AutoBudget {
+  enum class Kind {
+    Auto,
+    Unlimited,
+    Fixed,
+  };
+
+  Kind kind = Kind::Auto;
+  std::size_t value = 0;
+};
+
 enum class CheckSatResult {
   Sat,
   Unsat,
@@ -22,8 +45,14 @@ struct CheckSatOutcome {
 };
 
 struct CheckSatOptions {
+  QfUfPreprocessMode qf_uf_preprocess = QfUfPreprocessMode::Basic;
+  EufPropagationMode euf_propagation = EufPropagationMode::Off;
+  AutoBudget euf_propagation_budget;
+  AutoBudget euf_propagation_delivery;
   bool uf_symmetry_breaking = false;
   bool eq_bridge = false;
+  std::size_t euf_propagation_interval = 1;
+  double euf_propagation_assign_threshold = 1.0;
   std::size_t preprocessing_passes = 1;
 };
 

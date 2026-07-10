@@ -305,6 +305,214 @@ void equality_bridge_solves_diamond_chain() {
   assert(result.statistics.get(":solver.qf-uf") == 1);
 }
 
+void preprocessing_off_disables_basic_loop() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (assert p)
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.passes") == 0);
+}
+
+void strong_preprocessing_enables_finite_domain_amo() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":euf.propagation.rounds") == 0);
+}
+
+void model_euf_propagation_learns_congruence_lemma() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Model;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (declare-fun p () Bool)
+    (assert (= a b))
+    (assert (or p (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.rounds") == 1);
+  assert(result.statistics.get(":euf.propagation.candidates") >= 2);
+  assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+  assert(result.statistics.get(":euf.propagation.reason-lits") >= 1);
+}
+
+void model_euf_propagation_handles_predicate_congruence() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Model;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun p (A) Bool)
+    (assert (= a b))
+    (assert (p a))
+    (assert (p b))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+}
+
+void model_euf_propagation_respects_zero_budget() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Model;
+  options.euf_propagation_budget.kind = primo::smt::AutoBudget::Kind::Fixed;
+  options.euf_propagation_budget.value = 0;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (declare-fun p () Bool)
+    (assert (= a b))
+    (assert (or p (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.rounds") == 1);
+  assert(result.statistics.get(":euf.propagation.candidates") == 0);
+  assert(result.statistics.get(":euf.propagation.delivered") == 0);
+  assert(result.statistics.get(":euf.propagation.budget-cutoffs") == 1);
+}
+
+void online_euf_propagation_learns_congruence_during_search() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (declare-fun p () Bool)
+    (assert (= a b))
+    (assert (or p (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.rounds") >= 1);
+  assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+}
+
+void online_euf_propagation_handles_transitive_reasons() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun p () Bool)
+    (assert (= a b))
+    (assert (= b c))
+    (assert (or p (= a c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+  assert(result.statistics.get(":euf.propagation.reason-lits") >= 2);
+}
+
+void online_euf_propagation_handles_predicate_congruence() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun p (A) Bool)
+    (declare-fun q () Bool)
+    (assert (= a b))
+    (assert (p a))
+    (assert (or q (p b)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+}
+
+void online_euf_propagation_keeps_conflicts_external() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (assert (= a b))
+    (assert (= b c))
+    (assert (not (= a c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":euf.theory-conflicts") >= 1);
+}
+
+void online_euf_propagation_accepts_already_assigned_implications() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (= (f a) (f b)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+}
+
 }  // namespace
 
 int main() {
@@ -329,5 +537,15 @@ int main() {
   boolean_ite_is_eliminated();
   term_ite_is_eliminated();
   equality_bridge_solves_diamond_chain();
+  preprocessing_off_disables_basic_loop();
+  strong_preprocessing_enables_finite_domain_amo();
+  model_euf_propagation_learns_congruence_lemma();
+  model_euf_propagation_handles_predicate_congruence();
+  model_euf_propagation_respects_zero_budget();
+  online_euf_propagation_learns_congruence_during_search();
+  online_euf_propagation_handles_transitive_reasons();
+  online_euf_propagation_handles_predicate_congruence();
+  online_euf_propagation_keeps_conflicts_external();
+  online_euf_propagation_accepts_already_assigned_implications();
   return 0;
 }

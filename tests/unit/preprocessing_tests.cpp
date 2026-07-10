@@ -168,6 +168,130 @@ void unit_equality_propagation_simplifies_disequality() {
   assert(!fixture.terms.get(simplified[3]).bool_value);
 }
 
+void finite_domain_at_most_one_adds_pairwise_clauses() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const std::vector<primo::core::TermId> values{a, b, c};
+
+  std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
+  assertions.push_back(fixture.choices(x, values));
+
+  primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
+  const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
+
+  assert(result.domains == 1);
+  assert(result.clauses.size() == 3);
+  for (const primo::core::TermId clause : result.clauses) {
+    const primo::core::Term& node = fixture.terms.get(clause);
+    assert(node.kind == primo::core::TermKind::Or);
+    assert(node.children.size() == 2);
+  }
+
+  assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
+  const primo::smt::FiniteDomainAtMostOneResult repeated = amo.generate(assertions);
+  assert(repeated.domains == 0);
+  assert(repeated.clauses.empty());
+}
+
+void finite_domain_choices_may_be_nested_or_nodes() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+
+  std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
+  assertions.push_back(fixture.terms.mk_or(
+      {fixture.terms.mk_eq(x, a),
+       fixture.terms.mk_or({fixture.terms.mk_eq(x, b), fixture.terms.mk_eq(x, c)})}));
+
+  primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
+  const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
+
+  assert(result.domains == 1);
+  assert(result.clauses.size() == 3);
+}
+
+void finite_domain_equality_definitions_connect_terms_with_same_domain() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const std::vector<primo::core::TermId> values{a, b, c};
+
+  std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
+  assertions.push_back(fixture.choices(x, values));
+  assertions.push_back(fixture.choices(y, values));
+
+  primo::smt::FiniteDomainEqualityDefinitions definitions(fixture.terms);
+  const primo::smt::FiniteDomainEqualityDefinitionsResult result = definitions.generate(assertions);
+
+  assert(result.term_pairs == 1);
+  assert(result.clauses.size() == 9);
+  for (const primo::core::TermId clause : result.clauses) {
+    const primo::core::Term& node = fixture.terms.get(clause);
+    assert(node.kind == primo::core::TermKind::Or);
+    assert(node.children.size() == 3);
+  }
+
+  assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
+  const primo::smt::FiniteDomainEqualityDefinitionsResult repeated =
+      definitions.generate(assertions);
+  assert(repeated.term_pairs == 0);
+  assert(repeated.clauses.empty());
+}
+
+void congruence_definitions_connect_same_symbol_applications() {
+  Fixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId fx = fixture.app(fixture.f, x);
+  const primo::core::TermId fy = fixture.app(fixture.f, y);
+  const std::vector<primo::core::TermId> assertions{fixture.terms.mk_or(
+      {fixture.terms.mk_eq(x, y), fixture.terms.mk_not(fixture.terms.mk_eq(fx, fy))})};
+
+  primo::smt::CongruenceDefinitionGenerator definitions(fixture.terms);
+  const primo::smt::CongruenceDefinitionResult result = definitions.generate(assertions);
+
+  assert(result.groups == 1);
+  assert(result.skipped_groups == 0);
+  assert(result.clauses.size() == 1);
+  const primo::core::Term& clause = fixture.terms.get(result.clauses.front());
+  assert(clause.kind == primo::core::TermKind::Or);
+  assert(clause.children.size() == 2);
+}
+
+void finite_domain_evaluator_simplifies_table_tautology() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId fx = fixture.app(fixture.f, x);
+  const std::vector<primo::core::TermId> values{a, b};
+  std::vector<primo::core::TermId> assertions{
+      fixture.neq(a, b),
+      fixture.choices(x, values),
+      fixture.terms.mk_eq(fixture.app(fixture.f, a), a),
+      fixture.terms.mk_eq(fixture.app(fixture.f, b), b),
+      fixture.terms.mk_not(fixture.terms.mk_eq(fx, x)),
+  };
+
+  primo::smt::FiniteDomainEvaluator evaluator(fixture.terms);
+  const primo::smt::FiniteDomainEvaluationResult result = evaluator.simplify(assertions);
+
+  assert(result.equalities_simplified >= 1);
+  assert(result.enumeration_cutoffs == 0);
+  assert(result.assertions.size() == assertions.size());
+  const primo::core::Term& last = fixture.terms.get(result.assertions.back());
+  assert(last.kind == primo::core::TermKind::BoolValue);
+  assert(!last.bool_value);
+}
+
 }  // namespace
 
 int main() {
@@ -176,5 +300,10 @@ int main() {
   moving_terms_are_rejected();
   equality_bridge_derives_common_branch_consequence();
   unit_equality_propagation_simplifies_disequality();
+  finite_domain_at_most_one_adds_pairwise_clauses();
+  finite_domain_choices_may_be_nested_or_nodes();
+  finite_domain_equality_definitions_connect_terms_with_same_domain();
+  congruence_definitions_connect_same_symbol_applications();
+  finite_domain_evaluator_simplifies_table_tautology();
   return 0;
 }

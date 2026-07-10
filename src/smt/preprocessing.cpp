@@ -12,6 +12,7 @@
 #include "core/ids.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
+#include "theory/equality/congruence_closure.hpp"
 
 namespace primo::smt {
 
@@ -34,6 +35,30 @@ struct SymmetryTerm {
 struct SymmetryGroup {
   std::vector<core::TermId> values;
   std::vector<SymmetryTerm> terms;
+};
+
+struct FiniteDomainGroup {
+  std::vector<core::TermId> values;
+  std::vector<core::TermId> terms;
+};
+
+struct AppValueKey {
+  core::SymbolId symbol = core::kInvalidSymbolId;
+  std::vector<core::TermId> args;
+
+  bool operator==(const AppValueKey& other) const {
+    return symbol == other.symbol && args == other.args;
+  }
+};
+
+struct AppValueKeyHash {
+  std::size_t operator()(const AppValueKey& key) const {
+    std::size_t seed = static_cast<std::size_t>(key.symbol);
+    for (const core::TermId arg : key.args) {
+      seed ^= static_cast<std::size_t>(arg) + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+    }
+    return seed;
+  }
 };
 
 struct BranchEqualityClosure {
@@ -76,6 +101,8 @@ struct BranchEqualityClosure {
 
 constexpr std::size_t kMaxBridgeBranches = 64;
 constexpr std::size_t kMaxBridgePairChecks = 200000;
+constexpr std::size_t kMaxCongruenceDefinitionClauses = 50000;
+constexpr std::size_t kMaxFiniteDomainEvaluationAssignments = 250000;
 
 std::pair<core::TermId, core::TermId> ordered_pair(core::TermId lhs, core::TermId rhs) {
   if (rhs < lhs) {
@@ -94,6 +121,21 @@ void collect_conjuncts(const core::TermManager& terms, core::TermId term,
     return;
   }
   conjuncts.push_back(term);
+}
+
+void collect_applications(const core::TermManager& terms, core::TermId root,
+                          std::unordered_set<core::TermId>& seen,
+                          std::unordered_map<core::SymbolId, std::vector<core::TermId>>& groups) {
+  if (!seen.insert(root).second) {
+    return;
+  }
+  const core::Term& term = terms.get(root);
+  if (term.kind == core::TermKind::Application) {
+    groups[term.symbol].push_back(root);
+  }
+  for (const core::TermId child : term.children) {
+    collect_applications(terms, child, seen, groups);
+  }
 }
 
 void collect_branch_equalities(const core::TermManager& terms, core::TermId branch,
@@ -125,6 +167,21 @@ void collect_or_branches(const core::TermManager& terms, core::TermId term,
       continue;
     }
     branches.push_back(current);
+  }
+}
+
+void collect_or_literals(const core::TermManager& terms, core::TermId term,
+                         std::vector<core::TermId>& literals) {
+  std::vector<core::TermId> work{term};
+  while (!work.empty()) {
+    const core::TermId current = work.back();
+    work.pop_back();
+    const core::Term& node = terms.get(current);
+    if (node.kind == core::TermKind::Or) {
+      work.insert(work.end(), node.children.begin(), node.children.end());
+      continue;
+    }
+    literals.push_back(current);
   }
 }
 
@@ -202,14 +259,14 @@ void collect_equality_bridges(core::TermManager& terms, core::TermId assertion,
 }
 
 void collect_unit_equalities(const core::TermManager& terms, core::TermId assertion,
-                             BranchEqualityClosure& closure) {
+                             theory::equality::CongruenceClosure& closure) {
   std::vector<core::TermId> work{assertion};
   while (!work.empty()) {
     const core::TermId term = work.back();
     work.pop_back();
     const core::Term& node = terms.get(term);
     if (node.kind == core::TermKind::Equality) {
-      closure.unite(node.children.at(0), node.children.at(1));
+      closure.assert_equal(node.children.at(0), node.children.at(1));
       continue;
     }
     if (node.kind == core::TermKind::And) {
@@ -218,8 +275,8 @@ void collect_unit_equalities(const core::TermManager& terms, core::TermId assert
   }
 }
 
-core::TermId simplify_with_equalities(core::TermManager& terms, core::TermId term,
-                                      BranchEqualityClosure& closure) {
+core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId term,
+                                      theory::equality::CongruenceClosure& closure) {
   const core::Term& node = terms.get(term);
   switch (node.kind) {
     case core::TermKind::BoolValue:
@@ -227,16 +284,17 @@ core::TermId simplify_with_equalities(core::TermManager& terms, core::TermId ter
     case core::TermKind::Application:
       return term;
     case core::TermKind::Equality:
-      return closure.same(node.children.at(0), node.children.at(1)) ? terms.mk_bool(true) : term;
+      return closure.are_equal(node.children.at(0), node.children.at(1)) ? terms.mk_bool(true)
+                                                                         : term;
     case core::TermKind::Not: {
-      const core::TermId child = simplify_with_equalities(terms, node.children.at(0), closure);
+      const core::TermId child = simplify_with_congruence(terms, node.children.at(0), closure);
       return terms.mk_not(child);
     }
     case core::TermKind::And: {
       std::vector<core::TermId> children;
       children.reserve(node.children.size());
       for (const core::TermId child : node.children) {
-        children.push_back(simplify_with_equalities(terms, child, closure));
+        children.push_back(simplify_with_congruence(terms, child, closure));
       }
       return terms.mk_and(std::move(children));
     }
@@ -244,13 +302,13 @@ core::TermId simplify_with_equalities(core::TermManager& terms, core::TermId ter
       std::vector<core::TermId> children;
       children.reserve(node.children.size());
       for (const core::TermId child : node.children) {
-        children.push_back(simplify_with_equalities(terms, child, closure));
+        children.push_back(simplify_with_congruence(terms, child, closure));
       }
       return terms.mk_or(std::move(children));
     }
     case core::TermKind::Implies:
-      return terms.mk_implies(simplify_with_equalities(terms, node.children.at(0), closure),
-                              simplify_with_equalities(terms, node.children.at(1), closure));
+      return terms.mk_implies(simplify_with_congruence(terms, node.children.at(0), closure),
+                              simplify_with_congruence(terms, node.children.at(1), closure));
   }
   return term;
 }
@@ -294,11 +352,12 @@ bool try_choice_term(
     const core::TermManager& terms, core::TermId or_term, core::TermId candidate,
     const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities,
     FiniteDomainChoice& choice) {
-  const core::Term& or_node = terms.get(or_term);
+  std::vector<core::TermId> literals;
+  collect_or_literals(terms, or_term, literals);
   std::vector<core::TermId> values;
-  values.reserve(or_node.children.size());
+  values.reserve(literals.size());
 
-  for (const core::TermId child_id : or_node.children) {
+  for (const core::TermId child_id : literals) {
     const core::Term& child = terms.get(child_id);
     if (child.kind != core::TermKind::Equality) {
       return false;
@@ -326,6 +385,9 @@ bool try_choice_term(
   choice.values = std::move(values);
   return true;
 }
+
+bool all_values_are_constants(const core::TermManager& terms,
+                              const std::vector<core::TermId>& values);
 
 std::unordered_map<core::TermId, FiniteDomainChoice> collect_finite_domain_choices(
     const core::TermManager& terms, const std::vector<core::TermId>& assertions,
@@ -371,6 +433,32 @@ std::unordered_map<core::TermId, FiniteDomainChoice> collect_finite_domain_choic
   return choices;
 }
 
+std::vector<FiniteDomainGroup> finite_domain_groups(
+    const core::TermManager& terms,
+    const std::unordered_map<core::TermId, FiniteDomainChoice>& choices,
+    bool require_constant_values) {
+  std::vector<FiniteDomainGroup> groups;
+  for (const auto& [term, choice] : choices) {
+    if (choice.values.size() < 2) {
+      continue;
+    }
+    if (require_constant_values && !all_values_are_constants(terms, choice.values)) {
+      continue;
+    }
+    auto group = std::find_if(groups.begin(), groups.end(), [&](const FiniteDomainGroup& item) {
+      return item.values == choice.values;
+    });
+    if (group == groups.end()) {
+      FiniteDomainGroup new_group;
+      new_group.values = choice.values;
+      groups.push_back(std::move(new_group));
+      group = groups.end() - 1;
+    }
+    group->terms.push_back(term);
+  }
+  return groups;
+}
+
 bool all_values_are_constants(const core::TermManager& terms,
                               const std::vector<core::TermId>& values) {
   for (const core::TermId value : values) {
@@ -380,6 +468,20 @@ bool all_values_are_constants(const core::TermManager& terms,
     }
   }
   return true;
+}
+
+std::vector<core::TermId> finite_domain_at_most_one_clauses(
+    core::TermManager& terms, core::TermId term, const std::vector<core::TermId>& values) {
+  std::vector<core::TermId> clauses;
+  const std::size_t pair_count = values.size() * (values.size() - 1U) / 2U;
+  clauses.reserve(pair_count);
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    for (std::size_t j = i + 1; j < values.size(); ++j) {
+      clauses.push_back(terms.mk_or({terms.mk_not(terms.mk_eq(term, values[i])),
+                                     terms.mk_not(terms.mk_eq(term, values[j]))}));
+    }
+  }
+  return clauses;
 }
 
 bool contains_any_term(const core::TermManager& terms, core::TermId root,
@@ -500,22 +602,315 @@ std::vector<SymmetryGroup> build_groups(
     const core::TermManager& terms,
     const std::unordered_map<core::TermId, FiniteDomainChoice>& choices) {
   std::vector<SymmetryGroup> groups;
-  for (const auto& [term, choice] : choices) {
-    if (choice.values.size() < 2 || !all_values_are_constants(terms, choice.values)) {
-      continue;
-    }
+  for (const FiniteDomainGroup& finite_group : finite_domain_groups(terms, choices, true)) {
     auto group = std::find_if(groups.begin(), groups.end(), [&](const SymmetryGroup& candidate) {
-      return candidate.values == choice.values;
+      return candidate.values == finite_group.values;
     });
     if (group == groups.end()) {
       SymmetryGroup new_group;
-      new_group.values = choice.values;
+      new_group.values = finite_group.values;
       groups.push_back(std::move(new_group));
       group = groups.end() - 1;
     }
-    group->terms.push_back(SymmetryTerm{term});
+    for (const core::TermId term : finite_group.terms) {
+      group->terms.push_back(SymmetryTerm{term});
+    }
   }
   return groups;
+}
+
+std::vector<core::TermId> finite_domain_equality_definition_clauses(
+    core::TermManager& terms, core::TermId lhs, core::TermId rhs,
+    const std::vector<core::TermId>& values) {
+  std::vector<core::TermId> clauses;
+  clauses.reserve(values.size() * 3);
+  const core::TermId lhs_eq_rhs = terms.mk_eq(lhs, rhs);
+  for (const core::TermId value : values) {
+    const core::TermId lhs_eq_value = terms.mk_eq(lhs, value);
+    const core::TermId rhs_eq_value = terms.mk_eq(rhs, value);
+    clauses.push_back(
+        terms.mk_or({terms.mk_not(lhs_eq_value), terms.mk_not(rhs_eq_value), lhs_eq_rhs}));
+    clauses.push_back(
+        terms.mk_or({terms.mk_not(lhs_eq_rhs), terms.mk_not(lhs_eq_value), rhs_eq_value}));
+    clauses.push_back(
+        terms.mk_or({terms.mk_not(lhs_eq_rhs), terms.mk_not(rhs_eq_value), lhs_eq_value}));
+  }
+  return clauses;
+}
+
+void collect_unit_equalities_list(const core::TermManager& terms, core::TermId assertion,
+                                  std::vector<std::pair<core::TermId, core::TermId>>& equalities) {
+  std::vector<core::TermId> work{assertion};
+  while (!work.empty()) {
+    const core::TermId term = work.back();
+    work.pop_back();
+    const core::Term& node = terms.get(term);
+    if (node.kind == core::TermKind::Equality) {
+      equalities.emplace_back(node.children.at(0), node.children.at(1));
+      continue;
+    }
+    if (node.kind == core::TermKind::And) {
+      work.insert(work.end(), node.children.begin(), node.children.end());
+    }
+  }
+}
+
+bool is_domain_value(core::TermId term, const std::unordered_set<core::TermId>& values) {
+  return values.contains(term);
+}
+
+class FiniteDomainEvaluationState {
+ public:
+  FiniteDomainEvaluationState(const core::TermManager& terms,
+                              std::unordered_map<core::TermId, FiniteDomainChoice> choices,
+                              std::vector<std::pair<core::TermId, core::TermId>> unit_equalities)
+      : terms_(terms), choices_(std::move(choices)), unit_equalities_(std::move(unit_equalities)) {
+    for (const auto& [term, choice] : choices_) {
+      (void)term;
+      domain_values_.insert(choice.values.begin(), choice.values.end());
+    }
+    build_fixed_values_and_tables();
+  }
+
+  bool always_equal(core::TermId lhs, core::TermId rhs, bool* cutoff) const {
+    std::vector<core::TermId> variables;
+    collect_variables(lhs, variables);
+    collect_variables(rhs, variables);
+    std::sort(variables.begin(), variables.end());
+    variables.erase(std::unique(variables.begin(), variables.end()), variables.end());
+
+    std::size_t combinations = 1;
+    for (const core::TermId variable : variables) {
+      const auto found = choices_.find(variable);
+      if (found == choices_.end()) {
+        return false;
+      }
+      if (found->second.values.empty() ||
+          combinations > kMaxFiniteDomainEvaluationAssignments / found->second.values.size()) {
+        *cutoff = true;
+        return false;
+      }
+      combinations *= found->second.values.size();
+    }
+
+    std::unordered_map<core::TermId, core::TermId> assignment;
+    return enumerate_equal(lhs, rhs, variables, 0, assignment);
+  }
+
+ private:
+  std::optional<core::TermId> fixed_value(core::TermId term) const {
+    if (is_domain_value(term, domain_values_)) {
+      return term;
+    }
+    const auto found = fixed_values_.find(term);
+    if (found != fixed_values_.end()) {
+      return found->second;
+    }
+    return std::nullopt;
+  }
+
+  std::optional<core::TermId> eval_with_fixed_values(core::TermId term) const {
+    if (const std::optional<core::TermId> fixed = fixed_value(term); fixed.has_value()) {
+      return fixed;
+    }
+    const core::Term& node = terms_.get(term);
+    if (node.kind != core::TermKind::Application) {
+      return std::nullopt;
+    }
+    std::vector<core::TermId> args;
+    args.reserve(node.children.size());
+    for (const core::TermId child : node.children) {
+      std::optional<core::TermId> value = eval_with_fixed_values(child);
+      if (!value.has_value()) {
+        return std::nullopt;
+      }
+      args.push_back(value.value());
+    }
+    const auto found = tables_.find(AppValueKey{node.symbol, std::move(args)});
+    if (found == tables_.end()) {
+      return std::nullopt;
+    }
+    return found->second;
+  }
+
+  void build_fixed_values_and_tables() {
+    bool changed = true;
+    while (changed) {
+      changed = false;
+      for (const auto& [lhs, rhs] : unit_equalities_) {
+        changed = record_fixed_value(lhs, rhs) || changed;
+        changed = record_fixed_value(rhs, lhs) || changed;
+        changed = record_table_entry(lhs, rhs) || changed;
+        changed = record_table_entry(rhs, lhs) || changed;
+      }
+    }
+  }
+
+  bool record_fixed_value(core::TermId term, core::TermId value_term) {
+    const std::optional<core::TermId> value = eval_with_fixed_values(value_term);
+    if (!value.has_value() || !is_domain_value(value.value(), domain_values_)) {
+      return false;
+    }
+    const auto [_, inserted] = fixed_values_.emplace(term, value.value());
+    return inserted;
+  }
+
+  bool record_table_entry(core::TermId app_term, core::TermId value_term) {
+    const core::Term& app = terms_.get(app_term);
+    if (app.kind != core::TermKind::Application) {
+      return false;
+    }
+    const std::optional<core::TermId> value = eval_with_fixed_values(value_term);
+    if (!value.has_value() || !is_domain_value(value.value(), domain_values_)) {
+      return false;
+    }
+    std::vector<core::TermId> args;
+    args.reserve(app.children.size());
+    for (const core::TermId child : app.children) {
+      std::optional<core::TermId> arg_value = eval_with_fixed_values(child);
+      if (!arg_value.has_value()) {
+        return false;
+      }
+      args.push_back(arg_value.value());
+    }
+    const auto [_, inserted] =
+        tables_.emplace(AppValueKey{app.symbol, std::move(args)}, value.value());
+    return inserted;
+  }
+
+  void collect_variables(core::TermId term, std::vector<core::TermId>& variables) const {
+    if (eval_with_fixed_values(term).has_value()) {
+      return;
+    }
+    if (choices_.contains(term)) {
+      variables.push_back(term);
+      return;
+    }
+    for (const core::TermId child : terms_.get(term).children) {
+      collect_variables(child, variables);
+    }
+  }
+
+  std::optional<core::TermId> eval(
+      core::TermId term, const std::unordered_map<core::TermId, core::TermId>& assignment) const {
+    if (const std::optional<core::TermId> fixed = fixed_value(term); fixed.has_value()) {
+      return fixed;
+    }
+    const auto assigned = assignment.find(term);
+    if (assigned != assignment.end()) {
+      return assigned->second;
+    }
+    const core::Term& node = terms_.get(term);
+    if (node.kind != core::TermKind::Application) {
+      return std::nullopt;
+    }
+    std::vector<core::TermId> args;
+    args.reserve(node.children.size());
+    for (const core::TermId child : node.children) {
+      std::optional<core::TermId> value = eval(child, assignment);
+      if (!value.has_value()) {
+        return std::nullopt;
+      }
+      args.push_back(value.value());
+    }
+    const auto found = tables_.find(AppValueKey{node.symbol, std::move(args)});
+    if (found == tables_.end()) {
+      return std::nullopt;
+    }
+    return found->second;
+  }
+
+  bool enumerate_equal(core::TermId lhs, core::TermId rhs, const std::vector<core::TermId>& vars,
+                       std::size_t index,
+                       std::unordered_map<core::TermId, core::TermId>& assignment) const {
+    if (index == vars.size()) {
+      const std::optional<core::TermId> lhs_value = eval(lhs, assignment);
+      const std::optional<core::TermId> rhs_value = eval(rhs, assignment);
+      return lhs_value.has_value() && rhs_value.has_value() &&
+             lhs_value.value() == rhs_value.value();
+    }
+    const core::TermId variable = vars[index];
+    const auto found = choices_.find(variable);
+    if (found == choices_.end()) {
+      return false;
+    }
+    for (const core::TermId value : found->second.values) {
+      assignment[variable] = value;
+      if (!enumerate_equal(lhs, rhs, vars, index + 1, assignment)) {
+        assignment.erase(variable);
+        return false;
+      }
+    }
+    assignment.erase(variable);
+    return true;
+  }
+
+  const core::TermManager& terms_;
+  std::unordered_map<core::TermId, FiniteDomainChoice> choices_;
+  std::vector<std::pair<core::TermId, core::TermId>> unit_equalities_;
+  std::unordered_set<core::TermId> domain_values_;
+  std::unordered_map<core::TermId, core::TermId> fixed_values_;
+  std::unordered_map<AppValueKey, core::TermId, AppValueKeyHash> tables_;
+};
+
+core::TermId simplify_with_finite_domain_evaluation(core::TermManager& terms, core::TermId term,
+                                                    const FiniteDomainEvaluationState& state,
+                                                    FiniteDomainEvaluationResult& result) {
+  const core::Term& node = terms.get(term);
+  switch (node.kind) {
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+    case core::TermKind::Application:
+      return term;
+    case core::TermKind::Equality: {
+      bool cutoff = false;
+      if (state.always_equal(node.children.at(0), node.children.at(1), &cutoff)) {
+        ++result.equalities_simplified;
+        return terms.mk_bool(true);
+      }
+      if (cutoff) {
+        ++result.enumeration_cutoffs;
+      }
+      return term;
+    }
+    case core::TermKind::Not:
+      return terms.mk_not(
+          simplify_with_finite_domain_evaluation(terms, node.children.at(0), state, result));
+    case core::TermKind::And: {
+      std::vector<core::TermId> children;
+      children.reserve(node.children.size());
+      for (const core::TermId child : node.children) {
+        children.push_back(simplify_with_finite_domain_evaluation(terms, child, state, result));
+      }
+      return terms.mk_and(std::move(children));
+    }
+    case core::TermKind::Or: {
+      std::vector<core::TermId> children;
+      children.reserve(node.children.size());
+      for (const core::TermId child : node.children) {
+        children.push_back(simplify_with_finite_domain_evaluation(terms, child, state, result));
+      }
+      return terms.mk_or(std::move(children));
+    }
+    case core::TermKind::Implies:
+      return terms.mk_implies(
+          simplify_with_finite_domain_evaluation(terms, node.children.at(0), state, result),
+          simplify_with_finite_domain_evaluation(terms, node.children.at(1), state, result));
+  }
+  return term;
+}
+
+core::TermId congruence_definition_clause(core::TermManager& terms, core::TermId lhs,
+                                          core::TermId rhs) {
+  const core::Term& lhs_term = terms.get(lhs);
+  const core::Term& rhs_term = terms.get(rhs);
+  std::vector<core::TermId> literals;
+  literals.reserve(lhs_term.children.size() + 1);
+  for (std::size_t i = 0; i < lhs_term.children.size(); ++i) {
+    literals.push_back(terms.mk_not(terms.mk_eq(lhs_term.children[i], rhs_term.children[i])));
+  }
+  literals.push_back(terms.mk_eq(lhs, rhs));
+  return terms.mk_or(std::move(literals));
 }
 
 core::TermId first_use_requires_previous_value(core::TermManager& terms, core::TermId term,
@@ -568,11 +963,12 @@ EqualityBridgeResult EqualityBridge::bridge(const std::vector<core::TermId>& ass
 std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
                                                     std::size_t* consequences_added) {
-  // This is a deliberately small preprocessing closure, not a theory-solver
+  // This is a deliberately small preprocessing closure, not a SAT/theory
   // shortcut. Unit equalities already asserted at top level, including facts
-  // derived by the equality bridge, are used to simplify equality atoms in the
-  // whole formula before Boolean abstraction.
-  BranchEqualityClosure closure;
+  // derived by the equality bridge, are fed to the same ground congruence
+  // relation used by the EUF solver, then equality atoms decided by that unit
+  // relation are simplified before Boolean abstraction.
+  theory::equality::CongruenceClosure closure(terms);
   for (const core::TermId assertion : assertions) {
     collect_unit_equalities(terms, assertion, closure);
   }
@@ -585,7 +981,7 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
     if (emitted.insert(assertion).second) {
       simplified.push_back(assertion);
     }
-    const core::TermId consequence = simplify_with_equalities(terms, assertion, closure);
+    const core::TermId consequence = simplify_with_congruence(terms, assertion, closure);
     const core::Term& consequence_node = terms.get(consequence);
     const bool true_consequence =
         consequence_node.kind == core::TermKind::BoolValue && consequence_node.bool_value;
@@ -598,6 +994,146 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
     *consequences_added = added;
   }
   return simplified;
+}
+
+FiniteDomainAtMostOne::FiniteDomainAtMostOne(core::TermManager& terms) : terms_(terms) {}
+
+FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
+    const std::vector<core::TermId>& assertions) {
+  // Bradley and Manna's standard EUF congruence setting justifies these as
+  // theory lemmas: if asserted finite-domain values are pairwise disequal, one
+  // term cannot equal two different values. The pass only emits SAT-visible
+  // AMO clauses for domains whose value disequalities are explicit top-level
+  // facts in the current assertion vector.
+  FiniteDomainAtMostOneResult result;
+  const auto disequalities = collect_disequalities(terms_, assertions);
+  const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
+  std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
+  for (const auto& [term, choice] : choices) {
+    const std::vector<core::TermId> clauses =
+        finite_domain_at_most_one_clauses(terms_, term, choice.values);
+    std::size_t added_for_domain = 0;
+    for (const core::TermId clause : clauses) {
+      if (emitted.insert(clause).second) {
+        result.clauses.push_back(clause);
+        ++added_for_domain;
+      }
+    }
+    if (added_for_domain > 0) {
+      ++result.domains;
+    }
+  }
+  return result;
+}
+
+FiniteDomainEqualityDefinitions::FiniteDomainEqualityDefinitions(core::TermManager& terms)
+    : terms_(terms) {}
+
+FiniteDomainEqualityDefinitionsResult FiniteDomainEqualityDefinitions::generate(
+    const std::vector<core::TermId>& assertions) {
+  // Bradley and Manna's ground EUF setting justifies these finite-domain
+  // definition clauses when every involved term has an explicit, pairwise
+  // disequal choice domain. They expose (= s t) through the SAT-visible choices
+  // (= s c_i) and (= t c_i), without adding fresh propositional variables.
+  FiniteDomainEqualityDefinitionsResult result;
+  const auto disequalities = collect_disequalities(terms_, assertions);
+  const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
+  const std::vector<FiniteDomainGroup> groups = finite_domain_groups(terms_, choices, false);
+  std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
+  for (FiniteDomainGroup group : groups) {
+    std::sort(group.terms.begin(), group.terms.end());
+    group.terms.erase(std::unique(group.terms.begin(), group.terms.end()), group.terms.end());
+    for (std::size_t i = 0; i < group.terms.size(); ++i) {
+      for (std::size_t j = i + 1; j < group.terms.size(); ++j) {
+        const std::vector<core::TermId> clauses = finite_domain_equality_definition_clauses(
+            terms_, group.terms[i], group.terms[j], group.values);
+        std::size_t added_for_pair = 0;
+        for (const core::TermId clause : clauses) {
+          if (emitted.insert(clause).second) {
+            result.clauses.push_back(clause);
+            ++added_for_pair;
+          }
+        }
+        if (added_for_pair > 0) {
+          ++result.term_pairs;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+FiniteDomainEvaluator::FiniteDomainEvaluator(core::TermManager& terms) : terms_(terms) {}
+
+FiniteDomainEvaluationResult FiniteDomainEvaluator::simplify(
+    const std::vector<core::TermId>& assertions) {
+  FiniteDomainEvaluationResult result;
+  result.assertions.reserve(assertions.size());
+  const auto disequalities = collect_disequalities(terms_, assertions);
+  const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
+  if (choices.empty()) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  std::vector<std::pair<core::TermId, core::TermId>> unit_equalities;
+  for (const core::TermId assertion : assertions) {
+    collect_unit_equalities_list(terms_, assertion, unit_equalities);
+  }
+  FiniteDomainEvaluationState state(terms_, choices, std::move(unit_equalities));
+  for (const core::TermId assertion : assertions) {
+    result.assertions.push_back(
+        simplify_with_finite_domain_evaluation(terms_, assertion, state, result));
+  }
+  return result;
+}
+
+CongruenceDefinitionGenerator::CongruenceDefinitionGenerator(core::TermManager& terms)
+    : terms_(terms) {}
+
+CongruenceDefinitionResult CongruenceDefinitionGenerator::generate(
+    const std::vector<core::TermId>& assertions) {
+  // Bradley and Manna's ground EUF calculus includes the congruence axiom:
+  // equal arguments to the same uninterpreted function have equal results. The
+  // lazy EUF solver can discover this, but PEQ/NEQ table benchmarks benefit
+  // from a bounded SAT-visible subset over applications already present in the
+  // formula. No fresh terms are invented.
+  CongruenceDefinitionResult result;
+  std::unordered_set<core::TermId> seen;
+  std::unordered_map<core::SymbolId, std::vector<core::TermId>> groups;
+  for (const core::TermId assertion : assertions) {
+    collect_applications(terms_, assertion, seen, groups);
+  }
+
+  std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
+  for (auto& [symbol, applications] : groups) {
+    (void)symbol;
+    std::sort(applications.begin(), applications.end());
+    applications.erase(std::unique(applications.begin(), applications.end()), applications.end());
+    if (applications.size() < 2) {
+      continue;
+    }
+    ++result.groups;
+    bool skipped = false;
+    for (std::size_t i = 0; i < applications.size() && !skipped; ++i) {
+      for (std::size_t j = i + 1; j < applications.size(); ++j) {
+        if (result.clauses.size() >= kMaxCongruenceDefinitionClauses) {
+          skipped = true;
+          break;
+        }
+        const core::TermId clause =
+            congruence_definition_clause(terms_, applications[i], applications[j]);
+        if (emitted.insert(clause).second) {
+          result.clauses.push_back(clause);
+        }
+      }
+    }
+    if (skipped) {
+      ++result.skipped_groups;
+      break;
+    }
+  }
+  return result;
 }
 
 UfSymmetryBreaker::UfSymmetryBreaker(core::TermManager& terms) : terms_(terms) {}

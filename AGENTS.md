@@ -87,6 +87,13 @@ In particular:
 
 ## Coding practices
 
+- Do not stop at a partial milestone when following an explicit implementation
+  plan. Continue through implementation, verification, documentation, and
+  evaluation until the plan is complete, or until there is an obvious roadblock
+  such as a missing required paper, unavailable benchmark data, inaccessible
+  cluster, failing dependency install, or a correctness failure that needs a
+  design decision from the user. If a roadblock occurs, state the concrete
+  blocker and the last completed verification.
 - Use C++20.
 - Keep C++ source formatted with `clang-format` using the repository `.clang-format`.
 - Keep Python scripts runnable with the standard library unless a dependency is documented.

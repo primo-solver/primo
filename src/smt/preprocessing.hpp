@@ -29,6 +29,68 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
                                                     std::size_t* consequences_added = nullptr);
 
+struct FiniteDomainAtMostOneResult {
+  std::vector<core::TermId> clauses;
+  std::size_t domains = 0;
+};
+
+class FiniteDomainAtMostOne {
+ public:
+  explicit FiniteDomainAtMostOne(core::TermManager& terms);
+
+  FiniteDomainAtMostOneResult generate(const std::vector<core::TermId>& assertions);
+
+ private:
+  core::TermManager& terms_;
+};
+
+struct FiniteDomainEqualityDefinitionsResult {
+  std::vector<core::TermId> clauses;
+  std::size_t term_pairs = 0;
+};
+
+class FiniteDomainEqualityDefinitions {
+ public:
+  explicit FiniteDomainEqualityDefinitions(core::TermManager& terms);
+
+  FiniteDomainEqualityDefinitionsResult generate(const std::vector<core::TermId>& assertions);
+
+ private:
+  core::TermManager& terms_;
+};
+
+struct CongruenceDefinitionResult {
+  std::vector<core::TermId> clauses;
+  std::size_t groups = 0;
+  std::size_t skipped_groups = 0;
+};
+
+class CongruenceDefinitionGenerator {
+ public:
+  explicit CongruenceDefinitionGenerator(core::TermManager& terms);
+
+  CongruenceDefinitionResult generate(const std::vector<core::TermId>& assertions);
+
+ private:
+  core::TermManager& terms_;
+};
+
+struct FiniteDomainEvaluationResult {
+  std::vector<core::TermId> assertions;
+  std::size_t equalities_simplified = 0;
+  std::size_t enumeration_cutoffs = 0;
+};
+
+class FiniteDomainEvaluator {
+ public:
+  explicit FiniteDomainEvaluator(core::TermManager& terms);
+
+  FiniteDomainEvaluationResult simplify(const std::vector<core::TermId>& assertions);
+
+ private:
+  core::TermManager& terms_;
+};
+
 struct UfSymmetryBreakingResult {
   std::vector<core::TermId> constraints;
   std::size_t accepted_sets = 0;
