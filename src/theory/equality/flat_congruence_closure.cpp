@@ -49,8 +49,8 @@ FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count) {
 
 std::size_t FlatCongruenceClosure::push() {
   snapshots_.push_back(Snapshot{parent_, class_size_, class_members_, use_lists_, definitions_,
-                                definition_by_result_, lookup_, pending_, disequalities_, edges_,
-                                edge_adjacency_, conflict_, stats_});
+                                definition_by_result_, lookup_, pending_, disequalities_,
+                                disequality_by_repr_, edges_, edge_adjacency_, conflict_, stats_});
   return snapshots_.size() - 1;
 }
 
@@ -69,6 +69,7 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   lookup_ = std::move(snapshot.lookup);
   pending_ = std::move(snapshot.pending);
   disequalities_ = std::move(snapshot.disequalities);
+  disequality_by_repr_ = std::move(snapshot.disequality_by_repr);
   edges_ = std::move(snapshot.edges);
   edge_adjacency_ = std::move(snapshot.edge_adjacency);
   conflict_ = std::move(snapshot.conflict);
@@ -86,6 +87,7 @@ void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {
   class_size_.resize(node_count, 1);
   class_members_.resize(node_count);
   use_lists_.resize(node_count);
+  disequality_by_repr_.resize(node_count);
   edge_adjacency_.resize(node_count);
   for (std::size_t i = old_size; i < node_count; ++i) {
     parent_[i] = i;
@@ -125,7 +127,14 @@ void FlatCongruenceClosure::assert_equal(FlatTermId lhs, FlatTermId rhs,
 void FlatCongruenceClosure::assert_distinct(FlatTermId lhs, FlatTermId rhs,
                                             std::vector<sat::Lit> reason) {
   ensure_node_count(std::max(lhs, rhs) + 1);
+  const std::size_t index = disequalities_.size();
   disequalities_.push_back(Disequality{lhs, rhs, std::move(reason)});
+  const FlatTermId lhs_repr = representative(lhs);
+  const FlatTermId rhs_repr = representative(rhs);
+  watch_disequality(index, lhs_repr);
+  if (rhs_repr != lhs_repr) {
+    watch_disequality(index, rhs_repr);
+  }
   check_disequality(disequalities_.back());
 }
 
@@ -191,7 +200,9 @@ void FlatCongruenceClosure::merge_classes(FlatTermId lhs, FlatTermId rhs,
     ++stats_.congruence_merges;
   }
   process_use_list(lhs_repr, rhs_repr);
-  check_disequalities();
+  std::vector<std::size_t> watched = disequality_by_repr_[lhs_repr];
+  move_disequality_watches(lhs_repr, rhs_repr);
+  check_disequality_indices(watched);
 }
 
 void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new_repr) {
@@ -219,6 +230,23 @@ void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new
   }
 }
 
+void FlatCongruenceClosure::watch_disequality(std::size_t disequality_index, FlatTermId repr) {
+  std::vector<std::size_t>& watches = disequality_by_repr_[repr];
+  if (std::find(watches.begin(), watches.end(), disequality_index) == watches.end()) {
+    watches.push_back(disequality_index);
+  }
+}
+
+void FlatCongruenceClosure::move_disequality_watches(FlatTermId old_repr, FlatTermId new_repr) {
+  if (old_repr == new_repr) {
+    return;
+  }
+  for (const std::size_t disequality_index : disequality_by_repr_[old_repr]) {
+    watch_disequality(disequality_index, new_repr);
+  }
+  disequality_by_repr_[old_repr].clear();
+}
+
 bool FlatCongruenceClosure::check_disequality(const Disequality& disequality) {
   if (conflict_.has_value()) {
     return true;
@@ -236,12 +264,29 @@ bool FlatCongruenceClosure::check_disequality(const Disequality& disequality) {
   return true;
 }
 
+bool FlatCongruenceClosure::check_disequality_index(std::size_t disequality_index) {
+  if (disequality_index >= disequalities_.size()) {
+    throw std::out_of_range("flat congruence closure disequality index out of range");
+  }
+  return check_disequality(disequalities_[disequality_index]);
+}
+
+bool FlatCongruenceClosure::check_disequality_indices(
+    const std::vector<std::size_t>& disequality_indices) {
+  for (const std::size_t disequality_index : disequality_indices) {
+    if (check_disequality_index(disequality_index)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void FlatCongruenceClosure::check_disequalities() {
   if (conflict_.has_value()) {
     return;
   }
-  for (const Disequality& disequality : disequalities_) {
-    if (check_disequality(disequality)) {
+  for (std::size_t i = 0; i < disequalities_.size(); ++i) {
+    if (check_disequality_index(i)) {
       return;
     }
   }

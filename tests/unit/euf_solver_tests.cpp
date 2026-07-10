@@ -304,6 +304,23 @@ void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
   assert(closure.stats().backtracks == 1);
 }
 
+void flat_congruence_closure_checks_only_watched_disequalities_after_merge() {
+  FlatCongruenceClosure closure(8);
+  closure.assert_distinct(0, 1, {primo::sat::Lit{-10}});
+  closure.assert_distinct(2, 3, {primo::sat::Lit{-11}});
+  closure.assert_distinct(4, 5, {primo::sat::Lit{-12}});
+  closure.assert_distinct(6, 7, {primo::sat::Lit{-13}});
+  assert(closure.stats().disequality_checks == 4);
+
+  closure.assert_equal(0, 1, {primo::sat::Lit{-20}});
+
+  const auto conflict = closure.conflict();
+  assert(conflict.has_value());
+  assert(conflict->size() == 2);
+  assert(closure.stats().disequality_checks == 5);
+  assert(closure.stats().conflicts == 1);
+}
+
 }  // namespace
 
 int main() {
@@ -319,5 +336,6 @@ int main() {
   flat_terms_share_nested_subterms_and_flatten_equalities();
   flat_congruence_closure_uses_curried_definitions();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
+  flat_congruence_closure_checks_only_watched_disequalities_after_merge();
   return 0;
 }

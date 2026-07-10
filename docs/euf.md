@@ -132,10 +132,16 @@ definitions and maps original equality atoms to flat endpoints.
 lookup, pending-merge, disequality, explanation, and coarse backtracking
 structure over those flat definitions. Explanation edges are stored both in
 insertion order and in per-flat-term adjacency lists so reason BFS visits only
-edges incident to the current proof-graph node. A newly asserted disequality is
-checked immediately, while older disequalities are rescanned only after a class
-merge can make a previously satisfied disequality inconsistent. This is the
-engine used by `--euf-engine=incremental`.
+edges incident to the current proof-graph node. Disequalities are stored once in
+`disequalities_` and watched from the current representatives of their
+endpoints in `disequality_by_repr_`. A newly asserted disequality is checked
+immediately. After a class merge, only disequalities watched by the absorbed
+representative are rechecked: these are the only disequalities that can newly
+become inconsistent by merging the two classes. The old representative's watch
+list is then moved to the new representative. Coarse snapshots include the watch
+lists, so backtracking restores the same watched-disequality invariant as the
+rest of the closure state. This is the engine used by
+`--euf-engine=incremental`.
 
 ## EufSolver
 
