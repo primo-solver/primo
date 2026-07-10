@@ -12,6 +12,7 @@ enum class QfUfPreprocessMode {
   Off,
   Basic,
   Strong,
+  Auto,
 };
 
 enum class EufPropagationMode {

@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
   std::vector<std::string> files;
   bool quiet = false;
   bool print_stats = false;
-  std::string qf_uf_preprocess = "strong";
+  std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
   std::string euf_engine = "incremental";
   std::string euf_prop = "off";
@@ -102,8 +102,8 @@ int main(int argc, char** argv) {
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
-                 "QF_UF preprocessing preset: off, basic, or strong")
-      ->check(CLI::IsMember({"off", "basic", "strong"}));
+                 "QF_UF preprocessing preset: off, basic, strong, or auto")
+      ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
   CLI::Option* profile_option = app.add_option("--qf-uf-profile", qf_uf_profile,
                                                "QF_UF profile: default or tuned-interesting")
                                     ->check(CLI::IsMember({"default", "tuned-interesting"}));
@@ -143,6 +143,8 @@ int main(int argc, char** argv) {
     solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
   } else if (qf_uf_preprocess == "strong") {
     solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  } else if (qf_uf_preprocess == "auto") {
+    solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
   } else {
     solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Basic;
   }

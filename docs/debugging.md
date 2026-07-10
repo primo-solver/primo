@@ -29,6 +29,8 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.uf-symmetry.accepted-sets`;
 - `:preprocessing.uf-symmetry.constraints`;
 - `:preprocessing.uf-symmetry.rejected-noninvariant`;
+- `:preprocessing.auto.single-assertion`;
+- `:preprocessing.auto.strong`;
 - `:solver.boolean`;
 - `:solver.qf-uf`;
 - `:sat.solve-calls`;

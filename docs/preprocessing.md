@@ -1,13 +1,16 @@
 # Preprocessing
 
 Primo currently exposes QF_UF preprocessing through
-`--qf-uf-preprocess=off|basic|strong`. The default is `strong`.
+`--qf-uf-preprocess=off|basic|strong|auto`. The CLI default is `auto`.
 
 - `off` disables the preprocessing loop;
 - `basic` runs one pass of unit equality propagation;
 - `strong` enables repeated preprocessing, equality bridging, finite-domain
   at-most-one clauses, finite-domain equality definitions, and finite-domain
-  symmetry breaking.
+  symmetry breaking;
+- `auto` keeps equality bridging for single-assertion formulas but skips the
+  finite-domain clause expansion there, while multi-assertion formulas use the
+  `strong` pipeline.
 
 The exact `interesting.html` reproduction profile is:
 
@@ -43,6 +46,7 @@ reproducing narrower configurations:
 
 ```bash
 ./build/primo --qf-uf-preprocess=off input.smt2
+./build/primo --qf-uf-preprocess=auto input.smt2
 ./build/primo --qf-uf-preprocess=strong input.smt2
 ./build/primo --eq-bridge input.smt2
 ./build/primo --uf-symmetry-breaking input.smt2
@@ -53,6 +57,14 @@ reproducing narrower configurations:
 These passes are deliberately separate from the SAT backend. They create
 additional Boolean assertions over ordinary equality terms, then the existing
 Boolean clausifier and lazy EUF loop solve the strengthened formula.
+
+The `auto` preset is a dispatcher between existing sound subsets, not a new
+inference rule. It was added after QF_UF archive profiling showed that
+single-assertion finite-model encodings such as NEQ, PEQ, and SEQ can be slowed
+by thousands of finite-domain equality-definition clauses, while
+multi-assertion QG instances often need those clauses. Single-assertion formulas
+still run equality bridging with repeated unit-equality propagation so
+`eq_diamond`-style chains keep the fast bridge path.
 
 Unit equality propagation runs after optional generated preprocessing facts are
 appended. It collects equalities asserted at top level, including equalities
@@ -229,7 +241,8 @@ assertions.
 
 Implemented:
 
-- preset CLI option `--qf-uf-preprocess=off|basic|strong`;
+- preset CLI option `--qf-uf-preprocess=off|basic|strong|auto`;
+- CLI-default `auto` preprocessing dispatcher;
 - equality bridging under disjunctions;
 - unit equality propagation from top-level equalities;
 - configurable repeated preprocessing loop with `--preprocessing-passes`;
@@ -252,6 +265,9 @@ Deferred:
 - finite-domain equality evaluation in the strong preset. A prototype evaluator
   exists as an internal utility, but it remains disabled because unguarded
   equality simplification can be unsound on PEQ-like cases;
+- a semantic finite-model profile selector. The current `auto` dispatcher uses
+  assertion shape only and must be judged by full-archive SLURM results, not by
+  individual local timings;
 - enabling `--ground-congruence` in the tuned profile. Exact-set evaluation
   regressed from 2 solved rows to 1 solved row on SLURM job 108936, so the
   clause generator remains explicit opt-in pending a better filter;

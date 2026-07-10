@@ -65,6 +65,8 @@ constexpr std::string_view kStatUfSymmetryAcceptedSets = ":preprocessing.uf-symm
 constexpr std::string_view kStatUfSymmetryConstraints = ":preprocessing.uf-symmetry.constraints";
 constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
     ":preprocessing.uf-symmetry.rejected-noninvariant";
+constexpr std::string_view kStatAutoSingleAssertion = ":preprocessing.auto.single-assertion";
+constexpr std::string_view kStatAutoStrong = ":preprocessing.auto.strong";
 constexpr std::string_view kStatSolverBoolean = ":solver.boolean";
 constexpr std::string_view kStatSolverQfUf = ":solver.qf-uf";
 constexpr std::string_view kStatSatSolveCalls = ":sat.solve-calls";
@@ -746,6 +748,18 @@ struct FlatAssignedTheoryAtom {
   theory::equality::FlatTermId rhs = theory::equality::kInvalidFlatTermId;
 };
 
+struct PreparedFlatTheory {
+  PreparedFlatTheory(const core::TermManager& terms,
+                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                     core::TermId true_term, core::TermId false_term);
+
+  theory::equality::FlatTermIndex flat;
+  theory::equality::FlatCongruenceClosure base_closure;
+  theory::equality::FlatTermId true_flat = theory::equality::kInvalidFlatTermId;
+  theory::equality::FlatTermId false_flat = theory::equality::kInvalidFlatTermId;
+  std::vector<FlatAssignedTheoryAtom> flat_atoms;
+};
+
 FlatAssignedTheoryAtom flatten_assigned_atom(theory::equality::FlatTermIndex& flat,
                                              const core::TermManager& terms,
                                              const AssignedTheoryAtom& atom,
@@ -762,6 +776,25 @@ FlatAssignedTheoryAtom flatten_assigned_atom(theory::equality::FlatTermIndex& fl
     return FlatAssignedTheoryAtom{atom, false, flat.flatten(atom.term), false_flat};
   }
   throw UnsupportedInput("unsupported theory atom");
+}
+
+PreparedFlatTheory::PreparedFlatTheory(
+    const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+    core::TermId true_term, core::TermId false_term)
+    : flat(terms), base_closure(0) {
+  true_flat = flat.flatten(true_term);
+  false_flat = flat.flatten(false_term);
+  flat_atoms.reserve(theory_atoms.size());
+  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
+    flat_atoms.push_back(flatten_assigned_atom(
+        flat, terms, AssignedTheoryAtom{atom.lit.value, false, atom.term}, false_flat));
+  }
+
+  base_closure.ensure_node_count(flat.size());
+  for (const theory::equality::FlatDefinition& definition : flat.definitions()) {
+    base_closure.add_definition(definition);
+  }
+  base_closure.assert_distinct(true_flat, false_flat);
 }
 
 void assert_flat_assigned_atom(theory::equality::FlatCongruenceClosure& closure,
@@ -1355,25 +1388,17 @@ std::optional<sat::Clause> find_theory_conflict(const core::TermManager& terms,
 }
 
 std::optional<sat::Clause> find_incremental_theory_conflict(
-    const core::TermManager& terms, const std::vector<AssignedTheoryAtom>& atoms,
-    core::TermId true_term, core::TermId false_term, util::Statistics& statistics) {
-  theory::equality::FlatTermIndex flat(terms);
-  const theory::equality::FlatTermId true_flat = flat.flatten(true_term);
-  const theory::equality::FlatTermId false_flat = flat.flatten(false_term);
-  std::vector<FlatAssignedTheoryAtom> flat_atoms;
-  flat_atoms.reserve(atoms.size());
-
-  for (const AssignedTheoryAtom& atom : atoms) {
-    flat_atoms.push_back(flatten_assigned_atom(flat, terms, atom, false_flat));
+    const PreparedFlatTheory& prepared, const std::vector<AssignedTheoryAtom>& atoms,
+    util::Statistics& statistics) {
+  if (atoms.size() != prepared.flat_atoms.size()) {
+    throw UnsupportedInput("internal theory atom mapping mismatch");
   }
 
-  theory::equality::FlatCongruenceClosure closure(flat.size());
-  for (const theory::equality::FlatDefinition& definition : flat.definitions()) {
-    closure.add_definition(definition);
-  }
-  closure.assert_distinct(true_flat, false_flat);
-  for (const FlatAssignedTheoryAtom& atom : flat_atoms) {
-    assert_flat_assigned_atom(closure, atom, true_flat, false_flat);
+  theory::equality::FlatCongruenceClosure closure = prepared.base_closure;
+  for (std::size_t i = 0; i < prepared.flat_atoms.size(); ++i) {
+    FlatAssignedTheoryAtom atom = prepared.flat_atoms[i];
+    atom.source.value = atoms[i].value;
+    assert_flat_assigned_atom(closure, atom, prepared.true_flat, prepared.false_flat);
     if (closure.conflict().has_value()) {
       break;
     }
@@ -1399,6 +1424,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   const core::TermId true_term = terms.mk_bool(true);
   const core::TermId false_term = terms.mk_bool(false);
   std::unordered_set<std::string> learned_model_propagations;
+  std::optional<PreparedFlatTheory> prepared_flat_theory;
+  if (options.euf_engine == EufEngine::Incremental) {
+    prepared_flat_theory.emplace(terms, clausifier.theory_atoms(), true_term, false_term);
+  }
 
 #if PRIMO_HAVE_IPASIR
   std::optional<OnlineEufPropagator> online_propagator;
@@ -1462,7 +1491,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 
     std::optional<sat::Clause> conflict_clause =
         options.euf_engine == EufEngine::Incremental
-            ? find_incremental_theory_conflict(terms, assigned_atoms, true_term, false_term,
+            ? find_incremental_theory_conflict(prepared_flat_theory.value(), assigned_atoms,
                                                statistics)
             : find_theory_conflict(terms, assigned_atoms, true_term, false_term);
     if (!conflict_clause.has_value()) {
@@ -1499,6 +1528,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatUfSymmetryAcceptedSets, 0);
   statistics.set(kStatUfSymmetryConstraints, 0);
   statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
+  statistics.set(kStatAutoSingleAssertion, 0);
+  statistics.set(kStatAutoStrong, 0);
   statistics.set(kStatSolverBoolean, 0);
   statistics.set(kStatSolverQfUf, 0);
   statistics.set(kStatSatSolveCalls, 0);
@@ -1541,17 +1572,29 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command", statistics};
     }
 
-    const bool strong_preprocessing = options.qf_uf_preprocess == QfUfPreprocessMode::Strong;
+    const bool auto_single_assertion =
+        options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() <= 1;
+    const bool auto_strong =
+        options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() > 1;
+    if (auto_single_assertion) {
+      statistics.increment(kStatAutoSingleAssertion);
+    }
+    if (auto_strong) {
+      statistics.increment(kStatAutoStrong);
+    }
+    const bool strong_preprocessing =
+        options.qf_uf_preprocess == QfUfPreprocessMode::Strong || auto_strong;
     const bool preprocessing_enabled = options.qf_uf_preprocess != QfUfPreprocessMode::Off;
-    const bool use_eq_bridge = options.eq_bridge || strong_preprocessing;
+    const bool use_eq_bridge = options.eq_bridge || strong_preprocessing || auto_single_assertion;
     const bool use_finite_domain_evaluation = false;
     const bool use_finite_domain_amo = strong_preprocessing;
     const bool use_finite_domain_equality_definitions = strong_preprocessing;
     const bool use_ground_congruence_definitions = options.ground_congruence;
     const bool use_symmetry_breaking = options.uf_symmetry_breaking || strong_preprocessing;
     const std::size_t preprocessing_passes =
-        strong_preprocessing ? std::max<std::size_t>(options.preprocessing_passes, 3)
-                             : options.preprocessing_passes;
+        (strong_preprocessing || auto_single_assertion)
+            ? std::max<std::size_t>(options.preprocessing_passes, 3)
+            : options.preprocessing_passes;
 
     if (use_symmetry_breaking) {
       UfSymmetryBreaker symmetry_breaker(frontend.terms());

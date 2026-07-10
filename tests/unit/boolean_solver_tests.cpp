@@ -331,6 +331,35 @@ void equality_bridge_solves_diamond_chain() {
   assert(result.statistics.get(":solver.qf-uf") == 1);
 }
 
+void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun x0 () A)
+    (declare-fun y0 () A)
+    (declare-fun z0 () A)
+    (declare-fun x1 () A)
+    (declare-fun y1 () A)
+    (declare-fun z1 () A)
+    (declare-fun x2 () A)
+    (assert (and
+      (or (and (= x0 y0) (= y0 x1)) (and (= x0 z0) (= z0 x1)))
+      (or (and (= x1 y1) (= y1 x2)) (and (= x1 z1) (= z1 x2)))
+      (not (= x0 x2))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":preprocessing.auto.single-assertion") == 1);
+  assert(result.statistics.get(":preprocessing.auto.strong") == 0);
+  assert(result.statistics.get(":preprocessing.eq-bridge.equalities") >= 2);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 0);
+  assert(result.statistics.get(":preprocessing.equality-definitions") == 0);
+}
+
 void preprocessing_off_disables_basic_loop() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
@@ -367,6 +396,29 @@ void strong_preprocessing_enables_finite_domain_amo() {
   assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
   assert(result.statistics.get(":preprocessing.ground-congruence-clauses") == 0);
   assert(result.statistics.get(":euf.propagation.rounds") == 0);
+}
+
+void auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.single-assertion") == 0);
+  assert(result.statistics.get(":preprocessing.auto.strong") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
 }
 
 void strong_preprocessing_enables_ground_congruence_clauses() {
@@ -633,8 +685,10 @@ int main() {
   true_boolean_constant_used_as_uf_argument_is_euf_term();
   false_boolean_constant_used_as_uf_argument_is_euf_term();
   equality_bridge_solves_diamond_chain();
+  auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
   preprocessing_off_disables_basic_loop();
   strong_preprocessing_enables_finite_domain_amo();
+  auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions();
   strong_preprocessing_enables_ground_congruence_clauses();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();

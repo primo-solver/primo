@@ -152,11 +152,15 @@ premises.
 
 ## Preprocessing Interaction
 
-The default `--qf-uf-preprocess=strong` pass runs before QF_UF solving. It
-appends bridge equalities, finite-domain at-most-one clauses, finite-domain
-equality definitions, and value-precedence assertions when their recognizers can
-prove the required local conditions. `--qf-uf-preprocess=basic` keeps only the
-unit-equality simplification subset, and `off` disables this loop.
+The CLI default `--qf-uf-preprocess=auto` pass runs before QF_UF solving. On
+single-assertion formulas it runs equality bridging and unit-equality
+simplification but skips finite-domain clause expansion. On multi-assertion
+formulas it uses the `strong` pipeline, which appends bridge equalities,
+finite-domain at-most-one clauses, finite-domain equality definitions, and
+value-precedence assertions when their recognizers can prove the required local
+conditions. `--qf-uf-preprocess=basic` keeps only the unit-equality
+simplification subset, `strong` always enables the full finite-domain pipeline,
+and `off` disables this loop.
 `--ground-congruence` additionally enables bounded ground-congruence clauses.
 These generated assertions are then handled by the same Boolean clausifier and
 congruence-closure loop as ordinary user assertions. `--uf-symmetry-breaking`
@@ -188,7 +192,7 @@ Implemented:
   budgets;
 - experimental online EUF propagation through CaDiCaL observed-variable
   callbacks;
-- basic QF_UF preprocessing by default;
+- auto QF_UF preprocessing by default;
 - strong preset with finite-domain AMO clauses, equality-definition clauses,
   default-off UF symmetry breaking, and opt-in bounded ground-congruence
   clauses.
