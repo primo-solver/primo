@@ -276,6 +276,32 @@ void term_ite_is_eliminated() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void true_boolean_constant_used_as_uf_argument_is_euf_term() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun f (Bool) U)
+    (assert p)
+    (assert (not (= (f p) (f true))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void false_boolean_constant_used_as_uf_argument_is_euf_term() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun f (Bool) U)
+    (assert (not p))
+    (assert (not (= (f p) (f false))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void equality_bridge_solves_diamond_chain() {
   primo::smt::CheckSatOptions options;
   options.eq_bridge = true;
@@ -386,6 +412,29 @@ void model_euf_propagation_learns_congruence_lemma() {
   assert(result.statistics.get(":euf.propagation.reason-lits") >= 1);
 }
 
+void incremental_model_euf_propagation_uses_flat_lookup() {
+  primo::smt::CheckSatOptions options;
+  options.euf_engine = primo::smt::EufEngine::Incremental;
+  options.euf_propagation = primo::smt::EufPropagationMode::Model;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (declare-fun p () Bool)
+    (assert (= a b))
+    (assert (or p (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+  assert(result.statistics.get(":euf.incremental.lookup-hits") >= 1);
+  assert(result.statistics.get(":euf.incremental.congruence-merges") >= 1);
+}
+
 void model_euf_propagation_handles_predicate_congruence() {
   primo::smt::CheckSatOptions options;
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
@@ -450,6 +499,30 @@ void online_euf_propagation_learns_congruence_during_search() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":euf.propagation.rounds") >= 1);
   assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+}
+
+void incremental_online_euf_propagation_uses_flat_lookup() {
+  primo::smt::CheckSatOptions options;
+  options.euf_engine = primo::smt::EufEngine::Incremental;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (or (= (f a) (f b)) (not (= (f a) (f b)))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+  assert(result.statistics.get(":euf.incremental.terms") >= 1);
+  assert(result.statistics.get(":euf.incremental.flat-definitions") >= 1);
+  assert(result.statistics.get(":euf.incremental.lookup-hits") >= 1);
+  assert(result.statistics.get(":euf.incremental.congruence-merges") >= 1);
 }
 
 void online_euf_propagation_handles_transitive_reasons() {
@@ -557,14 +630,18 @@ int main() {
   annotated_assertions_are_solved();
   boolean_ite_is_eliminated();
   term_ite_is_eliminated();
+  true_boolean_constant_used_as_uf_argument_is_euf_term();
+  false_boolean_constant_used_as_uf_argument_is_euf_term();
   equality_bridge_solves_diamond_chain();
   preprocessing_off_disables_basic_loop();
   strong_preprocessing_enables_finite_domain_amo();
   strong_preprocessing_enables_ground_congruence_clauses();
   model_euf_propagation_learns_congruence_lemma();
+  incremental_model_euf_propagation_uses_flat_lookup();
   model_euf_propagation_handles_predicate_congruence();
   model_euf_propagation_respects_zero_budget();
   online_euf_propagation_learns_congruence_during_search();
+  incremental_online_euf_propagation_uses_flat_lookup();
   online_euf_propagation_handles_transitive_reasons();
   online_euf_propagation_handles_predicate_congruence();
   online_euf_propagation_keeps_conflicts_external();

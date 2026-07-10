@@ -20,6 +20,11 @@ enum class EufPropagationMode {
   Online,
 };
 
+enum class EufEngine {
+  Lazy,
+  Incremental,
+};
+
 struct AutoBudget {
   enum class Kind {
     Auto,
@@ -46,6 +51,7 @@ struct CheckSatOutcome {
 
 struct CheckSatOptions {
   QfUfPreprocessMode qf_uf_preprocess = QfUfPreprocessMode::Basic;
+  EufEngine euf_engine = EufEngine::Incremental;
   EufPropagationMode euf_propagation = EufPropagationMode::Off;
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery;

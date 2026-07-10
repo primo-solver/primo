@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -279,37 +280,39 @@ void collect_unit_equalities(const core::TermManager& terms, core::TermId assert
 core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId term,
                                       theory::equality::CongruenceClosure& closure) {
   const core::Term& node = terms.get(term);
-  switch (node.kind) {
+  const core::TermKind kind = node.kind;
+  const std::vector<core::TermId> node_children = node.children;
+  switch (kind) {
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
       return term;
     case core::TermKind::Equality:
-      return closure.are_equal(node.children.at(0), node.children.at(1)) ? terms.mk_bool(true)
+      return closure.are_equal(node_children.at(0), node_children.at(1)) ? terms.mk_bool(true)
                                                                          : term;
     case core::TermKind::Not: {
-      const core::TermId child = simplify_with_congruence(terms, node.children.at(0), closure);
+      const core::TermId child = simplify_with_congruence(terms, node_children.at(0), closure);
       return terms.mk_not(child);
     }
     case core::TermKind::And: {
       std::vector<core::TermId> children;
-      children.reserve(node.children.size());
-      for (const core::TermId child : node.children) {
+      children.reserve(node_children.size());
+      for (const core::TermId child : node_children) {
         children.push_back(simplify_with_congruence(terms, child, closure));
       }
       return terms.mk_and(std::move(children));
     }
     case core::TermKind::Or: {
       std::vector<core::TermId> children;
-      children.reserve(node.children.size());
-      for (const core::TermId child : node.children) {
+      children.reserve(node_children.size());
+      for (const core::TermId child : node_children) {
         children.push_back(simplify_with_congruence(terms, child, closure));
       }
       return terms.mk_or(std::move(children));
     }
     case core::TermKind::Implies:
-      return terms.mk_implies(simplify_with_congruence(terms, node.children.at(0), closure),
-                              simplify_with_congruence(terms, node.children.at(1), closure));
+      return terms.mk_implies(simplify_with_congruence(terms, node_children.at(0), closure),
+                              simplify_with_congruence(terms, node_children.at(1), closure));
   }
   return term;
 }
@@ -858,14 +861,16 @@ core::TermId simplify_with_finite_domain_evaluation(core::TermManager& terms, co
                                                     const FiniteDomainEvaluationState& state,
                                                     FiniteDomainEvaluationResult& result) {
   const core::Term& node = terms.get(term);
-  switch (node.kind) {
+  const core::TermKind kind = node.kind;
+  const std::vector<core::TermId> node_children = node.children;
+  switch (kind) {
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
       return term;
     case core::TermKind::Equality: {
       bool cutoff = false;
-      if (state.always_equal(node.children.at(0), node.children.at(1), &cutoff)) {
+      if (state.always_equal(node_children.at(0), node_children.at(1), &cutoff)) {
         ++result.equalities_simplified;
         return terms.mk_bool(true);
       }
@@ -876,27 +881,27 @@ core::TermId simplify_with_finite_domain_evaluation(core::TermManager& terms, co
     }
     case core::TermKind::Not:
       return terms.mk_not(
-          simplify_with_finite_domain_evaluation(terms, node.children.at(0), state, result));
+          simplify_with_finite_domain_evaluation(terms, node_children.at(0), state, result));
     case core::TermKind::And: {
       std::vector<core::TermId> children;
-      children.reserve(node.children.size());
-      for (const core::TermId child : node.children) {
+      children.reserve(node_children.size());
+      for (const core::TermId child : node_children) {
         children.push_back(simplify_with_finite_domain_evaluation(terms, child, state, result));
       }
       return terms.mk_and(std::move(children));
     }
     case core::TermKind::Or: {
       std::vector<core::TermId> children;
-      children.reserve(node.children.size());
-      for (const core::TermId child : node.children) {
+      children.reserve(node_children.size());
+      for (const core::TermId child : node_children) {
         children.push_back(simplify_with_finite_domain_evaluation(terms, child, state, result));
       }
       return terms.mk_or(std::move(children));
     }
     case core::TermKind::Implies:
       return terms.mk_implies(
-          simplify_with_finite_domain_evaluation(terms, node.children.at(0), state, result),
-          simplify_with_finite_domain_evaluation(terms, node.children.at(1), state, result));
+          simplify_with_finite_domain_evaluation(terms, node_children.at(0), state, result),
+          simplify_with_finite_domain_evaluation(terms, node_children.at(1), state, result));
   }
   return term;
 }

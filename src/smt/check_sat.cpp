@@ -25,7 +25,10 @@
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/equality/congruence_stats.hpp"
 #include "theory/equality/explained_congruence_closure.hpp"
+#include "theory/equality/flat_congruence_closure.hpp"
+#include "theory/equality/flat_terms.hpp"
 #include "util/statistics.hpp"
 
 #if PRIMO_HAVE_IPASIR
@@ -76,6 +79,19 @@ constexpr std::string_view kStatEufPropagationBudget = ":euf.propagation.budget"
 constexpr std::string_view kStatEufPropagationDeliveryBudget = ":euf.propagation.delivery-budget";
 constexpr std::string_view kStatEufPropagationBudgetCutoffs = ":euf.propagation.budget-cutoffs";
 constexpr std::string_view kStatEufPropagationHitRateCutoffs = ":euf.propagation.hit-rate-cutoffs";
+constexpr std::string_view kStatEufIncrementalTerms = ":euf.incremental.terms";
+constexpr std::string_view kStatEufIncrementalFlatDefinitions = ":euf.incremental.flat-definitions";
+constexpr std::string_view kStatEufIncrementalMerges = ":euf.incremental.merges";
+constexpr std::string_view kStatEufIncrementalPendingPops = ":euf.incremental.pending-pops";
+constexpr std::string_view kStatEufIncrementalLookupProbes = ":euf.incremental.lookup-probes";
+constexpr std::string_view kStatEufIncrementalLookupHits = ":euf.incremental.lookup-hits";
+constexpr std::string_view kStatEufIncrementalCongruenceMerges =
+    ":euf.incremental.congruence-merges";
+constexpr std::string_view kStatEufIncrementalDisequalityChecks =
+    ":euf.incremental.disequality-checks";
+constexpr std::string_view kStatEufIncrementalConflicts = ":euf.incremental.conflicts";
+constexpr std::string_view kStatEufIncrementalExplainLength = ":euf.incremental.explain-length";
+constexpr std::string_view kStatEufIncrementalBacktracks = ":euf.incremental.backtracks";
 
 class UnsupportedInput : public std::runtime_error {
  public:
@@ -474,6 +490,10 @@ class BooleanClausifier {
     }
     const sat::Lit lit{backend_.new_var()};
     lit_by_term_.emplace(term_id, lit);
+    const core::Term& term = terms_.get(term_id);
+    if (term.kind == core::TermKind::Constant && term.sort == terms_.symbols().bool_sort()) {
+      theory_atoms_.push_back(TheoryAtom{lit, term_id});
+    }
     return lit;
   }
 
@@ -588,7 +608,48 @@ bool add_explained_theory_equality(theory::equality::ExplainedCongruenceClosure&
     closure.assert_equal(atom.term, atom.value ? true_term : false_term, {blocking_lit(atom)});
     return true;
   }
+  if (term.kind == core::TermKind::Constant && term.sort == terms.symbols().bool_sort()) {
+    closure.assert_equal(atom.term, atom.value ? true_term : false_term, {blocking_lit(atom)});
+    return true;
+  }
   return false;
+}
+
+void add_incremental_stats(util::Statistics& statistics,
+                           const theory::equality::IncrementalCongruenceClosureStats& stats) {
+  statistics.increment(kStatEufIncrementalTerms, stats.terms);
+  statistics.increment(kStatEufIncrementalFlatDefinitions, stats.flat_definitions);
+  statistics.increment(kStatEufIncrementalMerges, stats.merges);
+  statistics.increment(kStatEufIncrementalPendingPops, stats.pending_pops);
+  statistics.increment(kStatEufIncrementalLookupProbes, stats.lookup_probes);
+  statistics.increment(kStatEufIncrementalLookupHits, stats.lookup_hits);
+  statistics.increment(kStatEufIncrementalCongruenceMerges, stats.congruence_merges);
+  statistics.increment(kStatEufIncrementalDisequalityChecks, stats.disequality_checks);
+  statistics.increment(kStatEufIncrementalConflicts, stats.conflicts);
+  statistics.increment(kStatEufIncrementalExplainLength, stats.explain_length);
+  statistics.increment(kStatEufIncrementalBacktracks, stats.backtracks);
+}
+
+std::size_t positive_delta(std::size_t current, std::size_t previous) {
+  return current >= previous ? current - previous : 0;
+}
+
+theory::equality::IncrementalCongruenceClosureStats stats_delta(
+    const theory::equality::IncrementalCongruenceClosureStats& lhs,
+    const theory::equality::IncrementalCongruenceClosureStats& rhs) {
+  return theory::equality::IncrementalCongruenceClosureStats{
+      positive_delta(lhs.terms, rhs.terms),
+      positive_delta(lhs.flat_definitions, rhs.flat_definitions),
+      positive_delta(lhs.merges, rhs.merges),
+      positive_delta(lhs.pending_pops, rhs.pending_pops),
+      positive_delta(lhs.lookup_probes, rhs.lookup_probes),
+      positive_delta(lhs.lookup_hits, rhs.lookup_hits),
+      positive_delta(lhs.congruence_merges, rhs.congruence_merges),
+      positive_delta(lhs.disequality_checks, rhs.disequality_checks),
+      positive_delta(lhs.conflicts, rhs.conflicts),
+      positive_delta(lhs.explain_length, rhs.explain_length),
+      positive_delta(lhs.backtracks, rhs.backtracks),
+  };
 }
 
 std::optional<std::size_t> resolve_budget(AutoBudget budget, std::size_t theory_atoms) {
@@ -641,6 +702,9 @@ std::optional<std::vector<sat::Lit>> candidate_explanation(
   if (term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort()) {
     return closure.explain_equal(atom.term, atom.value ? true_term : false_term);
   }
+  if (term.kind == core::TermKind::Constant && term.sort == terms.symbols().bool_sort()) {
+    return closure.explain_equal(atom.term, atom.value ? true_term : false_term);
+  }
   throw UnsupportedInput("unsupported theory atom");
 }
 
@@ -675,6 +739,196 @@ std::optional<sat::Clause> model_propagation_clause_for(
   return reason;
 }
 
+struct FlatAssignedTheoryAtom {
+  AssignedTheoryAtom source;
+  bool equality = false;
+  theory::equality::FlatTermId lhs = theory::equality::kInvalidFlatTermId;
+  theory::equality::FlatTermId rhs = theory::equality::kInvalidFlatTermId;
+};
+
+FlatAssignedTheoryAtom flatten_assigned_atom(theory::equality::FlatTermIndex& flat,
+                                             const core::TermManager& terms,
+                                             const AssignedTheoryAtom& atom,
+                                             theory::equality::FlatTermId false_flat) {
+  const core::Term& term = terms.get(atom.term);
+  if (term.kind == core::TermKind::Equality) {
+    return FlatAssignedTheoryAtom{atom, true, flat.flatten(term.children.at(0)),
+                                  flat.flatten(term.children.at(1))};
+  }
+  if (term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort()) {
+    return FlatAssignedTheoryAtom{atom, false, flat.flatten(atom.term), false_flat};
+  }
+  if (term.kind == core::TermKind::Constant && term.sort == terms.symbols().bool_sort()) {
+    return FlatAssignedTheoryAtom{atom, false, flat.flatten(atom.term), false_flat};
+  }
+  throw UnsupportedInput("unsupported theory atom");
+}
+
+void assert_flat_assigned_atom(theory::equality::FlatCongruenceClosure& closure,
+                               const FlatAssignedTheoryAtom& atom,
+                               theory::equality::FlatTermId true_flat,
+                               theory::equality::FlatTermId false_flat) {
+  if (atom.equality) {
+    if (atom.source.value) {
+      closure.assert_equal(atom.lhs, atom.rhs, {blocking_lit(atom.source)});
+    } else {
+      closure.assert_distinct(atom.lhs, atom.rhs, {blocking_lit(atom.source)});
+    }
+    return;
+  }
+  closure.assert_equal(atom.lhs, atom.source.value ? true_flat : false_flat,
+                       {blocking_lit(atom.source)});
+}
+
+std::optional<std::vector<sat::Lit>> flat_candidate_explanation(
+    theory::equality::FlatCongruenceClosure& closure, const FlatAssignedTheoryAtom& atom,
+    theory::equality::FlatTermId true_flat, theory::equality::FlatTermId false_flat) {
+  if (atom.equality) {
+    if (!atom.source.value) {
+      return std::nullopt;
+    }
+    return closure.explain_equal(atom.lhs, atom.rhs);
+  }
+  return closure.explain_equal(atom.lhs, atom.source.value ? true_flat : false_flat);
+}
+
+std::optional<sat::Clause> flat_model_propagation_clause_for(
+    const core::TermManager& terms, const std::vector<AssignedTheoryAtom>& atoms,
+    std::size_t candidate_index, core::TermId true_term, core::TermId false_term,
+    util::Statistics* statistics) {
+  theory::equality::FlatTermIndex flat(terms);
+  const theory::equality::FlatTermId true_flat = flat.flatten(true_term);
+  const theory::equality::FlatTermId false_flat = flat.flatten(false_term);
+  std::vector<FlatAssignedTheoryAtom> flat_atoms;
+  flat_atoms.reserve(atoms.size());
+  for (const AssignedTheoryAtom& atom : atoms) {
+    flat_atoms.push_back(flatten_assigned_atom(flat, terms, atom, false_flat));
+  }
+
+  theory::equality::FlatCongruenceClosure closure(flat.size());
+  for (const theory::equality::FlatDefinition& definition : flat.definitions()) {
+    closure.add_definition(definition);
+  }
+  closure.assert_distinct(true_flat, false_flat);
+  for (std::size_t i = 0; i < flat_atoms.size(); ++i) {
+    if (i == candidate_index) {
+      continue;
+    }
+    const FlatAssignedTheoryAtom& atom = flat_atoms[i];
+    if (atom.equality && !atom.source.value) {
+      continue;
+    }
+    assert_flat_assigned_atom(closure, atom, true_flat, false_flat);
+  }
+
+  std::optional<std::vector<sat::Lit>> reason =
+      flat_candidate_explanation(closure, flat_atoms[candidate_index], true_flat, false_flat);
+  if (statistics != nullptr) {
+    add_incremental_stats(*statistics, closure.stats());
+  }
+  if (!reason.has_value()) {
+    return std::nullopt;
+  }
+  reason->push_back(assigned_lit(flat_atoms[candidate_index].source));
+  return reason;
+}
+
+class IncrementalFlatAssignmentState {
+ public:
+  IncrementalFlatAssignmentState(const core::TermManager& terms,
+                                 const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                                 core::TermId true_term, core::TermId false_term,
+                                 util::Statistics& statistics)
+      : terms_(terms), flat_(terms), closure_(0), statistics_(statistics) {
+    true_flat_ = flat_.flatten(true_term);
+    false_flat_ = flat_.flatten(false_term);
+    flat_atoms_.reserve(theory_atoms.size());
+    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      flat_atom_by_var_.emplace(var, flat_atoms_.size());
+      flat_atoms_.push_back(flatten_assigned_atom(
+          flat_, terms_, AssignedTheoryAtom{atom.lit.value, false, atom.term}, false_flat_));
+    }
+
+    closure_.ensure_node_count(flat_.size());
+    for (const theory::equality::FlatDefinition& definition : flat_.definitions()) {
+      closure_.add_definition(definition);
+    }
+    closure_.assert_distinct(true_flat_, false_flat_);
+    publish_stats();
+  }
+
+  void push_level() { checkpoints_.push_back(closure_.push()); }
+
+  void pop_to_level(std::size_t new_level) {
+    while (checkpoints_.size() > new_level) {
+      const std::size_t checkpoint = checkpoints_.back();
+      checkpoints_.pop_back();
+      closure_.pop(checkpoint);
+      publish_stats();
+    }
+  }
+
+  void assert_assignment(const AssignedTheoryAtom& assignment) {
+    std::optional<FlatAssignedTheoryAtom> flat_atom = flat_atom_for_lit(assignment.lit);
+    if (!flat_atom.has_value()) {
+      return;
+    }
+    flat_atom->source.value = assignment.value;
+    assert_flat_assigned_atom(closure_, flat_atom.value(), true_flat_, false_flat_);
+    publish_stats();
+  }
+
+  std::optional<sat::Clause> explain_candidate(const BooleanClausifier::TheoryAtom& atom,
+                                               bool value) {
+    std::optional<FlatAssignedTheoryAtom> flat_atom = flat_atom_for_lit(atom.lit.value);
+    if (!flat_atom.has_value()) {
+      return std::nullopt;
+    }
+    flat_atom->source.value = value;
+    if (flat_atom->equality && !value) {
+      return std::nullopt;
+    }
+    std::optional<std::vector<sat::Lit>> reason =
+        flat_candidate_explanation(closure_, flat_atom.value(), true_flat_, false_flat_);
+    if (!reason.has_value()) {
+      return std::nullopt;
+    }
+    statistics_.increment(kStatEufIncrementalExplainLength, reason->size());
+    reason->push_back(assigned_lit(flat_atom->source));
+    return reason;
+  }
+
+  std::optional<sat::Clause> conflict() const { return closure_.conflict(); }
+
+ private:
+  std::optional<FlatAssignedTheoryAtom> flat_atom_for_lit(int lit) const {
+    const int var = lit > 0 ? lit : -lit;
+    const auto found = flat_atom_by_var_.find(var);
+    if (found == flat_atom_by_var_.end()) {
+      return std::nullopt;
+    }
+    return flat_atoms_[found->second];
+  }
+
+  void publish_stats() {
+    const theory::equality::IncrementalCongruenceClosureStats current = closure_.stats();
+    add_incremental_stats(statistics_, stats_delta(current, last_published_stats_));
+    last_published_stats_ = current;
+  }
+
+  const core::TermManager& terms_;
+  theory::equality::FlatTermIndex flat_;
+  theory::equality::FlatCongruenceClosure closure_;
+  util::Statistics& statistics_;
+  theory::equality::FlatTermId true_flat_ = theory::equality::kInvalidFlatTermId;
+  theory::equality::FlatTermId false_flat_ = theory::equality::kInvalidFlatTermId;
+  std::vector<FlatAssignedTheoryAtom> flat_atoms_;
+  std::unordered_map<int, std::size_t> flat_atom_by_var_;
+  std::vector<std::size_t> checkpoints_;
+  theory::equality::IncrementalCongruenceClosureStats last_published_stats_;
+};
+
 struct ModelPropagationResult {
   std::vector<sat::Clause> clauses;
   std::size_t candidates = 0;
@@ -702,6 +956,9 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
       observed_vars_.insert(var);
     }
+    if (options_.euf_engine == EufEngine::Incremental) {
+      incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_, statistics_);
+    }
   }
 
   void notify_assignment(const std::vector<int>& lits) override {
@@ -716,11 +973,24 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       assignment_by_var_[var] = lit > 0;
       trail_.push_back(lit);
       pending_vars_.erase(var);
+      if (incremental_state_.has_value()) {
+        const BooleanClausifier::TheoryAtom* atom = atom_for_var(var);
+        if (atom != nullptr) {
+          const bool atom_value = atom->lit.value > 0 ? lit > 0 : lit < 0;
+          incremental_state_->assert_assignment(
+              AssignedTheoryAtom{atom->lit.value, atom_value, atom->term});
+        }
+      }
     }
     pending_.clear();
   }
 
-  void notify_new_decision_level() override { level_starts_.push_back(trail_.size()); }
+  void notify_new_decision_level() override {
+    level_starts_.push_back(trail_.size());
+    if (incremental_state_.has_value()) {
+      incremental_state_->push_level();
+    }
+  }
 
   void notify_backtrack(size_t new_level) override {
     const std::size_t keep = new_level < level_starts_.size() ? level_starts_[new_level] : 0;
@@ -734,6 +1004,9 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     level_starts_.resize(std::min<std::size_t>(new_level + 1, level_starts_.size()));
     if (level_starts_.empty()) {
       level_starts_.push_back(0);
+    }
+    if (incremental_state_.has_value()) {
+      incremental_state_->pop_to_level(new_level);
     }
     pending_.clear();
     pending_vars_.clear();
@@ -882,7 +1155,11 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
     atoms.push_back(AssignedTheoryAtom{atom->lit.value, value, atom->term});
     std::optional<sat::Clause> clause =
-        model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_, false_term_);
+        options_.euf_engine == EufEngine::Incremental
+            ? flat_model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_,
+                                                false_term_, &statistics_)
+            : model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_,
+                                           false_term_);
     if (clause.has_value()) {
       (void)store_reason(propagated_lit, clause.value());
     }
@@ -948,10 +1225,15 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     if (term.kind == core::TermKind::Equality && !value) {
       return false;
     }
-    std::vector<AssignedTheoryAtom> atoms = assigned;
-    atoms.push_back(AssignedTheoryAtom{atom.lit.value, value, atom.term});
-    std::optional<sat::Clause> clause =
-        model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_, false_term_);
+    std::optional<sat::Clause> clause;
+    if (incremental_state_.has_value()) {
+      clause = incremental_state_->explain_candidate(atom, value);
+    } else {
+      std::vector<AssignedTheoryAtom> atoms = assigned;
+      atoms.push_back(AssignedTheoryAtom{atom.lit.value, value, atom.term});
+      clause =
+          model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_, false_term_);
+    }
     if (!clause.has_value()) {
       return false;
     }
@@ -980,6 +1262,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   std::deque<int> pending_;
   std::unordered_set<int> pending_vars_;
   std::unordered_map<int, Reason> reasons_;
+  std::optional<IncrementalFlatAssignmentState> incremental_state_;
 };
 #endif
 
@@ -987,7 +1270,8 @@ ModelPropagationResult learn_model_propagations(const core::TermManager& terms,
                                                 const std::vector<AssignedTheoryAtom>& atoms,
                                                 core::TermId true_term, core::TermId false_term,
                                                 const CheckSatOptions& options,
-                                                std::unordered_set<std::string>& learned_clauses) {
+                                                std::unordered_set<std::string>& learned_clauses,
+                                                util::Statistics& statistics) {
   ModelPropagationResult result;
   const std::size_t theory_atoms = atoms.size();
   const std::optional<std::size_t> candidate_limit =
@@ -1016,7 +1300,9 @@ ModelPropagationResult learn_model_propagations(const core::TermManager& terms,
 
     ++result.candidates;
     std::optional<sat::Clause> clause =
-        model_propagation_clause_for(terms, atoms, i, true_term, false_term);
+        options.euf_engine == EufEngine::Incremental
+            ? flat_model_propagation_clause_for(terms, atoms, i, true_term, false_term, &statistics)
+            : model_propagation_clause_for(terms, atoms, i, true_term, false_term);
     if (!clause.has_value()) {
       continue;
     }
@@ -1065,6 +1351,38 @@ std::optional<sat::Clause> find_theory_conflict(const core::TermManager& terms,
     }
   }
 
+  return std::nullopt;
+}
+
+std::optional<sat::Clause> find_incremental_theory_conflict(
+    const core::TermManager& terms, const std::vector<AssignedTheoryAtom>& atoms,
+    core::TermId true_term, core::TermId false_term, util::Statistics& statistics) {
+  theory::equality::FlatTermIndex flat(terms);
+  const theory::equality::FlatTermId true_flat = flat.flatten(true_term);
+  const theory::equality::FlatTermId false_flat = flat.flatten(false_term);
+  std::vector<FlatAssignedTheoryAtom> flat_atoms;
+  flat_atoms.reserve(atoms.size());
+
+  for (const AssignedTheoryAtom& atom : atoms) {
+    flat_atoms.push_back(flatten_assigned_atom(flat, terms, atom, false_flat));
+  }
+
+  theory::equality::FlatCongruenceClosure closure(flat.size());
+  for (const theory::equality::FlatDefinition& definition : flat.definitions()) {
+    closure.add_definition(definition);
+  }
+  closure.assert_distinct(true_flat, false_flat);
+  for (const FlatAssignedTheoryAtom& atom : flat_atoms) {
+    assert_flat_assigned_atom(closure, atom, true_flat, false_flat);
+    if (closure.conflict().has_value()) {
+      break;
+    }
+  }
+
+  add_incremental_stats(statistics, closure.stats());
+  if (closure.conflict().has_value()) {
+    return closure.conflict().value();
+  }
   return std::nullopt;
 }
 
@@ -1123,8 +1441,9 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 
     if (options.euf_propagation == EufPropagationMode::Model) {
       statistics.increment(kStatEufPropagationRounds);
-      ModelPropagationResult propagation = learn_model_propagations(
-          terms, assigned_atoms, true_term, false_term, options, learned_model_propagations);
+      ModelPropagationResult propagation =
+          learn_model_propagations(terms, assigned_atoms, true_term, false_term, options,
+                                   learned_model_propagations, statistics);
       statistics.increment(kStatEufPropagationCandidates, propagation.candidates);
       statistics.increment(kStatEufPropagationDelivered, propagation.clauses.size());
       statistics.increment(kStatEufPropagationReasonLits, propagation.reason_lits);
@@ -1142,7 +1461,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     }
 
     std::optional<sat::Clause> conflict_clause =
-        find_theory_conflict(terms, assigned_atoms, true_term, false_term);
+        options.euf_engine == EufEngine::Incremental
+            ? find_incremental_theory_conflict(terms, assigned_atoms, true_term, false_term,
+                                               statistics)
+            : find_theory_conflict(terms, assigned_atoms, true_term, false_term);
     if (!conflict_clause.has_value()) {
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
     }
@@ -1191,6 +1513,17 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatEufPropagationDeliveryBudget, 0);
   statistics.set(kStatEufPropagationBudgetCutoffs, 0);
   statistics.set(kStatEufPropagationHitRateCutoffs, 0);
+  statistics.set(kStatEufIncrementalTerms, 0);
+  statistics.set(kStatEufIncrementalFlatDefinitions, 0);
+  statistics.set(kStatEufIncrementalMerges, 0);
+  statistics.set(kStatEufIncrementalPendingPops, 0);
+  statistics.set(kStatEufIncrementalLookupProbes, 0);
+  statistics.set(kStatEufIncrementalLookupHits, 0);
+  statistics.set(kStatEufIncrementalCongruenceMerges, 0);
+  statistics.set(kStatEufIncrementalDisequalityChecks, 0);
+  statistics.set(kStatEufIncrementalConflicts, 0);
+  statistics.set(kStatEufIncrementalExplainLength, 0);
+  statistics.set(kStatEufIncrementalBacktracks, 0);
 
   try {
     smtlib::Parser parser(input);

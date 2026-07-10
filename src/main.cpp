@@ -84,8 +84,9 @@ int main(int argc, char** argv) {
   std::vector<std::string> files;
   bool quiet = false;
   bool print_stats = false;
-  std::string qf_uf_preprocess = "basic";
+  std::string qf_uf_preprocess = "strong";
   std::string qf_uf_profile = "default";
+  std::string euf_engine = "incremental";
   std::string euf_prop = "off";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "auto";
@@ -108,6 +109,8 @@ int main(int argc, char** argv) {
                                     ->check(CLI::IsMember({"default", "tuned-interesting"}));
   app.add_option("--euf-prop", euf_prop, "EUF propagation mode: off, model, or online")
       ->check(CLI::IsMember({"off", "model", "online"}));
+  app.add_option("--euf-engine", euf_engine, "EUF engine: incremental or lazy")
+      ->check(CLI::IsMember({"lazy", "incremental"}));
   app.add_option("--euf-prop-budget", euf_prop_budget,
                  "EUF propagation candidate budget: auto, unlimited, or a nonnegative integer");
   app.add_option("--euf-prop-delivery,--prop-delivery-budget", euf_prop_delivery,
@@ -166,6 +169,11 @@ int main(int argc, char** argv) {
     solver_options.euf_propagation = primo::smt::EufPropagationMode::Online;
   } else {
     solver_options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  }
+  if (euf_engine == "incremental") {
+    solver_options.euf_engine = primo::smt::EufEngine::Incremental;
+  } else {
+    solver_options.euf_engine = primo::smt::EufEngine::Lazy;
   }
   const std::optional<primo::smt::AutoBudget> parsed_prop_budget =
       parse_auto_budget(euf_prop_budget);

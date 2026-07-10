@@ -1,10 +1,10 @@
 # Preprocessing
 
 Primo currently exposes QF_UF preprocessing through
-`--qf-uf-preprocess=off|basic|strong`. The default is `basic`.
+`--qf-uf-preprocess=off|basic|strong`. The default is `strong`.
 
 - `off` disables the preprocessing loop;
-- `basic` runs unit equality propagation;
+- `basic` runs one pass of unit equality propagation;
 - `strong` enables repeated preprocessing, equality bridging, finite-domain
   at-most-one clauses, finite-domain equality definitions, and finite-domain
   symmetry breaking.
@@ -28,7 +28,8 @@ The profile is opt-in. It does not enable `--euf-prop=online`; online
 propagation remains experimental until exact-set and fuzz runs have zero
 crashes and zero wrong answers.
 
-The individual legacy switches remain available for experiments:
+The individual legacy switches remain available for experiments and for
+reproducing narrower configurations:
 
 - equality bridging under disjunctions, enabled with `--eq-bridge` or
   `--qf-uf-preprocess=strong`;

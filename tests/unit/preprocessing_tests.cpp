@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstddef>
 #include <utility>
 #include <vector>
 
@@ -168,6 +169,29 @@ void unit_equality_propagation_simplifies_disequality() {
   assert(!fixture.terms.get(simplified[3]).bool_value);
 }
 
+void unit_equality_propagation_simplifies_nested_boolean_terms_after_interning() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId pa = fixture.pred(fixture.p, a);
+  const primo::core::TermId pb = fixture.pred(fixture.p, b);
+
+  const primo::core::TermId inner_lhs = fixture.terms.mk_and({fixture.terms.mk_eq(x, y), pa});
+  const primo::core::TermId inner = fixture.terms.mk_implies(inner_lhs, pb);
+  const primo::core::TermId outer =
+      fixture.terms.mk_implies(inner, fixture.terms.mk_not(fixture.terms.mk_eq(a, b)));
+  const std::vector<primo::core::TermId> assertions{fixture.terms.mk_eq(x, y), outer};
+
+  std::size_t consequences = 0;
+  const std::vector<primo::core::TermId> simplified =
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &consequences);
+
+  assert(!simplified.empty());
+  assert(consequences >= 1);
+}
+
 void finite_domain_at_most_one_adds_pairwise_clauses() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -300,6 +324,7 @@ int main() {
   moving_terms_are_rejected();
   equality_bridge_derives_common_branch_consequence();
   unit_equality_propagation_simplifies_disequality();
+  unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();
   finite_domain_at_most_one_adds_pairwise_clauses();
   finite_domain_choices_may_be_nested_or_nodes();
   finite_domain_equality_definitions_connect_terms_with_same_domain();

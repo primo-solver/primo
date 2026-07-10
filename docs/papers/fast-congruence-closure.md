@@ -7,19 +7,16 @@ Fast Congruence Closure and Extensions.
 
 ## Role in Primo
 
-This paper is the target reference for the planned fast QF_UF theory solver. It
-is not yet implemented as described in the paper.
+This paper is the target reference for Primo's fast QF_UF theory solver. The
+default engine selected with `--euf-engine=incremental` implements the Section 3
+use-list and signature-lookup shape over Primo's own flat term representation.
+The older lazy scaffold remains available with `--euf-engine=lazy` for
+diagnostics. The Section 4 and 5 proof-producing union-find machinery is not
+implemented.
 
-## What we use today
+## Implemented Subsets
 
-- ground equality reasoning
-- congruence closure
-- equality propagation concepts as motivation
-- explanation-producing congruence closure as motivation
-
-## Initial implemented subset
-
-Primo currently implements only a basic ground-congruence scaffold:
+The diagnostic lazy path implements a basic ground-congruence scaffold:
 
 - union-find over term ids;
 - recursive term registration;
@@ -28,49 +25,58 @@ Primo currently implements only a basic ground-congruence scaffold:
 - explanation graph edges labelled by SAT reason literals;
 - congruence edges justified by child equality explanations.
 
-The current code does not implement the paper's use lists, signature lookup,
-pending merge algorithm, incremental backtracking, or optimized proof forests.
-The explanation graph is a deliberately simple scaffold. It provides sound
-reason literals for lazy conflict clauses and model-time propagation lemmas, but
-it is not the paper algorithm.
+The default incremental path adds:
 
-## Required implementation checklist
+- deterministic Curry-style flat definitions over `core::TermId` values;
+- eager representatives and class lists;
+- affected-definition use lists;
+- sparse signature lookup for congruent flat applications;
+- a pending merge queue for explicit and congruence merges;
+- disequality conflict detection;
+- coarse `push`/`pop` snapshots for online propagation experiments;
+- counters for terms, flat definitions, lookup probes and hits, pending pops,
+  congruence merges, conflicts, explanation length, and backtracks.
 
-Before claiming that Primo implements Nieuwenhuis-Oliveras fast congruence
-closure, the code must add and document:
+This is a Section 3 shaped subset, not the complete optimized paper algorithm.
+Explanations still come from a simple equality edge graph and are sound but not
+minimal. Backtracking restores full snapshots rather than the paper's optimized
+timestamped mutable state.
 
-- equivalence classes with parent/representative invariants matching the paper;
-- use lists or an equivalent occurrence index for affected applications;
-- a signature lookup table for congruent applications;
-- a pending merge queue rather than repeated all-pairs saturation;
-- disequality conflict detection integrated with the incremental state;
+## Remaining implementation checklist
+
+Before claiming that Primo implements the full Nieuwenhuis-Oliveras fast
+congruence closure, the code must add and document:
+
 - explanation/proof-forest data structures for equality reasons;
 - backtracking support with a trail of all mutable CC state;
-- counters for pending merges, lookup hits, congruence merges, explanation
-  length, and backtracks.
+- pure-class performance probes showing the Section 3 machinery improves the
+  intended QF_UF families;
+- benchmark evidence showing solved-count or PAR2 improvement without wrong
+  answers.
 
 ## Deferred
 
 - optimized incremental backtracking
-- online theory propagation
 - optimized proof-forest explanation machinery
 - proof production
 
 ## Data structures
 
-Current scaffold:
+Diagnostic lazy scaffold:
 
 - union-find over `TermId`;
 - set/vector of registered terms;
 - explicit explanation edge graph.
 
-Paper-backed target:
+Default incremental subset:
 
-- equivalence classes
-- application lookup/signature table
-- pending merge queue
-- disequality set
-- explanation graph
+- flat term definitions;
+- equivalence classes;
+- application lookup/signature table;
+- affected-definition use lists;
+- pending merge queue;
+- disequality set;
+- explanation graph.
 
 ## Invariants
 
@@ -80,14 +86,13 @@ Current scaffold invariants:
 - equality is over `TermId`, not SMT-LIB AST nodes;
 - explanations contain SAT literals supplied by the SMT layer.
 
-Target paper invariants still to implement:
+Incremental subset invariants:
 
 - lookup table entries agree with current representatives;
 - every pending merge is either processed or invalidated by backtracking;
 - use lists contain exactly the applications that can become congruent after a
   class merge;
-- proof-forest explanations survive backtracking only while their merge remains
-  live.
+- explanation edges only cite SAT literals supplied by the SMT layer.
 
 ## Tests derived from the paper
 
@@ -95,5 +100,7 @@ Target paper invariants still to implement:
 - unary congruence
 - binary congruence
 - nested congruence
-- future tests must include lookup-table congruence discovery without scanning
-  all terms, proof-forest explanation paths, and backtrack rediscovery.
+- lookup-table congruence discovery without scanning all term pairs
+- backtrack rediscovery
+- future tests must include proof-forest explanation paths after that mechanism
+  is implemented.
