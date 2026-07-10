@@ -148,7 +148,7 @@ Implemented:
   callbacks;
 - basic QF_UF preprocessing by default;
 - strong preset with finite-domain AMO clauses, equality-definition clauses,
-- default-off UF symmetry breaking, and opt-in bounded ground-congruence
+  default-off UF symmetry breaking, and opt-in bounded ground-congruence
   clauses.
 
 Deferred:

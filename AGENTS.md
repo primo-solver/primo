@@ -37,6 +37,28 @@ If a required paper is hard to access or download, stop and tell the user which 
 
 Every nontrivial algorithmic component must cite the paper, book chapter, or design note it is based on.
 
+Citations are not decoration. Before implementing or claiming a paper-backed
+algorithm, read the relevant paper section and turn it into a local design note
+or implementation checklist. The checklist must identify the actual data
+structures, invariants, operations, complexity expectations, and proof
+obligations being implemented. If the implementation is only a scaffold,
+baseline, or ordinary textbook subset, say that explicitly and do not name it as
+an implementation of the paper's optimized algorithm.
+
+When using a paper to accelerate development:
+
+- implement from the paper's algorithmic content, not from memory of a solver or
+  from a previous codebase;
+- map each paper operation to the Primo layer and C++ type that owns it;
+- add tests that exercise the paper-specific invariant or asymptotic fast path,
+  not only generic correctness examples;
+- add benchmark counters that reveal whether the paper mechanism is actually
+  being used;
+- compare the implementation against the paper's stated preconditions and mark
+  unsupported cases as limitations;
+- if the code does not yet implement the paper mechanism, document the paper as
+  motivation/future work, not as implemented behavior.
+
 For each such component, include:
 
 - bibliographic reference
