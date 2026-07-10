@@ -88,14 +88,23 @@ If documentation cannot be updated in the same task, state that as a blocker in 
 ## Goal and completion discipline
 
 For broad solver tasks, define the goal as the full user-visible outcome, not
-as the next command or the next local experiment. A performance goal includes
-correctness, implementation, documentation, verification, benchmark evaluation,
-result analysis, and commits.
+as the next command, the next local experiment, or a pointer to another file.
+The goal is the whole thing the user is asking to get done. A performance goal
+includes correctness, implementation, documentation, verification, benchmark
+evaluation, result analysis, and commits.
 
-When the user asks to use the goal primitive, create one goal whose objective is
-the whole end-to-end target. Do not mark that goal complete until all required
-source, tests, docs, scripts, and benchmark metadata are committed or until a
-concrete blocker is reached.
+When the user asks to use the goal primitive, create one goal whose objective
+spells out the end-to-end acceptance criteria in the goal text itself. Include
+the target benchmark set, baseline or reference comparison, required execution
+environment, hard correctness conditions, required verification commands,
+documentation expectations, and commit expectations. Do not create a goal like
+`continue`, `read the plan`, `run benchmarks`, or `fix performance`.
+
+Do not mark that goal complete until all required source, tests, docs, scripts,
+and benchmark metadata are committed and the requested evaluation is summarized,
+or until a concrete blocker is reached. If a blocker is reached, report the
+blocker, the commands or job ids proving it, the last successful verification,
+and the remaining acceptance criteria that are still incomplete.
 
 Do not treat any of the following as completion:
 
@@ -107,12 +116,17 @@ Do not treat any of the following as completion:
   needed to reproduce the result;
 - untracked generated implementation files;
 - benchmark logs without a summarized comparison against the stated baseline or
-  reference solvers.
+  reference solvers;
+- an active experiment whose winning or losing status has not been decided and
+  committed as either accepted implementation or rejected result artifact;
+- a final answer that omits commit hashes, benchmark artifact paths, job ids, or
+  verification commands for a broad solver task.
 
 Before the final response for broad solver work, run `git status --short` and
-report any remaining tracked or required untracked files. If committing is
-feasible, commit coherent milestones before reporting completion. If committing
-is not feasible, state the exact blocker.
+`git log --oneline -3`, then report any remaining tracked or required untracked
+files. If committing is feasible, commit coherent milestones before reporting
+completion. If committing is not feasible, state the exact blocker and do not
+present the work as complete.
 
 ## Architectural rules
 
@@ -139,12 +153,13 @@ In particular:
 ## Coding practices
 
 - Do not stop at a partial milestone when following an explicit implementation
-  plan. Continue through implementation, verification, documentation, and
-  evaluation until the plan is complete, or until there is an obvious roadblock
-  such as a missing required paper, unavailable benchmark data, inaccessible
-  cluster, failing dependency install, or a correctness failure that needs a
-  design decision from the user. If a roadblock occurs, state the concrete
-  blocker and the last completed verification.
+  plan or performance objective. Continue through implementation, verification,
+  documentation, evaluation, result comparison, and commits until the objective
+  is complete, or until there is an obvious roadblock such as a missing required
+  paper, unavailable benchmark data, inaccessible cluster, failing dependency
+  install, or a correctness failure that needs a design decision from the user.
+  If a roadblock occurs, state the concrete blocker, the evidence for it, the
+  last completed verification, and the exact unfinished work.
 - Use C++20.
 - Keep C++ source formatted with `clang-format` using the repository `.clang-format`.
 - Keep Python scripts runnable with the standard library unless a dependency is documented.
@@ -156,6 +171,9 @@ In particular:
 - Run the `smt-code-review` skill as a pre-commit self-review for implementation changes. At this stage, review all tracked non-generated project files, not only the diff. The review must include ordinary hygiene: unused includes, dead helpers, missing or misleading comments, narrow API surface, formatting, and lint readiness.
 - If `clang-tidy` is available, run it on all tracked non-generated `.cpp` files while the project is establishing its baseline. Also run `misc-include-cleaner` as an advisory scan and inspect it for real unused includes; paired `.cpp`/`.hpp` self-includes are not automatically removable. Later, after the whole-tree baseline is clean, diff-focused clang-tidy plus periodic whole-tree sweeps is acceptable. If clang-tidy is not run, state why.
 - Prefer small, coherent commits after each working milestone.
+- If a change is rejected after measurement, either revert it cleanly or leave no
+  source changes from it, then commit the reproducibility artifact or note that
+  records why it was rejected when that artifact is part of the benchmark trail.
 
 ## Solver performance and benchmark discipline
 
@@ -179,6 +197,25 @@ For solver benchmark work:
   reference solvers such as Z3 and cvc5;
 - keep benchmark scripts and manifests reproducible and committed when they are
   part of the result.
+
+When a user asks to improve performance on a named benchmark archive or corpus,
+the expected loop is:
+
+1. establish a reproducible current Primo baseline;
+2. identify cases solved quickly by reference solvers but not by Primo;
+3. profile representative slow Primo cases locally when the user permits local
+   profiling;
+4. implement a correctness-preserving change from papers or local design notes;
+5. run focused tests and smoke checks;
+6. run the requested full benchmark environment, such as SLURM;
+7. compare solved counts, wrong answers, family summaries, and PAR2 against the
+   baseline;
+8. commit accepted source, docs, tests, scripts, and required artifacts, or
+   revert and record a rejected experiment.
+
+Repeat that loop while the goal remains open and there is no blocker. Do not
+stop merely because one iteration is disappointing, one optimization regresses,
+or results are worse than expected.
 
 If the user requests SLURM evaluation, use the workstation only for development,
 profiling, smoke tests, and debugging. Headline benchmark claims must come from
