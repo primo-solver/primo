@@ -85,6 +85,35 @@ Do not consider a solver change complete unless the relevant documentation is up
 
 If documentation cannot be updated in the same task, state that as a blocker in the final response.
 
+## Goal and completion discipline
+
+For broad solver tasks, define the goal as the full user-visible outcome, not
+as the next command or the next local experiment. A performance goal includes
+correctness, implementation, documentation, verification, benchmark evaluation,
+result analysis, and commits.
+
+When the user asks to use the goal primitive, create one goal whose objective is
+the whole end-to-end target. Do not mark that goal complete until all required
+source, tests, docs, scripts, and benchmark metadata are committed or until a
+concrete blocker is reached.
+
+Do not treat any of the following as completion:
+
+- a local-only timing run when the user requested SLURM or full-benchmark
+  evaluation;
+- a solved-count or PAR2 improvement with known wrong answers;
+- an unsound implementation that happens to improve performance;
+- uncommitted source, documentation, tests, scripts, or benchmark metadata
+  needed to reproduce the result;
+- untracked generated implementation files;
+- benchmark logs without a summarized comparison against the stated baseline or
+  reference solvers.
+
+Before the final response for broad solver work, run `git status --short` and
+report any remaining tracked or required untracked files. If committing is
+feasible, commit coherent milestones before reporting completion. If committing
+is not feasible, state the exact blocker.
+
 ## Architectural rules
 
 Preserve these boundaries:
@@ -127,6 +156,38 @@ In particular:
 - Run the `smt-code-review` skill as a pre-commit self-review for implementation changes. At this stage, review all tracked non-generated project files, not only the diff. The review must include ordinary hygiene: unused includes, dead helpers, missing or misleading comments, narrow API surface, formatting, and lint readiness.
 - If `clang-tidy` is available, run it on all tracked non-generated `.cpp` files while the project is establishing its baseline. Also run `misc-include-cleaner` as an advisory scan and inspect it for real unused includes; paired `.cpp`/`.hpp` self-includes are not automatically removable. Later, after the whole-tree baseline is clean, diff-focused clang-tidy plus periodic whole-tree sweeps is acceptable. If clang-tidy is not run, state why.
 - Prefer small, coherent commits after each working milestone.
+
+## Solver performance and benchmark discipline
+
+Correctness comes before performance. If a benchmark, fuzzer, or reference-solver
+comparison finds wrong answers, disagreements, crashes, or unsupported behavior
+being misreported as solved, stop performance tuning and fix or precisely triage
+that issue first. Do not claim a performance win while wrong answers remain.
+
+Use reference solvers only for answer comparison, benchmark triage, and
+identifying performance gaps. Do not copy implementation code, generated code,
+parser grammars, tests, comments, documentation text, or build logic from them.
+
+For solver benchmark work:
+
+- record the exact benchmark set, timeout, command line, commit, host or SLURM
+  job id, and result artifact path;
+- report solved, timeout, error, unsupported, wrong-answer, and PAR2 counts when
+  the harness supports them;
+- include family-level summaries for mixed benchmark sets;
+- compare against the relevant previous Primo result and, when requested, fast
+  reference solvers such as Z3 and cvc5;
+- keep benchmark scripts and manifests reproducible and committed when they are
+  part of the result.
+
+If the user requests SLURM evaluation, use the workstation only for development,
+profiling, smoke tests, and debugging. Headline benchmark claims must come from
+SLURM artifacts. If SLURM is unavailable, state that as a blocker and include
+the failed access command or job state.
+
+Local profiling is still expected when performance is unexpectedly poor. Use it
+to identify bottlenecks before designing solver changes, then confirm any claimed
+improvement with the requested benchmark infrastructure.
 
 ## Core invariants
 
