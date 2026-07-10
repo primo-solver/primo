@@ -54,6 +54,10 @@ constexpr std::string_view kStatFiniteDomainEvaluatedEqualities =
 constexpr std::string_view kStatFiniteDomainEvaluationCutoffs =
     ":preprocessing.finite-domain.evaluation-cutoffs";
 constexpr std::string_view kStatEqualityDefinitions = ":preprocessing.equality-definitions";
+constexpr std::string_view kStatGroundCongruenceClauses =
+    ":preprocessing.ground-congruence-clauses";
+constexpr std::string_view kStatGroundCongruenceSkippedGroups =
+    ":preprocessing.ground-congruence-skipped-groups";
 constexpr std::string_view kStatUfSymmetryAcceptedSets = ":preprocessing.uf-symmetry.accepted-sets";
 constexpr std::string_view kStatUfSymmetryConstraints = ":preprocessing.uf-symmetry.constraints";
 constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
@@ -1168,6 +1172,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatFiniteDomainEvaluatedEqualities, 0);
   statistics.set(kStatFiniteDomainEvaluationCutoffs, 0);
   statistics.set(kStatEqualityDefinitions, 0);
+  statistics.set(kStatGroundCongruenceClauses, 0);
+  statistics.set(kStatGroundCongruenceSkippedGroups, 0);
   statistics.set(kStatUfSymmetryAcceptedSets, 0);
   statistics.set(kStatUfSymmetryConstraints, 0);
   statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
@@ -1208,6 +1214,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     const bool use_finite_domain_evaluation = false;
     const bool use_finite_domain_amo = strong_preprocessing;
     const bool use_finite_domain_equality_definitions = strong_preprocessing;
+    const bool use_ground_congruence_definitions = options.ground_congruence;
     const bool use_symmetry_breaking = options.uf_symmetry_breaking || strong_preprocessing;
     const std::size_t preprocessing_passes =
         strong_preprocessing ? std::max<std::size_t>(options.preprocessing_passes, 3)
@@ -1256,6 +1263,17 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         assertions.insert(assertions.end(), equality_definition_result.clauses.begin(),
                           equality_definition_result.clauses.end());
         statistics.increment(kStatEqualityDefinitions, equality_definition_result.clauses.size());
+      }
+      if (use_ground_congruence_definitions) {
+        CongruenceDefinitionGenerator congruence_definitions(frontend.terms());
+        CongruenceDefinitionResult congruence_definition_result =
+            congruence_definitions.generate(assertions);
+        assertions.insert(assertions.end(), congruence_definition_result.clauses.begin(),
+                          congruence_definition_result.clauses.end());
+        statistics.increment(kStatGroundCongruenceClauses,
+                             congruence_definition_result.clauses.size());
+        statistics.increment(kStatGroundCongruenceSkippedGroups,
+                             congruence_definition_result.skipped_groups);
       }
       std::size_t unit_consequences = 0;
       assertions = propagate_unit_equalities(frontend.terms(), assertions, &unit_consequences);

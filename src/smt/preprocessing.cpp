@@ -101,7 +101,8 @@ struct BranchEqualityClosure {
 
 constexpr std::size_t kMaxBridgeBranches = 64;
 constexpr std::size_t kMaxBridgePairChecks = 200000;
-constexpr std::size_t kMaxCongruenceDefinitionClauses = 50000;
+constexpr std::size_t kMaxCongruenceDefinitionClauses = 10000;
+constexpr std::size_t kMaxFullCongruenceApplicationsPerSymbol = 128;
 constexpr std::size_t kMaxFiniteDomainEvaluationAssignments = 250000;
 
 std::pair<core::TermId, core::TermId> ordered_pair(core::TermId lhs, core::TermId rhs) {
@@ -904,13 +905,29 @@ core::TermId congruence_definition_clause(core::TermManager& terms, core::TermId
                                           core::TermId rhs) {
   const core::Term& lhs_term = terms.get(lhs);
   const core::Term& rhs_term = terms.get(rhs);
+  const std::vector<core::TermId> lhs_children = lhs_term.children;
+  const std::vector<core::TermId> rhs_children = rhs_term.children;
   std::vector<core::TermId> literals;
-  literals.reserve(lhs_term.children.size() + 1);
-  for (std::size_t i = 0; i < lhs_term.children.size(); ++i) {
-    literals.push_back(terms.mk_not(terms.mk_eq(lhs_term.children[i], rhs_term.children[i])));
+  literals.reserve(lhs_children.size() + 1);
+  for (std::size_t i = 0; i < lhs_children.size(); ++i) {
+    literals.push_back(terms.mk_not(terms.mk_eq(lhs_children[i], rhs_children[i])));
   }
   literals.push_back(terms.mk_eq(lhs, rhs));
   return terms.mk_or(std::move(literals));
+}
+
+bool application_is_congruence_candidate(
+    const core::TermManager& terms, core::TermId application,
+    const std::unordered_set<core::TermId>& finite_domain_terms) {
+  if (finite_domain_terms.contains(application)) {
+    return true;
+  }
+  for (const core::TermId child : terms.get(application).children) {
+    if (finite_domain_terms.contains(child)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 core::TermId first_use_requires_previous_value(core::TermManager& terms, core::TermId term,
@@ -1099,6 +1116,14 @@ CongruenceDefinitionResult CongruenceDefinitionGenerator::generate(
   // from a bounded SAT-visible subset over applications already present in the
   // formula. No fresh terms are invented.
   CongruenceDefinitionResult result;
+  const auto disequalities = collect_disequalities(terms_, assertions);
+  const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
+  std::unordered_set<core::TermId> finite_domain_terms;
+  for (const auto& [term, choice] : choices) {
+    finite_domain_terms.insert(term);
+    finite_domain_terms.insert(choice.values.begin(), choice.values.end());
+  }
+
   std::unordered_set<core::TermId> seen;
   std::unordered_map<core::SymbolId, std::vector<core::TermId>> groups;
   for (const core::TermId assertion : assertions) {
@@ -1112,6 +1137,18 @@ CongruenceDefinitionResult CongruenceDefinitionGenerator::generate(
     applications.erase(std::unique(applications.begin(), applications.end()), applications.end());
     if (applications.size() < 2) {
       continue;
+    }
+    if (applications.size() > kMaxFullCongruenceApplicationsPerSymbol) {
+      applications.erase(std::remove_if(applications.begin(), applications.end(),
+                                        [&](const core::TermId application) {
+                                          return !application_is_congruence_candidate(
+                                              terms_, application, finite_domain_terms);
+                                        }),
+                         applications.end());
+      if (applications.size() < 2) {
+        ++result.skipped_groups;
+        continue;
+      }
     }
     ++result.groups;
     bool skipped = false;

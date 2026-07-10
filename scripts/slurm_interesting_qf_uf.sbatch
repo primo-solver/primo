@@ -23,6 +23,7 @@ cd "$WORKDIR"
 python3 scripts/bench_interesting_qf_uf.py \
   --solver "$PRIMO_BIN" \
   --solver-arg=--quiet \
+  --solver-arg=--stats \
   --solver-arg=--qf-uf-profile=tuned-interesting \
   --solver-arg=--euf-prop=model \
   --timeout "$TIMEOUT" \

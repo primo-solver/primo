@@ -35,6 +35,8 @@ The individual legacy switches remain available for experiments:
 - unit equality propagation, enabled by the `basic` and `strong` preprocessing
   loops;
 - finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong`;
+- bounded ground-congruence clauses over applications already present in the
+  formula, enabled by `--ground-congruence`;
 - symmetry breaking over finite-domain choice disjunctions, enabled with
   `--uf-symmetry-breaking` or `--qf-uf-preprocess=strong`.
 
@@ -47,7 +49,7 @@ The individual legacy switches remain available for experiments:
 ./build/primo --eq-bridge --preprocess-passes 3 input.smt2
 ```
 
-Both passes are deliberately separate from congruence closure. They create
+These passes are deliberately separate from the SAT backend. They create
 additional Boolean assertions over ordinary equality terms, then the existing
 Boolean clausifier and lazy EUF loop solve the strengthened formula.
 
@@ -137,6 +139,18 @@ clauses expose finite-domain equality structure to SAT without fresh Boolean
 variables or SAT/theory shortcuts. They are counted by
 `:preprocessing.equality-definitions`.
 
+`--ground-congruence` emits a bounded subset of ordinary ground-EUF congruence
+clauses over applications already present in the formula:
+
+```text
+(or (not (= a0 b0)) ... (not (= an bn)) (= (f a0 ... an) (f b0 ... bn)))
+```
+
+No fresh applications or propositional variables are introduced. Clauses are
+deduplicated structurally, capped per preprocessing call, and counted by
+`:preprocessing.ground-congruence-clauses`; skipped groups are counted by
+`:preprocessing.ground-congruence-skipped-groups`.
+
 Choice disjunctions may be nested `or` trees. The recognizer flattens the `or`
 node before checking that every branch is an equality between the same candidate
 term and one explicit value.
@@ -221,6 +235,7 @@ Implemented:
 - finite-domain choice recognition from explicit disjunctions;
 - finite-domain at-most-one clauses in the strong preset;
 - finite-domain equality-definition clauses in the strong preset;
+- opt-in bounded ground-congruence clauses;
 - top-level pairwise disequality requirement;
 - syntactic constant-permutation invariance check;
 - moving-term rejection;
@@ -233,6 +248,12 @@ Implemented:
 Deferred:
 
 - proof support for generated preprocessing lemmas;
+- finite-domain equality evaluation in the strong preset. A prototype evaluator
+  exists as an internal utility, but it remains disabled because unguarded
+  equality simplification can be unsound on PEQ-like cases;
+- enabling `--ground-congruence` in the tuned profile. Exact-set evaluation
+  regressed from 2 solved rows to 1 solved row on SLURM job 108936, so the
+  clause generator remains explicit opt-in pending a better filter;
 - SyMT-style graph automorphism detection;
 - benchmark-driven default-on decision.
 

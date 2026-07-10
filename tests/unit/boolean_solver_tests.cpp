@@ -339,7 +339,28 @@ void strong_preprocessing_enables_finite_domain_amo() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.ground-congruence-clauses") == 0);
   assert(result.statistics.get(":euf.propagation.rounds") == 0);
+}
+
+void strong_preprocessing_enables_ground_congruence_clauses() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.ground_congruence = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (not (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":preprocessing.ground-congruence-clauses") >= 1);
 }
 
 void model_euf_propagation_learns_congruence_lemma() {
@@ -539,6 +560,7 @@ int main() {
   equality_bridge_solves_diamond_chain();
   preprocessing_off_disables_basic_loop();
   strong_preprocessing_enables_finite_domain_amo();
+  strong_preprocessing_enables_ground_congruence_clauses();
   model_euf_propagation_learns_congruence_lemma();
   model_euf_propagation_handles_predicate_congruence();
   model_euf_propagation_respects_zero_budget();

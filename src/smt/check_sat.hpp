@@ -51,6 +51,7 @@ struct CheckSatOptions {
   AutoBudget euf_propagation_delivery;
   bool uf_symmetry_breaking = false;
   bool eq_bridge = false;
+  bool ground_congruence = false;
   std::size_t euf_propagation_interval = 1;
   double euf_propagation_assign_threshold = 1.0;
   std::size_t preprocessing_passes = 1;

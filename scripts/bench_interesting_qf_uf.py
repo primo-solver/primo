@@ -194,6 +194,13 @@ def load_expected(path: Path | None) -> dict[str, str]:
         return {row["file"]: row["answer"] for row in reader if row.get("file")}
 
 
+def stat_value(row: dict[str, object], key: str) -> int:
+    try:
+        return int(str(row.get(key, "") or "0"))
+    except ValueError:
+        return 0
+
+
 def evaluate_file(
     index: int,
     total: int,
@@ -399,7 +406,13 @@ def main() -> int:
     by_family_solved = Counter(
         row["family"] for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
     )
+    by_status = Counter(str(row["status"]) for row in rows)
+    by_answer = Counter(str(row["answer"]) for row in rows)
     all_families = sorted({row["family"] for row in rows})
+    stat_totals = {
+        key: sum(stat_value(row, key) for row in rows)
+        for key in stat_fields
+    }
     total = len(rows)
     solved = sum(1 for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"})
     checked = sum(1 for row in rows if row["expected"])
@@ -415,11 +428,17 @@ def main() -> int:
         writer.writerow({"metric": "checked", "value": checked})
         writer.writerow({"metric": "wrong", "value": wrong})
         writer.writerow({"metric": "par2", "value": f"{par2:.6f}"})
+        for status, count in sorted(by_status.items()):
+            writer.writerow({"metric": f"status.{status}", "value": count})
+        for answer, count in sorted(by_answer.items()):
+            writer.writerow({"metric": f"answer.{answer}", "value": count})
         for family in all_families:
             writer.writerow({"metric": f"family.{family}.ok", "value": by_family_ok[family]})
             writer.writerow(
                 {"metric": f"family.{family}.solved", "value": by_family_solved[family]}
             )
+        for stat, total_value in sorted(stat_totals.items()):
+            writer.writerow({"metric": f"stat-total.{stat}", "value": total_value})
     print(f"wrote {args.out}")
     print(f"wrote {args.summary}")
     return 0

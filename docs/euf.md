@@ -120,9 +120,11 @@ premises.
 ## Preprocessing Interaction
 
 `--qf-uf-preprocess=strong` runs before QF_UF solving. It appends bridge
-equalities, finite-domain at-most-one clauses, and value-precedence assertions
-when their recognizers can prove the required local conditions. These generated
-assertions are then handled by the same Boolean clausifier and
+equalities, finite-domain at-most-one clauses, finite-domain equality
+definitions, and value-precedence assertions when their recognizers can prove
+the required local conditions. `--ground-congruence` additionally enables
+bounded ground-congruence clauses. These generated assertions are then handled
+by the same Boolean clausifier and
 congruence-closure loop as ordinary user assertions. `--uf-symmetry-breaking`
 and `--eq-bridge` remain available as narrower experimental switches.
 
@@ -145,8 +147,9 @@ Implemented:
 - experimental online EUF propagation through CaDiCaL observed-variable
   callbacks;
 - basic QF_UF preprocessing by default;
-- strong preset with finite-domain AMO clauses and default-off UF symmetry
-  breaking.
+- strong preset with finite-domain AMO clauses, equality-definition clauses,
+- default-off UF symmetry breaking, and opt-in bounded ground-congruence
+  clauses.
 
 Deferred:
 

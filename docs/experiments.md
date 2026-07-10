@@ -29,8 +29,9 @@ family, solver arguments, status, answer, elapsed seconds, exit code, per-file
 stdout/stderr logs, and any `--stats` counters emitted before completion. The
 script uses SMT-LIB `:status sat|unsat` metadata as the expected answer by
 default; pass `--no-expected-from-status` to disable that and rely only on
-`--expected`. The summary reports total solved, errors through status counts in
-the CSV, wrong answers, PAR2, and solved counts by family.
+`--expected`. The summary reports total solved, status and answer counts, wrong
+answers, PAR2, solved counts by family, and totals for every emitted `--stats`
+counter.
 
 For cluster runs, submit `scripts/slurm_interesting_qf_uf.sbatch` from a built
 remote checkout. It uses a 32-way SLURM array over the exact manifest. Monitor

@@ -24,6 +24,8 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.finite-domain.domains`;
 - `:preprocessing.finite-domain.amo-clauses`;
 - `:preprocessing.equality-definitions`;
+- `:preprocessing.ground-congruence-clauses`;
+- `:preprocessing.ground-congruence-skipped-groups`;
 - `:preprocessing.uf-symmetry.accepted-sets`;
 - `:preprocessing.uf-symmetry.constraints`;
 - `:preprocessing.uf-symmetry.rejected-noninvariant`;

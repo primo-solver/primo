@@ -98,6 +98,8 @@ int main(int argc, char** argv) {
                "Enable experimental QF_UF symmetry breaking over invariant finite-domain values");
   app.add_flag("--eq-bridge", solver_options.eq_bridge,
                "Add equalities implied by every branch of selected QF_UF disjunctions");
+  app.add_flag("--ground-congruence", solver_options.ground_congruence,
+               "Enable bounded SAT-visible ground congruence clauses");
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
                  "QF_UF preprocessing preset: off, basic, or strong")
       ->check(CLI::IsMember({"off", "basic", "strong"}));
