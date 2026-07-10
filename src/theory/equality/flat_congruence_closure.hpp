@@ -75,6 +75,7 @@ class FlatCongruenceClosure {
     std::unordered_map<ApplyKey, FlatTermId, ApplyKeyHash> lookup;
     std::vector<PendingMerge> pending;
     std::vector<Disequality> disequalities;
+    std::vector<std::vector<std::size_t>> disequality_lists;
     std::vector<Edge> edges;
     std::vector<std::vector<std::size_t>> edge_adjacency;
     std::optional<std::vector<sat::Lit>> conflict;
@@ -88,7 +89,7 @@ class FlatCongruenceClosure {
   void merge_classes(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit> reason, bool congruence);
   void process_use_list(FlatTermId old_repr, FlatTermId new_repr);
   bool check_disequality(const Disequality& disequality);
-  void check_disequalities();
+  void check_disequalities_touching(FlatTermId lhs_repr, FlatTermId rhs_repr);
   std::vector<sat::Lit> congruence_reason(const Definition& lhs, const Definition& rhs) const;
 
   std::vector<FlatTermId> parent_;
@@ -100,6 +101,7 @@ class FlatCongruenceClosure {
   std::unordered_map<ApplyKey, FlatTermId, ApplyKeyHash> lookup_;
   std::vector<PendingMerge> pending_;
   std::vector<Disequality> disequalities_;
+  std::vector<std::vector<std::size_t>> disequality_lists_;
   std::vector<Edge> edges_;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Snapshot> snapshots_;

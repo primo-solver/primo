@@ -120,7 +120,8 @@ prototype of the Section 3 data structure:
 - affected-application use lists in `use_lists_`;
 - sparse signature lookup in `lookup_`;
 - pending explicit and congruence merges in `pending_`;
-- disequality conflict checks in `disequalities_`;
+- disequality conflict checks in `disequalities_`, with per-representative
+  index lists in `disequality_lists_`;
 - non-minimal explanation paths in `edges_`;
 - coarse `push`/`pop` snapshots for backtracking tests.
 
@@ -133,9 +134,13 @@ lookup, pending-merge, disequality, explanation, and coarse backtracking
 structure over those flat definitions. Explanation edges are stored both in
 insertion order and in per-flat-term adjacency lists so reason BFS visits only
 edges incident to the current proof-graph node. A newly asserted disequality is
-checked immediately, while older disequalities are rescanned only after a class
-merge can make a previously satisfied disequality inconsistent. This is the
-engine used by `--euf-engine=incremental`.
+checked immediately. After a class merge, older disequalities are not scanned
+globally; the closure collects the disequality indices attached to the two
+merged representatives, sorts those indices to preserve original insertion
+order, and checks only that candidate set. This keeps the first reported
+conflict deterministic while avoiding scans over disequalities whose endpoint
+classes did not change. This is the engine used by
+`--euf-engine=incremental`.
 
 ## EufSolver
 
@@ -180,6 +185,7 @@ Implemented:
 - deterministic Curry-style flat definitions at the equality-theory boundary;
 - opt-in use-list, signature-lookup, pending-queue congruence closure for
   final conflict checks;
+- order-preserving flat disequality scans over per-class candidate lists;
 - model-time propagation using the flat incremental closure when
   `--euf-engine=incremental` is selected;
 - online propagation with a SAT-callback-owned persistent flat closure when

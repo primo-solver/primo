@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <iterator>
 #include <optional>
 #include <queue>
 #include <stdexcept>
@@ -49,8 +50,8 @@ FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count) {
 
 std::size_t FlatCongruenceClosure::push() {
   snapshots_.push_back(Snapshot{parent_, class_size_, class_members_, use_lists_, definitions_,
-                                definition_by_result_, lookup_, pending_, disequalities_, edges_,
-                                edge_adjacency_, conflict_, stats_});
+                                definition_by_result_, lookup_, pending_, disequalities_,
+                                disequality_lists_, edges_, edge_adjacency_, conflict_, stats_});
   return snapshots_.size() - 1;
 }
 
@@ -69,6 +70,7 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   lookup_ = std::move(snapshot.lookup);
   pending_ = std::move(snapshot.pending);
   disequalities_ = std::move(snapshot.disequalities);
+  disequality_lists_ = std::move(snapshot.disequality_lists);
   edges_ = std::move(snapshot.edges);
   edge_adjacency_ = std::move(snapshot.edge_adjacency);
   conflict_ = std::move(snapshot.conflict);
@@ -86,6 +88,7 @@ void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {
   class_size_.resize(node_count, 1);
   class_members_.resize(node_count);
   use_lists_.resize(node_count);
+  disequality_lists_.resize(node_count);
   edge_adjacency_.resize(node_count);
   for (std::size_t i = old_size; i < node_count; ++i) {
     parent_[i] = i;
@@ -125,7 +128,14 @@ void FlatCongruenceClosure::assert_equal(FlatTermId lhs, FlatTermId rhs,
 void FlatCongruenceClosure::assert_distinct(FlatTermId lhs, FlatTermId rhs,
                                             std::vector<sat::Lit> reason) {
   ensure_node_count(std::max(lhs, rhs) + 1);
+  const std::size_t disequality_index = disequalities_.size();
   disequalities_.push_back(Disequality{lhs, rhs, std::move(reason)});
+  const FlatTermId lhs_repr = representative(lhs);
+  const FlatTermId rhs_repr = representative(rhs);
+  disequality_lists_[lhs_repr].push_back(disequality_index);
+  if (lhs_repr != rhs_repr) {
+    disequality_lists_[rhs_repr].push_back(disequality_index);
+  }
   check_disequality(disequalities_.back());
 }
 
@@ -191,7 +201,17 @@ void FlatCongruenceClosure::merge_classes(FlatTermId lhs, FlatTermId rhs,
     ++stats_.congruence_merges;
   }
   process_use_list(lhs_repr, rhs_repr);
-  check_disequalities();
+  check_disequalities_touching(lhs_repr, rhs_repr);
+  std::vector<std::size_t> merged_disequalities;
+  merged_disequalities.reserve(disequality_lists_[rhs_repr].size() +
+                               disequality_lists_[lhs_repr].size());
+  std::merge(disequality_lists_[rhs_repr].begin(), disequality_lists_[rhs_repr].end(),
+             disequality_lists_[lhs_repr].begin(), disequality_lists_[lhs_repr].end(),
+             std::back_inserter(merged_disequalities));
+  merged_disequalities.erase(std::unique(merged_disequalities.begin(), merged_disequalities.end()),
+                             merged_disequalities.end());
+  disequality_lists_[rhs_repr] = std::move(merged_disequalities);
+  disequality_lists_[lhs_repr].clear();
 }
 
 void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new_repr) {
@@ -236,12 +256,31 @@ bool FlatCongruenceClosure::check_disequality(const Disequality& disequality) {
   return true;
 }
 
-void FlatCongruenceClosure::check_disequalities() {
+void FlatCongruenceClosure::check_disequalities_touching(FlatTermId lhs_repr, FlatTermId rhs_repr) {
   if (conflict_.has_value()) {
     return;
   }
-  for (const Disequality& disequality : disequalities_) {
-    if (check_disequality(disequality)) {
+  const std::vector<std::size_t>& lhs_candidates = disequality_lists_[lhs_repr];
+  const std::vector<std::size_t>& rhs_candidates = disequality_lists_[rhs_repr];
+  std::size_t lhs_index = 0;
+  std::size_t rhs_index = 0;
+  while (lhs_index < lhs_candidates.size() || rhs_index < rhs_candidates.size()) {
+    std::size_t disequality_index = 0;
+    if (rhs_index == rhs_candidates.size() ||
+        (lhs_index < lhs_candidates.size() &&
+         lhs_candidates[lhs_index] < rhs_candidates[rhs_index])) {
+      disequality_index = lhs_candidates[lhs_index];
+      ++lhs_index;
+    } else if (lhs_index == lhs_candidates.size() ||
+               rhs_candidates[rhs_index] < lhs_candidates[lhs_index]) {
+      disequality_index = rhs_candidates[rhs_index];
+      ++rhs_index;
+    } else {
+      disequality_index = lhs_candidates[lhs_index];
+      ++lhs_index;
+      ++rhs_index;
+    }
+    if (check_disequality(disequalities_[disequality_index])) {
       return;
     }
   }

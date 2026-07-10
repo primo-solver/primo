@@ -270,6 +270,23 @@ void flat_congruence_closure_uses_curried_definitions() {
   assert(closure.stats().congruence_merges >= 1);
 }
 
+void flat_congruence_closure_skips_unrelated_disequality_scans() {
+  FlatCongruenceClosure closure(6);
+  closure.assert_distinct(0, 1, {primo::sat::Lit{-1}});
+  closure.assert_distinct(2, 3, {primo::sat::Lit{-2}});
+  assert(closure.stats().disequality_checks == 2);
+
+  closure.assert_equal(4, 5, {primo::sat::Lit{-3}});
+  assert(!closure.conflict().has_value());
+  assert(closure.stats().disequality_checks == 2);
+
+  closure.assert_equal(0, 1, {primo::sat::Lit{-4}});
+  const auto conflict = closure.conflict();
+  assert(conflict.has_value());
+  assert(closure.stats().disequality_checks == 3);
+  assert(closure.stats().conflicts == 1);
+}
+
 void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
   primo::core::SymbolTable symbols;
   const auto sort = symbols.declare_sort("A");
@@ -318,6 +335,7 @@ int main() {
   flat_terms_curry_nary_applications_deterministically();
   flat_terms_share_nested_subterms_and_flatten_equalities();
   flat_congruence_closure_uses_curried_definitions();
+  flat_congruence_closure_skips_unrelated_disequality_scans();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   return 0;
 }

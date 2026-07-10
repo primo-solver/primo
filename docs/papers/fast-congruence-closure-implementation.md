@@ -31,6 +31,10 @@ Paper data structures map as follows:
 - `Lookup`: `lookup_`, keyed by `(representative(function),
   representative(argument))`, storing one flat definition with that current
   signature.
+- Disequality candidates: `disequalities_` stores asserted disequalities in
+  assertion order, while `disequality_lists_` indexes those rows by current
+  representative. This is an implementation-local index for conflict checks,
+  not a separate paper operation.
 
 `Merge` is implemented by `assert_equal`, `enqueue`, `propagate`, and
 `merge_classes`. Constant equalities are pushed to `pending_`; application
@@ -42,6 +46,12 @@ only revisit definitions affected by the representative that just disappeared.
 compares current flat representatives. Current Primo terms remain hash-consed
 `TermId` values outside the theory engine; applications are normalized through
 the flat signature table.
+
+Disequality conflicts are checked immediately when a disequality is asserted.
+After a merge, `FlatCongruenceClosure` only revisits disequalities indexed by
+the two merged representatives. Candidate indices are sorted before checking so
+the first conflict follows original disequality assertion order even though
+unrelated disequalities are skipped.
 
 ## Invariants
 
@@ -102,6 +112,7 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
 - disequality conflict clauses;
 - backtrack undo followed by rediscovery;
 - deterministic Curry-style flat definitions;
+- order-preserving flat disequality candidate scans;
 - nonzero lookup-hit and congruence-merge counters.
 
 The SMT tests in `tests/unit/boolean_solver_tests.cpp` cover conflict checks,
