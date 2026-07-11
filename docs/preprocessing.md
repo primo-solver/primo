@@ -9,9 +9,10 @@ Primo currently exposes QF_UF preprocessing through
 - `strong` enables repeated preprocessing, equality bridging, finite-domain
   at-most-one clauses, finite-domain equality definitions, and finite-domain
   symmetry breaking;
-- `auto` keeps equality bridging for single-assertion formulas but skips the
-  finite-domain clause expansion there, while multi-assertion formulas use the
-  `strong` pipeline.
+- `auto` keeps equality bridging, finite-domain at-most-one clauses, and
+  symmetry breaking when their recognizers apply, but skips finite-domain
+  equality-definition expansion. The explicit `strong` preset adds equality
+  definitions for experiments.
 
 The default command now enables the safe part of the predecessor performance
 profile:
@@ -45,7 +46,8 @@ reproducing narrower configurations:
   `--qf-uf-preprocess=strong`;
 - unit equality propagation, enabled by the `basic` and `strong` preprocessing
   loops;
-- finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong`;
+- finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
+  by the `auto` path;
 - bounded ground-congruence clauses over applications already present in the
   formula, enabled by `--ground-congruence`;
 - symmetry breaking over finite-domain choice disjunctions, enabled with
@@ -71,11 +73,13 @@ Boolean clausifier and lazy EUF loop solve the strengthened formula.
 
 The `auto` preset is a dispatcher between existing sound subsets, not a new
 inference rule. It was added after QF_UF archive profiling showed that
-single-assertion finite-model encodings such as NEQ, PEQ, and SEQ can be slowed
-by thousands of finite-domain equality-definition clauses, while
-multi-assertion QG instances often need those clauses. Single-assertion formulas
-still run equality bridging with repeated unit-equality propagation so
-`eq_diamond`-style chains keep the fast bridge path.
+finite-model encodings such as NEQ, PEQ, SEQ, and QG operation tables can be
+slowed by thousands of finite-domain equality-definition clauses, while many of
+them still need the cheaper at-most-one clauses. `auto` therefore keeps AMO
+clauses but leaves equality definitions to the explicit `strong` preset.
+Single-assertion formulas still run equality bridging with repeated
+unit-equality propagation so `eq_diamond`-style chains keep the fast bridge
+path.
 
 Unit equality propagation runs after optional generated preprocessing facts are
 appended. It collects equalities asserted at top level, including equalities
@@ -146,8 +150,17 @@ clauses:
 
 for every pair of distinct values. These are ordinary EUF theory lemmas: if
 `ci` and `cj` are explicitly asserted disequal, a single term cannot equal both
-values. The pass is intentionally narrow. It does not infer disequalities hidden
-under Boolean structure and it does not perform finite-model search.
+values. If two recognized finite-domain terms `s` and `t` are explicitly
+asserted disequal and share the same value set, the pass also appends
+distinct-endpoint AMO clauses:
+
+```text
+(or (not (= s ci)) (not (= t ci)))
+```
+
+for every domain value `ci`. The pass is intentionally narrow. It does not infer
+disequalities hidden under Boolean structure and it does not perform finite-model
+search.
 
 When two or more terms share the same recognized finite domain, `strong`
 preprocessing also appends equality-definition clauses over existing equality
@@ -258,7 +271,7 @@ Implemented:
 - unit equality propagation from top-level equalities;
 - configurable repeated preprocessing loop with `--preprocessing-passes`;
 - finite-domain choice recognition from explicit disjunctions;
-- finite-domain at-most-one clauses in the strong preset;
+- finite-domain at-most-one clauses in the strong preset and auto path;
 - finite-domain equality-definition clauses in the strong preset;
 - opt-in bounded ground-congruence clauses;
 - top-level pairwise disequality requirement;

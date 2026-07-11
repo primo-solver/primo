@@ -277,6 +277,23 @@ void collect_unit_equalities(const core::TermManager& terms, core::TermId assert
   }
 }
 
+void register_equality_query_terms(const core::TermManager& terms, core::TermId assertion,
+                                   theory::equality::CongruenceClosure& closure) {
+  std::vector<core::TermId> work{assertion};
+  while (!work.empty()) {
+    const core::TermId term = work.back();
+    work.pop_back();
+    const core::Term& node = terms.get(term);
+    if (node.kind == core::TermKind::Equality) {
+      closure.add_term(node.children.at(0));
+      closure.add_term(node.children.at(1));
+      continue;
+    }
+    const std::vector<core::TermId>& children = node.children;
+    work.insert(work.end(), children.begin(), children.end());
+  }
+}
+
 core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId term,
                                       theory::equality::CongruenceClosure& closure) {
   const core::Term& node = terms.get(term);
@@ -484,6 +501,18 @@ std::vector<core::TermId> finite_domain_at_most_one_clauses(
       clauses.push_back(terms.mk_or({terms.mk_not(terms.mk_eq(term, values[i])),
                                      terms.mk_not(terms.mk_eq(term, values[j]))}));
     }
+  }
+  return clauses;
+}
+
+std::vector<core::TermId> finite_domain_distinct_endpoint_clauses(
+    core::TermManager& terms, core::TermId lhs, core::TermId rhs,
+    const std::vector<core::TermId>& values) {
+  std::vector<core::TermId> clauses;
+  clauses.reserve(values.size());
+  for (const core::TermId value : values) {
+    clauses.push_back(terms.mk_or(
+        {terms.mk_not(terms.mk_eq(lhs, value)), terms.mk_not(terms.mk_eq(rhs, value))}));
   }
   return clauses;
 }
@@ -993,7 +1022,9 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   theory::equality::CongruenceClosure closure(terms);
   for (const core::TermId assertion : assertions) {
     collect_unit_equalities(terms, assertion, closure);
+    register_equality_query_terms(terms, assertion, closure);
   }
+  closure.saturate();
 
   std::vector<core::TermId> simplified;
   simplified.reserve(assertions.size());
@@ -1043,6 +1074,21 @@ FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
     }
     if (added_for_domain > 0) {
       ++result.domains;
+    }
+  }
+  for (const auto& [lhs, rhs] : disequalities) {
+    const auto lhs_choice = choices.find(lhs);
+    const auto rhs_choice = choices.find(rhs);
+    if (lhs_choice == choices.end() || rhs_choice == choices.end() ||
+        lhs_choice->second.values != rhs_choice->second.values) {
+      continue;
+    }
+    const std::vector<core::TermId> clauses =
+        finite_domain_distinct_endpoint_clauses(terms_, lhs, rhs, lhs_choice->second.values);
+    for (const core::TermId clause : clauses) {
+      if (emitted.insert(clause).second) {
+        result.clauses.push_back(clause);
+      }
     }
   }
   return result;

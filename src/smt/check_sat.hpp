@@ -62,6 +62,7 @@ struct CheckSatOptions {
   bool uf_symmetry_breaking = true;
   bool eq_bridge = true;
   bool ground_congruence = false;
+  bool preprocess_only = false;
   std::size_t euf_propagation_interval = 32;
   double euf_propagation_assign_threshold = 0.25;
   std::size_t preprocessing_passes = 4;

@@ -47,6 +47,11 @@ compare runs mechanically. Current counters include:
 - `:euf.propagation.budget-cutoffs`;
 - `:euf.propagation.hit-rate-cutoffs`.
 
+For preprocessing-only comparisons, pass `--preprocess-only --stats`. Primo
+then parses and preprocesses the input, prints `unknown`, skips SAT/theory
+solving, and emits the preprocessing counters. Do not use this mode for
+benchmark solved counts.
+
 `:euf.theory-conflicts` counts EUF conflict clauses learned either by the
 ordinary post-model check or by the CaDiCaL external-clause callback used by
 `--euf-prop=conflict|online`.

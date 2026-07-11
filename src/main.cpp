@@ -129,6 +129,8 @@ int main(int argc, char** argv) {
                "Disable equality bridging unless required by the preprocessing preset");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
+  app.add_flag("--preprocess-only", solver_options.preprocess_only,
+               "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
                  "QF_UF preprocessing preset: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));

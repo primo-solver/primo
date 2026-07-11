@@ -14,10 +14,10 @@ class CongruenceClosure {
 
   void add_term(core::TermId term);
   void assert_equal(core::TermId lhs, core::TermId rhs);
+  void saturate();
   bool are_equal(core::TermId lhs, core::TermId rhs);
 
  private:
-  void saturate();
   bool congruent(core::TermId lhs, core::TermId rhs) const;
 
   const core::TermManager& terms_;

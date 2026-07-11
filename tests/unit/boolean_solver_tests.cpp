@@ -750,7 +750,7 @@ void online_euf_reason_cache_survives_backtracking() {
   primo::smt::CheckSatOptions options;
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
   options.euf_propagation_interval = 32;
-  options.euf_propagation_assign_threshold = 0.25;
+  options.euf_propagation_assign_threshold = 1.0;
   options.euf_propagation_delivery.kind = primo::smt::AutoBudget::Kind::Fixed;
   options.euf_propagation_delivery.value = 1000;
   const std::string input =

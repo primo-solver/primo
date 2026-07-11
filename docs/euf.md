@@ -97,11 +97,14 @@ applications. The propagator tracks assignments and backtracking notifications,
 then asks for entailed unassigned theory literals and their reason clauses.
 With `--euf-engine=lazy`, reason queries use the older explained closure. With
 `--euf-engine=incremental`, they use a persistent flat curried closure owned by
-the external propagator. The propagator pushes a flat-closure snapshot when SAT
-enters a new decision level, asserts assigned theory literals as CaDiCaL reports
-them, and pops the closure on SAT backtrack. This is still an initial online
-subset: it does not choose decisions. Like `conflict`, it can serve EUF
-conflict clauses through CaDiCaL's external-clause callback.
+the external propagator. The propagator checkpoints assignment-trail positions
+when SAT enters a new decision level, asserts theory literals as CaDiCaL reports
+them, and rebuilds the flat closure from the retained trail after SAT
+backtracks. This avoids copying the full closure at every decision level while
+keeping the flat-closure snapshot API available for tests and future tuning.
+This is still an initial online subset: it does not choose decisions. Like
+`conflict`, it can serve EUF conflict clauses through CaDiCaL's external-clause
+callback.
 
 ## Term Interface
 
@@ -197,14 +200,13 @@ premises.
 ## Preprocessing Interaction
 
 The CLI default `--qf-uf-preprocess=auto` pass runs before QF_UF solving. On
-single-assertion formulas it runs equality bridging and unit-equality
-simplification but skips finite-domain clause expansion. On multi-assertion
-formulas it uses the `strong` pipeline, which appends bridge equalities,
-finite-domain at-most-one clauses, finite-domain equality definitions, and
-value-precedence assertions when their recognizers can prove the required local
-conditions. `--qf-uf-preprocess=basic` keeps only the unit-equality
-simplification subset, `strong` always enables the full finite-domain pipeline,
-and `off` disables this loop.
+all assertion shapes it runs equality bridging, finite-domain at-most-one
+clauses, value-precedence constraints, and unit-equality simplification when
+their recognizers can prove the required local conditions, but skips
+finite-domain equality-definition expansion. The explicit `strong` preset adds
+finite-domain equality definitions for experiments. `--qf-uf-preprocess=basic`
+keeps only the unit-equality simplification subset, and `off` disables this
+loop.
 `--ground-congruence` additionally enables bounded ground-congruence clauses.
 These generated assertions are then handled by the same Boolean clausifier and
 congruence-closure loop as ordinary user assertions. `--uf-symmetry-breaking`
@@ -255,9 +257,10 @@ the EUF direction and the eventual data structures. Primo now implements the
 Section 3 use-list, lookup, pending-merge shape as an opt-in conflict and
 propagation checker over deterministic Curry-style flat definitions. Online
 incremental propagation owns a persistent flat closure and uses SAT
-decision-level push/pop callbacks. Final conflict checks and model-time
-propagation still rebuild flat closures from complete assignments. Primo does
-not yet implement the Section 4-5 proof-producing union-find.
+decision-level callbacks with assignment-trail checkpoints. Final conflict
+checks and model-time propagation still rebuild flat closures from complete
+assignments. Primo does not yet implement the Section 4-5 proof-producing
+union-find.
 
 Deharbe et al., *Exploiting symmetry in SMT problems*, and Reger and Suda,
 *Using SAT and SMT Solvers for Finite Model Finding with Sorts*, motivate the

@@ -973,23 +973,23 @@ class IncrementalFlatAssignmentState {
           flat_, terms_, AssignedTheoryAtom{atom.lit.value, false, atom.term}, false_flat_));
     }
 
-    closure_.ensure_node_count(flat_.size());
-    for (const theory::equality::FlatDefinition& definition : flat_.definitions()) {
-      closure_.add_definition(definition);
-    }
-    closure_.assert_distinct(true_flat_, false_flat_);
+    initialize_base_closure();
     publish_stats();
   }
 
-  void push_level() { checkpoints_.push_back(closure_.push()); }
+  void push_level() { checkpoints_.push_back(assignments_.size()); }
 
   void pop_to_level(std::size_t new_level) {
-    while (checkpoints_.size() > new_level) {
-      const std::size_t checkpoint = checkpoints_.back();
-      checkpoints_.pop_back();
-      closure_.pop(checkpoint);
-      publish_stats();
+    if (checkpoints_.size() <= new_level) {
+      return;
     }
+    const std::size_t keep_assignments = checkpoints_[new_level];
+    checkpoints_.resize(new_level);
+    assignments_.resize(keep_assignments);
+    last_published_stats_ = {};
+    rebuild_closure();
+    statistics_.increment(kStatEufIncrementalBacktracks);
+    publish_stats();
   }
 
   void assert_assignment(const AssignedTheoryAtom& assignment) {
@@ -997,6 +997,7 @@ class IncrementalFlatAssignmentState {
     if (!flat_atom.has_value()) {
       return;
     }
+    assignments_.push_back(assignment);
     flat_atom->source.value = assignment.value;
     assert_flat_assigned_atom(closure_, flat_atom.value(), true_flat_, false_flat_);
     publish_stats();
@@ -1025,6 +1026,30 @@ class IncrementalFlatAssignmentState {
   std::optional<sat::Clause> conflict() const { return closure_.conflict(); }
 
  private:
+  void initialize_base_closure() {
+    closure_.ensure_node_count(flat_.size());
+    for (const theory::equality::FlatDefinition& definition : flat_.definitions()) {
+      closure_.add_definition(definition);
+    }
+    closure_.assert_distinct(true_flat_, false_flat_);
+  }
+
+  void rebuild_closure() {
+    closure_ = theory::equality::FlatCongruenceClosure(0);
+    initialize_base_closure();
+    for (const AssignedTheoryAtom& assignment : assignments_) {
+      std::optional<FlatAssignedTheoryAtom> flat_atom = flat_atom_for_lit(assignment.lit);
+      if (!flat_atom.has_value()) {
+        continue;
+      }
+      flat_atom->source.value = assignment.value;
+      assert_flat_assigned_atom(closure_, flat_atom.value(), true_flat_, false_flat_);
+      if (closure_.conflict().has_value()) {
+        break;
+      }
+    }
+  }
+
   std::optional<FlatAssignedTheoryAtom> flat_atom_for_lit(int lit) const {
     const int var = lit > 0 ? lit : -lit;
     const auto found = flat_atom_by_var_.find(var);
@@ -1048,6 +1073,7 @@ class IncrementalFlatAssignmentState {
   theory::equality::FlatTermId false_flat_ = theory::equality::kInvalidFlatTermId;
   std::vector<FlatAssignedTheoryAtom> flat_atoms_;
   std::unordered_map<int, std::size_t> flat_atom_by_var_;
+  std::vector<AssignedTheoryAtom> assignments_;
   std::vector<std::size_t> checkpoints_;
   theory::equality::IncrementalCongruenceClosureStats last_published_stats_;
 };
@@ -1715,8 +1741,9 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     const bool preprocessing_enabled = options.qf_uf_preprocess != QfUfPreprocessMode::Off;
     const bool use_eq_bridge = options.eq_bridge || strong_preprocessing || auto_single_assertion;
     const bool use_finite_domain_evaluation = false;
-    const bool use_finite_domain_amo = strong_preprocessing;
-    const bool use_finite_domain_equality_definitions = strong_preprocessing;
+    const bool use_finite_domain_amo = strong_preprocessing || auto_single_assertion;
+    const bool use_finite_domain_equality_definitions =
+        options.qf_uf_preprocess == QfUfPreprocessMode::Strong;
     const bool use_ground_congruence_definitions = options.ground_congruence;
     const bool use_symmetry_breaking =
         preprocessing_enabled && (options.uf_symmetry_breaking || strong_preprocessing);
@@ -1789,6 +1816,9 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       statistics.increment(kStatPreprocessingChangedPasses);
     }
     statistics.set(kStatAssertionsFinal, assertions.size());
+    if (options.preprocess_only) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "preprocess-only", statistics};
+    }
 
     const bool has_equality = [&] {
       for (const core::TermId assertion : assertions) {

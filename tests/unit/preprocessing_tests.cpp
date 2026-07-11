@@ -239,6 +239,27 @@ void finite_domain_choices_may_be_nested_or_nodes() {
   assert(result.clauses.size() == 3);
 }
 
+void finite_domain_distinct_endpoints_get_value_amo_clauses() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const std::vector<primo::core::TermId> values{a, b, c};
+
+  std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
+  assertions.push_back(fixture.choices(x, values));
+  assertions.push_back(fixture.choices(y, values));
+  assertions.push_back(fixture.neq(x, y));
+
+  primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
+  const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
+
+  assert(result.domains == 2);
+  assert(result.clauses.size() == 9);
+}
+
 void finite_domain_equality_definitions_connect_terms_with_same_domain() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -327,6 +348,7 @@ int main() {
   unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();
   finite_domain_at_most_one_adds_pairwise_clauses();
   finite_domain_choices_may_be_nested_or_nodes();
+  finite_domain_distinct_endpoints_get_value_amo_clauses();
   finite_domain_equality_definitions_connect_terms_with_same_domain();
   congruence_definitions_connect_same_symbol_applications();
   finite_domain_evaluator_simplifies_table_tautology();
