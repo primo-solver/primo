@@ -7,6 +7,16 @@ using primo::smt::CheckSatResult;
 
 namespace {
 
+primo::smt::CheckSatOptions propagation_test_options() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.uf_symmetry_breaking = false;
+  options.eq_bridge = false;
+  options.euf_propagation_interval = 1;
+  options.euf_propagation_assign_threshold = 1.0;
+  return options;
+}
+
 void pure_boolean_sat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -445,7 +455,7 @@ void strong_preprocessing_enables_ground_congruence_clauses() {
 }
 
 void model_euf_propagation_learns_congruence_lemma() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
   const auto result = check_sat_smtlib(
       R"(
@@ -468,7 +478,7 @@ void model_euf_propagation_learns_congruence_lemma() {
 }
 
 void incremental_model_euf_propagation_uses_flat_lookup() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_engine = primo::smt::EufEngine::Incremental;
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
   const auto result = check_sat_smtlib(
@@ -491,7 +501,7 @@ void incremental_model_euf_propagation_uses_flat_lookup() {
 }
 
 void model_euf_propagation_handles_predicate_congruence() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
   const auto result = check_sat_smtlib(
       R"(
@@ -511,7 +521,7 @@ void model_euf_propagation_handles_predicate_congruence() {
 }
 
 void model_euf_propagation_respects_zero_budget() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
   options.euf_propagation_budget.kind = primo::smt::AutoBudget::Kind::Fixed;
   options.euf_propagation_budget.value = 0;
@@ -536,7 +546,7 @@ void model_euf_propagation_respects_zero_budget() {
 }
 
 void online_euf_propagation_learns_congruence_during_search() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
   const auto result = check_sat_smtlib(
       R"(
@@ -557,7 +567,7 @@ void online_euf_propagation_learns_congruence_during_search() {
 }
 
 void incremental_online_euf_propagation_uses_flat_lookup() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_engine = primo::smt::EufEngine::Incremental;
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
   const auto result = check_sat_smtlib(
@@ -581,7 +591,7 @@ void incremental_online_euf_propagation_uses_flat_lookup() {
 }
 
 void online_euf_propagation_handles_transitive_reasons() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
   const auto result = check_sat_smtlib(
       R"(
@@ -603,7 +613,7 @@ void online_euf_propagation_handles_transitive_reasons() {
 }
 
 void online_euf_propagation_handles_predicate_congruence() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
   const auto result = check_sat_smtlib(
       R"(
@@ -668,7 +678,7 @@ void conflict_euf_callback_learns_external_conflict_without_propagation() {
 }
 
 void online_euf_propagation_accepts_already_assigned_implications() {
-  primo::smt::CheckSatOptions options;
+  primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
   const auto result = check_sat_smtlib(
       R"(

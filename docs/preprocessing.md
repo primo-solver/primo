@@ -1,7 +1,8 @@
 # Preprocessing
 
 Primo currently exposes QF_UF preprocessing through
-`--qf-uf-preprocess=off|basic|strong|auto`. The CLI default is `auto`.
+`--qf-uf-preprocess=off|basic|strong|auto`. The CLI and
+`CheckSatOptions` default is `auto`.
 
 - `off` disables the preprocessing loop;
 - `basic` runs one pass of unit equality propagation;
@@ -12,24 +13,29 @@ Primo currently exposes QF_UF preprocessing through
   finite-domain clause expansion there, while multi-assertion formulas use the
   `strong` pipeline.
 
-The exact `interesting.html` reproduction profile is:
+The default command now enables the safe part of the predecessor performance
+profile:
 
 ```bash
-./build/primo --qf-uf-profile=tuned-interesting --euf-prop=model input.smt2
-```
-
-It is equivalent to:
-
-```bash
-./build/primo --qf-uf-preprocess=strong --uf-symmetry-breaking \
-  --preprocessing-passes 4 --eq-bridge \
+./build/primo --uf-symmetry-breaking --preprocessing-passes 4 --eq-bridge \
   --prop-interval 32 --prop-assign-threshold 0.25 \
   --prop-delivery-budget 1000 input.smt2
 ```
 
-The profile is opt-in. It does not enable `--euf-prop=online`; online
-propagation remains experimental until exact-set and fuzz runs have zero
-crashes and zero wrong answers.
+Those flags are defaults, so the command above is equivalent to plain
+`./build/primo input.smt2` unless an option overrides them. The explicit form is
+kept here to make benchmark comparisons with the predecessor command readable.
+The default does not enable `--euf-prop=online`; online propagation remains
+experimental after the full QF_UF SLURM 109891 run found one wrong answer.
+
+The exact legacy-style reproduction profile is:
+
+```bash
+./build/primo --qf-uf-profile=tuned-interesting input.smt2
+```
+
+It sets the same safe switches as the default and leaves the selected
+`--qf-uf-preprocess` mode at `auto` unless the user overrides it.
 
 The individual legacy switches remain available for experiments and for
 reproducing narrower configurations:
@@ -43,6 +49,10 @@ reproducing narrower configurations:
   formula, enabled by `--ground-congruence`;
 - symmetry breaking over finite-domain choice disjunctions, enabled with
   `--uf-symmetry-breaking` or `--qf-uf-preprocess=strong`.
+
+`--no-eq-bridge` and `--no-uf-symmetry-breaking` disable the two default-on
+legacy switches for ablation runs. `--qf-uf-preprocess=off` disables the
+preprocessing loop and the finite-domain symmetry-breaking preprocessing step.
 
 ```bash
 ./build/primo --qf-uf-preprocess=off input.smt2
@@ -73,8 +83,8 @@ closure. This is what turns bridge facts from diamond formulas into an immediate
 pre-SAT contradiction with the final disequality.
 
 `--preprocessing-passes N` controls the repeated preprocessing loop. Each pass
-can add bridge facts and then simplify with unit equalities. The default is one
-pass; `0` disables the loop unless the `strong` preset is selected. Strong
+can add bridge facts and then simplify with unit equalities. The default is four
+passes. `0` disables the loop unless the `strong` preset is selected. Strong
 preprocessing runs at least three passes because bridge facts and finite-domain
 clauses can expose further unit-equality simplifications.
 

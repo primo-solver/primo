@@ -1632,7 +1632,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     const bool use_finite_domain_amo = strong_preprocessing;
     const bool use_finite_domain_equality_definitions = strong_preprocessing;
     const bool use_ground_congruence_definitions = options.ground_congruence;
-    const bool use_symmetry_breaking = options.uf_symmetry_breaking || strong_preprocessing;
+    const bool use_symmetry_breaking =
+        preprocessing_enabled && (options.uf_symmetry_breaking || strong_preprocessing);
     const std::size_t preprocessing_passes =
         (strong_preprocessing || auto_single_assertion)
             ? std::max<std::size_t>(options.preprocessing_passes, 3)

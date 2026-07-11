@@ -44,12 +44,14 @@ the complete SAT assignment.
 `--euf-prop=off|conflict|model|online`, `--euf-prop-budget=auto|unlimited|N`,
 and `--euf-prop-delivery=auto|unlimited|N` are the public option shape for
 callback and propagation work. The default is `conflict`; use `off` to force
-the older post-model conflict loop.
+the older post-model conflict loop. The default delivery budget is `1000`, which
+matches the predecessor benchmark command when online/model propagation is
+enabled explicitly.
 
 For compatibility with the predecessor benchmark command, Primo also accepts
 `--prop-delivery-budget N`; `0` means unlimited delivery. `--prop-interval N`
 and `--prop-assign-threshold X` are accepted for online propagation experiments.
-The tuned interesting-set profile sets them to `32` and `0.25` respectively.
+Their defaults are `32` and `0.25` respectively.
 
 `conflict` connects the CaDiCaL external propagator only for assignment,
 backtrack, and external conflict clauses. It maintains the incremental flat
@@ -65,6 +67,15 @@ The default was changed to `conflict` after the full QF_UF SLURM run recorded in
 phase-negative/default baseline. The result is mixed by family: QG gained 684
 solved files, while Goel lost 21 solved files, so family-level reports should
 remain part of future tuning.
+
+The legacy preprocessing switches were promoted to defaults after the full
+QF_UF 10s comparison in SLURM jobs 109889, 109890, and 109891. The safe
+configuration, using `conflict` callbacks plus `--uf-symmetry-breaking`,
+`--preprocess-passes 4`, `--eq-bridge`, `--prop-interval 32`,
+`--prop-assign-threshold 0.25`, and `--prop-delivery-budget 1000`, solved 6647
+of 7503 files with no wrong answers. The previous default solved 6611. The same
+bundle with `--euf-prop=online` solved 6662 but had 18 errors and one wrong
+answer, so online propagation remains experimental and must not be a default.
 
 `model` is implemented as a conservative post-model lemma learner. After each
 SAT model, Primo rebuilds EUF closures that omit one candidate theory atom at a

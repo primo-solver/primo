@@ -84,12 +84,14 @@ int main(int argc, char** argv) {
   std::vector<std::string> files;
   bool quiet = false;
   bool print_stats = false;
+  bool no_uf_symmetry_breaking = false;
+  bool no_eq_bridge = false;
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
   std::string euf_engine = "incremental";
   std::string euf_prop = "conflict";
   std::string euf_prop_budget = "auto";
-  std::string euf_prop_delivery = "auto";
+  std::string euf_prop_delivery = "1000";
   primo::smt::CheckSatOptions solver_options;
 
   CLI::App app{"Primo SMT solver scaffold"};
@@ -97,8 +99,12 @@ int main(int argc, char** argv) {
   app.add_flag("--stats", print_stats, "Print solver statistics to stderr");
   app.add_flag("--uf-symmetry-breaking", solver_options.uf_symmetry_breaking,
                "Enable experimental QF_UF symmetry breaking over invariant finite-domain values");
+  app.add_flag("--no-uf-symmetry-breaking", no_uf_symmetry_breaking,
+               "Disable QF_UF finite-domain symmetry breaking");
   app.add_flag("--eq-bridge", solver_options.eq_bridge,
                "Add equalities implied by every branch of selected QF_UF disjunctions");
+  app.add_flag("--no-eq-bridge", no_eq_bridge,
+               "Disable equality bridging unless required by the preprocessing preset");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
@@ -149,7 +155,6 @@ int main(int argc, char** argv) {
     solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Basic;
   }
   if (profile_option->count() > 0 && qf_uf_profile == "tuned-interesting") {
-    solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
     solver_options.uf_symmetry_breaking = true;
     solver_options.eq_bridge = true;
     if (preprocess_passes_option->count() == 0) {
@@ -164,6 +169,12 @@ int main(int argc, char** argv) {
     if (euf_prop_delivery == "auto") {
       euf_prop_delivery = "1000";
     }
+  }
+  if (no_uf_symmetry_breaking) {
+    solver_options.uf_symmetry_breaking = false;
+  }
+  if (no_eq_bridge) {
+    solver_options.eq_bridge = false;
   }
   if (euf_prop == "conflict") {
     solver_options.euf_propagation = primo::smt::EufPropagationMode::Conflict;

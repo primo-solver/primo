@@ -52,17 +52,17 @@ struct CheckSatOutcome {
 };
 
 struct CheckSatOptions {
-  QfUfPreprocessMode qf_uf_preprocess = QfUfPreprocessMode::Basic;
+  QfUfPreprocessMode qf_uf_preprocess = QfUfPreprocessMode::Auto;
   EufEngine euf_engine = EufEngine::Incremental;
   EufPropagationMode euf_propagation = EufPropagationMode::Conflict;
   AutoBudget euf_propagation_budget;
-  AutoBudget euf_propagation_delivery;
-  bool uf_symmetry_breaking = false;
-  bool eq_bridge = false;
+  AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
+  bool uf_symmetry_breaking = true;
+  bool eq_bridge = true;
   bool ground_congruence = false;
-  std::size_t euf_propagation_interval = 1;
-  double euf_propagation_assign_threshold = 1.0;
-  std::size_t preprocessing_passes = 1;
+  std::size_t euf_propagation_interval = 32;
+  double euf_propagation_assign_threshold = 0.25;
+  std::size_t preprocessing_passes = 4;
 };
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options = {});
