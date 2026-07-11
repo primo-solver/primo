@@ -1,0 +1,9 @@
+metric,value
+total,12
+solved,12
+unsupported,0
+wrong,0
+par2,0.364164
+status.ok,12
+answer.sat,10
+answer.unsat,2
