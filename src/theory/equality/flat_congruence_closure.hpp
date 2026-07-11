@@ -90,6 +90,10 @@ class FlatCongruenceClosure {
   void process_use_list(FlatTermId old_repr, FlatTermId new_repr);
   bool check_disequality(const Disequality& disequality);
   void check_disequalities_touching(FlatTermId lhs_repr, FlatTermId rhs_repr);
+  void begin_reason_collection(std::vector<sat::Lit>& reason) const;
+  void append_unique_reason(std::vector<sat::Lit>& target,
+                            const std::vector<sat::Lit>& source) const;
+  bool explain_equal_into(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason) const;
   std::vector<sat::Lit> congruence_reason(const Definition& lhs, const Definition& rhs) const;
 
   std::vector<FlatTermId> parent_;
@@ -107,6 +111,13 @@ class FlatCongruenceClosure {
   std::vector<Snapshot> snapshots_;
   std::optional<std::vector<sat::Lit>> conflict_;
   IncrementalCongruenceClosureStats stats_;
+  mutable std::vector<std::size_t> visit_marks_;
+  mutable std::vector<std::size_t> parent_edge_scratch_;
+  mutable std::vector<FlatTermId> parent_scratch_;
+  mutable std::vector<FlatTermId> queue_scratch_;
+  mutable std::size_t visit_generation_ = 0;
+  mutable std::vector<std::size_t> reason_marks_;
+  mutable std::size_t reason_generation_ = 0;
 };
 
 }  // namespace primo::theory::equality

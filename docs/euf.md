@@ -175,14 +175,17 @@ definitions and maps original equality atoms to flat endpoints.
 lookup, pending-merge, disequality, explanation, and coarse backtracking
 structure over those flat definitions. Explanation edges are stored both in
 insertion order and in per-flat-term adjacency lists so reason BFS visits only
-edges incident to the current proof-graph node. A newly asserted disequality is
-checked immediately. After a class merge, older disequalities are not scanned
-globally; the closure collects the disequality indices attached to the two
-merged representatives, sorts those indices to preserve original insertion
-order, and checks only that candidate set. This keeps the first reported
-conflict deterministic while avoiding scans over disequalities whose endpoint
-classes did not change. This is the engine used by
-`--euf-engine=incremental`.
+edges incident to the current proof-graph node. The BFS marks, parent-edge
+arrays, queue storage, and reason-literal marks are owned by the closure and
+reused across explanation queries; signed SAT literals are marked separately, so
+`p` and `not p` can both occur in a non-minimal reason when different proof
+edges justify them. A newly asserted disequality is checked immediately. After a
+class merge, older disequalities are not scanned globally; the closure collects
+the disequality indices attached to the two merged representatives, sorts those
+indices to preserve original insertion order, and checks only that candidate
+set. This keeps the first reported conflict deterministic while avoiding scans
+over disequalities whose endpoint classes did not change. This is the engine
+used by `--euf-engine=incremental`.
 
 ## EufSolver
 
@@ -227,6 +230,8 @@ Implemented:
 - opt-in use-list, signature-lookup, pending-queue congruence closure for
   final conflict checks;
 - order-preserving flat disequality scans over per-class candidate lists;
+- scratch-reused flat equality explanations with signed-literal reason
+  de-duplication;
 - model-time propagation using the flat incremental closure when
   `--euf-engine=incremental` is selected;
 - online propagation with a SAT-callback-owned persistent flat closure when

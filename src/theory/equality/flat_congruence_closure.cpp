@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <iterator>
 #include <optional>
-#include <queue>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -13,21 +12,15 @@ namespace primo::theory::equality {
 
 namespace {
 
-void append_unique(std::vector<sat::Lit>& target, const std::vector<sat::Lit>& source) {
-  for (const sat::Lit lit : source) {
-    const auto duplicate = std::find_if(target.begin(), target.end(), [&](sat::Lit existing) {
-      return existing.value == lit.value;
-    });
-    if (duplicate == target.end()) {
-      target.push_back(lit);
-    }
-  }
-}
-
 void append_use(std::vector<FlatTermId>& use_list, FlatTermId result) {
   if (std::find(use_list.begin(), use_list.end(), result) == use_list.end()) {
     use_list.push_back(result);
   }
+}
+
+std::size_t lit_index(sat::Lit lit) {
+  const std::size_t var = static_cast<std::size_t>(lit.value < 0 ? -lit.value : lit.value);
+  return (var << 1U) + (lit.value < 0 ? 1U : 0U);
 }
 
 }  // namespace
@@ -247,9 +240,10 @@ bool FlatCongruenceClosure::check_disequality(const Disequality& disequality) {
   if (representative(disequality.lhs) != representative(disequality.rhs)) {
     return false;
   }
-  std::vector<sat::Lit> reason =
-      explain_equal(disequality.lhs, disequality.rhs).value_or(std::vector<sat::Lit>{});
-  append_unique(reason, disequality.reason);
+  std::vector<sat::Lit> reason;
+  begin_reason_collection(reason);
+  (void)explain_equal_into(disequality.lhs, disequality.rhs, reason);
+  append_unique_reason(reason, disequality.reason);
   stats_.explain_length += reason.size();
   conflict_ = std::move(reason);
   ++stats_.conflicts;
@@ -288,19 +282,63 @@ void FlatCongruenceClosure::check_disequalities_touching(FlatTermId lhs_repr, Fl
 
 std::optional<std::vector<sat::Lit>> FlatCongruenceClosure::explain_equal(FlatTermId lhs,
                                                                           FlatTermId rhs) const {
-  if (lhs == rhs) {
-    return std::vector<sat::Lit>{};
+  std::vector<sat::Lit> reason;
+  begin_reason_collection(reason);
+  if (!explain_equal_into(lhs, rhs, reason)) {
+    return std::nullopt;
   }
-  std::vector<bool> visited(parent_.size(), false);
-  std::vector<std::size_t> parent_edge(parent_.size(), edges_.size());
-  std::vector<FlatTermId> parent(parent_.size(), kInvalidFlatTermId);
-  std::queue<FlatTermId> queue;
-  visited[lhs] = true;
-  queue.push(lhs);
+  return reason;
+}
 
-  while (!queue.empty() && !visited[rhs]) {
-    const FlatTermId current = queue.front();
-    queue.pop();
+void FlatCongruenceClosure::begin_reason_collection(std::vector<sat::Lit>& reason) const {
+  reason.clear();
+  ++reason_generation_;
+  if (reason_generation_ == 0) {
+    std::fill(reason_marks_.begin(), reason_marks_.end(), 0);
+    ++reason_generation_;
+  }
+}
+
+void FlatCongruenceClosure::append_unique_reason(std::vector<sat::Lit>& target,
+                                                 const std::vector<sat::Lit>& source) const {
+  for (const sat::Lit lit : source) {
+    const std::size_t index = lit_index(lit);
+    if (index >= reason_marks_.size()) {
+      reason_marks_.resize(index + 1, 0);
+    }
+    if (reason_marks_[index] == reason_generation_) {
+      continue;
+    }
+    reason_marks_[index] = reason_generation_;
+    target.push_back(lit);
+  }
+}
+
+bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
+                                               std::vector<sat::Lit>& reason) const {
+  if (lhs == rhs) {
+    return true;
+  }
+  if (lhs >= parent_.size() || rhs >= parent_.size()) {
+    return false;
+  }
+  if (visit_marks_.size() < parent_.size()) {
+    visit_marks_.resize(parent_.size(), 0);
+    parent_edge_scratch_.resize(parent_.size(), edges_.size());
+    parent_scratch_.resize(parent_.size(), kInvalidFlatTermId);
+  }
+  ++visit_generation_;
+  if (visit_generation_ == 0) {
+    std::fill(visit_marks_.begin(), visit_marks_.end(), 0);
+    ++visit_generation_;
+  }
+  queue_scratch_.clear();
+  std::size_t queue_index = 0;
+  visit_marks_[lhs] = visit_generation_;
+  queue_scratch_.push_back(lhs);
+
+  while (queue_index < queue_scratch_.size() && visit_marks_[rhs] != visit_generation_) {
+    const FlatTermId current = queue_scratch_[queue_index++];
     for (const std::size_t edge_index : edge_adjacency_[current]) {
       const Edge& edge = edges_[edge_index];
       FlatTermId next = kInvalidFlatTermId;
@@ -309,37 +347,32 @@ std::optional<std::vector<sat::Lit>> FlatCongruenceClosure::explain_equal(FlatTe
       } else if (edge.rhs == current) {
         next = edge.lhs;
       }
-      if (next == kInvalidFlatTermId || next >= visited.size() || visited[next]) {
+      if (next == kInvalidFlatTermId || next >= visit_marks_.size() ||
+          visit_marks_[next] == visit_generation_) {
         continue;
       }
-      visited[next] = true;
-      parent[next] = current;
-      parent_edge[next] = edge_index;
-      queue.push(next);
+      visit_marks_[next] = visit_generation_;
+      parent_scratch_[next] = current;
+      parent_edge_scratch_[next] = edge_index;
+      queue_scratch_.push_back(next);
     }
   }
 
-  if (!visited[rhs]) {
-    return std::nullopt;
+  if (visit_marks_[rhs] != visit_generation_) {
+    return false;
   }
-  std::vector<sat::Lit> reason;
-  for (FlatTermId current = rhs; current != lhs; current = parent[current]) {
-    append_unique(reason, edges_[parent_edge[current]].reason);
+  for (FlatTermId current = rhs; current != lhs; current = parent_scratch_[current]) {
+    append_unique_reason(reason, edges_[parent_edge_scratch_[current]].reason);
   }
-  return reason;
+  return true;
 }
 
 std::vector<sat::Lit> FlatCongruenceClosure::congruence_reason(const Definition& lhs,
                                                                const Definition& rhs) const {
   std::vector<sat::Lit> reason;
-  if (auto function_reason = explain_equal(lhs.function, rhs.function);
-      function_reason.has_value()) {
-    append_unique(reason, function_reason.value());
-  }
-  if (auto argument_reason = explain_equal(lhs.argument, rhs.argument);
-      argument_reason.has_value()) {
-    append_unique(reason, argument_reason.value());
-  }
+  begin_reason_collection(reason);
+  (void)explain_equal_into(lhs.function, rhs.function, reason);
+  (void)explain_equal_into(lhs.argument, rhs.argument, reason);
   return reason;
 }
 

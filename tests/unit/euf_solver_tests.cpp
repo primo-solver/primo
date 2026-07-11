@@ -1,5 +1,5 @@
-#include <cassert>
 #include <cstddef>
+#include <cstdlib>
 
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
@@ -18,6 +18,12 @@ using primo::theory::equality::IncrementalCongruenceClosure;
 
 namespace {
 
+void check(bool condition) {
+  if (!condition) {
+    std::abort();
+  }
+}
+
 void congruent_applications_are_merged() {
   primo::core::SymbolTable symbols;
   const auto sort = symbols.declare_sort("A");
@@ -34,7 +40,7 @@ void congruent_applications_are_merged() {
   EufSolver solver(terms);
   solver.assert_equal(a_term, b_term);
   solver.assert_distinct(f_a, f_b);
-  assert(!solver.is_satisfiable());
+  check(!solver.is_satisfiable());
 }
 
 void distinct_unrelated_terms_are_satisfiable() {
@@ -49,7 +55,7 @@ void distinct_unrelated_terms_are_satisfiable() {
 
   EufSolver solver(terms);
   solver.assert_distinct(a_term, b_term);
-  assert(solver.is_satisfiable());
+  check(solver.is_satisfiable());
 }
 
 void explained_closure_explains_explicit_chain() {
@@ -69,8 +75,8 @@ void explained_closure_explains_explicit_chain() {
   closure.assert_equal(b_term, c_term, {primo::sat::Lit{-2}});
   const auto reason = closure.explain_equal(a_term, c_term);
 
-  assert(reason.has_value());
-  assert(reason->size() == 2);
+  check(reason.has_value());
+  check(reason->size() == 2);
 }
 
 void explained_closure_explains_congruence() {
@@ -90,9 +96,9 @@ void explained_closure_explains_congruence() {
   closure.assert_equal(a_term, b_term, {primo::sat::Lit{-1}});
   const auto reason = closure.explain_equal(f_a, f_b);
 
-  assert(reason.has_value());
-  assert(reason->size() == 1);
-  assert(reason->front().value == -1);
+  check(reason.has_value());
+  check(reason->size() == 1);
+  check(reason->front().value == -1);
 }
 
 void incremental_closure_discovers_unary_congruence_with_lookup() {
@@ -113,9 +119,9 @@ void incremental_closure_discovers_unary_congruence_with_lookup() {
   closure.add_term(f_b);
   closure.assert_equal(a_term, b_term, {primo::sat::Lit{-1}});
 
-  assert(closure.are_equal(f_a, f_b));
-  assert(closure.stats().lookup_hits >= 1);
-  assert(closure.stats().congruence_merges >= 1);
+  check(closure.are_equal(f_a, f_b));
+  check(closure.stats().lookup_hits >= 1);
+  check(closure.stats().congruence_merges >= 1);
 }
 
 void incremental_closure_discovers_binary_shared_subterm_congruence() {
@@ -138,11 +144,11 @@ void incremental_closure_discovers_binary_shared_subterm_congruence() {
   closure.add_term(g_b_c);
   closure.assert_equal(a_term, b_term, {primo::sat::Lit{-2}});
 
-  assert(closure.are_equal(g_a_c, g_b_c));
+  check(closure.are_equal(g_a_c, g_b_c));
   const auto reason = closure.explain_equal(g_a_c, g_b_c);
-  assert(reason.has_value());
-  assert(reason->size() == 1);
-  assert(reason->front().value == -2);
+  check(reason.has_value());
+  check(reason->size() == 1);
+  check(reason->front().value == -2);
 }
 
 void incremental_closure_reports_disequality_conflict() {
@@ -157,14 +163,14 @@ void incremental_closure_reports_disequality_conflict() {
 
   IncrementalCongruenceClosure closure(terms);
   closure.assert_distinct(a_term, b_term, {primo::sat::Lit{-10}});
-  assert(!closure.conflict().has_value());
+  check(!closure.conflict().has_value());
   closure.assert_equal(a_term, b_term, {primo::sat::Lit{-11}});
 
   const auto conflict = closure.conflict();
-  assert(conflict.has_value());
-  assert(conflict->size() == 2);
-  assert(closure.stats().disequality_checks >= 2);
-  assert(closure.stats().conflicts == 1);
+  check(conflict.has_value());
+  check(conflict->size() == 2);
+  check(closure.stats().disequality_checks >= 2);
+  check(closure.stats().conflicts == 1);
 }
 
 void incremental_closure_backtracks_and_rediscoveres_congruence() {
@@ -185,12 +191,12 @@ void incremental_closure_backtracks_and_rediscoveres_congruence() {
   closure.add_term(f_b);
   const std::size_t checkpoint = closure.push();
   closure.assert_equal(a_term, b_term, {primo::sat::Lit{-3}});
-  assert(closure.are_equal(f_a, f_b));
+  check(closure.are_equal(f_a, f_b));
   closure.pop(checkpoint);
-  assert(!closure.are_equal(f_a, f_b));
+  check(!closure.are_equal(f_a, f_b));
   closure.assert_equal(a_term, b_term, {primo::sat::Lit{-4}});
-  assert(closure.are_equal(f_a, f_b));
-  assert(closure.stats().backtracks == 1);
+  check(closure.are_equal(f_a, f_b));
+  check(closure.stats().backtracks == 1);
 }
 
 void flat_terms_curry_nary_applications_deterministically() {
@@ -209,9 +215,9 @@ void flat_terms_curry_nary_applications_deterministically() {
   const auto first = flat.flatten(g_ab);
   const auto second = flat.flatten(g_ab);
 
-  assert(first == second);
-  assert(flat.definitions().size() == 2);
-  assert(flat.existing_flat_term(g_ab).value() == first);
+  check(first == second);
+  check(flat.definitions().size() == 2);
+  check(flat.existing_flat_term(g_ab).value() == first);
 }
 
 void flat_terms_share_nested_subterms_and_flatten_equalities() {
@@ -232,10 +238,10 @@ void flat_terms_share_nested_subterms_and_flatten_equalities() {
   FlatTermIndex flat(terms);
   const auto flat_eq = flat.flatten_equality_atom(eq);
 
-  assert(flat_eq.has_value());
-  assert(flat_eq->lhs == flat.existing_flat_term(h_shared).value());
-  assert(flat_eq->rhs == flat.existing_flat_term(g_ab).value());
-  assert(flat.definitions().size() == 4);
+  check(flat_eq.has_value());
+  check(flat_eq->lhs == flat.existing_flat_term(h_shared).value());
+  check(flat_eq->rhs == flat.existing_flat_term(g_ab).value());
+  check(flat.definitions().size() == 4);
 }
 
 void flat_congruence_closure_uses_curried_definitions() {
@@ -265,26 +271,45 @@ void flat_congruence_closure_uses_curried_definitions() {
   }
   closure.assert_equal(flat_a, flat_b, {primo::sat::Lit{-5}});
 
-  assert(closure.are_equal(flat_g_a_c, flat_g_b_c));
-  assert(closure.stats().lookup_hits >= 1);
-  assert(closure.stats().congruence_merges >= 1);
+  check(closure.are_equal(flat_g_a_c, flat_g_b_c));
+  check(closure.stats().lookup_hits >= 1);
+  check(closure.stats().congruence_merges >= 1);
 }
 
 void flat_congruence_closure_skips_unrelated_disequality_scans() {
   FlatCongruenceClosure closure(6);
   closure.assert_distinct(0, 1, {primo::sat::Lit{-1}});
   closure.assert_distinct(2, 3, {primo::sat::Lit{-2}});
-  assert(closure.stats().disequality_checks == 2);
+  check(closure.stats().disequality_checks == 2);
 
   closure.assert_equal(4, 5, {primo::sat::Lit{-3}});
-  assert(!closure.conflict().has_value());
-  assert(closure.stats().disequality_checks == 2);
+  check(!closure.conflict().has_value());
+  check(closure.stats().disequality_checks == 2);
 
   closure.assert_equal(0, 1, {primo::sat::Lit{-4}});
   const auto conflict = closure.conflict();
-  assert(conflict.has_value());
-  assert(closure.stats().disequality_checks == 3);
-  assert(closure.stats().conflicts == 1);
+  check(conflict.has_value());
+  check(closure.stats().disequality_checks == 3);
+  check(closure.stats().conflicts == 1);
+}
+
+void flat_congruence_closure_keeps_signed_reason_literals_distinct() {
+  FlatCongruenceClosure closure(3);
+  closure.assert_equal(0, 1, {primo::sat::Lit{1}});
+  closure.assert_equal(1, 2, {primo::sat::Lit{-1}});
+
+  const auto reason = closure.explain_equal(0, 2);
+  check(reason.has_value());
+  check(reason->size() == 2);
+
+  bool has_positive = false;
+  bool has_negative = false;
+  for (const primo::sat::Lit lit : reason.value()) {
+    has_positive = has_positive || lit.value == 1;
+    has_negative = has_negative || lit.value == -1;
+  }
+  check(has_positive);
+  check(has_negative);
 }
 
 void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
@@ -313,12 +338,12 @@ void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
 
   const std::size_t checkpoint = closure.push();
   closure.assert_equal(flat_a, flat_b, {primo::sat::Lit{-6}});
-  assert(closure.are_equal(flat_f_a, flat_f_b));
+  check(closure.are_equal(flat_f_a, flat_f_b));
   closure.pop(checkpoint);
-  assert(!closure.are_equal(flat_f_a, flat_f_b));
+  check(!closure.are_equal(flat_f_a, flat_f_b));
   closure.assert_equal(flat_a, flat_b, {primo::sat::Lit{-7}});
-  assert(closure.are_equal(flat_f_a, flat_f_b));
-  assert(closure.stats().backtracks == 1);
+  check(closure.are_equal(flat_f_a, flat_f_b));
+  check(closure.stats().backtracks == 1);
 }
 
 }  // namespace
@@ -336,6 +361,7 @@ int main() {
   flat_terms_share_nested_subterms_and_flatten_equalities();
   flat_congruence_closure_uses_curried_definitions();
   flat_congruence_closure_skips_unrelated_disequality_scans();
+  flat_congruence_closure_keeps_signed_reason_literals_distinct();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   return 0;
 }
