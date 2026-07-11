@@ -419,6 +419,9 @@ void auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions() {
   assert(result.statistics.get(":preprocessing.auto.strong") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":sat.phase.theory-negative") ==
+         result.statistics.get(":euf.theory-atoms"));
+  assert(result.statistics.get(":sat.phase.theory-negative") > 0);
 }
 
 void strong_preprocessing_enables_ground_congruence_clauses() {

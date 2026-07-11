@@ -27,6 +27,7 @@ class CadicalBackend final : public IpasirUpBackend {
   SatResult solve() override;
   std::optional<bool> value(int var) const override;
   bool failed(Lit lit) const override;
+  void phase(Lit lit);
   void connect_external_propagator(CaDiCaL::ExternalPropagator* propagator);
   void disconnect_external_propagator();
   void add_observed_var(int var);

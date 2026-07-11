@@ -67,6 +67,7 @@ constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
     ":preprocessing.uf-symmetry.rejected-noninvariant";
 constexpr std::string_view kStatAutoSingleAssertion = ":preprocessing.auto.single-assertion";
 constexpr std::string_view kStatAutoStrong = ":preprocessing.auto.strong";
+constexpr std::string_view kStatSatTheoryNegativePhase = ":sat.phase.theory-negative";
 constexpr std::string_view kStatSolverBoolean = ":solver.boolean";
 constexpr std::string_view kStatSolverQfUf = ":solver.qf-uf";
 constexpr std::string_view kStatSatSolveCalls = ":sat.solve-calls";
@@ -1420,6 +1421,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     clausifier.assert_formula(assertion);
   }
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    backend.phase(sat::Lit{-atom.lit.value});
+    statistics.increment(kStatSatTheoryNegativePhase);
+  }
 
   const core::TermId true_term = terms.mk_bool(true);
   const core::TermId false_term = terms.mk_bool(false);
@@ -1530,6 +1535,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
   statistics.set(kStatAutoSingleAssertion, 0);
   statistics.set(kStatAutoStrong, 0);
+  statistics.set(kStatSatTheoryNegativePhase, 0);
   statistics.set(kStatSolverBoolean, 0);
   statistics.set(kStatSolverQfUf, 0);
   statistics.set(kStatSatSolveCalls, 0);

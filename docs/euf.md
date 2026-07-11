@@ -15,6 +15,7 @@ The QF_UF loop in `src/smt/check_sat.cpp` is:
 
 ```text
 clausify assertions
+set the default SAT phase of tracked theory atoms to false
 loop:
   call CaDiCaL
   if SAT says UNSAT, return UNSAT
@@ -27,6 +28,12 @@ loop:
 The current conflict clause is justified by the explained congruence closure.
 Reasons are sound but not guaranteed minimum; the optimized proof-forest
 structure from the fast congruence-closure literature is still deferred.
+
+The SAT phase setting is a search heuristic only. It asks CaDiCaL to try the
+negative phase for equality and Boolean-predicate theory atoms before the SAT
+solver's own activity heuristics override that choice. This is useful for
+finite-domain QF_UF encodings with many disequality constraints and value-choice
+disjunctions, but it does not assert or propagate any theory fact.
 
 `--euf-engine=incremental|lazy` selects the EUF checker used for final conflicts
 and propagation reason queries. `incremental` is the default. The incremental

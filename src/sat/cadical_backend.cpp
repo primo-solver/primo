@@ -1,6 +1,8 @@
 #include "sat/cadical_backend.hpp"
 
+#include <optional>
 #include <stdexcept>
+#include <string_view>
 
 #if PRIMO_HAVE_IPASIR
 #include <cadical.hpp>
@@ -120,6 +122,17 @@ bool CadicalBackend::failed(Lit lit) const {
 #else
   (void)lit;
   return false;
+#endif
+}
+
+void CadicalBackend::phase(Lit lit) {
+#if PRIMO_HAVE_IPASIR
+  if (lit.value == 0) {
+    throw std::invalid_argument("phase literal must be non-zero");
+  }
+  solver_->phase(lit.value);
+#else
+  (void)lit;
 #endif
 }
 

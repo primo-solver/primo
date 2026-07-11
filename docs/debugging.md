@@ -33,6 +33,7 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.auto.strong`;
 - `:solver.boolean`;
 - `:solver.qf-uf`;
+- `:sat.phase.theory-negative`;
 - `:sat.solve-calls`;
 - `:euf.theory-atoms`;
 - `:euf.checks`;

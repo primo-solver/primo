@@ -1,0 +1,243 @@
+# QF_UF Full SLURM Run 109872
+
+- Change under evaluation: default negative CaDiCaL phase hints for tracked QF_UF theory atoms.
+- Decision: accepted; compared with job 109840, solved delta +72, timeout delta -72, wrong answers 0, PAR2 delta -351.952314.
+- Benchmark set: `sandbox/QF_UF.tar.zst` extracted to `tmp/QF_UF`.
+- Solver command: `build-slurm-rel/primo --quiet`.
+- Timeout: 2 seconds per file.
+- SLURM job: `109872`, 8 array shards.
+- Result CSV: `primo-phaseneg-qfuf-full-2s-merged.csv`.
+
+## Summary
+
+- Total files: 7503
+- Solved sat/unsat: 4778
+- Timeouts: 2679
+- Wrong answers: 0
+- PAR2: 12692.484411
+
+Compared with `results/slurm-qfuf-full-109840/primo-diseqscan-qfuf-full-2s-merged.csv`:
+
+- Solved delta: +72
+- Timeout delta: -72
+- PAR2 delta: -351.952314
+- Newly solved rows: 203
+- Regressed solved rows: 131
+
+## Family Solved Counts
+
+- 20170829-Rodin: 34/34 solved, newly solved 0, regressed 0
+- 20190906-CLEARSY: 0/46 solved, newly solved 0, regressed 0
+- Goel: 627/773 solved, newly solved 1, regressed 0
+- NEQ: 0/48 solved, newly solved 0, regressed 0
+- PEQ: 3/47 solved, newly solved 0, regressed 0
+- QG: 3995/6396 solved, newly solved 202, regressed 130
+- SEQ: 16/56 solved, newly solved 0, regressed 1
+- TypeSafe: 3/3 solved, newly solved 0, regressed 0
+- eq_diamond: 100/100 solved, newly solved 0, regressed 0
+
+## Regressed Rows
+
+- `tmp/QF_UF/QG-classification/loops6/dead_dnd001.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn047.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn063.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn074.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn077.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn080.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn082.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn101.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn103.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn104.smt2`
+- `tmp/QF_UF/QG-classification/loops6/iso_brn050.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn025.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn028.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn095.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1029.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn104.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1040.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1042.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1047.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1049.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1086.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn109.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1094.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn112.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn114.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1146.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn116.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1162.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1198.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1274.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1282.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn136.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn186.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn310.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn312.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn313.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn317.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn319.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn352.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn353.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn359.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn362.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn369.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn377.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn388.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn408.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn409.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn440.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn460.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn517.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn518.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn525.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn539.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn540.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn541.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn550.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn553.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn556.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn564.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn566.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn585.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn586.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn587.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn590.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn594.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn610.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn615.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn626.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn630.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn637.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn642.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn644.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn653.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn658.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn660.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn667.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn668.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn680.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn695.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn706.smt2`
+
+## Newly Solved Rows
+
+- `tmp/QF_UF/2018-Goel-hwbench/QF_UF_Heap_ab_br_max.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn040.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn045.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn046.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn068.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_brn083.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_icl036.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_icl037.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_icl089.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_icl102.smt2`
+- `tmp/QF_UF/QG-classification/loops6/gensys_icl103.smt2`
+- `tmp/QF_UF/QG-classification/loops6/iso_brn064.smt2`
+- `tmp/QF_UF/QG-classification/loops6/iso_brn076.smt2`
+- `tmp/QF_UF/QG-classification/loops6/iso_icl045.smt2`
+- `tmp/QF_UF/QG-classification/loops6/iso_icl071.smt2`
+- `tmp/QF_UF/QG-classification/loops6/iso_icl072.smt2`
+- `tmp/QF_UF/QG-classification/qg5/dead_dnd016.smt2`
+- `tmp/QF_UF/QG-classification/qg5/dead_dnd018.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn020.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn033.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn034.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn035.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn049.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1008.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1010.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1012.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1020.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1032.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1033.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1044.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1045.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1048.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1061.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1066.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1077.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1093.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1106.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1157.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1175.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn118.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1213.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1232.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1239.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1248.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1252.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1266.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn127.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1270.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1304.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn1315.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn168.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn170.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn220.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn244.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn267.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn276.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn283.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn305.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn308.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn314.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn324.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn337.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn340.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn346.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn358.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn361.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn366.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn372.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn416.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn425.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn427.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn445.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn448.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn463.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn476.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn478.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn520.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn528.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn559.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn567.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn569.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn572.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn573.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn596.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn602.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn603.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn604.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn613.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn636.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn662.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn666.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn687.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn704.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn730.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn733.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn739.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn773.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn790.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn791.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn798.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn817.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn842.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn861.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn862.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn873.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn874.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn889.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn906.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn916.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn929.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn931.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn940.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn944.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn952.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn953.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn974.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn982.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn986.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_brn999.smt2`
+- `tmp/QF_UF/QG-classification/qg5/gensys_icl009.smt2`
