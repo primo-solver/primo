@@ -95,9 +95,15 @@ def safe_log_stem(index: int, path: Path) -> str:
 def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) -> None:
     total = len(rows)
     solved = sum(1 for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"})
+    unsupported = sum(1 for row in rows if row["answer"] == "unsupported")
     checked = sum(1 for row in rows if row["expected"])
     wrong = sum(1 for row in rows if row["wrong"] == "true")
-    par2 = sum(float(row["seconds"]) if row["status"] == "ok" else 2.0 * timeout for row in rows)
+    par2 = sum(
+        float(row["seconds"])
+        if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
+        else 2.0 * timeout
+        for row in rows
+    )
     by_status = Counter(str(row["status"]) for row in rows)
     by_answer = Counter(str(row["answer"]) for row in rows)
     by_family_total = Counter(str(row["family"]) for row in rows)
@@ -107,6 +113,10 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
         if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
     )
     by_family_wrong = Counter(str(row["family"]) for row in rows if row["wrong"] == "true")
+    by_family_timeout = Counter(str(row["family"]) for row in rows if row["status"] == "timeout")
+    by_family_unsupported = Counter(
+        str(row["family"]) for row in rows if row["answer"] == "unsupported"
+    )
 
     summary.parent.mkdir(parents=True, exist_ok=True)
     with summary.open("w", newline="") as handle:
@@ -114,6 +124,7 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
         writer.writeheader()
         writer.writerow({"metric": "total", "value": total})
         writer.writerow({"metric": "solved", "value": solved})
+        writer.writerow({"metric": "unsupported", "value": unsupported})
         writer.writerow({"metric": "checked", "value": checked})
         writer.writerow({"metric": "wrong", "value": wrong})
         writer.writerow({"metric": "par2", "value": f"{par2:.6f}"})
@@ -125,6 +136,15 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
             writer.writerow({"metric": f"family.{family}.total", "value": by_family_total[family]})
             writer.writerow(
                 {"metric": f"family.{family}.solved", "value": by_family_solved[family]}
+            )
+            writer.writerow(
+                {"metric": f"family.{family}.timeout", "value": by_family_timeout[family]}
+            )
+            writer.writerow(
+                {
+                    "metric": f"family.{family}.unsupported",
+                    "value": by_family_unsupported[family],
+                }
             )
             writer.writerow({"metric": f"family.{family}.wrong", "value": by_family_wrong[family]})
 

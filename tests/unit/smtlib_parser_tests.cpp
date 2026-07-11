@@ -91,9 +91,34 @@ void parses_benchmark_metadata_and_quoted_symbols() {
   assert(commands[9].kind == CommandKind::Ignored);
 }
 
+void parses_define_fun_macros() {
+  Parser parser(R"(
+    (define-fun same ((x A) (y A)) Bool (= x y))
+    (define-fun c () A a)
+  )");
+  const auto commands = parser.parse_commands();
+  assert(commands.size() == 2);
+  assert(commands[0].kind == CommandKind::DefineFun);
+  assert(commands[0].name == "same");
+  assert(commands[0].parameters.size() == 2);
+  assert(commands[0].parameters[0].name == "x");
+  assert(commands[0].parameters[0].sort == "A");
+  assert(commands[0].parameters[1].name == "y");
+  assert(commands[0].parameters[1].sort == "A");
+  assert(commands[0].result_sort == "Bool");
+  assert(commands[0].body.kind == SExpr::Kind::List);
+  assert(commands[0].body.list[0].is_atom("="));
+
+  assert(commands[1].kind == CommandKind::DefineFun);
+  assert(commands[1].name == "c");
+  assert(commands[1].parameters.empty());
+  assert(commands[1].result_sort == "A");
+}
+
 void rejects_malformed_or_unsupported_input() {
   expect_parse_error([] { Parser("(check-sat extra)").parse_commands(); });
   expect_parse_error([] { Parser("(declare-sort A 1)").parse_commands(); });
+  expect_parse_error([] { Parser("(define-fun f (x A) Bool true)").parse_commands(); });
   expect_parse_error([] { Parser("(push 1)").parse_commands(); });
   expect_parse_error([] { Parser("(assert (= a b)").parse_commands(); });
 }
@@ -104,6 +129,7 @@ int main() {
   parses_qf_uf_smoke_shape();
   parses_nested_boolean_assertion();
   parses_benchmark_metadata_and_quoted_symbols();
+  parses_define_fun_macros();
   rejects_malformed_or_unsupported_input();
   return 0;
 }

@@ -168,6 +168,25 @@ Command Parser::parse_command(const SExpr& expr) const {
     return command;
   }
 
+  if (head == "define-fun") {
+    if (expr.list.size() != 5 || expr.list[2].kind != SExpr::Kind::List) {
+      throw ParseError("define-fun expects name, parameter list, result sort, and body", 0);
+    }
+    Command command;
+    command.kind = CommandKind::DefineFun;
+    command.name = require_atom(expr.list[1], "function name");
+    for (const SExpr& parameter : expr.list[2].list) {
+      if (parameter.kind != SExpr::Kind::List || parameter.list.size() != 2) {
+        throw ParseError("define-fun parameter must be a sorted variable", 0);
+      }
+      command.parameters.push_back(SortedVar{require_atom(parameter.list[0], "parameter name"),
+                                             require_atom(parameter.list[1], "parameter sort")});
+    }
+    command.result_sort = require_atom(expr.list[3], "result sort");
+    command.body = expr.list[4];
+    return command;
+  }
+
   if (head == "assert") {
     if (expr.list.size() != 2) {
       throw ParseError("assert expects one expression", 0);

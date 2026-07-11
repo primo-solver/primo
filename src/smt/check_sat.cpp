@@ -115,6 +115,10 @@ class Frontend {
       if (bound.has_value()) {
         return bound.value();
       }
+      const auto defined = definitions_.find(expr.atom);
+      if (defined != definitions_.end() && defined->second.parameters.empty()) {
+        return instantiate_definition(expr.atom, {});
+      }
       const auto symbol = symbols_.lookup_symbol(expr.atom);
       if (!symbol.has_value()) {
         throw UnsupportedInput("unknown symbol: " + expr.atom);
@@ -170,6 +174,15 @@ class Frontend {
       return build_distinct(expr);
     }
 
+    const auto defined = definitions_.find(head);
+    if (defined != definitions_.end()) {
+      std::vector<core::TermId> args;
+      for (std::size_t i = 1; i < expr.list.size(); ++i) {
+        args.push_back(build_term(expr.list[i]));
+      }
+      return instantiate_definition(head, std::move(args));
+    }
+
     const auto symbol = symbols_.lookup_symbol(head);
     if (!symbol.has_value()) {
       throw UnsupportedInput("unknown function symbol: " + head);
@@ -197,6 +210,9 @@ class Frontend {
       case smtlib::CommandKind::DeclareFun:
         declare_fun(command);
         return;
+      case smtlib::CommandKind::DefineFun:
+        define_fun(command);
+        return;
       case smtlib::CommandKind::Assert:
         side_assertions_.clear();
         {
@@ -220,6 +236,13 @@ class Frontend {
   std::size_t auxiliary_ites() const { return auxiliary_ites_; }
 
  private:
+  struct Definition {
+    std::vector<std::string> parameters;
+    std::vector<core::SortId> parameter_sorts;
+    core::SortId result_sort = core::kInvalidSortId;
+    smtlib::SExpr body;
+  };
+
   std::optional<core::TermId> lookup_bound_term(const std::string& name) const {
     for (auto scope = let_scopes_.rbegin(); scope != let_scopes_.rend(); ++scope) {
       const auto found = scope->find(name);
@@ -393,6 +416,56 @@ class Frontend {
     }
   }
 
+  void define_fun(const smtlib::Command& command) {
+    if (definitions_.contains(command.name) || symbols_.lookup_symbol(command.name).has_value()) {
+      throw UnsupportedInput("duplicate function definition: " + command.name);
+    }
+    Definition definition;
+    definition.parameters.reserve(command.parameters.size());
+    definition.parameter_sorts.reserve(command.parameters.size());
+    for (const smtlib::SortedVar& parameter : command.parameters) {
+      definition.parameters.push_back(parameter.name);
+      definition.parameter_sorts.push_back(lookup_sort_name(parameter.sort));
+    }
+    definition.result_sort = lookup_sort_name(command.result_sort);
+    definition.body = command.body;
+    definitions_.emplace(command.name, std::move(definition));
+  }
+
+  core::TermId instantiate_definition(const std::string& name, std::vector<core::TermId> args) {
+    const auto found = definitions_.find(name);
+    if (found == definitions_.end()) {
+      throw UnsupportedInput("unknown definition: " + name);
+    }
+    if (expanding_definitions_.contains(name)) {
+      throw UnsupportedInput("recursive define-fun is unsupported: " + name);
+    }
+    const Definition& definition = found->second;
+    if (args.size() != definition.parameters.size()) {
+      throw UnsupportedInput("define-fun application has wrong arity: " + name);
+    }
+
+    std::unordered_map<std::string, core::TermId> scope;
+    for (std::size_t i = 0; i < args.size(); ++i) {
+      if (terms_.get(args[i]).sort != definition.parameter_sorts[i]) {
+        throw UnsupportedInput("define-fun argument sort mismatch: " + name);
+      }
+      if (!scope.emplace(definition.parameters[i], args[i]).second) {
+        throw UnsupportedInput("duplicate define-fun parameter: " + definition.parameters[i]);
+      }
+    }
+
+    expanding_definitions_.insert(name);
+    let_scopes_.push_back(std::move(scope));
+    const core::TermId body = build_term(definition.body);
+    let_scopes_.pop_back();
+    expanding_definitions_.erase(name);
+    if (terms_.get(body).sort != definition.result_sort) {
+      throw UnsupportedInput("define-fun result sort mismatch: " + name);
+    }
+    return body;
+  }
+
   core::TermId fresh_auxiliary_constant(core::SortId sort, std::string_view prefix) {
     while (true) {
       const std::string name =
@@ -407,6 +480,8 @@ class Frontend {
   core::SymbolTable symbols_;
   core::TermManager terms_{symbols_};
   std::vector<std::unordered_map<std::string, core::TermId>> let_scopes_;
+  std::unordered_map<std::string, Definition> definitions_;
+  std::unordered_set<std::string> expanding_definitions_;
   std::vector<core::TermId> side_assertions_;
   std::size_t auxiliary_counter_ = 0;
   std::size_t boolean_ites_ = 0;

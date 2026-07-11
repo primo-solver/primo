@@ -12,8 +12,14 @@ enum class CommandKind {
   SetLogic,
   DeclareSort,
   DeclareFun,
+  DefineFun,
   Assert,
   CheckSat,
+};
+
+struct SortedVar {
+  std::string name;
+  std::string sort;
 };
 
 struct Command {
@@ -21,8 +27,10 @@ struct Command {
   std::string name;
   std::string logic;
   std::vector<std::string> arg_sorts;
+  std::vector<SortedVar> parameters;
   std::string result_sort;
   SExpr assertion;
+  SExpr body;
 };
 
 }  // namespace primo::smtlib

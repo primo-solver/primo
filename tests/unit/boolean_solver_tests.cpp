@@ -267,6 +267,31 @@ void annotated_assertions_are_solved() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void define_fun_macros_are_expanded() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (define-fun same ((x A) (y A)) Bool (= x y))
+    (define-fun aa () A a)
+    (assert (same aa b))
+    (assert (not (= a b)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void recursive_define_fun_is_rejected() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (define-fun loop () Bool loop)
+    (assert loop)
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+}
+
 void boolean_ite_is_eliminated() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -742,6 +767,8 @@ int main() {
   mixed_boolean_and_euf_conflict_is_unsat();
   predicate_applications_respect_congruence();
   annotated_assertions_are_solved();
+  define_fun_macros_are_expanded();
+  recursive_define_fun_is_rejected();
   boolean_ite_is_eliminated();
   term_ite_is_eliminated();
   true_boolean_constant_used_as_uf_argument_is_euf_term();

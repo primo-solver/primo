@@ -71,8 +71,10 @@ python3 scripts/bench_qf_uf_full.py \
 On SLURM, run one shard per array task and merge shard CSVs after all tasks
 complete. The CSV records file, family, solver status, answer, SMT-LIB
 `:status` expectation, wrong-answer flag, elapsed seconds, timeout flag, exit
-code, and a short stderr prefix. The summary records solved, wrong-answer,
-status, answer, family, and PAR2 counts. Any performance report based on this
-archive must include the SLURM job id, timeout, commit, merged CSV path, family
-summary, wrong-answer count, and comparison against the previous full-archive
-Primo run.
+code, and a short stderr prefix. The summary records solved, unsupported,
+wrong-answer, status, answer, family, and PAR2 counts. Only non-wrong `sat` and
+`unsat` answers count as solved or as elapsed-time PAR2 successes; `unknown`,
+`unsupported`, timeouts, and errors contribute `2 * timeout`. Any performance
+report based on this archive must include the SLURM job id, timeout, commit,
+merged CSV path, family summary, unsupported count, wrong-answer count, and
+comparison against the previous full-archive Primo run.

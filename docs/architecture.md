@@ -119,6 +119,13 @@ The constructors do not currently canonicalize commutative operands. For example
 
 SMT-LIB `let` does not create a term node. `smt::Frontend` keeps a stack of local maps from variable names to `TermId`. Binding right-hand sides are built in the outer scope, then the body is built in an extended scope. Because bound names resolve to existing `TermId` values, `let` expansion does not duplicate subtrees beyond the normal constructor calls and hash-consing behavior.
 
+SMT-LIB `define-fun` is supported for the QF_UF macro subset used by benchmark
+preludes. Definitions are stored by the frontend and expanded at each use by
+binding formal parameters to already-built argument terms before rebuilding the
+body through `TermManager`. The implementation checks argument and result sorts
+against the declared sorted variables, and deliberately rejects recursive
+definitions instead of treating them as uninterpreted functions.
+
 ### SAT and Theory Views of Terms
 
 The SAT layer does not inspect `Term` objects directly. `smt::BooleanClausifier` maps Boolean structure to SAT clauses. Equalities and Boolean-returning predicate applications become theory atoms with associated SAT literals.
@@ -130,6 +137,7 @@ The equality theory receives `TermId` values. Congruence closure uses those ids 
 Implemented now:
 
 - SMT-LIB command parsing through ANTLR validation plus local command/S-expression reconstruction.
+- QF_UF `define-fun` macro expansion for non-recursive definitions.
 - Sort and symbol tables for Bool and uninterpreted sorts.
 - Hash-consed term construction with local Boolean simplification.
 - CaDiCaL-backed SAT solving through the IPASIR-compatible backend.
