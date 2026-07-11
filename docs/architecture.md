@@ -151,7 +151,8 @@ Implemented now:
 - Boolean clausification for assertions.
 - Lazy QF_UF checking over equality atoms and Boolean predicate applications.
 - Non-incremental congruence closure for the current SAT assignment.
-- Default-off finite-domain UF symmetry breaking with `--uf-symmetry-breaking`.
+- Default-on finite-domain UF symmetry breaking, with
+  `--no-uf-symmetry-breaking` as an explicit disable switch.
 
 Not implemented yet:
 
@@ -166,7 +167,7 @@ Not implemented yet:
 - IPASIR-UP motivates the SAT-backend interface, but the current backend is a direct CaDiCaL/IPASIR-style adapter in `src/sat/`.
 - Congruence-closure papers motivate the EUF direction. The current implementation has congruence closure and disequality checking, but it does not yet implement explanation-producing union-find or the full fast algorithms described in the literature notes.
 - DPLL(T) papers motivate the lazy SAT/theory loop. Primo currently implements a simple lazy loop that rebuilds/checks theory consistency from each SAT assignment rather than an incremental propagating theory solver.
-- SMT symmetry-breaking and finite-model value-precedence papers motivate the default-off QF_UF preprocessing pass. Primo implements only the conservative constant-permutation and value-precedence subset described in `docs/preprocessing.md`.
+- SMT symmetry-breaking and finite-model value-precedence papers motivate the default-on QF_UF preprocessing pass. Primo implements only the conservative constant-permutation and value-precedence subset described in `docs/preprocessing.md`.
 
 ## Optional Tools
 

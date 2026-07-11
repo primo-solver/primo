@@ -62,6 +62,8 @@ constexpr std::string_view kStatGroundCongruenceClauses =
 constexpr std::string_view kStatGroundCongruenceSkippedGroups =
     ":preprocessing.ground-congruence-skipped-groups";
 constexpr std::string_view kStatUfSymmetryAcceptedSets = ":preprocessing.uf-symmetry.accepted-sets";
+constexpr std::string_view kStatUfSymmetryValues = ":preprocessing.uf-symmetry.values";
+constexpr std::string_view kStatUfSymmetryTerms = ":preprocessing.uf-symmetry.terms";
 constexpr std::string_view kStatUfSymmetryConstraints = ":preprocessing.uf-symmetry.constraints";
 constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
     ":preprocessing.uf-symmetry.rejected-noninvariant";
@@ -1745,8 +1747,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     const bool use_finite_domain_equality_definitions =
         options.qf_uf_preprocess == QfUfPreprocessMode::Strong;
     const bool use_ground_congruence_definitions = options.ground_congruence;
-    const bool use_symmetry_breaking =
-        preprocessing_enabled && (options.uf_symmetry_breaking || strong_preprocessing);
+    const bool use_symmetry_breaking = preprocessing_enabled && options.uf_symmetry_breaking;
     const std::size_t preprocessing_passes =
         (strong_preprocessing || auto_single_assertion)
             ? std::max<std::size_t>(options.preprocessing_passes, 3)
@@ -1757,6 +1758,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(assertions);
       assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
       statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
+      statistics.increment(kStatUfSymmetryValues, symmetry.values);
+      statistics.increment(kStatUfSymmetryTerms, symmetry.terms);
       statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
       statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
     }

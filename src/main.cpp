@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
   app.add_flag("-q,--quiet", quiet, "Suppress startup version banner");
   app.add_flag("--stats", print_stats, "Print solver statistics to stderr");
   app.add_flag("--uf-symmetry-breaking", solver_options.uf_symmetry_breaking,
-               "Enable experimental QF_UF symmetry breaking over invariant finite-domain values");
+               "Enable default-on QF_UF symmetry breaking over invariant finite-domain values");
   app.add_flag("--no-uf-symmetry-breaking", no_uf_symmetry_breaking,
                "Disable QF_UF finite-domain symmetry breaking");
   app.add_flag("--eq-bridge", solver_options.eq_bridge,

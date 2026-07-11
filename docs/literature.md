@@ -53,8 +53,9 @@ set, and canonicalizes formulas under candidate permutations.
 
 ### Implementation notes
 
-Implemented as default-off `--uf-symmetry-breaking` in `src/smt/preprocessing.*`.
-Primo does not implement graph automorphism detection.
+Implemented as default-on `--uf-symmetry-breaking` in `src/smt/preprocessing.*`,
+with `--no-uf-symmetry-breaking` for ablation runs. Primo does not implement
+graph automorphism detection.
 
 ### Risks
 

@@ -1,5 +1,5 @@
-#include <cassert>
 #include <cstddef>
+#include <cstdlib>
 #include <utility>
 #include <vector>
 
@@ -10,6 +10,12 @@
 #include "smt/preprocessing.hpp"
 
 namespace {
+
+void check(bool condition) {
+  if (!condition) {
+    std::abort();
+  }
+}
 
 struct Fixture {
   primo::core::SymbolTable symbols;
@@ -72,11 +78,11 @@ void symmetric_fixed_terms_get_value_precedence() {
   primo::smt::UfSymmetryBreaker breaker(fixture.terms);
   const primo::smt::UfSymmetryBreakingResult result = breaker.break_symmetries(assertions);
 
-  assert(result.accepted_sets == 1);
-  assert(result.values == 3);
-  assert(result.terms == 3);
-  assert(result.rejected_noninvariant == 0);
-  assert(result.constraints.size() == 6);
+  check(result.accepted_sets == 1);
+  check(result.values == 3);
+  check(result.terms == 3);
+  check(result.rejected_noninvariant == 0);
+  check(result.constraints.size() == 6);
 }
 
 void asymmetric_value_use_is_rejected() {
@@ -95,9 +101,9 @@ void asymmetric_value_use_is_rejected() {
   primo::smt::UfSymmetryBreaker breaker(fixture.terms);
   const primo::smt::UfSymmetryBreakingResult result = breaker.break_symmetries(assertions);
 
-  assert(result.accepted_sets == 0);
-  assert(result.rejected_noninvariant == 1);
-  assert(result.constraints.empty());
+  check(result.accepted_sets == 0);
+  check(result.rejected_noninvariant == 1);
+  check(result.constraints.empty());
 }
 
 void moving_terms_are_rejected() {
@@ -115,9 +121,9 @@ void moving_terms_are_rejected() {
   primo::smt::UfSymmetryBreaker breaker(fixture.terms);
   const primo::smt::UfSymmetryBreakingResult result = breaker.break_symmetries(assertions);
 
-  assert(result.accepted_sets == 0);
-  assert(result.rejected_noninvariant == 1);
-  assert(result.constraints.empty());
+  check(result.accepted_sets == 0);
+  check(result.rejected_noninvariant == 1);
+  check(result.constraints.empty());
 }
 
 void equality_bridge_derives_common_branch_consequence() {
@@ -139,11 +145,11 @@ void equality_bridge_derives_common_branch_consequence() {
   primo::smt::EqualityBridge bridge(fixture.terms);
   const primo::smt::EqualityBridgeResult result = bridge.bridge(assertions);
 
-  assert(result.skipped_or_nodes == 0);
-  assert(result.equalities.size() == 1);
+  check(result.skipped_or_nodes == 0);
+  check(result.equalities.size() == 1);
   const primo::core::Term& derived = fixture.terms.get(result.equalities.front());
-  assert(derived.kind == primo::core::TermKind::Equality);
-  assert((derived.children == std::vector{x, z} || derived.children == std::vector{z, x}));
+  check(derived.kind == primo::core::TermKind::Equality);
+  check((derived.children == std::vector{x, z} || derived.children == std::vector{z, x}));
 }
 
 void unit_equality_propagation_simplifies_disequality() {
@@ -161,12 +167,12 @@ void unit_equality_propagation_simplifies_disequality() {
   const std::vector<primo::core::TermId> simplified =
       primo::smt::propagate_unit_equalities(fixture.terms, assertions);
 
-  assert(simplified.size() == assertions.size() + 1);
-  assert(simplified[0] == assertions[0]);
-  assert(simplified[1] == assertions[1]);
-  assert(simplified[2] == assertions[2]);
-  assert(fixture.terms.get(simplified[3]).kind == primo::core::TermKind::BoolValue);
-  assert(!fixture.terms.get(simplified[3]).bool_value);
+  check(simplified.size() == assertions.size() + 1);
+  check(simplified[0] == assertions[0]);
+  check(simplified[1] == assertions[1]);
+  check(simplified[2] == assertions[2]);
+  check(fixture.terms.get(simplified[3]).kind == primo::core::TermKind::BoolValue);
+  check(!fixture.terms.get(simplified[3]).bool_value);
 }
 
 void unit_equality_propagation_simplifies_nested_boolean_terms_after_interning() {
@@ -188,8 +194,8 @@ void unit_equality_propagation_simplifies_nested_boolean_terms_after_interning()
   const std::vector<primo::core::TermId> simplified =
       primo::smt::propagate_unit_equalities(fixture.terms, assertions, &consequences);
 
-  assert(!simplified.empty());
-  assert(consequences >= 1);
+  check(!simplified.empty());
+  check(consequences >= 1);
 }
 
 void finite_domain_at_most_one_adds_pairwise_clauses() {
@@ -206,18 +212,18 @@ void finite_domain_at_most_one_adds_pairwise_clauses() {
   primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
   const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
 
-  assert(result.domains == 1);
-  assert(result.clauses.size() == 3);
+  check(result.domains == 1);
+  check(result.clauses.size() == 3);
   for (const primo::core::TermId clause : result.clauses) {
     const primo::core::Term& node = fixture.terms.get(clause);
-    assert(node.kind == primo::core::TermKind::Or);
-    assert(node.children.size() == 2);
+    check(node.kind == primo::core::TermKind::Or);
+    check(node.children.size() == 2);
   }
 
   assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
   const primo::smt::FiniteDomainAtMostOneResult repeated = amo.generate(assertions);
-  assert(repeated.domains == 0);
-  assert(repeated.clauses.empty());
+  check(repeated.domains == 0);
+  check(repeated.clauses.empty());
 }
 
 void finite_domain_choices_may_be_nested_or_nodes() {
@@ -235,8 +241,8 @@ void finite_domain_choices_may_be_nested_or_nodes() {
   primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
   const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
 
-  assert(result.domains == 1);
-  assert(result.clauses.size() == 3);
+  check(result.domains == 1);
+  check(result.clauses.size() == 3);
 }
 
 void finite_domain_distinct_endpoints_get_value_amo_clauses() {
@@ -256,8 +262,8 @@ void finite_domain_distinct_endpoints_get_value_amo_clauses() {
   primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
   const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
 
-  assert(result.domains == 2);
-  assert(result.clauses.size() == 9);
+  check(result.domains == 2);
+  check(result.clauses.size() == 9);
 }
 
 void finite_domain_equality_definitions_connect_terms_with_same_domain() {
@@ -276,19 +282,19 @@ void finite_domain_equality_definitions_connect_terms_with_same_domain() {
   primo::smt::FiniteDomainEqualityDefinitions definitions(fixture.terms);
   const primo::smt::FiniteDomainEqualityDefinitionsResult result = definitions.generate(assertions);
 
-  assert(result.term_pairs == 1);
-  assert(result.clauses.size() == 9);
+  check(result.term_pairs == 1);
+  check(result.clauses.size() == 9);
   for (const primo::core::TermId clause : result.clauses) {
     const primo::core::Term& node = fixture.terms.get(clause);
-    assert(node.kind == primo::core::TermKind::Or);
-    assert(node.children.size() == 3);
+    check(node.kind == primo::core::TermKind::Or);
+    check(node.children.size() == 3);
   }
 
   assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
   const primo::smt::FiniteDomainEqualityDefinitionsResult repeated =
       definitions.generate(assertions);
-  assert(repeated.term_pairs == 0);
-  assert(repeated.clauses.empty());
+  check(repeated.term_pairs == 0);
+  check(repeated.clauses.empty());
 }
 
 void congruence_definitions_connect_same_symbol_applications() {
@@ -303,12 +309,12 @@ void congruence_definitions_connect_same_symbol_applications() {
   primo::smt::CongruenceDefinitionGenerator definitions(fixture.terms);
   const primo::smt::CongruenceDefinitionResult result = definitions.generate(assertions);
 
-  assert(result.groups == 1);
-  assert(result.skipped_groups == 0);
-  assert(result.clauses.size() == 1);
+  check(result.groups == 1);
+  check(result.skipped_groups == 0);
+  check(result.clauses.size() == 1);
   const primo::core::Term& clause = fixture.terms.get(result.clauses.front());
-  assert(clause.kind == primo::core::TermKind::Or);
-  assert(clause.children.size() == 2);
+  check(clause.kind == primo::core::TermKind::Or);
+  check(clause.children.size() == 2);
 }
 
 void finite_domain_evaluator_simplifies_table_tautology() {
@@ -329,12 +335,12 @@ void finite_domain_evaluator_simplifies_table_tautology() {
   primo::smt::FiniteDomainEvaluator evaluator(fixture.terms);
   const primo::smt::FiniteDomainEvaluationResult result = evaluator.simplify(assertions);
 
-  assert(result.equalities_simplified >= 1);
-  assert(result.enumeration_cutoffs == 0);
-  assert(result.assertions.size() == assertions.size());
+  check(result.equalities_simplified >= 1);
+  check(result.enumeration_cutoffs == 0);
+  check(result.assertions.size() == assertions.size());
   const primo::core::Term& last = fixture.terms.get(result.assertions.back());
-  assert(last.kind == primo::core::TermKind::BoolValue);
-  assert(!last.bool_value);
+  check(last.kind == primo::core::TermKind::BoolValue);
+  check(!last.bool_value);
 }
 
 }  // namespace

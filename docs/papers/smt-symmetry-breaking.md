@@ -9,8 +9,9 @@ PDF: <https://www.verit-solver.org/papers/cade2011.pdf>
 
 ## Relevance
 
-This paper is the direct source for Primo's default-off
-`--uf-symmetry-breaking` preprocessing pass.
+This paper is the direct source for Primo's default-on
+`--uf-symmetry-breaking` preprocessing pass. The pass can be disabled with
+`--no-uf-symmetry-breaking`.
 
 The implementation-relevant theorem is that if a formula is invariant under
 permutations of a set of uninterpreted constants, then search can be restricted
@@ -40,10 +41,11 @@ Implemented in `src/smt/preprocessing.*`:
 - syntactic invariance check under a cycle and first-value swap;
 - canonical comparison treating equality, `and`, and `or` as commutative;
 - moving-term rejection;
-- default-off CLI flag.
+- default-on CLI flag with an explicit disable switch.
 
 Deferred:
 
 - automatic graph automorphism detection;
 - proof support for generated restrictions;
-- default-on policy based on benchmark evidence.
+- broader benchmark-driven family policy beyond the current conservative
+  finite-domain recognizer.

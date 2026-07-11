@@ -50,8 +50,9 @@ reproducing narrower configurations:
   by the `auto` path;
 - bounded ground-congruence clauses over applications already present in the
   formula, enabled by `--ground-congruence`;
-- symmetry breaking over finite-domain choice disjunctions, enabled with
-  `--uf-symmetry-breaking` or `--qf-uf-preprocess=strong`.
+- symmetry breaking over finite-domain choice disjunctions, enabled by default
+  when preprocessing is enabled and explicitly controllable with
+  `--uf-symmetry-breaking` / `--no-uf-symmetry-breaking`.
 
 `--no-eq-bridge` and `--no-uf-symmetry-breaking` disable the two default-on
 legacy switches for ablation runs. `--qf-uf-preprocess=off` disables the
@@ -234,6 +235,11 @@ These assertions remove value-renaming representatives from the search space.
 They do not replace EUF reasoning and they do not create a finite model finder by
 themselves.
 
+Activation is reported with `:preprocessing.uf-symmetry.accepted-sets`,
+`:preprocessing.uf-symmetry.values`, `:preprocessing.uf-symmetry.terms`,
+`:preprocessing.uf-symmetry.constraints`, and
+`:preprocessing.uf-symmetry.rejected-noninvariant`.
+
 ## Implementation Notes
 
 The preprocessing passes operate on hash-consed `core::TermId` values after
@@ -280,6 +286,8 @@ Implemented:
 - value-precedence assertion generation;
 - CLI flag `--eq-bridge`;
 - CLI flag `--uf-symmetry-breaking`;
+- CLI flag `--no-uf-symmetry-breaking`, which disables symmetry breaking even
+  for the strong preprocessing preset;
 - unit tests for equality bridging and for accepted, asymmetric, and moving-term
   symmetry-breaking cases.
 
@@ -296,7 +304,7 @@ Deferred:
   regressed from 2 solved rows to 1 solved row on SLURM job 108936, so the
   clause generator remains explicit opt-in pending a better filter;
 - SyMT-style graph automorphism detection;
-- benchmark-driven default-on decision.
+- full-archive symmetry-only A/B reports with activation counts.
 
 ## Paper Traceability
 

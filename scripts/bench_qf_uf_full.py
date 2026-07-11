@@ -83,8 +83,28 @@ def run_solver(command: list[str], path: Path, timeout: float) -> dict[str, obje
         "exit_code": exit_code,
         "stdout": stdout,
         "stderr": stderr,
+        "stats": parse_stats(stderr),
         "stderr_head": " ".join(stderr.splitlines()[:2])[:240],
     }
+
+
+def parse_stats(stderr: str) -> dict[str, str]:
+    stats: dict[str, str] = {}
+    for line in stderr.splitlines():
+        line = line.strip()
+        if not line.startswith(":"):
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) == 2:
+            stats[parts[0]] = parts[1]
+    return stats
+
+
+def stat_value(row: dict[str, object], key: str) -> int:
+    try:
+        return int(str(row.get(key, "") or "0"))
+    except ValueError:
+        return 0
 
 
 def safe_log_stem(index: int, path: Path) -> str:
@@ -117,6 +137,7 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
     by_family_unsupported = Counter(
         str(row["family"]) for row in rows if row["answer"] == "unsupported"
     )
+    stat_keys = sorted({key for row in rows for key in row if key.startswith(":")})
 
     summary.parent.mkdir(parents=True, exist_ok=True)
     with summary.open("w", newline="") as handle:
@@ -147,6 +168,11 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
                 }
             )
             writer.writerow({"metric": f"family.{family}.wrong", "value": by_family_wrong[family]})
+        for key in stat_keys:
+            total_value = sum(stat_value(row, key) for row in rows)
+            active_rows = sum(1 for row in rows if stat_value(row, key) > 0)
+            writer.writerow({"metric": f"stat-total.{key}", "value": total_value})
+            writer.writerow({"metric": f"stat-active-files.{key}", "value": active_rows})
 
 
 def main() -> int:
@@ -211,6 +237,7 @@ def main() -> int:
             "stdout_log": stdout_log,
             "stderr_log": stderr_log,
         }
+        row.update(result["stats"])
         rows.append(row)
         print(
             f"[{index}/{len(files)}] {row['family']} {row['file']}: "
@@ -219,7 +246,7 @@ def main() -> int:
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = [
+    base_fieldnames = [
         "row",
         "file",
         "family",
@@ -234,6 +261,8 @@ def main() -> int:
         "stdout_log",
         "stderr_log",
     ]
+    stat_fieldnames = sorted({key for row in rows for key in row if key.startswith(":")})
+    fieldnames = [*base_fieldnames, *stat_fieldnames]
     with args.out.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()

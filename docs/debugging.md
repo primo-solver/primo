@@ -27,6 +27,8 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.ground-congruence-clauses`;
 - `:preprocessing.ground-congruence-skipped-groups`;
 - `:preprocessing.uf-symmetry.accepted-sets`;
+- `:preprocessing.uf-symmetry.values`;
+- `:preprocessing.uf-symmetry.terms`;
 - `:preprocessing.uf-symmetry.constraints`;
 - `:preprocessing.uf-symmetry.rejected-noninvariant`;
 - `:preprocessing.auto.single-assertion`;

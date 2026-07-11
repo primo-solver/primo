@@ -1,0 +1,11 @@
+mode	file	status	answer	seconds	exit	accepted	values	terms	constraints	rejected
+default	tmp/QF_UF/SEQ/SEQ026_size4.smt2	ok	unsat	8.340018	0	1	4	3	9	0
+default	tmp/QF_UF/NEQ/NEQ006_size4.smt2	timeout	timeout	12.020007	124	0	0	0	0	0
+default	tmp/QF_UF/PEQ/PEQ016_size4.smt2	ok	unsat	1.514274	0	1	4	4	12	0
+default	tmp/QF_UF/QG-classification/qg5/gensys_icl092.smt2	ok	unsat	10.158114	0	0	0	0	0	1
+default	tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2	timeout	timeout	12.019051	124	0	0	0	0	0
+no-sym	tmp/QF_UF/SEQ/SEQ026_size4.smt2	timeout	timeout	12.020741	124	0	0	0	0	0
+no-sym	tmp/QF_UF/NEQ/NEQ006_size4.smt2	timeout	timeout	12.022608	124	0	0	0	0	0
+no-sym	tmp/QF_UF/PEQ/PEQ016_size4.smt2	timeout	timeout	12.020676	124	0	0	0	0	0
+no-sym	tmp/QF_UF/QG-classification/qg5/gensys_icl092.smt2	ok	unsat	10.310396	0	0	0	0	0	0
+no-sym	tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2	timeout	timeout	12.020504	124	0	0	0	0	0
