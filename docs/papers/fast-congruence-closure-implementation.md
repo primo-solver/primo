@@ -83,9 +83,9 @@ Two deviations matter for performance claims:
   the paper's timestamped lookup-table backtracking policy.
 - Final model checks and model-time propagation still rebuild the flat equality
   state from a complete SAT assignment.
-- Online propagation with `--euf-engine=incremental` owns a persistent flat
-  closure, asserts theory literals as CaDiCaL reports assignments, and uses
-  `push`/`pop` snapshots on SAT decision-level callbacks.
+- Opt-in online propagation with `--euf-engine=incremental` owns a persistent
+  flat closure and asserts theory literals as CaDiCaL reports assignments. Its
+  current backtracking path is a tuning target, not the default QF_UF path.
 
 ## Counters
 
@@ -122,10 +122,11 @@ flat-definition, lookup-hit, and congruence-merge counters.
 
 ## Known Limitations
 
-- The default engine remains `lazy`.
+- The default EUF engine is the flat incremental checker.
 - Final conflict checks and model-time propagation still rebuild flat closures
   from complete SAT assignments.
-- Online incremental propagation uses coarse closure snapshots rather than the
-  paper's timestamped backtracking structure.
+- Online and conflict callback modes do not yet implement the paper's
+  timestamped backtracking structure, and are not default on the hard Goel
+  regressions.
 - Explanations are intentionally non-minimal.
 - Proof output and the Section 4-5 proof-producing union-find are deferred.

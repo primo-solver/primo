@@ -1,5 +1,6 @@
 #include "sat/cadical_backend.hpp"
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -51,6 +52,7 @@ CadicalBackend::~CadicalBackend() {
 
 int CadicalBackend::new_var() {
   ++max_var_;
+  statistics_.variables = static_cast<std::size_t>(max_var_);
 #if PRIMO_HAVE_IPASIR
   solver_->resize(max_var_);
 #endif
@@ -58,6 +60,13 @@ int CadicalBackend::new_var() {
 }
 
 void CadicalBackend::add_clause(const Clause& clause) {
+  ++statistics_.clauses;
+  statistics_.clause_literals += clause.size();
+  if (clause.size() == 1) {
+    ++statistics_.unit_clauses;
+  } else if (clause.size() == 2) {
+    ++statistics_.binary_clauses;
+  }
 #if PRIMO_HAVE_IPASIR
   if (solver_ == nullptr) {
     throw std::runtime_error("IPASIR solver is not initialized");
@@ -138,6 +147,8 @@ bool CadicalBackend::failed(Lit lit) const {
   return false;
 #endif
 }
+
+BackendStatistics CadicalBackend::statistics() const { return statistics_; }
 
 void CadicalBackend::phase(Lit lit) {
 #if PRIMO_HAVE_IPASIR

@@ -70,6 +70,11 @@ constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
 constexpr std::string_view kStatAutoSingleAssertion = ":preprocessing.auto.single-assertion";
 constexpr std::string_view kStatAutoStrong = ":preprocessing.auto.strong";
 constexpr std::string_view kStatSatTheoryNegativePhase = ":sat.phase.theory-negative";
+constexpr std::string_view kStatSatVars = ":sat.vars";
+constexpr std::string_view kStatSatClauses = ":sat.clauses";
+constexpr std::string_view kStatSatClauseLits = ":sat.clause-lits";
+constexpr std::string_view kStatSatUnitClauses = ":sat.unit-clauses";
+constexpr std::string_view kStatSatBinaryClauses = ":sat.binary-clauses";
 constexpr std::string_view kStatSolverBoolean = ":solver.boolean";
 constexpr std::string_view kStatSolverQfUf = ":solver.qf-uf";
 constexpr std::string_view kStatSatSolveCalls = ":sat.solve-calls";
@@ -97,6 +102,14 @@ constexpr std::string_view kStatEufIncrementalDisequalityChecks =
 constexpr std::string_view kStatEufIncrementalConflicts = ":euf.incremental.conflicts";
 constexpr std::string_view kStatEufIncrementalExplainLength = ":euf.incremental.explain-length";
 constexpr std::string_view kStatEufIncrementalBacktracks = ":euf.incremental.backtracks";
+
+void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics& statistics) {
+  statistics.set(kStatSatVars, sat_stats.variables);
+  statistics.set(kStatSatClauses, sat_stats.clauses);
+  statistics.set(kStatSatClauseLits, sat_stats.clause_literals);
+  statistics.set(kStatSatUnitClauses, sat_stats.unit_clauses);
+  statistics.set(kStatSatBinaryClauses, sat_stats.binary_clauses);
+}
 
 class UnsupportedInput : public std::runtime_error {
  public:
@@ -518,13 +531,55 @@ class BooleanClausifier {
     if (terms_.get(term).sort != terms_.symbols().bool_sort()) {
       throw UnsupportedInput("assertion is not Boolean");
     }
-    const sat::Lit lit = encode(term);
-    backend_.add_clause(sat::Clause{lit});
+    assert_positive(term);
   }
 
   const std::vector<TheoryAtom>& theory_atoms() const { return theory_atoms_; }
 
  private:
+  void assert_positive(core::TermId term_id) {
+    const core::Term& term = terms_.get(term_id);
+    switch (term.kind) {
+      case core::TermKind::BoolValue:
+        if (!term.bool_value) {
+          backend_.add_clause(sat::Clause{});
+        }
+        return;
+      case core::TermKind::And:
+        for (const core::TermId child : term.children) {
+          assert_positive(child);
+        }
+        return;
+      case core::TermKind::Or: {
+        sat::Clause clause;
+        clause.reserve(term.children.size());
+        for (const core::TermId child : term.children) {
+          const core::Term& child_term = terms_.get(child);
+          if (child_term.kind == core::TermKind::BoolValue) {
+            if (child_term.bool_value) {
+              return;
+            }
+            continue;
+          }
+          clause.push_back(encode(child));
+        }
+        backend_.add_clause(clause);
+        return;
+      }
+      case core::TermKind::Implies:
+        backend_.add_clause(
+            sat::Clause{negate(encode(term.children.at(0))), encode(term.children.at(1))});
+        return;
+      case core::TermKind::Not:
+      case core::TermKind::Constant:
+      case core::TermKind::Application:
+      case core::TermKind::Equality:
+        backend_.add_clause(sat::Clause{encode(term_id)});
+        return;
+    }
+    throw UnsupportedInput("unsupported Boolean assertion");
+  }
+
   sat::Lit encode(core::TermId term_id) {
     const auto existing = lit_by_term_.find(term_id);
     if (existing != lit_by_term_.end()) {
@@ -672,8 +727,11 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
   }
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  publish_sat_stats(backend.statistics(), statistics);
   statistics.increment(kStatSatSolveCalls);
-  return CheckSatOutcome{map_sat_result(backend.solve()), "", statistics};
+  const CheckSatResult result = map_sat_result(backend.solve());
+  publish_sat_stats(backend.statistics(), statistics);
+  return CheckSatOutcome{result, "", statistics};
 }
 
 struct AssignedTheoryAtom {
@@ -1573,6 +1631,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     backend.phase(sat::Lit{-atom.lit.value});
     statistics.increment(kStatSatTheoryNegativePhase);
   }
+  publish_sat_stats(backend.statistics(), statistics);
 
   const core::TermId true_term = terms.mk_bool(true);
   const core::TermId false_term = terms.mk_bool(false);
@@ -1606,6 +1665,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   while (true) {
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
+    publish_sat_stats(backend.statistics(), statistics);
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics};
     }
@@ -1642,6 +1702,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       for (const sat::Clause& clause : propagation.clauses) {
         backend.add_clause(clause);
       }
+      publish_sat_stats(backend.statistics(), statistics);
     }
 
     std::optional<sat::Clause> conflict_clause =
@@ -1650,13 +1711,16 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
                                                statistics)
             : find_theory_conflict(terms, assigned_atoms, true_term, false_term);
     if (!conflict_clause.has_value()) {
+      publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
     }
     statistics.increment(kStatTheoryConflicts);
     if (conflict_clause->empty()) {
+      publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Unsat, "", statistics};
     }
     backend.add_clause(conflict_clause.value());
+    publish_sat_stats(backend.statistics(), statistics);
   }
 }
 
@@ -1686,6 +1750,11 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatAutoSingleAssertion, 0);
   statistics.set(kStatAutoStrong, 0);
   statistics.set(kStatSatTheoryNegativePhase, 0);
+  statistics.set(kStatSatVars, 0);
+  statistics.set(kStatSatClauses, 0);
+  statistics.set(kStatSatClauseLits, 0);
+  statistics.set(kStatSatUnitClauses, 0);
+  statistics.set(kStatSatBinaryClauses, 0);
   statistics.set(kStatSolverBoolean, 0);
   statistics.set(kStatSolverQfUf, 0);
   statistics.set(kStatSatSolveCalls, 0);

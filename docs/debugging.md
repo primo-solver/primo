@@ -36,6 +36,11 @@ compare runs mechanically. Current counters include:
 - `:solver.boolean`;
 - `:solver.qf-uf`;
 - `:sat.phase.theory-negative`;
+- `:sat.vars`;
+- `:sat.clauses`;
+- `:sat.clause-lits`;
+- `:sat.unit-clauses`;
+- `:sat.binary-clauses`;
 - `:sat.solve-calls`;
 - `:euf.theory-atoms`;
 - `:euf.checks`;

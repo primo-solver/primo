@@ -44,6 +44,21 @@ void pure_boolean_sat() {
   assert(result.statistics.get(":sat.solve-calls") == 1);
 }
 
+void top_level_conjunction_does_not_allocate_auxiliary() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (assert (and p q r))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":sat.vars") == 3);
+  assert(result.statistics.get(":sat.clauses") == 3);
+  assert(result.statistics.get(":sat.unit-clauses") == 3);
+}
+
 void pure_boolean_unsat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -826,6 +841,7 @@ void online_euf_reason_cache_survives_backtracking() {
 
 int main() {
   pure_boolean_sat();
+  top_level_conjunction_does_not_allocate_auxiliary();
   pure_boolean_unsat();
   implication_is_clausified();
   implication_is_right_associative();

@@ -43,11 +43,12 @@ the complete SAT assignment.
 
 `--euf-prop=off|conflict|model|online`, `--euf-prop-budget=auto|unlimited|N`,
 and `--euf-prop-delivery=auto|unlimited|N` are the public option shape for
-callback and propagation work. The default is `online`; use `conflict` to keep
-the assignment/backtrack callback and external conflict clauses while disabling
-online theory-literal propagation, and use `off` to force the older post-model
-conflict loop. The default delivery budget is `1000`, which matches the
-predecessor benchmark command.
+callback and propagation work. The default is `off`, which uses the ordinary
+post-model conflict loop. Use `conflict` to keep the assignment/backtrack
+callback and external conflict clauses while disabling online theory-literal
+propagation, and use `online` only for propagation experiments. The default
+delivery budget is `1000`, which keeps the predecessor benchmark knob available
+when online propagation is explicitly selected.
 
 For compatibility with the predecessor benchmark command, Primo also accepts
 `--prop-delivery-budget N`; `0` means unlimited delivery. `--prop-interval N`
@@ -55,12 +56,12 @@ and `--prop-assign-threshold X` are accepted for online propagation experiments.
 Their defaults are `32` and `0.25` respectively.
 
 `conflict` connects the CaDiCaL external propagator only for assignment,
-backtrack, and external conflict clauses. It maintains the incremental flat
+backtrack, and external conflict clauses. It maintains an incremental flat
 congruence closure along the SAT trail, learns EUF conflict clauses through
 CaDiCaL's external-clause callback, and does not deliver theory propagations.
-The ordinary final model check remains as a safety net if SAT reports a model.
-This mode is intended for benchmarks where rebuilding a full closure after each
-candidate SAT model dominates runtime.
+This path is not the default because the current backtracking implementation
+rebuilds too much closure state on hard Goel-style instances. It remains
+available for focused tuning and for checking callback behavior.
 
 The callback path was first changed to `conflict` after the full QF_UF SLURM run recorded in
 `results/slurm-qfuf-full-109880/summary.md`: at a 2s timeout it solved 5455 of
@@ -80,7 +81,9 @@ Online propagation was then fixed to cache reason clauses by signed propagated
 literal and keep those global clauses across SAT backtracking. Before that fix,
 SLURM job 109891 had 18 errors and one wrong answer. After the fix, matching
 SLURM job 109913 solved 6684 of 7503 files at 10s with no errors and no wrong
-answers, so `online` is now the default.
+answers. Later profiling on Goel firewire instances showed the callback
+backtracking path was still too expensive, so `online` returned to opt-in
+status until that path has a trail-backed implementation.
 
 `model` is implemented as a conservative post-model lemma learner. After each
 SAT model, Primo rebuilds EUF closures that omit one candidate theory atom at a
@@ -242,7 +245,7 @@ Implemented:
   `true`/`false`;
 - model-time EUF propagation lemmas with deterministic inspection and delivery
   budgets;
-- default online EUF propagation through CaDiCaL observed-variable callbacks;
+- optional online EUF propagation through CaDiCaL observed-variable callbacks;
 - auto QF_UF preprocessing by default;
 - strong preset with finite-domain AMO clauses, equality-definition clauses,
   default-on UF symmetry breaking, and opt-in bounded ground-congruence clauses.
@@ -262,10 +265,10 @@ the EUF direction and the eventual data structures. Primo now implements the
 Section 3 use-list, lookup, pending-merge shape as an opt-in conflict and
 propagation checker over deterministic Curry-style flat definitions. Online
 incremental propagation owns a persistent flat closure and uses SAT
-decision-level callbacks with assignment-trail checkpoints. Final conflict
-checks and model-time propagation still rebuild flat closures from complete
-assignments. Primo does not yet implement the Section 4-5 proof-producing
-union-find.
+decision-level callbacks with assignment-trail checkpoints, but its backtracking
+is not yet the paper's timestamped undo structure. Final conflict checks and
+model-time propagation still rebuild flat closures from complete assignments.
+Primo does not yet implement the Section 4-5 proof-producing union-find.
 
 Deharbe et al., *Exploiting symmetry in SMT problems*, and Reger and Suda,
 *Using SAT and SMT Solvers for Finite Model Finding with Sorts*, motivate the

@@ -135,7 +135,12 @@ argument through SAT clauses.
 
 ### SAT and Theory Views of Terms
 
-The SAT layer does not inspect `Term` objects directly. `smt::BooleanClausifier` maps Boolean structure to SAT clauses. Equalities and Boolean-returning predicate applications become theory atoms with associated SAT literals.
+The SAT layer does not inspect `Term` objects directly. `smt::BooleanClausifier`
+maps Boolean structure to SAT clauses. Top-level asserted conjunctions are
+asserted child-by-child instead of through an auxiliary Tseitin literal; nested
+Boolean structure still uses cached Tseitin literals. Equalities and
+Boolean-returning predicate applications become theory atoms with associated
+SAT literals.
 
 The equality theory receives `TermId` values. Congruence closure uses those ids to inspect term structure through `TermManager::get`, merge equality classes, and test disequalities. EUF equality is therefore a theory relation over term ids, not the same thing as hash-consed syntactic identity.
 

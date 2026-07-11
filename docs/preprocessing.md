@@ -23,12 +23,12 @@ profile:
   --prop-delivery-budget 1000 input.smt2
 ```
 
-Those flags are defaults, so the command above is equivalent to plain
-`./build/primo input.smt2` unless an option overrides them. The explicit form is
-kept here to make benchmark comparisons with the predecessor command readable.
-The default also enables `--euf-prop=online`. Online propagation became a
-default only after the signed-literal reason-cache fix removed the wrong answer
-and callback errors from the full QF_UF SLURM 109913 run.
+The preprocessing flags in that command are defaults, so plain
+`./build/primo input.smt2` uses the same preprocessing unless an option
+overrides it. The EUF callback and propagation options are intentionally not
+all default: plain Primo currently uses `--euf-prop=off`, while the callback
+and online modes remain explicit tuning modes until their backtracking path is
+fast on the Goel-style regressions.
 
 The exact legacy-style reproduction profile is:
 
@@ -37,7 +37,9 @@ The exact legacy-style reproduction profile is:
 ```
 
 It sets the same safe switches as the default and leaves the selected
-`--qf-uf-preprocess` mode at `auto` unless the user overrides it.
+`--qf-uf-preprocess` mode at `auto` unless the user overrides it. It also
+keeps the legacy propagation tuning knobs available for experiments; select
+`--euf-prop=online` explicitly when reproducing online-propagation runs.
 
 The individual legacy switches remain available for experiments and for
 reproducing narrower configurations:

@@ -56,7 +56,7 @@ struct CheckSatOutcome {
 struct CheckSatOptions {
   QfUfPreprocessMode qf_uf_preprocess = QfUfPreprocessMode::Auto;
   EufEngine euf_engine = EufEngine::Incremental;
-  EufPropagationMode euf_propagation = EufPropagationMode::Online;
+  EufPropagationMode euf_propagation = EufPropagationMode::Off;
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
   bool uf_symmetry_breaking = true;

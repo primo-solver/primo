@@ -31,6 +31,7 @@ class CadicalBackend final : public IpasirUpBackend {
   SatResult solve() override;
   std::optional<bool> value(int var) const override;
   bool failed(Lit lit) const override;
+  BackendStatistics statistics() const override;
   void phase(Lit lit);
   void connect_external_propagator(CaDiCaL::ExternalPropagator* propagator);
   void disconnect_external_propagator();
@@ -40,6 +41,7 @@ class CadicalBackend final : public IpasirUpBackend {
   CaDiCaL::Solver* solver_ = nullptr;
   int max_var_ = 0;
   SatResult last_result_ = SatResult::Unknown;
+  BackendStatistics statistics_;
 };
 
 }  // namespace primo::sat
