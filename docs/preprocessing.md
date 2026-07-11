@@ -25,8 +25,9 @@ profile:
 Those flags are defaults, so the command above is equivalent to plain
 `./build/primo input.smt2` unless an option overrides them. The explicit form is
 kept here to make benchmark comparisons with the predecessor command readable.
-The default does not enable `--euf-prop=online`; online propagation remains
-experimental after the full QF_UF SLURM 109891 run found one wrong answer.
+The default also enables `--euf-prop=online`. Online propagation became a
+default only after the signed-literal reason-cache fix removed the wrong answer
+and callback errors from the full QF_UF SLURM 109913 run.
 
 The exact legacy-style reproduction profile is:
 

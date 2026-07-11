@@ -1044,7 +1044,6 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
     pending_.clear();
     pending_vars_.clear();
-    reasons_.clear();
     external_clause_.clear();
     external_clause_index_ = 0;
   }
@@ -1068,11 +1067,10 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   }
 
   int cb_add_reason_clause_lit(int propagated_lit) override {
-    const int var = propagated_lit > 0 ? propagated_lit : -propagated_lit;
-    if (!reasons_.contains(var)) {
+    if (!reasons_.contains(propagated_lit)) {
       compute_reason_for(propagated_lit);
     }
-    const auto found = reasons_.find(var);
+    const auto found = reasons_.find(propagated_lit);
     if (found == reasons_.end()) {
       return 0;
     }
@@ -1182,8 +1180,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         antecedents.push_back(lit.value);
       }
     }
-    const int var = propagated_lit > 0 ? propagated_lit : -propagated_lit;
-    reasons_[var] = Reason{std::move(antecedents), 0, 0};
+    reasons_[propagated_lit] = Reason{std::move(antecedents), 0, 0};
     return true;
   }
 
@@ -1259,8 +1256,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       }
 
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-      if (assignment_by_var_.contains(var) || pending_vars_.contains(var) ||
-          reasons_.contains(var)) {
+      if (assignment_by_var_.contains(var) || pending_vars_.contains(var)) {
         continue;
       }
       ++inspected;
@@ -1298,7 +1294,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     pending_.push_back(propagated_lit);
     pending_vars_.insert(var);
     statistics_.increment(kStatEufPropagationDelivered);
-    statistics_.increment(kStatEufPropagationReasonLits, reasons_[var].antecedents.size());
+    statistics_.increment(kStatEufPropagationReasonLits,
+                          reasons_[propagated_lit].antecedents.size());
     return true;
   }
 

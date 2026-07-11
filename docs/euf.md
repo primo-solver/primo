@@ -43,10 +43,11 @@ the complete SAT assignment.
 
 `--euf-prop=off|conflict|model|online`, `--euf-prop-budget=auto|unlimited|N`,
 and `--euf-prop-delivery=auto|unlimited|N` are the public option shape for
-callback and propagation work. The default is `conflict`; use `off` to force
-the older post-model conflict loop. The default delivery budget is `1000`, which
-matches the predecessor benchmark command when online/model propagation is
-enabled explicitly.
+callback and propagation work. The default is `online`; use `conflict` to keep
+the assignment/backtrack callback and external conflict clauses while disabling
+online theory-literal propagation, and use `off` to force the older post-model
+conflict loop. The default delivery budget is `1000`, which matches the
+predecessor benchmark command.
 
 For compatibility with the predecessor benchmark command, Primo also accepts
 `--prop-delivery-budget N`; `0` means unlimited delivery. `--prop-interval N`
@@ -61,7 +62,7 @@ The ordinary final model check remains as a safety net if SAT reports a model.
 This mode is intended for benchmarks where rebuilding a full closure after each
 candidate SAT model dominates runtime.
 
-The default was changed to `conflict` after the full QF_UF SLURM run recorded in
+The callback path was first changed to `conflict` after the full QF_UF SLURM run recorded in
 `results/slurm-qfuf-full-109880/summary.md`: at a 2s timeout it solved 5455 of
 7503 files with no wrong answers, compared with 4778 for the previous
 phase-negative/default baseline. The result is mixed by family: QG gained 684
@@ -70,12 +71,16 @@ remain part of future tuning.
 
 The legacy preprocessing switches were promoted to defaults after the full
 QF_UF 10s comparison in SLURM jobs 109889, 109890, and 109891. The safe
-configuration, using `conflict` callbacks plus `--uf-symmetry-breaking`,
+configuration at that point, using `conflict` callbacks plus `--uf-symmetry-breaking`,
 `--preprocess-passes 4`, `--eq-bridge`, `--prop-interval 32`,
 `--prop-assign-threshold 0.25`, and `--prop-delivery-budget 1000`, solved 6647
-of 7503 files with no wrong answers. The previous default solved 6611. The same
-bundle with `--euf-prop=online` solved 6662 but had 18 errors and one wrong
-answer, so online propagation remains experimental and must not be a default.
+of 7503 files with no wrong answers. The previous default solved 6611.
+
+Online propagation was then fixed to cache reason clauses by signed propagated
+literal and keep those global clauses across SAT backtracking. Before that fix,
+SLURM job 109891 had 18 errors and one wrong answer. After the fix, matching
+SLURM job 109913 solved 6684 of 7503 files at 10s with no errors and no wrong
+answers, so `online` is now the default.
 
 `model` is implemented as a conservative post-model lemma learner. After each
 SAT model, Primo rebuilds EUF closures that omit one candidate theory atom at a
@@ -230,12 +235,10 @@ Implemented:
   `true`/`false`;
 - model-time EUF propagation lemmas with deterministic inspection and delivery
   budgets;
-- experimental online EUF propagation through CaDiCaL observed-variable
-  callbacks;
+- default online EUF propagation through CaDiCaL observed-variable callbacks;
 - auto QF_UF preprocessing by default;
 - strong preset with finite-domain AMO clauses, equality-definition clauses,
-  default-off UF symmetry breaking, and opt-in bounded ground-congruence
-  clauses.
+  default-on UF symmetry breaking, and opt-in bounded ground-congruence clauses.
 
 Deferred:
 
@@ -258,5 +261,5 @@ not yet implement the Section 4-5 proof-producing union-find.
 
 Deharbe et al., *Exploiting symmetry in SMT problems*, and Reger and Suda,
 *Using SAT and SMT Solvers for Finite Model Finding with Sorts*, motivate the
-default-off finite-domain symmetry-breaking preprocessing pass described in
+default-on finite-domain symmetry-breaking preprocessing pass described in
 [](preprocessing.md).

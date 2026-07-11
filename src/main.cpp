@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
   std::string euf_engine = "incremental";
-  std::string euf_prop = "conflict";
+  std::string euf_prop = "online";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
   primo::smt::CheckSatOptions solver_options;

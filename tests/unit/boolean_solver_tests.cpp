@@ -1,4 +1,7 @@
 #include <cassert>
+#include <fstream>
+#include <sstream>
+#include <string>
 
 #include "smt/check_sat.hpp"
 
@@ -6,6 +9,14 @@ using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatResult;
 
 namespace {
+
+std::string read_text_file(const char* path) {
+  std::ifstream input(path);
+  assert(input.good());
+  std::ostringstream buffer;
+  buffer << input.rdbuf();
+  return buffer.str();
+}
 
 primo::smt::CheckSatOptions propagation_test_options() {
   primo::smt::CheckSatOptions options;
@@ -388,6 +399,7 @@ void preprocessing_off_disables_basic_loop() {
 void strong_preprocessing_enables_finite_domain_amo() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -695,6 +707,20 @@ void online_euf_propagation_accepts_already_assigned_implications() {
   assert(result.result == CheckSatResult::Sat);
 }
 
+void online_euf_reason_cache_survives_backtracking() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  options.euf_propagation_interval = 32;
+  options.euf_propagation_assign_threshold = 0.25;
+  options.euf_propagation_delivery.kind = primo::smt::AutoBudget::Kind::Fixed;
+  options.euf_propagation_delivery.value = 1000;
+  const std::string input =
+      read_text_file("../benchmarks/regression/qf_uf/online_reason_cache.smt2");
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.delivered") >= 1);
+}
+
 }  // namespace
 
 int main() {
@@ -737,5 +763,6 @@ int main() {
   online_euf_propagation_keeps_conflicts_external();
   conflict_euf_callback_learns_external_conflict_without_propagation();
   online_euf_propagation_accepts_already_assigned_implications();
+  online_euf_reason_cache_survives_backtracking();
   return 0;
 }
