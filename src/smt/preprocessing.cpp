@@ -31,6 +31,8 @@ struct FiniteDomainChoice {
 
 struct SymmetryTerm {
   core::TermId term = core::kInvalidTermId;
+  std::vector<core::TermId> used_values;
+  std::size_t occurrences = 0;
 };
 
 struct SymmetryGroup {
@@ -517,28 +519,65 @@ std::vector<core::TermId> finite_domain_distinct_endpoint_clauses(
   return clauses;
 }
 
-bool contains_any_term(const core::TermManager& terms, core::TermId root,
-                       const std::unordered_set<core::TermId>& needles) {
+std::vector<core::TermId> collect_used_values(const core::TermManager& terms, core::TermId root,
+                                              const std::vector<core::TermId>& values) {
+  const std::unordered_set<core::TermId> value_set(values.begin(), values.end());
+  std::unordered_set<core::TermId> used;
   std::vector<core::TermId> work{root};
   while (!work.empty()) {
-    const core::TermId term = work.back();
+    const core::TermId term_id = work.back();
     work.pop_back();
-    if (needles.contains(term)) {
-      return true;
+    if (value_set.contains(term_id)) {
+      used.insert(term_id);
     }
-    const std::vector<core::TermId>& children = terms.get(term).children;
+    const std::vector<core::TermId>& children = terms.get(term_id).children;
     work.insert(work.end(), children.begin(), children.end());
   }
-  return false;
+
+  std::vector<core::TermId> ordered;
+  ordered.reserve(values.size());
+  for (const core::TermId value : values) {
+    if (used.contains(value)) {
+      ordered.push_back(value);
+    }
+  }
+  return ordered;
 }
 
-void remove_terms_containing_values(const core::TermManager& terms, SymmetryGroup& group) {
-  std::unordered_set<core::TermId> value_set(group.values.begin(), group.values.end());
-  group.terms.erase(std::remove_if(group.terms.begin(), group.terms.end(),
-                                   [&](const SymmetryTerm& term) {
-                                     return contains_any_term(terms, term.term, value_set);
-                                   }),
-                    group.terms.end());
+std::unordered_map<core::TermId, std::size_t> count_symmetry_term_occurrences(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const std::vector<SymmetryTerm>& candidates) {
+  std::unordered_set<core::TermId> candidate_terms;
+  candidate_terms.reserve(candidates.size());
+  for (const SymmetryTerm& candidate : candidates) {
+    candidate_terms.insert(candidate.term);
+  }
+
+  std::unordered_map<core::TermId, std::size_t> occurrences;
+  occurrences.reserve(candidates.size());
+  std::vector<core::TermId> work = assertions;
+  while (!work.empty()) {
+    const core::TermId term_id = work.back();
+    work.pop_back();
+    if (candidate_terms.contains(term_id)) {
+      ++occurrences[term_id];
+    }
+    const std::vector<core::TermId>& children = terms.get(term_id).children;
+    work.insert(work.end(), children.begin(), children.end());
+  }
+  return occurrences;
+}
+
+void annotate_symmetry_terms(const core::TermManager& terms,
+                             const std::vector<core::TermId>& assertions, SymmetryGroup& group) {
+  const std::unordered_map<core::TermId, std::size_t> occurrences =
+      count_symmetry_term_occurrences(terms, assertions, group.terms);
+  for (SymmetryTerm& term : group.terms) {
+    term.used_values = collect_used_values(terms, term.term, group.values);
+    if (const auto found = occurrences.find(term.term); found != occurrences.end()) {
+      term.occurrences = found->second;
+    }
+  }
 }
 
 std::string canonical_key(const core::TermManager& terms, core::TermId root,
@@ -646,7 +685,9 @@ std::vector<SymmetryGroup> build_groups(
       group = groups.end() - 1;
     }
     for (const core::TermId term : finite_group.terms) {
-      group->terms.push_back(SymmetryTerm{term});
+      SymmetryTerm symmetry_term;
+      symmetry_term.term = term;
+      group->terms.push_back(std::move(symmetry_term));
     }
   }
   return groups;
@@ -964,37 +1005,29 @@ bool application_is_congruence_candidate(
   return false;
 }
 
-core::TermId first_use_requires_previous_value(core::TermManager& terms, core::TermId term,
-                                               const std::vector<SymmetryTerm>& previous_terms,
-                                               core::TermId value, core::TermId previous_value) {
-  std::vector<core::TermId> previous_value_seen;
-  previous_value_seen.reserve(previous_terms.size());
-  for (const SymmetryTerm& previous_term : previous_terms) {
-    previous_value_seen.push_back(terms.mk_eq(previous_term.term, previous_value));
-  }
-  return terms.mk_implies(terms.mk_eq(term, value), terms.mk_or(std::move(previous_value_seen)));
-}
-
-void add_value_precedence_constraints(core::TermManager& terms, const SymmetryGroup& group,
-                                      UfSymmetryBreakingResult& result) {
-  // Reger and Suda describe finite-model value ordering as an efficiency device;
-  // here it is guarded by the SMT invariance check above rather than by a full
-  // finite-model SAT reduction.
-  for (std::size_t i = 0; i < group.terms.size(); ++i) {
-    const core::TermId term = group.terms[i].term;
-    for (std::size_t j = i + 1; j < group.values.size(); ++j) {
-      result.constraints.push_back(terms.mk_not(terms.mk_eq(term, group.values[j])));
+void add_paper_symmetry_constraints(core::TermManager& terms, const SymmetryGroup& group,
+                                    UfSymmetryBreakingResult& result) {
+  // Déharbe et al., Algorithm 1, tracks constants already used by selected
+  // terms. A moving term may be restricted only after preserving the constants
+  // it syntactically contains; otherwise a permutation could move the term.
+  std::unordered_set<core::TermId> used_constants;
+  for (const SymmetryTerm& term : group.terms) {
+    for (const core::TermId used_value : term.used_values) {
+      used_constants.insert(used_value);
     }
-
-    const std::size_t max_j = std::min(i, group.values.size() - 1);
-    std::vector<SymmetryTerm> previous_terms;
-    previous_terms.reserve(i);
-    for (std::size_t previous_index = 0; previous_index < i; ++previous_index) {
-      previous_terms.push_back(group.terms[previous_index]);
+    for (const core::TermId value : group.values) {
+      if (!used_constants.contains(value)) {
+        used_constants.insert(value);
+        break;
+      }
     }
-    for (std::size_t j = 1; j <= max_j; ++j) {
-      result.constraints.push_back(first_use_requires_previous_value(
-          terms, term, previous_terms, group.values[j], group.values[j - 1]));
+    if (used_constants.size() == group.values.size()) {
+      continue;
+    }
+    for (const core::TermId value : group.values) {
+      if (!used_constants.contains(value)) {
+        result.constraints.push_back(terms.mk_not(terms.mk_eq(term.term, value)));
+      }
     }
   }
 }
@@ -1234,7 +1267,7 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
   std::vector<SymmetryGroup> groups = build_groups(terms_, choices);
 
   for (SymmetryGroup& group : groups) {
-    remove_terms_containing_values(terms_, group);
+    annotate_symmetry_terms(terms_, assertions, group);
     if (group.terms.empty()) {
       ++result.rejected_noninvariant;
       continue;
@@ -1245,11 +1278,23 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
     }
 
     std::sort(group.terms.begin(), group.terms.end(),
-              [](const SymmetryTerm& lhs, const SymmetryTerm& rhs) { return lhs.term < rhs.term; });
+              [](const SymmetryTerm& lhs, const SymmetryTerm& rhs) {
+                const std::size_t lhs_denominator = lhs.used_values.size() + 1;
+                const std::size_t rhs_denominator = rhs.used_values.size() + 1;
+                const std::size_t lhs_score = lhs.occurrences * rhs_denominator;
+                const std::size_t rhs_score = rhs.occurrences * lhs_denominator;
+                if (lhs_score != rhs_score) {
+                  return lhs_score > rhs_score;
+                }
+                if (lhs.used_values.size() != rhs.used_values.size()) {
+                  return lhs.used_values.size() < rhs.used_values.size();
+                }
+                return lhs.term < rhs.term;
+              });
     ++result.accepted_sets;
     result.values += group.values.size();
     result.terms += group.terms.size();
-    add_value_precedence_constraints(terms_, group, result);
+    add_paper_symmetry_constraints(terms_, group, result);
   }
 
   return result;

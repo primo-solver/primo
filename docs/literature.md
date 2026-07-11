@@ -59,8 +59,10 @@ graph automorphism detection.
 
 ### Risks
 
-The pass is only sound when the ordered terms are fixed by the value
-permutation. Terms containing the permuted constants are therefore rejected.
+The pass is only sound for moving terms if the generated restriction preserves
+the constants syntactically used by the selected term, as in Déharbe et al.'s
+Algorithm 1. Treating moving terms as a fixed value-precedence sequence is not a
+valid shortcut.
 
 ### Possible milestone
 
@@ -164,13 +166,14 @@ uses value ordering as symmetry breaking for efficiency.
 ### Algorithm
 
 The full paper is about finite model finding by grounding over finite domains
-and using SAT/SMT to guide sort-size search. Primo only borrows the
-value-precedence constraint shape for recognized QF_UF finite-domain choices.
+and using SAT/SMT to guide sort-size search. Primo keeps this as background
+only; the current QF_UF symmetry implementation uses the SMT-specific
+restriction algorithm from Déharbe et al.
 
 ### Data structures
 
-The relevant Primo data is the ordered sequence of fixed terms and ordered value
-constants in a symmetry group.
+There is no direct Primo implementation data structure for this paper at the
+moment.
 
 ### Implementation notes
 

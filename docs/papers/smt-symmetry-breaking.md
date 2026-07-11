@@ -25,10 +25,10 @@ Primo implements a conservative syntactic version:
 - candidate values are constants from finite-domain choice disjunctions;
 - the accumulated assertions must be invariant under generated permutations of
   those constants;
-- terms containing the permuted constants are dropped because they move under
-  the permutation;
-- generated value-precedence assertions restrict the remaining fixed term
-  sequence.
+- candidate terms are selected from recognized finite-domain choices;
+- generated restrictions follow Algorithm 1: every selected term keeps the
+  permuted constants that occur inside that term, then receives one fresh
+  representative value if available.
 
 Primo does not implement the paper's broader symmetry-detection pipeline or
 SyMT-style graph automorphism. It only uses the constant-permutation idea once a
@@ -40,7 +40,9 @@ Implemented in `src/smt/preprocessing.*`:
 
 - syntactic invariance check under a cycle and first-value swap;
 - canonical comparison treating equality, `and`, and `or` as commutative;
-- moving-term rejection;
+- occurrence-density term ordering for the Algorithm 1 selection loop;
+- unit exclusions for values outside the selected term's allowed representative
+  set;
 - default-on CLI flag with an explicit disable switch.
 
 Deferred:

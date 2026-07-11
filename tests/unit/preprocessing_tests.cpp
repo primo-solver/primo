@@ -82,7 +82,7 @@ void symmetric_fixed_terms_get_value_precedence() {
   check(result.values == 3);
   check(result.terms == 3);
   check(result.rejected_noninvariant == 0);
-  check(result.constraints.size() == 6);
+  check(result.constraints.size() == 3);
 }
 
 void asymmetric_value_use_is_rejected() {
@@ -106,7 +106,7 @@ void asymmetric_value_use_is_rejected() {
   check(result.constraints.empty());
 }
 
-void moving_terms_are_rejected() {
+void moving_terms_keep_used_values_and_get_paper_restrictions() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
   const primo::core::TermId b = fixture.constant(fixture.b);
@@ -121,9 +121,11 @@ void moving_terms_are_rejected() {
   primo::smt::UfSymmetryBreaker breaker(fixture.terms);
   const primo::smt::UfSymmetryBreakingResult result = breaker.break_symmetries(assertions);
 
-  check(result.accepted_sets == 0);
-  check(result.rejected_noninvariant == 1);
-  check(result.constraints.empty());
+  check(result.accepted_sets == 1);
+  check(result.values == 3);
+  check(result.terms == 3);
+  check(result.rejected_noninvariant == 0);
+  check(result.constraints.size() == 1);
 }
 
 void equality_bridge_derives_common_branch_consequence() {
@@ -348,7 +350,7 @@ void finite_domain_evaluator_simplifies_table_tautology() {
 int main() {
   symmetric_fixed_terms_get_value_precedence();
   asymmetric_value_use_is_rejected();
-  moving_terms_are_rejected();
+  moving_terms_keep_used_values_and_get_paper_restrictions();
   equality_bridge_derives_common_branch_consequence();
   unit_equality_propagation_simplifies_disequality();
   unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();

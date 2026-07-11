@@ -217,19 +217,22 @@ accepted only if:
 - all values are constants of an uninterpreted sort, not Bool-valued
   propositions;
 - the accumulated assertion multiset is syntactically invariant under the value
-  cycle and under swapping the first two values;
-- candidate ordered terms do not themselves contain the permuted values.
+  cycle and under swapping the first two values.
 
-The moving-term guard matters. A table such as `(f c0), (f c1), ...` moves when
-`c0, c1, ...` are permuted, so it is not a fixed term sequence and cannot receive
-these ordering clauses safely. If a mixed group contains both moving and fixed
-terms, only the fixed terms remain.
+For an accepted group, the pass follows Déharbe et al.'s Algorithm 1 rather than
+the finite-model value-precedence shortcut. Candidate terms are annotated with
+the group values that occur syntactically inside the term. Terms are then ordered
+by occurrence density, with stable `TermId` tie-breaking. The pass maintains the
+set of values already used by previously selected terms; for each selected term
+it first keeps every value contained in that term, then adds one fresh value as a
+new representative if one remains.
 
-For an accepted group, terms and values are ordered by stable `TermId`. The pass
-adds value-precedence assertions:
-
-- term `t_i` may use only values `c_0 ... c_i`;
-- if `t_i = c_j` for `j > 0`, some earlier term `t_k` must use `c_{j-1}`.
+A table term such as `(f c0)` is therefore no longer discarded merely because it
+contains `c0`: the generated restriction may rule out values not yet used, but it
+cannot rule out `c0` itself. The emitted assertions are unit exclusions for
+values outside the allowed representative set. These exclusions are equivalent
+to the paper's disjunctive restriction in the presence of the recognized
+finite-domain choice assertion for the same term.
 
 These assertions remove value-renaming representatives from the search space.
 They do not replace EUF reasoning and they do not create a finite model finder by
@@ -282,8 +285,8 @@ Implemented:
 - opt-in bounded ground-congruence clauses;
 - top-level pairwise disequality requirement;
 - syntactic constant-permutation invariance check;
-- moving-term rejection;
-- value-precedence assertion generation;
+- Algorithm 1 symmetry restrictions that preserve constants occurring in moving
+  terms;
 - CLI flag `--eq-bridge`;
 - CLI flag `--uf-symmetry-breaking`;
 - CLI flag `--no-uf-symmetry-breaking`, which disables symmetry breaking even
@@ -320,8 +323,8 @@ LLM2SMT `lra`; no LLM2SMT code was copied.
   problems*, is the source for SMT symmetry breaking by invariance under
   permutations of uninterpreted constants.
 - Reger and Suda, *Using SAT and SMT Solvers for Finite Model Finding with
-  Sorts*, is the source for value-ordering/value-precedence constraints in
-  finite-model encodings.
+  Sorts*, remains background for finite-model value ordering; Primo's current
+  SMT symmetry pass uses the Déharbe et al. restriction algorithm instead.
 - Bradley and Manna, *The Calculus of Computation*, Chapter 9, is the
   background reference for ground EUF reasoning used by the finite-domain
   at-most-one lemmas.

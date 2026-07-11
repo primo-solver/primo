@@ -9,7 +9,7 @@ PDF: <https://www.cs.man.ac.uk/~regerg/papers/arw16.pdf>
 
 ## Relevance
 
-This paper is a source for value-ordering/value-precedence constraints in
+This paper is background for value-ordering/value-precedence constraints in
 finite-model encodings. In its MACE-style finite-model setting, ground terms are
 ordered and the earliest terms are constrained to use the earliest domain
 elements to cut symmetric assignments.
@@ -17,22 +17,16 @@ elements to cut symmetric assignments.
 ## Mapping To Primo
 
 Primo is not currently a finite model finder and does not eagerly encode whole
-finite domains. The current QF_UF pass borrows only the value-precedence shape:
-
-```text
-t_i may use only c_0 ... c_i
-t_i = c_j for j > 0 implies some earlier t_k = c_{j-1}
-```
-
-Those constraints are emitted only after the SMT-specific symmetry check from
-Déharbe et al. accepts the value constants as interchangeable. Existing EUF
-reasoning remains authoritative.
+finite domains. The current QF_UF symmetry pass no longer implements the
+finite-model value-precedence shape from this paper. It uses Déharbe et al.'s
+SMT-specific Algorithm 1, which is safe for moving terms only when the generated
+restriction preserves the constants occurring inside the selected term.
 
 ## Implementation Status
 
 Implemented in `src/smt/preprocessing.*`:
 
-- value-precedence assertion generation over recognized finite-domain choices.
+- no direct finite-model value-precedence pass.
 
 Deferred:
 
