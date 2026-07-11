@@ -282,6 +282,20 @@ void define_fun_macros_are_expanded() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void compound_bool_arguments_are_bound_before_euf_flattening() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun wrap (Bool) A)
+    (assert p)
+    (assert (not (= (wrap (or p q)) (wrap (or p q)))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void recursive_define_fun_is_rejected() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -768,6 +782,7 @@ int main() {
   predicate_applications_respect_congruence();
   annotated_assertions_are_solved();
   define_fun_macros_are_expanded();
+  compound_bool_arguments_are_bound_before_euf_flattening();
   recursive_define_fun_is_rejected();
   boolean_ite_is_eliminated();
   term_ite_is_eliminated();

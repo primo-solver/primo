@@ -126,6 +126,13 @@ body through `TermManager`. The implementation checks argument and result sorts
 against the declared sorted variables, and deliberately rejects recursive
 definitions instead of treating them as uninterpreted functions.
 
+SMT-LIB `Bool` is a first-class sort, so QF_UF inputs may pass Boolean formulas
+as arguments to uninterpreted functions. The frontend normalizes compound
+Boolean arguments by introducing a fresh Boolean constant and a propositional
+equivalence side assertion before constructing the application term. This keeps
+the EUF flattening layer first-order while preserving the Boolean meaning of the
+argument through SAT clauses.
+
 ### SAT and Theory Views of Terms
 
 The SAT layer does not inspect `Term` objects directly. `smt::BooleanClausifier` maps Boolean structure to SAT clauses. Equalities and Boolean-returning predicate applications become theory atoms with associated SAT literals.

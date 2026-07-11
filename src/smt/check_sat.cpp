@@ -188,8 +188,9 @@ class Frontend {
       throw UnsupportedInput("unknown function symbol: " + head);
     }
     std::vector<core::TermId> args;
+    args.reserve(expr.list.size() - 1);
     for (std::size_t i = 1; i < expr.list.size(); ++i) {
-      args.push_back(build_term(expr.list[i]));
+      args.push_back(bind_bool_argument_if_needed(build_term(expr.list[i])));
     }
     const core::TermId term = terms_.mk_app(symbol.value(), std::move(args));
     return term;
@@ -391,6 +392,18 @@ class Frontend {
           {terms_.mk_and({lhs, terms_.mk_not(rhs)}), terms_.mk_and({terms_.mk_not(lhs), rhs})});
     }
     return terms_.mk_not(terms_.mk_eq(lhs, rhs));
+  }
+
+  core::TermId bind_bool_argument_if_needed(core::TermId term) {
+    const core::Term& node = terms_.get(term);
+    if (node.sort != symbols_.bool_sort() || node.kind == core::TermKind::BoolValue ||
+        node.kind == core::TermKind::Constant) {
+      return term;
+    }
+    const core::TermId auxiliary = fresh_auxiliary_constant(symbols_.bool_sort(), "bool_arg");
+    side_assertions_.push_back(
+        terms_.mk_and({terms_.mk_implies(auxiliary, term), terms_.mk_implies(term, auxiliary)}));
+    return auxiliary;
   }
 
   core::SortId lookup_sort_name(const std::string& name) const {
