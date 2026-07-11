@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "util/statistics.hpp"
 
@@ -63,6 +65,7 @@ struct CheckSatOptions {
   std::size_t euf_propagation_interval = 32;
   double euf_propagation_assign_threshold = 0.25;
   std::size_t preprocessing_passes = 4;
+  std::vector<std::pair<std::string, int>> cadical_options;
 };
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options = {});

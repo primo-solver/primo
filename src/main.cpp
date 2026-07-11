@@ -7,6 +7,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "sat/cadical_backend.hpp"
@@ -78,6 +79,26 @@ std::optional<primo::smt::AutoBudget> parse_auto_budget(const std::string& text)
   }
 }
 
+std::optional<std::pair<std::string, int>> parse_cadical_option(const std::string& text) {
+  const std::size_t separator = text.find('=');
+  if (separator == std::string::npos || separator == 0 || separator + 1 == text.size()) {
+    return std::nullopt;
+  }
+  try {
+    std::size_t consumed = 0;
+    const long value = std::stol(text.substr(separator + 1), &consumed);
+    if (consumed != text.size() - separator - 1) {
+      return std::nullopt;
+    }
+    if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
+      return std::nullopt;
+    }
+    return std::pair{text.substr(0, separator), static_cast<int>(value)};
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -92,6 +113,7 @@ int main(int argc, char** argv) {
   std::string euf_prop = "online";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
+  std::vector<std::string> cadical_options;
   primo::smt::CheckSatOptions solver_options;
 
   CLI::App app{"Primo SMT solver scaffold"};
@@ -122,6 +144,11 @@ int main(int argc, char** argv) {
   app.add_option("--euf-prop-delivery,--prop-delivery-budget", euf_prop_delivery,
                  "EUF propagation delivery budget: auto, unlimited, or a nonnegative integer; 0 "
                  "means unlimited");
+  app.add_option_function<std::string>(
+         "--cadical-option",
+         [&cadical_options](const std::string& option) { cadical_options.push_back(option); },
+         "Set a CaDiCaL integer option as name=value; may be repeated")
+      ->multi_option_policy(CLI::MultiOptionPolicy::TakeAll);
   CLI::Option* preprocess_passes_option =
       app.add_option("--preprocessing-passes,--preprocess-passes",
                      solver_options.preprocessing_passes,
@@ -204,6 +231,14 @@ int main(int argc, char** argv) {
   }
   solver_options.euf_propagation_budget = parsed_prop_budget.value();
   solver_options.euf_propagation_delivery = parsed_prop_delivery.value();
+  for (const std::string& option : cadical_options) {
+    const std::optional<std::pair<std::string, int>> parsed = parse_cadical_option(option);
+    if (!parsed.has_value()) {
+      std::cerr << "error: invalid --cadical-option value: " << option << "\n";
+      return 1;
+    }
+    solver_options.cadical_options.push_back(parsed.value());
+  }
 
   if (!quiet) {
     print_startup_banner();

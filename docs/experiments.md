@@ -78,3 +78,29 @@ wrong-answer, status, answer, family, and PAR2 counts. Only non-wrong `sat` and
 report based on this archive must include the SLURM job id, timeout, commit,
 merged CSV path, family summary, unsupported count, wrong-answer count, and
 comparison against the previous full-archive Primo run.
+
+## CaDiCaL Profile Check
+
+`scripts/check_cadical_profile.py` is a campaign guard for dependency/version
+sensitivity in the SAT backend. It compares Primo's default CaDiCaL settings
+against an incremental profile:
+
+```bash
+python3 scripts/check_cadical_profile.py \
+  --solver ./build/primo \
+  --timeout 10 \
+  --out results/cadical-profile/current.csv \
+  --summary results/cadical-profile/current.md \
+  tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2 \
+  tmp/QF_UF/2018-Goel-hwbench/QF_UF_peg_solitaire.5.prop1_ab_reg_max.smt2 \
+  tmp/QF_UF/NEQ/NEQ041_size6.smt2
+```
+
+The incremental profile sets `ilb=2` and disables `sweep`, `congruence`,
+`backbone`, `condition`, `elim`, `vivify`, `probe`, `subsume`, `transred`, and
+`walk`. This mirrors the CaDiCaL-version debugging lesson documented in
+<https://mikolasjanota.github.io/just_count/investigation.html>: `ilb` changed
+defaults between CaDiCaL versions, and short-timeout throughput checks exposed
+the regression quickly. For Primo this script is not a headline benchmark and
+does not change CLI defaults. Use it to decide whether full QF_UF SLURM
+campaigns should include a CaDiCaL-profiled variant.

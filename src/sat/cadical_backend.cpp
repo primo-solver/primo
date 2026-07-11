@@ -1,8 +1,12 @@
 #include "sat/cadical_backend.hpp"
 
+#include <memory>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #if PRIMO_HAVE_IPASIR
 #include <cadical.hpp>
@@ -18,12 +22,22 @@ std::string_view cadical_signature() {
 #endif
 }
 
-CadicalBackend::CadicalBackend() {
+CadicalBackend::CadicalBackend() : CadicalBackend(std::vector<std::pair<std::string, int>>{}) {}
+
+CadicalBackend::CadicalBackend(const std::vector<std::pair<std::string, int>>& options) {
 #if PRIMO_HAVE_IPASIR
-  solver_ = new CaDiCaL::Solver();
-  if (solver_ == nullptr) {
+  std::unique_ptr<CaDiCaL::Solver> solver(new CaDiCaL::Solver());
+  if (solver == nullptr) {
     throw std::runtime_error("CaDiCaL solver allocation failed");
   }
+  for (const auto& [name, value] : options) {
+    if (!solver->set(name.c_str(), value)) {
+      throw std::invalid_argument("invalid CaDiCaL option: " + name);
+    }
+  }
+  solver_ = solver.release();
+#else
+  (void)options;
 #endif
 }
 

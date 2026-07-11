@@ -1,6 +1,9 @@
 #pragma once
 
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "sat/ipasir_up.hpp"
 
@@ -16,6 +19,7 @@ std::string_view cadical_signature();
 class CadicalBackend final : public IpasirUpBackend {
  public:
   CadicalBackend();
+  explicit CadicalBackend(const std::vector<std::pair<std::string, int>>& options);
   ~CadicalBackend() override;
 
   CadicalBackend(const CadicalBackend&) = delete;

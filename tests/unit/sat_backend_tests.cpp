@@ -1,4 +1,5 @@
 #include <cassert>
+#include <stdexcept>
 
 #include "sat/cadical_backend.hpp"
 
@@ -53,11 +54,36 @@ void backend_supports_assumptions() {
   assert(backend.failed(Lit{-x}));
 }
 
+void backend_accepts_valid_cadical_options() {
+  CadicalBackend backend({{"verbose", 0}});
+  const int x = backend.new_var();
+  backend.add_clause(Clause{Lit{x}});
+  const SatResult result = backend.solve();
+  if (result == SatResult::Unsupported) {
+    return;
+  }
+  assert(result == SatResult::Sat);
+}
+
+void backend_rejects_invalid_cadical_options() {
+  if (primo::sat::cadical_signature() == "unavailable") {
+    return;
+  }
+  try {
+    CadicalBackend backend({{"definitely_not_a_cadical_option", 1}});
+  } catch (const std::invalid_argument&) {
+    return;
+  }
+  assert(false && "expected invalid CaDiCaL option to be rejected");
+}
+
 }  // namespace
 
 int main() {
   backend_reports_sat_for_simple_clause();
   backend_reports_unsat_for_contradiction();
   backend_supports_assumptions();
+  backend_accepts_valid_cadical_options();
+  backend_rejects_invalid_cadical_options();
   return 0;
 }

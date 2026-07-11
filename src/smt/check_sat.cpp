@@ -660,9 +660,10 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
 
 CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
                                           const std::vector<core::TermId>& assertions,
+                                          const CheckSatOptions& options,
                                           util::Statistics& statistics) {
   statistics.increment(kStatSolverBoolean);
-  sat::CadicalBackend backend;
+  sat::CadicalBackend backend(options.cadical_options);
   BooleanClausifier clausifier(backend, terms);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -1534,7 +1535,7 @@ std::optional<sat::Clause> find_incremental_theory_conflict(
 CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
                             const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfUf);
-  sat::CadicalBackend backend;
+  sat::CadicalBackend backend(options.cadical_options);
   BooleanClausifier clausifier(backend, terms);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -1801,7 +1802,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       return solve_qf_uf(frontend.terms(), assertions, options, statistics);
     }
     try {
-      return solve_boolean_conjunction(frontend.terms(), assertions, statistics);
+      return solve_boolean_conjunction(frontend.terms(), assertions, options, statistics);
     } catch (const UnsupportedInput&) {
       return solve_qf_uf(frontend.terms(), assertions, options, statistics);
     }
