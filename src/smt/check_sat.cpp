@@ -1045,11 +1045,16 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     pending_.clear();
     pending_vars_.clear();
     reasons_.clear();
+    external_clause_.clear();
+    external_clause_index_ = 0;
   }
 
   bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
 
   int cb_propagate() override {
+    if (options_.euf_propagation == EufPropagationMode::Conflict) {
+      return 0;
+    }
     if (pending_.empty()) {
       compute_pending_propagations();
     }
@@ -1090,9 +1095,23 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     return reason.antecedents[antecedent_index];
   }
 
-  bool cb_has_external_clause(bool& /*is_forgettable*/) override { return false; }
+  bool cb_has_external_clause(bool& is_forgettable) override {
+    maybe_store_conflict();
+    if (external_clause_.empty()) {
+      return false;
+    }
+    is_forgettable = false;
+    return true;
+  }
 
-  int cb_add_external_clause_lit() override { return 0; }
+  int cb_add_external_clause_lit() override {
+    if (external_clause_index_ >= external_clause_.size()) {
+      external_clause_.clear();
+      external_clause_index_ = 0;
+      return 0;
+    }
+    return external_clause_[external_clause_index_++].value;
+  }
 
  private:
   struct Reason {
@@ -1283,6 +1302,19 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     return true;
   }
 
+  void maybe_store_conflict() {
+    if (!external_clause_.empty() || !incremental_state_.has_value()) {
+      return;
+    }
+    std::optional<sat::Clause> conflict = incremental_state_->conflict();
+    if (!conflict.has_value()) {
+      return;
+    }
+    external_clause_ = std::move(conflict.value());
+    external_clause_index_ = 0;
+    statistics_.increment(kStatTheoryConflicts);
+  }
+
   const core::TermManager& terms_;
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
   core::TermId true_term_ = core::kInvalidTermId;
@@ -1297,6 +1329,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   std::unordered_set<int> pending_vars_;
   std::unordered_map<int, Reason> reasons_;
   std::optional<IncrementalFlatAssignmentState> incremental_state_;
+  sat::Clause external_clause_;
+  std::size_t external_clause_index_ = 0;
 };
 #endif
 
@@ -1436,7 +1470,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 
 #if PRIMO_HAVE_IPASIR
   std::optional<OnlineEufPropagator> online_propagator;
-  if (options.euf_propagation == EufPropagationMode::Online) {
+  if (options.euf_propagation == EufPropagationMode::Online ||
+      options.euf_propagation == EufPropagationMode::Conflict) {
     online_propagator.emplace(terms, clausifier.theory_atoms(), true_term, false_term, options,
                               statistics);
     backend.connect_external_propagator(&online_propagator.value());
@@ -1446,9 +1481,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     }
   }
 #else
-  if (options.euf_propagation == EufPropagationMode::Online) {
+  if (options.euf_propagation == EufPropagationMode::Online ||
+      options.euf_propagation == EufPropagationMode::Conflict) {
     return CheckSatOutcome{CheckSatResult::Unsupported,
-                           "online EUF propagation requires CaDiCaL external propagators",
+                           "online EUF conflict/propagation requires CaDiCaL external propagators",
                            statistics};
   }
 #endif

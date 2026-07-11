@@ -47,9 +47,14 @@ compare runs mechanically. Current counters include:
 - `:euf.propagation.budget-cutoffs`;
 - `:euf.propagation.hit-rate-cutoffs`.
 
+`:euf.theory-conflicts` counts EUF conflict clauses learned either by the
+ordinary post-model check or by the CaDiCaL external-clause callback used by
+`--euf-prop=conflict|online`.
+
 The propagation counters are used by both `--euf-prop=model` and
-`--euf-prop=online`. In online mode, one round corresponds to a callback pass
-that inspects currently unassigned observed theory atoms.
+`--euf-prop=online`; `--euf-prop=conflict` leaves them at zero. In online mode,
+one round corresponds to a callback pass that inspects currently unassigned
+observed theory atoms.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are

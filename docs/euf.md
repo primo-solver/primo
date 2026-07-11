@@ -41,14 +41,30 @@ engine is conservative: it uses the paper-style flat data structures, while
 final model checks and model-time propagation still rebuild equality state from
 the complete SAT assignment.
 
-`--euf-prop=off|model|online`, `--euf-prop-budget=auto|unlimited|N`, and
-`--euf-prop-delivery=auto|unlimited|N` are the public option shape for
-propagation work. The default is `off`.
+`--euf-prop=off|conflict|model|online`, `--euf-prop-budget=auto|unlimited|N`,
+and `--euf-prop-delivery=auto|unlimited|N` are the public option shape for
+callback and propagation work. The default is `conflict`; use `off` to force
+the older post-model conflict loop.
 
 For compatibility with the predecessor benchmark command, Primo also accepts
 `--prop-delivery-budget N`; `0` means unlimited delivery. `--prop-interval N`
 and `--prop-assign-threshold X` are accepted for online propagation experiments.
 The tuned interesting-set profile sets them to `32` and `0.25` respectively.
+
+`conflict` connects the CaDiCaL external propagator only for assignment,
+backtrack, and external conflict clauses. It maintains the incremental flat
+congruence closure along the SAT trail, learns EUF conflict clauses through
+CaDiCaL's external-clause callback, and does not deliver theory propagations.
+The ordinary final model check remains as a safety net if SAT reports a model.
+This mode is intended for benchmarks where rebuilding a full closure after each
+candidate SAT model dominates runtime.
+
+The default was changed to `conflict` after the full QF_UF SLURM run recorded in
+`results/slurm-qfuf-full-109880/summary.md`: at a 2s timeout it solved 5455 of
+7503 files with no wrong answers, compared with 4778 for the previous
+phase-negative/default baseline. The result is mixed by family: QG gained 684
+solved files, while Goel lost 21 solved files, so family-level reports should
+remain part of future tuning.
 
 `model` is implemented as a conservative post-model lemma learner. After each
 SAT model, Primo rebuilds EUF closures that omit one candidate theory atom at a
@@ -68,8 +84,8 @@ With `--euf-engine=lazy`, reason queries use the older explained closure. With
 the external propagator. The propagator pushes a flat-closure snapshot when SAT
 enters a new decision level, asserts assigned theory literals as CaDiCaL reports
 them, and pops the closure on SAT backtrack. This is still an initial online
-subset: it does not choose decisions and does not inject arbitrary external
-clauses.
+subset: it does not choose decisions. Like `conflict`, it can serve EUF
+conflict clauses through CaDiCaL's external-clause callback.
 
 ## Term Interface
 

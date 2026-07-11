@@ -644,6 +644,29 @@ void online_euf_propagation_keeps_conflicts_external() {
   assert(result.statistics.get(":euf.theory-conflicts") >= 1);
 }
 
+void conflict_euf_callback_learns_external_conflict_without_propagation() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (= b c))
+    (assert (not (= (f a) (f c))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":euf.theory-conflicts") >= 1);
+  assert(result.statistics.get(":euf.propagation.rounds") == 0);
+}
+
 void online_euf_propagation_accepts_already_assigned_implications() {
   primo::smt::CheckSatOptions options;
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
@@ -702,6 +725,7 @@ int main() {
   online_euf_propagation_handles_transitive_reasons();
   online_euf_propagation_handles_predicate_congruence();
   online_euf_propagation_keeps_conflicts_external();
+  conflict_euf_callback_learns_external_conflict_without_propagation();
   online_euf_propagation_accepts_already_assigned_implications();
   return 0;
 }

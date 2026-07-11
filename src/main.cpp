@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
   std::string euf_engine = "incremental";
-  std::string euf_prop = "off";
+  std::string euf_prop = "conflict";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "auto";
   primo::smt::CheckSatOptions solver_options;
@@ -107,8 +107,8 @@ int main(int argc, char** argv) {
   CLI::Option* profile_option = app.add_option("--qf-uf-profile", qf_uf_profile,
                                                "QF_UF profile: default or tuned-interesting")
                                     ->check(CLI::IsMember({"default", "tuned-interesting"}));
-  app.add_option("--euf-prop", euf_prop, "EUF propagation mode: off, model, or online")
-      ->check(CLI::IsMember({"off", "model", "online"}));
+  app.add_option("--euf-prop", euf_prop, "EUF propagation mode: off, conflict, model, or online")
+      ->check(CLI::IsMember({"off", "conflict", "model", "online"}));
   app.add_option("--euf-engine", euf_engine, "EUF engine: incremental or lazy")
       ->check(CLI::IsMember({"lazy", "incremental"}));
   app.add_option("--euf-prop-budget", euf_prop_budget,
@@ -165,7 +165,9 @@ int main(int argc, char** argv) {
       euf_prop_delivery = "1000";
     }
   }
-  if (euf_prop == "model") {
+  if (euf_prop == "conflict") {
+    solver_options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  } else if (euf_prop == "model") {
     solver_options.euf_propagation = primo::smt::EufPropagationMode::Model;
   } else if (euf_prop == "online") {
     solver_options.euf_propagation = primo::smt::EufPropagationMode::Online;
