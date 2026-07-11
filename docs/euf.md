@@ -41,14 +41,16 @@ engine is conservative: it uses the paper-style flat data structures, while
 final model checks and model-time propagation still rebuild equality state from
 the complete SAT assignment.
 
-`--euf-prop=off|conflict|model|online`, `--euf-prop-budget=auto|unlimited|N`,
-and `--euf-prop-delivery=auto|unlimited|N` are the public option shape for
-callback and propagation work. The default is `off`, which uses the ordinary
-post-model conflict loop. Use `conflict` to keep the assignment/backtrack
-callback and external conflict clauses while disabling online theory-literal
-propagation, and use `online` only for propagation experiments. The default
-delivery budget is `1000`, which keeps the predecessor benchmark knob available
-when online propagation is explicitly selected.
+`--euf-prop=auto|off|conflict|model|online`,
+`--euf-prop-budget=auto|unlimited|N`, and
+`--euf-prop-delivery=auto|unlimited|N` are the public option shape for callback
+and propagation work. The default is `auto`: small EUF abstractions use online
+callbacks, while large abstractions use the ordinary post-model conflict loop to
+avoid the current callback backtracking bottleneck. Use `off` to force the lazy
+post-model loop, `conflict` to keep only external conflict clauses, and `online`
+for explicit propagation experiments. The default delivery budget is `1000`,
+which keeps the predecessor benchmark knob available when online propagation is
+selected.
 
 For compatibility with the predecessor benchmark command, Primo also accepts
 `--prop-delivery-budget N`; `0` means unlimited delivery. `--prop-interval N`
@@ -82,8 +84,8 @@ literal and keep those global clauses across SAT backtracking. Before that fix,
 SLURM job 109891 had 18 errors and one wrong answer. After the fix, matching
 SLURM job 109913 solved 6684 of 7503 files at 10s with no errors and no wrong
 answers. Later profiling on Goel firewire instances showed the callback
-backtracking path was still too expensive, so `online` returned to opt-in
-status until that path has a trail-backed implementation.
+backtracking path was still too expensive on large abstractions, so the default
+became size-adaptive rather than unconditionally online.
 
 `model` is implemented as a conservative post-model lemma learner. After each
 SAT model, Primo rebuilds EUF closures that omit one candidate theory atom at a

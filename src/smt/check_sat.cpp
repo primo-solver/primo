@@ -89,6 +89,8 @@ constexpr std::string_view kStatEufPropagationBudget = ":euf.propagation.budget"
 constexpr std::string_view kStatEufPropagationDeliveryBudget = ":euf.propagation.delivery-budget";
 constexpr std::string_view kStatEufPropagationBudgetCutoffs = ":euf.propagation.budget-cutoffs";
 constexpr std::string_view kStatEufPropagationHitRateCutoffs = ":euf.propagation.hit-rate-cutoffs";
+constexpr std::string_view kStatEufPropagationAutoOnline = ":euf.propagation.auto-online";
+constexpr std::string_view kStatEufPropagationAutoOff = ":euf.propagation.auto-off";
 constexpr std::string_view kStatEufIncrementalTerms = ":euf.incremental.terms";
 constexpr std::string_view kStatEufIncrementalFlatDefinitions = ":euf.incremental.flat-definitions";
 constexpr std::string_view kStatEufIncrementalMerges = ":euf.incremental.merges";
@@ -109,6 +111,21 @@ void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics
   statistics.set(kStatSatClauseLits, sat_stats.clause_literals);
   statistics.set(kStatSatUnitClauses, sat_stats.unit_clauses);
   statistics.set(kStatSatBinaryClauses, sat_stats.binary_clauses);
+}
+
+EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,
+                                                std::size_t theory_atom_count,
+                                                util::Statistics& statistics) {
+  if (options.euf_propagation != EufPropagationMode::Auto) {
+    return options.euf_propagation;
+  }
+  constexpr std::size_t kAutoOnlineTheoryAtomLimit = 5000;
+  if (theory_atom_count <= kAutoOnlineTheoryAtomLimit) {
+    statistics.set(kStatEufPropagationAutoOnline, 1);
+    return EufPropagationMode::Online;
+  }
+  statistics.set(kStatEufPropagationAutoOff, 1);
+  return EufPropagationMode::Off;
 }
 
 class UnsupportedInput : public std::runtime_error {
@@ -1627,6 +1644,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     clausifier.assert_formula(assertion);
   }
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  const EufPropagationMode euf_propagation =
+      resolve_euf_propagation_mode(options, clausifier.theory_atoms().size(), statistics);
+  CheckSatOptions resolved_options = options;
+  resolved_options.euf_propagation = euf_propagation;
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     backend.phase(sat::Lit{-atom.lit.value});
     statistics.increment(kStatSatTheoryNegativePhase);
@@ -1643,10 +1664,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 
 #if PRIMO_HAVE_IPASIR
   std::optional<OnlineEufPropagator> online_propagator;
-  if (options.euf_propagation == EufPropagationMode::Online ||
-      options.euf_propagation == EufPropagationMode::Conflict) {
-    online_propagator.emplace(terms, clausifier.theory_atoms(), true_term, false_term, options,
-                              statistics);
+  if (euf_propagation == EufPropagationMode::Online ||
+      euf_propagation == EufPropagationMode::Conflict) {
+    online_propagator.emplace(terms, clausifier.theory_atoms(), true_term, false_term,
+                              resolved_options, statistics);
     backend.connect_external_propagator(&online_propagator.value());
     for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -1654,8 +1675,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     }
   }
 #else
-  if (options.euf_propagation == EufPropagationMode::Online ||
-      options.euf_propagation == EufPropagationMode::Conflict) {
+  if (euf_propagation == EufPropagationMode::Online ||
+      euf_propagation == EufPropagationMode::Conflict) {
     return CheckSatOutcome{CheckSatResult::Unsupported,
                            "online EUF conflict/propagation requires CaDiCaL external propagators",
                            statistics};
@@ -1683,10 +1704,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       assigned_atoms.push_back(AssignedTheoryAtom{atom.lit.value, atom_value, atom.term});
     }
 
-    if (options.euf_propagation == EufPropagationMode::Model) {
+    if (euf_propagation == EufPropagationMode::Model) {
       statistics.increment(kStatEufPropagationRounds);
       ModelPropagationResult propagation =
-          learn_model_propagations(terms, assigned_atoms, true_term, false_term, options,
+          learn_model_propagations(terms, assigned_atoms, true_term, false_term, resolved_options,
                                    learned_model_propagations, statistics);
       statistics.increment(kStatEufPropagationCandidates, propagation.candidates);
       statistics.increment(kStatEufPropagationDelivered, propagation.clauses.size());
@@ -1769,6 +1790,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatEufPropagationDeliveryBudget, 0);
   statistics.set(kStatEufPropagationBudgetCutoffs, 0);
   statistics.set(kStatEufPropagationHitRateCutoffs, 0);
+  statistics.set(kStatEufPropagationAutoOnline, 0);
+  statistics.set(kStatEufPropagationAutoOff, 0);
   statistics.set(kStatEufIncrementalTerms, 0);
   statistics.set(kStatEufIncrementalFlatDefinitions, 0);
   statistics.set(kStatEufIncrementalMerges, 0);

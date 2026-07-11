@@ -52,7 +52,9 @@ compare runs mechanically. Current counters include:
 - `:euf.propagation.budget`;
 - `:euf.propagation.delivery-budget`;
 - `:euf.propagation.budget-cutoffs`;
-- `:euf.propagation.hit-rate-cutoffs`.
+- `:euf.propagation.hit-rate-cutoffs`;
+- `:euf.propagation.auto-online`;
+- `:euf.propagation.auto-off`.
 
 For preprocessing-only comparisons, pass `--preprocess-only --stats`. Primo
 then parses and preprocesses the input, prints `unknown`, skips SAT/theory
@@ -67,6 +69,9 @@ The propagation counters are used by both `--euf-prop=model` and
 `--euf-prop=online`; `--euf-prop=conflict` leaves them at zero. In online mode,
 one round corresponds to a callback pass that inspects currently unassigned
 observed theory atoms.
+
+The auto counters record which concrete path `--euf-prop=auto` selected for the
+current abstraction.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are

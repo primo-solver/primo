@@ -25,10 +25,9 @@ profile:
 
 The preprocessing flags in that command are defaults, so plain
 `./build/primo input.smt2` uses the same preprocessing unless an option
-overrides it. The EUF callback and propagation options are intentionally not
-all default: plain Primo currently uses `--euf-prop=off`, while the callback
-and online modes remain explicit tuning modes until their backtracking path is
-fast on the Goel-style regressions.
+overrides it. Plain Primo currently uses `--euf-prop=auto`: online callbacks are
+used for small EUF abstractions, while large Goel-style abstractions use the
+lazy post-model conflict loop until callback backtracking is faster.
 
 The exact legacy-style reproduction profile is:
 

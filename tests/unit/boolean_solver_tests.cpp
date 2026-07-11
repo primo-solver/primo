@@ -185,6 +185,20 @@ void pure_euf_disequality_contradiction_is_unsat() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void default_euf_propagation_auto_uses_online_for_small_abstractions() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (assert (= a b))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.auto-online") == 1);
+  assert(result.statistics.get(":euf.propagation.auto-off") == 0);
+}
+
 void chainable_equality_is_expanded() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -852,6 +866,7 @@ int main() {
   boolean_distinct_is_propositional_xor();
   reflexive_equality_is_sat();
   pure_euf_disequality_contradiction_is_unsat();
+  default_euf_propagation_auto_uses_online_for_small_abstractions();
   chainable_equality_is_expanded();
   let_bound_terms_are_resolved();
   distinct_lowers_to_pairwise_disequalities();
