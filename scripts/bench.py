@@ -10,6 +10,14 @@ import time
 from pathlib import Path
 
 
+def completed_output_text(output: str | bytes | None) -> str:
+    if output is None:
+        return ""
+    if isinstance(output, bytes):
+        return output.decode(errors="replace")
+    return output
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="+", type=Path)
@@ -43,8 +51,8 @@ def main() -> int:
         except subprocess.TimeoutExpired as exc:
             timeout = True
             exit_code = 124
-            stdout = exc.stdout or ""
-            stderr = exc.stderr or ""
+            stdout = completed_output_text(exc.stdout)
+            stderr = completed_output_text(exc.stderr)
         runtime = time.perf_counter() - start
         stdout_path.write_text(stdout)
         stderr_path.write_text(stderr)
