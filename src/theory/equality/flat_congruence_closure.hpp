@@ -40,11 +40,19 @@ class FlatCongruenceClosure {
     std::size_t operator()(const ApplyKey& key) const;
   };
 
+  struct Definition {
+    FlatTermId function = kInvalidFlatTermId;
+    FlatTermId argument = kInvalidFlatTermId;
+    FlatTermId result = kInvalidFlatTermId;
+  };
+
   struct PendingMerge {
     FlatTermId lhs = kInvalidFlatTermId;
     FlatTermId rhs = kInvalidFlatTermId;
     std::vector<sat::Lit> reason;
     bool congruence = false;
+    Definition lhs_definition;
+    Definition rhs_definition;
   };
 
   struct Disequality {
@@ -57,12 +65,9 @@ class FlatCongruenceClosure {
     FlatTermId lhs = kInvalidFlatTermId;
     FlatTermId rhs = kInvalidFlatTermId;
     std::vector<sat::Lit> reason;
-  };
-
-  struct Definition {
-    FlatTermId function = kInvalidFlatTermId;
-    FlatTermId argument = kInvalidFlatTermId;
-    FlatTermId result = kInvalidFlatTermId;
+    bool congruence = false;
+    Definition lhs_definition;
+    Definition rhs_definition;
   };
 
   struct Snapshot {
@@ -85,16 +90,18 @@ class FlatCongruenceClosure {
   FlatTermId representative(FlatTermId term) const;
   ApplyKey signature(const Definition& definition) const;
   void enqueue(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit> reason, bool congruence);
+  void enqueue_congruence(const Definition& lhs, const Definition& rhs);
   void propagate();
   void merge_classes(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit> reason, bool congruence);
+  void merge_classes(PendingMerge pending);
   void process_use_list(FlatTermId old_repr, FlatTermId new_repr);
   bool check_disequality(const Disequality& disequality);
   void check_disequalities_touching(FlatTermId lhs_repr, FlatTermId rhs_repr);
   void begin_reason_collection(std::vector<sat::Lit>& reason) const;
   void append_unique_reason(std::vector<sat::Lit>& target,
                             const std::vector<sat::Lit>& source) const;
+  void append_edge_reason(const Edge& edge, std::vector<sat::Lit>& reason) const;
   bool explain_equal_into(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason) const;
-  std::vector<sat::Lit> congruence_reason(const Definition& lhs, const Definition& rhs) const;
 
   std::vector<FlatTermId> parent_;
   std::vector<std::size_t> class_size_;

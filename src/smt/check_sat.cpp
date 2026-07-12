@@ -1054,19 +1054,18 @@ class IncrementalFlatAssignmentState {
     publish_stats();
   }
 
-  void push_level() { checkpoints_.push_back(assignments_.size()); }
+  void push_level() { checkpoints_.push_back(Checkpoint{assignments_.size(), closure_.push()}); }
 
   void pop_to_level(std::size_t new_level) {
     if (checkpoints_.size() <= new_level) {
       return;
     }
-    const std::size_t keep_assignments = checkpoints_[new_level];
+    const Checkpoint checkpoint = checkpoints_[new_level];
     checkpoints_.resize(new_level);
-    assignments_.resize(keep_assignments);
-    last_published_stats_ = {};
-    rebuild_closure();
+    assignments_.resize(checkpoint.assignment_count);
+    closure_.pop(checkpoint.closure_checkpoint);
+    last_published_stats_ = closure_.stats();
     statistics_.increment(kStatEufIncrementalBacktracks);
-    publish_stats();
   }
 
   void assert_assignment(const AssignedTheoryAtom& assignment) {
@@ -1111,22 +1110,6 @@ class IncrementalFlatAssignmentState {
     closure_.assert_distinct(true_flat_, false_flat_);
   }
 
-  void rebuild_closure() {
-    closure_ = theory::equality::FlatCongruenceClosure(0);
-    initialize_base_closure();
-    for (const AssignedTheoryAtom& assignment : assignments_) {
-      std::optional<FlatAssignedTheoryAtom> flat_atom = flat_atom_for_lit(assignment.lit);
-      if (!flat_atom.has_value()) {
-        continue;
-      }
-      flat_atom->source.value = assignment.value;
-      assert_flat_assigned_atom(closure_, flat_atom.value(), true_flat_, false_flat_);
-      if (closure_.conflict().has_value()) {
-        break;
-      }
-    }
-  }
-
   std::optional<FlatAssignedTheoryAtom> flat_atom_for_lit(int lit) const {
     const int var = lit > 0 ? lit : -lit;
     const auto found = flat_atom_by_var_.find(var);
@@ -1143,6 +1126,11 @@ class IncrementalFlatAssignmentState {
   }
 
   const core::TermManager& terms_;
+  struct Checkpoint {
+    std::size_t assignment_count = 0;
+    std::size_t closure_checkpoint = 0;
+  };
+
   theory::equality::FlatTermIndex flat_;
   theory::equality::FlatCongruenceClosure closure_;
   util::Statistics& statistics_;
@@ -1151,7 +1139,7 @@ class IncrementalFlatAssignmentState {
   std::vector<FlatAssignedTheoryAtom> flat_atoms_;
   std::unordered_map<int, std::size_t> flat_atom_by_var_;
   std::vector<AssignedTheoryAtom> assignments_;
-  std::vector<std::size_t> checkpoints_;
+  std::vector<Checkpoint> checkpoints_;
   theory::equality::IncrementalCongruenceClosureStats last_published_stats_;
 };
 
@@ -1171,16 +1159,19 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   OnlineEufPropagator(const core::TermManager& terms,
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                       core::TermId true_term, core::TermId false_term,
-                      const CheckSatOptions& options, util::Statistics& statistics)
+                      const CheckSatOptions& options, bool adaptive_propagation,
+                      util::Statistics& statistics)
       : terms_(terms),
         theory_atoms_(theory_atoms),
         true_term_(true_term),
         false_term_(false_term),
         options_(options),
+        adaptive_propagation_(adaptive_propagation),
         statistics_(statistics) {
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
       observed_vars_.insert(var);
+      atom_by_var_.emplace(var, &atom);
     }
     if (options_.euf_engine == EufEngine::Incremental) {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_, statistics_);
@@ -1311,13 +1302,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   };
 
   const BooleanClausifier::TheoryAtom* atom_for_var(int var) const {
-    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
-      const int atom_var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-      if (atom_var == var) {
-        return &atom;
-      }
-    }
-    return nullptr;
+    const auto found = atom_by_var_.find(var);
+    return found == atom_by_var_.end() ? nullptr : found->second;
   }
 
   std::vector<AssignedTheoryAtom> current_assigned_atoms() const {
@@ -1409,16 +1395,18 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
 
   void compute_pending_propagations() {
     statistics_.increment(kStatEufPropagationRounds);
-    if (options_.euf_propagation_interval > 1 &&
-        (statistics_.get(kStatEufPropagationRounds) - 1) % options_.euf_propagation_interval != 0) {
+    const std::size_t round = statistics_.get(kStatEufPropagationRounds);
+    if (round < next_propagation_round_) {
       return;
     }
+    next_propagation_round_ = round + propagation_interval_;
     const std::vector<AssignedTheoryAtom> assigned = current_assigned_atoms();
     const std::size_t theory_atoms = theory_atoms_.size();
     if (theory_atoms > 0 &&
         static_cast<double>(assigned.size()) / static_cast<double>(theory_atoms) >
             options_.euf_propagation_assign_threshold) {
       statistics_.increment(kStatEufPropagationHitRateCutoffs);
+      backoff_propagation_interval();
       return;
     }
     const std::optional<std::size_t> candidate_limit =
@@ -1444,6 +1432,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       if (inspected >= kMinInspectionsBeforeHitRateCutoff && delivered == 0 &&
           options_.euf_propagation_budget.kind == AutoBudget::Kind::Auto) {
         statistics_.increment(kStatEufPropagationHitRateCutoffs);
+        backoff_propagation_interval();
         break;
       }
 
@@ -1457,7 +1446,20 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         ++delivered;
       }
     }
+    if (delivered == 0) {
+      backoff_propagation_interval();
+    } else {
+      propagation_interval_ = options_.euf_propagation_interval;
+    }
     statistics_.increment(kStatEufPropagationCandidates, inspected);
+  }
+
+  void backoff_propagation_interval() {
+    if (!adaptive_propagation_) {
+      return;
+    }
+    constexpr std::size_t kMaxAdaptivePropagationInterval = 1024;
+    propagation_interval_ = std::min(kMaxAdaptivePropagationInterval, propagation_interval_ * 2);
   }
 
   bool try_online_candidate(const std::vector<AssignedTheoryAtom>& assigned,
@@ -1509,8 +1511,10 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   core::TermId true_term_ = core::kInvalidTermId;
   core::TermId false_term_ = core::kInvalidTermId;
   const CheckSatOptions& options_;
+  bool adaptive_propagation_ = false;
   util::Statistics& statistics_;
   std::unordered_set<int> observed_vars_;
+  std::unordered_map<int, const BooleanClausifier::TheoryAtom*> atom_by_var_;
   std::unordered_map<int, bool> assignment_by_var_;
   std::vector<int> trail_;
   std::vector<std::size_t> level_starts_{0};
@@ -1520,6 +1524,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   std::optional<IncrementalFlatAssignmentState> incremental_state_;
   sat::Clause external_clause_;
   std::size_t external_clause_index_ = 0;
+  std::size_t propagation_interval_ = options_.euf_propagation_interval;
+  std::size_t next_propagation_round_ = 1;
 };
 #endif
 
@@ -1667,7 +1673,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   if (euf_propagation == EufPropagationMode::Online ||
       euf_propagation == EufPropagationMode::Conflict) {
     online_propagator.emplace(terms, clausifier.theory_atoms(), true_term, false_term,
-                              resolved_options, statistics);
+                              resolved_options, options.euf_propagation == EufPropagationMode::Auto,
+                              statistics);
     backend.connect_external_propagator(&online_propagator.value());
     for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;

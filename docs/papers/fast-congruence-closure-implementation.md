@@ -84,8 +84,10 @@ Two deviations matter for performance claims:
 - Final model checks and model-time propagation still rebuild the flat equality
   state from a complete SAT assignment.
 - Opt-in online propagation with `--euf-engine=incremental` owns a persistent
-  flat closure and asserts theory literals as CaDiCaL reports assignments. Its
-  current backtracking path is a tuning target, not the default QF_UF path.
+  flat closure and asserts theory literals as CaDiCaL reports assignments. It
+  restores coarse flat-closure snapshots on SAT backtrack, which avoids replaying
+  the retained assignment trail but still is not the paper's timestamped
+  lookup-table backtracking policy.
 
 ## Counters
 

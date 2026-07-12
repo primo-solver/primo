@@ -1,0 +1,4 @@
+file,status,answer,seconds,exit_code,prop_candidates,prop_delivered,terms,diseq_checks,backtracks
+tmp/QF_UF/PEQ/PEQ012_size4.smt2,ok,unsat,4.133877,0,304,0,287,2238432,12008
+tmp/QF_UF/NEQ/NEQ048_size6.smt2,ok,unsat,3.362847,0,240,0,698,2390672,5631
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk027.smt2,ok,sat,4.971114,0,176,0,1302,8180953,5511

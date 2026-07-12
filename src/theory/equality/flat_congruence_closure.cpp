@@ -101,8 +101,7 @@ void FlatCongruenceClosure::add_definition(const FlatDefinition& definition) {
   ++stats_.lookup_probes;
   if (const auto found = lookup_.find(key); found != lookup_.end()) {
     ++stats_.lookup_hits;
-    enqueue(stored.result, found->second,
-            congruence_reason(stored, definitions_[definition_by_result_.at(found->second)]), true);
+    enqueue_congruence(stored, definitions_[definition_by_result_.at(found->second)]);
     propagate();
     return;
   }
@@ -152,7 +151,22 @@ FlatCongruenceClosure::ApplyKey FlatCongruenceClosure::signature(
 
 void FlatCongruenceClosure::enqueue(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit> reason,
                                     bool congruence) {
-  pending_.push_back(PendingMerge{lhs, rhs, std::move(reason), congruence});
+  PendingMerge pending;
+  pending.lhs = lhs;
+  pending.rhs = rhs;
+  pending.reason = std::move(reason);
+  pending.congruence = congruence;
+  pending_.push_back(std::move(pending));
+}
+
+void FlatCongruenceClosure::enqueue_congruence(const Definition& lhs, const Definition& rhs) {
+  PendingMerge pending;
+  pending.lhs = lhs.result;
+  pending.rhs = rhs.result;
+  pending.congruence = true;
+  pending.lhs_definition = lhs;
+  pending.rhs_definition = rhs;
+  pending_.push_back(std::move(pending));
 }
 
 void FlatCongruenceClosure::propagate() {
@@ -163,12 +177,23 @@ void FlatCongruenceClosure::propagate() {
     if (representative(pending.lhs) == representative(pending.rhs)) {
       continue;
     }
-    merge_classes(pending.lhs, pending.rhs, std::move(pending.reason), pending.congruence);
+    merge_classes(std::move(pending));
   }
 }
 
 void FlatCongruenceClosure::merge_classes(FlatTermId lhs, FlatTermId rhs,
                                           std::vector<sat::Lit> reason, bool congruence) {
+  PendingMerge pending;
+  pending.lhs = lhs;
+  pending.rhs = rhs;
+  pending.reason = std::move(reason);
+  pending.congruence = congruence;
+  merge_classes(std::move(pending));
+}
+
+void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
+  FlatTermId lhs = pending.lhs;
+  FlatTermId rhs = pending.rhs;
   FlatTermId lhs_repr = representative(lhs);
   FlatTermId rhs_repr = representative(rhs);
   if (lhs_repr == rhs_repr) {
@@ -179,7 +204,8 @@ void FlatCongruenceClosure::merge_classes(FlatTermId lhs, FlatTermId rhs,
   }
 
   const std::size_t edge_index = edges_.size();
-  edges_.push_back(Edge{lhs, rhs, std::move(reason)});
+  edges_.push_back(Edge{lhs, rhs, std::move(pending.reason), pending.congruence,
+                        pending.lhs_definition, pending.rhs_definition});
   edge_adjacency_[lhs].push_back(edge_index);
   edge_adjacency_[rhs].push_back(edge_index);
   for (const FlatTermId member : class_members_[lhs_repr]) {
@@ -190,7 +216,7 @@ void FlatCongruenceClosure::merge_classes(FlatTermId lhs, FlatTermId rhs,
   class_size_[rhs_repr] += class_size_[lhs_repr];
   class_size_[lhs_repr] = 0;
   ++stats_.merges;
-  if (congruence) {
+  if (pending.congruence) {
     ++stats_.congruence_merges;
   }
   process_use_list(lhs_repr, rhs_repr);
@@ -222,7 +248,7 @@ void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new
       ++stats_.lookup_hits;
       if (representative(found->second) != representative(result)) {
         const Definition& other = definitions_[definition_by_result_.at(found->second)];
-        enqueue(result, found->second, congruence_reason(definition, other), true);
+        enqueue_congruence(definition, other);
       }
       append_use(use_lists_[new_repr], result);
       continue;
@@ -314,6 +340,16 @@ void FlatCongruenceClosure::append_unique_reason(std::vector<sat::Lit>& target,
   }
 }
 
+void FlatCongruenceClosure::append_edge_reason(const Edge& edge,
+                                               std::vector<sat::Lit>& reason) const {
+  if (edge.congruence) {
+    (void)explain_equal_into(edge.lhs_definition.function, edge.rhs_definition.function, reason);
+    (void)explain_equal_into(edge.lhs_definition.argument, edge.rhs_definition.argument, reason);
+    return;
+  }
+  append_unique_reason(reason, edge.reason);
+}
+
 bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
                                                std::vector<sat::Lit>& reason) const {
   if (lhs == rhs) {
@@ -361,19 +397,14 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
   if (visit_marks_[rhs] != visit_generation_) {
     return false;
   }
+  std::vector<std::size_t> path_edges;
   for (FlatTermId current = rhs; current != lhs; current = parent_scratch_[current]) {
-    append_unique_reason(reason, edges_[parent_edge_scratch_[current]].reason);
+    path_edges.push_back(parent_edge_scratch_[current]);
+  }
+  for (const std::size_t edge_index : path_edges) {
+    append_edge_reason(edges_[edge_index], reason);
   }
   return true;
-}
-
-std::vector<sat::Lit> FlatCongruenceClosure::congruence_reason(const Definition& lhs,
-                                                               const Definition& rhs) const {
-  std::vector<sat::Lit> reason;
-  begin_reason_collection(reason);
-  (void)explain_equal_into(lhs.function, rhs.function, reason);
-  (void)explain_equal_into(lhs.argument, rhs.argument, reason);
-  return reason;
 }
 
 }  // namespace primo::theory::equality

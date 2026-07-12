@@ -104,9 +104,13 @@ With `--euf-engine=lazy`, reason queries use the older explained closure. With
 `--euf-engine=incremental`, they use a persistent flat curried closure owned by
 the external propagator. The propagator checkpoints assignment-trail positions
 when SAT enters a new decision level, asserts theory literals as CaDiCaL reports
-them, and rebuilds the flat closure from the retained trail after SAT
-backtracks. This avoids copying the full closure at every decision level while
-keeping the flat-closure snapshot API available for tests and future tuning.
+them, and restores a matching flat-closure snapshot after SAT backtracks. This
+avoids replaying every retained assignment after each backtrack, but it is still
+a coarse snapshot scheme rather than the paper's timestamped undo structure.
+When `--euf-prop=auto` selects the online path, zero-delivery propagation scans
+adaptively increase the callback discovery interval up to 1024 rounds. Explicit
+`--euf-prop=online` keeps the configured `--prop-interval` cadence for
+experiments.
 This is still an initial online subset: it does not choose decisions. Like
 `conflict`, it can serve EUF conflict clauses through CaDiCaL's external-clause
 callback.
@@ -180,17 +184,19 @@ definitions and maps original equality atoms to flat endpoints.
 lookup, pending-merge, disequality, explanation, and coarse backtracking
 structure over those flat definitions. Explanation edges are stored both in
 insertion order and in per-flat-term adjacency lists so reason BFS visits only
-edges incident to the current proof-graph node. The BFS marks, parent-edge
-arrays, queue storage, and reason-literal marks are owned by the closure and
-reused across explanation queries; signed SAT literals are marked separately, so
-`p` and `not p` can both occur in a non-minimal reason when different proof
-edges justify them. A newly asserted disequality is checked immediately. After a
-class merge, older disequalities are not scanned globally; the closure collects
-the disequality indices attached to the two merged representatives, sorts those
-indices to preserve original insertion order, and checks only that candidate
-set. This keeps the first reported conflict deterministic while avoiding scans
-over disequalities whose endpoint classes did not change. This is the engine
-used by `--euf-engine=incremental`.
+edges incident to the current proof-graph node. Congruence edges store the two
+flat definitions that collided in the lookup table and expand their child
+equalities only when a conflict or propagation explanation asks for the reason.
+The BFS marks, parent-edge arrays, queue storage, and reason-literal marks are
+owned by the closure and reused across explanation queries; signed SAT literals
+are marked separately, so `p` and `not p` can both occur in a non-minimal reason
+when different proof edges justify them. A newly asserted disequality is checked
+immediately. After a class merge, older disequalities are not scanned globally;
+the closure collects the disequality indices attached to the two merged
+representatives, sorts those indices to preserve original insertion order, and
+checks only that candidate set. This keeps the first reported conflict
+deterministic while avoiding scans over disequalities whose endpoint classes did
+not change. This is the engine used by `--euf-engine=incremental`.
 
 ## EufSolver
 

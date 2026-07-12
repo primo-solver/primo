@@ -68,7 +68,9 @@ ordinary post-model check or by the CaDiCaL external-clause callback used by
 The propagation counters are used by both `--euf-prop=model` and
 `--euf-prop=online`; `--euf-prop=conflict` leaves them at zero. In online mode,
 one round corresponds to a callback pass that inspects currently unassigned
-observed theory atoms.
+observed theory atoms. When `--euf-prop=auto` selects online callbacks, repeated
+zero-delivery scans increase the discovery interval, so the candidate counter
+can be much smaller than `rounds * theory-atoms`.
 
 The auto counters record which concrete path `--euf-prop=auto` selected for the
 current abstraction.
