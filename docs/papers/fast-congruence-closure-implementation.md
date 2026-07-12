@@ -85,9 +85,11 @@ Two deviations matter for performance claims:
   state from a complete SAT assignment.
 - Opt-in online propagation with `--euf-engine=incremental` owns a persistent
   flat closure and asserts theory literals as CaDiCaL reports assignments. It
-  restores coarse flat-closure snapshots on SAT backtrack, which avoids replaying
-  the retained assignment trail but still is not the paper's timestamped
-  lookup-table backtracking policy.
+  creates those snapshots lazily, immediately before the first theory assertion
+  in a SAT decision level, and restores the first discarded snapshot on SAT
+  backtrack. This avoids replaying the retained assignment trail and avoids
+  copying the closure on Boolean-only levels, but still is not the paper's
+  timestamped lookup-table backtracking policy.
 
 ## Counters
 

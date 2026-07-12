@@ -103,10 +103,13 @@ then asks for entailed unassigned theory literals and their reason clauses.
 With `--euf-engine=lazy`, reason queries use the older explained closure. With
 `--euf-engine=incremental`, they use a persistent flat curried closure owned by
 the external propagator. The propagator checkpoints assignment-trail positions
-when SAT enters a new decision level, asserts theory literals as CaDiCaL reports
-them, and restores a matching flat-closure snapshot after SAT backtracks. This
-avoids replaying every retained assignment after each backtrack, but it is still
-a coarse snapshot scheme rather than the paper's timestamped undo structure.
+when SAT enters a new decision level and creates a flat-closure snapshot lazily,
+immediately before the first theory atom is asserted at that level. On
+backtrack it restores the first snapshot among the discarded levels and trims
+the assignment trail. This avoids replaying every retained assignment after
+each backtrack and avoids copying the closure for decision levels that never
+touch theory state, but it is still a coarse snapshot scheme rather than the
+paper's timestamped undo structure.
 When `--euf-prop=auto` selects the online path, zero-delivery propagation scans
 adaptively increase the callback discovery interval up to 1024 rounds. Explicit
 `--euf-prop=online` keeps the configured `--prop-interval` cadence for
@@ -187,7 +190,9 @@ insertion order and in per-flat-term adjacency lists so reason BFS visits only
 edges incident to the current proof-graph node. Congruence edges store the two
 flat definitions that collided in the lookup table and expand their child
 equalities only when a conflict or propagation explanation asks for the reason.
-The BFS marks, parent-edge arrays, queue storage, and reason-literal marks are
+Online-mode snapshots are created lazily on the first theory assignment in a
+SAT decision level, so levels with only Boolean search no longer copy the
+closure. The BFS marks, parent-edge arrays, queue storage, and reason-literal marks are
 owned by the closure and reused across explanation queries; signed SAT literals
 are marked separately, so `p` and `not p` can both occur in a non-minimal reason
 when different proof edges justify them. A newly asserted disequality is checked
@@ -273,9 +278,10 @@ the EUF direction and the eventual data structures. Primo now implements the
 Section 3 use-list, lookup, pending-merge shape as an opt-in conflict and
 propagation checker over deterministic Curry-style flat definitions. Online
 incremental propagation owns a persistent flat closure and uses SAT
-decision-level callbacks with assignment-trail checkpoints, but its backtracking
-is not yet the paper's timestamped undo structure. Final conflict checks and
-model-time propagation still rebuild flat closures from complete assignments.
+decision-level callbacks with assignment-trail checkpoints. Snapshot creation
+is lazy per decision level, but backtracking is not yet the paper's timestamped
+undo structure. Final conflict checks and model-time propagation still rebuild
+flat closures from complete assignments.
 Primo does not yet implement the Section 4-5 proof-producing union-find.
 
 Deharbe et al., *Exploiting symmetry in SMT problems*, and Reger and Suda,

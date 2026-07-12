@@ -1054,18 +1054,27 @@ class IncrementalFlatAssignmentState {
     publish_stats();
   }
 
-  void push_level() { checkpoints_.push_back(Checkpoint{assignments_.size(), closure_.push()}); }
+  void push_level() { checkpoints_.push_back(Checkpoint{assignments_.size(), std::nullopt}); }
 
   void pop_to_level(std::size_t new_level) {
     if (checkpoints_.size() <= new_level) {
       return;
     }
-    const Checkpoint checkpoint = checkpoints_[new_level];
+    const std::size_t assignment_count = checkpoints_[new_level].assignment_count;
+    std::optional<std::size_t> closure_checkpoint;
+    for (std::size_t index = new_level; index < checkpoints_.size(); ++index) {
+      if (checkpoints_[index].closure_checkpoint.has_value()) {
+        closure_checkpoint = checkpoints_[index].closure_checkpoint;
+        break;
+      }
+    }
     checkpoints_.resize(new_level);
-    assignments_.resize(checkpoint.assignment_count);
-    closure_.pop(checkpoint.closure_checkpoint);
-    last_published_stats_ = closure_.stats();
-    statistics_.increment(kStatEufIncrementalBacktracks);
+    assignments_.resize(assignment_count);
+    if (closure_checkpoint.has_value()) {
+      closure_.pop(closure_checkpoint.value());
+      last_published_stats_ = closure_.stats();
+      statistics_.increment(kStatEufIncrementalBacktracks);
+    }
   }
 
   void assert_assignment(const AssignedTheoryAtom& assignment) {
@@ -1073,6 +1082,7 @@ class IncrementalFlatAssignmentState {
     if (!flat_atom.has_value()) {
       return;
     }
+    ensure_current_level_checkpoint();
     assignments_.push_back(assignment);
     flat_atom->source.value = assignment.value;
     assert_flat_assigned_atom(closure_, flat_atom.value(), true_flat_, false_flat_);
@@ -1125,10 +1135,20 @@ class IncrementalFlatAssignmentState {
     last_published_stats_ = current;
   }
 
+  void ensure_current_level_checkpoint() {
+    if (checkpoints_.empty()) {
+      return;
+    }
+    Checkpoint& checkpoint = checkpoints_.back();
+    if (!checkpoint.closure_checkpoint.has_value()) {
+      checkpoint.closure_checkpoint = closure_.push();
+    }
+  }
+
   const core::TermManager& terms_;
   struct Checkpoint {
     std::size_t assignment_count = 0;
-    std::size_t closure_checkpoint = 0;
+    std::optional<std::size_t> closure_checkpoint;
   };
 
   theory::equality::FlatTermIndex flat_;
