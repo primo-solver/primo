@@ -70,19 +70,37 @@ class FlatCongruenceClosure {
     Definition rhs_definition;
   };
 
-  struct Snapshot {
-    std::vector<FlatTermId> parent;
-    std::vector<std::size_t> class_size;
-    std::vector<std::vector<FlatTermId>> class_members;
-    std::vector<std::vector<FlatTermId>> use_lists;
-    std::vector<Definition> definitions;
-    std::unordered_map<FlatTermId, std::size_t> definition_by_result;
-    std::unordered_map<ApplyKey, FlatTermId, ApplyKeyHash> lookup;
-    std::vector<PendingMerge> pending;
-    std::vector<Disequality> disequalities;
-    std::vector<std::vector<std::size_t>> disequality_lists;
-    std::vector<Edge> edges;
-    std::vector<std::vector<std::size_t>> edge_adjacency;
+  enum class TrailKind {
+    Parent,
+    ClassSize,
+    ClassMembersRestore,
+    ClassMembersPop,
+    UseListRestore,
+    UseListPop,
+    DisequalityListRestore,
+    DisequalityListPop,
+    EdgeAdjacencyPop,
+    LookupInsertion,
+    DefinitionByResultInsertion,
+  };
+
+  struct TrailEntry {
+    TrailKind kind = TrailKind::Parent;
+    std::size_t index = 0;
+    FlatTermId flat_value = kInvalidFlatTermId;
+    std::size_t size_value = 0;
+    std::vector<FlatTermId> flat_vector;
+    std::vector<std::size_t> size_vector;
+    ApplyKey lookup_key;
+  };
+
+  struct Checkpoint {
+    std::size_t node_count = 0;
+    std::size_t definitions_size = 0;
+    std::size_t pending_size = 0;
+    std::size_t disequalities_size = 0;
+    std::size_t edges_size = 0;
+    std::size_t trail_size = 0;
     std::optional<std::vector<sat::Lit>> conflict;
     IncrementalCongruenceClosureStats stats;
   };
@@ -95,6 +113,10 @@ class FlatCongruenceClosure {
   void merge_classes(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit> reason, bool congruence);
   void merge_classes(PendingMerge pending);
   void process_use_list(FlatTermId old_repr, FlatTermId new_repr);
+  void append_use_tracked(FlatTermId representative, FlatTermId result);
+  void push_parent_change(FlatTermId term);
+  void push_class_size_change(FlatTermId term);
+  void restore_trail_entry(TrailEntry& entry);
   bool check_disequality(const Disequality& disequality);
   void check_disequalities_touching(FlatTermId lhs_repr, FlatTermId rhs_repr);
   void begin_reason_collection(std::vector<sat::Lit>& reason) const;
@@ -115,13 +137,16 @@ class FlatCongruenceClosure {
   std::vector<std::vector<std::size_t>> disequality_lists_;
   std::vector<Edge> edges_;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
-  std::vector<Snapshot> snapshots_;
+  std::vector<Checkpoint> checkpoints_;
+  std::vector<TrailEntry> trail_;
   std::optional<std::vector<sat::Lit>> conflict_;
   IncrementalCongruenceClosureStats stats_;
   mutable std::vector<std::size_t> visit_marks_;
   mutable std::vector<std::size_t> parent_edge_scratch_;
   mutable std::vector<FlatTermId> parent_scratch_;
   mutable std::vector<FlatTermId> queue_scratch_;
+  mutable std::vector<std::vector<std::size_t>> path_edges_scratch_;
+  mutable std::size_t explanation_depth_ = 0;
   mutable std::size_t visit_generation_ = 0;
   mutable std::vector<std::size_t> reason_marks_;
   mutable std::size_t reason_generation_ = 0;

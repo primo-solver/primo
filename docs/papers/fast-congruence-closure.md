@@ -33,14 +33,15 @@ The default incremental path adds:
 - sparse signature lookup for congruent flat applications;
 - a pending merge queue for explicit and congruence merges;
 - disequality conflict detection;
-- coarse `push`/`pop` snapshots for online propagation experiments;
+- sparse `push`/`pop` checkpoints and an undo trail for online propagation
+  experiments;
 - counters for terms, flat definitions, lookup probes and hits, pending pops,
   congruence merges, conflicts, explanation length, and backtracks.
 
 This is a Section 3 shaped subset, not the complete optimized paper algorithm.
 Explanations still come from a simple equality edge graph and are sound but not
-minimal. Backtracking restores full snapshots rather than the paper's optimized
-timestamped mutable state.
+minimal. Backtracking trails ordinary mutable closure state rather than using
+the paper's optimized timestamped lookup-table policy.
 
 ## Remaining implementation checklist
 
@@ -48,7 +49,7 @@ Before claiming that Primo implements the full Nieuwenhuis-Oliveras fast
 congruence closure, the code must add and document:
 
 - explanation/proof-forest data structures for equality reasons;
-- backtracking support with a trail of all mutable CC state;
+- the paper's timestamped lookup-table backtracking policy;
 - pure-class performance probes showing the Section 3 machinery improves the
   intended QF_UF families;
 - benchmark evidence showing solved-count or PAR2 improvement without wrong

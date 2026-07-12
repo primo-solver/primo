@@ -78,18 +78,21 @@ logarithmically often. The current lookup table is a sparse hash table.
 
 Two deviations matter for performance claims:
 
-- Backtracking currently restores coarse snapshots in `push`/`pop`. This is
-  correct for unit tests and future SAT integration experiments, but it is not
-  the paper's timestamped lookup-table backtracking policy.
+- Backtracking uses `push`/`pop` checkpoints plus a sparse undo trail for the
+  mutable flat-closure state that changes after a checkpoint: representatives,
+  class sizes and members, use lists, disequality lists, explanation adjacency,
+  and lookup maps. This is correct for SAT integration and avoids copying the
+  whole closure on every checkpoint, but it is still not the paper's timestamped
+  lookup-table backtracking policy.
 - Final model checks and model-time propagation still rebuild the flat equality
   state from a complete SAT assignment.
 - Opt-in online propagation with `--euf-engine=incremental` owns a persistent
   flat closure and asserts theory literals as CaDiCaL reports assignments. It
-  creates those snapshots lazily, immediately before the first theory assertion
-  in a SAT decision level, and restores the first discarded snapshot on SAT
-  backtrack. This avoids replaying the retained assignment trail and avoids
-  copying the closure on Boolean-only levels, but still is not the paper's
-  timestamped lookup-table backtracking policy.
+  creates those checkpoints lazily, immediately before the first theory
+  assertion in a SAT decision level, and restores the first discarded
+  checkpoint on SAT backtrack. This avoids replaying the retained assignment
+  trail and avoids allocating rollback state on Boolean-only levels, but still
+  is not the paper's timestamped lookup-table backtracking policy.
 
 ## Counters
 
@@ -115,6 +118,8 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
 - shared-subterm congruence explanations;
 - disequality conflict clauses;
 - backtrack undo followed by rediscovery;
+- nested checkpoint rollback, disequality-conflict rollback, and
+  post-checkpoint definition rollback;
 - deterministic Curry-style flat definitions;
 - order-preserving flat disequality candidate scans;
 - nonzero lookup-hit and congruence-merge counters.

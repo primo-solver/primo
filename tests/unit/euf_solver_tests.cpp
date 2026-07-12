@@ -346,6 +346,57 @@ void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
   check(closure.stats().backtracks == 1);
 }
 
+void flat_congruence_closure_backtracks_nested_merges() {
+  FlatCongruenceClosure closure(4);
+
+  const std::size_t outer = closure.push();
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+  check(closure.are_equal(0, 1));
+
+  const std::size_t inner = closure.push();
+  closure.assert_equal(1, 2, {primo::sat::Lit{-2}});
+  check(closure.are_equal(0, 2));
+
+  closure.pop(inner);
+  check(closure.are_equal(0, 1));
+  check(!closure.are_equal(0, 2));
+
+  closure.pop(outer);
+  check(!closure.are_equal(0, 1));
+  check(!closure.are_equal(1, 2));
+  check(closure.stats().backtracks == 1);
+}
+
+void flat_congruence_closure_backtracks_disequality_conflict() {
+  FlatCongruenceClosure closure(2);
+
+  const std::size_t checkpoint = closure.push();
+  closure.assert_distinct(0, 1, {primo::sat::Lit{-3}});
+  closure.assert_equal(0, 1, {primo::sat::Lit{4}});
+  check(closure.conflict().has_value());
+
+  closure.pop(checkpoint);
+  check(!closure.conflict().has_value());
+  closure.assert_equal(0, 1, {primo::sat::Lit{5}});
+  check(!closure.conflict().has_value());
+  check(closure.are_equal(0, 1));
+}
+
+void flat_congruence_closure_backtracks_post_checkpoint_definitions() {
+  FlatCongruenceClosure closure(4);
+
+  const std::size_t checkpoint = closure.push();
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 2});
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 3});
+  check(closure.are_equal(2, 3));
+
+  closure.pop(checkpoint);
+  check(!closure.are_equal(2, 3));
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 2});
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 3});
+  check(closure.are_equal(2, 3));
+}
+
 }  // namespace
 
 int main() {
@@ -363,5 +414,8 @@ int main() {
   flat_congruence_closure_skips_unrelated_disequality_scans();
   flat_congruence_closure_keeps_signed_reason_literals_distinct();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
+  flat_congruence_closure_backtracks_nested_merges();
+  flat_congruence_closure_backtracks_disequality_conflict();
+  flat_congruence_closure_backtracks_post_checkpoint_definitions();
   return 0;
 }
