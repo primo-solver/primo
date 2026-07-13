@@ -91,10 +91,21 @@ closure. This is what turns bridge facts from diamond formulas into an immediate
 pre-SAT contradiction with the final disequality.
 
 `--preprocessing-passes N` controls the repeated preprocessing loop. Each pass
-can add bridge facts and then simplify with unit equalities. The default is four
-passes. `0` disables the loop unless the `strong` preset is selected. Strong
-preprocessing runs at least three passes because bridge facts and finite-domain
-clauses can expose further unit-equality simplifications.
+can add bridge facts and then simplify with Boolean and unit equalities. The
+default is four passes. `0` disables the loop unless the `strong` preset or the
+auto single-assertion path is selected. Those paths run at least three passes
+because bridge facts and finite-domain clauses can expose further unit-equality
+simplifications.
+
+The fixed pass count is a baseline cap, not always a hard stop. After the cap is
+reached, Primo may run up to four additional adaptive passes when the previous
+pass reduced the number of unique reachable formula terms by at least ten
+percent. This keeps useful simplification chains going on formulas that are
+still collapsing, while preventing clause-generating preprocessing from
+continuing merely because it can append more facts. Adaptive extension is
+reported by `:preprocessing.adaptive-passes`; the measured formula sizes are
+reported by `:preprocessing.term-size.initial` and
+`:preprocessing.term-size.final`.
 
 ## Boolean Unit Propagation
 

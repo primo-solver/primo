@@ -486,6 +486,35 @@ void preprocessing_off_disables_basic_loop() {
   assert(result.statistics.get(":preprocessing.passes") == 0);
 }
 
+void preprocessing_extends_when_passes_keep_shrinking_terms() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Basic;
+  options.preprocessing_passes = 1;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q0 () Bool)
+    (declare-fun q1 () Bool)
+    (declare-fun q2 () Bool)
+    (declare-fun q3 () Bool)
+    (declare-fun q4 () Bool)
+    (assert (and p
+      (or p q0)
+      (or p q1)
+      (or p q2)
+      (or p q3)
+      (or p q4)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.adaptive-passes") == 1);
+  assert(result.statistics.get(":preprocessing.passes") == 2);
+  assert(result.statistics.get(":preprocessing.term-size.final") <
+         result.statistics.get(":preprocessing.term-size.initial"));
+}
+
 void strong_preprocessing_enables_finite_domain_amo() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -907,6 +936,7 @@ int main() {
   equality_bridge_solves_diamond_chain();
   auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
   preprocessing_off_disables_basic_loop();
+  preprocessing_extends_when_passes_keep_shrinking_terms();
   strong_preprocessing_enables_finite_domain_amo();
   auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions();
   default_symmetry_breaking_reports_covered_values_and_terms();

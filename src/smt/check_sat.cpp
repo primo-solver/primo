@@ -45,6 +45,9 @@ constexpr std::string_view kStatFrontendAuxiliaryItes = ":frontend.ite.auxiliari
 constexpr std::string_view kStatAssertionsFinal = ":preprocessing.assertions";
 constexpr std::string_view kStatPreprocessingPasses = ":preprocessing.passes";
 constexpr std::string_view kStatPreprocessingChangedPasses = ":preprocessing.changed-passes";
+constexpr std::string_view kStatPreprocessingAdaptivePasses = ":preprocessing.adaptive-passes";
+constexpr std::string_view kStatPreprocessingTermSizeInitial = ":preprocessing.term-size.initial";
+constexpr std::string_view kStatPreprocessingTermSizeFinal = ":preprocessing.term-size.final";
 constexpr std::string_view kStatEqBridgeEqualities = ":preprocessing.eq-bridge.equalities";
 constexpr std::string_view kStatEqBridgeSkippedOrNodes =
     ":preprocessing.eq-bridge.skipped-or-nodes";
@@ -107,6 +110,22 @@ constexpr std::string_view kStatEufIncrementalDisequalityChecks =
 constexpr std::string_view kStatEufIncrementalConflicts = ":euf.incremental.conflicts";
 constexpr std::string_view kStatEufIncrementalExplainLength = ":euf.incremental.explain-length";
 constexpr std::string_view kStatEufIncrementalBacktracks = ":euf.incremental.backtracks";
+
+std::size_t reachable_term_count(const core::TermManager& terms,
+                                 const std::vector<core::TermId>& roots) {
+  std::unordered_set<core::TermId> seen;
+  std::vector<core::TermId> work = roots;
+  while (!work.empty()) {
+    const core::TermId term_id = work.back();
+    work.pop_back();
+    if (!seen.insert(term_id).second) {
+      continue;
+    }
+    const core::Term& term = terms.get(term_id);
+    work.insert(work.end(), term.children.begin(), term.children.end());
+  }
+  return seen.size();
+}
 
 void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics& statistics) {
   statistics.set(kStatSatVars, sat_stats.variables);
@@ -1827,6 +1846,9 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatAssertionsFinal, 0);
   statistics.set(kStatPreprocessingPasses, 0);
   statistics.set(kStatPreprocessingChangedPasses, 0);
+  statistics.set(kStatPreprocessingAdaptivePasses, 0);
+  statistics.set(kStatPreprocessingTermSizeInitial, 0);
+  statistics.set(kStatPreprocessingTermSizeFinal, 0);
   statistics.set(kStatEqBridgeEqualities, 0);
   statistics.set(kStatEqBridgeSkippedOrNodes, 0);
   statistics.set(kStatBooleanUnitFacts, 0);
@@ -1919,6 +1941,9 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         (strong_preprocessing || auto_single_assertion)
             ? std::max<std::size_t>(options.preprocessing_passes, 3)
             : options.preprocessing_passes;
+    constexpr std::size_t kAdaptiveExtraPreprocessingPasses = 4;
+    constexpr std::size_t kAdaptiveShrinkPercent = 10;
+    std::size_t preprocessing_pass_limit = preprocessing_passes;
 
     if (use_symmetry_breaking) {
       UfSymmetryBreaker symmetry_breaker(frontend.terms());
@@ -1930,8 +1955,11 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
       statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
     }
-    for (std::size_t pass = 0; preprocessing_enabled && pass < preprocessing_passes; ++pass) {
+    statistics.set(kStatPreprocessingTermSizeInitial,
+                   reachable_term_count(frontend.terms(), assertions));
+    for (std::size_t pass = 0; preprocessing_enabled && pass < preprocessing_pass_limit; ++pass) {
       const std::vector<core::TermId> before = assertions;
+      const std::size_t before_term_size = reachable_term_count(frontend.terms(), before);
       statistics.increment(kStatPreprocessingPasses);
       if (use_eq_bridge) {
         EqualityBridge bridge(frontend.terms());
@@ -1989,8 +2017,21 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         break;
       }
       statistics.increment(kStatPreprocessingChangedPasses);
+      const std::size_t after_term_size = reachable_term_count(frontend.terms(), assertions);
+      const bool shrank_enough =
+          after_term_size < before_term_size &&
+          after_term_size * 100 <= before_term_size * (100 - kAdaptiveShrinkPercent);
+      const std::size_t max_adaptive_limit =
+          preprocessing_passes + kAdaptiveExtraPreprocessingPasses;
+      if (pass + 1 == preprocessing_pass_limit && preprocessing_pass_limit < max_adaptive_limit &&
+          shrank_enough) {
+        ++preprocessing_pass_limit;
+        statistics.increment(kStatPreprocessingAdaptivePasses);
+      }
     }
     statistics.set(kStatAssertionsFinal, assertions.size());
+    statistics.set(kStatPreprocessingTermSizeFinal,
+                   reachable_term_count(frontend.terms(), assertions));
     for (const core::TermId assertion : assertions) {
       const core::Term& node = frontend.terms().get(assertion);
       if (node.kind == core::TermKind::BoolValue && !node.bool_value) {

@@ -18,6 +18,9 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.assertions`;
 - `:preprocessing.passes`;
 - `:preprocessing.changed-passes`;
+- `:preprocessing.adaptive-passes`;
+- `:preprocessing.term-size.initial`;
+- `:preprocessing.term-size.final`;
 - `:preprocessing.eq-bridge.equalities`;
 - `:preprocessing.eq-bridge.skipped-or-nodes`;
 - `:preprocessing.boolean-units.facts`;
