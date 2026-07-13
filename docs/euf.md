@@ -29,6 +29,25 @@ The current conflict clause is justified by the explained congruence closure.
 Reasons are sound but not guaranteed minimum; the optimized proof-forest
 structure from the fast congruence-closure literature is still deferred.
 
+Before invoking EUF checks, Primo applies T-pure-literal filtering in the sense
+of Sebastiani's lazy SMT survey, §6.10. Polarity is collected for original
+theory atoms during Boolean abstraction. If an atom occurs only positively, a
+false SAT assignment of that atom is omitted from the EUF assignment; if it
+occurs only negatively, a true SAT assignment is omitted. Mixed-polarity atoms
+are kept. This is not the SAT pure-literal rule: Primo does not force a value
+for pure theory atoms and does not remove their SAT clauses. It only avoids
+feeding theory literals to congruence closure when those literals are irrelevant
+to satisfying the Boolean abstraction.
+
+Filtered literals are also omitted from model-time propagation premises and
+from the incremental external-conflict closure. Candidate theory propagations
+whose candidate literal would be filtered are skipped. This follows the same
+caveat from the lazy SMT literature: filtered literals must not be used as
+theory-deduced premises, because they were deliberately not passed to the
+theory solver. The implemented subset is assignment filtering for QF_UF equality
+atoms, Boolean predicate applications, and Boolean constants represented as EUF
+terms; ghost-literal decision avoidance is not implemented.
+
 The SAT phase setting is a search heuristic only. It asks CaDiCaL to try the
 negative phase for equality and Boolean-predicate theory atoms before the SAT
 solver's own activity heuristics override that choice. This is useful for

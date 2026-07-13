@@ -84,6 +84,9 @@ constexpr std::string_view kStatSolverBoolean = ":solver.boolean";
 constexpr std::string_view kStatSolverQfUf = ":solver.qf-uf";
 constexpr std::string_view kStatSatSolveCalls = ":sat.solve-calls";
 constexpr std::string_view kStatTheoryAtoms = ":euf.theory-atoms";
+constexpr std::string_view kStatPureTheoryAtomsPositive = ":euf.pure-atoms.positive";
+constexpr std::string_view kStatPureTheoryAtomsNegative = ":euf.pure-atoms.negative";
+constexpr std::string_view kStatPureTheoryLiteralsFiltered = ":euf.pure-literals.filtered";
 constexpr std::string_view kStatTheoryChecks = ":euf.checks";
 constexpr std::string_view kStatTheoryConflicts = ":euf.theory-conflicts";
 constexpr std::string_view kStatEufPropagationRounds = ":euf.propagation.rounds";
@@ -603,6 +606,8 @@ class BooleanClausifier {
   struct TheoryAtom {
     sat::Lit lit;
     core::TermId term;
+    bool occurs_positive = false;
+    bool occurs_negative = false;
   };
 
   explicit BooleanClausifier(sat::IpasirUpBackend& backend, const core::TermManager& terms)
@@ -612,12 +617,67 @@ class BooleanClausifier {
     if (terms_.get(term).sort != terms_.symbols().bool_sort()) {
       throw UnsupportedInput("assertion is not Boolean");
     }
+    collect_theory_atom_polarities(term, true);
     assert_positive(term);
   }
 
   const std::vector<TheoryAtom>& theory_atoms() const { return theory_atoms_; }
 
  private:
+  void collect_theory_atom_polarities(core::TermId term_id, bool positive) {
+    const core::Term& term = terms_.get(term_id);
+    switch (term.kind) {
+      case core::TermKind::BoolValue:
+        return;
+      case core::TermKind::And:
+      case core::TermKind::Or:
+        for (const core::TermId child : term.children) {
+          collect_theory_atom_polarities(child, positive);
+        }
+        return;
+      case core::TermKind::Implies:
+        collect_theory_atom_polarities(term.children.at(0), !positive);
+        collect_theory_atom_polarities(term.children.at(1), positive);
+        return;
+      case core::TermKind::Not:
+        collect_theory_atom_polarities(term.children.at(0), !positive);
+        return;
+      case core::TermKind::Constant:
+        if (term.sort == terms_.symbols().bool_sort()) {
+          record_theory_atom_polarity(term_id, positive);
+        }
+        return;
+      case core::TermKind::Application:
+        if (term.sort == terms_.symbols().bool_sort()) {
+          record_theory_atom_polarity(term_id, positive);
+        }
+        return;
+      case core::TermKind::Equality:
+        record_theory_atom_polarity(term_id, positive);
+        return;
+    }
+  }
+
+  void record_theory_atom_polarity(core::TermId term_id, bool positive) {
+    TheoryAtom& atom = theory_atom_for_term(term_id);
+    if (positive) {
+      atom.occurs_positive = true;
+    } else {
+      atom.occurs_negative = true;
+    }
+  }
+
+  TheoryAtom& theory_atom_for_term(core::TermId term_id) {
+    const auto existing = theory_atom_by_term_.find(term_id);
+    if (existing != theory_atom_by_term_.end()) {
+      return theory_atoms_[existing->second];
+    }
+    const sat::Lit lit = encode_theory_atom_lit(term_id);
+    theory_atom_by_term_.emplace(term_id, theory_atoms_.size());
+    theory_atoms_.push_back(TheoryAtom{lit, term_id, false, false});
+    return theory_atoms_.back();
+  }
+
   void assert_positive(core::TermId term_id) {
     const core::Term& term = terms_.get(term_id);
     switch (term.kind) {
@@ -699,11 +759,9 @@ class BooleanClausifier {
         if (term.sort != terms_.symbols().bool_sort()) {
           throw UnsupportedInput("non-Boolean function application in Boolean context");
         }
-        theory_atoms_.push_back(TheoryAtom{lit, term_id});
-        return lit;
+        return theory_atom_for_term(term_id).lit;
       case core::TermKind::Equality:
-        theory_atoms_.push_back(TheoryAtom{lit, term_id});
-        return lit;
+        return theory_atom_for_term(term_id).lit;
       case core::TermKind::BoolValue:
       case core::TermKind::Constant:
       case core::TermKind::Not:
@@ -721,8 +779,18 @@ class BooleanClausifier {
     lit_by_term_.emplace(term_id, lit);
     const core::Term& term = terms_.get(term_id);
     if (term.kind == core::TermKind::Constant && term.sort == terms_.symbols().bool_sort()) {
-      theory_atoms_.push_back(TheoryAtom{lit, term_id});
+      return theory_atom_for_term(term_id).lit;
     }
+    return lit;
+  }
+
+  sat::Lit encode_theory_atom_lit(core::TermId term_id) {
+    const auto existing = lit_by_term_.find(term_id);
+    if (existing != lit_by_term_.end()) {
+      return existing->second;
+    }
+    const sat::Lit lit{backend_.new_var()};
+    lit_by_term_.emplace(term_id, lit);
     return lit;
   }
 
@@ -765,6 +833,7 @@ class BooleanClausifier {
   sat::IpasirUpBackend& backend_;
   const core::TermManager& terms_;
   std::unordered_map<core::TermId, sat::Lit> lit_by_term_;
+  std::unordered_map<core::TermId, std::size_t> theory_atom_by_term_;
   std::vector<TheoryAtom> theory_atoms_;
   sat::Lit true_lit_{0};
 };
@@ -796,6 +865,9 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   return false;
 }
 
+void publish_theory_atom_purity_stats(const std::vector<BooleanClausifier::TheoryAtom>& atoms,
+                                      util::Statistics& statistics);
+
 CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
                                           const std::vector<core::TermId>& assertions,
                                           const CheckSatOptions& options,
@@ -808,6 +880,7 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
   }
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  publish_theory_atom_purity_stats(clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
   statistics.increment(kStatSatSolveCalls);
   const CheckSatResult result = map_sat_result(backend.solve());
@@ -819,6 +892,7 @@ struct AssignedTheoryAtom {
   int lit = 0;
   bool value = false;
   core::TermId term = 0;
+  bool filtered = false;
 };
 
 sat::Lit blocking_lit(const AssignedTheoryAtom& atom) {
@@ -827,6 +901,44 @@ sat::Lit blocking_lit(const AssignedTheoryAtom& atom) {
 
 sat::Lit assigned_lit(const AssignedTheoryAtom& atom) {
   return atom.value ? sat::Lit{atom.lit} : sat::Lit{-atom.lit};
+}
+
+bool is_pure_positive(const BooleanClausifier::TheoryAtom& atom) {
+  return atom.occurs_positive && !atom.occurs_negative;
+}
+
+bool is_pure_negative(const BooleanClausifier::TheoryAtom& atom) {
+  return atom.occurs_negative && !atom.occurs_positive;
+}
+
+bool should_filter_assignment(const BooleanClausifier::TheoryAtom& atom, bool value) {
+  return (is_pure_positive(atom) && !value) || (is_pure_negative(atom) && value);
+}
+
+AssignedTheoryAtom assigned_theory_atom(const BooleanClausifier::TheoryAtom& atom, bool value) {
+  return AssignedTheoryAtom{atom.lit.value, value, atom.term,
+                            should_filter_assignment(atom, value)};
+}
+
+void publish_theory_atom_purity_stats(const std::vector<BooleanClausifier::TheoryAtom>& atoms,
+                                      util::Statistics& statistics) {
+  std::size_t positive = 0;
+  std::size_t negative = 0;
+  for (const BooleanClausifier::TheoryAtom& atom : atoms) {
+    if (is_pure_positive(atom)) {
+      ++positive;
+    } else if (is_pure_negative(atom)) {
+      ++negative;
+    }
+  }
+  statistics.set(kStatPureTheoryAtomsPositive, positive);
+  statistics.set(kStatPureTheoryAtomsNegative, negative);
+}
+
+void count_filtered_assignment(const AssignedTheoryAtom& atom, util::Statistics& statistics) {
+  if (atom.filtered) {
+    statistics.increment(kStatPureTheoryLiteralsFiltered);
+  }
 }
 
 bool add_explained_theory_equality(theory::equality::ExplainedCongruenceClosure& closure,
@@ -953,6 +1065,9 @@ std::optional<sat::Clause> model_propagation_clause_for(
       continue;
     }
     const AssignedTheoryAtom& atom = atoms[i];
+    if (atom.filtered) {
+      continue;
+    }
     const core::Term& term = terms.get(atom.term);
     if (term.kind == core::TermKind::Equality && !atom.value) {
       continue;
@@ -963,6 +1078,9 @@ std::optional<sat::Clause> model_propagation_clause_for(
   }
 
   const AssignedTheoryAtom& candidate = atoms[candidate_index];
+  if (candidate.filtered) {
+    return std::nullopt;
+  }
   std::optional<std::vector<sat::Lit>> reason =
       candidate_explanation(explained, terms, candidate, true_term, false_term);
   if (!reason.has_value()) {
@@ -1079,12 +1197,21 @@ std::optional<sat::Clause> flat_model_propagation_clause_for(
       continue;
     }
     const FlatAssignedTheoryAtom& atom = flat_atoms[i];
+    if (atom.source.filtered) {
+      continue;
+    }
     if (atom.equality && !atom.source.value) {
       continue;
     }
     assert_flat_assigned_atom(closure, atom, true_flat, false_flat);
   }
 
+  if (flat_atoms[candidate_index].source.filtered) {
+    if (statistics != nullptr) {
+      add_incremental_stats(*statistics, closure.stats());
+    }
+    return std::nullopt;
+  }
   std::optional<std::vector<sat::Lit>> reason =
       flat_candidate_explanation(closure, flat_atoms[candidate_index], true_flat, false_flat);
   if (statistics != nullptr) {
@@ -1142,6 +1269,9 @@ class IncrementalFlatAssignmentState {
   }
 
   void assert_assignment(const AssignedTheoryAtom& assignment) {
+    if (assignment.filtered) {
+      return;
+    }
     std::optional<FlatAssignedTheoryAtom> flat_atom = flat_atom_for_lit(assignment.lit);
     if (!flat_atom.has_value()) {
       return;
@@ -1149,12 +1279,16 @@ class IncrementalFlatAssignmentState {
     ensure_current_level_checkpoint();
     assignments_.push_back(assignment);
     flat_atom->source.value = assignment.value;
+    flat_atom->source.filtered = assignment.filtered;
     assert_flat_assigned_atom(closure_, flat_atom.value(), true_flat_, false_flat_);
     publish_stats();
   }
 
   std::optional<sat::Clause> explain_candidate(const BooleanClausifier::TheoryAtom& atom,
                                                bool value) {
+    if (should_filter_assignment(atom, value)) {
+      return std::nullopt;
+    }
     std::optional<FlatAssignedTheoryAtom> flat_atom = flat_atom_for_lit(atom.lit.value);
     if (!flat_atom.has_value()) {
       return std::nullopt;
@@ -1278,8 +1412,9 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         const BooleanClausifier::TheoryAtom* atom = atom_for_var(var);
         if (atom != nullptr) {
           const bool atom_value = atom->lit.value > 0 ? lit > 0 : lit < 0;
-          incremental_state_->assert_assignment(
-              AssignedTheoryAtom{atom->lit.value, atom_value, atom->term});
+          AssignedTheoryAtom assigned = assigned_theory_atom(*atom, atom_value);
+          count_filtered_assignment(assigned, statistics_);
+          incremental_state_->assert_assignment(assigned);
         }
       }
     }
@@ -1400,7 +1535,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         continue;
       }
       const bool atom_value = atom.lit.value > 0 ? assignment->second : !assignment->second;
-      atoms.push_back(AssignedTheoryAtom{atom.lit.value, atom_value, atom.term});
+      AssignedTheoryAtom assigned = assigned_theory_atom(atom, atom_value);
+      atoms.push_back(assigned);
     }
     return atoms;
   }
@@ -1465,7 +1601,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         atoms.push_back(assigned);
       }
     }
-    atoms.push_back(AssignedTheoryAtom{atom->lit.value, value, atom->term});
+    atoms.push_back(assigned_theory_atom(*atom, value));
     std::optional<sat::Clause> clause =
         options_.euf_engine == EufEngine::Incremental
             ? flat_model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_,
@@ -1557,7 +1693,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       clause = incremental_state_->explain_candidate(atom, value);
     } else {
       std::vector<AssignedTheoryAtom> atoms = assigned;
-      atoms.push_back(AssignedTheoryAtom{atom.lit.value, value, atom.term});
+      atoms.push_back(assigned_theory_atom(atom, value));
       clause =
           model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_, false_term_);
     }
@@ -1672,6 +1808,9 @@ std::optional<sat::Clause> find_theory_conflict(const core::TermManager& terms,
   closure.add_term(true_term);
   closure.add_term(false_term);
   for (const AssignedTheoryAtom& atom : atoms) {
+    if (atom.filtered) {
+      continue;
+    }
     const core::Term& term = terms.get(atom.term);
     if (term.kind == core::TermKind::Equality && !atom.value) {
       disequalities.push_back(atom);
@@ -1712,6 +1851,10 @@ std::optional<sat::Clause> find_incremental_theory_conflict(
   for (std::size_t i = 0; i < prepared.flat_atoms.size(); ++i) {
     FlatAssignedTheoryAtom atom = prepared.flat_atoms[i];
     atom.source.value = atoms[i].value;
+    atom.source.filtered = atoms[i].filtered;
+    if (atom.source.filtered) {
+      continue;
+    }
     assert_flat_assigned_atom(closure, atom, prepared.true_flat, prepared.false_flat);
     if (closure.conflict().has_value()) {
       break;
@@ -1734,6 +1877,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     clausifier.assert_formula(assertion);
   }
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  publish_theory_atom_purity_stats(clausifier.theory_atoms(), statistics);
   const EufPropagationMode euf_propagation =
       resolve_euf_propagation_mode(options, clausifier.theory_atoms().size(), statistics);
   CheckSatOptions resolved_options = options;
@@ -1792,7 +1936,9 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
                                statistics};
       }
       const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
-      assigned_atoms.push_back(AssignedTheoryAtom{atom.lit.value, atom_value, atom.term});
+      AssignedTheoryAtom assigned = assigned_theory_atom(atom, atom_value);
+      count_filtered_assignment(assigned, statistics);
+      assigned_atoms.push_back(assigned);
     }
 
     if (euf_propagation == EufPropagationMode::Model) {
@@ -1876,6 +2022,9 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatSolverQfUf, 0);
   statistics.set(kStatSatSolveCalls, 0);
   statistics.set(kStatTheoryAtoms, 0);
+  statistics.set(kStatPureTheoryAtomsPositive, 0);
+  statistics.set(kStatPureTheoryAtomsNegative, 0);
+  statistics.set(kStatPureTheoryLiteralsFiltered, 0);
   statistics.set(kStatTheoryChecks, 0);
   statistics.set(kStatTheoryConflicts, 0);
   statistics.set(kStatEufPropagationRounds, 0);

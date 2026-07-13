@@ -515,6 +515,57 @@ void preprocessing_extends_when_passes_keep_shrinking_terms() {
          result.statistics.get(":preprocessing.term-size.initial"));
 }
 
+void positive_pure_theory_literal_is_filtered_from_euf_check() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.euf_engine = primo::smt::EufEngine::Lazy;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun c () U)
+    (declare-fun p () Bool)
+    (assert p)
+    (assert (= a c))
+    (assert (= c b))
+    (assert (or (= a b) p))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.pure-atoms.positive") >= 1);
+  assert(result.statistics.get(":euf.pure-literals.filtered") >= 1);
+  assert(result.statistics.get(":sat.solve-calls") == 1);
+}
+
+void mixed_polarity_theory_literal_is_not_filtered() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.euf_engine = primo::smt::EufEngine::Lazy;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun c () U)
+    (declare-fun p () Bool)
+    (assert p)
+    (assert (= a c))
+    (assert (= c b))
+    (assert (or (= a b) p))
+    (assert (or (not (= a b)) p))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.pure-literals.filtered") == 0);
+}
+
 void strong_preprocessing_enables_finite_domain_amo() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -937,6 +988,8 @@ int main() {
   auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
   preprocessing_off_disables_basic_loop();
   preprocessing_extends_when_passes_keep_shrinking_terms();
+  positive_pure_theory_literal_is_filtered_from_euf_check();
+  mixed_polarity_theory_literal_is_not_filtered();
   strong_preprocessing_enables_finite_domain_amo();
   auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions();
   default_symmetry_breaking_reports_covered_values_and_terms();

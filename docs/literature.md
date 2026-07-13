@@ -110,6 +110,52 @@ propagation or a full transitivity-constraint generator.
 Obtain the paper and decide whether a more general minimum-transitivity
 constraint pass is worth implementing.
 
+## Lazy Satisfiability Modulo Theories
+
+Roberto Sebastiani, *Lazy Satisfiability Modulo Theories*, Journal on
+Satisfiability, Boolean Modeling and Computation, 2007.
+
+PDF: <https://disi.unitn.it/rseba/papers/JSAT-2007.pdf>
+
+### Relevance
+
+Section 6.10 describes pure-literal filtering for SMT: non-Boolean theory atoms
+that occur only positively or only negatively in the input formula can have the
+opposite-polarity assigned theory literal omitted from the assignment sent to
+the theory solver. Section 7.2.2 describes the related, stronger idea of
+avoiding ghost literals.
+
+### Algorithm
+
+Primo implements only the pure-literal filtering subset for QF_UF. It records
+positive and negative occurrence of each theory atom during Boolean abstraction.
+At EUF check time, a false assignment of a positive-only atom and a true
+assignment of a negative-only atom are filtered out before congruence closure is
+updated.
+
+### Data structures
+
+The polarity bits are stored on `BooleanClausifier::TheoryAtom`. Assigned
+theory literals carry a `filtered` bit so the lazy and incremental EUF engines
+can preserve atom-to-flat-index mappings while skipping irrelevant assignments.
+
+### Implementation notes
+
+Implemented in `src/smt/check_sat.cpp` for equality atoms, Boolean predicate
+applications, and Boolean constants that are handled as EUF terms. Filtered
+literals are not used as model-propagation premises or propagated candidates.
+
+### Risks
+
+This is not SAT pure-literal elimination and must not force pure theory atoms to
+a preferred truth value. Filtering can reduce pruning power, so benchmark
+evaluation must compare family-level solved counts, PAR2, and conflict counts.
+
+### Possible milestone
+
+Evaluate whether ghost-literal decision avoidance is worth adding after the
+pure-filtering counters show a useful hit rate.
+
 ## Fuzzing and delta-debugging SMT solvers
 
 Robert Brummayer and Armin Biere, *Fuzzing and delta-debugging SMT solvers*,
