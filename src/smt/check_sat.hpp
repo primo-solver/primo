@@ -30,6 +30,12 @@ enum class EufEngine {
   Incremental,
 };
 
+enum class PureTheoryFilterMode {
+  Auto,
+  On,
+  Off,
+};
+
 struct AutoBudget {
   enum class Kind {
     Auto,
@@ -58,6 +64,7 @@ struct CheckSatOptions {
   QfUfPreprocessMode qf_uf_preprocess = QfUfPreprocessMode::Auto;
   EufEngine euf_engine = EufEngine::Incremental;
   EufPropagationMode euf_propagation = EufPropagationMode::Auto;
+  PureTheoryFilterMode pure_theory_filter = PureTheoryFilterMode::Auto;
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
   bool uf_symmetry_breaking = true;
@@ -67,6 +74,8 @@ struct CheckSatOptions {
   std::size_t euf_propagation_interval = 32;
   double euf_propagation_assign_threshold = 0.25;
   std::size_t preprocessing_passes = 4;
+  std::size_t preprocessing_adaptive_extra_passes = 4;
+  std::size_t preprocessing_adaptive_shrink_percent = 10;
   std::vector<std::pair<std::string, int>> cadical_options;
 };
 

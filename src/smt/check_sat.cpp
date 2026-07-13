@@ -84,6 +84,7 @@ constexpr std::string_view kStatSolverBoolean = ":solver.boolean";
 constexpr std::string_view kStatSolverQfUf = ":solver.qf-uf";
 constexpr std::string_view kStatSatSolveCalls = ":sat.solve-calls";
 constexpr std::string_view kStatTheoryAtoms = ":euf.theory-atoms";
+constexpr std::string_view kStatPureTheoryFilterEnabled = ":euf.pure-filter.enabled";
 constexpr std::string_view kStatPureTheoryAtomsPositive = ":euf.pure-atoms.positive";
 constexpr std::string_view kStatPureTheoryAtomsNegative = ":euf.pure-atoms.negative";
 constexpr std::string_view kStatPureTheoryLiteralsFiltered = ":euf.pure-literals.filtered";
@@ -911,13 +912,22 @@ bool is_pure_negative(const BooleanClausifier::TheoryAtom& atom) {
   return atom.occurs_negative && !atom.occurs_positive;
 }
 
-bool should_filter_assignment(const BooleanClausifier::TheoryAtom& atom, bool value) {
+bool pure_theory_filter_enabled(PureTheoryFilterMode mode) {
+  return mode != PureTheoryFilterMode::Off;
+}
+
+bool should_filter_assignment(PureTheoryFilterMode mode, const BooleanClausifier::TheoryAtom& atom,
+                              bool value) {
+  if (!pure_theory_filter_enabled(mode)) {
+    return false;
+  }
   return (is_pure_positive(atom) && !value) || (is_pure_negative(atom) && value);
 }
 
-AssignedTheoryAtom assigned_theory_atom(const BooleanClausifier::TheoryAtom& atom, bool value) {
+AssignedTheoryAtom assigned_theory_atom(PureTheoryFilterMode mode,
+                                        const BooleanClausifier::TheoryAtom& atom, bool value) {
   return AssignedTheoryAtom{atom.lit.value, value, atom.term,
-                            should_filter_assignment(atom, value)};
+                            should_filter_assignment(mode, atom, value)};
 }
 
 void publish_theory_atom_purity_stats(const std::vector<BooleanClausifier::TheoryAtom>& atoms,
@@ -1229,8 +1239,13 @@ class IncrementalFlatAssignmentState {
   IncrementalFlatAssignmentState(const core::TermManager& terms,
                                  const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                  core::TermId true_term, core::TermId false_term,
+                                 PureTheoryFilterMode pure_theory_filter,
                                  util::Statistics& statistics)
-      : terms_(terms), flat_(terms), closure_(0), statistics_(statistics) {
+      : terms_(terms),
+        pure_theory_filter_(pure_theory_filter),
+        flat_(terms),
+        closure_(0),
+        statistics_(statistics) {
     true_flat_ = flat_.flatten(true_term);
     false_flat_ = flat_.flatten(false_term);
     flat_atoms_.reserve(theory_atoms.size());
@@ -1286,7 +1301,7 @@ class IncrementalFlatAssignmentState {
 
   std::optional<sat::Clause> explain_candidate(const BooleanClausifier::TheoryAtom& atom,
                                                bool value) {
-    if (should_filter_assignment(atom, value)) {
+    if (should_filter_assignment(pure_theory_filter_, atom, value)) {
       return std::nullopt;
     }
     std::optional<FlatAssignedTheoryAtom> flat_atom = flat_atom_for_lit(atom.lit.value);
@@ -1344,6 +1359,7 @@ class IncrementalFlatAssignmentState {
   }
 
   const core::TermManager& terms_;
+  PureTheoryFilterMode pure_theory_filter_ = PureTheoryFilterMode::Auto;
   struct Checkpoint {
     std::size_t assignment_count = 0;
     std::optional<std::size_t> closure_checkpoint;
@@ -1392,7 +1408,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       atom_by_var_.emplace(var, &atom);
     }
     if (options_.euf_engine == EufEngine::Incremental) {
-      incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_, statistics_);
+      incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
+                                 options_.pure_theory_filter, statistics_);
     }
   }
 
@@ -1412,7 +1429,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         const BooleanClausifier::TheoryAtom* atom = atom_for_var(var);
         if (atom != nullptr) {
           const bool atom_value = atom->lit.value > 0 ? lit > 0 : lit < 0;
-          AssignedTheoryAtom assigned = assigned_theory_atom(*atom, atom_value);
+          AssignedTheoryAtom assigned =
+              assigned_theory_atom(options_.pure_theory_filter, *atom, atom_value);
           count_filtered_assignment(assigned, statistics_);
           incremental_state_->assert_assignment(assigned);
         }
@@ -1535,7 +1553,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         continue;
       }
       const bool atom_value = atom.lit.value > 0 ? assignment->second : !assignment->second;
-      AssignedTheoryAtom assigned = assigned_theory_atom(atom, atom_value);
+      AssignedTheoryAtom assigned =
+          assigned_theory_atom(options_.pure_theory_filter, atom, atom_value);
       atoms.push_back(assigned);
     }
     return atoms;
@@ -1601,7 +1620,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         atoms.push_back(assigned);
       }
     }
-    atoms.push_back(assigned_theory_atom(*atom, value));
+    atoms.push_back(assigned_theory_atom(options_.pure_theory_filter, *atom, value));
     std::optional<sat::Clause> clause =
         options_.euf_engine == EufEngine::Incremental
             ? flat_model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_,
@@ -1693,7 +1712,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       clause = incremental_state_->explain_candidate(atom, value);
     } else {
       std::vector<AssignedTheoryAtom> atoms = assigned;
-      atoms.push_back(assigned_theory_atom(atom, value));
+      atoms.push_back(assigned_theory_atom(options_.pure_theory_filter, atom, value));
       clause =
           model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_, false_term_);
     }
@@ -1877,6 +1896,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     clausifier.assert_formula(assertion);
   }
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  statistics.set(kStatPureTheoryFilterEnabled,
+                 pure_theory_filter_enabled(options.pure_theory_filter) ? 1 : 0);
   publish_theory_atom_purity_stats(clausifier.theory_atoms(), statistics);
   const EufPropagationMode euf_propagation =
       resolve_euf_propagation_mode(options, clausifier.theory_atoms().size(), statistics);
@@ -1936,7 +1957,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
                                statistics};
       }
       const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
-      AssignedTheoryAtom assigned = assigned_theory_atom(atom, atom_value);
+      AssignedTheoryAtom assigned =
+          assigned_theory_atom(options.pure_theory_filter, atom, atom_value);
       count_filtered_assignment(assigned, statistics);
       assigned_atoms.push_back(assigned);
     }
@@ -2022,6 +2044,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatSolverQfUf, 0);
   statistics.set(kStatSatSolveCalls, 0);
   statistics.set(kStatTheoryAtoms, 0);
+  statistics.set(kStatPureTheoryFilterEnabled, 0);
   statistics.set(kStatPureTheoryAtomsPositive, 0);
   statistics.set(kStatPureTheoryAtomsNegative, 0);
   statistics.set(kStatPureTheoryLiteralsFiltered, 0);
@@ -2090,8 +2113,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         (strong_preprocessing || auto_single_assertion)
             ? std::max<std::size_t>(options.preprocessing_passes, 3)
             : options.preprocessing_passes;
-    constexpr std::size_t kAdaptiveExtraPreprocessingPasses = 4;
-    constexpr std::size_t kAdaptiveShrinkPercent = 10;
+    const std::size_t adaptive_shrink_percent =
+        std::min<std::size_t>(options.preprocessing_adaptive_shrink_percent, 100);
     std::size_t preprocessing_pass_limit = preprocessing_passes;
 
     if (use_symmetry_breaking) {
@@ -2169,9 +2192,9 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       const std::size_t after_term_size = reachable_term_count(frontend.terms(), assertions);
       const bool shrank_enough =
           after_term_size < before_term_size &&
-          after_term_size * 100 <= before_term_size * (100 - kAdaptiveShrinkPercent);
+          after_term_size * 100 <= before_term_size * (100 - adaptive_shrink_percent);
       const std::size_t max_adaptive_limit =
-          preprocessing_passes + kAdaptiveExtraPreprocessingPasses;
+          preprocessing_passes + options.preprocessing_adaptive_extra_passes;
       if (pass + 1 == preprocessing_pass_limit && preprocessing_pass_limit < max_adaptive_limit &&
           shrank_enough) {
         ++preprocessing_pass_limit;

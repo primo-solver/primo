@@ -111,6 +111,7 @@ int main(int argc, char** argv) {
   std::string qf_uf_profile = "default";
   std::string euf_engine = "incremental";
   std::string euf_prop = "auto";
+  std::string pure_theory_filter = "auto";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
   std::vector<std::string> cadical_options;
@@ -142,6 +143,9 @@ int main(int argc, char** argv) {
       ->check(CLI::IsMember({"auto", "off", "conflict", "model", "online"}));
   app.add_option("--euf-engine", euf_engine, "EUF engine: incremental or lazy")
       ->check(CLI::IsMember({"lazy", "incremental"}));
+  app.add_option("--pure-theory-filter", pure_theory_filter,
+                 "T-pure theory literal filtering mode: auto, on, or off")
+      ->check(CLI::IsMember({"auto", "on", "off"}));
   app.add_option("--euf-prop-budget", euf_prop_budget,
                  "EUF propagation candidate budget: auto, unlimited, or a nonnegative integer");
   app.add_option("--euf-prop-delivery,--prop-delivery-budget", euf_prop_delivery,
@@ -157,6 +161,14 @@ int main(int argc, char** argv) {
                      solver_options.preprocessing_passes,
                      "Number of QF_UF preprocessing passes to run")
           ->check(CLI::Range(0, 100));
+  app.add_option("--preprocessing-adaptive-extra-passes",
+                 solver_options.preprocessing_adaptive_extra_passes,
+                 "Additional adaptive QF_UF preprocessing passes after the configured pass cap")
+      ->check(CLI::Range(0, 100));
+  app.add_option("--preprocessing-adaptive-shrink-percent",
+                 solver_options.preprocessing_adaptive_shrink_percent,
+                 "Minimum reachable-term shrink percentage required for another adaptive pass")
+      ->check(CLI::Range(0, 100));
   CLI::Option* prop_interval_option =
       app.add_option("--prop-interval", solver_options.euf_propagation_interval,
                      "Online EUF propagation discovery interval")
@@ -221,6 +233,13 @@ int main(int argc, char** argv) {
     solver_options.euf_engine = primo::smt::EufEngine::Incremental;
   } else {
     solver_options.euf_engine = primo::smt::EufEngine::Lazy;
+  }
+  if (pure_theory_filter == "off") {
+    solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
+  } else if (pure_theory_filter == "on") {
+    solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::On;
+  } else {
+    solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Auto;
   }
   const std::optional<primo::smt::AutoBudget> parsed_prop_budget =
       parse_auto_budget(euf_prop_budget);

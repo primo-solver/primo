@@ -39,6 +39,10 @@ for pure theory atoms and does not remove their SAT clauses. It only avoids
 feeding theory literals to congruence closure when those literals are irrelevant
 to satisfying the Boolean abstraction.
 
+`--pure-theory-filter=auto|on|off` controls this filtering. The current `auto`
+policy is the same as `on`; `off` is intended for ablation runs and for
+benchmark families where filtering removes useful early theory conflicts.
+
 Filtered literals are also omitted from model-time propagation premises and
 from the incremental external-conflict closure. Candidate theory propagations
 whose candidate literal would be filtered are skipped. This follows the same

@@ -107,6 +107,11 @@ reported by `:preprocessing.adaptive-passes`; the measured formula sizes are
 reported by `:preprocessing.term-size.initial` and
 `:preprocessing.term-size.final`.
 
+The adaptive continuation is configurable. `--preprocessing-adaptive-extra-passes
+N` sets the maximum number of passes beyond `--preprocessing-passes`; `0`
+disables adaptive continuation. `--preprocessing-adaptive-shrink-percent N`
+sets the required reachable-term shrink threshold, from `0` to `100`.
+
 ## Boolean Unit Propagation
 
 Each preprocessing pass collects top-level unit facts for user Bool constants,

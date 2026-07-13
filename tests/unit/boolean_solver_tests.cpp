@@ -515,6 +515,26 @@ void preprocessing_extends_when_passes_keep_shrinking_terms() {
          result.statistics.get(":preprocessing.term-size.initial"));
 }
 
+void preprocessing_adaptive_extra_passes_can_be_disabled() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Basic;
+  options.preprocessing_passes = 1;
+  options.preprocessing_adaptive_extra_passes = 0;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q0 () Bool)
+    (declare-fun q1 () Bool)
+    (assert (and p (or p q0) (or p q1)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.adaptive-passes") == 0);
+  assert(result.statistics.get(":preprocessing.passes") == 1);
+}
+
 void positive_pure_theory_literal_is_filtered_from_euf_check() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
@@ -539,6 +559,33 @@ void positive_pure_theory_literal_is_filtered_from_euf_check() {
   assert(result.statistics.get(":euf.pure-atoms.positive") >= 1);
   assert(result.statistics.get(":euf.pure-literals.filtered") >= 1);
   assert(result.statistics.get(":sat.solve-calls") == 1);
+}
+
+void pure_theory_literal_filter_can_be_disabled() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.euf_engine = primo::smt::EufEngine::Lazy;
+  options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun c () U)
+    (declare-fun p () Bool)
+    (assert p)
+    (assert (= a c))
+    (assert (= c b))
+    (assert (or (= a b) p))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.pure-filter.enabled") == 0);
+  assert(result.statistics.get(":euf.pure-atoms.positive") >= 1);
+  assert(result.statistics.get(":euf.pure-literals.filtered") == 0);
 }
 
 void mixed_polarity_theory_literal_is_not_filtered() {
@@ -988,7 +1035,9 @@ int main() {
   auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
   preprocessing_off_disables_basic_loop();
   preprocessing_extends_when_passes_keep_shrinking_terms();
+  preprocessing_adaptive_extra_passes_can_be_disabled();
   positive_pure_theory_literal_is_filtered_from_euf_check();
+  pure_theory_literal_filter_can_be_disabled();
   mixed_polarity_theory_literal_is_not_filtered();
   strong_preprocessing_enables_finite_domain_amo();
   auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions();

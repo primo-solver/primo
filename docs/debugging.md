@@ -48,6 +48,7 @@ compare runs mechanically. Current counters include:
 - `:sat.binary-clauses`;
 - `:sat.solve-calls`;
 - `:euf.theory-atoms`;
+- `:euf.pure-filter.enabled`;
 - `:euf.pure-atoms.positive`;
 - `:euf.pure-atoms.negative`;
 - `:euf.pure-literals.filtered`;
