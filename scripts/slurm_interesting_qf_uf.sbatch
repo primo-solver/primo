@@ -16,6 +16,9 @@ OUT_DIR=${PRIMO_INTERESTING_OUT_DIR:-"$WORKDIR/results/interesting-qf-uf-slurm"}
 TIMEOUT=${PRIMO_SOLVER_TIMEOUT:-30}
 SHARDS=${PRIMO_INTERESTING_SHARDS:-32}
 SHARD_INDEX=${SLURM_ARRAY_TASK_ID:-0}
+EXTRA_SOLVER_ARGS=${PRIMO_EXTRA_SOLVER_ARGS:-}
+
+read -r -a EXTRA_SOLVER_ARG_ARRAY <<< "$EXTRA_SOLVER_ARGS"
 
 mkdir -p "$OUT_DIR/logs/$SHARD_INDEX" "$WORKDIR/slurm_logs"
 cd "$WORKDIR"
@@ -26,6 +29,7 @@ python3 scripts/bench_interesting_qf_uf.py \
   --solver-arg=--stats \
   --solver-arg=--qf-uf-profile=tuned-interesting \
   --solver-arg=--euf-prop=model \
+  "${EXTRA_SOLVER_ARG_ARRAY[@]/#/--solver-arg=}" \
   --timeout "$TIMEOUT" \
   --manifest "$MANIFEST" \
   --shards "$SHARDS" \
