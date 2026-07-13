@@ -59,6 +59,10 @@ constexpr std::string_view kStatUnitEqualitySubstitutionUnits =
     ":preprocessing.unit-equality.substitution-units";
 constexpr std::string_view kStatUnitEqualitySubstitutions =
     ":preprocessing.unit-equality.substitutions";
+constexpr std::string_view kStatUnitEqualitySubstitutionAccepted =
+    ":preprocessing.unit-equality.substitution-accepted";
+constexpr std::string_view kStatUnitEqualitySubstitutionRejected =
+    ":preprocessing.unit-equality.substitution-rejected";
 constexpr std::string_view kStatFiniteDomainDomains = ":preprocessing.finite-domain.domains";
 constexpr std::string_view kStatFiniteDomainAmoClauses = ":preprocessing.finite-domain.amo-clauses";
 constexpr std::string_view kStatFiniteDomainEvaluatedEqualities =
@@ -156,6 +160,25 @@ EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,
   }
   statistics.set(kStatEufPropagationAutoConflict, 1);
   return EufPropagationMode::Conflict;
+}
+
+bool accept_guarded_ground_substitution(const std::vector<core::TermId>& before,
+                                        const std::vector<core::TermId>& after,
+                                        const GroundEqualitySubstitutionResult& result,
+                                        const core::TermManager& terms) {
+  if (result.rewrites == 0 || after == before) {
+    return false;
+  }
+  const std::size_t before_terms = reachable_term_count(terms, before);
+  const std::size_t after_terms = reachable_term_count(terms, after);
+  const bool shrank_by_five_percent =
+      after_terms < before_terms && after_terms * 100 <= before_terms * 95;
+  constexpr std::size_t kLargeSubstitutionRewriteFloor = 1500;
+  constexpr std::size_t kLargeSubstitutionAssertionBudget = 1000;
+  const bool large_bounded_substitution =
+      result.rewrites >= kLargeSubstitutionRewriteFloor &&
+      after.size() <= before.size() + kLargeSubstitutionAssertionBudget;
+  return shrank_by_five_percent || large_bounded_substitution;
 }
 
 class UnsupportedInput : public std::runtime_error {
@@ -2028,6 +2051,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatUnitEqualityConsequences, 0);
   statistics.set(kStatUnitEqualitySubstitutionUnits, 0);
   statistics.set(kStatUnitEqualitySubstitutions, 0);
+  statistics.set(kStatUnitEqualitySubstitutionAccepted, 0);
+  statistics.set(kStatUnitEqualitySubstitutionRejected, 0);
   statistics.set(kStatFiniteDomainDomains, 0);
   statistics.set(kStatFiniteDomainAmoClauses, 0);
   statistics.set(kStatFiniteDomainEvaluatedEqualities, 0);
@@ -2115,6 +2140,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         options.qf_uf_preprocess == QfUfPreprocessMode::Strong;
     const bool use_ground_congruence_definitions = options.ground_congruence;
     const bool use_ground_unit_substitution = options.ground_unit_substitution;
+    const bool use_guarded_ground_unit_substitution =
+        options.guarded_ground_unit_substitution && !options.ground_unit_substitution;
     const bool use_symmetry_breaking = preprocessing_enabled && options.uf_symmetry_breaking;
     const std::size_t preprocessing_passes =
         (strong_preprocessing || auto_single_assertion)
@@ -2189,12 +2216,21 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       assertions = std::move(boolean_units.assertions);
       statistics.increment(kStatBooleanUnitFacts, boolean_units.units);
       statistics.increment(kStatBooleanUnitRewrites, boolean_units.rewrites);
-      if (use_ground_unit_substitution) {
+      if (use_ground_unit_substitution || use_guarded_ground_unit_substitution) {
         GroundEqualitySubstitutionResult ground_substitution =
             substitute_ground_unit_equalities(frontend.terms(), assertions);
-        assertions = std::move(ground_substitution.assertions);
-        statistics.increment(kStatUnitEqualitySubstitutionUnits, ground_substitution.units);
-        statistics.increment(kStatUnitEqualitySubstitutions, ground_substitution.rewrites);
+        const bool accept_substitution =
+            use_ground_unit_substitution ||
+            accept_guarded_ground_substitution(assertions, ground_substitution.assertions,
+                                               ground_substitution, frontend.terms());
+        if (accept_substitution) {
+          assertions = std::move(ground_substitution.assertions);
+          statistics.increment(kStatUnitEqualitySubstitutionUnits, ground_substitution.units);
+          statistics.increment(kStatUnitEqualitySubstitutions, ground_substitution.rewrites);
+          statistics.increment(kStatUnitEqualitySubstitutionAccepted);
+        } else if (ground_substitution.rewrites > 0) {
+          statistics.increment(kStatUnitEqualitySubstitutionRejected);
+        }
       }
       std::size_t unit_consequences = 0;
       assertions = propagate_unit_equalities(frontend.terms(), assertions, &unit_consequences);

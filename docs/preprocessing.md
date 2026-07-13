@@ -50,6 +50,8 @@ reproducing narrower configurations:
   preprocessing loops;
 - experimental ground substitution from positive unit equalities, enabled with
   `--ground-unit-substitution`;
+- guarded experimental ground substitution, enabled with
+  `--guarded-ground-unit-substitution`;
 - finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
   by the `auto` path;
 - bounded ground-congruence clauses over applications already present in the
@@ -105,6 +107,17 @@ profile yet: local probes showed useful substitutions but no reliable solve-time
 win on PEQ/SEQ targets. Its effect is reported by
 `:preprocessing.unit-equality.substitution-units` and
 `:preprocessing.unit-equality.substitutions`.
+
+`--guarded-ground-unit-substitution` computes the same candidate rewrite but
+keeps it only when cheap preprocessing metrics predict a useful SAT/EUF shape:
+the reachable term count must shrink by at least five percent, or the pass must
+perform at least 1500 rewrites while adding at most 1000 assertions. Accepted
+and rejected candidates are counted by
+`:preprocessing.unit-equality.substitution-accepted` and
+`:preprocessing.unit-equality.substitution-rejected`. These thresholds are
+empirical campaign gates, not a theorem; they are meant to preserve the PEQ/NEQ
+wins found in the targeted 120s SLURM campaign while filtering PEQ/SEQ cases
+where substitution only adds unit equality pressure.
 
 `--preprocessing-passes N` controls the repeated preprocessing loop. Each pass
 can add bridge facts and then simplify with Boolean and unit equalities. The
@@ -388,6 +401,7 @@ Implemented:
 - equality bridging under disjunctions;
 - unit equality propagation from top-level equalities;
 - opt-in ground unit-equality substitution over non-Bool terms;
+- guarded opt-in ground unit-equality substitution for campaign evaluation;
 - Boolean unit propagation from top-level user Bool constants, preserving the
   unit facts for EUF;
 - configurable repeated preprocessing loop with `--preprocessing-passes`;

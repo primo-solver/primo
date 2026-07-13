@@ -28,6 +28,8 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.unit-equality.consequences`;
 - `:preprocessing.unit-equality.substitution-units`;
 - `:preprocessing.unit-equality.substitutions`;
+- `:preprocessing.unit-equality.substitution-accepted`;
+- `:preprocessing.unit-equality.substitution-rejected`;
 - `:preprocessing.finite-domain.domains`;
 - `:preprocessing.finite-domain.amo-clauses`;
 - `:preprocessing.equality-definitions`;
