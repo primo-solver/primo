@@ -26,6 +26,8 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.boolean-units.facts`;
 - `:preprocessing.boolean-units.rewrites`;
 - `:preprocessing.unit-equality.consequences`;
+- `:preprocessing.unit-equality.substitution-units`;
+- `:preprocessing.unit-equality.substitutions`;
 - `:preprocessing.finite-domain.domains`;
 - `:preprocessing.finite-domain.amo-clauses`;
 - `:preprocessing.equality-definitions`;

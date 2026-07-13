@@ -55,6 +55,10 @@ constexpr std::string_view kStatBooleanUnitFacts = ":preprocessing.boolean-units
 constexpr std::string_view kStatBooleanUnitRewrites = ":preprocessing.boolean-units.rewrites";
 constexpr std::string_view kStatUnitEqualityConsequences =
     ":preprocessing.unit-equality.consequences";
+constexpr std::string_view kStatUnitEqualitySubstitutionUnits =
+    ":preprocessing.unit-equality.substitution-units";
+constexpr std::string_view kStatUnitEqualitySubstitutions =
+    ":preprocessing.unit-equality.substitutions";
 constexpr std::string_view kStatFiniteDomainDomains = ":preprocessing.finite-domain.domains";
 constexpr std::string_view kStatFiniteDomainAmoClauses = ":preprocessing.finite-domain.amo-clauses";
 constexpr std::string_view kStatFiniteDomainEvaluatedEqualities =
@@ -2022,6 +2026,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatBooleanUnitFacts, 0);
   statistics.set(kStatBooleanUnitRewrites, 0);
   statistics.set(kStatUnitEqualityConsequences, 0);
+  statistics.set(kStatUnitEqualitySubstitutionUnits, 0);
+  statistics.set(kStatUnitEqualitySubstitutions, 0);
   statistics.set(kStatFiniteDomainDomains, 0);
   statistics.set(kStatFiniteDomainAmoClauses, 0);
   statistics.set(kStatFiniteDomainEvaluatedEqualities, 0);
@@ -2108,6 +2114,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     const bool use_finite_domain_equality_definitions =
         options.qf_uf_preprocess == QfUfPreprocessMode::Strong;
     const bool use_ground_congruence_definitions = options.ground_congruence;
+    const bool use_ground_unit_substitution = options.ground_unit_substitution;
     const bool use_symmetry_breaking = preprocessing_enabled && options.uf_symmetry_breaking;
     const std::size_t preprocessing_passes =
         (strong_preprocessing || auto_single_assertion)
@@ -2182,6 +2189,13 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       assertions = std::move(boolean_units.assertions);
       statistics.increment(kStatBooleanUnitFacts, boolean_units.units);
       statistics.increment(kStatBooleanUnitRewrites, boolean_units.rewrites);
+      if (use_ground_unit_substitution) {
+        GroundEqualitySubstitutionResult ground_substitution =
+            substitute_ground_unit_equalities(frontend.terms(), assertions);
+        assertions = std::move(ground_substitution.assertions);
+        statistics.increment(kStatUnitEqualitySubstitutionUnits, ground_substitution.units);
+        statistics.increment(kStatUnitEqualitySubstitutions, ground_substitution.rewrites);
+      }
       std::size_t unit_consequences = 0;
       assertions = propagate_unit_equalities(frontend.terms(), assertions, &unit_consequences);
       statistics.increment(kStatUnitEqualityConsequences, unit_consequences);

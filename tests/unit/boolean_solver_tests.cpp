@@ -443,6 +443,27 @@ void equality_bridge_solves_diamond_chain() {
   assert(result.statistics.get(":preprocessing.unit-equality.consequences") >= 1);
 }
 
+void ground_unit_substitution_option_records_rewrites() {
+  primo::smt::CheckSatOptions options;
+  options.ground_unit_substitution = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun f (A) A)
+    (assert (= (f a) b))
+    (assert (or (= (f a) c) (not (= b c))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.unit-equality.substitution-units") >= 1);
+  assert(result.statistics.get(":preprocessing.unit-equality.substitutions") >= 1);
+}
+
 void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
@@ -1032,6 +1053,7 @@ int main() {
   true_boolean_constant_used_as_uf_argument_is_euf_term();
   false_boolean_constant_used_as_uf_argument_is_euf_term();
   equality_bridge_solves_diamond_chain();
+  ground_unit_substitution_option_records_rewrites();
   auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
   preprocessing_off_disables_basic_loop();
   preprocessing_extends_when_passes_keep_shrinking_terms();

@@ -50,6 +50,51 @@ struct BooleanUnitAssignments {
   std::unordered_set<core::TermId> conflicts;
 };
 
+struct UnitEquality {
+  core::TermId equality = core::kInvalidTermId;
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+};
+
+struct GroundSubstitutionClasses {
+  std::unordered_map<core::TermId, core::TermId> parent;
+  std::unordered_set<core::TermId> nodes;
+
+  core::TermId find(core::TermId term) {
+    if (!nodes.contains(term)) {
+      nodes.insert(term);
+    }
+    core::TermId root = term;
+    while (true) {
+      const auto parent_it = parent.find(root);
+      if (parent_it == parent.end()) {
+        break;
+      }
+      root = parent_it->second;
+    }
+    while (term != root) {
+      const auto parent_it = parent.find(term);
+      if (parent_it == parent.end()) {
+        break;
+      }
+      const core::TermId next = parent_it->second;
+      parent_it->second = root;
+      term = next;
+    }
+    return root;
+  }
+
+  void unite(core::TermId lhs, core::TermId rhs) {
+    nodes.insert(lhs);
+    nodes.insert(rhs);
+    lhs = find(lhs);
+    rhs = find(rhs);
+    if (lhs != rhs) {
+      parent[lhs] = rhs;
+    }
+  }
+};
+
 struct AppValueKey {
   core::SymbolId symbol = core::kInvalidSymbolId;
   std::vector<core::TermId> args;
@@ -918,6 +963,160 @@ void collect_unit_equalities_list(const core::TermManager& terms, core::TermId a
   }
 }
 
+void collect_unit_equality_terms(const core::TermManager& terms, core::TermId assertion,
+                                 std::vector<UnitEquality>& equalities) {
+  std::vector<core::TermId> work{assertion};
+  while (!work.empty()) {
+    const core::TermId term = work.back();
+    work.pop_back();
+    const core::Term& node = terms.get(term);
+    if (node.kind == core::TermKind::Equality) {
+      equalities.push_back(UnitEquality{term, node.children.at(0), node.children.at(1)});
+      continue;
+    }
+    if (node.kind == core::TermKind::And) {
+      work.insert(work.end(), node.children.begin(), node.children.end());
+    }
+  }
+}
+
+core::TermId choose_ground_substitution_representative(const core::TermManager& terms,
+                                                       const std::vector<core::TermId>& members) {
+  core::TermId representative = members.front();
+  bool representative_is_constant = terms.get(representative).kind == core::TermKind::Constant;
+  for (const core::TermId candidate : members) {
+    const bool candidate_is_constant = terms.get(candidate).kind == core::TermKind::Constant;
+    if (candidate_is_constant && !representative_is_constant) {
+      representative = candidate;
+      representative_is_constant = true;
+      continue;
+    }
+    if (candidate_is_constant == representative_is_constant && candidate < representative) {
+      representative = candidate;
+    }
+  }
+  return representative;
+}
+
+std::unordered_map<core::TermId, core::TermId> build_ground_substitution_map(
+    const core::TermManager& terms, const std::vector<UnitEquality>& equalities,
+    std::size_t* units) {
+  GroundSubstitutionClasses classes;
+  const core::SortId bool_sort = terms.symbols().bool_sort();
+  for (const UnitEquality& equality : equalities) {
+    if (terms.get(equality.lhs).sort == bool_sort || terms.get(equality.rhs).sort == bool_sort) {
+      continue;
+    }
+    classes.unite(equality.lhs, equality.rhs);
+    ++(*units);
+  }
+
+  std::unordered_map<core::TermId, std::vector<core::TermId>> members_by_root;
+  for (const core::TermId node : classes.nodes) {
+    members_by_root[classes.find(node)].push_back(node);
+  }
+
+  std::unordered_map<core::TermId, core::TermId> replacements;
+  for (auto& [root, members] : members_by_root) {
+    (void)root;
+    if (members.size() < 2) {
+      continue;
+    }
+    const core::TermId representative = choose_ground_substitution_representative(terms, members);
+    for (const core::TermId member : members) {
+      replacements[member] = representative;
+    }
+  }
+  return replacements;
+}
+
+core::TermId replace_with_ground_unit_representative(
+    const core::TermManager& terms, core::TermId term,
+    const std::unordered_map<core::TermId, core::TermId>& replacements, std::size_t& rewrites) {
+  if (terms.get(term).sort == terms.symbols().bool_sort()) {
+    return term;
+  }
+  const auto found = replacements.find(term);
+  if (found == replacements.end() || found->second == term) {
+    return term;
+  }
+  ++rewrites;
+  return found->second;
+}
+
+core::TermId rewrite_with_ground_unit_equalities(
+    core::TermManager& terms, core::TermId term,
+    const std::unordered_map<core::TermId, core::TermId>& replacements,
+    std::unordered_map<core::TermId, core::TermId>& memo, std::size_t& rewrites) {
+  if (const auto found = memo.find(term); found != memo.end()) {
+    return found->second;
+  }
+
+  const core::Term& node = terms.get(term);
+  const std::vector<core::TermId> node_children = node.children;
+  core::TermId rewritten = term;
+  switch (node.kind) {
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+      break;
+    case core::TermKind::Application: {
+      std::vector<core::TermId> children;
+      children.reserve(node_children.size());
+      bool changed = false;
+      for (const core::TermId child : node_children) {
+        const core::TermId rewritten_child =
+            rewrite_with_ground_unit_equalities(terms, child, replacements, memo, rewrites);
+        changed = changed || rewritten_child != child;
+        children.push_back(rewritten_child);
+      }
+      if (changed) {
+        rewritten = terms.mk_app(node.symbol, std::move(children));
+      }
+      break;
+    }
+    case core::TermKind::Equality:
+      rewritten = terms.mk_eq(rewrite_with_ground_unit_equalities(terms, node_children.at(0),
+                                                                  replacements, memo, rewrites),
+                              rewrite_with_ground_unit_equalities(terms, node_children.at(1),
+                                                                  replacements, memo, rewrites));
+      break;
+    case core::TermKind::Not:
+      rewritten = terms.mk_not(rewrite_with_ground_unit_equalities(terms, node_children.at(0),
+                                                                   replacements, memo, rewrites));
+      break;
+    case core::TermKind::And: {
+      std::vector<core::TermId> children;
+      children.reserve(node_children.size());
+      for (const core::TermId child : node_children) {
+        children.push_back(
+            rewrite_with_ground_unit_equalities(terms, child, replacements, memo, rewrites));
+      }
+      rewritten = terms.mk_and(std::move(children));
+      break;
+    }
+    case core::TermKind::Or: {
+      std::vector<core::TermId> children;
+      children.reserve(node_children.size());
+      for (const core::TermId child : node_children) {
+        children.push_back(
+            rewrite_with_ground_unit_equalities(terms, child, replacements, memo, rewrites));
+      }
+      rewritten = terms.mk_or(std::move(children));
+      break;
+    }
+    case core::TermKind::Implies:
+      rewritten = terms.mk_implies(rewrite_with_ground_unit_equalities(
+                                       terms, node_children.at(0), replacements, memo, rewrites),
+                                   rewrite_with_ground_unit_equalities(
+                                       terms, node_children.at(1), replacements, memo, rewrites));
+      break;
+  }
+
+  rewritten = replace_with_ground_unit_representative(terms, rewritten, replacements, rewrites);
+  memo[term] = rewritten;
+  return rewritten;
+}
+
 bool is_domain_value(core::TermId term, const std::unordered_set<core::TermId>& values) {
   return values.contains(term);
 }
@@ -1269,6 +1468,47 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
     *consequences_added = added;
   }
   return simplified;
+}
+
+GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  // CVC4's nonclausal simplification architecture motivates this bounded
+  // subset: unit equations asserted by the Boolean structure are kept as facts,
+  // while the rest of the current assertion DAG is rebuilt modulo those facts.
+  // Primo only collects top-level/conjunctive positive non-Bool equalities here.
+  GroundEqualitySubstitutionResult result;
+  std::vector<UnitEquality> unit_equalities;
+  for (const core::TermId assertion : assertions) {
+    collect_unit_equality_terms(terms, assertion, unit_equalities);
+  }
+  const std::unordered_map<core::TermId, core::TermId> replacements =
+      build_ground_substitution_map(terms, unit_equalities, &result.units);
+  if (replacements.empty()) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  result.assertions.reserve(assertions.size() + unit_equalities.size());
+  std::unordered_set<core::TermId> emitted;
+  for (const UnitEquality& equality : unit_equalities) {
+    if (emitted.insert(equality.equality).second) {
+      result.assertions.push_back(equality.equality);
+    }
+  }
+
+  std::unordered_map<core::TermId, core::TermId> memo;
+  for (const core::TermId assertion : assertions) {
+    const core::TermId rewritten =
+        rewrite_with_ground_unit_equalities(terms, assertion, replacements, memo, result.rewrites);
+    const core::Term& node = terms.get(rewritten);
+    if (node.kind == core::TermKind::BoolValue && node.bool_value) {
+      continue;
+    }
+    if (emitted.insert(rewritten).second) {
+      result.assertions.push_back(rewritten);
+    }
+  }
+  return result;
 }
 
 BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,

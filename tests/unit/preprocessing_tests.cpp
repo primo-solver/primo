@@ -201,6 +201,51 @@ void unit_equality_propagation_simplifies_nested_boolean_terms_after_interning()
   check(consequences >= 1);
 }
 
+void ground_unit_substitution_rewrites_applications_and_preserves_units() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId fa = fixture.app(fixture.f, a);
+  const primo::core::TermId pc = fixture.pred(fixture.p, c);
+  const primo::core::TermId unit = fixture.terms.mk_eq(fa, b);
+  const primo::core::TermId formula = fixture.terms.mk_or({fixture.terms.mk_eq(fa, c), pc});
+  const std::vector<primo::core::TermId> assertions{unit, formula};
+
+  const primo::smt::GroundEqualitySubstitutionResult result =
+      primo::smt::substitute_ground_unit_equalities(fixture.terms, assertions);
+
+  check(result.units == 1);
+  check(result.rewrites >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(), unit) !=
+        result.assertions.end());
+  const primo::core::TermId rewritten = fixture.terms.mk_or({fixture.terms.mk_eq(b, c), pc});
+  check(std::find(result.assertions.begin(), result.assertions.end(), rewritten) !=
+        result.assertions.end());
+}
+
+void ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId fa = fixture.app(fixture.f, a);
+  const primo::core::TermId unit = fixture.terms.mk_eq(fa, b);
+  const primo::core::TermId assertion =
+      fixture.terms.mk_and({unit, fixture.terms.mk_not(fixture.terms.mk_eq(fa, c))});
+
+  const primo::smt::GroundEqualitySubstitutionResult result =
+      primo::smt::substitute_ground_unit_equalities(fixture.terms, {assertion});
+
+  check(result.units == 1);
+  check(result.rewrites >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(), unit) !=
+        result.assertions.end());
+  const primo::core::TermId rewritten = fixture.terms.mk_not(fixture.terms.mk_eq(b, c));
+  check(std::find(result.assertions.begin(), result.assertions.end(), rewritten) !=
+        result.assertions.end());
+}
+
 void boolean_unit_propagation_simplifies_boolean_structure_and_arguments() {
   Fixture fixture;
   const primo::core::TermId p =
@@ -433,6 +478,8 @@ int main() {
   equality_bridge_derives_common_branch_consequence();
   unit_equality_propagation_simplifies_disequality();
   unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();
+  ground_unit_substitution_rewrites_applications_and_preserves_units();
+  ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts();
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();
   finite_domain_at_most_one_adds_pairwise_clauses();

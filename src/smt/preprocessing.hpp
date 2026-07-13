@@ -29,6 +29,15 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
                                                     std::size_t* consequences_added = nullptr);
 
+struct GroundEqualitySubstitutionResult {
+  std::vector<core::TermId> assertions;
+  std::size_t units = 0;
+  std::size_t rewrites = 0;
+};
+
+GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions);
+
 struct BooleanUnitPropagationResult {
   std::vector<core::TermId> assertions;
   std::size_t units = 0;

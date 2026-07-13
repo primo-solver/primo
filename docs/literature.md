@@ -235,3 +235,170 @@ the SMT invariance check.
 
 Add finite-domain AMO and equality-definition clauses once the QF_UF SAT/EUF
 interfaces are strong enough to expose useful stats and proof behavior.
+
+## CVC4 architecture and preprocessing
+
+Clark Barrett, Christopher L. Conway, Morgan Deters, Liana Hadarean, Dejan
+Jovanovic, Tim King, Andrew Reynolds, and Cesare Tinelli, *CVC4*, CAV 2011.
+
+PDF: <https://smt-comp.github.io/2012/system-descriptions/cvc4.pdf>
+
+### Relevance
+
+The system description separates formula preprocessing from the SAT/theory
+engines and lists nonclausal simplification, ITE simplification, and
+unconstrained-value simplification as important reductions before search.
+
+### Algorithm
+
+Primo currently has an experimental narrow unit-equality substitution subset of
+nonclausal simplification: positive equalities visible at top level or under
+top-level conjunction are preserved as facts and used to rewrite other
+non-Boolean ground terms before clausification. It is available for tuning but
+is not enabled by default.
+
+### Data structures
+
+The pass uses hash-consed `core::TermId` terms and a temporary union-find over
+visible equality endpoints. It does not introduce fresh terms or inspect SAT
+backend state.
+
+### Implementation notes
+
+Implemented in `substitute_ground_unit_equalities` in `src/smt/preprocessing.*`
+and counted by `:preprocessing.unit-equality.substitution-units` and
+`:preprocessing.unit-equality.substitutions`.
+
+### Risks
+
+The current subset does not use proof objects and does not rewrite Bool-sorted
+classes. It must preserve the unit equalities that justify substitutions.
+
+### Possible milestone
+
+Extend the nonclausal simplifier with proof-producing rewrites and a broader
+but still bounded congruence-aware representative selection.
+
+## Efficient conversion of term ITEs
+
+Sangyun Kim, Fabio Somenzi, and HoonSang Jin, *Efficient Term-ITE Conversion for
+Satisfiability Modulo Theories*, SAT 2009.
+
+DOI page: <https://link.springer.com/chapter/10.1007/978-3-642-02777-2_20>
+
+### Relevance
+
+QF_UF benchmarks with large term-level ITE tables can become much smaller when
+ITE conversion avoids unnecessary fresh terms and shares guards carefully.
+Recent NEQ/PEQ/SEQ targets inspected locally did not contain term ITEs, so this
+is not the immediate bottleneck for those families.
+
+### Algorithm
+
+Not implemented. Primo only lowers Boolean ITEs and the targeted
+`(= x (ite c a b))` assignment shape in the frontend.
+
+### Data structures
+
+Future work would need a design note mapping the paper's conversion state to
+`Frontend`, `TermManager`, and assertion-side constraints.
+
+### Implementation notes
+
+Documented as a future preprocessing target, not as implemented behavior.
+
+### Risks
+
+Naive ITE expansion can increase formula size. Any implementation needs size
+counters and benchmark gates before it is enabled by default.
+
+### Possible milestone
+
+Add a paper checklist and implement the paper's guarded sharing only for
+QF_UF formulas whose frontend ITE counters are nonzero.
+
+## Unconstrained-value simplification
+
+The CVC4 system description cites unconstrained-value simplification as a
+preprocessing technique. The accessible paper below is related follow-up
+material found during the survey; it should be read and checked against Primo's
+term/model invariants before implementation.
+
+Accessible preprint located during the survey:
+<https://www.fi.muni.cz/~xstrejc/publications/sat2017preprint.pdf>
+
+### Relevance
+
+Large ground formulas often contain terms whose values are unconstrained by the
+rest of the formula. Replacing such terms can eliminate equalities and branches
+before SAT search.
+
+### Algorithm
+
+Not implemented. The paper needs a separate design checklist before coding:
+which term occurrences are unconstrained, how replacements interact with
+hash-consing and SMT-LIB models, and which cases are proof-producing.
+
+### Data structures
+
+Likely requires occurrence/polarity information over `core::TermId` formulas
+and a controlled replacement map distinct from the current unit-equality
+substitution map.
+
+### Implementation notes
+
+Future target only.
+
+### Risks
+
+Unsoundness is easy if a term is considered unconstrained in one Boolean context
+but constrained elsewhere, or if model reconstruction is later required.
+
+### Possible milestone
+
+Start with a documentation checklist and tests for one paper-supported,
+model-preserving subset.
+
+## Equality-logic transitivity constraints and selective Ackermannization
+
+Randal E. Bryant, Steven German, and Miroslav N. Velev, *Processor verification
+using efficient reductions of the logic of uninterpreted functions to
+propositional logic*, ACM Transactions on Computational Logic 2001.
+
+Ofer Strichman and Mirron Rozanov's minimum-transitivity-constraint work is
+also relevant to equality-logic benchmark families.
+
+Bryant/Velev preprint: <https://arxiv.org/abs/cs/0008001>
+
+### Relevance
+
+Some QF_UF families are dominated by equality-logic search where adding the
+right transitivity or congruence clauses can make the SAT abstraction decisive
+before repeated lazy EUF conflicts.
+
+### Algorithm
+
+Not implemented beyond Primo's narrow equality bridge and optional bounded
+ground-congruence clauses. A full implementation needs a fresh clean-room design
+note from the paper algorithms.
+
+### Data structures
+
+Likely candidates are equality graphs over existing `TermId` endpoints, guarded
+clause generation, and counters separating generated transitivity,
+congruence, and skipped clauses.
+
+### Implementation notes
+
+Future target only. Do not copy encodings from another solver.
+
+### Risks
+
+Clause blowup can erase any benefit. Default behavior would need caps,
+family-level PAR2 evaluation, and proof plans.
+
+### Possible milestone
+
+Design and evaluate a bounded equality-graph pass on the small equality-logic
+instances where Z3, cvc5, and LLM2SMT are all subsecond but Primo still learns
+many EUF conflicts.

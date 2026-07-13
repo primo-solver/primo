@@ -46,8 +46,10 @@ reproducing narrower configurations:
 
 - equality bridging under disjunctions, enabled with `--eq-bridge` or
   `--qf-uf-preprocess=strong`;
-- unit equality propagation, enabled by the `basic` and `strong` preprocessing
-  loops;
+- unit equality propagation, enabled by the `basic`, `strong`, and `auto`
+  preprocessing loops;
+- experimental ground substitution from positive unit equalities, enabled with
+  `--ground-unit-substitution`;
 - finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
   by the `auto` path;
 - bounded ground-congruence clauses over applications already present in the
@@ -89,6 +91,20 @@ appended. It collects equalities asserted at top level, including equalities
 under top-level `and`, and simplifies equality atoms decided by that unit
 closure. This is what turns bridge facts from diamond formulas into an immediate
 pre-SAT contradiction with the final disequality.
+
+`--ground-unit-substitution` additionally uses the same collected non-Boolean
+unit equalities for a bounded ground substitution pass. The pass preserves the
+unit equalities as explicit assertions, rebuilds the remaining assertion DAG
+modulo those equalities, and then lets the normal `TermManager` simplifiers
+collapse equality, disequality, `and`, `or`, and implication structure. This is
+a nonclausal simplification subset: it only uses positive equalities visible at
+top level or under top-level conjunction, does not inspect equalities hidden
+under disjunction, negation, implication, or predicates, and deliberately avoids
+rewriting Bool-sorted equivalence classes. The option is not part of the default
+profile yet: local probes showed useful substitutions but no reliable solve-time
+win on PEQ/SEQ targets. Its effect is reported by
+`:preprocessing.unit-equality.substitution-units` and
+`:preprocessing.unit-equality.substitutions`.
 
 `--preprocessing-passes N` controls the repeated preprocessing loop. Each pass
 can add bridge facts and then simplify with Boolean and unit equalities. The
@@ -335,6 +351,18 @@ Boolean structure simplifies through the existing `TermManager` constructors.
 It does not inspect equalities hidden under `or`, implication, negation, or
 predicate applications.
 
+Ground unit-equality substitution uses a second local union-find over the
+endpoints of the same visible non-Boolean unit equalities. Each equivalence
+class is represented by a deterministic existing term, preferring constants and
+then the smallest `TermId`. Recursive rebuilding rewrites child terms first,
+then rewrites the rebuilt application if it is itself a known unit-equality
+endpoint. The original unit equalities are emitted before the rewritten
+assertions, so replacing a term by its representative is justified by facts
+still present in the formula. This is not a full congruence-closure
+preprocessor: it substitutes endpoints already connected by visible unit
+equalities and relies on repeated passes plus hash-consing to expose additional
+exact endpoint matches.
+
 Boolean unit propagation collects top-level user Bool constants and rewrites
 Boolean structure with those constants while preserving the unit assertions. It
 does not rewrite inside UF applications, so SAT/EUF still receives the facts
@@ -359,6 +387,7 @@ Implemented:
 - CLI-default `auto` preprocessing dispatcher;
 - equality bridging under disjunctions;
 - unit equality propagation from top-level equalities;
+- opt-in ground unit-equality substitution over non-Bool terms;
 - Boolean unit propagation from top-level user Bool constants, preserving the
   unit facts for EUF;
 - configurable repeated preprocessing loop with `--preprocessing-passes`;
@@ -384,6 +413,12 @@ Implemented:
 Deferred:
 
 - proof support for generated preprocessing lemmas;
+- unconstrained-value simplification as a global formula transformation;
+- strong term-ITE conversion beyond frontend lowering of the targeted
+  assignment shape;
+- minimum-transitivity-constraint generation and selective Ackermannization for
+  equality logic;
+- SyGuS-derived rewrite-rule enumeration for preprocessing;
 - finite-domain equality evaluation in the strong preset. A prototype evaluator
   exists as an internal utility, but it remains disabled because unguarded
   equality simplification can be unsound on PEQ-like cases;
@@ -415,6 +450,9 @@ LLM2SMT `lra`; no LLM2SMT code was copied.
 - Bradley and Manna, *The Calculus of Computation*, Chapter 9, is the
   background reference for ground EUF reasoning used by the finite-domain
   at-most-one lemmas.
+- Barrett et al., *CVC4*, CAV 2011, is the architecture reference for treating
+  nonclausal simplification as a preprocessing stage. Primo implements only the
+  visible unit-equality substitution subset described above.
 
 See [](papers/smt-symmetry-breaking.md) and
 [](papers/finite-model-finding-sorts.md).
