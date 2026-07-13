@@ -17,6 +17,7 @@ TIMEOUT=${PRIMO_SOLVER_TIMEOUT:-30}
 SHARDS=${PRIMO_INTERESTING_SHARDS:-32}
 SHARD_INDEX=${SLURM_ARRAY_TASK_ID:-0}
 EXTRA_SOLVER_ARGS=${PRIMO_EXTRA_SOLVER_ARGS:-}
+EUF_PROP=${PRIMO_EUF_PROP:-model}
 
 read -r -a EXTRA_SOLVER_ARG_ARRAY <<< "$EXTRA_SOLVER_ARGS"
 
@@ -28,7 +29,7 @@ python3 scripts/bench_interesting_qf_uf.py \
   --solver-arg=--quiet \
   --solver-arg=--stats \
   --solver-arg=--qf-uf-profile=tuned-interesting \
-  --solver-arg=--euf-prop=model \
+  --solver-arg=--euf-prop="$EUF_PROP" \
   "${EXTRA_SOLVER_ARG_ARRAY[@]/#/--solver-arg=}" \
   --timeout "$TIMEOUT" \
   --manifest "$MANIFEST" \
