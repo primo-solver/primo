@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <utility>
@@ -200,6 +201,55 @@ void unit_equality_propagation_simplifies_nested_boolean_terms_after_interning()
   check(consequences >= 1);
 }
 
+void boolean_unit_propagation_simplifies_boolean_structure_and_arguments() {
+  Fixture fixture;
+  const primo::core::TermId p =
+      fixture.constant(fixture.symbols.declare_constant("flag", fixture.symbols.bool_sort()));
+  const primo::core::TermId true_term = fixture.terms.mk_bool(true);
+  const primo::core::SymbolId g =
+      fixture.symbols.declare_function("g", {fixture.symbols.bool_sort()}, fixture.sort);
+  const primo::core::TermId gp = fixture.terms.mk_app(g, {p});
+  const primo::core::TermId gt = fixture.terms.mk_app(g, {true_term});
+  const std::vector<primo::core::TermId> assertions{
+      p,
+      fixture.terms.mk_or(
+          {fixture.terms.mk_not(p), fixture.pred(fixture.p, fixture.constant(fixture.a))}),
+      fixture.terms.mk_not(fixture.terms.mk_eq(gp, gt)),
+  };
+
+  const primo::smt::BooleanUnitPropagationResult result =
+      primo::smt::propagate_boolean_units(fixture.terms, assertions);
+
+  check(result.units == 1);
+  check(result.rewrites >= 2);
+  check(result.assertions.size() == 3);
+  const primo::core::TermId pa = fixture.pred(fixture.p, fixture.constant(fixture.a));
+  const primo::core::TermId disequality = fixture.terms.mk_not(fixture.terms.mk_eq(gp, gt));
+  check(std::find(result.assertions.begin(), result.assertions.end(), p) !=
+        result.assertions.end());
+  check(std::find(result.assertions.begin(), result.assertions.end(), pa) !=
+        result.assertions.end());
+  check(std::find(result.assertions.begin(), result.assertions.end(), disequality) !=
+        result.assertions.end());
+}
+
+void boolean_unit_propagation_preserves_contradictory_units() {
+  Fixture fixture;
+  const primo::core::TermId p =
+      fixture.constant(fixture.symbols.declare_constant("flag", fixture.symbols.bool_sort()));
+  const std::vector<primo::core::TermId> assertions{
+      p, fixture.terms.mk_not(p),
+      fixture.terms.mk_or(
+          {fixture.terms.mk_not(p), fixture.pred(fixture.p, fixture.constant(fixture.a))})};
+
+  const primo::smt::BooleanUnitPropagationResult result =
+      primo::smt::propagate_boolean_units(fixture.terms, assertions);
+
+  check(result.units == 0);
+  check(result.rewrites == 0);
+  check(result.assertions == assertions);
+}
+
 void finite_domain_at_most_one_adds_pairwise_clauses() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -245,6 +295,35 @@ void finite_domain_choices_may_be_nested_or_nodes() {
 
   check(result.domains == 1);
   check(result.clauses.size() == 3);
+}
+
+void finite_domain_observed_equalities_get_pairwise_amo_clauses_without_choices() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+
+  std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
+  assertions.push_back(fixture.terms.mk_eq(x, a));
+  assertions.push_back(fixture.terms.mk_eq(x, b));
+  assertions.push_back(fixture.terms.mk_eq(x, c));
+
+  primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
+  const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
+
+  check(result.domains == 1);
+  check(result.clauses.size() == 3);
+  for (const primo::core::TermId clause : result.clauses) {
+    const primo::core::Term& node = fixture.terms.get(clause);
+    check(node.kind == primo::core::TermKind::Or);
+    check(node.children.size() == 2);
+  }
+
+  assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
+  const primo::smt::FiniteDomainAtMostOneResult repeated = amo.generate(assertions);
+  check(repeated.domains == 0);
+  check(repeated.clauses.empty());
 }
 
 void finite_domain_distinct_endpoints_get_value_amo_clauses() {
@@ -354,8 +433,11 @@ int main() {
   equality_bridge_derives_common_branch_consequence();
   unit_equality_propagation_simplifies_disequality();
   unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();
+  boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
+  boolean_unit_propagation_preserves_contradictory_units();
   finite_domain_at_most_one_adds_pairwise_clauses();
   finite_domain_choices_may_be_nested_or_nodes();
+  finite_domain_observed_equalities_get_pairwise_amo_clauses_without_choices();
   finite_domain_distinct_endpoints_get_value_amo_clauses();
   finite_domain_equality_definitions_connect_terms_with_same_domain();
   congruence_definitions_connect_same_symbol_applications();

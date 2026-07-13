@@ -48,6 +48,8 @@ constexpr std::string_view kStatPreprocessingChangedPasses = ":preprocessing.cha
 constexpr std::string_view kStatEqBridgeEqualities = ":preprocessing.eq-bridge.equalities";
 constexpr std::string_view kStatEqBridgeSkippedOrNodes =
     ":preprocessing.eq-bridge.skipped-or-nodes";
+constexpr std::string_view kStatBooleanUnitFacts = ":preprocessing.boolean-units.facts";
+constexpr std::string_view kStatBooleanUnitRewrites = ":preprocessing.boolean-units.rewrites";
 constexpr std::string_view kStatUnitEqualityConsequences =
     ":preprocessing.unit-equality.consequences";
 constexpr std::string_view kStatFiniteDomainDomains = ":preprocessing.finite-domain.domains";
@@ -90,6 +92,7 @@ constexpr std::string_view kStatEufPropagationDeliveryBudget = ":euf.propagation
 constexpr std::string_view kStatEufPropagationBudgetCutoffs = ":euf.propagation.budget-cutoffs";
 constexpr std::string_view kStatEufPropagationHitRateCutoffs = ":euf.propagation.hit-rate-cutoffs";
 constexpr std::string_view kStatEufPropagationAutoOnline = ":euf.propagation.auto-online";
+constexpr std::string_view kStatEufPropagationAutoConflict = ":euf.propagation.auto-conflict";
 constexpr std::string_view kStatEufPropagationAutoOff = ":euf.propagation.auto-off";
 constexpr std::string_view kStatEufIncrementalTerms = ":euf.incremental.terms";
 constexpr std::string_view kStatEufIncrementalFlatDefinitions = ":euf.incremental.flat-definitions";
@@ -124,8 +127,8 @@ EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,
     statistics.set(kStatEufPropagationAutoOnline, 1);
     return EufPropagationMode::Online;
   }
-  statistics.set(kStatEufPropagationAutoOff, 1);
-  return EufPropagationMode::Off;
+  statistics.set(kStatEufPropagationAutoConflict, 1);
+  return EufPropagationMode::Conflict;
 }
 
 class UnsupportedInput : public std::runtime_error {
@@ -292,6 +295,11 @@ class Frontend {
     }
   }
 
+  static bool has_head(const smtlib::SExpr& expr, std::string_view head) {
+    return expr.kind == smtlib::SExpr::Kind::List && !expr.list.empty() &&
+           expr.list[0].kind == smtlib::SExpr::Kind::Atom && expr.list[0].atom == head;
+  }
+
   core::TermId build_let(const smtlib::SExpr& expr) {
     require_arity(expr, 3, "let");
     if (expr.list[1].kind != smtlib::SExpr::Kind::List) {
@@ -374,13 +382,50 @@ class Frontend {
       throw UnsupportedInput("= has wrong arity");
     }
     std::vector<core::TermId> equalities;
-    core::TermId previous = build_term(expr.list[1]);
+    const smtlib::SExpr* previous_expr = &expr.list[1];
+    std::optional<core::TermId> previous_term;
     for (std::size_t i = 2; i < expr.list.size(); ++i) {
-      const core::TermId current = build_term(expr.list[i]);
-      equalities.push_back(build_pairwise_equality(previous, current));
-      previous = current;
+      const smtlib::SExpr& current_expr = expr.list[i];
+      if (has_head(current_expr, "ite")) {
+        const core::TermId lhs =
+            previous_term.has_value() ? previous_term.value() : build_term(*previous_expr);
+        equalities.push_back(build_pairwise_equality_to_ite(lhs, current_expr));
+        previous_expr = &current_expr;
+        previous_term.reset();
+        continue;
+      }
+      const core::TermId current = build_term(current_expr);
+      if (has_head(*previous_expr, "ite")) {
+        equalities.push_back(build_pairwise_equality_to_ite(current, *previous_expr));
+      } else {
+        const core::TermId previous =
+            previous_term.has_value() ? previous_term.value() : build_term(*previous_expr);
+        equalities.push_back(build_pairwise_equality(previous, current));
+      }
+      previous_expr = &current_expr;
+      previous_term = current;
     }
     return terms_.mk_and(std::move(equalities));
+  }
+
+  core::TermId build_pairwise_equality_to_ite(core::TermId term, const smtlib::SExpr& ite_expr) {
+    require_arity(ite_expr, 4, "ite");
+    const core::TermId condition = build_term(ite_expr.list[1]);
+    if (terms_.get(condition).sort != symbols_.bool_sort()) {
+      throw UnsupportedInput("ite condition is not Boolean");
+    }
+    const core::TermId then_term = build_term(ite_expr.list[2]);
+    const core::TermId else_term = build_term(ite_expr.list[3]);
+    const core::SortId result_sort = terms_.get(then_term).sort;
+    if (result_sort != terms_.get(else_term).sort) {
+      throw UnsupportedInput("ite branch sort mismatch");
+    }
+    if (terms_.get(term).sort != result_sort) {
+      throw UnsupportedInput("equality sort mismatch");
+    }
+    return terms_.mk_and(
+        {terms_.mk_implies(condition, build_pairwise_equality(term, then_term)),
+         terms_.mk_implies(terms_.mk_not(condition), build_pairwise_equality(term, else_term))});
   }
 
   core::TermId build_distinct(const smtlib::SExpr& expr) {
@@ -1784,6 +1829,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatPreprocessingChangedPasses, 0);
   statistics.set(kStatEqBridgeEqualities, 0);
   statistics.set(kStatEqBridgeSkippedOrNodes, 0);
+  statistics.set(kStatBooleanUnitFacts, 0);
+  statistics.set(kStatBooleanUnitRewrites, 0);
   statistics.set(kStatUnitEqualityConsequences, 0);
   statistics.set(kStatFiniteDomainDomains, 0);
   statistics.set(kStatFiniteDomainAmoClauses, 0);
@@ -1818,6 +1865,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatEufPropagationBudgetCutoffs, 0);
   statistics.set(kStatEufPropagationHitRateCutoffs, 0);
   statistics.set(kStatEufPropagationAutoOnline, 0);
+  statistics.set(kStatEufPropagationAutoConflict, 0);
   statistics.set(kStatEufPropagationAutoOff, 0);
   statistics.set(kStatEufIncrementalTerms, 0);
   statistics.set(kStatEufIncrementalFlatDefinitions, 0);
@@ -1929,6 +1977,11 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         statistics.increment(kStatGroundCongruenceSkippedGroups,
                              congruence_definition_result.skipped_groups);
       }
+      BooleanUnitPropagationResult boolean_units =
+          propagate_boolean_units(frontend.terms(), assertions);
+      assertions = std::move(boolean_units.assertions);
+      statistics.increment(kStatBooleanUnitFacts, boolean_units.units);
+      statistics.increment(kStatBooleanUnitRewrites, boolean_units.rewrites);
       std::size_t unit_consequences = 0;
       assertions = propagate_unit_equalities(frontend.terms(), assertions, &unit_consequences);
       statistics.increment(kStatUnitEqualityConsequences, unit_consequences);
@@ -1938,6 +1991,15 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       statistics.increment(kStatPreprocessingChangedPasses);
     }
     statistics.set(kStatAssertionsFinal, assertions.size());
+    for (const core::TermId assertion : assertions) {
+      const core::Term& node = frontend.terms().get(assertion);
+      if (node.kind == core::TermKind::BoolValue && !node.bool_value) {
+        return CheckSatOutcome{CheckSatResult::Unsat, "", statistics};
+      }
+    }
+    if (assertions.empty() && !options.preprocess_only) {
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
+    }
     if (options.preprocess_only) {
       return CheckSatOutcome{CheckSatResult::Unknown, "preprocess-only", statistics};
     }

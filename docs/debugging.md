@@ -20,6 +20,8 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.changed-passes`;
 - `:preprocessing.eq-bridge.equalities`;
 - `:preprocessing.eq-bridge.skipped-or-nodes`;
+- `:preprocessing.boolean-units.facts`;
+- `:preprocessing.boolean-units.rewrites`;
 - `:preprocessing.unit-equality.consequences`;
 - `:preprocessing.finite-domain.domains`;
 - `:preprocessing.finite-domain.amo-clauses`;
@@ -54,6 +56,7 @@ compare runs mechanically. Current counters include:
 - `:euf.propagation.budget-cutoffs`;
 - `:euf.propagation.hit-rate-cutoffs`;
 - `:euf.propagation.auto-online`;
+- `:euf.propagation.auto-conflict`;
 - `:euf.propagation.auto-off`.
 
 For preprocessing-only comparisons, pass `--preprocess-only --stats`. Primo

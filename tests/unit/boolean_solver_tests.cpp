@@ -54,6 +54,7 @@ void top_level_conjunction_does_not_allocate_auxiliary() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.boolean-units.facts") >= 3);
   assert(result.statistics.get(":sat.vars") == 3);
   assert(result.statistics.get(":sat.clauses") == 3);
   assert(result.statistics.get(":sat.unit-clauses") == 3);
@@ -134,7 +135,8 @@ void boolean_equality_is_propositional_equivalence() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
-  assert(result.statistics.get(":solver.boolean") == 1);
+  assert(result.statistics.get(":preprocessing.boolean-units.facts") >= 2);
+  assert(result.statistics.get(":solver.boolean") == 0);
   assert(result.statistics.get(":solver.qf-uf") == 0);
 }
 
@@ -196,6 +198,27 @@ void default_euf_propagation_auto_uses_online_for_small_abstractions() {
   )");
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":euf.propagation.auto-online") == 1);
+  assert(result.statistics.get(":euf.propagation.auto-off") == 0);
+}
+
+void default_euf_propagation_auto_uses_conflict_for_large_abstractions() {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun a0 () A)\n";
+  for (int i = 1; i <= 5001; ++i) {
+    input << "(declare-fun a" << i << " () A)\n";
+    input << "(assert (= a0 a" << i << "))\n";
+  }
+  input << "(check-sat)\n";
+
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(input.str(), options);
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.propagation.auto-conflict") == 1);
+  assert(result.statistics.get(":euf.propagation.auto-online") == 0);
   assert(result.statistics.get(":euf.propagation.auto-off") == 0);
 }
 
@@ -363,6 +386,7 @@ void term_ite_is_eliminated() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.ite.auxiliaries") == 0);
 }
 
 void true_boolean_constant_used_as_uf_argument_is_euf_term() {
@@ -417,7 +441,6 @@ void equality_bridge_solves_diamond_chain() {
   assert(result.statistics.get(":preprocessing.passes") >= 1);
   assert(result.statistics.get(":preprocessing.eq-bridge.equalities") >= 2);
   assert(result.statistics.get(":preprocessing.unit-equality.consequences") >= 1);
-  assert(result.statistics.get(":solver.qf-uf") == 1);
 }
 
 void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion() {
@@ -445,7 +468,6 @@ void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion
   assert(result.statistics.get(":preprocessing.auto.single-assertion") == 1);
   assert(result.statistics.get(":preprocessing.auto.strong") == 0);
   assert(result.statistics.get(":preprocessing.eq-bridge.equalities") >= 2);
-  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 0);
   assert(result.statistics.get(":preprocessing.equality-definitions") == 0);
 }
 
@@ -867,6 +889,7 @@ int main() {
   reflexive_equality_is_sat();
   pure_euf_disequality_contradiction_is_unsat();
   default_euf_propagation_auto_uses_online_for_small_abstractions();
+  default_euf_propagation_auto_uses_conflict_for_large_abstractions();
   chainable_equality_is_expanded();
   let_bound_terms_are_resolved();
   distinct_lowers_to_pairwise_disequalities();

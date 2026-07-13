@@ -45,6 +45,11 @@ struct FiniteDomainGroup {
   std::vector<core::TermId> terms;
 };
 
+struct BooleanUnitAssignments {
+  std::unordered_map<core::TermId, bool> values;
+  std::unordered_set<core::TermId> conflicts;
+};
+
 struct AppValueKey {
   core::SymbolId symbol = core::kInvalidSymbolId;
   std::vector<core::TermId> args;
@@ -125,6 +130,118 @@ void collect_conjuncts(const core::TermManager& terms, core::TermId term,
     return;
   }
   conjuncts.push_back(term);
+}
+
+bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.sort != terms.symbols().bool_sort()) {
+    return false;
+  }
+  switch (term.kind) {
+    case core::TermKind::Constant: {
+      const core::Symbol& symbol = terms.symbols().get_symbol(term.symbol);
+      return !symbol.name.starts_with("$primo_bool_arg_");
+    }
+    case core::TermKind::Application:
+    case core::TermKind::Equality:
+    case core::TermKind::BoolValue:
+    case core::TermKind::Not:
+    case core::TermKind::And:
+    case core::TermKind::Or:
+    case core::TermKind::Implies:
+      return false;
+  }
+  return false;
+}
+
+void record_boolean_unit(BooleanUnitAssignments& assignments, core::TermId term, bool value) {
+  const auto found = assignments.values.find(term);
+  if (found == assignments.values.end()) {
+    assignments.values.emplace(term, value);
+    return;
+  }
+  if (found->second != value) {
+    assignments.conflicts.insert(term);
+  }
+}
+
+BooleanUnitAssignments collect_boolean_units(const core::TermManager& terms,
+                                             const std::vector<core::TermId>& assertions) {
+  std::vector<core::TermId> conjuncts;
+  for (const core::TermId assertion : assertions) {
+    collect_conjuncts(terms, assertion, conjuncts);
+  }
+
+  BooleanUnitAssignments assignments;
+  for (const core::TermId conjunct : conjuncts) {
+    if (is_boolean_unit_atom(terms, conjunct)) {
+      record_boolean_unit(assignments, conjunct, true);
+      continue;
+    }
+    const core::Term& node = terms.get(conjunct);
+    if (node.kind != core::TermKind::Not) {
+      continue;
+    }
+    const core::TermId child = node.children.at(0);
+    if (is_boolean_unit_atom(terms, child)) {
+      record_boolean_unit(assignments, child, false);
+    }
+  }
+
+  for (const core::TermId conflict : assignments.conflicts) {
+    assignments.values.erase(conflict);
+  }
+  return assignments;
+}
+
+core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId term_id,
+                                         const std::unordered_map<core::TermId, bool>& assignments,
+                                         std::size_t& rewrites) {
+  const auto assigned = assignments.find(term_id);
+  if (assigned != assignments.end()) {
+    ++rewrites;
+    return terms.mk_bool(assigned->second);
+  }
+
+  const core::Term& term = terms.get(term_id);
+  const std::vector<core::TermId>& children = term.children;
+  switch (term.kind) {
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+    case core::TermKind::Application:
+      return term_id;
+    case core::TermKind::Equality: {
+      const core::TermId lhs =
+          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites);
+      const core::TermId rhs =
+          simplify_with_boolean_units(terms, children.at(1), assignments, rewrites);
+      return lhs != children.at(0) || rhs != children.at(1) ? terms.mk_eq(lhs, rhs) : term_id;
+    }
+    case core::TermKind::Not:
+      return terms.mk_not(
+          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites));
+    case core::TermKind::And: {
+      std::vector<core::TermId> rewritten;
+      rewritten.reserve(children.size());
+      for (const core::TermId child : children) {
+        rewritten.push_back(simplify_with_boolean_units(terms, child, assignments, rewrites));
+      }
+      return terms.mk_and(std::move(rewritten));
+    }
+    case core::TermKind::Or: {
+      std::vector<core::TermId> rewritten;
+      rewritten.reserve(children.size());
+      for (const core::TermId child : children) {
+        rewritten.push_back(simplify_with_boolean_units(terms, child, assignments, rewrites));
+      }
+      return terms.mk_or(std::move(rewritten));
+    }
+    case core::TermKind::Implies:
+      return terms.mk_implies(
+          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites),
+          simplify_with_boolean_units(terms, children.at(1), assignments, rewrites));
+  }
+  return term_id;
 }
 
 void collect_applications(const core::TermManager& terms, core::TermId root,
@@ -500,6 +617,78 @@ std::vector<core::TermId> finite_domain_at_most_one_clauses(
   clauses.reserve(pair_count);
   for (std::size_t i = 0; i < values.size(); ++i) {
     for (std::size_t j = i + 1; j < values.size(); ++j) {
+      clauses.push_back(terms.mk_or({terms.mk_not(terms.mk_eq(term, values[i])),
+                                     terms.mk_not(terms.mk_eq(term, values[j]))}));
+    }
+  }
+  return clauses;
+}
+
+std::unordered_set<core::TermId> finite_domain_value_constants(
+    const core::TermManager& terms,
+    const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities) {
+  std::unordered_set<core::TermId> values;
+  for (const auto& [lhs, rhs] : disequalities) {
+    const core::Term& lhs_term = terms.get(lhs);
+    const core::Term& rhs_term = terms.get(rhs);
+    if (lhs_term.kind == core::TermKind::Constant && lhs_term.sort != terms.symbols().bool_sort()) {
+      values.insert(lhs);
+    }
+    if (rhs_term.kind == core::TermKind::Constant && rhs_term.sort != terms.symbols().bool_sort()) {
+      values.insert(rhs);
+    }
+  }
+  return values;
+}
+
+void add_observed_value_equality(
+    const std::unordered_set<core::TermId>& values, core::TermId lhs, core::TermId rhs,
+    std::unordered_map<core::TermId, std::vector<core::TermId>>& term_values) {
+  if (values.contains(rhs) && !values.contains(lhs) && lhs != rhs) {
+    term_values[lhs].push_back(rhs);
+  }
+  if (values.contains(lhs) && !values.contains(rhs) && lhs != rhs) {
+    term_values[rhs].push_back(lhs);
+  }
+}
+
+std::unordered_map<core::TermId, std::vector<core::TermId>> collect_observed_value_equalities(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const std::unordered_set<core::TermId>& values) {
+  std::unordered_map<core::TermId, std::vector<core::TermId>> term_values;
+  std::unordered_set<core::TermId> seen;
+  std::vector<core::TermId> work = assertions;
+  while (!work.empty()) {
+    const core::TermId term_id = work.back();
+    work.pop_back();
+    if (!seen.insert(term_id).second) {
+      continue;
+    }
+    const core::Term& term = terms.get(term_id);
+    if (term.kind == core::TermKind::Equality) {
+      add_observed_value_equality(values, term.children.at(0), term.children.at(1), term_values);
+    }
+    work.insert(work.end(), term.children.begin(), term.children.end());
+  }
+
+  for (auto& [term, observed_values] : term_values) {
+    (void)term;
+    std::sort(observed_values.begin(), observed_values.end());
+    observed_values.erase(std::unique(observed_values.begin(), observed_values.end()),
+                          observed_values.end());
+  }
+  return term_values;
+}
+
+std::vector<core::TermId> observed_value_at_most_one_clauses(
+    core::TermManager& terms, core::TermId term, const std::vector<core::TermId>& values,
+    const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities) {
+  std::vector<core::TermId> clauses;
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    for (std::size_t j = i + 1; j < values.size(); ++j) {
+      if (!disequalities.contains(ordered_pair(values[i], values[j]))) {
+        continue;
+      }
       clauses.push_back(terms.mk_or({terms.mk_not(terms.mk_eq(term, values[i])),
                                      terms.mk_not(terms.mk_eq(term, values[j]))}));
     }
@@ -1082,6 +1271,33 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   return simplified;
 }
 
+BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
+                                                     const std::vector<core::TermId>& assertions) {
+  BooleanUnitPropagationResult result;
+  const BooleanUnitAssignments assignments = collect_boolean_units(terms, assertions);
+  result.units = assignments.values.size();
+  result.assertions.reserve(assertions.size());
+  std::unordered_set<core::TermId> emitted;
+  for (const auto& [term, value] : assignments.values) {
+    const core::TermId unit = value ? term : terms.mk_not(term);
+    if (emitted.insert(unit).second) {
+      result.assertions.push_back(unit);
+    }
+  }
+  for (const core::TermId assertion : assertions) {
+    const core::TermId simplified =
+        simplify_with_boolean_units(terms, assertion, assignments.values, result.rewrites);
+    const core::Term& node = terms.get(simplified);
+    if (node.kind == core::TermKind::BoolValue && node.bool_value) {
+      continue;
+    }
+    if (emitted.insert(simplified).second) {
+      result.assertions.push_back(simplified);
+    }
+  }
+  return result;
+}
+
 FiniteDomainAtMostOne::FiniteDomainAtMostOne(core::TermManager& terms) : terms_(terms) {}
 
 FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
@@ -1122,6 +1338,27 @@ FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
       if (emitted.insert(clause).second) {
         result.clauses.push_back(clause);
       }
+    }
+  }
+  const std::unordered_set<core::TermId> value_constants =
+      finite_domain_value_constants(terms_, disequalities);
+  const auto observed_equalities =
+      collect_observed_value_equalities(terms_, assertions, value_constants);
+  for (const auto& [term, values] : observed_equalities) {
+    if (values.size() < 2) {
+      continue;
+    }
+    const std::vector<core::TermId> clauses =
+        observed_value_at_most_one_clauses(terms_, term, values, disequalities);
+    std::size_t added_for_domain = 0;
+    for (const core::TermId clause : clauses) {
+      if (emitted.insert(clause).second) {
+        result.clauses.push_back(clause);
+        ++added_for_domain;
+      }
+    }
+    if (added_for_domain > 0) {
+      ++result.domains;
     }
   }
   return result;

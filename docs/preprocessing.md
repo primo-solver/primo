@@ -26,8 +26,9 @@ profile:
 The preprocessing flags in that command are defaults, so plain
 `./build/primo input.smt2` uses the same preprocessing unless an option
 overrides it. Plain Primo currently uses `--euf-prop=auto`: online callbacks are
-used for small EUF abstractions, while large Goel-style abstractions use the
-lazy post-model conflict loop until callback backtracking is faster.
+used for small EUF abstractions, while large EUF abstractions use conflict-only
+CaDiCaL callbacks to avoid repeated lazy post-model checks without enabling the
+currently expensive online propagation scan.
 
 The exact legacy-style reproduction profile is:
 
@@ -95,6 +96,51 @@ passes. `0` disables the loop unless the `strong` preset is selected. Strong
 preprocessing runs at least three passes because bridge facts and finite-domain
 clauses can expose further unit-equality simplifications.
 
+## Boolean Unit Propagation
+
+Each preprocessing pass collects top-level unit facts for user Bool constants,
+including facts under top-level `and` and negative facts of the form `(not p)`.
+If both polarities are present, the constant is left untouched and the SAT layer
+keeps the contradiction.
+
+Collected unit facts simplify Boolean structure, Boolean equalities, and guarded
+formulas through the normal `TermManager` constructors. The unit facts
+themselves are preserved as assertions because SMT-LIB `Bool` is a first-class
+sort: a Boolean constant may also occur as an argument to an uninterpreted
+function, and the EUF solver must still see the asserted Boolean fact.
+
+The pass deliberately does not rewrite inside uninterpreted-function
+applications and does not collect frontend `$primo_bool_arg_*` auxiliaries as
+substitution facts. Those auxiliaries encode equivalences for compound Boolean
+arguments, and erasing them can hide predicate-congruence conflicts. The pass is
+therefore a bounded Boolean simplifier, not global Boolean propagation through
+the EUF term language.
+
+## ITE Lowering
+
+The SMT-LIB frontend eliminates ITEs before Boolean clausification because the
+core term language does not store ITE nodes. Boolean ITEs are lowered to Boolean
+connectives. Non-Boolean ITEs in general term position still use a fresh
+constant plus two guarded equalities.
+
+For the common assignment shape:
+
+```text
+(= x (ite c a b))
+```
+
+the frontend avoids the fresh non-Boolean auxiliary and emits the guarded
+equalities directly:
+
+```text
+(and (=> c (= x a))
+     (=> (not c) (= x b)))
+```
+
+This is a targeted preprocessing rule, not a full strong ITE simplifier. Primo
+does not yet perform global ITE hoisting, condition-aware ITE-chain
+simplification, or domain-specific ITE table compression.
+
 ## Equality Bridge
 
 The equality bridge targets equality-diamond formulas from the SMT-LIB QF_UF
@@ -136,7 +182,8 @@ The implementation is intentionally conservative:
 
 ## Finite-Domain Clauses
 
-The finite-domain recognizer looks for explicit choice disjunctions of the form:
+The finite-domain recognizer has two AMO sources. The first looks for explicit
+choice disjunctions of the form:
 
 ```text
 (or (= t c0) (= t c1) ... (= t cn))
@@ -152,8 +199,18 @@ clauses:
 
 for every pair of distinct values. These are ordinary EUF theory lemmas: if
 `ci` and `cj` are explicitly asserted disequal, a single term cannot equal both
-values. If two recognized finite-domain terms `s` and `t` are explicitly
-asserted disequal and share the same value set, the pass also appends
+values.
+
+The second source scans equality atoms already present in the assertion DAG. If
+the formula mentions both `s = ci` and `s = cj`, and `ci` and `cj` are explicit
+top-level disequal non-Boolean constants, the pass may append the same AMO
+clause even when there is no choice disjunction for `s`. This is still only a
+theory-lemma strengthening over existing equality atoms. It does not add
+one-of-domain constraints, fresh finite-domain variables, or finite-model
+search.
+
+If two recognized finite-domain terms `s` and `t` are explicitly asserted
+disequal and share the same value set, the pass also appends
 distinct-endpoint AMO clauses:
 
 ```text
@@ -162,7 +219,9 @@ distinct-endpoint AMO clauses:
 
 for every domain value `ci`. The pass is intentionally narrow. It does not infer
 disequalities hidden under Boolean structure and it does not perform finite-model
-search.
+search. Symmetry breaking remains narrower than AMO generation: the current
+symmetry pass still requires explicit choice disjunctions before it accepts a
+finite-domain value set.
 
 When two or more terms share the same recognized finite domain, `strong`
 preprocessing also appends equality-definition clauses over existing equality
@@ -260,6 +319,11 @@ Boolean structure simplifies through the existing `TermManager` constructors.
 It does not inspect equalities hidden under `or`, implication, negation, or
 predicate applications.
 
+Boolean unit propagation collects top-level user Bool constants and rewrites
+Boolean structure with those constants while preserving the unit assertions. It
+does not rewrite inside UF applications, so SAT/EUF still receives the facts
+needed for Boolean terms used as first-order arguments.
+
 UF symmetry breaking traverses top-level conjunctions to collect explicit
 disequalities, then scans `or` nodes for choice disjunctions. The invariance
 check builds canonical string keys for formulas after applying a value
@@ -279,9 +343,15 @@ Implemented:
 - CLI-default `auto` preprocessing dispatcher;
 - equality bridging under disjunctions;
 - unit equality propagation from top-level equalities;
+- Boolean unit propagation from top-level user Bool constants, preserving the
+  unit facts for EUF;
 - configurable repeated preprocessing loop with `--preprocessing-passes`;
+- targeted equality-ITE lowering for `(= x (ite c a b))` without a fresh
+  non-Boolean auxiliary;
 - finite-domain choice recognition from explicit disjunctions;
-- finite-domain at-most-one clauses in the strong preset and auto path;
+- finite-domain at-most-one clauses in the strong preset and auto path, from
+  explicit choices and from observed equality atoms to explicitly disequal
+  constants;
 - finite-domain equality-definition clauses in the strong preset;
 - opt-in bounded ground-congruence clauses;
 - top-level pairwise disequality requirement;

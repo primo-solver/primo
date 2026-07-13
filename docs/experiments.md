@@ -79,6 +79,24 @@ report based on this archive must include the SLURM job id, timeout, commit,
 merged CSV path, family summary, unsupported count, wrong-answer count, and
 comparison against the previous full-archive Primo run.
 
+After each native full-archive run, rank fast-reference/slow-Primo gaps before
+selecting a target instance:
+
+```bash
+python3 scripts/rank_qfuf_gaps.py \
+  --native results/qf-uf-full/merged.csv \
+  --ref results/slurm-qfuf-full-ref-z3-109856/z3-qfuf-full-2s-merged.csv \
+  --ref results/slurm-qfuf-full-ref-cvc5-109857/cvc5-qfuf-full-2s-merged.csv \
+  --timeout 2 \
+  --fast-ref 1 \
+  --top 50 \
+  --out results/qf-uf-full/fastref-slowprimo.csv
+```
+
+Use the ranked CSV as the triage queue. Prefer clusters of high-ratio rows from
+the same family over isolated one-offs, and carry the listed solver stats into
+the local diagnosis.
+
 ## CaDiCaL Profile Check
 
 `scripts/check_cadical_profile.py` is a campaign guard for dependency/version

@@ -45,12 +45,13 @@ the complete SAT assignment.
 `--euf-prop-budget=auto|unlimited|N`, and
 `--euf-prop-delivery=auto|unlimited|N` are the public option shape for callback
 and propagation work. The default is `auto`: small EUF abstractions use online
-callbacks, while large abstractions use the ordinary post-model conflict loop to
-avoid the current callback backtracking bottleneck. Use `off` to force the lazy
-post-model loop, `conflict` to keep only external conflict clauses, and `online`
-for explicit propagation experiments. The default delivery budget is `1000`,
-which keeps the predecessor benchmark knob available when online propagation is
-selected.
+callbacks, while large abstractions use conflict-only callbacks. This avoids the
+ordinary post-model conflict loop on Goel-style instances with thousands of EUF
+atoms, without enabling the currently expensive online propagation scan. Use
+`off` to force the lazy post-model loop, `conflict` to force only external
+conflict clauses, and `online` for explicit propagation experiments. The default
+delivery budget is `1000`, which keeps the predecessor benchmark knob available
+when online propagation is selected.
 
 For compatibility with the predecessor benchmark command, Primo also accepts
 `--prop-delivery-budget N`; `0` means unlimited delivery. `--prop-interval N`
@@ -61,10 +62,10 @@ Their defaults are `32` and `0.25` respectively.
 backtrack, and external conflict clauses. It maintains an incremental flat
 congruence closure along the SAT trail, learns EUF conflict clauses through
 CaDiCaL's external-clause callback, and does not deliver theory propagations.
-This path is not the default because the current backtracking implementation
-still trails ordinary mutable closure state rather than using the paper's
-timestamped lookup structure. It remains available for focused tuning and for
-checking callback behavior.
+It is the large-abstraction branch of `--euf-prop=auto`. The current
+backtracking implementation still trails ordinary mutable closure state rather
+than using the paper's timestamped lookup structure, so fully online propagation
+remains opt-in for focused tuning and callback-behavior checks.
 
 The callback path was first changed to `conflict` after the full QF_UF SLURM run recorded in
 `results/slurm-qfuf-full-109880/summary.md`: at a 2s timeout it solved 5455 of
