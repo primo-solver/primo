@@ -53,6 +53,10 @@ constexpr std::string_view kStatEqBridgeSkippedOrNodes =
     ":preprocessing.eq-bridge.skipped-or-nodes";
 constexpr std::string_view kStatBooleanUnitFacts = ":preprocessing.boolean-units.facts";
 constexpr std::string_view kStatBooleanUnitRewrites = ":preprocessing.boolean-units.rewrites";
+constexpr std::string_view kStatForcedAtomFacts = ":preprocessing.forced-atoms.facts";
+constexpr std::string_view kStatForcedAtomDisequalities =
+    ":preprocessing.forced-atoms.disequalities";
+constexpr std::string_view kStatForcedAtomRewrites = ":preprocessing.forced-atoms.rewrites";
 constexpr std::string_view kStatUnitEqualityConsequences =
     ":preprocessing.unit-equality.consequences";
 constexpr std::string_view kStatUnitEqualitySubstitutionUnits =
@@ -82,6 +86,7 @@ constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
     ":preprocessing.uf-symmetry.rejected-noninvariant";
 constexpr std::string_view kStatAutoSingleAssertion = ":preprocessing.auto.single-assertion";
 constexpr std::string_view kStatAutoStrong = ":preprocessing.auto.strong";
+constexpr std::string_view kStatAutoLargeAssertionSkip = ":preprocessing.auto.large-assertion-skip";
 constexpr std::string_view kStatSatTheoryNegativePhase = ":sat.phase.theory-negative";
 constexpr std::string_view kStatSatVars = ":sat.vars";
 constexpr std::string_view kStatSatClauses = ":sat.clauses";
@@ -125,6 +130,8 @@ constexpr std::string_view kStatEufIncrementalExplainCacheHits =
     ":euf.incremental.explain-cache-hits";
 constexpr std::string_view kStatEufIncrementalExplainLength = ":euf.incremental.explain-length";
 constexpr std::string_view kStatEufIncrementalBacktracks = ":euf.incremental.backtracks";
+
+constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
 
 std::size_t reachable_term_count(const core::TermManager& terms,
                                  const std::vector<core::TermId>& roots) {
@@ -2055,6 +2062,9 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatEqBridgeSkippedOrNodes, 0);
   statistics.set(kStatBooleanUnitFacts, 0);
   statistics.set(kStatBooleanUnitRewrites, 0);
+  statistics.set(kStatForcedAtomFacts, 0);
+  statistics.set(kStatForcedAtomDisequalities, 0);
+  statistics.set(kStatForcedAtomRewrites, 0);
   statistics.set(kStatUnitEqualityConsequences, 0);
   statistics.set(kStatUnitEqualitySubstitutionUnits, 0);
   statistics.set(kStatUnitEqualitySubstitutions, 0);
@@ -2072,6 +2082,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
   statistics.set(kStatAutoSingleAssertion, 0);
   statistics.set(kStatAutoStrong, 0);
+  statistics.set(kStatAutoLargeAssertionSkip, 0);
   statistics.set(kStatSatTheoryNegativePhase, 0);
   statistics.set(kStatSatVars, 0);
   statistics.set(kStatSatClauses, 0);
@@ -2129,17 +2140,23 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
 
     const bool auto_single_assertion =
         options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() <= 1;
-    const bool auto_strong =
-        options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() > 1;
+    const bool auto_large_assertion_skip = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
+                                           assertions.size() > kAutoPreprocessLargeAssertionLimit;
+    const bool auto_strong = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
+                             assertions.size() > 1 && !auto_large_assertion_skip;
     if (auto_single_assertion) {
       statistics.increment(kStatAutoSingleAssertion);
     }
     if (auto_strong) {
       statistics.increment(kStatAutoStrong);
     }
+    if (auto_large_assertion_skip) {
+      statistics.increment(kStatAutoLargeAssertionSkip);
+    }
     const bool strong_preprocessing =
         options.qf_uf_preprocess == QfUfPreprocessMode::Strong || auto_strong;
-    const bool preprocessing_enabled = options.qf_uf_preprocess != QfUfPreprocessMode::Off;
+    const bool preprocessing_enabled =
+        options.qf_uf_preprocess != QfUfPreprocessMode::Off && !auto_large_assertion_skip;
     const bool use_eq_bridge = options.eq_bridge || strong_preprocessing || auto_single_assertion;
     const bool use_finite_domain_evaluation = false;
     const bool use_finite_domain_amo = strong_preprocessing || auto_single_assertion;
@@ -2223,6 +2240,12 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       assertions = std::move(boolean_units.assertions);
       statistics.increment(kStatBooleanUnitFacts, boolean_units.units);
       statistics.increment(kStatBooleanUnitRewrites, boolean_units.rewrites);
+      ForcedAtomPropagationResult forced_atoms =
+          propagate_forced_atoms(frontend.terms(), assertions);
+      assertions = std::move(forced_atoms.assertions);
+      statistics.increment(kStatForcedAtomFacts, forced_atoms.units);
+      statistics.increment(kStatForcedAtomDisequalities, forced_atoms.disequalities);
+      statistics.increment(kStatForcedAtomRewrites, forced_atoms.rewrites);
       if (use_ground_unit_substitution || use_guarded_ground_unit_substitution) {
         GroundEqualitySubstitutionResult ground_substitution =
             substitute_ground_unit_equalities(frontend.terms(), assertions);

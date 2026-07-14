@@ -88,6 +88,15 @@ Single-assertion formulas still run equality bridging with repeated
 unit-equality propagation so `eq_diamond`-style chains keep the fast bridge
 path.
 
+Very large already-flat assertion batches are a separate case. Goel hardware
+instances can arrive as tens of thousands of top-level clauses; running repeated
+nonclausal preprocessing over those batches can grow the assertion set and
+dominate solving time. In `auto` mode, batches above 10,000 top-level assertions
+therefore skip preprocessing and go directly to Boolean abstraction and EUF.
+Explicit `--qf-uf-preprocess=basic` and `--qf-uf-preprocess=strong` still force
+the preprocessing loop for ablation or targeted experiments. This auto decision
+is reported by `:preprocessing.auto.large-assertion-skip`.
+
 Unit equality propagation runs after optional generated preprocessing facts are
 appended. It collects equalities asserted at top level, including equalities
 under top-level `and`, and simplifies equality atoms decided by that unit
@@ -160,6 +169,42 @@ substitution facts. Those auxiliaries encode equivalences for compound Boolean
 arguments, and erasing them can hide predicate-congruence conflicts. The pass is
 therefore a bounded Boolean simplifier, not global Boolean propagation through
 the EUF term language.
+
+## Forced Atom Propagation
+
+After Bool-constant unit propagation, each preprocessing pass also runs a
+forced-atom simplifier over the current assertion conjunction. The pass follows
+the standard SAT-preprocessing unit-simplification idea: collect top-level atom
+facts, rebuild compound formulas under those facts, and keep the unit facts as
+assertions so Boolean abstraction and EUF still see the original hypotheses.
+
+The collected atoms are:
+
+- user Bool constants, excluding frontend `$primo_bool_arg_*` auxiliaries;
+- Bool-valued uninterpreted applications, such as predicate atoms;
+- equality atoms;
+- negated forms of the same atoms.
+
+Exact atoms seen in both polarities are not used for rewriting. This avoids
+making simplification order-dependent on already-inconsistent input; the SAT/EUF
+layers still receive the contradictory facts.
+
+Positive equality units additionally seed a temporary congruence closure.
+Negative equality units are retained as known disequalities. When rebuilding
+compound formulas, equality atoms are folded to `true` if the closure proves the
+endpoints equal and folded to `false` if their equality would contradict a known
+disequality modulo the positive closure. This catches common QF_UF patterns such
+as a disequality unit eliminating one branch of a disjunction, or transitive
+equalities contradicting a disequality before SAT search.
+
+The pass does not rewrite inside uninterpreted-function applications. A
+Bool-valued predicate atom may be replaced when it occurs as a formula atom, but
+Boolean terms used as arguments to uninterpreted functions remain represented by
+the existing frontend auxiliaries and EUF facts.
+
+Activation is reported by `:preprocessing.forced-atoms.facts`,
+`:preprocessing.forced-atoms.disequalities`, and
+`:preprocessing.forced-atoms.rewrites`.
 
 ## ITE Lowering
 

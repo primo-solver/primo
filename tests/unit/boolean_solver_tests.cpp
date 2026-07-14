@@ -514,6 +514,25 @@ void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion
   assert(result.statistics.get(":preprocessing.equality-definitions") == 0);
 }
 
+void auto_preprocessing_skips_large_flat_assertion_batches() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-fun p () Bool)\n";
+  for (int i = 0; i < 10001; ++i) {
+    input << "(assert p)\n";
+  }
+  input << "(check-sat)\n";
+
+  const auto result = check_sat_smtlib(input.str(), options);
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":input.assertions") == 10001);
+  assert(result.statistics.get(":preprocessing.auto.large-assertion-skip") == 1);
+  assert(result.statistics.get(":preprocessing.passes") == 0);
+}
+
 void preprocessing_off_disables_basic_loop() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
@@ -1078,6 +1097,7 @@ int main() {
   ground_unit_substitution_option_records_rewrites();
   guarded_ground_unit_substitution_rejects_tiny_rewrite();
   auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
+  auto_preprocessing_skips_large_flat_assertion_batches();
   preprocessing_off_disables_basic_loop();
   preprocessing_extends_when_passes_keep_shrinking_terms();
   preprocessing_adaptive_extra_passes_can_be_disabled();

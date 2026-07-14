@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/ids.hpp"
+#include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
 #include "theory/equality/congruence_closure.hpp"
@@ -48,6 +49,14 @@ struct FiniteDomainGroup {
 struct BooleanUnitAssignments {
   std::unordered_map<core::TermId, bool> values;
   std::unordered_set<core::TermId> conflicts;
+};
+
+struct ForcedAtomAssignments {
+  std::unordered_map<core::TermId, bool> values;
+  std::unordered_set<core::TermId> conflicts;
+  std::vector<std::pair<core::TermId, bool>> units;
+  std::vector<std::pair<core::TermId, core::TermId>> equalities;
+  std::vector<std::pair<core::TermId, core::TermId>> disequalities;
 };
 
 struct UnitEquality {
@@ -199,6 +208,29 @@ bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) 
   return false;
 }
 
+bool is_forced_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.sort != terms.symbols().bool_sort()) {
+    return false;
+  }
+  switch (term.kind) {
+    case core::TermKind::Constant: {
+      const core::Symbol& symbol = terms.symbols().get_symbol(term.symbol);
+      return !symbol.name.starts_with("$primo_bool_arg_");
+    }
+    case core::TermKind::Application:
+    case core::TermKind::Equality:
+      return true;
+    case core::TermKind::BoolValue:
+    case core::TermKind::Not:
+    case core::TermKind::And:
+    case core::TermKind::Or:
+    case core::TermKind::Implies:
+      return false;
+  }
+  return false;
+}
+
 void record_boolean_unit(BooleanUnitAssignments& assignments, core::TermId term, bool value) {
   const auto found = assignments.values.find(term);
   if (found == assignments.values.end()) {
@@ -207,6 +239,28 @@ void record_boolean_unit(BooleanUnitAssignments& assignments, core::TermId term,
   }
   if (found->second != value) {
     assignments.conflicts.insert(term);
+  }
+}
+
+void record_forced_atom(ForcedAtomAssignments& assignments, const core::TermManager& terms,
+                        core::TermId atom, bool value) {
+  const auto found = assignments.values.find(atom);
+  if (found == assignments.values.end()) {
+    assignments.values.emplace(atom, value);
+    assignments.units.emplace_back(atom, value);
+  } else if (found->second != value) {
+    assignments.conflicts.insert(atom);
+  }
+
+  const core::Term& node = terms.get(atom);
+  if (node.kind != core::TermKind::Equality) {
+    return;
+  }
+  const std::pair<core::TermId, core::TermId> equality{node.children.at(0), node.children.at(1)};
+  if (value) {
+    assignments.equalities.push_back(equality);
+  } else {
+    assignments.disequalities.push_back(equality);
   }
 }
 
@@ -236,6 +290,54 @@ BooleanUnitAssignments collect_boolean_units(const core::TermManager& terms,
   for (const core::TermId conflict : assignments.conflicts) {
     assignments.values.erase(conflict);
   }
+  return assignments;
+}
+
+ForcedAtomAssignments collect_forced_atoms(core::TermManager& terms,
+                                           const std::vector<core::TermId>& assertions) {
+  std::vector<core::TermId> conjuncts;
+  for (const core::TermId assertion : assertions) {
+    collect_conjuncts(terms, assertion, conjuncts);
+  }
+
+  ForcedAtomAssignments assignments;
+  for (const core::TermId conjunct : conjuncts) {
+    if (is_forced_atom(terms, conjunct)) {
+      record_forced_atom(assignments, terms, conjunct, true);
+      continue;
+    }
+    const core::Term& node = terms.get(conjunct);
+    if (node.kind != core::TermKind::Not) {
+      continue;
+    }
+    const core::TermId child = node.children.at(0);
+    if (is_forced_atom(terms, child)) {
+      record_forced_atom(assignments, terms, child, false);
+    }
+  }
+
+  if (assignments.conflicts.empty()) {
+    return assignments;
+  }
+
+  for (const core::TermId conflict : assignments.conflicts) {
+    assignments.values.erase(conflict);
+  }
+  std::erase_if(assignments.units, [&assignments](const std::pair<core::TermId, bool>& unit) {
+    return assignments.conflicts.contains(unit.first);
+  });
+  auto keep_nonconflicting = [&assignments,
+                              &terms](const std::pair<core::TermId, core::TermId>& equality) {
+    return !assignments.conflicts.contains(terms.mk_eq(equality.first, equality.second));
+  };
+  std::erase_if(assignments.equalities,
+                [&keep_nonconflicting](const std::pair<core::TermId, core::TermId>& equality) {
+                  return !keep_nonconflicting(equality);
+                });
+  std::erase_if(assignments.disequalities,
+                [&keep_nonconflicting](const std::pair<core::TermId, core::TermId>& equality) {
+                  return !keep_nonconflicting(equality);
+                });
   return assignments;
 }
 
@@ -287,6 +389,100 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
           simplify_with_boolean_units(terms, children.at(1), assignments, rewrites));
   }
   return term_id;
+}
+
+bool is_known_disequal(theory::equality::CongruenceClosure& closure,
+                       const std::vector<std::pair<core::TermId, core::TermId>>& disequalities,
+                       core::TermId lhs, core::TermId rhs) {
+  for (const auto& [diseq_lhs, diseq_rhs] : disequalities) {
+    if ((closure.are_equal(lhs, diseq_lhs) && closure.are_equal(rhs, diseq_rhs)) ||
+        (closure.are_equal(lhs, diseq_rhs) && closure.are_equal(rhs, diseq_lhs))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+core::TermId simplify_with_forced_atoms(
+    core::TermManager& terms, core::TermId term_id,
+    const std::unordered_map<core::TermId, bool>& assignments,
+    theory::equality::CongruenceClosure& closure,
+    const std::vector<std::pair<core::TermId, core::TermId>>& disequalities,
+    std::unordered_map<core::TermId, core::TermId>& memo, std::size_t& rewrites) {
+  const auto memoized = memo.find(term_id);
+  if (memoized != memo.end()) {
+    return memoized->second;
+  }
+
+  const auto assigned = assignments.find(term_id);
+  if (assigned != assignments.end()) {
+    ++rewrites;
+    const core::TermId rewritten = terms.mk_bool(assigned->second);
+    memo.emplace(term_id, rewritten);
+    return rewritten;
+  }
+
+  const core::Term& term = terms.get(term_id);
+  const core::TermKind kind = term.kind;
+  const std::vector<core::TermId> children = term.children;
+  core::TermId rewritten = term_id;
+  switch (kind) {
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+    case core::TermKind::Application:
+      rewritten = term_id;
+      break;
+    case core::TermKind::Equality: {
+      const core::TermId lhs = simplify_with_forced_atoms(terms, children.at(0), assignments,
+                                                          closure, disequalities, memo, rewrites);
+      const core::TermId rhs = simplify_with_forced_atoms(terms, children.at(1), assignments,
+                                                          closure, disequalities, memo, rewrites);
+      if (closure.are_equal(lhs, rhs)) {
+        rewritten = terms.mk_bool(true);
+      } else if (is_known_disequal(closure, disequalities, lhs, rhs)) {
+        rewritten = terms.mk_bool(false);
+      } else if (lhs != children.at(0) || rhs != children.at(1)) {
+        rewritten = terms.mk_eq(lhs, rhs);
+      }
+      break;
+    }
+    case core::TermKind::Not:
+      rewritten = terms.mk_not(simplify_with_forced_atoms(terms, children.at(0), assignments,
+                                                          closure, disequalities, memo, rewrites));
+      break;
+    case core::TermKind::And: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      for (const core::TermId child : children) {
+        rewritten_children.push_back(simplify_with_forced_atoms(terms, child, assignments, closure,
+                                                                disequalities, memo, rewrites));
+      }
+      rewritten = terms.mk_and(std::move(rewritten_children));
+      break;
+    }
+    case core::TermKind::Or: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      for (const core::TermId child : children) {
+        rewritten_children.push_back(simplify_with_forced_atoms(terms, child, assignments, closure,
+                                                                disequalities, memo, rewrites));
+      }
+      rewritten = terms.mk_or(std::move(rewritten_children));
+      break;
+    }
+    case core::TermKind::Implies:
+      rewritten =
+          terms.mk_implies(simplify_with_forced_atoms(terms, children.at(0), assignments, closure,
+                                                      disequalities, memo, rewrites),
+                           simplify_with_forced_atoms(terms, children.at(1), assignments, closure,
+                                                      disequalities, memo, rewrites));
+      break;
+  }
+  if (rewritten != term_id) {
+    ++rewrites;
+  }
+  memo.emplace(term_id, rewritten);
+  return rewritten;
 }
 
 void collect_applications(const core::TermManager& terms, core::TermId root,
@@ -1527,6 +1723,89 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
   for (const core::TermId assertion : assertions) {
     const core::TermId simplified =
         simplify_with_boolean_units(terms, assertion, assignments.values, result.rewrites);
+    const core::Term& node = terms.get(simplified);
+    if (node.kind == core::TermKind::BoolValue && node.bool_value) {
+      continue;
+    }
+    if (emitted.insert(simplified).second) {
+      result.assertions.push_back(simplified);
+    }
+  }
+  return result;
+}
+
+ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
+                                                   const std::vector<core::TermId>& assertions) {
+  // This is SAT-style forced-literal simplification over the current assertion
+  // conjunction. It is deliberately nonclausal: top-level atom facts are kept as
+  // assertions, while compound formulas are rebuilt under those facts before
+  // Boolean abstraction. Equality facts additionally seed a congruence closure
+  // and negative equality facts are used as known disequalities.
+  ForcedAtomPropagationResult result;
+  const ForcedAtomAssignments assignments = collect_forced_atoms(terms, assertions);
+  result.units = assignments.units.size();
+  result.disequalities = assignments.disequalities.size();
+  if (assignments.values.empty() && assignments.equalities.empty() &&
+      assignments.disequalities.empty()) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  if (assignments.equalities.empty() && assignments.disequalities.empty()) {
+    result.assertions.reserve(assertions.size() + assignments.units.size());
+    std::unordered_set<core::TermId> emitted;
+    for (const auto& [term, value] : assignments.units) {
+      const core::TermId unit = value ? term : terms.mk_not(term);
+      if (emitted.insert(unit).second) {
+        result.assertions.push_back(unit);
+      }
+    }
+    for (const core::TermId assertion : assertions) {
+      const core::TermId simplified =
+          simplify_with_boolean_units(terms, assertion, assignments.values, result.rewrites);
+      const core::Term& node = terms.get(simplified);
+      if (node.kind == core::TermKind::BoolValue && node.bool_value) {
+        continue;
+      }
+      if (emitted.insert(simplified).second) {
+        result.assertions.push_back(simplified);
+      }
+    }
+    return result;
+  }
+
+  theory::equality::CongruenceClosure closure(terms);
+  for (const auto& [lhs, rhs] : assignments.equalities) {
+    closure.assert_equal(lhs, rhs);
+  }
+  for (const auto& [lhs, rhs] : assignments.disequalities) {
+    closure.add_term(lhs);
+    closure.add_term(rhs);
+  }
+  for (const core::TermId assertion : assertions) {
+    register_equality_query_terms(terms, assertion, closure);
+  }
+  closure.saturate();
+
+  result.assertions.reserve(assertions.size() + assignments.units.size());
+  std::unordered_set<core::TermId> emitted;
+  for (const auto& [term, value] : assignments.units) {
+    const core::TermId unit = value ? term : terms.mk_not(term);
+    if (emitted.insert(unit).second) {
+      result.assertions.push_back(unit);
+    }
+  }
+  for (const auto& [lhs, rhs] : assignments.disequalities) {
+    if (closure.are_equal(lhs, rhs) && emitted.insert(terms.mk_bool(false)).second) {
+      result.assertions.push_back(terms.mk_bool(false));
+    }
+  }
+
+  std::unordered_map<core::TermId, core::TermId> memo;
+  for (const core::TermId assertion : assertions) {
+    const core::TermId simplified =
+        simplify_with_forced_atoms(terms, assertion, assignments.values, closure,
+                                   assignments.disequalities, memo, result.rewrites);
     const core::Term& node = terms.get(simplified);
     if (node.kind == core::TermKind::BoolValue && node.bool_value) {
       continue;

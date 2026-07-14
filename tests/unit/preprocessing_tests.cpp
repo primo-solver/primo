@@ -295,6 +295,88 @@ void boolean_unit_propagation_preserves_contradictory_units() {
   check(result.assertions == assertions);
 }
 
+void forced_atom_propagation_simplifies_predicate_units() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId d =
+      fixture.constant(fixture.symbols.declare_constant("d", fixture.sort));
+  const primo::core::TermId pa = fixture.pred(fixture.p, a);
+  const primo::core::TermId cd = fixture.terms.mk_eq(c, d);
+  const std::vector<primo::core::TermId> assertions{
+      pa, fixture.terms.mk_or({fixture.terms.mk_not(pa), cd})};
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, assertions);
+
+  check(result.units == 1);
+  check(result.rewrites >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(), pa) !=
+        result.assertions.end());
+  check(std::find(result.assertions.begin(), result.assertions.end(), cd) !=
+        result.assertions.end());
+}
+
+void forced_atom_propagation_uses_negative_equality_units() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId d =
+      fixture.constant(fixture.symbols.declare_constant("d", fixture.sort));
+  const primo::core::TermId ab = fixture.terms.mk_eq(a, b);
+  const primo::core::TermId cd = fixture.terms.mk_eq(c, d);
+  const std::vector<primo::core::TermId> assertions{fixture.terms.mk_not(ab),
+                                                    fixture.terms.mk_or({ab, cd})};
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, assertions);
+
+  check(result.units == 1);
+  check(result.disequalities == 1);
+  check(result.rewrites >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(), fixture.terms.mk_not(ab)) !=
+        result.assertions.end());
+  check(std::find(result.assertions.begin(), result.assertions.end(), cd) !=
+        result.assertions.end());
+}
+
+void forced_atom_propagation_folds_transitive_disequalities() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId ab = fixture.terms.mk_eq(a, b);
+  const primo::core::TermId bc = fixture.terms.mk_eq(b, c);
+  const primo::core::TermId ac = fixture.terms.mk_eq(a, c);
+  const std::vector<primo::core::TermId> assertions{ab, bc, fixture.terms.mk_not(ac)};
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, assertions);
+
+  check(result.units == 3);
+  check(result.disequalities == 1);
+  check(result.rewrites >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_bool(false)) != result.assertions.end());
+}
+
+void forced_atom_propagation_preserves_contradictory_exact_units() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId pa = fixture.pred(fixture.p, a);
+  const primo::core::TermId pb = fixture.pred(fixture.p, fixture.constant(fixture.b));
+  const std::vector<primo::core::TermId> assertions{
+      pa, fixture.terms.mk_not(pa), fixture.terms.mk_or({fixture.terms.mk_not(pa), pb})};
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, assertions);
+
+  check(result.units == 0);
+  check(result.rewrites == 0);
+  check(result.assertions == assertions);
+}
+
 void finite_domain_at_most_one_adds_pairwise_clauses() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -482,6 +564,10 @@ int main() {
   ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts();
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();
+  forced_atom_propagation_simplifies_predicate_units();
+  forced_atom_propagation_uses_negative_equality_units();
+  forced_atom_propagation_folds_transitive_disequalities();
+  forced_atom_propagation_preserves_contradictory_exact_units();
   finite_domain_at_most_one_adds_pairwise_clauses();
   finite_domain_choices_may_be_nested_or_nodes();
   finite_domain_observed_equalities_get_pairwise_amo_clauses_without_choices();

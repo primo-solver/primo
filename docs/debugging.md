@@ -25,6 +25,9 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.eq-bridge.skipped-or-nodes`;
 - `:preprocessing.boolean-units.facts`;
 - `:preprocessing.boolean-units.rewrites`;
+- `:preprocessing.forced-atoms.facts`;
+- `:preprocessing.forced-atoms.disequalities`;
+- `:preprocessing.forced-atoms.rewrites`;
 - `:preprocessing.unit-equality.consequences`;
 - `:preprocessing.unit-equality.substitution-units`;
 - `:preprocessing.unit-equality.substitutions`;
@@ -42,6 +45,7 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.uf-symmetry.rejected-noninvariant`;
 - `:preprocessing.auto.single-assertion`;
 - `:preprocessing.auto.strong`;
+- `:preprocessing.auto.large-assertion-skip`;
 - `:solver.boolean`;
 - `:solver.qf-uf`;
 - `:euf.incremental.explain-calls`;

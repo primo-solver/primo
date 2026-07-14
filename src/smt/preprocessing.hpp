@@ -47,6 +47,16 @@ struct BooleanUnitPropagationResult {
 BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
                                                      const std::vector<core::TermId>& assertions);
 
+struct ForcedAtomPropagationResult {
+  std::vector<core::TermId> assertions;
+  std::size_t units = 0;
+  std::size_t disequalities = 0;
+  std::size_t rewrites = 0;
+};
+
+ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
+                                                   const std::vector<core::TermId>& assertions);
+
 struct FiniteDomainAtMostOneResult {
   std::vector<core::TermId> clauses;
   std::size_t domains = 0;
