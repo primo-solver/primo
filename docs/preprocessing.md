@@ -97,6 +97,14 @@ Explicit `--qf-uf-preprocess=basic` and `--qf-uf-preprocess=strong` still force
 the preprocessing loop for ablation or targeted experiments. This auto decision
 is reported by `:preprocessing.auto.large-assertion-skip`.
 
+The large-batch guard was accepted after profiling
+`2018-Goel-hwbench/QF_UF_firewire_tree.5.prop3_ab_reg_max`: default `auto`
+preprocessing grew the instance to 94,530 assertions and took about 56 seconds
+locally, while the guarded path skipped preprocessing and solved in about 5.3
+seconds. The follow-up 120-second full QF_UF SLURM run
+`results/slurm-qfuf-full-forced-atoms-autoskip-120s-110529/` solved
+7,492/7,503 instances with zero wrong answers and PAR2 7047.416.
+
 Unit equality propagation runs after optional generated preprocessing facts are
 appended. It collects equalities asserted at top level, including equalities
 under top-level `and`, and simplifies equality atoms decided by that unit
