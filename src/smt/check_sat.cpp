@@ -120,6 +120,9 @@ constexpr std::string_view kStatEufIncrementalCongruenceMerges =
 constexpr std::string_view kStatEufIncrementalDisequalityChecks =
     ":euf.incremental.disequality-checks";
 constexpr std::string_view kStatEufIncrementalConflicts = ":euf.incremental.conflicts";
+constexpr std::string_view kStatEufIncrementalExplainCalls = ":euf.incremental.explain-calls";
+constexpr std::string_view kStatEufIncrementalExplainCacheHits =
+    ":euf.incremental.explain-cache-hits";
 constexpr std::string_view kStatEufIncrementalExplainLength = ":euf.incremental.explain-length";
 constexpr std::string_view kStatEufIncrementalBacktracks = ":euf.incremental.backtracks";
 
@@ -1008,6 +1011,8 @@ void add_incremental_stats(util::Statistics& statistics,
   statistics.increment(kStatEufIncrementalCongruenceMerges, stats.congruence_merges);
   statistics.increment(kStatEufIncrementalDisequalityChecks, stats.disequality_checks);
   statistics.increment(kStatEufIncrementalConflicts, stats.conflicts);
+  statistics.increment(kStatEufIncrementalExplainCalls, stats.explain_calls);
+  statistics.increment(kStatEufIncrementalExplainCacheHits, stats.explain_cache_hits);
   statistics.increment(kStatEufIncrementalExplainLength, stats.explain_length);
   statistics.increment(kStatEufIncrementalBacktracks, stats.backtracks);
 }
@@ -1029,6 +1034,8 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.congruence_merges, rhs.congruence_merges),
       positive_delta(lhs.disequality_checks, rhs.disequality_checks),
       positive_delta(lhs.conflicts, rhs.conflicts),
+      positive_delta(lhs.explain_calls, rhs.explain_calls),
+      positive_delta(lhs.explain_cache_hits, rhs.explain_cache_hits),
       positive_delta(lhs.explain_length, rhs.explain_length),
       positive_delta(lhs.backtracks, rhs.backtracks),
   };

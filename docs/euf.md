@@ -278,8 +278,11 @@ Implemented:
 - opt-in use-list, signature-lookup, pending-queue congruence closure for
   final conflict checks;
 - order-preserving flat disequality scans over per-class candidate lists;
+- intersection-only disequality checks when two flat classes merge, so a merge
+  only retests disequalities whose endpoints were in the two merged classes;
 - scratch-reused flat equality explanations with signed-literal reason
-  de-duplication;
+  de-duplication and a per-explanation memo for repeated sub-equality
+  expansions;
 - sparse flat-closure backtracking over representative, class, use-list,
   disequality, edge-adjacency, and lookup mutations;
 - model-time propagation using the flat incremental closure when

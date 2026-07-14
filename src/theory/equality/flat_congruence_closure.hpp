@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "sat/lit.hpp"
@@ -38,6 +39,17 @@ class FlatCongruenceClosure {
 
   struct ApplyKeyHash {
     std::size_t operator()(const ApplyKey& key) const;
+  };
+
+  struct ExplanationKey {
+    FlatTermId lhs = kInvalidFlatTermId;
+    FlatTermId rhs = kInvalidFlatTermId;
+
+    bool operator==(const ExplanationKey& other) const = default;
+  };
+
+  struct ExplanationKeyHash {
+    std::size_t operator()(const ExplanationKey& key) const;
   };
 
   struct Definition {
@@ -122,6 +134,7 @@ class FlatCongruenceClosure {
   void begin_reason_collection(std::vector<sat::Lit>& reason) const;
   void append_unique_reason(std::vector<sat::Lit>& target,
                             const std::vector<sat::Lit>& source) const;
+  ExplanationKey explanation_key(FlatTermId lhs, FlatTermId rhs) const;
   void append_edge_reason(const Edge& edge, std::vector<sat::Lit>& reason) const;
   bool explain_equal_into(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason) const;
 
@@ -140,12 +153,13 @@ class FlatCongruenceClosure {
   std::vector<Checkpoint> checkpoints_;
   std::vector<TrailEntry> trail_;
   std::optional<std::vector<sat::Lit>> conflict_;
-  IncrementalCongruenceClosureStats stats_;
+  mutable IncrementalCongruenceClosureStats stats_;
   mutable std::vector<std::size_t> visit_marks_;
   mutable std::vector<std::size_t> parent_edge_scratch_;
   mutable std::vector<FlatTermId> parent_scratch_;
   mutable std::vector<FlatTermId> queue_scratch_;
   mutable std::vector<std::vector<std::size_t>> path_edges_scratch_;
+  mutable std::unordered_set<ExplanationKey, ExplanationKeyHash> explanation_cache_;
   mutable std::size_t explanation_depth_ = 0;
   mutable std::size_t visit_generation_ = 0;
   mutable std::vector<std::size_t> reason_marks_;

@@ -44,6 +44,9 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.auto.strong`;
 - `:solver.boolean`;
 - `:solver.qf-uf`;
+- `:euf.incremental.explain-calls`;
+- `:euf.incremental.explain-cache-hits`;
+- `:euf.incremental.explain-length`;
 - `:sat.phase.theory-negative`;
 - `:sat.vars`;
 - `:sat.clauses`;

@@ -293,6 +293,26 @@ void flat_congruence_closure_skips_unrelated_disequality_scans() {
   check(closure.stats().conflicts == 1);
 }
 
+void flat_congruence_closure_scans_only_crossing_disequalities() {
+  FlatCongruenceClosure closure(6);
+  closure.assert_distinct(0, 2, {primo::sat::Lit{-1}});
+  closure.assert_distinct(1, 3, {primo::sat::Lit{-2}});
+  closure.assert_distinct(4, 5, {primo::sat::Lit{-3}});
+  check(closure.stats().disequality_checks == 3);
+
+  closure.assert_equal(0, 1, {primo::sat::Lit{-4}});
+  check(!closure.conflict().has_value());
+  check(closure.stats().disequality_checks == 3);
+
+  closure.assert_equal(2, 3, {primo::sat::Lit{-5}});
+  check(!closure.conflict().has_value());
+  check(closure.stats().disequality_checks == 3);
+
+  closure.assert_equal(0, 2, {primo::sat::Lit{-6}});
+  check(closure.conflict().has_value());
+  check(closure.stats().disequality_checks == 4);
+}
+
 void flat_congruence_closure_keeps_signed_reason_literals_distinct() {
   FlatCongruenceClosure closure(3);
   closure.assert_equal(0, 1, {primo::sat::Lit{1}});
@@ -310,6 +330,38 @@ void flat_congruence_closure_keeps_signed_reason_literals_distinct() {
   }
   check(has_positive);
   check(has_negative);
+}
+
+void flat_congruence_closure_reuses_repeated_sub_explanations() {
+  primo::core::SymbolTable symbols;
+  const auto sort = symbols.declare_sort("A");
+  const auto a = symbols.declare_constant("a", sort);
+  const auto b = symbols.declare_constant("b", sort);
+  const auto h = symbols.declare_function("h", {sort, sort}, sort);
+
+  primo::core::TermManager terms(symbols);
+  const auto a_term = terms.mk_constant(a);
+  const auto b_term = terms.mk_constant(b);
+  const auto h_aa = terms.mk_app(h, {a_term, a_term});
+  const auto h_bb = terms.mk_app(h, {b_term, b_term});
+
+  FlatTermIndex flat(terms);
+  const auto flat_h_aa = flat.flatten(h_aa);
+  const auto flat_h_bb = flat.flatten(h_bb);
+  const auto flat_a = flat.existing_flat_term(a_term).value();
+  const auto flat_b = flat.existing_flat_term(b_term).value();
+
+  FlatCongruenceClosure closure(flat.size());
+  for (const auto& definition : flat.definitions()) {
+    closure.add_definition(definition);
+  }
+  closure.assert_equal(flat_a, flat_b, {primo::sat::Lit{-8}});
+
+  const auto reason = closure.explain_equal(flat_h_aa, flat_h_bb);
+  check(reason.has_value());
+  check(reason->size() == 1);
+  check(reason->front().value == -8);
+  check(closure.stats().explain_cache_hits >= 1);
 }
 
 void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
@@ -412,7 +464,9 @@ int main() {
   flat_terms_share_nested_subterms_and_flatten_equalities();
   flat_congruence_closure_uses_curried_definitions();
   flat_congruence_closure_skips_unrelated_disequality_scans();
+  flat_congruence_closure_scans_only_crossing_disequalities();
   flat_congruence_closure_keeps_signed_reason_literals_distinct();
+  flat_congruence_closure_reuses_repeated_sub_explanations();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_backtracks_nested_merges();
   flat_congruence_closure_backtracks_disequality_conflict();

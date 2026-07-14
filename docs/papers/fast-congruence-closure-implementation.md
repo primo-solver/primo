@@ -103,6 +103,7 @@ The engine exposes counters for:
 - pending queue pops;
 - lookup probes and hits;
 - disequality checks and conflicts;
+- explanation calls and per-explanation cache hits;
 - explanation length;
 - backtracks.
 
@@ -122,6 +123,9 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
   post-checkpoint definition rollback;
 - deterministic Curry-style flat definitions;
 - order-preserving flat disequality candidate scans;
+- intersection-only scans for disequalities that can newly conflict after a
+  merge;
+- repeated sub-explanation reuse inside one flat congruence reason;
 - nonzero lookup-hit and congruence-merge counters.
 
 The SMT tests in `tests/unit/boolean_solver_tests.cpp` cover conflict checks,

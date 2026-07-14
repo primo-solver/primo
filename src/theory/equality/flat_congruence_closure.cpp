@@ -25,6 +25,12 @@ std::size_t FlatCongruenceClosure::ApplyKeyHash::operator()(const ApplyKey& key)
   return seed;
 }
 
+std::size_t FlatCongruenceClosure::ExplanationKeyHash::operator()(const ExplanationKey& key) const {
+  std::size_t seed = key.lhs + 0x9e3779b97f4a7c15ULL;
+  seed ^= key.rhs + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+  return seed;
+}
+
 FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count) {
   definitions_.reserve(node_count);
   definition_by_result_.reserve(node_count);
@@ -436,22 +442,18 @@ void FlatCongruenceClosure::check_disequalities_touching(FlatTermId lhs_repr, Fl
   const std::vector<std::size_t>& rhs_candidates = disequality_lists_[rhs_repr];
   std::size_t lhs_index = 0;
   std::size_t rhs_index = 0;
-  while (lhs_index < lhs_candidates.size() || rhs_index < rhs_candidates.size()) {
-    std::size_t disequality_index = 0;
-    if (rhs_index == rhs_candidates.size() ||
-        (lhs_index < lhs_candidates.size() &&
-         lhs_candidates[lhs_index] < rhs_candidates[rhs_index])) {
-      disequality_index = lhs_candidates[lhs_index];
+  while (lhs_index < lhs_candidates.size() && rhs_index < rhs_candidates.size()) {
+    if (lhs_candidates[lhs_index] < rhs_candidates[rhs_index]) {
       ++lhs_index;
-    } else if (lhs_index == lhs_candidates.size() ||
-               rhs_candidates[rhs_index] < lhs_candidates[lhs_index]) {
-      disequality_index = rhs_candidates[rhs_index];
-      ++rhs_index;
-    } else {
-      disequality_index = lhs_candidates[lhs_index];
-      ++lhs_index;
-      ++rhs_index;
+      continue;
     }
+    if (rhs_candidates[rhs_index] < lhs_candidates[lhs_index]) {
+      ++rhs_index;
+      continue;
+    }
+    const std::size_t disequality_index = lhs_candidates[lhs_index];
+    ++lhs_index;
+    ++rhs_index;
     if (check_disequality(disequalities_[disequality_index])) {
       return;
     }
@@ -470,6 +472,7 @@ std::optional<std::vector<sat::Lit>> FlatCongruenceClosure::explain_equal(FlatTe
 
 void FlatCongruenceClosure::begin_reason_collection(std::vector<sat::Lit>& reason) const {
   reason.clear();
+  explanation_cache_.clear();
   ++reason_generation_;
   if (reason_generation_ == 0) {
     std::fill(reason_marks_.begin(), reason_marks_.end(), 0);
@@ -492,6 +495,14 @@ void FlatCongruenceClosure::append_unique_reason(std::vector<sat::Lit>& target,
   }
 }
 
+FlatCongruenceClosure::ExplanationKey FlatCongruenceClosure::explanation_key(FlatTermId lhs,
+                                                                             FlatTermId rhs) const {
+  if (rhs < lhs) {
+    std::swap(lhs, rhs);
+  }
+  return ExplanationKey{lhs, rhs};
+}
+
 void FlatCongruenceClosure::append_edge_reason(const Edge& edge,
                                                std::vector<sat::Lit>& reason) const {
   if (edge.congruence) {
@@ -509,6 +520,12 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
   }
   if (lhs >= parent_.size() || rhs >= parent_.size()) {
     return false;
+  }
+  ++stats_.explain_calls;
+  const ExplanationKey key = explanation_key(lhs, rhs);
+  if (explanation_cache_.contains(key)) {
+    ++stats_.explain_cache_hits;
+    return true;
   }
   if (visit_marks_.size() < parent_.size()) {
     visit_marks_.resize(parent_.size(), 0);
@@ -560,6 +577,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
   for (const std::size_t edge_index : path_edges) {
     append_edge_reason(edges_[edge_index], reason);
   }
+  explanation_cache_.insert(key);
   --explanation_depth_;
   return true;
 }
