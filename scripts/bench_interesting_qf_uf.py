@@ -428,6 +428,7 @@ def main() -> int:
     par2 = sum(
         float(row["seconds"]) if row["status"] == "ok" else 2.0 * args.timeout for row in rows
     )
+    args.summary.parent.mkdir(parents=True, exist_ok=True)
     with args.summary.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=["metric", "value"])
         writer.writeheader()

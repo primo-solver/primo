@@ -1589,7 +1589,15 @@ bool application_is_congruence_candidate(
   return false;
 }
 
+void add_unique_symmetry_constraint(std::unordered_set<core::TermId>& emitted,
+                                    UfSymmetryBreakingResult& result, core::TermId constraint) {
+  if (emitted.insert(constraint).second) {
+    result.constraints.push_back(constraint);
+  }
+}
+
 void add_paper_symmetry_constraints(core::TermManager& terms, const SymmetryGroup& group,
+                                    std::unordered_set<core::TermId>& emitted,
                                     UfSymmetryBreakingResult& result) {
   // Déharbe et al., Algorithm 1, tracks constants already used by selected
   // terms. A moving term may be restricted only after preserving the constants
@@ -1610,7 +1618,8 @@ void add_paper_symmetry_constraints(core::TermManager& terms, const SymmetryGrou
     }
     for (const core::TermId value : group.values) {
       if (!used_constants.contains(value)) {
-        result.constraints.push_back(terms.mk_not(terms.mk_eq(term.term, value)));
+        add_unique_symmetry_constraint(emitted, result,
+                                       terms.mk_not(terms.mk_eq(term.term, value)));
       }
     }
   }
@@ -2021,6 +2030,7 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
   const auto disequalities = collect_disequalities(terms_, assertions);
   const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
   std::vector<SymmetryGroup> groups = build_groups(terms_, choices);
+  std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
 
   for (SymmetryGroup& group : groups) {
     annotate_symmetry_terms(terms_, assertions, group);
@@ -2050,7 +2060,7 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
     ++result.accepted_sets;
     result.values += group.values.size();
     result.terms += group.terms.size();
-    add_paper_symmetry_constraints(terms_, group, result);
+    add_paper_symmetry_constraints(terms_, group, emitted, result);
   }
 
   return result;

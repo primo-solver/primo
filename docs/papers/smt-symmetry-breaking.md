@@ -18,6 +18,10 @@ permutations of a set of uninterpreted constants, then search can be restricted
 to assignments that choose a canonical representative for terms that do not
 contain those constants.
 
+Finite-model value precedence is documented separately in `docs/literature.md`
+as future work. A direct fixed-term prototype was removed after it produced
+wrong answers on SAT SEQ instances.
+
 ## Mapping To Primo
 
 Primo implements a conservative syntactic version:

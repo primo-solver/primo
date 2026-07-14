@@ -377,13 +377,17 @@ accepted only if:
 - the accumulated assertion multiset is syntactically invariant under the value
   cycle and under swapping the first two values.
 
-For an accepted group, the pass follows Déharbe et al.'s Algorithm 1 rather than
-the finite-model value-precedence shortcut. Candidate terms are annotated with
-the group values that occur syntactically inside the term. Terms are then ordered
-by occurrence density, with stable `TermId` tie-breaking. The pass maintains the
-set of values already used by previously selected terms; for each selected term
-it first keeps every value contained in that term, then adds one fresh value as a
-new representative if one remains.
+For an accepted group, candidate terms are annotated with the group values that
+occur syntactically inside the term. Terms are then ordered by occurrence
+density, with stable `TermId` tie-breaking.
+
+The pass uses the conservative Déharbe et al. Algorithm 1 restriction: it
+maintains the set of values already used by previously selected terms; for each
+selected term it first keeps every value contained in that term, then adds one
+fresh value as a new representative if one remains. This is weaker than the
+finite-model value-precedence schemes, but it preserves the soundness condition
+for moving terms and for SMT formulas with extra constants constrained into the
+finite-domain values.
 
 A table term such as `(f c0)` is therefore no longer discarded merely because it
 contains `c0`: the generated restriction may rule out values not yet used, but it

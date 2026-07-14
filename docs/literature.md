@@ -69,6 +69,87 @@ valid shortcut.
 Benchmark-driven decision on whether the option should remain experimental or
 become part of a tuned QF_UF preset.
 
+## Symmetry Breaking Using Value Precedence
+
+Toby Walsh. *Symmetry Breaking Using Value Precedence.* ECAI 2006.
+arXiv: <https://arxiv.org/abs/0903.1136>.
+
+### Relevance
+
+Value precedence is a tempting fixed-variable symmetry-breaking component for
+Primo's finite-domain UF preprocessing. It is not currently implemented because
+the direct CSP-style encoding was unsound on SMT-LIB SEQ instances with extra
+constants constrained into the finite-domain values.
+
+### Algorithm
+
+For an ordered sequence of fixed terms and interchangeable values, the first
+occurrence of each non-minimal value must be preceded by an occurrence of the
+previous value. Primo does not currently encode these clauses. A July 2026
+prototype also emitted prefix exclusions that prevent early terms from using
+values outside their canonical prefix; on the 151-file NEQ/PEQ/SEQ targeted
+SLURM run it improved PAR2 from 3972.164 to 2152.063 and solved 145 instead of
+140 instances, but it produced wrong `unsat` answers on `SEQ/SEQ018_size8.smt2`
+and `SEQ/SEQ019_size6.smt2`. The prototype was therefore removed.
+
+### Data structures
+
+Future work can reuse `SymmetryGroup` values and `SymmetryTerm` annotations, but
+the implemented pass currently leaves all accepted groups under the
+Déharbe-style moving-term restriction.
+
+### Risks
+
+Applying fixed-term value precedence merely because a term does not syntactically
+contain a permuted value is not enough for Primo's SMT-LIB encodings. Extra
+constants constrained by finite-domain choice clauses can still make the direct
+CSP-style ordering lose satisfying assignments.
+
+### Possible milestone
+
+Study Reger, Riener, and Suda's broader principal-term symmetry-avoidance
+conditions before attempting another implementation. Any future attempt must
+include sat-preservation tests for `SEQ/SEQ018_size8.smt2` and
+`SEQ/SEQ019_size6.smt2`-shaped formulas.
+
+## Symmetry Avoidance in MACE-Style Finite Model Finding
+
+Giles Reger, Martin Riener, and Martin Suda. *Symmetry Avoidance in MACE-Style
+Finite Model Finding.* FroCoS 2019, LNCS 11715.
+DOI: <https://doi.org/10.1007/978-3-030-29007-8_1>.
+
+### Relevance
+
+The NEQ, PEQ, and SEQ QF_UF benchmarks have the same finite-model flavor as
+MACE-style encodings: explicit domain constants, totality choices, and
+functionality/AMO clauses. The paper gives the soundness boundary for stronger
+symmetry-avoidance clauses over principal terms, including why terms containing
+domain constants need additional ordering conditions.
+
+### Algorithm
+
+Primo does not implement the paper's principal-term ordering schemes or the
+generalized non-constant-term conditions from Theorem 5.
+
+### Data structures
+
+The current symmetry data structures identify candidate value sets and term
+annotations, but a future principal-term implementation would need an explicit
+domain-constant order, a principal-term classifier, and checks that argument
+constants enter the sequence before the term that contains them.
+
+### Risks
+
+The paper explicitly warns that overly strong clauses for terms like `f(d1)` can
+be unsound. Any extension beyond fixed terms needs separate tests and benchmark
+counters.
+
+### Possible milestone
+
+Implement a documented principal-term sequence for finite-model-style QF_UF
+inputs only after deriving the admissible term ordering from the paper and
+adding sat-preservation tests for the SEQ counterexamples above.
+
 ## Generating minimum transitivity constraints in P-time for deciding Equality Logic
 
 Ofer Strichman and Mirron Rozanov, SMT Workshop 2005.
