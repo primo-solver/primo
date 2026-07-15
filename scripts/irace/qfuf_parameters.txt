@@ -1,0 +1,26 @@
+# Primo QF_UF profile search space for irace.
+#
+# Columns are: parameter name, command-line switch passed to target_runner.py,
+# type, and domain.  The target runner maps these internal choices to Primo
+# public CLI options.
+
+preprocess                      "--preprocess "                        c (default,auto,basic,strong)
+passes                          "--passes "                            i (2,8)
+adaptive_extra                  "--adaptive_extra "                    i (0,8)
+adaptive_shrink                 "--adaptive_shrink "                   i (0,30)
+
+symmetry                        "--symmetry "                          c (on,off)
+eq_bridge                       "--eq_bridge "                         c (on,off)
+ground_congruence               "--ground_congruence "                 c (off,on)
+ground_unit_substitution        "--ground_unit_substitution "          c (off,on)
+guarded_ground_unit_substitution "--guarded_ground_unit_substitution " c (off,on)
+
+euf_engine                      "--euf_engine "                        c (incremental,lazy)
+euf_prop                        "--euf_prop "                          c (auto,off,conflict,model,online)
+pure_filter                     "--pure_filter "                       c (auto,on,off)
+prop_budget                     "--prop_budget "                       c (auto,unlimited,500,1000,3000,10000)
+prop_delivery                   "--prop_delivery "                     c (auto,unlimited,250,1000,3000,10000)
+prop_interval                   "--prop_interval "                     c (8,16,32,64,128)
+prop_threshold                  "--prop_threshold "                    c (0.10,0.25,0.50,0.75,1.0)
+
+cadical_profile                 "--cadical_profile "                   c (default,incremental)

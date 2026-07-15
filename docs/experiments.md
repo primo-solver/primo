@@ -122,3 +122,45 @@ defaults between CaDiCaL versions, and short-timeout throughput checks exposed
 the regression quickly. For Primo this script is not a headline benchmark and
 does not change CLI defaults. Use it to decide whether full QF_UF SLURM
 campaigns should include a CaDiCaL-profiled variant.
+
+## QF_UF Parameter Tuning With irace
+
+`scripts/irace/` contains a reproducible irace setup for QF_UF profile tuning.
+It is meant for SLURM runs, not workstation benchmarking. The training manifest
+is generated from existing benchmark artifacts:
+
+```bash
+python3 scripts/irace/make_qfuf_tuning_manifests.py
+```
+
+This writes `benchmarks/qfuf-irace-train.txt` and
+`benchmarks/qfuf-irace-test.txt`. The training set combines current
+NEQ/PEQ/SEQ timeouts, solved-but-slow cases against LLM2SMT, and easy guard
+instances. The generator interleaves guard, slow-gap, and timeout instances so
+early irace races see discriminating costs instead of only uniform timeout
+penalties. `qfuf_initial.txt` seeds the race with the current CLI default as
+the first configuration, plus conservative nearby variants; any tuned elite
+must beat that seeded default on the holdout before it can be considered. The
+target runner uses SMT-LIB `:status` metadata when available: correct solved
+runs cost elapsed seconds, timeouts/errors cost PAR2, and wrong answers receive
+a large penalty.
+
+On the cluster, install irace in a user-local environment, then run from the
+repo root:
+
+```bash
+export MAMBA_ROOT_PREFIX=$PWD/.micromamba
+export PRIMO_TUNE_SOLVER=$PWD/build-slurm-vp/primo
+export PRIMO_TUNE_TIMEOUT=30
+export PRIMO_TUNE_WRONG_PENALTY=30000
+tools/micromamba/bin/micromamba run -n irace \
+  Rscript -e 'args <- commandArgs(TRUE); args <- args[args != "--args"]; do.call(irace::irace_cmdline, list(args))' --args \
+  --scenario scripts/irace/qfuf_scenario.txt \
+  --parallel 4 \
+  --max-experiments 600
+```
+
+Do not promote an irace elite directly to a default. First validate it on the
+holdout manifest, the full NEQ/PEQ/SEQ set, and then the full QF_UF archive.
+Report wrong answers, PAR2, solved counts by family, and the exact generated
+Primo command line.

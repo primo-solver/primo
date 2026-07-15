@@ -1,0 +1,11 @@
+parameterFile = "qfuf_parameters.txt"
+configurationsFile = "qfuf_initial.txt"
+execDir = "../.."
+targetRunner = "target_runner.py"
+trainInstancesFile = "../../benchmarks/qfuf-irace-train.txt"
+testInstancesFile = "../../benchmarks/qfuf-irace-test.txt"
+maxExperiments = 600
+firstTest = 5
+minNbSurvival = 6
+parallel = 4
+logFile = "results/irace/qfuf/irace.Rdata"
