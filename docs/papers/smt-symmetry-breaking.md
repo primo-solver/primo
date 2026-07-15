@@ -18,9 +18,9 @@ permutations of a set of uninterpreted constants, then search can be restricted
 to assignments that choose a canonical representative for terms that do not
 contain those constants.
 
-Finite-model value precedence is documented separately in `docs/literature.md`
-as future work. A direct fixed-term prototype was removed after it produced
-wrong answers on SAT SEQ instances.
+Fixed-term value precedence is documented separately in `docs/literature.md`.
+Primo uses it only for recognized finite-domain terms that contain none of the
+permuted values; moving-only groups use the Déharbe-style fallback below.
 
 ## Mapping To Primo
 
@@ -30,9 +30,11 @@ Primo implements a conservative syntactic version:
 - the accumulated assertions must be invariant under generated permutations of
   those constants;
 - candidate terms are selected from recognized finite-domain choices;
-- generated restrictions follow Algorithm 1: every selected term keeps the
-  permuted constants that occur inside that term, then receives one fresh
-  representative value if available.
+- fixed candidate terms use value-precedence clauses over a stable `TermId`
+  order;
+- moving-only groups follow Algorithm 1: every selected term keeps the permuted
+  constants that occur inside that term, then receives one fresh representative
+  value if available.
 
 Primo does not implement the paper's broader symmetry-detection pipeline or
 SyMT-style graph automorphism. It only uses the constant-permutation idea once a
@@ -44,6 +46,7 @@ Implemented in `src/smt/preprocessing.*`:
 
 - syntactic invariance check under a cycle and first-value swap;
 - canonical comparison treating equality, `and`, and `or` as commutative;
+- fixed-term value-precedence clauses for accepted groups with fixed terms;
 - occurrence-density term ordering for the Algorithm 1 selection loop;
 - unit exclusions for values outside the selected term's allowed representative
   set;

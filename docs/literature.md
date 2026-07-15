@@ -76,41 +76,44 @@ arXiv: <https://arxiv.org/abs/0903.1136>.
 
 ### Relevance
 
-Value precedence is a tempting fixed-variable symmetry-breaking component for
-Primo's finite-domain UF preprocessing. It is not currently implemented because
-the direct CSP-style encoding was unsound on SMT-LIB SEQ instances with extra
-constants constrained into the finite-domain values.
+Value precedence is the fixed-variable symmetry-breaking component used by
+Primo when an accepted finite-domain UF symmetry group contains recognized terms
+that do not themselves contain any permuted value.
 
 ### Algorithm
 
 For an ordered sequence of fixed terms and interchangeable values, the first
 occurrence of each non-minimal value must be preceded by an occurrence of the
-previous value. Primo does not currently encode these clauses. A July 2026
-prototype also emitted prefix exclusions that prevent early terms from using
-values outside their canonical prefix; on the 151-file NEQ/PEQ/SEQ targeted
-SLURM run it improved PAR2 from 3972.164 to 2152.063 and solved 145 instead of
-140 instances, but it produced wrong `unsat` answers on `SEQ/SEQ018_size8.smt2`
-and `SEQ/SEQ019_size6.smt2`. The prototype was therefore removed.
+previous value. Primo also emits prefix exclusions that prevent early fixed
+terms from using values outside their canonical prefix. The implementation is
+limited to terms whose syntax contains no permuted value. Groups containing
+moving terms use this value-precedence scheme only over the fixed subset; groups
+with no fixed terms use the separate Déharbe-style moving-term fallback.
 
 ### Data structures
 
-Future work can reuse `SymmetryGroup` values and `SymmetryTerm` annotations, but
-the implemented pass currently leaves all accepted groups under the
-Déharbe-style moving-term restriction.
+`SymmetryGroup` stores the interchangeable values and candidate terms.
+`SymmetryTerm::used_values` records which group values occur inside a candidate
+term. Empty `used_values` selects the fixed-term subsequence for value
+precedence; nonempty groups with no fixed term are handled by the moving-term
+fallback.
 
 ### Risks
 
-Applying fixed-term value precedence merely because a term does not syntactically
-contain a permuted value is not enough for Primo's SMT-LIB encodings. Extra
-constants constrained by finite-domain choice clauses can still make the direct
-CSP-style ordering lose satisfying assignments.
+The July 2026 prototype stacked fixed-term value precedence with the moving-term
+Algorithm 1 restrictions for the same group. On the 151-file NEQ/PEQ/SEQ
+targeted SLURM run it improved PAR2 from 3972.164 to 2152.063 and solved 145
+instead of 140 instances, but it produced wrong `unsat` answers on
+`SEQ/SEQ018_size8.smt2` and `SEQ/SEQ019_size6.smt2`. The current implementation
+does not stack the two schemes for one group and keeps those SEQ cases as
+sat-preservation checks.
 
 ### Possible milestone
 
 Study Reger, Riener, and Suda's broader principal-term symmetry-avoidance
-conditions before attempting another implementation. Any future attempt must
-include sat-preservation tests for `SEQ/SEQ018_size8.smt2` and
-`SEQ/SEQ019_size6.smt2`-shaped formulas.
+conditions before extending the current fixed-term subset to richer principal
+terms. Any extension must include sat-preservation tests for
+`SEQ/SEQ018_size8.smt2` and `SEQ/SEQ019_size6.smt2`-shaped formulas.
 
 ## Symmetry Avoidance in MACE-Style Finite Model Finding
 

@@ -378,23 +378,27 @@ accepted only if:
   cycle and under swapping the first two values.
 
 For an accepted group, candidate terms are annotated with the group values that
-occur syntactically inside the term. Terms are then ordered by occurrence
-density, with stable `TermId` tie-breaking.
+occur syntactically inside the term. If the group contains fixed terms, meaning
+recognized finite-domain terms that contain none of the permuted values, Primo
+orders those fixed terms by `TermId` and emits value-precedence restrictions for
+that fixed sequence. The first fixed term may use only the first value, the
+second may use only the first two values, and so on; when a later term uses
+value `v_j`, an earlier fixed term must have used `v_{j-1}`. These restrictions
+are emitted as ordinary SMT assertions over the existing equality atoms.
 
-The pass uses the conservative Déharbe et al. Algorithm 1 restriction: it
-maintains the set of values already used by previously selected terms; for each
-selected term it first keeps every value contained in that term, then adds one
-fresh value as a new representative if one remains. This is weaker than the
-finite-model value-precedence schemes, but it preserves the soundness condition
-for moving terms and for SMT formulas with extra constants constrained into the
-finite-domain values.
+If an accepted group has no fixed terms, the pass falls back to the conservative
+Déharbe et al. Algorithm 1 restriction. It orders terms by occurrence density
+with stable `TermId` tie-breaking, maintains the set of values already used by
+previously selected terms, first keeps every value contained in the selected
+term, then adds one fresh value as a new representative if one remains. This is
+weaker than fixed-term value precedence, but it preserves the soundness
+condition for moving terms.
 
 A table term such as `(f c0)` is therefore no longer discarded merely because it
-contains `c0`: the generated restriction may rule out values not yet used, but it
-cannot rule out `c0` itself. The emitted assertions are unit exclusions for
-values outside the allowed representative set. These exclusions are equivalent
-to the paper's disjunctive restriction in the presence of the recognized
-finite-domain choice assertion for the same term.
+contains `c0`: for moving-only groups, the generated fallback restriction may
+rule out values not yet used, but it cannot rule out `c0` itself. The fixed-term
+value-precedence clauses and the moving-term fallback are not stacked for the
+same group.
 
 These assertions remove value-renaming representatives from the search space.
 They do not replace EUF reasoning and they do not create a finite model finder by

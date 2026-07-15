@@ -751,7 +751,7 @@ void default_symmetry_breaking_reports_covered_values_and_terms() {
   assert(result.statistics.get(":preprocessing.uf-symmetry.accepted-sets") == 1);
   assert(result.statistics.get(":preprocessing.uf-symmetry.values") == 3);
   assert(result.statistics.get(":preprocessing.uf-symmetry.terms") == 3);
-  assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 3);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 6);
 }
 
 void no_symmetry_breaking_disables_strong_preset_symmetry_only() {

@@ -1625,6 +1625,47 @@ void add_paper_symmetry_constraints(core::TermManager& terms, const SymmetryGrou
   }
 }
 
+std::vector<SymmetryTerm> fixed_symmetry_terms(const SymmetryGroup& group) {
+  std::vector<SymmetryTerm> fixed;
+  for (const SymmetryTerm& term : group.terms) {
+    if (term.used_values.empty()) {
+      fixed.push_back(term);
+    }
+  }
+  std::sort(fixed.begin(), fixed.end(),
+            [](const SymmetryTerm& lhs, const SymmetryTerm& rhs) { return lhs.term < rhs.term; });
+  return fixed;
+}
+
+void add_value_precedence_constraints(core::TermManager& terms,
+                                      const std::vector<SymmetryTerm>& fixed_terms,
+                                      const std::vector<core::TermId>& values,
+                                      std::unordered_set<core::TermId>& emitted,
+                                      UfSymmetryBreakingResult& result) {
+  if (values.empty()) {
+    return;
+  }
+  for (std::size_t term_index = 0; term_index < fixed_terms.size(); ++term_index) {
+    for (std::size_t value_index = term_index + 1; value_index < values.size(); ++value_index) {
+      add_unique_symmetry_constraint(
+          emitted, result,
+          terms.mk_not(terms.mk_eq(fixed_terms[term_index].term, values[value_index])));
+    }
+
+    const std::size_t max_guarded_value = std::min(term_index, values.size() - 1);
+    for (std::size_t value_index = 1; value_index <= max_guarded_value; ++value_index) {
+      std::vector<core::TermId> clause;
+      clause.reserve(term_index + 1);
+      clause.push_back(
+          terms.mk_not(terms.mk_eq(fixed_terms[term_index].term, values[value_index])));
+      for (std::size_t prior_index = 0; prior_index < term_index; ++prior_index) {
+        clause.push_back(terms.mk_eq(fixed_terms[prior_index].term, values[value_index - 1]));
+      }
+      add_unique_symmetry_constraint(emitted, result, terms.mk_or(std::move(clause)));
+    }
+  }
+}
+
 }  // namespace
 
 EqualityBridge::EqualityBridge(core::TermManager& terms) : terms_(terms) {}
@@ -2043,6 +2084,15 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
       continue;
     }
 
+    ++result.accepted_sets;
+    result.values += group.values.size();
+    std::vector<SymmetryTerm> fixed_terms = fixed_symmetry_terms(group);
+    if (!fixed_terms.empty()) {
+      result.terms += fixed_terms.size();
+      add_value_precedence_constraints(terms_, fixed_terms, group.values, emitted, result);
+      continue;
+    }
+
     std::sort(group.terms.begin(), group.terms.end(),
               [](const SymmetryTerm& lhs, const SymmetryTerm& rhs) {
                 const std::size_t lhs_denominator = lhs.used_values.size() + 1;
@@ -2057,8 +2107,6 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
                 }
                 return lhs.term < rhs.term;
               });
-    ++result.accepted_sets;
-    result.values += group.values.size();
     result.terms += group.terms.size();
     add_paper_symmetry_constraints(terms_, group, emitted, result);
   }
