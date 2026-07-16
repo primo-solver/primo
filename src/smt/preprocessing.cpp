@@ -215,7 +215,10 @@ void collect_constants_in_term(const core::TermManager& terms, core::TermId root
 }
 
 void count_term_occurrences(const core::TermManager& terms, core::TermId root,
-                            std::unordered_map<core::TermId, std::size_t>& occurrences) {
+                            std::vector<std::size_t>& occurrences) {
+  if (root >= occurrences.size()) {
+    occurrences.resize(root + 1);
+  }
   ++occurrences[root];
   const core::Term& term = terms.get(root);
   for (const core::TermId child : term.children) {
@@ -1929,7 +1932,7 @@ SolvedConstantSubstitutionResult substitute_solved_constants(
     collect_solved_constant_candidates(terms, assertion, candidates);
   }
 
-  std::unordered_map<core::TermId, std::size_t> occurrences;
+  std::vector<std::size_t> occurrences(terms.size());
   for (const core::TermId assertion : assertions) {
     count_term_occurrences(terms, assertion, occurrences);
   }
@@ -1963,7 +1966,8 @@ SolvedConstantSubstitutionResult substitute_solved_constants(
       ++result.rejected_cycles;
       continue;
     }
-    const std::size_t occurrences_of_variable = occurrences[candidate.variable];
+    const std::size_t occurrences_of_variable =
+        candidate.variable < occurrences.size() ? occurrences[candidate.variable] : 0;
     const std::size_t added_nodes =
         occurrences_of_variable > 0 ? occurrences_of_variable * candidate.definition_size : 0;
     if (candidate.definition_size > kSolvedConstantMaxDefinitionSize ||

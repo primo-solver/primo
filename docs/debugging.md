@@ -10,7 +10,9 @@ single SMT result line:
 ```
 
 Statistics are intentionally stable, colon-prefixed keys so benchmark scripts can
-compare runs mechanically. Current counters include:
+compare runs mechanically. Hot solver paths use an internal `StatKey` enum for
+registered counters; the printed names below are the compatibility boundary for
+scripts and result artifacts. Current counters include:
 
 - `:input.assertions`;
 - `:frontend.ite.boolean`;
@@ -33,8 +35,15 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.unit-equality.substitutions`;
 - `:preprocessing.unit-equality.substitution-accepted`;
 - `:preprocessing.unit-equality.substitution-rejected`;
+- `:preprocessing.solve-eqs.candidates`;
+- `:preprocessing.solve-eqs.accepted`;
+- `:preprocessing.solve-eqs.rewrites`;
+- `:preprocessing.solve-eqs.rejected-cycles`;
+- `:preprocessing.solve-eqs.rejected-blowups`;
 - `:preprocessing.finite-domain.domains`;
 - `:preprocessing.finite-domain.amo-clauses`;
+- `:preprocessing.finite-domain.evaluated-equalities`;
+- `:preprocessing.finite-domain.evaluation-cutoffs`;
 - `:preprocessing.equality-definitions`;
 - `:preprocessing.ground-congruence-clauses`;
 - `:preprocessing.ground-congruence-skipped-groups`;
@@ -48,9 +57,6 @@ compare runs mechanically. Current counters include:
 - `:preprocessing.auto.large-assertion-skip`;
 - `:solver.boolean`;
 - `:solver.qf-uf`;
-- `:euf.incremental.explain-calls`;
-- `:euf.incremental.explain-cache-hits`;
-- `:euf.incremental.explain-length`;
 - `:sat.phase.theory-negative`;
 - `:sat.vars`;
 - `:sat.clauses`;
@@ -75,7 +81,20 @@ compare runs mechanically. Current counters include:
 - `:euf.propagation.hit-rate-cutoffs`;
 - `:euf.propagation.auto-online`;
 - `:euf.propagation.auto-conflict`;
-- `:euf.propagation.auto-off`.
+- `:euf.propagation.auto-off`;
+- `:euf.incremental.terms`;
+- `:euf.incremental.flat-definitions`;
+- `:euf.incremental.merges`;
+- `:euf.incremental.pending-pops`;
+- `:euf.incremental.lookup-probes`;
+- `:euf.incremental.lookup-hits`;
+- `:euf.incremental.congruence-merges`;
+- `:euf.incremental.disequality-checks`;
+- `:euf.incremental.conflicts`;
+- `:euf.incremental.explain-calls`;
+- `:euf.incremental.explain-cache-hits`;
+- `:euf.incremental.explain-length`;
+- `:euf.incremental.backtracks`.
 
 For preprocessing-only comparisons, pass `--preprocess-only --stats`. Primo
 then parses and preprocesses the input, prints `unknown`, skips SAT/theory

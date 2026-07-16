@@ -1,7 +1,10 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <iosfwd>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -9,24 +12,124 @@
 
 namespace primo::util {
 
+enum class StatKey : std::size_t {
+  AssertionsInitial,
+  FrontendBooleanItes,
+  FrontendAuxiliaryItes,
+  AssertionsFinal,
+  PreprocessingPasses,
+  PreprocessingChangedPasses,
+  PreprocessingAdaptivePasses,
+  PreprocessingTermSizeInitial,
+  PreprocessingTermSizeFinal,
+  EqBridgeEqualities,
+  EqBridgeSkippedOrNodes,
+  BooleanUnitFacts,
+  BooleanUnitRewrites,
+  ForcedAtomFacts,
+  ForcedAtomDisequalities,
+  ForcedAtomRewrites,
+  UnitEqualityConsequences,
+  UnitEqualitySubstitutionUnits,
+  UnitEqualitySubstitutions,
+  UnitEqualitySubstitutionAccepted,
+  UnitEqualitySubstitutionRejected,
+  SolvedConstantCandidates,
+  SolvedConstantAccepted,
+  SolvedConstantRewrites,
+  SolvedConstantRejectedCycles,
+  SolvedConstantRejectedBlowups,
+  FiniteDomainDomains,
+  FiniteDomainAmoClauses,
+  FiniteDomainEvaluatedEqualities,
+  FiniteDomainEvaluationCutoffs,
+  EqualityDefinitions,
+  GroundCongruenceClauses,
+  GroundCongruenceSkippedGroups,
+  UfSymmetryAcceptedSets,
+  UfSymmetryValues,
+  UfSymmetryTerms,
+  UfSymmetryConstraints,
+  UfSymmetryRejectedNoninvariant,
+  AutoSingleAssertion,
+  AutoStrong,
+  AutoLargeAssertionSkip,
+  SatTheoryNegativePhase,
+  SatVars,
+  SatClauses,
+  SatClauseLits,
+  SatUnitClauses,
+  SatBinaryClauses,
+  SolverBoolean,
+  SolverQfUf,
+  SatSolveCalls,
+  TheoryAtoms,
+  PureTheoryFilterEnabled,
+  PureTheoryAtomsPositive,
+  PureTheoryAtomsNegative,
+  PureTheoryLiteralsFiltered,
+  TheoryChecks,
+  TheoryConflicts,
+  EufPropagationRounds,
+  EufPropagationCandidates,
+  EufPropagationDelivered,
+  EufPropagationReasonLits,
+  EufPropagationBudget,
+  EufPropagationDeliveryBudget,
+  EufPropagationBudgetCutoffs,
+  EufPropagationHitRateCutoffs,
+  EufPropagationAutoOnline,
+  EufPropagationAutoConflict,
+  EufPropagationAutoOff,
+  EufIncrementalTerms,
+  EufIncrementalFlatDefinitions,
+  EufIncrementalMerges,
+  EufIncrementalPendingPops,
+  EufIncrementalLookupProbes,
+  EufIncrementalLookupHits,
+  EufIncrementalCongruenceMerges,
+  EufIncrementalDisequalityChecks,
+  EufIncrementalConflicts,
+  EufIncrementalExplainCalls,
+  EufIncrementalExplainCacheHits,
+  EufIncrementalExplainLength,
+  EufIncrementalBacktracks,
+  Count,
+};
+
+std::string_view stat_name(StatKey key);
+
 class Statistics {
  public:
   using Value = std::uint64_t;
 
+  void set(StatKey key, Value value);
   void set(std::string_view name, Value value);
+  void increment(StatKey key, Value delta = 1);
   void increment(std::string_view name, Value delta = 1);
 
+  Value get(StatKey key) const;
   Value get(std::string_view name) const;
+  bool contains(StatKey key) const;
   bool contains(std::string_view name) const;
-  bool empty() const { return order_.empty(); }
+  bool empty() const { return order_.empty() && extra_order_.empty(); }
 
-  const std::vector<std::string>& keys() const { return order_; }
+  std::vector<std::string> keys() const;
 
  private:
+  static constexpr std::size_t kStatCount = static_cast<std::size_t>(StatKey::Count);
+
+  static std::optional<StatKey> lookup_key(std::string_view name);
+  static std::size_t index(StatKey key) { return static_cast<std::size_t>(key); }
+
+  void remember_key(StatKey key);
   void remember_key(std::string_view name);
 
-  std::vector<std::string> order_;
-  std::unordered_map<std::string, Value> values_;
+  std::array<Value, kStatCount> values_{};
+  std::array<bool, kStatCount> seen_{};
+  std::vector<StatKey> order_;
+  std::vector<std::string> extra_order_;
+  std::unordered_map<std::string, Value> extra_values_;
 };
 
 void print_statistics(std::ostream& output, const Statistics& statistics);

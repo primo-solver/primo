@@ -39,121 +39,129 @@ namespace primo::smt {
 
 namespace {
 
-constexpr std::string_view kStatAssertionsInitial = ":input.assertions";
-constexpr std::string_view kStatFrontendBooleanItes = ":frontend.ite.boolean";
-constexpr std::string_view kStatFrontendAuxiliaryItes = ":frontend.ite.auxiliaries";
-constexpr std::string_view kStatAssertionsFinal = ":preprocessing.assertions";
-constexpr std::string_view kStatPreprocessingPasses = ":preprocessing.passes";
-constexpr std::string_view kStatPreprocessingChangedPasses = ":preprocessing.changed-passes";
-constexpr std::string_view kStatPreprocessingAdaptivePasses = ":preprocessing.adaptive-passes";
-constexpr std::string_view kStatPreprocessingTermSizeInitial = ":preprocessing.term-size.initial";
-constexpr std::string_view kStatPreprocessingTermSizeFinal = ":preprocessing.term-size.final";
-constexpr std::string_view kStatEqBridgeEqualities = ":preprocessing.eq-bridge.equalities";
-constexpr std::string_view kStatEqBridgeSkippedOrNodes =
-    ":preprocessing.eq-bridge.skipped-or-nodes";
-constexpr std::string_view kStatBooleanUnitFacts = ":preprocessing.boolean-units.facts";
-constexpr std::string_view kStatBooleanUnitRewrites = ":preprocessing.boolean-units.rewrites";
-constexpr std::string_view kStatForcedAtomFacts = ":preprocessing.forced-atoms.facts";
-constexpr std::string_view kStatForcedAtomDisequalities =
-    ":preprocessing.forced-atoms.disequalities";
-constexpr std::string_view kStatForcedAtomRewrites = ":preprocessing.forced-atoms.rewrites";
-constexpr std::string_view kStatUnitEqualityConsequences =
-    ":preprocessing.unit-equality.consequences";
-constexpr std::string_view kStatUnitEqualitySubstitutionUnits =
-    ":preprocessing.unit-equality.substitution-units";
-constexpr std::string_view kStatUnitEqualitySubstitutions =
-    ":preprocessing.unit-equality.substitutions";
-constexpr std::string_view kStatUnitEqualitySubstitutionAccepted =
-    ":preprocessing.unit-equality.substitution-accepted";
-constexpr std::string_view kStatUnitEqualitySubstitutionRejected =
-    ":preprocessing.unit-equality.substitution-rejected";
-constexpr std::string_view kStatSolvedConstantCandidates = ":preprocessing.solve-eqs.candidates";
-constexpr std::string_view kStatSolvedConstantAccepted = ":preprocessing.solve-eqs.accepted";
-constexpr std::string_view kStatSolvedConstantRewrites = ":preprocessing.solve-eqs.rewrites";
-constexpr std::string_view kStatSolvedConstantRejectedCycles =
-    ":preprocessing.solve-eqs.rejected-cycles";
-constexpr std::string_view kStatSolvedConstantRejectedBlowups =
-    ":preprocessing.solve-eqs.rejected-blowups";
-constexpr std::string_view kStatFiniteDomainDomains = ":preprocessing.finite-domain.domains";
-constexpr std::string_view kStatFiniteDomainAmoClauses = ":preprocessing.finite-domain.amo-clauses";
-constexpr std::string_view kStatFiniteDomainEvaluatedEqualities =
-    ":preprocessing.finite-domain.evaluated-equalities";
-constexpr std::string_view kStatFiniteDomainEvaluationCutoffs =
-    ":preprocessing.finite-domain.evaluation-cutoffs";
-constexpr std::string_view kStatEqualityDefinitions = ":preprocessing.equality-definitions";
-constexpr std::string_view kStatGroundCongruenceClauses =
-    ":preprocessing.ground-congruence-clauses";
-constexpr std::string_view kStatGroundCongruenceSkippedGroups =
-    ":preprocessing.ground-congruence-skipped-groups";
-constexpr std::string_view kStatUfSymmetryAcceptedSets = ":preprocessing.uf-symmetry.accepted-sets";
-constexpr std::string_view kStatUfSymmetryValues = ":preprocessing.uf-symmetry.values";
-constexpr std::string_view kStatUfSymmetryTerms = ":preprocessing.uf-symmetry.terms";
-constexpr std::string_view kStatUfSymmetryConstraints = ":preprocessing.uf-symmetry.constraints";
-constexpr std::string_view kStatUfSymmetryRejectedNoninvariant =
-    ":preprocessing.uf-symmetry.rejected-noninvariant";
-constexpr std::string_view kStatAutoSingleAssertion = ":preprocessing.auto.single-assertion";
-constexpr std::string_view kStatAutoStrong = ":preprocessing.auto.strong";
-constexpr std::string_view kStatAutoLargeAssertionSkip = ":preprocessing.auto.large-assertion-skip";
-constexpr std::string_view kStatSatTheoryNegativePhase = ":sat.phase.theory-negative";
-constexpr std::string_view kStatSatVars = ":sat.vars";
-constexpr std::string_view kStatSatClauses = ":sat.clauses";
-constexpr std::string_view kStatSatClauseLits = ":sat.clause-lits";
-constexpr std::string_view kStatSatUnitClauses = ":sat.unit-clauses";
-constexpr std::string_view kStatSatBinaryClauses = ":sat.binary-clauses";
-constexpr std::string_view kStatSolverBoolean = ":solver.boolean";
-constexpr std::string_view kStatSolverQfUf = ":solver.qf-uf";
-constexpr std::string_view kStatSatSolveCalls = ":sat.solve-calls";
-constexpr std::string_view kStatTheoryAtoms = ":euf.theory-atoms";
-constexpr std::string_view kStatPureTheoryFilterEnabled = ":euf.pure-filter.enabled";
-constexpr std::string_view kStatPureTheoryAtomsPositive = ":euf.pure-atoms.positive";
-constexpr std::string_view kStatPureTheoryAtomsNegative = ":euf.pure-atoms.negative";
-constexpr std::string_view kStatPureTheoryLiteralsFiltered = ":euf.pure-literals.filtered";
-constexpr std::string_view kStatTheoryChecks = ":euf.checks";
-constexpr std::string_view kStatTheoryConflicts = ":euf.theory-conflicts";
-constexpr std::string_view kStatEufPropagationRounds = ":euf.propagation.rounds";
-constexpr std::string_view kStatEufPropagationCandidates = ":euf.propagation.candidates";
-constexpr std::string_view kStatEufPropagationDelivered = ":euf.propagation.delivered";
-constexpr std::string_view kStatEufPropagationReasonLits = ":euf.propagation.reason-lits";
-constexpr std::string_view kStatEufPropagationBudget = ":euf.propagation.budget";
-constexpr std::string_view kStatEufPropagationDeliveryBudget = ":euf.propagation.delivery-budget";
-constexpr std::string_view kStatEufPropagationBudgetCutoffs = ":euf.propagation.budget-cutoffs";
-constexpr std::string_view kStatEufPropagationHitRateCutoffs = ":euf.propagation.hit-rate-cutoffs";
-constexpr std::string_view kStatEufPropagationAutoOnline = ":euf.propagation.auto-online";
-constexpr std::string_view kStatEufPropagationAutoConflict = ":euf.propagation.auto-conflict";
-constexpr std::string_view kStatEufPropagationAutoOff = ":euf.propagation.auto-off";
-constexpr std::string_view kStatEufIncrementalTerms = ":euf.incremental.terms";
-constexpr std::string_view kStatEufIncrementalFlatDefinitions = ":euf.incremental.flat-definitions";
-constexpr std::string_view kStatEufIncrementalMerges = ":euf.incremental.merges";
-constexpr std::string_view kStatEufIncrementalPendingPops = ":euf.incremental.pending-pops";
-constexpr std::string_view kStatEufIncrementalLookupProbes = ":euf.incremental.lookup-probes";
-constexpr std::string_view kStatEufIncrementalLookupHits = ":euf.incremental.lookup-hits";
-constexpr std::string_view kStatEufIncrementalCongruenceMerges =
-    ":euf.incremental.congruence-merges";
-constexpr std::string_view kStatEufIncrementalDisequalityChecks =
-    ":euf.incremental.disequality-checks";
-constexpr std::string_view kStatEufIncrementalConflicts = ":euf.incremental.conflicts";
-constexpr std::string_view kStatEufIncrementalExplainCalls = ":euf.incremental.explain-calls";
-constexpr std::string_view kStatEufIncrementalExplainCacheHits =
-    ":euf.incremental.explain-cache-hits";
-constexpr std::string_view kStatEufIncrementalExplainLength = ":euf.incremental.explain-length";
-constexpr std::string_view kStatEufIncrementalBacktracks = ":euf.incremental.backtracks";
+constexpr util::StatKey kStatAssertionsInitial = util::StatKey::AssertionsInitial;
+constexpr util::StatKey kStatFrontendBooleanItes = util::StatKey::FrontendBooleanItes;
+constexpr util::StatKey kStatFrontendAuxiliaryItes = util::StatKey::FrontendAuxiliaryItes;
+constexpr util::StatKey kStatAssertionsFinal = util::StatKey::AssertionsFinal;
+constexpr util::StatKey kStatPreprocessingPasses = util::StatKey::PreprocessingPasses;
+constexpr util::StatKey kStatPreprocessingChangedPasses = util::StatKey::PreprocessingChangedPasses;
+constexpr util::StatKey kStatPreprocessingAdaptivePasses =
+    util::StatKey::PreprocessingAdaptivePasses;
+constexpr util::StatKey kStatPreprocessingTermSizeInitial =
+    util::StatKey::PreprocessingTermSizeInitial;
+constexpr util::StatKey kStatPreprocessingTermSizeFinal = util::StatKey::PreprocessingTermSizeFinal;
+constexpr util::StatKey kStatEqBridgeEqualities = util::StatKey::EqBridgeEqualities;
+constexpr util::StatKey kStatEqBridgeSkippedOrNodes = util::StatKey::EqBridgeSkippedOrNodes;
+constexpr util::StatKey kStatBooleanUnitFacts = util::StatKey::BooleanUnitFacts;
+constexpr util::StatKey kStatBooleanUnitRewrites = util::StatKey::BooleanUnitRewrites;
+constexpr util::StatKey kStatForcedAtomFacts = util::StatKey::ForcedAtomFacts;
+constexpr util::StatKey kStatForcedAtomDisequalities = util::StatKey::ForcedAtomDisequalities;
+constexpr util::StatKey kStatForcedAtomRewrites = util::StatKey::ForcedAtomRewrites;
+constexpr util::StatKey kStatUnitEqualityConsequences = util::StatKey::UnitEqualityConsequences;
+constexpr util::StatKey kStatUnitEqualitySubstitutionUnits =
+    util::StatKey::UnitEqualitySubstitutionUnits;
+constexpr util::StatKey kStatUnitEqualitySubstitutions = util::StatKey::UnitEqualitySubstitutions;
+constexpr util::StatKey kStatUnitEqualitySubstitutionAccepted =
+    util::StatKey::UnitEqualitySubstitutionAccepted;
+constexpr util::StatKey kStatUnitEqualitySubstitutionRejected =
+    util::StatKey::UnitEqualitySubstitutionRejected;
+constexpr util::StatKey kStatSolvedConstantCandidates = util::StatKey::SolvedConstantCandidates;
+constexpr util::StatKey kStatSolvedConstantAccepted = util::StatKey::SolvedConstantAccepted;
+constexpr util::StatKey kStatSolvedConstantRewrites = util::StatKey::SolvedConstantRewrites;
+constexpr util::StatKey kStatSolvedConstantRejectedCycles =
+    util::StatKey::SolvedConstantRejectedCycles;
+constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
+    util::StatKey::SolvedConstantRejectedBlowups;
+constexpr util::StatKey kStatFiniteDomainDomains = util::StatKey::FiniteDomainDomains;
+constexpr util::StatKey kStatFiniteDomainAmoClauses = util::StatKey::FiniteDomainAmoClauses;
+constexpr util::StatKey kStatFiniteDomainEvaluatedEqualities =
+    util::StatKey::FiniteDomainEvaluatedEqualities;
+constexpr util::StatKey kStatFiniteDomainEvaluationCutoffs =
+    util::StatKey::FiniteDomainEvaluationCutoffs;
+constexpr util::StatKey kStatEqualityDefinitions = util::StatKey::EqualityDefinitions;
+constexpr util::StatKey kStatGroundCongruenceClauses = util::StatKey::GroundCongruenceClauses;
+constexpr util::StatKey kStatGroundCongruenceSkippedGroups =
+    util::StatKey::GroundCongruenceSkippedGroups;
+constexpr util::StatKey kStatUfSymmetryAcceptedSets = util::StatKey::UfSymmetryAcceptedSets;
+constexpr util::StatKey kStatUfSymmetryValues = util::StatKey::UfSymmetryValues;
+constexpr util::StatKey kStatUfSymmetryTerms = util::StatKey::UfSymmetryTerms;
+constexpr util::StatKey kStatUfSymmetryConstraints = util::StatKey::UfSymmetryConstraints;
+constexpr util::StatKey kStatUfSymmetryRejectedNoninvariant =
+    util::StatKey::UfSymmetryRejectedNoninvariant;
+constexpr util::StatKey kStatAutoSingleAssertion = util::StatKey::AutoSingleAssertion;
+constexpr util::StatKey kStatAutoStrong = util::StatKey::AutoStrong;
+constexpr util::StatKey kStatAutoLargeAssertionSkip = util::StatKey::AutoLargeAssertionSkip;
+constexpr util::StatKey kStatSatTheoryNegativePhase = util::StatKey::SatTheoryNegativePhase;
+constexpr util::StatKey kStatSatVars = util::StatKey::SatVars;
+constexpr util::StatKey kStatSatClauses = util::StatKey::SatClauses;
+constexpr util::StatKey kStatSatClauseLits = util::StatKey::SatClauseLits;
+constexpr util::StatKey kStatSatUnitClauses = util::StatKey::SatUnitClauses;
+constexpr util::StatKey kStatSatBinaryClauses = util::StatKey::SatBinaryClauses;
+constexpr util::StatKey kStatSolverBoolean = util::StatKey::SolverBoolean;
+constexpr util::StatKey kStatSolverQfUf = util::StatKey::SolverQfUf;
+constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
+constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
+constexpr util::StatKey kStatPureTheoryFilterEnabled = util::StatKey::PureTheoryFilterEnabled;
+constexpr util::StatKey kStatPureTheoryAtomsPositive = util::StatKey::PureTheoryAtomsPositive;
+constexpr util::StatKey kStatPureTheoryAtomsNegative = util::StatKey::PureTheoryAtomsNegative;
+constexpr util::StatKey kStatPureTheoryLiteralsFiltered = util::StatKey::PureTheoryLiteralsFiltered;
+constexpr util::StatKey kStatTheoryChecks = util::StatKey::TheoryChecks;
+constexpr util::StatKey kStatTheoryConflicts = util::StatKey::TheoryConflicts;
+constexpr util::StatKey kStatEufPropagationRounds = util::StatKey::EufPropagationRounds;
+constexpr util::StatKey kStatEufPropagationCandidates = util::StatKey::EufPropagationCandidates;
+constexpr util::StatKey kStatEufPropagationDelivered = util::StatKey::EufPropagationDelivered;
+constexpr util::StatKey kStatEufPropagationReasonLits = util::StatKey::EufPropagationReasonLits;
+constexpr util::StatKey kStatEufPropagationBudget = util::StatKey::EufPropagationBudget;
+constexpr util::StatKey kStatEufPropagationDeliveryBudget =
+    util::StatKey::EufPropagationDeliveryBudget;
+constexpr util::StatKey kStatEufPropagationBudgetCutoffs =
+    util::StatKey::EufPropagationBudgetCutoffs;
+constexpr util::StatKey kStatEufPropagationHitRateCutoffs =
+    util::StatKey::EufPropagationHitRateCutoffs;
+constexpr util::StatKey kStatEufPropagationAutoOnline = util::StatKey::EufPropagationAutoOnline;
+constexpr util::StatKey kStatEufPropagationAutoConflict = util::StatKey::EufPropagationAutoConflict;
+constexpr util::StatKey kStatEufPropagationAutoOff = util::StatKey::EufPropagationAutoOff;
+constexpr util::StatKey kStatEufIncrementalTerms = util::StatKey::EufIncrementalTerms;
+constexpr util::StatKey kStatEufIncrementalFlatDefinitions =
+    util::StatKey::EufIncrementalFlatDefinitions;
+constexpr util::StatKey kStatEufIncrementalMerges = util::StatKey::EufIncrementalMerges;
+constexpr util::StatKey kStatEufIncrementalPendingPops = util::StatKey::EufIncrementalPendingPops;
+constexpr util::StatKey kStatEufIncrementalLookupProbes = util::StatKey::EufIncrementalLookupProbes;
+constexpr util::StatKey kStatEufIncrementalLookupHits = util::StatKey::EufIncrementalLookupHits;
+constexpr util::StatKey kStatEufIncrementalCongruenceMerges =
+    util::StatKey::EufIncrementalCongruenceMerges;
+constexpr util::StatKey kStatEufIncrementalDisequalityChecks =
+    util::StatKey::EufIncrementalDisequalityChecks;
+constexpr util::StatKey kStatEufIncrementalConflicts = util::StatKey::EufIncrementalConflicts;
+constexpr util::StatKey kStatEufIncrementalExplainCalls = util::StatKey::EufIncrementalExplainCalls;
+constexpr util::StatKey kStatEufIncrementalExplainCacheHits =
+    util::StatKey::EufIncrementalExplainCacheHits;
+constexpr util::StatKey kStatEufIncrementalExplainLength =
+    util::StatKey::EufIncrementalExplainLength;
+constexpr util::StatKey kStatEufIncrementalBacktracks = util::StatKey::EufIncrementalBacktracks;
 
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
 
 std::size_t reachable_term_count(const core::TermManager& terms,
                                  const std::vector<core::TermId>& roots) {
-  std::unordered_set<core::TermId> seen;
+  std::vector<unsigned char> seen(terms.size(), 0);
+  std::size_t count = 0;
   std::vector<core::TermId> work = roots;
   while (!work.empty()) {
     const core::TermId term_id = work.back();
     work.pop_back();
-    if (!seen.insert(term_id).second) {
+    if (term_id >= seen.size()) {
+      seen.resize(term_id + 1, 0);
+    }
+    if (seen[term_id] != 0) {
       continue;
     }
+    seen[term_id] = 1;
+    ++count;
     const core::Term& term = terms.get(term_id);
     work.insert(work.end(), term.children.begin(), term.children.end());
   }
-  return seen.size();
+  return count;
 }
 
 void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics& statistics) {
@@ -217,9 +225,11 @@ class Frontend {
       if (bound.has_value()) {
         return bound.value();
       }
-      const auto defined = definitions_.find(expr.atom);
-      if (defined != definitions_.end() && defined->second.parameters.empty()) {
-        return instantiate_definition(expr.atom, {});
+      if (!definitions_.empty()) {
+        const auto defined = definitions_.find(expr.atom);
+        if (defined != definitions_.end() && defined->second.parameters.empty()) {
+          return instantiate_definition(expr.atom, {});
+        }
       }
       const auto symbol = symbols_.lookup_symbol(expr.atom);
       if (!symbol.has_value()) {
@@ -239,6 +249,7 @@ class Frontend {
     }
     if (head == "and") {
       std::vector<core::TermId> children;
+      children.reserve(expr.list.size() - 1);
       for (std::size_t i = 1; i < expr.list.size(); ++i) {
         children.push_back(build_term(expr.list[i]));
       }
@@ -246,6 +257,7 @@ class Frontend {
     }
     if (head == "or") {
       std::vector<core::TermId> children;
+      children.reserve(expr.list.size() - 1);
       for (std::size_t i = 1; i < expr.list.size(); ++i) {
         children.push_back(build_term(expr.list[i]));
       }
@@ -276,13 +288,16 @@ class Frontend {
       return build_distinct(expr);
     }
 
-    const auto defined = definitions_.find(head);
-    if (defined != definitions_.end()) {
-      std::vector<core::TermId> args;
-      for (std::size_t i = 1; i < expr.list.size(); ++i) {
-        args.push_back(build_term(expr.list[i]));
+    if (!definitions_.empty()) {
+      const auto defined = definitions_.find(head);
+      if (defined != definitions_.end()) {
+        std::vector<core::TermId> args;
+        args.reserve(expr.list.size() - 1);
+        for (std::size_t i = 1; i < expr.list.size(); ++i) {
+          args.push_back(build_term(expr.list[i]));
+        }
+        return instantiate_definition(head, std::move(args));
       }
-      return instantiate_definition(head, std::move(args));
     }
 
     const auto symbol = symbols_.lookup_symbol(head);
@@ -656,7 +671,10 @@ class BooleanClausifier {
   };
 
   explicit BooleanClausifier(sat::IpasirUpBackend& backend, const core::TermManager& terms)
-      : backend_(backend), terms_(terms) {}
+      : backend_(backend),
+        terms_(terms),
+        lit_by_term_(terms.size()),
+        theory_atom_by_term_(terms.size(), kNoTheoryAtom) {}
 
   void assert_formula(core::TermId term) {
     if (terms_.get(term).sort != terms_.symbols().bool_sort()) {
@@ -713,12 +731,13 @@ class BooleanClausifier {
   }
 
   TheoryAtom& theory_atom_for_term(core::TermId term_id) {
-    const auto existing = theory_atom_by_term_.find(term_id);
-    if (existing != theory_atom_by_term_.end()) {
-      return theory_atoms_[existing->second];
+    ensure_term_index(term_id);
+    const std::size_t existing = theory_atom_by_term_[term_id];
+    if (existing != kNoTheoryAtom) {
+      return theory_atoms_[existing];
     }
     const sat::Lit lit = encode_theory_atom_lit(term_id);
-    theory_atom_by_term_.emplace(term_id, theory_atoms_.size());
+    theory_atom_by_term_[term_id] = theory_atoms_.size();
     theory_atoms_.push_back(TheoryAtom{lit, term_id, false, false});
     return theory_atoms_.back();
   }
@@ -767,9 +786,9 @@ class BooleanClausifier {
   }
 
   sat::Lit encode(core::TermId term_id) {
-    const auto existing = lit_by_term_.find(term_id);
-    if (existing != lit_by_term_.end()) {
-      return existing->second;
+    ensure_term_index(term_id);
+    if (lit_by_term_[term_id].value != 0) {
+      return lit_by_term_[term_id];
     }
 
     const core::Term& term = terms_.get(term_id);
@@ -783,12 +802,12 @@ class BooleanClausifier {
 
     if (term.kind == core::TermKind::Not) {
       const sat::Lit lit = negate(encode(term.children.at(0)));
-      lit_by_term_.emplace(term_id, lit);
+      lit_by_term_[term_id] = lit;
       return lit;
     }
 
     const sat::Lit lit{backend_.new_var()};
-    lit_by_term_.emplace(term_id, lit);
+    lit_by_term_[term_id] = lit;
 
     switch (term.kind) {
       case core::TermKind::And:
@@ -816,12 +835,12 @@ class BooleanClausifier {
   }
 
   sat::Lit atom_lit(core::TermId term_id) {
-    const auto existing = lit_by_term_.find(term_id);
-    if (existing != lit_by_term_.end()) {
-      return existing->second;
+    ensure_term_index(term_id);
+    if (lit_by_term_[term_id].value != 0) {
+      return lit_by_term_[term_id];
     }
     const sat::Lit lit{backend_.new_var()};
-    lit_by_term_.emplace(term_id, lit);
+    lit_by_term_[term_id] = lit;
     const core::Term& term = terms_.get(term_id);
     if (term.kind == core::TermKind::Constant && term.sort == terms_.symbols().bool_sort()) {
       return theory_atom_for_term(term_id).lit;
@@ -830,12 +849,12 @@ class BooleanClausifier {
   }
 
   sat::Lit encode_theory_atom_lit(core::TermId term_id) {
-    const auto existing = lit_by_term_.find(term_id);
-    if (existing != lit_by_term_.end()) {
-      return existing->second;
+    ensure_term_index(term_id);
+    if (lit_by_term_[term_id].value != 0) {
+      return lit_by_term_[term_id];
     }
     const sat::Lit lit{backend_.new_var()};
-    lit_by_term_.emplace(term_id, lit);
+    lit_by_term_[term_id] = lit;
     return lit;
   }
 
@@ -848,6 +867,13 @@ class BooleanClausifier {
   }
 
   static sat::Lit negate(sat::Lit lit) { return sat::Lit{-lit.value}; }
+
+  void ensure_term_index(core::TermId term_id) {
+    if (term_id >= lit_by_term_.size()) {
+      lit_by_term_.resize(term_id + 1);
+      theory_atom_by_term_.resize(term_id + 1, kNoTheoryAtom);
+    }
+  }
 
   void encode_and(sat::Lit output, const std::vector<core::TermId>& children) {
     sat::Clause reverse_clause{output};
@@ -877,8 +903,9 @@ class BooleanClausifier {
 
   sat::IpasirUpBackend& backend_;
   const core::TermManager& terms_;
-  std::unordered_map<core::TermId, sat::Lit> lit_by_term_;
-  std::unordered_map<core::TermId, std::size_t> theory_atom_by_term_;
+  static constexpr std::size_t kNoTheoryAtom = static_cast<std::size_t>(-1);
+  std::vector<sat::Lit> lit_by_term_;
+  std::vector<std::size_t> theory_atom_by_term_;
   std::vector<TheoryAtom> theory_atoms_;
   sat::Lit true_lit_{0};
 };
@@ -995,10 +1022,9 @@ void count_filtered_assignment(const AssignedTheoryAtom& atom, util::Statistics&
   }
 }
 
-void increment_stat_if_nonzero(util::Statistics& statistics, std::string_view name,
-                               std::size_t value) {
+void increment_stat_if_nonzero(util::Statistics& statistics, util::StatKey key, std::size_t value) {
   if (value != 0) {
-    statistics.increment(name, value);
+    statistics.increment(key, value);
   }
 }
 
