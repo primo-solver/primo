@@ -995,6 +995,13 @@ void count_filtered_assignment(const AssignedTheoryAtom& atom, util::Statistics&
   }
 }
 
+void increment_stat_if_nonzero(util::Statistics& statistics, std::string_view name,
+                               std::size_t value) {
+  if (value != 0) {
+    statistics.increment(name, value);
+  }
+}
+
 bool add_explained_theory_equality(theory::equality::ExplainedCongruenceClosure& closure,
                                    const core::TermManager& terms, const AssignedTheoryAtom& atom,
                                    core::TermId true_term, core::TermId false_term) {
@@ -1016,19 +1023,22 @@ bool add_explained_theory_equality(theory::equality::ExplainedCongruenceClosure&
 
 void add_incremental_stats(util::Statistics& statistics,
                            const theory::equality::IncrementalCongruenceClosureStats& stats) {
-  statistics.increment(kStatEufIncrementalTerms, stats.terms);
-  statistics.increment(kStatEufIncrementalFlatDefinitions, stats.flat_definitions);
-  statistics.increment(kStatEufIncrementalMerges, stats.merges);
-  statistics.increment(kStatEufIncrementalPendingPops, stats.pending_pops);
-  statistics.increment(kStatEufIncrementalLookupProbes, stats.lookup_probes);
-  statistics.increment(kStatEufIncrementalLookupHits, stats.lookup_hits);
-  statistics.increment(kStatEufIncrementalCongruenceMerges, stats.congruence_merges);
-  statistics.increment(kStatEufIncrementalDisequalityChecks, stats.disequality_checks);
-  statistics.increment(kStatEufIncrementalConflicts, stats.conflicts);
-  statistics.increment(kStatEufIncrementalExplainCalls, stats.explain_calls);
-  statistics.increment(kStatEufIncrementalExplainCacheHits, stats.explain_cache_hits);
-  statistics.increment(kStatEufIncrementalExplainLength, stats.explain_length);
-  statistics.increment(kStatEufIncrementalBacktracks, stats.backtracks);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalTerms, stats.terms);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalFlatDefinitions, stats.flat_definitions);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalMerges, stats.merges);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalPendingPops, stats.pending_pops);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalLookupProbes, stats.lookup_probes);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalLookupHits, stats.lookup_hits);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalCongruenceMerges,
+                            stats.congruence_merges);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalDisequalityChecks,
+                            stats.disequality_checks);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalConflicts, stats.conflicts);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCalls, stats.explain_calls);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCacheHits,
+                            stats.explain_cache_hits);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainLength, stats.explain_length);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalBacktracks, stats.backtracks);
 }
 
 std::size_t positive_delta(std::size_t current, std::size_t previous) {
@@ -1327,7 +1337,7 @@ class IncrementalFlatAssignmentState {
     if (closure_checkpoint.has_value()) {
       closure_.pop(closure_checkpoint.value());
       last_published_stats_ = closure_.stats();
-      statistics_.increment(kStatEufIncrementalBacktracks);
+      ++accumulated_stats_.backtracks;
     }
   }
 
@@ -1372,6 +1382,11 @@ class IncrementalFlatAssignmentState {
 
   std::optional<sat::Clause> conflict() const { return closure_.conflict(); }
 
+  void flush_stats() {
+    add_incremental_stats(statistics_, accumulated_stats_);
+    accumulated_stats_ = {};
+  }
+
  private:
   void initialize_base_closure() {
     closure_.ensure_node_count(flat_.size());
@@ -1392,8 +1407,24 @@ class IncrementalFlatAssignmentState {
 
   void publish_stats() {
     const theory::equality::IncrementalCongruenceClosureStats current = closure_.stats();
-    add_incremental_stats(statistics_, stats_delta(current, last_published_stats_));
+    accumulate_stats(stats_delta(current, last_published_stats_));
     last_published_stats_ = current;
+  }
+
+  void accumulate_stats(const theory::equality::IncrementalCongruenceClosureStats& stats) {
+    accumulated_stats_.terms += stats.terms;
+    accumulated_stats_.flat_definitions += stats.flat_definitions;
+    accumulated_stats_.merges += stats.merges;
+    accumulated_stats_.pending_pops += stats.pending_pops;
+    accumulated_stats_.lookup_probes += stats.lookup_probes;
+    accumulated_stats_.lookup_hits += stats.lookup_hits;
+    accumulated_stats_.congruence_merges += stats.congruence_merges;
+    accumulated_stats_.disequality_checks += stats.disequality_checks;
+    accumulated_stats_.conflicts += stats.conflicts;
+    accumulated_stats_.explain_calls += stats.explain_calls;
+    accumulated_stats_.explain_cache_hits += stats.explain_cache_hits;
+    accumulated_stats_.explain_length += stats.explain_length;
+    accumulated_stats_.backtracks += stats.backtracks;
   }
 
   void ensure_current_level_checkpoint() {
@@ -1422,6 +1453,7 @@ class IncrementalFlatAssignmentState {
   std::unordered_map<int, std::size_t> flat_atom_by_var_;
   std::vector<AssignedTheoryAtom> assignments_;
   std::vector<Checkpoint> checkpoints_;
+  theory::equality::IncrementalCongruenceClosureStats accumulated_stats_;
   theory::equality::IncrementalCongruenceClosureStats last_published_stats_;
 };
 
@@ -1517,6 +1549,12 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   }
 
   bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
+
+  void flush_incremental_stats() {
+    if (incremental_state_.has_value()) {
+      incremental_state_->flush_stats();
+    }
+  }
 
   int cb_propagate() override {
     if (options_.euf_propagation == EufPropagationMode::Conflict) {
@@ -1990,6 +2028,9 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   while (true) {
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
+    if (online_propagator.has_value()) {
+      online_propagator->flush_incremental_stats();
+    }
     publish_sat_stats(backend.statistics(), statistics);
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics};
