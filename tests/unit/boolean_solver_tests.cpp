@@ -188,6 +188,8 @@ void pure_euf_disequality_contradiction_is_unsat() {
 }
 
 void default_euf_propagation_auto_uses_online_for_small_abstractions() {
+  primo::smt::CheckSatOptions options;
+  options.solved_constant_substitution = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort A 0)
@@ -195,7 +197,8 @@ void default_euf_propagation_auto_uses_online_for_small_abstractions() {
     (declare-fun b () A)
     (assert (= a b))
     (check-sat)
-  )");
+  )",
+                                       options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":euf.propagation.auto-online") == 1);
   assert(result.statistics.get(":euf.propagation.auto-off") == 0);
@@ -446,6 +449,7 @@ void equality_bridge_solves_diamond_chain() {
 void ground_unit_substitution_option_records_rewrites() {
   primo::smt::CheckSatOptions options;
   options.ground_unit_substitution = true;
+  options.solved_constant_substitution = false;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -468,6 +472,7 @@ void ground_unit_substitution_option_records_rewrites() {
 void guarded_ground_unit_substitution_rejects_tiny_rewrite() {
   primo::smt::CheckSatOptions options;
   options.guarded_ground_unit_substitution = true;
+  options.solved_constant_substitution = false;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -484,6 +489,45 @@ void guarded_ground_unit_substitution_rejects_tiny_rewrite() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.unit-equality.substitutions") == 0);
   assert(result.statistics.get(":preprocessing.unit-equality.substitution-rejected") >= 1);
+}
+
+void solved_constant_substitution_records_rewrites_by_default() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a (f b)))
+    (assert (= (f a) (f b)))
+    (check-sat)
+  )");
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.solve-eqs.candidates") >= 1);
+  assert(result.statistics.get(":preprocessing.solve-eqs.accepted") >= 1);
+  assert(result.statistics.get(":preprocessing.solve-eqs.rewrites") >= 1);
+}
+
+void solved_constant_substitution_can_be_disabled() {
+  primo::smt::CheckSatOptions options;
+  options.solved_constant_substitution = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a (f b)))
+    (assert (= (f a) (f b)))
+    (check-sat)
+  )",
+                                       options);
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.solve-eqs.candidates") == 0);
+  assert(result.statistics.get(":preprocessing.solve-eqs.accepted") == 0);
+  assert(result.statistics.get(":preprocessing.solve-eqs.rewrites") == 0);
 }
 
 void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion() {
@@ -1096,6 +1140,8 @@ int main() {
   equality_bridge_solves_diamond_chain();
   ground_unit_substitution_option_records_rewrites();
   guarded_ground_unit_substitution_rejects_tiny_rewrite();
+  solved_constant_substitution_records_rewrites_by_default();
+  solved_constant_substitution_can_be_disabled();
   auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
   auto_preprocessing_skips_large_flat_assertion_batches();
   preprocessing_off_disables_basic_loop();

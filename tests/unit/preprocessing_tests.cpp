@@ -271,6 +271,48 @@ void ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts() {
         result.assertions.end());
 }
 
+void solved_constant_substitution_eliminates_acyclic_definition() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId fa = fixture.app(fixture.f, a);
+  const primo::core::TermId definition = fixture.terms.mk_eq(x, fa);
+  const primo::core::TermId formula = fixture.terms.mk_or(
+      {fixture.terms.mk_eq(fixture.app(fixture.f, x), y), fixture.pred(fixture.p, x)});
+
+  const primo::smt::SolvedConstantSubstitutionResult result =
+      primo::smt::substitute_solved_constants(fixture.terms, {definition, formula});
+
+  check(result.candidates == 1);
+  check(result.accepted == 1);
+  check(result.rewrites >= 1);
+  check(result.rejected_cycles == 0);
+  check(result.rejected_blowups == 0);
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_bool(true)) != result.assertions.end());
+  const primo::core::TermId rewritten = fixture.terms.mk_or(
+      {fixture.terms.mk_eq(fixture.app(fixture.f, fa), y), fixture.pred(fixture.p, fa)});
+  check(std::find(result.assertions.begin(), result.assertions.end(), rewritten) !=
+        result.assertions.end());
+}
+
+void solved_constant_substitution_rejects_cycles() {
+  Fixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId fx = fixture.app(fixture.f, x);
+  const primo::core::TermId definition = fixture.terms.mk_eq(x, fx);
+
+  const primo::smt::SolvedConstantSubstitutionResult result =
+      primo::smt::substitute_solved_constants(fixture.terms, {definition});
+
+  check(result.candidates == 1);
+  check(result.accepted == 0);
+  check(result.rewrites == 0);
+  check(result.rejected_cycles == 1);
+  check(result.assertions == std::vector{definition});
+}
+
 void boolean_unit_propagation_simplifies_boolean_structure_and_arguments() {
   Fixture fixture;
   const primo::core::TermId p =
@@ -588,6 +630,8 @@ int main() {
   unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();
   ground_unit_substitution_rewrites_applications_and_preserves_units();
   ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts();
+  solved_constant_substitution_eliminates_acyclic_definition();
+  solved_constant_substitution_rejects_cycles();
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();
   forced_atom_propagation_simplifies_predicate_units();

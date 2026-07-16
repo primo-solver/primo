@@ -107,6 +107,7 @@ int main(int argc, char** argv) {
   bool print_stats = false;
   bool no_uf_symmetry_breaking = false;
   bool no_eq_bridge = false;
+  bool no_solved_constant_substitution = false;
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
   std::string euf_engine = "incremental";
@@ -135,6 +136,9 @@ int main(int argc, char** argv) {
   app.add_flag("--guarded-ground-unit-substitution",
                solver_options.guarded_ground_unit_substitution,
                "Enable guarded ground substitution only when preprocessing metrics predict a win");
+  app.add_flag("--no-solved-constant-substitution", no_solved_constant_substitution,
+               "Disable default QF_UF solved-constant substitution")
+      ->default_val(false);
   app.add_flag("--preprocess-only", solver_options.preprocess_only,
                "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
@@ -222,6 +226,9 @@ int main(int argc, char** argv) {
   }
   if (no_eq_bridge) {
     solver_options.eq_bridge = false;
+  }
+  if (no_solved_constant_substitution) {
+    solver_options.solved_constant_substitution = false;
   }
   if (euf_prop == "auto") {
     solver_options.euf_propagation = primo::smt::EufPropagationMode::Auto;

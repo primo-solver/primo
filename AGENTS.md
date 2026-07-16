@@ -217,6 +217,16 @@ Repeat that loop while the goal remains open and there is no blocker. Do not
 stop merely because one iteration is disappointing, one optimization regresses,
 or results are worse than expected.
 
+Be proactive about standard SMT performance engineering. When a fast reference
+solver is far ahead, do not wait for the user to name basic techniques one by
+one. Inspect the benchmark shape, compare current stats to reference behavior,
+and actively pursue the traditional safe targets first: simplification,
+equation solving, ITE preprocessing, local-context Boolean simplification,
+unit/value propagation, symmetry breaking, and ordinary profiler evidence. If a
+technique has already been discussed in the thread or documented as a likely
+gap, treat it as part of the active triage queue until it has either been
+implemented and evaluated or explicitly rejected with evidence.
+
 If the user requests SLURM evaluation, use the workstation only for development,
 profiling, smoke tests, and debugging. Headline benchmark claims must come from
 SLURM artifacts. If SLURM is unavailable, state that as a blocker and include

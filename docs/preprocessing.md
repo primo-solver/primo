@@ -54,6 +54,8 @@ reproducing narrower configurations:
   `--guarded-ground-unit-substitution`;
 - finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
   by the `auto` path;
+- solved-constant substitution for acyclic unit definitions, enabled by default
+  and disabled with `--no-solved-constant-substitution`;
 - bounded ground-congruence clauses over applications already present in the
   formula, enabled by `--ground-congruence`;
 - symmetry breaking over finite-domain choice disjunctions, enabled by default
@@ -92,10 +94,13 @@ Very large already-flat assertion batches are a separate case. Goel hardware
 instances can arrive as tens of thousands of top-level clauses; running repeated
 nonclausal preprocessing over those batches can grow the assertion set and
 dominate solving time. In `auto` mode, batches above 10,000 top-level assertions
-therefore skip preprocessing and go directly to Boolean abstraction and EUF.
-Explicit `--qf-uf-preprocess=basic` and `--qf-uf-preprocess=strong` still force
-the preprocessing loop for ablation or targeted experiments. This auto decision
-is reported by `:preprocessing.auto.large-assertion-skip`.
+therefore skip the repeated preprocessing loop and go directly to Boolean
+abstraction and EUF. The default solved-constant substitution pass is still run
+once on these batches because it is linear over the visible assertions, does not
+generate clauses, and is guarded against definition-size blowups. Explicit
+`--qf-uf-preprocess=basic` and `--qf-uf-preprocess=strong` still force the full
+preprocessing loop for ablation or targeted experiments. This auto decision is
+reported by `:preprocessing.auto.large-assertion-skip`.
 
 The large-batch guard was accepted after profiling
 `2018-Goel-hwbench/QF_UF_firewire_tree.5.prop3_ab_reg_max`: default `auto`
@@ -213,6 +218,47 @@ the existing frontend auxiliaries and EUF facts.
 Activation is reported by `:preprocessing.forced-atoms.facts`,
 `:preprocessing.forced-atoms.disequalities`, and
 `:preprocessing.forced-atoms.rewrites`.
+
+## Solved-Constant Substitution
+
+Primo runs a small solved-equation preprocessing pass after forced-atom
+propagation. The pass is a local design-note implementation of the standard
+satisfiability-preserving first-order simplification rule for free constants:
+if a visible unit equality has the form `x = t`, where `x` is a non-Boolean
+uninterpreted constant and `x` does not occur in `t`, then `x` may be eliminated
+by rewriting the assertion conjunction with `t`.
+
+This is not a full `solve-eqs` tactic. The implemented subset is deliberately
+bounded:
+
+- candidates are collected only from top-level assertions and top-level
+  conjuncts;
+- only non-Boolean constants are eliminated;
+- definitions whose right-hand side contains the eliminated constant are
+  rejected;
+- definitions that depend on another simultaneously solved constant are rejected
+  for this pass and may be exposed in a later preprocessing pass;
+- definitions larger than 64 tree nodes, or whose occurrence-count product would
+  exceed 200,000 added nodes, are rejected to avoid accidental blowups;
+- all terms are rebuilt through `core::TermManager`, preserving hash-consing and
+  sort checks.
+
+The pass preserves satisfiability, not a user-facing model for the eliminated
+constant. Primo currently does not expose model reconstruction, so this is
+acceptable for `check-sat`; model support would need a substitution trail.
+
+The pass is reported by:
+
+- `:preprocessing.solve-eqs.candidates`;
+- `:preprocessing.solve-eqs.accepted`;
+- `:preprocessing.solve-eqs.rewrites`;
+- `:preprocessing.solve-eqs.rejected-cycles`;
+- `:preprocessing.solve-eqs.rejected-blowups`.
+
+Use `--no-solved-constant-substitution` for ablation. Broader equation solving,
+including Boolean constants, equalities hidden under disjunction, and
+context-safe conditional definitions from lowered ITE chains, remains future
+work and needs a separate design note before implementation.
 
 ## ITE Lowering
 

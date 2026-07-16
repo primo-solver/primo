@@ -67,6 +67,13 @@ constexpr std::string_view kStatUnitEqualitySubstitutionAccepted =
     ":preprocessing.unit-equality.substitution-accepted";
 constexpr std::string_view kStatUnitEqualitySubstitutionRejected =
     ":preprocessing.unit-equality.substitution-rejected";
+constexpr std::string_view kStatSolvedConstantCandidates = ":preprocessing.solve-eqs.candidates";
+constexpr std::string_view kStatSolvedConstantAccepted = ":preprocessing.solve-eqs.accepted";
+constexpr std::string_view kStatSolvedConstantRewrites = ":preprocessing.solve-eqs.rewrites";
+constexpr std::string_view kStatSolvedConstantRejectedCycles =
+    ":preprocessing.solve-eqs.rejected-cycles";
+constexpr std::string_view kStatSolvedConstantRejectedBlowups =
+    ":preprocessing.solve-eqs.rejected-blowups";
 constexpr std::string_view kStatFiniteDomainDomains = ":preprocessing.finite-domain.domains";
 constexpr std::string_view kStatFiniteDomainAmoClauses = ":preprocessing.finite-domain.amo-clauses";
 constexpr std::string_view kStatFiniteDomainEvaluatedEqualities =
@@ -2070,6 +2077,11 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatUnitEqualitySubstitutions, 0);
   statistics.set(kStatUnitEqualitySubstitutionAccepted, 0);
   statistics.set(kStatUnitEqualitySubstitutionRejected, 0);
+  statistics.set(kStatSolvedConstantCandidates, 0);
+  statistics.set(kStatSolvedConstantAccepted, 0);
+  statistics.set(kStatSolvedConstantRewrites, 0);
+  statistics.set(kStatSolvedConstantRejectedCycles, 0);
+  statistics.set(kStatSolvedConstantRejectedBlowups, 0);
   statistics.set(kStatFiniteDomainDomains, 0);
   statistics.set(kStatFiniteDomainAmoClauses, 0);
   statistics.set(kStatFiniteDomainEvaluatedEqualities, 0);
@@ -2187,6 +2199,16 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     }
     statistics.set(kStatPreprocessingTermSizeInitial,
                    reachable_term_count(frontend.terms(), assertions));
+    if (auto_large_assertion_skip && options.solved_constant_substitution) {
+      SolvedConstantSubstitutionResult solved_constants =
+          substitute_solved_constants(frontend.terms(), assertions);
+      assertions = std::move(solved_constants.assertions);
+      statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
+      statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
+      statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
+      statistics.increment(kStatSolvedConstantRejectedCycles, solved_constants.rejected_cycles);
+      statistics.increment(kStatSolvedConstantRejectedBlowups, solved_constants.rejected_blowups);
+    }
     for (std::size_t pass = 0; preprocessing_enabled && pass < preprocessing_pass_limit; ++pass) {
       const std::vector<core::TermId> before = assertions;
       const std::size_t before_term_size = reachable_term_count(frontend.terms(), before);
@@ -2246,6 +2268,16 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       statistics.increment(kStatForcedAtomFacts, forced_atoms.units);
       statistics.increment(kStatForcedAtomDisequalities, forced_atoms.disequalities);
       statistics.increment(kStatForcedAtomRewrites, forced_atoms.rewrites);
+      if (options.solved_constant_substitution) {
+        SolvedConstantSubstitutionResult solved_constants =
+            substitute_solved_constants(frontend.terms(), assertions);
+        assertions = std::move(solved_constants.assertions);
+        statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
+        statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
+        statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
+        statistics.increment(kStatSolvedConstantRejectedCycles, solved_constants.rejected_cycles);
+        statistics.increment(kStatSolvedConstantRejectedBlowups, solved_constants.rejected_blowups);
+      }
       if (use_ground_unit_substitution || use_guarded_ground_unit_substitution) {
         GroundEqualitySubstitutionResult ground_substitution =
             substitute_ground_unit_equalities(frontend.terms(), assertions);

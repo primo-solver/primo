@@ -166,6 +166,8 @@ constexpr std::size_t kMaxBridgePairChecks = 200000;
 constexpr std::size_t kMaxCongruenceDefinitionClauses = 10000;
 constexpr std::size_t kMaxFullCongruenceApplicationsPerSymbol = 128;
 constexpr std::size_t kMaxFiniteDomainEvaluationAssignments = 250000;
+constexpr std::size_t kSolvedConstantMaxDefinitionSize = 64;
+constexpr std::size_t kSolvedConstantMaxAddedNodes = 200000;
 
 std::pair<core::TermId, core::TermId> ordered_pair(core::TermId lhs, core::TermId rhs) {
   if (rhs < lhs) {
@@ -184,6 +186,81 @@ void collect_conjuncts(const core::TermManager& terms, core::TermId term,
     return;
   }
   conjuncts.push_back(term);
+}
+
+bool is_non_bool_constant(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  return term.kind == core::TermKind::Constant && term.sort != terms.symbols().bool_sort();
+}
+
+std::size_t tree_term_size(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  std::size_t size = 1;
+  for (const core::TermId child : term.children) {
+    size += tree_term_size(terms, child);
+  }
+  return size;
+}
+
+void collect_constants_in_term(const core::TermManager& terms, core::TermId root,
+                               std::unordered_set<core::TermId>& constants) {
+  const core::Term& term = terms.get(root);
+  if (term.kind == core::TermKind::Constant) {
+    constants.insert(root);
+    return;
+  }
+  for (const core::TermId child : term.children) {
+    collect_constants_in_term(terms, child, constants);
+  }
+}
+
+void count_term_occurrences(const core::TermManager& terms, core::TermId root,
+                            std::unordered_map<core::TermId, std::size_t>& occurrences) {
+  ++occurrences[root];
+  const core::Term& term = terms.get(root);
+  for (const core::TermId child : term.children) {
+    count_term_occurrences(terms, child, occurrences);
+  }
+}
+
+struct SolvedConstantCandidate {
+  core::TermId variable = core::kInvalidTermId;
+  core::TermId definition = core::kInvalidTermId;
+  std::size_t definition_size = 0;
+};
+
+std::optional<SolvedConstantCandidate> solved_constant_candidate_from_equality(
+    const core::TermManager& terms, core::TermId equality) {
+  const core::Term& term = terms.get(equality);
+  if (term.kind != core::TermKind::Equality) {
+    return std::nullopt;
+  }
+
+  const core::TermId lhs = term.children.at(0);
+  const core::TermId rhs = term.children.at(1);
+  const bool lhs_variable = is_non_bool_constant(terms, lhs);
+  const bool rhs_variable = is_non_bool_constant(terms, rhs);
+  if (!lhs_variable && !rhs_variable) {
+    return std::nullopt;
+  }
+
+  const core::TermId variable = lhs_variable ? lhs : rhs;
+  const core::TermId definition = lhs_variable ? rhs : lhs;
+  return SolvedConstantCandidate{variable, definition, tree_term_size(terms, definition)};
+}
+
+void collect_solved_constant_candidates(const core::TermManager& terms, core::TermId assertion,
+                                        std::vector<SolvedConstantCandidate>& candidates) {
+  const core::Term& term = terms.get(assertion);
+  if (term.kind == core::TermKind::And) {
+    for (const core::TermId child : term.children) {
+      collect_solved_constant_candidates(terms, child, candidates);
+    }
+    return;
+  }
+  if (auto candidate = solved_constant_candidate_from_equality(terms, assertion)) {
+    candidates.push_back(*candidate);
+  }
 }
 
 bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) {
@@ -1313,6 +1390,88 @@ core::TermId rewrite_with_ground_unit_equalities(
   return rewritten;
 }
 
+core::TermId rewrite_with_solved_constants(
+    core::TermManager& terms, core::TermId term_id,
+    const std::unordered_map<core::TermId, core::TermId>& replacements,
+    std::unordered_map<core::TermId, core::TermId>& memo, std::size_t& rewrites) {
+  if (const auto found = memo.find(term_id); found != memo.end()) {
+    return found->second;
+  }
+
+  if (const auto replacement = replacements.find(term_id); replacement != replacements.end()) {
+    const core::TermId rewritten =
+        rewrite_with_solved_constants(terms, replacement->second, replacements, memo, rewrites);
+    if (rewritten != term_id) {
+      ++rewrites;
+    }
+    memo.emplace(term_id, rewritten);
+    return rewritten;
+  }
+
+  const core::Term& term = terms.get(term_id);
+  const std::vector<core::TermId> children = term.children;
+  core::TermId rewritten = term_id;
+  switch (term.kind) {
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+      break;
+    case core::TermKind::Application: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      bool changed = false;
+      for (const core::TermId child : children) {
+        const core::TermId rewritten_child =
+            rewrite_with_solved_constants(terms, child, replacements, memo, rewrites);
+        changed = changed || rewritten_child != child;
+        rewritten_children.push_back(rewritten_child);
+      }
+      if (changed) {
+        rewritten = terms.mk_app(term.symbol, std::move(rewritten_children));
+      }
+      break;
+    }
+    case core::TermKind::Equality:
+      rewritten = terms.mk_eq(
+          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites),
+          rewrite_with_solved_constants(terms, children.at(1), replacements, memo, rewrites));
+      break;
+    case core::TermKind::Not:
+      rewritten = terms.mk_not(
+          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites));
+      break;
+    case core::TermKind::And: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      for (const core::TermId child : children) {
+        rewritten_children.push_back(
+            rewrite_with_solved_constants(terms, child, replacements, memo, rewrites));
+      }
+      rewritten = terms.mk_and(std::move(rewritten_children));
+      break;
+    }
+    case core::TermKind::Or: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      for (const core::TermId child : children) {
+        rewritten_children.push_back(
+            rewrite_with_solved_constants(terms, child, replacements, memo, rewrites));
+      }
+      rewritten = terms.mk_or(std::move(rewritten_children));
+      break;
+    }
+    case core::TermKind::Implies:
+      rewritten = terms.mk_implies(
+          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites),
+          rewrite_with_solved_constants(terms, children.at(1), replacements, memo, rewrites));
+      break;
+  }
+  if (rewritten != term_id) {
+    ++rewrites;
+  }
+  memo.emplace(term_id, rewritten);
+  return rewritten;
+}
+
 bool is_domain_value(core::TermId term, const std::unordered_set<core::TermId>& values) {
   return values.contains(term);
 }
@@ -1753,6 +1912,79 @@ GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
     if (emitted.insert(rewritten).second) {
       result.assertions.push_back(rewritten);
     }
+  }
+  return result;
+}
+
+SolvedConstantSubstitutionResult substitute_solved_constants(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  // This is satisfiability-preserving definitional elimination for free
+  // uninterpreted constants: a unit equality x = t may replace x when x does
+  // not occur in t. It is deliberately smaller than a full solve-eqs tactic.
+  SolvedConstantSubstitutionResult result;
+  result.assertions = assertions;
+
+  std::vector<SolvedConstantCandidate> candidates;
+  for (const core::TermId assertion : assertions) {
+    collect_solved_constant_candidates(terms, assertion, candidates);
+  }
+
+  std::unordered_map<core::TermId, std::size_t> occurrences;
+  for (const core::TermId assertion : assertions) {
+    count_term_occurrences(terms, assertion, occurrences);
+  }
+
+  result.candidates = candidates.size();
+  if (candidates.empty()) {
+    return result;
+  }
+
+  std::unordered_set<core::TermId> candidate_variables;
+  for (const SolvedConstantCandidate& candidate : candidates) {
+    candidate_variables.insert(candidate.variable);
+  }
+
+  std::unordered_map<core::TermId, core::TermId> replacements;
+  for (const SolvedConstantCandidate& candidate : candidates) {
+    std::unordered_set<core::TermId> definition_constants;
+    collect_constants_in_term(terms, candidate.definition, definition_constants);
+    if (definition_constants.contains(candidate.variable)) {
+      ++result.rejected_cycles;
+      continue;
+    }
+    bool depends_on_pending_definition = false;
+    for (const core::TermId variable : candidate_variables) {
+      if (variable != candidate.variable && definition_constants.contains(variable)) {
+        depends_on_pending_definition = true;
+        break;
+      }
+    }
+    if (depends_on_pending_definition) {
+      ++result.rejected_cycles;
+      continue;
+    }
+    const std::size_t occurrences_of_variable = occurrences[candidate.variable];
+    const std::size_t added_nodes =
+        occurrences_of_variable > 0 ? occurrences_of_variable * candidate.definition_size : 0;
+    if (candidate.definition_size > kSolvedConstantMaxDefinitionSize ||
+        added_nodes > kSolvedConstantMaxAddedNodes) {
+      ++result.rejected_blowups;
+      continue;
+    }
+    replacements.emplace(candidate.variable, candidate.definition);
+  }
+
+  if (replacements.empty()) {
+    return result;
+  }
+
+  result.accepted = replacements.size();
+  result.assertions.clear();
+  result.assertions.reserve(assertions.size());
+  std::unordered_map<core::TermId, core::TermId> memo;
+  for (const core::TermId assertion : assertions) {
+    result.assertions.push_back(
+        rewrite_with_solved_constants(terms, assertion, replacements, memo, result.rewrites));
   }
   return result;
 }

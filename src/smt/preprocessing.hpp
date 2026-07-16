@@ -38,6 +38,18 @@ struct GroundEqualitySubstitutionResult {
 GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
     core::TermManager& terms, const std::vector<core::TermId>& assertions);
 
+struct SolvedConstantSubstitutionResult {
+  std::vector<core::TermId> assertions;
+  std::size_t candidates = 0;
+  std::size_t accepted = 0;
+  std::size_t rewrites = 0;
+  std::size_t rejected_cycles = 0;
+  std::size_t rejected_blowups = 0;
+};
+
+SolvedConstantSubstitutionResult substitute_solved_constants(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions);
+
 struct BooleanUnitPropagationResult {
   std::vector<core::TermId> assertions;
   std::size_t units = 0;
