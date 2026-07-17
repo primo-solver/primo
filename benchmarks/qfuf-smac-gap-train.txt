@@ -1,0 +1,8 @@
+tmp/QF_UF/NEQ/NEQ015_size5.smt2
+tmp/QF_UF/NEQ/NEQ046_size5.smt2
+tmp/QF_UF/PEQ/PEQ002_size7.smt2
+tmp/QF_UF/PEQ/PEQ003_size8.smt2
+tmp/QF_UF/PEQ/PEQ004_size9.smt2
+tmp/QF_UF/PEQ/PEQ016_size7.smt2
+tmp/QF_UF/SEQ/SEQ026_size6.smt2
+tmp/QF_UF/SEQ/SEQ035_size6.smt2

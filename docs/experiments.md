@@ -164,3 +164,43 @@ Do not promote an irace elite directly to a default. First validate it on the
 holdout manifest, the full NEQ/PEQ/SEQ set, and then the full QF_UF archive.
 Report wrong answers, PAR2, solved counts by family, and the exact generated
 Primo command line.
+
+## QF_UF Gap Tuning With SMAC
+
+`scripts/smac/qfuf_gap_tune.py` runs a focused SMAC campaign for the current
+NEQ/PEQ/SEQ gap against LLM2SMT. It is intentionally narrower than the irace
+setup: the training manifest contains near-gap siblings, and the validation
+manifest contains the seven 120s instances that LLM2SMT solves while the current
+Primo default times out.
+
+Run it on SLURM, not on a workstation:
+
+```bash
+python3 -m venv .venv-smac
+. .venv-smac/bin/activate
+python -m pip install 'smac>=2,<3'
+
+python scripts/smac/qfuf_gap_tune.py \
+  --repo /home/janotmik/llm2smt-fuzz \
+  --solver /home/janotmik/llm2smt-fuzz/build-slurm-rel/primo \
+  --train benchmarks/qfuf-smac-gap-train.txt \
+  --validate benchmarks/qfuf-smac-gap-validate.txt \
+  --out-dir results/smac/qfuf-gap-c2c7e0e \
+  --timeout 45 \
+  --validation-timeout 120 \
+  --trials 80
+```
+
+The objective is PAR2 over the training manifest, with wrong answers penalized
+far above timeouts. After the SMAC budget is exhausted, the script validates the
+SMAC incumbent and the current default on the seven held-out gap instances and
+writes `result.json`, `incumbent.json`, `trial-summary.csv`, and
+`validation-runs.csv`.
+
+The first completed campaign for commit `c2c7e0e` found an incumbent that solves
+`NEQ015_size6` in 25.36s under the 120s validation cap, while the default timed
+out on all seven validation instances. The incumbent did not solve the remaining
+six validation cases. Treat this as a diagnostic signal, not a default change:
+the winning profile uses aggressive online EUF propagation and the incremental
+CaDiCaL profile, so the engineering target is a cheaper, principled propagation
+queue rather than exposing another broad default profile.
