@@ -22,6 +22,12 @@ finite-model value-precedence shape from this paper. It uses Déharbe et al.'s
 SMT-specific Algorithm 1, which is safe for moving terms only when the generated
 restriction preserves the constants occurring inside the selected term.
 
+The QF_UF preprocessor does implement a narrow finite-domain-lemma subset around
+explicit choice disjunctions: at-most-one clauses for pairwise disequal values
+and equality-definition clauses for equality atoms already observed between
+same-domain terms. These are ordinary ground EUF consequences over existing
+terms, not the paper's full finite-model SAT reduction.
+
 ## Implementation Status
 
 Implemented in `src/smt/preprocessing.*`:
@@ -33,4 +39,5 @@ Deferred:
 - full finite-model SAT reduction;
 - sort-size search;
 - totality/functionality encodings;
-- finite-domain at-most-one and equality-definition clauses from LLM2SMT.
+- equality definitions for unmentioned term pairs or generated finite-domain
+  search variables.

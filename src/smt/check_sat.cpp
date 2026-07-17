@@ -2370,23 +2370,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     const std::size_t adaptive_shrink_percent =
         std::min<std::size_t>(options.preprocessing_adaptive_shrink_percent, 100);
     std::size_t preprocessing_pass_limit = preprocessing_passes;
-    std::size_t auto_equality_definition_remaining = options.finite_domain_eqdefs_auto_clause_limit;
 
-    if (use_symmetry_breaking) {
-      UfSymmetryBreaker symmetry_breaker(frontend.terms());
-      UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(
-          assertions,
-          UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
-      assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
-      statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
-      statistics.increment(kStatUfSymmetryValues, symmetry.values);
-      statistics.increment(kStatUfSymmetryTerms, symmetry.terms);
-      statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
-      statistics.increment(kStatUfSymmetryValuePrecedenceTerms, symmetry.value_precedence_terms);
-      statistics.increment(kStatUfSymmetryValuePrecedenceConstraints,
-                           symmetry.value_precedence_constraints);
-      statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
-    }
     statistics.set(kStatPreprocessingTermSizeInitial,
                    reachable_term_count(frontend.terms(), assertions));
     if (auto_large_assertion_skip && options.solved_constant_substitution) {
@@ -2419,48 +2403,6 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
                              evaluation_result.equalities_simplified);
         statistics.increment(kStatFiniteDomainEvaluationCutoffs,
                              evaluation_result.enumeration_cutoffs);
-      }
-      if (use_finite_domain_amo) {
-        FiniteDomainAtMostOne finite_domain(frontend.terms());
-        FiniteDomainAtMostOneResult finite_domain_result = finite_domain.generate(assertions);
-        assertions.insert(assertions.end(), finite_domain_result.clauses.begin(),
-                          finite_domain_result.clauses.end());
-        statistics.increment(kStatFiniteDomainDomains, finite_domain_result.domains);
-        statistics.increment(kStatFiniteDomainAmoClauses, finite_domain_result.clauses.size());
-      }
-      const bool auto_eqdefs_budget_exhausted =
-          use_bounded_auto_equality_definitions &&
-          options.finite_domain_eqdefs_auto_clause_limit > 0 &&
-          auto_equality_definition_remaining == 0;
-      if (use_finite_domain_equality_definitions && !auto_eqdefs_budget_exhausted) {
-        FiniteDomainEqualityDefinitions equality_definitions(frontend.terms());
-        FiniteDomainEqualityDefinitionsOptions definition_options;
-        if (use_bounded_auto_equality_definitions) {
-          definition_options.max_domain_size = options.finite_domain_eqdefs_auto_domain_limit;
-          definition_options.max_clauses = auto_equality_definition_remaining;
-        }
-        FiniteDomainEqualityDefinitionsResult equality_definition_result =
-            equality_definitions.generate(assertions, definition_options);
-        assertions.insert(assertions.end(), equality_definition_result.clauses.begin(),
-                          equality_definition_result.clauses.end());
-        statistics.increment(kStatEqualityDefinitions, equality_definition_result.clauses.size());
-        statistics.increment(kStatEqualityDefinitionCandidatePairs,
-                             equality_definition_result.candidate_term_pairs);
-        statistics.increment(kStatEqualityDefinitionAcceptedPairs,
-                             equality_definition_result.term_pairs);
-        statistics.increment(kStatEqualityDefinitionPredictedClauses,
-                             equality_definition_result.predicted_clauses);
-        statistics.increment(kStatEqualityDefinitionRejectedDomainSize,
-                             equality_definition_result.rejected_domain_size);
-        statistics.increment(kStatEqualityDefinitionRejectedClauseLimit,
-                             equality_definition_result.rejected_clause_limit);
-        if (use_bounded_auto_equality_definitions &&
-            options.finite_domain_eqdefs_auto_clause_limit > 0) {
-          auto_equality_definition_remaining =
-              equality_definition_result.clauses.size() >= auto_equality_definition_remaining
-                  ? 0
-                  : auto_equality_definition_remaining - equality_definition_result.clauses.size();
-        }
       }
       if (use_ground_congruence_definitions) {
         CongruenceDefinitionGenerator congruence_definitions(frontend.terms());
@@ -2528,6 +2470,52 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         ++preprocessing_pass_limit;
         statistics.increment(kStatPreprocessingAdaptivePasses);
       }
+    }
+    if (use_finite_domain_amo) {
+      FiniteDomainAtMostOne finite_domain(frontend.terms());
+      FiniteDomainAtMostOneResult finite_domain_result = finite_domain.generate(assertions);
+      assertions.insert(assertions.end(), finite_domain_result.clauses.begin(),
+                        finite_domain_result.clauses.end());
+      statistics.increment(kStatFiniteDomainDomains, finite_domain_result.domains);
+      statistics.increment(kStatFiniteDomainAmoClauses, finite_domain_result.clauses.size());
+    }
+    if (use_finite_domain_equality_definitions) {
+      FiniteDomainEqualityDefinitions equality_definitions(frontend.terms());
+      FiniteDomainEqualityDefinitionsOptions definition_options;
+      if (use_bounded_auto_equality_definitions) {
+        definition_options.max_domain_size = options.finite_domain_eqdefs_auto_domain_limit;
+        definition_options.max_clauses = options.finite_domain_eqdefs_auto_clause_limit;
+      }
+      FiniteDomainEqualityDefinitionsResult equality_definition_result =
+          equality_definitions.generate(assertions, definition_options);
+      assertions.insert(assertions.end(), equality_definition_result.clauses.begin(),
+                        equality_definition_result.clauses.end());
+      statistics.increment(kStatEqualityDefinitions, equality_definition_result.clauses.size());
+      statistics.increment(kStatEqualityDefinitionCandidatePairs,
+                           equality_definition_result.candidate_term_pairs);
+      statistics.increment(kStatEqualityDefinitionAcceptedPairs,
+                           equality_definition_result.term_pairs);
+      statistics.increment(kStatEqualityDefinitionPredictedClauses,
+                           equality_definition_result.predicted_clauses);
+      statistics.increment(kStatEqualityDefinitionRejectedDomainSize,
+                           equality_definition_result.rejected_domain_size);
+      statistics.increment(kStatEqualityDefinitionRejectedClauseLimit,
+                           equality_definition_result.rejected_clause_limit);
+    }
+    if (use_symmetry_breaking) {
+      UfSymmetryBreaker symmetry_breaker(frontend.terms());
+      UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(
+          assertions,
+          UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
+      assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
+      statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
+      statistics.increment(kStatUfSymmetryValues, symmetry.values);
+      statistics.increment(kStatUfSymmetryTerms, symmetry.terms);
+      statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
+      statistics.increment(kStatUfSymmetryValuePrecedenceTerms, symmetry.value_precedence_terms);
+      statistics.increment(kStatUfSymmetryValuePrecedenceConstraints,
+                           symmetry.value_precedence_constraints);
+      statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
     }
     statistics.set(kStatAssertionsFinal, assertions.size());
     statistics.set(kStatPreprocessingTermSizeFinal,

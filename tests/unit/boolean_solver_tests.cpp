@@ -789,6 +789,7 @@ void auto_preprocessing_emits_guarded_equality_definitions() {
     (assert (distinct a b c))
     (assert (or (= x a) (= x b) (= x c)))
     (assert (or (= y a) (= y b) (= y c)))
+    (assert (not (= x y)))
     (check-sat)
   )",
       options);

@@ -159,8 +159,10 @@ where substitution only adds unit equality pressure.
 can add bridge facts and then simplify with Boolean and unit equalities. The
 default is four passes. `0` disables the loop unless the `strong` preset or the
 auto single-assertion path is selected. Those paths run at least three passes
-because bridge facts and finite-domain clauses can expose further unit-equality
-simplifications.
+because bridge facts and forced atoms can expose further unit-equality
+simplifications. Finite-domain AMO clauses, equality-definition clauses, and
+symmetry constraints are emitted once after the repeated simplification loop so
+generated lemmas are not fed back into every pass.
 
 The fixed pass count is a baseline cap, not always a hard stop. After the cap is
 reached, Primo may run up to four additional adaptive passes when the previous
@@ -381,10 +383,10 @@ search. Symmetry breaking remains narrower than AMO generation: the current
 symmetry pass still requires explicit choice disjunctions before it accepts a
 finite-domain value set.
 
-When two or more terms share the same recognized finite domain, `strong`
-preprocessing also appends equality-definition clauses over existing equality
-atoms. For every pair of terms `s, t` and every value `ci`, the generated clauses
-state that:
+When an equality atom between two recognized finite-domain terms occurs in the
+assertion DAG, `strong` preprocessing also appends equality-definition clauses
+over that existing equality atom. For the observed pair `s, t` and every value
+`ci`, the generated clauses state that:
 
 - if `s = ci` and `t = ci`, then `s = t`;
 - if `s = t` and `s = ci`, then `t = ci`;
@@ -392,8 +394,12 @@ state that:
 
 Together with the explicit choice disjunctions and at-most-one clauses, these
 clauses expose finite-domain equality structure to SAT without fresh Boolean
-variables or SAT/theory shortcuts. They are counted by
-`:preprocessing.equality-definitions`.
+variables or SAT/theory shortcuts. The pass deliberately does not define every
+pair of terms in a finite-domain group: it only strengthens equality atoms the
+formula already mentions, which keeps the expansion bounded on NEQ/PEQ/SEQ
+families. They are counted by `:preprocessing.equality-definitions`;
+`:preprocessing.equality-definitions.candidate-pairs` counts observed same-domain
+term equalities.
 
 `--ground-congruence` emits a bounded subset of ordinary ground-EUF congruence
 clauses over applications already present in the formula:
@@ -494,14 +500,16 @@ predicate applications.
 Finite-domain equality definitions are owned by
 `smt::FiniteDomainEqualityDefinitions` in `src/smt/preprocessing.*`. The pass
 collects explicit finite-domain choice disjunctions and top-level value
-disequalities, groups terms by identical value lists, and emits ordinary SMT
-assertions relating `(= s t)` to the already-visible atoms `(= s c_i)` and
-`(= t c_i)`. It does not create fresh Boolean variables or inspect SAT backend
-state. In `auto`, `CheckSatOptions::auto_finite_domain_equality_definitions`
+disequalities, records equality atoms that occur in the assertion DAG, and emits
+ordinary SMT assertions relating an observed `(= s t)` to the already-visible
+atoms `(= s c_i)` and `(= t c_i)` when both endpoints have the same recognized
+finite-domain value list. It does not create fresh Boolean variables, inspect
+SAT backend state, or define unmentioned term pairs. In `auto`,
+`CheckSatOptions::auto_finite_domain_equality_definitions`
 must be set before this pass runs. Then
 `CheckSatOptions::finite_domain_eqdefs_auto_domain_limit` and
 `CheckSatOptions::finite_domain_eqdefs_auto_clause_limit` bound the expansion;
-the clause limit is cumulative across preprocessing passes.
+the clause limit applies to the single post-loop equality-definition expansion.
 `CheckSatOptions::finite_domain_eqdefs_auto_term_limit` blocks this expansion on
 large single-assertion formulas. Zero means unlimited for each of these guards.
 Guard decisions are reported with

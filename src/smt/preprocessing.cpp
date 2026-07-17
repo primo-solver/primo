@@ -1222,6 +1222,32 @@ std::vector<core::TermId> finite_domain_equality_definition_clauses(
   return clauses;
 }
 
+std::vector<std::pair<core::TermId, core::TermId>> collect_observed_equality_pairs(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  std::vector<std::pair<core::TermId, core::TermId>> equalities;
+  std::unordered_set<core::TermId> seen;
+  std::vector<core::TermId> work = assertions;
+  while (!work.empty()) {
+    const core::TermId term_id = work.back();
+    work.pop_back();
+    if (!seen.insert(term_id).second) {
+      continue;
+    }
+    const core::Term& term = terms.get(term_id);
+    if (term.kind == core::TermKind::Equality) {
+      const core::TermId lhs = term.children.at(0);
+      const core::TermId rhs = term.children.at(1);
+      if (lhs != rhs) {
+        equalities.push_back(ordered_pair(lhs, rhs));
+      }
+    }
+    work.insert(work.end(), term.children.begin(), term.children.end());
+  }
+  std::sort(equalities.begin(), equalities.end());
+  equalities.erase(std::unique(equalities.begin(), equalities.end()), equalities.end());
+  return equalities;
+}
+
 void collect_unit_equalities_list(const core::TermManager& terms, core::TermId assertion,
                                   std::vector<std::pair<core::TermId, core::TermId>>& equalities) {
   std::vector<core::TermId> work{assertion};
@@ -2181,38 +2207,39 @@ FiniteDomainEqualityDefinitionsResult FiniteDomainEqualityDefinitions::generate(
   FiniteDomainEqualityDefinitionsResult result;
   const auto disequalities = collect_disequalities(terms_, assertions);
   const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
-  const std::vector<FiniteDomainGroup> groups = finite_domain_groups(terms_, choices, false);
+  const std::vector<std::pair<core::TermId, core::TermId>> observed_equalities =
+      collect_observed_equality_pairs(terms_, assertions);
   std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
-  for (FiniteDomainGroup group : groups) {
-    std::sort(group.terms.begin(), group.terms.end());
-    group.terms.erase(std::unique(group.terms.begin(), group.terms.end()), group.terms.end());
-    for (std::size_t i = 0; i < group.terms.size(); ++i) {
-      for (std::size_t j = i + 1; j < group.terms.size(); ++j) {
-        ++result.candidate_term_pairs;
-        const std::size_t predicted_clauses = group.values.size() * 3U;
-        result.predicted_clauses += predicted_clauses;
-        if (options.max_domain_size > 0 && group.values.size() > options.max_domain_size) {
-          ++result.rejected_domain_size;
-          continue;
-        }
-        if (options.max_clauses > 0 &&
-            result.clauses.size() + predicted_clauses > options.max_clauses) {
-          ++result.rejected_clause_limit;
-          continue;
-        }
-        const std::vector<core::TermId> clauses = finite_domain_equality_definition_clauses(
-            terms_, group.terms[i], group.terms[j], group.values);
-        std::size_t added_for_pair = 0;
-        for (const core::TermId clause : clauses) {
-          if (emitted.insert(clause).second) {
-            result.clauses.push_back(clause);
-            ++added_for_pair;
-          }
-        }
-        if (added_for_pair > 0) {
-          ++result.term_pairs;
-        }
+  for (const auto& [lhs, rhs] : observed_equalities) {
+    const auto lhs_choice = choices.find(lhs);
+    const auto rhs_choice = choices.find(rhs);
+    if (lhs_choice == choices.end() || rhs_choice == choices.end() ||
+        lhs_choice->second.values != rhs_choice->second.values) {
+      continue;
+    }
+    ++result.candidate_term_pairs;
+    const std::size_t predicted_clauses = lhs_choice->second.values.size() * 3U;
+    result.predicted_clauses += predicted_clauses;
+    if (options.max_domain_size > 0 && lhs_choice->second.values.size() > options.max_domain_size) {
+      ++result.rejected_domain_size;
+      continue;
+    }
+    if (options.max_clauses > 0 &&
+        result.clauses.size() + predicted_clauses > options.max_clauses) {
+      ++result.rejected_clause_limit;
+      continue;
+    }
+    const std::vector<core::TermId> clauses =
+        finite_domain_equality_definition_clauses(terms_, lhs, rhs, lhs_choice->second.values);
+    std::size_t added_for_pair = 0;
+    for (const core::TermId clause : clauses) {
+      if (emitted.insert(clause).second) {
+        result.clauses.push_back(clause);
+        ++added_for_pair;
       }
+    }
+    if (added_for_pair > 0) {
+      ++result.term_pairs;
     }
   }
   return result;

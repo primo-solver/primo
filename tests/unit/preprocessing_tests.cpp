@@ -553,6 +553,7 @@ void finite_domain_equality_definitions_connect_terms_with_same_domain() {
   std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
   assertions.push_back(fixture.choices(x, values));
   assertions.push_back(fixture.choices(y, values));
+  assertions.push_back(fixture.neq(x, y));
 
   primo::smt::FiniteDomainEqualityDefinitions definitions(fixture.terms);
   const primo::smt::FiniteDomainEqualityDefinitionsResult result = definitions.generate(assertions);
@@ -575,6 +576,28 @@ void finite_domain_equality_definitions_connect_terms_with_same_domain() {
   check(repeated.clauses.empty());
 }
 
+void finite_domain_equality_definitions_require_observed_term_equality() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const std::vector<primo::core::TermId> values{a, b, c};
+
+  std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
+  assertions.push_back(fixture.choices(x, values));
+  assertions.push_back(fixture.choices(y, values));
+
+  primo::smt::FiniteDomainEqualityDefinitions definitions(fixture.terms);
+  const primo::smt::FiniteDomainEqualityDefinitionsResult result = definitions.generate(assertions);
+
+  check(result.candidate_term_pairs == 0);
+  check(result.term_pairs == 0);
+  check(result.predicted_clauses == 0);
+  check(result.clauses.empty());
+}
+
 void finite_domain_equality_definitions_respect_auto_guards() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -586,7 +609,7 @@ void finite_domain_equality_definitions_respect_auto_guards() {
 
   const std::vector<primo::core::TermId> assertions{
       fixture.neq(a, b),          fixture.neq(a, c),          fixture.neq(b, c),
-      fixture.choices(x, values), fixture.choices(y, values),
+      fixture.choices(x, values), fixture.choices(y, values), fixture.terms.mk_eq(x, y),
   };
 
   primo::smt::FiniteDomainEqualityDefinitions definitions(fixture.terms);
@@ -681,6 +704,7 @@ int main() {
   finite_domain_observed_equalities_get_pairwise_amo_clauses_without_choices();
   finite_domain_distinct_endpoints_get_value_amo_clauses();
   finite_domain_equality_definitions_connect_terms_with_same_domain();
+  finite_domain_equality_definitions_require_observed_term_equality();
   finite_domain_equality_definitions_respect_auto_guards();
   congruence_definitions_connect_same_symbol_applications();
   finite_domain_evaluator_simplifies_table_tautology();
