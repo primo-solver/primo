@@ -86,14 +86,25 @@ class FiniteDomainAtMostOne {
 
 struct FiniteDomainEqualityDefinitionsResult {
   std::vector<core::TermId> clauses;
+  std::size_t candidate_term_pairs = 0;
   std::size_t term_pairs = 0;
+  std::size_t predicted_clauses = 0;
+  std::size_t rejected_domain_size = 0;
+  std::size_t rejected_clause_limit = 0;
+};
+
+struct FiniteDomainEqualityDefinitionsOptions {
+  std::size_t max_domain_size = 0;
+  std::size_t max_clauses = 0;
 };
 
 class FiniteDomainEqualityDefinitions {
  public:
   explicit FiniteDomainEqualityDefinitions(core::TermManager& terms);
 
-  FiniteDomainEqualityDefinitionsResult generate(const std::vector<core::TermId>& assertions);
+  FiniteDomainEqualityDefinitionsResult generate(
+      const std::vector<core::TermId>& assertions,
+      FiniteDomainEqualityDefinitionsOptions options = {});
 
  private:
   core::TermManager& terms_;
@@ -136,14 +147,21 @@ struct UfSymmetryBreakingResult {
   std::size_t accepted_sets = 0;
   std::size_t values = 0;
   std::size_t terms = 0;
+  std::size_t value_precedence_terms = 0;
+  std::size_t value_precedence_constraints = 0;
   std::size_t rejected_noninvariant = 0;
+};
+
+struct UfSymmetryBreakingOptions {
+  bool value_precedence = true;
 };
 
 class UfSymmetryBreaker {
  public:
   explicit UfSymmetryBreaker(core::TermManager& terms);
 
-  UfSymmetryBreakingResult break_symmetries(const std::vector<core::TermId>& assertions);
+  UfSymmetryBreakingResult break_symmetries(const std::vector<core::TermId>& assertions,
+                                            UfSymmetryBreakingOptions options = {});
 
  private:
   core::TermManager& terms_;

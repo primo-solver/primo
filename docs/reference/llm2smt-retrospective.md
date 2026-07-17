@@ -172,6 +172,5 @@ paper or a Primo design note with tests and counters:
 - bounded congruence preprocessing over ground applications already present in
   the input;
 - cheaper theory-propagation reason construction and explanation caching;
-- timeout-aware benchmark logging that preserves partial stats for failed runs;
 - family-specific ablation manifests that isolate Goel, NEQ, PEQ, QG, and SEQ
   instead of mixing all QF_UF behavior into one aggregate number.

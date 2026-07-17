@@ -7,12 +7,13 @@ Primo currently exposes QF_UF preprocessing through
 - `off` disables the preprocessing loop;
 - `basic` runs one pass of unit equality propagation;
 - `strong` enables repeated preprocessing, equality bridging, finite-domain
-  at-most-one clauses, finite-domain equality definitions, and finite-domain
-  symmetry breaking;
+  at-most-one clauses, opt-in finite-domain equality definitions, and
+  finite-domain symmetry breaking;
 - `auto` keeps equality bridging, finite-domain at-most-one clauses, and
-  symmetry breaking when their recognizers apply, but skips finite-domain
-  equality-definition expansion. The explicit `strong` preset adds equality
-  definitions for experiments.
+  symmetry breaking when their recognizers apply. Guarded finite-domain equality
+  definitions are available with `--finite-domain-equality-definitions`. The
+  explicit `strong` preset removes the automatic equality-definition guards for
+  experiments.
 
 The default command now enables the safe part of the predecessor performance
 profile:
@@ -54,13 +55,23 @@ reproducing narrower configurations:
   `--guarded-ground-unit-substitution`;
 - finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
   by the `auto` path;
+- finite-domain equality definitions. In `auto` they are opt-in with
+  `--finite-domain-equality-definitions` and bounded by
+  `--finite-domain-eqdefs-auto-domain-limit` and
+  `--finite-domain-eqdefs-auto-clause-limit`; large single-assertion formulas
+  are additionally guarded by `--finite-domain-eqdefs-auto-term-limit`.
+  `--qf-uf-preprocess=strong` keeps the historical unbounded expansion. Use
+  `--no-finite-domain-equality-definitions` for ablations;
 - solved-constant substitution for acyclic unit definitions, enabled by default
   and disabled with `--no-solved-constant-substitution`;
 - bounded ground-congruence clauses over applications already present in the
   formula, enabled by `--ground-congruence`;
 - symmetry breaking over finite-domain choice disjunctions, enabled by default
   when preprocessing is enabled and explicitly controllable with
-  `--uf-symmetry-breaking` / `--no-uf-symmetry-breaking`.
+  `--uf-symmetry-breaking` / `--no-uf-symmetry-breaking`. Fixed-term value
+  precedence inside accepted symmetry groups is controlled separately by
+  `--finite-domain-value-precedence` /
+  `--no-finite-domain-value-precedence`.
 
 `--no-eq-bridge` and `--no-uf-symmetry-breaking` disable the two default-on
 legacy switches for ablation runs. `--qf-uf-preprocess=off` disables the
@@ -82,13 +93,16 @@ Boolean clausifier and lazy EUF loop solve the strengthened formula.
 
 The `auto` preset is a dispatcher between existing sound subsets, not a new
 inference rule. It was added after QF_UF archive profiling showed that
-finite-model encodings such as NEQ, PEQ, SEQ, and QG operation tables can be
-slowed by thousands of finite-domain equality-definition clauses, while many of
-them still need the cheaper at-most-one clauses. `auto` therefore keeps AMO
-clauses but leaves equality definitions to the explicit `strong` preset.
-Single-assertion formulas still run equality bridging with repeated
-unit-equality propagation so `eq_diamond`-style chains keep the fast bridge
-path.
+finite-model encodings such as NEQ, PEQ, SEQ, and QG operation tables can need
+SAT-visible finite-domain structure, while unbounded equality-definition
+expansion can also flood unrelated instances with thousands of clauses. `auto`
+therefore keeps AMO clauses by default but keeps equality definitions opt-in.
+When enabled, equality definitions must fit a domain-size and per-solve clause
+budget. For single-assertion formulas they must also fit the initial
+reachable-term limit, because a single top-level assertion may contain an entire
+operation-table encoding. Single-assertion formulas still run equality bridging
+with repeated unit-equality propagation so
+`eq_diamond`-style chains keep the fast bridge path.
 
 Very large already-flat assertion batches are a separate case. Goel hardware
 instances can arrive as tens of thousands of top-level clauses; running repeated
@@ -446,13 +460,19 @@ rule out values not yet used, but it cannot rule out `c0` itself. The fixed-term
 value-precedence clauses and the moving-term fallback are not stacked for the
 same group.
 
+`--finite-domain-value-precedence` is default-on. Disabling it leaves the
+accepted symmetry group to the moving-term restriction code path, which is useful
+for ablation but is usually weaker on finite-domain choice encodings.
+
 These assertions remove value-renaming representatives from the search space.
 They do not replace EUF reasoning and they do not create a finite model finder by
 themselves.
 
 Activation is reported with `:preprocessing.uf-symmetry.accepted-sets`,
 `:preprocessing.uf-symmetry.values`, `:preprocessing.uf-symmetry.terms`,
-`:preprocessing.uf-symmetry.constraints`, and
+`:preprocessing.uf-symmetry.constraints`,
+`:preprocessing.uf-symmetry.value-precedence-terms`,
+`:preprocessing.uf-symmetry.value-precedence-constraints`, and
 `:preprocessing.uf-symmetry.rejected-noninvariant`.
 
 ## Implementation Notes
@@ -470,6 +490,26 @@ to `true`. Negated equalities then simplify through `mk_not`, and enclosing
 Boolean structure simplifies through the existing `TermManager` constructors.
 It does not inspect equalities hidden under `or`, implication, negation, or
 predicate applications.
+
+Finite-domain equality definitions are owned by
+`smt::FiniteDomainEqualityDefinitions` in `src/smt/preprocessing.*`. The pass
+collects explicit finite-domain choice disjunctions and top-level value
+disequalities, groups terms by identical value lists, and emits ordinary SMT
+assertions relating `(= s t)` to the already-visible atoms `(= s c_i)` and
+`(= t c_i)`. It does not create fresh Boolean variables or inspect SAT backend
+state. In `auto`, `CheckSatOptions::auto_finite_domain_equality_definitions`
+must be set before this pass runs. Then
+`CheckSatOptions::finite_domain_eqdefs_auto_domain_limit` and
+`CheckSatOptions::finite_domain_eqdefs_auto_clause_limit` bound the expansion;
+the clause limit is cumulative across preprocessing passes.
+`CheckSatOptions::finite_domain_eqdefs_auto_term_limit` blocks this expansion on
+large single-assertion formulas. Zero means unlimited for each of these guards.
+Guard decisions are reported with
+`:preprocessing.equality-definitions.candidate-pairs`,
+`:preprocessing.equality-definitions.accepted-pairs`,
+`:preprocessing.equality-definitions.predicted-clauses`,
+`:preprocessing.equality-definitions.rejected-domain-size`, and
+`:preprocessing.equality-definitions.rejected-clause-limit`.
 
 Ground unit-equality substitution uses a second local union-find over the
 endpoints of the same visible non-Boolean unit equalities. Each equivalence
@@ -518,7 +558,8 @@ Implemented:
 - finite-domain at-most-one clauses in the strong preset and auto path, from
   explicit choices and from observed equality atoms to explicitly disequal
   constants;
-- finite-domain equality-definition clauses in the strong preset;
+- finite-domain equality-definition clauses in the strong preset and guarded
+  finite-domain equality-definition clauses in the auto preset;
 - opt-in bounded ground-congruence clauses;
 - top-level pairwise disequality requirement;
 - syntactic constant-permutation invariance check;
@@ -528,6 +569,10 @@ Implemented:
 - CLI flag `--uf-symmetry-breaking`;
 - CLI flag `--no-uf-symmetry-breaking`, which disables symmetry breaking even
   for the strong preprocessing preset;
+- CLI flags `--finite-domain-value-precedence` and
+  `--no-finite-domain-value-precedence`;
+- CLI flags `--finite-domain-equality-definitions` and
+  `--no-finite-domain-equality-definitions`;
 - unit tests for equality bridging and for accepted, asymmetric, and moving-term
   symmetry-breaking cases.
 

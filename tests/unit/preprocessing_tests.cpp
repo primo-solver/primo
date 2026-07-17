@@ -557,7 +557,9 @@ void finite_domain_equality_definitions_connect_terms_with_same_domain() {
   primo::smt::FiniteDomainEqualityDefinitions definitions(fixture.terms);
   const primo::smt::FiniteDomainEqualityDefinitionsResult result = definitions.generate(assertions);
 
+  check(result.candidate_term_pairs == 1);
   check(result.term_pairs == 1);
+  check(result.predicted_clauses == 9);
   check(result.clauses.size() == 9);
   for (const primo::core::TermId clause : result.clauses) {
     const primo::core::Term& node = fixture.terms.get(clause);
@@ -568,8 +570,44 @@ void finite_domain_equality_definitions_connect_terms_with_same_domain() {
   assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
   const primo::smt::FiniteDomainEqualityDefinitionsResult repeated =
       definitions.generate(assertions);
+  check(repeated.candidate_term_pairs == 1);
   check(repeated.term_pairs == 0);
   check(repeated.clauses.empty());
+}
+
+void finite_domain_equality_definitions_respect_auto_guards() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const std::vector<primo::core::TermId> values{a, b, c};
+
+  const std::vector<primo::core::TermId> assertions{
+      fixture.neq(a, b),          fixture.neq(a, c),          fixture.neq(b, c),
+      fixture.choices(x, values), fixture.choices(y, values),
+  };
+
+  primo::smt::FiniteDomainEqualityDefinitions definitions(fixture.terms);
+  primo::smt::FiniteDomainEqualityDefinitionsOptions domain_guard;
+  domain_guard.max_domain_size = 2;
+  const primo::smt::FiniteDomainEqualityDefinitionsResult rejected_domain =
+      definitions.generate(assertions, domain_guard);
+  check(rejected_domain.candidate_term_pairs == 1);
+  check(rejected_domain.rejected_domain_size == 1);
+  check(rejected_domain.rejected_clause_limit == 0);
+  check(rejected_domain.clauses.empty());
+
+  primo::smt::FiniteDomainEqualityDefinitionsOptions clause_guard;
+  clause_guard.max_clauses = 8;
+  const primo::smt::FiniteDomainEqualityDefinitionsResult rejected_clauses =
+      definitions.generate(assertions, clause_guard);
+  check(rejected_clauses.candidate_term_pairs == 1);
+  check(rejected_clauses.predicted_clauses == 9);
+  check(rejected_clauses.rejected_domain_size == 0);
+  check(rejected_clauses.rejected_clause_limit == 1);
+  check(rejected_clauses.clauses.empty());
 }
 
 void congruence_definitions_connect_same_symbol_applications() {
@@ -643,6 +681,7 @@ int main() {
   finite_domain_observed_equalities_get_pairwise_amo_clauses_without_choices();
   finite_domain_distinct_endpoints_get_value_amo_clauses();
   finite_domain_equality_definitions_connect_terms_with_same_domain();
+  finite_domain_equality_definitions_respect_auto_guards();
   congruence_definitions_connect_same_symbol_applications();
   finite_domain_evaluator_simplifies_table_tautology();
   return 0;

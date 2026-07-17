@@ -126,6 +126,7 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
     unsupported = sum(1 for row in rows if row["answer"] == "unsupported")
     checked = sum(1 for row in rows if row["expected"])
     wrong = sum(1 for row in rows if row["wrong"] == "true")
+    timed_out_with_stats = sum(1 for row in rows if row.get("timed_out_with_stats") == "true")
     par2 = sum(
         float(row["seconds"])
         if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
@@ -156,6 +157,7 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
         writer.writerow({"metric": "unsupported", "value": unsupported})
         writer.writerow({"metric": "checked", "value": checked})
         writer.writerow({"metric": "wrong", "value": wrong})
+        writer.writerow({"metric": "timed_out_with_stats", "value": timed_out_with_stats})
         writer.writerow({"metric": "par2", "value": f"{par2:.6f}"})
         for status, count in sorted(by_status.items()):
             writer.writerow({"metric": f"status.{status}", "value": count})
@@ -240,6 +242,9 @@ def main() -> int:
             "wrong": str(wrong).lower(),
             "seconds": result["seconds"],
             "timeout": result["timeout"],
+            "timed_out_with_stats": str(
+                result["status"] == "timeout" and bool(result["stats"])
+            ).lower(),
             "exit_code": result["exit_code"],
             "stderr_head": result["stderr_head"],
             "stdout_log": stdout_log,
@@ -264,6 +269,7 @@ def main() -> int:
         "wrong",
         "seconds",
         "timeout",
+        "timed_out_with_stats",
         "exit_code",
         "stderr_head",
         "stdout_log",

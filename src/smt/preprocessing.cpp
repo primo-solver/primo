@@ -2173,7 +2173,7 @@ FiniteDomainEqualityDefinitions::FiniteDomainEqualityDefinitions(core::TermManag
     : terms_(terms) {}
 
 FiniteDomainEqualityDefinitionsResult FiniteDomainEqualityDefinitions::generate(
-    const std::vector<core::TermId>& assertions) {
+    const std::vector<core::TermId>& assertions, FiniteDomainEqualityDefinitionsOptions options) {
   // Bradley and Manna's ground EUF setting justifies these finite-domain
   // definition clauses when every involved term has an explicit, pairwise
   // disequal choice domain. They expose (= s t) through the SAT-visible choices
@@ -2188,6 +2188,18 @@ FiniteDomainEqualityDefinitionsResult FiniteDomainEqualityDefinitions::generate(
     group.terms.erase(std::unique(group.terms.begin(), group.terms.end()), group.terms.end());
     for (std::size_t i = 0; i < group.terms.size(); ++i) {
       for (std::size_t j = i + 1; j < group.terms.size(); ++j) {
+        ++result.candidate_term_pairs;
+        const std::size_t predicted_clauses = group.values.size() * 3U;
+        result.predicted_clauses += predicted_clauses;
+        if (options.max_domain_size > 0 && group.values.size() > options.max_domain_size) {
+          ++result.rejected_domain_size;
+          continue;
+        }
+        if (options.max_clauses > 0 &&
+            result.clauses.size() + predicted_clauses > options.max_clauses) {
+          ++result.rejected_clause_limit;
+          continue;
+        }
         const std::vector<core::TermId> clauses = finite_domain_equality_definition_clauses(
             terms_, group.terms[i], group.terms[j], group.values);
         std::size_t added_for_pair = 0;
@@ -2302,7 +2314,7 @@ CongruenceDefinitionResult CongruenceDefinitionGenerator::generate(
 UfSymmetryBreaker::UfSymmetryBreaker(core::TermManager& terms) : terms_(terms) {}
 
 UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
-    const std::vector<core::TermId>& assertions) {
+    const std::vector<core::TermId>& assertions, UfSymmetryBreakingOptions options) {
   UfSymmetryBreakingResult result;
   const auto disequalities = collect_disequalities(terms_, assertions);
   const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
@@ -2323,9 +2335,12 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
     ++result.accepted_sets;
     result.values += group.values.size();
     std::vector<SymmetryTerm> fixed_terms = fixed_symmetry_terms(group);
-    if (!fixed_terms.empty()) {
+    if (!fixed_terms.empty() && options.value_precedence) {
+      const std::size_t constraints_before = result.constraints.size();
       result.terms += fixed_terms.size();
       add_value_precedence_constraints(terms_, fixed_terms, group.values, emitted, result);
+      result.value_precedence_terms += fixed_terms.size();
+      result.value_precedence_constraints += result.constraints.size() - constraints_before;
       continue;
     }
 

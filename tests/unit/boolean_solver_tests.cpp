@@ -773,6 +773,82 @@ void auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions() {
   assert(result.statistics.get(":sat.phase.theory-negative") > 0);
 }
 
+void auto_preprocessing_emits_guarded_equality_definitions() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_finite_domain_equality_definitions = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (assert (or (= y a) (= y b) (= y c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.strong") == 1);
+  assert(result.statistics.get(":preprocessing.equality-definitions.candidate-pairs") >= 1);
+  assert(result.statistics.get(":preprocessing.equality-definitions.accepted-pairs") >= 1);
+  assert(result.statistics.get(":preprocessing.equality-definitions") >= 9);
+}
+
+void finite_domain_equality_definitions_can_be_disabled() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_finite_domain_equality_definitions = true;
+  options.finite_domain_equality_definitions = false;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (assert (or (= y a) (= y b) (= y c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") >= 6);
+  assert(result.statistics.get(":preprocessing.equality-definitions") == 0);
+  assert(result.statistics.get(":preprocessing.equality-definitions.candidate-pairs") == 0);
+}
+
+void auto_preprocessing_keeps_equality_definitions_opt_in() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (assert (or (= y a) (= y b) (= y c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") >= 6);
+  assert(result.statistics.get(":preprocessing.equality-definitions") == 0);
+  assert(result.statistics.get(":preprocessing.equality-definitions.candidate-pairs") == 0);
+}
+
 void default_symmetry_breaking_reports_covered_values_and_terms() {
   primo::smt::CheckSatOptions options;
   options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
@@ -800,6 +876,8 @@ void default_symmetry_breaking_reports_covered_values_and_terms() {
   assert(result.statistics.get(":preprocessing.uf-symmetry.values") == 3);
   assert(result.statistics.get(":preprocessing.uf-symmetry.terms") == 3);
   assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 6);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.value-precedence-terms") == 3);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.value-precedence-constraints") == 6);
 }
 
 void no_symmetry_breaking_disables_strong_preset_symmetry_only() {
@@ -1156,6 +1234,9 @@ int main() {
   mixed_polarity_theory_literal_is_not_filtered();
   strong_preprocessing_enables_finite_domain_amo();
   auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions();
+  auto_preprocessing_emits_guarded_equality_definitions();
+  finite_domain_equality_definitions_can_be_disabled();
+  auto_preprocessing_keeps_equality_definitions_opt_in();
   default_symmetry_breaking_reports_covered_values_and_terms();
   no_symmetry_breaking_disables_strong_preset_symmetry_only();
   strong_preprocessing_enables_ground_congruence_clauses();

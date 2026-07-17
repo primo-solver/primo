@@ -79,6 +79,16 @@ constexpr util::StatKey kStatFiniteDomainEvaluatedEqualities =
 constexpr util::StatKey kStatFiniteDomainEvaluationCutoffs =
     util::StatKey::FiniteDomainEvaluationCutoffs;
 constexpr util::StatKey kStatEqualityDefinitions = util::StatKey::EqualityDefinitions;
+constexpr util::StatKey kStatEqualityDefinitionCandidatePairs =
+    util::StatKey::EqualityDefinitionCandidatePairs;
+constexpr util::StatKey kStatEqualityDefinitionAcceptedPairs =
+    util::StatKey::EqualityDefinitionAcceptedPairs;
+constexpr util::StatKey kStatEqualityDefinitionPredictedClauses =
+    util::StatKey::EqualityDefinitionPredictedClauses;
+constexpr util::StatKey kStatEqualityDefinitionRejectedDomainSize =
+    util::StatKey::EqualityDefinitionRejectedDomainSize;
+constexpr util::StatKey kStatEqualityDefinitionRejectedClauseLimit =
+    util::StatKey::EqualityDefinitionRejectedClauseLimit;
 constexpr util::StatKey kStatGroundCongruenceClauses = util::StatKey::GroundCongruenceClauses;
 constexpr util::StatKey kStatGroundCongruenceSkippedGroups =
     util::StatKey::GroundCongruenceSkippedGroups;
@@ -86,6 +96,10 @@ constexpr util::StatKey kStatUfSymmetryAcceptedSets = util::StatKey::UfSymmetryA
 constexpr util::StatKey kStatUfSymmetryValues = util::StatKey::UfSymmetryValues;
 constexpr util::StatKey kStatUfSymmetryTerms = util::StatKey::UfSymmetryTerms;
 constexpr util::StatKey kStatUfSymmetryConstraints = util::StatKey::UfSymmetryConstraints;
+constexpr util::StatKey kStatUfSymmetryValuePrecedenceTerms =
+    util::StatKey::UfSymmetryValuePrecedenceTerms;
+constexpr util::StatKey kStatUfSymmetryValuePrecedenceConstraints =
+    util::StatKey::UfSymmetryValuePrecedenceConstraints;
 constexpr util::StatKey kStatUfSymmetryRejectedNoninvariant =
     util::StatKey::UfSymmetryRejectedNoninvariant;
 constexpr util::StatKey kStatAutoSingleAssertion = util::StatKey::AutoSingleAssertion;
@@ -2233,10 +2247,19 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatFiniteDomainEvaluatedEqualities, 0);
   statistics.set(kStatFiniteDomainEvaluationCutoffs, 0);
   statistics.set(kStatEqualityDefinitions, 0);
+  statistics.set(kStatEqualityDefinitionCandidatePairs, 0);
+  statistics.set(kStatEqualityDefinitionAcceptedPairs, 0);
+  statistics.set(kStatEqualityDefinitionPredictedClauses, 0);
+  statistics.set(kStatEqualityDefinitionRejectedDomainSize, 0);
+  statistics.set(kStatEqualityDefinitionRejectedClauseLimit, 0);
   statistics.set(kStatGroundCongruenceClauses, 0);
   statistics.set(kStatGroundCongruenceSkippedGroups, 0);
   statistics.set(kStatUfSymmetryAcceptedSets, 0);
+  statistics.set(kStatUfSymmetryValues, 0);
+  statistics.set(kStatUfSymmetryTerms, 0);
   statistics.set(kStatUfSymmetryConstraints, 0);
+  statistics.set(kStatUfSymmetryValuePrecedenceTerms, 0);
+  statistics.set(kStatUfSymmetryValuePrecedenceConstraints, 0);
   statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
   statistics.set(kStatAutoSingleAssertion, 0);
   statistics.set(kStatAutoStrong, 0);
@@ -2302,6 +2325,14 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
                                            assertions.size() > kAutoPreprocessLargeAssertionLimit;
     const bool auto_strong = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
                              assertions.size() > 1 && !auto_large_assertion_skip;
+    const std::size_t initial_reachable_terms =
+        options.qf_uf_preprocess == QfUfPreprocessMode::Auto
+            ? reachable_term_count(frontend.terms(), assertions)
+            : 0;
+    const bool auto_single_assertion_eqdefs_allowed =
+        auto_single_assertion &&
+        (options.finite_domain_eqdefs_auto_term_limit == 0 ||
+         initial_reachable_terms <= options.finite_domain_eqdefs_auto_term_limit);
     if (auto_single_assertion) {
       statistics.increment(kStatAutoSingleAssertion);
     }
@@ -2318,8 +2349,15 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     const bool use_eq_bridge = options.eq_bridge || strong_preprocessing || auto_single_assertion;
     const bool use_finite_domain_evaluation = false;
     const bool use_finite_domain_amo = strong_preprocessing || auto_single_assertion;
+    const bool use_bounded_auto_equality_definitions =
+        options.finite_domain_equality_definitions &&
+        options.auto_finite_domain_equality_definitions &&
+        options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
+        (auto_strong || auto_single_assertion_eqdefs_allowed);
     const bool use_finite_domain_equality_definitions =
-        options.qf_uf_preprocess == QfUfPreprocessMode::Strong;
+        options.finite_domain_equality_definitions &&
+        (options.qf_uf_preprocess == QfUfPreprocessMode::Strong ||
+         use_bounded_auto_equality_definitions);
     const bool use_ground_congruence_definitions = options.ground_congruence;
     const bool use_ground_unit_substitution = options.ground_unit_substitution;
     const bool use_guarded_ground_unit_substitution =
@@ -2332,15 +2370,21 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     const std::size_t adaptive_shrink_percent =
         std::min<std::size_t>(options.preprocessing_adaptive_shrink_percent, 100);
     std::size_t preprocessing_pass_limit = preprocessing_passes;
+    std::size_t auto_equality_definition_remaining = options.finite_domain_eqdefs_auto_clause_limit;
 
     if (use_symmetry_breaking) {
       UfSymmetryBreaker symmetry_breaker(frontend.terms());
-      UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(assertions);
+      UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(
+          assertions,
+          UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
       assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
       statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
       statistics.increment(kStatUfSymmetryValues, symmetry.values);
       statistics.increment(kStatUfSymmetryTerms, symmetry.terms);
       statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
+      statistics.increment(kStatUfSymmetryValuePrecedenceTerms, symmetry.value_precedence_terms);
+      statistics.increment(kStatUfSymmetryValuePrecedenceConstraints,
+                           symmetry.value_precedence_constraints);
       statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
     }
     statistics.set(kStatPreprocessingTermSizeInitial,
@@ -2384,13 +2428,39 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         statistics.increment(kStatFiniteDomainDomains, finite_domain_result.domains);
         statistics.increment(kStatFiniteDomainAmoClauses, finite_domain_result.clauses.size());
       }
-      if (use_finite_domain_equality_definitions) {
+      const bool auto_eqdefs_budget_exhausted =
+          use_bounded_auto_equality_definitions &&
+          options.finite_domain_eqdefs_auto_clause_limit > 0 &&
+          auto_equality_definition_remaining == 0;
+      if (use_finite_domain_equality_definitions && !auto_eqdefs_budget_exhausted) {
         FiniteDomainEqualityDefinitions equality_definitions(frontend.terms());
+        FiniteDomainEqualityDefinitionsOptions definition_options;
+        if (use_bounded_auto_equality_definitions) {
+          definition_options.max_domain_size = options.finite_domain_eqdefs_auto_domain_limit;
+          definition_options.max_clauses = auto_equality_definition_remaining;
+        }
         FiniteDomainEqualityDefinitionsResult equality_definition_result =
-            equality_definitions.generate(assertions);
+            equality_definitions.generate(assertions, definition_options);
         assertions.insert(assertions.end(), equality_definition_result.clauses.begin(),
                           equality_definition_result.clauses.end());
         statistics.increment(kStatEqualityDefinitions, equality_definition_result.clauses.size());
+        statistics.increment(kStatEqualityDefinitionCandidatePairs,
+                             equality_definition_result.candidate_term_pairs);
+        statistics.increment(kStatEqualityDefinitionAcceptedPairs,
+                             equality_definition_result.term_pairs);
+        statistics.increment(kStatEqualityDefinitionPredictedClauses,
+                             equality_definition_result.predicted_clauses);
+        statistics.increment(kStatEqualityDefinitionRejectedDomainSize,
+                             equality_definition_result.rejected_domain_size);
+        statistics.increment(kStatEqualityDefinitionRejectedClauseLimit,
+                             equality_definition_result.rejected_clause_limit);
+        if (use_bounded_auto_equality_definitions &&
+            options.finite_domain_eqdefs_auto_clause_limit > 0) {
+          auto_equality_definition_remaining =
+              equality_definition_result.clauses.size() >= auto_equality_definition_remaining
+                  ? 0
+                  : auto_equality_definition_remaining - equality_definition_result.clauses.size();
+        }
       }
       if (use_ground_congruence_definitions) {
         CongruenceDefinitionGenerator congruence_definitions(frontend.terms());

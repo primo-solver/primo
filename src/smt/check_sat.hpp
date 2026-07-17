@@ -68,6 +68,9 @@ struct CheckSatOptions {
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
   bool uf_symmetry_breaking = true;
+  bool finite_domain_value_precedence = true;
+  bool finite_domain_equality_definitions = true;
+  bool auto_finite_domain_equality_definitions = false;
   bool eq_bridge = true;
   bool ground_congruence = false;
   bool ground_unit_substitution = false;
@@ -79,6 +82,9 @@ struct CheckSatOptions {
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;
+  std::size_t finite_domain_eqdefs_auto_domain_limit = 8;
+  std::size_t finite_domain_eqdefs_auto_clause_limit = 5000;
+  std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
   std::vector<std::pair<std::string, int>> cadical_options;
 };
 

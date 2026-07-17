@@ -242,6 +242,7 @@ def evaluate_file(
         and result["answer"] in {"sat", "unsat"}
         and result["answer"] != expected_answer
     )
+    stats = parse_stats(str(result["stderr"]))
     row = {
         "row": index,
         "file": str(path),
@@ -254,13 +255,14 @@ def evaluate_file(
         "wrong": str(wrong).lower(),
         "seconds": f"{float(result['seconds']):.6f}",
         "timeout": str(result["timeout"]).lower(),
+        "timed_out_with_stats": str(result["status"] == "timeout" and bool(stats)).lower(),
         "exit_code": result["exit_code"],
         "stdout_log": stdout_log,
         "stderr_log": stderr_log,
         "_index": index,
         "_total": total,
     }
-    row.update(parse_stats(str(result["stderr"])))
+    row.update(stats)
     print(
         f"[{index}/{total}] {family} {path}: "
         f"{row['status']} {row['answer']} {float(result['seconds']):.3f}s",
@@ -399,6 +401,7 @@ def main() -> int:
         "wrong",
         "seconds",
         "timeout",
+        "timed_out_with_stats",
         "exit_code",
         "stdout_log",
         "stderr_log",
@@ -425,6 +428,7 @@ def main() -> int:
     solved = sum(1 for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"})
     checked = sum(1 for row in rows if row["expected"])
     wrong = sum(1 for row in rows if row["wrong"] == "true")
+    timed_out_with_stats = sum(1 for row in rows if row["timed_out_with_stats"] == "true")
     par2 = sum(
         float(row["seconds"]) if row["status"] == "ok" else 2.0 * args.timeout for row in rows
     )
@@ -436,6 +440,7 @@ def main() -> int:
         writer.writerow({"metric": "solved", "value": solved})
         writer.writerow({"metric": "checked", "value": checked})
         writer.writerow({"metric": "wrong", "value": wrong})
+        writer.writerow({"metric": "timed_out_with_stats", "value": timed_out_with_stats})
         writer.writerow({"metric": "par2", "value": f"{par2:.6f}"})
         for status, count in sorted(by_status.items()):
             writer.writerow({"metric": f"status.{status}", "value": count})

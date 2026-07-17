@@ -106,6 +106,9 @@ int main(int argc, char** argv) {
   bool quiet = false;
   bool print_stats = false;
   bool no_uf_symmetry_breaking = false;
+  bool no_finite_domain_value_precedence = false;
+  bool finite_domain_equality_definitions = false;
+  bool no_finite_domain_equality_definitions = false;
   bool no_eq_bridge = false;
   bool no_solved_constant_substitution = false;
   std::string qf_uf_preprocess = "auto";
@@ -125,6 +128,14 @@ int main(int argc, char** argv) {
                "Enable default-on QF_UF symmetry breaking over invariant finite-domain values");
   app.add_flag("--no-uf-symmetry-breaking", no_uf_symmetry_breaking,
                "Disable QF_UF finite-domain symmetry breaking");
+  app.add_flag("--finite-domain-value-precedence", solver_options.finite_domain_value_precedence,
+               "Enable fixed-term value precedence inside finite-domain symmetry breaking");
+  app.add_flag("--no-finite-domain-value-precedence", no_finite_domain_value_precedence,
+               "Disable fixed-term value precedence inside finite-domain symmetry breaking");
+  app.add_flag("--finite-domain-equality-definitions", finite_domain_equality_definitions,
+               "Enable guarded finite-domain equality definitions in auto preprocessing");
+  app.add_flag("--no-finite-domain-equality-definitions", no_finite_domain_equality_definitions,
+               "Disable finite-domain SAT-visible equality definition clauses");
   app.add_flag("--eq-bridge", solver_options.eq_bridge,
                "Add equalities implied by every branch of selected QF_UF disjunctions");
   app.add_flag("--no-eq-bridge", no_eq_bridge,
@@ -178,6 +189,21 @@ int main(int argc, char** argv) {
                  solver_options.preprocessing_adaptive_shrink_percent,
                  "Minimum reachable-term shrink percentage required for another adaptive pass")
       ->check(CLI::Range(0, 100));
+  app.add_option(
+         "--finite-domain-eqdefs-auto-domain-limit",
+         solver_options.finite_domain_eqdefs_auto_domain_limit,
+         "Maximum finite-domain value count for auto equality definitions; 0 means unlimited")
+      ->check(CLI::Range(0, 1000000));
+  app.add_option("--finite-domain-eqdefs-auto-clause-limit",
+                 solver_options.finite_domain_eqdefs_auto_clause_limit,
+                 "Maximum generated equality-definition clauses per check-sat in auto; 0 "
+                 "means unlimited")
+      ->check(CLI::Range(0, 100000000));
+  app.add_option("--finite-domain-eqdefs-auto-term-limit",
+                 solver_options.finite_domain_eqdefs_auto_term_limit,
+                 "Maximum initial reachable-term count for auto equality definitions on "
+                 "single-assertion formulas; 0 means unlimited")
+      ->check(CLI::Range(0, 100000000));
   CLI::Option* prop_interval_option =
       app.add_option("--prop-interval", solver_options.euf_propagation_interval,
                      "Online EUF propagation discovery interval")
@@ -223,6 +249,17 @@ int main(int argc, char** argv) {
   }
   if (no_uf_symmetry_breaking) {
     solver_options.uf_symmetry_breaking = false;
+  }
+  if (no_finite_domain_value_precedence) {
+    solver_options.finite_domain_value_precedence = false;
+  }
+  if (finite_domain_equality_definitions) {
+    solver_options.auto_finite_domain_equality_definitions = true;
+    solver_options.finite_domain_equality_definitions = true;
+  }
+  if (no_finite_domain_equality_definitions) {
+    solver_options.finite_domain_equality_definitions = false;
+    solver_options.auto_finite_domain_equality_definitions = false;
   }
   if (no_eq_bridge) {
     solver_options.eq_bridge = false;
