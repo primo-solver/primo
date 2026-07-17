@@ -25,6 +25,7 @@ class FlatCongruenceClosure {
   bool are_equal(FlatTermId lhs, FlatTermId rhs);
   std::optional<std::vector<sat::Lit>> explain_equal(FlatTermId lhs, FlatTermId rhs) const;
   std::optional<std::vector<sat::Lit>> conflict() const { return conflict_; }
+  void drain_changed_terms(std::vector<FlatTermId>& out);
   const IncrementalCongruenceClosureStats& stats() const { return stats_; }
 
  private:
@@ -112,6 +113,7 @@ class FlatCongruenceClosure {
     std::size_t pending_size = 0;
     std::size_t disequalities_size = 0;
     std::size_t edges_size = 0;
+    std::size_t changed_terms_size = 0;
     std::size_t trail_size = 0;
     std::optional<std::vector<sat::Lit>> conflict;
     IncrementalCongruenceClosureStats stats;
@@ -149,6 +151,7 @@ class FlatCongruenceClosure {
   std::vector<Disequality> disequalities_;
   std::vector<std::vector<std::size_t>> disequality_lists_;
   std::vector<Edge> edges_;
+  std::vector<FlatTermId> changed_terms_;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Checkpoint> checkpoints_;
   std::vector<TrailEntry> trail_;

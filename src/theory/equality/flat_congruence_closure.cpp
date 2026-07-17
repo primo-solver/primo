@@ -43,8 +43,8 @@ FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count) {
 
 std::size_t FlatCongruenceClosure::push() {
   checkpoints_.push_back(Checkpoint{parent_.size(), definitions_.size(), pending_.size(),
-                                    disequalities_.size(), edges_.size(), trail_.size(), conflict_,
-                                    stats_});
+                                    disequalities_.size(), edges_.size(), changed_terms_.size(),
+                                    trail_.size(), conflict_, stats_});
   return checkpoints_.size() - 1;
 }
 
@@ -62,6 +62,7 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   pending_.resize(state.pending_size);
   disequalities_.resize(state.disequalities_size);
   edges_.resize(state.edges_size);
+  changed_terms_.resize(state.changed_terms_size);
   parent_.resize(state.node_count);
   class_size_.resize(state.node_count);
   class_members_.resize(state.node_count);
@@ -164,6 +165,11 @@ bool FlatCongruenceClosure::are_equal(FlatTermId lhs, FlatTermId rhs) {
   return representative(lhs) == representative(rhs);
 }
 
+void FlatCongruenceClosure::drain_changed_terms(std::vector<FlatTermId>& out) {
+  out.insert(out.end(), changed_terms_.begin(), changed_terms_.end());
+  changed_terms_.clear();
+}
+
 FlatTermId FlatCongruenceClosure::representative(FlatTermId term) const {
   if (term >= parent_.size()) {
     throw std::out_of_range("flat congruence closure term out of range");
@@ -248,6 +254,7 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
   }
   edge_adjacency_[rhs].push_back(edge_index);
   for (const FlatTermId member : class_members_[lhs_repr]) {
+    changed_terms_.push_back(member);
     push_parent_change(member);
     parent_[member] = rhs_repr;
     if (!checkpoints_.empty()) {
@@ -522,6 +529,9 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
     return false;
   }
   ++stats_.explain_calls;
+  if (representative(lhs) != representative(rhs)) {
+    return false;
+  }
   const ExplanationKey key = explanation_key(lhs, rhs);
   if (explanation_cache_.contains(key)) {
     ++stats_.explain_cache_hits;

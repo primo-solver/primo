@@ -137,7 +137,17 @@ retained assignment after each backtrack and avoids copying the closure for
 decision levels that never touch theory state, but it is still an
 implementation-local trail rather than the paper's timestamped lookup undo
 structure.
-When `--euf-prop=auto` selects the online path, zero-delivery propagation scans
+For the incremental engine, online propagation no longer starts every discovery
+round with a blind scan of all theory atoms. The flat congruence closure records
+flat terms whose equivalence-class representative changed during merges. The
+SAT callback maps those changed flat terms to equality and Boolean-predicate
+theory atoms that mention them, tries those candidates first, and only falls
+back to the full atom scan when the changed-term queue is empty or unproductive.
+The explanation builder remains the soundness gate: a queued candidate is
+delivered to CaDiCaL only when the current flat closure can explain the implied
+literal under the current SAT assignment.
+
+When `--euf-prop=auto` selects the online path, zero-delivery propagation rounds
 adaptively increase the callback discovery interval up to 1024 rounds. Explicit
 `--euf-prop=online` keeps the configured `--prop-interval` cadence for
 experiments.
@@ -285,6 +295,8 @@ Implemented:
   expansions;
 - sparse flat-closure backtracking over representative, class, use-list,
   disequality, edge-adjacency, and lookup mutations;
+- changed-flat-term tracking for online propagation candidate discovery, with a
+  full-scan fallback;
 - model-time propagation using the flat incremental closure when
   `--euf-engine=incremental` is selected;
 - online propagation with a SAT-callback-owned persistent flat closure when

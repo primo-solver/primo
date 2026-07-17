@@ -276,6 +276,23 @@ void flat_congruence_closure_uses_curried_definitions() {
   check(closure.stats().congruence_merges >= 1);
 }
 
+void flat_congruence_closure_drains_changed_terms_from_merges() {
+  FlatCongruenceClosure closure(4);
+  std::vector<primo::theory::equality::FlatTermId> changed;
+
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+  closure.drain_changed_terms(changed);
+  check(changed.size() == 1);
+  check(changed.front() == 0 || changed.front() == 1);
+  changed.clear();
+
+  const std::size_t checkpoint = closure.push();
+  closure.assert_equal(2, 3, {primo::sat::Lit{-2}});
+  closure.pop(checkpoint);
+  closure.drain_changed_terms(changed);
+  check(changed.empty());
+}
+
 void flat_congruence_closure_skips_unrelated_disequality_scans() {
   FlatCongruenceClosure closure(6);
   closure.assert_distinct(0, 1, {primo::sat::Lit{-1}});
@@ -463,6 +480,7 @@ int main() {
   flat_terms_curry_nary_applications_deterministically();
   flat_terms_share_nested_subterms_and_flatten_equalities();
   flat_congruence_closure_uses_curried_definitions();
+  flat_congruence_closure_drains_changed_terms_from_merges();
   flat_congruence_closure_skips_unrelated_disequality_scans();
   flat_congruence_closure_scans_only_crossing_disequalities();
   flat_congruence_closure_keeps_signed_reason_literals_distinct();

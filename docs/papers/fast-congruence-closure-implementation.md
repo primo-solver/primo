@@ -93,6 +93,11 @@ Two deviations matter for performance claims:
   checkpoint on SAT backtrack. This avoids replaying the retained assignment
   trail and avoids allocating rollback state on Boolean-only levels, but still
   is not the paper's timestamped lookup-table backtracking policy.
+- Online propagation candidate discovery uses the same affected-class idea at
+  the SMT callback boundary: flat-class merges record terms whose representative
+  changed, and the callback maps those terms to existing theory atoms before
+  falling back to a full scan. This is an implementation-local work queue, not a
+  new theory rule; reason construction still checks every delivered candidate.
 
 ## Counters
 
@@ -126,6 +131,8 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
 - intersection-only scans for disequalities that can newly conflict after a
   merge;
 - repeated sub-explanation reuse inside one flat congruence reason;
+- changed-term draining after flat merges and rollback of undrained changed-term
+  records on backtrack;
 - nonzero lookup-hit and congruence-merge counters.
 
 The SMT tests in `tests/unit/boolean_solver_tests.cpp` cover conflict checks,

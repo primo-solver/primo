@@ -1406,6 +1406,14 @@ class IncrementalFlatAssignmentState {
     return reason;
   }
 
+  void drain_changed_terms(std::vector<theory::equality::FlatTermId>& out) {
+    closure_.drain_changed_terms(out);
+  }
+
+  const std::vector<FlatAssignedTheoryAtom>& flat_atoms() const { return flat_atoms_; }
+
+  std::size_t flat_term_count() const { return flat_.size(); }
+
   std::optional<sat::Clause> conflict() const { return closure_.conflict(); }
 
   void flush_stats() {
@@ -1420,6 +1428,8 @@ class IncrementalFlatAssignmentState {
       closure_.add_definition(definition);
     }
     closure_.assert_distinct(true_flat_, false_flat_);
+    std::vector<theory::equality::FlatTermId> ignored_changed_terms;
+    closure_.drain_changed_terms(ignored_changed_terms);
   }
 
   std::optional<FlatAssignedTheoryAtom> flat_atom_for_lit(int lit) const {
@@ -1516,6 +1526,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     if (options_.euf_engine == EufEngine::Incremental) {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
                                  options_.pure_theory_filter, statistics_);
+      build_candidate_index();
     }
   }
 
@@ -1539,6 +1550,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
               assigned_theory_atom(options_.pure_theory_filter, *atom, atom_value);
           count_filtered_assignment(assigned, statistics_);
           incremental_state_->assert_assignment(assigned);
+          enqueue_changed_candidates();
         }
       }
     }
@@ -1570,6 +1582,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
     pending_.clear();
     pending_vars_.clear();
+    candidate_queue_.clear();
+    queued_candidate_indices_.clear();
     external_clause_.clear();
     external_clause_index_ = 0;
   }
@@ -1653,6 +1667,48 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   const BooleanClausifier::TheoryAtom* atom_for_var(int var) const {
     const auto found = atom_by_var_.find(var);
     return found == atom_by_var_.end() ? nullptr : found->second;
+  }
+
+  void build_candidate_index() {
+    if (!incremental_state_.has_value()) {
+      return;
+    }
+    candidate_indices_by_flat_term_.assign(incremental_state_->flat_term_count(), {});
+    const std::vector<FlatAssignedTheoryAtom>& flat_atoms = incremental_state_->flat_atoms();
+    for (std::size_t atom_index = 0; atom_index < flat_atoms.size(); ++atom_index) {
+      const FlatAssignedTheoryAtom& atom = flat_atoms[atom_index];
+      if (atom.lhs < candidate_indices_by_flat_term_.size()) {
+        candidate_indices_by_flat_term_[atom.lhs].push_back(atom_index);
+      }
+      if (atom.rhs != atom.lhs && atom.rhs < candidate_indices_by_flat_term_.size()) {
+        candidate_indices_by_flat_term_[atom.rhs].push_back(atom_index);
+      }
+    }
+  }
+
+  void enqueue_candidate(std::size_t atom_index) {
+    if (atom_index >= theory_atoms_.size()) {
+      return;
+    }
+    if (queued_candidate_indices_.insert(atom_index).second) {
+      candidate_queue_.push_back(atom_index);
+    }
+  }
+
+  void enqueue_changed_candidates() {
+    if (!incremental_state_.has_value()) {
+      return;
+    }
+    changed_terms_scratch_.clear();
+    incremental_state_->drain_changed_terms(changed_terms_scratch_);
+    for (const theory::equality::FlatTermId term : changed_terms_scratch_) {
+      if (term >= candidate_indices_by_flat_term_.size()) {
+        continue;
+      }
+      for (const std::size_t atom_index : candidate_indices_by_flat_term_[term]) {
+        enqueue_candidate(atom_index);
+      }
+    }
   }
 
   std::vector<AssignedTheoryAtom> current_assigned_atoms() const {
@@ -1771,30 +1827,49 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     std::size_t inspected = 0;
     std::size_t delivered = 0;
     constexpr std::size_t kMinInspectionsBeforeHitRateCutoff = 16;
-    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+    auto try_atom = [&](const BooleanClausifier::TheoryAtom& atom) {
       if (candidate_limit.has_value() && inspected >= candidate_limit.value()) {
         statistics_.increment(kStatEufPropagationBudgetCutoffs);
-        break;
+        return false;
       }
       if (delivery_limit.has_value() && delivered >= delivery_limit.value()) {
         statistics_.increment(kStatEufPropagationBudgetCutoffs);
-        break;
+        return false;
       }
       if (inspected >= kMinInspectionsBeforeHitRateCutoff && delivered == 0 &&
           options_.euf_propagation_budget.kind == AutoBudget::Kind::Auto) {
         statistics_.increment(kStatEufPropagationHitRateCutoffs);
         backoff_propagation_interval();
-        break;
+        return false;
       }
 
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
       if (assignment_by_var_.contains(var) || pending_vars_.contains(var)) {
-        continue;
+        return true;
       }
       ++inspected;
       if (try_online_candidate(assigned, atom, true) ||
           try_online_candidate(assigned, atom, false)) {
         ++delivered;
+      }
+      return true;
+    };
+
+    const bool had_indexed_candidates = !candidate_queue_.empty();
+    while (!candidate_queue_.empty()) {
+      const std::size_t atom_index = candidate_queue_.front();
+      candidate_queue_.pop_front();
+      queued_candidate_indices_.erase(atom_index);
+      if (!try_atom(theory_atoms_[atom_index])) {
+        break;
+      }
+    }
+
+    if (!had_indexed_candidates || (delivered == 0 && candidate_queue_.empty())) {
+      for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+        if (!try_atom(atom)) {
+          break;
+        }
       }
     }
     if (delivered == 0) {
@@ -1871,6 +1946,10 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   std::vector<std::size_t> level_starts_{0};
   std::deque<int> pending_;
   std::unordered_set<int> pending_vars_;
+  std::deque<std::size_t> candidate_queue_;
+  std::unordered_set<std::size_t> queued_candidate_indices_;
+  std::vector<std::vector<std::size_t>> candidate_indices_by_flat_term_;
+  std::vector<theory::equality::FlatTermId> changed_terms_scratch_;
   std::unordered_map<int, Reason> reasons_;
   std::optional<IncrementalFlatAssignmentState> incremental_state_;
   sat::Clause external_clause_;
