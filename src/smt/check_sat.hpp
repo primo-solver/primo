@@ -86,6 +86,7 @@ struct CheckSatOptions {
   std::size_t finite_domain_eqdefs_auto_clause_limit = 5000;
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
   std::vector<std::pair<std::string, int>> cadical_options;
+  util::Statistics* live_statistics = nullptr;
 };
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options = {});

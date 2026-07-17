@@ -119,6 +119,12 @@ observed theory atoms. When `--euf-prop=auto` selects online callbacks, repeated
 zero-delivery scans increase the discovery interval, so the candidate counter
 can be much smaller than `rounds * theory-atoms`.
 
+When the CLI is run with `--stats`, it keeps the current counters in a live
+statistics sink. On `SIGTERM` it prints `unknown` to stdout and flushes the
+partial counters to stderr before exiting. The benchmark harnesses send
+`SIGTERM` first and only use `SIGKILL` after a short grace period, so timeout
+rows can still contain diagnostic counters.
+
 The auto counters record which concrete path `--euf-prop=auto` selected for the
 current abstraction.
 

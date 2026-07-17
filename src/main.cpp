@@ -1,5 +1,9 @@
+#include <unistd.h>
+
 #include <CLI/CLI.hpp>
+#include <csignal>
 #include <cstddef>
+#include <cstdlib>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -19,6 +23,17 @@
 #endif
 
 namespace {
+
+primo::util::Statistics g_live_statistics;
+bool g_print_timeout_statistics = false;
+
+void handle_sigterm(int) {
+  [[maybe_unused]] const ssize_t written = write(STDOUT_FILENO, "unknown\n", 8);
+  if (g_print_timeout_statistics) {
+    primo::util::print_statistics(std::cerr, g_live_statistics);
+  }
+  std::exit(0);
+}
 
 bool can_read_file(const std::string& path) {
   std::ifstream input(path);
@@ -102,6 +117,7 @@ std::optional<std::pair<std::string, int>> parse_cadical_option(const std::strin
 }  // namespace
 
 int main(int argc, char** argv) {
+  std::signal(SIGTERM, handle_sigterm);
   std::vector<std::string> files;
   bool quiet = false;
   bool print_stats = false;
@@ -315,6 +331,10 @@ int main(int argc, char** argv) {
 
   if (!quiet) {
     print_startup_banner();
+  }
+  g_print_timeout_statistics = print_stats;
+  if (print_stats) {
+    solver_options.live_statistics = &g_live_statistics;
   }
 
   if (files.empty()) {

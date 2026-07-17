@@ -27,6 +27,8 @@ The script defaults to that manifest unless `--discover` is passed. Each output
 row records the manifest row number, absolute and repository-relative file path,
 family, solver arguments, status, answer, elapsed seconds, exit code, per-file
 stdout/stderr logs, and any `--stats` counters emitted before completion. The
+runner sends `SIGTERM` at the timeout and waits briefly before `SIGKILL`, so
+Primo can flush partial `--stats` counters for timeout rows. The
 script uses SMT-LIB `:status sat|unsat` metadata as the expected answer by
 default; pass `--no-expected-from-status` to disable that and rely only on
 `--expected`. The summary reports total solved, status and answer counts, wrong
@@ -71,7 +73,8 @@ python3 scripts/bench_qf_uf_full.py \
 On SLURM, run one shard per array task and merge shard CSVs after all tasks
 complete. The CSV records file, family, solver status, answer, SMT-LIB
 `:status` expectation, wrong-answer flag, elapsed seconds, timeout flag, exit
-code, and a short stderr prefix. The summary records solved, unsupported,
+code, a short stderr prefix, and any `--stats` counters emitted before
+completion or during the timeout `SIGTERM` grace period. The summary records solved, unsupported,
 wrong-answer, status, answer, family, and PAR2 counts. Only non-wrong `sat` and
 `unsat` answers count as solved or as elapsed-time PAR2 successes; `unknown`,
 `unsupported`, timeouts, and errors contribute `2 * timeout`. Any performance

@@ -2215,7 +2215,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 }  // namespace
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options) {
-  util::Statistics statistics;
+  util::Statistics local_statistics;
+  util::Statistics& statistics =
+      options.live_statistics != nullptr ? *options.live_statistics : local_statistics;
+  statistics = util::Statistics{};
   statistics.set(kStatAssertionsInitial, 0);
   statistics.set(kStatFrontendBooleanItes, 0);
   statistics.set(kStatFrontendAuxiliaryItes, 0);
@@ -2300,6 +2303,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatEufIncrementalCongruenceMerges, 0);
   statistics.set(kStatEufIncrementalDisequalityChecks, 0);
   statistics.set(kStatEufIncrementalConflicts, 0);
+  statistics.set(kStatEufIncrementalExplainCalls, 0);
+  statistics.set(kStatEufIncrementalExplainCacheHits, 0);
   statistics.set(kStatEufIncrementalExplainLength, 0);
   statistics.set(kStatEufIncrementalBacktracks, 0);
 

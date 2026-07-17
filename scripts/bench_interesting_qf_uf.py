@@ -30,6 +30,7 @@ DEFAULT_FAMILY_GLOBS = {
 ANSWERS = {"sat", "unsat", "unknown", "unsupported"}
 CHECKABLE_ANSWERS = {"sat", "unsat"}
 DEFAULT_MANIFEST = Path("benchmarks/interesting-qf-uf.txt")
+TIMEOUT_GRACE_SECONDS = 2.0
 
 
 class TableTextExtractor(html.parser.HTMLParser):
@@ -117,34 +118,28 @@ def discover_manifest_files(repo: Path, manifest: Path) -> list[tuple[str, Path]
     return discovered
 
 
-def completed_output_text(output: str | bytes | None) -> str:
-    if output is None:
-        return ""
-    if isinstance(output, bytes):
-        return output.decode(errors="replace")
-    return output
-
-
 def run_solver(command: list[str], path: Path, timeout: float) -> dict[str, object]:
     start = time.perf_counter()
     timed_out = False
+    proc = subprocess.Popen(
+        [*command, str(path)],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     try:
-        proc = subprocess.run(
-            [*command, str(path)],
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=timeout,
-        )
-        stdout = proc.stdout
-        stderr = proc.stderr
+        stdout, stderr = proc.communicate(timeout=timeout)
         exit_code = proc.returncode
-    except subprocess.TimeoutExpired as exc:
+    except subprocess.TimeoutExpired:
         timed_out = True
-        stdout = completed_output_text(exc.stdout)
-        stderr = completed_output_text(exc.stderr)
-        exit_code = 124
+        proc.terminate()
+        try:
+            stdout, stderr = proc.communicate(timeout=TIMEOUT_GRACE_SECONDS)
+            exit_code = proc.returncode if proc.returncode is not None else 124
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            stdout, stderr = proc.communicate()
+            exit_code = 124
     seconds = time.perf_counter() - start
     first_line = stdout.strip().splitlines()[0] if stdout.strip() else ""
     answer = first_line if first_line in ANSWERS else ""
