@@ -281,8 +281,11 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
   if (pending.congruence) {
     ++stats_.congruence_merges;
   }
-  process_use_list(lhs_repr, rhs_repr);
   check_disequalities_touching(lhs_repr, rhs_repr);
+  if (conflict_.has_value()) {
+    return;
+  }
+  process_use_list(lhs_repr, rhs_repr);
   std::vector<std::size_t> merged_disequalities;
   merged_disequalities.reserve(disequality_lists_[rhs_repr].size() +
                                disequality_lists_[lhs_repr].size());

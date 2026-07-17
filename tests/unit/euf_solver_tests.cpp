@@ -330,6 +330,28 @@ void flat_congruence_closure_scans_only_crossing_disequalities() {
   check(closure.stats().disequality_checks == 4);
 }
 
+void flat_congruence_closure_reports_direct_conflict_before_use_list_scan() {
+  FlatCongruenceClosure closure(8);
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 2, 4});
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 3, 5});
+  closure.add_definition(primo::theory::equality::FlatDefinition{1, 2, 6});
+  closure.add_definition(primo::theory::equality::FlatDefinition{1, 3, 7});
+  const std::size_t checkpoint = closure.push();
+  closure.assert_distinct(0, 1, {primo::sat::Lit{-1}});
+  const std::size_t lookup_probes_before_conflict = closure.stats().lookup_probes;
+
+  closure.assert_equal(0, 1, {primo::sat::Lit{-2}});
+
+  check(closure.conflict().has_value());
+  check(closure.stats().conflicts == 1);
+  check(closure.stats().lookup_probes == lookup_probes_before_conflict);
+
+  closure.pop(checkpoint);
+  closure.assert_equal(0, 1, {primo::sat::Lit{-3}});
+  check(!closure.conflict().has_value());
+  check(closure.are_equal(0, 1));
+}
+
 void flat_congruence_closure_keeps_signed_reason_literals_distinct() {
   FlatCongruenceClosure closure(3);
   closure.assert_equal(0, 1, {primo::sat::Lit{1}});
@@ -483,6 +505,7 @@ int main() {
   flat_congruence_closure_drains_changed_terms_from_merges();
   flat_congruence_closure_skips_unrelated_disequality_scans();
   flat_congruence_closure_scans_only_crossing_disequalities();
+  flat_congruence_closure_reports_direct_conflict_before_use_list_scan();
   flat_congruence_closure_keeps_signed_reason_literals_distinct();
   flat_congruence_closure_reuses_repeated_sub_explanations();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();

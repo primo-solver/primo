@@ -51,7 +51,10 @@ Disequality conflicts are checked immediately when a disequality is asserted.
 After a merge, `FlatCongruenceClosure` only revisits disequalities indexed by
 the two merged representatives. Candidate indices are sorted before checking so
 the first conflict follows original disequality assertion order even though
-unrelated disequalities are skipped.
+unrelated disequalities are skipped. Direct disequality conflicts are checked
+before the affected use list is saturated; once the branch is already
+inconsistent, the closure can report that conflict without spending work on
+congruence consequences that SAT backtracking will discard.
 
 ## Invariants
 
@@ -130,6 +133,8 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
 - order-preserving flat disequality candidate scans;
 - intersection-only scans for disequalities that can newly conflict after a
   merge;
+- direct disequality conflicts before affected use-list scans, including
+  checkpoint rollback after that early exit;
 - repeated sub-explanation reuse inside one flat congruence reason;
 - changed-term draining after flat merges and rollback of undrained changed-term
   records on backtrack;
