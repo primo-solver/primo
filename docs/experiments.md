@@ -29,6 +29,8 @@ family, solver arguments, status, answer, elapsed seconds, exit code, per-file
 stdout/stderr logs, and any `--stats` counters emitted before completion. The
 runner sends `SIGTERM` at the timeout and waits briefly before `SIGKILL`, so
 Primo can flush partial `--stats` counters for timeout rows. The
+same parser preserves LLM2SMT `[stats]` lines as `llm2smt.*` columns for
+reference comparisons.
 script uses SMT-LIB `:status sat|unsat` metadata as the expected answer by
 default; pass `--no-expected-from-status` to disable that and rely only on
 `--expected`. The summary reports total solved, status and answer counts, wrong

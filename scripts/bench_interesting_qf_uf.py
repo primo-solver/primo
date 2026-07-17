@@ -167,13 +167,21 @@ def safe_log_stem(index: int, path: Path) -> str:
 
 def parse_stats(stderr: str) -> dict[str, str]:
     stats: dict[str, str] = {}
+    in_llm2smt_stats = False
     for line in stderr.splitlines():
         line = line.strip()
-        if not line.startswith(":"):
+        if line == "[stats]":
+            in_llm2smt_stats = True
+            continue
+        if line.startswith("--"):
             continue
         parts = line.split(maxsplit=1)
-        if len(parts) == 2:
+        if len(parts) != 2:
+            continue
+        if line.startswith(":"):
             stats[parts[0]] = parts[1]
+        elif in_llm2smt_stats and parts[1].isdigit():
+            stats[f"llm2smt.{parts[0]}"] = parts[1]
     return stats
 
 
@@ -401,7 +409,9 @@ def main() -> int:
         "stdout_log",
         "stderr_log",
     ]
-    stat_fields = sorted({key for row in rows for key in row if key.startswith(":")})
+    stat_fields = sorted(
+        {key for row in rows for key in row if key.startswith(":") or key.startswith("llm2smt.")}
+    )
     fieldnames.extend(stat_fields)
     with args.out.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
