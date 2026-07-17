@@ -1153,6 +1153,9 @@ void conflict_euf_callback_learns_external_conflict_without_propagation() {
   )",
       options);
   assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":euf.assignments") >= 3);
+  assert(result.statistics.get(":euf.eq-assignments") >= 2);
+  assert(result.statistics.get(":euf.diseq-assignments") >= 1);
   assert(result.statistics.get(":euf.theory-conflicts") >= 1);
   assert(result.statistics.get(":euf.propagation.rounds") == 0);
 }

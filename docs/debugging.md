@@ -76,6 +76,9 @@ scripts and result artifacts. Current counters include:
 - `:euf.pure-atoms.positive`;
 - `:euf.pure-atoms.negative`;
 - `:euf.pure-literals.filtered`;
+- `:euf.assignments`;
+- `:euf.eq-assignments`;
+- `:euf.diseq-assignments`;
 - `:euf.checks`;
 - `:euf.theory-conflicts`;
 - `:euf.propagation.rounds`;
@@ -111,6 +114,10 @@ benchmark solved counts.
 `:euf.theory-conflicts` counts EUF conflict clauses learned either by the
 ordinary post-model check or by the CaDiCaL external-clause callback used by
 `--euf-prop=conflict|online`.
+
+`:euf.assignments`, `:euf.eq-assignments`, and `:euf.diseq-assignments` count
+theory-literal notifications received by the online/conflict EUF callback.
+Predicate atoms contribute only to `:euf.assignments`.
 
 The propagation counters are used by both `--euf-prop=model` and
 `--euf-prop=online`; `--euf-prop=conflict` leaves them at zero. In online mode,

@@ -119,6 +119,9 @@ constexpr util::StatKey kStatPureTheoryFilterEnabled = util::StatKey::PureTheory
 constexpr util::StatKey kStatPureTheoryAtomsPositive = util::StatKey::PureTheoryAtomsPositive;
 constexpr util::StatKey kStatPureTheoryAtomsNegative = util::StatKey::PureTheoryAtomsNegative;
 constexpr util::StatKey kStatPureTheoryLiteralsFiltered = util::StatKey::PureTheoryLiteralsFiltered;
+constexpr util::StatKey kStatEufAssignments = util::StatKey::EufAssignments;
+constexpr util::StatKey kStatEufEqAssignments = util::StatKey::EufEqAssignments;
+constexpr util::StatKey kStatEufDiseqAssignments = util::StatKey::EufDiseqAssignments;
 constexpr util::StatKey kStatTheoryChecks = util::StatKey::TheoryChecks;
 constexpr util::StatKey kStatTheoryConflicts = util::StatKey::TheoryConflicts;
 constexpr util::StatKey kStatEufPropagationRounds = util::StatKey::EufPropagationRounds;
@@ -1575,6 +1578,11 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         const BooleanClausifier::TheoryAtom* atom = atom_for_var(var);
         if (atom != nullptr) {
           const bool atom_value = atom->lit.value > 0 ? lit > 0 : lit < 0;
+          statistics_.increment(kStatEufAssignments);
+          const core::Term& atom_term = terms_.get(atom->term);
+          if (atom_term.kind == core::TermKind::Equality) {
+            statistics_.increment(atom_value ? kStatEufEqAssignments : kStatEufDiseqAssignments);
+          }
           AssignedTheoryAtom assigned =
               assigned_theory_atom(options_.pure_theory_filter, *atom, atom_value);
           count_filtered_assignment(assigned, statistics_);
@@ -2296,6 +2304,9 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatPureTheoryAtomsPositive, 0);
   statistics.set(kStatPureTheoryAtomsNegative, 0);
   statistics.set(kStatPureTheoryLiteralsFiltered, 0);
+  statistics.set(kStatEufAssignments, 0);
+  statistics.set(kStatEufEqAssignments, 0);
+  statistics.set(kStatEufDiseqAssignments, 0);
   statistics.set(kStatTheoryChecks, 0);
   statistics.set(kStatTheoryConflicts, 0);
   statistics.set(kStatEufPropagationRounds, 0);
