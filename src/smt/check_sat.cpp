@@ -1338,12 +1338,13 @@ class IncrementalFlatAssignmentState {
                                  const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                  core::TermId true_term, core::TermId false_term,
                                  PureTheoryFilterMode pure_theory_filter,
-                                 util::Statistics& statistics)
+                                 util::Statistics& statistics, bool flush_live_stats)
       : terms_(terms),
         pure_theory_filter_(pure_theory_filter),
         flat_(terms),
         closure_(0),
-        statistics_(statistics) {
+        statistics_(statistics),
+        flush_live_stats_(flush_live_stats) {
     true_flat_ = flat_.flatten(true_term);
     false_flat_ = flat_.flatten(false_term);
     flat_atoms_.reserve(theory_atoms.size());
@@ -1378,6 +1379,11 @@ class IncrementalFlatAssignmentState {
       closure_.pop(closure_checkpoint.value());
       last_published_stats_ = closure_.stats();
       ++accumulated_stats_.backtracks;
+      ++unflushed_publications_;
+      constexpr std::size_t kLiveStatsFlushInterval = 1024;
+      if (flush_live_stats_ && unflushed_publications_ >= kLiveStatsFlushInterval) {
+        flush_stats();
+      }
     }
   }
 
@@ -1433,6 +1439,7 @@ class IncrementalFlatAssignmentState {
   void flush_stats() {
     add_incremental_stats(statistics_, accumulated_stats_);
     accumulated_stats_ = {};
+    unflushed_publications_ = 0;
   }
 
  private:
@@ -1459,6 +1466,11 @@ class IncrementalFlatAssignmentState {
     const theory::equality::IncrementalCongruenceClosureStats current = closure_.stats();
     accumulate_stats(stats_delta(current, last_published_stats_));
     last_published_stats_ = current;
+    ++unflushed_publications_;
+    constexpr std::size_t kLiveStatsFlushInterval = 1024;
+    if (flush_live_stats_ && unflushed_publications_ >= kLiveStatsFlushInterval) {
+      flush_stats();
+    }
   }
 
   void accumulate_stats(const theory::equality::IncrementalCongruenceClosureStats& stats) {
@@ -1503,6 +1515,8 @@ class IncrementalFlatAssignmentState {
   std::unordered_map<int, std::size_t> flat_atom_by_var_;
   std::vector<AssignedTheoryAtom> assignments_;
   std::vector<Checkpoint> checkpoints_;
+  bool flush_live_stats_ = false;
+  std::size_t unflushed_publications_ = 0;
   theory::equality::IncrementalCongruenceClosureStats accumulated_stats_;
   theory::equality::IncrementalCongruenceClosureStats last_published_stats_;
 };
@@ -1539,7 +1553,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
     if (options_.euf_engine == EufEngine::Incremental) {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
-                                 options_.pure_theory_filter, statistics_);
+                                 options_.pure_theory_filter, statistics_,
+                                 options_.live_statistics != nullptr);
       build_candidate_index();
     }
   }
