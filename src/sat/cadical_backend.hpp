@@ -10,6 +10,7 @@
 namespace CaDiCaL {
 class ExternalPropagator;
 class Solver;
+class Terminator;
 }  // namespace CaDiCaL
 
 namespace primo::sat {
@@ -35,6 +36,8 @@ class CadicalBackend final : public IpasirUpBackend {
   void phase(Lit lit);
   void connect_external_propagator(CaDiCaL::ExternalPropagator* propagator);
   void disconnect_external_propagator();
+  void connect_terminator(CaDiCaL::Terminator* terminator);
+  void disconnect_terminator();
   void add_observed_var(int var);
 
  private:

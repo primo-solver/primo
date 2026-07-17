@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
   std::string pure_theory_filter = "auto";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
+  std::size_t max_theory_conflicts = 0;
   std::vector<std::string> cadical_options;
   primo::smt::CheckSatOptions solver_options;
 
@@ -187,6 +188,10 @@ int main(int argc, char** argv) {
   app.add_option("--euf-prop-delivery,--prop-delivery-budget", euf_prop_delivery,
                  "EUF propagation delivery budget: auto, unlimited, or a nonnegative integer; 0 "
                  "means unlimited");
+  CLI::Option* max_theory_conflicts_option =
+      app.add_option("--max-theory-conflicts", max_theory_conflicts,
+                     "Return unknown after at least this many learned theory conflicts")
+          ->check(CLI::Range(1, 1000000000));
   app.add_option_function<std::string>(
          "--cadical-option",
          [&cadical_options](const std::string& option) { cadical_options.push_back(option); },
@@ -320,6 +325,9 @@ int main(int argc, char** argv) {
   }
   solver_options.euf_propagation_budget = parsed_prop_budget.value();
   solver_options.euf_propagation_delivery = parsed_prop_delivery.value();
+  if (max_theory_conflicts_option->count() > 0) {
+    solver_options.max_theory_conflicts = max_theory_conflicts;
+  }
   for (const std::string& option : cadical_options) {
     const std::optional<std::pair<std::string, int>> parsed = parse_cadical_option(option);
     if (!parsed.has_value()) {

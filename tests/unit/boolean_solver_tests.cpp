@@ -1160,6 +1160,53 @@ void conflict_euf_callback_learns_external_conflict_without_propagation() {
   assert(result.statistics.get(":euf.propagation.rounds") == 0);
 }
 
+void theory_conflict_limit_stops_lazy_search_with_unknown() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.max_theory_conflicts = 1;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (assert (= a b))
+    (assert (= b c))
+    (assert (not (= a c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unknown);
+  assert(result.message == "theory conflict limit reached");
+  assert(result.statistics.get(":euf.theory-conflicts") == 1);
+}
+
+void theory_conflict_limit_stops_external_search_with_unknown() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  options.max_theory_conflicts = 1;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (assert (= a b))
+    (assert (= b c))
+    (assert (not (= a c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unknown);
+  assert(result.message == "theory conflict limit reached");
+  assert(result.statistics.get(":euf.theory-conflicts") == 1);
+  assert(result.statistics.get(":euf.assignments") >= 3);
+}
+
 void online_euf_propagation_accepts_already_assigned_implications() {
   primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
@@ -1254,6 +1301,8 @@ int main() {
   online_euf_propagation_handles_predicate_congruence();
   online_euf_propagation_keeps_conflicts_external();
   conflict_euf_callback_learns_external_conflict_without_propagation();
+  theory_conflict_limit_stops_lazy_search_with_unknown();
+  theory_conflict_limit_stops_external_search_with_unknown();
   online_euf_propagation_accepts_already_assigned_implications();
   online_euf_reason_cache_survives_backtracking();
   return 0;

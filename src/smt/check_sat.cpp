@@ -1535,6 +1535,27 @@ struct ModelPropagationResult {
 };
 
 #if PRIMO_HAVE_IPASIR
+class TheoryConflictTerminator final : public CaDiCaL::Terminator {
+ public:
+  TheoryConflictTerminator(util::Statistics& statistics, std::size_t conflict_limit)
+      : statistics_(statistics), conflict_limit_(conflict_limit) {}
+
+  bool terminate() override {
+    if (statistics_.get(kStatTheoryConflicts) < conflict_limit_) {
+      return false;
+    }
+    reached_ = true;
+    return true;
+  }
+
+  bool reached() const { return reached_; }
+
+ private:
+  util::Statistics& statistics_;
+  std::size_t conflict_limit_ = 0;
+  bool reached_ = false;
+};
+
 class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
  public:
   OnlineEufPropagator(const core::TermManager& terms,
@@ -2146,6 +2167,11 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   }
 
 #if PRIMO_HAVE_IPASIR
+  std::optional<TheoryConflictTerminator> conflict_terminator;
+  if (options.max_theory_conflicts.has_value()) {
+    conflict_terminator.emplace(statistics, options.max_theory_conflicts.value());
+    backend.connect_terminator(&conflict_terminator.value());
+  }
   std::optional<OnlineEufPropagator> online_propagator;
   if (euf_propagation == EufPropagationMode::Online ||
       euf_propagation == EufPropagationMode::Conflict) {
@@ -2174,6 +2200,11 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       online_propagator->flush_incremental_stats();
     }
     publish_sat_stats(backend.statistics(), statistics);
+    if ((conflict_terminator.has_value() && conflict_terminator->reached()) ||
+        (options.max_theory_conflicts.has_value() &&
+         statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value())) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics};
+    }
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics};
     }
@@ -2226,6 +2257,11 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
     }
     statistics.increment(kStatTheoryConflicts);
+    if (options.max_theory_conflicts.has_value() &&
+        statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value()) {
+      publish_sat_stats(backend.statistics(), statistics);
+      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics};
+    }
     if (conflict_clause->empty()) {
       publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Unsat, "", statistics};

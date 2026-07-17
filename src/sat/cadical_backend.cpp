@@ -175,6 +175,20 @@ void CadicalBackend::disconnect_external_propagator() {
 #endif
 }
 
+void CadicalBackend::connect_terminator(CaDiCaL::Terminator* terminator) {
+#if PRIMO_HAVE_IPASIR
+  solver_->connect_terminator(terminator);
+#else
+  (void)terminator;
+#endif
+}
+
+void CadicalBackend::disconnect_terminator() {
+#if PRIMO_HAVE_IPASIR
+  solver_->disconnect_terminator();
+#endif
+}
+
 void CadicalBackend::add_observed_var(int var) {
 #if PRIMO_HAVE_IPASIR
   solver_->add_observed_var(var);

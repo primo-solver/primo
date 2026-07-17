@@ -126,6 +126,13 @@ observed theory atoms. When `--euf-prop=auto` selects online callbacks, repeated
 zero-delivery scans increase the discovery interval, so the candidate counter
 can be much smaller than `rounds * theory-atoms`.
 
+For difficult instances, `--max-theory-conflicts N` returns `unknown` after at
+least `N` learned theory conflicts. In lazy mode this is checked after each
+post-model theory conflict. In online/conflict callback mode Primo also installs
+a CaDiCaL terminator, so a long in-progress SAT call can stop soon after the
+callback reaches the limit. This is intended for profiling and stats snapshots
+on timeout-prone benchmarks; it is not a solving heuristic.
+
 When the CLI is run with `--stats`, it keeps the current counters in a live
 statistics sink. On `SIGTERM` it prints `unknown` to stdout and flushes the
 partial counters to stderr before exiting. The benchmark harnesses send

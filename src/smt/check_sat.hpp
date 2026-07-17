@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -85,6 +86,7 @@ struct CheckSatOptions {
   std::size_t finite_domain_eqdefs_auto_domain_limit = 8;
   std::size_t finite_domain_eqdefs_auto_clause_limit = 5000;
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
+  std::optional<std::size_t> max_theory_conflicts;
   std::vector<std::pair<std::string, int>> cadical_options;
   util::Statistics* live_statistics = nullptr;
 };
