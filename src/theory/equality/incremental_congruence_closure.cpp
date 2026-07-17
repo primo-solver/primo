@@ -47,7 +47,8 @@ IncrementalCongruenceClosure::IncrementalCongruenceClosure(const core::TermManag
 
 std::size_t IncrementalCongruenceClosure::push() {
   snapshots_.push_back(Snapshot{parent_, class_size_, class_members_, use_lists_, lookup_, pending_,
-                                disequalities_, edges_, terms_seen_, seen_, conflict_, stats_});
+                                disequalities_, edges_, terms_seen_, seen_, conflict_, stats_,
+                                has_nonempty_reasons_});
   return snapshots_.size() - 1;
 }
 
@@ -69,6 +70,7 @@ void IncrementalCongruenceClosure::pop(std::size_t checkpoint) {
   seen_ = std::move(snapshot.seen);
   conflict_ = std::move(snapshot.conflict);
   stats_ = snapshot.stats;
+  has_nonempty_reasons_ = snapshot.has_nonempty_reasons;
   ++stats_.backtracks;
 }
 
@@ -96,6 +98,7 @@ void IncrementalCongruenceClosure::assert_equal(core::TermId lhs, core::TermId r
                                                 std::vector<sat::Lit> reason) {
   add_term(lhs);
   add_term(rhs);
+  has_nonempty_reasons_ = has_nonempty_reasons_ || !reason.empty();
   enqueue(lhs, rhs, std::move(reason), false);
   propagate();
 }
@@ -104,9 +107,12 @@ void IncrementalCongruenceClosure::assert_distinct(core::TermId lhs, core::TermI
                                                    std::vector<sat::Lit> reason) {
   add_term(lhs);
   add_term(rhs);
+  has_nonempty_reasons_ = has_nonempty_reasons_ || !reason.empty();
   disequalities_.push_back(Disequality{lhs, rhs, std::move(reason)});
   check_disequalities();
 }
+
+void IncrementalCongruenceClosure::saturate() { propagate(); }
 
 bool IncrementalCongruenceClosure::are_equal(core::TermId lhs, core::TermId rhs) {
   add_term(lhs);
@@ -179,7 +185,10 @@ void IncrementalCongruenceClosure::register_application(core::TermId term) {
   if (found != lookup_.end()) {
     ++stats_.lookup_hits;
     if (found->second != term) {
-      enqueue(term, found->second, congruence_reason(term, found->second), true);
+      enqueue(
+          term, found->second,
+          has_nonempty_reasons_ ? congruence_reason(term, found->second) : std::vector<sat::Lit>{},
+          true);
       propagate();
     }
     return;
@@ -244,7 +253,10 @@ void IncrementalCongruenceClosure::process_use_list(core::TermId old_repr, core:
     if (found != lookup_.end()) {
       ++stats_.lookup_hits;
       if (representative(found->second) != representative(term)) {
-        enqueue(term, found->second, congruence_reason(term, found->second), true);
+        enqueue(term, found->second,
+                has_nonempty_reasons_ ? congruence_reason(term, found->second)
+                                      : std::vector<sat::Lit>{},
+                true);
       }
       append_use(use_lists_[new_repr], term);
       continue;

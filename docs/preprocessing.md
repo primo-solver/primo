@@ -130,6 +130,12 @@ under top-level `and`, and simplifies equality atoms decided by that unit
 closure. This is what turns bridge facts from diamond formulas into an immediate
 pre-SAT contradiction with the final disequality.
 
+The temporary closure used by this pass is `theory::equality::
+IncrementalCongruenceClosure`, the same use-list/lookup implementation used for
+incremental EUF checks over `core::TermId` values. Preprocessing assertions have
+unconditional reasons, so the closure does not build congruence explanation
+paths while deriving simplification-only consequences.
+
 `--ground-unit-substitution` additionally uses the same collected non-Boolean
 unit equalities for a bounded ground substitution pass. The pass preserves the
 unit equalities as explicit assertions, rebuilds the remaining assertion DAG
@@ -225,6 +231,12 @@ endpoints equal and folded to `false` if their equality would contradict a known
 disequality modulo the positive closure. This catches common QF_UF patterns such
 as a disequality unit eliminating one branch of a disjunction, or transitive
 equalities contradicting a disequality before SAT search.
+
+This pass uses the same temporary incremental closure as unit equality
+propagation. The closure gives preprocessing affected-use-list congruence
+updates instead of the older all-pairs saturation scaffold, but it remains a
+pre-SAT simplifier: generated equalities and disequalities are preserved as
+assertions rather than hidden inside preprocessing state.
 
 The pass does not rewrite inside uninterpreted-function applications. A
 Bool-valued predicate atom may be replaced when it occurs as a formula atom, but

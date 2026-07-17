@@ -14,7 +14,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
-#include "theory/equality/congruence_closure.hpp"
+#include "theory/equality/incremental_congruence_closure.hpp"
 
 namespace primo::smt {
 
@@ -471,7 +471,7 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
   return term_id;
 }
 
-bool is_known_disequal(theory::equality::CongruenceClosure& closure,
+bool is_known_disequal(theory::equality::IncrementalCongruenceClosure& closure,
                        const std::vector<std::pair<core::TermId, core::TermId>>& disequalities,
                        core::TermId lhs, core::TermId rhs) {
   for (const auto& [diseq_lhs, diseq_rhs] : disequalities) {
@@ -486,7 +486,7 @@ bool is_known_disequal(theory::equality::CongruenceClosure& closure,
 core::TermId simplify_with_forced_atoms(
     core::TermManager& terms, core::TermId term_id,
     const std::unordered_map<core::TermId, bool>& assignments,
-    theory::equality::CongruenceClosure& closure,
+    theory::equality::IncrementalCongruenceClosure& closure,
     const std::vector<std::pair<core::TermId, core::TermId>>& disequalities,
     std::unordered_map<core::TermId, core::TermId>& memo, std::size_t& rewrites) {
   const auto memoized = memo.find(term_id);
@@ -701,7 +701,7 @@ void collect_equality_bridges(core::TermManager& terms, core::TermId assertion,
 }
 
 void collect_unit_equalities(const core::TermManager& terms, core::TermId assertion,
-                             theory::equality::CongruenceClosure& closure) {
+                             theory::equality::IncrementalCongruenceClosure& closure) {
   std::vector<core::TermId> work{assertion};
   while (!work.empty()) {
     const core::TermId term = work.back();
@@ -718,7 +718,7 @@ void collect_unit_equalities(const core::TermManager& terms, core::TermId assert
 }
 
 void register_equality_query_terms(const core::TermManager& terms, core::TermId assertion,
-                                   theory::equality::CongruenceClosure& closure) {
+                                   theory::equality::IncrementalCongruenceClosure& closure) {
   std::vector<core::TermId> work{assertion};
   while (!work.empty()) {
     const core::TermId term = work.back();
@@ -735,7 +735,7 @@ void register_equality_query_terms(const core::TermManager& terms, core::TermId 
 }
 
 core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId term,
-                                      theory::equality::CongruenceClosure& closure) {
+                                      theory::equality::IncrementalCongruenceClosure& closure) {
   const core::Term& node = terms.get(term);
   const core::TermKind kind = node.kind;
   const std::vector<core::TermId> node_children = node.children;
@@ -1874,7 +1874,7 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   // derived by the equality bridge, are fed to the same ground congruence
   // relation used by the EUF solver, then equality atoms decided by that unit
   // relation are simplified before Boolean abstraction.
-  theory::equality::CongruenceClosure closure(terms);
+  theory::equality::IncrementalCongruenceClosure closure(terms);
   for (const core::TermId assertion : assertions) {
     collect_unit_equalities(terms, assertion, closure);
     register_equality_query_terms(terms, assertion, closure);
@@ -2086,7 +2086,7 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
     return result;
   }
 
-  theory::equality::CongruenceClosure closure(terms);
+  theory::equality::IncrementalCongruenceClosure closure(terms);
   for (const auto& [lhs, rhs] : assignments.equalities) {
     closure.assert_equal(lhs, rhs);
   }

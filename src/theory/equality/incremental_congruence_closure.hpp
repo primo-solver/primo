@@ -22,6 +22,7 @@ class IncrementalCongruenceClosure {
   void add_term(core::TermId term);
   void assert_equal(core::TermId lhs, core::TermId rhs, std::vector<sat::Lit> reason = {});
   void assert_distinct(core::TermId lhs, core::TermId rhs, std::vector<sat::Lit> reason = {});
+  void saturate();
   bool are_equal(core::TermId lhs, core::TermId rhs);
   std::optional<std::vector<sat::Lit>> explain_equal(core::TermId lhs, core::TermId rhs);
   std::optional<std::vector<sat::Lit>> conflict() const;
@@ -71,6 +72,7 @@ class IncrementalCongruenceClosure {
     std::vector<bool> seen;
     std::optional<std::vector<sat::Lit>> conflict;
     IncrementalCongruenceClosureStats stats;
+    bool has_nonempty_reasons = false;
   };
 
   void ensure_capacity();
@@ -102,6 +104,7 @@ class IncrementalCongruenceClosure {
   std::vector<Snapshot> snapshots_;
   std::optional<std::vector<sat::Lit>> conflict_;
   IncrementalCongruenceClosureStats stats_;
+  bool has_nonempty_reasons_ = false;
 };
 
 }  // namespace primo::theory::equality
