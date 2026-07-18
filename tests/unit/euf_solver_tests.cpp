@@ -488,6 +488,26 @@ void flat_congruence_closure_backtracks_post_checkpoint_definitions() {
   check(closure.are_equal(2, 3));
 }
 
+void flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack() {
+  FlatCongruenceClosure closure(8);
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 2});
+  const std::size_t checkpoint = closure.push();
+
+  closure.assert_equal(0, 1);
+  check(closure.stats().use_list_appends >= 3);
+  closure.assert_equal(3, 4);
+  closure.assert_equal(3, 5);
+  closure.assert_equal(1, 3);
+  check(closure.stats().affected_use_list_dedup >= 1);
+  check(!closure.conflict().has_value());
+
+  closure.pop(checkpoint);
+  check(!closure.are_equal(0, 1));
+  closure.assert_equal(0, 1);
+  check(!closure.conflict().has_value());
+  check(closure.are_equal(0, 1));
+}
+
 }  // namespace
 
 int main() {
@@ -512,5 +532,6 @@ int main() {
   flat_congruence_closure_backtracks_nested_merges();
   flat_congruence_closure_backtracks_disequality_conflict();
   flat_congruence_closure_backtracks_post_checkpoint_definitions();
+  flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack();
   return 0;
 }

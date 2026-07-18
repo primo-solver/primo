@@ -235,6 +235,16 @@ insertion order and in per-flat-term adjacency lists so reason BFS visits only
 edges incident to the current proof-graph node. Congruence edges store the two
 flat definitions that collided in the lookup table and expand their child
 equalities only when a conflict or propagation explanation asks for the reason.
+Use-list appends do not scan the destination vector for duplicates. Duplicates
+can arise when the same flat definition mentions two classes that later merge,
+so the closure removes duplicate affected results with a generation-stamp
+scratch vector when a disappearing representative's use list is processed.
+Rollback only restores semantic state; the stamp vector is recomputable
+scratch state. The public counters are
+`:euf.incremental.use-list-appends`,
+`:euf.incremental.use-list-duplicate-skips`,
+`:euf.incremental.affected-use-list-dedup`, and
+`:euf.incremental.max-use-list-size`.
 Online-mode checkpoints are created lazily on the first theory assignment in a
 SAT decision level, so levels with only Boolean search do not allocate closure
 rollback state. Checkpoints remember vector sizes, conflict state, stats, and

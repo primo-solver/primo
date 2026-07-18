@@ -2159,6 +2159,7 @@ FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
   FiniteDomainAtMostOneResult result;
   const auto disequalities = collect_disequalities(terms_, assertions);
   const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
+  result.choices = choices.size();
   std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
   for (const auto& [term, choice] : choices) {
     const std::vector<core::TermId> clauses =

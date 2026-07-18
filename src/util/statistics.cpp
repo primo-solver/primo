@@ -41,6 +41,10 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":preprocessing.solve-eqs.rejected-blowups"sv,
     ":preprocessing.finite-domain.domains"sv,
     ":preprocessing.finite-domain.amo-clauses"sv,
+    ":preprocessing.finite-domain.raw-choices"sv,
+    ":preprocessing.finite-domain.raw-amo-clauses"sv,
+    ":preprocessing.finite-domain.post-amo-clauses"sv,
+    ":preprocessing.finite-domain.deduped-amo-clauses"sv,
     ":preprocessing.finite-domain.evaluated-equalities"sv,
     ":preprocessing.finite-domain.evaluation-cutoffs"sv,
     ":preprocessing.equality-definitions"sv,
@@ -104,6 +108,10 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":euf.incremental.explain-cache-hits"sv,
     ":euf.incremental.explain-length"sv,
     ":euf.incremental.backtracks"sv,
+    ":euf.incremental.use-list-appends"sv,
+    ":euf.incremental.use-list-duplicate-skips"sv,
+    ":euf.incremental.affected-use-list-dedup"sv,
+    ":euf.incremental.max-use-list-size"sv,
 };
 
 }  // namespace

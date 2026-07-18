@@ -41,6 +41,10 @@ enum class StatKey : std::size_t {
   SolvedConstantRejectedBlowups,
   FiniteDomainDomains,
   FiniteDomainAmoClauses,
+  FiniteDomainRawChoices,
+  FiniteDomainRawAmoClauses,
+  FiniteDomainPostAmoClauses,
+  FiniteDomainDedupedAmoClauses,
   FiniteDomainEvaluatedEqualities,
   FiniteDomainEvaluationCutoffs,
   EqualityDefinitions,
@@ -104,6 +108,10 @@ enum class StatKey : std::size_t {
   EufIncrementalExplainCacheHits,
   EufIncrementalExplainLength,
   EufIncrementalBacktracks,
+  EufIncrementalUseListAppends,
+  EufIncrementalUseListDuplicateSkips,
+  EufIncrementalAffectedUseListDedup,
+  EufIncrementalMaxUseListSize,
   Count,
 };
 

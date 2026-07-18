@@ -72,6 +72,7 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
 struct FiniteDomainAtMostOneResult {
   std::vector<core::TermId> clauses;
   std::size_t domains = 0;
+  std::size_t choices = 0;
 };
 
 class FiniteDomainAtMostOne {

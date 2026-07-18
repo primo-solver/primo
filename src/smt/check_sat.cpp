@@ -74,6 +74,11 @@ constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
 constexpr util::StatKey kStatFiniteDomainDomains = util::StatKey::FiniteDomainDomains;
 constexpr util::StatKey kStatFiniteDomainAmoClauses = util::StatKey::FiniteDomainAmoClauses;
+constexpr util::StatKey kStatFiniteDomainRawChoices = util::StatKey::FiniteDomainRawChoices;
+constexpr util::StatKey kStatFiniteDomainRawAmoClauses = util::StatKey::FiniteDomainRawAmoClauses;
+constexpr util::StatKey kStatFiniteDomainPostAmoClauses = util::StatKey::FiniteDomainPostAmoClauses;
+constexpr util::StatKey kStatFiniteDomainDedupedAmoClauses =
+    util::StatKey::FiniteDomainDedupedAmoClauses;
 constexpr util::StatKey kStatFiniteDomainEvaluatedEqualities =
     util::StatKey::FiniteDomainEvaluatedEqualities;
 constexpr util::StatKey kStatFiniteDomainEvaluationCutoffs =
@@ -156,6 +161,14 @@ constexpr util::StatKey kStatEufIncrementalExplainCacheHits =
 constexpr util::StatKey kStatEufIncrementalExplainLength =
     util::StatKey::EufIncrementalExplainLength;
 constexpr util::StatKey kStatEufIncrementalBacktracks = util::StatKey::EufIncrementalBacktracks;
+constexpr util::StatKey kStatEufIncrementalUseListAppends =
+    util::StatKey::EufIncrementalUseListAppends;
+constexpr util::StatKey kStatEufIncrementalUseListDuplicateSkips =
+    util::StatKey::EufIncrementalUseListDuplicateSkips;
+constexpr util::StatKey kStatEufIncrementalAffectedUseListDedup =
+    util::StatKey::EufIncrementalAffectedUseListDedup;
+constexpr util::StatKey kStatEufIncrementalMaxUseListSize =
+    util::StatKey::EufIncrementalMaxUseListSize;
 
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
 
@@ -1082,6 +1095,12 @@ void add_incremental_stats(util::Statistics& statistics,
                             stats.explain_cache_hits);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainLength, stats.explain_length);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalBacktracks, stats.backtracks);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalUseListAppends, stats.use_list_appends);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalUseListDuplicateSkips,
+                            stats.use_list_duplicate_skips);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalAffectedUseListDedup,
+                            stats.affected_use_list_dedup);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalMaxUseListSize, stats.max_use_list_size);
 }
 
 std::size_t positive_delta(std::size_t current, std::size_t previous) {
@@ -1105,6 +1124,10 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.explain_cache_hits, rhs.explain_cache_hits),
       positive_delta(lhs.explain_length, rhs.explain_length),
       positive_delta(lhs.backtracks, rhs.backtracks),
+      positive_delta(lhs.use_list_appends, rhs.use_list_appends),
+      positive_delta(lhs.use_list_duplicate_skips, rhs.use_list_duplicate_skips),
+      positive_delta(lhs.affected_use_list_dedup, rhs.affected_use_list_dedup),
+      positive_delta(lhs.max_use_list_size, rhs.max_use_list_size),
   };
 }
 
@@ -1490,6 +1513,11 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.explain_cache_hits += stats.explain_cache_hits;
     accumulated_stats_.explain_length += stats.explain_length;
     accumulated_stats_.backtracks += stats.backtracks;
+    accumulated_stats_.use_list_appends += stats.use_list_appends;
+    accumulated_stats_.use_list_duplicate_skips += stats.use_list_duplicate_skips;
+    accumulated_stats_.affected_use_list_dedup += stats.affected_use_list_dedup;
+    accumulated_stats_.max_use_list_size =
+        std::max(accumulated_stats_.max_use_list_size, stats.max_use_list_size);
   }
 
   void ensure_current_level_checkpoint() {
@@ -2345,6 +2373,10 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatSolvedConstantRejectedBlowups, 0);
   statistics.set(kStatFiniteDomainDomains, 0);
   statistics.set(kStatFiniteDomainAmoClauses, 0);
+  statistics.set(kStatFiniteDomainRawChoices, 0);
+  statistics.set(kStatFiniteDomainRawAmoClauses, 0);
+  statistics.set(kStatFiniteDomainPostAmoClauses, 0);
+  statistics.set(kStatFiniteDomainDedupedAmoClauses, 0);
   statistics.set(kStatFiniteDomainEvaluatedEqualities, 0);
   statistics.set(kStatFiniteDomainEvaluationCutoffs, 0);
   statistics.set(kStatEqualityDefinitions, 0);
@@ -2408,6 +2440,10 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatEufIncrementalExplainCacheHits, 0);
   statistics.set(kStatEufIncrementalExplainLength, 0);
   statistics.set(kStatEufIncrementalBacktracks, 0);
+  statistics.set(kStatEufIncrementalUseListAppends, 0);
+  statistics.set(kStatEufIncrementalUseListDuplicateSkips, 0);
+  statistics.set(kStatEufIncrementalAffectedUseListDedup, 0);
+  statistics.set(kStatEufIncrementalMaxUseListSize, 0);
 
   try {
     smtlib::Parser parser(input);
@@ -2480,6 +2516,13 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     statistics.set(kStatPreprocessingTermSizeInitial,
                    reachable_term_count(frontend.terms(), assertions));
     const std::vector<core::TermId> symmetry_source_assertions = assertions;
+    FiniteDomainAtMostOneResult raw_finite_domain_result;
+    if (use_finite_domain_amo) {
+      FiniteDomainAtMostOne finite_domain(frontend.terms());
+      raw_finite_domain_result = finite_domain.generate(assertions);
+      statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
+      statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
+    }
     if (auto_large_assertion_skip && options.solved_constant_substitution) {
       SolvedConstantSubstitutionResult solved_constants =
           substitute_solved_constants(frontend.terms(), assertions);
@@ -2596,10 +2639,30 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     if (use_finite_domain_amo) {
       FiniteDomainAtMostOne finite_domain(frontend.terms());
       FiniteDomainAtMostOneResult finite_domain_result = finite_domain.generate(assertions);
-      assertions.insert(assertions.end(), finite_domain_result.clauses.begin(),
-                        finite_domain_result.clauses.end());
-      statistics.increment(kStatFiniteDomainDomains, finite_domain_result.domains);
-      statistics.increment(kStatFiniteDomainAmoClauses, finite_domain_result.clauses.size());
+      statistics.increment(kStatFiniteDomainPostAmoClauses, finite_domain_result.clauses.size());
+      std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
+      std::size_t added = 0;
+      std::size_t deduped = 0;
+      for (const core::TermId clause : raw_finite_domain_result.clauses) {
+        if (emitted.insert(clause).second) {
+          assertions.push_back(clause);
+          ++added;
+        } else {
+          ++deduped;
+        }
+      }
+      for (const core::TermId clause : finite_domain_result.clauses) {
+        if (emitted.insert(clause).second) {
+          assertions.push_back(clause);
+          ++added;
+        } else {
+          ++deduped;
+        }
+      }
+      statistics.increment(kStatFiniteDomainDomains, std::max(raw_finite_domain_result.domains,
+                                                              finite_domain_result.domains));
+      statistics.increment(kStatFiniteDomainAmoClauses, added);
+      statistics.increment(kStatFiniteDomainDedupedAmoClauses, deduped);
     }
     if (use_finite_domain_equality_definitions) {
       FiniteDomainEqualityDefinitions equality_definitions(frontend.terms());

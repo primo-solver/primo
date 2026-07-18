@@ -67,7 +67,8 @@ congruence consequences that SAT backtracking will discard.
   Stale keys may remain after a merge but are not queried because new probes are
   built from current representatives.
 - `use_lists_[r]` contains definitions that must be reconsidered when `r` stops
-  being a representative. Duplicate suppression is local to a list.
+  being a representative. Duplicates are tolerated while appending and are
+  suppressed with a generation-stamp scratch vector when a list is processed.
 - Disequalities are stored as theory literals and checked after each merge.
 - Explanations are sound SAT-literal sets collected from an explicit equality
   graph. They are not the optimized proof forests of Sections 4 and 5.
@@ -78,6 +79,12 @@ The implemented congruence discovery follows the Section 3 affected-use-list
 shape rather than rescanning all registered term pairs. Class merging uses the
 paper's smaller-into-larger rule, so each term changes representative
 logarithmically often. The current lookup table is a sparse hash table.
+Use-list maintenance deliberately avoids a linear duplicate scan on every
+append. Each `process_use_list` invocation increments a generation stamp and
+skips repeated result identifiers in the affected list; this keeps duplicate
+discipline at the point where duplicates would otherwise cause repeated lookup
+work. The stamp vector is scratch metadata sized with the flat node arrays and
+does not participate in checkpoint rollback.
 
 Two deviations matter for performance claims:
 
@@ -113,7 +120,9 @@ The engine exposes counters for:
 - disequality checks and conflicts;
 - explanation calls and per-explanation cache hits;
 - explanation length;
-- backtracks.
+- backtracks;
+- use-list appends, process-time duplicate skips, affected-list duplicate skips,
+  and maximum observed use-list size.
 
 The SMT layer exports these under `:euf.incremental.*` when
 `--euf-engine=incremental` is used for final conflict checks, model-time
@@ -138,6 +147,7 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
 - repeated sub-explanation reuse inside one flat congruence reason;
 - changed-term draining after flat merges and rollback of undrained changed-term
   records on backtrack;
+- process-time use-list duplicate handling across checkpoint rollback;
 - nonzero lookup-hit and congruence-merge counters.
 
 The SMT tests in `tests/unit/boolean_solver_tests.cpp` cover conflict checks,

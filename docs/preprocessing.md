@@ -361,8 +361,10 @@ The implementation is intentionally conservative:
 
 ## Finite-Domain Clauses
 
-The finite-domain recognizer has two AMO sources. The first looks for explicit
-choice disjunctions of the form:
+The finite-domain recognizer has three AMO sources. The first is a raw
+preprocessing scan over the original QF_UF assertions, before Boolean-unit and
+forced-atom simplification can turn a full operation-table choice into a
+residual choice. It looks for explicit choice disjunctions of the form:
 
 ```text
 (or (= t c0) (= t c1) ... (= t cn))
@@ -378,9 +380,20 @@ clauses:
 
 for every pair of distinct values. These are ordinary EUF theory lemmas: if
 `ci` and `cj` are explicitly asserted disequal, a single term cannot equal both
-values.
+values. Raw clauses are delayed until after the destructive simplification loop
+and are deduplicated against the post-simplification recognizer before they are
+added to the assertion vector. The raw scan is counted by
+`:preprocessing.finite-domain.raw-choices` and
+`:preprocessing.finite-domain.raw-amo-clauses`; post-simplification clauses are
+counted by `:preprocessing.finite-domain.post-amo-clauses`; duplicates removed
+between raw, post, and already-present assertions are counted by
+`:preprocessing.finite-domain.deduped-amo-clauses`.
 
-The second source scans equality atoms already present in the assertion DAG. If
+The second source repeats explicit-choice recognition after the ordinary
+preprocessing loop. This keeps AMO generation useful on formulas whose choices
+are exposed by earlier passes.
+
+The third source scans equality atoms already present in the assertion DAG. If
 the formula mentions both `s = ci` and `s = cj`, and `ci` and `cj` are explicit
 top-level disequal non-Boolean constants, the pass may append the same AMO
 clause even when there is no choice disjunction for `s`. This is still only a
@@ -399,8 +412,8 @@ distinct-endpoint AMO clauses:
 for every domain value `ci`. The pass is intentionally narrow. It does not infer
 disequalities hidden under Boolean structure and it does not perform finite-model
 search. Symmetry breaking remains narrower than AMO generation: the current
-symmetry pass still requires explicit choice disjunctions before it accepts a
-finite-domain value set.
+symmetry pass still uses the original assertion vector and requires explicit
+choice disjunctions before it accepts a finite-domain value set.
 
 When an equality atom between two recognized finite-domain terms occurs in the
 assertion DAG, `strong` preprocessing also appends equality-definition clauses

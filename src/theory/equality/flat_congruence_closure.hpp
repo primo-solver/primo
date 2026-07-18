@@ -167,6 +167,8 @@ class FlatCongruenceClosure {
   mutable std::size_t visit_generation_ = 0;
   mutable std::vector<std::size_t> reason_marks_;
   mutable std::size_t reason_generation_ = 0;
+  std::vector<std::size_t> use_list_marks_;
+  std::size_t use_list_generation_ = 0;
 };
 
 }  // namespace primo::theory::equality

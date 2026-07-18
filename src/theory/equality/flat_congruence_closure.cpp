@@ -67,6 +67,7 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   class_size_.resize(state.node_count);
   class_members_.resize(state.node_count);
   use_lists_.resize(state.node_count);
+  use_list_marks_.resize(state.node_count);
   disequality_lists_.resize(state.node_count);
   edge_adjacency_.resize(state.node_count);
   conflict_ = std::move(state.conflict);
@@ -84,6 +85,7 @@ void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {
   class_size_.resize(node_count, 1);
   class_members_.resize(node_count);
   use_lists_.resize(node_count);
+  use_list_marks_.resize(node_count);
   disequality_lists_.resize(node_count);
   edge_adjacency_.resize(node_count);
   for (std::size_t i = old_size; i < node_count; ++i) {
@@ -320,7 +322,18 @@ void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new
     trail_.push_back(std::move(entry));
   }
   affected.swap(use_lists_[old_repr]);
+  ++use_list_generation_;
+  if (use_list_generation_ == 0) {
+    std::fill(use_list_marks_.begin(), use_list_marks_.end(), 0);
+    ++use_list_generation_;
+  }
   for (const FlatTermId result : affected) {
+    if (use_list_marks_[result] == use_list_generation_) {
+      ++stats_.affected_use_list_dedup;
+      ++stats_.use_list_duplicate_skips;
+      continue;
+    }
+    use_list_marks_[result] = use_list_generation_;
     const auto definition_it = definition_by_result_.find(result);
     if (definition_it == definition_by_result_.end()) {
       continue;
@@ -350,9 +363,6 @@ void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new
 
 void FlatCongruenceClosure::append_use_tracked(FlatTermId representative, FlatTermId result) {
   std::vector<FlatTermId>& use_list = use_lists_[representative];
-  if (std::find(use_list.begin(), use_list.end(), result) != use_list.end()) {
-    return;
-  }
   if (!checkpoints_.empty()) {
     TrailEntry entry;
     entry.kind = TrailKind::UseListPop;
@@ -360,6 +370,8 @@ void FlatCongruenceClosure::append_use_tracked(FlatTermId representative, FlatTe
     trail_.push_back(std::move(entry));
   }
   use_list.push_back(result);
+  ++stats_.use_list_appends;
+  stats_.max_use_list_size = std::max(stats_.max_use_list_size, use_list.size());
 }
 
 void FlatCongruenceClosure::push_parent_change(FlatTermId term) {

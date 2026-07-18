@@ -1053,6 +1053,103 @@
       },
       "evidence_status": "current",
       "notes": "Polarity modestly improved this subset without changing solved count or wrong answers, but it is not a safe global-default conclusion: large wins such as iso_icl_nogen_sk003 100.475s -> 51.920s and iso_brn_repgen033 7.423s -> 1.086s were offset by large regressions such as gensys_icl_sk003 11.481s -> 42.918s, NEQ048_size9 23.327s -> 47.273s, and Goel firewire_tree.5 rows about 3.9s -> about 20s. Failed job 111402 is non-evidence; it exposed a manifest parser bug with dotted benchmark names, fixed in 6f3ffb1 before replacement job 111434."
+    },
+    {
+      "id": "2026-07-18-qg-raw-amo-uselist-local-d9229b2-plus",
+      "started_at": "2026-07-18T20:10:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "profile",
+      "scope": "Local QG target check after raw finite-domain AMO preservation and flat use-list append-scan removal",
+      "commit": "d9229b2 plus uncommitted changes",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "make test; /usr/bin/time -f 'elapsed %e' build/primo --stats tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2; perf record -F 99 -g --output /tmp/primo-qg7-after.perf -- build/primo --quiet tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2; perf report -i /tmp/primo-qg7-after.perf --stdio --no-children --sort symbol",
+      "solver": {
+        "name": "Primo",
+        "argv": "build/primo --stats"
+      },
+      "references": [
+        {
+          "name": "previous local Primo diagnostic",
+          "argv": "build/primo --stats tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2"
+        }
+      ],
+      "inputs": {
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+        "logic": "QF_UF",
+        "timeout_seconds": 120
+      },
+      "artifacts": {
+        "stats_log": "/tmp/primo-qg7-after.log",
+        "perf_data": "/tmp/primo-qg7-after.perf",
+        "perf_script_excerpt": "/tmp/primo-qg7-after.perfscript"
+      },
+      "summary": {
+        "answer": "unsat",
+        "elapsed_seconds": 5.02,
+        "previous_local_elapsed_seconds": 9.05,
+        "finite_domain_amo_clauses": 3559,
+        "finite_domain_raw_choices": 56,
+        "finite_domain_raw_amo_clauses": 3549,
+        "finite_domain_post_amo_clauses": 658,
+        "finite_domain_deduped_amo_clauses": 648,
+        "euf_theory_conflicts": 9703,
+        "euf_incremental_explain_calls": 1956068,
+        "euf_incremental_use_list_appends": 828192,
+        "euf_incremental_max_use_list_size": 3497,
+        "perf_top_symbol": "FlatCongruenceClosure::explain_equal_into at 5.72 percent self in local sample"
+      },
+      "evidence_status": "local-only",
+      "notes": "This is local development evidence only. It confirms the raw AMO count moves toward the LLM2SMT reference scale and that the old append-time linear duplicate scan is removed from the visible local profile. Headline benchmark claims still require SLURM suite evaluation and a committed revision."
+    },
+    {
+      "id": "2026-07-18-qfuf-fuzzsmt1000-raw-amo-uselist-d9229b2-plus",
+      "started_at": "2026-07-18T20:25:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "fuzz",
+      "scope": "Local QF_UF FuzzSMT merge gate after raw finite-domain AMO preservation and flat use-list append-scan removal",
+      "commit": "d9229b2 plus uncommitted changes",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build/primo --refs z3 --logic QF_UF --count 1000 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-1000-raw-amo-uselist",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt 0.3",
+        "logic": "QF_UF",
+        "count": 1000,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-1000-raw-amo-uselist/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt-1000-raw-amo-uselist/generated",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-1000-raw-amo-uselist/bugs"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "bug_files": 0
+      },
+      "evidence_status": "local-only",
+      "notes": "The final artifact has zero bug files. This covers the generated QF_UF merge gate; QG seed-mutation and benchmark evidence are still separate."
     }
   ]
 }

@@ -28,11 +28,20 @@ and equality-definition clauses for equality atoms already observed between
 same-domain terms. These are ordinary ground EUF consequences over existing
 terms, not the paper's full finite-model SAT reduction.
 
+The AMO subset is intentionally scanned before and after destructive
+preprocessing. The raw scan preserves SAT-visible operation-table functionality
+clauses when forced-atom simplification removes a value from an explicit choice
+disjunction. This follows the finite-model encoding intuition that operation
+tables should expose functionality to SAT, but the implemented rule is only the
+ground EUF consequence over original terms and explicit value disequalities.
+
 ## Implementation Status
 
 Implemented in `src/smt/preprocessing.*`:
 
 - no direct finite-model value-precedence pass.
+- raw and post-simplification finite-domain AMO scans over existing choice
+  disjunctions, with `TermId`-level clause deduplication.
 
 Deferred:
 

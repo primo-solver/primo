@@ -743,8 +743,38 @@ void strong_preprocessing_enables_finite_domain_amo() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.post-amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 3);
   assert(result.statistics.get(":preprocessing.ground-congruence-clauses") == 0);
   assert(result.statistics.get(":euf.propagation.rounds") == 0);
+}
+
+void finite_domain_raw_amo_survives_forced_atom_simplification() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (assert (distinct a b c))
+    (assert (not (= x a)))
+    (assert (or (= x a) (= x b) (= x c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.forced-atoms.rewrites") >= 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.post-amo-clauses") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 1);
 }
 
 void auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions() {
@@ -1384,6 +1414,7 @@ int main() {
   pure_theory_literal_filter_can_be_disabled();
   mixed_polarity_theory_literal_is_not_filtered();
   strong_preprocessing_enables_finite_domain_amo();
+  finite_domain_raw_amo_survives_forced_atom_simplification();
   auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions();
   auto_preprocessing_emits_guarded_equality_definitions();
   finite_domain_equality_definitions_can_be_disabled();
