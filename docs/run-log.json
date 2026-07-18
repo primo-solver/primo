@@ -211,6 +211,88 @@
       },
       "evidence_status": "historical",
       "notes": "Accepted as evidence for commit ecfe1d8 only; current HEAD needs a fresh fuzz gate before headline/default claims."
+    },
+    {
+      "id": "2026-07-18-cadical-profile-sat-heavy-3858f12",
+      "started_at": "2026-07-18T12:07:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "dependency-check",
+      "scope": "CaDiCaL default options versus just_count-style incremental profile on SAT-heavy QF_UF instances",
+      "commit": "3858f12",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111034"
+      },
+      "command": "python3 scripts/check_cadical_profile.py --solver ./build-slurm-rel/primo --timeout 30 --out results/cadical-profile-sat-heavy/profile.csv --summary results/cadical-profile-sat-heavy/profile.md tmp/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.3.prop2_ab_reg_max.smt2 tmp/QF_UF/2018-Goel-hwbench/QF_UF_hanoi.2.prop1_ab_br_max.smt2 tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2 tmp/QF_UF/PEQ/PEQ014_size10.smt2",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build-slurm-rel/primo --quiet"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 4,
+        "timeout_seconds": 30,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "results/cadical-profile-sat-heavy-3858f12-111034/profile.md",
+        "results": "results/cadical-profile-sat-heavy-3858f12-111034/profile.csv",
+        "logs": "results/cadical-profile-sat-heavy-3858f12-111034/slurm-111034.out",
+        "bugs": null
+      },
+      "summary": {
+        "profiles": [
+          "default",
+          "incremental"
+        ],
+        "incremental_options": [
+          "ilb=2",
+          "sweep=0",
+          "congruence=0",
+          "backbone=0",
+          "condition=0",
+          "elim=0",
+          "vivify=0",
+          "probe=0",
+          "subsume=0",
+          "transred=0",
+          "walk=0"
+        ],
+        "default_solved": 3,
+        "incremental_solved": 3,
+        "default_timeouts": 1,
+        "incremental_timeouts": 1,
+        "default_seconds_total": 34.099614,
+        "incremental_seconds_total": 34.856785,
+        "notable_rows": [
+          {
+            "file": "QF_UF_firewire_tree.3.prop2_ab_reg_max.smt2",
+            "default_seconds": 0.98592,
+            "incremental_seconds": 0.967157
+          },
+          {
+            "file": "QF_UF_hanoi.2.prop1_ab_br_max.smt2",
+            "default_seconds": 1.286088,
+            "incremental_seconds": 1.312517
+          },
+          {
+            "file": "iso_brn_repgen_sk033.smt2",
+            "default_seconds": 1.655154,
+            "incremental_seconds": 1.940777
+          },
+          {
+            "file": "PEQ014_size10.smt2",
+            "default_seconds": 30.172452,
+            "incremental_seconds": 30.636334
+          }
+        ]
+      },
+      "evidence_status": "current",
+      "notes": "No just_count-style ilb=2 win was observed on this small SAT-heavy Primo sample. This does not rule out CaDiCaL sensitivity for workloads with repeated SAT solve calls and one blocking clause per call; these SMT runs do not have the same model-counting loop structure."
     }
   ]
 }
