@@ -59,6 +59,25 @@ the remaining reference gap is not just candidate-scan overhead. Future work on
 those families should start from the formula structure and preprocessing
 statistics, not by adding more propagation scheduling knobs.
 
+The July 2026 hard-set campaign refined that lesson. On the same seven held-out
+NEQ/PEQ/SEQ files, commit `bb69076` solved 1/7 at 120 seconds with PAR2
+1543.363725 and zero wrong answers. Commit `ecfe1d8` solved 5/7 with PAR2
+794.441822 and zero wrong answers. The winning change did not add a new SAT
+profile or a new EUF heuristic: it removed eager scaffold work by using the
+incremental use-list congruence closure in preprocessing and by avoiding
+congruence explanation construction when preprocessing facts have unconditional
+reasons. The result artifacts are:
+
+- `results/slurm-qfuf-hard-direct-conflict-bb69076/`;
+- `results/slurm-qfuf-hard-preinc-ecfe1d8/`.
+
+This should be treated as a general development rule. When performance is far
+behind a reference solver, first look for eager work in default paths:
+preprocessing closures, all-pairs scans, repeated explanation construction,
+callback full scans, and work performed after a conflict is already known.
+Only after those costs are ruled out should the next step be parameter tuning or
+additional propagation heuristics.
+
 ## Optimization styles that transferred
 
 ### Structural preprocessing before search
@@ -117,6 +136,20 @@ When a target times out and emits no final stats, the harness should be extended
 or the instance should be run under a shorter instrumented local profile to
 recover partial information. A timeout without stats is a weak diagnostic.
 
+Use fixed-work diagnostic cutoffs when wall-clock time hides the issue. The
+`--max-theory-conflicts` option made the `SEQ026_size7` investigation
+repeatable: the same 1000-conflict run exposed that preprocessing scaffold work
+and flat closure use-list saturation were consuming time before solved-count
+changes were visible. Fixed-conflict profiles are especially useful when
+CaDiCaL search noise or full 120-second timeouts make two builds hard to
+compare.
+
+Do not stop after observing a local profile win. The direct disequality-conflict
+early exit reduced lookup probes and pending pops on a fixed-conflict local
+probe, but the first SLURM hard-set run still solved only 1/7. The subsequent
+preprocessing-closure change was validated because it improved both the local
+fixed-work probe and the SLURM solved count/PAR2.
+
 ### Profiles as experiments, not defaults
 
 Parameter tuning and CaDiCaL profiles are useful for finding mechanisms, but
@@ -131,6 +164,12 @@ profile to default only after:
 
 Until then, keep the profile as an experiment and implement the underlying
 mechanism directly.
+
+Cluster setup is part of the experiment. If a remote build links against a
+workstation-built CaDiCaL archive, benchmark results may be blocked by libc
+symbol mismatches such as `__isoc23_fscanf`. Rebuild CaDiCaL on the cluster
+before trusting a fresh SLURM campaign, and record which binary produced each
+artifact.
 
 ### Reference-driven target selection
 
