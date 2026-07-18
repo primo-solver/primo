@@ -185,6 +185,121 @@ from Primo's architecture. The preferred loop is:
 5. Implement the smallest mechanism that explains a cluster.
 6. Re-run the same manifest on SLURM and compare PAR2 and wrong answers.
 
+## Cross-theory engineering lessons
+
+The July 2026 QF_UF campaign exposed patterns that should transfer to every
+future theory solver, including LRA, difference logic, arrays, bit-vectors, and
+combinations.
+
+### Treat scaffolds as temporary risks
+
+A scaffold can be correct and still become the dominant runtime cost once it is
+placed on a default path. Before optimizing theory-specific algorithms, audit
+whether any default preprocessing, model check, final check, propagation
+callback, or explanation path still uses:
+
+- all-pairs scans;
+- full tableau or closure rebuilds after small deltas;
+- repeated map/vector reconstruction in callbacks;
+- reason construction for facts that do not need reasons;
+- proof or explanation work before a conflict, propagation, or lemma is
+  actually emitted.
+
+For a new theory, promote a scaffold to default only after it has a pure-class
+performance probe and counters showing its asymptotic shape on representative
+instances. Otherwise keep it as a diagnostic path or behind an explicit option.
+
+### Optimize by work avoided
+
+The first performance question should be "which work can become conditional?"
+rather than "which new heuristic can we add?" Cross-theory examples:
+
+- EUF: check direct disequality conflicts before saturating affected use lists.
+- LRA/difference logic: avoid pivots or shortest-path relaxations when a bound
+  update is redundant under the current row/graph state.
+- Arrays: delay extensionality lemma generation until a disequality actually
+  needs a witness.
+- Bit-vectors: share rewritten subterms and avoid bit-blasting expressions that
+  preprocessing has already made unreachable.
+- Any theory: construct explanations only at the boundary where SAT will learn
+  or propagate a literal.
+
+These are implementation rules, not option profiles. If the best result comes
+from a tuned profile, inspect which avoided-work pattern the profile discovered
+and implement that mechanism directly where it belongs.
+
+### Use fixed-work diagnostics
+
+Wall-clock time is often too noisy to compare two theory implementations. Every
+major theory should have at least one diagnostic cutoff that returns `unknown`
+after a fixed amount of theory work, analogous to `--max-theory-conflicts` for
+EUF. Suitable units depend on the theory:
+
+- conflicts or learned theory lemmas;
+- simplex pivots;
+- row-bound propagations;
+- graph relaxations;
+- extensionality lemmas;
+- bit-blasted nodes or clauses;
+- callback rounds.
+
+The cutoff is not a solving heuristic. It is a profiling and regression tool
+that makes local profiles, counters, and flame graphs comparable before a
+full-suite solved-count change is visible.
+
+### Require counters before claims
+
+Each theory optimization should expose counters that distinguish input shape,
+work attempted, work skipped, and useful output. A useful counter family answers
+four questions:
+
+- How large was the theory problem after preprocessing?
+- How many candidate operations were considered?
+- How many were skipped by the optimization?
+- How many conflicts, propagations, lemmas, pivots, or simplifications reached
+  SAT or changed the theory state?
+
+Do not call a mechanism implemented merely because a flag is enabled. Require a
+counter proving that the hot path was exercised on tests or benchmark artifacts.
+
+### Validate at three scales
+
+A local profile win is a hypothesis, not a campaign result. For every theory
+performance change, use three scales:
+
+1. A focused unit or micro test that proves the intended work is skipped.
+2. A fixed-work local profile that shows the hotspot moved or shrank.
+3. A SLURM benchmark manifest that reports solved count, wrong answers, PAR2,
+   and family-level behavior.
+
+If scale 1 or 2 improves but scale 3 does not, document the negative result and
+continue diagnosis instead of stacking unrelated heuristics.
+
+### Keep preprocessing and solving comparable
+
+Preprocessing can dominate runtime and can also change the SAT/theory problem
+enough to hide the real bottleneck. For each theory, keep a preprocessing-only
+stats path and compare:
+
+- original formula size;
+- post-preprocessing formula size;
+- number of generated facts or lemmas;
+- number of theory atoms and SAT clauses;
+- time spent before the first SAT solve;
+- theory work per conflict after preprocessing.
+
+When simplification worsens performance, first inspect whether it introduced
+eager closure/tableau/graph work, generated too many lemmas, or destroyed a
+structure that the SAT solver or theory solver handled lazily.
+
+### Preserve soundness pressure
+
+Performance changes must keep the same proof obligations as correctness
+changes. For every theory, generated conflicts and propagations need
+independently testable reasons. If an optimization skips work, tests should show
+that the skipped work is unnecessary for the current branch, or that a later
+fallback/final check still covers completeness.
+
 ## Styles to avoid
 
 - Do not copy code, tests, grammar fragments, comments, or documentation from
