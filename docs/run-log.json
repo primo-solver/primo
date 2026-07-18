@@ -1386,6 +1386,120 @@
       },
       "evidence_status": "local-only",
       "notes": "Local z3 and cvc5 binaries were unavailable in this workspace, so this entry records Primo-only option inspection. Historical repo artifacts indicate older symmetry/value-precedence experiments solved PEQ002_size8 and NEQ016_size8, but not the other three."
+    },
+    {
+      "id": "2026-07-18-goel-bufal-boolean-unit-rebuild-fix-75b9ba4-plus",
+      "started_at": "2026-07-18T22:40:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "benchmark",
+      "scope": "Focused local check of tmp/QF_UF/2018-Goel-hwbench/QF_UF_h_BufAl_ab_reg_max.smt2 after Boolean-unit recursive rebuild fix",
+      "commit": "75b9ba4 plus uncommitted preprocessing fix",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "/usr/bin/time -f \"elapsed %e\" build/primo --stats tmp/QF_UF/2018-Goel-hwbench/QF_UF_h_BufAl_ab_reg_max.smt2",
+      "solver": {
+        "name": "Primo",
+        "argv": "build/primo --stats"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "historical results/slurm-qfuf-full-ref-z3-109856/z3-qfuf-full-2s-merged.csv: ok sat 0.180999s"
+        },
+        {
+          "name": "cvc5",
+          "argv": "historical results/slurm-qfuf-full-ref-cvc5-109857/cvc5-qfuf-full-2s-merged.csv: ok sat 0.206018s"
+        },
+        {
+          "name": "LLM2SMT",
+          "argv": "historical results/slurm-qfuf-full-120s-llm2smt-0.2.4-110181/llm2smt-qfuf-full-120s-merged.csv: ok sat 0.082413s"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 1,
+        "timeout_seconds": null,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": null,
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "file": "tmp/QF_UF/2018-Goel-hwbench/QF_UF_h_BufAl_ab_reg_max.smt2",
+        "pre_fix_local_result": "unsupported with vector::_M_range_check in simplify_with_boolean_units after preprocessing reduced assertions to zero",
+        "post_fix_result": "sat",
+        "post_fix_elapsed_seconds": 0.09,
+        "wrong": 0,
+        "preprocessing_assertions": 917,
+        "boolean_unit_rewrites": 1231,
+        "forced_atom_rewrites": 4460,
+        "sat_vars": 1277,
+        "sat_clauses": 2116,
+        "euf_theory_conflicts": 12
+      },
+      "evidence_status": "local-only",
+      "notes": "Root cause was simplify_with_boolean_units holding a reference to a Term children vector while recursive simplification could intern new terms and reallocate TermManager storage. The fix copies child TermIds before recursive rebuilding, matching the other preprocessing rewriters."
+    },
+    {
+      "id": "2026-07-18-qfuf-fuzzsmt-smoke-boolean-unit-rebuild-fix",
+      "started_at": "2026-07-18T22:45:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT smoke after Boolean-unit recursive rebuild fix",
+      "commit": "75b9ba4 plus uncommitted preprocessing fix",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "make fuzzsmt; expands to scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build/primo --refs z3 --logic QF_UF --count 20 --timeout 5",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 0,
+        "count": 20,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt/summary.csv",
+        "results": null,
+        "logs": null,
+        "bugs": "fuzz-results/qf_uf-fuzzsmt/bugs"
+      },
+      "summary": {
+        "total": 20,
+        "pass": 20,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 17,
+        "unsat": 3,
+        "bug_files": 0
+      },
+      "evidence_status": "local-only",
+      "notes": "Smoke fuzz gate for a narrow preprocessing ownership fix; not a substitute for a full merge gate if broader preprocessing changes are stacked."
     }
   ]
 }

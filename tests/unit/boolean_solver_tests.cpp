@@ -1369,6 +1369,20 @@ void online_euf_reason_cache_survives_backtracking() {
   assert(result.statistics.get(":euf.propagation.delivered") >= 1);
 }
 
+void boolean_unit_simplification_handles_nested_rewrites() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (assert p)
+    (assert (= (= p q) r))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.boolean-units.rewrites") >= 1);
+}
+
 }  // namespace
 
 int main() {
@@ -1440,5 +1454,6 @@ int main() {
   theory_conflict_limit_stops_external_search_with_unknown();
   online_euf_propagation_accepts_already_assigned_implications();
   online_euf_reason_cache_survives_backtracking();
+  boolean_unit_simplification_handles_nested_rewrites();
   return 0;
 }

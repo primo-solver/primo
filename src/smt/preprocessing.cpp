@@ -435,7 +435,7 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
   }
 
   const core::Term& term = terms.get(term_id);
-  const std::vector<core::TermId>& children = term.children;
+  const std::vector<core::TermId> children = term.children;
   switch (term.kind) {
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:

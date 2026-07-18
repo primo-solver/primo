@@ -197,6 +197,10 @@ formulas through the normal `TermManager` constructors. The unit facts
 themselves are preserved as assertions because SMT-LIB `Bool` is a first-class
 sort: a Boolean constant may also occur as an argument to an uninterpreted
 function, and the EUF solver must still see the asserted Boolean fact.
+Recursive rebuilding copies child `TermId` vectors before rewriting children.
+This is an ownership invariant: `TermManager` may intern new terms while a child
+is being simplified, so preprocessing must not keep references into term storage
+across recursive calls.
 
 The pass deliberately does not rewrite inside uninterpreted-function
 applications and does not collect frontend `$primo_bool_arg_*` auxiliaries as
