@@ -59,6 +59,10 @@ struct ForcedAtomAssignments {
   std::vector<std::pair<core::TermId, core::TermId>> disequalities;
 };
 
+struct KnownDisequalityClasses {
+  std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> pairs;
+};
+
 struct UnitEquality {
   core::TermId equality = core::kInvalidTermId;
   core::TermId lhs = core::kInvalidTermId;
@@ -471,24 +475,37 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
   return term_id;
 }
 
-bool is_known_disequal(theory::equality::IncrementalCongruenceClosure& closure,
-                       const std::vector<std::pair<core::TermId, core::TermId>>& disequalities,
-                       core::TermId lhs, core::TermId rhs) {
-  for (const auto& [diseq_lhs, diseq_rhs] : disequalities) {
-    if ((closure.are_equal(lhs, diseq_lhs) && closure.are_equal(rhs, diseq_rhs)) ||
-        (closure.are_equal(lhs, diseq_rhs) && closure.are_equal(rhs, diseq_lhs))) {
-      return true;
-    }
-  }
-  return false;
+std::pair<core::TermId, core::TermId> representative_pair(
+    theory::equality::IncrementalCongruenceClosure& closure, core::TermId lhs, core::TermId rhs) {
+  closure.add_term(lhs);
+  closure.add_term(rhs);
+  closure.saturate();
+  return ordered_pair(closure.class_representative(lhs), closure.class_representative(rhs));
 }
 
-core::TermId simplify_with_forced_atoms(
-    core::TermManager& terms, core::TermId term_id,
-    const std::unordered_map<core::TermId, bool>& assignments,
+KnownDisequalityClasses index_known_disequalities(
     theory::equality::IncrementalCongruenceClosure& closure,
-    const std::vector<std::pair<core::TermId, core::TermId>>& disequalities,
-    std::unordered_map<core::TermId, core::TermId>& memo, std::size_t& rewrites) {
+    const std::vector<std::pair<core::TermId, core::TermId>>& disequalities) {
+  KnownDisequalityClasses result;
+  result.pairs.reserve(disequalities.size());
+  for (const auto& [lhs, rhs] : disequalities) {
+    result.pairs.insert(representative_pair(closure, lhs, rhs));
+  }
+  return result;
+}
+
+bool is_known_disequal(theory::equality::IncrementalCongruenceClosure& closure,
+                       const KnownDisequalityClasses& disequalities, core::TermId lhs,
+                       core::TermId rhs) {
+  return disequalities.pairs.contains(representative_pair(closure, lhs, rhs));
+}
+
+core::TermId simplify_with_forced_atoms(core::TermManager& terms, core::TermId term_id,
+                                        const std::unordered_map<core::TermId, bool>& assignments,
+                                        theory::equality::IncrementalCongruenceClosure& closure,
+                                        const KnownDisequalityClasses& disequalities,
+                                        std::unordered_map<core::TermId, core::TermId>& memo,
+                                        std::size_t& rewrites) {
   const auto memoized = memo.find(term_id);
   if (memoized != memo.end()) {
     return memoized->second;
@@ -2098,6 +2115,8 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
     register_equality_query_terms(terms, assertion, closure);
   }
   closure.saturate();
+  const KnownDisequalityClasses known_disequalities =
+      index_known_disequalities(closure, assignments.disequalities);
 
   result.assertions.reserve(assertions.size() + assignments.units.size());
   std::unordered_set<core::TermId> emitted;
@@ -2115,9 +2134,8 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
 
   std::unordered_map<core::TermId, core::TermId> memo;
   for (const core::TermId assertion : assertions) {
-    const core::TermId simplified =
-        simplify_with_forced_atoms(terms, assertion, assignments.values, closure,
-                                   assignments.disequalities, memo, result.rewrites);
+    const core::TermId simplified = simplify_with_forced_atoms(
+        terms, assertion, assignments.values, closure, known_disequalities, memo, result.rewrites);
     const core::Term& node = terms.get(simplified);
     if (node.kind == core::TermKind::BoolValue && node.bool_value) {
       continue;

@@ -206,6 +206,17 @@ For solver benchmark work:
 - keep benchmark scripts and manifests reproducible and committed when they are
   part of the result.
 
+For solver performance investigations, profile before adding new solver logic
+when the evidence points to a concrete slow path. If a benchmark is clearly
+slower than LLM2SMT, Z3, cvc5, or another stated reference, times out while those
+references are fast, or has one phase that visibly dominates runtime, run a
+standard local profiler such as `gprof`, `perf`, or an equivalent available tool
+on a representative slow instance. Follow the dominating cost first, whether it
+is in preprocessing, parsing, SAT integration, EUF, arithmetic, or any other
+theory layer. Record the command, target instance, top functions, and before/after
+timing in `docs/run-log.json` or the nearest relevant design note before citing
+the result.
+
 `docs/run-log.json` is the canonical lightweight database of experimental
 evidence. Do not leave important evidence discoverable only through untracked
 `results/`, `fuzz-results/`, terminal scrollback, or memory. If an artifact is

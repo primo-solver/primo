@@ -408,6 +408,29 @@ void forced_atom_propagation_uses_negative_equality_units() {
         result.assertions.end());
 }
 
+void forced_atom_propagation_folds_disequalities_modulo_equalities() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId ab = fixture.terms.mk_eq(a, b);
+  const primo::core::TermId ac = fixture.terms.mk_eq(a, c);
+  const primo::core::TermId bc = fixture.terms.mk_eq(b, c);
+  const primo::core::TermId guard = fixture.pred(
+      fixture.p, fixture.constant(fixture.symbols.declare_constant("d", fixture.sort)));
+  const std::vector<primo::core::TermId> assertions{ab, fixture.terms.mk_not(ac),
+                                                    fixture.terms.mk_or({bc, guard})};
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, assertions);
+
+  check(result.units == 2);
+  check(result.disequalities == 1);
+  check(result.rewrites >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(), guard) !=
+        result.assertions.end());
+}
+
 void forced_atom_propagation_folds_transitive_disequalities() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -697,6 +720,7 @@ int main() {
   boolean_unit_propagation_preserves_contradictory_units();
   forced_atom_propagation_simplifies_predicate_units();
   forced_atom_propagation_uses_negative_equality_units();
+  forced_atom_propagation_folds_disequalities_modulo_equalities();
   forced_atom_propagation_folds_transitive_disequalities();
   forced_atom_propagation_preserves_contradictory_exact_units();
   finite_domain_at_most_one_adds_pairwise_clauses();

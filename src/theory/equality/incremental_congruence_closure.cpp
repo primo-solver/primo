@@ -121,6 +121,10 @@ bool IncrementalCongruenceClosure::are_equal(core::TermId lhs, core::TermId rhs)
   return representative(lhs) == representative(rhs);
 }
 
+core::TermId IncrementalCongruenceClosure::class_representative(core::TermId term) const {
+  return representative(term);
+}
+
 std::optional<std::vector<sat::Lit>> IncrementalCongruenceClosure::explain_equal(core::TermId lhs,
                                                                                  core::TermId rhs) {
   add_term(lhs);

@@ -24,6 +24,7 @@ class IncrementalCongruenceClosure {
   void assert_distinct(core::TermId lhs, core::TermId rhs, std::vector<sat::Lit> reason = {});
   void saturate();
   bool are_equal(core::TermId lhs, core::TermId rhs);
+  core::TermId class_representative(core::TermId term) const;
   std::optional<std::vector<sat::Lit>> explain_equal(core::TermId lhs, core::TermId rhs);
   std::optional<std::vector<sat::Lit>> conflict() const;
   const IncrementalCongruenceClosureStats& stats() const { return stats_; }

@@ -232,6 +232,13 @@ disequality modulo the positive closure. This catches common QF_UF patterns such
 as a disequality unit eliminating one branch of a disjunction, or transitive
 equalities contradicting a disequality before SAT search.
 
+After the temporary closure is saturated, negative equality units are indexed by
+their unordered pair of congruence-class representatives. This keeps the
+rewriter's disequality test proportional to the number of equality atoms being
+rebuilt instead of scanning every known disequality for every query. The index is
+local to one preprocessing pass and the original disequality assertions remain in
+the output.
+
 This pass uses the same temporary incremental closure as unit equality
 propagation. The closure gives preprocessing affected-use-list congruence
 updates instead of the older all-pairs saturation scaffold, but it remains a

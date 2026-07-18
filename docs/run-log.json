@@ -671,6 +671,57 @@
       },
       "evidence_status": "diagnostic",
       "notes": "Perf on NEQ016 points at FlatCongruenceClosure process_use_list, explain_equal_into, merge/restore, and allocator cost. Phase none is a possible NEQ/PEQ tuning candidate but regresses the Goel control locally, so the historical negative default was preserved."
+    },
+    {
+      "id": "2026-07-18-local-qfuf-sokoban-prepro-gprof-diseq-index",
+      "started_at": "2026-07-18T14:10:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "profile",
+      "scope": "Local gprof review of forced-atom preprocessing on a Goel sokoban fast-reference gap",
+      "commit": "95baf0f+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake -S . -B build-gprof -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/contrib/local -DCMAKE_CXX_FLAGS='-pg' -DCMAKE_EXE_LINKER_FLAGS='-pg'; ./build-gprof/primo --quiet --stats --preprocess-only tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.3.prop1_ab_br_max.smt2; gprof ./build-gprof/primo gmon.out",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build-current/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT reference SLURM row",
+          "argv": "llm2smt --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 1,
+        "timeout_seconds": 120,
+        "manifest": "tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.3.prop1_ab_br_max.smt2"
+      },
+      "artifacts": {
+        "summary": null,
+        "results": null,
+        "logs": "/tmp/primo-sokoban-gprof.txt, /tmp/primo-sokoban-gprof-after.txt, /tmp/primo-sokoban-after-index.err, /tmp/primo-sokoban-solve-after-index.err",
+        "bugs": null
+      },
+      "summary": {
+        "before_preprocess_only_seconds": 11.46,
+        "after_preprocess_only_seconds": 0.72,
+        "after_full_solve_seconds": 1.23,
+        "after_result": "unsat",
+        "before_gprof_top": "IncrementalCongruenceClosure::add_term 33.13%, ensure_capacity 23.44%, are_equal 14.59%, TermManager::get 11.12%; is_known_disequal scanned every known disequality for every equality query",
+        "after_gprof_top": "short run dominated by frontend/parser/symbol-table hash lookups and hash-table construction; closure calls no longer dominate",
+        "forced_atom_disequalities": 87137,
+        "forced_atom_rewrites": 187223,
+        "finite_domain_amo_clauses": 177650
+      },
+      "evidence_status": "current-working-tree",
+      "notes": "Implemented local representative-pair indexing for negative equality units after saturating the temporary preprocessing closure. This preserves forced-atom semantics while removing the O(equality queries * disequalities) scan observed in gprof."
     }
   ]
 }
