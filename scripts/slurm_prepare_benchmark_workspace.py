@@ -41,6 +41,7 @@ def rsync_repo(config: Path, local: Path, remote: str, remote_dir: str) -> None:
     excludes = [
         ".venv-build",
         ".venv-docs",
+        ".venv-smac",
         ".venv-yinyang",
         "build",
         "build-*",
