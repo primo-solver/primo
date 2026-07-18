@@ -132,6 +132,7 @@ int main(int argc, char** argv) {
   std::string euf_engine = "incremental";
   std::string euf_prop = "auto";
   std::string pure_theory_filter = "auto";
+  std::string theory_phase = "negative";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
   std::size_t max_theory_conflicts = 0;
@@ -183,6 +184,9 @@ int main(int argc, char** argv) {
   app.add_option("--pure-theory-filter", pure_theory_filter,
                  "T-pure theory literal filtering mode: auto, on, or off")
       ->check(CLI::IsMember({"auto", "on", "off"}));
+  app.add_option("--theory-phase", theory_phase,
+                 "Initial SAT phase for theory atoms: negative, positive, none, or polarity")
+      ->check(CLI::IsMember({"negative", "positive", "none", "polarity"}));
   app.add_option("--euf-prop-budget", euf_prop_budget,
                  "EUF propagation candidate budget: auto, unlimited, or a nonnegative integer");
   app.add_option("--euf-prop-delivery,--prop-delivery-budget", euf_prop_delivery,
@@ -310,6 +314,15 @@ int main(int argc, char** argv) {
     solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::On;
   } else {
     solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Auto;
+  }
+  if (theory_phase == "positive") {
+    solver_options.theory_phase = primo::smt::TheoryPhaseMode::Positive;
+  } else if (theory_phase == "none") {
+    solver_options.theory_phase = primo::smt::TheoryPhaseMode::None;
+  } else if (theory_phase == "polarity") {
+    solver_options.theory_phase = primo::smt::TheoryPhaseMode::Polarity;
+  } else {
+    solver_options.theory_phase = primo::smt::TheoryPhaseMode::Negative;
   }
   const std::optional<primo::smt::AutoBudget> parsed_prop_budget =
       parse_auto_budget(euf_prop_budget);

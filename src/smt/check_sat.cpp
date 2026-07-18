@@ -2175,8 +2175,25 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   CheckSatOptions resolved_options = options;
   resolved_options.euf_propagation = euf_propagation;
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
-    backend.phase(sat::Lit{-atom.lit.value});
-    statistics.increment(kStatSatTheoryNegativePhase);
+    switch (options.theory_phase) {
+      case TheoryPhaseMode::Negative:
+        backend.phase(sat::Lit{-atom.lit.value});
+        statistics.increment(kStatSatTheoryNegativePhase);
+        break;
+      case TheoryPhaseMode::Positive:
+        backend.phase(atom.lit);
+        break;
+      case TheoryPhaseMode::Polarity:
+        if (atom.occurs_negative && !atom.occurs_positive) {
+          backend.phase(sat::Lit{-atom.lit.value});
+          statistics.increment(kStatSatTheoryNegativePhase);
+        } else if (atom.occurs_positive && !atom.occurs_negative) {
+          backend.phase(atom.lit);
+        }
+        break;
+      case TheoryPhaseMode::None:
+        break;
+    }
   }
   publish_sat_stats(backend.statistics(), statistics);
 
@@ -2560,6 +2577,21 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
         statistics.increment(kStatPreprocessingAdaptivePasses);
       }
     }
+    if (use_symmetry_breaking) {
+      UfSymmetryBreaker symmetry_breaker(frontend.terms());
+      UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(
+          assertions,
+          UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
+      assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
+      statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
+      statistics.increment(kStatUfSymmetryValues, symmetry.values);
+      statistics.increment(kStatUfSymmetryTerms, symmetry.terms);
+      statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
+      statistics.increment(kStatUfSymmetryValuePrecedenceTerms, symmetry.value_precedence_terms);
+      statistics.increment(kStatUfSymmetryValuePrecedenceConstraints,
+                           symmetry.value_precedence_constraints);
+      statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
+    }
     if (use_finite_domain_amo) {
       FiniteDomainAtMostOne finite_domain(frontend.terms());
       FiniteDomainAtMostOneResult finite_domain_result = finite_domain.generate(assertions);
@@ -2590,21 +2622,6 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
                            equality_definition_result.rejected_domain_size);
       statistics.increment(kStatEqualityDefinitionRejectedClauseLimit,
                            equality_definition_result.rejected_clause_limit);
-    }
-    if (use_symmetry_breaking) {
-      UfSymmetryBreaker symmetry_breaker(frontend.terms());
-      UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(
-          assertions,
-          UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
-      assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
-      statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
-      statistics.increment(kStatUfSymmetryValues, symmetry.values);
-      statistics.increment(kStatUfSymmetryTerms, symmetry.terms);
-      statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
-      statistics.increment(kStatUfSymmetryValuePrecedenceTerms, symmetry.value_precedence_terms);
-      statistics.increment(kStatUfSymmetryValuePrecedenceConstraints,
-                           symmetry.value_precedence_constraints);
-      statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
     }
     statistics.set(kStatAssertionsFinal, assertions.size());
     statistics.set(kStatPreprocessingTermSizeFinal,

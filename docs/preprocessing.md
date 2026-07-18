@@ -486,6 +486,13 @@ These assertions remove value-renaming representatives from the search space.
 They do not replace EUF reasoning and they do not create a finite model finder by
 themselves.
 
+UF symmetry breaking runs after the fixed-point simplification loop and before
+finite-domain AMO and equality-definition expansion. The ordering matters:
+symmetry invariance is a property of the benchmark formula plus simplification
+consequences, while AMO/equality-definition clauses are derived strengthening
+lemmas. Running the invariance test after those generated lemmas can reject
+otherwise symmetric QG-style value sets.
+
 Activation is reported with `:preprocessing.uf-symmetry.accepted-sets`,
 `:preprocessing.uf-symmetry.values`, `:preprocessing.uf-symmetry.terms`,
 `:preprocessing.uf-symmetry.constraints`,

@@ -81,6 +81,13 @@ For compatibility with the predecessor benchmark command, Primo also accepts
 and `--prop-assign-threshold X` are accepted for online propagation experiments.
 Their defaults are `32` and `0.25` respectively.
 
+`--theory-phase=negative|positive|none|polarity` controls the initial CaDiCaL
+phase set for theory atoms before solving. The default is `negative`, preserving
+the historical policy of trying disequality assignments first. This option is a
+benchmark diagnostic knob: `positive` tries equality assignments first, `none`
+leaves CaDiCaL's default phase untouched, and `polarity` sets a phase only for
+atoms that occur with a single syntactic polarity in the clausified formula.
+
 `conflict` connects the CaDiCaL external propagator only for assignment,
 backtrack, and external conflict clauses. It maintains an incremental flat
 congruence closure along the SAT trail, learns EUF conflict clauses through

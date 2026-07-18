@@ -529,6 +529,148 @@
       },
       "evidence_status": "current",
       "notes": "This is the current-head gate that uses both Brummayer/Biere FuzzSMT and the YinYang package. The installed typefuzz entry point was also smoke-tested but hit internal QF_UF seed handling errors (custom-sort seed raised msg 'A'; Bool seed raised 'argument of type Term is not iterable'), so the successful YinYang-package coverage here is from opfuzz plus semantic-fusion yinyang. Primo binary reports git 5de60d9 and CaDiCaL cadical-3.0.0-7b99c07. CaDiCaL rel-1.9.5 versus rel-3.0.0 comparison remains logged separately as 2026-07-18-cadical-version-sat-heavy-0ef55b8 and should be repeated after solver-code changes, not after ledger-only commits."
+    },
+    {
+      "id": "2026-07-18-qfuf-target-gaps-symmetry-order-05e1f7f",
+      "started_at": "2026-07-18T12:44:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "benchmark",
+      "scope": "26 fast-reference/slow-Primo QF_UF targets selected from primo.html, with QG/Goel/NEQ/PEQ controls",
+      "commit": "05e1f7f+working-tree",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111063"
+      },
+      "command": "SLURM array 0-3, run-only; each target with build-slurm-rel/primo --quiet --stats, --no-uf-symmetry-breaking ablation, --qf-uf-preprocess=basic ablation, and contrib/local/bin/z3; timeout 120s",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build-slurm-rel/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "./contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 26,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/primo-target-gaps.txt"
+      },
+      "artifacts": {
+        "summary": "results/primo-target-gaps-05e1f7f-ordfix/summary.txt",
+        "results": "results/primo-target-gaps-05e1f7f-ordfix/merged.csv",
+        "logs": "results/primo-target-gaps-05e1f7f-ordfix/slurm-111063_*.out,*.err",
+        "bugs": null
+      },
+      "summary": {
+        "total": 26,
+        "wrong": 0,
+        "profiles": {
+          "primo-default": {
+            "solved": 26,
+            "timeouts": 0,
+            "errors": 0,
+            "par2": 151.62
+          },
+          "primo-no-sym": {
+            "solved": 21,
+            "timeouts": 5,
+            "errors": 0,
+            "par2": 1760.016
+          },
+          "primo-basic": {
+            "solved": 26,
+            "timeouts": 0,
+            "errors": 0,
+            "par2": 228.432
+          },
+          "z3": {
+            "solved": 26,
+            "timeouts": 0,
+            "errors": 0,
+            "par2": 26.615
+          }
+        },
+        "families": {
+          "QG": {
+            "primo_default_par2": 13.129,
+            "z3_par2": 7.752,
+            "no_sym_par2": 211.235
+          },
+          "Goel": {
+            "primo_default_par2": 32.444,
+            "z3_par2": 1.453
+          },
+          "NEQ": {
+            "primo_default_par2": 65.645,
+            "z3_par2": 9.39
+          },
+          "PEQ": {
+            "primo_default_par2": 40.404,
+            "z3_par2": 8.019
+          }
+        }
+      },
+      "evidence_status": "current-working-tree",
+      "notes": "Generated after moving UF symmetry before generated finite-domain AMO/equality-definition clauses. QG target rows now emit symmetry clauses and solve quickly by default; no-symmetry ablation times out on 5 NEQ/PEQ rows and is much slower on QG. Invalid earlier jobs 111055 and 111059 are not evidence: 111055 had nested-heredoc quoting damage, and 111059 ran before target files were synced to the remote tmp/QF_UF tree."
+    },
+    {
+      "id": "2026-07-18-local-qfuf-profile-phase-05e1f7f",
+      "started_at": "2026-07-18T12:35:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "profile",
+      "scope": "Local perf/stats diagnostics on QG symmetry, Goel preprocessing, and NEQ/PEQ EUF phase behavior",
+      "commit": "05e1f7f+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "perf record/report and bounded ./build-current/primo --quiet --stats probes on selected QF_UF targets; includes --preprocess-only and --theory-phase ablations",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build-current/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT local checkout",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 4,
+        "timeout_seconds": 45,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": null,
+        "results": null,
+        "logs": "/tmp/primo-preprocess-only.err, /tmp/primo-neq016.err, perf.data local scratch",
+        "bugs": null
+      },
+      "summary": {
+        "qg_iso_icl_repgen_sk009_default_before_order_fix_seconds": 5.058,
+        "qg_iso_icl_repgen_sk009_after_order_fix_seconds": 0.059,
+        "goel_sokoban_preprocess_only_seconds": 11.46,
+        "goel_sokoban_preprocess_forced_atom_rewrites": 187223,
+        "goel_sokoban_finite_domain_amo_clauses": 177650,
+        "neq016_phase_negative_seconds": 7.257,
+        "neq016_phase_none_seconds": 6.488,
+        "peq016_phase_negative_seconds": 7.529,
+        "peq016_phase_none_seconds": 6.663,
+        "sokoban_phase_negative_seconds": 11.99,
+        "sokoban_phase_none_seconds": 12.481
+      },
+      "evidence_status": "diagnostic",
+      "notes": "Perf on NEQ016 points at FlatCongruenceClosure process_use_list, explain_equal_into, merge/restore, and allocator cost. Phase none is a possible NEQ/PEQ tuning candidate but regresses the Goel control locally, so the historical negative default was preserved."
     }
   ]
 }

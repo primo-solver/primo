@@ -171,6 +171,12 @@ symbol mismatches such as `__isoc23_fscanf`. Rebuild CaDiCaL on the cluster
 before trusting a fresh SLURM campaign, and record which binary produced each
 artifact.
 
+Generate nontrivial SLURM scripts locally, copy them to the cluster, and check
+them before `sbatch`. Embedded Python is especially easy to break with nested
+shell quoting; use single-quoted heredocs, run `bash -n` on the generated script,
+and syntax-check extracted Python snippets when feasible. A job that fails in
+seconds with empty shards is not benchmark evidence.
+
 ### Reference-driven target selection
 
 Use LLM2SMT, Z3, and cvc5 artifacts to choose targets, but choose mechanisms

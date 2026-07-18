@@ -914,6 +914,23 @@ void no_symmetry_breaking_disables_strong_preset_symmetry_only() {
   assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 0);
 }
 
+void theory_phase_option_can_leave_backend_phase_unset() {
+  primo::smt::CheckSatOptions options;
+  options.theory_phase = primo::smt::TheoryPhaseMode::None;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (assert (= a b))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":sat.phase.theory-negative") == 0);
+}
+
 void strong_preprocessing_enables_ground_congruence_clauses() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -1290,6 +1307,7 @@ int main() {
   auto_preprocessing_keeps_equality_definitions_opt_in();
   default_symmetry_breaking_reports_covered_values_and_terms();
   no_symmetry_breaking_disables_strong_preset_symmetry_only();
+  theory_phase_option_can_leave_backend_phase_unset();
   strong_preprocessing_enables_ground_congruence_clauses();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();
