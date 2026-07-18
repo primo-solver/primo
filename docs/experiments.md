@@ -90,6 +90,10 @@ python3 scripts/bench_qf_uf_full.py \
   --summary results/qf-uf-full/shard-0-summary.csv
 ```
 
+Pass `--manifest path/to/files.txt` for a reproducible subset. Manifest rows may
+be absolute paths or paths relative to `--root`; a missing `.smt2` suffix is
+added automatically. Blank lines and text after `#` are ignored.
+
 On SLURM, run one shard per array task and merge shard CSVs after all tasks
 complete. The CSV records file, family, solver status, answer, SMT-LIB
 `:status` expectation, wrong-answer flag, elapsed seconds, timeout flag, exit

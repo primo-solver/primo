@@ -37,6 +37,23 @@ def discover_files(root: Path) -> list[Path]:
     return sorted(path for path in root.rglob("*.smt2") if path.is_file())
 
 
+def read_manifest(path: Path, root: Path) -> list[Path]:
+    files: list[Path] = []
+    for line_number, raw_line in enumerate(path.read_text().splitlines(), start=1):
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        candidate = Path(line)
+        if not candidate.is_absolute():
+            candidate = root / candidate
+        if candidate.suffix != ".smt2":
+            candidate = candidate.with_suffix(".smt2")
+        if not candidate.is_file():
+            raise SystemExit(f"{path}:{line_number}: missing SMT-LIB file: {candidate}")
+        files.append(candidate.resolve())
+    return files
+
+
 def parse_smtlib_status(path: Path) -> str:
     for raw_line in path.read_text(errors="replace").splitlines():
         line = raw_line.strip()
@@ -210,6 +227,11 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path("tmp/QF_UF"))
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        help="optional file list, with paths absolute or relative to --root",
+    )
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--solver", nargs="+", default=["./build/primo", "--quiet"])
     parser.add_argument("--solver-arg", action="append", default=[])
@@ -232,7 +254,11 @@ def main() -> int:
     if args.shard_index < 0 or args.shard_index >= args.shards:
         raise SystemExit("--shard-index must be in [0, shards)")
 
-    all_files = discover_files(root)
+    all_files = (
+        read_manifest(args.manifest, root)
+        if args.manifest is not None
+        else discover_files(root)
+    )
     files = [
         path
         for offset, path in enumerate(all_files)
