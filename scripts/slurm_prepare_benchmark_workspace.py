@@ -15,12 +15,26 @@ def run(command: list[str], *, check: bool = True) -> subprocess.CompletedProces
 
 
 def ssh(config: Path, remote: str, command: str) -> subprocess.CompletedProcess[str]:
+    shell_syntax_check(command)
     proc = run(["ssh", "-F", str(config), remote, command])
     if proc.stdout:
         print(proc.stdout, end="")
     if proc.stderr:
         print(proc.stderr, end="")
     return proc
+
+
+def shell_syntax_check(command: str) -> None:
+    proc = subprocess.run(
+        ["bash", "-n"],
+        input=command,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise SystemExit(f"generated remote shell failed bash -n:\n{proc.stderr}")
 
 
 def rsync_repo(config: Path, local: Path, remote: str, remote_dir: str) -> None:

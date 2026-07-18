@@ -102,6 +102,25 @@ report based on this archive must include the SLURM job id, timeout, commit,
 merged CSV path, family summary, unsupported count, wrong-answer count, and
 comparison against the previous full-archive Primo run.
 
+Generated SLURM scripts are part of the benchmark scaffold. Write them to a
+local file, validate them, then copy and submit:
+
+```bash
+python3 scripts/slurm_validate_sbatch.py /tmp/primo-qfuf.sbatch
+python3 scripts/slurm_prepare_benchmark_workspace.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote-dir /home/janotmik/primo-cadical-profile \
+  --check-only
+scp -F /tmp/llm2smt_slurm_ssh_config /tmp/primo-qfuf.sbatch \
+  llm2smt-slurm:/home/janotmik/primo-cadical-profile/
+ssh -F /tmp/llm2smt_slurm_ssh_config llm2smt-slurm \
+  'cd /home/janotmik/primo-cadical-profile && sbatch primo-qfuf.sbatch'
+```
+
+Use quoted delimiters for embedded interpreter heredocs, such as
+`python3 - <<'PY'`. Do not rely on nested shell quoting for embedded Python in
+SLURM campaigns; that has produced immediate array failures before.
+
 After each native full-archive run, rank fast-reference/slow-Primo gaps before
 selecting a target instance:
 

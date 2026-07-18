@@ -261,6 +261,20 @@ profiling, smoke tests, and debugging. Headline benchmark claims must come from
 SLURM artifacts. If SLURM is unavailable, state that as a blocker and include
 the failed access command or job state.
 
+For every generated SLURM batch script:
+
+- write the batch script to a local file before copying or submitting it;
+- run `python3 scripts/slurm_validate_sbatch.py path/to/job.sbatch` locally;
+- run `bash -n path/to/job.sbatch` explicitly if the validator is unavailable;
+- quote embedded interpreter heredocs, for example `python3 - <<'PY'`, so the
+  shell cannot expand or strip Python, Perl, or Ruby source before execution;
+- avoid nested `ssh 'python -c "..."'` or nested inline Python inside remote
+  shell strings when a temporary script or quoted heredoc is practical;
+- immediately before `sbatch`, run
+  `python3 scripts/slurm_prepare_benchmark_workspace.py --check-only ...` and
+  confirm that the remote binary reports the intended git commit and CaDiCaL
+  version.
+
 Local profiling is still expected when performance is unexpectedly poor. Use it
 to identify bottlenecks before designing solver changes, then confirm any claimed
 improvement with the requested benchmark infrastructure.
