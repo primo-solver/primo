@@ -338,6 +338,77 @@
       },
       "evidence_status": "current",
       "notes": "Workflow validation only. This confirms the versioned CaDiCaL path can install rel-1.9.5, build Primo against it, and run the profile harness on a smoke input."
+    },
+    {
+      "id": "2026-07-18-cadical-version-sat-heavy-0ef55b8",
+      "started_at": "2026-07-18T13:05:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "dependency-check",
+      "scope": "CaDiCaL rel-1.9.5 versus rel-3.0.0 on SAT-heavy QF_UF instances",
+      "commit": "0ef55b8",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111039"
+      },
+      "command": "run-only SLURM job using login-node builds under build-cadical-versions-sat-heavy-login/{rel-1.9.5,rel-3.0.0}; python3 scripts/check_cadical_profile.py --timeout 30 on four selected QF_UF instances",
+      "solver": {
+        "name": "Primo",
+        "argv": "versioned builds, --quiet; incremental rows also pass --cadical-option ilb=2,sweep=0,congruence=0,backbone=0,condition=0,elim=0,vivify=0,probe=0,subsume=0,transred=0,walk=0"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 4,
+        "timeout_seconds": 30,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "results/cadical-version-sat-heavy-0ef55b8-111039/profile.md",
+        "results": "results/cadical-version-sat-heavy-0ef55b8-111039/profile.csv",
+        "logs": "results/cadical-version-sat-heavy-0ef55b8-111039/slurm-111039.out",
+        "bugs": null
+      },
+      "summary": {
+        "tags": [
+          "rel-1.9.5",
+          "rel-3.0.0"
+        ],
+        "rel_1_9_5_solver": "primo 0.1.0 | git: 0ef55b8 | cadical: cadical-1.9.5",
+        "rel_3_0_0_solver": "primo 0.1.0 | git: 0ef55b8 | cadical: cadical-3.0.0-7b99c07",
+        "rel_1_9_5_solved": 6,
+        "rel_3_0_0_solved": 6,
+        "rel_1_9_5_timeouts": 2,
+        "rel_3_0_0_timeouts": 2,
+        "rel_1_9_5_seconds_total": 67.806616,
+        "rel_3_0_0_seconds_total": 67.585542,
+        "notable_rows": [
+          {
+            "file": "QF_UF_firewire_tree.3.prop2_ab_reg_max.smt2",
+            "rel_1_9_5_default_seconds": 0.950791,
+            "rel_3_0_0_default_seconds": 0.967881
+          },
+          {
+            "file": "QF_UF_hanoi.2.prop1_ab_br_max.smt2",
+            "rel_1_9_5_default_seconds": 1.233225,
+            "rel_3_0_0_default_seconds": 1.238136
+          },
+          {
+            "file": "iso_brn_repgen_sk033.smt2",
+            "rel_1_9_5_default_seconds": 1.691681,
+            "rel_3_0_0_default_seconds": 1.551896
+          },
+          {
+            "file": "PEQ014_size10.smt2",
+            "rel_1_9_5_default_seconds": 30.034194,
+            "rel_3_0_0_default_seconds": 30.034527
+          }
+        ]
+      },
+      "evidence_status": "current",
+      "notes": "No material CaDiCaL 1.9.5 win on this sample; both versions solve the same rows and time out on PEQ014_size10. Earlier SLURM build jobs 111037 and 111038 failed because compute nodes lacked usable C/C++ development headers, so final measurement used login-node builds and a run-only batch job. Keep versioned CaDiCaL interface for later tuning, but current QF_UF gap is not explained by the 1.9.5/3.0.0 difference on these cases."
     }
   ]
 }
