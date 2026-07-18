@@ -293,6 +293,51 @@
       },
       "evidence_status": "current",
       "notes": "No just_count-style ilb=2 win was observed on this small SAT-heavy Primo sample. This does not rule out CaDiCaL sensitivity for workloads with repeated SAT solve calls and one blocking clause per call; these SMT runs do not have the same model-counting loop structure."
+    },
+    {
+      "id": "2026-07-18-cadical-version-smoke-e1b8d02",
+      "started_at": "2026-07-18T11:25:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "dependency-check",
+      "scope": "Local smoke validation of versioned CaDiCaL build/profile workflow",
+      "commit": "e1b8d02",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "python3 scripts/check_cadical_versions.py --tags rel-1.9.5 --timeout 5 --prefix-root contrib/cadical-versions-test --build-root build-cadical-versions-test --out results/cadical-version-profile-smoke-e1b8d02/profile.csv --summary results/cadical-version-profile-smoke-e1b8d02/profile.md benchmarks/smoke/qf_uf/sat_uninterpreted_constants.smt2",
+      "solver": {
+        "name": "Primo",
+        "argv": "versioned build under build-cadical-versions-test/rel-1.9.5/primo"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 1,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "results/cadical-version-profile-smoke-e1b8d02/profile.md",
+        "results": "results/cadical-version-profile-smoke-e1b8d02/profile.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "tags": [
+          "rel-1.9.5"
+        ],
+        "linked_solver": "primo 0.1.0 | git: e1b8d02 | cadical: cadical-1.9.5",
+        "default_solved": 1,
+        "incremental_solved": 1,
+        "default_seconds_total": 0.003348,
+        "incremental_seconds_total": 0.004359
+      },
+      "evidence_status": "current",
+      "notes": "Workflow validation only. This confirms the versioned CaDiCaL path can install rel-1.9.5, build Primo against it, and run the profile harness on a smoke input."
     }
   ]
 }
