@@ -47,7 +47,7 @@ def read_manifest(path: Path, root: Path) -> list[Path]:
         if not candidate.is_absolute():
             candidate = root / candidate
         if candidate.suffix != ".smt2":
-            candidate = candidate.with_suffix(".smt2")
+            candidate = Path(f"{candidate}.smt2")
         if not candidate.is_file():
             raise SystemExit(f"{path}:{line_number}: missing SMT-LIB file: {candidate}")
         files.append(candidate.resolve())
