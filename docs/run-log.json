@@ -722,6 +722,71 @@
       },
       "evidence_status": "current-working-tree",
       "notes": "Implemented local representative-pair indexing for negative equality units after saturating the temporary preprocessing closure. This preserves forced-atom semantics while removing the O(equality queries * disequalities) scan observed in gprof."
+    },
+    {
+      "id": "2026-07-18-qfuf-fuzzsmt-yinyang-6f3cdca",
+      "started_at": "2026-07-18T21:57:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "fuzz",
+      "scope": "QF_UF campaign gate after forced-disequality preprocessing index",
+      "commit": "6f3cdca",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head/node-01",
+        "slurm_job_id": "111067,111076"
+      },
+      "command": "SLURM array under /home/janotmik/primo-cadical-profile. Job 111067 tasks 6-8 ran opfuzz/yinyang; tasks 0-5 failed immediately because the FuzzSMT wrapper still pointed at /workspace/contrib/local/share/fuzzsmt/fuzzsmt.jar. After regenerating the wrapper with the remote jar path, job 111076 tasks 0-5 ran scripts/fuzz_external.py --fuzzer fuzzsmt --solver /home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 603000+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\". Job 111067 task 6 ran opfuzz -i 200 -t 5 over fuzz-seeds/qf_uf/all with Primo and z3. Tasks 7-8 ran yinyang semantic fusion -i 100 -t 5 over unsat and sat QF_UF seed sets with Primo.",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3 model_validate=true for opfuzz; z3 for FuzzSMT wrapper reference"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt, opfuzz, yinyang",
+        "logic": "QF_UF",
+        "seed": "FuzzSMT 603000..603005; in-repo QF_UF smoke/regression/seed files for opfuzz/yinyang",
+        "count": 3000,
+        "timeout_seconds": 5,
+        "manifest": "fuzz-seeds/qf_uf/{all,sat,unsat}"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/both-fuzz-6f3cdca/fuzzsmt/shard-*/summary.csv",
+        "results": "fuzz-results/both-fuzz-6f3cdca/",
+        "logs": "fuzz-results/both-fuzz-6f3cdca/logs/slurm-111067_*.{out,err}, fuzz-results/both-fuzz-6f3cdca/logs/slurm-111076_*.{out,err}",
+        "bugs": "fuzz-results/both-fuzz-6f3cdca/**/bugs"
+      },
+      "summary": {
+        "fuzzsmt_total": 3000,
+        "fuzzsmt_pass": 3000,
+        "fuzzsmt_wrong": 0,
+        "fuzzsmt_crash": 0,
+        "fuzzsmt_timeout": 0,
+        "fuzzsmt_sat": 2675,
+        "fuzzsmt_unsat": 325,
+        "opfuzz_solver_calls_last_reported": 2688,
+        "opfuzz_seeds_processed": 7,
+        "opfuzz_valid_seeds": 7,
+        "opfuzz_invalid_seeds": 0,
+        "opfuzz_bug_triggers": 0,
+        "yinyang_unsat_solver_calls_last_reported": 805,
+        "yinyang_unsat_seeds_processed": 18,
+        "yinyang_unsat_valid_seeds": 18,
+        "yinyang_unsat_invalid_seeds": 0,
+        "yinyang_unsat_bug_triggers": 0,
+        "yinyang_sat_solver_calls_last_reported": 800,
+        "yinyang_sat_seeds_processed": 18,
+        "yinyang_sat_valid_seeds": 18,
+        "yinyang_sat_invalid_seeds": 0,
+        "yinyang_sat_bug_triggers": 0,
+        "bug_files": 0
+      },
+      "evidence_status": "current",
+      "notes": "Primo binary reports git 6f3cdca and CaDiCaL cadical-3.0.0-7b99c07. Remote CaDiCaL was rebuilt on the cluster after a stale static library produced the known __isoc23_fscanf link failure. The failed 111067 FuzzSMT tasks are recorded as non-evidence; the successful replacement FuzzSMT evidence is job 111076."
     }
   ]
 }
