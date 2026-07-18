@@ -946,6 +946,113 @@
       },
       "evidence_status": "current",
       "notes": "The previous fuzz gates were insufficient because the tracked real-formula QF_UF seed corpus lacked QG finite-domain table/residual-domain shapes. Added benchmarks/seeds/qf_uf/qg_symmetry_residual_domain.smt2 so future existing-formula mutation covers this class. The failed 111312 FuzzSMT tasks are explicitly non-evidence; 111320 is the successful replacement."
+    },
+    {
+      "id": "2026-07-18-qfuf-phase-targets-fe6350d",
+      "started_at": "2026-07-18T17:30:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "benchmark",
+      "scope": "Targeted QF_UF theory-phase ablation on eight fast-LLM2SMT/slow-Primo instances",
+      "commit": "fe6350d",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111370"
+      },
+      "command": "Validated /tmp/primo-phase-targets.sbatch with scripts/slurm_validate_sbatch.py and bash -n; SLURM array 0-31 under /home/janotmik/primo-cadical-profile; modes default, polarity, none, positive; timeout 130s wrapper around build-slurm-rel/primo --quiet --stats",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats [--theory-phase=polarity|none|positive]"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT",
+          "argv": "/home/janotmik/llm2smt-reference-src/build-ref-rel/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "manifest": "inline eight-instance target list from results/slurm-user-html334-5620bde-primo/fastref-slowprimo-vs-llm2smt.csv",
+        "logic": "QF_UF",
+        "timeout_seconds": 130
+      },
+      "artifacts": {
+        "results": "results/phase-targets-fe6350d/merged.csv",
+        "logs": "results/phase-targets-fe6350d/shard-*.stdout, results/phase-targets-fe6350d/shard-*.stderr"
+      },
+      "summary": {
+        "rows": 32,
+        "wrong": 0,
+        "notable_result": "Default negative theory phase was slower than polarity on all eight targets; polarity improved iso_brn_repgen033 from 6.978s to 1.108s and PEQ004_size8 from 5.819s to 1.964s. The best mode still varied: none won NEQ015_size5 and iso_brn_repgen013, positive won iso_brn_repgen044 and gensys_brn044."
+      },
+      "evidence_status": "current",
+      "notes": "This was a diagnosis run, not a default-profile decision. It motivated the broader 334-row default-versus-polarity run recorded as 2026-07-18-qfuf-html334-phase-6f3ffb1."
+    },
+    {
+      "id": "2026-07-18-qfuf-html334-phase-6f3ffb1",
+      "started_at": "2026-07-18T18:00:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "benchmark",
+      "scope": "Default versus --theory-phase=polarity on the 334-row user primo.html QF_UF subset",
+      "commit": "6f3ffb1",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111434"
+      },
+      "command": "Validated /tmp/primo-html334-phase.sbatch with scripts/slurm_validate_sbatch.py and bash -n; copied /tmp/user_primo_html_336_manifest.txt to benchmarks/user-primo-html-2026-07-18-manifest.txt on the SLURM workspace; SLURM array 0-31 with 16 shards each for default and --theory-phase=polarity; python3 scripts/bench_qf_uf_full.py --root tmp/QF_UF --manifest benchmarks/user-primo-html-2026-07-18-manifest.txt --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT",
+          "argv": "/home/janotmik/llm2smt-reference-src/build-ref-rel/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "manifest": "/tmp/user_primo_html_336_manifest.txt copied to remote benchmarks/user-primo-html-2026-07-18-manifest.txt",
+        "logic": "QF_UF",
+        "count": 334,
+        "timeout_seconds": 120
+      },
+      "artifacts": {
+        "default_results": "results/html334-phase-6f3ffb1/default-merged.csv",
+        "polarity_results": "results/html334-phase-6f3ffb1/polarity-merged.csv",
+        "logs": "results/html334-phase-6f3ffb1/{default,polarity}/logs"
+      },
+      "summary": {
+        "default": {
+          "rows": 334,
+          "solved": 328,
+          "wrong": 0,
+          "unsupported": 0,
+          "par2": 4019.866,
+          "family_solved": {
+            "Goel": "7/7",
+            "NEQ": "25/26",
+            "PEQ": "20/25",
+            "QG": "270/270",
+            "SEQ": "6/6"
+          }
+        },
+        "polarity": {
+          "rows": 334,
+          "solved": 328,
+          "wrong": 0,
+          "unsupported": 0,
+          "par2": 3990.028,
+          "family_solved": {
+            "Goel": "7/7",
+            "NEQ": "25/26",
+            "PEQ": "20/25",
+            "QG": "270/270",
+            "SEQ": "6/6"
+          }
+        }
+      },
+      "evidence_status": "current",
+      "notes": "Polarity modestly improved this subset without changing solved count or wrong answers, but it is not a safe global-default conclusion: large wins such as iso_icl_nogen_sk003 100.475s -> 51.920s and iso_brn_repgen033 7.423s -> 1.086s were offset by large regressions such as gensys_icl_sk003 11.481s -> 42.918s, NEQ048_size9 23.327s -> 47.273s, and Goel firewire_tree.5 rows about 3.9s -> about 20s. Failed job 111402 is non-evidence; it exposed a manifest parser bug with dotted benchmark names, fixed in 6f3ffb1 before replacement job 111434."
     }
   ]
 }
