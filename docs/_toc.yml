@@ -10,6 +10,7 @@ chapters:
   - file: difference_logic
   - file: debugging
   - file: experiments
+  - file: run-log
   - file: literature
   - file: papers/ipasir-up
   - file: papers/cvc4-architecture

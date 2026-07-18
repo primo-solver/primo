@@ -3,6 +3,9 @@
 Experiment and benchmark reports belong here.
 
 Use MyST Markdown for written reports. Use notebooks only for executable benchmark analysis or plotted reports.
+Record every nontrivial benchmark, fuzzing, profiling, tuning, dependency-profile,
+or reference-comparison run in `docs/run-log.json`; see [](run-log.md) for the
+schema and evidence policy.
 
 ## Interesting QF_UF Exact Set
 

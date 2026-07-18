@@ -194,6 +194,10 @@ For solver benchmark work:
 
 - record the exact benchmark set, timeout, command line, commit, host or SLURM
   job id, and result artifact path;
+- add or update an entry in `docs/run-log.json` for every nontrivial benchmark,
+  fuzzing, profiling, parameter-tuning, dependency-profile, or reference-solver
+  comparison run before citing it in a final response, commit message, design
+  note, or retrospective;
 - report solved, timeout, error, unsupported, wrong-answer, and PAR2 counts when
   the harness supports them;
 - include family-level summaries for mixed benchmark sets;
@@ -201,6 +205,16 @@ For solver benchmark work:
   reference solvers such as Z3 and cvc5;
 - keep benchmark scripts and manifests reproducible and committed when they are
   part of the result.
+
+`docs/run-log.json` is the canonical lightweight database of experimental
+evidence. Do not leave important evidence discoverable only through untracked
+`results/`, `fuzz-results/`, terminal scrollback, or memory. If an artifact is
+too large to commit, commit the run-log entry and the script/manifest needed to
+reproduce it, and store the artifact path, host, job id, summary, and whether the
+artifact is local-only, SLURM-backed, stale, rejected, or current evidence for a
+specific commit. If a historical artifact is discovered after the fact, add a
+run-log entry with `evidence_status` set to `historical` or `needs_revalidation`
+instead of silently relying on it.
 
 When a user asks to improve performance on a named benchmark archive or corpus,
 the expected loop is:
@@ -273,6 +287,10 @@ Every fuzz run must record:
 - summary counts for pass, wrong answer, crash, parser/type errors, timeout,
   unsupported, and reference disagreement;
 - artifact directory containing generated failures.
+
+Record the same information in `docs/run-log.json`. A fuzz run without a
+run-log entry is not acceptable evidence for completing a solver change, even if
+the raw `summary.csv` exists.
 
 Wrong answers, crashes, parser rejections of valid generated input, invalid
 models, and reference disagreements block performance work until fixed or
