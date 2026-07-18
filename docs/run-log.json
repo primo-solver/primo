@@ -787,6 +787,165 @@
       },
       "evidence_status": "current",
       "notes": "Primo binary reports git 6f3cdca and CaDiCaL cadical-3.0.0-7b99c07. Remote CaDiCaL was rebuilt on the cluster after a stale static library produced the known __isoc23_fscanf link failure. The failed 111067 FuzzSMT tasks are recorded as non-evidence; the successful replacement FuzzSMT evidence is job 111076."
+    },
+    {
+      "id": "2026-07-18-qfuf-full-120s-3d581c9",
+      "started_at": "2026-07-18T22:09:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "benchmark",
+      "scope": "Full QF_UF benchmark archive after rejecting residual QG symmetry domains",
+      "commit": "3d581c9",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head/node-01..node-04",
+        "slurm_job_id": "111216"
+      },
+      "command": "SLURM array 0-95 under /home/janotmik/primo-cadical-profile: python3 scripts/bench_qf_uf_full.py --root tmp/QF_UF --solver build-slurm-fuzz/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 96",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "SMT-LIB status metadata",
+          "argv": "expected status parsed by scripts/bench_qf_uf_full.py"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 7503,
+        "timeout_seconds": 120,
+        "manifest": "tmp/QF_UF"
+      },
+      "artifacts": {
+        "summary": "results/slurm-qfuf-full-120s-3d581c9/summary.md",
+        "results": "results/slurm-qfuf-full-120s-3d581c9/primo-qfuf-full-120s-3d581c9-merged.csv",
+        "logs": "results/slurm-qfuf-full-120s-3d581c9/logs/",
+        "bugs": null
+      },
+      "summary": {
+        "total": 7503,
+        "solved": 7499,
+        "wrong": 0,
+        "unsupported": 0,
+        "par2": 6969.726722,
+        "families": {
+          "20170829-Rodin": {
+            "total": 34,
+            "solved": 34,
+            "timeout": 0,
+            "wrong": 0
+          },
+          "20190906-CLEARSY": {
+            "total": 46,
+            "solved": 46,
+            "timeout": 0,
+            "wrong": 0
+          },
+          "Goel": {
+            "total": 773,
+            "solved": 773,
+            "timeout": 0,
+            "wrong": 0
+          },
+          "NEQ": {
+            "total": 48,
+            "solved": 47,
+            "timeout": 1,
+            "wrong": 0
+          },
+          "PEQ": {
+            "total": 47,
+            "solved": 44,
+            "timeout": 3,
+            "wrong": 0
+          },
+          "QG": {
+            "total": 6396,
+            "solved": 6396,
+            "timeout": 0,
+            "wrong": 0
+          },
+          "SEQ": {
+            "total": 56,
+            "solved": 56,
+            "timeout": 0,
+            "wrong": 0
+          },
+          "TypeSafe": {
+            "total": 3,
+            "solved": 3,
+            "timeout": 0,
+            "wrong": 0
+          },
+          "eq_diamond": {
+            "total": 100,
+            "solved": 100,
+            "timeout": 0,
+            "wrong": 0
+          }
+        }
+      },
+      "evidence_status": "current",
+      "notes": "Correctness recovery run after full 120s eval of 6f3cdca found 566 wrong answers from default UF symmetry breaking. 3d581c9 rejects symmetry groups manufactured from preprocessing residual domains and rejects moving-only QG table groups. This removes the wrong answers but increases PAR2 versus the unsound run; performance work must regain QG symmetry with a paper-grounded moving-term design."
+    },
+    {
+      "id": "2026-07-18-qfuf-fuzzsmt-yinyang-3d581c9",
+      "started_at": "2026-07-18T22:10:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "fuzz",
+      "scope": "QF_UF fuzz gate after residual-domain symmetry fix, including existing-formula QG seed mutation",
+      "commit": "3d581c9",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head/node-03",
+        "slurm_job_id": "111312,111320"
+      },
+      "command": "Job 111312 tasks 6-7: opfuzz -i 250 -t 5 and yinyang -o sat -i 120 -t 5 over benchmarks/seeds/qf_uf with Primo and z3. Job 111312 tasks 0-5 failed because the FuzzSMT wrapper pointed at /workspace; after rewriting contrib/local/bin/fuzzsmt to the remote jar path, job 111320 tasks 0-5 ran scripts/fuzz_external.py --fuzzer fuzzsmt --count 500 --seed 703000+shard --timeout 5.",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "/home/janotmik/primo-cadical-profile/contrib/local/bin/z3 model_validate=true"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt, opfuzz, yinyang",
+        "logic": "QF_UF",
+        "seed": "FuzzSMT 703000..703005; benchmarks/seeds/qf_uf including qg_symmetry_residual_domain.smt2",
+        "count": 3000,
+        "timeout_seconds": 5,
+        "manifest": "benchmarks/seeds/qf_uf"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/both-fuzz-3d581c9-rerun/fuzzsmt/shard-*/summary.csv",
+        "results": "fuzz-results/both-fuzz-3d581c9-rerun/, fuzz-results/both-fuzz-3d581c9-seed/",
+        "logs": "fuzz-results/both-fuzz-3d581c9-rerun/logs/, fuzz-results/both-fuzz-3d581c9-seed/logs/",
+        "bugs": "fuzz-results/both-fuzz-3d581c9-rerun/**/bugs, fuzz-results/both-fuzz-3d581c9-seed/**/bugs"
+      },
+      "summary": {
+        "fuzzsmt_total": 3000,
+        "fuzzsmt_pass": 3000,
+        "fuzzsmt_wrong": 0,
+        "fuzzsmt_crash": 0,
+        "fuzzsmt_timeout": 0,
+        "opfuzz_seeds_processed": 2,
+        "opfuzz_valid_seeds": 2,
+        "opfuzz_invalid_seeds": 0,
+        "opfuzz_bug_triggers": 0,
+        "yinyang_sat_seeds_processed": 2,
+        "yinyang_sat_valid_seeds": 2,
+        "yinyang_sat_invalid_seeds": 0,
+        "yinyang_sat_bug_triggers": 0,
+        "bug_files": 0
+      },
+      "evidence_status": "current",
+      "notes": "The previous fuzz gates were insufficient because the tracked real-formula QF_UF seed corpus lacked QG finite-domain table/residual-domain shapes. Added benchmarks/seeds/qf_uf/qg_symmetry_residual_domain.smt2 so future existing-formula mutation covers this class. The failed 111312 FuzzSMT tasks are explicitly non-evidence; 111320 is the successful replacement."
     }
   ]
 }
