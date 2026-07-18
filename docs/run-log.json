@@ -409,6 +409,60 @@
       },
       "evidence_status": "current",
       "notes": "No material CaDiCaL 1.9.5 win on this sample; both versions solve the same rows and time out on PEQ014_size10. Earlier SLURM build jobs 111037 and 111038 failed because compute nodes lacked usable C/C++ development headers, so final measurement used login-node builds and a run-only batch job. Keep versioned CaDiCaL interface for later tuning, but current QF_UF gap is not explained by the 1.9.5/3.0.0 difference on these cases."
+    },
+    {
+      "id": "2026-07-18-qfuf-fuzzsmt-699200f-3000",
+      "started_at": "2026-07-18T13:32:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT generated cases, six SLURM shards",
+      "commit": "699200f",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111040"
+      },
+      "command": "SLURM array 0-5; each shard: python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver /home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 699200+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\"",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": "699200..699205",
+        "count": 3000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-699200f-3000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-699200f-3000/shard-*/summary.csv",
+        "logs": "fuzz-results/qf_uf-fuzzsmt-699200f-3000/logs/slurm-111040_*.out",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-699200f-3000/shard-*/bugs"
+      },
+      "summary": {
+        "total": 3000,
+        "pass": 3000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 2692,
+        "unsat": 308,
+        "bug_files": 0,
+        "slurm_shards_completed": 6
+      },
+      "evidence_status": "current",
+      "notes": "Fresh current-HEAD fuzz gate after CaDiCaL version experiment. Primo binary reports git 699200f and CaDiCaL cadical-3.0.0-7b99c07. Remote FuzzSMT wrapper had to be regenerated after source sync because its absolute jar path pointed at /workspace. Compute nodes still should run prepared binaries rather than compile because batch compilation lacked usable development headers."
     }
   ]
 }
