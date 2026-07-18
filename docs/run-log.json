@@ -1323,6 +1323,69 @@
       },
       "evidence_status": "current",
       "notes": "Remote workspace was checked immediately before sbatch with scripts/slurm_prepare_benchmark_workspace.py --check-only; binary reported git: 2905733 and cadical: cadical-3.0.0-7b99c07. This run checks that raw AMO preservation and use-list changes do not regress the mixed 334-row subset; reference-solver reruns were not repeated because the comparison baseline already records Primo default/reference context for this manifest."
+    },
+    {
+      "id": "2026-07-18-missing5-option-inspection-8c772e6",
+      "started_at": "2026-07-18T19:15:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "benchmark",
+      "scope": "One-by-one local inspection of the five unsolved rows from the 334-row raw-AMO SLURM run",
+      "commit": "8c772e6",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest /tmp/primo-missing5-manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 30; repeated for default, pure_auto, pure_on, prop_off, lazy_model, ground_congruence, no_sym variants",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats plus variant options"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 5,
+        "timeout_seconds": 30,
+        "manifest": "/tmp/primo-missing5-manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/missing5-inspection-8c772e6/variant-summary.json",
+        "results": "results/missing5-inspection-8c772e6/*.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "variants": [
+          "default",
+          "pure_auto",
+          "pure_on",
+          "prop_off",
+          "lazy_model",
+          "ground_congruence",
+          "no_sym"
+        ],
+        "solved_by_any_variant": 0,
+        "wrong": 0,
+        "timeouts_per_variant": 5,
+        "missing_files": [
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ018_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ013_size8.smt2",
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ014_size11.smt2"
+        ],
+        "notes_by_file": {
+          "PEQ002_size8": "8-value PEQ operation-table formula; 131 full finite-domain choices; two binary U functions; default 30s had 35900 theory conflicts and 9060745 explain calls; no-sym ablation worsened to 50199 conflicts and 22979263 explain calls.",
+          "PEQ018_size7": "7-value PEQ formula; 65 choices; one binary and one unary U function; highest conflict-rate row at 121453 default 30s theory conflicts; no current option solved it.",
+          "PEQ013_size8": "8-value PEQ formula; 139 choices; two binary and one unary U function; default 30s had 12997528 explain calls; no current option solved it.",
+          "NEQ016_size8": "8-value NEQ formula with one binary U function plus three unary predicates; 67 choices; default 30s timeout; historical symmetry/value-precedence artifact solved this row, but current option probes did not within 30s.",
+          "PEQ014_size11": "11-value PEQ formula; 369 choices; three binary functions; large AMO surface and use-list append volume with comparatively few conflicts; no current option solved it."
+        }
+      },
+      "evidence_status": "local-only",
+      "notes": "Local z3 and cvc5 binaries were unavailable in this workspace, so this entry records Primo-only option inspection. Historical repo artifacts indicate older symmetry/value-precedence experiments solved PEQ002_size8 and NEQ016_size8, but not the other three."
     }
   ]
 }

@@ -1,0 +1,44 @@
+[
+  {
+    "variant": "default",
+    "solved": 0,
+    "timeouts": 5,
+    "wrong": 0
+  },
+  {
+    "variant": "ground_congruence",
+    "solved": 0,
+    "timeouts": 5,
+    "wrong": 0
+  },
+  {
+    "variant": "lazy_model",
+    "solved": 0,
+    "timeouts": 5,
+    "wrong": 0
+  },
+  {
+    "variant": "no_sym",
+    "solved": 0,
+    "timeouts": 5,
+    "wrong": 0
+  },
+  {
+    "variant": "prop_off",
+    "solved": 0,
+    "timeouts": 5,
+    "wrong": 0
+  },
+  {
+    "variant": "pure_auto",
+    "solved": 0,
+    "timeouts": 5,
+    "wrong": 0
+  },
+  {
+    "variant": "pure_on",
+    "solved": 0,
+    "timeouts": 5,
+    "wrong": 0
+  }
+]
