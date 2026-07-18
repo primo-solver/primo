@@ -1559,6 +1559,50 @@
       },
       "evidence_status": "local-only",
       "notes": "Primo already flattens and/or terms during TermManager construction and finite-domain choice collection walks nested or nodes. No NNF pass was found in preprocessing, so NNF remains a plausible future implementation target, but the strongest immediate local signal on iso_brn_repgen033 is that default finite-domain AMO/search interaction is harmful while basic preprocessing matches the LLM2SMT timing scale. The SMAC search space was extended to tune theory phase, finite-domain value precedence/equality definitions, bounded ground congruence, and EUF engine in addition to existing QF_UF knobs."
+    },
+    {
+      "id": "2026-07-18-qg-iso-smac-slurm-111490",
+      "started_at": "2026-07-18T23:55:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "tuning",
+      "scope": "SLURM SMAC campaign for QG iso_* performance gap",
+      "commit": "c2363b3",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111490"
+      },
+      "command": "After python3 scripts/slurm_prepare_benchmark_workspace.py --remote-dir /home/janotmik/primo-cadical-profile --check-only verified build-slurm-rel/primo reports git: c2363b3 and cadical: cadical-3.0.0-7b99c07, submitted sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-iso-train.txt,PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-iso-validate.txt,PRIMO_SMAC_LABEL=qfuf-iso,PRIMO_SMAC_TRIALS=80,PRIMO_SMAC_TIMEOUT=20,PRIMO_SMAC_VALIDATION_TIMEOUT=60,PRIMO_SMAC_SEED=20260718 scripts/slurm_qfuf_smac.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": 20260718,
+        "count": 20,
+        "timeout_seconds": 20,
+        "manifest": "benchmarks/qfuf-smac-iso-train.txt; holdout benchmarks/qfuf-smac-iso-validate.txt with 60s validation timeout"
+      },
+      "artifacts": {
+        "summary": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-iso-111490/result.json",
+        "results": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-iso-111490",
+        "logs": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-111490.out and .err",
+        "bugs": null
+      },
+      "summary": {
+        "status": "submitted",
+        "trials": 80,
+        "train_count": 12,
+        "validate_count": 8,
+        "wrong": null,
+        "default_validation_cost": null,
+        "incumbent_validation_cost": null
+      },
+      "evidence_status": "running",
+      "notes": "Search space includes preprocessing strength, finite-domain symmetry/value-precedence/equality-definition toggles, bounded ground-congruence, EUF engine/propagation settings, pure-filter mode, theory phase, propagation budgets, and CaDiCaL profile. The run should be collected before making any default/profile recommendation."
     }
   ]
 }
