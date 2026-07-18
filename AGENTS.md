@@ -168,6 +168,10 @@ In particular:
 - Use `make asan-test` when touching ownership, parser, term storage, SAT backend, or other memory-sensitive C++ paths.
 - Run `make lint` before committing implementation changes.
 - Run `make check` before committing behavior changes when feasible.
+- Run the fuzz gate described in "Fuzzing discipline" before presenting solver,
+  parser, preprocessing, SAT, theory, model, or SMT-LIB behavior changes as
+  complete. If the gate cannot run, state the exact blocker and keep the change
+  out of headline/default performance claims until fuzzing is done.
 - Run the `smt-code-review` skill as a pre-commit self-review for implementation changes. At this stage, review all tracked non-generated project files, not only the diff. The review must include ordinary hygiene: unused includes, dead helpers, missing or misleading comments, narrow API surface, formatting, and lint readiness.
 - If `clang-tidy` is available, run it on all tracked non-generated `.cpp` files while the project is establishing its baseline. Also run `misc-include-cleaner` as an advisory scan and inspect it for real unused includes; paired `.cpp`/`.hpp` self-includes are not automatically removable. Later, after the whole-tree baseline is clean, diff-focused clang-tidy plus periodic whole-tree sweeps is acceptable. If clang-tidy is not run, state why.
 - Prefer small, coherent commits after each working milestone.
@@ -235,6 +239,55 @@ the failed access command or job state.
 Local profiling is still expected when performance is unexpectedly poor. Use it
 to identify bottlenecks before designing solver changes, then confirm any claimed
 improvement with the requested benchmark infrastructure.
+
+## Fuzzing discipline
+
+Fuzzing is a correctness gate, not an optional cleanup. Any change that affects
+parsing, type checking, term construction, rewriting, preprocessing,
+clausification, SAT integration, DPLL(T) control flow, theory solvers, model
+construction, generated lemmas, or solver options that alter behavior must run a
+fresh fuzz gate against the current commit before it is described as complete.
+
+Use the smallest gate that matches the change risk:
+
+- Smoke gate: for narrow parser/printer/core rewrites with low solver impact,
+  run at least 100 generated or mutated inputs locally if the generator is
+  installed, plus the relevant unit tests. This gate is not sufficient for
+  default-profile, theory, SAT, or preprocessing changes.
+- Merge gate: for ordinary solver/theory/preprocessing/SAT behavior changes,
+  run at least 1000 generated or mutated inputs against a trusted reference, or
+  a stronger existing scripted gate such as `make fuzzsmt` when it covers the
+  touched logic. Prefer SLURM when runtime is nontrivial.
+- Campaign gate: before promoting a performance profile, online propagation
+  mode, preprocessing transformation, theory solver, or SAT interaction to
+  default/headline status, run at least 3000 QF_UF FuzzSMT-style cases for QF_UF
+  work, and a comparable corpus for other supported logics. Also run a
+  seed-mutation campaign such as YinYang/typefuzz on real benchmark seeds when
+  available.
+
+Every fuzz run must record:
+
+- commit hash;
+- command line and reference solver command;
+- generator, seed, count, timeout, host or SLURM job id;
+- summary counts for pass, wrong answer, crash, parser/type errors, timeout,
+  unsupported, and reference disagreement;
+- artifact directory containing generated failures.
+
+Wrong answers, crashes, parser rejections of valid generated input, invalid
+models, and reference disagreements block performance work until fixed or
+precisely triaged. Timeout-only fuzz results do not block correctness, but they
+must be summarized separately from pass results.
+
+Stale `bugs/` directories are not evidence either way. Before relying on an old
+bug corpus, rerun each saved file against the current binary and references,
+classify the outcome, and either add a regression test, document an unsupported
+feature, or delete/ignore it as stale generated output. Do not report "fuzzing
+passes" if unclassified old bug files are still being treated as active.
+
+If a fuzzing dependency is missing locally or on SLURM, install it when feasible.
+If it cannot be installed, report the failed install/access command as the
+blocker and say exactly which gate remains incomplete.
 
 ## Core invariants
 

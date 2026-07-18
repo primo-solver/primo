@@ -180,6 +180,68 @@ Preserve generated failures under `yinyang_bugs/` until each one is copied back,
 classified, minimized, and either turned into a regression test or documented as
 an unsupported feature.
 
+### Required fuzz gates
+
+Fuzzing is a required correctness gate for behavior changes. Run a fresh fuzz
+gate against the current commit before considering changes complete when they
+touch:
+
+- parser or printer behavior;
+- type checking and sort handling;
+- term construction, rewriting, or substitutions;
+- preprocessing transformations;
+- clausification and Boolean abstraction;
+- SAT backend integration or solver control flow;
+- theory solvers, theory propagation, conflicts, explanations, or models;
+- command-line options that alter solving behavior.
+
+Use three gate sizes:
+
+- **Smoke gate:** at least 100 generated or mutated inputs for narrow
+  parser/core changes with low solver impact, plus the focused unit tests.
+- **Merge gate:** at least 1000 generated or mutated inputs against a trusted
+  reference for ordinary solver, preprocessing, SAT, or theory behavior changes.
+- **Campaign gate:** at least 3000 generated QF_UF FuzzSMT-style cases for
+  QF_UF default/profile changes, plus YinYang/typefuzz over real benchmark seeds
+  when available. Other theories should define comparable generator and
+  seed-mutation counts before becoming headline targets.
+
+For QF_UF work, the campaign gate is the minimum before promoting a new
+preprocessing transformation, external propagation mode, SAT profile, or theory
+engine to default behavior. If the generator or reference solver is missing,
+install it when feasible; otherwise record the failed command and treat the
+missing fuzz gate as incomplete verification.
+
+Every fuzz artifact should record:
+
+- Primo commit hash;
+- generator name, seed, count, and timeout;
+- Primo command line and reference command line;
+- host or SLURM job id;
+- pass, wrong-answer, crash, timeout, unsupported, parser-error, model-error,
+  and reference-disagreement counts;
+- failure directory with generated inputs and logs.
+
+### Fuzz result policy
+
+Wrong answers, crashes, invalid models, parser rejection of valid generated
+input, and reference disagreements block performance work until fixed or
+classified. Do not report a performance result as headline-ready while these
+failures remain open.
+
+Timeouts from fuzzing are diagnostic rather than immediate correctness failures.
+Report them separately from passes and use them to seed performance triage only
+after answer correctness is clean.
+
+Old `bugs/` directories are not current evidence. Before citing an old fuzz
+campaign, rerun saved bug files against the current binary and references. Each
+file should end in one of these states:
+
+- regression test added;
+- documented unsupported feature;
+- current bug still open with a minimized reproducer;
+- stale failure ignored because it no longer reproduces.
+
 ## Result failures
 
 - `UNSOUND_SAT`: Primo says sat, trusted solver says unsat.
