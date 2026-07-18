@@ -1583,37 +1583,19 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
   }
 
+#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   void notify_assignment(const std::vector<int>& lits) override {
     for (const int lit : lits) {
-      const int var = lit > 0 ? lit : -lit;
-      if (!observed_vars_.contains(var)) {
-        continue;
-      }
-      if (assignment_by_var_.contains(var)) {
-        continue;
-      }
-      assignment_by_var_[var] = lit > 0;
-      trail_.push_back(lit);
-      pending_vars_.erase(var);
-      if (incremental_state_.has_value()) {
-        const BooleanClausifier::TheoryAtom* atom = atom_for_var(var);
-        if (atom != nullptr) {
-          const bool atom_value = atom->lit.value > 0 ? lit > 0 : lit < 0;
-          statistics_.increment(kStatEufAssignments);
-          const core::Term& atom_term = terms_.get(atom->term);
-          if (atom_term.kind == core::TermKind::Equality) {
-            statistics_.increment(atom_value ? kStatEufEqAssignments : kStatEufDiseqAssignments);
-          }
-          AssignedTheoryAtom assigned =
-              assigned_theory_atom(options_.pure_theory_filter, *atom, atom_value);
-          count_filtered_assignment(assigned, statistics_);
-          incremental_state_->assert_assignment(assigned);
-          enqueue_changed_candidates();
-        }
-      }
+      notify_assignment_lit(lit);
     }
-    pending_.clear();
+    finish_assignment_notification();
   }
+#else
+  void notify_assignment(int lit, bool /*is_fixed*/) override {
+    notify_assignment_lit(lit);
+    finish_assignment_notification();
+  }
+#endif
 
   void notify_new_decision_level() override {
     level_starts_.push_back(trail_.size());
@@ -1697,6 +1679,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     return reason.antecedents[antecedent_index];
   }
 
+#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
     maybe_store_conflict();
     if (external_clause_.empty()) {
@@ -1705,6 +1688,12 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     is_forgettable = false;
     return true;
   }
+#else
+  bool cb_has_external_clause() override {
+    maybe_store_conflict();
+    return !external_clause_.empty();
+  }
+#endif
 
   int cb_add_external_clause_lit() override {
     if (external_clause_index_ >= external_clause_.size()) {
@@ -1726,6 +1715,39 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     const auto found = atom_by_var_.find(var);
     return found == atom_by_var_.end() ? nullptr : found->second;
   }
+
+  void notify_assignment_lit(int lit) {
+    const int var = lit > 0 ? lit : -lit;
+    if (!observed_vars_.contains(var)) {
+      return;
+    }
+    if (assignment_by_var_.contains(var)) {
+      return;
+    }
+    assignment_by_var_[var] = lit > 0;
+    trail_.push_back(lit);
+    pending_vars_.erase(var);
+    if (!incremental_state_.has_value()) {
+      return;
+    }
+    const BooleanClausifier::TheoryAtom* atom = atom_for_var(var);
+    if (atom == nullptr) {
+      return;
+    }
+    const bool atom_value = atom->lit.value > 0 ? lit > 0 : lit < 0;
+    statistics_.increment(kStatEufAssignments);
+    const core::Term& atom_term = terms_.get(atom->term);
+    if (atom_term.kind == core::TermKind::Equality) {
+      statistics_.increment(atom_value ? kStatEufEqAssignments : kStatEufDiseqAssignments);
+    }
+    AssignedTheoryAtom assigned =
+        assigned_theory_atom(options_.pure_theory_filter, *atom, atom_value);
+    count_filtered_assignment(assigned, statistics_);
+    incremental_state_->assert_assignment(assigned);
+    enqueue_changed_candidates();
+  }
+
+  void finish_assignment_notification() { pending_.clear(); }
 
   void build_candidate_index() {
     if (!incremental_state_.has_value()) {

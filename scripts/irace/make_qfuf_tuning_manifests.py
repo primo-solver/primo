@@ -82,8 +82,12 @@ def main() -> int:
             "llm2smt-qfuf-full-120s-merged.csv"
         ),
     )
-    parser.add_argument("--train-out", type=Path, default=Path("benchmarks/qfuf-irace-train.txt"))
-    parser.add_argument("--test-out", type=Path, default=Path("benchmarks/qfuf-irace-test.txt"))
+    parser.add_argument(
+        "--train-out", type=Path, default=Path("benchmarks/qfuf-irace-train.txt")
+    )
+    parser.add_argument(
+        "--test-out", type=Path, default=Path("benchmarks/qfuf-irace-test.txt")
+    )
     parser.add_argument("--slow-ratio", type=float, default=5.0)
     parser.add_argument("--slow-margin", type=float, default=1.0)
     parser.add_argument("--max-slow", type=int, default=24)
@@ -92,7 +96,9 @@ def main() -> int:
 
     native = load(args.native)
     llm2smt = load(args.llm2smt)
-    timeout_relatives = sorted(relative for relative, row in native.items() if not is_solved(row))
+    timeout_relatives = sorted(
+        relative for relative, row in native.items() if not is_solved(row)
+    )
     slow = []
     for relative, native_row in native.items():
         ref_row = llm2smt.get(relative)
@@ -100,9 +106,14 @@ def main() -> int:
             continue
         native_seconds = seconds(native_row)
         ref_seconds = max(seconds(ref_row), 1e-6)
-        if native_seconds > args.slow_ratio * ref_seconds and native_seconds - ref_seconds > args.slow_margin:
+        if (
+            native_seconds > args.slow_ratio * ref_seconds
+            and native_seconds - ref_seconds > args.slow_margin
+        ):
             slow.append((native_seconds / ref_seconds, relative))
-    slow_relatives = [relative for _, relative in sorted(slow, reverse=True)[: args.max_slow]]
+    slow_relatives = [
+        relative for _, relative in sorted(slow, reverse=True)[: args.max_slow]
+    ]
 
     guards = []
     for relative, row in sorted(native.items(), key=lambda item: seconds(item[1])):
@@ -118,7 +129,9 @@ def main() -> int:
         for _, relative in sorted(slow, reverse=True)[args.max_slow : args.max_slow * 2]
     ]
     remaining = [relative for relative in sorted(native) if relative not in seen]
-    test = existing(args.repo, [relative for relative in test_candidates if relative not in seen])
+    test = existing(
+        args.repo, [relative for relative in test_candidates if relative not in seen]
+    )
     for relative in remaining:
         if len(test) >= args.max_slow + args.max_guard:
             break

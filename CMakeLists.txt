@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 
 project(primo LANGUAGES CXX)
 
+include(CheckCXXSourceCompiles)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -9,6 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(PRIMO_WARNINGS_AS_ERRORS "Treat Primo C++ compiler warnings as errors" ON)
 set(PRIMO_SANITIZERS "" CACHE STRING "Semicolon-separated sanitizer list for Primo targets, e.g. address;undefined")
+set(PRIMO_CADICAL_ROOT "" CACHE PATH "CaDiCaL installation prefix to prefer over contrib/local")
 
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/contrib/local")
 
@@ -84,19 +87,65 @@ else()
   message(FATAL_ERROR "ANTLR4 C++ runtime not found. Run `make contrib-required`.")
 endif()
 
+set(PRIMO_CADICAL_INCLUDE_HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include")
+set(PRIMO_CADICAL_LIBRARY_HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib")
+if(PRIMO_CADICAL_ROOT)
+  list(PREPEND PRIMO_CADICAL_INCLUDE_HINTS "${PRIMO_CADICAL_ROOT}/include")
+  list(PREPEND PRIMO_CADICAL_LIBRARY_HINTS "${PRIMO_CADICAL_ROOT}/lib")
+endif()
 find_path(IPASIR_UP_INCLUDE_DIR
   NAMES ipasir_up.h ipasir.h
-  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include"
+  HINTS ${PRIMO_CADICAL_INCLUDE_HINTS}
 )
 find_library(CADICAL_LIBRARY
   NAMES cadical
-  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib"
+  HINTS ${PRIMO_CADICAL_LIBRARY_HINTS}
 )
 
 if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   message(STATUS "Found IPASIR/CaDiCaL headers and library")
   message(STATUS "  IPASIR headers: ${IPASIR_UP_INCLUDE_DIR}")
   message(STATUS "  CaDiCaL library: ${CADICAL_LIBRARY}")
+  set(CMAKE_REQUIRED_INCLUDES "${IPASIR_UP_INCLUDE_DIR}")
+  set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+  check_cxx_source_compiles(
+    "#include <cadical.hpp>
+     int main() { auto fn = &CaDiCaL::Solver::resize; (void) fn; return 0; }"
+    PRIMO_CADICAL_HAS_RESIZE
+  )
+  check_cxx_source_compiles(
+    "#include <cadical.hpp>
+     int main() { auto fn = &CaDiCaL::Solver::reserve; (void) fn; return 0; }"
+    PRIMO_CADICAL_HAS_RESERVE
+  )
+  check_cxx_source_compiles(
+    "#include <cadical.hpp>
+     struct P : CaDiCaL::ExternalPropagator {
+       void notify_assignment(const std::vector<int>&) override {}
+       void notify_new_decision_level() override {}
+       void notify_backtrack(size_t) override {}
+       bool cb_check_found_model(const std::vector<int>&) override { return true; }
+       bool cb_has_external_clause(bool&) override { return false; }
+       int cb_add_external_clause_lit() override { return 0; }
+     };
+     int main() { P p; (void)p; }"
+    PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
+  )
+  check_cxx_source_compiles(
+    "#include <cadical.hpp>
+     struct P : CaDiCaL::ExternalPropagator {
+       void notify_assignment(int, bool) override {}
+       void notify_new_decision_level() override {}
+       void notify_backtrack(size_t) override {}
+       bool cb_check_found_model(const std::vector<int>&) override { return true; }
+       bool cb_has_external_clause() override { return false; }
+       int cb_add_external_clause_lit() override { return 0; }
+     };
+     int main() { P p; (void)p; }"
+    PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR
+  )
+  unset(CMAKE_TRY_COMPILE_TARGET_TYPE)
+  unset(CMAKE_REQUIRED_INCLUDES)
 else()
   message(STATUS "IPASIR-UP/CaDiCaL not found; SAT backend remains a scaffold")
 endif()
@@ -141,6 +190,12 @@ target_compile_definitions(primo_core PUBLIC ANTLR4CPP_STATIC=1)
 target_link_libraries(primo_core PUBLIC "${ANTLR4_RUNTIME_LIBRARY}")
 if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=1)
+  target_compile_definitions(primo_core PUBLIC
+    PRIMO_CADICAL_HAS_RESIZE=$<BOOL:${PRIMO_CADICAL_HAS_RESIZE}>
+    PRIMO_CADICAL_HAS_RESERVE=$<BOOL:${PRIMO_CADICAL_HAS_RESERVE}>
+    PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR=$<BOOL:${PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR}>
+    PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR=$<BOOL:${PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR}>
+  )
   target_include_directories(primo_core SYSTEM PUBLIC "${IPASIR_UP_INCLUDE_DIR}")
   target_link_libraries(primo_core PUBLIC "${CADICAL_LIBRARY}")
 else()

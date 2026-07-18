@@ -60,8 +60,16 @@ def run(command: list[str], timeout: float) -> dict[str, object]:
         exit_code = 124
     seconds = time.perf_counter() - start
     first_line = stdout.strip().splitlines()[0] if stdout.strip() else ""
-    answer = first_line if first_line in {"sat", "unsat", "unknown", "unsupported"} else "error"
-    status = "timeout" if timed_out else ("error" if exit_code != 0 and answer == "error" else "ok")
+    answer = (
+        first_line
+        if first_line in {"sat", "unsat", "unknown", "unsupported"}
+        else "error"
+    )
+    status = (
+        "timeout"
+        if timed_out
+        else ("error" if exit_code != 0 and answer == "error" else "ok")
+    )
     return {
         "status": status,
         "answer": answer,
@@ -88,13 +96,17 @@ def main() -> int:
     parser.add_argument("--solver", nargs="+", default=["./build/primo"])
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--out", type=Path, default=Path("results/cadical-profile.csv"))
-    parser.add_argument("--summary", type=Path, default=Path("results/cadical-profile.md"))
+    parser.add_argument(
+        "--summary", type=Path, default=Path("results/cadical-profile.md")
+    )
     parser.add_argument("files", nargs="+", type=Path)
     args = parser.parse_args()
 
     profiles = {
         "default": [],
-        "incremental": [arg for opt in INCREMENTAL_PROFILE for arg in ("--cadical-option", opt)],
+        "incremental": [
+            arg for opt in INCREMENTAL_PROFILE for arg in ("--cadical-option", opt)
+        ],
     }
     rows: list[dict[str, object]] = []
     for file in args.files:

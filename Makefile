@@ -4,7 +4,9 @@ BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
 PRIMO ?= $(BUILD_DIR)/primo
 CONTRIB_PREFIX ?= contrib/local
+CADICAL_TAG ?= rel-3.0.0
 PYTHON ?= python3
+RUFF ?= .venv/bin/python -m ruff
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
 CPP_FORMAT_FILES := $$(find src tests \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) | grep -v '^src/smtlib/antlr/')
 CPP_TIDY_FILES := $$(git ls-files | rg '^(src|tests)/.*\.cpp$$' | rg -v '^src/smtlib/antlr/')
@@ -71,10 +73,10 @@ lint:
 	else \
 		echo "clang-format is not installed; skipping C++ format check."; \
 	fi
-	@if command -v ruff >/dev/null 2>&1; then \
-		ruff check scripts contrib; \
+	@if $(RUFF) --version >/dev/null 2>&1; then \
+		$(RUFF) check scripts contrib; \
 	else \
-		echo "ruff is not installed; skipping Python lint."; \
+		echo "ruff is not installed in the configured Python environment; skipping Python lint."; \
 	fi
 
 tidy: build
@@ -97,10 +99,10 @@ format:
 	else \
 		echo "clang-format is not installed; skipping C++ formatting."; \
 	fi
-	@if command -v ruff >/dev/null 2>&1; then \
-		ruff format scripts contrib; \
+	@if $(RUFF) --version >/dev/null 2>&1; then \
+		$(RUFF) format scripts contrib; \
 	else \
-		echo "ruff is not installed; skipping Python formatting."; \
+		echo "ruff is not installed in the configured Python environment; skipping Python formatting."; \
 	fi
 
 check: lint test
@@ -133,7 +135,7 @@ contrib-cvc5:
 contrib-cadical: $(CADICAL_STAMP)
 
 $(CADICAL_STAMP): contrib/install_cadical.py
-	$(PYTHON) contrib/install_cadical.py --prefix $(CONTRIB_PREFIX)
+	$(PYTHON) contrib/install_cadical.py --prefix $(CONTRIB_PREFIX) --tag $(CADICAL_TAG) --clean-build
 	touch $(CADICAL_STAMP)
 
 contrib-fuzzsmt:

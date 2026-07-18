@@ -55,10 +55,18 @@ class TableTextExtractor(html.parser.HTMLParser):
             self._current_cell.append(data)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in {"td", "th"} and self._current_cell is not None and self._current_row is not None:
+        if (
+            tag in {"td", "th"}
+            and self._current_cell is not None
+            and self._current_row is not None
+        ):
             self._current_row.append(" ".join("".join(self._current_cell).split()))
             self._current_cell = None
-        elif tag == "tr" and self._current_row is not None and self._current_table is not None:
+        elif (
+            tag == "tr"
+            and self._current_row is not None
+            and self._current_table is not None
+        ):
             if self._current_row:
                 self._current_table.append(self._current_row)
             self._current_row = None
@@ -77,12 +85,20 @@ def extract_reference_rows(html_path: Path) -> list[dict[str, str]]:
             continue
         header = table[0]
         lowered = [cell.lower() for cell in header]
-        if not any("llm2smt" in cell or cell in {"z3", "yices", "opensmt"} for cell in lowered):
+        if not any(
+            "llm2smt" in cell or cell in {"z3", "yices", "opensmt"} for cell in lowered
+        ):
             continue
-        if not any("file" in cell or "benchmark" in cell or "instance" in cell for cell in lowered):
+        if not any(
+            "file" in cell or "benchmark" in cell or "instance" in cell
+            for cell in lowered
+        ):
             continue
         for raw_row in table[1:]:
-            row = {header[i]: raw_row[i] if i < len(raw_row) else "" for i in range(len(header))}
+            row = {
+                header[i]: raw_row[i] if i < len(raw_row) else ""
+                for i in range(len(header))
+            }
             rows.append(row)
     return rows
 
@@ -200,7 +216,9 @@ def load_expected(path: Path | None) -> dict[str, str]:
         return {}
     with path.open(newline="") as handle:
         reader = csv.DictReader(handle)
-        if "file" not in (reader.fieldnames or []) or "answer" not in (reader.fieldnames or []):
+        if "file" not in (reader.fieldnames or []) or "answer" not in (
+            reader.fieldnames or []
+        ):
             raise SystemExit("--expected CSV must contain file and answer columns")
         return {row["file"]: row["answer"] for row in reader if row.get("file")}
 
@@ -236,7 +254,9 @@ def evaluate_file(
         stderr_path.write_text(str(result["stderr"]))
         stdout_log = str(stdout_path)
         stderr_log = str(stderr_path)
-    expected_answer = expected.get(str(path), expected.get(str(path.relative_to(repo)), ""))
+    expected_answer = expected.get(
+        str(path), expected.get(str(path.relative_to(repo)), "")
+    )
     if not expected_answer and expected_from_status:
         expected_answer = parse_smtlib_status(path)
     wrong = (
@@ -258,7 +278,9 @@ def evaluate_file(
         "wrong": str(wrong).lower(),
         "seconds": f"{float(result['seconds']):.6f}",
         "timeout": str(result["timeout"]).lower(),
-        "timed_out_with_stats": str(result["status"] == "timeout" and bool(stats)).lower(),
+        "timed_out_with_stats": str(
+            result["status"] == "timeout" and bool(stats)
+        ).lower(),
         "exit_code": result["exit_code"],
         "stdout_log": stdout_log,
         "stderr_log": stderr_log,
@@ -279,7 +301,9 @@ def main() -> int:
     parser.add_argument("--solver", nargs="+", default=["./build/primo", "--quiet"])
     parser.add_argument("--solver-arg", action="append", default=[])
     parser.add_argument("--timeout", type=float, default=30.0)
-    parser.add_argument("--out", type=Path, default=Path("results/interesting-qf-uf.csv"))
+    parser.add_argument(
+        "--out", type=Path, default=Path("results/interesting-qf-uf.csv")
+    )
     parser.add_argument(
         "--summary", type=Path, default=Path("results/interesting-qf-uf-summary.csv")
     )
@@ -299,7 +323,9 @@ def main() -> int:
         type=Path,
         default=Path("results/interesting-qf-uf-reference.csv"),
     )
-    parser.add_argument("--limit", type=int, help="Run only the first N discovered files")
+    parser.add_argument(
+        "--limit", type=int, help="Run only the first N discovered files"
+    )
     parser.add_argument(
         "--manifest",
         type=Path,
@@ -311,10 +337,18 @@ def main() -> int:
         action="store_true",
         help="Ignore --manifest and use broad local family discovery",
     )
-    parser.add_argument("--jobs", type=int, default=1, help="Number of solver processes to run")
-    parser.add_argument("--shards", type=int, default=1, help="Split files into this many shards")
-    parser.add_argument("--shard-index", type=int, default=0, help="Zero-based shard index to run")
-    parser.add_argument("--log-dir", type=Path, help="Write per-instance stdout/stderr logs")
+    parser.add_argument(
+        "--jobs", type=int, default=1, help="Number of solver processes to run"
+    )
+    parser.add_argument(
+        "--shards", type=int, default=1, help="Split files into this many shards"
+    )
+    parser.add_argument(
+        "--shard-index", type=int, default=0, help="Zero-based shard index to run"
+    )
+    parser.add_argument(
+        "--log-dir", type=Path, help="Write per-instance stdout/stderr logs"
+    )
     parser.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args()
 
@@ -329,7 +363,11 @@ def main() -> int:
             writer.writerows(reference_rows)
         print(f"wrote {args.reference_out}")
 
-    files = discover_files(repo) if args.discover else discover_manifest_files(repo, args.manifest)
+    files = (
+        discover_files(repo)
+        if args.discover
+        else discover_manifest_files(repo, args.manifest)
+    )
     if not files:
         raise SystemExit("no interesting QF_UF files found under tmp/QF_UF")
     if args.limit is not None:
@@ -343,7 +381,11 @@ def main() -> int:
     if args.shard_index < 0 or args.shard_index >= args.shards:
         raise SystemExit("--shard-index must be in [0, shards)")
     if args.shards > 1:
-        files = [item for offset, item in enumerate(files) if offset % args.shards == args.shard_index]
+        files = [
+            item
+            for offset, item in enumerate(files)
+            if offset % args.shards == args.shard_index
+        ]
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     expected = load_expected(args.expected)
@@ -410,7 +452,12 @@ def main() -> int:
         "stderr_log",
     ]
     stat_fields = sorted(
-        {key for row in rows for key in row if key.startswith(":") or key.startswith("llm2smt.")}
+        {
+            key
+            for row in rows
+            for key in row
+            if key.startswith(":") or key.startswith("llm2smt.")
+        }
     )
     fieldnames.extend(stat_fields)
     with args.out.open("w", newline="") as handle:
@@ -420,22 +467,28 @@ def main() -> int:
 
     by_family_ok = Counter(row["family"] for row in rows if row["status"] == "ok")
     by_family_solved = Counter(
-        row["family"] for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
+        row["family"]
+        for row in rows
+        if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
     )
     by_status = Counter(str(row["status"]) for row in rows)
     by_answer = Counter(str(row["answer"]) for row in rows)
     all_families = sorted({row["family"] for row in rows})
     stat_totals = {
-        key: sum(stat_value(row, key) for row in rows)
-        for key in stat_fields
+        key: sum(stat_value(row, key) for row in rows) for key in stat_fields
     }
     total = len(rows)
-    solved = sum(1 for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"})
+    solved = sum(
+        1 for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
+    )
     checked = sum(1 for row in rows if row["expected"])
     wrong = sum(1 for row in rows if row["wrong"] == "true")
-    timed_out_with_stats = sum(1 for row in rows if row["timed_out_with_stats"] == "true")
+    timed_out_with_stats = sum(
+        1 for row in rows if row["timed_out_with_stats"] == "true"
+    )
     par2 = sum(
-        float(row["seconds"]) if row["status"] == "ok" else 2.0 * args.timeout for row in rows
+        float(row["seconds"]) if row["status"] == "ok" else 2.0 * args.timeout
+        for row in rows
     )
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     with args.summary.open("w", newline="") as handle:
@@ -445,14 +498,18 @@ def main() -> int:
         writer.writerow({"metric": "solved", "value": solved})
         writer.writerow({"metric": "checked", "value": checked})
         writer.writerow({"metric": "wrong", "value": wrong})
-        writer.writerow({"metric": "timed_out_with_stats", "value": timed_out_with_stats})
+        writer.writerow(
+            {"metric": "timed_out_with_stats", "value": timed_out_with_stats}
+        )
         writer.writerow({"metric": "par2", "value": f"{par2:.6f}"})
         for status, count in sorted(by_status.items()):
             writer.writerow({"metric": f"status.{status}", "value": count})
         for answer, count in sorted(by_answer.items()):
             writer.writerow({"metric": f"answer.{answer}", "value": count})
         for family in all_families:
-            writer.writerow({"metric": f"family.{family}.ok", "value": by_family_ok[family]})
+            writer.writerow(
+                {"metric": f"family.{family}.ok", "value": by_family_ok[family]}
+            )
             writer.writerow(
                 {"metric": f"family.{family}.solved", "value": by_family_solved[family]}
             )

@@ -19,7 +19,16 @@ def main() -> int:
     python_dir = args.prefix / "python"
     args.prefix.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "--target", str(python_dir), args.package],
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "--target",
+            str(python_dir),
+            args.package,
+        ],
         check=True,
     )
 

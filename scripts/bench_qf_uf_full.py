@@ -125,11 +125,15 @@ def safe_log_stem(index: int, path: Path) -> str:
 
 def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) -> None:
     total = len(rows)
-    solved = sum(1 for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"})
+    solved = sum(
+        1 for row in rows if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
+    )
     unsupported = sum(1 for row in rows if row["answer"] == "unsupported")
     checked = sum(1 for row in rows if row["expected"])
     wrong = sum(1 for row in rows if row["wrong"] == "true")
-    timed_out_with_stats = sum(1 for row in rows if row.get("timed_out_with_stats") == "true")
+    timed_out_with_stats = sum(
+        1 for row in rows if row.get("timed_out_with_stats") == "true"
+    )
     par2 = sum(
         float(row["seconds"])
         if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
@@ -144,8 +148,12 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
         for row in rows
         if row["status"] == "ok" and row["answer"] in {"sat", "unsat"}
     )
-    by_family_wrong = Counter(str(row["family"]) for row in rows if row["wrong"] == "true")
-    by_family_timeout = Counter(str(row["family"]) for row in rows if row["status"] == "timeout")
+    by_family_wrong = Counter(
+        str(row["family"]) for row in rows if row["wrong"] == "true"
+    )
+    by_family_timeout = Counter(
+        str(row["family"]) for row in rows if row["status"] == "timeout"
+    )
     by_family_unsupported = Counter(
         str(row["family"]) for row in rows if row["answer"] == "unsupported"
     )
@@ -160,19 +168,26 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
         writer.writerow({"metric": "unsupported", "value": unsupported})
         writer.writerow({"metric": "checked", "value": checked})
         writer.writerow({"metric": "wrong", "value": wrong})
-        writer.writerow({"metric": "timed_out_with_stats", "value": timed_out_with_stats})
+        writer.writerow(
+            {"metric": "timed_out_with_stats", "value": timed_out_with_stats}
+        )
         writer.writerow({"metric": "par2", "value": f"{par2:.6f}"})
         for status, count in sorted(by_status.items()):
             writer.writerow({"metric": f"status.{status}", "value": count})
         for answer, count in sorted(by_answer.items()):
             writer.writerow({"metric": f"answer.{answer}", "value": count})
         for family in sorted(by_family_total):
-            writer.writerow({"metric": f"family.{family}.total", "value": by_family_total[family]})
+            writer.writerow(
+                {"metric": f"family.{family}.total", "value": by_family_total[family]}
+            )
             writer.writerow(
                 {"metric": f"family.{family}.solved", "value": by_family_solved[family]}
             )
             writer.writerow(
-                {"metric": f"family.{family}.timeout", "value": by_family_timeout[family]}
+                {
+                    "metric": f"family.{family}.timeout",
+                    "value": by_family_timeout[family],
+                }
             )
             writer.writerow(
                 {
@@ -180,12 +195,16 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
                     "value": by_family_unsupported[family],
                 }
             )
-            writer.writerow({"metric": f"family.{family}.wrong", "value": by_family_wrong[family]})
+            writer.writerow(
+                {"metric": f"family.{family}.wrong", "value": by_family_wrong[family]}
+            )
         for key in stat_keys:
             total_value = sum(stat_value(row, key) for row in rows)
             active_rows = sum(1 for row in rows if stat_value(row, key) > 0)
             writer.writerow({"metric": f"stat-total.{key}", "value": total_value})
-            writer.writerow({"metric": f"stat-active-files.{key}", "value": active_rows})
+            writer.writerow(
+                {"metric": f"stat-active-files.{key}", "value": active_rows}
+            )
 
 
 def main() -> int:
@@ -198,7 +217,9 @@ def main() -> int:
     parser.add_argument("--shards", type=int, default=1)
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--out", type=Path, default=Path("results/qf-uf-full.csv"))
-    parser.add_argument("--summary", type=Path, default=Path("results/qf-uf-full-summary.csv"))
+    parser.add_argument(
+        "--summary", type=Path, default=Path("results/qf-uf-full-summary.csv")
+    )
     parser.add_argument("--log-dir", type=Path)
     args = parser.parse_args()
 
@@ -212,7 +233,11 @@ def main() -> int:
         raise SystemExit("--shard-index must be in [0, shards)")
 
     all_files = discover_files(root)
-    files = [path for offset, path in enumerate(all_files) if offset % args.shards == args.shard_index]
+    files = [
+        path
+        for offset, path in enumerate(all_files)
+        if offset % args.shards == args.shard_index
+    ]
     solver_command = [*args.solver, *args.solver_arg]
 
     rows: list[dict[str, object]] = []
@@ -279,7 +304,12 @@ def main() -> int:
         "stderr_log",
     ]
     stat_fieldnames = sorted(
-        {key for row in rows for key in row if key.startswith(":") or key.startswith("llm2smt.")}
+        {
+            key
+            for row in rows
+            for key in row
+            if key.startswith(":") or key.startswith("llm2smt.")
+        }
     )
     fieldnames = [*base_fieldnames, *stat_fieldnames]
     with args.out.open("w", newline="") as handle:

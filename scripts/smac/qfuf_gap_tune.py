@@ -15,7 +15,6 @@ import csv
 import json
 import shlex
 import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -126,7 +125,9 @@ def solver_args(config: Any) -> list[str]:
     if prop_delivery != "default":
         args.append(f"--euf-prop-delivery={prop_delivery}")
     args.append(f"--prop-interval={config_value(config, 'prop_interval', '32')}")
-    args.append(f"--prop-assign-threshold={config_value(config, 'prop_threshold', '0.25')}")
+    args.append(
+        f"--prop-assign-threshold={config_value(config, 'prop_threshold', '0.25')}"
+    )
 
     if config_value(config, "cadical_profile", "default") == "incremental":
         for option in INCREMENTAL_CADICAL_OPTIONS:
@@ -135,7 +136,9 @@ def solver_args(config: Any) -> list[str]:
     return args
 
 
-def run_solver(solver: list[str], config: Any, path: Path, timeout: float) -> dict[str, Any]:
+def run_solver(
+    solver: list[str], config: Any, path: Path, timeout: float
+) -> dict[str, Any]:
     command = [*solver, *solver_args(config), str(path)]
     start = time.perf_counter()
     timed_out = False
@@ -149,12 +152,10 @@ def run_solver(solver: list[str], config: Any, path: Path, timeout: float) -> di
             timeout=timeout,
         )
         stdout = proc.stdout
-        stderr = proc.stderr
         exit_code = proc.returncode
     except subprocess.TimeoutExpired as exc:
         timed_out = True
         stdout = completed_text(exc.stdout)
-        stderr = completed_text(exc.stderr)
         exit_code = 124
     seconds = time.perf_counter() - start
     first_line = stdout.strip().splitlines()[0] if stdout.strip() else ""
@@ -206,14 +207,18 @@ def make_configspace(seed: int):
     cs.add_hyperparameters(
         [
             CategoricalHyperparameter(
-                "preprocess", ["default", "auto", "basic", "strong"], default_value="default"
+                "preprocess",
+                ["default", "auto", "basic", "strong"],
+                default_value="default",
             ),
             UniformIntegerHyperparameter("passes", 2, 8, default_value=4),
             UniformIntegerHyperparameter("adaptive_extra", 0, 8, default_value=4),
             UniformIntegerHyperparameter("adaptive_shrink", 0, 30, default_value=10),
             CategoricalHyperparameter("symmetry", ["on", "off"], default_value="on"),
             CategoricalHyperparameter("eq_bridge", ["on", "off"], default_value="on"),
-            CategoricalHyperparameter("solved_constants", ["on", "off"], default_value="on"),
+            CategoricalHyperparameter(
+                "solved_constants", ["on", "off"], default_value="on"
+            ),
             CategoricalHyperparameter(
                 "ground_unit_substitution", ["off", "on"], default_value="off"
             ),
@@ -223,20 +228,25 @@ def make_configspace(seed: int):
             CategoricalHyperparameter(
                 "euf_prop", ["auto", "conflict", "online", "off"], default_value="auto"
             ),
-            CategoricalHyperparameter("pure_filter", ["auto", "on", "off"], default_value="auto"),
             CategoricalHyperparameter(
-                "prop_budget", ["auto", "500", "1000", "3000", "10000", "unlimited"],
+                "pure_filter", ["auto", "on", "off"], default_value="auto"
+            ),
+            CategoricalHyperparameter(
+                "prop_budget",
+                ["auto", "500", "1000", "3000", "10000", "unlimited"],
                 default_value="auto",
             ),
             CategoricalHyperparameter(
-                "prop_delivery", ["default", "250", "1000", "3000", "10000", "unlimited"],
+                "prop_delivery",
+                ["default", "250", "1000", "3000", "10000", "unlimited"],
                 default_value="1000",
             ),
             CategoricalHyperparameter(
                 "prop_interval", ["8", "16", "32", "64", "128"], default_value="32"
             ),
             CategoricalHyperparameter(
-                "prop_threshold", ["0.10", "0.25", "0.50", "0.75", "1.0"],
+                "prop_threshold",
+                ["0.10", "0.25", "0.50", "0.75", "1.0"],
                 default_value="0.25",
             ),
             CategoricalHyperparameter(
@@ -287,7 +297,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--solver", default="./build/primo")
-    parser.add_argument("--train", type=Path, default=Path("benchmarks/qfuf-smac-gap-train.txt"))
+    parser.add_argument(
+        "--train", type=Path, default=Path("benchmarks/qfuf-smac-gap-train.txt")
+    )
     parser.add_argument(
         "--validate", type=Path, default=Path("benchmarks/qfuf-smac-gap-validate.txt")
     )
@@ -308,7 +320,9 @@ def main() -> int:
     try:
         from smac import HyperparameterOptimizationFacade, Scenario
     except ImportError as exc:
-        raise SystemExit("SMAC is not installed; run `python -m pip install smac`.") from exc
+        raise SystemExit(
+            "SMAC is not installed; run `python -m pip install smac`."
+        ) from exc
 
     cs = make_configspace(args.seed)
     run_fields = [
@@ -366,12 +380,26 @@ def main() -> int:
     smac = HyperparameterOptimizationFacade(scenario, objective, overwrite=True)
     incumbent = smac.optimize()
     incumbent_dict = config_dict(incumbent)
-    (out_dir / "incumbent.json").write_text(json.dumps(incumbent_dict, indent=2, sort_keys=True))
+    (out_dir / "incumbent.json").write_text(
+        json.dumps(incumbent_dict, indent=2, sort_keys=True)
+    )
 
     default_config = cs.get_default_configuration()
-    default_cost = validate("default", solver, default_config, validation_files, args.validation_timeout, out_dir)
+    default_cost = validate(
+        "default",
+        solver,
+        default_config,
+        validation_files,
+        args.validation_timeout,
+        out_dir,
+    )
     incumbent_cost = validate(
-        "incumbent", solver, incumbent, validation_files, args.validation_timeout, out_dir
+        "incumbent",
+        solver,
+        incumbent,
+        validation_files,
+        args.validation_timeout,
+        out_dir,
     )
     with (out_dir / "result.json").open("w") as handle:
         json.dump(
@@ -384,7 +412,11 @@ def main() -> int:
             indent=2,
             sort_keys=True,
         )
-    print(json.dumps({"default": default_cost, "incumbent": incumbent_cost}, sort_keys=True))
+    print(
+        json.dumps(
+            {"default": default_cost, "incumbent": incumbent_cost}, sort_keys=True
+        )
+    )
     return 0
 
 

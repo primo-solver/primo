@@ -33,7 +33,16 @@ def main() -> int:
     args.prefix.mkdir(parents=True, exist_ok=True)
     python_dir = args.prefix / "python"
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "--target", str(python_dir), args.package],
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "--target",
+            str(python_dir),
+            args.package,
+        ],
         check=True,
     )
 
@@ -42,7 +51,9 @@ def main() -> int:
     if packaged_binary.exists():
         wrapper.parent.mkdir(parents=True, exist_ok=True)
         wrapper.write_bytes(packaged_binary.read_bytes())
-        wrapper.chmod(wrapper.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        wrapper.chmod(
+            wrapper.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+        )
         print(f"installed z3 binary wrapper: {wrapper}")
     else:
         write_wrapper(wrapper, python_dir)

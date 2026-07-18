@@ -79,18 +79,30 @@ def solver_args(params: dict[str, str]) -> list[str]:
         args.append(f"--qf-uf-preprocess={preprocess}")
 
     args.append(f"--preprocessing-passes={params.get('passes', '4')}")
-    args.append(f"--preprocessing-adaptive-extra-passes={params.get('adaptive_extra', '4')}")
-    args.append(f"--preprocessing-adaptive-shrink-percent={params.get('adaptive_shrink', '10')}")
+    args.append(
+        f"--preprocessing-adaptive-extra-passes={params.get('adaptive_extra', '4')}"
+    )
+    args.append(
+        f"--preprocessing-adaptive-shrink-percent={params.get('adaptive_shrink', '10')}"
+    )
 
     if params.get("symmetry", "on") == "off":
         args.append("--no-uf-symmetry-breaking")
     if params.get("eq_bridge", "on") == "off":
         args.append("--no-eq-bridge")
-    add_flag(args, params.get("ground_congruence", "off") == "on", "--ground-congruence")
-    add_flag(args, params.get("ground_unit_substitution", "off") == "on",
-             "--ground-unit-substitution")
-    add_flag(args, params.get("guarded_ground_unit_substitution", "off") == "on",
-             "--guarded-ground-unit-substitution")
+    add_flag(
+        args, params.get("ground_congruence", "off") == "on", "--ground-congruence"
+    )
+    add_flag(
+        args,
+        params.get("ground_unit_substitution", "off") == "on",
+        "--ground-unit-substitution",
+    )
+    add_flag(
+        args,
+        params.get("guarded_ground_unit_substitution", "off") == "on",
+        "--guarded-ground-unit-substitution",
+    )
 
     args.append(f"--euf-engine={params.get('euf_engine', 'incremental')}")
     args.append(f"--euf-prop={params.get('euf_prop', 'auto')}")
@@ -131,7 +143,9 @@ def main() -> int:
     instance, params = split_runner_args(sys.argv[1:])
     solver = shlex.split(os.environ.get("PRIMO_TUNE_SOLVER", "./build/primo"))
     timeout = float(os.environ.get("PRIMO_TUNE_TIMEOUT", "30"))
-    wrong_penalty = float(os.environ.get("PRIMO_TUNE_WRONG_PENALTY", str(1000 * timeout)))
+    wrong_penalty = float(
+        os.environ.get("PRIMO_TUNE_WRONG_PENALTY", str(1000 * timeout))
+    )
     expected = parse_status(instance)
     command = [*solver, *solver_args(params), str(instance)]
     start = time.perf_counter()

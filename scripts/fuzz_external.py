@@ -90,14 +90,20 @@ def generate_fuzzsmt(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--fuzzer", choices=["yinyang", "fuzzsmt", "storm"], required=True)
+    parser.add_argument(
+        "--fuzzer", choices=["yinyang", "fuzzsmt", "storm"], required=True
+    )
     parser.add_argument("--seeds", type=Path)
     parser.add_argument("--solver", default="./build/primo")
     parser.add_argument("--refs", nargs="+", default=["z3", "cvc5"])
     parser.add_argument("--logic", default="QF_UF")
     parser.add_argument("--count", type=int, default=1000)
     parser.add_argument("--timeout", type=float, default=5.0)
-    parser.add_argument("--fuzzer-args", default="", help="Extra arguments passed to the selected fuzzer")
+    parser.add_argument(
+        "--fuzzer-args",
+        default="",
+        help="Extra arguments passed to the selected fuzzer",
+    )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
@@ -109,7 +115,9 @@ def main() -> int:
     fuzzer_path = shutil.which(args.fuzzer)
     if fuzzer_path is None:
         with summary.open("w", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=["fuzzer", "logic", "count", "seed", "status"])
+            writer = csv.DictWriter(
+                handle, fieldnames=["fuzzer", "logic", "count", "seed", "status"]
+            )
             writer.writeheader()
             writer.writerow(
                 {
@@ -127,9 +135,19 @@ def main() -> int:
     if args.fuzzer != "fuzzsmt":
         status = "TODO_FUZZER_WRAPPER"
         with summary.open("w", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=["fuzzer", "logic", "count", "seed", "status"])
+            writer = csv.DictWriter(
+                handle, fieldnames=["fuzzer", "logic", "count", "seed", "status"]
+            )
             writer.writeheader()
-            writer.writerow({"fuzzer": args.fuzzer, "logic": args.logic, "count": args.count, "seed": args.seed, "status": status})
+            writer.writerow(
+                {
+                    "fuzzer": args.fuzzer,
+                    "logic": args.logic,
+                    "count": args.count,
+                    "seed": args.seed,
+                    "status": status,
+                }
+            )
         print(f"{args.fuzzer} found at {fuzzer_path}; wrapper implementation is TODO.")
         print(f"summary: {summary}")
         return 0
@@ -143,7 +161,11 @@ def main() -> int:
         shlex.split(args.fuzzer_args),
     )
     solver_command = shlex.split(args.solver)
-    ref_commands = [shlex.split(ref) for ref in args.refs if shutil.which(shlex.split(ref)[0]) is not None]
+    ref_commands = [
+        shlex.split(ref)
+        for ref in args.refs
+        if shutil.which(shlex.split(ref)[0]) is not None
+    ]
     bugs = args.out / "bugs"
     bugs.mkdir(parents=True, exist_ok=True)
 
@@ -152,7 +174,14 @@ def main() -> int:
         ours, _ = run_solver(solver_command, path, args.timeout)
         ref_results = [run_solver(ref, path, args.timeout)[0] for ref in ref_commands]
         outcome = classify(ours, ref_results)
-        rows.append({"file": str(path), "ours": ours, "refs": " ".join(ref_results), "outcome": outcome})
+        rows.append(
+            {
+                "file": str(path),
+                "ours": ours,
+                "refs": " ".join(ref_results),
+                "outcome": outcome,
+            }
+        )
         if outcome not in {"PASS", "UNKNOWN_INVOLVED"}:
             shutil.copy2(path, bugs / path.name)
         print(f"{path}: {outcome} ours={ours} refs={' '.join(ref_results)}")

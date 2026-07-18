@@ -13,11 +13,17 @@ from pathlib import Path
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--predicate", required=True, help="Command that reproduces the failure")
+    parser.add_argument(
+        "--predicate", required=True, help="Command that reproduces the failure"
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--ddsmt", default="ddsmt")
-    parser.add_argument("--match-out", help="Require this text on stdout to preserve the failure")
-    parser.add_argument("--match-err", help="Require this text on stderr to preserve the failure")
+    parser.add_argument(
+        "--match-out", help="Require this text on stdout to preserve the failure"
+    )
+    parser.add_argument(
+        "--match-err", help="Require this text on stderr to preserve the failure"
+    )
     parser.add_argument("--timeout", type=float, default=5.0)
     args = parser.parse_args()
 

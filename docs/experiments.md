@@ -131,6 +131,23 @@ the regression quickly. For Primo this script is not a headline benchmark and
 does not change CLI defaults. Use it to decide whether full QF_UF SLURM
 campaigns should include a CaDiCaL-profiled variant.
 
+To compare CaDiCaL releases rather than only option profiles, build one Primo
+binary per CaDiCaL tag:
+
+```bash
+python3 scripts/check_cadical_versions.py \
+  --tags rel-1.9.5 rel-2.2.1 rel-3.0.0 \
+  --timeout 10 \
+  --out results/cadical-version-profile/profile.csv \
+  --summary results/cadical-version-profile/profile.md \
+  tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2 \
+  tmp/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.3.prop2_ab_reg_max.smt2
+```
+
+This is a dependency check, not a solver algorithm. Record the resulting job,
+commands, tags, and artifact paths in `docs/run-log.json` before citing the
+comparison.
+
 ## QF_UF Parameter Tuning With irace
 
 `scripts/irace/` contains a reproducible irace setup for QF_UF profile tuning.

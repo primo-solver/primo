@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import platform
 import shutil
 import stat
@@ -28,7 +27,9 @@ def system_asset_keywords() -> list[str]:
         return ["linux", *arch_terms]
     if system == "darwin":
         return ["macos", "mac", "darwin", *arch_terms]
-    raise SystemExit(f"unsupported platform for automatic cvc5 install: {platform.system()} {platform.machine()}")
+    raise SystemExit(
+        f"unsupported platform for automatic cvc5 install: {platform.system()} {platform.machine()}"
+    )
 
 
 def choose_asset(release: dict) -> dict:
@@ -45,7 +46,9 @@ def choose_asset(release: dict) -> dict:
             candidates.append((score, asset))
     if not candidates:
         names = ", ".join(asset.get("name", "") for asset in release.get("assets", []))
-        raise SystemExit(f"no matching cvc5 release asset for this platform; assets: {names}")
+        raise SystemExit(
+            f"no matching cvc5 release asset for this platform; assets: {names}"
+        )
     candidates.sort(key=lambda item: item[0], reverse=True)
     return candidates[0][1]
 
@@ -75,7 +78,9 @@ def find_binary(root: Path) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, default=Path("contrib/local"))
-    parser.add_argument("--version", help="Release tag, for example cvc5-1.3.0. Defaults to latest.")
+    parser.add_argument(
+        "--version", help="Release tag, for example cvc5-1.3.0. Defaults to latest."
+    )
     args = parser.parse_args()
 
     if args.version:

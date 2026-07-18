@@ -31,7 +31,7 @@ def run_solver(command: list[str], timeout: float) -> tuple[str, int, str, str]:
     first = proc.stdout.strip().splitlines()[0] if proc.stdout.strip() else ""
     text = (proc.stdout + "\n" + proc.stderr).lower()
     if "unsupported" in text:
-      return "UNSUPPORTED_INPUT", proc.returncode, proc.stdout, proc.stderr
+        return "UNSUPPORTED_INPUT", proc.returncode, proc.stdout, proc.stderr
     if first in RESULTS:
         return first, proc.returncode, proc.stdout, proc.stderr
     if proc.returncode != 0:
@@ -83,7 +83,14 @@ def main() -> int:
                 continue
             ref_results.append(run_solver([ref, str(path)], args.timeout)[0])
         outcome = classify(ours, ref_results)
-        rows.append({"file": str(path), "ours": ours, "refs": " ".join(ref_results), "outcome": outcome})
+        rows.append(
+            {
+                "file": str(path),
+                "ours": ours,
+                "refs": " ".join(ref_results),
+                "outcome": outcome,
+            }
+        )
         print(f"{path}: {outcome} ours={ours} refs={' '.join(ref_results)}")
 
     with args.out.open("w", newline="") as handle:
@@ -92,7 +99,11 @@ def main() -> int:
         writer.writerows(rows)
 
     if args.expect_disagreement:
-        return 0 if any(row["outcome"] not in {"PASS", "UNKNOWN_INVOLVED"} for row in rows) else 1
+        return (
+            0
+            if any(row["outcome"] not in {"PASS", "UNKNOWN_INVOLVED"} for row in rows)
+            else 1
+        )
     return 0
 
 

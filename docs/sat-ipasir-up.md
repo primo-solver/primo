@@ -47,6 +47,33 @@ calls with small deltas should be checked with an incremental profile such as
 slowdown to Primo's EUF code. Invalid option names or values are rejected by the
 backend and reported as unsupported input for that run.
 
+## CaDiCaL version checks
+
+Primo links one CaDiCaL library into each solver binary. The CLI therefore
+offers runtime option overrides through `--cadical-option`, but it does not
+switch CaDiCaL versions inside a single process. Version comparisons use one
+Primo build directory per CaDiCaL tag.
+
+`contrib/install_cadical.py` accepts `--tag` and `--prefix`, so a specific
+CaDiCaL release can be installed into a separate prefix:
+
+```bash
+python3 contrib/install_cadical.py \
+  --tag rel-1.9.5 \
+  --prefix contrib/cadical-versions/rel-1.9.5 \
+  --clean-build
+cmake -S . -B build-cadical-1.9.5 \
+  -DPRIMO_CADICAL_ROOT=$PWD/contrib/cadical-versions/rel-1.9.5 \
+  -DCMAKE_PREFIX_PATH="$PWD/contrib/cadical-versions/rel-1.9.5;$PWD/contrib/local"
+cmake --build build-cadical-1.9.5 --target primo
+```
+
+For repeated checks, use `scripts/check_cadical_versions.py`; it installs each
+tag, builds a matching Primo binary, runs the CaDiCaL profile check, and writes
+a merged CSV. This is the preferred way to compare tags such as `rel-1.9.5`,
+`rel-2.2.1`, and `rel-3.0.0` without relying on whatever CaDiCaL happens to be
+installed in `contrib/local`.
+
 ## References
 
 See `docs/papers/ipasir-up.md`.
@@ -58,5 +85,9 @@ CaDiCaL can be installed into `contrib/local` with:
 ```bash
 make contrib-cadical
 ```
+
+Set `CADICAL_TAG=rel-1.9.5` to install a non-default tag into `contrib/local`.
+For campaign comparisons, prefer versioned prefixes instead of replacing
+`contrib/local`.
 
 `make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` and reports whether CaDiCaL/IPASIR headers and libraries were found.

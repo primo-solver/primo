@@ -54,7 +54,11 @@ int CadicalBackend::new_var() {
   ++max_var_;
   statistics_.variables = static_cast<std::size_t>(max_var_);
 #if PRIMO_HAVE_IPASIR
+#if PRIMO_CADICAL_HAS_RESIZE
   solver_->resize(max_var_);
+#elif PRIMO_CADICAL_HAS_RESERVE
+  solver_->reserve(max_var_);
+#endif
 #endif
   return max_var_;
 }

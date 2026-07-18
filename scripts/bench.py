@@ -57,20 +57,35 @@ def main() -> int:
         stdout_path.write_text(stdout)
         stderr_path.write_text(stderr)
         first = stdout.strip().splitlines()[0] if stdout.strip() else ""
-        result = first if first in {"sat", "unsat", "unknown", "unsupported"} else "error"
-        rows.append({
-            "file": str(path),
-            "result": result,
-            "runtime": f"{runtime:.6f}",
-            "timeout": str(timeout).lower(),
-            "exit_code": exit_code,
-            "stdout path": str(stdout_path),
-            "stderr path": str(stderr_path),
-        })
+        result = (
+            first if first in {"sat", "unsat", "unknown", "unsupported"} else "error"
+        )
+        rows.append(
+            {
+                "file": str(path),
+                "result": result,
+                "runtime": f"{runtime:.6f}",
+                "timeout": str(timeout).lower(),
+                "exit_code": exit_code,
+                "stdout path": str(stdout_path),
+                "stderr path": str(stderr_path),
+            }
+        )
         print(f"{path}: {result} {runtime:.3f}s")
 
     with args.out.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["file", "result", "runtime", "timeout", "exit_code", "stdout path", "stderr path"])
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "file",
+                "result",
+                "runtime",
+                "timeout",
+                "exit_code",
+                "stdout path",
+                "stderr path",
+            ],
+        )
         writer.writeheader()
         writer.writerows(rows)
     print(f"wrote {args.out}")
