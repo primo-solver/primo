@@ -173,7 +173,11 @@ Current entry points:
 Use YinYang for mutation of real SMT-LIB seeds and FuzzSMT for grammar-based
 black-box generation. Both are useful: YinYang stays close to benchmark shapes,
 while FuzzSMT stresses frontend and Core/QF_UF coverage with independently
-generated formulas.
+generated formulas. For QF_UF, the real-formula seed corpus must include
+representative benchmark-family shapes, not just tiny generic satisfiable and
+unsatisfiable formulas. In particular, keep seeds for QG-style finite-domain
+operation tables, Goel hardware-style formulas, NEQ/PEQ/SEQ finite-domain
+choices, and any minimized bug reproducer that previously escaped fuzzing.
 
 Long fuzzing campaigns should run on SLURM, not on developer workstations.
 Preserve generated failures under `yinyang_bugs/` until each one is copied back,
@@ -202,15 +206,17 @@ Use three gate sizes:
 - **Merge gate:** at least 1000 generated or mutated inputs against a trusted
   reference for ordinary solver, preprocessing, SAT, or theory behavior changes.
 - **Campaign gate:** at least 3000 generated QF_UF FuzzSMT-style cases for
-  QF_UF default/profile changes, plus YinYang/typefuzz over real benchmark seeds
-  when available. Other theories should define comparable generator and
+  QF_UF default/profile changes, plus YinYang/typefuzz over representative real
+  benchmark seeds. Other theories should define comparable generator and
   seed-mutation counts before becoming headline targets.
 
 For QF_UF work, the campaign gate is the minimum before promoting a new
 preprocessing transformation, external propagation mode, SAT profile, or theory
-engine to default behavior. If the generator or reference solver is missing,
-install it when feasible; otherwise record the failed command and treat the
-missing fuzz gate as incomplete verification.
+engine to default behavior. A seed-mutation run that covers only the generic
+`benchmarks/seeds/qf_uf/seed_basic.smt2` shape is smoke evidence, not campaign
+evidence. If the generator, representative seeds, or reference solver is
+missing, install or add them when feasible; otherwise record the failed command
+and treat the missing fuzz gate as incomplete verification.
 
 Every fuzz artifact should record:
 

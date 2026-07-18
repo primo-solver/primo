@@ -881,6 +881,58 @@ void default_symmetry_breaking_reports_covered_values_and_terms() {
   assert(result.statistics.get(":preprocessing.uf-symmetry.value-precedence-constraints") == 6);
 }
 
+void moving_only_symmetry_terms_are_rejected_from_smtlib() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun f (A) A)
+    (assert (distinct a b c))
+    (assert (or (= (f a) a) (= (f a) b) (= (f a) c)))
+    (assert (or (= (f b) a) (= (f b) b) (= (f b) c)))
+    (assert (or (= (f c) a) (= (f c) b) (= (f c) c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.accepted-sets") == 0);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.values") == 0);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.terms") == 0);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 0);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.rejected-noninvariant") == 1);
+}
+
+void symmetry_ignores_preprocessing_residual_domains() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun f (A) A)
+    (declare-fun x () A)
+    (assert (distinct a b c))
+    (assert (not (= x a)))
+    (assert (or (= x a) (= x b) (= x c)))
+    (assert (or (= (f a) a) (= (f a) b) (= (f a) c)))
+    (assert (= x c))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.forced-atoms.rewrites") >= 1);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.accepted-sets") == 0);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 0);
+}
+
 void no_symmetry_breaking_disables_strong_preset_symmetry_only() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -1306,6 +1358,8 @@ int main() {
   finite_domain_equality_definitions_can_be_disabled();
   auto_preprocessing_keeps_equality_definitions_opt_in();
   default_symmetry_breaking_reports_covered_values_and_terms();
+  moving_only_symmetry_terms_are_rejected_from_smtlib();
+  symmetry_ignores_preprocessing_residual_domains();
   no_symmetry_breaking_disables_strong_preset_symmetry_only();
   theory_phase_option_can_leave_backend_phase_unset();
   strong_preprocessing_enables_ground_congruence_clauses();

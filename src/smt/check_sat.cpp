@@ -2479,6 +2479,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
 
     statistics.set(kStatPreprocessingTermSizeInitial,
                    reachable_term_count(frontend.terms(), assertions));
+    const std::vector<core::TermId> symmetry_source_assertions = assertions;
     if (auto_large_assertion_skip && options.solved_constant_substitution) {
       SolvedConstantSubstitutionResult solved_constants =
           substitute_solved_constants(frontend.terms(), assertions);
@@ -2580,7 +2581,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     if (use_symmetry_breaking) {
       UfSymmetryBreaker symmetry_breaker(frontend.terms());
       UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(
-          assertions,
+          symmetry_source_assertions,
           UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
       assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
       statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);

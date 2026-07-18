@@ -471,34 +471,29 @@ second may use only the first two values, and so on; when a later term uses
 value `v_j`, an earlier fixed term must have used `v_{j-1}`. These restrictions
 are emitted as ordinary SMT assertions over the existing equality atoms.
 
-If an accepted group has no fixed terms, the pass falls back to the conservative
-Déharbe et al. Algorithm 1 restriction. It orders terms by occurrence density
-with stable `TermId` tie-breaking, maintains the set of values already used by
-previously selected terms, first keeps every value contained in the selected
-term, then adds one fresh value as a new representative if one remains. This is
-weaker than fixed-term value precedence, but it preserves the soundness
-condition for moving terms.
+If a candidate group has no fixed terms after dropping terms that contain the
+permuted values, the pass rejects the group. A QG-style table term such as
+`(op c0 c1)` moves when the values `c0, c1, ...` are permuted, so it is not a
+stable ordered representative for value-precedence clauses. This conservative
+guard prevents benchmark-provided symmetry constraints from being strengthened
+with restrictions that are not justified by the implemented subset.
 
-A table term such as `(f c0)` is therefore no longer discarded merely because it
-contains `c0`: for moving-only groups, the generated fallback restriction may
-rule out values not yet used, but it cannot rule out `c0` itself. The fixed-term
-value-precedence clauses and the moving-term fallback are not stacked for the
-same group.
-
-`--finite-domain-value-precedence` is default-on. Disabling it leaves the
-accepted symmetry group to the moving-term restriction code path, which is useful
-for ablation but is usually weaker on finite-domain choice encodings.
+`--finite-domain-value-precedence` is default-on. Disabling it keeps the same
+fixed-term eligibility guard, but emits the weaker Déharbe-style unit exclusions
+only for the fixed terms. Primo does not currently implement a moving-term
+symmetry restriction.
 
 These assertions remove value-renaming representatives from the search space.
 They do not replace EUF reasoning and they do not create a finite model finder by
 themselves.
 
-UF symmetry breaking runs after the fixed-point simplification loop and before
-finite-domain AMO and equality-definition expansion. The ordering matters:
-symmetry invariance is a property of the benchmark formula plus simplification
-consequences, while AMO/equality-definition clauses are derived strengthening
-lemmas. Running the invariance test after those generated lemmas can reject
-otherwise symmetric QG-style value sets.
+UF symmetry breaking is emitted after the fixed-point simplification loop, but
+the recognizer checks the source assertion snapshot from before that loop. The
+ordering matters: preprocessing can turn a full finite-domain choice into a
+residual partial-domain disjunction after propagating forced negative equality
+units, and such residual domains are not independent evidence of a source-level
+value symmetry. AMO/equality-definition clauses are generated after symmetry
+breaking and are treated as derived strengthening lemmas, not symmetry evidence.
 
 Activation is reported with `:preprocessing.uf-symmetry.accepted-sets`,
 `:preprocessing.uf-symmetry.values`, `:preprocessing.uf-symmetry.terms`,

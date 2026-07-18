@@ -1802,13 +1802,13 @@ void add_unique_symmetry_constraint(std::unordered_set<core::TermId>& emitted,
 }
 
 void add_paper_symmetry_constraints(core::TermManager& terms, const SymmetryGroup& group,
+                                    const std::vector<SymmetryTerm>& terms_to_restrict,
                                     std::unordered_set<core::TermId>& emitted,
                                     UfSymmetryBreakingResult& result) {
-  // Déharbe et al., Algorithm 1, tracks constants already used by selected
-  // terms. A moving term may be restricted only after preserving the constants
-  // it syntactically contains; otherwise a permutation could move the term.
+  // Déharbe et al., Algorithm 1, tracks constants already used by selected fixed
+  // terms. Moving terms are filtered out before this fallback is reached.
   std::unordered_set<core::TermId> used_constants;
-  for (const SymmetryTerm& term : group.terms) {
+  for (const SymmetryTerm& term : terms_to_restrict) {
     for (const core::TermId used_value : term.used_values) {
       used_constants.insert(used_value);
     }
@@ -2377,10 +2377,15 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
       continue;
     }
 
+    std::vector<SymmetryTerm> fixed_terms = fixed_symmetry_terms(group);
+    if (fixed_terms.empty()) {
+      ++result.rejected_noninvariant;
+      continue;
+    }
+
     ++result.accepted_sets;
     result.values += group.values.size();
-    std::vector<SymmetryTerm> fixed_terms = fixed_symmetry_terms(group);
-    if (!fixed_terms.empty() && options.value_precedence) {
+    if (options.value_precedence) {
       const std::size_t constraints_before = result.constraints.size();
       result.terms += fixed_terms.size();
       add_value_precedence_constraints(terms_, fixed_terms, group.values, emitted, result);
@@ -2389,22 +2394,8 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
       continue;
     }
 
-    std::sort(group.terms.begin(), group.terms.end(),
-              [](const SymmetryTerm& lhs, const SymmetryTerm& rhs) {
-                const std::size_t lhs_denominator = lhs.used_values.size() + 1;
-                const std::size_t rhs_denominator = rhs.used_values.size() + 1;
-                const std::size_t lhs_score = lhs.occurrences * rhs_denominator;
-                const std::size_t rhs_score = rhs.occurrences * lhs_denominator;
-                if (lhs_score != rhs_score) {
-                  return lhs_score > rhs_score;
-                }
-                if (lhs.used_values.size() != rhs.used_values.size()) {
-                  return lhs.used_values.size() < rhs.used_values.size();
-                }
-                return lhs.term < rhs.term;
-              });
-    result.terms += group.terms.size();
-    add_paper_symmetry_constraints(terms_, group, emitted, result);
+    result.terms += fixed_terms.size();
+    add_paper_symmetry_constraints(terms_, group, fixed_terms, emitted, result);
   }
 
   return result;
