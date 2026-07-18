@@ -253,6 +253,11 @@ python scripts/smac/qfuf_gap_tune.py \
   --trials 80
 ```
 
+The same invocation can be submitted through `scripts/slurm_qfuf_smac.sbatch`
+by setting `PRIMO_SMAC_TRAIN`, `PRIMO_SMAC_VALIDATE`, `PRIMO_SMAC_LABEL`,
+`PRIMO_SMAC_TRIALS`, `PRIMO_SMAC_TIMEOUT`, and
+`PRIMO_SMAC_VALIDATION_TIMEOUT`.
+
 The objective is PAR2 over the training manifest, with wrong answers penalized
 far above timeouts. After the SMAC budget is exhausted, the script validates the
 SMAC incumbent and the current default on the seven held-out gap instances and
