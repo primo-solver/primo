@@ -1150,6 +1150,179 @@
       },
       "evidence_status": "local-only",
       "notes": "The final artifact has zero bug files. This covers the generated QF_UF merge gate; QG seed-mutation and benchmark evidence are still separate."
+    },
+    {
+      "id": "2026-07-18-qg-raw-amo-focused-2905733-111466",
+      "started_at": "2026-07-18T18:46:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "benchmark",
+      "scope": "Focused QG qg6/qg7 iso_icl_repgen* and *_sk* target suite",
+      "commit": "2905733",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111466"
+      },
+      "command": "sbatch results/qg-raw-amo-slurm-2905733/qg-focused.sbatch; script invokes python3 scripts/bench_qf_uf_full.py --repo /home/janotmik/primo-raw-amo --root tmp/QF_UF --manifest results/qg-raw-amo-slurm-2905733/target-manifest.txt --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 8",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-slurm-rel/primo --quiet --stats"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 353,
+        "timeout_seconds": 120,
+        "manifest": "results/qg-raw-amo-slurm-2905733/target-manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qg-raw-amo-slurm-2905733/summary.csv",
+        "results": "results/qg-raw-amo-slurm-2905733/merged.csv",
+        "logs": "results/qg-raw-amo-slurm-2905733/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 353,
+        "solved": 353,
+        "wrong": 0,
+        "timeouts": 0,
+        "errors": 0,
+        "unsupported": 0,
+        "par2": 883.944,
+        "families": {
+          "QG": {
+            "total": 353,
+            "solved": 353,
+            "wrong": 0,
+            "timeout": 0
+          }
+        },
+        "target_iso_icl_repgen006": {
+          "status": "ok",
+          "answer": "unsat",
+          "seconds": 2.797408,
+          "amo_clauses": 3559,
+          "raw_amo_clauses": 3549,
+          "post_amo_clauses": 658,
+          "deduped_amo_clauses": 648,
+          "euf_theory_conflicts": 9703,
+          "euf_explain_calls": 1956068
+        },
+        "stat_totals": {
+          "finite_domain_amo_clauses": 1064316,
+          "finite_domain_raw_amo_clauses": 1050113,
+          "finite_domain_post_amo_clauses": 746419,
+          "finite_domain_deduped_amo_clauses": 732216
+        }
+      },
+      "evidence_status": "current",
+      "notes": "Remote workspace was checked immediately before sbatch with scripts/slurm_prepare_benchmark_workspace.py --check-only; binary reported git: 2905733 and cadical: cadical-3.0.0-7b99c07. This validates the target-suite part of the QG ICL gap plan."
+    },
+    {
+      "id": "2026-07-18-html334-raw-amo-2905733-111474",
+      "started_at": "2026-07-18T19:00:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "benchmark",
+      "scope": "334-row primo.html QF_UF subset default-profile regression check",
+      "commit": "2905733",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111474"
+      },
+      "command": "sbatch results/html334-raw-amo-2905733/html334-default.sbatch; script invokes python3 scripts/bench_qf_uf_full.py --repo /home/janotmik/primo-raw-amo --root tmp/QF_UF --manifest results/html334-raw-amo-2905733/manifest.txt --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 16",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-slurm-rel/primo --quiet --stats"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "results/html334-raw-amo-2905733/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/html334-raw-amo-2905733/summary.csv",
+        "results": "results/html334-raw-amo-2905733/merged.csv",
+        "logs": "results/html334-raw-amo-2905733/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 334,
+        "solved": 329,
+        "wrong": 0,
+        "timeouts": 5,
+        "errors": 0,
+        "unsupported": 0,
+        "par2": 3694.119632,
+        "baseline_commit": "6f3ffb1",
+        "baseline_results": "results/html334-phase-6f3ffb1/default-merged.csv",
+        "baseline_solved": 328,
+        "baseline_wrong": 0,
+        "baseline_timeouts": 6,
+        "baseline_par2": 4019.865824,
+        "families": {
+          "Goel": {
+            "total": 7,
+            "solved": 7,
+            "wrong": 0,
+            "timeout": 0
+          },
+          "NEQ": {
+            "total": 26,
+            "solved": 25,
+            "wrong": 0,
+            "timeout": 1
+          },
+          "PEQ": {
+            "total": 25,
+            "solved": 21,
+            "wrong": 0,
+            "timeout": 4
+          },
+          "QG": {
+            "total": 270,
+            "solved": 270,
+            "wrong": 0,
+            "timeout": 0
+          },
+          "SEQ": {
+            "total": 6,
+            "solved": 6,
+            "wrong": 0,
+            "timeout": 0
+          }
+        },
+        "newly_solved": [
+          "tmp/QF_UF/PEQ/PEQ003_size10.smt2"
+        ],
+        "new_unsolved_regressions": [],
+        "top_runtime_improvement": {
+          "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_nogen_sk003.smt2",
+          "new_seconds": 16.054092,
+          "old_seconds": 100.474819
+        },
+        "top_runtime_regression": {
+          "file": "tmp/QF_UF/QG-classification/qg7/gensys_icl_sk004.smt2",
+          "new_seconds": 14.991977,
+          "old_seconds": 10.174769
+        },
+        "stat_totals": {
+          "finite_domain_amo_clauses": 1125064,
+          "finite_domain_raw_amo_clauses": 1080284,
+          "finite_domain_post_amo_clauses": 1037916,
+          "finite_domain_deduped_amo_clauses": 993136,
+          "euf_use_list_appends": 1290978177,
+          "euf_affected_use_list_dedup": 0
+        }
+      },
+      "evidence_status": "current",
+      "notes": "Remote workspace was checked immediately before sbatch with scripts/slurm_prepare_benchmark_workspace.py --check-only; binary reported git: 2905733 and cadical: cadical-3.0.0-7b99c07. This run checks that raw AMO preservation and use-list changes do not regress the mixed 334-row subset; reference-solver reruns were not repeated because the comparison baseline already records Primo default/reference context for this manifest."
     }
   ]
 }
