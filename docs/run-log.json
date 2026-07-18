@@ -463,6 +463,72 @@
       },
       "evidence_status": "current",
       "notes": "Fresh current-HEAD fuzz gate after CaDiCaL version experiment. Primo binary reports git 699200f and CaDiCaL cadical-3.0.0-7b99c07. Remote FuzzSMT wrapper had to be regenerated after source sync because its absolute jar path pointed at /workspace. Compute nodes still should run prepared binaries rather than compile because batch compilation lacked usable development headers."
+    },
+    {
+      "id": "2026-07-18-qfuf-fuzzsmt-yinyang-5de60d9",
+      "started_at": "2026-07-18T13:41:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "fuzz",
+      "scope": "QF_UF combined fuzz gate using FuzzSMT plus YinYang-package mutation fuzzers",
+      "commit": "5de60d9",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "slurm_job_id": "111046"
+      },
+      "command": "SLURM array 0-8 under /home/janotmik/primo-cadical-profile. Tasks 0-5: scripts/fuzz_external.py --fuzzer fuzzsmt --solver build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 500000+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\". Task 6: opfuzz -i 200 -t 5 over seven QF_UF seeds with Primo and z3. Tasks 7-8: yinyang semantic fusion -i 100 -t 5 over unsat and sat QF_UF seed sets with Primo.",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3 or z3 model_validate=true"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt, opfuzz, yinyang",
+        "logic": "QF_UF",
+        "seed": "FuzzSMT 500000..500005; in-repo QF_UF smoke/regression/seed files for opfuzz/yinyang",
+        "count": 3000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/both-fuzz-5de60d9/fuzzsmt-summary.csv",
+        "results": "fuzz-results/both-fuzz-5de60d9/fuzzsmt/shard-*/summary.csv",
+        "logs": "fuzz-results/both-fuzz-5de60d9/logs/slurm-111046_*.{out,err}",
+        "bugs": "fuzz-results/both-fuzz-5de60d9/**/bugs"
+      },
+      "summary": {
+        "fuzzsmt_total": 3000,
+        "fuzzsmt_pass": 3000,
+        "fuzzsmt_wrong": 0,
+        "fuzzsmt_crash": 0,
+        "fuzzsmt_timeout": 0,
+        "fuzzsmt_sat": 2691,
+        "fuzzsmt_unsat": 309,
+        "opfuzz_solver_calls_last_reported": 2268,
+        "opfuzz_seeds_processed": 7,
+        "opfuzz_valid_seeds": 6,
+        "opfuzz_invalid_seeds": 1,
+        "opfuzz_bug_triggers": 0,
+        "yinyang_unsat_solver_calls_last_reported": 813,
+        "yinyang_unsat_seeds_processed": 18,
+        "yinyang_unsat_valid_seeds": 18,
+        "yinyang_unsat_invalid_seeds": 0,
+        "yinyang_unsat_bug_triggers": 0,
+        "yinyang_sat_solver_calls_last_reported": 391,
+        "yinyang_sat_seeds_processed": 18,
+        "yinyang_sat_valid_seeds": 12,
+        "yinyang_sat_invalid_seeds": 6,
+        "yinyang_sat_bug_triggers": 0,
+        "bug_files": 0,
+        "slurm_tasks_completed": 9
+      },
+      "evidence_status": "current",
+      "notes": "This is the current-head gate that uses both Brummayer/Biere FuzzSMT and the YinYang package. The installed typefuzz entry point was also smoke-tested but hit internal QF_UF seed handling errors (custom-sort seed raised msg 'A'; Bool seed raised 'argument of type Term is not iterable'), so the successful YinYang-package coverage here is from opfuzz plus semantic-fusion yinyang. Primo binary reports git 5de60d9 and CaDiCaL cadical-3.0.0-7b99c07. CaDiCaL rel-1.9.5 versus rel-3.0.0 comparison remains logged separately as 2026-07-18-cadical-version-sat-heavy-0ef55b8 and should be repeated after solver-code changes, not after ledger-only commits."
     }
   ]
 }
