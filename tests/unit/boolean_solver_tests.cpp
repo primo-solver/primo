@@ -933,6 +933,37 @@ void symmetry_ignores_preprocessing_residual_domains() {
   assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 0);
 }
 
+void qg_shape_uses_fixed_terms_but_not_moving_table_terms_for_symmetry() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun op (A A) A)
+    (declare-fun sk1 () A)
+    (declare-fun sk2 () A)
+    (assert (distinct a b c))
+    (assert (or (= (op a a) a) (= (op a a) b) (= (op a a) c)))
+    (assert (or (= (op b b) a) (= (op b b) b) (= (op b b) c)))
+    (assert (or (= (op c c) a) (= (op c c) b) (= (op c c) c)))
+    (assert (or (= sk1 a) (= sk1 b) (= sk1 c)))
+    (assert (or (= sk2 a) (= sk2 b) (= sk2 c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.accepted-sets") == 1);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.values") == 3);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.terms") == 2);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 4);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.value-precedence-terms") == 2);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.value-precedence-constraints") == 4);
+}
+
 void no_symmetry_breaking_disables_strong_preset_symmetry_only() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -1360,6 +1391,7 @@ int main() {
   default_symmetry_breaking_reports_covered_values_and_terms();
   moving_only_symmetry_terms_are_rejected_from_smtlib();
   symmetry_ignores_preprocessing_residual_domains();
+  qg_shape_uses_fixed_terms_but_not_moving_table_terms_for_symmetry();
   no_symmetry_breaking_disables_strong_preset_symmetry_only();
   theory_phase_option_can_leave_backend_phase_unset();
   strong_preprocessing_enables_ground_congruence_clauses();

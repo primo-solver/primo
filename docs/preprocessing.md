@@ -478,6 +478,14 @@ stable ordered representative for value-precedence clauses. This conservative
 guard prevents benchmark-provided symmetry constraints from being strengthened
 with restrictions that are not justified by the implemented subset.
 
+Some QG-derived formulas also contain fixed Skolem-style constants with explicit
+finite-domain choices over the same value set. Those fixed terms do not contain
+the permuted values, so they remain eligible even when the operation-table terms
+are dropped. The pass should then report one accepted symmetry set, count only
+the fixed terms, and emit value-precedence clauses for that fixed sequence.
+`benchmarks/seeds/qf_uf/qg_symmetry_fixed_terms.smt2` keeps this behavior in the
+seed corpus; `qg_symmetry_residual_domain.smt2` covers the rejecting side.
+
 `--finite-domain-value-precedence` is default-on. Disabling it keeps the same
 fixed-term eligibility guard, but emits the weaker Déharbe-style unit exclusions
 only for the fixed terms. Primo does not currently implement a moving-term
