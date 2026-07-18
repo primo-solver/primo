@@ -45,6 +45,21 @@ remote checkout. It uses a 32-way SLURM array over the exact manifest. Monitor
 progress with `squeue`, shard CSV counts in the result directory, and `sacct`
 after completion; do not run a local sleep loop on the login node.
 
+Before submitting a SLURM benchmark, prepare and validate the remote binary with
+the repository preflight script:
+
+```bash
+python3 scripts/slurm_prepare_benchmark_workspace.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote-dir /home/janotmik/primo-cadical-profile
+```
+
+The script refuses a dirty local tree, syncs the committed source, rebuilds
+CaDiCaL on the cluster, rebuilds `build-slurm-rel/primo`, and checks that
+`primo --version` reports the local commit and a CaDiCaL version. Use
+`--check-only` immediately before `sbatch` when the workspace was already
+prepared.
+
 If the published `interesting.html` table is available, pass
 `--reference-html path/to/interesting.html`. The script extracts table text with
 standard-library HTML parsing and writes `results/interesting-qf-uf-reference.csv`

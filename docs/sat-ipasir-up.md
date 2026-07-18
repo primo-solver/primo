@@ -90,4 +90,18 @@ Set `CADICAL_TAG=rel-1.9.5` to install a non-default tag into `contrib/local`.
 For campaign comparisons, prefer versioned prefixes instead of replacing
 `contrib/local`.
 
+On SLURM, never trust a copied or stale `contrib/local/lib/libcadical.a` after a
+toolchain change or after seeing linker errors such as `__isoc23_fscanf`.
+Rebuild the dependency with the cluster compiler before measuring:
+
+```bash
+rm -f contrib/local/.cadical.stamp contrib/local/lib/libcadical.a
+rm -rf contrib/src/cadical/build contrib/src/cadical/makefile \
+  contrib/src/cadical/src/makefile build-slurm-rel
+make contrib-cadical
+cmake -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release
+cmake --build build-slurm-rel --target primo
+build-slurm-rel/primo --version
+```
+
 `make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` and reports whether CaDiCaL/IPASIR headers and libraries were found.
