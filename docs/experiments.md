@@ -230,11 +230,10 @@ Primo command line.
 
 ## QF_UF Gap Tuning With SMAC
 
-`scripts/smac/qfuf_gap_tune.py` runs a focused SMAC campaign for the current
-NEQ/PEQ/SEQ gap against LLM2SMT. It is intentionally narrower than the irace
-setup: the training manifest contains near-gap siblings, and the validation
-manifest contains the seven 120s instances that LLM2SMT solves while the current
-Primo default times out.
+`scripts/smac/qfuf_gap_tune.py` runs focused SMAC campaigns for current QF_UF
+gaps against reference-solver evidence. It is intentionally narrower than the
+irace setup: each training manifest contains near-gap siblings, and each
+validation manifest contains held-out rows from the same benchmark shape.
 
 Run it on SLURM, not on a workstation:
 
@@ -259,6 +258,17 @@ far above timeouts. After the SMAC budget is exhausted, the script validates the
 SMAC incumbent and the current default on the seven held-out gap instances and
 writes `result.json`, `incumbent.json`, `trial-summary.csv`, and
 `validation-runs.csv`.
+
+For the QG `iso_*` gap, use
+`benchmarks/qfuf-smac-iso-train.txt` and
+`benchmarks/qfuf-smac-iso-validate.txt`. That campaign includes the user-visible
+`QG-classification/qg7/iso_brn_repgen033.smt2` case, ranked slow
+`iso_brn_nogen_sk*` siblings, and `iso_icl_repgen006.smt2`. The search space
+includes preprocessing strength, finite-domain symmetry/value-precedence and
+equality-definition toggles, bounded ground-congruence, EUF engine/propagation
+settings, theory phase, and the existing CaDiCaL incremental profile. Treat an
+iso incumbent as a diagnostic profile until it has been validated on the full
+focused QG set and the broader 334-row subset with zero wrong answers.
 
 The first completed campaign for commit `c2c7e0e` found an incumbent that solves
 `NEQ015_size6` in 25.36s under the 120s validation cap, while the default timed

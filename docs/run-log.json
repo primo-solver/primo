@@ -1500,6 +1500,65 @@
       },
       "evidence_status": "local-only",
       "notes": "Smoke fuzz gate for a narrow preprocessing ownership fix; not a substitute for a full merge gate if broader preprocessing changes are stacked."
+    },
+    {
+      "id": "2026-07-18-qg-iso-smac-setup-c615a84",
+      "started_at": "2026-07-18T23:25:00+02:00",
+      "recorded_at": "2026-07-18",
+      "kind": "tuning-setup",
+      "scope": "Local inspection of QG iso_* performance gaps and setup of iso-specific SMAC manifests/search space",
+      "commit": "c615a84 plus uncommitted SMAC setup",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Rebuilt build/primo, ranked iso_* rows from results/qg-raw-amo-slurm-2905733/merged.csv against historical LLM2SMT/Z3/cvc5 CSVs, ran bounded option ablations on tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2, and smoke-ran build/primo --quiet --qf-uf-preprocess=basic over benchmarks/qfuf-smac-iso-{train,validate}.txt",
+      "solver": {
+        "name": "Primo",
+        "argv": "build/primo --quiet --stats [option ablations]"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT",
+          "argv": "historical results/slurm-qfuf-full-120s-llm2smt-0.2.4-110181/llm2smt-qfuf-full-120s-merged.csv"
+        },
+        {
+          "name": "z3",
+          "argv": "historical results/slurm-qfuf-full-ref-z3-109856/z3-qfuf-full-2s-merged.csv"
+        },
+        {
+          "name": "cvc5",
+          "argv": "historical results/slurm-qfuf-full-ref-cvc5-109857/cvc5-qfuf-full-2s-merged.csv"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 20,
+        "timeout_seconds": 30,
+        "manifest": "benchmarks/qfuf-smac-iso-train.txt and benchmarks/qfuf-smac-iso-validate.txt"
+      },
+      "artifacts": {
+        "summary": null,
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "iso_rows_ranked_from_current_focused_qg": 259,
+        "iso_brn_repgen033_default_seconds": 2.697,
+        "iso_brn_repgen033_basic_seconds": 0.087,
+        "iso_brn_repgen033_phase_polarity_seconds": 0.516,
+        "iso_brn_repgen033_llm2smt_historical_seconds": 0.108559,
+        "iso_brn_repgen033_z3_historical_seconds": 0.72639,
+        "iso_manifest_train_count": 12,
+        "iso_manifest_validate_count": 8,
+        "basic_preprocess_smoke_wrong": 0
+      },
+      "evidence_status": "local-only",
+      "notes": "Primo already flattens and/or terms during TermManager construction and finite-domain choice collection walks nested or nodes. No NNF pass was found in preprocessing, so NNF remains a plausible future implementation target, but the strongest immediate local signal on iso_brn_repgen033 is that default finite-domain AMO/search interaction is harmful while basic preprocessing matches the LLM2SMT timing scale. The SMAC search space was extended to tune theory phase, finite-domain value precedence/equality definitions, bounded ground congruence, and EUF engine in addition to existing QF_UF knobs."
     }
   ]
 }

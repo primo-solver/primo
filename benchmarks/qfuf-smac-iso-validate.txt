@@ -1,0 +1,8 @@
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk019.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk010.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk017.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk020.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk022.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk023.smt2
+tmp/QF_UF/QG-classification/qg6/iso_brn_nogen_sk006.smt2

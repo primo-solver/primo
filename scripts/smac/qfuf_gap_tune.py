@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""SMAC tuner for the QF_UF NEQ/PEQ/SEQ reference gap.
+"""SMAC tuner for focused QF_UF reference gaps.
 
-The campaign is intentionally narrow.  The objective is PAR2 on a small set of
-near-gap NEQ/PEQ/SEQ instances, with wrong answers penalized much more heavily
-than timeouts.  After SMAC finishes, the incumbent and current defaults are
-validated on the seven 120s instances that LLM2SMT solves and Primo currently
-does not.
+The campaign is intentionally narrow.  The objective is PAR2 on a small
+training manifest, with wrong answers penalized much more heavily than
+timeouts.  After SMAC finishes, the incumbent and current defaults are
+validated on a separate holdout manifest.
 """
 
 from __future__ import annotations
@@ -107,17 +106,28 @@ def solver_args(config: Any) -> list[str]:
 
     if config_value(config, "symmetry", "on") == "off":
         args.append("--no-uf-symmetry-breaking")
+    if config_value(config, "value_precedence", "on") == "off":
+        args.append("--no-finite-domain-value-precedence")
+    equality_definitions = config_value(config, "equality_definitions", "default")
+    if equality_definitions == "on":
+        args.append("--finite-domain-equality-definitions")
+    elif equality_definitions == "off":
+        args.append("--no-finite-domain-equality-definitions")
     if config_value(config, "eq_bridge", "on") == "off":
         args.append("--no-eq-bridge")
     if config_value(config, "solved_constants", "on") == "off":
         args.append("--no-solved-constant-substitution")
+    if config_value(config, "ground_congruence", "off") == "on":
+        args.append("--ground-congruence")
     if config_value(config, "ground_unit_substitution", "off") == "on":
         args.append("--ground-unit-substitution")
     if config_value(config, "guarded_ground_unit_substitution", "off") == "on":
         args.append("--guarded-ground-unit-substitution")
 
+    args.append(f"--euf-engine={config_value(config, 'euf_engine', 'incremental')}")
     args.append(f"--euf-prop={config_value(config, 'euf_prop', 'auto')}")
     args.append(f"--pure-theory-filter={config_value(config, 'pure_filter', 'auto')}")
+    args.append(f"--theory-phase={config_value(config, 'theory_phase', 'negative')}")
     prop_budget = config_value(config, "prop_budget", "auto")
     if prop_budget != "auto":
         args.append(f"--euf-prop-budget={prop_budget}")
@@ -215,9 +225,18 @@ def make_configspace(seed: int):
             UniformIntegerHyperparameter("adaptive_extra", 0, 8, default_value=4),
             UniformIntegerHyperparameter("adaptive_shrink", 0, 30, default_value=10),
             CategoricalHyperparameter("symmetry", ["on", "off"], default_value="on"),
+            CategoricalHyperparameter(
+                "value_precedence", ["on", "off"], default_value="on"
+            ),
+            CategoricalHyperparameter(
+                "equality_definitions", ["default", "on", "off"], default_value="default"
+            ),
             CategoricalHyperparameter("eq_bridge", ["on", "off"], default_value="on"),
             CategoricalHyperparameter(
                 "solved_constants", ["on", "off"], default_value="on"
+            ),
+            CategoricalHyperparameter(
+                "ground_congruence", ["off", "on"], default_value="off"
             ),
             CategoricalHyperparameter(
                 "ground_unit_substitution", ["off", "on"], default_value="off"
@@ -226,10 +245,18 @@ def make_configspace(seed: int):
                 "guarded_ground_unit_substitution", ["off", "on"], default_value="off"
             ),
             CategoricalHyperparameter(
+                "euf_engine", ["incremental", "lazy"], default_value="incremental"
+            ),
+            CategoricalHyperparameter(
                 "euf_prop", ["auto", "conflict", "online", "off"], default_value="auto"
             ),
             CategoricalHyperparameter(
                 "pure_filter", ["auto", "on", "off"], default_value="auto"
+            ),
+            CategoricalHyperparameter(
+                "theory_phase",
+                ["negative", "positive", "none", "polarity"],
+                default_value="negative",
             ),
             CategoricalHyperparameter(
                 "prop_budget",
