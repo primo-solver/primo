@@ -3040,6 +3040,125 @@
       },
       "evidence_status": "rejected",
       "notes": "Do not use job 111525 for performance claims. The follow-up script change gives each array task its own atomically renamed manifest."
+    },
+    {
+      "id": "2026-07-19-neq015-size6-local-profile",
+      "started_at": "2026-07-19T12:16:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profile",
+      "scope": "Local NEQ015_size6 QF_UF comparison and flat-congruence-closure allocation profile",
+      "commit": "82a4f50",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ015_size6.smt2; ./build/primo --quiet --stats --theory-phase=auto tmp/QF_UF/NEQ/NEQ015_size6.smt2; /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000 tmp/QF_UF/NEQ/NEQ015_size6.smt2; /workspace/contrib/local/bin/z3 tmp/QF_UF/NEQ/NEQ015_size6.smt2; perf record -F 99 -g -- ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ015_size6.smt2",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "/workspace/contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1,
+        "timeout_seconds": 30,
+        "manifest": "tmp/QF_UF/NEQ/NEQ015_size6.smt2"
+      },
+      "artifacts": {
+        "summary": null,
+        "results": "results/local-profiles/perf-neq015-size6.txt and results/local-profiles/perf-neq015-size6-move-use-list.txt",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "primo_default_seconds": 8.6,
+        "primo_auto_seconds": 9.93,
+        "llm2smt_tuned_seconds": 24.24,
+        "z3_seconds": 2.51,
+        "primo_stats": "unsat; 28522 theory atoms; 49135 clauses; 665126 EUF assignments; 15618 EUF conflicts; 3177744 flat-CC merges; 8798333 use-list appends; max use-list size 161794.",
+        "perf_top": "Before rejected experiment: _int_malloc 12.78%, Frontend::build_term 10.81%, FlatCongruenceClosure::merge_classes 7.94%, OnlineEufPropagator::notify_assignment 7.14%, malloc_consolidate 6.29%. Moving old use-lists into the rollback trail preserved correctness in focused tests but did not improve runtime or the top profile shape, so the source edit was reverted."
+      },
+      "evidence_status": "current-local",
+      "notes": "This shows the current NEQ015_size6 gap is against Z3, not the tuned local LLM2SMT command. The next useful implementation target is reducing allocation/trail pressure in flat CC or frontend term construction, with a stronger benchmark before accepting changes."
+    },
+    {
+      "id": "2026-07-19-qfuf-phase-compare-111557",
+      "started_at": "2026-07-19T12:24:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM default versus --theory-phase=auto comparison on the 334-row user HTML QF_UF manifest",
+      "commit": "82a4f50",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "job_id": "111557"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+      },
+      "references": [
+        {
+          "name": "Primo default",
+          "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-phase-compare-111557/summary.json",
+        "results": "results/qfuf-phase-compare-111557/default-merged.csv and results/qfuf-phase-compare-111557/auto-merged.csv",
+        "logs": "logs/primo-qfuf-phase-111557-*.out and logs/primo-qfuf-phase-111557-*.err",
+        "bugs": null
+      },
+      "summary": {
+        "default": {
+          "ok": 329,
+          "timeout": 5,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3695.199
+        },
+        "auto": {
+          "ok": 330,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3500.463
+        },
+        "families_default": {
+          "Goel": "7/7 ok, PAR2 16.631",
+          "NEQ": "25/26 ok, PAR2 435.097",
+          "PEQ": "21/25 ok, PAR2 1272.917",
+          "QG": "270/270 ok, PAR2 1900.095",
+          "SEQ": "6/6 ok, PAR2 70.460"
+        },
+        "families_auto": {
+          "Goel": "7/7 ok, PAR2 16.998",
+          "NEQ": "25/26 ok, PAR2 425.382",
+          "PEQ": "22/25 ok, PAR2 1151.647",
+          "QG": "270/270 ok, PAR2 1859.826",
+          "SEQ": "6/6 ok, PAR2 46.611"
+        },
+        "top_wins": "PEQ002_size8 timeout/default 120.107s -> auto 116.535s; SEQ026_size7 57.584s -> 35.426s; gensys_icl001 31.840s -> 20.138s; iso_icl_nogen003 34.721s -> 24.038s; NEQ023_size7 10.283s -> 2.190s; iso_brn_repgen033 7.354s -> 1.083s.",
+        "top_regressions": "iso_icl_repgen_sk003 23.657s -> 49.508s; gensys_icl_sk003 10.778s -> 29.534s; iso_icl_nogen_sk003 16.074s -> 33.449s; iso_icl_repgen001 75.581s -> 92.232s; iso_icl_repgen003 60.852s -> 75.263s; PEQ018_size6 43.375s -> 53.022s."
+      },
+      "evidence_status": "current-slurm",
+      "notes": "All 32 shards completed with exit code 0 after commit 82a4f50 fixed the shared-manifest race. The 334-row result supports keeping --theory-phase=auto as a candidate because it improves solved count by one and lowers PAR2 without wrong answers, but the large per-instance regressions mean it should not be blindly promoted before a broader full-QF_UF/default-readiness check or a refined heuristic."
     }
   ]
 }

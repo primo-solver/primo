@@ -1,0 +1,26 @@
+primo 0.1.0
+git: 82a4f50
+cadical: cadical-3.0.0-7b99c07
+[1/21] NEQ tmp/QF_UF/NEQ/NEQ015_size5.smt2: ok unsat 15.048049s
+[2/21] NEQ tmp/QF_UF/NEQ/NEQ041_size9.smt2: ok unsat 10.445100s
+[3/21] PEQ tmp/QF_UF/PEQ/PEQ012_size6.smt2: ok unsat 7.935667s
+[4/21] QG tmp/QF_UF/QG-classification/qg5/dead_dnd033.smt2: ok unsat 8.194186s
+[5/21] QG tmp/QF_UF/QG-classification/qg5/gensys_icl1003.smt2: ok unsat 7.041751s
+[6/21] QG tmp/QF_UF/QG-classification/qg5/gensys_icl430.smt2: ok unsat 4.022734s
+[7/21] QG tmp/QF_UF/QG-classification/qg5/gensys_icl621.smt2: ok unsat 7.621012s
+[8/21] QG tmp/QF_UF/QG-classification/qg5/gensys_icl762.smt2: ok unsat 5.994499s
+[9/21] QG tmp/QF_UF/QG-classification/qg5/gensys_icl834.smt2: ok unsat 7.564116s
+[10/21] QG tmp/QF_UF/QG-classification/qg5/gensys_icl995.smt2: ok unsat 4.444295s
+[11/21] QG tmp/QF_UF/QG-classification/qg6/gensys_icl008.smt2: ok unsat 6.642591s
+[12/21] QG tmp/QF_UF/QG-classification/qg6/iso_icl_nogen004.smt2: ok unsat 5.765692s
+[13/21] QG tmp/QF_UF/QG-classification/qg6/iso_icl_nogen_sk007.smt2: ok unsat 1.232541s
+[14/21] QG tmp/QF_UF/QG-classification/qg6/iso_icl_repgen010.smt2: ok unsat 10.280503s
+[15/21] QG tmp/QF_UF/QG-classification/qg6/iso_icl_repgen_sk013.smt2: ok unsat 0.836024s
+[16/21] QG tmp/QF_UF/QG-classification/qg7/gensys_icl_sk005.smt2: ok unsat 1.693538s
+[17/21] QG tmp/QF_UF/QG-classification/qg7/iso_brn_nogen016.smt2: ok sat 8.658467s
+[18/21] QG tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk013.smt2: ok sat 9.173649s
+[19/21] QG tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk036.smt2: ok sat 0.821572s
+[20/21] QG tmp/QF_UF/QG-classification/qg7/iso_icl_repgen001.smt2: ok unsat 75.581005s
+[21/21] SEQ tmp/QF_UF/SEQ/SEQ026_size6.smt2: ok unsat 8.869638s
+wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111557/default/shard-11.csv
+wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111557/default/shard-11-summary.csv

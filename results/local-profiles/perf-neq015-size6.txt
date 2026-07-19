@@ -1,0 +1,80 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 870  of event 'cycles:P'
+# Event count (approx.): 39676242880
+#
+# Overhead  Command  Shared Object        Symbol                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+# ........  .......  ...................  ...........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+#
+    12.78%  primo    libc.so.6            [.] _int_malloc
+            |          
+             --12.33%--_int_malloc
+                       malloc
+                       operator new(unsigned long)
+                       |          
+                       |--5.44%--primo::smt::(anonymous namespace)::OnlineEufPropagator::notify_assignment(std::vector<int, std::allocator<int> > const&)
+                       |          
+                       |--2.45%--primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)
+                       |          |          
+                       |           --0.69%--0x4db
+                       |          
+                       |--2.30%--primo::theory::equality::FlatCongruenceClosure::assert_distinct(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >)
+                       |          
+                        --0.59%--primo::theory::equality::FlatCongruenceClosure::process_use_list(unsigned long, unsigned long)
+
+    10.81%  primo    primo                [.] primo::smt::(anonymous namespace)::Frontend::build_term(primo::smtlib::SExpr const&)
+            |          
+             --10.34%--primo::smt::(anonymous namespace)::Frontend::build_term(primo::smtlib::SExpr const&)
+                       |          
+                        --0.59%--0x654a71a49bb8
+                                  0x654a71a49ae8
+                                  0x654a71a49a18
+                                  0x654a71a49c88
+                                  0x654a71a49948
+                                  0x654a71a497a8
+                                  0x654a71a49648
+                                  0x654a71a48f38
+                                  0x654a71a48748
+                                  0x654a71a493d8
+                                  0x654a71a48678
+                                  0x654a71a47888
+                                  0x654a71a485a8
+                                  0x654a71a49ec8
+                                  0x654a71a49008
+                                  0x654a71a477b8
+                                  0x654a71a47548
+                                  0x654a71a473e8
+                                  0x654a71a47368
+                                  0x654a71a47958
+                                  0x654a71a490d8
+                                  0x654a71a476e8
+                                  0x654a71a48818
+                                  0x654a71a48cc8
+                                  0x654a71a488e8
+                                  0x654a71a47158
+                                  0x654a71a48a88
+                                  0x654a71a489b8
+                                  0x654a71a49308
+                                  0x654a71a48bf8
+                                  0x654a71a48d98
+                                  0x654a71a47298
+                                  0x654a71a49238
+                                  0x654a71a47618
+                                  0x654a71a48e68
+                                  0x654a71a494a8
+                                  0x654a71a49878
+                                  0x654a71a49578
+
+     7.94%  primo    primo                [.] primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)
+            |
+            ---primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)
+
+     7.14%  primo    primo                [.] primo::smt::(anonymous namespace)::OnlineEufPropagator::notify_assignment(std::vector<int, std::allocator<int> > const&)
+            |          
+             --7.03%--primo::smt::(anonymous namespace)::OnlineEufPropagator::notify_assignment(std::vector<int, std::allocator<int> > const&)
+
+     6.29%  primo    libc.so.6            [.] malloc_consolidate
+            |
