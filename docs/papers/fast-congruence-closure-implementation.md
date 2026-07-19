@@ -217,3 +217,26 @@ Next CC review items:
   online EUF path.
 - Keep reference-solver CC code as behavioral evidence only. The implemented
   Primo design must remain paper-derived and tested through local invariants.
+
+The follow-up audit on the same date rechecked the current `FlatCongruenceClosure`
+implementation against the Section 3 data-structure checklist and the
+LLM2SMT behavior notes without copying reference code. No rollback or
+congruence-discovery soundness bug was found in the inspected paths:
+definitions are trailed, lookup insertions are removed on pop, use-list
+duplicates are tolerated and handled at process time, changed-term queues are
+truncated by checkpoints, and explanation edges are removed with the merge edge
+that introduced them. The local gprof profile for `PEQ002_size8` still puts
+`FlatCongruenceClosure::explain_equal_into` first by self time, with 25.6M
+explanation calls, 7.0M BFS searches, 105.9M BFS nodes visited, and 21.4M
+recursive congruence-edge expansions in the ordinary stats run. This reinforces
+the earlier conclusion: the current closure is a Section 3 congruence-discovery
+engine with a sound adjacency-BFS explanation layer, not the Section 4-5
+optimized proof-forest explanation algorithm.
+
+The audit also checked `NEQ027_size8` through `NEQ027_size11` against the tuned
+local LLM2SMT command used in prior benchmark notes. Those rows no longer
+reproduce as local slow-Primo CC gaps after the raw-AMO and use-list work:
+Primo solved size11 in about 2.2 seconds, while the tuned local LLM2SMT binary
+took about 4.0 seconds. The remaining difference on that family is more likely
+preprocessing policy, especially finite-domain equality-definition selection,
+than congruence-closure implementation correctness.

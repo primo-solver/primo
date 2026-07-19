@@ -56,7 +56,9 @@ python3 scripts/slurm_prepare_benchmark_workspace.py \
 
 The script refuses a dirty local tree, syncs the committed source, rebuilds
 CaDiCaL on the cluster, rebuilds `build-slurm-rel/primo`, and checks that
-`primo --version` reports the local commit and a CaDiCaL version. Use
+`primo --version` reports the local commit and a CaDiCaL version. The local
+CMake build refreshes a generated git-revision header on every `primo` build;
+uncommitted source changes are reported with a `-dirty` suffix. Use
 `--check-only` immediately before `sbatch` when the workspace was already
 prepared. Destructive sync/rebuild is refused while active SLURM jobs with Primo
 job names are present, because those jobs may be using the same `build-slurm-rel`

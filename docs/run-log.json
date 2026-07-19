@@ -6443,6 +6443,49 @@
       },
       "evidence_status": "rejected_experiment",
       "notes": "No source changes from this prototype remain."
+    },
+    {
+      "id": "2026-07-19-local-cc-audit-and-version-provenance",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Follow-up review of FlatCongruenceClosure invariants, explanation hotspot, NEQ027 reference comparison, and local build provenance",
+      "commit": "f54dfb4 plus uncommitted generated git-revision header fix",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build --target primo -j4; cmake --build build-gprof --target primo -j4; ./build/primo --quiet --stats --euf-engine=incremental tmp/QF_UF/PEQ/PEQ002_size8.smt2; ./build-gprof/primo --quiet --stats --euf-engine=incremental tmp/QF_UF/PEQ/PEQ002_size8.smt2; gprof ./build-gprof/primo gmon.out; local timed Primo and tuned /tmp/llm2smt/build/bin/llm2smt runs on tmp/QF_UF/NEQ/NEQ027_size8.smt2 through NEQ027_size11.smt2.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-engine=incremental"
+      },
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ002_size8.smt2 and tmp/QF_UF/NEQ/NEQ027_size8.smt2, NEQ027_size9.smt2, NEQ027_size10.smt2, NEQ027_size11.smt2",
+        "timeout_seconds": 45
+      },
+      "artifacts": {
+        "primo_stats": "/tmp/primo-peq002.stats, /tmp/primo-NEQ027_size*.stats",
+        "llm2smt_stats": "/tmp/llm-peq002.stats, /tmp/llm-NEQ027_size*.stats",
+        "gprof": "terminal-captured gprof flat profile in 2026-07-19 conversation"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned local reference",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "summary": {
+        "cc_review": "No direct soundness or rollback bug was found in FlatCongruenceClosure use-list, lookup, changed-term, checkpoint, or explanation-edge maintenance. The implementation remains a Nieuwenhuis-Oliveras Section 3 congruence-discovery subset with adjacency-BFS explanations, not the Section 4-5 proof-forest explanation algorithm.",
+        "peq002_primo_stats": "unsat in 22.23s; 95096 theory conflicts; 25649979 explain calls; 7013297 BFS searches; 105904124 BFS nodes visited; 31107753 BFS path edges; 21370955 congruence-edge expansions; 5205743 emitted explanation literals.",
+        "peq002_gprof_top": "FlatCongruenceClosure::explain_equal_into 21.11% self; CaDiCaL::Closure::find_subsuming_clause 11.48%; std::deque<unsigned int>::_M_push_back_aux 7.77%; FlatCongruenceClosure::merge_classes 7.42%; FlatCongruenceClosure::restore_trail_entry 7.24%; process_use_list 2.65%.",
+        "peq002_reference": "Tuned local LLM2SMT was unsat in 25.50s with 122234 EUF conflicts and 6972444 EUF conflict literals, so this local run does not show LLM2SMT faster on PEQ002.",
+        "neq027_reference_check": "Primo vs tuned local LLM2SMT seconds: size8 0.55 vs 1.43; size9 0.81 vs 1.07; size10 1.18 vs 1.57; size11 2.17 vs 4.01. NEQ027 no longer reproduces as a local slow-Primo CC gap.",
+        "version_provenance": "The existing CMake configure-time git definition left ./build/primo reporting git d5f4579 after rebuilding source at f54dfb4. A generated build-time header now reports the current revision and appends -dirty for uncommitted changes."
+      },
+      "evidence_status": "current_local",
+      "notes": "This entry supports CC triage only. It is not headline SLURM evidence and does not claim broad solved-count improvement."
     }
   ]
 }

@@ -150,17 +150,6 @@ else()
   message(STATUS "IPASIR-UP/CaDiCaL not found; SAT backend remains a scaffold")
 endif()
 
-execute_process(
-  COMMAND git rev-parse --short HEAD
-  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-  OUTPUT_VARIABLE PRIMO_GIT_REVISION
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  ERROR_QUIET
-)
-if(NOT PRIMO_GIT_REVISION)
-  set(PRIMO_GIT_REVISION "unknown")
-endif()
-
 file(GLOB_RECURSE PRIMO_LIBRARY_SOURCES CONFIGURE_DEPENDS
   src/cli/*.cpp
   src/core/*.cpp
@@ -203,11 +192,20 @@ else()
 endif()
 
 add_executable(primo src/main.cpp)
+add_custom_target(primo_git_revision_header ALL
+  COMMAND "${CMAKE_COMMAND}"
+    -DPRIMO_SOURCE_DIR=${CMAKE_SOURCE_DIR}
+    -DPRIMO_GIT_REVISION_HEADER=${CMAKE_BINARY_DIR}/generated/primo_git_revision.hpp
+    -P ${CMAKE_SOURCE_DIR}/scripts/write_git_revision.cmake
+  BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/primo_git_revision.hpp"
+  VERBATIM
+)
+add_dependencies(primo primo_git_revision_header)
 primo_enable_warnings(primo)
 primo_enable_sanitizers(primo)
 target_link_libraries(primo PRIVATE primo_core)
-target_compile_definitions(primo PRIVATE PRIMO_GIT_REVISION="${PRIMO_GIT_REVISION}")
 target_include_directories(primo PRIVATE src)
+target_include_directories(primo PRIVATE "${CMAKE_BINARY_DIR}")
 target_include_directories(primo SYSTEM PRIVATE "${CLI11_INCLUDE_DIR}")
 
 enable_testing()

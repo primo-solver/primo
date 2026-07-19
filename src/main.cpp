@@ -14,13 +14,10 @@
 #include <utility>
 #include <vector>
 
+#include "generated/primo_git_revision.hpp"
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
 #include "util/statistics.hpp"
-
-#ifndef PRIMO_GIT_REVISION
-#define PRIMO_GIT_REVISION "unknown"
-#endif
 
 namespace {
 
