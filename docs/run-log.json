@@ -4153,6 +4153,106 @@
       },
       "evidence_status": "local-current",
       "notes": "Accepted as a narrow rollback representation improvement, not as reference parity. The change replaces one ClassMembersPop trail entry per moved member with one ClassMembersResize entry per merge and preserves parent/class-size/lhs-member restoration. Further work should target frontend term construction, signature lookup, or use-list processing."
+    },
+    {
+      "id": "2026-07-19-online-euf-array-state-local",
+      "started_at": "2026-07-19T20:55:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profile",
+      "scope": "Local online EUF callback-state optimization on representative QF_UF NEQ and QG rows",
+      "commit": "4394923+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "Three runs each of ./build/primo --quiet --stats before and after replacing OnlineEufPropagator hot hash maps/sets with SAT-variable and theory-atom indexed vectors on NEQ023_size7, NEQ027_size8, iso_brn_repgen033, and iso_icl_repgen006; perf record -F 199 -g before and after on NEQ023_size7 and iso_brn_repgen033.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats with online EUF array callback state"
+      },
+      "references": [
+        {
+          "name": "Primo 4394923 local baseline",
+          "argv": "./build/primo --quiet --stats before the working-tree change"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 4,
+        "timeout_seconds": 40,
+        "targets": [
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ027_size8.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2"
+        ]
+      },
+      "artifacts": {
+        "timing_csv": "results/local-online-euf-array-state-20260719.csv",
+        "perf_neq023_before": "results/local-profiles/perf-neq023-head-4394923.txt",
+        "perf_neq023_after": "results/local-profiles/perf-neq023-array-state-20260719.txt",
+        "perf_isobrn033_before": "results/local-profiles/perf-isobrn033-head-4394923.txt",
+        "perf_isobrn033_after": "results/local-profiles/perf-isobrn033-array-state-20260719.txt"
+      },
+      "summary": {
+        "median_seconds_baseline_vs_array_state": {
+          "NEQ023_size7": "3.411 -> 3.021",
+          "NEQ027_size8": "0.667 -> 0.573",
+          "iso_brn_repgen033": "2.495 -> 1.950",
+          "iso_icl_repgen006": "0.844 -> 0.628"
+        },
+        "search_counters": "The measured euf.theory-conflicts, euf.incremental.explain-calls, euf.incremental.use-list-appends, and euf.incremental.trail-entries were unchanged on every before/after row.",
+        "perf_top": "NEQ023 notify_assignment dropped from 9.32% to 4.56%; iso_brn_repgen033 notify_assignment dropped from 5.07% to 3.44% and _int_malloc from 9.67% to 2.88%. Remaining hot spots are CaDiCaL propagation and FlatCongruenceClosure explanation/merge/use-list work."
+      },
+      "evidence_status": "local-current",
+      "notes": "Accepted as a callback bookkeeping optimization. It exploits that the theory atom set is fixed after clausification; it does not implement a new SAT decision callback and does not change theory reasoning."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-online-euf-array-state-1000",
+      "started_at": "2026-07-19T21:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate after replacing online EUF callback hash maps with indexed arrays",
+      "commit": "4394923+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071910 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-online-euf-array-state-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1000,
+        "timeout_seconds": 5,
+        "generator": "fuzzsmt",
+        "seed": 2026071910,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-online-euf-array-state-1000/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt-online-euf-array-state-1000/generated",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-online-euf-array-state-1000/bugs"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "reference_disagreement": 0,
+        "sat": 904,
+        "unsat": 96
+      },
+      "evidence_status": "local-current",
+      "notes": "Fresh local merge-gate differential fuzzing for a SAT/theory callback bookkeeping change. This does not replace broader SLURM performance validation for reference-parity claims."
     }
   ]
 }

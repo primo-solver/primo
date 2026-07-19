@@ -1663,10 +1663,21 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         options_(options),
         adaptive_propagation_(adaptive_propagation),
         statistics_(statistics) {
+    int max_theory_var = 0;
+    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+      max_theory_var =
+          std::max(max_theory_var, atom.lit.value > 0 ? atom.lit.value : -atom.lit.value);
+    }
+    observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    atom_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, nullptr);
+    assignment_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    pending_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    queued_candidate_indices_.assign(theory_atoms_.size(), 0);
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-      observed_vars_.insert(var);
-      atom_by_var_.emplace(var, &atom);
+      const std::size_t index = static_cast<std::size_t>(var);
+      observed_vars_[index] = 1;
+      atom_by_var_[index] = &atom;
     }
     if (options_.euf_engine == EufEngine::Incremental) {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
@@ -1703,8 +1714,9 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       const int lit = trail_.back();
       trail_.pop_back();
       const int var = lit > 0 ? lit : -lit;
-      assignment_by_var_.erase(var);
-      pending_vars_.erase(var);
+      assignment_by_var_[static_cast<std::size_t>(var)] = 0;
+      --assigned_var_count_;
+      clear_pending_var(var);
     }
     level_starts_.resize(std::min<std::size_t>(new_level + 1, level_starts_.size()));
     if (level_starts_.empty()) {
@@ -1714,9 +1726,9 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       incremental_state_->pop_to_level(new_level);
     }
     pending_.clear();
-    pending_vars_.clear();
+    clear_all_pending_vars();
     candidate_queue_.clear();
-    queued_candidate_indices_.clear();
+    clear_all_candidate_marks();
     external_clause_.clear();
     external_clause_index_ = 0;
   }
@@ -1741,7 +1753,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
     const int lit = pending_.front();
     pending_.pop_front();
-    pending_vars_.erase(lit > 0 ? lit : -lit);
+    clear_pending_var(lit > 0 ? lit : -lit);
     return lit;
   }
 
@@ -1805,21 +1817,55 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   };
 
   const BooleanClausifier::TheoryAtom* atom_for_var(int var) const {
-    const auto found = atom_by_var_.find(var);
-    return found == atom_by_var_.end() ? nullptr : found->second;
+    if (var < 0 || static_cast<std::size_t>(var) >= atom_by_var_.size()) {
+      return nullptr;
+    }
+    return atom_by_var_[static_cast<std::size_t>(var)];
+  }
+
+  bool is_observed_var(int var) const {
+    return var >= 0 && static_cast<std::size_t>(var) < observed_vars_.size() &&
+           observed_vars_[static_cast<std::size_t>(var)] != 0;
+  }
+
+  bool is_assigned_var(int var) const {
+    return var >= 0 && static_cast<std::size_t>(var) < assignment_by_var_.size() &&
+           assignment_by_var_[static_cast<std::size_t>(var)] != 0;
+  }
+
+  bool assigned_value(int var) const {
+    return assignment_by_var_[static_cast<std::size_t>(var)] > 0;
+  }
+
+  bool is_pending_var(int var) const {
+    return var >= 0 && static_cast<std::size_t>(var) < pending_vars_.size() &&
+           pending_vars_[static_cast<std::size_t>(var)] != 0;
+  }
+
+  void clear_pending_var(int var) {
+    if (var >= 0 && static_cast<std::size_t>(var) < pending_vars_.size()) {
+      pending_vars_[static_cast<std::size_t>(var)] = 0;
+    }
+  }
+
+  void clear_all_pending_vars() { std::fill(pending_vars_.begin(), pending_vars_.end(), 0); }
+
+  void clear_all_candidate_marks() {
+    std::fill(queued_candidate_indices_.begin(), queued_candidate_indices_.end(), 0);
   }
 
   void notify_assignment_lit(int lit) {
     const int var = lit > 0 ? lit : -lit;
-    if (!observed_vars_.contains(var)) {
+    if (!is_observed_var(var)) {
       return;
     }
-    if (assignment_by_var_.contains(var)) {
+    if (is_assigned_var(var)) {
       return;
     }
-    assignment_by_var_[var] = lit > 0;
+    assignment_by_var_[static_cast<std::size_t>(var)] = lit > 0 ? 1 : -1;
+    ++assigned_var_count_;
     trail_.push_back(lit);
-    pending_vars_.erase(var);
+    clear_pending_var(var);
     if (!incremental_state_.has_value()) {
       return;
     }
@@ -1863,7 +1909,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     if (atom_index >= theory_atoms_.size()) {
       return;
     }
-    if (queued_candidate_indices_.insert(atom_index).second) {
+    if (queued_candidate_indices_[atom_index] == 0) {
+      queued_candidate_indices_[atom_index] = 1;
       candidate_queue_.push_back(atom_index);
     }
   }
@@ -1886,14 +1933,14 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
 
   std::vector<AssignedTheoryAtom> current_assigned_atoms() const {
     std::vector<AssignedTheoryAtom> atoms;
-    atoms.reserve(assignment_by_var_.size());
+    atoms.reserve(assigned_var_count_);
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-      const auto assignment = assignment_by_var_.find(var);
-      if (assignment == assignment_by_var_.end()) {
+      if (!is_assigned_var(var)) {
         continue;
       }
-      const bool atom_value = atom.lit.value > 0 ? assignment->second : !assignment->second;
+      const bool assignment = assigned_value(var);
+      const bool atom_value = atom.lit.value > 0 ? assignment : !assignment;
       AssignedTheoryAtom assigned =
           assigned_theory_atom(options_.pure_theory_filter, atom, atom_value);
       atoms.push_back(assigned);
@@ -1912,14 +1959,14 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         continue;
       }
       const int var = lit.value > 0 ? lit.value : -lit.value;
-      if (!observed_vars_.contains(var)) {
+      if (!is_observed_var(var)) {
         return false;
       }
-      const auto assignment = assignment_by_var_.find(var);
-      if (assignment == assignment_by_var_.end()) {
+      if (!is_assigned_var(var)) {
         return false;
       }
-      const bool literal_is_true = lit.value > 0 ? assignment->second : !assignment->second;
+      const bool assignment = assigned_value(var);
+      const bool literal_is_true = lit.value > 0 ? assignment : !assignment;
       if (literal_is_true) {
         return false;
       }
@@ -2017,7 +2064,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       }
 
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-      if (assignment_by_var_.contains(var) || pending_vars_.contains(var)) {
+      if (is_assigned_var(var) || is_pending_var(var)) {
         return true;
       }
       ++inspected;
@@ -2032,7 +2079,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     while (!candidate_queue_.empty()) {
       const std::size_t atom_index = candidate_queue_.front();
       candidate_queue_.pop_front();
-      queued_candidate_indices_.erase(atom_index);
+      queued_candidate_indices_[atom_index] = 0;
       if (!try_atom(theory_atoms_[atom_index])) {
         break;
       }
@@ -2085,7 +2132,9 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       return false;
     }
     pending_.push_back(propagated_lit);
-    pending_vars_.insert(var);
+    if (var >= 0 && static_cast<std::size_t>(var) < pending_vars_.size()) {
+      pending_vars_[static_cast<std::size_t>(var)] = 1;
+    }
     statistics_.increment(kStatEufPropagationDelivered);
     statistics_.increment(kStatEufPropagationReasonLits,
                           reasons_[propagated_lit].antecedents.size());
@@ -2112,15 +2161,16 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   const CheckSatOptions& options_;
   bool adaptive_propagation_ = false;
   util::Statistics& statistics_;
-  std::unordered_set<int> observed_vars_;
-  std::unordered_map<int, const BooleanClausifier::TheoryAtom*> atom_by_var_;
-  std::unordered_map<int, bool> assignment_by_var_;
+  std::vector<unsigned char> observed_vars_;
+  std::vector<const BooleanClausifier::TheoryAtom*> atom_by_var_;
+  std::vector<signed char> assignment_by_var_;
+  std::size_t assigned_var_count_ = 0;
   std::vector<int> trail_;
   std::vector<std::size_t> level_starts_{0};
   std::deque<int> pending_;
-  std::unordered_set<int> pending_vars_;
+  std::vector<unsigned char> pending_vars_;
   std::deque<std::size_t> candidate_queue_;
-  std::unordered_set<std::size_t> queued_candidate_indices_;
+  std::vector<unsigned char> queued_candidate_indices_;
   std::vector<std::vector<std::size_t>> candidate_indices_by_flat_term_;
   std::vector<theory::equality::FlatTermId> changed_terms_scratch_;
   std::unordered_map<int, Reason> reasons_;

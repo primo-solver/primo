@@ -121,6 +121,11 @@ ordinary post-model check or by the CaDiCaL external-clause callback used by
 `:euf.assignments`, `:euf.eq-assignments`, and `:euf.diseq-assignments` count
 theory-literal notifications received by the online/conflict EUF callback.
 Predicate atoms contribute only to `:euf.assignments`.
+The callback keeps assignment and pending-propagation membership in fixed
+arrays indexed by SAT variable. If these counters change without a matching
+change in `:euf.theory-atoms`, inspect the observed-variable map and
+`notify_backtrack` rollback path before treating the run as a solver-search
+effect.
 
 The propagation counters are used by both `--euf-prop=model` and
 `--euf-prop=online`; `--euf-prop=conflict` leaves them at zero. In online mode,

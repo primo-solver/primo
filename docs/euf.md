@@ -159,6 +159,15 @@ that propagation work. Reasons are sound, but not guaranteed minimum.
 observes only EUF-relevant SAT variables: equality atoms and Boolean predicate
 applications. The propagator tracks assignments and backtracking notifications,
 then asks for entailed unassigned theory literals and their reason clauses.
+The observed-variable set and theory-atom list are fixed after clausification,
+so the callback stores observed-variable marks, variable-to-theory-atom
+pointers, current assignments, pending-propagation marks, and queued-candidate
+marks in vectors indexed by SAT variable or theory-atom index. Rollback uses
+the same literal trail as before: `notify_backtrack` clears assignment and
+pending slots for popped trail literals, and candidate queues are scratch state
+cleared on backtrack. This replaces hot hash tables in assignment callbacks; it
+does not add theory-aware SAT branching or change the set of learned theory
+clauses.
 With `--euf-engine=lazy`, reason queries use the older explained closure. With
 `--euf-engine=incremental`, they use a persistent flat curried closure owned by
 the external propagator. The propagator checkpoints assignment-trail positions
