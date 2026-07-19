@@ -124,9 +124,12 @@ single-assertion `basic` branch has a narrower variant for finite-domain
 formulas that contain
 Boolean-valued UF predicate applications; it reports
 `:sat.phase.auto-basic-single-predicate-polarity`. Any explicit
-`--theory-phase=...` value disables these automatic overrides. These remain
-static CaDiCaL phase hints set before solving; Primo still does not use an EUF
-decision callback that dynamically chooses the next SAT decision literal.
+`--theory-phase=...` value disables these automatic overrides. A still narrower
+single finite-domain override, reported by `:sat.phase.auto-single-fd-polarity`,
+can be disabled with `--no-auto-single-fd-polarity` for same-binary ablations.
+These remain static CaDiCaL phase hints set before solving; Primo still does not
+use an EUF decision callback that dynamically chooses the next SAT decision
+literal.
 
 `conflict` connects the CaDiCaL external propagator only for assignment,
 backtrack, and external conflict clauses. It maintains an incremental flat

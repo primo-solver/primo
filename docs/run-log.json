@@ -5698,6 +5698,97 @@
       },
       "evidence_status": "current_local_candidate",
       "notes": "Merge-gate-sized local QF_UF fuzz run after adding a phase-only default selector. Headline acceptance still depends on SLURM benchmark comparison."
+    },
+    {
+      "id": "2026-07-19-single-fd-phase-disable-flag-local",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local same-binary A/B for the single finite-domain phase selector disable flag on NEQ016_size8",
+      "commit": "a53dc16 plus uncommitted --no-auto-single-fd-polarity option wiring",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size8.smt2; timeout 30 ./build/primo --quiet --stats --no-auto-single-fd-polarity tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 1,
+        "timeout_seconds": 30,
+        "manifest": "tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+      },
+      "artifacts": {
+        "summary": "/tmp/primo-neq016-size8-{default,disabled}.{out,err}",
+        "results": "/tmp/primo-neq016-size8-{default,disabled}.{out,err}",
+        "logs": "/tmp/primo-neq016-size8-{default,disabled}.{out,err}",
+        "bugs": null
+      },
+      "summary": {
+        "default": "unsat in 57.84s; :sat.phase.auto-single-fd-polarity 1; :sat.phase.theory-negative 28; :euf.theory-atoms 1295",
+        "disabled": "unknown at 30.00s; :sat.phase.auto-single-fd-polarity 0; :sat.phase.theory-negative 1295; :euf.theory-atoms 1295"
+      },
+      "evidence_status": "current_local_candidate",
+      "notes": "This proves the new disable flag isolates the narrow phase selector for a same-binary SLURM A/B. It is still not accepted as headline/default evidence without the 334-row SLURM comparison."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-single-fd-phase-flag-1000",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT generated cases after adding the single finite-domain phase selector disable flag",
+      "commit": "a53dc16 plus uncommitted --no-auto-single-fd-polarity option wiring",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071951 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-single-fd-phase-flag-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 2026071951,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-flag-1000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-flag-1000",
+        "logs": null,
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-flag-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 915,
+        "unsat": 85
+      },
+      "evidence_status": "current_local_candidate",
+      "notes": "Merge-gate-sized local QF_UF fuzz run on the current option-wired candidate. Headline/default acceptance still depends on SLURM benchmark comparison."
     }
   ]
 }

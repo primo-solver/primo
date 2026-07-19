@@ -2388,6 +2388,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   }
   if ((options.theory_phase == TheoryPhaseMode::Negative ||
        options.theory_phase == TheoryPhaseMode::Auto) &&
+      options.auto_single_finite_domain_polarity &&
       should_use_auto_single_finite_domain_polarity(statistics)) {
     theory_phase = TheoryPhaseMode::Polarity;
     statistics.increment(kStatSatPhaseAutoSingleFiniteDomainPolarity);

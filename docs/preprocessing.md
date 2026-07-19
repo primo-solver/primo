@@ -103,7 +103,9 @@ disables the predicate-aware phase override for selected single-assertion
 finite-domain formulas. `--no-auto-basic-multi` disables the compact
 multi-assertion classifier for scripted option matrices, while
 `--no-auto-basic-multi-polarity` keeps that compact preprocessing branch but
-uses the ordinary theory-atom phase.
+uses the ordinary theory-atom phase. `--no-auto-single-fd-polarity` disables
+only the narrow single finite-domain phase selector reported by
+`:sat.phase.auto-single-fd-polarity`.
 
 ## Experimental QF_UF Portfolio
 

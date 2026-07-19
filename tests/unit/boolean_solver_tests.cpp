@@ -1540,6 +1540,15 @@ void default_phase_uses_polarity_for_neq016_size8_like_shape() {
   assert(smaller.statistics.get(":sat.phase.auto-single-fd-polarity") == 0);
   assert(smaller.statistics.get(":sat.phase.theory-negative") ==
          smaller.statistics.get(":euf.theory-atoms"));
+
+  primo::smt::CheckSatOptions disabled_options;
+  disabled_options.auto_single_finite_domain_polarity = false;
+  const auto disabled =
+      check_sat_smtlib(single_finite_domain_phase_shape_input(8, 67, 28), disabled_options);
+  assert(disabled.result == CheckSatResult::Sat);
+  assert(disabled.statistics.get(":sat.phase.auto-single-fd-polarity") == 0);
+  assert(disabled.statistics.get(":sat.phase.theory-negative") ==
+         disabled.statistics.get(":euf.theory-atoms"));
 }
 
 void strong_preprocessing_enables_ground_congruence_clauses() {
