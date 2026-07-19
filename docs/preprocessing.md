@@ -13,9 +13,13 @@ Primo currently exposes QF_UF preprocessing through
   symmetry breaking when their recognizers apply. Guarded finite-domain equality
   definitions are available with `--finite-domain-equality-definitions`. The
   explicit `strong` preset removes the automatic equality-definition guards for
-  experiments. An experimental small multi-assertion auto branch can be enabled
-  with `--auto-basic-multi`; it uses the `basic` subset instead when the input
-  has more than one assertion, at most 10,000 assertions, and at most 20,000
+  experiments. A guarded single-assertion exception uses the lighter `basic`
+  subset when the original formula has at most 15,000 reachable terms, at least
+  200 finite-domain choices, and a small accepted finite-domain symmetry group;
+  `--no-auto-basic-single` disables this exception for same-binary A/B runs. An
+  experimental small multi-assertion auto branch can be enabled with
+  `--auto-basic-multi`; it uses the `basic` subset instead when the input has
+  more than one assertion, at most 10,000 assertions, and at most 20,000
   initially reachable terms.
 
 The default command now enables the safe part of the predecessor performance
@@ -57,11 +61,13 @@ reproducing narrower configurations:
 - guarded experimental ground substitution, enabled with
   `--guarded-ground-unit-substitution`;
 - finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
-  by the ordinary default `auto` path. The opt-in guarded small multi-assertion
-  branch intentionally skips these clauses because the July 19, 2026 QG option
-  comparison showed that several compact operation-table rows benefited from
-  the lighter `basic` encoding plus polarity phase, while single-assertion NEQ
-  and PEQ rows still need the finite-domain AMO path;
+  by most of the default `auto` path. The guarded single-assertion exception
+  reports `:preprocessing.auto.basic-single` and skips these clauses for a small
+  finite-domain/symmetry shape that the July 19, 2026 334-row option matrix
+  predicted would gain one PEQ solve and lower PAR2. The opt-in guarded small
+  multi-assertion branch intentionally skips these clauses because the July 19,
+  2026 QG option comparison showed that several compact operation-table rows
+  benefited from the lighter `basic` encoding plus polarity phase;
 - finite-domain equality definitions. In `auto` they are opt-in with
   `--finite-domain-equality-definitions` and bounded by
   `--finite-domain-eqdefs-auto-domain-limit` and
@@ -128,13 +134,17 @@ finite-model encodings such as NEQ, PEQ, SEQ, and QG operation tables can need
 SAT-visible finite-domain structure, while unbounded equality-definition
 expansion can also flood unrelated instances with thousands of clauses. `auto`
 therefore keeps AMO clauses by default but keeps equality definitions opt-in.
-The opt-in basic-multi exception is an empirical classifier derived from the
-recorded 334-row option comparison, not a paper-backed finite-domain algorithm:
-it only changes which existing preprocessing subset is selected before
-clausification. It reports `:preprocessing.auto.basic-multi`; the default
-ordinary strong-auto branch reports `:preprocessing.auto.strong`. A same-run
-SLURM comparison on July 19, 2026 improved the selected QG rows but regressed
-the mixed-suite wall-clock PAR2, so it is intentionally not enabled by default.
+The single-assertion `basic` exception is an empirical classifier derived from
+the recorded 334-row option comparison: it only selects the existing `basic`
+subset when the original finite-domain scan finds at least 200 choices and the
+symmetry pass accepts a group with at most six non-value terms. It reports
+`:preprocessing.auto.basic-single` and can be disabled with
+`--no-auto-basic-single`; the default ordinary strong-auto branch reports
+`:preprocessing.auto.strong`. The opt-in basic-multi exception is a separate
+empirical classifier for compact multi-assertion QG rows and reports
+`:preprocessing.auto.basic-multi`. A same-run SLURM comparison on July 19, 2026
+improved the selected QG rows but regressed the mixed-suite wall-clock PAR2, so
+the multi-assertion classifier is intentionally not enabled by default.
 When enabled, equality definitions must fit a domain-size and per-solve clause
 budget. For single-assertion formulas they must also fit the initial
 reachable-term limit, because a single top-level assertion may contain an entire

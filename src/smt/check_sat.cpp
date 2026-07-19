@@ -109,6 +109,7 @@ constexpr util::StatKey kStatUfSymmetryRejectedNoninvariant =
     util::StatKey::UfSymmetryRejectedNoninvariant;
 constexpr util::StatKey kStatAutoSingleAssertion = util::StatKey::AutoSingleAssertion;
 constexpr util::StatKey kStatAutoStrong = util::StatKey::AutoStrong;
+constexpr util::StatKey kStatAutoBasicSingle = util::StatKey::AutoBasicSingle;
 constexpr util::StatKey kStatAutoBasicMulti = util::StatKey::AutoBasicMulti;
 constexpr util::StatKey kStatAutoLargeAssertionSkip = util::StatKey::AutoLargeAssertionSkip;
 constexpr util::StatKey kStatSatTheoryNegativePhase = util::StatKey::SatTheoryNegativePhase;
@@ -179,6 +180,9 @@ constexpr util::StatKey kStatEufIncrementalMaxUseListSize =
 
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
 constexpr std::size_t kAutoBasicMultiTermLimit = 20000;
+constexpr std::size_t kAutoBasicSingleTermLimit = 15000;
+constexpr std::size_t kAutoBasicSingleMinimumDomains = 200;
+constexpr std::size_t kAutoBasicSingleMaximumSymmetryTerms = 6;
 constexpr std::size_t kLiveStatsFlushInterval = 1024;
 
 std::size_t reachable_term_count(const core::TermManager& terms,
@@ -1047,6 +1051,14 @@ bool should_filter_assignment(PureTheoryFilterMode mode, const BooleanClausifier
     return false;
   }
   return (is_pure_positive(atom) && !value) || (is_pure_negative(atom) && value);
+}
+
+bool should_use_auto_basic_single(std::size_t assertion_count, std::size_t initial_reachable_terms,
+                                  const FiniteDomainAtMostOneResult& finite_domain,
+                                  const UfSymmetryBreakingResult& symmetry) {
+  return assertion_count == 1 && initial_reachable_terms <= kAutoBasicSingleTermLimit &&
+         finite_domain.domains >= kAutoBasicSingleMinimumDomains && symmetry.accepted_sets != 0 &&
+         symmetry.terms <= kAutoBasicSingleMaximumSymmetryTerms;
 }
 
 AssignedTheoryAtom assigned_theory_atom(PureTheoryFilterMode mode,
@@ -2530,6 +2542,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
   statistics.set(kStatAutoSingleAssertion, 0);
   statistics.set(kStatAutoStrong, 0);
+  statistics.set(kStatAutoBasicSingle, 0);
   statistics.set(kStatAutoBasicMulti, 0);
   statistics.set(kStatAutoLargeAssertionSkip, 0);
   statistics.set(kStatSatTheoryNegativePhase, 0);
@@ -2604,7 +2617,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         options.qf_uf_preprocess == QfUfPreprocessMode::Auto
             ? reachable_term_count(frontend.terms(), assertions)
             : 0;
-    const bool auto_single_assertion =
+    const bool auto_candidate_single_assertion =
         options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() <= 1;
     const bool auto_large_assertion_skip = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
                                            assertions.size() > kAutoPreprocessLargeAssertionLimit;
@@ -2612,6 +2625,31 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                   options.auto_basic_multi_preprocessing && assertions.size() > 1 &&
                                   assertions.size() <= kAutoPreprocessLargeAssertionLimit &&
                                   initial_reachable_terms <= kAutoBasicMultiTermLimit;
+    const bool preprocessing_enabled =
+        options.qf_uf_preprocess != QfUfPreprocessMode::Off && !auto_large_assertion_skip;
+    const bool use_symmetry_breaking = preprocessing_enabled && options.uf_symmetry_breaking;
+    const bool auto_basic_single_candidate =
+        options.auto_basic_single_preprocessing && auto_candidate_single_assertion &&
+        initial_reachable_terms <= kAutoBasicSingleTermLimit && use_symmetry_breaking;
+    FiniteDomainAtMostOneResult raw_finite_domain_result;
+    if (auto_candidate_single_assertion || options.qf_uf_preprocess == QfUfPreprocessMode::Strong ||
+        (options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() > 1 &&
+         !auto_basic_multi && !auto_large_assertion_skip)) {
+      FiniteDomainAtMostOne finite_domain(frontend.terms());
+      raw_finite_domain_result = finite_domain.generate(assertions);
+    }
+    std::optional<UfSymmetryBreakingResult> symmetry_result;
+    if (auto_basic_single_candidate) {
+      UfSymmetryBreaker symmetry_breaker(frontend.terms());
+      symmetry_result = symmetry_breaker.break_symmetries(
+          assertions,
+          UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
+    }
+    const bool auto_basic_single =
+        auto_basic_single_candidate && symmetry_result.has_value() &&
+        should_use_auto_basic_single(assertions.size(), initial_reachable_terms,
+                                     raw_finite_domain_result, symmetry_result.value());
+    const bool auto_single_assertion = auto_candidate_single_assertion && !auto_basic_single;
     const bool auto_strong = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
                              assertions.size() > 1 && !auto_large_assertion_skip &&
                              !auto_basic_multi;
@@ -2625,6 +2663,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     if (auto_strong) {
       statistics.increment(kStatAutoStrong);
     }
+    if (auto_basic_single) {
+      statistics.increment(kStatAutoBasicSingle);
+    }
     if (auto_basic_multi) {
       statistics.increment(kStatAutoBasicMulti);
     }
@@ -2633,8 +2674,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     }
     const bool strong_preprocessing =
         options.qf_uf_preprocess == QfUfPreprocessMode::Strong || auto_strong;
-    const bool preprocessing_enabled =
-        options.qf_uf_preprocess != QfUfPreprocessMode::Off && !auto_large_assertion_skip;
     const bool use_eq_bridge = options.eq_bridge || strong_preprocessing || auto_single_assertion;
     const bool use_finite_domain_evaluation = false;
     const bool use_finite_domain_amo = strong_preprocessing || auto_single_assertion;
@@ -2651,7 +2690,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const bool use_ground_unit_substitution = options.ground_unit_substitution;
     const bool use_guarded_ground_unit_substitution =
         options.guarded_ground_unit_substitution && !options.ground_unit_substitution;
-    const bool use_symmetry_breaking = preprocessing_enabled && options.uf_symmetry_breaking;
     const std::size_t preprocessing_passes =
         (strong_preprocessing || auto_single_assertion)
             ? std::max<std::size_t>(options.preprocessing_passes, 3)
@@ -2665,10 +2703,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const std::vector<core::TermId> symmetry_source_assertions = assertions;
     std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
     std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
-    FiniteDomainAtMostOneResult raw_finite_domain_result;
     if (use_finite_domain_amo) {
-      FiniteDomainAtMostOne finite_domain(frontend.terms());
-      raw_finite_domain_result = finite_domain.generate(assertions);
+      statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
+      statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
+    } else if (auto_basic_single) {
       statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
       statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
     }
@@ -2776,10 +2814,13 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       }
     }
     if (use_symmetry_breaking) {
-      UfSymmetryBreaker symmetry_breaker(frontend.terms());
-      UfSymmetryBreakingResult symmetry = symmetry_breaker.break_symmetries(
-          symmetry_source_assertions,
-          UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
+      if (!symmetry_result.has_value()) {
+        UfSymmetryBreaker symmetry_breaker(frontend.terms());
+        symmetry_result = symmetry_breaker.break_symmetries(
+            symmetry_source_assertions,
+            UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
+      }
+      const UfSymmetryBreakingResult& symmetry = symmetry_result.value();
       assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
       statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
       statistics.increment(kStatUfSymmetryValues, symmetry.values);

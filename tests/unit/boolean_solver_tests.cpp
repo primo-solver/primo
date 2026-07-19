@@ -975,6 +975,80 @@ void auto_preprocessing_basic_multi_can_be_disabled() {
   assert(result.statistics.get(":sat.phase.auto-basic-multi-polarity") == 0);
 }
 
+void auto_preprocessing_uses_basic_for_selected_single_assertion_domains() {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun g (A) A)\n";
+  for (int value = 0; value < 6; ++value) {
+    input << "(declare-fun v" << value << " () A)\n";
+  }
+  for (int variable = 0; variable < 200; ++variable) {
+    input << "(declare-fun x" << variable << " () A)\n";
+  }
+  input << "(assert (and (distinct v0 v1 v2 v3 v4 v5)\n";
+  input << "  (distinct (g v0) (g v1) (g v2) (g v3) (g v4) (g v5))\n";
+  for (int variable = 0; variable < 200; ++variable) {
+    input << "  (or";
+    for (int value = 0; value < 6; ++value) {
+      if (variable < 6) {
+        input << " (= x" << variable << " v" << value << ")";
+      } else {
+        input << " (= x" << variable << " (g v" << value << "))";
+      }
+    }
+    input << ")\n";
+  }
+  input << "))\n(check-sat)\n";
+
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  const auto result = check_sat_smtlib(input.str(), options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.basic-single") == 1);
+  assert(result.statistics.get(":preprocessing.auto.single-assertion") == 0);
+  assert(result.statistics.get(":preprocessing.auto.strong") == 0);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 200);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.terms") == 6);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 0);
+}
+
+void auto_preprocessing_basic_single_can_be_disabled() {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun g (A) A)\n";
+  for (int value = 0; value < 6; ++value) {
+    input << "(declare-fun v" << value << " () A)\n";
+  }
+  for (int variable = 0; variable < 200; ++variable) {
+    input << "(declare-fun x" << variable << " () A)\n";
+  }
+  input << "(assert (and (distinct v0 v1 v2 v3 v4 v5)\n";
+  input << "  (distinct (g v0) (g v1) (g v2) (g v3) (g v4) (g v5))\n";
+  for (int variable = 0; variable < 200; ++variable) {
+    input << "  (or";
+    for (int value = 0; value < 6; ++value) {
+      if (variable < 6) {
+        input << " (= x" << variable << " v" << value << ")";
+      } else {
+        input << " (= x" << variable << " (g v" << value << "))";
+      }
+    }
+    input << ")\n";
+  }
+  input << "))\n(check-sat)\n";
+
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_basic_single_preprocessing = false;
+  const auto result = check_sat_smtlib(input.str(), options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.basic-single") == 0);
+  assert(result.statistics.get(":preprocessing.auto.single-assertion") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") > 0);
+}
+
 void auto_preprocessing_emits_guarded_equality_definitions() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
@@ -1795,6 +1869,8 @@ int main() {
   finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities();
   auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions();
   auto_preprocessing_basic_multi_can_be_disabled();
+  auto_preprocessing_uses_basic_for_selected_single_assertion_domains();
+  auto_preprocessing_basic_single_can_be_disabled();
   auto_preprocessing_emits_guarded_equality_definitions();
   finite_domain_equality_definitions_can_be_disabled();
   auto_preprocessing_keeps_equality_definitions_opt_in();

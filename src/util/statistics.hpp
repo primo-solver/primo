@@ -64,6 +64,7 @@ enum class StatKey : std::size_t {
   UfSymmetryRejectedNoninvariant,
   AutoSingleAssertion,
   AutoStrong,
+  AutoBasicSingle,
   AutoBasicMulti,
   AutoLargeAssertionSkip,
   SatTheoryNegativePhase,

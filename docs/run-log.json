@@ -4652,6 +4652,106 @@
       },
       "evidence_status": "local-current",
       "notes": "Do not promote polarity, basic-polarity, or the higher portfolio budget from this evidence. The NEQ cluster needs a sharper structural classifier or a different SAT-visible encoding/profiling target. The existing 334-row SLURM portfolio run remains rejected as a default because it was slower on most rows and worsened PAR2 despite gaining one solve."
+    },
+    {
+      "id": "2026-07-19-auto-basic-single-selector-local",
+      "started_at": "2026-07-19T22:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Offline selector mining and local guard run for default-on single-assertion basic preprocessing selector",
+      "commit": "2f65f7d",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "Mined results/qfuf-option-compare-111717/default-merged.csv, basic-merged.csv, and basic-polarity-merged.csv for selectors using only default preprocessing stats; then rebuilt ./build/primo with the auto-basic-single selector and --no-auto-basic-single escape hatch and ran ./build/primo --quiet --stats over NEQ016_size7, NEQ023_size7, NEQ027_size8, NEQ027_size10, NEQ041_size8, PEQ019_size7, PEQ010_size8, and qg7/iso_brn_repgen033 with 30s timeout.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 8,
+        "timeout_seconds": 30,
+        "targets": "NEQ016_size7, NEQ023_size7, NEQ027_size8, NEQ027_size10, NEQ041_size8, PEQ019_size7, PEQ010_size8, QG qg7 iso_brn_repgen033"
+      },
+      "artifacts": {
+        "selector_sources": "results/qfuf-option-compare-111717/{default,basic,basic-polarity}-merged.csv",
+        "local_guard_csv": "results/local-neq-matrix-20260719/auto-basic-single-guard.csv"
+      },
+      "summary": {
+        "offline_334_prediction": {
+          "baseline_default_solved": 330,
+          "baseline_default_par2_seconds": 3529.273,
+          "selected_rows": 12,
+          "predicted_solved": 331,
+          "predicted_par2_seconds": 3298.9,
+          "selector": "single assertion, initial reachable terms <= 15000, raw finite-domain domains >= 200, accepted symmetry group, symmetry terms <= 6"
+        },
+        "local_guard": {
+          "selected": {
+            "NEQ023_size7": "2.745s, :preprocessing.auto.basic-single 1, AMO 0",
+            "PEQ010_size8": "1.205s, :preprocessing.auto.basic-single 1, AMO 0"
+          },
+          "not_selected": {
+            "NEQ016_size7": "5.143s, raw choices 52",
+            "NEQ027_size8": "0.568s, raw choices 172",
+            "NEQ027_size10": "1.190s, initial term size above selector limit",
+            "NEQ041_size8": "1.367s, raw choices 145",
+            "PEQ019_size7": "0.976s, raw choices 51",
+            "iso_brn_repgen033": "1.974s, no accepted symmetry group before preprocessing"
+          }
+        }
+      },
+      "evidence_status": "local-current-needs-slurm",
+      "notes": "This selector is a default behavior change candidate. Local make test, make asan-test, make lint, make docs, targeted clang-tidy, and a 1000-case QF_UF FuzzSMT gate passed on the working tree, but a same-run SLURM 334-row comparison is still required before claiming the default is accepted. The implementation chooses the existing basic preprocessing subset and does not add new theory lemmas."
+    },
+    {
+      "id": "2026-07-19-qf-uf-fuzzsmt-auto-basic-single-1000",
+      "started_at": "2026-07-19T22:35:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate for the guarded auto-basic-single selector and --no-auto-basic-single option",
+      "commit": "2f65f7d",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071922 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-auto-basic-single-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "generator": "fuzzsmt",
+        "seed": 2026071922,
+        "count": 1000,
+        "timeout_seconds": 5
+      },
+      "artifacts": {
+        "summary_csv": "fuzz-results/qf_uf-fuzzsmt-auto-basic-single-1000/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uf-fuzzsmt-auto-basic-single-1000/generated"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "parser_or_type_error": 0,
+        "ours_sat": 883,
+        "ours_unsat": 117,
+        "z3_sat": 883,
+        "z3_unsat": 117
+      },
+      "evidence_status": "local-current",
+      "notes": "All generated cases matched Z3. This is correctness evidence for the selector plumbing only; mixed-suite performance acceptance still requires SLURM comparison."
     }
   ]
 }

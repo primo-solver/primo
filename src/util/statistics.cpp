@@ -66,6 +66,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":preprocessing.uf-symmetry.rejected-noninvariant"sv,
     ":preprocessing.auto.single-assertion"sv,
     ":preprocessing.auto.strong"sv,
+    ":preprocessing.auto.basic-single"sv,
     ":preprocessing.auto.basic-multi"sv,
     ":preprocessing.auto.large-assertion-skip"sv,
     ":sat.phase.theory-negative"sv,

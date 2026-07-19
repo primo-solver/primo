@@ -92,6 +92,7 @@ struct CheckSatOptions {
   bool guarded_ground_unit_substitution = false;
   bool solved_constant_substitution = true;
   bool top_level_or_tseitin = false;
+  bool auto_basic_single_preprocessing = true;
   bool auto_basic_multi_preprocessing = false;
   bool auto_basic_multi_polarity = false;
   QfUfPortfolioMode qf_uf_portfolio = QfUfPortfolioMode::Off;

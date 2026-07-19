@@ -61,6 +61,8 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.uf-symmetry.rejected-noninvariant`;
 - `:preprocessing.auto.single-assertion`;
 - `:preprocessing.auto.strong`;
+- `:preprocessing.auto.basic-single`;
+- `:preprocessing.auto.basic-multi`;
 - `:preprocessing.auto.large-assertion-skip`;
 - `:solver.boolean`;
 - `:solver.qf-uf`;
