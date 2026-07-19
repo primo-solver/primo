@@ -6896,6 +6896,43 @@
       },
       "evidence_status": "pending",
       "notes": "Do not treat this as an accepted profile until result.json is collected and compared against default validation and guard costs. If the guard rejects the incumbent, record it as rejected evidence rather than promoting a profile."
+    },
+    {
+      "id": "2026-07-20-flat-cc-lookup-hit-review",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "review",
+      "scope": "Focused clean-room review of FlatCongruenceClosure lookup-hit/use-list and explanation hot path",
+      "commit": "b93f8a2 plus working-tree test/doc changes",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Inspected src/theory/equality/flat_congruence_closure.* against docs/papers/fast-congruence-closure-implementation.md; added a focused lookup-hit witness regression in tests/unit/euf_solver_tests.cpp; ran clang-format, ./build/primo_euf_solver_tests, make docs, and default/pure-filter-off stats probes on tmp/QF_UF/NEQ/NEQ023_size7.smt2.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2"
+        ],
+        "timeout_seconds": "none for NEQ023; interrupted a default NEQ016_size8 probe after roughly 90s because no stats are emitted before solver exit"
+      },
+      "artifacts": {
+        "source_test": "tests/unit/euf_solver_tests.cpp",
+        "design_note": "docs/papers/fast-congruence-closure-implementation.md"
+      },
+      "summary": {
+        "cc_review": "No new Section-3 congruence-discovery or rollback correctness bug was found in the inspected flat closure paths. The lookup-hit definition path is now covered by a focused regression showing that an existing lookup/use-list witness preserves future congruence discovery.",
+        "hot_path": "The implementation still uses adjacency BFS plus recursive congruence-edge expansion for explain_equal_into rather than the Nieuwenhuis-Oliveras Section 4-5 proof-forest explanation algorithm. This remains the most plausible CC-specific performance gap.",
+        "NEQ023_size7_default": "Solved unsat in about 0.44s; 35,509 explain calls; 509,168 BFS nodes visited; 49,032 BFS path edges; max conflict reason length 14.",
+        "NEQ023_size7_pure_filter_off": "Solved unsat in about 0.97s; 37,117 explain calls; 906,125 BFS nodes visited; 59,299 BFS path edges; confirms pure-filter-off is not a general NEQ default.",
+        "NEQ016_size8_default_probe": "Still did not finish within roughly 90s locally on this checkout; earlier logged evidence remains the usable bounded stats for that row."
+      },
+      "evidence_status": "current_local",
+      "notes": "Reference solver code was not copied. The CC implementation remains paper/documentation driven; the next code-changing CC experiment should be proof-forest reason diagnostics or a default-off explanation engine with reason-quality counters."
     }
   ]
 }

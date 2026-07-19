@@ -609,6 +609,23 @@ void flat_congruence_closure_backtracks_post_checkpoint_definitions() {
   check(closure.are_equal(2, 3));
 }
 
+void flat_congruence_closure_lookup_hit_definition_keeps_future_congruence() {
+  FlatCongruenceClosure closure(8);
+
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 4});
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 5});
+  check(closure.are_equal(4, 5));
+
+  closure.add_definition(primo::theory::equality::FlatDefinition{2, 1, 6});
+  check(!closure.are_equal(5, 6));
+
+  closure.assert_equal(0, 2, {primo::sat::Lit{-1}});
+  check(closure.are_equal(4, 6));
+  check(closure.are_equal(5, 6));
+  check(closure.stats().lookup_hits >= 2);
+  check(closure.stats().congruence_merges >= 2);
+}
+
 void flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack() {
   FlatCongruenceClosure closure(8);
   closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 2});
@@ -763,6 +780,7 @@ int main() {
   flat_congruence_closure_backtracks_nested_merges();
   flat_congruence_closure_backtracks_disequality_conflict();
   flat_congruence_closure_backtracks_post_checkpoint_definitions();
+  flat_congruence_closure_lookup_hit_definition_keeps_future_congruence();
   flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack();
   flat_congruence_closure_matches_naive_oracle_under_backtracking();
   flat_congruence_closure_explanations_match_naive_oracle_under_backtracking();

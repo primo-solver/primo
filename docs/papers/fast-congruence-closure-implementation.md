@@ -158,6 +158,8 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
 - changed-term draining after flat merges and rollback of undrained changed-term
   records on backtrack;
 - process-time use-list duplicate handling across checkpoint rollback;
+- lookup-hit definitions remain represented by the existing lookup/use-list
+  witness and still participate in future congruence discovery;
 - deterministic randomized flat-closure sequences checked against a naive
   saturation oracle under checkpoint rollback;
 - nonzero lookup-hit and congruence-merge counters.
