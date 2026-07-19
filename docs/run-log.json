@@ -2646,6 +2646,132 @@
       },
       "evidence_status": "rejected",
       "notes": "The source changes were reverted completely. The experiment confirms that medium-row online propagation is useful for NEQ015_size5, but the static medium-shape predictor and adaptive zero-delivery disable are too weak as a default mechanism. Future work should either find a stronger online-usefulness predictor from pre-solve/pre-search stats or pursue a different EUF/SAT search technique."
+    },
+    {
+      "id": "2026-07-19-auto-phase-low-negative-local",
+      "started_at": "2026-07-19T06:30:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local refinement of --theory-phase=auto for low-negative finite-domain QF_UF shapes, motivated by SEQ035_size6 and SEQ026_size7",
+      "commit": "6f83284",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "Profiled tmp/QF_UF/SEQ/SEQ035_size6.smt2 with ./build/primo --quiet --stats under default, --theory-phase=polarity, --theory-phase=auto, --theory-phase=none, --qf-uf-preprocess=basic, --no-uf-symmetry-breaking, and --pure-theory-filter=off; then added the low-negative branch to --theory-phase=auto and ran the 39-row mixed train/validation/guard union with 20s timeout: ./build/primo --quiet --stats --theory-phase=auto.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --theory-phase=auto"
+      },
+      "references": [
+        {
+          "name": "Primo default local baseline",
+          "argv": "./build/primo --quiet --stats from 2026-07-19-qfuf-mixed-local-default-auto-online-2d01ffa"
+        },
+        {
+          "name": "Previous Primo --theory-phase=auto local baseline",
+          "argv": "./build/primo --quiet --stats --theory-phase=auto from 2026-07-19-qfuf-mixed-local-default-auto-online-2d01ffa"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2 from 2026-07-19-qfuf-mixed-local-default-auto-online-2d01ffa"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 39,
+        "timeout_seconds": 20,
+        "manifest": "union of benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, and benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "terminal summary and local CSV artifacts",
+        "results": "results/qfuf-mixed-local-auto-low-negative-polarity.csv; results/qfuf-mixed-local-polarity-2d01ffa.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "seq035_diagnosis": "Default took about 3.25s locally with 47536 EUF conflicts and 1321983 explain calls; --theory-phase=polarity took about 0.55s with 14426 conflicts and 356601 explain calls; Z3 solved in about 0.03s.",
+        "new_auto": {
+          "ok": 35,
+          "timeout": 4,
+          "error": 0,
+          "par2": 247.589
+        },
+        "old_auto": {
+          "ok": 33,
+          "timeout": 6,
+          "error": 0,
+          "par2": 312.564
+        },
+        "default_baseline": {
+          "ok": 34,
+          "timeout": 5,
+          "error": 0,
+          "par2": 298.899
+        },
+        "z3_baseline": {
+          "ok": 34,
+          "timeout": 5,
+          "error": 0,
+          "par2": 243.006
+        },
+        "notable_wins": "SEQ026_size7 changed from timeout under old auto to 14.663s with auto-polarity; SEQ035_size6 improved from old-auto 1.811s to 0.451s; iso and QG rows remained on the existing auto-polarity path.",
+        "notable_regressions": "No material regression against old auto in the 39-row local run; the largest measured regression was about 0.004s on a small Goel row."
+      },
+      "evidence_status": "current-local",
+      "notes": "The implemented subset is a heuristic only: if --theory-phase=auto sees finite-domain or UF-symmetry structure, at most 25 pure-negative theory atoms, and at least 100 pure-positive theory atoms, it selects the same static polarity phase mode as --theory-phase=polarity. The CLI default remains negative pending broader SLURM validation because previous blanket phase changes regressed some families."
+    },
+    {
+      "id": "2026-07-19-auto-phase-low-negative-fuzzsmt-1000",
+      "started_at": "2026-07-19T07:10:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzzing",
+      "scope": "Merge-gate QF_UF FuzzSMT differential check for the low-negative --theory-phase=auto heuristic",
+      "commit": "6f83284",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --theory-phase=auto' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 20260719 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-auto-phase-low-negative-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --theory-phase=auto"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1000,
+        "timeout_seconds": 5,
+        "generator": "fuzzsmt",
+        "seed": 20260719,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-auto-phase-low-negative-1000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-auto-phase-low-negative-1000",
+        "logs": null,
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-auto-phase-low-negative-1000/bugs"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "answers": {
+          "sat": 899,
+          "unsat": 101
+        }
+      },
+      "evidence_status": "current-local",
+      "notes": "This is the required local merge-gate fuzzing evidence for changing --theory-phase=auto. It does not replace broader SLURM performance validation for making auto or polarity the default command-line phase policy."
     }
   ]
 }

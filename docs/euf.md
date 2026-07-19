@@ -91,9 +91,12 @@ clausified formula.
 
 `auto` is an experimental tuning mode, not a default profile. It keeps the
 negative phase unless preprocessing found finite-domain or UF-symmetry structure
-and the clausified theory atoms are not strongly positive-dominated. In that
-case it uses the same static polarity phase setting as `polarity` and reports
-`:sat.phase.auto-polarity`. This is a local heuristic derived from the NEQ/QG
+and the clausified theory atoms are not strongly positive-dominated. It also
+uses polarity for low-negative finite-domain shapes with at most 25 pure-negative
+theory atoms and at least 100 pure-positive theory atoms; this covers SEQ-style
+rows where setting every theory atom negative causes many avoidable EUF
+conflicts. When the heuristic selects polarity, it reports
+`:sat.phase.auto-polarity`. This is a local heuristic derived from the NEQ/QG/SEQ
 performance trail in `docs/run-log.json`; it is not a theory decision callback
 and it does not implement a paper-specific SAT branching algorithm.
 

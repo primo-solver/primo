@@ -1107,6 +1107,36 @@ void theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape() {
          result.statistics.get(":euf.theory-atoms"));
 }
 
+void theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape() {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun a () A)\n";
+  input << "(declare-fun b () A)\n";
+  input << "(declare-fun x () A)\n";
+  input << "(assert (distinct a b))\n";
+  input << "(assert (or (= x a) (= x b)))\n";
+  for (int i = 0; i < 110; ++i) {
+    input << "(declare-fun c" << i << " () A)\n";
+    input << "(assert (= c" << i << " a))\n";
+  }
+  input << "(check-sat)\n";
+
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
+  options.solved_constant_substitution = false;
+  const auto result = check_sat_smtlib(input.str(), options);
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
+  assert(result.statistics.get(":euf.pure-atoms.positive") >= 100);
+  assert(result.statistics.get(":euf.pure-atoms.negative") <= 25);
+  assert(result.statistics.get(":sat.phase.auto-polarity") == 1);
+  assert(result.statistics.get(":sat.phase.theory-negative") <
+         result.statistics.get(":euf.theory-atoms"));
+}
+
 void strong_preprocessing_enables_ground_congruence_clauses() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -1504,6 +1534,7 @@ int main() {
   theory_phase_option_can_leave_backend_phase_unset();
   theory_phase_auto_uses_polarity_on_balanced_finite_domain_shape();
   theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape();
+  theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape();
   strong_preprocessing_enables_ground_congruence_clauses();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();

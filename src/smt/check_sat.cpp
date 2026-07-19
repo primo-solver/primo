@@ -1070,6 +1070,12 @@ TheoryPhaseMode resolve_theory_phase_mode(TheoryPhaseMode mode,
   if (pure_negative == 0) {
     return TheoryPhaseMode::Negative;
   }
+  constexpr std::size_t kLowNegativePolarityLimit = 25;
+  constexpr std::size_t kLowNegativeMinimumPositiveAtoms = 100;
+  if (pure_negative <= kLowNegativePolarityLimit &&
+      pure_positive >= kLowNegativeMinimumPositiveAtoms) {
+    return TheoryPhaseMode::Polarity;
+  }
   if (pure_positive <= pure_negative || pure_positive <= 5 * pure_negative) {
     return TheoryPhaseMode::Polarity;
   }
