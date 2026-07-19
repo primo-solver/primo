@@ -40,7 +40,7 @@ esac
 manifest="$OUT_ROOT/manifest.txt"
 {
   for input_manifest in $MANIFESTS; do
-    sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d' "$input_manifest"
+    sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d; s#^tmp/QF_UF/##' "$input_manifest"
   done
 } | awk '!seen[$0]++' > "$manifest"
 
