@@ -6649,7 +6649,7 @@
       "recorded_at": "2026-07-19",
       "kind": "correctness_review",
       "scope": "FlatCongruenceClosure explanation invariant hardening and independent reason oracle test",
-      "commit": "pending",
+      "commit": "cb4f6b5",
       "environment": {
         "type": "local",
         "host": "workspace",
@@ -6684,7 +6684,7 @@
       "recorded_at": "2026-07-19",
       "kind": "fuzz",
       "scope": "QF_UF FuzzSMT merge gate after FlatCongruenceClosure explanation invariant hardening",
-      "commit": "pending",
+      "commit": "cb4f6b5",
       "environment": {
         "type": "local",
         "host": "workspace",
