@@ -294,6 +294,11 @@ own manifest through a temporary file and atomic rename; the manifest must not
 be shared across tasks because concurrent truncation can make valid paths appear
 missing.
 
+Use `scripts/slurm_qfuf_portfolio_compare.sbatch` for the matching
+default-versus-`--qf-uf-portfolio=basic-polarity` validation. It uses the same
+manifest handling and output layout as the phase comparison script, with
+`PRIMO_PORTFOLIO_*` environment variables replacing `PRIMO_PHASE_*`.
+
 The narrower `benchmarks/qfuf-smac-iso-train.txt` and
 `benchmarks/qfuf-smac-iso-validate.txt` manifests are diagnostic only. They
 include the user-visible `QG-classification/qg7/iso_brn_repgen033.smt2` case,
