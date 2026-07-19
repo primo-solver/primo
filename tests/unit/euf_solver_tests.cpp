@@ -1,5 +1,7 @@
 #include <cstddef>
 #include <cstdlib>
+#include <utility>
+#include <vector>
 
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
@@ -23,6 +25,89 @@ void check(bool condition) {
     std::abort();
   }
 }
+
+class NaiveFlatOracle {
+ public:
+  explicit NaiveFlatOracle(std::size_t node_count) : parent_(node_count), size_(node_count, 1) {
+    for (std::size_t i = 0; i < node_count; ++i) {
+      parent_[i] = i;
+    }
+  }
+
+  std::size_t push() {
+    snapshots_.push_back(Snapshot{parent_, size_});
+    return snapshots_.size() - 1;
+  }
+
+  void pop(std::size_t checkpoint) {
+    const Snapshot snapshot = snapshots_.at(checkpoint);
+    snapshots_.resize(checkpoint);
+    parent_ = snapshot.parent;
+    size_ = snapshot.size;
+  }
+
+  void add_definition(primo::theory::equality::FlatDefinition definition) {
+    definitions_.push_back(definition);
+    saturate();
+  }
+
+  void assert_equal(std::size_t lhs, std::size_t rhs) {
+    merge(lhs, rhs);
+    saturate();
+  }
+
+  bool are_equal(std::size_t lhs, std::size_t rhs) const { return find(lhs) == find(rhs); }
+
+ private:
+  struct Snapshot {
+    std::vector<std::size_t> parent;
+    std::vector<std::size_t> size;
+  };
+
+  std::size_t find(std::size_t value) const {
+    while (parent_[value] != value) {
+      value = parent_[value];
+    }
+    return value;
+  }
+
+  bool merge(std::size_t lhs, std::size_t rhs) {
+    std::size_t lhs_repr = find(lhs);
+    std::size_t rhs_repr = find(rhs);
+    if (lhs_repr == rhs_repr) {
+      return false;
+    }
+    if (size_[lhs_repr] > size_[rhs_repr]) {
+      std::swap(lhs_repr, rhs_repr);
+    }
+    parent_[lhs_repr] = rhs_repr;
+    size_[rhs_repr] += size_[lhs_repr];
+    size_[lhs_repr] = 0;
+    return true;
+  }
+
+  void saturate() {
+    bool changed = true;
+    while (changed) {
+      changed = false;
+      for (std::size_t i = 0; i < definitions_.size(); ++i) {
+        for (std::size_t j = i + 1; j < definitions_.size(); ++j) {
+          const auto& lhs = definitions_[i];
+          const auto& rhs = definitions_[j];
+          if (find(lhs.function) == find(rhs.function) &&
+              find(lhs.argument) == find(rhs.argument)) {
+            changed = merge(lhs.result, rhs.result) || changed;
+          }
+        }
+      }
+    }
+  }
+
+  std::vector<std::size_t> parent_;
+  std::vector<std::size_t> size_;
+  std::vector<primo::theory::equality::FlatDefinition> definitions_;
+  std::vector<Snapshot> snapshots_;
+};
 
 void congruent_applications_are_merged() {
   primo::core::SymbolTable symbols;
@@ -521,6 +606,57 @@ void flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack() {
   check(closure.are_equal(0, 1));
 }
 
+void flat_congruence_closure_matches_naive_oracle_under_backtracking() {
+  constexpr std::size_t kNodeCount = 30;
+  FlatCongruenceClosure closure(kNodeCount);
+  NaiveFlatOracle oracle(kNodeCount);
+  const std::vector<primo::theory::equality::FlatDefinition> definitions{
+      {6, 0, 9},   {6, 1, 10},  {6, 2, 11},  {6, 3, 12},  {6, 4, 13},  {6, 5, 14},  {7, 0, 15},
+      {7, 1, 16},  {7, 2, 17},  {7, 3, 18},  {7, 4, 19},  {7, 5, 20},  {8, 9, 21},  {8, 10, 22},
+      {8, 11, 23}, {8, 12, 24}, {8, 13, 25}, {8, 14, 26}, {8, 15, 27}, {8, 16, 28}, {8, 17, 29},
+  };
+  for (const auto& definition : definitions) {
+    closure.add_definition(definition);
+    oracle.add_definition(definition);
+  }
+
+  std::vector<std::size_t> closure_checkpoints;
+  std::vector<std::size_t> oracle_checkpoints;
+  std::size_t state = 0x9e3779b97f4a7c15ULL;
+  auto next = [&state]() {
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    return state;
+  };
+  auto compare_all_pairs = [&]() {
+    for (std::size_t lhs = 0; lhs < kNodeCount; ++lhs) {
+      for (std::size_t rhs = 0; rhs < kNodeCount; ++rhs) {
+        check(closure.are_equal(lhs, rhs) == oracle.are_equal(lhs, rhs));
+      }
+    }
+  };
+
+  compare_all_pairs();
+  for (std::size_t step = 0; step < 220; ++step) {
+    const std::size_t choice = next() % 11;
+    if (choice == 0 && closure_checkpoints.size() < 8) {
+      closure_checkpoints.push_back(closure.push());
+      oracle_checkpoints.push_back(oracle.push());
+    } else if (choice == 1 && !closure_checkpoints.empty()) {
+      const std::size_t index = next() % closure_checkpoints.size();
+      closure.pop(closure_checkpoints[index]);
+      oracle.pop(oracle_checkpoints[index]);
+      closure_checkpoints.resize(index);
+      oracle_checkpoints.resize(index);
+    } else {
+      const std::size_t lhs = next() % 18;
+      const std::size_t rhs = next() % 18;
+      closure.assert_equal(lhs, rhs, {primo::sat::Lit{-static_cast<int>(step + 1)}});
+      oracle.assert_equal(lhs, rhs);
+    }
+    compare_all_pairs();
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -546,5 +682,6 @@ int main() {
   flat_congruence_closure_backtracks_disequality_conflict();
   flat_congruence_closure_backtracks_post_checkpoint_definitions();
   flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack();
+  flat_congruence_closure_matches_naive_oracle_under_backtracking();
   return 0;
 }

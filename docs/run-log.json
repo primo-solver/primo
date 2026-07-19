@@ -6561,6 +6561,41 @@
       },
       "evidence_status": "rejected_experiment",
       "notes": "No source changes from the prototype remain; only the run-log/design-note evidence and a stronger BFS diagnostics unit-test assertion remain."
+    },
+    {
+      "id": "2026-07-19-local-cc-oracle-review",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "FlatCongruenceClosure implementation review with independent oracle regression test and PEQ019 perf sample",
+      "commit": "091793c",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build --target primo_euf_solver_tests -j2 && ./build/primo_euf_solver_tests; make test; perf record -F 199 -g -- ./build/primo --quiet --stats tmp/QF_UF/PEQ/PEQ019_size7.smt2; perf report --stdio --no-children --sort symbol,dso",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2 plus deterministic in-process flat-CC oracle sequence in tests/unit/euf_solver_tests.cpp",
+        "timeout_seconds": 30
+      },
+      "artifacts": {
+        "perf_data": "discarded local /workspace/perf.data; top-symbol summary recorded in this run-log entry",
+        "perf_stdout": "/tmp/primo-peq019-perf.out",
+        "perf_stderr": "/tmp/primo-peq019-perf.err"
+      },
+      "summary": {
+        "oracle_test": "Added a deterministic small-state flat-CC oracle test: production FlatCongruenceClosure is compared against an independent naive all-pairs saturation model after definitions, random equalities, pushes, pops, and every-pair equality queries.",
+        "PEQ019_stats": "unsat about 0.87s locally; lookup probes 4584075; lookup hits 2714550; explain calls 1261146; BFS searches 320435; trail entries 18938037; backtracks 5630; max use-list size 160.",
+        "perf_top": "Short local perf sample: unordered_map ApplyKey lookup find about 12.75% self, FlatCongruenceClosure::explain_equal_into about 11.63% self, FlatCongruenceClosure::restore_trail_entry about 11.05% self.",
+        "interpretation": "The review found no immediate Section-3 use-list rollback correctness bug. Remaining PEQ cost is split across signature lookup probes, explanation graph traversal, and rollback granularity, so future CC performance work should target those mechanisms with reason-quality and trail-volume counters rather than ad hoc BFS shortcuts."
+      },
+      "evidence_status": "current_local",
+      "notes": "This is a CC review and regression-guard checkpoint, not headline SLURM evidence and not a claimed solved-count improvement."
     }
   ]
 }
