@@ -4289,10 +4289,14 @@
       },
       "summary": {
         "state_at_submission": "PENDING",
-        "submission_check": "Remote binary version check immediately before sbatch reported git 90444ca and cadical cadical-3.0.0-7b99c07."
+        "final_state": "FAILED",
+        "elapsed": "00:12:45",
+        "exit_code": "1:0",
+        "submission_check": "Remote binary version check immediately before sbatch reported git 90444ca and cadical cadical-3.0.0-7b99c07.",
+        "failure": "The compute-node pip install could not reach PyPI and failed to install smac<3,>=2, so no tuning trials were produced."
       },
-      "evidence_status": "running",
-      "notes": "Submitted for parameter evidence only; no performance conclusion until artifacts are collected and summarized."
+      "evidence_status": "failed-infrastructure",
+      "notes": "No solver-performance conclusion. The failure is an environment/dependency issue: PyPI was unreachable from the job environment. Future SMAC runs need preinstalled/cached dependencies or a login-node-prepared virtual environment."
     },
     {
       "id": "2026-07-19-default-auto-theory-phase-local",
@@ -4397,6 +4401,48 @@
       },
       "evidence_status": "local-current",
       "notes": "Fresh local merge-gate differential fuzzing for a default QF_UF search-heuristic change. This does not replace the broader SLURM validation needed for reference-parity claims."
+    },
+    {
+      "id": "2026-07-19-qfuf-default-auto-vs-negative-111814",
+      "started_at": "2026-07-19T17:10:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM 334-row primo.html QF_UF subset validation of the new default auto theory phase against explicit --theory-phase=negative",
+      "commit": "de6c54d",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head",
+        "job_id": "111814",
+        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+      },
+      "command": "Validated scripts/slurm_qfuf_option_compare.sbatch with scripts/slurm_validate_sbatch.py and bash -n; synced and rebuilt /home/janotmik/primo-cadical-profile from clean commit de6c54d; ran scripts/slurm_prepare_benchmark_workspace.py --check-only immediately before sbatch; submitted sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= negative=--theory-phase=negative',PRIMO_OPTION_OUT_ROOT=/home/janotmik/primo-cadical-profile/results/qfuf-default-auto-vs-negative-de6c54d scripts/slurm_qfuf_option_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats",
+        "version": "primo 0.1.0; git: de6c54d; cadical: cadical-3.0.0-7b99c07"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt",
+        "count": 334,
+        "timeout_seconds": 120,
+        "variants": {
+          "default": "new default TheoryPhaseMode::Auto",
+          "negative": "--theory-phase=negative"
+        },
+        "shards": 16
+      },
+      "artifacts": {
+        "remote_results": "/home/janotmik/primo-cadical-profile/results/qfuf-default-auto-vs-negative-de6c54d",
+        "remote_logs": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-options-111814-*.{out,err}"
+      },
+      "summary": {
+        "state_at_submission": "RUNNING",
+        "active_tasks_at_submission_check": "111814_0 through 111814_31 RUNNING on node-01/node-02",
+        "preflight": "Remote binary version check immediately before sbatch reported git de6c54d and cadical cadical-3.0.0-7b99c07."
+      },
+      "evidence_status": "running",
+      "notes": "This is the required broader validation for the default phase promotion. Do not make a final default-readiness claim until the job is collected, merged, summarized for solved/wrong/PAR2/family results, and committed or the change is reverted."
     }
   ]
 }
