@@ -86,8 +86,7 @@ class FlatCongruenceClosure {
   enum class TrailKind {
     Parent,
     ClassSize,
-    ClassMembersRestore,
-    ClassMembersResize,
+    ClassMembersMerge,
     UseListRestore,
     UseListPop,
     DisequalityListRestore,

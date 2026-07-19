@@ -122,7 +122,9 @@ The engine exposes counters for:
 - explanation length;
 - backtracks;
 - use-list appends, process-time duplicate skips, affected-list duplicate skips,
-  and maximum observed use-list size.
+  and maximum observed use-list size;
+- compact class-member rollback volume via
+  `:euf.incremental.class-member-trail-entries-saved`.
 
 The SMT layer exports these under `:euf.incremental.*` when
 `--euf-engine=incremental` is used for final conflict checks, model-time

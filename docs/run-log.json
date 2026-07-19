@@ -5907,6 +5907,117 @@
       },
       "evidence_status": "current_rejected_default",
       "notes": "Raw-only post-AMO ablation improved PEQ019_size7 but worsened whole-subset PAR2 and had a severe SEQ009_size10 regression. Keep --no-finite-domain-post-amo as a tuning/SMAC parameter, not as a default or auto rule without a stronger selector."
+    },
+    {
+      "id": "2026-07-19-flatcc-class-member-merge-record-local",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local flat congruence-closure class-member rollback representation retime on current cheap QF_UF gaps",
+      "commit": "7c7b405 plus uncommitted compact ClassMembersMerge trail entry",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build -j2; ctest --test-dir build -R primo_euf_solver_tests --output-on-failure; three runs each of ./build/primo --quiet --stats with default and --no-finite-domain-post-amo on PEQ019_size7, NEQ023_size7, NEQ027_size8, and qg7/iso_brn_repgen033; perf record/report on PEQ019 default and --no-finite-domain-post-amo",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 4,
+        "timeout_seconds": 30,
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/NEQ/NEQ023_size7.smt2, tmp/QF_UF/NEQ/NEQ027_size8.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+      },
+      "artifacts": {
+        "summary": "results/local-qfuf-current-gap-matrix-20260719.csv",
+        "results": "results/profiles/peq019-current-20260719/",
+        "logs": "results/profiles/peq019-current-20260719/*.err",
+        "bugs": null
+      },
+      "summary": {
+        "local_gap_matrix_before_edit": "Current HEAD already solves NEQ023_size7 in about 0.44s, NEQ027_size8 in about 0.56s, SEQ009_size10 in about 0.10s, and iso_brn_repgen033 in about 0.04s on this host; PEQ019_size7 remains the cheap non-iso gap at about 1.03s default versus tuned LLM2SMT about 0.23s and Z3 about 0.07s.",
+        "nnf_reference_check": "LLM2SMT --nnf and --nnf-memo left PEQ019, NEQ023, and SEQ009 stats unchanged; NNF is not the local explanation for those gaps.",
+        "profile_before_edit": "PEQ019 default perf: FlatCongruenceClosure::explain_equal_into 16.83%, merge_classes 11.27%, process_use_list 8.22%, _int_malloc 7.50%, OnlineEufPropagator notification 6.20%; raw-only perf has explain_equal_into 23.55% and restore_trail_entry 14.73%.",
+        "change": "Replace class-member rollback vector snapshots with one ClassMembersMerge trail entry containing kept representative, restored representative, and moved-member count. This avoids copying the loser class member vector; reverse-order rollback moves the appended tail back after later merges have been undone.",
+        "post_edit_times": {
+          "PEQ019_size7_default": "0.975348, 0.894091, 0.893125",
+          "PEQ019_size7_no_post_amo": "0.460267, 0.459603, 0.464771",
+          "NEQ023_size7_default": "0.389168, 0.414388, 0.388448",
+          "NEQ027_size8_default": "0.543769, 0.542472, 0.633763",
+          "iso_brn_repgen033_default": "0.044235, 0.046244, 0.040956"
+        },
+        "search_counters": "The change does not alter SAT clauses, EUF conflicts, assignments, or class-member-trail-entries-saved; it reduces the cost and allocation shape of restoring class-member lists.",
+        "focused_tests": "ctest --test-dir build -R primo_euf_solver_tests --output-on-failure passed"
+      },
+      "evidence_status": "current_local_candidate",
+      "notes": "This is a narrow memory/rollback optimization motivated by the documented flat congruence-closure design. It is not reference parity; headline status requires fuzzing and mixed-suite SLURM comparison."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-flatcc-class-member-merge-record-1000",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate after replacing flat congruence-closure class-member vector rollback snapshots with compact merge records",
+      "commit": "7c7b405 plus uncommitted compact ClassMembersMerge trail entry",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071954 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-flatcc-class-member-merge-record-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 2026071954,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-flatcc-class-member-merge-record-1000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-flatcc-class-member-merge-record-1000",
+        "logs": null,
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-flatcc-class-member-merge-record-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 885,
+        "unsat": 115
+      },
+      "evidence_status": "current_local_candidate",
+      "notes": "Fresh merge gate for a rollback-sensitive flat congruence-closure representation change."
     }
   ]
 }

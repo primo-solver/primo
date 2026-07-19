@@ -261,15 +261,7 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
     ++stats_.trail_entries;
   }
   edge_adjacency_[rhs].push_back(edge_index);
-  if (!checkpoints_.empty()) {
-    TrailEntry entry;
-    entry.kind = TrailKind::ClassMembersResize;
-    entry.index = rhs_repr;
-    entry.size_value = class_members_[rhs_repr].size();
-    trail_.push_back(std::move(entry));
-    ++stats_.trail_entries;
-    stats_.class_member_trail_entries_saved += class_members_[lhs_repr].size();
-  }
+  const std::size_t merged_member_count = class_members_[lhs_repr].size();
   for (const FlatTermId member : class_members_[lhs_repr]) {
     changed_terms_.push_back(member);
     push_parent_change(member);
@@ -278,11 +270,13 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
   }
   if (!checkpoints_.empty()) {
     TrailEntry entry;
-    entry.kind = TrailKind::ClassMembersRestore;
-    entry.index = lhs_repr;
-    entry.flat_vector = class_members_[lhs_repr];
+    entry.kind = TrailKind::ClassMembersMerge;
+    entry.index = rhs_repr;
+    entry.flat_value = lhs_repr;
+    entry.size_value = merged_member_count;
     trail_.push_back(std::move(entry));
     ++stats_.trail_entries;
+    stats_.class_member_trail_entries_saved += merged_member_count;
   }
   class_members_[lhs_repr].clear();
   push_class_size_change(rhs_repr);
@@ -425,12 +419,15 @@ void FlatCongruenceClosure::restore_trail_entry(TrailEntry& entry) {
         class_size_[entry.index] = entry.size_value;
       }
       return;
-    case TrailKind::ClassMembersRestore:
-      class_members_[entry.index] = std::move(entry.flat_vector);
+    case TrailKind::ClassMembersMerge: {
+      std::vector<FlatTermId>& kept = class_members_[entry.index];
+      std::vector<FlatTermId>& restored = class_members_[entry.flat_value];
+      const std::size_t restore_count = entry.size_value;
+      const std::size_t first_restored = kept.size() - restore_count;
+      restored.assign(kept.begin() + static_cast<std::ptrdiff_t>(first_restored), kept.end());
+      kept.resize(first_restored);
       return;
-    case TrailKind::ClassMembersResize:
-      class_members_[entry.index].resize(entry.size_value);
-      return;
+    }
     case TrailKind::UseListRestore:
       use_lists_[entry.index] = std::move(entry.flat_vector);
       return;
