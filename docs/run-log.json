@@ -6288,6 +6288,51 @@
       },
       "evidence_status": "rejected_experiment",
       "notes": "No source changes from this prototype remain. Future CC work should first add diagnostic counters comparing BFS and proof-forest reason lengths without changing emitted clauses."
+    },
+    {
+      "id": "2026-07-19-local-cc-baseline-gprof-peq002-neq023",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Baseline FlatCongruenceClosure profile and quick NEQ reference check after rejected proof-forest revert",
+      "commit": "2d11ced",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Built /tmp/primo-gprof-build with -DPRIMO_WARNINGS_AS_ERRORS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS_RELWITHDEBINFO='-O2 -g -pg' -DCMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO='-pg', ran /tmp/primo-gprof-build/primo --quiet --stats --euf-engine=incremental tmp/QF_UF/PEQ/PEQ002_size8.smt2, then gprof /tmp/primo-gprof-build/primo gmon.out. Rebuilt ./build/primo after reverting the proof-forest WIP and ran Primo, tuned LLM2SMT, and /workspace/contrib/local/bin/z3 on tmp/QF_UF/NEQ/NEQ023_size7.smt2.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --stats --euf-engine=incremental"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "/workspace/contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ002_size8.smt2 and tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+        "timeout_seconds": 60
+      },
+      "artifacts": {
+        "gprof": "/tmp/primo-gprof-peq002.txt",
+        "stats": "/tmp/primo-gprof-peq002.out",
+        "results": null
+      },
+      "summary": {
+        "peq002_baseline_stats": "PEQ002_size8 with baseline source: unsat; assignments 2297659; theory conflicts 95096; incremental explain calls 25649979; explain length 5205743; use-list appends 68553621; max use-list size 876.",
+        "peq002_gprof_top": "Top sampled self costs: FlatCongruenceClosure::explain_equal_into 23.24%, CaDiCaL find_subsuming_clause 12.06%, CaDiCaL propagate 7.77%, std::deque<unsigned int>::_M_push_back_aux 7.24%, FlatCongruenceClosure::restore_trail_entry 6.79%, FlatCongruenceClosure::merge_classes 6.26%, ApplyKey hash-table lookup 5.81%, OnlineEufPropagator::notify_assignment 5.81%, pop 2.59%, representative 2.23%, process_use_list 2.14%.",
+        "neq023_local_reference_check": "After rebuilding ./build/primo from baseline source, NEQ023_size7 was unsat in 0.435s default and 0.395s raw-only; tuned LLM2SMT was 0.972s; Z3 was 0.624s. This local row does not reproduce a Primo-slower-than-reference NEQ gap.",
+        "profiling_limitations": "perf stat returned status 234 with no output in this container. The gprof build required PRIMO_WARNINGS_AS_ERRORS=OFF because GCC emitted an optimized std::vector false-positive warning in preprocessing.cpp; the normal build was not changed."
+      },
+      "evidence_status": "current_local",
+      "notes": "The profile supports continuing CC work around explanation cost, rollback volume, and search volume, but the rejected proof forest showed that reason quality must be preserved or measured before changing the emitted conflict clauses."
     }
   ]
 }
