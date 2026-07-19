@@ -299,6 +299,14 @@ default-versus-`--qf-uf-portfolio=basic-polarity` validation. It uses the same
 manifest handling and output layout as the phase comparison script, with
 `PRIMO_PORTFOLIO_*` environment variables replacing `PRIMO_PHASE_*`.
 
+Use `scripts/slurm_qfuf_option_compare.sbatch` for ad hoc option comparisons
+over the same sharded QF_UF harness. `PRIMO_OPTION_VARIANTS` is a
+space-separated list of `name=arg1,arg2` records. The default compares
+`default`, `--qf-uf-preprocess=basic`, and
+`--qf-uf-preprocess=basic,--theory-phase=polarity`. This script is intended for
+evidence collection before promoting a preprocessing or phase heuristic to the
+default profile.
+
 The narrower `benchmarks/qfuf-smac-iso-train.txt` and
 `benchmarks/qfuf-smac-iso-validate.txt` manifests are diagnostic only. They
 include the user-visible `QG-classification/qg7/iso_brn_repgen033.smt2` case,

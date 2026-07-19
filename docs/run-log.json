@@ -3775,6 +3775,47 @@
       },
       "evidence_status": "local-current",
       "notes": "Differential fuzzing covers the new opt-in portfolio control path; default behavior remains separately covered by the default-off fuzz gate."
+    },
+    {
+      "id": "2026-07-19-qfuf-basic-polarity-local-sample",
+      "started_at": "2026-07-19T15:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local option matrix for default, --qf-uf-preprocess=basic, --qf-uf-preprocess=basic --theory-phase=polarity, and --theory-phase=polarity on ranked QG gaps plus NEQ/PEQ guards",
+      "commit": "2c62380",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "Python subprocess matrix over tmp/QF_UF/QG-classification/qg7/{iso_brn_repgen033,iso_brn_repgen043,gensys_brn044,iso_brn_nogen017,iso_brn_nogen010,iso_icl_nogen006,iso_icl_repgen006}.smt2 plus tmp/QF_UF/NEQ/{NEQ023_size7,NEQ016_size7}.smt2 and tmp/QF_UF/PEQ/PEQ019_size7.smt2; each run used timeout 30 ./build/primo --quiet --stats with the mode-specific options",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "manifest": "ad hoc 10-row local sample from current QF_UF gap ranking",
+        "timeout_seconds": 30
+      },
+      "artifacts": {
+        "csv": "results/qfuf-local-basic-polarity-sample-20260719.csv"
+      },
+      "summary": {
+        "best_modes": {
+          "iso_brn_repgen033": "basic-polarity 0.047s vs default 2.629s",
+          "iso_brn_repgen043": "polarity 0.137s vs default 1.714s",
+          "gensys_brn044": "basic-polarity 0.565s vs default 2.492s",
+          "iso_brn_nogen017": "default 4.067s; basic and polarity variants did not improve",
+          "iso_brn_nogen010": "default 4.204s; basic and polarity variants did not improve",
+          "iso_icl_nogen006": "basic-polarity 4.279s vs default 4.317s, effectively neutral",
+          "iso_icl_repgen006": "polarity 0.927s vs default 0.936s, effectively neutral",
+          "NEQ023_size7": "basic-polarity 0.553s vs default 3.557s",
+          "NEQ016_size7": "default 6.981s; basic-polarity regressed to 9.286s",
+          "PEQ019_size7": "polarity 0.649s vs default 1.233s"
+        },
+        "structural_observation": "Small repgen-style multi-assertion inputs benefit from suppressing strong finite-domain AMO, while nogen rows are dominated by hundreds of thousands of SAT clauses and NEQ016 needs preserved AMO."
+      },
+      "evidence_status": "local-current",
+      "notes": "This is evidence for a broader SLURM option comparison, not enough to promote a default heuristic. It rejects a single basic or basic-polarity rule because NEQ016 and QG nogen rows regress or stay flat."
     }
   ]
 }
