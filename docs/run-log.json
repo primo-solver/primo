@@ -5317,6 +5317,58 @@
       },
       "evidence_status": "slurm-current-qualified",
       "notes": "No wrong answers and no solved-count difference. The raw whole-set PAR2 favored disabled because rows where the new override is inactive had large timing variation, especially PEQ013_size8 and PEQ014_size11. The causal subset where :sat.phase.auto-basic-single-predicate-polarity fired improved overall; the remaining NEQ016 and QG iso gaps require separate mechanisms."
+    },
+    {
+      "id": "2026-07-19-local-neq016-phase-preprocess-diagnostic",
+      "date": "2026-07-19",
+      "commit": "c07ad6c",
+      "host": "local workstation",
+      "kind": "local option comparison",
+      "scope": "QF_UF/NEQ/NEQ016_size8.smt2 focused diagnosis after predicate polarity SLURM run",
+      "commands": [
+        "timeout 75s ./build/primo --quiet tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 75s ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 75s ./build/primo --quiet --theory-phase=polarity tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 75s ./build/primo --quiet --euf-prop=off tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 75s ./build/primo --quiet --euf-prop=off --theory-phase=polarity tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 75s ./build/primo --quiet --qf-uf-preprocess=basic tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 75s ./build/primo --quiet --qf-uf-preprocess=basic --theory-phase=polarity tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 75s ./build/primo --quiet --qf-uf-preprocess=strong --theory-phase=polarity tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 75s ./build/primo --quiet --theory-phase=auto tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 70s /tmp/llm2smt/build/bin/llm2smt --quiet --stats tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+      ],
+      "inputs": {
+        "instance": "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout_seconds": "75 for Primo local matrix; 70 for local LLM2SMT stats"
+      },
+      "summary": {
+        "primo_default": "timeout at 75s",
+        "primo_stats": "timeout at 75s",
+        "primo_polarity": "unsat in 57.01s",
+        "primo_euf_prop_off": "timeout at 75s",
+        "primo_euf_prop_off_polarity": "timeout at 75s",
+        "primo_basic": "timeout at 75s",
+        "primo_basic_polarity": "timeout at 75s",
+        "primo_strong_polarity": "unsat in 57.87s",
+        "primo_auto_phase": "timeout at 75s",
+        "llm2smt_stats": "timeout at 70s locally; previous SLURM artifact solved in 56.911077s",
+        "polarity_stats": {
+          "sat_phase_theory_negative": 28,
+          "euf_assignments": 11876277,
+          "euf_theory_conflicts": 445437,
+          "euf_propagation_delivered": 52,
+          "euf_incremental_explain_calls": 88414553
+        },
+        "default_20s_stats": {
+          "sat_phase_theory_negative": 1295,
+          "euf_assignments": 3908425,
+          "euf_theory_conflicts": 194239,
+          "euf_propagation_delivered": 42,
+          "euf_incremental_explain_calls": 32812868
+        }
+      },
+      "evidence_status": "local-current",
+      "notes": "NEQ016_size8 needs the strong finite-domain AMO structure plus polarity phase and online EUF callbacks to solve locally under the 75s cap. A blanket predicate/single-assertion polarity selector is unsafe because prior local NEQ matrices show severe regressions such as NEQ027_size10. The next implementation should look for a stronger structural discriminator or a finite-domain/Horn-style encoding rather than broad phase selection."
     }
   ]
 }
