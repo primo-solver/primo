@@ -2539,6 +2539,60 @@
       },
       "evidence_status": "current-local",
       "notes": "The existing auto EUF propagation resolver uses online only for at most 5000 theory atoms, so this 13967-atom NEQ row is forced to conflict-only even though online propagation reduces conflicts from 11717 to 699 and cuts local time substantially. However, the mixed 39-row run shows always-online is not safe: PEQ014_size10 times out with online after delivering zero propagations. A sound next change would need a better auto predictor or adaptive early disable/enable mechanism with regression tests and fuzzing, or should be left to SMAC as a tuned option."
+    },
+    {
+      "id": "2026-07-19-smac-qfuf-mixed-auto-111492-incumbent-local-reject",
+      "started_at": "2026-07-19T05:45:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "tuning",
+      "scope": "Local snapshot evaluation of the in-progress SLURM SMAC job 111492 incumbent on the same 39-row mixed QF_UF union",
+      "commit": "2d01ffa",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "related_slurm_job_id": "111492"
+      },
+      "command": "Local Python loop over the 39-row mixed train/validation/guard union with 20s timeout using incumbent snapshot args from /home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-auto-111492/incumbent.json while the SLURM job was still running: ./build/primo --quiet --qf-uf-preprocess=auto --preprocessing-passes=4 --preprocessing-adaptive-extra-passes=0 --preprocessing-adaptive-shrink-percent=8 --no-uf-symmetry-breaking --no-finite-domain-equality-definitions --no-eq-bridge --guarded-ground-unit-substitution --euf-engine=incremental --euf-prop=conflict --pure-theory-filter=off --theory-phase=polarity --euf-prop-budget=10000 --euf-prop-delivery=3000 --prop-interval=16 --prop-assign-threshold=0.10",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo with the incumbent snapshot listed in command"
+      },
+      "references": [
+        {
+          "name": "Primo default local baseline",
+          "argv": "./build/primo --quiet --stats from 2026-07-19-qfuf-mixed-local-default-auto-online-2d01ffa"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 39,
+        "timeout_seconds": 20,
+        "manifest": "union of benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, and benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "terminal summary and local CSV artifact",
+        "results": "results/qfuf-mixed-local-smac-incumbent-111492-snapshot-2d01ffa.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "incumbent_snapshot": {
+          "ok": 30,
+          "timeout": 9,
+          "error": 0,
+          "par2": 452.26
+        },
+        "default_baseline": {
+          "ok": 34,
+          "timeout": 5,
+          "error": 0,
+          "par2": 298.899
+        },
+        "notable_wins": "iso_brn_repgen033 improved to 0.149s and SEQ035_size6 improved to 0.587s locally.",
+        "notable_regressions": "PEQ002_size7, PEQ016_size7, and SEQ026_size6 timed out although default solved them; PEQ003_size8 slowed to 15.059s; PEQ014_size10 timed out although default solved it under the cap."
+      },
+      "evidence_status": "rejected-local-snapshot",
+      "notes": "This does not replace the final SLURM SMAC result because job 111492 was still running and may find a different incumbent or fail validation. It is a guardrail against promoting this early incumbent profile: the local mixed union rejects it as a broad default despite QG-specific wins."
     }
   ]
 }
