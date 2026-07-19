@@ -3665,6 +3665,116 @@
       },
       "evidence_status": "local-current",
       "notes": "The first attempt reparses the original input under basic preprocessing and polarity phase, returns only sat/unsat answers, and falls back to the ordinary configured solve on the existing theory-conflict-limit unknown."
+    },
+    {
+      "id": "2026-07-19-qfuf-basic-polarity-portfolio-334-slurm",
+      "started_at": "2026-07-19T14:31:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM default versus opt-in --qf-uf-portfolio=basic-polarity on the 334-row primo.html QF_UF subset",
+      "commit": "e411821",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "job_id": "111685",
+        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PORTFOLIO_TIMEOUT=120,PRIMO_PORTFOLIO_SHARDS=16,PRIMO_PORTFOLIO_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_portfolio_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --qf-uf-portfolio=basic-polarity"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-portfolio-compare-111685/summary.json",
+        "results": "results/qfuf-portfolio-compare-111685/default-merged.csv and results/qfuf-portfolio-compare-111685/portfolio-merged.csv",
+        "diffs": "results/qfuf-portfolio-compare-111685/diffs.csv",
+        "logs": "logs/primo-qfuf-portfolio-111685-*.out and logs/primo-qfuf-portfolio-111685-*.err"
+      },
+      "summary": {
+        "default": {
+          "ok": 330,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3529.268
+        },
+        "portfolio": {
+          "ok": 331,
+          "timeout": 3,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3934.339
+        },
+        "families_default": {
+          "Goel": "7/7 ok, PAR2 16.800",
+          "NEQ": "25/26 ok, PAR2 422.517",
+          "PEQ": "22/25 ok, PAR2 1118.069",
+          "QG": "270/270 ok, PAR2 1899.029",
+          "SEQ": "6/6 ok, PAR2 72.853"
+        },
+        "families_portfolio": {
+          "Goel": "7/7 ok, PAR2 59.896",
+          "NEQ": "25/26 ok, PAR2 470.524",
+          "PEQ": "23/25 ok, PAR2 1010.163",
+          "QG": "270/270 ok, PAR2 2322.269",
+          "SEQ": "6/6 ok, PAR2 71.486"
+        },
+        "first_pass_solved": 16,
+        "fell_back": 315,
+        "portfolio_faster_rows": 21,
+        "portfolio_slower_rows": 299,
+        "top_wins": "PEQ013_size8 timeout-to-solved, PEQ014_size10 -8.839s, iso_brn_repgen033 -7.350s, SEQ026_size7 -5.144s, gensys_brn044 -4.829s",
+        "top_regressions": "QF_UF_firewire_tree.5.prop3 +19.016s, QF_UF_firewire_tree.5.prop2 +18.657s, iso_brn_nogen_sk015 +11.389s, iso_brn_nogen018 +9.883s, NEQ046_size6 +9.638s"
+      },
+      "evidence_status": "rejected-default-current",
+      "notes": "The option remains useful as a controlled experiment and solves one additional PEQ row on this set, but the 2000-conflict first pass creates too much fallback overhead for a default or tuned profile."
+    },
+    {
+      "id": "2026-07-19-qfuf-basic-polarity-portfolio-fuzz-1000",
+      "started_at": "2026-07-19T14:40:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate for opt-in --qf-uf-portfolio=basic-polarity",
+      "commit": "e411821",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --qf-uf-portfolio=basic-polarity' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071905 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-basic-polarity-portfolio-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --qf-uf-portfolio=basic-polarity"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1000,
+        "timeout_seconds": 5,
+        "generator": "fuzzsmt",
+        "seed": 2026071905,
+        "reference": "z3"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-basic-polarity-portfolio-1000/summary.csv",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-basic-polarity-portfolio-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "sat": 910,
+        "unsat": 90,
+        "bugs": 0
+      },
+      "evidence_status": "local-current",
+      "notes": "Differential fuzzing covers the new opt-in portfolio control path; default behavior remains separately covered by the default-off fuzz gate."
     }
   ]
 }
