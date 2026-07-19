@@ -2047,6 +2047,62 @@
       },
       "evidence_status": "rejected",
       "notes": "Do not reintroduce EUF cb_decide without a synchronization design that can prove the returned literal is currently unassigned under CaDiCaL's delayed notification semantics, or without extending the SAT adapter with a supported assignment query. Current Primo remains limited to static theory phase plus EUF external conflicts/propagations for QF_UF SAT-search influence."
+    },
+    {
+      "id": "2026-07-19-neq023-preprocessing-reference-compare",
+      "started_at": "2026-07-19T03:25:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "reference-comparison",
+      "scope": "Compare Primo and tuned LLM2SMT preprocessing/stat shape on NEQ023_size7 after rejecting dynamic EUF decisions",
+      "commit": "2c70e96",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ023_size7.smt2; /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000 tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+      "solver": {
+        "name": "Primo",
+        "argv": "build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 1,
+        "timeout_seconds": null,
+        "manifest": "tmp/QF_UF/NEQ/NEQ023_size7.smt2"
+      },
+      "artifacts": {
+        "summary": "/tmp/neq023-primo-pre.err and /tmp/neq023-llm2smt-pre.err",
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "primo_seconds": 4.96,
+        "llm2smt_tuned_seconds": 1.38,
+        "primo_finite_domain_amo": 4368,
+        "llm2smt_finite_domain_amo": 4473,
+        "primo_sat_clauses": 6436,
+        "llm2smt_sat_clauses": 8778,
+        "primo_sat_binary_clauses": 5342,
+        "llm2smt_sat_binary_clauses": 7640,
+        "primo_euf_assignments": 4728189,
+        "llm2smt_euf_assignments": 2138805,
+        "primo_euf_conflicts": 3836,
+        "llm2smt_euf_conflicts": 9774,
+        "primo_uf_symmetry_constraints": 30,
+        "llm2smt_uf_symmetry_clauses": 30
+      },
+      "evidence_status": "local-only",
+      "notes": "On this representative NEQ row, the AMO gap is small and symmetry clause counts match. Tuned LLM2SMT has a larger SAT encoding but far fewer EUF assignments, so missing raw finite-domain AMO alone is unlikely to explain the remaining slowdown. The next likely levers are SAT search shape, phase/branching policy that is safe under CaDiCaL's callback semantics, or additional SAT-visible finite-domain/equality clauses beyond current AMO."
     }
   ]
 }
