@@ -7021,6 +7021,44 @@
       },
       "evidence_status": "pending",
       "notes": "Do not promote any incumbent until result.json is collected and guard rows are compared against default."
+    },
+    {
+      "id": "2026-07-20-flat-cc-explanation-shape-counters",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "instrumentation",
+      "scope": "Diagnostic-only FlatCongruenceClosure explanation-shape counters for QF_UF CC review",
+      "commit": "f0859c9",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Added top-level, recursive, repeated-pair, and max-depth explanation counters without changing emitted reasons; ran cmake --build build --target primo_euf_solver_tests primo -j4, ./build/primo_euf_solver_tests, make test, make lint, make docs, and local stats probes on NEQ023_size7 and PEQ002_size8.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2"
+        ],
+        "timeout_seconds": "none for NEQ023; 35 second wrapper for PEQ002, solved before timeout"
+      },
+      "artifacts": {
+        "neq023_stats": "/tmp/neq023-cc-diagnostic-stats.txt",
+        "peq002_stats": "/tmp/peq002-cc-diagnostic-stats.txt",
+        "source": "src/theory/equality/flat_congruence_closure.cpp"
+      },
+      "summary": {
+        "change": "Diagnostic counters only. No conflict or propagation clauses changed; no solver option/default changed.",
+        "NEQ023_size7": "Solved unsat in about 0.38s; 35,509 explain calls; 6,862 top-level queries; 24,368 recursive queries; 4,628 repeated pair queries; max recursion depth 5; 509,168 BFS nodes visited.",
+        "PEQ002_size8": "Solved unsat in about 16.55s; 25,649,979 explain calls; 100,472 top-level queries; 25,548,348 recursive queries; 18,635,523 repeated pair queries; max recursion depth 36; 105,904,124 BFS nodes visited; 31,562 conflicts over 64 reason literals.",
+        "interpretation": "The hard PEQ row is dominated by recursive congruence-premise explanation and repeated pair requests within reasons. This is stronger evidence that the next CC implementation target should be a paper-derived Section 5-style repeated-subproof/explain mechanism with explicit reason-quality safeguards, not another use-list tweak."
+      },
+      "evidence_status": "current_local",
+      "notes": "This instrumentation does not prove a performance improvement and is not a proof-forest implementation. It is intended to guide the next CC design experiment without changing solver answers or SAT search clauses."
     }
   ]
 }

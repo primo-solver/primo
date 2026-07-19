@@ -17,6 +17,10 @@ struct IncrementalCongruenceClosureStats {
   std::size_t explain_calls = 0;
   std::size_t explain_cache_hits = 0;
   std::size_t explain_length = 0;
+  std::size_t explain_top_level_queries = 0;
+  std::size_t explain_recursive_queries = 0;
+  std::size_t explain_repeated_pair_queries = 0;
+  std::size_t explain_max_recursion_depth = 0;
   std::size_t explain_bfs_searches = 0;
   std::size_t explain_bfs_visited = 0;
   std::size_t explain_bfs_path_edges = 0;

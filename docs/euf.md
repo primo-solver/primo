@@ -288,13 +288,20 @@ can arise when the same flat definition mentions two classes that later merge,
 so the closure removes duplicate affected results with a generation-stamp
 scratch vector when a disappearing representative's use list is processed.
 Rollback only restores semantic state; the stamp vector is recomputable
-scratch state. The public counters are
+scratch state. The use-list public counters are
 `:euf.incremental.use-list-appends`,
 `:euf.incremental.use-list-duplicate-skips`,
 `:euf.incremental.affected-use-list-dedup`,
 `:euf.incremental.max-use-list-size`,
 `:euf.incremental.trail-entries`, and
 `:euf.incremental.class-member-trail-entries-saved`.
+The explanation-shape counters
+`:euf.incremental.explain-top-level-queries`,
+`:euf.incremental.explain-recursive-queries`,
+`:euf.incremental.explain-repeated-pair-queries`, and
+`:euf.incremental.explain-max-recursion-depth` are diagnostic only: they measure
+the current BFS explanation path and do not implement or select a proof-forest
+reason engine.
 Online-mode checkpoints are created lazily on the first theory assignment in a
 SAT decision level, so levels with only Boolean search do not allocate closure
 rollback state. Checkpoints remember vector sizes, conflict state, stats, and

@@ -512,6 +512,7 @@ std::optional<std::vector<sat::Lit>> FlatCongruenceClosure::explain_equal(FlatTe
 void FlatCongruenceClosure::begin_reason_collection(std::vector<sat::Lit>& reason) const {
   reason.clear();
   explanation_cache_.clear();
+  explanation_depth_ = 0;
   ++reason_generation_;
   if (reason_generation_ == 0) {
     std::fill(reason_marks_.begin(), reason_marks_.end(), 0);
@@ -585,10 +586,18 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
     return false;
   }
   const ExplanationKey key = explanation_key(lhs, rhs);
+  if (explanation_depth_ == 0) {
+    ++stats_.explain_top_level_queries;
+  } else {
+    ++stats_.explain_recursive_queries;
+  }
   if (explanation_cache_.contains(key)) {
     ++stats_.explain_cache_hits;
+    ++stats_.explain_repeated_pair_queries;
     return true;
   }
+  stats_.explain_max_recursion_depth =
+      std::max(stats_.explain_max_recursion_depth, explanation_depth_);
   if (visit_marks_.size() < parent_.size()) {
     visit_marks_.resize(parent_.size(), 0);
     parent_edge_scratch_.resize(parent_.size(), edges_.size());

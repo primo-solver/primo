@@ -516,6 +516,10 @@ void flat_congruence_closure_reuses_repeated_sub_explanations() {
   check(reason->size() == 1);
   check(reason->front().value == -8);
   check(closure.stats().explain_cache_hits >= 1);
+  check(closure.stats().explain_top_level_queries >= 1);
+  check(closure.stats().explain_recursive_queries >= 1);
+  check(closure.stats().explain_repeated_pair_queries >= 1);
+  check(closure.stats().explain_max_recursion_depth >= 1);
   check(closure.stats().explain_bfs_searches >= 1);
   check(closure.stats().explain_bfs_visited >= 1);
   check(closure.stats().explain_bfs_path_edges >= 1);

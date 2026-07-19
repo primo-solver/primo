@@ -168,6 +168,14 @@ constexpr util::StatKey kStatEufIncrementalExplainCacheHits =
     util::StatKey::EufIncrementalExplainCacheHits;
 constexpr util::StatKey kStatEufIncrementalExplainLength =
     util::StatKey::EufIncrementalExplainLength;
+constexpr util::StatKey kStatEufIncrementalExplainTopLevelQueries =
+    util::StatKey::EufIncrementalExplainTopLevelQueries;
+constexpr util::StatKey kStatEufIncrementalExplainRecursiveQueries =
+    util::StatKey::EufIncrementalExplainRecursiveQueries;
+constexpr util::StatKey kStatEufIncrementalExplainRepeatedPairQueries =
+    util::StatKey::EufIncrementalExplainRepeatedPairQueries;
+constexpr util::StatKey kStatEufIncrementalExplainMaxRecursionDepth =
+    util::StatKey::EufIncrementalExplainMaxRecursionDepth;
 constexpr util::StatKey kStatEufIncrementalExplainBfsSearches =
     util::StatKey::EufIncrementalExplainBfsSearches;
 constexpr util::StatKey kStatEufIncrementalExplainBfsVisited =
@@ -1209,6 +1217,16 @@ void add_incremental_stats(util::Statistics& statistics,
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCacheHits,
                             stats.explain_cache_hits);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainLength, stats.explain_length);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainTopLevelQueries,
+                            stats.explain_top_level_queries);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainRecursiveQueries,
+                            stats.explain_recursive_queries);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainRepeatedPairQueries,
+                            stats.explain_repeated_pair_queries);
+  if (stats.explain_max_recursion_depth >
+      statistics.get(kStatEufIncrementalExplainMaxRecursionDepth)) {
+    statistics.set(kStatEufIncrementalExplainMaxRecursionDepth, stats.explain_max_recursion_depth);
+  }
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainBfsSearches,
                             stats.explain_bfs_searches);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainBfsVisited,
@@ -1274,6 +1292,10 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.explain_calls, rhs.explain_calls),
       positive_delta(lhs.explain_cache_hits, rhs.explain_cache_hits),
       positive_delta(lhs.explain_length, rhs.explain_length),
+      positive_delta(lhs.explain_top_level_queries, rhs.explain_top_level_queries),
+      positive_delta(lhs.explain_recursive_queries, rhs.explain_recursive_queries),
+      positive_delta(lhs.explain_repeated_pair_queries, rhs.explain_repeated_pair_queries),
+      lhs.explain_max_recursion_depth,
       positive_delta(lhs.explain_bfs_searches, rhs.explain_bfs_searches),
       positive_delta(lhs.explain_bfs_visited, rhs.explain_bfs_visited),
       positive_delta(lhs.explain_bfs_path_edges, rhs.explain_bfs_path_edges),
@@ -1681,6 +1703,11 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.explain_calls += stats.explain_calls;
     accumulated_stats_.explain_cache_hits += stats.explain_cache_hits;
     accumulated_stats_.explain_length += stats.explain_length;
+    accumulated_stats_.explain_top_level_queries += stats.explain_top_level_queries;
+    accumulated_stats_.explain_recursive_queries += stats.explain_recursive_queries;
+    accumulated_stats_.explain_repeated_pair_queries += stats.explain_repeated_pair_queries;
+    accumulated_stats_.explain_max_recursion_depth =
+        std::max(accumulated_stats_.explain_max_recursion_depth, stats.explain_max_recursion_depth);
     accumulated_stats_.explain_bfs_searches += stats.explain_bfs_searches;
     accumulated_stats_.explain_bfs_visited += stats.explain_bfs_visited;
     accumulated_stats_.explain_bfs_path_edges += stats.explain_bfs_path_edges;
@@ -2703,6 +2730,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufIncrementalExplainCalls, 0);
   statistics.set(kStatEufIncrementalExplainCacheHits, 0);
   statistics.set(kStatEufIncrementalExplainLength, 0);
+  statistics.set(kStatEufIncrementalExplainTopLevelQueries, 0);
+  statistics.set(kStatEufIncrementalExplainRecursiveQueries, 0);
+  statistics.set(kStatEufIncrementalExplainRepeatedPairQueries, 0);
+  statistics.set(kStatEufIncrementalExplainMaxRecursionDepth, 0);
   statistics.set(kStatEufIncrementalExplainBfsSearches, 0);
   statistics.set(kStatEufIncrementalExplainBfsVisited, 0);
   statistics.set(kStatEufIncrementalExplainBfsPathEdges, 0);

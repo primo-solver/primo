@@ -120,6 +120,9 @@ The engine exposes counters for:
 - disequality checks and conflicts;
 - explanation calls and per-explanation cache hits;
 - explanation length;
+- explanation-shape diagnostics: top-level equality queries, recursive
+  congruence-premise queries, repeated pair queries served from the per-reason
+  cache, and maximum recursive explanation depth;
 - explanation diagnostics: BFS searches, BFS nodes visited, BFS path edges,
   maximum BFS queue size, direct equality edges expanded, congruence edges
   expanded, and duplicate reason literals skipped;
@@ -247,6 +250,15 @@ recursive congruence-edge expansions in the ordinary stats run. This reinforces
 the earlier conclusion: the current closure is a Section 3 congruence-discovery
 engine with a sound adjacency-BFS explanation layer, not the Section 4-5
 optimized proof-forest explanation algorithm.
+
+The next diagnostic patch added explanation-shape counters without changing the
+emitted conflict or propagation clauses. These counters expose how much of the
+current explanation work is top-level disequality/propagation explanation versus
+recursive congruence-premise explanation, how often a recursive pair is repeated
+inside one reason, and the maximum recursion depth reached. They are not a
+Section 4-5 proof-forest implementation; they are instrumentation to decide
+whether a future proof-forest design is targeting repeated subproof traversal,
+deep congruence nesting, or reason quality.
 
 The audit also checked `NEQ027_size8` through `NEQ027_size11` against the tuned
 local LLM2SMT command used in prior benchmark notes. Those rows no longer
