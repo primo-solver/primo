@@ -219,6 +219,12 @@ Next CC review items:
 - Revisit the paper's proof-forest orientation together with explanation
   length/age tradeoffs from Section 5.4 before enabling it in the default
   online EUF path.
+- Do not replace per-append `UseListPop` rollback with a naive per-level
+  `UseListResize` trail entry. A local prototype preserved the focused oracle
+  tests but regressed `SEQ035_size6` from about 1.2 seconds to about 21.7
+  seconds because use-list appends exploded from about 4.3 million to about
+  84.9 million after backtracking. Any batching of use-list rollback must account
+  for `UseListRestore` swaps in `process_use_list`, not only append-only growth.
 - Keep reference-solver CC code as behavioral evidence only. The implemented
   Primo design must remain paper-derived and tested through local invariants.
 

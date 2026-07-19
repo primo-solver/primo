@@ -6596,6 +6596,52 @@
       },
       "evidence_status": "current_local",
       "notes": "This is a CC review and regression-guard checkpoint, not headline SLURM evidence and not a claimed solved-count improvement."
+    },
+    {
+      "id": "2026-07-19-local-seq035-cc-use-list-batching-rejected",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "SEQ035_size6 non-iso QF_UF gap triage and rejected FlatCongruenceClosure use-list rollback batching prototype",
+      "commit": "612b13e plus temporary uncommitted UseListResize prototype, reverted after measurement",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Ranked 334-row and full-corpus QF_UF CSV artifacts with scripts/rank_qfuf_gaps.py; ran local default/basic/polarity/Z3/LLM2SMT ablations on tmp/QF_UF/SEQ/SEQ035_size6.smt2; ran local SEQ size-6 default/basic/polarity/Z3 micro-matrix; temporarily replaced per-append UseListPop trail entries with per-generation UseListResize entries, then rebuilt and measured selected rows before reverting.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats [variant args]"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2 -st"
+        },
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "manifest": "tmp/QF_UF/SEQ/SEQ0*_size6.smt2 micro-matrix plus focused tmp/QF_UF/SEQ/SEQ035_size6.smt2",
+        "timeout_seconds": 20
+      },
+      "artifacts": {
+        "seq_matrix": "results/local-seq-size6-20260719/matrix.csv",
+        "seq_phase_matrix": "results/local-seq-size6-20260719/phase-matrix.csv",
+        "focused_stats": "/tmp/seq035-*.stats and /tmp/seq035-*.out local-only scratch"
+      },
+      "summary": {
+        "gap_selection": "Full-corpus Z3/cvc5 ranking identified SEQ035_size6 as a non-iso CC-heavy gap in older artifacts: Primo about 37.1s versus reference about 0.49s. Current local Primo is much faster but still about 1.2s versus Z3 about 0.03s.",
+        "seq035_local": "Current default sat about 1.18-1.25s with 47536 theory conflicts, 1040412 explain BFS searches, 25622002 trail entries, and 4347328 use-list appends. --theory-phase=auto/polarity solves in about 0.31s; --qf-uf-preprocess=basic solves in about 0.31-0.35s; tuned LLM2SMT was about 5.39s locally; Z3 about 0.03s.",
+        "seq_size6_matrix": "On ten SEQ size-6 rows, default total was about 3.42s, polarity about 3.10s, and basic about 2.45s. SEQ035 is the main local outlier; broad basic or polarity defaults remain unsafe from existing mixed-suite evidence.",
+        "auto_phase_evidence": "Existing same-binary auto-vs-negative artifact rejects making all --theory-phase=auto default: auto solved 330/334 versus negative 331/334 and worsened PAR2 by about 161s, despite wins on SEQ026_size7, NEQ031_size10, NEQ023_size7, and iso_brn_repgen033.",
+        "rejected_prototype": "UseListResize rollback batching passed focused euf_solver_tests, including the naive oracle, but regressed SEQ035_size6 from about 1.2s to 21.73s. Trail entries fell to 20741545, but use-list appends exploded to 84948122, showing that resize-only batching is incompatible with process_use_list UseListRestore swaps."
+      },
+      "evidence_status": "rejected_experiment",
+      "notes": "No source changes from the prototype remain. The useful retained evidence is that the next CC rollback optimization must preserve use-list duplicate discipline across restored/swapped lists, not just reduce trail-entry count."
     }
   ]
 }
