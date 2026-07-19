@@ -4847,6 +4847,68 @@
       },
       "evidence_status": "slurm-current",
       "notes": "Accepted as a default selector on this 334-row evidence: it adds one solve and improves PAR2 without wrong answers versus the same binary with --no-auto-basic-single. This does not close every family-level performance gap; NEQ016_size8 and several QG/SEQ rows remain next profiling targets."
+    },
+    {
+      "id": "2026-07-19-local-neq016-reference-gap-rejected-probes",
+      "date": "2026-07-19",
+      "commit": "fe37d40",
+      "host": "local workstation",
+      "kind": "local performance investigation",
+      "scope": "QF_UF NEQ/NEQ016_size8 reference-gap triage after auto-basic-single selector",
+      "commands": [
+        "/usr/bin/time -f 'TIME %e' /tmp/llm2smt/build/bin/llm2smt --quiet --stats --no-theory-prop --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000 tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "timeout 45s ./build/primo --quiet --stats --euf-prop=conflict tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "temporary rejected prototype: SAT-level finite-domain endpoint AMO after clausification",
+        "temporary rejected prototype: core And/Or duplicate and complementary-literal folding",
+        "temporary rejected prototype: --euf-decide-equalities external cb_decide"
+      ],
+      "inputs": {
+        "benchmark": "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "logic": "QF_UF",
+        "timeout_seconds": 45
+      },
+      "summary": {
+        "llm2smt_no_theory_prop": {
+          "result": "unsat",
+          "seconds": 22.86,
+          "finite_domain_amo": 2044,
+          "clauses": 3557,
+          "binary_clauses": 2726,
+          "euf_assignments": 5935212,
+          "euf_eq_assignments": 2176082,
+          "euf_diseq_assignments": 3759130,
+          "euf_conflicts": 185145
+        },
+        "primo_conflict_only": {
+          "result": "unknown",
+          "seconds": 45.0,
+          "finite_domain_amo": 1876,
+          "clauses": 2731,
+          "binary_clauses": 1917,
+          "euf_assignments": 7089643,
+          "euf_eq_assignments": 791787,
+          "euf_diseq_assignments": 4955759,
+          "euf_theory_conflicts": 298338,
+          "explain_calls": 55186353
+        },
+        "rejected_sat_level_endpoint_amo": {
+          "result": "unknown",
+          "seconds": 25.0,
+          "extra_binary_clauses": 378,
+          "reason_rejected": "overshot the reference AMO delta and increased bounded EUF conflict churn"
+        },
+        "rejected_boolean_dedup": {
+          "result": "unknown",
+          "seconds": 30.0,
+          "reason_rejected": "did not change the target term shape materially and increased bounded EUF conflicts"
+        },
+        "rejected_euf_decide_equalities": {
+          "result": "crash",
+          "reason_rejected": "CaDiCaL reported external decisions are only allowed over unassigned variables; current assignment notifications are not eager enough for a naive decision hook"
+        }
+      },
+      "evidence_status": "local-rejected",
+      "notes": "The remaining NEQ016 gap is not explained by EUF theory propagation: the reference solves with --no-theory-prop. Static phase changes did not reproduce the reference's much higher equality-assignment share. A safe EUF cb_decide design would require callback-synchronized assignment visibility, not the current delayed notification mirror."
     }
   ]
 }
