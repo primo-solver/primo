@@ -1044,6 +1044,69 @@ void theory_phase_option_can_leave_backend_phase_unset() {
   assert(result.statistics.get(":sat.phase.theory-negative") == 0);
 }
 
+void theory_phase_auto_uses_polarity_on_balanced_finite_domain_shape() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
+  assert(result.statistics.get(":sat.phase.auto-polarity") == 1);
+  assert(result.statistics.get(":sat.phase.theory-negative") > 0);
+  assert(result.statistics.get(":sat.phase.theory-negative") <
+         result.statistics.get(":euf.theory-atoms"));
+}
+
+void theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
+  options.solved_constant_substitution = false;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun d () A)
+    (declare-fun e () A)
+    (declare-fun f () A)
+    (declare-fun g () A)
+    (declare-fun h () A)
+    (declare-fun i () A)
+    (declare-fun x () A)
+    (assert (distinct a b))
+    (assert (or (= x a) (= x b)))
+    (assert (= c a))
+    (assert (= d a))
+    (assert (= e a))
+    (assert (= f a))
+    (assert (= g a))
+    (assert (= h a))
+    (assert (= i a))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
+  assert(result.statistics.get(":sat.phase.auto-polarity") == 0);
+  assert(result.statistics.get(":sat.phase.theory-negative") ==
+         result.statistics.get(":euf.theory-atoms"));
+}
+
 void strong_preprocessing_enables_ground_congruence_clauses() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -1439,6 +1502,8 @@ int main() {
   qg_shape_uses_fixed_terms_but_not_moving_table_terms_for_symmetry();
   no_symmetry_breaking_disables_strong_preset_symmetry_only();
   theory_phase_option_can_leave_backend_phase_unset();
+  theory_phase_auto_uses_polarity_on_balanced_finite_domain_shape();
+  theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape();
   strong_preprocessing_enables_ground_congruence_clauses();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();

@@ -4,7 +4,6 @@
 #include <ostream>
 #include <string>
 #include <string_view>
-#include <utility>
 
 namespace primo::util {
 
@@ -66,6 +65,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":preprocessing.auto.strong"sv,
     ":preprocessing.auto.large-assertion-skip"sv,
     ":sat.phase.theory-negative"sv,
+    ":sat.phase.auto-polarity"sv,
     ":sat.vars"sv,
     ":sat.clauses"sv,
     ":sat.clause-lits"sv,

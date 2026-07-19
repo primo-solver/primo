@@ -65,6 +65,7 @@ scripts and result artifacts. Current counters include:
 - `:solver.boolean`;
 - `:solver.qf-uf`;
 - `:sat.phase.theory-negative`;
+- `:sat.phase.auto-polarity`;
 - `:sat.vars`;
 - `:sat.clauses`;
 - `:sat.clause-lits`;

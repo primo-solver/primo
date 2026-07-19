@@ -269,7 +269,7 @@ def make_configspace(seed: int):
             ),
             CategoricalHyperparameter(
                 "theory_phase",
-                ["negative", "positive", "none", "polarity"],
+                ["negative", "positive", "none", "polarity", "auto"],
                 default_value="negative",
             ),
             CategoricalHyperparameter(

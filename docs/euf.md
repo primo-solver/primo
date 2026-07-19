@@ -81,12 +81,21 @@ For compatibility with the predecessor benchmark command, Primo also accepts
 and `--prop-assign-threshold X` are accepted for online propagation experiments.
 Their defaults are `32` and `0.25` respectively.
 
-`--theory-phase=negative|positive|none|polarity` controls the initial CaDiCaL
-phase set for theory atoms before solving. The default is `negative`, preserving
-the historical policy of trying disequality assignments first. This option is a
-benchmark diagnostic knob: `positive` tries equality assignments first, `none`
-leaves CaDiCaL's default phase untouched, and `polarity` sets a phase only for
-atoms that occur with a single syntactic polarity in the clausified formula.
+`--theory-phase=negative|positive|none|polarity|auto` controls the initial
+CaDiCaL phase set for theory atoms before solving. The default is `negative`,
+preserving the historical policy of trying disequality assignments first. This
+option is a benchmark diagnostic knob: `positive` tries equality assignments
+first, `none` leaves CaDiCaL's default phase untouched, and `polarity` sets a
+phase only for atoms that occur with a single syntactic polarity in the
+clausified formula.
+
+`auto` is an experimental tuning mode, not a default profile. It keeps the
+negative phase unless preprocessing found finite-domain or UF-symmetry structure
+and the clausified theory atoms are not strongly positive-dominated. In that
+case it uses the same static polarity phase setting as `polarity` and reports
+`:sat.phase.auto-polarity`. This is a local heuristic derived from the NEQ/QG
+performance trail in `docs/run-log.json`; it is not a theory decision callback
+and it does not implement a paper-specific SAT branching algorithm.
 
 `conflict` connects the CaDiCaL external propagator only for assignment,
 backtrack, and external conflict clauses. It maintains an incremental flat

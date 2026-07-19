@@ -2185,6 +2185,130 @@
       },
       "evidence_status": "local-only",
       "notes": "Use this matrix as a SMAC/heuristic input, not as headline benchmark evidence. A promising next step is an opt-in auto phase mode guarded by cheap theory-atom polarity and finite-domain/symmetry statistics, then validate on the mixed QF_UF SMAC manifests before considering any default change."
+    },
+    {
+      "id": "2026-07-19-neq-cluster-auto-phase-local",
+      "started_at": "2026-07-19T04:45:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "local-microbenchmark",
+      "scope": "Smoke-test experimental --theory-phase=auto on the five-file NEQ cluster used to derive the phase heuristic",
+      "commit": "worktree-after-f799825",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "build/primo --quiet --stats --theory-phase=auto on tmp/QF_UF/NEQ/{NEQ023_size7,NEQ016_size7,NEQ015_size6,NEQ006_size6,NEQ041_size8}.smt2; 30s timeout per file",
+      "solver": {
+        "name": "Primo",
+        "argv": "build/primo --quiet --stats --theory-phase=auto"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 5,
+        "timeout_seconds": 30,
+        "manifest": "tmp/QF_UF/NEQ/NEQ023_size7.smt2, NEQ016_size7.smt2, NEQ015_size6.smt2, NEQ006_size6.smt2, NEQ041_size8.smt2"
+      },
+      "artifacts": {
+        "summary": "terminal output from local auto-phase smoke run",
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "all_answers": "unsat",
+        "wrong_answers": 0,
+        "total_seconds": 18.737,
+        "previous_default_total_seconds": 33.208,
+        "previous_phase_polarity_total_seconds": 31.513,
+        "per_instance": {
+          "NEQ023_size7": {
+            "seconds": 0.698,
+            "auto_polarity": 1,
+            "negative_phase_atoms": 71,
+            "theory_atoms": 2257
+          },
+          "NEQ016_size7": {
+            "seconds": 6.288,
+            "auto_polarity": 0,
+            "negative_phase_atoms": 899,
+            "theory_atoms": 899
+          },
+          "NEQ015_size6": {
+            "seconds": 8.839,
+            "auto_polarity": 0,
+            "negative_phase_atoms": 28522,
+            "theory_atoms": 28522
+          },
+          "NEQ006_size6": {
+            "seconds": 2.053,
+            "auto_polarity": 1,
+            "negative_phase_atoms": 1782,
+            "theory_atoms": 5778
+          },
+          "NEQ041_size8": {
+            "seconds": 0.859,
+            "auto_polarity": 1,
+            "negative_phase_atoms": 716,
+            "theory_atoms": 2092
+          }
+        }
+      },
+      "evidence_status": "local-only",
+      "notes": "The heuristic selected polarity on the same rows where the earlier option matrix showed polarity wins and fell back to negative on the two polarity regressions. This is encouraging but intentionally not default evidence; validate via mixed QF_UF SMAC manifests and fuzzing before promotion."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-auto-phase-1000",
+      "started_at": "2026-07-19T04:55:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate for experimental --theory-phase=auto",
+      "commit": "worktree-after-f799825",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --theory-phase=auto' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 20260719 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-auto-phase-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --theory-phase=auto"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 20260719,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-auto-phase-1000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-auto-phase-1000/generated",
+        "logs": null,
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-auto-phase-1000/bugs"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unknown": 0,
+        "bugs": 0,
+        "sat": 899,
+        "unsat": 101
+      },
+      "evidence_status": "local-only",
+      "notes": "This covers the opt-in auto phase option against generated QF_UF formulas. It is sufficient as a local merge gate for the new non-default option, but not sufficient for promoting auto phase to a default or headline profile; that still requires mixed-manifest SLURM validation."
     }
   ]
 }

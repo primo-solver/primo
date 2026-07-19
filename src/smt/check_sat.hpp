@@ -42,6 +42,7 @@ enum class TheoryPhaseMode {
   Positive,
   None,
   Polarity,
+  Auto,
 };
 
 struct AutoBudget {

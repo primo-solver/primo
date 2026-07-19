@@ -66,6 +66,7 @@ enum class StatKey : std::size_t {
   AutoStrong,
   AutoLargeAssertionSkip,
   SatTheoryNegativePhase,
+  SatPhaseAutoPolarity,
   SatVars,
   SatClauses,
   SatClauseLits,

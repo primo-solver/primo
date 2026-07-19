@@ -111,6 +111,7 @@ constexpr util::StatKey kStatAutoSingleAssertion = util::StatKey::AutoSingleAsse
 constexpr util::StatKey kStatAutoStrong = util::StatKey::AutoStrong;
 constexpr util::StatKey kStatAutoLargeAssertionSkip = util::StatKey::AutoLargeAssertionSkip;
 constexpr util::StatKey kStatSatTheoryNegativePhase = util::StatKey::SatTheoryNegativePhase;
+constexpr util::StatKey kStatSatPhaseAutoPolarity = util::StatKey::SatPhaseAutoPolarity;
 constexpr util::StatKey kStatSatVars = util::StatKey::SatVars;
 constexpr util::StatKey kStatSatClauses = util::StatKey::SatClauses;
 constexpr util::StatKey kStatSatClauseLits = util::StatKey::SatClauseLits;
@@ -1044,6 +1045,35 @@ void publish_theory_atom_purity_stats(const std::vector<BooleanClausifier::Theor
   }
   statistics.set(kStatPureTheoryAtomsPositive, positive);
   statistics.set(kStatPureTheoryAtomsNegative, negative);
+}
+
+TheoryPhaseMode resolve_theory_phase_mode(TheoryPhaseMode mode,
+                                          const std::vector<BooleanClausifier::TheoryAtom>& atoms,
+                                          const util::Statistics& statistics) {
+  if (mode != TheoryPhaseMode::Auto) {
+    return mode;
+  }
+  const bool has_finite_domain_structure = statistics.get(kStatFiniteDomainDomains) != 0 ||
+                                           statistics.get(kStatUfSymmetryConstraints) != 0;
+  if (!has_finite_domain_structure) {
+    return TheoryPhaseMode::Negative;
+  }
+  std::size_t pure_positive = 0;
+  std::size_t pure_negative = 0;
+  for (const BooleanClausifier::TheoryAtom& atom : atoms) {
+    if (is_pure_positive(atom)) {
+      ++pure_positive;
+    } else if (is_pure_negative(atom)) {
+      ++pure_negative;
+    }
+  }
+  if (pure_negative == 0) {
+    return TheoryPhaseMode::Negative;
+  }
+  if (pure_positive <= pure_negative || pure_positive <= 5 * pure_negative) {
+    return TheoryPhaseMode::Polarity;
+  }
+  return TheoryPhaseMode::Negative;
 }
 
 void count_filtered_assignment(const AssignedTheoryAtom& atom, util::Statistics& statistics) {
@@ -2202,8 +2232,13 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       resolve_euf_propagation_mode(options, clausifier.theory_atoms().size(), statistics);
   CheckSatOptions resolved_options = options;
   resolved_options.euf_propagation = euf_propagation;
+  const TheoryPhaseMode theory_phase =
+      resolve_theory_phase_mode(options.theory_phase, clausifier.theory_atoms(), statistics);
+  if (options.theory_phase == TheoryPhaseMode::Auto && theory_phase == TheoryPhaseMode::Polarity) {
+    statistics.increment(kStatSatPhaseAutoPolarity);
+  }
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
-    switch (options.theory_phase) {
+    switch (theory_phase) {
       case TheoryPhaseMode::Negative:
         backend.phase(sat::Lit{-atom.lit.value});
         statistics.increment(kStatSatTheoryNegativePhase);
@@ -2220,6 +2255,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
         }
         break;
       case TheoryPhaseMode::None:
+        break;
+      case TheoryPhaseMode::Auto:
         break;
     }
   }
@@ -2398,6 +2435,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   statistics.set(kStatAutoStrong, 0);
   statistics.set(kStatAutoLargeAssertionSkip, 0);
   statistics.set(kStatSatTheoryNegativePhase, 0);
+  statistics.set(kStatSatPhaseAutoPolarity, 0);
   statistics.set(kStatSatVars, 0);
   statistics.set(kStatSatClauses, 0);
   statistics.set(kStatSatClauseLits, 0);
