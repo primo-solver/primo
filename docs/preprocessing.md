@@ -81,7 +81,7 @@ reproducing narrower configurations:
   `--no-finite-domain-value-precedence`.
 
 `--no-eq-bridge`, `--no-uf-symmetry-breaking`, and
-`--theory-phase=negative` disable default-on switches for ablation runs.
+`--theory-phase=auto` are useful ablation or targeted-experiment switches.
 `--qf-uf-preprocess=off` disables the preprocessing loop and the finite-domain
 symmetry-breaking preprocessing step. `--auto-basic-multi` enables the
 rejected-default QG classifier for experiments and can be paired with

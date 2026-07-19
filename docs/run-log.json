@@ -4352,8 +4352,8 @@
         },
         "perf_top": "NEQ023 explicit negative phase: CaDiCaL::Internal::propagate 26.09%, FlatCongruenceClosure::merge_classes 6.23%, OnlineEufPropagator::notify_assignment 5.92%, allocator/free/rollback costs next. Default auto is much shorter, with only 128 samples; CaDiCaL propagation remains the largest visible cost at 16.00%."
       },
-      "evidence_status": "local-current",
-      "notes": "Accepted as local implementation evidence for making the existing auto phase heuristic the default. The one checked local regression is NEQ027_size8 at +0.073s. This does not replace SLURM 334-row/full-QF_UF validation or the already-running SMAC job."
+      "evidence_status": "rejected-default-local-only",
+      "notes": "Local evidence showed useful targeted wins but was superseded by SLURM job 111814, where making auto the default lost one solve and worsened PAR2 on the 334-row subset. Keep --theory-phase=auto as an experimental option; do not use this local run as default-readiness evidence."
     },
     {
       "id": "2026-07-19-qfuf-fuzzsmt-default-auto-phase-1000",
@@ -4407,7 +4407,7 @@
       "started_at": "2026-07-19T17:10:00+02:00",
       "recorded_at": "2026-07-19",
       "kind": "benchmark",
-      "scope": "SLURM 334-row primo.html QF_UF subset validation of the new default auto theory phase against explicit --theory-phase=negative",
+      "scope": "SLURM 334-row primo.html QF_UF subset validation of the candidate default auto theory phase against explicit --theory-phase=negative",
       "commit": "de6c54d",
       "environment": {
         "type": "slurm",
@@ -4434,15 +4434,54 @@
       },
       "artifacts": {
         "remote_results": "/home/janotmik/primo-cadical-profile/results/qfuf-default-auto-vs-negative-de6c54d",
+        "local_results": "results/qfuf-default-auto-vs-negative-de6c54d",
         "remote_logs": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-options-111814-*.{out,err}"
       },
       "summary": {
-        "state_at_submission": "RUNNING",
-        "active_tasks_at_submission_check": "111814_0 through 111814_31 RUNNING on node-01/node-02",
-        "preflight": "Remote binary version check immediately before sbatch reported git de6c54d and cadical cadical-3.0.0-7b99c07."
+        "final_state": "COMPLETED",
+        "array_exit_codes": "all 0:0",
+        "preflight": "Remote binary version check immediately before sbatch reported git de6c54d and cadical cadical-3.0.0-7b99c07.",
+        "default_auto": {
+          "solved": 330,
+          "timeouts": 4,
+          "errors": 0,
+          "wrong": 0,
+          "par2_seconds": 3210.487,
+          "family_solved": {
+            "Goel": "7/7",
+            "NEQ": "25/26",
+            "PEQ": "22/25",
+            "QG": "270/270",
+            "SEQ": "6/6"
+          }
+        },
+        "negative": {
+          "solved": 331,
+          "timeouts": 3,
+          "errors": 0,
+          "wrong": 0,
+          "par2_seconds": 3049.049,
+          "family_solved": {
+            "Goel": "7/7",
+            "NEQ": "25/26",
+            "PEQ": "23/25",
+            "QG": "270/270",
+            "SEQ": "6/6"
+          }
+        },
+        "selected_wins": {
+          "NEQ023_size7": "8.779s negative -> 2.140s default-auto",
+          "iso_brn_repgen033": "6.389s negative -> 1.062s default-auto",
+          "SEQ026_size7": "41.820s negative -> 33.275s default-auto"
+        },
+        "selected_regressions": {
+          "PEQ013_size8": "87.047s negative -> timeout default-auto",
+          "NEQ027_size10": "4.829s negative -> 69.212s default-auto",
+          "gensys_icl_sk003": "10.631s negative -> 26.205s default-auto"
+        }
       },
-      "evidence_status": "running",
-      "notes": "This is the required broader validation for the default phase promotion. Do not make a final default-readiness claim until the job is collected, merged, summarized for solved/wrong/PAR2/family results, and committed or the change is reverted."
+      "evidence_status": "rejected-default",
+      "notes": "The candidate auto default fixed several visible NEQ/QG/SEQ rows but regressed the broader 334-row subset, losing one PEQ solve and increasing PAR2 by 161.438s. Revert the default to negative and keep auto as an explicit experimental option for future portfolio/tuning work."
     }
   ]
 }

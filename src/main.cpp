@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
   std::string euf_engine = "incremental";
   std::string euf_prop = "auto";
   std::string pure_theory_filter = "auto";
-  std::string theory_phase = "auto";
+  std::string theory_phase = "negative";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
   std::size_t max_theory_conflicts = 0;
