@@ -5822,6 +5822,91 @@
       },
       "evidence_status": "current_local_candidate",
       "notes": "The option is default-preserving. It exists to test whether post-simplification AMO clause growth is responsible for PEQ/NEQ/QG gaps before changing any default."
+    },
+    {
+      "id": "2026-07-19-qfuf-post-amo-raw-only-slurm-112071",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM same-binary 334-row primo.html QF_UF subset comparison of default post-simplification finite-domain AMO against --no-finite-domain-post-amo",
+      "commit": "a56738f",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "slurm_job_id": "112071",
+        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+      },
+      "command": "sbatch --array=0-31 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= raw-only=--no-finite-domain-post-amo' scripts/slurm_qfuf_option_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "Primo raw-only ablation",
+          "argv": "./build/primo --quiet --stats --no-finite-domain-post-amo"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-option-compare-112071/summary.json",
+        "results": "results/qfuf-option-compare-112071/{default-merged.csv,raw-only-merged.csv,default-vs-raw-only-diffs.csv}",
+        "logs": "results/qfuf-option-compare-112071/{default,raw-only}/",
+        "bugs": null
+      },
+      "summary": {
+        "default": {
+          "total": 334,
+          "ok": 332,
+          "timeout": 2,
+          "wrong": 0,
+          "par2": 2640.449295
+        },
+        "raw_only": {
+          "total": 334,
+          "ok": 332,
+          "timeout": 2,
+          "wrong": 0,
+          "par2": 2656.147716
+        },
+        "family_counts_same": {
+          "Goel": {
+            "ok": 7
+          },
+          "NEQ": {
+            "ok": 25,
+            "timeout": 1
+          },
+          "PEQ": {
+            "ok": 24,
+            "timeout": 1
+          },
+          "QG": {
+            "ok": 270
+          },
+          "SEQ": {
+            "ok": 6
+          }
+        },
+        "post_amo_rows": {
+          "default": 48,
+          "raw_only": 0
+        },
+        "notable_rows": {
+          "PEQ019_size7": "default 3.140852s, raw-only 1.607925s; AMO 3787 -> 1071; conflicts 4707 -> 2974; assignments 169824 -> 32225",
+          "SEQ009_size10": "default 0.272649s, raw-only 27.616121s; AMO 6035 -> 5095; assignments 54842 -> 2529076",
+          "NEQ016_size8": "both timed out at 120s; conflicts 295737 -> 320006; assignments 6858076 -> 7683004"
+        }
+      },
+      "evidence_status": "current_rejected_default",
+      "notes": "Raw-only post-AMO ablation improved PEQ019_size7 but worsened whole-subset PAR2 and had a severe SEQ009_size10 regression. Keep --no-finite-domain-post-amo as a tuning/SMAC parameter, not as a default or auto rule without a stronger selector."
     }
   ]
 }
