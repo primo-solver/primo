@@ -131,7 +131,6 @@ int main(int argc, char** argv) {
   bool no_top_level_or_tseitin = false;
   bool no_auto_basic_single = false;
   bool no_auto_basic_single_predicate_polarity = false;
-  bool no_auto_single_fd_polarity = false;
   bool auto_basic_multi = false;
   bool no_auto_basic_multi = false;
   bool no_auto_basic_multi_polarity = false;
@@ -194,9 +193,6 @@ int main(int argc, char** argv) {
       ->default_val(false);
   app.add_flag("--no-auto-basic-single-predicate-polarity", no_auto_basic_single_predicate_polarity,
                "Disable polarity phase for auto basic-single formulas with Boolean UF predicates")
-      ->default_val(false);
-  app.add_flag("--no-auto-single-fd-polarity", no_auto_single_fd_polarity,
-               "Disable polarity phase for selected single finite-domain formulas")
       ->default_val(false);
   app.add_flag("--auto-basic-multi", auto_basic_multi,
                "Enable the experimental auto basic-multi preprocessing and phase heuristic")
@@ -353,9 +349,6 @@ int main(int argc, char** argv) {
   if (no_auto_basic_single_predicate_polarity) {
     solver_options.auto_basic_single_predicate_polarity = false;
   }
-  if (no_auto_single_fd_polarity) {
-    solver_options.auto_single_finite_domain_polarity = false;
-  }
   if (auto_basic_multi) {
     solver_options.auto_basic_multi_preprocessing = true;
     solver_options.auto_basic_multi_polarity = true;
@@ -403,7 +396,6 @@ int main(int argc, char** argv) {
   }
   if (theory_phase_option->count() > 0) {
     solver_options.auto_basic_single_predicate_polarity = false;
-    solver_options.auto_single_finite_domain_polarity = false;
     solver_options.auto_basic_multi_polarity = false;
   }
   const std::optional<primo::smt::AutoBudget> parsed_prop_budget =

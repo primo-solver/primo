@@ -72,11 +72,6 @@ reproducing narrower configurations:
   because same-run July 19, 2026 SLURM comparisons showed that several compact
   operation-table rows benefited from the lighter `basic` encoding plus polarity
   phase;
-- a narrow default SAT phase override for the NEQ016-size8 finite-domain
-  symmetry shape. It is keyed by existing preprocessing and clausification
-  counters, reports `:sat.phase.auto-single-fd-polarity`, and only changes
-  CaDiCaL's initial phase for existing theory atoms. It does not add
-  preprocessing clauses;
 - finite-domain equality definitions. In `auto` they are opt-in with
   `--finite-domain-equality-definitions` and bounded by
   `--finite-domain-eqdefs-auto-domain-limit` and
@@ -103,9 +98,7 @@ disables the predicate-aware phase override for selected single-assertion
 finite-domain formulas. `--no-auto-basic-multi` disables the compact
 multi-assertion classifier for scripted option matrices, while
 `--no-auto-basic-multi-polarity` keeps that compact preprocessing branch but
-uses the ordinary theory-atom phase. `--no-auto-single-fd-polarity` disables
-only the narrow single finite-domain phase selector reported by
-`:sat.phase.auto-single-fd-polarity`.
+uses the ordinary theory-atom phase.
 
 ## Experimental QF_UF Portfolio
 

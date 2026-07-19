@@ -5599,69 +5599,82 @@
       "notes": "The candidate reduced some EUF activity on the activated row but did not improve solved count under SLURM headline conditions. The source change was reverted; keep this entry to prevent promoting this narrow benchmark-derived guard without stronger evidence."
     },
     {
-      "id": "2026-07-19-neq016-single-fd-phase-prototype-local",
+      "id": "2026-07-19-neq016-single-fd-phase-rejected",
       "started_at": "2026-07-19",
       "recorded_at": "2026-07-19",
       "kind": "tuning",
-      "scope": "Local QF_UF NEQ sweep and NEQ016 finite-domain phase prototype",
-      "commit": "563bf7a plus uncommitted :sat.phase.auto-single-fd-polarity prototype",
+      "scope": "QF_UF 334-row primo.html subset, single finite-domain phase selector candidate",
+      "commit": "6976c33 for evaluated candidate; reverted immediately afterward because SLURM did not validate the local win",
       "environment": {
-        "type": "local",
-        "host": "workspace",
-        "slurm_job_id": null
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "slurm_job_id": "112039"
       },
-      "command": "Local sweep in results/local-neq-tuned-sweep-20260719.csv comparing ./build/primo --quiet --stats against tuned /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000; followed by timeout 100s ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size{7,8}.smt2 after the phase prototype",
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --remote-dir /home/janotmik/primo-cadical-profile --target primo; sbatch --array=0-31 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= disabled=--no-auto-single-fd-polarity' scripts/slurm_qfuf_option_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "./build/primo --quiet --stats"
+        "argv": "build-slurm-rel/primo --quiet --stats"
       },
       "references": [
         {
-          "name": "LLM2SMT tuned",
-          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+          "name": "Primo with candidate disabled",
+          "argv": "build-slurm-rel/primo --quiet --stats --no-auto-single-fd-polarity"
         }
       ],
       "inputs": {
         "generator": null,
         "logic": "QF_UF",
         "seed": null,
-        "count": 16,
-        "timeout_seconds": 45,
-        "manifest": "NEQ rows selected from benchmarks/user-primo-html334-2026-07-18.txt plus user-mentioned NEQ023/NEQ027/NEQ016 rows"
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
       },
       "artifacts": {
-        "summary": "results/local-neq-tuned-sweep-20260719.csv",
-        "results": "results/local-neq-tuned-sweep-20260719.csv and /tmp/phase-guard.{out,err}",
-        "logs": "/tmp/primo-neq016-*.err and /tmp/llm2smt-neq016-*.err",
+        "summary": "results/qfuf-option-compare-112039/summary.json",
+        "default": "results/qfuf-option-compare-112039/default-merged.csv",
+        "disabled": "results/qfuf-option-compare-112039/disabled-merged.csv",
+        "diffs": "results/qfuf-option-compare-112039/default-vs-disabled-diffs.csv",
+        "remote_results": "/home/janotmik/primo-cadical-profile/results/qfuf-option-compare-112039",
+        "logs": "results/qfuf-option-compare-112039/*/logs",
         "bugs": null
       },
       "summary": {
-        "NEQ023_size7": "Primo 0.417522s, tuned LLM2SMT 1.035788s; no local slowdown reproduced",
-        "NEQ027_size8": "Primo 0.551032s, tuned LLM2SMT 1.344478s; no local slowdown reproduced",
-        "NEQ016_size7_before_prototype": "Primo 4.830509s, tuned LLM2SMT 1.582038s",
-        "NEQ016_size8_before_prototype": "Primo timeout at 45.009180s with 321339 theory conflicts; tuned LLM2SMT 18.898915s",
-        "reference_frontend_knobs": "LLM2SMT --nnf and --nnf-memo did not improve NEQ016_size7; --no-flatten regressed from about 2.33s to about 10.47s, so NNF/flattening is not the current explanation for NEQ016",
-        "prototype_selector": "single assertion, not auto-basic-single, accepted symmetry group, symmetry terms == 3, values >= 8, raw choices 50..100, theory atoms 500..2000, pure-negative atoms 26..32",
-        "NEQ016_size7_after_prototype": "selector inactive; unsat in 4.83s, :sat.phase.auto-single-fd-polarity 0, theory-negative phases 899",
-        "NEQ016_size8_after_prototype": "selector active; unsat in 56.02s, :sat.phase.auto-single-fd-polarity 1, theory-negative phases 28, theory conflicts 445437, assignments 11876277",
-        "artifact_334_shape_count": "The selector matched exactly one row in results/qfuf-option-compare-112007/pure-on-merged.csv: tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+        "default": {
+          "total": 334,
+          "solved": 332,
+          "timeouts": 2,
+          "wrong": 0,
+          "par2": 2716.703317
+        },
+        "disabled": {
+          "total": 334,
+          "solved": 332,
+          "timeouts": 2,
+          "wrong": 0,
+          "par2": 2636.797158
+        },
+        "selector_activations": 1,
+        "activated_row": "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "activated_row_default": "timeout at 120.106615s, :sat.phase.auto-single-fd-polarity 1, :sat.phase.theory-negative 28, assignments 8103251, theory conflicts 326685",
+        "activated_row_disabled": "timeout at 120.105952s, :sat.phase.auto-single-fd-polarity 0, :sat.phase.theory-negative 1295, assignments 7665027, theory conflicts 319481",
+        "local_candidate_evidence": "Before SLURM, the candidate solved NEQ016_size8 locally in 57.84s while the disabled variant hit a 30s cap. The cluster result did not reproduce a solved-row improvement at the requested 120s timeout."
       },
-      "evidence_status": "current_local_candidate",
-      "notes": "This is a phase-only search-order prototype. It is not accepted as default until the 334-row SLURM A/B shows no wrong answers and no broad regression."
+      "evidence_status": "rejected",
+      "notes": "The candidate changed only static CaDiCaL phase hints and activated on one row, but it did not improve solved count and made 334-row PAR2 worse on SLURM. The source change was reverted; keep this entry to prevent promoting this benchmark-derived selector without stronger mixed-suite evidence."
     },
     {
-      "id": "2026-07-19-qfuf-fuzzsmt-single-fd-phase-1000",
+      "id": "2026-07-19-qfuf-fuzzsmt-single-fd-phase-revert-1000",
       "started_at": "2026-07-19",
       "recorded_at": "2026-07-19",
       "kind": "fuzz",
-      "scope": "QF_UF FuzzSMT generated cases for single finite-domain phase selector candidate",
-      "commit": "563bf7a plus uncommitted :sat.phase.auto-single-fd-polarity prototype",
+      "scope": "QF_UF FuzzSMT generated cases after reverting the rejected single finite-domain phase selector",
+      "commit": "6976c33 plus uncommitted revert of 6976c33 and a53dc16",
       "environment": {
         "type": "local",
         "host": "workspace",
         "slurm_job_id": null
       },
-      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071944 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-single-fd-phase-1000",
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071952 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-single-fd-phase-revert-1000",
       "solver": {
         "name": "Primo",
         "argv": "./build/primo --quiet"
@@ -5675,105 +5688,16 @@
       "inputs": {
         "generator": "fuzzsmt",
         "logic": "QF_UF",
-        "seed": 2026071944,
+        "seed": 2026071952,
         "count": 1000,
         "timeout_seconds": 5,
         "manifest": null
       },
       "artifacts": {
-        "summary": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-1000/summary.csv",
-        "results": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-1000",
+        "summary": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-revert-1000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-revert-1000",
         "logs": null,
-        "bugs": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-1000/bugs"
-      },
-      "summary": {
-        "total": 1000,
-        "pass": 1000,
-        "wrong": 0,
-        "crash": 0,
-        "timeout": 0,
-        "unsupported": 0,
-        "parser_or_type_error": 0,
-        "reference_disagreement": 0
-      },
-      "evidence_status": "current_local_candidate",
-      "notes": "Merge-gate-sized local QF_UF fuzz run after adding a phase-only default selector. Headline acceptance still depends on SLURM benchmark comparison."
-    },
-    {
-      "id": "2026-07-19-single-fd-phase-disable-flag-local",
-      "started_at": "2026-07-19",
-      "recorded_at": "2026-07-19",
-      "kind": "benchmark",
-      "scope": "Local same-binary A/B for the single finite-domain phase selector disable flag on NEQ016_size8",
-      "commit": "a53dc16 plus uncommitted --no-auto-single-fd-polarity option wiring",
-      "environment": {
-        "type": "local",
-        "host": "workspace",
-        "slurm_job_id": null
-      },
-      "command": "./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size8.smt2; timeout 30 ./build/primo --quiet --stats --no-auto-single-fd-polarity tmp/QF_UF/NEQ/NEQ016_size8.smt2",
-      "solver": {
-        "name": "Primo",
-        "argv": "./build/primo --quiet --stats"
-      },
-      "references": [],
-      "inputs": {
-        "generator": null,
-        "logic": "QF_UF",
-        "seed": null,
-        "count": 1,
-        "timeout_seconds": 30,
-        "manifest": "tmp/QF_UF/NEQ/NEQ016_size8.smt2"
-      },
-      "artifacts": {
-        "summary": "/tmp/primo-neq016-size8-{default,disabled}.{out,err}",
-        "results": "/tmp/primo-neq016-size8-{default,disabled}.{out,err}",
-        "logs": "/tmp/primo-neq016-size8-{default,disabled}.{out,err}",
-        "bugs": null
-      },
-      "summary": {
-        "default": "unsat in 57.84s; :sat.phase.auto-single-fd-polarity 1; :sat.phase.theory-negative 28; :euf.theory-atoms 1295",
-        "disabled": "unknown at 30.00s; :sat.phase.auto-single-fd-polarity 0; :sat.phase.theory-negative 1295; :euf.theory-atoms 1295"
-      },
-      "evidence_status": "current_local_candidate",
-      "notes": "This proves the new disable flag isolates the narrow phase selector for a same-binary SLURM A/B. It is still not accepted as headline/default evidence without the 334-row SLURM comparison."
-    },
-    {
-      "id": "2026-07-19-qfuf-fuzzsmt-single-fd-phase-flag-1000",
-      "started_at": "2026-07-19",
-      "recorded_at": "2026-07-19",
-      "kind": "fuzz",
-      "scope": "QF_UF FuzzSMT generated cases after adding the single finite-domain phase selector disable flag",
-      "commit": "a53dc16 plus uncommitted --no-auto-single-fd-polarity option wiring",
-      "environment": {
-        "type": "local",
-        "host": "workspace",
-        "slurm_job_id": null
-      },
-      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071951 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-single-fd-phase-flag-1000",
-      "solver": {
-        "name": "Primo",
-        "argv": "./build/primo --quiet"
-      },
-      "references": [
-        {
-          "name": "z3",
-          "argv": "z3"
-        }
-      ],
-      "inputs": {
-        "generator": "fuzzsmt",
-        "logic": "QF_UF",
-        "seed": 2026071951,
-        "count": 1000,
-        "timeout_seconds": 5,
-        "manifest": null
-      },
-      "artifacts": {
-        "summary": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-flag-1000/summary.csv",
-        "results": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-flag-1000",
-        "logs": null,
-        "bugs": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-flag-1000/bugs"
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-revert-1000/bugs"
       },
       "summary": {
         "total": 1000,
@@ -5784,11 +5708,11 @@
         "unsupported": 0,
         "parser_or_type_error": 0,
         "reference_disagreement": 0,
-        "sat": 915,
-        "unsat": 85
+        "sat": 911,
+        "unsat": 89
       },
-      "evidence_status": "current_local_candidate",
-      "notes": "Merge-gate-sized local QF_UF fuzz run on the current option-wired candidate. Headline/default acceptance still depends on SLURM benchmark comparison."
+      "evidence_status": "current_local",
+      "notes": "Fresh merge-gate-sized local QF_UF fuzz run after reverting the rejected default selector."
     }
   ]
 }

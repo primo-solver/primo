@@ -118,8 +118,6 @@ constexpr util::StatKey kStatSatPhaseAutoBasicSinglePredicatePolarity =
     util::StatKey::SatPhaseAutoBasicSinglePredicatePolarity;
 constexpr util::StatKey kStatSatPhaseAutoBasicMultiPolarity =
     util::StatKey::SatPhaseAutoBasicMultiPolarity;
-constexpr util::StatKey kStatSatPhaseAutoSingleFiniteDomainPolarity =
-    util::StatKey::SatPhaseAutoSingleFiniteDomainPolarity;
 constexpr util::StatKey kStatSatVars = util::StatKey::SatVars;
 constexpr util::StatKey kStatSatClauses = util::StatKey::SatClauses;
 constexpr util::StatKey kStatSatClauseLits = util::StatKey::SatClauseLits;
@@ -1133,21 +1131,6 @@ TheoryPhaseMode resolve_theory_phase_mode(TheoryPhaseMode mode,
     return TheoryPhaseMode::Polarity;
   }
   return TheoryPhaseMode::Negative;
-}
-
-bool should_use_auto_single_finite_domain_polarity(const util::Statistics& statistics) {
-  if (statistics.get(kStatAutoSingleAssertion) == 0 || statistics.get(kStatAutoBasicSingle) != 0) {
-    return false;
-  }
-  if (statistics.get(kStatUfSymmetryAcceptedSets) == 0 ||
-      statistics.get(kStatUfSymmetryTerms) != 3 || statistics.get(kStatUfSymmetryValues) < 8) {
-    return false;
-  }
-  const std::size_t raw_choices = statistics.get(kStatFiniteDomainRawChoices);
-  const std::size_t theory_atoms = statistics.get(kStatTheoryAtoms);
-  const std::size_t pure_negative = statistics.get(kStatPureTheoryAtomsNegative);
-  return raw_choices >= 50 && raw_choices <= 100 && theory_atoms >= 500 && theory_atoms <= 2000 &&
-         pure_negative >= 26 && pure_negative <= 32;
 }
 
 void count_filtered_assignment(const AssignedTheoryAtom& atom, util::Statistics& statistics) {
@@ -2386,13 +2369,6 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     theory_phase = TheoryPhaseMode::Polarity;
     statistics.increment(kStatSatPhaseAutoBasicMultiPolarity);
   }
-  if ((options.theory_phase == TheoryPhaseMode::Negative ||
-       options.theory_phase == TheoryPhaseMode::Auto) &&
-      options.auto_single_finite_domain_polarity &&
-      should_use_auto_single_finite_domain_polarity(statistics)) {
-    theory_phase = TheoryPhaseMode::Polarity;
-    statistics.increment(kStatSatPhaseAutoSingleFiniteDomainPolarity);
-  }
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     switch (theory_phase) {
       case TheoryPhaseMode::Negative:
@@ -2596,7 +2572,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatSatPhaseAutoPolarity, 0);
   statistics.set(kStatSatPhaseAutoBasicSinglePredicatePolarity, 0);
   statistics.set(kStatSatPhaseAutoBasicMultiPolarity, 0);
-  statistics.set(kStatSatPhaseAutoSingleFiniteDomainPolarity, 0);
   statistics.set(kStatSatVars, 0);
   statistics.set(kStatSatClauses, 0);
   statistics.set(kStatSatClauseLits, 0);
