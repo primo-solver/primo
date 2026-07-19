@@ -290,6 +290,7 @@ void default_euf_propagation_auto_uses_online_for_large_finite_domain_shapes() {
 
   primo::smt::CheckSatOptions options;
   options.solved_constant_substitution = false;
+  options.auto_basic_multi_preprocessing = false;
   const auto result = check_sat_smtlib(input.str(), options);
 
   assert(result.result == CheckSatResult::Sat);
@@ -331,6 +332,7 @@ void default_euf_propagation_auto_keeps_conflict_for_negative_heavy_finite_domai
 
   primo::smt::CheckSatOptions options;
   options.solved_constant_substitution = false;
+  options.auto_basic_multi_preprocessing = false;
   const auto result = check_sat_smtlib(input.str(), options);
 
   assert(result.result == CheckSatResult::Sat);
@@ -919,7 +921,7 @@ void finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities() {
   assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 3);
 }
 
-void auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions() {
+void auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
   const auto result = check_sat_smtlib(
@@ -937,17 +939,44 @@ void auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions() {
       options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.auto.single-assertion") == 0);
+  assert(result.statistics.get(":preprocessing.auto.strong") == 0);
+  assert(result.statistics.get(":preprocessing.auto.basic-multi") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") == 0);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 0);
+  assert(result.statistics.get(":sat.phase.auto-basic-multi-polarity") == 1);
+  assert(result.statistics.get(":sat.phase.theory-negative") <
+         result.statistics.get(":euf.theory-atoms"));
+}
+
+void auto_preprocessing_basic_multi_can_be_disabled() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_basic_multi_preprocessing = false;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.basic-multi") == 0);
   assert(result.statistics.get(":preprocessing.auto.strong") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
-  assert(result.statistics.get(":sat.phase.theory-negative") ==
-         result.statistics.get(":euf.theory-atoms"));
-  assert(result.statistics.get(":sat.phase.theory-negative") > 0);
+  assert(result.statistics.get(":sat.phase.auto-basic-multi-polarity") == 0);
 }
 
 void auto_preprocessing_emits_guarded_equality_definitions() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_basic_multi_preprocessing = false;
   options.auto_finite_domain_equality_definitions = true;
   const auto result = check_sat_smtlib(
       R"(
@@ -975,6 +1004,7 @@ void auto_preprocessing_emits_guarded_equality_definitions() {
 void finite_domain_equality_definitions_can_be_disabled() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_basic_multi_preprocessing = false;
   options.auto_finite_domain_equality_definitions = true;
   options.finite_domain_equality_definitions = false;
   const auto result = check_sat_smtlib(
@@ -1001,6 +1031,7 @@ void finite_domain_equality_definitions_can_be_disabled() {
 void auto_preprocessing_keeps_equality_definitions_opt_in() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_basic_multi_preprocessing = false;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -1711,7 +1742,8 @@ int main() {
   strong_preprocessing_enables_finite_domain_amo();
   finite_domain_raw_amo_survives_forced_atom_simplification();
   finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities();
-  auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions();
+  auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions();
+  auto_preprocessing_basic_multi_can_be_disabled();
   auto_preprocessing_emits_guarded_equality_definitions();
   finite_domain_equality_definitions_can_be_disabled();
   auto_preprocessing_keeps_equality_definitions_opt_in();

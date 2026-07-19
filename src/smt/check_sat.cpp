@@ -109,9 +109,12 @@ constexpr util::StatKey kStatUfSymmetryRejectedNoninvariant =
     util::StatKey::UfSymmetryRejectedNoninvariant;
 constexpr util::StatKey kStatAutoSingleAssertion = util::StatKey::AutoSingleAssertion;
 constexpr util::StatKey kStatAutoStrong = util::StatKey::AutoStrong;
+constexpr util::StatKey kStatAutoBasicMulti = util::StatKey::AutoBasicMulti;
 constexpr util::StatKey kStatAutoLargeAssertionSkip = util::StatKey::AutoLargeAssertionSkip;
 constexpr util::StatKey kStatSatTheoryNegativePhase = util::StatKey::SatTheoryNegativePhase;
 constexpr util::StatKey kStatSatPhaseAutoPolarity = util::StatKey::SatPhaseAutoPolarity;
+constexpr util::StatKey kStatSatPhaseAutoBasicMultiPolarity =
+    util::StatKey::SatPhaseAutoBasicMultiPolarity;
 constexpr util::StatKey kStatSatVars = util::StatKey::SatVars;
 constexpr util::StatKey kStatSatClauses = util::StatKey::SatClauses;
 constexpr util::StatKey kStatSatClauseLits = util::StatKey::SatClauseLits;
@@ -172,6 +175,7 @@ constexpr util::StatKey kStatEufIncrementalMaxUseListSize =
     util::StatKey::EufIncrementalMaxUseListSize;
 
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
+constexpr std::size_t kAutoBasicMultiTermLimit = 20000;
 
 std::size_t reachable_term_count(const core::TermManager& terms,
                                  const std::vector<core::TermId>& roots) {
@@ -2253,10 +2257,15 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       resolve_euf_propagation_mode(options, clausifier.theory_atoms().size(), statistics);
   CheckSatOptions resolved_options = options;
   resolved_options.euf_propagation = euf_propagation;
-  const TheoryPhaseMode theory_phase =
+  TheoryPhaseMode theory_phase =
       resolve_theory_phase_mode(options.theory_phase, clausifier.theory_atoms(), statistics);
   if (options.theory_phase == TheoryPhaseMode::Auto && theory_phase == TheoryPhaseMode::Polarity) {
     statistics.increment(kStatSatPhaseAutoPolarity);
+  }
+  if (options.theory_phase == TheoryPhaseMode::Negative && options.auto_basic_multi_polarity &&
+      statistics.get(kStatAutoBasicMulti) != 0) {
+    theory_phase = TheoryPhaseMode::Polarity;
+    statistics.increment(kStatSatPhaseAutoBasicMultiPolarity);
   }
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     switch (theory_phase) {
@@ -2454,9 +2463,11 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatUfSymmetryRejectedNoninvariant, 0);
   statistics.set(kStatAutoSingleAssertion, 0);
   statistics.set(kStatAutoStrong, 0);
+  statistics.set(kStatAutoBasicMulti, 0);
   statistics.set(kStatAutoLargeAssertionSkip, 0);
   statistics.set(kStatSatTheoryNegativePhase, 0);
   statistics.set(kStatSatPhaseAutoPolarity, 0);
+  statistics.set(kStatSatPhaseAutoBasicMultiPolarity, 0);
   statistics.set(kStatSatVars, 0);
   statistics.set(kStatSatClauses, 0);
   statistics.set(kStatSatClauseLits, 0);
@@ -2520,16 +2531,21 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       return CheckSatOutcome{CheckSatResult::Unsupported, "missing check-sat command", statistics};
     }
 
-    const bool auto_single_assertion =
-        options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() <= 1;
-    const bool auto_large_assertion_skip = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
-                                           assertions.size() > kAutoPreprocessLargeAssertionLimit;
-    const bool auto_strong = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
-                             assertions.size() > 1 && !auto_large_assertion_skip;
     const std::size_t initial_reachable_terms =
         options.qf_uf_preprocess == QfUfPreprocessMode::Auto
             ? reachable_term_count(frontend.terms(), assertions)
             : 0;
+    const bool auto_single_assertion =
+        options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() <= 1;
+    const bool auto_large_assertion_skip = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
+                                           assertions.size() > kAutoPreprocessLargeAssertionLimit;
+    const bool auto_basic_multi = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
+                                  options.auto_basic_multi_preprocessing && assertions.size() > 1 &&
+                                  assertions.size() <= kAutoPreprocessLargeAssertionLimit &&
+                                  initial_reachable_terms <= kAutoBasicMultiTermLimit;
+    const bool auto_strong = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
+                             assertions.size() > 1 && !auto_large_assertion_skip &&
+                             !auto_basic_multi;
     const bool auto_single_assertion_eqdefs_allowed =
         auto_single_assertion &&
         (options.finite_domain_eqdefs_auto_term_limit == 0 ||
@@ -2539,6 +2555,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     }
     if (auto_strong) {
       statistics.increment(kStatAutoStrong);
+    }
+    if (auto_basic_multi) {
+      statistics.increment(kStatAutoBasicMulti);
     }
     if (auto_large_assertion_skip) {
       statistics.increment(kStatAutoLargeAssertionSkip);

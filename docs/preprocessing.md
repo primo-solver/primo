@@ -13,7 +13,10 @@ Primo currently exposes QF_UF preprocessing through
   symmetry breaking when their recognizers apply. Guarded finite-domain equality
   definitions are available with `--finite-domain-equality-definitions`. The
   explicit `strong` preset removes the automatic equality-definition guards for
-  experiments.
+  experiments. A small multi-assertion auto branch uses the `basic` subset
+  instead when the input has more than one assertion, at most 10,000 assertions,
+  and at most 20,000 initially reachable terms. This branch is disabled with
+  `--no-auto-basic-multi`.
 
 The default command now enables the safe part of the predecessor performance
 profile:
@@ -54,7 +57,11 @@ reproducing narrower configurations:
 - guarded experimental ground substitution, enabled with
   `--guarded-ground-unit-substitution`;
 - finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
-  by the `auto` path;
+  by the ordinary `auto` path. The guarded small multi-assertion `auto` branch
+  intentionally skips these clauses because the July 19, 2026 QG option
+  comparison showed that several compact operation-table rows benefited from
+  the lighter `basic` encoding plus polarity phase, while single-assertion NEQ
+  and PEQ rows still need the finite-domain AMO path;
 - finite-domain equality definitions. In `auto` they are opt-in with
   `--finite-domain-equality-definitions` and bounded by
   `--finite-domain-eqdefs-auto-domain-limit` and
@@ -73,9 +80,10 @@ reproducing narrower configurations:
   `--finite-domain-value-precedence` /
   `--no-finite-domain-value-precedence`.
 
-`--no-eq-bridge` and `--no-uf-symmetry-breaking` disable the two default-on
-legacy switches for ablation runs. `--qf-uf-preprocess=off` disables the
-preprocessing loop and the finite-domain symmetry-breaking preprocessing step.
+`--no-eq-bridge`, `--no-uf-symmetry-breaking`, and `--no-auto-basic-multi`
+disable default-on switches for ablation runs. `--qf-uf-preprocess=off`
+disables the preprocessing loop and the finite-domain symmetry-breaking
+preprocessing step.
 
 ## Experimental QF_UF Portfolio
 
@@ -118,6 +126,11 @@ finite-model encodings such as NEQ, PEQ, SEQ, and QG operation tables can need
 SAT-visible finite-domain structure, while unbounded equality-definition
 expansion can also flood unrelated instances with thousands of clauses. `auto`
 therefore keeps AMO clauses by default but keeps equality definitions opt-in.
+The basic-multi exception is an empirical classifier derived from the recorded
+334-row option comparison, not a paper-backed finite-domain algorithm: it only
+changes which existing preprocessing subset is selected before clausification.
+It reports `:preprocessing.auto.basic-multi`; the previous ordinary strong-auto
+branch reports `:preprocessing.auto.strong`.
 When enabled, equality definitions must fit a domain-size and per-solve clause
 budget. For single-assertion formulas they must also fit the initial
 reachable-term limit, because a single top-level assertion may contain an entire

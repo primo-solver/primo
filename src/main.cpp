@@ -129,6 +129,7 @@ int main(int argc, char** argv) {
   bool no_solved_constant_substitution = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
+  bool no_auto_basic_multi = false;
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
   std::string qf_uf_portfolio = "off";
@@ -183,6 +184,9 @@ int main(int argc, char** argv) {
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
                  "QF_UF preprocessing preset: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
+  app.add_flag("--no-auto-basic-multi", no_auto_basic_multi,
+               "Disable the auto basic-multi preprocessing and phase heuristic")
+      ->default_val(false);
   CLI::Option* profile_option = app.add_option("--qf-uf-profile", qf_uf_profile,
                                                "QF_UF profile: default or tuned-interesting")
                                     ->check(CLI::IsMember({"default", "tuned-interesting"}));
@@ -320,6 +324,10 @@ int main(int argc, char** argv) {
   if (no_top_level_or_tseitin) {
     solver_options.top_level_or_tseitin = false;
   }
+  if (no_auto_basic_multi) {
+    solver_options.auto_basic_multi_preprocessing = false;
+    solver_options.auto_basic_multi_polarity = false;
+  }
   if (euf_prop == "auto") {
     solver_options.euf_propagation = primo::smt::EufPropagationMode::Auto;
   } else if (euf_prop == "conflict") {
@@ -353,6 +361,9 @@ int main(int argc, char** argv) {
     solver_options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
   } else {
     solver_options.theory_phase = primo::smt::TheoryPhaseMode::Negative;
+  }
+  if (app.get_option("--theory-phase")->count() > 0) {
+    solver_options.auto_basic_multi_polarity = false;
   }
   const std::optional<primo::smt::AutoBudget> parsed_prop_budget =
       parse_auto_budget(euf_prop_budget);

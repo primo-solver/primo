@@ -104,6 +104,15 @@ conflicts. When the heuristic selects polarity, it reports
 performance trail in `docs/run-log.json`; it is not a theory decision callback
 and it does not implement a paper-specific SAT branching algorithm.
 
+The default `negative` mode has one guarded exception: when QF_UF preprocessing
+auto-selects the small multi-assertion `basic` branch, Primo sets syntactically
+single-polarity theory atoms according to that polarity and reports
+`:sat.phase.auto-basic-multi-polarity`. The branch is disabled by
+`--no-auto-basic-multi`, and any explicit `--theory-phase=...` value disables
+the automatic override. This remains a static CaDiCaL phase hint set before
+solving; Primo still does not use an EUF decision callback that dynamically
+chooses the next SAT decision literal.
+
 `conflict` connects the CaDiCaL external propagator only for assignment,
 backtrack, and external conflict clauses. It maintains an incremental flat
 congruence closure along the SAT trail, learns EUF conflict clauses through

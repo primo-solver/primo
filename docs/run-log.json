@@ -3895,6 +3895,91 @@
       },
       "evidence_status": "rejected-default-current",
       "notes": "The run rejects both broad option variants as defaults. It preserves a strong QG-only signal for future structural classification, but any default promotion must avoid PEQ and Goel regressions and the NEQ016/NEQ048 split."
+    },
+    {
+      "id": "2026-07-19-local-auto-basic-multi-smoke",
+      "started_at": "2026-07-19T18:20:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local smoke diagnostics for the QF_UF auto basic-multi preprocessing and phase heuristic",
+      "commit": "c808c19+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "cmake --build build --target primo -j2; /usr/bin/time -f 'TIME %e' ./build/primo --quiet --stats [target]; repeated iso_brn_repgen033 with --no-auto-basic-multi",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats",
+        "version": "working tree after c808c19"
+      },
+      "inputs": {
+        "targets": [
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen017.smt2",
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop3_ab_reg_max.smt2"
+        ],
+        "timeout_seconds": 30
+      },
+      "summary": {
+        "iso_brn_repgen033_default_seconds": 0.07,
+        "iso_brn_repgen033_no_auto_basic_multi_seconds": 2.51,
+        "iso_icl_repgen006_default_seconds": 1.11,
+        "iso_icl_repgen006_no_auto_basic_multi_seconds": 1.05,
+        "iso_brn_nogen017_default_seconds": 4.72,
+        "neq016_size7_default_seconds": 7.44,
+        "peq019_size7_default_seconds": 1.47,
+        "goel_firewire_default_seconds": 1.83,
+        "wrong_answers": 0,
+        "selected_stats": "QG compact multi-assertion rows reported :preprocessing.auto.basic-multi 1 and :sat.phase.auto-basic-multi-polarity 1; NEQ016 and PEQ019 remained single-assertion auto cases; the Goel firewire row reported :preprocessing.auto.large-assertion-skip 1."
+      },
+      "evidence_status": "local-smoke-current",
+      "notes": "The heuristic captures iso_brn_repgen033 and excludes the checked NEQ, PEQ, and large Goel examples. It does not improve iso_icl_repgen006 on this local build, where the old auto path was already near 1s; full 334-row SLURM validation is still required before treating this as a default-profile improvement."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-auto-basic-multi-1000",
+      "started_at": "2026-07-19T18:35:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzzing",
+      "scope": "QF_UF FuzzSMT merge gate for default auto basic-multi preprocessing and phase heuristic",
+      "commit": "c808c19+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071906 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet",
+        "version": "working tree after c808c19"
+      },
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 2026071906,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "reference": "z3",
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-1000/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-1000/generated"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "reference_disagreement": 0,
+        "sat": 902,
+        "unsat": 98
+      },
+      "evidence_status": "local-current",
+      "notes": "Merge-gate fuzzing for the default solver behavior change. Generated inputs are local artifacts; the run-log entry records the reproducible command and summary."
     }
   ]
 }
