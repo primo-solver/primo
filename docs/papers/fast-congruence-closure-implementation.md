@@ -193,3 +193,24 @@ paper instead maintains a proof forest during `Propagate` and answers
 union-find/highest-node structure to avoid repeated visits across recursive
 subproofs. That implementation remains future work; it must be designed from
 the paper rather than from any reference solver code.
+
+A follow-up local attempt implemented a Section 4-style reoriented proof forest
+and then replaced recursive congruence-label expansion with a Section 5.2-style
+pending-proof worklist plus auxiliary union-find/highest-node scratch state.
+Focused flat-CC tests passed, but the local PEQ/SEQ/NEQ/QG matrix was mixed:
+`PEQ019_size7` improved, while `PEQ002_size8` regressed badly because the proof
+forest produced substantially larger conflict reasons and changed SAT search.
+The attempt was rejected and reverted. The lesson is that the missing optimized
+`Explain` machinery is not just connectivity; proof-tree shape and reason
+quality must be measured directly before replacing the current BFS reason path.
+
+Next CC review items:
+
+- Add diagnostic-only counters for per-conflict reason length distribution and
+  compare BFS path length against proof-forest path length without changing the
+  emitted clause.
+- Revisit the paper's proof-forest orientation together with explanation
+  length/age tradeoffs from Section 5.4 before enabling it in the default
+  online EUF path.
+- Keep reference-solver CC code as behavioral evidence only. The implemented
+  Primo design must remain paper-derived and tested through local invariants.

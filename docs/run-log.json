@@ -6233,6 +6233,61 @@
       },
       "evidence_status": "rejected_experiment",
       "notes": "No source changes from this prototype remain."
+    },
+    {
+      "id": "2026-07-19-local-cc-reoriented-proof-forest-rejected",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Local review of FlatCongruenceClosure proof-forest Explain against the Nieuwenhuis-Oliveras Section 4-5 design",
+      "commit": "d597ada plus temporary uncommitted reoriented proof-forest and auxiliary-Explain work, reverted after measurement",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Built clean baseline in /tmp/primo-baseline-d597ada at d597ada, then measured /tmp/primo-baseline-d597ada/build/primo and ./build/primo with --stats --euf-engine=incremental, default and --no-finite-domain-post-amo, timeout 80s, on PEQ019_size7, PEQ002_size8, SEQ009_size10, NEQ048_size7, and QG qg7/iso_brn_repgen_sk032. Also ran /tmp/llm2smt/build/bin/llm2smt --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000 on PEQ002_size8.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --stats --euf-engine=incremental [optional --no-finite-domain-post-amo]"
+      },
+      "references": [
+        {
+          "name": "Nieuwenhuis-Oliveras paper",
+          "citation": "Fast Congruence Closure and Extensions, Sections 4, 5.2, and 5.4"
+        },
+        {
+          "name": "LLM2SMT",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/PEQ/PEQ002_size8.smt2, tmp/QF_UF/SEQ/SEQ009_size10.smt2, tmp/QF_UF/NEQ/NEQ048_size7.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk032.smt2",
+        "timeout_seconds": 80
+      },
+      "artifacts": {
+        "summary": "terminal-captured local matrices in 2026-07-19 conversation",
+        "results": null,
+        "logs": null
+      },
+      "summary": {
+        "prototype": "Maintained a reoriented proof forest on each flat merge, then tried proof-forest explanation before the existing adjacency BFS. The first version recursively expanded congruence labels; the second used a pending-proof worklist plus auxiliary union-find/highest-node scratch state and skipped trivial congruence premise pairs.",
+        "focused_tests": "Temporary focused tests for non-representative endpoints, path reorientation, congruence labels, and backtracking passed.",
+        "selected_results_after_auxiliary_explain": {
+          "PEQ019_size7_default": "baseline 0.883s, proof-forest 0.562s; explain-length 211380 -> 122675; assignments 169824 -> 78912",
+          "PEQ019_size7_raw_only": "baseline 0.461s, proof-forest 0.444s",
+          "PEQ002_size8_default": "baseline 17.096s, proof-forest 34.982s; explain-length 5205743 -> 8226320; assignments 2297659 -> 2723405; conflicts 95096 -> 169270",
+          "PEQ002_size8_raw_only": "baseline 20.246s, proof-forest 20.065s; explain-length 6252051 -> 5621561",
+          "SEQ009_size10_default": "baseline 0.097s, proof-forest 0.117s",
+          "SEQ009_size10_raw_only": "baseline 11.515s, proof-forest 8.178s",
+          "NEQ048_size7_default": "baseline 0.110s, proof-forest 0.100s",
+          "iso_brn_repgen_sk032_default": "baseline 0.487s, proof-forest 0.500s; explain-length 105144 -> 109776"
+        },
+        "reference_peq002": "Tuned LLM2SMT local PEQ002_size8 result was about 21.0s, 6002 clauses, 1146459 EUF assignments, 122234 conflicts, and 6972444 conflict literals. On this host PEQ002 is not a one-second reference case.",
+        "decision": "rejected and reverted. The Section 5.2-shaped auxiliary explanation removed repeated recursive work but did not fix proof-tree reason quality; defaulting it would regress a hard PEQ row and produce larger conflict clauses."
+      },
+      "evidence_status": "rejected_experiment",
+      "notes": "No source changes from this prototype remain. Future CC work should first add diagnostic counters comparing BFS and proof-forest reason lengths without changing emitted clauses."
     }
   ]
 }
