@@ -6522,6 +6522,45 @@
       },
       "evidence_status": "current_local",
       "notes": "The patch is diagnostic-only: it records reason length after a conflict clause has already been built and does not alter clauses, propagation, SAT options, or CC state."
+    },
+    {
+      "id": "2026-07-19-local-cc-direct-edge-fast-path-rejected",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Rejected direct-edge pre-BFS explanation fast path for FlatCongruenceClosure",
+      "commit": "3311731 plus temporary uncommitted direct-edge fast-path prototype, reverted after measurement",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Temporary prototype scanned edge_adjacency_[lhs] in explain_equal_into before BFS and used the direct edge when it connected lhs and rhs. Focused tests passed after adjusting diagnostics expectations; measured ./build/primo --quiet --stats --euf-engine=incremental on the same PEQ/SEQ/NEQ/QG matrix as the reason-bucket run.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-engine=incremental"
+      },
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/PEQ/PEQ002_size8.smt2, tmp/QF_UF/SEQ/SEQ035_size6.smt2, tmp/QF_UF/NEQ/NEQ027_size11.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk032.smt2",
+        "timeout_seconds": 120
+      },
+      "artifacts": {
+        "stats": "/tmp/directedge-*.stats",
+        "summary": "terminal-captured local matrix in 2026-07-19 conversation"
+      },
+      "summary": {
+        "prototype": "Pre-BFS direct-edge scan preserved the same one-edge reason BFS would find from lhs, and added a diagnostic :euf.incremental.explain-direct-pair-hits counter.",
+        "selected_results": {
+          "PEQ019_size7": "baseline 0.97s, BFS searches 320435 -> prototype 1.27s, BFS searches 219384, direct-pair hits 101051",
+          "PEQ002_size8": "baseline 16.43s, BFS searches 7013297 -> prototype 19.16s, BFS searches 4316365, direct-pair hits 2696932",
+          "SEQ035_size6": "baseline 1.22s, BFS searches 1040412 -> prototype 1.79s, BFS searches 610928, direct-pair hits 429484",
+          "NEQ027_size11": "baseline 2.01s, BFS searches 84649 -> prototype 2.79s, BFS searches 32068, direct-pair hits 52581",
+          "iso_brn_repgen_sk032": "baseline 0.52s, BFS searches 137280 -> prototype 1.18s, BFS searches 58410, direct-pair hits 78870"
+        },
+        "decision": "rejected and reverted. Although BFS counters fell, wall time regressed on every measured row, so direct adjacency pre-scans are the wrong direction for the current explanation hot path."
+      },
+      "evidence_status": "rejected_experiment",
+      "notes": "No source changes from the prototype remain; only the run-log/design-note evidence and a stronger BFS diagnostics unit-test assertion remain."
     }
   ]
 }

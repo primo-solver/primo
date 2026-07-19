@@ -250,3 +250,10 @@ with 31,562 conflicts over 64 literals and maximum reason length 173, while
 explanation searches. This separates the remaining CC work into two mechanisms:
 reason quality for PEQ-style operation-table rows, and explanation traversal
 cost for formulas that generate many short conflict reasons.
+
+A follow-up direct-edge fast-path prototype was rejected. The idea was to scan
+the left endpoint's explanation adjacency list before BFS and immediately use a
+one-edge reason when the requested endpoints were directly connected. This
+reduced BFS search counters, but the per-call adjacency scan was too expensive:
+the local PEQ/SEQ/NEQ/QG matrix slowed down across the board. Future traversal
+work should avoid adding per-explanation scans before the main search.

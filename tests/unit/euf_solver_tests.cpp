@@ -363,6 +363,10 @@ void flat_congruence_closure_keeps_signed_reason_literals_distinct() {
   const auto reason = closure.explain_equal(0, 2);
   check(reason.has_value());
   check(reason->size() == 2);
+  check(closure.stats().explain_bfs_searches >= 1);
+  check(closure.stats().explain_bfs_visited >= 1);
+  check(closure.stats().explain_bfs_path_edges >= 1);
+  check(closure.stats().explain_bfs_max_queue >= 1);
 
   bool has_positive = false;
   bool has_negative = false;
