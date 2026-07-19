@@ -2846,6 +2846,158 @@
       },
       "evidence_status": "rejected",
       "notes": "The run completed cleanly but the selected profile was rejected by the equality-family guard. It disables symmetry and equality bridging, which repeats the observed pattern that narrow QG/iso or mixed validation wins can lose many NEQ/PEQ/SEQ rows. The campaign predates commit 3990ce8, so it is not evidence about the low-negative auto-phase refinement."
+    },
+    {
+      "id": "2026-07-19-neq023-current-auto-profile",
+      "started_at": "2026-07-19T11:45:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Local current-head NEQ023_size7 default versus --theory-phase=auto stats and perf profile, with tuned LLM2SMT and Z3 timing comparison",
+      "commit": "bc3106a",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ023_size7.smt2; ./build/primo --quiet --stats --theory-phase=auto tmp/QF_UF/NEQ/NEQ023_size7.smt2; /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000 tmp/QF_UF/NEQ/NEQ023_size7.smt2; contrib/local/bin/z3 -smt2 tmp/QF_UF/NEQ/NEQ023_size7.smt2; perf record/report for default and --theory-phase=auto",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats and ./build/primo --quiet --stats --theory-phase=auto"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1,
+        "timeout_seconds": 60,
+        "manifest": "tmp/QF_UF/NEQ/NEQ023_size7.smt2"
+      },
+      "artifacts": {
+        "summary": "terminal summary and perf text reports",
+        "results": "results/qfuf-phase-compare-111509/perf-neq023-default.txt and results/qfuf-phase-compare-111509/perf-neq023-auto.txt",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "answers": "all unsat",
+        "seconds": {
+          "primo_default": 3.549,
+          "primo_auto": 0.629,
+          "primo_polarity": 0.635,
+          "llm2smt_tuned": 0.948,
+          "z3": 0.548
+        },
+        "primo_default_stats": {
+          "theory_atoms": 2257,
+          "negative_phase_atoms": 2257,
+          "euf_assignments": 4728189,
+          "euf_conflicts": 3836,
+          "incremental_merges": 3629654,
+          "use_list_appends": 2064051,
+          "max_use_list_size": 32990,
+          "finite_domain_amo": 4368,
+          "uf_symmetry_constraints": 30
+        },
+        "primo_auto_stats": {
+          "auto_polarity": 1,
+          "negative_phase_atoms": 71,
+          "euf_assignments": 877565,
+          "euf_conflicts": 4275,
+          "incremental_merges": 703884,
+          "use_list_appends": 427078,
+          "max_use_list_size": 9270,
+          "finite_domain_amo": 4368,
+          "uf_symmetry_constraints": 30
+        },
+        "llm2smt_tuned_stats": {
+          "euf_assignments": 2138805,
+          "euf_conflicts": 9774,
+          "finite_domain_amo": 4473,
+          "uf_symmetry_clauses": 30,
+          "sat_clauses": 8778
+        },
+        "perf_default_top": "CaDiCaL::Internal::propagate 24.86%, OnlineEufPropagator::notify_assignment 7.86%, allocator free 5.26%, CaDiCaL::Internal::explain_external_propagations 4.42%, FlatCongruenceClosure::merge_classes 3.15%, process_use_list 2.20%.",
+        "perf_auto_top": "Same broad SAT/EUF categories but only 73 samples versus 325 for default; top symbols include allocator, CaDiCaL::Internal::propagate, OnlineEufPropagator::notify_assignment, and FlatCongruenceClosure merge/use-list work."
+      },
+      "evidence_status": "current-local",
+      "notes": "This confirms the NEQ023 gap is primarily SAT search shape induced by static theory phase. The auto heuristic beats tuned LLM2SMT on this local run by reducing assignments and flat-CC merges, not by changing AMO or symmetry clause counts. CLI default was still negative in this run."
+    },
+    {
+      "id": "2026-07-19-qfuf-phase-compare-111509",
+      "started_at": "2026-07-19T11:54:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM default versus --theory-phase=auto comparison on the mixed QF_UF train/validation/equality-guard union",
+      "commit": "4fd7e05",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "job_id": "111509"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=60,PRIMO_PHASE_SHARDS=8 scripts/slurm_qfuf_phase_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+      },
+      "references": [
+        {
+          "name": "Primo default",
+          "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 39,
+        "timeout_seconds": 60,
+        "manifest": "De-duplicated union of benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, and benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-phase-compare-111509/summary.json",
+        "results": "results/qfuf-phase-compare-111509/default-merged.csv and results/qfuf-phase-compare-111509/auto-merged.csv",
+        "logs": "logs/primo-qfuf-phase-111509-*.out and logs/primo-qfuf-phase-111509-*.err",
+        "bugs": null
+      },
+      "summary": {
+        "default": {
+          "ok": 34,
+          "timeout": 5,
+          "error": 0,
+          "wrong": 0,
+          "par2": 835.33
+        },
+        "auto": {
+          "ok": 35,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 746.876
+        },
+        "families_default": {
+          "Goel": "10/10 ok, PAR2 2.934",
+          "NEQ": "3/4 ok, PAR2 173.191",
+          "PEQ": "5/8 ok, PAR2 444.703",
+          "QG": "14/14 ok, PAR2 77.686",
+          "SEQ": "2/3 ok, PAR2 136.816"
+        },
+        "families_auto": {
+          "Goel": "10/10 ok, PAR2 2.806",
+          "NEQ": "3/4 ok, PAR2 173.110",
+          "PEQ": "5/8 ok, PAR2 448.665",
+          "QG": "14/14 ok, PAR2 60.331",
+          "SEQ": "3/3 ok, PAR2 61.964"
+        },
+        "top_wins": "SEQ026_size7 timeout/default 60.221s -> auto 53.073s; iso_brn_repgen033 8.029s -> 1.118s; SEQ026_size6 11.723s -> 7.617s; SEQ035_size6 5.093s -> 1.274s.",
+        "top_regressions": "PEQ014_size10 41.557s -> 43.751s; PEQ004_size9 9.797s -> 10.710s; NEQ015_size6 32.458s -> 32.923s; PEQ002_size7 10.957s -> 11.345s."
+      },
+      "evidence_status": "current-slurm",
+      "notes": "All 16 shards completed with exit code 0. Earlier job 111493 is non-evidence: it failed immediately because the phase-compare script passed manifest paths with a doubled tmp/QF_UF prefix; commit 4fd7e05 fixed that before this replacement run. This 39-row SLURM guard supports broader validation of --theory-phase=auto but is not yet a full 334-row or full-QF_UF default-promotion result."
     }
   ]
 }

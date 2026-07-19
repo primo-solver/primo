@@ -284,6 +284,13 @@ For profile search, prefer the mixed manifests
 NEQ/PEQ/SEQ finite-domain equality gaps, and Goel hardware sentinels, so a
 candidate cannot optimize only one family while ignoring known regressions.
 
+Use `scripts/slurm_qfuf_phase_compare.sbatch` for a narrower default-versus
+`--theory-phase=auto` validation on the mixed train/validation/equality-guard
+union. It runs the current default and `--theory-phase=auto` over the same
+de-duplicated manifest, writes one result directory per variant, and is intended
+as the fast guard before considering whether the auto phase heuristic is ready
+for a broader 334-row or full-QF_UF campaign.
+
 The narrower `benchmarks/qfuf-smac-iso-train.txt` and
 `benchmarks/qfuf-smac-iso-validate.txt` manifests are diagnostic only. They
 include the user-visible `QG-classification/qg7/iso_brn_repgen033.smt2` case,

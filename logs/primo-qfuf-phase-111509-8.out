@@ -1,0 +1,10 @@
+primo 0.1.0
+git: 4fd7e05
+cadical: cadical-3.0.0-7b99c07
+[1/5] QG tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2: ok sat 1.117582s
+[2/5] NEQ tmp/QF_UF/NEQ/NEQ015_size5.smt2: ok unsat 16.035074s
+[3/5] Goel tmp/QF_UF/2018-Goel-hwbench/QF_UF_h_BufAl_ab_reg_max.smt2: ok sat 0.098945s
+[4/5] QG tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk017.smt2: ok sat 8.758881s
+[5/5] PEQ tmp/QF_UF/PEQ/PEQ014_size10.smt2: ok unsat 43.751122s
+wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111509/auto/shard-0.csv
+wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111509/auto/shard-0-summary.csv
