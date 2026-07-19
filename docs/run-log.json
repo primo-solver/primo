@@ -1729,6 +1729,116 @@
       },
       "evidence_status": "setup",
       "notes": "This fixes the iso-only focus by making QG iso rows one slice of a mixed tuning objective. The equality guard remains available, but NEQ/PEQ/SEQ rows are also directly present in the training and validation manifests."
+    },
+    {
+      "id": "2026-07-19-smac-mixed-submission-111491",
+      "started_at": "2026-07-19T01:20:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "tuning",
+      "scope": "Mixed QF_UF SMAC run over QG iso, equality-family, and Goel instances",
+      "commit": "014fe3cea49dbbd10b45082575fd681afc6e8f65",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "slurm_job_id": "111491"
+      },
+      "command": "PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt PRIMO_SMAC_LABEL=qfuf-mixed PRIMO_SMAC_TRIALS=160 PRIMO_SMAC_TIMEOUT=20 PRIMO_SMAC_VALIDATION_TIMEOUT=60 PRIMO_SMAC_GUARD_TIMEOUT=60 PRIMO_SMAC_SEED=20260719 sbatch .../primo-qfuf-smac.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "remote build-slurm-rel/primo candidate configurations selected by scripts/smac/qfuf_gap_tune.py"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": 20260719,
+        "count": 54,
+        "timeout_seconds": 20,
+        "manifest": "benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "remote /home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed/result.json",
+        "results": "remote /home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed",
+        "logs": "remote SLURM output for job 111491",
+        "bugs": null
+      },
+      "summary": {
+        "train_count": 21,
+        "validate_count": 18,
+        "guard_count": 15,
+        "status_at_recording": "RUNNING on node-01 at about 11 minutes elapsed"
+      },
+      "evidence_status": "submitted",
+      "notes": "This is the corrected mixed-objective SMAC run. It is intentionally background work; local single-instance diagnosis should continue while this job runs."
+    },
+    {
+      "id": "2026-07-19-neq-size8-z3-gap-local-profile",
+      "started_at": "2026-07-19T01:25:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Local single-instance diagnosis for NEQ size8 equality-family gaps",
+      "commit": "014fe3cea49dbbd10b45082575fd681afc6e8f65",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "build/primo --quiet --stats; /tmp/llm2smt/build/bin/llm2smt --quiet --stats; contrib/local/bin/z3 -smt2 -st; build-gprof/primo --quiet --stats --max-theory-conflicts=50000; perf record/report with --max-theory-conflicts=100000",
+      "solver": {
+        "name": "Primo",
+        "argv": "build/primo --quiet --stats and build-gprof/primo --quiet --stats --max-theory-conflicts=50000"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2 -st"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 2,
+        "timeout_seconds": 20,
+        "manifest": "tmp/QF_UF/NEQ/NEQ027_size8.smt2 and tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+      },
+      "artifacts": {
+        "summary": "/tmp/neq016-gprof.out, /tmp/neq016-gprof.err, /tmp/neq016-perf.out, /tmp/neq016-perf.err",
+        "results": "results/profiles/neq016-gprof-capped.txt and /tmp/primo-neq016.perf",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "NEQ027_size8": {
+          "primo_seconds": 0.74,
+          "llm2smt_seconds": 4.71,
+          "z3_seconds": 0.16,
+          "primo_theory_conflicts": 5708,
+          "primo_explain_calls": 131278,
+          "primo_use_list_appends": 504087,
+          "primo_max_use_list_size": 3463
+        },
+        "NEQ016_size8": {
+          "primo_uncapped_interrupted_seconds": 92.31,
+          "llm2smt_20s_status": "timeout",
+          "z3_seconds": 4.18,
+          "primo_50k_conflict_cap_seconds_gprof_build": 10.68,
+          "primo_50k_conflict_cap_theory_conflicts": 50000,
+          "primo_50k_conflict_cap_explain_calls": 7753999,
+          "primo_50k_conflict_cap_explain_cache_hits": 5461437,
+          "primo_50k_conflict_cap_merges": 4854628,
+          "primo_50k_conflict_cap_use_list_appends": 20322602,
+          "primo_50k_conflict_cap_max_use_list_size": 145272
+        },
+        "gprof_top": "explain_equal_into 29.51%, OnlineEufPropagator::notify_assignment 14.90%, deque push_back allocation 13.18%, restore_trail_entry 5.73%, merge_classes 3.72%, process_use_list 2.01%",
+        "perf_top": "explain_equal_into about 18%, allocator/operator new/malloc about 17%, merge_classes about 16%, OnlineEufPropagator::notify_assignment about 12%, restore_trail_entry about 8%, process_use_list about 7%"
+      },
+      "evidence_status": "local-only",
+      "notes": "The named NEQ027 example does not reproduce a Primo-vs-LLM2SMT slowdown in this workspace: Primo is faster than LLM2SMT there, although Z3 is still faster. The current actionable gap is NEQ016_size8 versus Z3. Statistics and profiles point to flat EUF explanation work, merge/backtrack churn, and use-list vector growth/allocation rather than NNF or flattening."
     }
   ]
 }
