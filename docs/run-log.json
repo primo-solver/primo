@@ -1839,6 +1839,77 @@
       },
       "evidence_status": "local-only",
       "notes": "The named NEQ027 example does not reproduce a Primo-vs-LLM2SMT slowdown in this workspace: Primo is faster than LLM2SMT there, although Z3 is still faster. The current actionable gap is NEQ016_size8 versus Z3. Statistics and profiles point to flat EUF explanation work, merge/backtrack churn, and use-list vector growth/allocation rather than NNF or flattening."
+    },
+    {
+      "id": "2026-07-19-neq-size8-tuned-llm2smt-correction",
+      "started_at": "2026-07-19T02:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "reference-comparison",
+      "scope": "Correct NEQ size8 local comparison by using the tuned LLM2SMT reference command line",
+      "commit": "aa77e96",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000 tmp/QF_UF/NEQ/{NEQ027_size8,NEQ016_size8}.smt2; also checked plain, tuned plus --finite-domain-value-precedence, and --uf-symmetry-breaking --finite-domain-value-precedence variants with 30s timeout",
+      "solver": {
+        "name": "Primo",
+        "argv": "No new Primo run; compares against the local and profiled Primo evidence from 2026-07-19-neq-size8-z3-gap-local-profile"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "LLM2SMT plain",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 2,
+        "timeout_seconds": 45,
+        "manifest": "tmp/QF_UF/NEQ/NEQ027_size8.smt2 and tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+      },
+      "artifacts": {
+        "summary": "results/profiles/llm2smt-tuned-neq/NEQ016_size8.stderr and results/profiles/llm2smt-tuned-neq/NEQ027_size8.stderr",
+        "results": "results/profiles/llm2smt-tuned-neq",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "NEQ027_size8": {
+          "llm2smt_plain_seconds": 4.14,
+          "llm2smt_tuned_seconds": 1.33,
+          "llm2smt_tuned_with_value_precedence_seconds": 1.38,
+          "llm2smt_symmetry_value_precedence_seconds": 0.98,
+          "llm2smt_tuned_euf_conflicts": 5964,
+          "llm2smt_tuned_euf_assignments": 460564,
+          "llm2smt_tuned_finite_domain_amo": 5328,
+          "primo_local_seconds_from_previous_entry": 0.74
+        },
+        "NEQ016_size8": {
+          "llm2smt_plain_30s_status": "timeout",
+          "llm2smt_tuned_seconds": 21.47,
+          "llm2smt_tuned_with_value_precedence_seconds": 22.13,
+          "llm2smt_symmetry_value_precedence_30s_status": "timeout",
+          "llm2smt_tuned_euf_conflicts": 185145,
+          "llm2smt_tuned_euf_assignments": 5935212,
+          "llm2smt_tuned_finite_domain_amo": 2044,
+          "primo_local_uncapped_interrupted_seconds_from_previous_entry": 92.31
+        },
+        "historical_slurm_tuned_llm2smt": {
+          "NEQ027_size8_seconds": 4.456993,
+          "NEQ016_size8_seconds": 54.08056,
+          "artifact": "results/slurm-user-html334-10974ea-llm2smt/merged.csv"
+        }
+      },
+      "evidence_status": "local-only-correction",
+      "notes": "The previous local profile entry compared against plain LLM2SMT and therefore understated the LLM2SMT reference. With the tuned reference command, NEQ027 is still faster in current local Primo than tuned LLM2SMT, but the margin is much smaller. NEQ016 is a real tuned-LLM2SMT gap as well as a Z3 gap: tuned LLM2SMT solves locally in about 21.5s while Primo did not solve before interruption at 92s. The tuned reference did not use LLM2SMT's finite-domain value-precedence option for this improvement; the recorded tuned profile uses UF symmetry, four preprocessing passes, equality bridge, and EUF propagation thresholds."
     }
   ]
 }
