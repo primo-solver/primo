@@ -231,9 +231,12 @@ Primo command line.
 ## QF_UF Gap Tuning With SMAC
 
 `scripts/smac/qfuf_gap_tune.py` runs focused SMAC campaigns for current QF_UF
-gaps against reference-solver evidence. It is intentionally narrower than the
-irace setup: each training manifest contains near-gap siblings, and each
-validation manifest contains held-out rows from the same benchmark shape.
+gaps against reference-solver evidence. It uses SMAC's instance support: each
+training manifest row is a separate SMAC instance, the default configuration is
+included in the race, and the target function runs one solver invocation per
+configuration-instance trial. The validation manifest contains held-out rows
+from the same benchmark shape; optional guard manifests record benchmark shapes
+that must not regress.
 
 Run it on SLURM, not on a workstation:
 
@@ -256,13 +259,20 @@ python scripts/smac/qfuf_gap_tune.py \
 The same invocation can be submitted through `scripts/slurm_qfuf_smac.sbatch`
 by setting `PRIMO_SMAC_TRAIN`, `PRIMO_SMAC_VALIDATE`, `PRIMO_SMAC_LABEL`,
 `PRIMO_SMAC_TRIALS`, `PRIMO_SMAC_TIMEOUT`, and
-`PRIMO_SMAC_VALIDATION_TIMEOUT`.
+`PRIMO_SMAC_VALIDATION_TIMEOUT`. Set `PRIMO_SMAC_GUARD` and
+`PRIMO_SMAC_GUARD_TIMEOUT` when tuning a narrow family while preserving another
+family. For QG `iso_*` tuning, use
+`PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt` so the diamond
+equality/finite-domain families reject profiles that lose equality-bridge
+behavior.
 
-The objective is PAR2 over the training manifest, with wrong answers penalized
-far above timeouts. After the SMAC budget is exhausted, the script validates the
-SMAC incumbent and the current default on the seven held-out gap instances and
-writes `result.json`, `incumbent.json`, `trial-summary.csv`, and
-`validation-runs.csv`.
+The objective is per-instance PAR2, with wrong answers penalized far above
+timeouts. After the SMAC budget is exhausted, the script validates the SMAC
+incumbent and the current default on the held-out instances and writes
+`result.json`, `incumbent.json`, `trial-summary.csv`, `target-runs.csv`, and
+`validation-runs.csv`. If a guard manifest is provided, `result.json` sets
+`rejected_by_guard` when the incumbent has more wrong answers, fewer solved
+rows, or higher guard PAR2 than the default.
 
 For the QG `iso_*` gap, use
 `benchmarks/qfuf-smac-iso-train.txt` and

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """SMAC tuner for focused QF_UF reference gaps.
 
-The campaign is intentionally narrow.  The objective is PAR2 on a small
-training manifest, with wrong answers penalized much more heavily than
-timeouts.  After SMAC finishes, the incumbent and current defaults are
-validated on a separate holdout manifest.
+The campaign uses SMAC's instance machinery directly: each SMT-LIB file in the
+training manifest is a SMAC instance, and each target-function call runs one
+configuration on one benchmark.  Wrong answers are penalized much more heavily
+than timeouts.  After SMAC finishes, the incumbent and current defaults are
+validated on a separate holdout manifest and, optionally, guard manifests that
+must not regress.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import shlex
 import subprocess
 import time
@@ -45,6 +48,19 @@ def read_manifest(repo: Path, manifest: Path) -> list[Path]:
             continue
         path = Path(line)
         files.append(path if path.is_absolute() else repo / path)
+    return files
+
+
+def read_manifests(repo: Path, manifests: list[Path]) -> list[Path]:
+    files: list[Path] = []
+    seen: set[Path] = set()
+    for manifest in manifests:
+        for path in read_manifest(repo, repo / manifest):
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            files.append(path)
     return files
 
 
@@ -82,8 +98,6 @@ def config_value(config: Any, key: str, default: Any) -> Any:
 def config_dict(config: Any) -> dict[str, Any]:
     if isinstance(config, dict):
         return dict(config)
-    if hasattr(config, "get_dictionary"):
-        return dict(config.get_dictionary())
     return {key: config[key] for key in config}
 
 
@@ -214,7 +228,7 @@ def make_configspace(seed: int):
     )
 
     cs = ConfigurationSpace(seed=seed)
-    cs.add_hyperparameters(
+    cs.add(
         [
             CategoricalHyperparameter(
                 "preprocess",
@@ -284,21 +298,32 @@ def make_configspace(seed: int):
     return cs
 
 
-def validate(
+def summarize_rows(rows: list[dict[str, Any]], timeout: float) -> dict[str, Any]:
+    del timeout
+    return {
+        "total": len(rows),
+        "ok": sum(1 for row in rows if row["status"] == "ok"),
+        "wrong": sum(1 for row in rows if row["wrong"] == "true"),
+        "timeout": sum(1 for row in rows if row["status"] == "timeout"),
+        "error": sum(1 for row in rows if row["status"] == "error"),
+        "unknown": sum(1 for row in rows if row["status"] == "unknown"),
+        "cost": sum(float(row["cost"]) for row in rows),
+    }
+
+
+def validate_rows(
     label: str,
     solver: list[str],
     config: Any,
     files: list[Path],
     timeout: float,
     out_dir: Path,
-) -> float:
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    total = 0.0
     for path in files:
         row = run_solver(solver, config, path, timeout)
         row["kind"] = label
         row["config_json"] = json.dumps(config_dict(config), sort_keys=True)
-        total += float(row["cost"])
         rows.append(row)
     append_rows(
         out_dir / "validation-runs.csv",
@@ -317,7 +342,7 @@ def validate(
         ],
         rows,
     )
-    return total
+    return rows
 
 
 def main() -> int:
@@ -330,9 +355,17 @@ def main() -> int:
     parser.add_argument(
         "--validate", type=Path, default=Path("benchmarks/qfuf-smac-gap-validate.txt")
     )
+    parser.add_argument(
+        "--guard",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional manifest that the incumbent must not regress against the default",
+    )
     parser.add_argument("--out-dir", type=Path, default=Path("results/smac/qfuf-gap"))
     parser.add_argument("--timeout", type=float, default=45.0)
     parser.add_argument("--validation-timeout", type=float, default=120.0)
+    parser.add_argument("--guard-timeout", type=float, default=None)
     parser.add_argument("--trials", type=int, default=80)
     parser.add_argument("--seed", type=int, default=20260716)
     args = parser.parse_args()
@@ -342,6 +375,8 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     train_files = read_manifest(repo, repo / args.train)
     validation_files = read_manifest(repo, repo / args.validate)
+    guard_files = read_manifests(repo, args.guard)
+    guard_timeout = args.guard_timeout if args.guard_timeout is not None else args.validation_timeout
     solver = shlex.split(args.solver)
 
     try:
@@ -365,44 +400,61 @@ def main() -> int:
         "config_json",
         "command",
     ]
-    trial_counter = {"value": 0}
-
-    def objective(config: Any, seed: int = 0) -> float:
+    def objective(config: Any, instance: str, seed: int = 0) -> tuple[float, dict[str, Any]]:
         del seed
-        trial_counter["value"] += 1
-        trial = trial_counter["value"]
-        rows: list[dict[str, Any]] = []
-        total = 0.0
-        solved = 0
-        for path in train_files:
-            row = run_solver(solver, config, path, args.timeout)
-            row["trial"] = trial
-            row["config_json"] = json.dumps(config_dict(config), sort_keys=True)
-            total += float(row["cost"])
-            if row["status"] == "ok" and row["answer"] in CHECKABLE:
-                solved += 1
-            rows.append(row)
-        append_rows(out_dir / "target-runs.csv", run_fields, rows)
+        run_id = f"{os.getpid()}-{time.time_ns()}"
+        path = Path(instance)
+        row = run_solver(solver, config, path, args.timeout)
+        row["trial"] = run_id
+        row["config_json"] = json.dumps(config_dict(config), sort_keys=True)
+        append_rows(out_dir / "target-runs.csv", run_fields, [row])
         summary_row = {
-            "trial": trial,
-            "cost": f"{total:.6f}",
-            "solved": solved,
-            "total": len(train_files),
+            "trial": run_id,
+            "file": str(path),
+            "cost": row["cost"],
+            "status": row["status"],
+            "answer": row["answer"],
+            "expected": row["expected"],
+            "wrong": row["wrong"],
             "config_json": json.dumps(config_dict(config), sort_keys=True),
             "args": " ".join(shlex.quote(part) for part in solver_args(config)),
         }
         append_rows(
             out_dir / "trial-summary.csv",
-            ["trial", "cost", "solved", "total", "config_json", "args"],
+            [
+                "trial",
+                "file",
+                "cost",
+                "status",
+                "answer",
+                "expected",
+                "wrong",
+                "config_json",
+                "args",
+            ],
             [summary_row],
         )
-        return total
+        return float(row["cost"]), {
+            "status": row["status"],
+            "answer": row["answer"],
+            "expected": row["expected"],
+            "wrong": row["wrong"],
+            "seconds": row["seconds"],
+        }
 
     scenario = Scenario(
         cs,
         deterministic=True,
         n_trials=args.trials,
+        instances=[str(path) for path in train_files],
+        instance_features={
+            str(path): [float(index)] for index, path in enumerate(train_files)
+        },
+        use_default_config=True,
+        trial_walltime_limit=max(1, int(args.timeout) + 2),
+        crash_cost=2.0 * args.timeout,
         output_directory=out_dir / "smac-output",
+        seed=args.seed,
     )
     smac = HyperparameterOptimizationFacade(scenario, objective, overwrite=True)
     incumbent = smac.optimize()
@@ -412,7 +464,7 @@ def main() -> int:
     )
 
     default_config = cs.get_default_configuration()
-    default_cost = validate(
+    default_validation_rows = validate_rows(
         "default",
         solver,
         default_config,
@@ -420,7 +472,7 @@ def main() -> int:
         args.validation_timeout,
         out_dir,
     )
-    incumbent_cost = validate(
+    incumbent_validation_rows = validate_rows(
         "incumbent",
         solver,
         incumbent,
@@ -428,11 +480,42 @@ def main() -> int:
         args.validation_timeout,
         out_dir,
     )
+    default_cost = sum(float(row["cost"]) for row in default_validation_rows)
+    incumbent_cost = sum(float(row["cost"]) for row in incumbent_validation_rows)
+    default_guard_rows: list[dict[str, Any]] = []
+    incumbent_guard_rows: list[dict[str, Any]] = []
+    if guard_files:
+        default_guard_rows = validate_rows(
+            "guard-default",
+            solver,
+            default_config,
+            guard_files,
+            guard_timeout,
+            out_dir,
+        )
+        incumbent_guard_rows = validate_rows(
+            "guard-incumbent",
+            solver,
+            incumbent,
+            guard_files,
+            guard_timeout,
+            out_dir,
+        )
+    default_guard = summarize_rows(default_guard_rows, guard_timeout)
+    incumbent_guard = summarize_rows(incumbent_guard_rows, guard_timeout)
+    rejected_by_guard = bool(guard_files) and (
+        incumbent_guard["wrong"] > default_guard["wrong"]
+        or incumbent_guard["ok"] < default_guard["ok"]
+        or incumbent_guard["cost"] > default_guard["cost"]
+    )
     with (out_dir / "result.json").open("w") as handle:
         json.dump(
             {
                 "default_validation_cost": default_cost,
                 "incumbent_validation_cost": incumbent_cost,
+                "default_guard": default_guard,
+                "incumbent_guard": incumbent_guard,
+                "rejected_by_guard": rejected_by_guard,
                 "incumbent": incumbent_dict,
             },
             handle,
@@ -441,7 +524,12 @@ def main() -> int:
         )
     print(
         json.dumps(
-            {"default": default_cost, "incumbent": incumbent_cost}, sort_keys=True
+            {
+                "default": default_cost,
+                "incumbent": incumbent_cost,
+                "rejected_by_guard": rejected_by_guard,
+            },
+            sort_keys=True,
         )
     )
     return 0

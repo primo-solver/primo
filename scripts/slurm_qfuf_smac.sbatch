@@ -12,9 +12,11 @@ WORKDIR=${PRIMO_WORKDIR:-/home/janotmik/primo-cadical-profile}
 SOLVER=${PRIMO_SOLVER:-"$WORKDIR/build-slurm-rel/primo"}
 TRAIN=${PRIMO_SMAC_TRAIN:-benchmarks/qfuf-smac-gap-train.txt}
 VALIDATE=${PRIMO_SMAC_VALIDATE:-benchmarks/qfuf-smac-gap-validate.txt}
+GUARD=${PRIMO_SMAC_GUARD:-}
 TRIALS=${PRIMO_SMAC_TRIALS:-80}
 TIMEOUT=${PRIMO_SMAC_TIMEOUT:-45}
 VALIDATION_TIMEOUT=${PRIMO_SMAC_VALIDATION_TIMEOUT:-120}
+GUARD_TIMEOUT=${PRIMO_SMAC_GUARD_TIMEOUT:-$VALIDATION_TIMEOUT}
 SEED=${PRIMO_SMAC_SEED:-20260718}
 LABEL=${PRIMO_SMAC_LABEL:-qfuf-gap}
 JOB_ID=${SLURM_JOB_ID:-manual}
@@ -37,6 +39,11 @@ print("ConfigSpace", getattr(ConfigSpace, "__version__", "unknown"))
 print("smac", getattr(smac, "__version__", "unknown"))
 PY
 
+EXTRA_ARGS=()
+if [ -n "$GUARD" ]; then
+  EXTRA_ARGS+=(--guard "$GUARD" --guard-timeout "$GUARD_TIMEOUT")
+fi
+
 .venv-smac/bin/python scripts/smac/qfuf_gap_tune.py \
   --repo "$WORKDIR" \
   --solver "$SOLVER" \
@@ -46,4 +53,5 @@ PY
   --timeout "$TIMEOUT" \
   --validation-timeout "$VALIDATION_TIMEOUT" \
   --trials "$TRIALS" \
-  --seed "$SEED"
+  --seed "$SEED" \
+  "${EXTRA_ARGS[@]}"

@@ -1632,6 +1632,49 @@
           }
         }
       ]
+    },
+    {
+      "id": "2026-07-19-smac-instance-driver-fix",
+      "started_at": "2026-07-19T00:45:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "tuning-tooling",
+      "scope": "Fix QF_UF SMAC driver to use SMAC instance support and guard validation correctly",
+      "commit": "3f21e5d plus uncommitted SMAC driver fix",
+      "environment": {
+        "type": "local+slurm-smoke",
+        "host": "workspace and llm2smt-slurm",
+        "slurm_job_id": null
+      },
+      "command": "Local py_compile/lint/docs/sbatch validation; remote smoke with .venv-smac/bin/python patched qfuf_gap_tune.py --train benchmarks/qfuf-smac-iso-validate.txt --validate same --guard qfuf-smac-equality-guard.txt --timeout 0.5 --validation-timeout 0.5 --guard-timeout 0.5 --trials 2",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": 20260719,
+        "count": 23,
+        "timeout_seconds": 0.5,
+        "manifest": "benchmarks/qfuf-smac-iso-validate.txt plus benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "remote /home/janotmik/primo-cadical-profile/results/smac/smoke-instance3/result.json",
+        "results": "remote /home/janotmik/primo-cadical-profile/results/smac/smoke-instance3",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "smoke_completed": true,
+        "target_runs": 2,
+        "smac_instance_warning": false,
+        "deprecation_warnings": false,
+        "unique_run_ids": true,
+        "guard_result_written": true
+      },
+      "evidence_status": "local-and-remote-smoke",
+      "notes": "Previous qfuf_gap_tune.py hid all training files inside one objective call, so SMAC could not use instances/intensification correctly and the default was not a first-class raced configuration. The fixed driver passes train files through Scenario.instances with simple index instance_features, uses use_default_config=True, runs one solver invocation per target-function call, and supports guard manifests that reject incumbents regressing known equality-family behavior."
     }
   ]
 }
