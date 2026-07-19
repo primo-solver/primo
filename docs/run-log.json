@@ -5446,6 +5446,93 @@
       },
       "evidence_status": "local-current",
       "notes": "Fresh local fuzz gate for the new phase-ablation option; default behavior is unchanged by this source change."
+    },
+    {
+      "id": "2026-07-19-slurm-qfuf-html334-no-auto-basic-multi-polarity-111975",
+      "started_at": "2026-07-19T00:00:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "slurm-option-comparison",
+      "scope": "Same-binary comparison of current default versus --no-auto-basic-multi-polarity on the 334-row user primo.html QF_UF subset",
+      "commit": "0ea0ea6",
+      "environment": {
+        "type": "SLURM",
+        "host": "janotmik@10.35.125.63",
+        "remote_workdir": "/home/janotmik/primo-cadical-profile",
+        "slurm_job_id": "111975"
+      },
+      "command": "Validated scripts/slurm_qfuf_option_compare.sbatch and ran scripts/slurm_prepare_benchmark_workspace.py --check-only immediately before sbatch; sbatch --array=0-31 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= no-multi-polarity=--no-auto-basic-multi-polarity' scripts/slurm_qfuf_option_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-slurm-rel/primo --quiet --stats [--no-auto-basic-multi-polarity]",
+        "version": "primo 0.1.0 git: 0ea0ea6 cadical: cadical-3.0.0-7b99c07"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt",
+        "count": 334,
+        "timeout_seconds": 120,
+        "shards": 16
+      },
+      "artifacts": {
+        "results_dir": "results/qfuf-option-compare-111975",
+        "default_results": "results/qfuf-option-compare-111975/default-merged.csv",
+        "no_multi_polarity_results": "results/qfuf-option-compare-111975/no-multi-polarity-merged.csv",
+        "gaps_vs_refs": "results/qfuf-option-compare-111975/gaps-vs-refs.csv",
+        "remote_results": "/home/janotmik/primo-cadical-profile/results/qfuf-option-compare-111975"
+      },
+      "summary": {
+        "default": {
+          "total": 334,
+          "solved": 332,
+          "wrong": 0,
+          "timeouts": 2,
+          "par2": 2640.865653
+        },
+        "no_multi_polarity": {
+          "total": 334,
+          "solved": 332,
+          "wrong": 0,
+          "timeouts": 2,
+          "par2": 2757.942501
+        },
+        "par2_delta_no_multi_minus_default": 117.076848,
+        "family_par2": {
+          "default": {
+            "Goel": 15.613612,
+            "NEQ": 380.722781,
+            "PEQ": 671.850086,
+            "QG": 1525.851206,
+            "SEQ": 46.827968
+          },
+          "no_multi_polarity": {
+            "Goel": 15.501893,
+            "NEQ": 374.966446,
+            "PEQ": 635.731869,
+            "QG": 1689.509106,
+            "SEQ": 42.233187
+          }
+        },
+        "activated_rows": {
+          "count": 270,
+          "family": "QG",
+          "default_solved": 270,
+          "no_multi_polarity_solved": 270,
+          "default_par2": 1525.851206,
+          "no_multi_polarity_par2": 1689.509106
+        },
+        "named_targets": {
+          "iso_brn_repgen_sk032": "default 1.478515s, no-multi-polarity 0.180607s",
+          "iso_brn_repgen043": "default 2.047298s, no-multi-polarity 0.778036s",
+          "iso_brn_repgen033": "default 0.105591s, no-multi-polarity 0.212332s",
+          "qg6_iso_icl_repgen006": "default 7.801909s, no-multi-polarity 7.388299s",
+          "qg7_iso_icl_nogen_sk004": "default 23.711388s, no-multi-polarity 17.689953s",
+          "NEQ016_size8": "both timeout at 120s; auto-basic-multi inactive",
+          "NEQ023_size7": "default 1.252836s, no-multi-polarity 1.306795s; auto-basic-multi inactive"
+        },
+        "gap_rank_vs_available_refs": "Only iso_brn_repgen043 remained above 5x with fast reference <=1s in this run: default 2.047298s versus 0.342980s reference, ratio 5.97."
+      },
+      "evidence_status": "current-rejected-default-change",
+      "notes": "Disabling auto-basic-multi polarity helps selected SAT BRN and some ICL rows, but it regresses the activated QG aggregate and whole 334-row PAR2. Keep the ablation flag for SMAC/tuning; do not flip the default from this evidence. The broader NEQ gap is unaffected because auto-basic-multi is inactive on the named NEQ rows."
     }
   ]
 }
