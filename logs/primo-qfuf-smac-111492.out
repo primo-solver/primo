@@ -1,0 +1,22 @@
+primo 0.1.0
+git: 9d7e4ac
+cadical: cadical-3.0.0-7b99c07
+ConfigSpace 1.2.0
+smac unknown
+[INFO][abstract_initial_design.py:91] Reducing the number of initial configurations from 210 to 40 (max_ratio == 0.25).
+[INFO][abstract_initial_design.py:143] Using 40 initial design configurations and 1 additional configurations.
+[INFO][abstract_intensifier.py:313] Using only one seed for deterministic scenario.
+[INFO][abstract_intensifier.py:324] Cut instance-seed keys to 3 entries.
+[INFO][abstract_intensifier.py:523] Added config 8e18f3 as new incumbent because there are no incumbents yet.
+[INFO][smbo.py:334] Finished 50 trials.
+[INFO][abstract_intensifier.py:630] Added config 6dbffa and rejected config 8e18f3 as incumbent because it is not better than the incumbents on 3 instances: 
+[INFO][abstract_intensifier.py:630] Added config 383f5e and rejected config 6dbffa as incumbent because it is not better than the incumbents on 3 instances: 
+[INFO][smbo.py:334] Finished 100 trials.
+[INFO][abstract_intensifier.py:630] Added config 3315cd and rejected config 383f5e as incumbent because it is not better than the incumbents on 3 instances: 
+[INFO][abstract_intensifier.py:630] Added config 2de9a6 and rejected config 3315cd as incumbent because it is not better than the incumbents on 3 instances: 
+[INFO][smbo.py:334] Finished 150 trials.
+[INFO][smbo.py:342] Configuration budget is exhausted:
+[INFO][smbo.py:343] --- Remaining wallclock time: inf
+[INFO][smbo.py:344] --- Remaining cpu time: inf
+[INFO][smbo.py:345] --- Remaining trials: 0
+{"default": 616.433394, "incumbent": 771.041335, "rejected_by_guard": true}

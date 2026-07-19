@@ -2653,7 +2653,7 @@
       "recorded_at": "2026-07-19",
       "kind": "benchmark",
       "scope": "Local refinement of --theory-phase=auto for low-negative finite-domain QF_UF shapes, motivated by SEQ035_size6 and SEQ026_size7",
-      "commit": "6f83284",
+      "commit": "3990ce8",
       "environment": {
         "type": "local",
         "host": "workspace"
@@ -2727,7 +2727,7 @@
       "recorded_at": "2026-07-19",
       "kind": "fuzzing",
       "scope": "Merge-gate QF_UF FuzzSMT differential check for the low-negative --theory-phase=auto heuristic",
-      "commit": "6f83284",
+      "commit": "3990ce8",
       "environment": {
         "type": "local",
         "host": "workspace"
@@ -2772,6 +2772,80 @@
       },
       "evidence_status": "current-local",
       "notes": "This is the required local merge-gate fuzzing evidence for changing --theory-phase=auto. It does not replace broader SLURM performance validation for making auto or polarity the default command-line phase policy."
+    },
+    {
+      "id": "2026-07-19-qfuf-mixed-auto-smac-111492-rejected",
+      "started_at": "2026-07-19T06:45:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "parameter-tuning",
+      "scope": "SLURM SMAC campaign over mixed QF_UF train/validation with an auto-phase-inclusive search space and equality-family guard validation",
+      "commit": "9d7e4ac",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "job_id": "111492"
+      },
+      "command": "sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt,PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt,PRIMO_SMAC_LABEL=qfuf-mixed-auto,PRIMO_SMAC_TRIALS=160,PRIMO_SMAC_TIMEOUT=20,PRIMO_SMAC_VALIDATION_TIMEOUT=60 scripts/slurm_qfuf_smac.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats with SMAC-selected options"
+      },
+      "references": [
+        {
+          "name": "Primo default",
+          "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "timeout_seconds": 20,
+        "validation_timeout_seconds": 60,
+        "trials": 160,
+        "manifest": "benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, and equality guard benchmarks/qfuf-smac-gap-{train,validate}.txt"
+      },
+      "artifacts": {
+        "summary": "results/smac/qfuf-mixed-auto-111492/result.json",
+        "results": "results/smac/qfuf-mixed-auto-111492",
+        "logs": "logs/primo-qfuf-smac-111492.out and logs/primo-qfuf-smac-111492.err",
+        "bugs": null
+      },
+      "summary": {
+        "remote_binary": {
+          "git": "9d7e4ac",
+          "cadical": "cadical-3.0.0-7b99c07"
+        },
+        "default_validation_cost": 616.433394,
+        "incumbent_validation_cost": 771.041335,
+        "default_guard": {
+          "ok": 11,
+          "timeout": 4,
+          "wrong": 0,
+          "total": 15,
+          "cost": 648.1058569999999
+        },
+        "incumbent_guard": {
+          "ok": 6,
+          "timeout": 9,
+          "wrong": 0,
+          "total": 15,
+          "cost": 1185.26709
+        },
+        "incumbent": {
+          "preprocess": "auto",
+          "theory_phase": "polarity",
+          "euf_prop": "conflict",
+          "euf_engine": "incremental",
+          "symmetry": "off",
+          "eq_bridge": "off",
+          "pure_filter": "off",
+          "value_precedence": "on",
+          "prop_interval": "16",
+          "prop_budget": "10000",
+          "prop_delivery": "3000"
+        }
+      },
+      "evidence_status": "rejected",
+      "notes": "The run completed cleanly but the selected profile was rejected by the equality-family guard. It disables symmetry and equality bridging, which repeats the observed pattern that narrow QG/iso or mixed validation wins can lose many NEQ/PEQ/SEQ rows. The campaign predates commit 3990ce8, so it is not evidence about the low-negative auto-phase refinement."
     }
   ]
 }
