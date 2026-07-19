@@ -6568,7 +6568,7 @@
       "recorded_at": "2026-07-19",
       "kind": "profiling",
       "scope": "FlatCongruenceClosure implementation review with independent oracle regression test and PEQ019 perf sample",
-      "commit": "091793c",
+      "commit": "cf89ee6",
       "environment": {
         "type": "local",
         "host": "workspace",
