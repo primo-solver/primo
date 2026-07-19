@@ -6726,6 +6726,57 @@
       },
       "evidence_status": "current_local",
       "notes": "Fresh local merge-gate fuzzing for the explanation reason-construction hardening. This is correctness evidence, not a QF_UF reference-parity performance claim."
+    },
+    {
+      "id": "2026-07-20-neq016-cc-review-and-interface-ablations",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "performance",
+      "scope": "Local review of FlatCongruenceClosure on NEQ016_size8 with option ablations, reference stats, and a rejected disequality-check ordering prototype",
+      "commit": "a19545b",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "rank_qfuf_gaps over existing SLURM CSVs; local ./build/primo --quiet --stats option sweep on tmp/QF_UF/NEQ/NEQ016_size8.smt2; perf record/report and gprof with 35s caps; tuned /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000; temporary prototype moved process_use_list before check_disequalities_touching in FlatCongruenceClosure::merge_classes and was reverted after focused tests aborted",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2 -st"
+        }
+      ],
+      "inputs": {
+        "manifest": "tmp/QF_UF/NEQ/NEQ016_size8.smt2 plus small NEQ023/PEQ/QG guard probes",
+        "timeout_seconds": 45
+      },
+      "artifacts": {
+        "ranked_gaps": "results/local-gap-rank-a19545b-20260720.csv",
+        "local_topgap_matrix": "results/local-topgap-matrix-20260720/matrix.csv",
+        "perf_report": "/tmp/neq016-perf-report.txt",
+        "gprof_report": "/tmp/neq016-gprof-report.txt",
+        "option_stats": "/tmp/neq016-*.stats and /tmp/neq016-*.time",
+        "reference_stats": "/tmp/neq016-llm2smt-fresh.err"
+      },
+      "summary": {
+        "primo_default_90s": "unknown at 90s; 477706 theory conflicts; 89941225 explain calls; 25893221 BFS searches; 434540867 BFS nodes visited; 155546 conflicts over 64 reason literals; 285691372 use-list appends.",
+        "llm2smt_tuned": "unsat in 24.13s; 5935212 EUF assignments; 185145 EUF conflicts; 8171171 total conflict literals; 2044 finite-domain AMO clauses; 21 UF symmetry clauses.",
+        "z3_local": "unsat in about 4.12s with 46453 conflicts and 116510 decisions.",
+        "profile": "35s local profiles put FlatCongruenceClosure::explain_equal_into first, with merge_classes, process_use_list, restore_trail_entry, ApplyKey lookup, and CaDiCaL propagation also hot.",
+        "option_matrix": "At 45s, default, phase auto/polarity/none, qf-uf basic, no UF symmetry, conflict-only propagation, propagation off, finite-domain equality definitions, and ground-congruence did not solve. --pure-theory-filter=off solved in 42.53s, reduced explain calls to 37962704, and delivered 252 propagations, but a partial guard showed NEQ023_size7 regressed from 0.39s default to 0.96s with pure filtering off.",
+        "cc_review": "The current FlatCongruenceClosure still matches the local Nieuwenhuis-Oliveras Section 3 affected-use-list/signature-lookup design and no rollback or congruence-discovery correctness bug was found. The remaining implemented gap is the missing Section 4-5 proof-forest Explain algorithm; the reference behavior also points to proof-forest-style explanation and less filtering of assignment facts, but no reference code was copied.",
+        "rejected_probe": "Moving affected-use-list saturation before disequality conflict probing in merge_classes was reverted immediately because ./build/primo_euf_solver_tests aborted. Any change to conflict timing requires a deliberate explanation design and new tests."
+      },
+      "evidence_status": "current_local",
+      "notes": "This is diagnostic evidence only. It does not establish a new default or a reference-parity improvement. Pure-theory filtering remains a candidate family-shape heuristic, while the CC-level implementation target remains a paper-derived proof-forest explanation path with direct reason-quality counters."
     }
   ]
 }
