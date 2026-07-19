@@ -1563,7 +1563,7 @@
     {
       "id": "2026-07-18-qg-iso-smac-slurm-111490",
       "started_at": "2026-07-18T23:55:00+02:00",
-      "recorded_at": "2026-07-18",
+      "recorded_at": "2026-07-19",
       "kind": "tuning",
       "scope": "SLURM SMAC campaign for QG iso_* performance gap",
       "commit": "c2363b3",
@@ -1593,16 +1593,25 @@
         "bugs": null
       },
       "summary": {
-        "status": "submitted",
+        "status": "completed",
+        "state": "COMPLETED",
+        "elapsed": "02:27:43",
+        "exit_code": "0:0",
         "trials": 80,
         "train_count": 12,
         "validate_count": 8,
-        "wrong": null,
-        "default_validation_cost": null,
-        "incumbent_validation_cost": null
+        "train_best_trial": 54,
+        "train_best_cost": 43.41284,
+        "train_best_solved": 12,
+        "train_best_wrong": 0,
+        "default_validation_cost": 36.712076,
+        "incumbent_validation_cost": 32.205814,
+        "validation_speedup_ratio": 1.1399207608911859,
+        "validation_wrong": 0,
+        "incumbent_args": "--quiet --preprocessing-passes=4 --preprocessing-adaptive-extra-passes=0 --preprocessing-adaptive-shrink-percent=29 --no-uf-symmetry-breaking --no-eq-bridge --euf-engine=incremental --euf-prop=auto --pure-theory-filter=auto --theory-phase=polarity --euf-prop-budget=1000 --prop-interval=128 --prop-assign-threshold=0.25"
       },
-      "evidence_status": "running",
-      "notes": "Search space includes preprocessing strength, finite-domain symmetry/value-precedence/equality-definition toggles, bounded ground-congruence, EUF engine/propagation settings, pure-filter mode, theory phase, propagation budgets, and CaDiCaL profile. The run should be collected before making any default/profile recommendation."
+      "evidence_status": "current",
+      "notes": "Completed cleanly. Incumbent improved the 8-row iso holdout from 36.712076s to 32.205814s with zero wrong answers, a modest 1.14x aggregate speedup. The profile keeps default preprocessing, disables UF symmetry and eq-bridge, uses theory_phase=polarity, prop_budget=1000, and prop_interval=128. This is not strong enough to promote as a default without full focused-QG and 334-row validation; it primarily confirms the earlier phase/predicate-interaction signal."
     }
   ]
 }
