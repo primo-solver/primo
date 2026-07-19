@@ -1910,6 +1910,95 @@
       },
       "evidence_status": "local-only-correction",
       "notes": "The previous local profile entry compared against plain LLM2SMT and therefore understated the LLM2SMT reference. With the tuned reference command, NEQ027 is still faster in current local Primo than tuned LLM2SMT, but the margin is much smaller. NEQ016 is a real tuned-LLM2SMT gap as well as a Z3 gap: tuned LLM2SMT solves locally in about 21.5s while Primo did not solve before interruption at 92s. The tuned reference did not use LLM2SMT's finite-domain value-precedence option for this improvement; the recorded tuned profile uses UF symmetry, four preprocessing passes, equality bridge, and EUF propagation thresholds."
+    },
+    {
+      "id": "2026-07-19-neq023-primo-html-consistency-check",
+      "started_at": "2026-07-19T02:35:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "reference-comparison",
+      "scope": "Check whether the published primo.html NEQ023_size7 gap is consistent with local runs and stored artifacts",
+      "commit": "7fd7eeb",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Opened https://people.ciirc.cvut.cz/~janotmik/llm2smt/primo.html; ran build/primo --quiet --stats, --qf-uf-preprocess=basic, --no-uf-symmetry-breaking, --pure-theory-filter=auto; ran tuned LLM2SMT and local Z3 on tmp/QF_UF/NEQ/NEQ023_size7.smt2 with 60s timeout",
+      "solver": {
+        "name": "Primo",
+        "argv": "build/primo --quiet --stats and local option ablations"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2 -st"
+        },
+        {
+          "name": "published primo.html",
+          "argv": "https://people.ciirc.cvut.cz/~janotmik/llm2smt/primo.html"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 1,
+        "timeout_seconds": 60,
+        "manifest": "tmp/QF_UF/NEQ/NEQ023_size7.smt2"
+      },
+      "artifacts": {
+        "summary": "/tmp/neq023-*.err and /tmp/neq023-*.out",
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "published_primo_html": {
+          "primo2_seconds": 37,
+          "llm2smt_sym2_seconds": 1,
+          "z3_seconds": 1,
+          "yices_seconds": 3,
+          "opensmt_seconds": 129,
+          "cvc5_seconds": 5
+        },
+        "local_current": {
+          "primo_default_seconds": 3.52,
+          "primo_basic_seconds": 3.07,
+          "primo_no_symmetry_seconds": 21.89,
+          "primo_pure_auto_seconds": 3.85,
+          "llm2smt_tuned_seconds": 1.11,
+          "z3_seconds": 0.63
+        },
+        "shape": {
+          "bytes": 97426,
+          "declare_fun": 20,
+          "or_nodes": 1930,
+          "not_nodes": 645,
+          "equalities": 1554,
+          "distinct": 1
+        },
+        "local_default_stats": {
+          "euf_assignments": 4728189,
+          "euf_theory_conflicts": 3836,
+          "euf_incremental_merges": 3629654,
+          "euf_incremental_disequality_checks": 1718771,
+          "euf_incremental_use_list_appends": 2064051,
+          "euf_incremental_max_use_list_size": 32990
+        },
+        "stored_artifact_context": {
+          "slurm_user_html334_default_seconds": 10.236129,
+          "html334_phase_default_seconds": 10.352183,
+          "html334_phase_polarity_seconds": 2.173922,
+          "slurm_pure_auto_seconds": 2.365623,
+          "slurm_tuned_llm2smt_seconds": 2.941528
+        }
+      },
+      "evidence_status": "local-only-plus-published-html",
+      "notes": "The exact published primo2 number is worse than the current local build on this host, but the qualitative observation is consistent: NEQ023_size7 and nearby NEQ rows are substantially sensitive to Primo profile choices and remain slower than fast references. The no-symmetry ablation is much worse locally, while historical polarity/pure-auto artifacts show this family can improve substantially without solving the broader default-profile problem."
     }
   ]
 }
