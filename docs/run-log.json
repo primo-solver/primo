@@ -2309,6 +2309,46 @@
       },
       "evidence_status": "local-only",
       "notes": "This covers the opt-in auto phase option against generated QF_UF formulas. It is sufficient as a local merge gate for the new non-default option, but not sufficient for promoting auto phase to a default or headline profile; that still requires mixed-manifest SLURM validation."
+    },
+    {
+      "id": "2026-07-19-smac-qfuf-mixed-auto-111492-submitted",
+      "started_at": "2026-07-19T05:20:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "tuning",
+      "scope": "Submit mixed QF_UF SMAC campaign from current commit with experimental --theory-phase=auto in the search space",
+      "commit": "9d7e4ac",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "slurm_job_id": "111492"
+      },
+      "command": "Remote /home/janotmik/primo-cadical-profile, after scripts/slurm_prepare_benchmark_workspace.py --check-only verified build-slurm-rel/primo reports git 9d7e4ac and cadical-3.0.0-7b99c07; submitted with PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt PRIMO_SMAC_LABEL=qfuf-mixed-auto PRIMO_SMAC_TRIALS=160 PRIMO_SMAC_TIMEOUT=20 PRIMO_SMAC_VALIDATION_TIMEOUT=60 PRIMO_SMAC_GUARD_TIMEOUT=60 PRIMO_SMAC_SEED=20260720 sbatch scripts/slurm_qfuf_smac.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo"
+      },
+      "references": [],
+      "inputs": {
+        "generator": "SMAC",
+        "logic": "QF_UF",
+        "seed": 20260720,
+        "count": 160,
+        "timeout_seconds": 20,
+        "manifest": "benchmarks/qfuf-smac-mixed-train.txt; validation benchmarks/qfuf-smac-mixed-validate.txt; guard benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "pending: /home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-auto-111492/",
+        "results": "pending",
+        "logs": "pending: /home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-111492.{out,err}",
+        "bugs": null
+      },
+      "summary": {
+        "status": "submitted",
+        "sbatch_validation": "scripts/slurm_validate_sbatch.py and bash -n passed locally; check-only remote binary validation passed immediately before sbatch",
+        "search_space_change": "theory_phase now includes auto in addition to negative, positive, none, and polarity"
+      },
+      "evidence_status": "pending",
+      "notes": "This replaces the earlier mixed SMAC job 111491 for evaluating the new auto phase knob. Job 111491 was launched from commit 014fe3c before auto existed and remains useful only as historical tuning evidence for the old search space."
     }
   ]
 }
