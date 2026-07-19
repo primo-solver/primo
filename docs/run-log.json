@@ -2390,6 +2390,155 @@
       },
       "evidence_status": "rejected",
       "notes": "Do not cite 111491 as a successful SMAC result. Future SLURM tuning runs should avoid destructive rebuilds of a workspace used by active jobs, preferably by using per-commit/per-job remote workdirs or checking squeue before rebuilding the shared workdir."
+    },
+    {
+      "id": "2026-07-19-qfuf-mixed-local-default-auto-online-2d01ffa",
+      "started_at": "2026-07-19T05:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local mixed QF_UF comparison across the SMAC train, validation, and equality-guard manifests after refreshing the local build to commit 2d01ffa",
+      "commit": "2d01ffa",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc); local Python loops over the union of benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, and benchmarks/qfuf-smac-equality-guard.txt with 20s per run. Variants: ./build/primo --quiet --stats; ./build/primo --quiet --stats --theory-phase=auto; ./build/primo --quiet --stats --euf-prop=online; tuned /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000; contrib/local/bin/z3 -smt2.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 39,
+        "timeout_seconds": 20,
+        "manifest": "union of benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, and benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "terminal summary and CSV artifacts",
+        "results": "results/qfuf-mixed-local-default-auto-ref-2d01ffa.csv; results/qfuf-mixed-local-euf-online-2d01ffa.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "disagreements": 0,
+        "primo_default": {
+          "ok": 34,
+          "timeout": 5,
+          "error": 0,
+          "par2": 298.899
+        },
+        "primo_theory_phase_auto": {
+          "ok": 33,
+          "timeout": 6,
+          "error": 0,
+          "par2": 312.564
+        },
+        "primo_euf_prop_online": {
+          "ok": 33,
+          "timeout": 6,
+          "error": 0,
+          "par2": 300.789
+        },
+        "llm2smt_tuned": {
+          "ok": 31,
+          "timeout": 8,
+          "error": 0,
+          "par2": 384.264
+        },
+        "z3": {
+          "ok": 34,
+          "timeout": 5,
+          "error": 0,
+          "par2": 243.006
+        },
+        "notable_llm2smt_gaps": "iso_brn_repgen033 default 4.103s vs tuned LLM2SMT 0.071s; NEQ015_size5 default 5.434s and auto 4.664s vs tuned LLM2SMT 1.658s.",
+        "online_effects": "Forcing --euf-prop=online improved NEQ015_size5 from 5.434s to 1.422s and NEQ015_size6 from 9.891s to 7.109s, but regressed PEQ014_size10 from solved in 19.057s to timeout, so always-online is rejected as a default."
+      },
+      "evidence_status": "current-local",
+      "notes": "This is local development evidence, not a headline SLURM claim. It shows current Primo default is stronger than tuned LLM2SMT on this mixed 39-row PAR2 slice, but Z3 is still substantially ahead and there remain cheap QG/NEQ gaps. The data supports keeping --theory-phase=auto and --euf-prop=online as tuning knobs rather than defaults until the active SMAC job and broader SLURM validation decide a profile."
+    },
+    {
+      "id": "2026-07-19-neq015-euf-online-local-profile-2d01ffa",
+      "started_at": "2026-07-19T05:20:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Local diagnosis of NEQ/NEQ015_size5.smt2 as a non-iso cheap QF_UF gap",
+      "commit": "2d01ffa",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ015_size5.smt2; option ablations for --theory-phase=polarity, --euf-prop=online, --qf-uf-preprocess=basic, --no-uf-symmetry-breaking, --ground-congruence; tuned /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000; contrib/local/bin/z3 -smt2 -st; perf record/report for default and --euf-prop=online.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ015_size5.smt2"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2 -st"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1,
+        "timeout_seconds": 30,
+        "manifest": "tmp/QF_UF/NEQ/NEQ015_size5.smt2"
+      },
+      "artifacts": {
+        "summary": "/tmp/neq015-primo.err; /tmp/neq015-llm.err; /tmp/neq015-default.perf.data; /tmp/neq015-online.perf.data",
+        "results": "results/qfuf-mixed-local-default-auto-ref-2d01ffa.csv; results/qfuf-mixed-local-euf-online-2d01ffa.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "instance_shape": "One assertion, about 731kB, 12034 or nodes, 8808 equality tokens, 5137 not nodes, one distinct, no ite, max parenthesis depth about 2258.",
+        "default_stats": {
+          "finite_domain_amo": 9610,
+          "uf_symmetry_constraints": 36,
+          "sat_clauses": 22377,
+          "euf_assignments": 363937,
+          "euf_theory_conflicts": 11717,
+          "euf_explain_calls": 379562,
+          "max_use_list_size": 102333
+        },
+        "reference_stats": {
+          "llm2smt_tuned_total_ms": 4299,
+          "llm2smt_tuned_sat_clauses": 37959,
+          "llm2smt_tuned_euf_assignments": 50424,
+          "llm2smt_tuned_euf_conflicts": 916,
+          "z3_total_time_seconds": 1.70,
+          "z3_conflicts": 754,
+          "z3_decisions": 349799
+        },
+        "ablations": {
+          "default_seconds": 7.46,
+          "theory_phase_polarity_seconds": 4.94,
+          "euf_prop_online_seconds": 2.00,
+          "online_with_reference_budget_seconds": 2.61,
+          "basic_preprocess_seconds": 3.07,
+          "no_uf_symmetry_seconds": 3.30,
+          "ground_congruence_seconds": 3.19
+        },
+        "perf_default_top": "_int_malloc 10.37%, FlatCongruenceClosure::merge_classes 8.47%, OnlineEufPropagator::notify_assignment 6.05%, restore_trail_entry 5.35%, process_use_list 5.18%, Frontend::build_term 5.17%",
+        "perf_online_top": "Frontend::build_term 15.35%, memcmp 13.32%, allocator about 10%, FlatCongruenceClosure::merge_classes 3.40%, restore_trail_entry 2.96%, process_use_list visible through allocator samples"
+      },
+      "evidence_status": "current-local",
+      "notes": "The existing auto EUF propagation resolver uses online only for at most 5000 theory atoms, so this 13967-atom NEQ row is forced to conflict-only even though online propagation reduces conflicts from 11717 to 699 and cuts local time substantially. However, the mixed 39-row run shows always-online is not safe: PEQ014_size10 times out with online after delivering zero propagations. A sound next change would need a better auto predictor or adaptive early disable/enable mechanism with regression tests and fuzzing, or should be left to SMAC as a tuned option."
     }
   ]
 }
