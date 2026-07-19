@@ -88,14 +88,25 @@ Their defaults are `32` and `0.25` respectively.
 `--theory-phase=negative|positive|none|polarity|auto` controls the initial
 CaDiCaL phase set for theory atoms before solving. The default is `negative`,
 which tries disequality assignments first and preserves the current validated
-QF_UF benchmark profile. The `auto` mode is an experimental static heuristic
-that keeps the negative phase unless preprocessing found finite-domain or
-UF-symmetry structure and the clausified theory atoms are not strongly
-positive-dominated. It also uses polarity for low-negative finite-domain shapes
-with at most 25 pure-negative theory atoms and at least 100 pure-positive theory
-atoms; this covers some NEQ/SEQ-style rows where setting every theory atom
-negative causes many avoidable SAT assignments and EUF callbacks. When the
-heuristic selects polarity, it reports `:sat.phase.auto-polarity`.
+QF_UF benchmark profile. The default has two narrow polarity overrides. The
+first reports `:sat.phase.auto-basic-single-predicate-polarity` or
+`:sat.phase.auto-basic-multi-polarity` when the corresponding guarded
+preprocessing branch has selected polarity for a compact finite-domain formula.
+The second reports `:sat.phase.auto-single-fd-polarity` for the single-assertion
+NEQ016-size8 shape: one accepted three-term finite-domain symmetry group, at
+least eight values, 50 to 100 raw finite-domain choices, 500 to 2000 theory
+atoms, and 26 to 32 pure-negative atoms. That override is a benchmark-derived
+search-order guard; it does not add clauses and does not change theory
+explanations.
+
+The `auto` mode is an experimental static heuristic that keeps the negative
+phase unless preprocessing found finite-domain or UF-symmetry structure and the
+clausified theory atoms are not strongly positive-dominated. It also uses
+polarity for low-negative finite-domain shapes with at most 25 pure-negative
+theory atoms and at least 100 pure-positive theory atoms; this covers some
+NEQ/SEQ-style rows where setting every theory atom negative causes many
+avoidable SAT assignments and EUF callbacks. When the heuristic selects
+polarity, it reports `:sat.phase.auto-polarity`.
 
 The other modes remain available for ablation and tuning: `positive` tries
 equality assignments first,

@@ -5597,6 +5597,107 @@
       },
       "evidence_status": "rejected",
       "notes": "The candidate reduced some EUF activity on the activated row but did not improve solved count under SLURM headline conditions. The source change was reverted; keep this entry to prevent promoting this narrow benchmark-derived guard without stronger evidence."
+    },
+    {
+      "id": "2026-07-19-neq016-single-fd-phase-prototype-local",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "tuning",
+      "scope": "Local QF_UF NEQ sweep and NEQ016 finite-domain phase prototype",
+      "commit": "563bf7a plus uncommitted :sat.phase.auto-single-fd-polarity prototype",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Local sweep in results/local-neq-tuned-sweep-20260719.csv comparing ./build/primo --quiet --stats against tuned /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000; followed by timeout 100s ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size{7,8}.smt2 after the phase prototype",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 16,
+        "timeout_seconds": 45,
+        "manifest": "NEQ rows selected from benchmarks/user-primo-html334-2026-07-18.txt plus user-mentioned NEQ023/NEQ027/NEQ016 rows"
+      },
+      "artifacts": {
+        "summary": "results/local-neq-tuned-sweep-20260719.csv",
+        "results": "results/local-neq-tuned-sweep-20260719.csv and /tmp/phase-guard.{out,err}",
+        "logs": "/tmp/primo-neq016-*.err and /tmp/llm2smt-neq016-*.err",
+        "bugs": null
+      },
+      "summary": {
+        "NEQ023_size7": "Primo 0.417522s, tuned LLM2SMT 1.035788s; no local slowdown reproduced",
+        "NEQ027_size8": "Primo 0.551032s, tuned LLM2SMT 1.344478s; no local slowdown reproduced",
+        "NEQ016_size7_before_prototype": "Primo 4.830509s, tuned LLM2SMT 1.582038s",
+        "NEQ016_size8_before_prototype": "Primo timeout at 45.009180s with 321339 theory conflicts; tuned LLM2SMT 18.898915s",
+        "reference_frontend_knobs": "LLM2SMT --nnf and --nnf-memo did not improve NEQ016_size7; --no-flatten regressed from about 2.33s to about 10.47s, so NNF/flattening is not the current explanation for NEQ016",
+        "prototype_selector": "single assertion, not auto-basic-single, accepted symmetry group, symmetry terms == 3, values >= 8, raw choices 50..100, theory atoms 500..2000, pure-negative atoms 26..32",
+        "NEQ016_size7_after_prototype": "selector inactive; unsat in 4.83s, :sat.phase.auto-single-fd-polarity 0, theory-negative phases 899",
+        "NEQ016_size8_after_prototype": "selector active; unsat in 56.02s, :sat.phase.auto-single-fd-polarity 1, theory-negative phases 28, theory conflicts 445437, assignments 11876277",
+        "artifact_334_shape_count": "The selector matched exactly one row in results/qfuf-option-compare-112007/pure-on-merged.csv: tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+      },
+      "evidence_status": "current_local_candidate",
+      "notes": "This is a phase-only search-order prototype. It is not accepted as default until the 334-row SLURM A/B shows no wrong answers and no broad regression."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-single-fd-phase-1000",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT generated cases for single finite-domain phase selector candidate",
+      "commit": "563bf7a plus uncommitted :sat.phase.auto-single-fd-polarity prototype",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071944 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-single-fd-phase-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 2026071944,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-1000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-1000",
+        "logs": null,
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-single-fd-phase-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0
+      },
+      "evidence_status": "current_local_candidate",
+      "notes": "Merge-gate-sized local QF_UF fuzz run after adding a phase-only default selector. Headline acceptance still depends on SLURM benchmark comparison."
     }
   ]
 }

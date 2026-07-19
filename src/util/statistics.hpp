@@ -71,6 +71,7 @@ enum class StatKey : std::size_t {
   SatPhaseAutoPolarity,
   SatPhaseAutoBasicSinglePredicatePolarity,
   SatPhaseAutoBasicMultiPolarity,
+  SatPhaseAutoSingleFiniteDomainPolarity,
   SatVars,
   SatClauses,
   SatClauseLits,

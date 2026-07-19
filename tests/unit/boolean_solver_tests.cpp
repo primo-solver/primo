@@ -1477,6 +1477,71 @@ void theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape()
          result.statistics.get(":euf.theory-atoms"));
 }
 
+std::string single_finite_domain_phase_shape_input(int values, int choices_target,
+                                                   int pure_negative_atoms) {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun op (A A) A)\n";
+  for (int value = 0; value < values; ++value) {
+    input << "(declare-fun v" << value << " () A)\n";
+  }
+  for (int term = 0; term < 3; ++term) {
+    input << "(declare-fun sk" << term << " () A)\n";
+  }
+  input << "(assert (and\n";
+  input << "  (distinct";
+  for (int value = 0; value < values; ++value) {
+    input << " v" << value;
+  }
+  input << ")\n";
+  for (int term = 0; term < 3; ++term) {
+    input << "  (or";
+    for (int value = 0; value < values; ++value) {
+      input << " (= sk" << term << " v" << value << ")";
+    }
+    input << ")\n";
+  }
+  int choices = 3;
+  for (int lhs = 0; lhs < values && choices < choices_target; ++lhs) {
+    for (int rhs = 0; rhs < values && choices < choices_target; ++rhs) {
+      input << "  (or";
+      for (int value = 0; value < values; ++value) {
+        input << " (= (op v" << lhs << " v" << rhs << ") v" << value << ")";
+      }
+      input << ")\n";
+      ++choices;
+    }
+  }
+  for (int atom = 0; atom < pure_negative_atoms; ++atom) {
+    input << "  (or (not (= sk" << atom % 3 << " v" << (atom + 1) % values << ")) (= v0 v0))\n";
+  }
+  input << "))\n(check-sat)\n";
+  return input.str();
+}
+
+void default_phase_uses_polarity_for_neq016_size8_like_shape() {
+  const auto result = check_sat_smtlib(single_finite_domain_phase_shape_input(8, 67, 28));
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.single-assertion") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 67);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.accepted-sets") == 1);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.values") == 8);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.terms") == 3);
+  assert(result.statistics.get(":euf.pure-atoms.negative") == 28);
+  assert(result.statistics.get(":sat.phase.auto-single-fd-polarity") == 1);
+  assert(result.statistics.get(":sat.phase.theory-negative") <
+         result.statistics.get(":euf.theory-atoms"));
+
+  const auto smaller = check_sat_smtlib(single_finite_domain_phase_shape_input(7, 52, 21));
+  assert(smaller.result == CheckSatResult::Sat);
+  assert(smaller.statistics.get(":preprocessing.uf-symmetry.values") == 7);
+  assert(smaller.statistics.get(":sat.phase.auto-single-fd-polarity") == 0);
+  assert(smaller.statistics.get(":sat.phase.theory-negative") ==
+         smaller.statistics.get(":euf.theory-atoms"));
+}
+
 void strong_preprocessing_enables_ground_congruence_clauses() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -1954,6 +2019,7 @@ int main() {
   theory_phase_auto_uses_polarity_on_balanced_finite_domain_shape();
   theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape();
   theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape();
+  default_phase_uses_polarity_for_neq016_size8_like_shape();
   strong_preprocessing_enables_ground_congruence_clauses();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();

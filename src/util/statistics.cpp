@@ -73,6 +73,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":sat.phase.auto-polarity"sv,
     ":sat.phase.auto-basic-single-predicate-polarity"sv,
     ":sat.phase.auto-basic-multi-polarity"sv,
+    ":sat.phase.auto-single-fd-polarity"sv,
     ":sat.vars"sv,
     ":sat.clauses"sv,
     ":sat.clause-lits"sv,
