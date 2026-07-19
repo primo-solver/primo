@@ -6403,6 +6403,46 @@
       },
       "evidence_status": "current_local",
       "notes": "The next phase investigation should inspect formula structure, not benchmark family names, before adding any automatic phase selection."
+    },
+    {
+      "id": "2026-07-19-local-cc-lower-degree-bfs-root-rejected",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Rejected FlatCongruenceClosure explanation BFS root-selection heuristic",
+      "commit": "c244ec7 plus temporary uncommitted lower-degree BFS root prototype, reverted after measurement",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Built clean baseline worktree /tmp/primo-baseline-c244ec7 at c244ec7 and compared it with ./build/primo after a temporary patch that started explain_equal_into BFS from the endpoint with the smaller edge_adjacency_ list; ran ./primo --stats --euf-engine=incremental on PEQ019_size7, PEQ002_size8, SEQ035_size6, NEQ033_size4, qg7/iso_brn_repgen039, and qg7/iso_brn_repgen_sk032.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --stats --euf-engine=incremental"
+      },
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/PEQ/PEQ002_size8.smt2, tmp/QF_UF/SEQ/SEQ035_size6.smt2, tmp/QF_UF/NEQ/NEQ033_size4.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen039.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk032.smt2",
+        "timeout_seconds": 80
+      },
+      "artifacts": {
+        "summary": "terminal-captured local matrix in 2026-07-19 conversation",
+        "patch": "/tmp/primo-rootdeg-bfs-rejected.patch"
+      },
+      "summary": {
+        "prototype": "For each flat equality explanation, choose the endpoint with the smaller equality-edge adjacency list as the BFS root and reconstruct the path to the other endpoint. The equality graph and explanation validity check were unchanged, but tie-breaking/path choice and SAT conflict clauses could change.",
+        "selected_results": {
+          "PEQ019_size7_default": "baseline 0.983s -> prototype 0.445s; explain-length 211380 -> 103808; conflicts 4707 -> 1952",
+          "PEQ002_size8_default": "baseline 17.322s -> prototype 33.439s; explain-length 5205743 -> 8344692; BFS visited 105904124 -> 174231936; conflicts 95096 -> 150545",
+          "SEQ035_size6_default": "baseline 1.237s -> prototype 0.875s; explain-length 621434 -> 468030; conflicts 47536 -> 34909",
+          "NEQ033_size4_default": "baseline 0.214s -> prototype 0.208s; neutral",
+          "iso_brn_repgen039_default": "baseline 0.420s -> prototype 0.234s; conflicts 11049 -> 7002",
+          "iso_brn_repgen_sk032_default": "baseline 0.497s -> prototype 0.420s; conflicts 11925 -> 11613"
+        },
+        "decision": "rejected and reverted. The heuristic improves several rows but badly regresses hard PEQ002 by changing explanation clauses/search. Future BFS changes need either an explanation-length guard that does not double work, a structural selector validated on mixed suites, or an option/default-off experiment."
+      },
+      "evidence_status": "rejected_experiment",
+      "notes": "No source changes from this prototype remain."
     }
   ]
 }
