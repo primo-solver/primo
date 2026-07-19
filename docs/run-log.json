@@ -3816,6 +3816,85 @@
       },
       "evidence_status": "local-current",
       "notes": "This is evidence for a broader SLURM option comparison, not enough to promote a default heuristic. It rejects a single basic or basic-polarity rule because NEQ016 and QG nogen rows regress or stay flat."
+    },
+    {
+      "id": "2026-07-19-qfuf-option-compare-111717",
+      "started_at": "2026-07-19T15:11:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM 334-row primo.html subset comparison of default, --qf-uf-preprocess=basic, and --qf-uf-preprocess=basic --theory-phase=polarity",
+      "commit": "6fc390d",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head",
+        "job_id": "111717"
+      },
+      "command": "sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_option_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-slurm-rel/primo --quiet --stats",
+        "version": "primo 0.1.0; git: 6fc390d; cadical: cadical-3.0.0-7b99c07"
+      },
+      "inputs": {
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt",
+        "rows": 334,
+        "timeout_seconds": 120,
+        "variants": {
+          "default": "",
+          "basic": "--qf-uf-preprocess=basic",
+          "basic-polarity": "--qf-uf-preprocess=basic --theory-phase=polarity"
+        }
+      },
+      "artifacts": {
+        "summary": "results/qfuf-option-compare-111717/summary.json",
+        "default": "results/qfuf-option-compare-111717/default-merged.csv",
+        "basic": "results/qfuf-option-compare-111717/basic-merged.csv",
+        "basic_polarity": "results/qfuf-option-compare-111717/basic-polarity-merged.csv",
+        "basic_diffs": "results/qfuf-option-compare-111717/basic-diffs.csv",
+        "basic_polarity_diffs": "results/qfuf-option-compare-111717/basic-polarity-diffs.csv"
+      },
+      "summary": {
+        "default": {
+          "ok": 330,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3529.273
+        },
+        "basic": {
+          "ok": 330,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3696.403
+        },
+        "basic_polarity": {
+          "ok": 328,
+          "timeout": 6,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3980.374
+        },
+        "families_basic_polarity": {
+          "Goel": "7/7 ok, PAR2 55.309",
+          "NEQ": "25/26 ok, PAR2 442.238",
+          "PEQ": "20/25 ok, PAR2 1662.480",
+          "QG": "270/270 ok, PAR2 1743.164",
+          "SEQ": "6/6 ok, PAR2 77.183"
+        },
+        "families_basic": {
+          "Goel": "7/7 ok, PAR2 18.640",
+          "NEQ": "25/26 ok, PAR2 520.783",
+          "PEQ": "22/25 ok, PAR2 1131.331",
+          "QG": "270/270 ok, PAR2 1946.047",
+          "SEQ": "6/6 ok, PAR2 79.602"
+        },
+        "basic_polarity_qg_signal": "QG PAR2 improves from 1904.984 to 1743.164, with 166 faster and 84 slower QG rows.",
+        "top_basic_polarity_wins": "SEQ026_size7 -21.132s, iso_icl_nogen003 -9.159s, NEQ031_size10 -9.029s, gensys_icl001 -8.983s, NEQ023_size7 -8.613s, iso_brn_repgen033 -7.371s",
+        "top_basic_polarity_regressions": "PEQ018_size6 timeout regression +196.555s, PEQ003_size10 timeout regression +123.299s, PEQ014_size9 +85.410s, PEQ002_size8 +40.366s, NEQ048_size9 +20.164s, SEQ009_size10 +19.062s"
+      },
+      "evidence_status": "rejected-default-current",
+      "notes": "The run rejects both broad option variants as defaults. It preserves a strong QG-only signal for future structural classification, but any default promotion must avoid PEQ and Goel regressions and the NEQ016/NEQ048 split."
     }
   ]
 }
