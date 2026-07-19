@@ -975,6 +975,33 @@ void auto_preprocessing_basic_multi_can_be_disabled() {
   assert(result.statistics.get(":sat.phase.auto-basic-multi-polarity") == 0);
 }
 
+void auto_preprocessing_basic_multi_polarity_can_be_disabled() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_basic_multi_preprocessing = true;
+  options.auto_basic_multi_polarity = false;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.basic-multi") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") == 0);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 0);
+  assert(result.statistics.get(":sat.phase.auto-basic-multi-polarity") == 0);
+  assert(result.statistics.get(":sat.phase.theory-negative") ==
+         result.statistics.get(":euf.theory-atoms"));
+}
+
 void auto_preprocessing_uses_basic_for_selected_single_assertion_domains() {
   std::ostringstream input;
   input << "(set-logic QF_UF)\n";
@@ -1910,6 +1937,7 @@ int main() {
   finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities();
   auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions();
   auto_preprocessing_basic_multi_can_be_disabled();
+  auto_preprocessing_basic_multi_polarity_can_be_disabled();
   auto_preprocessing_uses_basic_for_selected_single_assertion_domains();
   auto_preprocessing_uses_predicate_polarity_for_selected_single_assertion_domains();
   auto_preprocessing_basic_single_can_be_disabled();

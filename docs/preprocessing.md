@@ -96,7 +96,9 @@ reproducing narrower configurations:
 symmetry-breaking preprocessing step. `--no-auto-basic-single-predicate-polarity`
 disables the predicate-aware phase override for selected single-assertion
 finite-domain formulas. `--no-auto-basic-multi` disables the compact
-multi-assertion classifier for scripted option matrices.
+multi-assertion classifier for scripted option matrices, while
+`--no-auto-basic-multi-polarity` keeps that compact preprocessing branch but
+uses the ordinary theory-atom phase.
 
 ## Experimental QF_UF Portfolio
 
@@ -164,7 +166,12 @@ comparison on the 334-row user HTML set validated enabling it by default after
 the auto-basic-single baseline: default and `--no-auto-basic-multi` both solved
 332/334 with no wrong answers, while default reduced PAR2 by about 59 seconds
 overall and by about 115 seconds on the selected QG rows. The remaining NEQ gap
-is unchanged because those rows do not select the multi-assertion branch.
+is unchanged because those rows do not select the multi-assertion branch. The
+compact multi-assertion branch also has a separate phase ablation,
+`--no-auto-basic-multi-polarity`, because follow-up local QG diagnostics found
+mixed behavior: polarity phase is excellent for rows such as
+`iso_brn_repgen033`, but ordinary negative theory phase is much faster on
+`iso_brn_repgen_sk032`, `iso_brn_repgen043`, and `iso_icl_nogen_sk004`.
 When enabled, equality definitions must fit a domain-size and per-solve clause
 budget. For single-assertion formulas they must also fit the initial
 reachable-term limit, because a single top-level assertion may contain an entire

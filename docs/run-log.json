@@ -5369,6 +5369,83 @@
       },
       "evidence_status": "local-current",
       "notes": "NEQ016_size8 needs the strong finite-domain AMO structure plus polarity phase and online EUF callbacks to solve locally under the 75s cap. A blanket predicate/single-assertion polarity selector is unsafe because prior local NEQ matrices show severe regressions such as NEQ027_size10. The next implementation should look for a stronger structural discriminator or a finite-domain/Horn-style encoding rather than broad phase selection."
+    },
+    {
+      "id": "2026-07-19-local-qg-multi-polarity-ablation",
+      "date": "2026-07-19",
+      "commit": "2f58446",
+      "host": "local workstation",
+      "kind": "local option comparison",
+      "scope": "QG compact multi-assertion rows comparing current default with --no-auto-basic-multi-polarity",
+      "command": "for selected QG rows, run timeout 25s ./build/primo --quiet --stats and ./build/primo --quiet --stats --no-auto-basic-multi-polarity",
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk032.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_nogen_sk004.smt2"
+        ],
+        "timeout_seconds": 25
+      },
+      "artifacts": {
+        "local_results": "results/local-qg-multi-polarity-ablation-20260719.csv"
+      },
+      "summary": {
+        "improved_with_no_multi_polarity": {
+          "iso_brn_repgen_sk032": "default 0.536760s, no-multi-polarity 0.070464s; euf conflicts 11925 -> 1875",
+          "iso_brn_repgen043": "default 0.713224s, no-multi-polarity 0.217954s; euf conflicts 16283 -> 5654",
+          "iso_icl_nogen_sk004": "default 10.704742s, no-multi-polarity 7.922847s; euf assignments 5546207 -> 3255227"
+        },
+        "regressed_with_no_multi_polarity": {
+          "iso_brn_repgen033": "default 0.043048s, no-multi-polarity 0.072127s; euf assignments 1957 -> 47230",
+          "iso_icl_repgen006": "default 0.611889s, no-multi-polarity 0.722190s; euf assignments 114165 -> 324741"
+        }
+      },
+      "evidence_status": "local-candidate-needs-slurm",
+      "notes": "The new flag isolates compact multi-assertion preprocessing from the phase override. The phase effect is mixed across QG rows; use same-binary SLURM or SMAC before changing the default."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-no-auto-basic-multi-polarity-1000",
+      "date": "2026-07-19",
+      "commit": "2f58446",
+      "host": "local workstation",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT generated cases using the new --no-auto-basic-multi-polarity option",
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --no-auto-basic-multi-polarity' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071932 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-no-auto-basic-multi-polarity-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --no-auto-basic-multi-polarity"
+      },
+      "reference": {
+        "name": "Z3",
+        "argv": "z3"
+      },
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 2026071932,
+        "count": 1000,
+        "timeout_seconds": 5
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-no-auto-basic-multi-polarity-1000/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt-no-auto-basic-multi-polarity-1000/generated",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-no-auto-basic-multi-polarity-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "sat": 891,
+        "unsat": 109,
+        "bug_files": 0
+      },
+      "evidence_status": "local-current",
+      "notes": "Fresh local fuzz gate for the new phase-ablation option; default behavior is unchanged by this source change."
     }
   ]
 }

@@ -133,6 +133,7 @@ int main(int argc, char** argv) {
   bool no_auto_basic_single_predicate_polarity = false;
   bool auto_basic_multi = false;
   bool no_auto_basic_multi = false;
+  bool no_auto_basic_multi_polarity = false;
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
   std::string qf_uf_portfolio = "off";
@@ -198,6 +199,9 @@ int main(int argc, char** argv) {
       ->default_val(false);
   app.add_flag("--no-auto-basic-multi", no_auto_basic_multi,
                "Disable the auto basic-multi preprocessing and phase heuristic")
+      ->default_val(false);
+  app.add_flag("--no-auto-basic-multi-polarity", no_auto_basic_multi_polarity,
+               "Disable polarity phase for auto basic-multi formulas")
       ->default_val(false);
   CLI::Option* profile_option = app.add_option("--qf-uf-profile", qf_uf_profile,
                                                "QF_UF profile: default or tuned-interesting")
@@ -351,6 +355,9 @@ int main(int argc, char** argv) {
   }
   if (no_auto_basic_multi) {
     solver_options.auto_basic_multi_preprocessing = false;
+    solver_options.auto_basic_multi_polarity = false;
+  }
+  if (no_auto_basic_multi_polarity) {
     solver_options.auto_basic_multi_polarity = false;
   }
   if (euf_prop == "auto") {
