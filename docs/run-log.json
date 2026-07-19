@@ -6018,6 +6018,174 @@
       },
       "evidence_status": "current_local_candidate",
       "notes": "Fresh merge gate for a rollback-sensitive flat congruence-closure representation change."
+    },
+    {
+      "id": "2026-07-19-slurm-qfuf-html334-flatcc-class-member-merge-record-112103",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "334-row QF_UF primo.html subset comparing current default against raw finite-domain AMO ablation after compact flat congruence-closure class-member rollback",
+      "commit": "2815681",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "slurm_job_id": "112103",
+        "remote_dir": "/home/janotmik/primo-cadical-profile"
+      },
+      "command": "sbatch --array=0-31 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= raw-only=--no-finite-domain-post-amo' scripts/slurm_qfuf_option_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet plus variant-specific options",
+        "version": "primo 0.1.0; git 2815681; cadical cadical-3.0.0-7b99c07"
+      },
+      "references": [
+        {
+          "name": "previous Primo default",
+          "artifact": "results/qfuf-option-compare-112071/default-merged.csv",
+          "commit": "a56738f"
+        }
+      ],
+      "inputs": {
+        "benchmark_set": "user primo.html 334-row QF_UF subset",
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt",
+        "timeout_seconds": 120,
+        "variants": [
+          "default=",
+          "raw-only=--no-finite-domain-post-amo"
+        ]
+      },
+      "artifacts": {
+        "summary": "results/qfuf-option-compare-112103/summary.json",
+        "default_results": "results/qfuf-option-compare-112103/default-merged.csv",
+        "raw_only_results": "results/qfuf-option-compare-112103/raw-only-merged.csv",
+        "default_vs_previous": "results/qfuf-option-compare-112103/default-vs-112071-default-diffs.csv",
+        "default_vs_raw_only": "results/qfuf-option-compare-112103/default-vs-raw-only-diffs.csv"
+      },
+      "summary": {
+        "default": {
+          "total": 334,
+          "ok": 332,
+          "timeout": 2,
+          "wrong": 0,
+          "par2": 2627.77157,
+          "family": {
+            "Goel": {
+              "ok": 7
+            },
+            "NEQ": {
+              "ok": 25,
+              "timeout": 1
+            },
+            "PEQ": {
+              "ok": 24,
+              "timeout": 1
+            },
+            "QG": {
+              "ok": 270
+            },
+            "SEQ": {
+              "ok": 6
+            }
+          }
+        },
+        "raw_only": {
+          "total": 334,
+          "ok": 332,
+          "timeout": 2,
+          "wrong": 0,
+          "par2": 2631.160678
+        },
+        "previous_default_job_112071": {
+          "total": 334,
+          "ok": 332,
+          "timeout": 2,
+          "wrong": 0,
+          "par2": 2640.449295
+        },
+        "par2_delta_previous_minus_current_default": 12.677725,
+        "par2_delta_raw_only_minus_current_default": 3.389108,
+        "solved_ok_delta_vs_previous": 0,
+        "top_default_wins_vs_previous": [
+          "PEQ014_size11 63.840771s -> 58.188442s",
+          "PEQ002_size8 61.694478s -> 58.181466s",
+          "PEQ003_size10 37.379141s -> 34.489157s",
+          "PEQ014_size10 29.844886s -> 27.972340s",
+          "QG qg7/iso_icl_repgen003 52.146376s -> 50.373923s"
+        ],
+        "top_default_losses_vs_previous": [
+          "QG qg5/gensys_icl320 2.182811s -> 4.187969s",
+          "QG qg7/gensys_icl003 14.141451s -> 16.015869s",
+          "QG qg7/iso_brn_nogen_sk011 8.997739s -> 10.647028s",
+          "QG qg6/gensys_icl001 6.003113s -> 7.644259s",
+          "QG qg5/gensys_icl316 2.328922s -> 3.884026s"
+        ]
+      },
+      "evidence_status": "current",
+      "notes": "Compact class-member rollback slightly reduces runtime without changing SAT or EUF search counters. It improves PAR2 modestly but does not close the reference gap or solve additional rows. The raw-only finite-domain AMO option remains rejected as default because default still has lower PAR2 on this suite and raw-only severely regresses SEQ009_size10."
+    },
+    {
+      "id": "2026-07-19-local-cc-audit-use-list-explanation-cache-rejected",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Local congruence-closure audit against Nieuwenhuis-Oliveras Section 3 and Section 5 on PEQ/SEQ/NEQ/QG representative rows",
+      "commit": "2815681 plus temporary uncommitted CC experiments, both reverted after measurement",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Paper audit using https://www.cs.upc.edu/~oliveras/IC.pdf plus local ./build/primo --quiet --stats runs on PEQ019_size7, SEQ009_size10, PEQ002_size8, NEQ048_size7, and QG qg7/iso_brn_repgen_sk032 with default and --no-finite-domain-post-amo variants.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats [optional --no-finite-domain-post-amo]"
+      },
+      "references": [
+        {
+          "name": "Nieuwenhuis-Oliveras paper",
+          "citation": "Robert Nieuwenhuis and Albert Oliveras, Fast Congruence Closure and Extensions, Information and Computation 205, 2007, Sections 3 and 5"
+        },
+        {
+          "name": "LLM2SMT reference checkout",
+          "path": "/tmp/llm2smt",
+          "use": "clean-room behavioral/design comparison only; no source copied"
+        }
+      ],
+      "inputs": {
+        "benchmark_set": "local representative QF_UF rows from current 334-row gap ranking",
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/SEQ/SEQ009_size10.smt2, tmp/QF_UF/PEQ/PEQ002_size8.smt2, tmp/QF_UF/NEQ/NEQ048_size7.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk032.smt2",
+        "timeout_seconds": 80
+      },
+      "artifacts": {
+        "summary": "terminal-captured local matrices in 2026-07-19 conversation",
+        "results": "results/profiles/peq019-next-20260719/",
+        "logs": "results/profiles/peq019-next-20260719/*.err"
+      },
+      "summary": {
+        "baseline_observation": "PEQ019 default remains a cheap non-iso gap: local default about 0.91s, raw-only about 0.48s, tuned LLM2SMT about 0.23s, Z3 near 0.00s on this host. Primo default has 4845 clauses and 3787 AMO clauses; LLM2SMT tuned has 2235 clauses and 1176 AMO clauses.",
+        "use_list_no_reappend_experiment": {
+          "change": "Do not append an affected flat definition to the new representative use list when its normalized signature hits Lookup in process_use_list.",
+          "selected_local_results": {
+            "PEQ019_size7_default": "about 0.46s, improved from about 0.91s; assignments 63275 vs 169824 baseline",
+            "iso_brn_repgen_sk032_default": "about 0.15s, improved from about 0.52s local matrix",
+            "PEQ002_size8_default": "56.746s in longer check, worse than roughly 18-24s baseline/cache-only local checks; PEQ013_size8 and PEQ014_size11 timed out at 90s in follow-up"
+          },
+          "decision": "rejected; paper-shaped but unsafe as a default performance change on hard PEQ rows without a broader redesign"
+        },
+        "explanation_reason_cache_experiment": {
+          "change": "Bounded per-branch memo table for completed explain_equal reasons, cleared on FlatCongruenceClosure::pop.",
+          "selected_local_results_after_reverting_no_reappend": {
+            "PEQ019_size7_default": "1.286s, no useful counter movement versus baseline; explain-cache-hits unchanged at 940671",
+            "PEQ002_size8_default": "23.979s, not a clear improvement over baseline noise and worse than reference gap target",
+            "SEQ009_size10_default": "0.132s, slightly slower than baseline local about 0.09-0.10s",
+            "iso_brn_repgen_sk032_default": "0.646s, worse than baseline local about 0.52s"
+          },
+          "decision": "rejected; repeated explanation cost is not fixed by this simple memoization policy"
+        },
+        "audit_conclusion": "The current FlatCongruenceClosure is a Section 3-shaped affected-use-list/signature-lookup closure, but it still lacks the Section 4-5 proof-forest explanation algorithm. Profiles and rejected experiments indicate that a proper proof-forest Explain design is the next CC-level implementation target, not a local use-list or memoization tweak."
+      },
+      "evidence_status": "rejected_experiments",
+      "notes": "Temporary source edits were reverted. The accepted artifact from this audit is the diagnosis and documentation; no performance default was changed."
     }
   ]
 }

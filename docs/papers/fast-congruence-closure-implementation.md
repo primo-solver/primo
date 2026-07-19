@@ -167,3 +167,29 @@ flat-definition, lookup-hit, and congruence-merge counters.
   regressions.
 - Explanations are intentionally non-minimal.
 - Proof output and the Section 4-5 proof-producing union-find are deferred.
+
+## 2026-07-19 Audit Notes
+
+Two local experiments checked whether the remaining PEQ/NEQ slowdown could be
+closed by smaller patches around the Section 3 use-list and the current
+explanation graph:
+
+- A stricter reading of Section 3.3 would avoid moving an affected flat
+  definition to the new representative's use list after its normalized
+  signature hits `Lookup`. In Primo's current online/backtracking setting this
+  reduced lookup work on `PEQ019_size7` and `iso_brn_repgen_sk032`, but
+  regressed harder PEQ rows such as `PEQ002_size8`; the change was rejected.
+- A bounded per-branch memo table for completed `explain_equal` reasons was
+  also rejected. Existing repeated-explanation counters did not move
+  materially on the local PEQ/SEQ/NEQ/QG matrix, while wall time became noisier
+  or worse.
+
+The audit therefore points back to the paper's Section 4-5 proof-forest
+mechanism as the plausible missing congruence-closure component. The current
+`FlatCongruenceClosure` explanation path is still an adjacency-list BFS over
+the equality edge graph with recursive expansion of congruence labels. The
+paper instead maintains a proof forest during `Propagate` and answers
+`Explain` by walking to a nearest common ancestor, using an auxiliary
+union-find/highest-node structure to avoid repeated visits across recursive
+subproofs. That implementation remains future work; it must be designed from
+the paper rather than from any reference solver code.
