@@ -5535,109 +5535,68 @@
       "notes": "Disabling auto-basic-multi polarity helps selected SAT BRN and some ICL rows, but it regresses the activated QG aggregate and whole 334-row PAR2. Keep the ablation flag for SMAC/tuning; do not flip the default from this evidence. The broader NEQ gap is unaffected because auto-basic-multi is inactive on the named NEQ rows."
     },
     {
-      "id": "2026-07-19-neq016-pure-filter-local-profile",
+      "id": "2026-07-19-neq016-pure-filter-guard-rejected",
       "started_at": "2026-07-19",
       "recorded_at": "2026-07-19",
-      "kind": "profiling",
-      "scope": "QF_UF NEQ pure-theory-filter investigation on tmp/QF_UF/NEQ/NEQ016_size8.smt2",
-      "commit": "worktree after 81aac50, before committing auto pure-filter guard",
+      "kind": "tuning",
+      "scope": "QF_UF 334-row primo.html subset, auto pure-filter exception candidate",
+      "commit": "f6fdee6 for evaluated candidate; reverted immediately afterward because SLURM did not validate a default win",
       "environment": {
-        "type": "local",
-        "host": "workspace",
-        "slurm_job_id": null
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "slurm_job_id": "112007"
       },
-      "command": "timeout 35s ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size8.smt2; perf record/perf report on same target; local matrix script over NEQ rows from benchmarks/user-primo-html334-2026-07-18.txt comparing default and --pure-theory-filter=off at 65s",
+      "command": "sbatch --array=0-31 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= pure-on=--pure-theory-filter=on' scripts/slurm_qfuf_option_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "./build/primo --quiet --stats"
+        "argv": "build-slurm-rel/primo --quiet --stats"
       },
       "references": [
         {
-          "name": "LLM2SMT",
-          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --no-theory-prop --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+          "name": "Primo explicit pure filter",
+          "argv": "build-slurm-rel/primo --quiet --stats --pure-theory-filter=on"
         }
       ],
       "inputs": {
         "generator": null,
         "logic": "QF_UF",
         "seed": null,
-        "count": null,
-        "timeout_seconds": 35,
+        "count": 334,
+        "timeout_seconds": 120,
         "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
       },
       "artifacts": {
-        "summary": "results/local-neq-pure-filter-off-20260719.csv",
-        "results": "results/local-neq-pure-filter-off-20260719.csv",
-        "logs": null,
+        "summary": "results/qfuf-option-compare-112007/{default,pure-on}-merged.csv",
+        "results": "results/qfuf-option-compare-112007",
+        "logs": "results/qfuf-option-compare-112007/*/logs",
         "bugs": null
       },
       "summary": {
-        "target": "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
-        "baseline_default_35s": "timeout, unknown, :euf.pure-filter.enabled 1, :euf.assignments 5866964, :euf.theory-conflicts 265282, :euf.incremental.explain-calls 45962316",
-        "reference_tuned": "unsat in 21.99s, clauses 3557, binary 2726, assignments 5935212, eq 2176082, diseq 3759130, conflicts 185145",
-        "perf_top_functions": [
-          "18.69% FlatCongruenceClosure::explain_equal_into",
-          "12.13% CaDiCaL::Internal::propagate",
-          "8.73% FlatCongruenceClosure::merge_classes",
-          "6.78% FlatCongruenceClosure::restore_trail_entry",
-          "6.71% FlatCongruenceClosure::process_use_list",
-          "6.61% OnlineEufPropagator::notify_assignment"
-        ],
-        "pure_filter_off_90s": "unsat in 43.62s, :euf.theory-conflicts 195842, :euf.incremental.explain-calls 37962704",
-        "local_matrix": "default 65s timed out on NEQ016_size8; --pure-theory-filter=off solved it in 44.525919s but regressed NEQ016_size7 from 5.147347s to 12.050084s and NEQ023_size7 from 0.435572s to 1.129347s, so a blanket default disable was rejected"
+        "default": {
+          "total": 334,
+          "solved": 332,
+          "timeouts": 2,
+          "errors": 0,
+          "wrong": 0,
+          "par2": 2636.469837,
+          "auto_pure_filter_off_rows": 1
+        },
+        "pure_on": {
+          "total": 334,
+          "solved": 332,
+          "timeouts": 2,
+          "errors": 0,
+          "wrong": 0,
+          "par2": 2591.9866,
+          "auto_pure_filter_off_rows": 0
+        },
+        "activated_row": "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+        "activated_row_default": "timeout at 120.104467s, :euf.pure-filter.enabled 0, :euf.pure-filter.auto-off 1, assignments 4684816, conflicts 186571, explain calls 35720389",
+        "activated_row_pure_on": "timeout at 120.104966s, :euf.pure-filter.enabled 1, assignments 7704675, conflicts 320667, explain calls 56443779",
+        "local_candidate_evidence": "Before SLURM, local default with the guard solved NEQ016_size8 in 43.84s and 1000 QF_UF FuzzSMT cases passed. The cluster result did not reproduce the solved-row improvement at the requested 120s timeout."
       },
-      "evidence_status": "current_local",
-      "notes": "This run motivated a narrow auto-mode exception keyed by existing preprocessing and theory-atom shape counters. It is a benchmark-derived guard, not an implementation copied from LLM2SMT."
-    },
-    {
-      "id": "2026-07-19-qfuf-fuzzsmt-auto-pure-filter-guard-1000",
-      "started_at": "2026-07-19",
-      "recorded_at": "2026-07-19",
-      "kind": "fuzz",
-      "scope": "QF_UF FuzzSMT generated cases for auto pure-filter guard",
-      "commit": "worktree after 81aac50, before committing auto pure-filter guard",
-      "environment": {
-        "type": "local",
-        "host": "workspace",
-        "slurm_job_id": null
-      },
-      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071933 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-auto-pure-filter-guard-1000",
-      "solver": {
-        "name": "Primo",
-        "argv": "./build/primo --quiet"
-      },
-      "references": [
-        {
-          "name": "z3",
-          "argv": "z3"
-        }
-      ],
-      "inputs": {
-        "generator": "fuzzsmt",
-        "logic": "QF_UF",
-        "seed": 2026071933,
-        "count": 1000,
-        "timeout_seconds": 5,
-        "manifest": null
-      },
-      "artifacts": {
-        "summary": "fuzz-results/qf_uf-fuzzsmt-auto-pure-filter-guard-1000/summary.csv",
-        "results": "fuzz-results/qf_uf-fuzzsmt-auto-pure-filter-guard-1000",
-        "logs": null,
-        "bugs": "fuzz-results/qf_uf-fuzzsmt-auto-pure-filter-guard-1000/bugs"
-      },
-      "summary": {
-        "total": 1000,
-        "pass": 1000,
-        "wrong": 0,
-        "crash": 0,
-        "timeout": 0,
-        "unsupported": 0,
-        "parser_or_type_error": 0,
-        "reference_disagreement": 0
-      },
-      "evidence_status": "current_local",
-      "notes": "Merge-gate-sized local QF_UF fuzz run after changing auto pure-filter selection. The generated bugs directory has no blocking failures; summary.csv reports PASS for all rows."
+      "evidence_status": "rejected",
+      "notes": "The candidate reduced some EUF activity on the activated row but did not improve solved count under SLURM headline conditions. The source change was reverted; keep this entry to prevent promoting this narrow benchmark-derived guard without stronger evidence."
     }
   ]
 }

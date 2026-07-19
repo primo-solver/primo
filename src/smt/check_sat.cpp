@@ -129,7 +129,6 @@ constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
 constexpr util::StatKey kStatPureTheoryFilterEnabled = util::StatKey::PureTheoryFilterEnabled;
-constexpr util::StatKey kStatPureTheoryFilterAutoOff = util::StatKey::PureTheoryFilterAutoOff;
 constexpr util::StatKey kStatPureTheoryAtomsPositive = util::StatKey::PureTheoryAtomsPositive;
 constexpr util::StatKey kStatPureTheoryAtomsNegative = util::StatKey::PureTheoryAtomsNegative;
 constexpr util::StatKey kStatPureTheoryLiteralsFiltered = util::StatKey::PureTheoryLiteralsFiltered;
@@ -1048,33 +1047,6 @@ bool is_pure_negative(const BooleanClausifier::TheoryAtom& atom) {
 
 bool pure_theory_filter_enabled(PureTheoryFilterMode mode) {
   return mode != PureTheoryFilterMode::Off;
-}
-
-bool should_disable_auto_pure_theory_filter(const util::Statistics& statistics) {
-  if (statistics.get(kStatAutoSingleAssertion) == 0 || statistics.get(kStatAutoBasicSingle) != 0) {
-    return false;
-  }
-  if (statistics.get(kStatUfSymmetryAcceptedSets) == 0 ||
-      statistics.get(kStatUfSymmetryTerms) != 3 || statistics.get(kStatUfSymmetryValues) < 8) {
-    return false;
-  }
-  const std::size_t raw_choices = statistics.get(kStatFiniteDomainRawChoices);
-  const std::size_t theory_atoms = statistics.get(kStatTheoryAtoms);
-  const std::size_t pure_negative = statistics.get(kStatPureTheoryAtomsNegative);
-  return raw_choices >= 50 && raw_choices <= 100 && theory_atoms >= 500 && theory_atoms <= 2000 &&
-         pure_negative > 0 && pure_negative <= 32;
-}
-
-PureTheoryFilterMode resolve_pure_theory_filter_mode(PureTheoryFilterMode mode,
-                                                     util::Statistics& statistics) {
-  if (mode != PureTheoryFilterMode::Auto) {
-    return mode;
-  }
-  if (should_disable_auto_pure_theory_filter(statistics)) {
-    statistics.increment(kStatPureTheoryFilterAutoOff);
-    return PureTheoryFilterMode::Off;
-  }
-  return PureTheoryFilterMode::On;
 }
 
 bool should_filter_assignment(PureTheoryFilterMode mode, const BooleanClausifier::TheoryAtom& atom,
@@ -2372,14 +2344,12 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     clausifier.assert_formula(assertion);
   }
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
-  CheckSatOptions resolved_options = options;
-  resolved_options.pure_theory_filter =
-      resolve_pure_theory_filter_mode(options.pure_theory_filter, statistics);
   statistics.set(kStatPureTheoryFilterEnabled,
-                 pure_theory_filter_enabled(resolved_options.pure_theory_filter) ? 1 : 0);
+                 pure_theory_filter_enabled(options.pure_theory_filter) ? 1 : 0);
+  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   const EufPropagationMode euf_propagation =
-      resolve_euf_propagation_mode(resolved_options, clausifier.theory_atoms().size(), statistics);
+      resolve_euf_propagation_mode(options, clausifier.theory_atoms().size(), statistics);
+  CheckSatOptions resolved_options = options;
   resolved_options.euf_propagation = euf_propagation;
   TheoryPhaseMode theory_phase =
       resolve_theory_phase_mode(options.theory_phase, clausifier.theory_atoms(), statistics);
@@ -2486,7 +2456,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       }
       const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
       AssignedTheoryAtom assigned =
-          assigned_theory_atom(resolved_options.pure_theory_filter, atom, atom_value);
+          assigned_theory_atom(options.pure_theory_filter, atom, atom_value);
       count_filtered_assignment(assigned, statistics);
       assigned_atoms.push_back(assigned);
     }
@@ -2613,7 +2583,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatTheoryAtoms, 0);
   statistics.set(kStatEufPredicateAtoms, 0);
   statistics.set(kStatPureTheoryFilterEnabled, 0);
-  statistics.set(kStatPureTheoryFilterAutoOff, 0);
   statistics.set(kStatPureTheoryAtomsPositive, 0);
   statistics.set(kStatPureTheoryAtomsNegative, 0);
   statistics.set(kStatPureTheoryLiteralsFiltered, 0);

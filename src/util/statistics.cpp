@@ -84,7 +84,6 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":euf.theory-atoms"sv,
     ":euf.predicate-atoms"sv,
     ":euf.pure-filter.enabled"sv,
-    ":euf.pure-filter.auto-off"sv,
     ":euf.pure-atoms.positive"sv,
     ":euf.pure-atoms.negative"sv,
     ":euf.pure-literals.filtered"sv,

@@ -39,16 +39,9 @@ for pure theory atoms and does not remove their SAT clauses. It only avoids
 feeding theory literals to congruence closure when those literals are irrelevant
 to satisfying the Boolean abstraction.
 
-`--pure-theory-filter=auto|on|off` controls this filtering. `on` always applies
-the filter and `off` disables it. `auto` applies the filter except for a narrow
-single-assertion finite-domain/symmetry shape found in the NEQ performance
-trail: one accepted symmetry group with three fixed terms, at least eight
-values, 50 to 100 raw finite-domain choices, 500 to 2000 theory atoms, and at
-most 32 pure-negative atoms. On that shape, filtering removed enough useful
-early theory assignments that `NEQ016_size8` timed out in the default profile;
-the auto exception is reported as `:euf.pure-filter.auto-off`. This is a
-benchmark-derived guard around the Sebastiani pure-filtering subset, not a
-paper-specific ghost-literal decision algorithm.
+`--pure-theory-filter=auto|on|off` controls this filtering. The current `auto`
+policy is the same as `on`; `off` is intended for ablation runs and for
+benchmark families where filtering removes useful early theory conflicts.
 
 Filtered literals are also omitted from model-time propagation premises and
 from the incremental external-conflict closure. Candidate theory propagations
