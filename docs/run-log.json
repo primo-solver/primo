@@ -3324,7 +3324,7 @@
       "recorded_at": "2026-07-19",
       "kind": "benchmark",
       "scope": "Local QF_UF top-level disjunction Tseitin default comparison against --no-top-level-or-tseitin",
-      "commit": "6428942",
+      "commit": "5b7d684",
       "environment": {
         "type": "local",
         "host": "workspace"
@@ -3379,7 +3379,7 @@
       "recorded_at": "2026-07-19",
       "kind": "fuzz",
       "scope": "QF_UF FuzzSMT merge gate after top-level OR Tseitin encoding and finite-domain AMO fact preservation",
-      "commit": "6428942",
+      "commit": "5b7d684",
       "environment": {
         "type": "local",
         "host": "workspace"
