@@ -58,7 +58,11 @@ The script refuses a dirty local tree, syncs the committed source, rebuilds
 CaDiCaL on the cluster, rebuilds `build-slurm-rel/primo`, and checks that
 `primo --version` reports the local commit and a CaDiCaL version. Use
 `--check-only` immediately before `sbatch` when the workspace was already
-prepared.
+prepared. Destructive sync/rebuild is refused while active SLURM jobs with Primo
+job names are present, because those jobs may be using the same `build-slurm-rel`
+binary. Use a separate remote workdir for overlapping campaigns; reserve
+`--allow-active-jobs` for cases where the active jobs are known to use another
+workspace.
 
 If the published `interesting.html` table is available, pass
 `--reference-html path/to/interesting.html`. The script extracts table text with

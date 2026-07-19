@@ -2349,6 +2349,47 @@
       },
       "evidence_status": "pending",
       "notes": "This replaces the earlier mixed SMAC job 111491 for evaluating the new auto phase knob. Job 111491 was launched from commit 014fe3c before auto existed and remains useful only as historical tuning evidence for the old search space."
+    },
+    {
+      "id": "2026-07-19-smac-qfuf-mixed-111491-invalidated",
+      "started_at": "2026-07-19T04:00:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "tuning",
+      "scope": "Collect old mixed QF_UF SMAC job launched before --theory-phase=auto existed",
+      "commit": "014fe3c",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "slurm_job_id": "111491"
+      },
+      "command": "PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt PRIMO_SMAC_LABEL=qfuf-mixed PRIMO_SMAC_TRIALS=160 PRIMO_SMAC_TIMEOUT=20 PRIMO_SMAC_VALIDATION_TIMEOUT=60 PRIMO_SMAC_GUARD_TIMEOUT=60 PRIMO_SMAC_SEED=20260719 sbatch scripts/slurm_qfuf_smac.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo"
+      },
+      "references": [],
+      "inputs": {
+        "generator": "SMAC",
+        "logic": "QF_UF",
+        "seed": 20260719,
+        "count": 160,
+        "timeout_seconds": 20,
+        "manifest": "benchmarks/qfuf-smac-mixed-train.txt; validation benchmarks/qfuf-smac-mixed-validate.txt; guard benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-111491/",
+        "results": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-111491/{target-runs.csv,trial-summary.csv,validation-runs.csv,incumbent.json}",
+        "logs": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-111491.{out,err}",
+        "bugs": null
+      },
+      "summary": {
+        "status": "invalid",
+        "failure": "After SMAC exhausted 160 trials, guard validation crashed with FileNotFoundError for /home/janotmik/primo-cadical-profile/build-slurm-rel/primo.",
+        "cause": "The shared remote workspace was resynced/rebuilt for commit 9d7e4ac while job 111491 was still running, removing build-slurm-rel/primo out from under the old job.",
+        "usable_evidence": "none for incumbent acceptance or guard results"
+      },
+      "evidence_status": "rejected",
+      "notes": "Do not cite 111491 as a successful SMAC result. Future SLURM tuning runs should avoid destructive rebuilds of a workspace used by active jobs, preferably by using per-commit/per-job remote workdirs or checking squeue before rebuilding the shared workdir."
     }
   ]
 }

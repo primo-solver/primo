@@ -101,6 +101,26 @@ ldd build-slurm-rel/{shlex.quote(target)} >/dev/null
 """.strip()
 
 
+def active_primo_jobs_command() -> str:
+    return r"""
+set -eu
+if command -v squeue >/dev/null 2>&1; then
+  squeue -h -u "$USER" -o '%i %j %T' |
+    awk '$3 ~ /^(RUNNING|PENDING|CONFIGURING|COMPLETING)$/ && $2 ~ /^primo/ {print}'
+fi
+""".strip()
+
+
+def ensure_no_active_primo_jobs(config: Path, remote: str) -> None:
+    proc = ssh(config, remote, active_primo_jobs_command())
+    if proc.stdout.strip():
+        raise SystemExit(
+            "refusing destructive SLURM workspace preparation while active "
+            "Primo jobs exist; use --allow-active-jobs only when the remote "
+            "workdir is not used by those jobs"
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -114,6 +134,11 @@ def main() -> int:
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--no-sync", action="store_true")
+    parser.add_argument(
+        "--allow-active-jobs",
+        action="store_true",
+        help="Allow sync/rebuild even if active SLURM jobs with Primo job names exist",
+    )
     args = parser.parse_args()
 
     if args.jobs < 1:
@@ -128,6 +153,9 @@ def main() -> int:
     if status:
         print(status)
         raise SystemExit("refusing to prepare SLURM workspace from a dirty tree")
+
+    if not args.check_only and not args.allow_active_jobs:
+        ensure_no_active_primo_jobs(args.ssh_config, args.remote)
 
     if not args.check_only and not args.no_sync:
         ssh(args.ssh_config, args.remote, f"mkdir -p {shlex.quote(args.remote_dir)}")
