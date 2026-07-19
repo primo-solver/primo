@@ -1011,6 +1011,47 @@ void auto_preprocessing_uses_basic_for_selected_single_assertion_domains() {
   assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 200);
   assert(result.statistics.get(":preprocessing.uf-symmetry.terms") == 6);
   assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 0);
+  assert(result.statistics.get(":euf.predicate-atoms") == 0);
+  assert(result.statistics.get(":sat.phase.auto-basic-single-predicate-polarity") == 0);
+}
+
+void auto_preprocessing_uses_predicate_polarity_for_selected_single_assertion_domains() {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun g (A) A)\n";
+  input << "(declare-fun p (A) Bool)\n";
+  for (int value = 0; value < 6; ++value) {
+    input << "(declare-fun v" << value << " () A)\n";
+  }
+  for (int variable = 0; variable < 200; ++variable) {
+    input << "(declare-fun x" << variable << " () A)\n";
+  }
+  input << "(assert (and (distinct v0 v1 v2 v3 v4 v5)\n";
+  input << "  (distinct (g v0) (g v1) (g v2) (g v3) (g v4) (g v5))\n";
+  input << "  (p x0)\n";
+  for (int variable = 0; variable < 200; ++variable) {
+    input << "  (or";
+    for (int value = 0; value < 6; ++value) {
+      if (variable < 6) {
+        input << " (= x" << variable << " v" << value << ")";
+      } else {
+        input << " (= x" << variable << " (g v" << value << "))";
+      }
+    }
+    input << ")\n";
+  }
+  input << "))\n(check-sat)\n";
+
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  const auto result = check_sat_smtlib(input.str(), options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.basic-single") == 1);
+  assert(result.statistics.get(":euf.predicate-atoms") == 1);
+  assert(result.statistics.get(":sat.phase.auto-basic-single-predicate-polarity") == 1);
+  assert(result.statistics.get(":sat.phase.theory-negative") <
+         result.statistics.get(":euf.theory-atoms"));
 }
 
 void auto_preprocessing_basic_single_can_be_disabled() {
@@ -1870,6 +1911,7 @@ int main() {
   auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions();
   auto_preprocessing_basic_multi_can_be_disabled();
   auto_preprocessing_uses_basic_for_selected_single_assertion_domains();
+  auto_preprocessing_uses_predicate_polarity_for_selected_single_assertion_domains();
   auto_preprocessing_basic_single_can_be_disabled();
   auto_preprocessing_emits_guarded_equality_definitions();
   finite_domain_equality_definitions_can_be_disabled();

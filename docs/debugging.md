@@ -68,6 +68,8 @@ scripts and result artifacts. Current counters include:
 - `:solver.qf-uf`;
 - `:sat.phase.theory-negative`;
 - `:sat.phase.auto-polarity`;
+- `:sat.phase.auto-basic-single-predicate-polarity`;
+- `:sat.phase.auto-basic-multi-polarity`;
 - `:sat.vars`;
 - `:sat.clauses`;
 - `:sat.clause-lits`;
@@ -75,6 +77,7 @@ scripts and result artifacts. Current counters include:
 - `:sat.binary-clauses`;
 - `:sat.solve-calls`;
 - `:euf.theory-atoms`;
+- `:euf.predicate-atoms`;
 - `:euf.pure-filter.enabled`;
 - `:euf.pure-atoms.positive`;
 - `:euf.pure-atoms.negative`;

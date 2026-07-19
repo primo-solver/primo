@@ -16,10 +16,13 @@ Primo currently exposes QF_UF preprocessing through
   experiments. A guarded single-assertion exception uses the lighter `basic`
   subset when the original formula has at most 15,000 reachable terms, at least
   200 finite-domain choices, and a small accepted finite-domain symmetry group;
-  `--no-auto-basic-single` disables this exception for same-binary A/B runs. A
-  guarded small multi-assertion auto branch uses the `basic` subset when the input has
-  more than one assertion, at most 10,000 assertions, and at most 20,000
-  initially reachable terms.
+  `--no-auto-basic-single` disables this exception for same-binary A/B runs. If
+  that branch also contains Boolean-valued UF predicate applications, Primo uses
+  polarity phase for those syntactically single-polarity atoms; disable that
+  narrower phase override with `--no-auto-basic-single-predicate-polarity`. A
+  guarded small multi-assertion auto branch uses the `basic` subset when the
+  input has more than one assertion, at most 10,000 assertions, and at most
+  20,000 initially reachable terms.
 
 The default command now enables the safe part of the predecessor performance
 profile:
@@ -90,8 +93,10 @@ reproducing narrower configurations:
 `--no-eq-bridge`, `--no-uf-symmetry-breaking`, and
 `--theory-phase=auto` are useful ablation or targeted-experiment switches.
 `--qf-uf-preprocess=off` disables the preprocessing loop and the finite-domain
-symmetry-breaking preprocessing step. `--no-auto-basic-multi` disables the
-compact multi-assertion classifier for scripted option matrices.
+symmetry-breaking preprocessing step. `--no-auto-basic-single-predicate-polarity`
+disables the predicate-aware phase override for selected single-assertion
+finite-domain formulas. `--no-auto-basic-multi` disables the compact
+multi-assertion classifier for scripted option matrices.
 
 ## Experimental QF_UF Portfolio
 
@@ -142,7 +147,13 @@ symmetry pass accepts a group with at most six non-value terms. It reports
 `--no-auto-basic-single`; the default ordinary strong-auto branch reports
 `:preprocessing.auto.strong`. On the July 19, 2026 334-row SLURM comparison it
 selected 12 rows, gained `PEQ014_size11`, and reduced PAR2 by about 203 seconds
-against the same binary with the selector disabled. The basic-multi exception is
+against the same binary with the selector disabled. A follow-up local probe found
+that polarity phase helps the selected NEQ rows with Boolean UF predicate atoms,
+including `NEQ023_size7`, but regresses pure-equality PEQ rows; the implemented
+subset therefore gates this static phase override on `:euf.predicate-atoms > 0`
+and reports `:sat.phase.auto-basic-single-predicate-polarity`. It does not
+address `NEQ016_size8`, which does not select the single-assertion `basic`
+branch. The basic-multi exception is
 a separate empirical classifier for compact multi-assertion QG rows and reports
 `:preprocessing.auto.basic-multi`. A later July 19, 2026 same-run SLURM
 comparison on the 334-row user HTML set validated enabling it by default after

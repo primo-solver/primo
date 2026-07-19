@@ -114,6 +114,8 @@ constexpr util::StatKey kStatAutoBasicMulti = util::StatKey::AutoBasicMulti;
 constexpr util::StatKey kStatAutoLargeAssertionSkip = util::StatKey::AutoLargeAssertionSkip;
 constexpr util::StatKey kStatSatTheoryNegativePhase = util::StatKey::SatTheoryNegativePhase;
 constexpr util::StatKey kStatSatPhaseAutoPolarity = util::StatKey::SatPhaseAutoPolarity;
+constexpr util::StatKey kStatSatPhaseAutoBasicSinglePredicatePolarity =
+    util::StatKey::SatPhaseAutoBasicSinglePredicatePolarity;
 constexpr util::StatKey kStatSatPhaseAutoBasicMultiPolarity =
     util::StatKey::SatPhaseAutoBasicMultiPolarity;
 constexpr util::StatKey kStatSatVars = util::StatKey::SatVars;
@@ -125,6 +127,7 @@ constexpr util::StatKey kStatSolverBoolean = util::StatKey::SolverBoolean;
 constexpr util::StatKey kStatSolverQfUf = util::StatKey::SolverQfUf;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
+constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
 constexpr util::StatKey kStatPureTheoryFilterEnabled = util::StatKey::PureTheoryFilterEnabled;
 constexpr util::StatKey kStatPureTheoryAtomsPositive = util::StatKey::PureTheoryAtomsPositive;
 constexpr util::StatKey kStatPureTheoryAtomsNegative = util::StatKey::PureTheoryAtomsNegative;
@@ -995,7 +998,8 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   return false;
 }
 
-void publish_theory_atom_purity_stats(const std::vector<BooleanClausifier::TheoryAtom>& atoms,
+void publish_theory_atom_purity_stats(const core::TermManager& terms,
+                                      const std::vector<BooleanClausifier::TheoryAtom>& atoms,
                                       util::Statistics& statistics);
 
 CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
@@ -1010,7 +1014,7 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
   }
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-  publish_theory_atom_purity_stats(clausifier.theory_atoms(), statistics);
+  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
   statistics.increment(kStatSatSolveCalls);
   const CheckSatResult result = map_sat_result(backend.solve());
@@ -1067,19 +1071,31 @@ AssignedTheoryAtom assigned_theory_atom(PureTheoryFilterMode mode,
                             should_filter_assignment(mode, atom, value)};
 }
 
-void publish_theory_atom_purity_stats(const std::vector<BooleanClausifier::TheoryAtom>& atoms,
+bool is_predicate_theory_atom(const core::TermManager& terms,
+                              const BooleanClausifier::TheoryAtom& atom) {
+  const core::Term& term = terms.get(atom.term);
+  return term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort();
+}
+
+void publish_theory_atom_purity_stats(const core::TermManager& terms,
+                                      const std::vector<BooleanClausifier::TheoryAtom>& atoms,
                                       util::Statistics& statistics) {
   std::size_t positive = 0;
   std::size_t negative = 0;
+  std::size_t predicates = 0;
   for (const BooleanClausifier::TheoryAtom& atom : atoms) {
     if (is_pure_positive(atom)) {
       ++positive;
     } else if (is_pure_negative(atom)) {
       ++negative;
     }
+    if (is_predicate_theory_atom(terms, atom)) {
+      ++predicates;
+    }
   }
   statistics.set(kStatPureTheoryAtomsPositive, positive);
   statistics.set(kStatPureTheoryAtomsNegative, negative);
+  statistics.set(kStatEufPredicateAtoms, predicates);
 }
 
 TheoryPhaseMode resolve_theory_phase_mode(TheoryPhaseMode mode,
@@ -2330,7 +2346,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(kStatPureTheoryFilterEnabled,
                  pure_theory_filter_enabled(options.pure_theory_filter) ? 1 : 0);
-  publish_theory_atom_purity_stats(clausifier.theory_atoms(), statistics);
+  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   const EufPropagationMode euf_propagation =
       resolve_euf_propagation_mode(options, clausifier.theory_atoms().size(), statistics);
   CheckSatOptions resolved_options = options;
@@ -2339,6 +2355,13 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       resolve_theory_phase_mode(options.theory_phase, clausifier.theory_atoms(), statistics);
   if (options.theory_phase == TheoryPhaseMode::Auto && theory_phase == TheoryPhaseMode::Polarity) {
     statistics.increment(kStatSatPhaseAutoPolarity);
+  }
+  if ((options.theory_phase == TheoryPhaseMode::Negative ||
+       options.theory_phase == TheoryPhaseMode::Auto) &&
+      options.auto_basic_single_predicate_polarity && statistics.get(kStatAutoBasicSingle) != 0 &&
+      statistics.get(kStatEufPredicateAtoms) != 0) {
+    theory_phase = TheoryPhaseMode::Polarity;
+    statistics.increment(kStatSatPhaseAutoBasicSinglePredicatePolarity);
   }
   if ((options.theory_phase == TheoryPhaseMode::Negative ||
        options.theory_phase == TheoryPhaseMode::Auto) &&
@@ -2547,6 +2570,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatAutoLargeAssertionSkip, 0);
   statistics.set(kStatSatTheoryNegativePhase, 0);
   statistics.set(kStatSatPhaseAutoPolarity, 0);
+  statistics.set(kStatSatPhaseAutoBasicSinglePredicatePolarity, 0);
   statistics.set(kStatSatPhaseAutoBasicMultiPolarity, 0);
   statistics.set(kStatSatVars, 0);
   statistics.set(kStatSatClauses, 0);
@@ -2557,6 +2581,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatSolverQfUf, 0);
   statistics.set(kStatSatSolveCalls, 0);
   statistics.set(kStatTheoryAtoms, 0);
+  statistics.set(kStatEufPredicateAtoms, 0);
   statistics.set(kStatPureTheoryFilterEnabled, 0);
   statistics.set(kStatPureTheoryAtomsPositive, 0);
   statistics.set(kStatPureTheoryAtomsNegative, 0);

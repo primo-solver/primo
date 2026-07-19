@@ -130,6 +130,7 @@ int main(int argc, char** argv) {
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
   bool no_auto_basic_single = false;
+  bool no_auto_basic_single_predicate_polarity = false;
   bool auto_basic_multi = false;
   bool no_auto_basic_multi = false;
   std::string qf_uf_preprocess = "auto";
@@ -188,6 +189,9 @@ int main(int argc, char** argv) {
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
   app.add_flag("--no-auto-basic-single", no_auto_basic_single,
                "Disable the guarded auto basic-single preprocessing selector")
+      ->default_val(false);
+  app.add_flag("--no-auto-basic-single-predicate-polarity", no_auto_basic_single_predicate_polarity,
+               "Disable polarity phase for auto basic-single formulas with Boolean UF predicates")
       ->default_val(false);
   app.add_flag("--auto-basic-multi", auto_basic_multi,
                "Enable the experimental auto basic-multi preprocessing and phase heuristic")
@@ -336,6 +340,10 @@ int main(int argc, char** argv) {
   }
   if (no_auto_basic_single) {
     solver_options.auto_basic_single_preprocessing = false;
+    solver_options.auto_basic_single_predicate_polarity = false;
+  }
+  if (no_auto_basic_single_predicate_polarity) {
+    solver_options.auto_basic_single_predicate_polarity = false;
   }
   if (auto_basic_multi) {
     solver_options.auto_basic_multi_preprocessing = true;
@@ -380,6 +388,7 @@ int main(int argc, char** argv) {
     solver_options.theory_phase = primo::smt::TheoryPhaseMode::Negative;
   }
   if (theory_phase_option->count() > 0) {
+    solver_options.auto_basic_single_predicate_polarity = false;
     solver_options.auto_basic_multi_polarity = false;
   }
   const std::optional<primo::smt::AutoBudget> parsed_prop_budget =

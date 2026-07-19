@@ -93,6 +93,7 @@ struct CheckSatOptions {
   bool solved_constant_substitution = true;
   bool top_level_or_tseitin = false;
   bool auto_basic_single_preprocessing = true;
+  bool auto_basic_single_predicate_polarity = true;
   bool auto_basic_multi_preprocessing = true;
   bool auto_basic_multi_polarity = true;
   QfUfPortfolioMode qf_uf_portfolio = QfUfPortfolioMode::Off;
