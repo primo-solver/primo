@@ -6777,6 +6777,44 @@
       },
       "evidence_status": "current_local",
       "notes": "This is diagnostic evidence only. It does not establish a new default or a reference-parity improvement. Pure-theory filtering remains a candidate family-shape heuristic, while the CC-level implementation target remains a paper-derived proof-forest explanation path with direct reason-quality counters."
+    },
+    {
+      "id": "2026-07-20-rejected-flatcc-dense-explanation-cache",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "performance",
+      "scope": "Rejected FlatCongruenceClosure dense generation-stamped per-explanation cache experiment",
+      "commit": "fd11811",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Temporary patch replaced the per-reason unordered_set explanation_cache_ in FlatCongruenceClosure with a dense generation-stamped pair table for closures up to 2048 flat nodes, falling back to the existing unordered_set above that limit. Built and ran ./build/primo_euf_solver_tests, then compared patched and baseline ./build/primo --quiet --stats on NEQ016_size8, NEQ023_size7, PEQ019_size7, PEQ002_size8, SEQ035_size6, and qg7/iso_brn_repgen033 with 30-55s timeouts. The source patch was reverted before recording this entry.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "manifest": "tmp/QF_UF/NEQ/NEQ016_size8.smt2, tmp/QF_UF/NEQ/NEQ023_size7.smt2, tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/PEQ/PEQ002_size8.smt2, tmp/QF_UF/SEQ/SEQ035_size6.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+        "timeout_seconds": "30, 35, or 55 depending on row"
+      },
+      "artifacts": {
+        "baseline_csv": "results/local-dense-explain-cache-baseline-20260720.csv",
+        "patched_csv": "results/local-dense-explain-cache-current-20260720.csv"
+      },
+      "summary": {
+        "focused_test": "./build/primo_euf_solver_tests passed under the temporary patch.",
+        "NEQ016_size8": "Baseline 55.008s unknown with 67235860 explain calls; dense cache 55.009s unknown with 68274798 explain calls. No timeout movement and slightly more work.",
+        "NEQ023_size7": "Baseline 0.420s unsat; dense cache 0.422s unsat.",
+        "PEQ019_size7": "Baseline 1.010s unsat; dense cache 0.977s unsat.",
+        "PEQ002_size8": "Baseline 17.888s unsat; dense cache 17.923s unsat.",
+        "SEQ035_size6": "Baseline 1.367s sat; dense cache 1.262s sat.",
+        "iso_brn_repgen033": "Baseline 0.050s sat; dense cache 0.052s sat.",
+        "interpretation": "The hash-cache replacement did not reduce search or explain traversal on the target and produced only noise-scale guard changes. The dominant issue remains reason shape/traversal and SAT interaction, not the small unordered_set used to suppress repeated sub-explanations inside one reason."
+      },
+      "evidence_status": "rejected_local",
+      "notes": "Do not reintroduce this dense pair-cache optimization as a CC performance fix without stronger evidence. It increases memory footprint and did not improve the NEQ016 reference gap."
     }
   ]
 }
