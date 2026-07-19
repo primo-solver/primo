@@ -4659,7 +4659,7 @@
       "recorded_at": "2026-07-19",
       "kind": "benchmark",
       "scope": "Offline selector mining and local guard run for default-on single-assertion basic preprocessing selector",
-      "commit": "2f65f7d",
+      "commit": "7b51758",
       "environment": {
         "type": "local",
         "host": "workspace"
@@ -4712,7 +4712,7 @@
       "recorded_at": "2026-07-19",
       "kind": "fuzz",
       "scope": "QF_UF FuzzSMT merge gate for the guarded auto-basic-single selector and --no-auto-basic-single option",
-      "commit": "2f65f7d",
+      "commit": "7b51758",
       "environment": {
         "type": "local",
         "host": "workspace"
