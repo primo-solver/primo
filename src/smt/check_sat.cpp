@@ -165,6 +165,9 @@ constexpr util::StatKey kStatEufIncrementalExplainCacheHits =
 constexpr util::StatKey kStatEufIncrementalExplainLength =
     util::StatKey::EufIncrementalExplainLength;
 constexpr util::StatKey kStatEufIncrementalBacktracks = util::StatKey::EufIncrementalBacktracks;
+constexpr util::StatKey kStatEufIncrementalTrailEntries = util::StatKey::EufIncrementalTrailEntries;
+constexpr util::StatKey kStatEufIncrementalClassMemberTrailEntriesSaved =
+    util::StatKey::EufIncrementalClassMemberTrailEntriesSaved;
 constexpr util::StatKey kStatEufIncrementalUseListAppends =
     util::StatKey::EufIncrementalUseListAppends;
 constexpr util::StatKey kStatEufIncrementalUseListDuplicateSkips =
@@ -1150,6 +1153,9 @@ void add_incremental_stats(util::Statistics& statistics,
                             stats.explain_cache_hits);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainLength, stats.explain_length);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalBacktracks, stats.backtracks);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalTrailEntries, stats.trail_entries);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalClassMemberTrailEntriesSaved,
+                            stats.class_member_trail_entries_saved);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalUseListAppends, stats.use_list_appends);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalUseListDuplicateSkips,
                             stats.use_list_duplicate_skips);
@@ -1179,6 +1185,8 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.explain_cache_hits, rhs.explain_cache_hits),
       positive_delta(lhs.explain_length, rhs.explain_length),
       positive_delta(lhs.backtracks, rhs.backtracks),
+      positive_delta(lhs.trail_entries, rhs.trail_entries),
+      positive_delta(lhs.class_member_trail_entries_saved, rhs.class_member_trail_entries_saved),
       positive_delta(lhs.use_list_appends, rhs.use_list_appends),
       positive_delta(lhs.use_list_duplicate_skips, rhs.use_list_duplicate_skips),
       positive_delta(lhs.affected_use_list_dedup, rhs.affected_use_list_dedup),
@@ -1568,6 +1576,8 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.explain_cache_hits += stats.explain_cache_hits;
     accumulated_stats_.explain_length += stats.explain_length;
     accumulated_stats_.backtracks += stats.backtracks;
+    accumulated_stats_.trail_entries += stats.trail_entries;
+    accumulated_stats_.class_member_trail_entries_saved += stats.class_member_trail_entries_saved;
     accumulated_stats_.use_list_appends += stats.use_list_appends;
     accumulated_stats_.use_list_duplicate_skips += stats.use_list_duplicate_skips;
     accumulated_stats_.affected_use_list_dedup += stats.affected_use_list_dedup;
@@ -2510,6 +2520,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufIncrementalExplainCacheHits, 0);
   statistics.set(kStatEufIncrementalExplainLength, 0);
   statistics.set(kStatEufIncrementalBacktracks, 0);
+  statistics.set(kStatEufIncrementalTrailEntries, 0);
+  statistics.set(kStatEufIncrementalClassMemberTrailEntriesSaved, 0);
   statistics.set(kStatEufIncrementalUseListAppends, 0);
   statistics.set(kStatEufIncrementalUseListDuplicateSkips, 0);
   statistics.set(kStatEufIncrementalAffectedUseListDedup, 0);

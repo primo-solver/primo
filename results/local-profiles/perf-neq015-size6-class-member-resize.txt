@@ -1,0 +1,80 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 1K of event 'cycles:P'
+# Event count (approx.): 23685062248
+#
+# Overhead  Symbol                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       IPC   [IPC Coverage]
+# ........  ...........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................  ....................
+#
+    15.94%  [.] primo::smt::(anonymous namespace)::Frontend::build_term(primo::smtlib::SExpr const&)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     -      -
+            |
+            |--15.19%--primo::smt::(anonymous namespace)::Frontend::build_term(primo::smtlib::SExpr const&)
+            |          |
+            |           --0.73%--0x62080b4d3e28
+            |                     0x62080b4d3d58
+            |                     0x62080b4d3be8
+            |                     0x62080b4d3ef8
+            |                     0x62080b4d3b18
+            |                     0x62080b4d3978
+            |                     0x62080b4d38a8
+            |                     0x62080b4d3198
+            |                     0x62080b4d1e28
+            |                     0x62080b4d35a8
+            |                     0x62080b4d1d58
+            |                     0x62080b4d1ae8
+            |                     0x62080b4d1c88
+            |                     0x62080b4d4098
+            |                     0x62080b4d3268
+            |                     0x62080b4d1a18
+            |                     0x62080b4d1718
+            |                     0x62080b4d1648
+            |                     0x62080b4d1578
+            |                     0x62080b4d1bb8
+            |                     0x62080b4d3338
+            |                     0x62080b4d18b8
+            |                     0x62080b4d1ef8
+            |                     0x62080b4d2e98
+            |                     0x62080b4d2b58
+            |                     0x62080b4d12c8
+            |                     0x62080b4d2cf8
+            |                     0x62080b4d2c28
+            |                     0x62080b4d34d8
+            |                     0x62080b4d2dc8
+            |                     0x62080b4d2f68
+            |                     0x62080b4d14a8
+            |                     0x62080b4d3408
+            |                     0x62080b4d17e8
+            |                     0x62080b4d3038
+            |                     0x62080b4d3708
+            |                     0x62080b4d3a48
+            |                     0x62080b4d37d8
+            |
+             --0.75%--memcmp@plt
+
+     7.87%  [.] _int_malloc                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              -      -
+            |
+             --7.60%--_int_malloc
+                       malloc
+                       operator new(unsigned long)
+                       |
+                       |--2.44%--primo::smt::(anonymous namespace)::OnlineEufPropagator::notify_assignment(std::vector<int, std::allocator<int> > const&)
+                       |
+                       |--1.44%--primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)
+                       |
+                        --0.88%--primo::theory::equality::FlatCongruenceClosure::process_use_list(unsigned long, unsigned long)
+
+     7.07%  [.] __memcmp_avx2_movbe                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      -      -
+            |
+            |--6.41%--__memcmp_avx2_movbe
+            |
+             --0.67%--primo::smt::(anonymous namespace)::Frontend::build_term(primo::smtlib::SExpr const&)
+
+     6.34%  [.] std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::find(primo::theory::equality::FlatCongruenceClosure::ApplyKey const&) [clone .isra.0]                                                                                                                                                                                                                                                                                                               -      -
+            |
+             --6.29%--std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::find(primo::theory::equality::FlatCongruenceClosure::ApplyKey const&) [clone .isra.0]
+
+     6.19%  [.] primo::theory::equality::FlatCongruenceClosure::process_use_list(unsigned long, unsigned long)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           -      -
+            |

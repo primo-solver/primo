@@ -270,14 +270,19 @@ Rollback only restores semantic state; the stamp vector is recomputable
 scratch state. The public counters are
 `:euf.incremental.use-list-appends`,
 `:euf.incremental.use-list-duplicate-skips`,
-`:euf.incremental.affected-use-list-dedup`, and
-`:euf.incremental.max-use-list-size`.
+`:euf.incremental.affected-use-list-dedup`,
+`:euf.incremental.max-use-list-size`,
+`:euf.incremental.trail-entries`, and
+`:euf.incremental.class-member-trail-entries-saved`.
 Online-mode checkpoints are created lazily on the first theory assignment in a
 SAT decision level, so levels with only Boolean search do not allocate closure
 rollback state. Checkpoints remember vector sizes, conflict state, stats, and
 the current trail length; the trail records only mutations to representatives,
 class sizes and members, use lists, disequality lists, explanation adjacency,
-and lookup maps. The BFS marks, parent-edge arrays, queue storage,
+and lookup maps. Destination class-member lists are rolled back with one saved
+size per merge instead of one pop record per moved member; this preserves the
+same backtracking state while reducing trail traffic on merge-heavy
+finite-domain problems. The BFS marks, parent-edge arrays, queue storage,
 per-recursion path buffers, and reason-literal marks are owned by the closure
 and reused across explanation queries; signed SAT literals are marked
 separately, so `p` and `not p` can both occur in a non-minimal reason when

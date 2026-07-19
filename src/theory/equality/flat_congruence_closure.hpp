@@ -87,7 +87,7 @@ class FlatCongruenceClosure {
     Parent,
     ClassSize,
     ClassMembersRestore,
-    ClassMembersPop,
+    ClassMembersResize,
     UseListRestore,
     UseListPop,
     DisequalityListRestore,

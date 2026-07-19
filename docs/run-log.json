@@ -4095,6 +4095,64 @@
       },
       "evidence_status": "local-current",
       "notes": "This reruns the fuzz gate against the final opt-in CLI spelling after the mixed-suite benchmark rejected making the heuristic default-on."
+    },
+    {
+      "id": "2026-07-19-flatcc-class-member-resize-local",
+      "started_at": "2026-07-19T20:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profile",
+      "scope": "Local flat congruence-closure rollback optimization on merge-heavy QF_UF NEQ/PEQ/QG rows",
+      "commit": "b167cca+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "Built a detached b167cca baseline in /tmp/primo-baseline-b167cca, then alternated three runs each of /tmp/primo-baseline-b167cca/build/primo --quiet --stats and ./build/primo --quiet --stats on NEQ015_size6, NEQ023_size7, iso_brn_repgen033, and PEQ019_size7. Also ran perf record -F 199 -g on NEQ015_size6 after the change.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats with flat-CC class-member resize rollback trail"
+      },
+      "references": [
+        {
+          "name": "Primo b167cca local baseline",
+          "argv": "/tmp/primo-baseline-b167cca/build/primo --quiet --stats"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 4,
+        "timeout_seconds": 60,
+        "targets": [
+          "tmp/QF_UF/NEQ/NEQ015_size6.smt2",
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2"
+        ]
+      },
+      "artifacts": {
+        "timing_csv": "results/local-flatcc-class-members-resize-20260719.csv",
+        "perf_report": "results/local-profiles/perf-neq015-size6-class-member-resize.txt",
+        "perf_data": "results/local-profiles/perf-neq015-size6-class-member-resize.data",
+        "fuzz_summary": "fuzz-results/qf_uf-fuzzsmt-flatcc-class-member-resize-1000-rerun/summary.csv"
+      },
+      "summary": {
+        "median_seconds_baseline_vs_resize": {
+          "NEQ015_size6": "7.966 -> 7.753",
+          "NEQ023_size7": "5.190 -> 5.091",
+          "iso_brn_repgen033": "3.679 -> 3.481",
+          "PEQ019_size7": "1.765 -> 1.696"
+        },
+        "sample_new_counters": {
+          "NEQ015_size6": "trail-entries 38182479; class-member-trail-entries-saved 4647140",
+          "NEQ023_size7": "trail-entries 43503922; class-member-trail-entries-saved 4603407",
+          "iso_brn_repgen033": "trail-entries 18336685; class-member-trail-entries-saved 3724467",
+          "PEQ019_size7": "trail-entries 20069185; class-member-trail-entries-saved 3280765"
+        },
+        "perf_top": "NEQ015 post-change: Frontend::build_term 15.94%, _int_malloc 7.87%, memcmp 7.07%, FlatCongruenceClosure lookup find 6.34%, process_use_list 6.19%. The class-member trail change reduces rollback records but does not remove the remaining frontend/lookup/use-list bottlenecks.",
+        "fuzz": "1000/1000 PASS against Z3, 0 bugs, seed 2026071909. An earlier parallel fuzz attempt was discarded because make test rebuilt ./build/primo while the fuzzer was spawning it."
+      },
+      "evidence_status": "local-current",
+      "notes": "Accepted as a narrow rollback representation improvement, not as reference parity. The change replaces one ClassMembersPop trail entry per moved member with one ClassMembersResize entry per merge and preserves parent/class-size/lhs-member restoration. Further work should target frontend term construction, signature lookup, or use-list processing."
     }
   ]
 }

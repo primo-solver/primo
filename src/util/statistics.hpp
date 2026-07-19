@@ -111,6 +111,8 @@ enum class StatKey : std::size_t {
   EufIncrementalExplainCacheHits,
   EufIncrementalExplainLength,
   EufIncrementalBacktracks,
+  EufIncrementalTrailEntries,
+  EufIncrementalClassMemberTrailEntriesSaved,
   EufIncrementalUseListAppends,
   EufIncrementalUseListDuplicateSkips,
   EufIncrementalAffectedUseListDedup,

@@ -18,6 +18,8 @@ struct IncrementalCongruenceClosureStats {
   std::size_t explain_cache_hits = 0;
   std::size_t explain_length = 0;
   std::size_t backtracks = 0;
+  std::size_t trail_entries = 0;
+  std::size_t class_member_trail_entries_saved = 0;
   std::size_t use_list_appends = 0;
   std::size_t use_list_duplicate_skips = 0;
   std::size_t affected_use_list_dedup = 0;

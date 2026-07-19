@@ -105,6 +105,7 @@ void FlatCongruenceClosure::add_definition(const FlatDefinition& definition) {
     entry.kind = TrailKind::DefinitionByResultInsertion;
     entry.index = definition.result;
     trail_.push_back(std::move(entry));
+    ++stats_.trail_entries;
   }
   definitions_.push_back(Definition{definition.function, definition.argument, definition.result});
 
@@ -123,6 +124,7 @@ void FlatCongruenceClosure::add_definition(const FlatDefinition& definition) {
     entry.kind = TrailKind::LookupInsertion;
     entry.lookup_key = key;
     trail_.push_back(std::move(entry));
+    ++stats_.trail_entries;
   }
   append_use_tracked(representative(stored.function), stored.result);
   append_use_tracked(representative(stored.argument), stored.result);
@@ -147,6 +149,7 @@ void FlatCongruenceClosure::assert_distinct(FlatTermId lhs, FlatTermId rhs,
     entry.kind = TrailKind::DisequalityListPop;
     entry.index = lhs_repr;
     trail_.push_back(std::move(entry));
+    ++stats_.trail_entries;
   }
   disequality_lists_[lhs_repr].push_back(disequality_index);
   if (lhs_repr != rhs_repr) {
@@ -155,6 +158,7 @@ void FlatCongruenceClosure::assert_distinct(FlatTermId lhs, FlatTermId rhs,
       entry.kind = TrailKind::DisequalityListPop;
       entry.index = rhs_repr;
       trail_.push_back(std::move(entry));
+      ++stats_.trail_entries;
     }
     disequality_lists_[rhs_repr].push_back(disequality_index);
   }
@@ -246,6 +250,7 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
     lhs_entry.kind = TrailKind::EdgeAdjacencyPop;
     lhs_entry.index = lhs;
     trail_.push_back(std::move(lhs_entry));
+    ++stats_.trail_entries;
   }
   edge_adjacency_[lhs].push_back(edge_index);
   if (!checkpoints_.empty()) {
@@ -253,18 +258,22 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
     rhs_entry.kind = TrailKind::EdgeAdjacencyPop;
     rhs_entry.index = rhs;
     trail_.push_back(std::move(rhs_entry));
+    ++stats_.trail_entries;
   }
   edge_adjacency_[rhs].push_back(edge_index);
+  if (!checkpoints_.empty()) {
+    TrailEntry entry;
+    entry.kind = TrailKind::ClassMembersResize;
+    entry.index = rhs_repr;
+    entry.size_value = class_members_[rhs_repr].size();
+    trail_.push_back(std::move(entry));
+    ++stats_.trail_entries;
+    stats_.class_member_trail_entries_saved += class_members_[lhs_repr].size();
+  }
   for (const FlatTermId member : class_members_[lhs_repr]) {
     changed_terms_.push_back(member);
     push_parent_change(member);
     parent_[member] = rhs_repr;
-    if (!checkpoints_.empty()) {
-      TrailEntry entry;
-      entry.kind = TrailKind::ClassMembersPop;
-      entry.index = rhs_repr;
-      trail_.push_back(std::move(entry));
-    }
     class_members_[rhs_repr].push_back(member);
   }
   if (!checkpoints_.empty()) {
@@ -273,6 +282,7 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
     entry.index = lhs_repr;
     entry.flat_vector = class_members_[lhs_repr];
     trail_.push_back(std::move(entry));
+    ++stats_.trail_entries;
   }
   class_members_[lhs_repr].clear();
   push_class_size_change(rhs_repr);
@@ -302,11 +312,13 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
     rhs_entry.index = rhs_repr;
     rhs_entry.size_vector = disequality_lists_[rhs_repr];
     trail_.push_back(std::move(rhs_entry));
+    ++stats_.trail_entries;
     TrailEntry lhs_entry;
     lhs_entry.kind = TrailKind::DisequalityListRestore;
     lhs_entry.index = lhs_repr;
     lhs_entry.size_vector = disequality_lists_[lhs_repr];
     trail_.push_back(std::move(lhs_entry));
+    ++stats_.trail_entries;
   }
   disequality_lists_[rhs_repr] = std::move(merged_disequalities);
   disequality_lists_[lhs_repr].clear();
@@ -320,6 +332,7 @@ void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new
     entry.index = old_repr;
     entry.flat_vector = use_lists_[old_repr];
     trail_.push_back(std::move(entry));
+    ++stats_.trail_entries;
   }
   affected.swap(use_lists_[old_repr]);
   ++use_list_generation_;
@@ -356,6 +369,7 @@ void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new
       entry.kind = TrailKind::LookupInsertion;
       entry.lookup_key = key;
       trail_.push_back(std::move(entry));
+      ++stats_.trail_entries;
     }
     append_use_tracked(new_repr, result);
   }
@@ -368,6 +382,7 @@ void FlatCongruenceClosure::append_use_tracked(FlatTermId representative, FlatTe
     entry.kind = TrailKind::UseListPop;
     entry.index = representative;
     trail_.push_back(std::move(entry));
+    ++stats_.trail_entries;
   }
   use_list.push_back(result);
   ++stats_.use_list_appends;
@@ -383,6 +398,7 @@ void FlatCongruenceClosure::push_parent_change(FlatTermId term) {
   entry.index = term;
   entry.flat_value = parent_[term];
   trail_.push_back(std::move(entry));
+  ++stats_.trail_entries;
 }
 
 void FlatCongruenceClosure::push_class_size_change(FlatTermId term) {
@@ -394,6 +410,7 @@ void FlatCongruenceClosure::push_class_size_change(FlatTermId term) {
   entry.index = term;
   entry.size_value = class_size_[term];
   trail_.push_back(std::move(entry));
+  ++stats_.trail_entries;
 }
 
 void FlatCongruenceClosure::restore_trail_entry(TrailEntry& entry) {
@@ -411,8 +428,8 @@ void FlatCongruenceClosure::restore_trail_entry(TrailEntry& entry) {
     case TrailKind::ClassMembersRestore:
       class_members_[entry.index] = std::move(entry.flat_vector);
       return;
-    case TrailKind::ClassMembersPop:
-      class_members_[entry.index].pop_back();
+    case TrailKind::ClassMembersResize:
+      class_members_[entry.index].resize(entry.size_value);
       return;
     case TrailKind::UseListRestore:
       use_lists_[entry.index] = std::move(entry.flat_vector);

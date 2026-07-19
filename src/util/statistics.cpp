@@ -1,9 +1,12 @@
 #include "util/statistics.hpp"
 
 #include <array>
+#include <cstddef>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace primo::util {
 
@@ -110,6 +113,8 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":euf.incremental.explain-cache-hits"sv,
     ":euf.incremental.explain-length"sv,
     ":euf.incremental.backtracks"sv,
+    ":euf.incremental.trail-entries"sv,
+    ":euf.incremental.class-member-trail-entries-saved"sv,
     ":euf.incremental.use-list-appends"sv,
     ":euf.incremental.use-list-duplicate-skips"sv,
     ":euf.incremental.affected-use-list-dedup"sv,

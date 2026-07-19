@@ -105,7 +105,9 @@ scripts and result artifacts. Current counters include:
 - `:euf.incremental.explain-calls`;
 - `:euf.incremental.explain-cache-hits`;
 - `:euf.incremental.explain-length`;
-- `:euf.incremental.backtracks`.
+- `:euf.incremental.backtracks`;
+- `:euf.incremental.trail-entries`;
+- `:euf.incremental.class-member-trail-entries-saved`.
 
 For preprocessing-only comparisons, pass `--preprocess-only --stats`. Primo
 then parses and preprocesses the input, prints `unknown`, skips SAT/theory
