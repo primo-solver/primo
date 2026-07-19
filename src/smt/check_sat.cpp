@@ -709,9 +709,11 @@ class BooleanClausifier {
     bool occurs_negative = false;
   };
 
-  explicit BooleanClausifier(sat::IpasirUpBackend& backend, const core::TermManager& terms)
+  BooleanClausifier(sat::IpasirUpBackend& backend, const core::TermManager& terms,
+                    bool top_level_or_tseitin)
       : backend_(backend),
         terms_(terms),
+        top_level_or_tseitin_(top_level_or_tseitin),
         lit_by_term_(terms.size()),
         theory_atom_by_term_(terms.size(), kNoTheoryAtom) {}
 
@@ -795,6 +797,10 @@ class BooleanClausifier {
         }
         return;
       case core::TermKind::Or: {
+        if (top_level_or_tseitin_) {
+          backend_.add_clause(sat::Clause{encode(term_id)});
+          return;
+        }
         sat::Clause clause;
         clause.reserve(term.children.size());
         for (const core::TermId child : term.children) {
@@ -942,6 +948,7 @@ class BooleanClausifier {
 
   sat::IpasirUpBackend& backend_;
   const core::TermManager& terms_;
+  bool top_level_or_tseitin_ = true;
   static constexpr std::size_t kNoTheoryAtom = static_cast<std::size_t>(-1);
   std::vector<sat::Lit> lit_by_term_;
   std::vector<std::size_t> theory_atom_by_term_;
@@ -985,7 +992,7 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
                                           util::Statistics& statistics) {
   statistics.increment(kStatSolverBoolean);
   sat::CadicalBackend backend(options.cadical_options);
-  BooleanClausifier clausifier(backend, terms);
+  BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
@@ -2234,7 +2241,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
                             const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend(options.cadical_options);
-  BooleanClausifier clausifier(backend, terms);
+  BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
@@ -2568,6 +2575,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     statistics.set(kStatPreprocessingTermSizeInitial,
                    reachable_term_count(frontend.terms(), assertions));
     const std::vector<core::TermId> symmetry_source_assertions = assertions;
+    std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
+    std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
     FiniteDomainAtMostOneResult raw_finite_domain_result;
     if (use_finite_domain_amo) {
       FiniteDomainAtMostOne finite_domain(frontend.terms());
@@ -2628,6 +2637,11 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
       statistics.increment(kStatForcedAtomFacts, forced_atoms.units);
       statistics.increment(kStatForcedAtomDisequalities, forced_atoms.disequalities);
       statistics.increment(kStatForcedAtomRewrites, forced_atoms.rewrites);
+      forced_equalities.insert(forced_equalities.end(), forced_atoms.equality_pairs.begin(),
+                               forced_atoms.equality_pairs.end());
+      forced_disequalities.insert(forced_disequalities.end(),
+                                  forced_atoms.disequality_pairs.begin(),
+                                  forced_atoms.disequality_pairs.end());
       if (options.solved_constant_substitution) {
         SolvedConstantSubstitutionResult solved_constants =
             substitute_solved_constants(frontend.terms(), assertions);
@@ -2690,7 +2704,8 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
     }
     if (use_finite_domain_amo) {
       FiniteDomainAtMostOne finite_domain(frontend.terms());
-      FiniteDomainAtMostOneResult finite_domain_result = finite_domain.generate(assertions);
+      FiniteDomainAtMostOneResult finite_domain_result =
+          finite_domain.generate(assertions, forced_equalities, forced_disequalities);
       statistics.increment(kStatFiniteDomainPostAmoClauses, finite_domain_result.clauses.size());
       std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
       std::size_t added = 0;

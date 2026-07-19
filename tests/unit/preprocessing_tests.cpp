@@ -543,6 +543,27 @@ void finite_domain_observed_equalities_get_pairwise_amo_clauses_without_choices(
   check(repeated.clauses.empty());
 }
 
+void finite_domain_observed_equalities_use_nonconstant_disequality_endpoints() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId fa = fixture.app(fixture.f, a);
+  const primo::core::TermId fb = fixture.app(fixture.f, b);
+  const primo::core::TermId fc = fixture.app(fixture.f, c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+
+  std::vector<primo::core::TermId> assertions{
+      fixture.neq(fa, fb),        fixture.neq(fa, fc),        fixture.neq(fb, fc),
+      fixture.terms.mk_eq(x, fa), fixture.terms.mk_eq(x, fb), fixture.terms.mk_eq(x, fc)};
+
+  primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
+  const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
+
+  check(result.domains == 1);
+  check(result.clauses.size() == 3);
+}
+
 void finite_domain_distinct_endpoints_get_value_amo_clauses() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -559,6 +580,28 @@ void finite_domain_distinct_endpoints_get_value_amo_clauses() {
 
   primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
   const primo::smt::FiniteDomainAtMostOneResult result = amo.generate(assertions);
+
+  check(result.domains == 2);
+  check(result.clauses.size() == 9);
+}
+
+void finite_domain_distinct_endpoints_use_additional_forced_equalities() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId z = fixture.constant(fixture.z);
+  const std::vector<primo::core::TermId> values{a, b, c};
+
+  std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
+  assertions.push_back(fixture.choices(x, values));
+  assertions.push_back(fixture.choices(y, values));
+
+  primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
+  const primo::smt::FiniteDomainAtMostOneResult result =
+      amo.generate(assertions, {{y, z}}, {{x, z}});
 
   check(result.domains == 2);
   check(result.clauses.size() == 9);
@@ -726,7 +769,9 @@ int main() {
   finite_domain_at_most_one_adds_pairwise_clauses();
   finite_domain_choices_may_be_nested_or_nodes();
   finite_domain_observed_equalities_get_pairwise_amo_clauses_without_choices();
+  finite_domain_observed_equalities_use_nonconstant_disequality_endpoints();
   finite_domain_distinct_endpoints_get_value_amo_clauses();
+  finite_domain_distinct_endpoints_use_additional_forced_equalities();
   finite_domain_equality_definitions_connect_terms_with_same_domain();
   finite_domain_equality_definitions_require_observed_term_equality();
   finite_domain_equality_definitions_respect_auto_guards();

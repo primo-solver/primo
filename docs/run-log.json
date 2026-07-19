@@ -3317,6 +3317,102 @@
       },
       "evidence_status": "current-slurm",
       "notes": "The finite-domain auto-online heuristic is accepted as a narrow default improvement on the 334-row manifest: it improves the targeted NEQ015 rows without changing solved count or introducing wrong answers, and the 334-row PAR2 is slightly better than job 111557. The result is still far from reference parity; continue triage on the remaining NEQ/PEQ/QG gaps and do not promote --theory-phase=auto as the command-line default because the QG regressions remain."
+    },
+    {
+      "id": "2026-07-19-qfuf-top-level-or-tseitin-local",
+      "started_at": "2026-07-19T15:20:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local QF_UF top-level disjunction Tseitin default comparison against --no-top-level-or-tseitin",
+      "commit": "6428942",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "./build/primo --quiet --stats [--no-top-level-or-tseitin] <instance>",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats and the same command plus --no-top-level-or-tseitin"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 39,
+        "timeout_seconds": 20,
+        "manifest": "local mixed QF_UF slice covering NEQ, PEQ, SEQ, Goel, and QG rows; gap-list artifact separately covers 13 known fast-reference/slow-Primo rows"
+      },
+      "artifacts": {
+        "tseitin_results": "results/local-tseitin-prototype-20260719.csv",
+        "oldmode_results": "results/local-top-level-or-oldmode-20260719.csv",
+        "gaplist_results": "results/local-top-level-or-gaplist-20260719.csv"
+      },
+      "summary": {
+        "mixed_tseitin": {
+          "ok": 34,
+          "total": 39,
+          "wrong": 0,
+          "par2_timeout_20": 268.265
+        },
+        "mixed_oldmode": {
+          "ok": 34,
+          "total": 39,
+          "wrong": 0,
+          "par2_timeout_20": 268.235
+        },
+        "gaplist": {
+          "pairs": 13,
+          "tseitin_faster": 8,
+          "oldmode_faster": 5,
+          "sum_seconds_delta_tseitin_minus_old": -5.229
+        },
+        "target_examples": {
+          "NEQ016_size7": "4.596s with Tseitin versus 6.109s old mode; EUF conflicts 37931 versus 57206",
+          "NEQ023_size7": "2.972s with Tseitin versus 3.403s old mode",
+          "iso_brn_repgen033": "2.596s with Tseitin versus 2.432s old mode"
+        }
+      },
+      "evidence_status": "needs_slurm_validation",
+      "notes": "The change exposes support clauses for top-level asserted OR formulas. It improves several fast-reference/slow-Primo gap-list rows and the NEQ016 target, but the 39-row mixed guard is effectively neutral, so 334-row SLURM validation is required before treating it as headline/default-ready evidence."
+    },
+    {
+      "id": "2026-07-19-qfuf-top-level-or-tseitin-fuzz-1000",
+      "started_at": "2026-07-19T16:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate after top-level OR Tseitin encoding and finite-domain AMO fact preservation",
+      "commit": "6428942",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071903 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-top-level-or-tseitin-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1000,
+        "timeout_seconds": 5,
+        "generator": "fuzzsmt",
+        "seed": 2026071903,
+        "reference": "z3"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-top-level-or-tseitin-1000/summary.csv",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-top-level-or-tseitin-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "sat": 902,
+        "unsat": 98,
+        "bugs": 0
+      },
+      "evidence_status": "local-current",
+      "notes": "Fresh local merge-gate differential fuzzing. This is not the 3000-case campaign gate needed for headline default-readiness claims."
     }
   ]
 }

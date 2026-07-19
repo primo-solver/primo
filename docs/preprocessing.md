@@ -398,26 +398,30 @@ preprocessing loop. This keeps AMO generation useful on formulas whose choices
 are exposed by earlier passes.
 
 The third source scans equality atoms already present in the assertion DAG. If
-the formula mentions both `s = ci` and `s = cj`, and `ci` and `cj` are explicit
-top-level disequal non-Boolean constants, the pass may append the same AMO
-clause even when there is no choice disjunction for `s`. This is still only a
+the formula mentions both `s = u` and `s = v`, and `u` and `v` are explicit
+top-level disequal non-Boolean terms, the pass may append the same AMO clause
+even when there is no choice disjunction for `s`. This generalizes the common
+constant-value case to arbitrary disequality endpoints, but it is still only a
 theory-lemma strengthening over existing equality atoms. It does not add
 one-of-domain constraints, fresh finite-domain variables, or finite-model
 search.
 
 If two recognized finite-domain terms `s` and `t` are explicitly asserted
-disequal and share the same value set, the pass also appends
+disequal, or are forced disequal by the top-level forced-atom pass, and share
+the same value set, the pass also appends
 distinct-endpoint AMO clauses:
 
 ```text
 (or (not (= s ci)) (not (= t ci)))
 ```
 
-for every domain value `ci`. The pass is intentionally narrow. It does not infer
-disequalities hidden under Boolean structure and it does not perform finite-model
-search. Symmetry breaking remains narrower than AMO generation: the current
-symmetry pass still uses the original assertion vector and requires explicit
-choice disjunctions before it accepts a finite-domain value set.
+for every domain value `ci`. Forced disequalities are carried with the forced
+equalities from the same preprocessing snapshot, so the endpoint check is modulo
+those equalities. This is still an asserted-fact strengthening: it does not infer
+disequalities hidden under arbitrary Boolean structure and it does not perform
+finite-model search. Symmetry breaking remains narrower than AMO generation: the
+current symmetry pass still uses the original assertion vector and requires
+explicit choice disjunctions before it accepts a finite-domain value set.
 
 When an equality atom between two recognized finite-domain terms occurs in the
 assertion DAG, `strong` preprocessing also appends equality-definition clauses

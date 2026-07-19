@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <iterator>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -61,6 +62,13 @@ struct ForcedAtomAssignments {
 
 struct KnownDisequalityClasses {
   std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> pairs;
+};
+
+struct AdditionalFiniteDomainFacts {
+  theory::equality::IncrementalCongruenceClosure closure;
+  std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> disequality_representatives;
+
+  explicit AdditionalFiniteDomainFacts(core::TermManager& terms) : closure(terms) {}
 };
 
 struct UnitEquality {
@@ -813,6 +821,37 @@ std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> collect_dise
   return disequalities;
 }
 
+AdditionalFiniteDomainFacts build_additional_finite_domain_facts(
+    core::TermManager& terms,
+    const std::vector<std::pair<core::TermId, core::TermId>>& additional_equalities,
+    const std::vector<std::pair<core::TermId, core::TermId>>& additional_disequalities) {
+  AdditionalFiniteDomainFacts facts(terms);
+  for (const auto& [lhs, rhs] : additional_equalities) {
+    facts.closure.assert_equal(lhs, rhs);
+  }
+  for (const auto& [lhs, rhs] : additional_disequalities) {
+    facts.closure.add_term(lhs);
+    facts.closure.add_term(rhs);
+  }
+  facts.closure.saturate();
+  facts.disequality_representatives.reserve(additional_disequalities.size());
+  for (const auto& [lhs, rhs] : additional_disequalities) {
+    facts.disequality_representatives.insert(representative_pair(facts.closure, lhs, rhs));
+  }
+  return facts;
+}
+
+bool is_finite_domain_disequality(
+    core::TermId lhs, core::TermId rhs,
+    const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities,
+    AdditionalFiniteDomainFacts& additional_facts) {
+  if (disequalities.contains(ordered_pair(lhs, rhs))) {
+    return true;
+  }
+  return additional_facts.disequality_representatives.contains(
+      representative_pair(additional_facts.closure, lhs, rhs));
+}
+
 bool all_pairwise_disequal(
     const std::vector<core::TermId>& values,
     const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities) {
@@ -962,17 +1001,17 @@ std::vector<core::TermId> finite_domain_at_most_one_clauses(
   return clauses;
 }
 
-std::unordered_set<core::TermId> finite_domain_value_constants(
+std::unordered_set<core::TermId> finite_domain_disequality_endpoints(
     const core::TermManager& terms,
     const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities) {
   std::unordered_set<core::TermId> values;
   for (const auto& [lhs, rhs] : disequalities) {
     const core::Term& lhs_term = terms.get(lhs);
     const core::Term& rhs_term = terms.get(rhs);
-    if (lhs_term.kind == core::TermKind::Constant && lhs_term.sort != terms.symbols().bool_sort()) {
+    if (lhs_term.sort != terms.symbols().bool_sort()) {
       values.insert(lhs);
     }
-    if (rhs_term.kind == core::TermKind::Constant && rhs_term.sort != terms.symbols().bool_sort()) {
+    if (rhs_term.sort != terms.symbols().bool_sort()) {
       values.insert(rhs);
     }
   }
@@ -2074,6 +2113,8 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
   const ForcedAtomAssignments assignments = collect_forced_atoms(terms, assertions);
   result.units = assignments.units.size();
   result.disequalities = assignments.disequalities.size();
+  result.equality_pairs = assignments.equalities;
+  result.disequality_pairs = assignments.disequalities;
   if (assignments.values.empty() && assignments.equalities.empty() &&
       assignments.disequalities.empty()) {
     result.assertions = assertions;
@@ -2151,13 +2192,31 @@ FiniteDomainAtMostOne::FiniteDomainAtMostOne(core::TermManager& terms) : terms_(
 
 FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
     const std::vector<core::TermId>& assertions) {
+  return generate(assertions, {}, {});
+}
+
+FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
+    const std::vector<core::TermId>& assertions,
+    const std::vector<std::pair<core::TermId, core::TermId>>& additional_disequalities) {
+  return generate(assertions, {}, additional_disequalities);
+}
+
+FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
+    const std::vector<core::TermId>& assertions,
+    const std::vector<std::pair<core::TermId, core::TermId>>& additional_equalities,
+    const std::vector<std::pair<core::TermId, core::TermId>>& additional_disequalities) {
   // Bradley and Manna's standard EUF congruence setting justifies these as
   // theory lemmas: if asserted finite-domain values are pairwise disequal, one
   // term cannot equal two different values. The pass only emits SAT-visible
-  // AMO clauses for domains whose value disequalities are explicit top-level
-  // facts in the current assertion vector.
+  // AMO clauses for domains whose value disequalities are known from explicit
+  // top-level facts or from forced-atom facts preserved by the caller.
   FiniteDomainAtMostOneResult result;
-  const auto disequalities = collect_disequalities(terms_, assertions);
+  auto disequalities = collect_disequalities(terms_, assertions);
+  for (const auto& [lhs, rhs] : additional_disequalities) {
+    disequalities.insert(ordered_pair(lhs, rhs));
+  }
+  AdditionalFiniteDomainFacts additional_facts =
+      build_additional_finite_domain_facts(terms_, additional_equalities, additional_disequalities);
   const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
   result.choices = choices.size();
   std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
@@ -2175,12 +2234,12 @@ FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
       ++result.domains;
     }
   }
-  for (const auto& [lhs, rhs] : disequalities) {
+  auto emit_distinct_endpoint_clauses = [&](core::TermId lhs, core::TermId rhs) {
     const auto lhs_choice = choices.find(lhs);
     const auto rhs_choice = choices.find(rhs);
     if (lhs_choice == choices.end() || rhs_choice == choices.end() ||
         lhs_choice->second.values != rhs_choice->second.values) {
-      continue;
+      return;
     }
     const std::vector<core::TermId> clauses =
         finite_domain_distinct_endpoint_clauses(terms_, lhs, rhs, lhs_choice->second.values);
@@ -2189,9 +2248,23 @@ FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
         result.clauses.push_back(clause);
       }
     }
+  };
+  for (const auto& [lhs, rhs] : disequalities) {
+    emit_distinct_endpoint_clauses(lhs, rhs);
+  }
+  if (!additional_equalities.empty() && !additional_disequalities.empty()) {
+    for (auto lhs_choice = choices.begin(); lhs_choice != choices.end(); ++lhs_choice) {
+      for (auto rhs_choice = std::next(lhs_choice); rhs_choice != choices.end(); ++rhs_choice) {
+        if (lhs_choice->second.values == rhs_choice->second.values &&
+            is_finite_domain_disequality(lhs_choice->first, rhs_choice->first, disequalities,
+                                         additional_facts)) {
+          emit_distinct_endpoint_clauses(lhs_choice->first, rhs_choice->first);
+        }
+      }
+    }
   }
   const std::unordered_set<core::TermId> value_constants =
-      finite_domain_value_constants(terms_, disequalities);
+      finite_domain_disequality_endpoints(terms_, disequalities);
   const auto observed_equalities =
       collect_observed_value_equalities(terms_, assertions, value_constants);
   for (const auto& [term, values] : observed_equalities) {

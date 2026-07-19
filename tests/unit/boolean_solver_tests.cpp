@@ -64,6 +64,41 @@ void top_level_conjunction_does_not_allocate_auxiliary() {
   assert(result.statistics.get(":sat.unit-clauses") == 3);
 }
 
+void top_level_or_uses_tseitin_support_clauses_by_default() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  const auto encoded = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (or p q))
+    (check-sat)
+  )",
+      options);
+  assert(encoded.result == CheckSatResult::Sat);
+  assert(encoded.statistics.get(":sat.vars") == 3);
+  assert(encoded.statistics.get(":sat.clauses") == 4);
+  assert(encoded.statistics.get(":sat.binary-clauses") == 2);
+  assert(encoded.statistics.get(":sat.unit-clauses") == 1);
+
+  options.top_level_or_tseitin = false;
+  const auto flat = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (or p q))
+    (check-sat)
+  )",
+      options);
+  assert(flat.result == CheckSatResult::Sat);
+  assert(flat.statistics.get(":sat.vars") == 2);
+  assert(flat.statistics.get(":sat.clauses") == 1);
+  assert(flat.statistics.get(":sat.binary-clauses") == 1);
+  assert(flat.statistics.get(":sat.unit-clauses") == 0);
+}
+
 void pure_boolean_unsat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -855,6 +890,35 @@ void finite_domain_raw_amo_survives_forced_atom_simplification() {
   assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 1);
 }
 
+void finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (declare-fun z () A)
+    (assert (distinct a b c))
+    (assert (or (= x a) (= x b) (= x c)))
+    (assert (or (= y a) (= y b) (= y c)))
+    (assert (= y z))
+    (assert (not (= x z)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.forced-atoms.disequalities") >= 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 6);
+  assert(result.statistics.get(":preprocessing.finite-domain.post-amo-clauses") == 9);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 12);
+  assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 3);
+}
+
 void auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
@@ -1559,6 +1623,7 @@ void boolean_unit_simplification_handles_nested_rewrites() {
 int main() {
   pure_boolean_sat();
   top_level_conjunction_does_not_allocate_auxiliary();
+  top_level_or_uses_tseitin_support_clauses_by_default();
   pure_boolean_unsat();
   implication_is_clausified();
   implication_is_right_associative();
@@ -1602,6 +1667,7 @@ int main() {
   mixed_polarity_theory_literal_is_not_filtered();
   strong_preprocessing_enables_finite_domain_amo();
   finite_domain_raw_amo_survives_forced_atom_simplification();
+  finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities();
   auto_preprocessing_uses_strong_finite_domain_for_multiple_assertions();
   auto_preprocessing_emits_guarded_equality_definitions();
   finite_domain_equality_definitions_can_be_disabled();

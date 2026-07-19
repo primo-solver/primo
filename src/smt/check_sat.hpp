@@ -86,6 +86,7 @@ struct CheckSatOptions {
   bool ground_unit_substitution = false;
   bool guarded_ground_unit_substitution = false;
   bool solved_constant_substitution = true;
+  bool top_level_or_tseitin = true;
   bool preprocess_only = false;
   std::size_t euf_propagation_interval = 32;
   double euf_propagation_assign_threshold = 0.25;

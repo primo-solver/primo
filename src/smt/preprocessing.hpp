@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 #include "core/ids.hpp"
@@ -61,6 +62,8 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
 
 struct ForcedAtomPropagationResult {
   std::vector<core::TermId> assertions;
+  std::vector<std::pair<core::TermId, core::TermId>> equality_pairs;
+  std::vector<std::pair<core::TermId, core::TermId>> disequality_pairs;
   std::size_t units = 0;
   std::size_t disequalities = 0;
   std::size_t rewrites = 0;
@@ -80,6 +83,13 @@ class FiniteDomainAtMostOne {
   explicit FiniteDomainAtMostOne(core::TermManager& terms);
 
   FiniteDomainAtMostOneResult generate(const std::vector<core::TermId>& assertions);
+  FiniteDomainAtMostOneResult generate(
+      const std::vector<core::TermId>& assertions,
+      const std::vector<std::pair<core::TermId, core::TermId>>& additional_disequalities);
+  FiniteDomainAtMostOneResult generate(
+      const std::vector<core::TermId>& assertions,
+      const std::vector<std::pair<core::TermId, core::TermId>>& additional_equalities,
+      const std::vector<std::pair<core::TermId, core::TermId>>& additional_disequalities);
 
  private:
   core::TermManager& terms_;
