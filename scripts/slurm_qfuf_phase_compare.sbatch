@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=primo-qfuf-phase
-#SBATCH --array=0-15
+#SBATCH --array=0-31
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=3G
 #SBATCH --time=01:30:00
@@ -19,6 +19,11 @@ MANIFESTS=${PRIMO_PHASE_MANIFESTS:-"benchmarks/qfuf-smac-mixed-train.txt benchma
 
 cd "$WORKDIR"
 mkdir -p logs "$OUT_ROOT"
+
+if (( TASK_ID >= SHARDS * 2 )); then
+  echo "task $TASK_ID is outside the active 2 x $SHARDS shard range; exiting"
+  exit 0
+fi
 
 variant_index=$((TASK_ID / SHARDS))
 shard_index=$((TASK_ID % SHARDS))
