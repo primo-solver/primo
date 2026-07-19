@@ -462,7 +462,7 @@ bool FlatCongruenceClosure::check_disequality(const Disequality& disequality) {
   }
   std::vector<sat::Lit> reason;
   begin_reason_collection(reason);
-  if (!explain_equal_into(disequality.lhs, disequality.rhs, reason)) {
+  if (!explain_equal_into(disequality.lhs, disequality.rhs, reason, edges_.size())) {
     throw std::logic_error("flat congruence closure failed to explain disequality conflict");
   }
   append_unique_reason(reason, disequality.reason);
@@ -503,7 +503,7 @@ std::optional<std::vector<sat::Lit>> FlatCongruenceClosure::explain_equal(FlatTe
                                                                           FlatTermId rhs) const {
   std::vector<sat::Lit> reason;
   begin_reason_collection(reason);
-  if (!explain_equal_into(lhs, rhs, reason)) {
+  if (!explain_equal_into(lhs, rhs, reason, edges_.size())) {
     return std::nullopt;
   }
   return reason;
@@ -561,12 +561,15 @@ FlatCongruenceClosure::ExplanationKey FlatCongruenceClosure::explanation_key(Fla
   return ExplanationKey{lhs, rhs};
 }
 
-bool FlatCongruenceClosure::append_edge_reason(const Edge& edge,
+bool FlatCongruenceClosure::append_edge_reason(std::size_t edge_index,
                                                std::vector<sat::Lit>& reason) const {
+  const Edge& edge = edges_[edge_index];
   if (edge.congruence) {
     ++stats_.explain_congruence_edges;
-    return explain_equal_into(edge.lhs_definition.function, edge.rhs_definition.function, reason) &&
-           explain_equal_into(edge.lhs_definition.argument, edge.rhs_definition.argument, reason);
+    return explain_equal_into(edge.lhs_definition.function, edge.rhs_definition.function, reason,
+                              edge_index) &&
+           explain_equal_into(edge.lhs_definition.argument, edge.rhs_definition.argument, reason,
+                              edge_index);
   }
   ++stats_.explain_direct_edges;
   append_unique_reason(reason, edge.reason);
@@ -574,7 +577,8 @@ bool FlatCongruenceClosure::append_edge_reason(const Edge& edge,
 }
 
 bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
-                                               std::vector<sat::Lit>& reason) const {
+                                               std::vector<sat::Lit>& reason,
+                                               std::size_t max_edge_index) const {
   if (lhs == rhs) {
     return true;
   }
@@ -618,6 +622,10 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
     const FlatTermId current = queue_scratch_[queue_index++];
     ++stats_.explain_bfs_visited;
     for (const std::size_t edge_index : edge_adjacency_[current]) {
+      if (edge_index >= max_edge_index) {
+        ++stats_.explain_causal_edge_skips;
+        continue;
+      }
       const Edge& edge = edges_[edge_index];
       FlatTermId next = kInvalidFlatTermId;
       if (edge.lhs == current) {
@@ -650,7 +658,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
   }
   stats_.explain_bfs_path_edges += path_edges.size();
   for (const std::size_t edge_index : path_edges) {
-    if (!append_edge_reason(edges_[edge_index], reason)) {
+    if (!append_edge_reason(edge_index, reason)) {
       --explanation_depth_;
       return false;
     }

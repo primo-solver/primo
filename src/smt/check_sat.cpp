@@ -184,6 +184,8 @@ constexpr util::StatKey kStatEufIncrementalExplainBfsPathEdges =
     util::StatKey::EufIncrementalExplainBfsPathEdges;
 constexpr util::StatKey kStatEufIncrementalExplainBfsMaxQueue =
     util::StatKey::EufIncrementalExplainBfsMaxQueue;
+constexpr util::StatKey kStatEufIncrementalExplainCausalEdgeSkips =
+    util::StatKey::EufIncrementalExplainCausalEdgeSkips;
 constexpr util::StatKey kStatEufIncrementalExplainDirectEdges =
     util::StatKey::EufIncrementalExplainDirectEdges;
 constexpr util::StatKey kStatEufIncrementalExplainCongruenceEdges =
@@ -1236,6 +1238,8 @@ void add_incremental_stats(util::Statistics& statistics,
   if (stats.explain_bfs_max_queue > statistics.get(kStatEufIncrementalExplainBfsMaxQueue)) {
     statistics.set(kStatEufIncrementalExplainBfsMaxQueue, stats.explain_bfs_max_queue);
   }
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCausalEdgeSkips,
+                            stats.explain_causal_edge_skips);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainDirectEdges,
                             stats.explain_direct_edges);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCongruenceEdges,
@@ -1300,6 +1304,7 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.explain_bfs_visited, rhs.explain_bfs_visited),
       positive_delta(lhs.explain_bfs_path_edges, rhs.explain_bfs_path_edges),
       lhs.explain_bfs_max_queue,
+      positive_delta(lhs.explain_causal_edge_skips, rhs.explain_causal_edge_skips),
       positive_delta(lhs.explain_direct_edges, rhs.explain_direct_edges),
       positive_delta(lhs.explain_congruence_edges, rhs.explain_congruence_edges),
       positive_delta(lhs.explain_reason_duplicate_literals, rhs.explain_reason_duplicate_literals),
@@ -1713,6 +1718,7 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.explain_bfs_path_edges += stats.explain_bfs_path_edges;
     accumulated_stats_.explain_bfs_max_queue =
         std::max(accumulated_stats_.explain_bfs_max_queue, stats.explain_bfs_max_queue);
+    accumulated_stats_.explain_causal_edge_skips += stats.explain_causal_edge_skips;
     accumulated_stats_.explain_direct_edges += stats.explain_direct_edges;
     accumulated_stats_.explain_congruence_edges += stats.explain_congruence_edges;
     accumulated_stats_.explain_reason_duplicate_literals += stats.explain_reason_duplicate_literals;

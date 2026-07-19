@@ -528,6 +528,23 @@ void flat_congruence_closure_reuses_repeated_sub_explanations() {
   check(closure.stats().explain_congruence_edges >= 1);
 }
 
+void flat_congruence_closure_uses_causal_edges_for_congruence_reasons() {
+  FlatCongruenceClosure closure(11);
+  closure.add_definition(primo::theory::equality::FlatDefinition{10, 0, 4});
+  closure.add_definition(primo::theory::equality::FlatDefinition{10, 2, 5});
+
+  closure.assert_equal(0, 6, {primo::sat::Lit{-1}});
+  closure.assert_equal(6, 7, {primo::sat::Lit{-2}});
+  closure.assert_equal(7, 2, {primo::sat::Lit{-3}});
+  check(closure.are_equal(4, 5));
+
+  closure.assert_equal(6, 4, {primo::sat::Lit{-4}});
+  const auto reason = closure.explain_equal(4, 5);
+
+  check(reason.has_value());
+  check(closure.stats().explain_causal_edge_skips >= 1);
+}
+
 void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
   primo::core::SymbolTable symbols;
   const auto sort = symbols.declare_sort("A");
@@ -780,6 +797,7 @@ int main() {
   flat_congruence_closure_reports_direct_conflict_before_use_list_scan();
   flat_congruence_closure_keeps_signed_reason_literals_distinct();
   flat_congruence_closure_reuses_repeated_sub_explanations();
+  flat_congruence_closure_uses_causal_edges_for_congruence_reasons();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_backtracks_nested_merges();
   flat_congruence_closure_backtracks_disequality_conflict();

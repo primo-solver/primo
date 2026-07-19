@@ -283,6 +283,13 @@ insertion order and in per-flat-term adjacency lists so reason BFS visits only
 edges incident to the current proof-graph node. Congruence edges store the two
 flat definitions that collided in the lookup table and expand their child
 equalities only when a conflict or propagation explanation asks for the reason.
+Recursive expansion is causal: when a congruence edge is explained, child
+equality explanations ignore equality-graph edges added at or after that
+congruence edge. This keeps premise explanations tied to facts that existed
+when the congruence merge was produced and avoids recursive BFS paths through
+later proof edges. The diagnostic counter
+`:euf.incremental.explain-causal-edge-skips` reports how often recursive
+explanation rejected such later edges.
 Use-list appends do not scan the destination vector for duplicates. Duplicates
 can arise when the same flat definition mentions two classes that later merge,
 so the closure removes duplicate affected results with a generation-stamp

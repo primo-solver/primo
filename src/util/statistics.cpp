@@ -123,6 +123,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":euf.incremental.explain-bfs-visited"sv,
     ":euf.incremental.explain-bfs-path-edges"sv,
     ":euf.incremental.explain-bfs-max-queue"sv,
+    ":euf.incremental.explain-causal-edge-skips"sv,
     ":euf.incremental.explain-direct-edges"sv,
     ":euf.incremental.explain-congruence-edges"sv,
     ":euf.incremental.explain-reason-duplicate-literals"sv,

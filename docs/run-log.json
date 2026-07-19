@@ -7094,6 +7094,100 @@
       },
       "evidence_status": "current_local",
       "notes": "The gprof profiling build emitted GCC array-bounds warnings in preprocessing.cpp under -O2 -pg, but the ordinary strict build, make test, make lint, make docs, and make asan-test passed for commit fd1e90e. The warnings are not used as correctness evidence."
+    },
+    {
+      "id": "2026-07-20-flat-cc-causal-recursive-explanations",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "benchmark",
+      "scope": "Local QF_UF CC review after bounding recursive congruence-premise explanations to older equality edges",
+      "commit": "a228e9d-dirty",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Built exact baseline in /tmp/primo-a228e9d at a228e9d and compared /tmp/primo-a228e9d/build/primo against ./build/primo --quiet --stats with a 45s timeout on selected NEQ, PEQ, SEQ, and QG iso rows.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ027_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/SEQ/SEQ035_size6.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+        ],
+        "timeout_seconds": 45
+      },
+      "artifacts": {
+        "baseline_worktree": "/tmp/primo-a228e9d",
+        "source": "src/theory/equality/flat_congruence_closure.cpp"
+      },
+      "summary": {
+        "change": "Recursive explanation of a congruence edge now ignores equality-graph edges whose index is at or after that congruence edge; emitted reason shape and SAT search counts were unchanged on sampled rows.",
+        "NEQ023_size7": "base 0.385s vs causal 0.418s; conflicts 5632 both; explain calls 35509 both; BFS visits 509168 -> 508873; causal skips 13437.",
+        "NEQ027_size8": "base 0.525s vs causal 0.550s; conflicts 4642 both; explain calls 81427 both; BFS visits 438401 -> 432734; causal skips 16862.",
+        "PEQ002_size8": "base 16.313s vs causal 16.299s; conflicts 95096 both; explain calls 25649979 both; BFS visits 105904124 -> 79293756; conflicts over 64 literals unchanged at 31562; causal skips 11596191.",
+        "PEQ019_size7": "base 0.988s vs causal 0.981s; conflicts 4707 both; explain calls 1261146 both; BFS visits 4634102 -> 3529805; causal skips 559401.",
+        "SEQ035_size6": "base 1.346s vs causal 1.275s; sat both; conflicts 47536 both; explain calls 1324912 both; BFS visits 5035533 -> 5013254; causal skips 1078047.",
+        "iso_icl_repgen006": "base 0.643s vs causal 0.560s; conflicts 16869 both; explain calls 2317573 both; BFS visits 8754428 -> 5960538; causal skips 15728055.",
+        "iso_brn_repgen033": "base 0.047s vs causal 0.051s; sat both; conflicts 596 both; explain calls 17085 both; BFS visits 123613 -> 122191; causal skips 45196.",
+        "interpretation": "This is a local CC invariant/performance improvement, not reference parity and not the Nieuwenhuis-Oliveras proof-forest explain algorithm. Tiny NEQ/QG rows are timing-noisy; the stronger signal is reduced BFS work with unchanged search shape."
+      },
+      "evidence_status": "current_local",
+      "notes": "Needs normal verification, merge-gate fuzzing, and broader SLURM evaluation before headline/default performance claims beyond this local CC review."
+    },
+    {
+      "id": "2026-07-20-qfuf-fuzzsmt-flatcc-causal-explain-1000",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate after causal recursive FlatCongruenceClosure explanations",
+      "commit": "a228e9d-dirty",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026072001 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-flatcc-causal-explain-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "reference": {
+        "name": "Z3",
+        "argv": "z3"
+      },
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "count": 1000,
+        "seed": 2026072001,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary_csv": "fuzz-results/qf_uf-fuzzsmt-flatcc-causal-explain-1000/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uf-fuzzsmt-flatcc-causal-explain-1000/generated",
+        "bugs_dir": "fuzz-results/qf_uf-fuzzsmt-flatcc-causal-explain-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "sat": 892,
+        "unsat": 108,
+        "bugs": 0
+      },
+      "evidence_status": "current_local",
+      "notes": "Fresh local merge-gate fuzzing for the FlatCongruenceClosure recursive explanation behavior change. Broader performance claims still require mixed-suite SLURM evaluation."
     }
   ]
 }

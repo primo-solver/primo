@@ -121,6 +121,7 @@ enum class StatKey : std::size_t {
   EufIncrementalExplainBfsVisited,
   EufIncrementalExplainBfsPathEdges,
   EufIncrementalExplainBfsMaxQueue,
+  EufIncrementalExplainCausalEdgeSkips,
   EufIncrementalExplainDirectEdges,
   EufIncrementalExplainCongruenceEdges,
   EufIncrementalExplainReasonDuplicateLiterals,

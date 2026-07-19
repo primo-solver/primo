@@ -124,8 +124,8 @@ The engine exposes counters for:
   congruence-premise queries, repeated pair queries served from the per-reason
   cache, and maximum recursive explanation depth;
 - explanation diagnostics: BFS searches, BFS nodes visited, BFS path edges,
-  maximum BFS queue size, direct equality edges expanded, congruence edges
-  expanded, and duplicate reason literals skipped;
+  maximum BFS queue size, recursive causal edge skips, direct equality edges
+  expanded, congruence edges expanded, and duplicate reason literals skipped;
 - conflict-reason size diagnostics: maximum emitted reason size and buckets for
   reasons of length at most 4, 8, 16, 32, 64, and greater than 64;
 - backtracks;
@@ -155,6 +155,9 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
 - direct disequality conflicts before affected use-list scans, including
   checkpoint rollback after that early exit;
 - repeated sub-explanation reuse inside one flat congruence reason;
+- causal recursive explanations for congruence edges: child premises ignore
+  equality-graph edges introduced at or after the congruence edge being
+  justified;
 - independent reason checking: every produced flat explanation in a deterministic
   push/pop sequence must entail the queried equality under a naive saturation
   oracle using only the explicit equality literals named by the reason;
@@ -294,3 +297,16 @@ This did not claim a performance improvement. Local `NEQ015_size4` and
 `PEQ019_size7`, the remaining hot signature is still explanation traversal and
 large conflict reasons, with 1,261,146 explain calls, 320,435 BFS searches, and
 1,239 conflicts over 64 reason literals.
+
+The next CC review found that recursive explanation of a congruence edge was
+searching the full current equality graph. Congruence edges are causal proof
+steps: a child equality premise must be explained using equality edges available
+before the congruence merge was added. `FlatCongruenceClosure` now passes the
+congruence edge index as a recursive BFS bound, so child explanations ignore
+edges added at or after that proof step. This is still the current adjacency-BFS
+explanation layer, not the paper's Section 4-5 proof forest. The local
+`a228e9d` baseline comparison showed unchanged conflict counts, explanation
+calls, BFS search counts, and reason-length buckets on the sampled rows, but
+fewer BFS nodes visited: `PEQ002_size8` dropped from 105,904,124 to 79,293,756,
+`PEQ019_size7` from 4,634,102 to 3,529,805, `SEQ035_size6` from 5,035,533 to
+5,013,254, and `qg7/iso_icl_repgen006` from 8,754,428 to 5,960,538.

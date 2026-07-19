@@ -25,6 +25,7 @@ struct IncrementalCongruenceClosureStats {
   std::size_t explain_bfs_visited = 0;
   std::size_t explain_bfs_path_edges = 0;
   std::size_t explain_bfs_max_queue = 0;
+  std::size_t explain_causal_edge_skips = 0;
   std::size_t explain_direct_edges = 0;
   std::size_t explain_congruence_edges = 0;
   std::size_t explain_reason_duplicate_literals = 0;
