@@ -123,6 +123,8 @@ The engine exposes counters for:
 - explanation diagnostics: BFS searches, BFS nodes visited, BFS path edges,
   maximum BFS queue size, direct equality edges expanded, congruence edges
   expanded, and duplicate reason literals skipped;
+- conflict-reason size diagnostics: maximum emitted reason size and buckets for
+  reasons of length at most 4, 8, 16, 32, 64, and greater than 64;
 - backtracks;
 - use-list appends, process-time duplicate skips, affected-list duplicate skips,
   and maximum observed use-list size;
@@ -240,3 +242,11 @@ Primo solved size11 in about 2.2 seconds, while the tuned local LLM2SMT binary
 took about 4.0 seconds. The remaining difference on that family is more likely
 preprocessing policy, especially finite-domain equality-definition selection,
 than congruence-closure implementation correctness.
+
+The next diagnostic pass added conflict-reason length buckets without changing
+the emitted clauses. On the local matrix, `PEQ002_size8` had a large-reason tail
+with 31,562 conflicts over 64 literals and maximum reason length 173, while
+`SEQ035_size6` had mostly short reasons but still performed 1,040,412 BFS
+explanation searches. This separates the remaining CC work into two mechanisms:
+reason quality for PEQ-style operation-table rows, and explanation traversal
+cost for formulas that generate many short conflict reasons.

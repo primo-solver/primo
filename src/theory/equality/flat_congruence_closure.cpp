@@ -465,6 +465,7 @@ bool FlatCongruenceClosure::check_disequality(const Disequality& disequality) {
   (void)explain_equal_into(disequality.lhs, disequality.rhs, reason);
   append_unique_reason(reason, disequality.reason);
   stats_.explain_length += reason.size();
+  record_conflict_reason_length(reason.size());
   conflict_ = std::move(reason);
   ++stats_.conflicts;
   return true;
@@ -529,6 +530,23 @@ void FlatCongruenceClosure::append_unique_reason(std::vector<sat::Lit>& target,
     }
     reason_marks_[index] = reason_generation_;
     target.push_back(lit);
+  }
+}
+
+void FlatCongruenceClosure::record_conflict_reason_length(std::size_t length) {
+  stats_.conflict_reason_max_length = std::max(stats_.conflict_reason_max_length, length);
+  if (length <= 4) {
+    ++stats_.conflict_reason_length_le_4;
+  } else if (length <= 8) {
+    ++stats_.conflict_reason_length_le_8;
+  } else if (length <= 16) {
+    ++stats_.conflict_reason_length_le_16;
+  } else if (length <= 32) {
+    ++stats_.conflict_reason_length_le_32;
+  } else if (length <= 64) {
+    ++stats_.conflict_reason_length_le_64;
+  } else {
+    ++stats_.conflict_reason_length_gt_64;
   }
 }
 

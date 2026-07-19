@@ -171,6 +171,8 @@ void incremental_closure_reports_disequality_conflict() {
   check(conflict->size() == 2);
   check(closure.stats().disequality_checks >= 2);
   check(closure.stats().conflicts == 1);
+  check(closure.stats().conflict_reason_max_length == 2);
+  check(closure.stats().conflict_reason_length_le_4 == 1);
 }
 
 void incremental_closure_backtracks_and_rediscoveres_congruence() {
@@ -328,6 +330,7 @@ void flat_congruence_closure_scans_only_crossing_disequalities() {
   closure.assert_equal(0, 2, {primo::sat::Lit{-6}});
   check(closure.conflict().has_value());
   check(closure.stats().disequality_checks == 4);
+  check(closure.stats().conflict_reason_length_le_4 == 1);
 }
 
 void flat_congruence_closure_reports_direct_conflict_before_use_list_scan() {

@@ -6486,6 +6486,42 @@
       },
       "evidence_status": "current_local",
       "notes": "This entry supports CC triage only. It is not headline SLURM evidence and does not claim broad solved-count improvement."
+    },
+    {
+      "id": "2026-07-19-local-cc-conflict-reason-buckets",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Diagnostic-only conflict-reason length buckets for FlatCongruenceClosure explanation triage",
+      "commit": "a5beecf plus uncommitted passive conflict-reason bucket counters",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build --target primo_euf_solver_tests primo_boolean_solver_tests primo -j4; ctest --test-dir build -R 'primo_euf_solver_tests|primo_boolean_solver_tests|primo_version' --output-on-failure; for selected PEQ/SEQ/NEQ/QG rows, run ./build/primo --quiet --stats --euf-engine=incremental and extract :euf.incremental.conflict-reason.* counters.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-engine=incremental"
+      },
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/PEQ/PEQ002_size8.smt2, tmp/QF_UF/SEQ/SEQ035_size6.smt2, tmp/QF_UF/NEQ/NEQ027_size11.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk032.smt2",
+        "timeout_seconds": 120
+      },
+      "artifacts": {
+        "stats": "/tmp/reason2-*.stats",
+        "summary": "terminal-captured local matrix in 2026-07-19 conversation"
+      },
+      "summary": {
+        "PEQ019_size7": "unsat 0.97s; theory-conflicts 4707; explain-calls 1261146; BFS searches 320435; conflict reason max 187; buckets le4=152 le8=426 le16=1152 le32=1138 le64=746 gt64=1239.",
+        "PEQ002_size8": "unsat 16.43s; theory-conflicts 95096; explain-calls 25649979; BFS searches 7013297; BFS visited 105904124; conflict reason max 173; buckets le4=285 le8=999 le16=6832 le32=22397 le64=37623 gt64=31562.",
+        "SEQ035_size6": "sat 1.22s; theory-conflicts 47536; explain-calls 1324912; BFS searches 1040412; conflict reason max 34; buckets le4=62 le8=11752 le16=31894 le32=7743 le64=3 gt64=0.",
+        "NEQ027_size11": "unsat 2.01s; theory-conflicts 8923; explain-calls 114647; BFS searches 84649; conflict reason max 32; buckets le4=671 le8=4552 le16=3779 le32=687.",
+        "iso_brn_repgen_sk032": "sat 0.52s; theory-conflicts 11925; explain-calls 187085; BFS searches 137280; conflict reason max 31; buckets le4=2095 le8=5695 le16=3801 le32=916.",
+        "interpretation": "PEQ002 needs reason-quality work because many emitted conflict clauses are large. SEQ035 needs lower per-reason traversal overhead because conflict reasons are mostly short but BFS search volume is high."
+      },
+      "evidence_status": "current_local",
+      "notes": "The patch is diagnostic-only: it records reason length after a conflict clause has already been built and does not alter clauses, propagation, SAT options, or CC state."
     }
   ]
 }

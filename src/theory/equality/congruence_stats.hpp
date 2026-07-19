@@ -24,6 +24,13 @@ struct IncrementalCongruenceClosureStats {
   std::size_t explain_direct_edges = 0;
   std::size_t explain_congruence_edges = 0;
   std::size_t explain_reason_duplicate_literals = 0;
+  std::size_t conflict_reason_max_length = 0;
+  std::size_t conflict_reason_length_le_4 = 0;
+  std::size_t conflict_reason_length_le_8 = 0;
+  std::size_t conflict_reason_length_le_16 = 0;
+  std::size_t conflict_reason_length_le_32 = 0;
+  std::size_t conflict_reason_length_le_64 = 0;
+  std::size_t conflict_reason_length_gt_64 = 0;
   std::size_t backtracks = 0;
   std::size_t trail_entries = 0;
   std::size_t class_member_trail_entries_saved = 0;

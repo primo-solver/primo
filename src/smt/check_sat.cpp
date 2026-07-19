@@ -182,6 +182,20 @@ constexpr util::StatKey kStatEufIncrementalExplainCongruenceEdges =
     util::StatKey::EufIncrementalExplainCongruenceEdges;
 constexpr util::StatKey kStatEufIncrementalExplainReasonDuplicateLiterals =
     util::StatKey::EufIncrementalExplainReasonDuplicateLiterals;
+constexpr util::StatKey kStatEufIncrementalConflictReasonMaxLength =
+    util::StatKey::EufIncrementalConflictReasonMaxLength;
+constexpr util::StatKey kStatEufIncrementalConflictReasonLengthLe4 =
+    util::StatKey::EufIncrementalConflictReasonLengthLe4;
+constexpr util::StatKey kStatEufIncrementalConflictReasonLengthLe8 =
+    util::StatKey::EufIncrementalConflictReasonLengthLe8;
+constexpr util::StatKey kStatEufIncrementalConflictReasonLengthLe16 =
+    util::StatKey::EufIncrementalConflictReasonLengthLe16;
+constexpr util::StatKey kStatEufIncrementalConflictReasonLengthLe32 =
+    util::StatKey::EufIncrementalConflictReasonLengthLe32;
+constexpr util::StatKey kStatEufIncrementalConflictReasonLengthLe64 =
+    util::StatKey::EufIncrementalConflictReasonLengthLe64;
+constexpr util::StatKey kStatEufIncrementalConflictReasonLengthGt64 =
+    util::StatKey::EufIncrementalConflictReasonLengthGt64;
 constexpr util::StatKey kStatEufIncrementalBacktracks = util::StatKey::EufIncrementalBacktracks;
 constexpr util::StatKey kStatEufIncrementalTrailEntries = util::StatKey::EufIncrementalTrailEntries;
 constexpr util::StatKey kStatEufIncrementalClassMemberTrailEntriesSaved =
@@ -1210,6 +1224,22 @@ void add_incremental_stats(util::Statistics& statistics,
                             stats.explain_congruence_edges);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainReasonDuplicateLiterals,
                             stats.explain_reason_duplicate_literals);
+  if (stats.conflict_reason_max_length >
+      statistics.get(kStatEufIncrementalConflictReasonMaxLength)) {
+    statistics.set(kStatEufIncrementalConflictReasonMaxLength, stats.conflict_reason_max_length);
+  }
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalConflictReasonLengthLe4,
+                            stats.conflict_reason_length_le_4);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalConflictReasonLengthLe8,
+                            stats.conflict_reason_length_le_8);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalConflictReasonLengthLe16,
+                            stats.conflict_reason_length_le_16);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalConflictReasonLengthLe32,
+                            stats.conflict_reason_length_le_32);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalConflictReasonLengthLe64,
+                            stats.conflict_reason_length_le_64);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalConflictReasonLengthGt64,
+                            stats.conflict_reason_length_gt_64);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalBacktracks, stats.backtracks);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalTrailEntries, stats.trail_entries);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalClassMemberTrailEntriesSaved,
@@ -1251,6 +1281,13 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.explain_direct_edges, rhs.explain_direct_edges),
       positive_delta(lhs.explain_congruence_edges, rhs.explain_congruence_edges),
       positive_delta(lhs.explain_reason_duplicate_literals, rhs.explain_reason_duplicate_literals),
+      lhs.conflict_reason_max_length,
+      positive_delta(lhs.conflict_reason_length_le_4, rhs.conflict_reason_length_le_4),
+      positive_delta(lhs.conflict_reason_length_le_8, rhs.conflict_reason_length_le_8),
+      positive_delta(lhs.conflict_reason_length_le_16, rhs.conflict_reason_length_le_16),
+      positive_delta(lhs.conflict_reason_length_le_32, rhs.conflict_reason_length_le_32),
+      positive_delta(lhs.conflict_reason_length_le_64, rhs.conflict_reason_length_le_64),
+      positive_delta(lhs.conflict_reason_length_gt_64, rhs.conflict_reason_length_gt_64),
       positive_delta(lhs.backtracks, rhs.backtracks),
       positive_delta(lhs.trail_entries, rhs.trail_entries),
       positive_delta(lhs.class_member_trail_entries_saved, rhs.class_member_trail_entries_saved),
@@ -1652,6 +1689,14 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.explain_direct_edges += stats.explain_direct_edges;
     accumulated_stats_.explain_congruence_edges += stats.explain_congruence_edges;
     accumulated_stats_.explain_reason_duplicate_literals += stats.explain_reason_duplicate_literals;
+    accumulated_stats_.conflict_reason_max_length =
+        std::max(accumulated_stats_.conflict_reason_max_length, stats.conflict_reason_max_length);
+    accumulated_stats_.conflict_reason_length_le_4 += stats.conflict_reason_length_le_4;
+    accumulated_stats_.conflict_reason_length_le_8 += stats.conflict_reason_length_le_8;
+    accumulated_stats_.conflict_reason_length_le_16 += stats.conflict_reason_length_le_16;
+    accumulated_stats_.conflict_reason_length_le_32 += stats.conflict_reason_length_le_32;
+    accumulated_stats_.conflict_reason_length_le_64 += stats.conflict_reason_length_le_64;
+    accumulated_stats_.conflict_reason_length_gt_64 += stats.conflict_reason_length_gt_64;
     accumulated_stats_.backtracks += stats.backtracks;
     accumulated_stats_.trail_entries += stats.trail_entries;
     accumulated_stats_.class_member_trail_entries_saved += stats.class_member_trail_entries_saved;

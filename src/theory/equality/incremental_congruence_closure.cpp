@@ -23,6 +23,23 @@ void append_unique(std::vector<sat::Lit>& target, const std::vector<sat::Lit>& s
   }
 }
 
+void record_conflict_reason_length(IncrementalCongruenceClosureStats& stats, std::size_t length) {
+  stats.conflict_reason_max_length = std::max(stats.conflict_reason_max_length, length);
+  if (length <= 4) {
+    ++stats.conflict_reason_length_le_4;
+  } else if (length <= 8) {
+    ++stats.conflict_reason_length_le_8;
+  } else if (length <= 16) {
+    ++stats.conflict_reason_length_le_16;
+  } else if (length <= 32) {
+    ++stats.conflict_reason_length_le_32;
+  } else if (length <= 64) {
+    ++stats.conflict_reason_length_le_64;
+  } else {
+    ++stats.conflict_reason_length_gt_64;
+  }
+}
+
 void append_use(std::vector<core::TermId>& use_list, core::TermId term) {
   if (std::find(use_list.begin(), use_list.end(), term) == use_list.end()) {
     use_list.push_back(term);
@@ -292,6 +309,7 @@ void IncrementalCongruenceClosure::check_disequalities() {
     std::vector<sat::Lit> reason = equality_reason.value_or(std::vector<sat::Lit>{});
     append_unique(reason, disequality.reason);
     stats_.explain_length += reason.size();
+    record_conflict_reason_length(stats_, reason.size());
     conflict_ = std::move(reason);
     ++stats_.conflicts;
     return;

@@ -135,6 +135,7 @@ class FlatCongruenceClosure {
   void begin_reason_collection(std::vector<sat::Lit>& reason) const;
   void append_unique_reason(std::vector<sat::Lit>& target,
                             const std::vector<sat::Lit>& source) const;
+  void record_conflict_reason_length(std::size_t length);
   ExplanationKey explanation_key(FlatTermId lhs, FlatTermId rhs) const;
   void append_edge_reason(const Edge& edge, std::vector<sat::Lit>& reason) const;
   bool explain_equal_into(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason) const;
