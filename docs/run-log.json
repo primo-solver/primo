@@ -1999,6 +1999,54 @@
       },
       "evidence_status": "local-only-plus-published-html",
       "notes": "The exact published primo2 number is worse than the current local build on this host, but the qualitative observation is consistent: NEQ023_size7 and nearby NEQ rows are substantially sensitive to Primo profile choices and remain slower than fast references. The no-symmetry ablation is much worse locally, while historical polarity/pure-auto artifacts show this family can improve substantially without solving the broader default-profile problem."
+    },
+    {
+      "id": "2026-07-19-euf-decision-callback-rejected",
+      "started_at": "2026-07-19T03:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "rejected-experiment",
+      "scope": "Prototype dynamic EUF SAT decision hints through CaDiCaL cb_decide on NEQ equality-family gaps",
+      "commit": "fe60e77 plus reverted local prototype",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Temporarily added --euf-decide=polarity, rebuilt build/primo, and ran build/primo --quiet --stats --euf-decide=polarity tmp/QF_UF/NEQ/NEQ023_size7.smt2 plus a small NEQ cluster smoke; reverted source after CaDiCaL aborted",
+      "solver": {
+        "name": "Primo",
+        "argv": "temporary build/primo --quiet --stats --euf-decide=polarity"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT clean-room inspection",
+          "argv": "/tmp/llm2smt source/docs inspected for cb_decide behavior only; no code copied"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 5,
+        "timeout_seconds": 25,
+        "manifest": "tmp/QF_UF/NEQ/NEQ023_size7.smt2, NEQ016_size7.smt2, NEQ015_size6.smt2, NEQ006_size6.smt2, NEQ041_size8.smt2"
+      },
+      "artifacts": {
+        "summary": "/tmp/decide-abort.err, /tmp/decide-neq023.err, /tmp/neq023-after-revert.err",
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "prototype": "--euf-decide=polarity returned unassigned-looking single-polarity theory atoms from OnlineEufPropagator::cb_decide",
+        "abort": "CaDiCaL fatal error: external decisions are only allowed over unassigned variables",
+        "first_abort_target": "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+        "reason": "CaDiCaL assignment notifications are not eager enough for the propagator's assignment_by_var_ map to prove that a candidate is currently unassigned at cb_decide time. A one-shot returned-variable guard still aborted, so other assigned observed variables can also be stale.",
+        "api_check": "CaDiCaL exposes is_decision(lit) but no safe in-callback unassigned query. val(lit) is SAT-model-only according to cadical.hpp and is not available during solving.",
+        "source_status": "prototype reverted; build/primo rebuilt and NEQ023_size7 solved normally in 4.88s after revert"
+      },
+      "evidence_status": "rejected",
+      "notes": "Do not reintroduce EUF cb_decide without a synchronization design that can prove the returned literal is currently unassigned under CaDiCaL's delayed notification semantics, or without extending the SAT adapter with a supported assignment query. Current Primo remains limited to static theory phase plus EUF external conflicts/propagations for QF_UF SAT-search influence."
     }
   ]
 }
