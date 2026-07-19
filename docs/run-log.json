@@ -3901,7 +3901,7 @@
       "started_at": "2026-07-19T18:20:00+02:00",
       "recorded_at": "2026-07-19",
       "kind": "benchmark",
-      "scope": "Local smoke diagnostics for the QF_UF auto basic-multi preprocessing and phase heuristic",
+      "scope": "Local smoke diagnostics for the QF_UF auto basic-multi preprocessing and phase heuristic before default rejection",
       "commit": "c808c19+working-tree",
       "environment": {
         "type": "local",
@@ -3937,14 +3937,14 @@
         "selected_stats": "QG compact multi-assertion rows reported :preprocessing.auto.basic-multi 1 and :sat.phase.auto-basic-multi-polarity 1; NEQ016 and PEQ019 remained single-assertion auto cases; the Goel firewire row reported :preprocessing.auto.large-assertion-skip 1."
       },
       "evidence_status": "local-smoke-current",
-      "notes": "The heuristic captures iso_brn_repgen033 and excludes the checked NEQ, PEQ, and large Goel examples. It does not improve iso_icl_repgen006 on this local build, where the old auto path was already near 1s; full 334-row SLURM validation is still required before treating this as a default-profile improvement."
+      "notes": "The heuristic captures iso_brn_repgen033 and excludes the checked NEQ, PEQ, and large Goel examples. It does not improve iso_icl_repgen006 on this local build, where the old auto path was already near 1s. The later SLURM run 2026-07-19-qfuf-option-compare-111765 rejected this as a default, so the heuristic was kept opt-in."
     },
     {
       "id": "2026-07-19-qfuf-fuzzsmt-auto-basic-multi-1000",
       "started_at": "2026-07-19T18:35:00+02:00",
       "recorded_at": "2026-07-19",
       "kind": "fuzzing",
-      "scope": "QF_UF FuzzSMT merge gate for default auto basic-multi preprocessing and phase heuristic",
+      "scope": "QF_UF FuzzSMT merge gate for candidate auto basic-multi preprocessing and phase heuristic before default rejection",
       "commit": "c808c19+working-tree",
       "environment": {
         "type": "local",
@@ -3979,7 +3979,122 @@
         "unsat": 98
       },
       "evidence_status": "local-current",
-      "notes": "Merge-gate fuzzing for the default solver behavior change. Generated inputs are local artifacts; the run-log entry records the reproducible command and summary."
+      "notes": "Merge-gate fuzzing for the candidate solver behavior change. Generated inputs are local artifacts; the later SLURM run 2026-07-19-qfuf-option-compare-111765 rejected the candidate as a default, so the heuristic was kept opt-in."
+    },
+    {
+      "id": "2026-07-19-qfuf-option-compare-111765",
+      "started_at": "2026-07-19T18:50:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM 334-row primo.html subset comparison of candidate auto basic-multi default against --no-auto-basic-multi",
+      "commit": "a5b17f4",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head",
+        "job_id": "111765"
+      },
+      "command": "Validated scripts/slurm_qfuf_option_compare.sbatch with scripts/slurm_validate_sbatch.py and bash -n; preflighted /home/janotmik/primo-cadical-profile build-slurm-rel/primo as git a5b17f4; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= old-auto=--no-auto-basic-multi' scripts/slurm_qfuf_option_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-slurm-rel/primo --quiet --stats",
+        "version": "primo 0.1.0; git: a5b17f4; cadical: cadical-3.0.0-7b99c07"
+      },
+      "inputs": {
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt",
+        "rows": 334,
+        "timeout_seconds": 120,
+        "variants": {
+          "default_candidate": "",
+          "old_auto": "--no-auto-basic-multi"
+        }
+      },
+      "artifacts": {
+        "summary": "results/qfuf-option-compare-111765/summary.json",
+        "default": "results/qfuf-option-compare-111765/default-merged.csv",
+        "old_auto": "results/qfuf-option-compare-111765/old-auto-merged.csv",
+        "diffs": "results/qfuf-option-compare-111765/default-vs-old-auto-diffs.csv"
+      },
+      "summary": {
+        "default_candidate": {
+          "ok": 330,
+          "timeout": 4,
+          "wrong": 0,
+          "par2": 3385.676
+        },
+        "old_auto": {
+          "ok": 331,
+          "timeout": 3,
+          "wrong": 0,
+          "par2": 3358.437
+        },
+        "comparison": {
+          "par2_delta_default_minus_old_auto": 27.239,
+          "faster_rows": 191,
+          "slower_rows": 138,
+          "selected_rows": "270 QG rows, PAR2 delta -119.237, 157 faster, 113 slower",
+          "nonselected_rows": "64 rows, PAR2 delta +146.475, 34 faster, 25 slower"
+        },
+        "family_par2_default_candidate": {
+          "Goel": 16.663,
+          "NEQ": 421.444,
+          "PEQ": 1112.589,
+          "QG": 1761.902,
+          "SEQ": 73.079
+        },
+        "family_par2_old_auto": {
+          "Goel": 16.637,
+          "NEQ": 414.741,
+          "PEQ": 980.071,
+          "QG": 1881.139,
+          "SEQ": 65.85
+        },
+        "top_wins": "iso_icl_nogen003 -8.772s, gensys_icl001 -8.365s, iso_icl_repgen_sk004 -7.720s, gensys_icl_sk004 -7.262s, gensys_icl003 -6.763s, iso_brn_repgen033 -6.731s",
+        "top_regressions": "PEQ013_size8 timeout vs 113.861s old-auto despite heuristic not selecting it; iso_icl_repgen003 +10.009s; SEQ026_size7 +7.488s despite heuristic not selecting it"
+      },
+      "evidence_status": "rejected-default-current",
+      "notes": "The structural heuristic improved the selected QG rows, but the same-run mixed-suite PAR2 was worse and solved one fewer row. Because nonselected rows have unchanged solver settings, some regression is likely wall-clock noise near timeout thresholds, but this is still not acceptable default evidence. The follow-up source change keeps the mechanism opt-in through --auto-basic-multi for SMAC and family-specific experiments."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-auto-basic-multi-optin-1000",
+      "started_at": "2026-07-19T19:25:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzzing",
+      "scope": "QF_UF FuzzSMT merge gate for the final opt-in --auto-basic-multi interface",
+      "commit": "a5b17f4+opt-in-followup-working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --auto-basic-multi' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071907 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-optin-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --auto-basic-multi",
+        "version": "working tree after a5b17f4"
+      },
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 2026071907,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "reference": "z3",
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-optin-1000/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-optin-1000/generated"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "reference_disagreement": 0,
+        "sat": 892,
+        "unsat": 108
+      },
+      "evidence_status": "local-current",
+      "notes": "This reruns the fuzz gate against the final opt-in CLI spelling after the mixed-suite benchmark rejected making the heuristic default-on."
     }
   ]
 }

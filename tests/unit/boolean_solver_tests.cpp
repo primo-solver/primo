@@ -924,6 +924,8 @@ void finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities() {
 void auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.auto_basic_multi_preprocessing = true;
+  options.auto_basic_multi_polarity = true;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)

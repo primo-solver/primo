@@ -129,6 +129,7 @@ int main(int argc, char** argv) {
   bool no_solved_constant_substitution = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
+  bool auto_basic_multi = false;
   bool no_auto_basic_multi = false;
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
@@ -184,6 +185,9 @@ int main(int argc, char** argv) {
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
                  "QF_UF preprocessing preset: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
+  app.add_flag("--auto-basic-multi", auto_basic_multi,
+               "Enable the experimental auto basic-multi preprocessing and phase heuristic")
+      ->default_val(false);
   app.add_flag("--no-auto-basic-multi", no_auto_basic_multi,
                "Disable the auto basic-multi preprocessing and phase heuristic")
       ->default_val(false);
@@ -323,6 +327,10 @@ int main(int argc, char** argv) {
   }
   if (no_top_level_or_tseitin) {
     solver_options.top_level_or_tseitin = false;
+  }
+  if (auto_basic_multi) {
+    solver_options.auto_basic_multi_preprocessing = true;
+    solver_options.auto_basic_multi_polarity = true;
   }
   if (no_auto_basic_multi) {
     solver_options.auto_basic_multi_preprocessing = false;
