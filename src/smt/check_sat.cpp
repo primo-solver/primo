@@ -2858,8 +2858,11 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     }
     if (use_finite_domain_amo) {
       FiniteDomainAtMostOne finite_domain(frontend.terms());
-      FiniteDomainAtMostOneResult finite_domain_result =
-          finite_domain.generate(assertions, forced_equalities, forced_disequalities);
+      FiniteDomainAtMostOneResult finite_domain_result;
+      if (options.finite_domain_post_amo) {
+        finite_domain_result =
+            finite_domain.generate(assertions, forced_equalities, forced_disequalities);
+      }
       statistics.increment(kStatFiniteDomainPostAmoClauses, finite_domain_result.clauses.size());
       std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
       std::size_t added = 0;

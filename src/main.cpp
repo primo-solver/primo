@@ -125,6 +125,7 @@ int main(int argc, char** argv) {
   bool no_finite_domain_value_precedence = false;
   bool finite_domain_equality_definitions = false;
   bool no_finite_domain_equality_definitions = false;
+  bool no_finite_domain_post_amo = false;
   bool no_eq_bridge = false;
   bool no_solved_constant_substitution = false;
   bool top_level_or_tseitin = false;
@@ -163,6 +164,9 @@ int main(int argc, char** argv) {
                "Enable guarded finite-domain equality definitions in auto preprocessing");
   app.add_flag("--no-finite-domain-equality-definitions", no_finite_domain_equality_definitions,
                "Disable finite-domain SAT-visible equality definition clauses");
+  app.add_flag("--no-finite-domain-post-amo", no_finite_domain_post_amo,
+               "Disable the post-simplification finite-domain AMO scan")
+      ->default_val(false);
   app.add_flag("--eq-bridge", solver_options.eq_bridge,
                "Add equalities implied by every branch of selected QF_UF disjunctions");
   app.add_flag("--no-eq-bridge", no_eq_bridge,
@@ -329,6 +333,9 @@ int main(int argc, char** argv) {
   if (no_finite_domain_equality_definitions) {
     solver_options.finite_domain_equality_definitions = false;
     solver_options.auto_finite_domain_equality_definitions = false;
+  }
+  if (no_finite_domain_post_amo) {
+    solver_options.finite_domain_post_amo = false;
   }
   if (no_eq_bridge) {
     solver_options.eq_bridge = false;

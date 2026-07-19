@@ -892,6 +892,32 @@ void finite_domain_raw_amo_survives_forced_atom_simplification() {
   assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 1);
 }
 
+void finite_domain_post_amo_can_be_disabled() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.finite_domain_post_amo = false;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun x () A)
+    (assert (distinct a b c))
+    (assert (not (= x a)))
+    (assert (or (= x a) (= x b) (= x c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.forced-atoms.rewrites") >= 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.post-amo-clauses") == 0);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 0);
+}
+
 void finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -1934,6 +1960,7 @@ int main() {
   mixed_polarity_theory_literal_is_not_filtered();
   strong_preprocessing_enables_finite_domain_amo();
   finite_domain_raw_amo_survives_forced_atom_simplification();
+  finite_domain_post_amo_can_be_disabled();
   finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities();
   auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions();
   auto_preprocessing_basic_multi_can_be_disabled();

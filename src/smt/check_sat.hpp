@@ -85,6 +85,7 @@ struct CheckSatOptions {
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;
+  bool finite_domain_post_amo = true;
   bool auto_finite_domain_equality_definitions = false;
   bool eq_bridge = true;
   bool ground_congruence = false;

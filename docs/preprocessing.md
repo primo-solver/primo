@@ -471,6 +471,8 @@ between raw, post, and already-present assertions are counted by
 The second source repeats explicit-choice recognition after the ordinary
 preprocessing loop. This keeps AMO generation useful on formulas whose choices
 are exposed by earlier passes.
+Use `--no-finite-domain-post-amo` for same-binary ablations that keep the raw
+choice AMO clauses but suppress this post-simplification scan.
 
 The third source scans equality atoms already present in the assertion DAG. If
 the formula mentions both `s = u` and `s = v`, and `u` and `v` are explicit

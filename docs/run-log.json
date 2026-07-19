@@ -5713,6 +5713,115 @@
       },
       "evidence_status": "current_local",
       "notes": "Fresh merge-gate-sized local QF_UF fuzz run after reverting the rejected default selector."
+    },
+    {
+      "id": "2026-07-19-peq019-post-amo-ablation-local",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local non-iso QF_UF gap triage for PEQ019_size7 and nearby PEQ/NEQ rows",
+      "commit": "c36c1bf plus uncommitted --no-finite-domain-post-amo option",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Local Python subprocess matrix over PEQ019_size7, PEQ018_size5, NEQ015_size5, NEQ015_size4, NEQ033_size5, and iso_brn_repgen_sk032 comparing ./build/primo --quiet --stats default, --no-finite-domain-post-amo, and --no-finite-domain-post-amo --theory-phase=polarity; also ran tuned /tmp/llm2smt and z3/cvc5 timing on PEQ019_size7",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3 -smt2"
+        },
+        {
+          "name": "cvc5",
+          "argv": "contrib/local/bin/cvc5 --lang smt2"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 6,
+        "timeout_seconds": 30,
+        "manifest": "Selected from results/qfuf-next-gap-ranking-c36c1bf-ratio2.csv: PEQ019_size7, PEQ018_size5, NEQ015_size5, NEQ015_size4, NEQ033_size5, iso_brn_repgen_sk032"
+      },
+      "artifacts": {
+        "summary": "/tmp/post-amo-option-matrix.csv",
+        "results": "/tmp/post-amo-option-matrix.csv",
+        "logs": "/tmp/peq019-*.{out,err}; /tmp/primo-peq019-default.perf",
+        "bugs": null
+      },
+      "summary": {
+        "PEQ019_size7": "default 1.035s, 4845 clauses, 3787 AMO; raw-only 0.541s, 2129 clauses, 1071 AMO; tuned LLM2SMT 0.20s with 2235 clauses and 1176 AMO",
+        "PEQ018_size5": "default 1.218s; raw-only 1.189s; raw-only polarity 0.767s",
+        "NEQ015_size5": "default 1.345s; raw-only 1.224s; raw-only polarity 1.722s",
+        "NEQ015_size4": "default 0.356s; raw-only 0.341s; raw-only polarity 0.486s",
+        "NEQ033_size5": "default 0.523s; raw-only 0.543s; raw-only polarity 0.473s",
+        "iso_brn_repgen_sk032": "no finite-domain AMO in either mode; raw-only is neutral within noise",
+        "profile": "perf on PEQ019 default is dominated by FlatCongruenceClosure explanation/merge/restore work; the raw-only win reduces SAT search/EUF work by avoiding post-simplification AMO clause growth"
+      },
+      "evidence_status": "current_local_candidate",
+      "notes": "This is a default-preserving ablation option. The local evidence supports a same-binary SLURM comparison before any auto/default rule is considered."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-post-amo-option-1000",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT generated cases after adding the default-preserving finite-domain post-AMO ablation option",
+      "commit": "c36c1bf plus uncommitted --no-finite-domain-post-amo option",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071953 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-post-amo-option-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 2026071953,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-post-amo-option-1000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-post-amo-option-1000",
+        "logs": null,
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-post-amo-option-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 896,
+        "unsat": 104
+      },
+      "evidence_status": "current_local_candidate",
+      "notes": "The option is default-preserving. It exists to test whether post-simplification AMO clause growth is responsible for PEQ/NEQ/QG gaps before changing any default."
     }
   ]
 }
