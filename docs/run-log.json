@@ -3413,6 +3413,70 @@
       },
       "evidence_status": "local-current",
       "notes": "Fresh local merge-gate differential fuzzing. This is not the 3000-case campaign gate needed for headline default-readiness claims."
+    },
+    {
+      "id": "2026-07-19-qfuf-tseitin-compare-111621-rejected",
+      "started_at": "2026-07-19T13:51:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM default top-level OR Tseitin encoding versus --no-top-level-or-tseitin on the 334-row user HTML QF_UF manifest",
+      "commit": "af5ad64",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "job_id": "111621"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_TSEITIN_TIMEOUT=120,PRIMO_TSEITIN_SHARDS=16,PRIMO_TSEITIN_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_tseitin_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --no-top-level-or-tseitin"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-tseitin-compare-111621/summary.json",
+        "results": "results/qfuf-tseitin-compare-111621/tseitin-merged.csv and results/qfuf-tseitin-compare-111621/oldmode-merged.csv",
+        "diffs": "results/qfuf-tseitin-compare-111621/diffs.csv",
+        "logs": "logs/primo-qfuf-tseitin-111621-*.out and logs/primo-qfuf-tseitin-111621-*.err"
+      },
+      "summary": {
+        "tseitin": {
+          "ok": 330,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3560.437
+        },
+        "oldmode": {
+          "ok": 331,
+          "timeout": 3,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3386.22
+        },
+        "families_tseitin": {
+          "Goel": "7/7 ok, PAR2 17.677",
+          "NEQ": "25/26 ok, PAR2 439.434",
+          "PEQ": "22/25 ok, PAR2 1102.567",
+          "QG": "270/270 ok, PAR2 1925.336",
+          "SEQ": "6/6 ok, PAR2 75.423"
+        },
+        "families_oldmode": {
+          "Goel": "7/7 ok, PAR2 16.568",
+          "NEQ": "25/26 ok, PAR2 415.171",
+          "PEQ": "23/25 ok, PAR2 983.266",
+          "QG": "270/270 ok, PAR2 1905.208",
+          "SEQ": "6/6 ok, PAR2 66.007"
+        },
+        "top_tseitin_wins": "PEQ014_size11: timeout-scale win, iso_icl_repgen001: -4.764s, gensys_brn044: -4.375s, NEQ016_size7: -4.239s",
+        "top_tseitin_regressions": "PEQ013_size8: timeout regression, PEQ003_size10: timeout regression, PEQ002_size8: +25.437s, PEQ018_size6: +14.551s, NEQ027_size11: +10.916s"
+      },
+      "evidence_status": "rejected",
+      "notes": "This rejects top-level OR Tseitin support clauses as a command-line default. The implementation remains available behind --top-level-or-tseitin for targeted experiments, but commit after this run restores the single-clause top-level OR encoding as default."
     }
   ]
 }

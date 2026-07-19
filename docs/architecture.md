@@ -138,12 +138,13 @@ argument through SAT clauses.
 The SAT layer does not inspect `Term` objects directly. `smt::BooleanClausifier`
 maps Boolean structure to SAT clauses. Top-level asserted conjunctions are
 asserted child-by-child instead of through an auxiliary Tseitin literal.
-Top-level asserted disjunctions use the same cached Tseitin encoding as nested
-disjunctions and are asserted by a unit clause on the auxiliary literal; this
-adds binary support clauses that expose branch literals to SAT search. The CLI
-flag `--no-top-level-or-tseitin` restores the older single-clause encoding for
-ablation runs. Equalities and Boolean-returning predicate applications become
-theory atoms with associated SAT literals.
+Top-level asserted disjunctions are asserted as one clause by default. The CLI
+flag `--top-level-or-tseitin` enables the same cached Tseitin encoding as nested
+disjunctions and asserts the auxiliary literal by a unit clause; this adds binary
+support clauses that can expose branch literals to SAT search, but a 334-row
+QF_UF SLURM validation rejected it as a default because it regressed PEQ and
+SEQ rows. Equalities and Boolean-returning predicate applications become theory
+atoms with associated SAT literals.
 
 The equality theory receives `TermId` values. Congruence closure uses those ids to inspect term structure through `TermManager::get`, merge equality classes, and test disequalities. EUF equality is therefore a theory relation over term ids, not the same thing as hash-consed syntactic identity.
 

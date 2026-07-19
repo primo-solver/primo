@@ -127,6 +127,7 @@ int main(int argc, char** argv) {
   bool no_finite_domain_equality_definitions = false;
   bool no_eq_bridge = false;
   bool no_solved_constant_substitution = false;
+  bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
@@ -169,8 +170,11 @@ int main(int argc, char** argv) {
   app.add_flag("--no-solved-constant-substitution", no_solved_constant_substitution,
                "Disable default QF_UF solved-constant substitution")
       ->default_val(false);
+  app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
+               "Encode top-level disjunctions with Tseitin support clauses")
+      ->default_val(false);
   app.add_flag("--no-top-level-or-tseitin", no_top_level_or_tseitin,
-               "Assert top-level disjunctions as one clause instead of Tseitin support clauses")
+               "Keep top-level disjunctions as one clause")
       ->default_val(false);
   app.add_flag("--preprocess-only", solver_options.preprocess_only,
                "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
@@ -295,6 +299,9 @@ int main(int argc, char** argv) {
   }
   if (no_solved_constant_substitution) {
     solver_options.solved_constant_substitution = false;
+  }
+  if (top_level_or_tseitin) {
+    solver_options.top_level_or_tseitin = true;
   }
   if (no_top_level_or_tseitin) {
     solver_options.top_level_or_tseitin = false;

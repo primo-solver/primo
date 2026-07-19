@@ -64,25 +64,9 @@ void top_level_conjunction_does_not_allocate_auxiliary() {
   assert(result.statistics.get(":sat.unit-clauses") == 3);
 }
 
-void top_level_or_uses_tseitin_support_clauses_by_default() {
+void top_level_or_can_use_tseitin_support_clauses() {
   primo::smt::CheckSatOptions options;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
-  const auto encoded = check_sat_smtlib(
-      R"(
-    (set-logic QF_UF)
-    (declare-fun p () Bool)
-    (declare-fun q () Bool)
-    (assert (or p q))
-    (check-sat)
-  )",
-      options);
-  assert(encoded.result == CheckSatResult::Sat);
-  assert(encoded.statistics.get(":sat.vars") == 3);
-  assert(encoded.statistics.get(":sat.clauses") == 4);
-  assert(encoded.statistics.get(":sat.binary-clauses") == 2);
-  assert(encoded.statistics.get(":sat.unit-clauses") == 1);
-
-  options.top_level_or_tseitin = false;
   const auto flat = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -97,6 +81,22 @@ void top_level_or_uses_tseitin_support_clauses_by_default() {
   assert(flat.statistics.get(":sat.clauses") == 1);
   assert(flat.statistics.get(":sat.binary-clauses") == 1);
   assert(flat.statistics.get(":sat.unit-clauses") == 0);
+
+  options.top_level_or_tseitin = true;
+  const auto encoded = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (or p q))
+    (check-sat)
+  )",
+      options);
+  assert(encoded.result == CheckSatResult::Sat);
+  assert(encoded.statistics.get(":sat.vars") == 3);
+  assert(encoded.statistics.get(":sat.clauses") == 4);
+  assert(encoded.statistics.get(":sat.binary-clauses") == 2);
+  assert(encoded.statistics.get(":sat.unit-clauses") == 1);
 }
 
 void pure_boolean_unsat() {
@@ -1623,7 +1623,7 @@ void boolean_unit_simplification_handles_nested_rewrites() {
 int main() {
   pure_boolean_sat();
   top_level_conjunction_does_not_allocate_auxiliary();
-  top_level_or_uses_tseitin_support_clauses_by_default();
+  top_level_or_can_use_tseitin_support_clauses();
   pure_boolean_unsat();
   implication_is_clausified();
   implication_is_right_associative();
