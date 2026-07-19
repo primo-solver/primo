@@ -82,6 +82,7 @@ enum class StatKey : std::size_t {
   TheoryAtoms,
   EufPredicateAtoms,
   PureTheoryFilterEnabled,
+  PureTheoryFilterAutoOff,
   PureTheoryAtomsPositive,
   PureTheoryAtomsNegative,
   PureTheoryLiteralsFiltered,

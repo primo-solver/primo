@@ -838,6 +838,69 @@ void mixed_polarity_theory_literal_is_not_filtered() {
   assert(result.statistics.get(":euf.pure-literals.filtered") == 0);
 }
 
+std::string auto_pure_filter_off_shape_input() {
+  constexpr int kValues = 8;
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun op (A A) A)\n";
+  for (int value = 0; value < kValues; ++value) {
+    input << "(declare-fun v" << value << " () A)\n";
+  }
+  for (int term = 0; term < 3; ++term) {
+    input << "(declare-fun sk" << term << " () A)\n";
+  }
+  input << "(assert (and\n";
+  input << "  (distinct";
+  for (int value = 0; value < kValues; ++value) {
+    input << " v" << value;
+  }
+  input << ")\n";
+  for (int term = 0; term < 3; ++term) {
+    input << "  (or";
+    for (int value = 0; value < kValues; ++value) {
+      input << " (= sk" << term << " v" << value << ")";
+    }
+    input << ")\n";
+  }
+  int choices = 3;
+  for (int lhs = 0; lhs < kValues && choices < 67; ++lhs) {
+    for (int rhs = 0; rhs < kValues && choices < 67; ++rhs) {
+      input << "  (or";
+      for (int value = 0; value < kValues; ++value) {
+        input << " (= (op v" << lhs << " v" << rhs << ") v" << value << ")";
+      }
+      input << ")\n";
+      ++choices;
+    }
+  }
+  for (int atom = 0; atom < 28; ++atom) {
+    input << "  (or (not (= sk" << atom % 3 << " v" << (atom + 1) % kValues << ")) (= v0 v0))\n";
+  }
+  input << "))\n(check-sat)\n";
+  return input.str();
+}
+
+void auto_pure_theory_filter_disables_for_neq016_like_shape() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  const auto result = check_sat_smtlib(auto_pure_filter_off_shape_input(), options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.auto.single-assertion") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 67);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.accepted-sets") == 1);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.values") == 8);
+  assert(result.statistics.get(":preprocessing.uf-symmetry.terms") == 3);
+  assert(result.statistics.get(":euf.pure-filter.enabled") == 0);
+  assert(result.statistics.get(":euf.pure-filter.auto-off") == 1);
+
+  options.pure_theory_filter = primo::smt::PureTheoryFilterMode::On;
+  const auto explicit_on = check_sat_smtlib(auto_pure_filter_off_shape_input(), options);
+  assert(explicit_on.result == CheckSatResult::Sat);
+  assert(explicit_on.statistics.get(":euf.pure-filter.enabled") == 1);
+  assert(explicit_on.statistics.get(":euf.pure-filter.auto-off") == 0);
+}
+
 void strong_preprocessing_enables_finite_domain_amo() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
@@ -1932,6 +1995,7 @@ int main() {
   positive_pure_theory_literal_is_filtered_from_euf_check();
   pure_theory_literal_filter_can_be_disabled();
   mixed_polarity_theory_literal_is_not_filtered();
+  auto_pure_theory_filter_disables_for_neq016_like_shape();
   strong_preprocessing_enables_finite_domain_amo();
   finite_domain_raw_amo_survives_forced_atom_simplification();
   finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities();
