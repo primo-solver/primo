@@ -4752,6 +4752,101 @@
       },
       "evidence_status": "local-current",
       "notes": "All generated cases matched Z3. This is correctness evidence for the selector plumbing only; mixed-suite performance acceptance still requires SLURM comparison."
+    },
+    {
+      "id": "2026-07-19-slurm-html334-auto-basic-single",
+      "started_at": "2026-07-19T22:55:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Same-binary SLURM A/B comparison for the guarded auto-basic-single selector on the 334-row user HTML QF_UF set",
+      "commit": "ff0ad27",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head",
+        "job_id": "111862",
+        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+      },
+      "command": "sbatch scripts/slurm_qfuf_auto_basic_single_compare.sbatch after python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --ssh-config /tmp/llm2smt_slurm_ssh_config --remote llm2smt-slurm --remote-dir /home/janotmik/primo-cadical-profile --local-dir . --target primo verified primo git ff0ad27 and cadical-3.0.0-7b99c07. The sbatch ran PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt, PRIMO_OPTION_VARIANTS='default= no-basic-single=--no-auto-basic-single', PRIMO_OPTION_SHARDS=16, PRIMO_OPTION_TIMEOUT=120.",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-slurm-rel/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned historical same-manifest artifact",
+          "argv": "/home/janotmik/llm2smt-reference-src/build-ref-rel/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000",
+          "artifact": "results/slurm-user-html334-10974ea-llm2smt/merged.csv"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt",
+        "count": 334,
+        "timeout_seconds": 120
+      },
+      "artifacts": {
+        "remote_root": "/home/janotmik/primo-cadical-profile/results/qfuf-auto-basic-single-111862",
+        "local_root": "results/slurm-qfuf-auto-basic-single-111862",
+        "default_merged": "results/slurm-qfuf-auto-basic-single-111862/default-merged.csv",
+        "no_basic_single_merged": "results/slurm-qfuf-auto-basic-single-111862/no-basic-single-merged.csv",
+        "default_summary": "results/slurm-qfuf-auto-basic-single-111862/default-summary.csv",
+        "no_basic_single_summary": "results/slurm-qfuf-auto-basic-single-111862/no-basic-single-summary.csv",
+        "family_summary": "results/slurm-qfuf-auto-basic-single-111862/default-family-summary.csv",
+        "ab_diffs": "results/slurm-qfuf-auto-basic-single-111862/default-vs-no-basic-single-diffs.csv",
+        "llm2smt_diffs": "results/slurm-qfuf-auto-basic-single-111862/default-vs-llm2smt-html334-diffs.csv"
+      },
+      "summary": {
+        "default": {
+          "solved": 332,
+          "timeouts": 2,
+          "errors": 0,
+          "wrong": 0,
+          "par2_seconds": 2828.628934,
+          "auto_basic_single_selected": 12
+        },
+        "no_basic_single": {
+          "solved": 331,
+          "timeouts": 3,
+          "errors": 0,
+          "wrong": 0,
+          "par2_seconds": 3031.43601
+        },
+        "delta_default_minus_no_basic_single": {
+          "solved": 1,
+          "par2_seconds": -202.807076
+        },
+        "families_default": {
+          "Goel": "7/7 solved, PAR2 15.575",
+          "NEQ": "25/26 solved, PAR2 392.168",
+          "PEQ": "24/25 solved, PAR2 675.008",
+          "QG": "270/270 solved, PAR2 1697.784",
+          "SEQ": "6/6 solved, PAR2 48.093"
+        },
+        "llm2smt_historical_same_manifest": {
+          "solved": 330,
+          "timeouts": 4,
+          "wrong": 0,
+          "par2_seconds": 4670.459144
+        },
+        "largest_selector_wins": {
+          "PEQ014_size11": "default 64.603s, --no-auto-basic-single timeout at 120.085s",
+          "PEQ003_size10": "default 38.049s, --no-auto-basic-single 103.026s",
+          "NEQ023_size7": "default 7.280s, --no-auto-basic-single 8.612s"
+        },
+        "largest_default_regressions_vs_disable": {
+          "PEQ013_size8": "+18.132s, not selected",
+          "NEQ015_size6": "+4.783s, not selected",
+          "PEQ014_size10": "+4.616s, selected"
+        },
+        "largest_remaining_reference_gaps": {
+          "NEQ016_size8": "Primo timeout, LLM2SMT 54.081s",
+          "PEQ013_size8": "Primo 105.232s, LLM2SMT 82.581s",
+          "SEQ026_size7": "Primo 39.311s, LLM2SMT 20.587s",
+          "iso_brn_repgen033": "Primo 6.136s, LLM2SMT 0.102s"
+        }
+      },
+      "evidence_status": "slurm-current",
+      "notes": "Accepted as a default selector on this 334-row evidence: it adds one solve and improves PAR2 without wrong answers versus the same binary with --no-auto-basic-single. This does not close every family-level performance gap; NEQ016_size8 and several QG/SEQ rows remain next profiling targets."
     }
   ]
 }

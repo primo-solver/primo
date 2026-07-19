@@ -63,8 +63,10 @@ reproducing narrower configurations:
 - finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
   by most of the default `auto` path. The guarded single-assertion exception
   reports `:preprocessing.auto.basic-single` and skips these clauses for a small
-  finite-domain/symmetry shape that the July 19, 2026 334-row option matrix
-  predicted would gain one PEQ solve and lower PAR2. The opt-in guarded small
+  finite-domain/symmetry shape. A same-run July 19, 2026 SLURM comparison on
+  the 334-row user HTML set validated this selector: default solved 332 with
+  PAR2 2828.629, while `--no-auto-basic-single` solved 331 with PAR2 3031.436.
+  The opt-in guarded small
   multi-assertion branch intentionally skips these clauses because the July 19,
   2026 QG option comparison showed that several compact operation-table rows
   benefited from the lighter `basic` encoding plus polarity phase;
@@ -140,7 +142,10 @@ subset when the original finite-domain scan finds at least 200 choices and the
 symmetry pass accepts a group with at most six non-value terms. It reports
 `:preprocessing.auto.basic-single` and can be disabled with
 `--no-auto-basic-single`; the default ordinary strong-auto branch reports
-`:preprocessing.auto.strong`. The opt-in basic-multi exception is a separate
+`:preprocessing.auto.strong`. On the July 19, 2026 334-row SLURM comparison it
+selected 12 rows, gained `PEQ014_size11`, and reduced PAR2 by about 203 seconds
+against the same binary with the selector disabled. The opt-in basic-multi
+exception is a separate
 empirical classifier for compact multi-assertion QG rows and reports
 `:preprocessing.auto.basic-multi`. A same-run SLURM comparison on July 19, 2026
 improved the selected QG rows but regressed the mixed-suite wall-clock PAR2, so
