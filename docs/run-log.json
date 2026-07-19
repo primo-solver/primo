@@ -7195,7 +7195,7 @@
       "recorded_at": "2026-07-20",
       "kind": "profile",
       "scope": "Local review of FlatCongruenceClosure explanation caching under causal edge bounds",
-      "commit": "e05bc0f",
+      "commit": "5f74e91",
       "environment": {
         "type": "local",
         "host": "workspace",
@@ -7244,7 +7244,7 @@
       "recorded_at": "2026-07-20",
       "kind": "fuzz",
       "scope": "QF_UF FuzzSMT merge gate after making FlatCongruenceClosure explanation cache edge-bound-aware",
-      "commit": "e05bc0f",
+      "commit": "5f74e91",
       "environment": {
         "type": "local",
         "host": "workspace",
