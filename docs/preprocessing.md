@@ -16,9 +16,8 @@ Primo currently exposes QF_UF preprocessing through
   experiments. A guarded single-assertion exception uses the lighter `basic`
   subset when the original formula has at most 15,000 reachable terms, at least
   200 finite-domain choices, and a small accepted finite-domain symmetry group;
-  `--no-auto-basic-single` disables this exception for same-binary A/B runs. An
-  experimental small multi-assertion auto branch can be enabled with
-  `--auto-basic-multi`; it uses the `basic` subset instead when the input has
+  `--no-auto-basic-single` disables this exception for same-binary A/B runs. A
+  guarded small multi-assertion auto branch uses the `basic` subset when the input has
   more than one assertion, at most 10,000 assertions, and at most 20,000
   initially reachable terms.
 
@@ -66,7 +65,7 @@ reproducing narrower configurations:
   finite-domain/symmetry shape. A same-run July 19, 2026 SLURM comparison on
   the 334-row user HTML set validated this selector: default solved 332 with
   PAR2 2828.629, while `--no-auto-basic-single` solved 331 with PAR2 3031.436.
-  The opt-in guarded small
+  The guarded small
   multi-assertion branch intentionally skips these clauses because the July 19,
   2026 QG option comparison showed that several compact operation-table rows
   benefited from the lighter `basic` encoding plus polarity phase;
@@ -91,9 +90,8 @@ reproducing narrower configurations:
 `--no-eq-bridge`, `--no-uf-symmetry-breaking`, and
 `--theory-phase=auto` are useful ablation or targeted-experiment switches.
 `--qf-uf-preprocess=off` disables the preprocessing loop and the finite-domain
-symmetry-breaking preprocessing step. `--auto-basic-multi` enables the
-rejected-default QG classifier for experiments and can be paired with
-`--no-auto-basic-multi` in scripted option matrices when a profile turns it on.
+symmetry-breaking preprocessing step. `--no-auto-basic-multi` disables the
+compact multi-assertion classifier for scripted option matrices.
 
 ## Experimental QF_UF Portfolio
 
@@ -144,12 +142,11 @@ symmetry pass accepts a group with at most six non-value terms. It reports
 `--no-auto-basic-single`; the default ordinary strong-auto branch reports
 `:preprocessing.auto.strong`. On the July 19, 2026 334-row SLURM comparison it
 selected 12 rows, gained `PEQ014_size11`, and reduced PAR2 by about 203 seconds
-against the same binary with the selector disabled. The opt-in basic-multi
-exception is a separate
-empirical classifier for compact multi-assertion QG rows and reports
-`:preprocessing.auto.basic-multi`. A same-run SLURM comparison on July 19, 2026
-improved the selected QG rows but regressed the mixed-suite wall-clock PAR2, so
-the multi-assertion classifier is intentionally not enabled by default.
+against the same binary with the selector disabled. The basic-multi exception is
+a separate empirical classifier for compact multi-assertion QG rows and reports
+`:preprocessing.auto.basic-multi`. Earlier same-run SLURM evidence showed that
+it improved the selected QG rows but had noisy mixed-suite PAR2, so promotion
+requires renewed same-binary validation against the current default.
 When enabled, equality definitions must fit a domain-size and per-solve clause
 budget. For single-assertion formulas they must also fit the initial
 reachable-term limit, because a single top-level assertion may contain an entire

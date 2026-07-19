@@ -93,8 +93,8 @@ struct CheckSatOptions {
   bool solved_constant_substitution = true;
   bool top_level_or_tseitin = false;
   bool auto_basic_single_preprocessing = true;
-  bool auto_basic_multi_preprocessing = false;
-  bool auto_basic_multi_polarity = false;
+  bool auto_basic_multi_preprocessing = true;
+  bool auto_basic_multi_polarity = true;
   QfUfPortfolioMode qf_uf_portfolio = QfUfPortfolioMode::Off;
   bool preprocess_only = false;
   std::size_t euf_propagation_interval = 32;

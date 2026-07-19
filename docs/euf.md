@@ -105,9 +105,8 @@ This is a local search-shaping heuristic derived from the NEQ/PEQ/QG/SEQ
 performance trail in `docs/run-log.json`; it is not a theory decision callback
 and it does not implement a paper-specific SAT branching algorithm.
 
-When `--auto-basic-multi` is enabled and QF_UF preprocessing selects the small
-multi-assertion `basic` branch, Primo sets syntactically single-polarity theory
-atoms according to that polarity and reports
+When QF_UF preprocessing selects the small multi-assertion `basic` branch, Primo
+sets syntactically single-polarity theory atoms according to that polarity and reports
 `:sat.phase.auto-basic-multi-polarity`. Any explicit `--theory-phase=...` value
 disables this automatic override. This remains a static CaDiCaL phase hint set
 before solving; Primo still does not use an EUF decision callback that

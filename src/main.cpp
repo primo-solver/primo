@@ -212,9 +212,11 @@ int main(int argc, char** argv) {
   app.add_option("--pure-theory-filter", pure_theory_filter,
                  "T-pure theory literal filtering mode: auto, on, or off")
       ->check(CLI::IsMember({"auto", "on", "off"}));
-  app.add_option("--theory-phase", theory_phase,
-                 "Initial SAT phase for theory atoms: negative, positive, none, polarity, or auto")
-      ->check(CLI::IsMember({"negative", "positive", "none", "polarity", "auto"}));
+  CLI::Option* theory_phase_option =
+      app.add_option(
+             "--theory-phase", theory_phase,
+             "Initial SAT phase for theory atoms: negative, positive, none, polarity, or auto")
+          ->check(CLI::IsMember({"negative", "positive", "none", "polarity", "auto"}));
   app.add_option("--euf-prop-budget", euf_prop_budget,
                  "EUF propagation candidate budget: auto, unlimited, or a nonnegative integer");
   app.add_option("--euf-prop-delivery,--prop-delivery-budget", euf_prop_delivery,
@@ -377,7 +379,7 @@ int main(int argc, char** argv) {
   } else {
     solver_options.theory_phase = primo::smt::TheoryPhaseMode::Negative;
   }
-  if (app.get_option("--theory-phase")->count() > 0) {
+  if (theory_phase_option->count() > 0) {
     solver_options.auto_basic_multi_polarity = false;
   }
   const std::optional<primo::smt::AutoBudget> parsed_prop_budget =

@@ -4909,6 +4909,178 @@
       },
       "evidence_status": "local-rejected",
       "notes": "The remaining NEQ016 gap is not explained by EUF theory propagation: the reference solves with --no-theory-prop. Static phase changes did not reproduce the reference's much higher equality-assignment share. A safe EUF cb_decide design would require callback-synchronized assignment visibility, not the current delayed notification mirror."
+    },
+    {
+      "id": "2026-07-19-local-auto-basic-multi-default-smoke",
+      "date": "2026-07-19",
+      "commit": "4a38b8f+worktree",
+      "host": "local workstation",
+      "kind": "local option comparison",
+      "scope": "QF_UF compact multi-assertion basic selector promoted to default, compared with --no-auto-basic-multi",
+      "commands": [
+        "cmake --build build --target primo -j2",
+        "./build/primo --quiet --stats <benchmark>",
+        "./build/primo --quiet --stats --no-auto-basic-multi <benchmark>",
+        "cmake --build build --target primo_core_tests primo_boolean_solver_tests primo -j2 && ctest --test-dir build -R 'primo_core_tests|primo_boolean_solver_tests' --output-on-failure"
+      ],
+      "inputs": {
+        "benchmarks": [
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+        ],
+        "timeout_seconds": 35
+      },
+      "summary": {
+        "iso_brn_repgen033": {
+          "default": {
+            "result": "sat",
+            "seconds": 0.045,
+            "auto_basic_multi": 1,
+            "auto_basic_multi_polarity": 1,
+            "finite_domain_amo": 0,
+            "clauses": 1177,
+            "binary_clauses": 588,
+            "euf_assignments": 1957,
+            "euf_theory_conflicts": 596,
+            "explain_calls": 17085
+          },
+          "no_auto_basic_multi": {
+            "result": "sat",
+            "seconds": 1.873,
+            "auto_basic_multi": 0,
+            "auto_basic_multi_polarity": 0,
+            "finite_domain_amo": 3808,
+            "clauses": 4985,
+            "binary_clauses": 4396,
+            "euf_assignments": 2268666,
+            "euf_theory_conflicts": 67244,
+            "explain_calls": 6626223
+          }
+        },
+        "iso_icl_repgen006": {
+          "default": {
+            "result": "unsat",
+            "seconds": 0.604,
+            "auto_basic_multi": 1,
+            "auto_basic_multi_polarity": 1,
+            "finite_domain_amo": 0,
+            "clauses": 3864,
+            "binary_clauses": 3234,
+            "euf_assignments": 114165,
+            "euf_theory_conflicts": 16869,
+            "explain_calls": 2317573
+          },
+          "no_auto_basic_multi": {
+            "result": "unsat",
+            "seconds": 0.606,
+            "auto_basic_multi": 0,
+            "auto_basic_multi_polarity": 0,
+            "finite_domain_amo": 3559,
+            "clauses": 7423,
+            "binary_clauses": 6793,
+            "euf_assignments": 331355,
+            "euf_theory_conflicts": 9703,
+            "explain_calls": 1956194
+          }
+        },
+        "NEQ023_size7": {
+          "default": {
+            "result": "unsat",
+            "seconds": 2.622,
+            "auto_basic_multi": 0,
+            "euf_assignments": 4367937,
+            "euf_theory_conflicts": 6562
+          },
+          "no_auto_basic_multi": {
+            "result": "unsat",
+            "seconds": 2.638,
+            "auto_basic_multi": 0,
+            "euf_assignments": 4367937,
+            "euf_theory_conflicts": 6562
+          }
+        },
+        "PEQ019_size7": {
+          "default": {
+            "result": "unsat",
+            "seconds": 0.966,
+            "auto_basic_multi": 0,
+            "euf_assignments": 169824,
+            "euf_theory_conflicts": 4707
+          },
+          "no_auto_basic_multi": {
+            "result": "unsat",
+            "seconds": 1.057,
+            "auto_basic_multi": 0,
+            "euf_assignments": 169824,
+            "euf_theory_conflicts": 4707
+          }
+        },
+        "NEQ016_size8": {
+          "default": {
+            "result": "unknown",
+            "seconds": 35.007,
+            "auto_basic_multi": 0,
+            "euf_assignments": 6278750,
+            "euf_theory_conflicts": 277889
+          },
+          "no_auto_basic_multi": {
+            "result": "unknown",
+            "seconds": 35.007,
+            "auto_basic_multi": 0,
+            "euf_assignments": 5961765,
+            "euf_theory_conflicts": 268492
+          }
+        }
+      },
+      "evidence_status": "local-smoke-needs-slurm",
+      "notes": "Local smoke supports enabling the compact multi-assertion basic selector for iso_brn_repgen033 and shows no selector effect on sampled NEQ/PEQ rows. iso_icl_repgen006 is roughly neutral in wall time with different EUF conflict/explanation shape. Because earlier 334-row SLURM evidence for this selector was mixed before the auto-basic-single baseline, promotion still requires renewed same-binary SLURM validation before it can be treated as accepted default evidence."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-auto-basic-multi-default-1000",
+      "date": "2026-07-19",
+      "commit": "4a38b8f+worktree",
+      "host": "local workstation",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate for enabling compact multi-assertion basic selector by default",
+      "commands": [
+        "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 20260719 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-default-1000"
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "seed": 20260719,
+        "count": 1000,
+        "logic": "QF_UF",
+        "timeout_seconds": 5,
+        "reference": "z3",
+        "artifact_dir": "fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-default-1000"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "ours": {
+          "sat": 899,
+          "unsat": 101
+        },
+        "refs": {
+          "sat": 899,
+          "unsat": 101
+        }
+      },
+      "artifacts": {
+        "summary_csv": "fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-default-1000/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-default-1000/generated",
+        "bugs_dir": "fuzz-results/qf_uf-fuzzsmt-auto-basic-multi-default-1000/bugs"
+      },
+      "evidence_status": "local-current",
+      "notes": "No wrong answers, crashes, parser/type errors, unsupported answers, timeouts, or reference disagreements were reported in the harness summary."
     }
   ]
 }
