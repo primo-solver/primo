@@ -152,6 +152,9 @@ The unit tests in `tests/unit/euf_solver_tests.cpp` cover:
 - direct disequality conflicts before affected use-list scans, including
   checkpoint rollback after that early exit;
 - repeated sub-explanation reuse inside one flat congruence reason;
+- independent reason checking: every produced flat explanation in a deterministic
+  push/pop sequence must entail the queried equality under a naive saturation
+  oracle using only the explicit equality literals named by the reason;
 - changed-term draining after flat merges and rollback of undrained changed-term
   records on backtrack;
 - process-time use-list duplicate handling across checkpoint rollback;
@@ -265,3 +268,15 @@ one-edge reason when the requested endpoints were directly connected. This
 reduced BFS search counters, but the per-call adjacency scan was too expensive:
 the local PEQ/SEQ/NEQ/QG matrix slowed down across the board. Future traversal
 work should avoid adding per-explanation scans before the main search.
+
+The next review pass hardened the current explanation graph without replacing
+it. Recursive expansion of a congruence edge now propagates failure from child
+explanation queries instead of assuming those invariants silently hold; direct
+disequality conflicts fail closed if the equal endpoints cannot be explained.
+The new explanation-oracle unit test checks returned reason literals against an
+independent naive saturation model under deterministic checkpoint rollback.
+This did not claim a performance improvement. Local `NEQ015_size4` and
+`PEQ019_size7` solver smoke runs preserved the expected `unsat` stats shape; on
+`PEQ019_size7`, the remaining hot signature is still explanation traversal and
+large conflict reasons, with 1,261,146 explain calls, 320,435 BFS searches, and
+1,239 conflicts over 64 reason literals.

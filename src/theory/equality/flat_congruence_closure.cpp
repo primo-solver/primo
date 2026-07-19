@@ -462,7 +462,9 @@ bool FlatCongruenceClosure::check_disequality(const Disequality& disequality) {
   }
   std::vector<sat::Lit> reason;
   begin_reason_collection(reason);
-  (void)explain_equal_into(disequality.lhs, disequality.rhs, reason);
+  if (!explain_equal_into(disequality.lhs, disequality.rhs, reason)) {
+    throw std::logic_error("flat congruence closure failed to explain disequality conflict");
+  }
   append_unique_reason(reason, disequality.reason);
   stats_.explain_length += reason.size();
   record_conflict_reason_length(reason.size());
@@ -558,16 +560,16 @@ FlatCongruenceClosure::ExplanationKey FlatCongruenceClosure::explanation_key(Fla
   return ExplanationKey{lhs, rhs};
 }
 
-void FlatCongruenceClosure::append_edge_reason(const Edge& edge,
+bool FlatCongruenceClosure::append_edge_reason(const Edge& edge,
                                                std::vector<sat::Lit>& reason) const {
   if (edge.congruence) {
     ++stats_.explain_congruence_edges;
-    (void)explain_equal_into(edge.lhs_definition.function, edge.rhs_definition.function, reason);
-    (void)explain_equal_into(edge.lhs_definition.argument, edge.rhs_definition.argument, reason);
-    return;
+    return explain_equal_into(edge.lhs_definition.function, edge.rhs_definition.function, reason) &&
+           explain_equal_into(edge.lhs_definition.argument, edge.rhs_definition.argument, reason);
   }
   ++stats_.explain_direct_edges;
   append_unique_reason(reason, edge.reason);
+  return true;
 }
 
 bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
@@ -639,7 +641,10 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
   }
   stats_.explain_bfs_path_edges += path_edges.size();
   for (const std::size_t edge_index : path_edges) {
-    append_edge_reason(edges_[edge_index], reason);
+    if (!append_edge_reason(edges_[edge_index], reason)) {
+      --explanation_depth_;
+      return false;
+    }
   }
   explanation_cache_.insert(key);
   --explanation_depth_;

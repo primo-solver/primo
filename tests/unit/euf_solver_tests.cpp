@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstdlib>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -108,6 +109,28 @@ class NaiveFlatOracle {
   std::vector<primo::theory::equality::FlatDefinition> definitions_;
   std::vector<Snapshot> snapshots_;
 };
+
+bool explanation_entails_equality(
+    std::size_t node_count, const std::vector<primo::theory::equality::FlatDefinition>& definitions,
+    const std::vector<std::pair<std::size_t, std::size_t>>& labelled_equalities,
+    const std::vector<primo::sat::Lit>& reason, std::size_t lhs, std::size_t rhs) {
+  NaiveFlatOracle oracle(node_count);
+  for (const auto& definition : definitions) {
+    oracle.add_definition(definition);
+  }
+  for (const primo::sat::Lit lit : reason) {
+    if (lit.value >= 0) {
+      continue;
+    }
+    const std::size_t index = static_cast<std::size_t>(-lit.value);
+    if (index == 0 || index > labelled_equalities.size()) {
+      continue;
+    }
+    const auto& equality = labelled_equalities[index - 1];
+    oracle.assert_equal(equality.first, equality.second);
+  }
+  return oracle.are_equal(lhs, rhs);
+}
 
 void congruent_applications_are_merged() {
   primo::core::SymbolTable symbols;
@@ -657,6 +680,65 @@ void flat_congruence_closure_matches_naive_oracle_under_backtracking() {
   }
 }
 
+void flat_congruence_closure_explanations_match_naive_oracle_under_backtracking() {
+  constexpr std::size_t kNodeCount = 30;
+  FlatCongruenceClosure closure(kNodeCount);
+  const std::vector<primo::theory::equality::FlatDefinition> definitions{
+      {6, 0, 9},   {6, 1, 10},  {6, 2, 11},  {6, 3, 12},  {6, 4, 13},  {6, 5, 14},  {7, 0, 15},
+      {7, 1, 16},  {7, 2, 17},  {7, 3, 18},  {7, 4, 19},  {7, 5, 20},  {8, 9, 21},  {8, 10, 22},
+      {8, 11, 23}, {8, 12, 24}, {8, 13, 25}, {8, 14, 26}, {8, 15, 27}, {8, 16, 28}, {8, 17, 29},
+  };
+  for (const auto& definition : definitions) {
+    closure.add_definition(definition);
+  }
+
+  struct Snapshot {
+    std::vector<std::pair<std::size_t, std::size_t>> labelled_equalities;
+  };
+  std::vector<std::size_t> closure_checkpoints;
+  std::vector<Snapshot> snapshots;
+  std::vector<std::pair<std::size_t, std::size_t>> labelled_equalities;
+  std::size_t state = 0x517cc1b727220a95ULL;
+  auto next = [&state]() {
+    state = state * 2862933555777941757ULL + 3037000493ULL;
+    return state;
+  };
+  auto check_explanations = [&]() {
+    for (std::size_t lhs = 9; lhs < kNodeCount; ++lhs) {
+      for (std::size_t rhs = lhs + 1; rhs < kNodeCount; ++rhs) {
+        const bool equal = closure.are_equal(lhs, rhs);
+        const std::optional<std::vector<primo::sat::Lit>> reason = closure.explain_equal(lhs, rhs);
+        check(reason.has_value() == equal);
+        if (reason.has_value()) {
+          check(explanation_entails_equality(kNodeCount, definitions, labelled_equalities,
+                                             reason.value(), lhs, rhs));
+        }
+      }
+    }
+  };
+
+  for (std::size_t step = 0; step < 180; ++step) {
+    const std::size_t choice = next() % 10;
+    if (choice == 0 && closure_checkpoints.size() < 8) {
+      closure_checkpoints.push_back(closure.push());
+      snapshots.push_back(Snapshot{labelled_equalities});
+    } else if (choice == 1 && !closure_checkpoints.empty()) {
+      const std::size_t index = next() % closure_checkpoints.size();
+      closure.pop(closure_checkpoints[index]);
+      labelled_equalities = snapshots[index].labelled_equalities;
+      closure_checkpoints.resize(index);
+      snapshots.resize(index);
+    } else {
+      const std::size_t lhs = next() % 18;
+      const std::size_t rhs = next() % 18;
+      labelled_equalities.emplace_back(lhs, rhs);
+      closure.assert_equal(lhs, rhs,
+                           {primo::sat::Lit{-static_cast<int>(labelled_equalities.size())}});
+    }
+    check_explanations();
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -683,5 +765,6 @@ int main() {
   flat_congruence_closure_backtracks_post_checkpoint_definitions();
   flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack();
   flat_congruence_closure_matches_naive_oracle_under_backtracking();
+  flat_congruence_closure_explanations_match_naive_oracle_under_backtracking();
   return 0;
 }

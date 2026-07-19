@@ -308,8 +308,10 @@ avoiding a full loser-list copy on merge-heavy finite-domain problems. The BFS m
 per-recursion path buffers, and reason-literal marks are owned by the closure
 and reused across explanation queries; signed SAT literals are marked
 separately, so `p` and `not p` can both occur in a non-minimal reason when
-different proof edges justify them. A newly asserted disequality is checked
-immediately. After a class merge, older disequalities are not scanned globally;
+different proof edges justify them. Congruence-edge expansion is checked
+recursively, and a direct disequality conflict fails closed if the closure can
+no longer explain the equality it just detected. A newly asserted disequality is
+checked immediately. After a class merge, older disequalities are not scanned globally;
 the closure collects the disequality indices attached to the two merged
 representatives, sorts those indices to preserve original insertion order, and
 checks only that candidate set. This keeps the first reported conflict
