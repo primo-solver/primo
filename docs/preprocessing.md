@@ -151,9 +151,13 @@ against the same binary with the selector disabled. A follow-up local probe foun
 that polarity phase helps the selected NEQ rows with Boolean UF predicate atoms,
 including `NEQ023_size7`, but regresses pure-equality PEQ rows; the implemented
 subset therefore gates this static phase override on `:euf.predicate-atoms > 0`
-and reports `:sat.phase.auto-basic-single-predicate-polarity`. It does not
-address `NEQ016_size8`, which does not select the single-assertion `basic`
-branch. The basic-multi exception is
+and reports `:sat.phase.auto-basic-single-predicate-polarity`. A same-binary
+SLURM comparison on the 334-row user HTML set showed no wrong answers and a
+clear improvement on the three rows where the override fired
+(`NEQ006_size6`, `NEQ023_size7`, and `NEQ032_size6`), while the raw whole-set
+PAR2 was dominated by unrelated timing variation on rows where the override was
+inactive. It does not address `NEQ016_size8`, which does not select the
+single-assertion `basic` branch. The basic-multi exception is
 a separate empirical classifier for compact multi-assertion QG rows and reports
 `:preprocessing.auto.basic-multi`. A later July 19, 2026 same-run SLURM
 comparison on the 334-row user HTML set validated enabling it by default after

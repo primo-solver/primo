@@ -5257,6 +5257,66 @@
       },
       "evidence_status": "local-current",
       "notes": "Fresh local merge-gate fuzzing for the candidate worktree; headline/default performance acceptance still depends on same-binary SLURM comparison."
+    },
+    {
+      "id": "2026-07-19-slurm-auto-basic-single-predicate-polarity-111942",
+      "date": "2026-07-19",
+      "commit": "95c5c86",
+      "host": "SLURM node-head via janotmik@10.35.125.63",
+      "job_id": "111942",
+      "kind": "benchmark",
+      "scope": "334-row user primo.html QF_UF subset, same-binary option comparison",
+      "command": "sbatch --array=0-31 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= disabled=--no-auto-basic-single-predicate-polarity' scripts/slurm_qfuf_option_compare.sbatch",
+      "preflight": {
+        "validate_sbatch": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qfuf_option_compare.sbatch",
+        "bash_n": "bash -n scripts/slurm_qfuf_option_compare.sbatch",
+        "workspace_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote llm2smt-slurm --remote-dir /home/janotmik/primo-cadical-profile --local-dir . --target primo --check-only",
+        "remote_version": "primo 0.1.0; git: 95c5c86; cadical: cadical-3.0.0-7b99c07"
+      },
+      "inputs": {
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt",
+        "timeout_seconds": 120,
+        "shards": 16,
+        "variants": {
+          "default": "",
+          "disabled": "--no-auto-basic-single-predicate-polarity"
+        }
+      },
+      "artifacts": {
+        "local_results": "results/qfuf-option-compare-111942",
+        "remote_results": "/home/janotmik/primo-cadical-profile/results/qfuf-option-compare-111942"
+      },
+      "summary": {
+        "default": {
+          "total": 334,
+          "solved": 332,
+          "timeouts": 2,
+          "wrong": 0,
+          "par2": 2653.764612
+        },
+        "disabled": {
+          "total": 334,
+          "solved": 332,
+          "timeouts": 2,
+          "wrong": 0,
+          "par2": 2606.962678
+        },
+        "raw_par2_delta_default_minus_disabled": 46.801934,
+        "activated_rows": {
+          "count": 3,
+          "par2_delta_default_minus_disabled": -9.570277,
+          "NEQ006_size6": "default 3.411367s, disabled 7.178450s",
+          "NEQ023_size7": "default 1.246835s, disabled 7.310475s",
+          "NEQ032_size6": "default 0.840735s, disabled 0.580289s"
+        },
+        "targets": {
+          "NEQ016_size8": "default timeout 120.103414s, disabled timeout 120.105554s; override inactive",
+          "iso_icl_repgen006": "default 7.916638s, disabled 8.190635s; override inactive",
+          "iso_brn_repgen033": "default 0.103036s, disabled 0.107815s; override inactive"
+        }
+      },
+      "evidence_status": "slurm-current-qualified",
+      "notes": "No wrong answers and no solved-count difference. The raw whole-set PAR2 favored disabled because rows where the new override is inactive had large timing variation, especially PEQ013_size8 and PEQ014_size11. The causal subset where :sat.phase.auto-basic-single-predicate-polarity fired improved overall; the remaining NEQ016 and QG iso gaps require separate mechanisms."
     }
   ]
 }
