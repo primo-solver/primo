@@ -4589,6 +4589,69 @@
       },
       "evidence_status": "local-current",
       "notes": "All generated cases matched Z3. This fuzz gate covers the stats-publication behavior change; it is not evidence for broader QF_UF reference parity."
+    },
+    {
+      "id": "2026-07-19-neq-phase-basic-portfolio-local",
+      "started_at": "2026-07-19T21:25:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local NEQ-focused option matrix after confirming QF_UF has no dynamic EUF SAT decision callback",
+      "commit": "dbfb05b",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "Inline Python harnesses over NEQ023_size7, NEQ027_size8, NEQ027_size10, NEQ016_size7, NEQ041_size8, PEQ019_size7, and iso_brn_repgen033. Compared ./build/primo --quiet --stats, --theory-phase=auto, --theory-phase=polarity, --qf-uf-preprocess=basic, --qf-uf-preprocess=basic --theory-phase=polarity, --qf-uf-portfolio=basic-polarity with budgets 500/1000/2000/5000/10000, and tuned /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000 where applicable; 30s timeout per run.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 7,
+        "timeout_seconds": 30,
+        "targets": "NEQ023_size7, NEQ027_size8, NEQ027_size10, NEQ016_size7, NEQ041_size8, PEQ019_size7, QG qg7 iso_brn_repgen033"
+      },
+      "artifacts": {
+        "neq_reference_matrix": "results/local-neq-matrix-20260719/neq023-027-local.csv",
+        "basic_polarity_matrix": "results/local-neq-matrix-20260719/neq-peq-qg-basic-polarity.csv",
+        "portfolio_budget_matrix": "results/local-neq-matrix-20260719/portfolio-budget-neq-peq-qg.csv"
+      },
+      "summary": {
+        "neq023": {
+          "default_seconds": 3.064,
+          "polarity_seconds": 0.553,
+          "basic_polarity_seconds": 0.455,
+          "portfolio_budget_10000_seconds": 0.429,
+          "llm2smt_tuned_seconds": 1.034
+        },
+        "neq027_size8": {
+          "default_seconds": 0.597,
+          "basic_polarity_seconds": 0.803,
+          "llm2smt_tuned_seconds": 1.282
+        },
+        "neq027_size10": {
+          "default_seconds": 1.255,
+          "polarity_seconds": 21.478,
+          "basic_polarity_seconds": 2.935,
+          "llm2smt_tuned_seconds": 1.582
+        },
+        "neq016_size7": {
+          "default_seconds": 4.92,
+          "polarity_seconds": 6.502,
+          "basic_polarity_seconds": 6.935
+        },
+        "portfolio_observation": "A 1000 or 2000 conflict first-pass budget catches iso_brn_repgen033 but not NEQ023. Budget 10000 catches NEQ023 and NEQ041, but slows NEQ016, NEQ027_size8, NEQ027_size10, and PEQ019 on this sample.",
+        "decision_callback_observation": "Clean-room inspection found LLM2SMT's cb_decide path is implemented for LRA branch hints; QF_UF EUF inherits the default return-0 callback. Primo likewise has QF_UF theory propagation/conflict callbacks and static phase hints, but no dynamic EUF SAT decision callback."
+      },
+      "evidence_status": "local-current",
+      "notes": "Do not promote polarity, basic-polarity, or the higher portfolio budget from this evidence. The NEQ cluster needs a sharper structural classifier or a different SAT-visible encoding/profiling target. The existing 334-row SLURM portfolio run remains rejected as a default because it was slower on most rows and worsened PAR2 despite gaining one solve."
     }
   ]
 }
