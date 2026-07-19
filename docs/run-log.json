@@ -1610,8 +1610,28 @@
         "validation_wrong": 0,
         "incumbent_args": "--quiet --preprocessing-passes=4 --preprocessing-adaptive-extra-passes=0 --preprocessing-adaptive-shrink-percent=29 --no-uf-symmetry-breaking --no-eq-bridge --euf-engine=incremental --euf-prop=auto --pure-theory-filter=auto --theory-phase=polarity --euf-prop-budget=1000 --prop-interval=128 --prop-assign-threshold=0.25"
       },
-      "evidence_status": "current",
-      "notes": "Completed cleanly. Incumbent improved the 8-row iso holdout from 36.712076s to 32.205814s with zero wrong answers, a modest 1.14x aggregate speedup. The profile keeps default preprocessing, disables UF symmetry and eq-bridge, uses theory_phase=polarity, prop_budget=1000, and prop_interval=128. This is not strong enough to promote as a default without full focused-QG and 334-row validation; it primarily confirms the earlier phase/predicate-interaction signal."
+      "evidence_status": "rejected-profile",
+      "notes": "Completed cleanly. Incumbent improved the 8-row iso holdout from 36.712076s to 32.205814s with zero wrong answers, a modest 1.14x aggregate speedup. The profile keeps default preprocessing, disables UF symmetry and eq-bridge, uses theory_phase=polarity, prop_budget=1000, and prop_interval=128. This is not strong enough to promote as a default without full focused-QG and 334-row validation; it primarily confirms the earlier phase/predicate-interaction signal. Follow-up local 20s regression check on benchmarks/qfuf-smac-gap-train.txt plus qfuf-smac-gap-validate.txt rejected this incumbent as a broad profile: default solved 10/15 with PAR2 256.247, the iso incumbent solved 6/15 with PAR2 393.522, and the same profile with equality bridge retained still solved only 6/15 with PAR2 391.558. The damage includes PEQ002_size7 timing out where default solved in 3.380s, so the iso SMAC result is overfit and should not be promoted.",
+      "followups": [
+        {
+          "kind": "local-regression-check",
+          "command": "python3 inline runner over benchmarks/qfuf-smac-gap-train.txt and benchmarks/qfuf-smac-gap-validate.txt; timeout 20s; compared default, iso incumbent, and iso incumbent with eq-bridge retained",
+          "summary": {
+            "default_solved": 10,
+            "default_wrong": 0,
+            "default_timeout": 5,
+            "default_par2": 256.247,
+            "incumbent_solved": 6,
+            "incumbent_wrong": 0,
+            "incumbent_timeout": 9,
+            "incumbent_par2": 393.522,
+            "incumbent_keep_eq_bridge_solved": 6,
+            "incumbent_keep_eq_bridge_wrong": 0,
+            "incumbent_keep_eq_bridge_timeout": 9,
+            "incumbent_keep_eq_bridge_par2": 391.558
+          }
+        }
+      ]
     }
   ]
 }
