@@ -7028,7 +7028,7 @@
       "recorded_at": "2026-07-20",
       "kind": "instrumentation",
       "scope": "Diagnostic-only FlatCongruenceClosure explanation-shape counters for QF_UF CC review",
-      "commit": "f0859c9",
+      "commit": "ea9a17d",
       "environment": {
         "type": "local",
         "host": "workspace",
