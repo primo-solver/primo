@@ -1675,6 +1675,60 @@
       },
       "evidence_status": "local-and-remote-smoke",
       "notes": "Previous qfuf_gap_tune.py hid all training files inside one objective call, so SMAC could not use instances/intensification correctly and the default was not a first-class raced configuration. The fixed driver passes train files through Scenario.instances with simple index instance_features, uses use_default_config=True, runs one solver invocation per target-function call, and supports guard manifests that reject incumbents regressing known equality-family behavior."
+    },
+    {
+      "id": "2026-07-19-smac-mixed-manifest-setup",
+      "started_at": "2026-07-19T01:15:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "tuning-setup",
+      "scope": "Replace iso-only SMAC objective with mixed QF_UF train/holdout manifests",
+      "commit": "cf564b8 plus uncommitted mixed manifest setup",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Created benchmarks/qfuf-smac-mixed-train.txt and benchmarks/qfuf-smac-mixed-validate.txt; checked every path; ran make lint and make docs",
+      "solver": {
+        "name": "Primo",
+        "argv": "not run; manifest/tooling setup"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 39,
+        "timeout_seconds": null,
+        "manifest": "benchmarks/qfuf-smac-mixed-train.txt and benchmarks/qfuf-smac-mixed-validate.txt"
+      },
+      "artifacts": {
+        "summary": null,
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "mixed_train_count": 21,
+        "mixed_train_families": {
+          "QG-iso": 8,
+          "NEQ": 2,
+          "PEQ": 4,
+          "SEQ": 2,
+          "Goel": 5
+        },
+        "mixed_validate_count": 18,
+        "mixed_validate_families": {
+          "QG-iso": 6,
+          "NEQ": 2,
+          "PEQ": 4,
+          "SEQ": 1,
+          "Goel": 5
+        },
+        "missing_paths": 0
+      },
+      "evidence_status": "setup",
+      "notes": "This fixes the iso-only focus by making QG iso rows one slice of a mixed tuning objective. The equality guard remains available, but NEQ/PEQ/SEQ rows are also directly present in the training and validation manifests."
     }
   ]
 }

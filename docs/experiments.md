@@ -274,16 +274,21 @@ incumbent and the current default on the held-out instances and writes
 `rejected_by_guard` when the incumbent has more wrong answers, fewer solved
 rows, or higher guard PAR2 than the default.
 
-For the QG `iso_*` gap, use
-`benchmarks/qfuf-smac-iso-train.txt` and
-`benchmarks/qfuf-smac-iso-validate.txt`. That campaign includes the user-visible
-`QG-classification/qg7/iso_brn_repgen033.smt2` case, ranked slow
-`iso_brn_nogen_sk*` siblings, and `iso_icl_repgen006.smt2`. The search space
+For profile search, prefer the mixed manifests
+`benchmarks/qfuf-smac-mixed-train.txt` and
+`benchmarks/qfuf-smac-mixed-validate.txt`. They combine QG `iso_*` gaps,
+NEQ/PEQ/SEQ finite-domain equality gaps, and Goel hardware sentinels, so a
+candidate cannot optimize only one family while ignoring known regressions.
+
+The narrower `benchmarks/qfuf-smac-iso-train.txt` and
+`benchmarks/qfuf-smac-iso-validate.txt` manifests are diagnostic only. They
+include the user-visible `QG-classification/qg7/iso_brn_repgen033.smt2` case,
+ranked slow `iso_brn_nogen_sk*` siblings, and `iso_icl_repgen006.smt2`. Do not
+promote an iso-only incumbent; rerun with the mixed manifests, the equality
+guard, and then the broader 334-row/full-QF_UF validation. The search space
 includes preprocessing strength, finite-domain symmetry/value-precedence and
 equality-definition toggles, bounded ground-congruence, EUF engine/propagation
-settings, theory phase, and the existing CaDiCaL incremental profile. Treat an
-iso incumbent as a diagnostic profile until it has been validated on the full
-focused QG set and the broader 334-row subset with zero wrong answers.
+settings, theory phase, and the existing CaDiCaL incremental profile.
 
 The first completed campaign for commit `c2c7e0e` found an incumbent that solves
 `NEQ015_size6` in 25.36s under the 120s validation cap, while the default timed

@@ -1,0 +1,23 @@
+# Held-out QG iso rows.
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk019.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk010.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk017.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk022.smt2
+tmp/QF_UF/QG-classification/qg6/iso_brn_nogen_sk006.smt2
+
+# Held-out NEQ/PEQ/SEQ finite-domain equality rows.
+tmp/QF_UF/NEQ/NEQ015_size6.smt2
+tmp/QF_UF/NEQ/NEQ016_size8.smt2
+tmp/QF_UF/PEQ/PEQ002_size8.smt2
+tmp/QF_UF/PEQ/PEQ003_size10.smt2
+tmp/QF_UF/PEQ/PEQ013_size8.smt2
+tmp/QF_UF/PEQ/PEQ014_size10.smt2
+tmp/QF_UF/SEQ/SEQ026_size7.smt2
+
+# Held-out Goel hardware/regression sentinels.
+tmp/QF_UF/2018-Goel-hwbench/QF_UF_AR_ab_cti_max.smt2
+tmp/QF_UF/2018-Goel-hwbench/QF_UF_Heap_ab_cti_max.smt2
+tmp/QF_UF/2018-Goel-hwbench/QF_UF_Huffman_dec_ab_reg_max.smt2
+tmp/QF_UF/2018-Goel-hwbench/QF_UF_adding.3.prop1_ab_reg_max.smt2
+tmp/QF_UF/2018-Goel-hwbench/QF_UF_anderson.3.prop1_ab_reg_max.smt2
