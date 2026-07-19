@@ -6186,6 +6186,53 @@
       },
       "evidence_status": "rejected_experiments",
       "notes": "Temporary source edits were reverted. The accepted artifact from this audit is the diagnosis and documentation; no performance default was changed."
+    },
+    {
+      "id": "2026-07-19-local-cc-proof-parent-skeleton-rejected",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Local rejected proof-parent explanation skeleton for FlatCongruenceClosure",
+      "commit": "e2ff384 plus temporary uncommitted proof-parent metadata prototype, reverted after measurement",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Temporary prototype added proof_parent/proof_edge/proof_from metadata on flat merges and tried LCA-style explanation before falling back to the existing adjacency BFS; measured ./build/primo --quiet --stats on PEQ019_size7, SEQ009_size10, PEQ002_size8, NEQ048_size7, and QG qg7/iso_brn_repgen_sk032, default and --no-finite-domain-post-amo.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats [optional --no-finite-domain-post-amo]"
+      },
+      "references": [
+        {
+          "name": "Nieuwenhuis-Oliveras paper",
+          "citation": "Fast Congruence Closure and Extensions, Sections 5.1-5.3 proof forest and Explain"
+        }
+      ],
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/SEQ/SEQ009_size10.smt2, tmp/QF_UF/PEQ/PEQ002_size8.smt2, tmp/QF_UF/NEQ/NEQ048_size7.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk032.smt2",
+        "timeout_seconds": 80
+      },
+      "artifacts": {
+        "summary": "terminal-captured local proof-parent matrix in 2026-07-19 conversation",
+        "results": null,
+        "logs": null
+      },
+      "summary": {
+        "prototype": "Maintained one proof-parent edge from the losing class representative to a pending equality endpoint in the winning class, with recursive repair when the losing representative was not the pending endpoint. Existing adjacency BFS remained as fallback.",
+        "focused_tests": "Temporary tests for non-representative merge endpoints and proof-parent rollback passed before measurement.",
+        "selected_results": {
+          "PEQ019_size7_default": "1.143s, worse than current local baseline about 0.91s; conflicts 3961, assignments 142366, explain-calls 1648233",
+          "PEQ019_size7_raw_only": "0.559s, worse than raw-only local baseline about 0.48s",
+          "PEQ002_size8_default": "38.036s, worse than current local baseline about 18-24s",
+          "SEQ009_size10_default": "0.126s, slightly worse than local baseline about 0.09-0.10s",
+          "iso_brn_repgen_sk032_default": "0.100s, improved from local baseline about 0.52s but not enough to offset PEQ regressions"
+        },
+        "decision": "rejected and reverted. A parent-to-LCA skeleton changes explanation clauses/search and is not the Section 5 algorithm. A future accepted implementation needs the auxiliary union-find/highest-node discipline and focused explanation-quality counters/tests."
+      },
+      "evidence_status": "rejected_experiment",
+      "notes": "No source changes from this prototype remain."
     }
   ]
 }
