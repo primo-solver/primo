@@ -65,10 +65,10 @@ reproducing narrower configurations:
   finite-domain/symmetry shape. A same-run July 19, 2026 SLURM comparison on
   the 334-row user HTML set validated this selector: default solved 332 with
   PAR2 2828.629, while `--no-auto-basic-single` solved 331 with PAR2 3031.436.
-  The guarded small
-  multi-assertion branch intentionally skips these clauses because the July 19,
-  2026 QG option comparison showed that several compact operation-table rows
-  benefited from the lighter `basic` encoding plus polarity phase;
+  The guarded small multi-assertion branch intentionally skips these clauses
+  because same-run July 19, 2026 SLURM comparisons showed that several compact
+  operation-table rows benefited from the lighter `basic` encoding plus polarity
+  phase;
 - finite-domain equality definitions. In `auto` they are opt-in with
   `--finite-domain-equality-definitions` and bounded by
   `--finite-domain-eqdefs-auto-domain-limit` and
@@ -144,9 +144,12 @@ symmetry pass accepts a group with at most six non-value terms. It reports
 selected 12 rows, gained `PEQ014_size11`, and reduced PAR2 by about 203 seconds
 against the same binary with the selector disabled. The basic-multi exception is
 a separate empirical classifier for compact multi-assertion QG rows and reports
-`:preprocessing.auto.basic-multi`. Earlier same-run SLURM evidence showed that
-it improved the selected QG rows but had noisy mixed-suite PAR2, so promotion
-requires renewed same-binary validation against the current default.
+`:preprocessing.auto.basic-multi`. A later July 19, 2026 same-run SLURM
+comparison on the 334-row user HTML set validated enabling it by default after
+the auto-basic-single baseline: default and `--no-auto-basic-multi` both solved
+332/334 with no wrong answers, while default reduced PAR2 by about 59 seconds
+overall and by about 115 seconds on the selected QG rows. The remaining NEQ gap
+is unchanged because those rows do not select the multi-assertion branch.
 When enabled, equality definitions must fit a domain-size and per-solve clause
 budget. For single-assertion formulas they must also fit the initial
 reachable-term limit, because a single top-level assertion may contain an entire

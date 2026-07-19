@@ -4913,7 +4913,7 @@
     {
       "id": "2026-07-19-local-auto-basic-multi-default-smoke",
       "date": "2026-07-19",
-      "commit": "4a38b8f+worktree",
+      "commit": "6c5f267",
       "host": "local workstation",
       "kind": "local option comparison",
       "scope": "QF_UF compact multi-assertion basic selector promoted to default, compared with --no-auto-basic-multi",
@@ -5041,7 +5041,7 @@
     {
       "id": "2026-07-19-qfuf-fuzzsmt-auto-basic-multi-default-1000",
       "date": "2026-07-19",
-      "commit": "4a38b8f+worktree",
+      "commit": "6c5f267",
       "host": "local workstation",
       "kind": "fuzz",
       "scope": "QF_UF FuzzSMT merge gate for enabling compact multi-assertion basic selector by default",
@@ -5081,6 +5081,95 @@
       },
       "evidence_status": "local-current",
       "notes": "No wrong answers, crashes, parser/type errors, unsupported answers, timeouts, or reference disagreements were reported in the harness summary."
+    },
+    {
+      "id": "2026-07-19-slurm-auto-basic-multi-default-111894",
+      "date": "2026-07-19",
+      "commit": "6c5f267",
+      "host": "SLURM node-head/node-01/node-02",
+      "kind": "slurm option comparison",
+      "scope": "334-row user primo.html QF_UF manifest, current default versus --no-auto-basic-multi",
+      "commands": [
+        "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qfuf_option_compare.sbatch",
+        "bash -n scripts/slurm_qfuf_option_compare.sbatch",
+        "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --ssh-config /tmp/llm2smt_slurm_ssh_config --remote llm2smt-slurm --remote-dir /home/janotmik/primo-cadical-profile --local-dir . --target primo --jobs 4",
+        "ssh -F /tmp/llm2smt_slurm_ssh_config llm2smt-slurm \"cd /home/janotmik/primo-cadical-profile && sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= no-basic-multi=--no-auto-basic-multi' scripts/slurm_qfuf_option_compare.sbatch\""
+      ],
+      "inputs": {
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt",
+        "timeout_seconds": 120,
+        "variants": {
+          "default": "",
+          "no_basic_multi": "--no-auto-basic-multi"
+        },
+        "slurm_job_id": 111894,
+        "shards": 16,
+        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+      },
+      "artifacts": {
+        "remote_results": "/home/janotmik/primo-cadical-profile/results/qfuf-option-compare-111894",
+        "local_results": "results/qfuf-option-compare-111894",
+        "local_logs": "slurm_logs/primo-qfuf-options-111894-*.{out,err}"
+      },
+      "summary": {
+        "default": {
+          "solved": 332,
+          "timeouts": 2,
+          "errors": 0,
+          "wrong": 0,
+          "par2_seconds": 2708.316721,
+          "auto_basic_multi_selected": 270,
+          "families": {
+            "Goel": "7/7 solved, PAR2 15.433",
+            "NEQ": "25/26 solved, PAR2 390.670",
+            "PEQ": "24/25 solved, PAR2 675.711",
+            "QG": "270/270 solved, PAR2 1578.982",
+            "SEQ": "6/6 solved, PAR2 47.522"
+          }
+        },
+        "no_basic_multi": {
+          "solved": 332,
+          "timeouts": 2,
+          "errors": 0,
+          "wrong": 0,
+          "par2_seconds": 2767.11395,
+          "families": {
+            "Goel": "7/7 solved, PAR2 15.486",
+            "NEQ": "25/26 solved, PAR2 384.404",
+            "PEQ": "24/25 solved, PAR2 631.897",
+            "QG": "270/270 solved, PAR2 1693.687",
+            "SEQ": "6/6 solved, PAR2 41.640"
+          }
+        },
+        "delta_default_minus_no_basic_multi": {
+          "solved": 0,
+          "par2_seconds": -58.797229,
+          "selected_qg_rows_par2_seconds": -114.704894,
+          "nonselected_rows_par2_seconds": 55.907665
+        },
+        "target_rows": {
+          "iso_brn_repgen033": "default 0.103s, --no-auto-basic-multi 6.100s; euf assignments 1957 versus 2268666",
+          "iso_icl_repgen006": "default 7.787s, --no-auto-basic-multi 6.197s; selected but slower on this run",
+          "NEQ023_size7": "default 7.290s, --no-auto-basic-multi 7.299s; selector not active",
+          "NEQ016_size8": "both variants timed out at 120s; selector not active"
+        },
+        "largest_selector_wins": {
+          "iso_icl_repgen001": "-10.002s",
+          "gensys_icl001": "-8.536s",
+          "iso_icl_nogen003": "-7.246s",
+          "gensys_icl_sk004": "-6.745s",
+          "iso_brn_repgen033": "-5.997s"
+        },
+        "largest_selector_regressions": {
+          "iso_icl_nogen_sk004": "+6.416s",
+          "iso_icl_nogen004": "+5.841s",
+          "iso_icl_repgen005": "+3.975s",
+          "iso_icl_repgen009": "+3.968s",
+          "iso_icl_repgen007": "+3.627s"
+        }
+      },
+      "evidence_status": "slurm-current",
+      "notes": "Accepted as the current default on same-binary SLURM evidence after the auto-basic-single baseline: no wrong answers, no solved-count regression, and lower PAR2 overall. The QG-selected subset improves materially, including iso_brn_repgen033. Nonselected family deltas are timing noise because those rows report auto_basic_multi=0 under both variants. The remaining NEQ gap, including NEQ016_size8, is unchanged and remains the next performance target."
     }
   ]
 }
