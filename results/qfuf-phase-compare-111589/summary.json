@@ -1,0 +1,471 @@
+{
+  "auto": {
+    "error": 0,
+    "families": {
+      "Goel": {
+        "ok": 7,
+        "par2": 16.316,
+        "total": 7
+      },
+      "NEQ": {
+        "ok": 25,
+        "par2": 409.457,
+        "total": 26
+      },
+      "PEQ": {
+        "ok": 22,
+        "par2": 1154.265,
+        "total": 25
+      },
+      "QG": {
+        "ok": 270,
+        "par2": 1926.335,
+        "total": 270
+      },
+      "SEQ": {
+        "ok": 6,
+        "par2": 49.024,
+        "total": 6
+      }
+    },
+    "ok": 330,
+    "par2": 3555.397,
+    "timeout": 4,
+    "total": 334,
+    "unsupported": 0,
+    "wrong": 0
+  },
+  "auto_vs_default": {
+    "top_regressions": [
+      {
+        "auto_seconds": 49.959,
+        "auto_status": "ok",
+        "default_seconds": 24.159,
+        "default_status": "ok",
+        "delta": -25.8,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk003.smt2"
+      },
+      {
+        "auto_seconds": 29.584,
+        "auto_status": "ok",
+        "default_seconds": 10.819,
+        "default_status": "ok",
+        "delta": -18.765,
+        "file": "tmp/QF_UF/QG-classification/qg7/gensys_icl_sk003.smt2"
+      },
+      {
+        "auto_seconds": 33.291,
+        "auto_status": "ok",
+        "default_seconds": 16.661,
+        "default_status": "ok",
+        "delta": -16.63,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_nogen_sk003.smt2"
+      },
+      {
+        "auto_seconds": 93.663,
+        "auto_status": "ok",
+        "default_seconds": 77.974,
+        "default_status": "ok",
+        "delta": -15.689,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen001.smt2"
+      },
+      {
+        "auto_seconds": 20.864,
+        "auto_status": "ok",
+        "default_seconds": 8.44,
+        "default_status": "ok",
+        "delta": -12.423,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen018.smt2"
+      },
+      {
+        "auto_seconds": 73.059,
+        "auto_status": "ok",
+        "default_seconds": 61.059,
+        "default_status": "ok",
+        "delta": -12.001,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen003.smt2"
+      },
+      {
+        "auto_seconds": 19.093,
+        "auto_status": "ok",
+        "default_seconds": 8.04,
+        "default_status": "ok",
+        "delta": -11.053,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen003.smt2"
+      },
+      {
+        "auto_seconds": 53.367,
+        "auto_status": "ok",
+        "default_seconds": 43.332,
+        "default_status": "ok",
+        "delta": -10.036,
+        "file": "tmp/QF_UF/PEQ/PEQ018_size6.smt2"
+      },
+      {
+        "auto_seconds": 29.508,
+        "auto_status": "ok",
+        "default_seconds": 20.648,
+        "default_status": "ok",
+        "delta": -8.859,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_nogen_sk004.smt2"
+      },
+      {
+        "auto_seconds": 16.443,
+        "auto_status": "ok",
+        "default_seconds": 8.358,
+        "default_status": "ok",
+        "delta": -8.085,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk015.smt2"
+      },
+      {
+        "auto_seconds": 17.511,
+        "auto_status": "ok",
+        "default_seconds": 10.4,
+        "default_status": "ok",
+        "delta": -7.111,
+        "file": "tmp/QF_UF/NEQ/NEQ041_size9.smt2"
+      },
+      {
+        "auto_seconds": 14.599,
+        "auto_status": "ok",
+        "default_seconds": 8.274,
+        "default_status": "ok",
+        "delta": -6.325,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen019.smt2"
+      }
+    ],
+    "top_wins": [
+      {
+        "auto_seconds": 116.606,
+        "auto_status": "ok",
+        "default_seconds": 120.357,
+        "default_status": "timeout",
+        "delta": 123.394,
+        "file": "tmp/QF_UF/PEQ/PEQ002_size8.smt2"
+      },
+      {
+        "auto_seconds": 36.907,
+        "auto_status": "ok",
+        "default_seconds": 58.446,
+        "default_status": "ok",
+        "delta": 21.539,
+        "file": "tmp/QF_UF/SEQ/SEQ026_size7.smt2"
+      },
+      {
+        "auto_seconds": 20.132,
+        "auto_status": "ok",
+        "default_seconds": 32.102,
+        "default_status": "ok",
+        "delta": 11.97,
+        "file": "tmp/QF_UF/QG-classification/qg7/gensys_icl001.smt2"
+      },
+      {
+        "auto_seconds": 23.762,
+        "auto_status": "ok",
+        "default_seconds": 34.681,
+        "default_status": "ok",
+        "delta": 10.92,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_nogen003.smt2"
+      },
+      {
+        "auto_seconds": 2.402,
+        "auto_status": "ok",
+        "default_seconds": 10.294,
+        "default_status": "ok",
+        "delta": 7.892,
+        "file": "tmp/QF_UF/NEQ/NEQ023_size7.smt2"
+      },
+      {
+        "auto_seconds": 1.059,
+        "auto_status": "ok",
+        "default_seconds": 7.398,
+        "default_status": "ok",
+        "delta": 6.339,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+      },
+      {
+        "auto_seconds": 14.869,
+        "auto_status": "ok",
+        "default_seconds": 19.815,
+        "default_status": "ok",
+        "delta": 4.946,
+        "file": "tmp/QF_UF/QG-classification/qg7/gensys_icl003.smt2"
+      },
+      {
+        "auto_seconds": 15.883,
+        "auto_status": "ok",
+        "default_seconds": 20.788,
+        "default_status": "ok",
+        "delta": 4.905,
+        "file": "tmp/QF_UF/NEQ/NEQ015_size6.smt2"
+      },
+      {
+        "auto_seconds": 6.876,
+        "auto_status": "ok",
+        "default_seconds": 11.73,
+        "default_status": "ok",
+        "delta": 4.854,
+        "file": "tmp/QF_UF/NEQ/NEQ006_size6.smt2"
+      },
+      {
+        "auto_seconds": 10.554,
+        "auto_status": "ok",
+        "default_seconds": 15.135,
+        "default_status": "ok",
+        "delta": 4.581,
+        "file": "tmp/QF_UF/QG-classification/qg7/gensys_icl_sk004.smt2"
+      },
+      {
+        "auto_seconds": 16.262,
+        "auto_status": "ok",
+        "default_seconds": 20.604,
+        "default_status": "ok",
+        "delta": 4.342,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk004.smt2"
+      },
+      {
+        "auto_seconds": 10.968,
+        "auto_status": "ok",
+        "default_seconds": 15.189,
+        "default_status": "ok",
+        "delta": 4.222,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen002.smt2"
+      }
+    ]
+  },
+  "default": {
+    "error": 0,
+    "families": {
+      "Goel": {
+        "ok": 7,
+        "par2": 15.778,
+        "total": 7
+      },
+      "NEQ": {
+        "ok": 25,
+        "par2": 414.461,
+        "total": 26
+      },
+      "PEQ": {
+        "ok": 21,
+        "par2": 1272.86,
+        "total": 25
+      },
+      "QG": {
+        "ok": 270,
+        "par2": 1918.207,
+        "total": 270
+      },
+      "SEQ": {
+        "ok": 6,
+        "par2": 71.285,
+        "total": 6
+      }
+    },
+    "ok": 329,
+    "par2": 3692.592,
+    "timeout": 5,
+    "total": 334,
+    "unsupported": 0,
+    "wrong": 0
+  },
+  "vs_111557_default": {
+    "par2_delta_new_minus_old": -2.607,
+    "top_regressions": [
+      {
+        "delta": -2.393,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen001.smt2",
+        "new_seconds": 77.974,
+        "new_status": "ok",
+        "old_seconds": 75.581,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.999,
+        "file": "tmp/QF_UF/QG-classification/qg5/gensys_icl690.smt2",
+        "new_seconds": 5.503,
+        "new_status": "ok",
+        "old_seconds": 4.504,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.861,
+        "file": "tmp/QF_UF/SEQ/SEQ026_size7.smt2",
+        "new_seconds": 58.446,
+        "new_status": "ok",
+        "old_seconds": 57.584,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.847,
+        "file": "tmp/QF_UF/QG-classification/qg5/gensys_icl653.smt2",
+        "new_seconds": 10.158,
+        "new_status": "ok",
+        "old_seconds": 9.311,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.778,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk004.smt2",
+        "new_seconds": 9.38,
+        "new_status": "ok",
+        "old_seconds": 8.602,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.77,
+        "file": "tmp/QF_UF/QG-classification/qg5/gensys_icl660.smt2",
+        "new_seconds": 5.611,
+        "new_status": "ok",
+        "old_seconds": 4.841,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.683,
+        "file": "tmp/QF_UF/PEQ/PEQ014_size10.smt2",
+        "new_seconds": 38.086,
+        "new_status": "ok",
+        "old_seconds": 37.403,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.592,
+        "file": "tmp/QF_UF/QG-classification/qg6/iso_icl_repgen010.smt2",
+        "new_seconds": 10.873,
+        "new_status": "ok",
+        "old_seconds": 10.281,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.587,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_nogen_sk003.smt2",
+        "new_seconds": 16.661,
+        "new_status": "ok",
+        "old_seconds": 16.074,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.529,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen002.smt2",
+        "new_seconds": 15.189,
+        "new_status": "ok",
+        "old_seconds": 14.661,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.521,
+        "file": "tmp/QF_UF/QG-classification/qg6/gensys_icl004.smt2",
+        "new_seconds": 4.499,
+        "new_status": "ok",
+        "old_seconds": 3.978,
+        "old_status": "ok"
+      },
+      {
+        "delta": -0.502,
+        "file": "tmp/QF_UF/QG-classification/qg6/gensys_icl008.smt2",
+        "new_seconds": 7.145,
+        "new_status": "ok",
+        "old_seconds": 6.643,
+        "old_status": "ok"
+      }
+    ],
+    "top_wins": [
+      {
+        "delta": 10.189,
+        "file": "tmp/QF_UF/NEQ/NEQ015_size5.smt2",
+        "new_seconds": 4.859,
+        "new_status": "ok",
+        "old_seconds": 15.048,
+        "old_status": "ok"
+      },
+      {
+        "delta": 10.18,
+        "file": "tmp/QF_UF/NEQ/NEQ015_size6.smt2",
+        "new_seconds": 20.788,
+        "new_status": "ok",
+        "old_seconds": 30.967,
+        "old_status": "ok"
+      },
+      {
+        "delta": 1.786,
+        "file": "tmp/QF_UF/PEQ/PEQ003_size10.smt2",
+        "new_seconds": 115.605,
+        "new_status": "ok",
+        "old_seconds": 117.391,
+        "old_status": "ok"
+      },
+      {
+        "delta": 1.591,
+        "file": "tmp/QF_UF/NEQ/NEQ015_size4.smt2",
+        "new_seconds": 1.1,
+        "new_status": "ok",
+        "old_seconds": 2.691,
+        "old_status": "ok"
+      },
+      {
+        "delta": 0.702,
+        "file": "tmp/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop2_ab_reg_max.smt2",
+        "new_seconds": 3.17,
+        "new_status": "ok",
+        "old_seconds": 3.872,
+        "old_status": "ok"
+      },
+      {
+        "delta": 0.548,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen011.smt2",
+        "new_seconds": 8.393,
+        "new_status": "ok",
+        "old_seconds": 8.941,
+        "old_status": "ok"
+      },
+      {
+        "delta": 0.548,
+        "file": "tmp/QF_UF/QG-classification/qg6/dead_dnd001.smt2",
+        "new_seconds": 3.748,
+        "new_status": "ok",
+        "old_seconds": 4.296,
+        "old_status": "ok"
+      },
+      {
+        "delta": 0.494,
+        "file": "tmp/QF_UF/QG-classification/qg6/iso_icl_nogen_sk005.smt2",
+        "new_seconds": 1.209,
+        "new_status": "ok",
+        "old_seconds": 1.703,
+        "old_status": "ok"
+      },
+      {
+        "delta": 0.481,
+        "file": "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen047.smt2",
+        "new_seconds": 2.56,
+        "new_status": "ok",
+        "old_seconds": 3.04,
+        "old_status": "ok"
+      },
+      {
+        "delta": 0.417,
+        "file": "tmp/QF_UF/QG-classification/qg5/gensys_icl995.smt2",
+        "new_seconds": 4.027,
+        "new_status": "ok",
+        "old_seconds": 4.444,
+        "old_status": "ok"
+      },
+      {
+        "delta": 0.368,
+        "file": "tmp/QF_UF/PEQ/PEQ016_size6.smt2",
+        "new_seconds": 4.151,
+        "new_status": "ok",
+        "old_seconds": 4.518,
+        "old_status": "ok"
+      },
+      {
+        "delta": 0.352,
+        "file": "tmp/QF_UF/QG-classification/qg6/iso_icl_nogen001.smt2",
+        "new_seconds": 9.321,
+        "new_status": "ok",
+        "old_seconds": 9.673,
+        "old_status": "ok"
+      }
+    ]
+  }
+}

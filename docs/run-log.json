@@ -3253,6 +3253,70 @@
       },
       "evidence_status": "local-current",
       "notes": "Fresh local merge-gate differential fuzzing after changing the default EUF propagation resolver. This does not replace the 3000-case campaign gate required for headline default-readiness claims."
+    },
+    {
+      "id": "2026-07-19-qfuf-phase-compare-111589",
+      "started_at": "2026-07-19T13:34:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "SLURM default versus --theory-phase=auto comparison on the 334-row user HTML QF_UF manifest after finite-domain auto-online heuristic",
+      "commit": "e30988a",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "job_id": "111589"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-phase-compare-111589/summary.json",
+        "results": "results/qfuf-phase-compare-111589/default-merged.csv and results/qfuf-phase-compare-111589/auto-merged.csv",
+        "logs": "logs/primo-qfuf-phase-111589-*.out and logs/primo-qfuf-phase-111589-*.err",
+        "bugs": null
+      },
+      "summary": {
+        "default": {
+          "ok": 329,
+          "timeout": 5,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3692.592
+        },
+        "auto": {
+          "ok": 330,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3555.397
+        },
+        "families_default": {
+          "Goel": "7/7 ok, PAR2 15.778",
+          "NEQ": "25/26 ok, PAR2 414.461",
+          "PEQ": "21/25 ok, PAR2 1272.860",
+          "QG": "270/270 ok, PAR2 1918.207",
+          "SEQ": "6/6 ok, PAR2 71.285"
+        },
+        "families_auto": {
+          "Goel": "7/7 ok, PAR2 16.316",
+          "NEQ": "25/26 ok, PAR2 409.457",
+          "PEQ": "22/25 ok, PAR2 1154.265",
+          "QG": "270/270 ok, PAR2 1926.335",
+          "SEQ": "6/6 ok, PAR2 49.024"
+        },
+        "default_vs_111557": "same solved count and wrong-answer count; PAR2 3695.199 -> 3692.592. Top intended wins: NEQ015_size5 15.048s -> 4.859s, NEQ015_size6 30.967s -> 20.788s, NEQ015_size4 2.691s -> 1.100s. Largest measured regressions were small except iso_icl_repgen001 75.581s -> 77.974s.",
+        "auto_vs_default": "auto still solves one extra PEQ row and lowers PAR2, but repeats large QG regressions: iso_icl_repgen_sk003 24.159s -> 49.959s, gensys_icl_sk003 10.819s -> 29.584s, iso_icl_nogen_sk003 16.661s -> 33.291s."
+      },
+      "evidence_status": "current-slurm",
+      "notes": "The finite-domain auto-online heuristic is accepted as a narrow default improvement on the 334-row manifest: it improves the targeted NEQ015 rows without changing solved count or introducing wrong answers, and the 334-row PAR2 is slightly better than job 111557. The result is still far from reference parity; continue triage on the remaining NEQ/PEQ/QG gaps and do not promote --theory-phase=auto as the command-line default because the QG regressions remain."
     }
   ]
 }
