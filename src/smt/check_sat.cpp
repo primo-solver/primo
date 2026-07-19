@@ -168,6 +168,20 @@ constexpr util::StatKey kStatEufIncrementalExplainCacheHits =
     util::StatKey::EufIncrementalExplainCacheHits;
 constexpr util::StatKey kStatEufIncrementalExplainLength =
     util::StatKey::EufIncrementalExplainLength;
+constexpr util::StatKey kStatEufIncrementalExplainBfsSearches =
+    util::StatKey::EufIncrementalExplainBfsSearches;
+constexpr util::StatKey kStatEufIncrementalExplainBfsVisited =
+    util::StatKey::EufIncrementalExplainBfsVisited;
+constexpr util::StatKey kStatEufIncrementalExplainBfsPathEdges =
+    util::StatKey::EufIncrementalExplainBfsPathEdges;
+constexpr util::StatKey kStatEufIncrementalExplainBfsMaxQueue =
+    util::StatKey::EufIncrementalExplainBfsMaxQueue;
+constexpr util::StatKey kStatEufIncrementalExplainDirectEdges =
+    util::StatKey::EufIncrementalExplainDirectEdges;
+constexpr util::StatKey kStatEufIncrementalExplainCongruenceEdges =
+    util::StatKey::EufIncrementalExplainCongruenceEdges;
+constexpr util::StatKey kStatEufIncrementalExplainReasonDuplicateLiterals =
+    util::StatKey::EufIncrementalExplainReasonDuplicateLiterals;
 constexpr util::StatKey kStatEufIncrementalBacktracks = util::StatKey::EufIncrementalBacktracks;
 constexpr util::StatKey kStatEufIncrementalTrailEntries = util::StatKey::EufIncrementalTrailEntries;
 constexpr util::StatKey kStatEufIncrementalClassMemberTrailEntriesSaved =
@@ -1181,6 +1195,21 @@ void add_incremental_stats(util::Statistics& statistics,
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCacheHits,
                             stats.explain_cache_hits);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainLength, stats.explain_length);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainBfsSearches,
+                            stats.explain_bfs_searches);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainBfsVisited,
+                            stats.explain_bfs_visited);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainBfsPathEdges,
+                            stats.explain_bfs_path_edges);
+  if (stats.explain_bfs_max_queue > statistics.get(kStatEufIncrementalExplainBfsMaxQueue)) {
+    statistics.set(kStatEufIncrementalExplainBfsMaxQueue, stats.explain_bfs_max_queue);
+  }
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainDirectEdges,
+                            stats.explain_direct_edges);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCongruenceEdges,
+                            stats.explain_congruence_edges);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainReasonDuplicateLiterals,
+                            stats.explain_reason_duplicate_literals);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalBacktracks, stats.backtracks);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalTrailEntries, stats.trail_entries);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalClassMemberTrailEntriesSaved,
@@ -1215,6 +1244,13 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.explain_calls, rhs.explain_calls),
       positive_delta(lhs.explain_cache_hits, rhs.explain_cache_hits),
       positive_delta(lhs.explain_length, rhs.explain_length),
+      positive_delta(lhs.explain_bfs_searches, rhs.explain_bfs_searches),
+      positive_delta(lhs.explain_bfs_visited, rhs.explain_bfs_visited),
+      positive_delta(lhs.explain_bfs_path_edges, rhs.explain_bfs_path_edges),
+      lhs.explain_bfs_max_queue,
+      positive_delta(lhs.explain_direct_edges, rhs.explain_direct_edges),
+      positive_delta(lhs.explain_congruence_edges, rhs.explain_congruence_edges),
+      positive_delta(lhs.explain_reason_duplicate_literals, rhs.explain_reason_duplicate_literals),
       positive_delta(lhs.backtracks, rhs.backtracks),
       positive_delta(lhs.trail_entries, rhs.trail_entries),
       positive_delta(lhs.class_member_trail_entries_saved, rhs.class_member_trail_entries_saved),
@@ -1608,6 +1644,14 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.explain_calls += stats.explain_calls;
     accumulated_stats_.explain_cache_hits += stats.explain_cache_hits;
     accumulated_stats_.explain_length += stats.explain_length;
+    accumulated_stats_.explain_bfs_searches += stats.explain_bfs_searches;
+    accumulated_stats_.explain_bfs_visited += stats.explain_bfs_visited;
+    accumulated_stats_.explain_bfs_path_edges += stats.explain_bfs_path_edges;
+    accumulated_stats_.explain_bfs_max_queue =
+        std::max(accumulated_stats_.explain_bfs_max_queue, stats.explain_bfs_max_queue);
+    accumulated_stats_.explain_direct_edges += stats.explain_direct_edges;
+    accumulated_stats_.explain_congruence_edges += stats.explain_congruence_edges;
+    accumulated_stats_.explain_reason_duplicate_literals += stats.explain_reason_duplicate_literals;
     accumulated_stats_.backtracks += stats.backtracks;
     accumulated_stats_.trail_entries += stats.trail_entries;
     accumulated_stats_.class_member_trail_entries_saved += stats.class_member_trail_entries_saved;
@@ -2614,6 +2658,13 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufIncrementalExplainCalls, 0);
   statistics.set(kStatEufIncrementalExplainCacheHits, 0);
   statistics.set(kStatEufIncrementalExplainLength, 0);
+  statistics.set(kStatEufIncrementalExplainBfsSearches, 0);
+  statistics.set(kStatEufIncrementalExplainBfsVisited, 0);
+  statistics.set(kStatEufIncrementalExplainBfsPathEdges, 0);
+  statistics.set(kStatEufIncrementalExplainBfsMaxQueue, 0);
+  statistics.set(kStatEufIncrementalExplainDirectEdges, 0);
+  statistics.set(kStatEufIncrementalExplainCongruenceEdges, 0);
+  statistics.set(kStatEufIncrementalExplainReasonDuplicateLiterals, 0);
   statistics.set(kStatEufIncrementalBacktracks, 0);
   statistics.set(kStatEufIncrementalTrailEntries, 0);
   statistics.set(kStatEufIncrementalClassMemberTrailEntriesSaved, 0);

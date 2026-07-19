@@ -524,6 +524,7 @@ void FlatCongruenceClosure::append_unique_reason(std::vector<sat::Lit>& target,
       reason_marks_.resize(index + 1, 0);
     }
     if (reason_marks_[index] == reason_generation_) {
+      ++stats_.explain_reason_duplicate_literals;
       continue;
     }
     reason_marks_[index] = reason_generation_;
@@ -542,10 +543,12 @@ FlatCongruenceClosure::ExplanationKey FlatCongruenceClosure::explanation_key(Fla
 void FlatCongruenceClosure::append_edge_reason(const Edge& edge,
                                                std::vector<sat::Lit>& reason) const {
   if (edge.congruence) {
+    ++stats_.explain_congruence_edges;
     (void)explain_equal_into(edge.lhs_definition.function, edge.rhs_definition.function, reason);
     (void)explain_equal_into(edge.lhs_definition.argument, edge.rhs_definition.argument, reason);
     return;
   }
+  ++stats_.explain_direct_edges;
   append_unique_reason(reason, edge.reason);
 }
 
@@ -571,6 +574,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
     parent_edge_scratch_.resize(parent_.size(), edges_.size());
     parent_scratch_.resize(parent_.size(), kInvalidFlatTermId);
   }
+  ++stats_.explain_bfs_searches;
   ++visit_generation_;
   if (visit_generation_ == 0) {
     std::fill(visit_marks_.begin(), visit_marks_.end(), 0);
@@ -583,6 +587,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
 
   while (queue_index < queue_scratch_.size() && visit_marks_[rhs] != visit_generation_) {
     const FlatTermId current = queue_scratch_[queue_index++];
+    ++stats_.explain_bfs_visited;
     for (const std::size_t edge_index : edge_adjacency_[current]) {
       const Edge& edge = edges_[edge_index];
       FlatTermId next = kInvalidFlatTermId;
@@ -601,6 +606,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
       queue_scratch_.push_back(next);
     }
   }
+  stats_.explain_bfs_max_queue = std::max(stats_.explain_bfs_max_queue, queue_scratch_.size());
 
   if (visit_marks_[rhs] != visit_generation_) {
     return false;
@@ -613,6 +619,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
   for (FlatTermId current = rhs; current != lhs; current = parent_scratch_[current]) {
     path_edges.push_back(parent_edge_scratch_[current]);
   }
+  stats_.explain_bfs_path_edges += path_edges.size();
   for (const std::size_t edge_index : path_edges) {
     append_edge_reason(edges_[edge_index], reason);
   }

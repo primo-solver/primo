@@ -6333,6 +6333,42 @@
       },
       "evidence_status": "current_local",
       "notes": "The profile supports continuing CC work around explanation cost, rollback volume, and search volume, but the rejected proof forest showed that reason quality must be preserved or measured before changing the emitted conflict clauses."
+    },
+    {
+      "id": "2026-07-19-local-cc-explain-diagnostics",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Diagnostic-only FlatCongruenceClosure explanation counters for PEQ/NEQ/QG triage",
+      "commit": "d5f4579 plus uncommitted diagnostic counter patch",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "./build/primo --stats --euf-engine=incremental CASE after adding passive counters for explain BFS searches, visited BFS nodes, BFS path edges, max BFS queue, direct edge expansions, congruence edge expansions, and duplicate reason literals.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --stats --euf-engine=incremental"
+      },
+      "inputs": {
+        "manifest": "tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/PEQ/PEQ002_size8.smt2, tmp/QF_UF/NEQ/NEQ023_size7.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk032.smt2",
+        "timeout_seconds": 80
+      },
+      "artifacts": {
+        "summary": "terminal-captured local matrix in 2026-07-19 conversation",
+        "results": null,
+        "logs": null
+      },
+      "summary": {
+        "PEQ019_size7_default": "unsat 0.904s; explain-calls 1261146; cache-hits 940671; explain-length 211380; BFS searches 320435; BFS visited 4634102; BFS path edges 1555351; max BFS queue 224; direct edges 480899; congruence edges 1074452; duplicate reason literals 274372.",
+        "PEQ002_size8_default": "unsat 17.086s; explain-calls 25649979; cache-hits 18635523; explain-length 5205743; BFS searches 7013297; BFS visited 105904124; BFS path edges 31107753; max BFS queue 1048; direct edges 9736798; congruence edges 21370955; duplicate reason literals 4630753.",
+        "NEQ023_size7_default": "unsat 0.431s; explain-calls 35509; cache-hits 4628; explain-length 29938; BFS searches 26602; BFS visited 509168; BFS path edges 49032; max BFS queue 346; direct edges 28441; congruence edges 20591; duplicate reason literals 1845.",
+        "iso_brn_repgen_sk032_default": "sat 0.476s; explain-calls 187085; cache-hits 49729; explain-length 105144; BFS searches 137280; BFS visited 757760; BFS path edges 270196; max BFS queue 190; direct edges 123907; congruence edges 146289; duplicate reason literals 31270.",
+        "interpretation": "PEQ002 is dominated by repeated BFS and congruence-edge expansion: it performs about 7.0M BFS searches, visits about 105.9M explanation graph nodes, and expands about 21.4M congruence edges. Future CC changes should first reduce these counters or preserve reason length while reducing traversal."
+      },
+      "evidence_status": "current_local",
+      "notes": "This patch is diagnostic-only: it does not change congruence closure state, conflict clauses, propagation clauses, or SAT options."
     }
   ]
 }

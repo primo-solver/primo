@@ -401,6 +401,12 @@ void flat_congruence_closure_reuses_repeated_sub_explanations() {
   check(reason->size() == 1);
   check(reason->front().value == -8);
   check(closure.stats().explain_cache_hits >= 1);
+  check(closure.stats().explain_bfs_searches >= 1);
+  check(closure.stats().explain_bfs_visited >= 1);
+  check(closure.stats().explain_bfs_path_edges >= 1);
+  check(closure.stats().explain_bfs_max_queue >= 1);
+  check(closure.stats().explain_direct_edges >= 1);
+  check(closure.stats().explain_congruence_edges >= 1);
 }
 
 void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {

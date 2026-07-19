@@ -120,6 +120,9 @@ The engine exposes counters for:
 - disequality checks and conflicts;
 - explanation calls and per-explanation cache hits;
 - explanation length;
+- explanation diagnostics: BFS searches, BFS nodes visited, BFS path edges,
+  maximum BFS queue size, direct equality edges expanded, congruence edges
+  expanded, and duplicate reason literals skipped;
 - backtracks;
 - use-list appends, process-time duplicate skips, affected-list duplicate skips,
   and maximum observed use-list size;
