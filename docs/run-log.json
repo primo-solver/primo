@@ -7101,7 +7101,7 @@
       "recorded_at": "2026-07-20",
       "kind": "benchmark",
       "scope": "Local QF_UF CC review after bounding recursive congruence-premise explanations to older equality edges",
-      "commit": "a228e9d-dirty",
+      "commit": "4128c72",
       "environment": {
         "type": "local",
         "host": "workspace",
@@ -7148,7 +7148,7 @@
       "recorded_at": "2026-07-20",
       "kind": "fuzz",
       "scope": "QF_UF FuzzSMT merge gate after causal recursive FlatCongruenceClosure explanations",
-      "commit": "a228e9d-dirty",
+      "commit": "4128c72",
       "environment": {
         "type": "local",
         "host": "workspace",
