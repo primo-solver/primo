@@ -4482,6 +4482,113 @@
       },
       "evidence_status": "rejected-default",
       "notes": "The candidate auto default fixed several visible NEQ/QG/SEQ rows but regressed the broader 334-row subset, losing one PEQ solve and increasing PAR2 by 161.438s. Revert the default to negative and keep auto as an explicit experimental option for future portfolio/tuning work."
+    },
+    {
+      "id": "2026-07-19-neq023-live-stats-publication-local",
+      "started_at": "2026-07-19T19:20:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profile",
+      "scope": "Local NEQ023_size7 gap triage after restoring the negative theory phase default",
+      "commit": "f1f92c2+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "Rebuilt ./build/primo at f1f92c2; compared ./build/primo --quiet --stats, --theory-phase=auto, and tuned /tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000 on tmp/QF_UF/NEQ/NEQ023_size7.smt2; ran perf record/report before and after lazy live-stats publication; ran local option probe over NEQ023, NEQ016, NEQ041, PEQ019, and iso_brn_repgen033.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 5,
+        "timeout_seconds": 30,
+        "targets": "tmp/QF_UF/NEQ/NEQ023_size7.smt2, tmp/QF_UF/NEQ/NEQ016_size7.smt2, tmp/QF_UF/NEQ/NEQ041_size8.smt2, tmp/QF_UF/PEQ/PEQ019_size7.smt2, tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+      },
+      "artifacts": {
+        "timing_logs": "results/local-neQ-analysis-20260719/",
+        "perf_before": "results/local-profiles/perf-neq023-default-f1f92c2-20260719.txt",
+        "perf_after": "results/local-profiles/perf-neq023-default-f1f92c2-statslazy-20260719.txt",
+        "option_probe": "results/local-neQ-analysis-20260719/current-option-probe.csv"
+      },
+      "summary": {
+        "neq023_default_seconds": 3.04,
+        "neq023_auto_phase_seconds": 0.57,
+        "neq023_llm2smt_tuned_seconds": 1.01,
+        "neq023_default_stats": {
+          "euf_assignments": 4728189,
+          "euf_theory_conflicts": 3836,
+          "finite_domain_amo": 4368,
+          "sat_clauses": 6436,
+          "sat_binary_clauses": 5342
+        },
+        "llm2smt_tuned_stats": {
+          "euf_assignments": 2138805,
+          "euf_conflicts": 9774,
+          "finite_domain_amo": 4473,
+          "sat_clauses": 8778,
+          "sat_binary_clauses": 7640
+        },
+        "nnf_flattening_check": "LLM2SMT --nnf --nnf-memo was neutral on NEQ023; --no-flatten regressed from about 0.97s to 1.55s and increased assignments.",
+        "top_level_or_tseitin_probe": "Improved local NEQ023, NEQ016, and NEQ041, but previous SLURM job 111621 rejected it as a global default because it lost one solve and worsened PAR2.",
+        "accepted_change": "Reduce hot live-stat snapshotting by publishing rollbackable flat-closure counters before pop, periodically for live timeout stats, and at final flush instead of after every theory assignment.",
+        "perf_effect": "The pre-change perf report showed IncrementalFlatAssignmentState::publish_stats at 2.97% self time. After the change it is absent from the top self-time report; CaDiCaL propagation and flat congruence-closure merge/allocation remain dominant."
+      },
+      "evidence_status": "local-current",
+      "notes": "This is a narrow overhead improvement, not a reference-parity claim. The next profiler-backed target is allocation in FlatCongruenceClosure::merge_classes, especially rollback class-member/use-list trail storage."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-live-stats-publication-1000",
+      "started_at": "2026-07-19T20:50:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate for lazy live-stat publication in online incremental EUF",
+      "commit": "f1f92c2+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071919 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-live-stats-publication-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "generator": "fuzzsmt",
+        "seed": 2026071919,
+        "count": 1000,
+        "timeout_seconds": 5
+      },
+      "artifacts": {
+        "summary_csv": "fuzz-results/qf_uf-fuzzsmt-live-stats-publication-1000/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uf-fuzzsmt-live-stats-publication-1000/generated/"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "ours_sat": 896,
+        "ours_unsat": 104
+      },
+      "evidence_status": "local-current",
+      "notes": "All generated cases matched Z3. This fuzz gate covers the stats-publication behavior change; it is not evidence for broader QF_UF reference parity."
     }
   ]
 }

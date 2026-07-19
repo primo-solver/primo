@@ -1491,6 +1491,32 @@ void incremental_online_euf_propagation_uses_flat_lookup() {
   assert(result.statistics.get(":euf.incremental.congruence-merges") >= 1);
 }
 
+void incremental_online_euf_live_stats_publish_at_flush() {
+  primo::util::Statistics live_statistics;
+  primo::smt::CheckSatOptions options = propagation_test_options();
+  options.euf_engine = primo::smt::EufEngine::Incremental;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  options.live_statistics = &live_statistics;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (or (= (f a) (f b)) (not (= (f a) (f b)))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.incremental.merges") >= 1);
+  assert(live_statistics.get(":euf.incremental.merges") ==
+         result.statistics.get(":euf.incremental.merges"));
+  assert(live_statistics.get(":euf.incremental.lookup-hits") ==
+         result.statistics.get(":euf.incremental.lookup-hits"));
+}
+
 void online_euf_propagation_handles_transitive_reasons() {
   primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
@@ -1789,6 +1815,7 @@ int main() {
   model_euf_propagation_respects_zero_budget();
   online_euf_propagation_learns_congruence_during_search();
   incremental_online_euf_propagation_uses_flat_lookup();
+  incremental_online_euf_live_stats_publish_at_flush();
   online_euf_propagation_handles_transitive_reasons();
   online_euf_propagation_handles_predicate_congruence();
   online_euf_propagation_keeps_conflicts_external();

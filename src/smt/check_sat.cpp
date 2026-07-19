@@ -179,6 +179,7 @@ constexpr util::StatKey kStatEufIncrementalMaxUseListSize =
 
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
 constexpr std::size_t kAutoBasicMultiTermLimit = 20000;
+constexpr std::size_t kLiveStatsFlushInterval = 1024;
 
 std::size_t reachable_term_count(const core::TermManager& terms,
                                  const std::vector<core::TermId>& roots) {
@@ -1161,7 +1162,9 @@ void add_incremental_stats(util::Statistics& statistics,
                             stats.use_list_duplicate_skips);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalAffectedUseListDedup,
                             stats.affected_use_list_dedup);
-  increment_stat_if_nonzero(statistics, kStatEufIncrementalMaxUseListSize, stats.max_use_list_size);
+  if (stats.max_use_list_size > statistics.get(kStatEufIncrementalMaxUseListSize)) {
+    statistics.set(kStatEufIncrementalMaxUseListSize, stats.max_use_list_size);
+  }
 }
 
 std::size_t positive_delta(std::size_t current, std::size_t previous) {
@@ -1190,7 +1193,7 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.use_list_appends, rhs.use_list_appends),
       positive_delta(lhs.use_list_duplicate_skips, rhs.use_list_duplicate_skips),
       positive_delta(lhs.affected_use_list_dedup, rhs.affected_use_list_dedup),
-      positive_delta(lhs.max_use_list_size, rhs.max_use_list_size),
+      lhs.max_use_list_size,
   };
 }
 
@@ -1465,11 +1468,11 @@ class IncrementalFlatAssignmentState {
     checkpoints_.resize(new_level);
     assignments_.resize(assignment_count);
     if (closure_checkpoint.has_value()) {
+      publish_stats();
       closure_.pop(closure_checkpoint.value());
       last_published_stats_ = closure_.stats();
       ++accumulated_stats_.backtracks;
       ++unflushed_publications_;
-      constexpr std::size_t kLiveStatsFlushInterval = 1024;
       if (flush_live_stats_ && unflushed_publications_ >= kLiveStatsFlushInterval) {
         flush_stats();
       }
@@ -1489,7 +1492,11 @@ class IncrementalFlatAssignmentState {
     flat_atom->source.value = assignment.value;
     flat_atom->source.filtered = assignment.filtered;
     assert_flat_assigned_atom(closure_, flat_atom.value(), true_flat_, false_flat_);
-    publish_stats();
+    ++assignments_since_publication_;
+    if (flush_live_stats_ && assignments_since_publication_ >= kLiveStatsFlushInterval) {
+      publish_stats();
+      flush_stats();
+    }
   }
 
   std::optional<sat::Clause> explain_candidate(const BooleanClausifier::TheoryAtom& atom,
@@ -1526,6 +1533,7 @@ class IncrementalFlatAssignmentState {
   std::optional<sat::Clause> conflict() const { return closure_.conflict(); }
 
   void flush_stats() {
+    publish_stats();
     add_incremental_stats(statistics_, accumulated_stats_);
     accumulated_stats_ = {};
     unflushed_publications_ = 0;
@@ -1556,10 +1564,7 @@ class IncrementalFlatAssignmentState {
     accumulate_stats(stats_delta(current, last_published_stats_));
     last_published_stats_ = current;
     ++unflushed_publications_;
-    constexpr std::size_t kLiveStatsFlushInterval = 1024;
-    if (flush_live_stats_ && unflushed_publications_ >= kLiveStatsFlushInterval) {
-      flush_stats();
-    }
+    assignments_since_publication_ = 0;
   }
 
   void accumulate_stats(const theory::equality::IncrementalCongruenceClosureStats& stats) {
@@ -1613,6 +1618,7 @@ class IncrementalFlatAssignmentState {
   std::vector<Checkpoint> checkpoints_;
   bool flush_live_stats_ = false;
   std::size_t unflushed_publications_ = 0;
+  std::size_t assignments_since_publication_ = 0;
   theory::equality::IncrementalCongruenceClosureStats accumulated_stats_;
   theory::equality::IncrementalCongruenceClosureStats last_published_stats_;
 };

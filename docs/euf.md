@@ -181,6 +181,13 @@ retained assignment after each backtrack and avoids copying the closure for
 decision levels that never touch theory state, but it is still an
 implementation-local trail rather than the paper's timestamped lookup undo
 structure.
+The closure's detailed counters are rollback-sensitive because checkpoints
+restore the closure state. The online assignment state therefore accumulates
+counter snapshots before rollback can erase them and once more when final stats
+are flushed. With live timeout stats enabled, it also publishes periodically
+after batches of assignments. This keeps timeout diagnostics fresh enough for
+benchmarking without copying the whole counter block on every assignment
+notification.
 For the incremental engine, online propagation no longer starts every discovery
 round with a blind scan of all theory atoms. The flat congruence closure records
 flat terms whose equivalence-class representative changed during merges. The
