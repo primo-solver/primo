@@ -3631,6 +3631,40 @@
       },
       "evidence_status": "mixed-not-default-ready",
       "notes": "Auto phase has a small aggregate PAR2 improvement but severe localized regressions. NEQ027_size10 and NEQ031_size10 have very similar coarse finite-domain and polarity statistics while moving in opposite directions, so a simple count-only default heuristic is not supported by this evidence."
+    },
+    {
+      "id": "2026-07-19-qfuf-basic-polarity-portfolio-local-sample",
+      "started_at": "2026-07-19T14:40:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local smoke comparison of opt-in --qf-uf-portfolio=basic-polarity against default on representative QG, NEQ, and PEQ rows",
+      "commit": "uncommitted",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "python3 inline harness over nine selected QF_UF files, comparing ./build/primo --quiet --stats against ./build/primo --quiet --stats --qf-uf-portfolio=basic-polarity with the default 2000 theory-conflict first-pass budget",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats and ./build/primo --quiet --stats --qf-uf-portfolio=basic-polarity"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 9,
+        "targets": "iso_brn_repgen033, iso_brn_repgen043, gensys_brn044, iso_icl_repgen_sk006, iso_icl_repgen006, NEQ023_size7, NEQ016_size7, NEQ027_size10, PEQ019_size7"
+      },
+      "artifacts": {
+        "manual_budget_probe": "results/qfuf-portfolio-budget-local-sample-20260719.csv",
+        "integrated_option_sample": "results/qfuf-portfolio-integrated-local-sample-20260719.csv"
+      },
+      "summary": {
+        "wins": "portfolio solved iso_brn_repgen033 in 0.045s versus 2.420s default and gensys_brn044 in 0.561s versus 2.433s default",
+        "fallbacks": "portfolio fell back on iso_brn_repgen043, iso_icl_repgen_sk006, iso_icl_repgen006, NEQ023_size7, NEQ016_size7, NEQ027_size10, and PEQ019_size7",
+        "regressions": "fallback overhead was visible on NEQ027_size10, 2.195s versus 1.318s default, and PEQ019_size7, 1.713s versus 1.146s default",
+        "status": "supports keeping the feature opt-in and running a 334-row SLURM comparison before considering any profile/default promotion"
+      },
+      "evidence_status": "local-current",
+      "notes": "The first attempt reparses the original input under basic preprocessing and polarity phase, returns only sat/unsat answers, and falls back to the ordinary configured solve on the existing theory-conflict-limit unknown."
     }
   ]
 }

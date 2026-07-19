@@ -1,0 +1,55 @@
+file,variant,status,answer,seconds,conflicts,assignments,amo,eqdefs,sym,auto_polarity,message
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2,default,ok,sat,2.293,67244,,3808,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2,basic-polarity,ok,sat,0.049,596,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2,basic-polarity-conf2k,ok,sat,0.046,596,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2,basic-polarity-conf5k,ok,sat,0.047,596,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2,basic-polarity-conf10k,ok,sat,0.043,596,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2,basic-auto-conf10k,ok,sat,0.086,2692,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2,default,ok,sat,1.497,6459,,3808,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2,basic-polarity,ok,sat,0.894,16283,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2,basic-polarity-conf2k,limit,unknown,0.085,2005,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2,basic-polarity-conf5k,limit,unknown,0.175,5002,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2,basic-polarity-conf10k,limit,unknown,0.469,10002,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2,basic-auto-conf10k,ok,sat,0.269,5654,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/gensys_brn044.smt2,default,ok,sat,2.491,6746,,3808,,,0,
+tmp/QF_UF/QG-classification/qg7/gensys_brn044.smt2,basic-polarity,ok,sat,0.591,1623,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/gensys_brn044.smt2,basic-polarity-conf2k,ok,sat,0.547,1623,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/gensys_brn044.smt2,basic-polarity-conf5k,ok,sat,0.551,1623,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/gensys_brn044.smt2,basic-polarity-conf10k,ok,sat,0.582,1623,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/gensys_brn044.smt2,basic-auto-conf10k,ok,sat,0.691,5267,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2,default,ok,unsat,1.358,9793,,3874,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2,basic-polarity,ok,unsat,0.901,16502,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2,basic-polarity-conf2k,limit,unknown,0.175,2004,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2,basic-polarity-conf5k,limit,unknown,0.227,5004,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2,basic-polarity-conf10k,limit,unknown,0.523,10003,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2,basic-auto-conf10k,limit,unknown,0.470,10003,,0,,,1,tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk006.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2,default,ok,unsat,0.792,9703,,3559,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2,basic-polarity,ok,unsat,0.872,16869,,0,,,0,
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2,basic-polarity-conf2k,limit,unknown,0.139,2004,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2,basic-polarity-conf5k,limit,unknown,0.200,5002,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2,basic-polarity-conf10k,limit,unknown,0.467,10007,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2: theory conflict limit reached
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2,basic-auto-conf10k,limit,unknown,0.846,10010,,0,,,0,tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ023_size7.smt2,default,ok,unsat,3.491,3836,,4368,,,0,
+tmp/QF_UF/NEQ/NEQ023_size7.smt2,basic-polarity,ok,unsat,0.512,5632,,0,,,0,
+tmp/QF_UF/NEQ/NEQ023_size7.smt2,basic-polarity-conf2k,limit,unknown,0.104,2001,,0,,,0,tmp/QF_UF/NEQ/NEQ023_size7.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ023_size7.smt2,basic-polarity-conf5k,limit,unknown,0.172,5002,,0,,,0,tmp/QF_UF/NEQ/NEQ023_size7.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ023_size7.smt2,basic-polarity-conf10k,ok,unsat,0.560,5632,,0,,,0,
+tmp/QF_UF/NEQ/NEQ023_size7.smt2,basic-auto-conf10k,ok,unsat,3.362,6562,,0,,,0,
+tmp/QF_UF/NEQ/NEQ016_size7.smt2,default,ok,unsat,6.049,57206,,1092,,,0,
+tmp/QF_UF/NEQ/NEQ016_size7.smt2,basic-polarity,ok,unsat,8.342,98507,,0,,,0,
+tmp/QF_UF/NEQ/NEQ016_size7.smt2,basic-polarity-conf2k,limit,unknown,0.061,2000,,0,,,0,tmp/QF_UF/NEQ/NEQ016_size7.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ016_size7.smt2,basic-polarity-conf5k,limit,unknown,0.204,5002,,0,,,0,tmp/QF_UF/NEQ/NEQ016_size7.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ016_size7.smt2,basic-polarity-conf10k,limit,unknown,0.554,10004,,0,,,0,tmp/QF_UF/NEQ/NEQ016_size7.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ016_size7.smt2,basic-auto-conf10k,limit,unknown,0.550,10004,,0,,,1,tmp/QF_UF/NEQ/NEQ016_size7.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ027_size10.smt2,default,ok,unsat,1.459,6373,,11590,,,0,
+tmp/QF_UF/NEQ/NEQ027_size10.smt2,basic-polarity,ok,unsat,3.461,18027,,0,,,0,
+tmp/QF_UF/NEQ/NEQ027_size10.smt2,basic-polarity-conf2k,limit,unknown,0.875,2000,,0,,,0,tmp/QF_UF/NEQ/NEQ027_size10.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ027_size10.smt2,basic-polarity-conf5k,limit,unknown,1.065,5006,,0,,,0,tmp/QF_UF/NEQ/NEQ027_size10.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ027_size10.smt2,basic-polarity-conf10k,limit,unknown,1.797,10005,,0,,,0,tmp/QF_UF/NEQ/NEQ027_size10.smt2: theory conflict limit reached
+tmp/QF_UF/NEQ/NEQ027_size10.smt2,basic-auto-conf10k,limit,unknown,1.768,10005,,0,,,1,tmp/QF_UF/NEQ/NEQ027_size10.smt2: theory conflict limit reached
+tmp/QF_UF/PEQ/PEQ019_size7.smt2,default,ok,unsat,1.222,4707,,3787,,,0,
+tmp/QF_UF/PEQ/PEQ019_size7.smt2,basic-polarity,ok,unsat,1.449,7677,,0,,,0,
+tmp/QF_UF/PEQ/PEQ019_size7.smt2,basic-polarity-conf2k,limit,unknown,0.439,2001,,0,,,0,tmp/QF_UF/PEQ/PEQ019_size7.smt2: theory conflict limit reached
+tmp/QF_UF/PEQ/PEQ019_size7.smt2,basic-polarity-conf5k,limit,unknown,0.764,5001,,0,,,0,tmp/QF_UF/PEQ/PEQ019_size7.smt2: theory conflict limit reached
+tmp/QF_UF/PEQ/PEQ019_size7.smt2,basic-polarity-conf10k,ok,unsat,1.342,7677,,0,,,0,
+tmp/QF_UF/PEQ/PEQ019_size7.smt2,basic-auto-conf10k,ok,unsat,1.456,7677,,0,,,1,

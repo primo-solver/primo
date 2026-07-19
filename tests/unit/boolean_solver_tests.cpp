@@ -1572,6 +1572,49 @@ void theory_conflict_limit_stops_external_search_with_unknown() {
   assert(result.statistics.get(":euf.assignments") >= 3);
 }
 
+void qf_uf_basic_polarity_portfolio_returns_first_success() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_portfolio = primo::smt::QfUfPortfolioMode::BasicPolarity;
+  options.qf_uf_portfolio_conflicts = 10;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (assert (= a b))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":portfolio.qf-uf.attempts") == 1);
+  assert(result.statistics.get(":portfolio.qf-uf.basic-polarity.solved") == 1);
+}
+
+void qf_uf_basic_polarity_portfolio_falls_back_after_conflict_budget() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_portfolio = primo::smt::QfUfPortfolioMode::BasicPolarity;
+  options.qf_uf_portfolio_conflicts = 0;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (assert (or (= a b) (= b c)))
+    (assert (or (not (= a b)) (= b c)))
+    (assert (or (= a b) (not (= b c))))
+    (assert (not (= a c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":portfolio.qf-uf.attempts") == 2);
+  assert(result.statistics.get(":portfolio.qf-uf.basic-polarity.fell-back") == 1);
+  assert(result.statistics.get(":portfolio.qf-uf.basic-polarity.first-conflicts") == 0);
+}
+
 void online_euf_propagation_accepts_already_assigned_implications() {
   primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
@@ -1694,6 +1737,8 @@ int main() {
   conflict_euf_callback_learns_external_conflict_without_propagation();
   theory_conflict_limit_stops_lazy_search_with_unknown();
   theory_conflict_limit_stops_external_search_with_unknown();
+  qf_uf_basic_polarity_portfolio_returns_first_success();
+  qf_uf_basic_polarity_portfolio_falls_back_after_conflict_budget();
   online_euf_propagation_accepts_already_assigned_implications();
   online_euf_reason_cache_survives_backtracking();
   boolean_unit_simplification_handles_nested_rewrites();

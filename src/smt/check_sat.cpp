@@ -2398,7 +2398,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 
 }  // namespace
 
-CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options) {
+CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions options) {
   util::Statistics local_statistics;
   util::Statistics& statistics =
       options.live_statistics != nullptr ? *options.live_statistics : local_statistics;
@@ -2793,6 +2793,42 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
   } catch (const std::exception& error) {
     return CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics};
   }
+}
+
+CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options) {
+  if (options.qf_uf_portfolio == QfUfPortfolioMode::Off) {
+    return check_sat_smtlib_once(input, options);
+  }
+
+  CheckSatOptions first_options = options;
+  first_options.qf_uf_portfolio = QfUfPortfolioMode::Off;
+  first_options.qf_uf_preprocess = QfUfPreprocessMode::Basic;
+  first_options.theory_phase = TheoryPhaseMode::Polarity;
+  first_options.max_theory_conflicts = options.qf_uf_portfolio_conflicts;
+  CheckSatOutcome first = check_sat_smtlib_once(input, first_options);
+  first.statistics.set(":portfolio.qf-uf.attempts", 1);
+  first.statistics.set(":portfolio.qf-uf.basic-polarity.attempted", 1);
+  first.statistics.set(":portfolio.qf-uf.basic-polarity.conflict-budget",
+                       options.qf_uf_portfolio_conflicts);
+  first.statistics.set(":portfolio.qf-uf.basic-polarity.first-conflicts",
+                       first.statistics.get(kStatTheoryConflicts));
+  if (!(first.result == CheckSatResult::Unknown &&
+        first.message == "theory conflict limit reached")) {
+    first.statistics.set(":portfolio.qf-uf.basic-polarity.solved", 1);
+    return first;
+  }
+
+  CheckSatOptions fallback_options = options;
+  fallback_options.qf_uf_portfolio = QfUfPortfolioMode::Off;
+  CheckSatOutcome fallback = check_sat_smtlib_once(input, fallback_options);
+  fallback.statistics.set(":portfolio.qf-uf.attempts", 2);
+  fallback.statistics.set(":portfolio.qf-uf.basic-polarity.attempted", 1);
+  fallback.statistics.set(":portfolio.qf-uf.basic-polarity.fell-back", 1);
+  fallback.statistics.set(":portfolio.qf-uf.basic-polarity.conflict-budget",
+                          options.qf_uf_portfolio_conflicts);
+  fallback.statistics.set(":portfolio.qf-uf.basic-polarity.first-conflicts",
+                          first.statistics.get(kStatTheoryConflicts));
+  return fallback;
 }
 
 std::string_view to_string(CheckSatResult result) {

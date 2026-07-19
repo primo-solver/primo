@@ -45,6 +45,11 @@ enum class TheoryPhaseMode {
   Auto,
 };
 
+enum class QfUfPortfolioMode {
+  Off,
+  BasicPolarity,
+};
+
 struct AutoBudget {
   enum class Kind {
     Auto,
@@ -87,6 +92,7 @@ struct CheckSatOptions {
   bool guarded_ground_unit_substitution = false;
   bool solved_constant_substitution = true;
   bool top_level_or_tseitin = false;
+  QfUfPortfolioMode qf_uf_portfolio = QfUfPortfolioMode::Off;
   bool preprocess_only = false;
   std::size_t euf_propagation_interval = 32;
   double euf_propagation_assign_threshold = 0.25;
@@ -97,6 +103,7 @@ struct CheckSatOptions {
   std::size_t finite_domain_eqdefs_auto_clause_limit = 5000;
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
   std::optional<std::size_t> max_theory_conflicts;
+  std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;
   util::Statistics* live_statistics = nullptr;
 };

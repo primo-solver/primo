@@ -77,6 +77,26 @@ reproducing narrower configurations:
 legacy switches for ablation runs. `--qf-uf-preprocess=off` disables the
 preprocessing loop and the finite-domain symmetry-breaking preprocessing step.
 
+## Experimental QF_UF Portfolio
+
+`--qf-uf-portfolio=basic-polarity` runs a bounded first attempt with
+`--qf-uf-preprocess=basic`, `--theory-phase=polarity`, and a theory-conflict
+budget before falling back to the normal configured solve. The budget defaults
+to 2000 theory conflicts and is controlled by
+`--qf-uf-portfolio-conflicts=N`.
+
+The first attempt is correctness-preserving because it solves the original
+SMT-LIB input after reparsing with a weaker preprocessing preset; if it returns
+`sat` or `unsat`, that answer is returned. If it reaches the theory-conflict
+budget, Primo discards that solver state, reparses the original input, and runs
+the ordinary configured solve. Statistics from the returned attempt include
+`:portfolio.qf-uf.*` counters that distinguish first-pass success from fallback.
+
+This mode is intentionally opt-in. Local diagnostics on July 19, 2026 showed
+large wins on some satisfiable QG rows such as `iso_brn_repgen033`, but also
+fallback overhead on NEQ and PEQ rows. It must be evaluated on the full target
+manifest before being considered for any default profile.
+
 ```bash
 ./build/primo --qf-uf-preprocess=off input.smt2
 ./build/primo --qf-uf-preprocess=auto input.smt2
@@ -85,6 +105,7 @@ preprocessing loop and the finite-domain symmetry-breaking preprocessing step.
 ./build/primo --uf-symmetry-breaking input.smt2
 ./build/primo --eq-bridge --preprocessing-passes 3 input.smt2
 ./build/primo --eq-bridge --preprocess-passes 3 input.smt2
+./build/primo --qf-uf-portfolio=basic-polarity input.smt2
 ```
 
 These passes are deliberately separate from the SAT backend. They create

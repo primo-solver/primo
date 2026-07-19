@@ -131,6 +131,7 @@ int main(int argc, char** argv) {
   bool no_top_level_or_tseitin = false;
   std::string qf_uf_preprocess = "auto";
   std::string qf_uf_profile = "default";
+  std::string qf_uf_portfolio = "off";
   std::string euf_engine = "incremental";
   std::string euf_prop = "auto";
   std::string pure_theory_filter = "auto";
@@ -138,6 +139,7 @@ int main(int argc, char** argv) {
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
   std::size_t max_theory_conflicts = 0;
+  std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::string> cadical_options;
   primo::smt::CheckSatOptions solver_options;
 
@@ -184,6 +186,12 @@ int main(int argc, char** argv) {
   CLI::Option* profile_option = app.add_option("--qf-uf-profile", qf_uf_profile,
                                                "QF_UF profile: default or tuned-interesting")
                                     ->check(CLI::IsMember({"default", "tuned-interesting"}));
+  app.add_option("--qf-uf-portfolio", qf_uf_portfolio,
+                 "QF_UF portfolio mode: off or basic-polarity")
+      ->check(CLI::IsMember({"off", "basic-polarity"}));
+  app.add_option("--qf-uf-portfolio-conflicts", qf_uf_portfolio_conflicts,
+                 "Theory-conflict budget for the first QF_UF portfolio attempt")
+      ->check(CLI::Range(1, 1000000000));
   app.add_option("--euf-prop", euf_prop,
                  "EUF propagation mode: auto, off, conflict, model, or online")
       ->check(CLI::IsMember({"auto", "off", "conflict", "model", "online"}));
@@ -280,6 +288,12 @@ int main(int argc, char** argv) {
       euf_prop_delivery = "1000";
     }
   }
+  if (qf_uf_portfolio == "basic-polarity") {
+    solver_options.qf_uf_portfolio = primo::smt::QfUfPortfolioMode::BasicPolarity;
+  } else {
+    solver_options.qf_uf_portfolio = primo::smt::QfUfPortfolioMode::Off;
+  }
+  solver_options.qf_uf_portfolio_conflicts = qf_uf_portfolio_conflicts;
   if (no_uf_symmetry_breaking) {
     solver_options.uf_symmetry_breaking = false;
   }
