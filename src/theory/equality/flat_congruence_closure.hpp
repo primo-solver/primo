@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <optional>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "sat/lit.hpp"
@@ -11,6 +10,8 @@
 #include "theory/equality/flat_terms.hpp"
 
 namespace primo::theory::equality {
+
+class FlatCongruenceClosureTestAccess;
 
 class FlatCongruenceClosure {
  public:
@@ -163,13 +164,15 @@ class FlatCongruenceClosure {
   mutable std::vector<FlatTermId> parent_scratch_;
   mutable std::vector<FlatTermId> queue_scratch_;
   mutable std::vector<std::vector<std::size_t>> path_edges_scratch_;
-  mutable std::unordered_set<ExplanationKey, ExplanationKeyHash> explanation_cache_;
+  mutable std::unordered_map<ExplanationKey, std::size_t, ExplanationKeyHash> explanation_cache_;
   mutable std::size_t explanation_depth_ = 0;
   mutable std::size_t visit_generation_ = 0;
   mutable std::vector<std::size_t> reason_marks_;
   mutable std::size_t reason_generation_ = 0;
   std::vector<std::size_t> use_list_marks_;
   std::size_t use_list_generation_ = 0;
+
+  friend class FlatCongruenceClosureTestAccess;
 };
 
 }  // namespace primo::theory::equality

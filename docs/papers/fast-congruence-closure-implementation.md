@@ -310,3 +310,16 @@ calls, BFS search counts, and reason-length buckets on the sampled rows, but
 fewer BFS nodes visited: `PEQ002_size8` dropped from 105,904,124 to 79,293,756,
 `PEQ019_size7` from 4,634,102 to 3,529,805, `SEQ035_size6` from 5,035,533 to
 5,013,254, and `qg7/iso_icl_repgen006` from 8,754,428 to 5,960,538.
+
+A subsequent cache audit found that the per-reason repeated-pair cache also has
+to respect the causal edge bound. A pair explained with a later edge prefix is
+not necessarily valid for an earlier congruence edge's premise. The cache now
+records the smallest edge bound under which each pair has been successfully
+explained and only reuses the entry when the current recursive bound is equal
+or looser. The regression test directly exercises a broad successful query
+followed by a stricter failed query in one reason collection. This is a
+correctness and diagnostics tightening, not a performance win: on local
+`NEQ016_size8`, the stricter cache exposed millions of bound misses and more
+BFS work while preserving the same timeout outcome. That reinforces the earlier
+conclusion that the remaining CC-specific performance gap is the missing
+Section 4-5 proof-forest explanation mechanism and reason-quality policy.

@@ -289,7 +289,12 @@ congruence edge. This keeps premise explanations tied to facts that existed
 when the congruence merge was produced and avoids recursive BFS paths through
 later proof edges. The diagnostic counter
 `:euf.incremental.explain-causal-edge-skips` reports how often recursive
-explanation rejected such later edges.
+explanation rejected such later edges. The per-reason repeated-pair cache also
+stores the smallest edge bound under which a pair was proved; a cached pair is
+only reused for an equal or looser bound. Stricter recursive premise queries
+therefore recompute instead of reusing a path that may mention later proof
+edges. `:euf.incremental.explain-cache-bound-misses` counts these rejected
+cache hits.
 Use-list appends do not scan the destination vector for duplicates. Duplicates
 can arise when the same flat definition mentions two classes that later merge,
 so the closure removes duplicate affected results with a generation-stamp
@@ -306,7 +311,8 @@ The explanation-shape counters
 `:euf.incremental.explain-top-level-queries`,
 `:euf.incremental.explain-recursive-queries`,
 `:euf.incremental.explain-repeated-pair-queries`, and
-`:euf.incremental.explain-max-recursion-depth` are diagnostic only: they measure
+`:euf.incremental.explain-max-recursion-depth`, together with
+`:euf.incremental.explain-cache-bound-misses`, are diagnostic only: they measure
 the current BFS explanation path and do not implement or select a proof-forest
 reason engine.
 Online-mode checkpoints are created lazily on the first theory assignment in a

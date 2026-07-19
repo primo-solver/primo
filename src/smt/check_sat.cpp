@@ -166,6 +166,8 @@ constexpr util::StatKey kStatEufIncrementalConflicts = util::StatKey::EufIncreme
 constexpr util::StatKey kStatEufIncrementalExplainCalls = util::StatKey::EufIncrementalExplainCalls;
 constexpr util::StatKey kStatEufIncrementalExplainCacheHits =
     util::StatKey::EufIncrementalExplainCacheHits;
+constexpr util::StatKey kStatEufIncrementalExplainCacheBoundMisses =
+    util::StatKey::EufIncrementalExplainCacheBoundMisses;
 constexpr util::StatKey kStatEufIncrementalExplainLength =
     util::StatKey::EufIncrementalExplainLength;
 constexpr util::StatKey kStatEufIncrementalExplainTopLevelQueries =
@@ -1218,6 +1220,8 @@ void add_incremental_stats(util::Statistics& statistics,
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCalls, stats.explain_calls);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCacheHits,
                             stats.explain_cache_hits);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCacheBoundMisses,
+                            stats.explain_cache_bound_misses);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainLength, stats.explain_length);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainTopLevelQueries,
                             stats.explain_top_level_queries);
@@ -1295,6 +1299,7 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.conflicts, rhs.conflicts),
       positive_delta(lhs.explain_calls, rhs.explain_calls),
       positive_delta(lhs.explain_cache_hits, rhs.explain_cache_hits),
+      positive_delta(lhs.explain_cache_bound_misses, rhs.explain_cache_bound_misses),
       positive_delta(lhs.explain_length, rhs.explain_length),
       positive_delta(lhs.explain_top_level_queries, rhs.explain_top_level_queries),
       positive_delta(lhs.explain_recursive_queries, rhs.explain_recursive_queries),
@@ -1707,6 +1712,7 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.conflicts += stats.conflicts;
     accumulated_stats_.explain_calls += stats.explain_calls;
     accumulated_stats_.explain_cache_hits += stats.explain_cache_hits;
+    accumulated_stats_.explain_cache_bound_misses += stats.explain_cache_bound_misses;
     accumulated_stats_.explain_length += stats.explain_length;
     accumulated_stats_.explain_top_level_queries += stats.explain_top_level_queries;
     accumulated_stats_.explain_recursive_queries += stats.explain_recursive_queries;
@@ -2735,6 +2741,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufIncrementalConflicts, 0);
   statistics.set(kStatEufIncrementalExplainCalls, 0);
   statistics.set(kStatEufIncrementalExplainCacheHits, 0);
+  statistics.set(kStatEufIncrementalExplainCacheBoundMisses, 0);
   statistics.set(kStatEufIncrementalExplainLength, 0);
   statistics.set(kStatEufIncrementalExplainTopLevelQueries, 0);
   statistics.set(kStatEufIncrementalExplainRecursiveQueries, 0);

@@ -114,6 +114,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":euf.incremental.conflicts"sv,
     ":euf.incremental.explain-calls"sv,
     ":euf.incremental.explain-cache-hits"sv,
+    ":euf.incremental.explain-cache-bound-misses"sv,
     ":euf.incremental.explain-length"sv,
     ":euf.incremental.explain-top-level-queries"sv,
     ":euf.incremental.explain-recursive-queries"sv,

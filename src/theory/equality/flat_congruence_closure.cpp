@@ -595,10 +595,13 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
   } else {
     ++stats_.explain_recursive_queries;
   }
-  if (explanation_cache_.contains(key)) {
-    ++stats_.explain_cache_hits;
-    ++stats_.explain_repeated_pair_queries;
-    return true;
+  if (const auto cached = explanation_cache_.find(key); cached != explanation_cache_.end()) {
+    if (cached->second <= max_edge_index) {
+      ++stats_.explain_cache_hits;
+      ++stats_.explain_repeated_pair_queries;
+      return true;
+    }
+    ++stats_.explain_cache_bound_misses;
   }
   stats_.explain_max_recursion_depth =
       std::max(stats_.explain_max_recursion_depth, explanation_depth_);
@@ -663,7 +666,10 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
       return false;
     }
   }
-  explanation_cache_.insert(key);
+  const auto [cached, inserted] = explanation_cache_.emplace(key, max_edge_index);
+  if (!inserted && max_edge_index < cached->second) {
+    cached->second = max_edge_index;
+  }
   --explanation_depth_;
   return true;
 }

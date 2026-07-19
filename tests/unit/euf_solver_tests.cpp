@@ -16,8 +16,24 @@
 using primo::theory::equality::EufSolver;
 using primo::theory::equality::ExplainedCongruenceClosure;
 using primo::theory::equality::FlatCongruenceClosure;
+using primo::theory::equality::FlatCongruenceClosureTestAccess;
 using primo::theory::equality::FlatTermIndex;
 using primo::theory::equality::IncrementalCongruenceClosure;
+
+namespace primo::theory::equality {
+class FlatCongruenceClosureTestAccess {
+ public:
+  static bool explain_pair_with_bound(FlatCongruenceClosure& closure, FlatTermId lhs,
+                                      FlatTermId rhs, std::vector<primo::sat::Lit>& reason,
+                                      std::size_t max_edge_index) {
+    return closure.explain_equal_into(lhs, rhs, reason, max_edge_index);
+  }
+
+  static void begin_reason(FlatCongruenceClosure& closure, std::vector<primo::sat::Lit>& reason) {
+    closure.begin_reason_collection(reason);
+  }
+};
+}  // namespace primo::theory::equality
 
 namespace {
 
@@ -545,6 +561,20 @@ void flat_congruence_closure_uses_causal_edges_for_congruence_reasons() {
   check(closure.stats().explain_causal_edge_skips >= 1);
 }
 
+void flat_congruence_closure_explanation_cache_respects_edge_bounds() {
+  FlatCongruenceClosure closure(3);
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+  closure.assert_equal(1, 2, {primo::sat::Lit{-2}});
+
+  std::vector<primo::sat::Lit> reason;
+  FlatCongruenceClosureTestAccess::begin_reason(closure, reason);
+  check(FlatCongruenceClosureTestAccess::explain_pair_with_bound(closure, 0, 2, reason, 2));
+  const std::size_t bfs_after_broad_query = closure.stats().explain_bfs_searches;
+  check(!FlatCongruenceClosureTestAccess::explain_pair_with_bound(closure, 0, 2, reason, 1));
+  check(closure.stats().explain_cache_bound_misses >= 1);
+  check(closure.stats().explain_bfs_searches > bfs_after_broad_query);
+}
+
 void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
   primo::core::SymbolTable symbols;
   const auto sort = symbols.declare_sort("A");
@@ -798,6 +828,7 @@ int main() {
   flat_congruence_closure_keeps_signed_reason_literals_distinct();
   flat_congruence_closure_reuses_repeated_sub_explanations();
   flat_congruence_closure_uses_causal_edges_for_congruence_reasons();
+  flat_congruence_closure_explanation_cache_respects_edge_bounds();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_backtracks_nested_merges();
   flat_congruence_closure_backtracks_disequality_conflict();

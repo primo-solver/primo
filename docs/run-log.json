@@ -7188,6 +7188,102 @@
       },
       "evidence_status": "current_local",
       "notes": "Fresh local merge-gate fuzzing for the FlatCongruenceClosure recursive explanation behavior change. Broader performance claims still require mixed-suite SLURM evaluation."
+    },
+    {
+      "id": "2026-07-20-local-flatcc-cache-bound-audit",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "profile",
+      "scope": "Local review of FlatCongruenceClosure explanation caching under causal edge bounds",
+      "commit": "e05bc0f",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "perf record -F 99 -g -o /tmp/neq016-current-perf.data -- /usr/bin/timeout 35s ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size8.smt2; build-gprof/primo --quiet --stats --max-theory-conflicts=250000 tmp/QF_UF/NEQ/NEQ016_size8.smt2; focused runs of ./build/primo --quiet --stats on NEQ023_size7, PEQ002_size8, and 45s-capped NEQ016_size8 after making explanation-cache entries edge-bound-aware.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "reference": {
+        "name": "LLM2SMT and Nieuwenhuis-Oliveras behavior inspection",
+        "argv": "/tmp/llm2smt used as clean-room behavior reference only"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2"
+        ],
+        "timeout_seconds": 45
+      },
+      "artifacts": {
+        "perf_data": "/tmp/neq016-current-perf.data",
+        "perf_report": "/tmp/neq016-current-perf-report.txt",
+        "gprof_report": "/tmp/neq016-current-gprof.txt",
+        "neq016_after_stats": "/tmp/neq016-cachebound-primo.err",
+        "neq023_after_stats": "/tmp/neq023-cachebound-primo.err",
+        "peq002_after_stats": "/tmp/peq002-cachebound-primo.err"
+      },
+      "summary": {
+        "cc_review": "No Section 3 congruence-discovery or rollback correctness bug was found. The review found a causal explanation-cache issue: a repeated pair cached under a later edge prefix must not be reused for a stricter earlier congruence-premise bound.",
+        "change": "The per-reason explanation cache now stores the smallest successful max_edge_index for each pair and only treats it as a hit for equal or looser bounds. A focused flat-CC unit test covers broad-then-strict queries in one reason collection.",
+        "profile_before_edit": "Current NEQ016 perf remained CC-heavy: explain_equal_into 16.08 percent self, CaDiCaL propagate 15.96 percent, merge_classes 11.24 percent, restore_trail_entry 7.78 percent, process_use_list 6.28 percent, ApplyKey hash find 6.22 percent. A gprof conflict-capped run put explain_equal_into first at 21.33 percent self.",
+        "NEQ023_size7_after": "unsat in about 0.42s; 35,553 explain calls; 4,546 cache hits; 126 cache-bound misses; 509,017 BFS nodes visited.",
+        "PEQ002_size8_after": "unsat in about 19.25s; conflict/search shape unchanged at 95,096 theory conflicts and 31,562 conflicts over 64 literals, but stricter cache produced 2,488,188 bound misses and 93,056,417 BFS nodes visited.",
+        "NEQ016_size8_after": "timeout at 45s; 308,737 theory conflicts; 67,371,782 explain calls; 45,035,408 cache hits; 6,538,565 cache-bound misses; 236,501,078 BFS nodes visited; 87,363 conflicts over 64 literals.",
+        "interpretation": "This is a correctness and diagnostics tightening, not a reference-parity performance fix. The stricter causal cache exposes how expensive the current adjacency-BFS explanation layer is and strengthens the case for a paper-derived Section 4-5 proof-forest Explain implementation with reason-quality safeguards."
+      },
+      "evidence_status": "current_local",
+      "notes": "Local test, lint, docs, ASan, check, and merge-gate fuzzing passed after this behavior change. Broader SLURM evaluation is still required before any headline performance claim. The clean-room reference inspection was limited to high-level behavior: proof forest, LCA/path explanation, auxiliary per-explain union-find/worklist, and SAT decision callback presence; no source text was copied into Primo."
+    },
+    {
+      "id": "2026-07-20-qfuf-fuzzsmt-flatcc-cache-bound-1000",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate after making FlatCongruenceClosure explanation cache edge-bound-aware",
+      "commit": "e05bc0f",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026072002 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-flatcc-cache-bound-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "reference": {
+        "name": "Z3",
+        "argv": "z3"
+      },
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "count": 1000,
+        "seed": 2026072002,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary_csv": "fuzz-results/qf_uf-fuzzsmt-flatcc-cache-bound-1000/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uf-fuzzsmt-flatcc-cache-bound-1000/generated",
+        "bugs_dir": "fuzz-results/qf_uf-fuzzsmt-flatcc-cache-bound-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "sat": 893,
+        "unsat": 107,
+        "bugs": 0
+      },
+      "evidence_status": "current_local",
+      "notes": "Fresh local merge-gate fuzzing for the FlatCongruenceClosure explanation-cache causal-bound behavior change. This is correctness evidence, not a performance claim."
     }
   ]
 }

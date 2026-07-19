@@ -112,6 +112,7 @@ enum class StatKey : std::size_t {
   EufIncrementalConflicts,
   EufIncrementalExplainCalls,
   EufIncrementalExplainCacheHits,
+  EufIncrementalExplainCacheBoundMisses,
   EufIncrementalExplainLength,
   EufIncrementalExplainTopLevelQueries,
   EufIncrementalExplainRecursiveQueries,
