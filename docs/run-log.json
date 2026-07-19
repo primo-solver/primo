@@ -2593,6 +2593,59 @@
       },
       "evidence_status": "rejected-local-snapshot",
       "notes": "This does not replace the final SLURM SMAC result because job 111492 was still running and may find a different incumbent or fail validation. It is a guardrail against promoting this early incumbent profile: the local mixed union rejects it as a broad default despite QG-specific wins."
+    },
+    {
+      "id": "2026-07-19-adaptive-online-propagation-prototype-rejected",
+      "started_at": "2026-07-19T06:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profiling",
+      "scope": "Local source prototype for auto-selected online EUF propagation with adaptive zero-delivery disable and a medium-size NEQ-shaped auto-online branch",
+      "commit": "cd6de8b",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "Temporarily changed --euf-prop=auto to use online propagation for all <=5000 theory-atom problems plus medium problems with <=15000 atoms, <=45 UF-symmetry constraints, and <=700 pure-negative atoms; added a temporary :euf.propagation.adaptive-disabled counter and disabled auto-selected online propagation after eight no-delivery scans before reverting the source. Rebuilt build/primo and ran the 39-row mixed train/validation/guard union with 20s timeout.",
+      "solver": {
+        "name": "Primo prototype",
+        "argv": "./build/primo --quiet --stats with temporary adaptive-online source changes"
+      },
+      "references": [
+        {
+          "name": "Primo default local baseline",
+          "argv": "./build/primo --quiet --stats from 2026-07-19-qfuf-mixed-local-default-auto-online-2d01ffa"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 39,
+        "timeout_seconds": 20,
+        "manifest": "union of benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, and benchmarks/qfuf-smac-equality-guard.txt"
+      },
+      "artifacts": {
+        "summary": "terminal summary and local CSV artifact",
+        "results": "results/qfuf-mixed-local-adaptive-online-prototype.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "prototype": {
+          "ok": 34,
+          "timeout": 5,
+          "error": 0,
+          "par2": 315.153
+        },
+        "default_baseline": {
+          "ok": 34,
+          "timeout": 5,
+          "error": 0,
+          "par2": 298.899
+        },
+        "notable_wins": "NEQ015_size5 improved from 5.434s to 2.467s; PEQ014_size10 improved from 19.057s to 16.270s in this noisy local run.",
+        "notable_regressions": "NEQ015_size6 slowed from 9.891s to 15.119s; PEQ002_size7 slowed from 3.439s to 6.083s; PEQ016_size7 slowed from 5.789s to 7.841s; multiple QG/SEQ solved rows regressed."
+      },
+      "evidence_status": "rejected",
+      "notes": "The source changes were reverted completely. The experiment confirms that medium-row online propagation is useful for NEQ015_size5, but the static medium-shape predictor and adaptive zero-delivery disable are too weak as a default mechanism. Future work should either find a stronger online-usefulness predictor from pre-solve/pre-search stats or pursue a different EUF/SAT search technique."
     }
   ]
 }
