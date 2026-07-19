@@ -68,10 +68,14 @@ the complete SAT assignment.
 `--euf-prop-budget=auto|unlimited|N`, and
 `--euf-prop-delivery=auto|unlimited|N` are the public option shape for callback
 and propagation work. The default is `auto`: small EUF abstractions use online
-callbacks, while large abstractions use conflict-only callbacks. This avoids the
-ordinary post-model conflict loop on Goel-style instances with thousands of EUF
-atoms, without enabling the currently expensive online propagation scan. Use
-`off` to force the lazy post-model loop, `conflict` to force only external
+callbacks, and large finite-domain-table shapes also use online callbacks when
+preprocessing has preserved at least 500 finite-domain choices/domains and the
+number of pure-negative theory atoms is no larger than the finite-domain count.
+Other large abstractions use conflict-only callbacks. This avoids the ordinary
+post-model conflict loop on Goel-style instances with thousands of EUF atoms
+without enabling the currently expensive online propagation scan on low-domain
+PEQ/QG shapes where local profiling showed little or no delivered propagation.
+Use `off` to force the lazy post-model loop, `conflict` to force only external
 conflict clauses, and `online` for explicit propagation experiments. The default
 delivery budget is `1000`, which keeps the predecessor benchmark knob available
 when online propagation is selected.
@@ -104,10 +108,13 @@ and it does not implement a paper-specific SAT branching algorithm.
 backtrack, and external conflict clauses. It maintains an incremental flat
 congruence closure along the SAT trail, learns EUF conflict clauses through
 CaDiCaL's external-clause callback, and does not deliver theory propagations.
-It is the large-abstraction branch of `--euf-prop=auto`. The current
+It is the default large-abstraction branch of `--euf-prop=auto` unless the
+finite-domain-domain threshold above selects online propagation. The current
 backtracking implementation still trails ordinary mutable closure state rather
-than using the paper's timestamped lookup structure, so fully online propagation
-remains opt-in for focused tuning and callback-behavior checks.
+than using the paper's timestamped lookup structure, so the large finite-domain
+online trigger is an empirical NEQ-family heuristic recorded in
+`docs/run-log.json`, not a paper-specific optimized congruence-closure
+algorithm.
 
 The callback path was first changed to `conflict` after the full QF_UF SLURM run recorded in
 `results/slurm-qfuf-full-109880/summary.md`: at a 2s timeout it solved 5455 of

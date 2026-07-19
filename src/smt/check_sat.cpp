@@ -214,6 +214,14 @@ EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,
     statistics.set(kStatEufPropagationAutoOnline, 1);
     return EufPropagationMode::Online;
   }
+  constexpr std::size_t kAutoOnlineFiniteDomainDomainLimit = 500;
+  const std::size_t finite_domain_domains = statistics.get(kStatFiniteDomainDomains);
+  const std::size_t pure_negative_atoms = statistics.get(kStatPureTheoryAtomsNegative);
+  if (finite_domain_domains >= kAutoOnlineFiniteDomainDomainLimit &&
+      pure_negative_atoms <= finite_domain_domains) {
+    statistics.set(kStatEufPropagationAutoOnline, 1);
+    return EufPropagationMode::Online;
+  }
   statistics.set(kStatEufPropagationAutoConflict, 1);
   return EufPropagationMode::Conflict;
 }

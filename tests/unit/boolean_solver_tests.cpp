@@ -229,6 +229,84 @@ void default_euf_propagation_auto_uses_conflict_for_large_abstractions() {
   assert(result.statistics.get(":euf.propagation.auto-off") == 0);
 }
 
+void default_euf_propagation_auto_uses_online_for_large_finite_domain_shapes() {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun v0 () A)\n";
+  input << "(declare-fun v1 () A)\n";
+  for (int i = 0; i < 501; ++i) {
+    input << "(declare-fun x" << i << " () A)\n";
+    input << "(assert (or (= x" << i << " v0) (= x" << i << " v1)))\n";
+  }
+  for (int i = 0; i < 4000; ++i) {
+    input << "(declare-fun d" << i << " () A)\n";
+  }
+  input << "(assert (and (distinct v0 v1)";
+  for (int i = 0; i < 501; ++i) {
+    input << " (or (= x" << i << " v0) (= x" << i << " v1))";
+  }
+  input << " (or";
+  for (int i = 0; i < 4000; ++i) {
+    input << " (= d" << i << " v0)";
+  }
+  input << ")))\n";
+  input << "(check-sat)\n";
+
+  primo::smt::CheckSatOptions options;
+  options.solved_constant_substitution = false;
+  const auto result = check_sat_smtlib(input.str(), options);
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") >= 500);
+  assert(result.statistics.get(":euf.theory-atoms") > 5000);
+  assert(result.statistics.get(":euf.propagation.auto-online") == 1);
+  assert(result.statistics.get(":euf.propagation.auto-conflict") == 0);
+}
+
+void default_euf_propagation_auto_keeps_conflict_for_negative_heavy_finite_domain_shapes() {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun v0 () A)\n";
+  input << "(declare-fun v1 () A)\n";
+  for (int i = 0; i < 501; ++i) {
+    input << "(declare-fun x" << i << " () A)\n";
+    input << "(assert (or (= x" << i << " v0) (= x" << i << " v1)))\n";
+  }
+  for (int i = 0; i < 4000; ++i) {
+    input << "(declare-fun d" << i << " () A)\n";
+  }
+  for (int i = 0; i < 600; ++i) {
+    input << "(declare-fun n" << i << " () A)\n";
+  }
+  input << "(assert (and (distinct v0 v1)";
+  for (int i = 0; i < 501; ++i) {
+    input << " (or (= x" << i << " v0) (= x" << i << " v1))";
+  }
+  for (int i = 0; i < 600; ++i) {
+    input << " (not (= n" << i << " v0))";
+  }
+  input << " (or";
+  for (int i = 0; i < 4000; ++i) {
+    input << " (= d" << i << " v0)";
+  }
+  input << ")))\n";
+  input << "(check-sat)\n";
+
+  primo::smt::CheckSatOptions options;
+  options.solved_constant_substitution = false;
+  const auto result = check_sat_smtlib(input.str(), options);
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.domains") >= 500);
+  assert(result.statistics.get(":euf.pure-atoms.negative") >
+         result.statistics.get(":preprocessing.finite-domain.domains"));
+  assert(result.statistics.get(":euf.theory-atoms") > 5000);
+  assert(result.statistics.get(":euf.propagation.auto-online") == 0);
+  assert(result.statistics.get(":euf.propagation.auto-conflict") == 1);
+}
+
 void chainable_equality_is_expanded() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -1493,6 +1571,8 @@ int main() {
   pure_euf_disequality_contradiction_is_unsat();
   default_euf_propagation_auto_uses_online_for_small_abstractions();
   default_euf_propagation_auto_uses_conflict_for_large_abstractions();
+  default_euf_propagation_auto_uses_online_for_large_finite_domain_shapes();
+  default_euf_propagation_auto_keeps_conflict_for_negative_heavy_finite_domain_shapes();
   chainable_equality_is_expanded();
   let_bound_terms_are_resolved();
   distinct_lowers_to_pairwise_disequalities();

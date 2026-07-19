@@ -3159,6 +3159,100 @@
       },
       "evidence_status": "current-slurm",
       "notes": "All 32 shards completed with exit code 0 after commit 82a4f50 fixed the shared-manifest race. The 334-row result supports keeping --theory-phase=auto as a candidate because it improves solved count by one and lowers PAR2 without wrong answers, but the large per-instance regressions mean it should not be blindly promoted before a broader full-QF_UF/default-readiness check or a refined heuristic."
+    },
+    {
+      "id": "2026-07-19-qfuf-auto-online-fd-neq-local",
+      "date": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Local QF_UF finite-domain auto-online heuristic guard rows",
+      "commit": "cde818f plus uncommitted auto-online finite-domain heuristic",
+      "host": "workspace",
+      "timeout_seconds": 30,
+      "command": "cmake --build build -j$(nproc); local Python loop over SEQ026_size7, NEQ015_size4/5/6, NEQ033_size5/6, and NEQ046_size5/6 with ./build/primo --quiet --stats, --euf-prop=online, and --euf-prop=conflict",
+      "subjects": [
+        {
+          "name": "Primo new default",
+          "argv": "./build/primo --quiet --stats"
+        },
+        {
+          "name": "Primo forced online",
+          "argv": "./build/primo --quiet --stats --euf-prop=online"
+        },
+        {
+          "name": "Primo forced conflict",
+          "argv": "./build/primo --quiet --stats --euf-prop=conflict"
+        }
+      ],
+      "artifacts": {
+        "summary": "results/local-profiles/auto-online-fd-neq-seq-20260719.csv",
+        "results": "results/local-profiles/auto-online-fd-neq-seq-20260719.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "rows": 8,
+        "variants_per_row": 3,
+        "wrong": 0,
+        "timeouts": 0,
+        "selected_online": "NEQ015_size4/5/6, NEQ033_size5/6, SEQ026_size7",
+        "selected_conflict": "NEQ046_size5/6",
+        "key_timings": {
+          "NEQ015_size4": "default 0.368s, forced online 0.390s, forced conflict 0.758s",
+          "NEQ015_size5": "default 1.534s, forced online 1.428s, forced conflict 4.035s",
+          "NEQ015_size6": "default 5.653s, forced online 5.447s, forced conflict 9.044s",
+          "NEQ046_size5": "default 1.155s, forced online 1.657s, forced conflict 1.203s",
+          "NEQ046_size6": "default 3.142s, forced online 3.547s, forced conflict 3.181s",
+          "SEQ026_size7": "default 20.527s, forced online 22.062s, forced conflict 21.904s"
+        },
+        "guard_shape": "auto selects online for theory_atoms > 5000 when finite-domain domains >= 500 and pure-negative atoms <= finite-domain domains"
+      },
+      "evidence_status": "local-current",
+      "notes": "This local guard matrix supports the pure-negative guard: it keeps the NEQ015 family on the faster online path and excludes NEQ046 rows where online is slower. SEQ026_size7 is roughly neutral to slightly worse and must be watched in the 334-row SLURM validation before promoting the heuristic as default-ready."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-auto-online-fd-1000",
+      "date": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate for finite-domain auto-online EUF propagation heuristic",
+      "commit": "cde818f plus uncommitted auto-online finite-domain heuristic",
+      "host": "workspace",
+      "timeout_seconds": 5,
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071902 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-auto-online-fd-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3"
+        }
+      ],
+      "generator": {
+        "name": "fuzzsmt",
+        "seed": 2026071902,
+        "count": 1000,
+        "logic": "QF_UF",
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-auto-online-fd-1000/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-auto-online-fd-1000/generated",
+        "logs": null,
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-auto-online-fd-1000/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "sat": 902,
+        "unsat": 98,
+        "bugs": 0
+      },
+      "evidence_status": "local-current",
+      "notes": "Fresh local merge-gate differential fuzzing after changing the default EUF propagation resolver. This does not replace the 3000-case campaign gate required for headline default-readiness claims."
     }
   ]
 }
