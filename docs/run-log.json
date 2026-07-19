@@ -2103,6 +2103,88 @@
       },
       "evidence_status": "local-only",
       "notes": "On this representative NEQ row, the AMO gap is small and symmetry clause counts match. Tuned LLM2SMT has a larger SAT encoding but far fewer EUF assignments, so missing raw finite-domain AMO alone is unlikely to explain the remaining slowdown. The next likely levers are SAT search shape, phase/branching policy that is safe under CaDiCaL's callback semantics, or additional SAT-visible finite-domain/equality clauses beyond current AMO."
+    },
+    {
+      "id": "2026-07-19-neq-cluster-option-matrix-local",
+      "started_at": "2026-07-19T03:55:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "local-microbenchmark",
+      "scope": "Compare Primo QF_UF option variants against tuned LLM2SMT and Z3 on a cheap NEQ cluster selected from the published primo.html gap table",
+      "commit": "9bff67f",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "local loop over default, --finite-domain-equality-definitions, --ground-congruence, --theory-phase=polarity, combined eqdefs+phase, --qf-uf-preprocess=basic, tuned LLM2SMT, and z3; 30s timeout per run; CSV written to results/neq-cluster-option-matrix-local.csv",
+      "solver": {
+        "name": "Primo",
+        "argv": "build/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT tuned",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+        },
+        {
+          "name": "Z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 5,
+        "timeout_seconds": 30,
+        "manifest": "tmp/QF_UF/NEQ/NEQ023_size7.smt2, NEQ016_size7.smt2, NEQ015_size6.smt2, NEQ006_size6.smt2, NEQ041_size8.smt2"
+      },
+      "artifacts": {
+        "summary": "results/neq-cluster-option-matrix-local.csv",
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "all_answers": "unsat",
+        "wrong_answers": 0,
+        "variant_total_seconds": {
+          "primo_default": 33.208,
+          "primo_eqdefs": 32.674,
+          "primo_ground_congruence": 72.601,
+          "primo_phase_polarity": 31.513,
+          "primo_eqdefs_phase": 32.353,
+          "primo_basic": 37.426,
+          "llm2smt_tuned": 37.286,
+          "z3": 24.377
+        },
+        "phase_polarity_effects": {
+          "wins": {
+            "NEQ023_size7": "5.259s -> 0.928s",
+            "NEQ006_size6": "5.039s -> 2.786s",
+            "NEQ041_size8": "1.916s -> 1.071s"
+          },
+          "regressions": {
+            "NEQ016_size7": "9.306s -> 11.539s",
+            "NEQ015_size6": "11.688s -> 15.189s"
+          }
+        },
+        "ground_congruence_effects": {
+          "wins": {
+            "NEQ015_size6": "11.688s -> 8.231s",
+            "NEQ041_size8": "1.916s -> 1.794s"
+          },
+          "regressions": {
+            "NEQ023_size7": "5.259s -> 8.411s",
+            "NEQ016_size7": "9.306s -> 28.984s",
+            "NEQ006_size6": "5.039s -> 25.181s"
+          }
+        },
+        "eqdefs_accepted": 0,
+        "interpretation": "Finite-domain equality definitions did not fire on these NEQ files. Phase polarity is a selective SAT-search win, not a safe default from this evidence. Ground congruence remains too mixed for default use. Basic preprocessing is best for NEQ041_size8 but regresses the cluster aggregate."
+      },
+      "evidence_status": "local-only",
+      "notes": "Use this matrix as a SMAC/heuristic input, not as headline benchmark evidence. A promising next step is an opt-in auto phase mode guarded by cheap theory-atom polarity and finite-domain/symmetry statistics, then validate on the mixed QF_UF SMAC manifests before considering any default change."
     }
   ]
 }
