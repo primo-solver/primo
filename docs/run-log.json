@@ -7059,6 +7059,41 @@
       },
       "evidence_status": "current_local",
       "notes": "This instrumentation does not prove a performance improvement and is not a proof-forest implementation. It is intended to guide the next CC design experiment without changing solver answers or SAT search clauses."
+    },
+    {
+      "id": "2026-07-20-peq002-cc-gprof-reference-shape",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "profiling",
+      "scope": "Local gprof profile of PEQ002_size8 after explanation-shape counters and clean-room reference CC behavior inspection",
+      "commit": "fd1e90e",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Built build-gprof with -O2 -g -pg and ran build-gprof/primo --quiet --stats tmp/QF_UF/PEQ/PEQ002_size8.smt2, then gprof build-gprof/primo gmon.out. Inspected /tmp/llm2smt/src/theories/euf/cc.{h,cpp} only for high-level behavior: proof forest, LCA walk, and auxiliary per-explain union-find/worklist shape; no source text was copied into Primo.",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-gprof/primo --quiet --stats"
+      },
+      "inputs": {
+        "instance": "tmp/QF_UF/PEQ/PEQ002_size8.smt2",
+        "timeout_seconds": "none; solved before timeout"
+      },
+      "artifacts": {
+        "stats": "/tmp/peq002-gprof-stats.txt",
+        "gprof_report": "/tmp/peq002-gprof-report.txt",
+        "reference_checkout": "/tmp/llm2smt"
+      },
+      "summary": {
+        "wall_time": "gprof build solved unsat in about 29.11s; normal release stats probe solved in about 16.55s earlier on the same instance.",
+        "gprof_top": "FlatCongruenceClosure::explain_equal_into 22.00% self; CaDiCaL Closure::find_subsuming_clause 11.20%; std::deque<unsigned int>::_M_push_back_aux 7.39%; CaDiCaL propagate 6.74%; restore_trail_entry 6.25%; merge_classes 6.25%; ApplyKey hash lookup 5.68%; process_use_list 2.68%; ExplanationKey unordered_set find 2.68%; append_edge_reason 0.57%.",
+        "stats_shape": "25,649,979 explain calls; 100,472 top-level queries; 25,548,348 recursive queries; 18,635,523 repeated pair queries; max recursion depth 36; 7,013,297 BFS searches; 105,904,124 BFS nodes visited; 31,562 conflicts over 64 reason literals.",
+        "interpretation": "The repeated-pair cache lookup itself is visible but not dominant. The larger gap is that current BFS explanations recursively expand congruence premises millions of times and emit large PEQ conflict reasons. Reference behavior confirms a proof-forest/LCA/worklist/auxiliary-UF explanation shape, but the prior Primo proof-forest prototype showed reason quality can regress. Next accepted code should first add proof-forest candidate diagnostics or a paper-derived reason-quality guard, not default a replacement reason path."
+      },
+      "evidence_status": "current_local",
+      "notes": "The gprof profiling build emitted GCC array-bounds warnings in preprocessing.cpp under -O2 -pg, but the ordinary strict build, make test, make lint, make docs, and make asan-test passed for commit fd1e90e. The warnings are not used as correctness evidence."
     }
   ]
 }
