@@ -1,0 +1,11 @@
+variant,answer,seconds,exit,:sat.vars,:sat.clauses,:sat.binary-clauses,:preprocessing.finite-domain.amo-clauses,:preprocessing.uf-symmetry.constraints,:euf.theory-conflicts,:euf.assignments,:euf.incremental.merges,llm2smt.sat.vars,llm2smt.sat.clauses,llm2smt.sat.binary_clauses,llm2smt.preproc.finite_domain_amo,llm2smt.preproc.uf_symmetry_clauses,llm2smt.euf.conflicts,llm2smt.euf.assignments
+default,sat,2.511,0,1392,4985,4396,3808,0,67244,2268666,1145304,,,,,,,
+basic,sat,0.078,0,1344,1177,588,0,0,2692,47230,39806,,,,,,,
+no-sym,sat,2.521,0,1392,4985,4396,3808,0,67244,2268666,1145304,,,,,,,
+no-amo,,0.004,109,,,,,,,,,,,,,,,
+no-eq-bridge,sat,2.360,0,1392,4985,4396,3808,0,67244,2268666,1145304,,,,,,,
+phase-auto,sat,0.493,0,1392,4985,4396,3808,0,13595,222034,235891,,,,,,,
+phase-polarity,sat,0.445,0,1392,4985,4396,3808,0,13595,222034,235891,,,,,,,
+top-or-tseitin,sat,2.634,0,5362,17705,9338,3808,0,67331,2330875,1182062,,,,,,,
+z3,sat,0.028,0,,,,,,,,,,,,,,,
+llm2smt-tuned,sat,0.048,0,,,,,,,,,0,5846,5257,4662,0,18,1923

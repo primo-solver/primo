@@ -3518,6 +3518,119 @@
       },
       "evidence_status": "local-current",
       "notes": "Fresh local merge-gate differential fuzzing for the restored default after SLURM job 111621 rejected top-level OR Tseitin as a default."
+    },
+    {
+      "id": "2026-07-19-qfuf-current-gap-rank-iso033-local",
+      "started_at": "2026-07-19T14:05:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profile",
+      "scope": "Current-head local ranking and profiling of fast-reference/slow-Primo QF_UF gaps after top-level OR Tseitin was restored to opt-in",
+      "commit": "c409c91",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "python3 scripts/rank_qfuf_gaps.py --native results/qfuf-tseitin-compare-111621/oldmode-merged.csv --ref results/slurm-qfuf-full-120s-llm2smt-0.2.4-110181/llm2smt-qfuf-full-120s-merged.csv --ref results/slurm-qfuf-full-ref-z3-109856/z3-qfuf-full-2s-merged.csv --ref results/slurm-qfuf-full-ref-cvc5-109857/cvc5-qfuf-full-2s-merged.csv --timeout 120 --fast-ref 2 --min-ratio 5 --top 50; local option matrix and perf record/report on tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats with default, --qf-uf-preprocess=basic, --theory-phase=auto, --theory-phase=polarity, --theory-phase=none, --top-level-or-tseitin, and selected preprocessing toggles"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1,
+        "target": "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+        "reference": "LLM2SMT tuned command plus historical Z3/cvc5 full-QF_UF reference CSVs"
+      },
+      "artifacts": {
+        "ranked_gaps": "results/qfuf-current-gaps-vs-reference-20260719.csv",
+        "option_matrix": "results/iso-brn-repgen033-local-matrix-20260719.csv",
+        "phase_sample": "results/qfuf-current-phase-local-sample-20260719.csv",
+        "preprocess_sample": "results/qfuf-current-preprocess-local-sample-20260719.csv",
+        "perf_report": "results/local-profiles/perf-iso-brn-repgen033-default.txt",
+        "perf_data": "results/local-profiles/perf-iso-brn-repgen033-default.data"
+      },
+      "summary": {
+        "rank_top": "iso_brn_repgen033 ranked first on the current 334-row artifact: Primo oldmode 7.280s versus best reference 0.109s, ratio 67.06",
+        "iso033_local": {
+          "default_seconds": 2.511,
+          "default_euf_conflicts": 67244,
+          "basic_seconds": 0.078,
+          "phase_auto_seconds": 0.493,
+          "phase_auto_euf_conflicts": 13595,
+          "llm2smt_tuned_seconds": 0.048,
+          "llm2smt_euf_conflicts": 18,
+          "z3_seconds": 0.028
+        },
+        "phase_sample": "QG rows and PEQ019 improved with --theory-phase=auto, but NEQ016_size7 and NEQ027_size11 regressed locally, so a blanket phase default change is not justified from local evidence.",
+        "perf_top": "Default iso033 profile was dominated by EUF explain/assignment work and CaDiCaL propagation: FlatCongruenceClosure::explain_equal_into 11.35%, CaDiCaL::Internal::propagate 11.33%, allocator cost under OnlineEufPropagator notification and FlatCongruenceClosure operations about 10%."
+      },
+      "evidence_status": "local-current",
+      "notes": "The clean-room reference comparison is behavioral only. The result motivates a current-head SLURM default-versus---theory-phase=auto validation rather than immediately changing the default phase policy."
+    },
+    {
+      "id": "2026-07-19-qfuf-phase-auto-334-slurm",
+      "started_at": "2026-07-19T14:08:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark",
+      "scope": "Current-head SLURM comparison of default theory phase against --theory-phase=auto on the 334-row primo.html QF_UF subset",
+      "commit": "c409c91",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "job_id": "111653",
+        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+      },
+      "command": "sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-phase-compare-111653/summary.json",
+        "results": "results/qfuf-phase-compare-111653/default-merged.csv and results/qfuf-phase-compare-111653/auto-merged.csv",
+        "diffs": "results/qfuf-phase-compare-111653/diffs.csv",
+        "logs": "logs/primo-qfuf-phase-111653-*.out and logs/primo-qfuf-phase-111653-*.err"
+      },
+      "summary": {
+        "default": {
+          "ok": 330,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3526.915
+        },
+        "auto": {
+          "ok": 330,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3511.304
+        },
+        "families_default": {
+          "Goel": "7/7 ok, PAR2 16.402",
+          "NEQ": "25/26 ok, PAR2 422.008",
+          "PEQ": "22/25 ok, PAR2 1114.174",
+          "QG": "270/270 ok, PAR2 1901.345",
+          "SEQ": "6/6 ok, PAR2 72.985"
+        },
+        "families_auto": {
+          "Goel": "7/7 ok, PAR2 17.337",
+          "NEQ": "25/26 ok, PAR2 485.119",
+          "PEQ": "22/25 ok, PAR2 1132.855",
+          "QG": "270/270 ok, PAR2 1828.059",
+          "SEQ": "6/6 ok, PAR2 47.934"
+        },
+        "top_auto_wins": "SEQ026_size7: -25.276s, NEQ031_size10: -8.669s, NEQ023_size7: -8.057s, iso_icl_nogen003: -7.904s, iso_brn_repgen033: -6.088s",
+        "top_auto_regressions": "NEQ027_size10: +75.052s, iso_icl_nogen_sk003: +17.920s, gensys_icl_sk003: +17.598s, PEQ018_size6: +9.572s, PEQ002_size8: +8.745s"
+      },
+      "evidence_status": "mixed-not-default-ready",
+      "notes": "Auto phase has a small aggregate PAR2 improvement but severe localized regressions. NEQ027_size10 and NEQ031_size10 have very similar coarse finite-domain and polarity statistics while moving in opposite directions, so a simple count-only default heuristic is not supported by this evidence."
     }
   ]
 }
