@@ -6369,6 +6369,40 @@
       },
       "evidence_status": "current_local",
       "notes": "This patch is diagnostic-only: it does not change congruence closure state, conflict clauses, propagation clauses, or SAT options."
+    },
+    {
+      "id": "2026-07-19-local-qfuf-gap-rerank-and-seq-phase-check",
+      "started_at": "2026-07-19",
+      "recorded_at": "2026-07-19",
+      "kind": "tuning",
+      "scope": "Cross-family QF_UF gap rerank and local phase/propropagation check after CC diagnostics",
+      "commit": "f0d5a2c",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "python3 scripts/rank_qfuf_gaps.py --native results/slurm-qfuf-full-120s-6f3cdca/primo-qfuf-full-120s-6f3cdca-merged.csv --ref results/slurm-qfuf-full-120s-llm2smt-0.2.4-110181/llm2smt-qfuf-full-120s-merged.csv --ref results/slurm-qfuf-full-ref-z3-109856/z3-qfuf-full-2s-merged.csv --ref results/slurm-qfuf-full-ref-cvc5-109857/cvc5-qfuf-full-2s-merged.csv --timeout 120 --fast-ref 1 --min-ratio 5 --top 40 --out /tmp/qfuf-ranked-gaps-20260719.csv; local ./build/primo --stats --euf-engine=incremental option matrices on selected Goel, eq_diamond, QG, SEQ, NEQ, PEQ rows.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --stats --euf-engine=incremental [optional --theory-phase=polarity or --euf-prop mode]"
+      },
+      "inputs": {
+        "manifest": "Ranked full QF_UF artifacts plus local checks for QF_UF_bug-1_ab_cti_max, eq_diamond14, iso_brn_repgen039, SEQ035_size6, NEQ033_size4, PEQ019_size7, PEQ002_size8, iso_brn_repgen_sk032",
+        "timeout_seconds": 60
+      },
+      "artifacts": {
+        "ranked_gaps": "/tmp/qfuf-ranked-gaps-20260719.csv",
+        "summary": "terminal-captured local matrices in 2026-07-19 conversation"
+      },
+      "summary": {
+        "rerank": "Top ratio gaps from historical 120s artifacts are not iso-only: Goel, eq_diamond, TypeSafe, QG, SEQ, NEQ, and PEQ all appear. Some top historical gaps are stale locally after current improvements: QF_UF_bug-1_ab_cti_max solved in 0.004s and eq_diamond14 in 0.007s with no EUF work.",
+        "seq035_propagation_matrix": "SEQ035_size6 default sat 1.177s with 639558 assignments, 47536 conflicts, 0 delivered propagations, 1324912 explain calls, 5035533 BFS visits. --euf-prop=off timed out at 30s. --euf-prop=conflict was 1.216s. Unlimited online propagation was 1.378s and still delivered 0 propagations. --theory-phase=polarity was 0.304s with 145223 assignments, 14426 conflicts, 357634 explain calls, 1418821 BFS visits.",
+        "mixed_phase_matrix": "Polarity helped PEQ019_size7 0.889s -> 0.435s and SEQ035_size6 1.233s -> 0.305s; it regressed PEQ002_size8 17.647s -> 19.452s and iso_brn_repgen_sk032 0.484s -> 0.530s; NEQ033_size4 was neutral/slightly worse and iso_brn_repgen039 was slightly faster.",
+        "decision": "Do not make polarity global default. It remains evidence for a possible structural auto-phase rule on SEQ-like formulas, but previous broad evidence and this mixed local matrix both show default risk."
+      },
+      "evidence_status": "current_local",
+      "notes": "The next phase investigation should inspect formula structure, not benchmark family names, before adding any automatic phase selection."
     }
   ]
 }
