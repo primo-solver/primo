@@ -4293,6 +4293,110 @@
       },
       "evidence_status": "running",
       "notes": "Submitted for parameter evidence only; no performance conclusion until artifacts are collected and summarized."
+    },
+    {
+      "id": "2026-07-19-default-auto-theory-phase-local",
+      "started_at": "2026-07-19T16:35:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "profile",
+      "scope": "Local QF_UF default-theory-phase change from all-negative to the existing auto heuristic on representative NEQ, PEQ, and QG rows",
+      "commit": "f62b3ca+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "cmake --build build -j2; local Python harness over NEQ023_size7, NEQ027_size8, PEQ019_size7, iso_brn_repgen033, and iso_icl_repgen006 comparing ./build/primo --quiet --stats --theory-phase=negative against ./build/primo --quiet --stats after changing CheckSatOptions and CLI defaults to TheoryPhaseMode::Auto; perf record/report -F 199 -g on NEQ023_size7 for negative and auto",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats with default TheoryPhaseMode::Auto"
+      },
+      "references": [
+        {
+          "name": "Primo explicit negative phase",
+          "argv": "./build/primo --quiet --stats --theory-phase=negative"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 5,
+        "timeout_seconds": 40,
+        "targets": [
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ027_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2"
+        ]
+      },
+      "artifacts": {
+        "timing_csv": "results/local-default-auto-phase-20260719.csv",
+        "perf_neq023_negative": "results/local-profiles/perf-neq023-default-f62b3ca-20260719.txt",
+        "perf_neq023_auto": "results/local-profiles/perf-neq023-auto-f62b3ca-20260719.txt"
+      },
+      "summary": {
+        "seconds_negative_vs_default_auto": {
+          "NEQ023_size7": "3.017 -> 0.585",
+          "NEQ027_size8": "0.574 -> 0.647",
+          "PEQ019_size7": "1.068 -> 0.514",
+          "iso_brn_repgen033": "2.095 -> 0.387",
+          "iso_icl_repgen006": "0.668 -> 0.621"
+        },
+        "assignment_effect": {
+          "NEQ023_size7": "4728189 -> 877565",
+          "PEQ019_size7": "169824 -> 61203",
+          "iso_brn_repgen033": "2268666 -> 222034"
+        },
+        "perf_top": "NEQ023 explicit negative phase: CaDiCaL::Internal::propagate 26.09%, FlatCongruenceClosure::merge_classes 6.23%, OnlineEufPropagator::notify_assignment 5.92%, allocator/free/rollback costs next. Default auto is much shorter, with only 128 samples; CaDiCaL propagation remains the largest visible cost at 16.00%."
+      },
+      "evidence_status": "local-current",
+      "notes": "Accepted as local implementation evidence for making the existing auto phase heuristic the default. The one checked local regression is NEQ027_size8 at +0.073s. This does not replace SLURM 334-row/full-QF_UF validation or the already-running SMAC job."
+    },
+    {
+      "id": "2026-07-19-qfuf-fuzzsmt-default-auto-phase-1000",
+      "started_at": "2026-07-19T16:50:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate after changing the default theory phase to the auto heuristic",
+      "commit": "f62b3ca+working-tree",
+      "environment": {
+        "type": "local",
+        "host": "workspace"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026071912 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-default-auto-phase-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet with default TheoryPhaseMode::Auto"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1000,
+        "timeout_seconds": 5,
+        "generator": "fuzzsmt",
+        "seed": 2026071912,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-default-auto-phase-1000/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt-default-auto-phase-1000/generated",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-default-auto-phase-1000/bugs"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "reference_disagreement": 0,
+        "sat": 907,
+        "unsat": 93
+      },
+      "evidence_status": "local-current",
+      "notes": "Fresh local merge-gate differential fuzzing for a default QF_UF search-heuristic change. This does not replace the broader SLURM validation needed for reference-parity claims."
     }
   ]
 }

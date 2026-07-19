@@ -2322,8 +2322,9 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   if (options.theory_phase == TheoryPhaseMode::Auto && theory_phase == TheoryPhaseMode::Polarity) {
     statistics.increment(kStatSatPhaseAutoPolarity);
   }
-  if (options.theory_phase == TheoryPhaseMode::Negative && options.auto_basic_multi_polarity &&
-      statistics.get(kStatAutoBasicMulti) != 0) {
+  if ((options.theory_phase == TheoryPhaseMode::Negative ||
+       options.theory_phase == TheoryPhaseMode::Auto) &&
+      options.auto_basic_multi_polarity && statistics.get(kStatAutoBasicMulti) != 0) {
     theory_phase = TheoryPhaseMode::Polarity;
     statistics.increment(kStatSatPhaseAutoBasicMultiPolarity);
   }

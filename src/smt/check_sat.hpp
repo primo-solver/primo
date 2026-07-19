@@ -79,7 +79,7 @@ struct CheckSatOptions {
   EufEngine euf_engine = EufEngine::Incremental;
   EufPropagationMode euf_propagation = EufPropagationMode::Auto;
   PureTheoryFilterMode pure_theory_filter = PureTheoryFilterMode::Auto;
-  TheoryPhaseMode theory_phase = TheoryPhaseMode::Negative;
+  TheoryPhaseMode theory_phase = TheoryPhaseMode::Auto;
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
   bool uf_symmetry_breaking = true;

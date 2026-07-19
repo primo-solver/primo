@@ -86,21 +86,20 @@ and `--prop-assign-threshold X` are accepted for online propagation experiments.
 Their defaults are `32` and `0.25` respectively.
 
 `--theory-phase=negative|positive|none|polarity|auto` controls the initial
-CaDiCaL phase set for theory atoms before solving. The default is `negative`,
-preserving the historical policy of trying disequality assignments first. This
-option is a benchmark diagnostic knob: `positive` tries equality assignments
-first, `none` leaves CaDiCaL's default phase untouched, and `polarity` sets a
-phase only for atoms that occur with a single syntactic polarity in the
-clausified formula.
+CaDiCaL phase set for theory atoms before solving. The default is `auto`, a
+static QF_UF heuristic that keeps the old negative phase unless preprocessing
+found finite-domain or UF-symmetry structure and the clausified theory atoms are
+not strongly positive-dominated. It also uses polarity for low-negative
+finite-domain shapes with at most 25 pure-negative theory atoms and at least 100
+pure-positive theory atoms; this covers NEQ/SEQ-style rows where setting every
+theory atom negative causes many avoidable SAT assignments and EUF callbacks.
+When the heuristic selects polarity, it reports `:sat.phase.auto-polarity`.
 
-`auto` is an experimental tuning mode, not a default profile. It keeps the
-negative phase unless preprocessing found finite-domain or UF-symmetry structure
-and the clausified theory atoms are not strongly positive-dominated. It also
-uses polarity for low-negative finite-domain shapes with at most 25 pure-negative
-theory atoms and at least 100 pure-positive theory atoms; this covers SEQ-style
-rows where setting every theory atom negative causes many avoidable EUF
-conflicts. When the heuristic selects polarity, it reports
-`:sat.phase.auto-polarity`. This is a local heuristic derived from the NEQ/QG/SEQ
+The other modes remain available for ablation and tuning: `negative` tries
+disequality assignments first, `positive` tries equality assignments first,
+`none` leaves CaDiCaL's default phase untouched, and `polarity` sets a phase only
+for atoms that occur with a single syntactic polarity in the clausified formula.
+This is a local search-shaping heuristic derived from the NEQ/PEQ/QG/SEQ
 performance trail in `docs/run-log.json`; it is not a theory decision callback
 and it does not implement a paper-specific SAT branching algorithm.
 
