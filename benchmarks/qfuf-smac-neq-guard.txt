@@ -1,0 +1,26 @@
+# Guard rows for NEQ-focused SMAC.
+# These are not optimized directly. They reject NEQ profiles that damage the
+# equality/finite-domain or QG/Goel behavior seen in previous campaigns.
+
+# PEQ/SEQ equality-family guard.
+tmp/QF_UF/PEQ/PEQ002_size7.smt2
+tmp/QF_UF/PEQ/PEQ003_size8.smt2
+tmp/QF_UF/PEQ/PEQ004_size9.smt2
+tmp/QF_UF/PEQ/PEQ016_size7.smt2
+tmp/QF_UF/SEQ/SEQ026_size6.smt2
+tmp/QF_UF/SEQ/SEQ035_size6.smt2
+tmp/QF_UF/PEQ/PEQ002_size8.smt2
+tmp/QF_UF/PEQ/PEQ003_size10.smt2
+tmp/QF_UF/PEQ/PEQ013_size8.smt2
+tmp/QF_UF/PEQ/PEQ014_size10.smt2
+tmp/QF_UF/SEQ/SEQ026_size7.smt2
+
+# QG iso guard.
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2
+
+# Goel hardware sentinels.
+tmp/QF_UF/2018-Goel-hwbench/QF_UF_AR_ab_cti_max.smt2
+tmp/QF_UF/2018-Goel-hwbench/QF_UF_Heap_ab_cti_max.smt2
+tmp/QF_UF/2018-Goel-hwbench/QF_UF_Huffman_dec_ab_reg_max.smt2

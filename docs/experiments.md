@@ -286,6 +286,16 @@ For profile search, prefer the mixed manifests
 NEQ/PEQ/SEQ finite-domain equality gaps, and Goel hardware sentinels, so a
 candidate cannot optimize only one family while ignoring known regressions.
 
+The narrower `benchmarks/qfuf-smac-neq-train.txt` and
+`benchmarks/qfuf-smac-neq-validate.txt` manifests are diagnostic for the
+`NEQ016_size8` and nearby NEQ reference gaps. They deliberately keep
+`NEQ016_size7` in validation because local evidence shows
+`--pure-theory-filter=off` helps `NEQ016_size8` but regresses the size-7
+predecessor. Use `benchmarks/qfuf-smac-neq-guard.txt` as the guard manifest; it
+contains PEQ/SEQ equality rows, QG `iso_*` rows, and Goel sentinels. Do not
+promote an NEQ-only incumbent unless it also passes the guard and then validates
+on the mixed manifests and broader QF_UF subsets.
+
 Use `scripts/slurm_qfuf_phase_compare.sbatch` for a narrower default-versus
 `--theory-phase=auto` validation on the mixed train/validation/equality-guard
 union. It runs the current default and `--theory-phase=auto` over the same
