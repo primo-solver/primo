@@ -6815,6 +6815,44 @@
       },
       "evidence_status": "rejected_local",
       "notes": "Do not reintroduce this dense pair-cache optimization as a CC performance fix without stronger evidence. It increases memory footprint and did not improve the NEQ016 reference gap."
+    },
+    {
+      "id": "2026-07-20-neq-pure-filter-static-shape-probe",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "performance",
+      "scope": "Local NEQ pure-theory-filter ablation after CC review",
+      "commit": "2b1766e",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Short ./build/primo --quiet --stats probes over selected NEQ size7/size8 rows to collect static preprocessing/purity shape; then default versus --pure-theory-filter=off on finite-domain NEQ rows; followed by NEQ016_size8 checks for --pure-theory-filter=off --top-level-or-tseitin and --top-level-or-tseitin.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "manifest": "tmp/QF_UF/NEQ/{NEQ016_size7,NEQ016_size8,NEQ023_size7,NEQ027_size8,NEQ041_size8,NEQ004_size7,NEQ031_size7,NEQ031_size8,NEQ048_size7}.smt2 plus targeted default/pure-off probes on NEQ016, NEQ004, NEQ048, NEQ027, and NEQ041",
+        "timeout_seconds": "8 for static-shape probe, 15 or 50 for default/pure-off matrix, 65 for NEQ016 option combinations"
+      },
+      "artifacts": {
+        "static_shape_csv": "results/local-neq-static-shape-20260720.csv",
+        "pure_filter_matrix": "results/local-neq-pure-filter-fd-skew-20260720.csv",
+        "neq016_top_or_combo": "/tmp/neq016-pure_off_top_or.err and /tmp/neq016-top_or.err"
+      },
+      "summary": {
+        "static_shape": "NEQ016 differs from NEQ023 because it has finite-domain domains and a highly skewed pure-positive/pure-negative ratio. NEQ023 has no finite-domain domains and default filtering is beneficial there.",
+        "NEQ016_size8": "Default timed out at 50s with 62612134 explain calls; --pure-theory-filter=off solved unsat in 41.552s with 37962704 explain calls and 252 delivered propagations.",
+        "NEQ016_size7": "Default solved in 4.566s; --pure-theory-filter=off regressed to 10.898s, with conflicts and explain calls roughly doubling.",
+        "NEQ023_size7_guard": "Earlier same-turn guard showed default 0.39s versus 0.96s with pure filtering disabled.",
+        "other_fd_rows": "Pure filtering off was mostly noise-scale on NEQ004_size7, NEQ048_size7, and NEQ027_size8; it regressed NEQ041_size8 from 1.272s to 1.376s.",
+        "top_level_or_combination": "On NEQ016_size8, --pure-theory-filter=off --top-level-or-tseitin timed out at 65s, and --top-level-or-tseitin alone also timed out at 65s.",
+        "interpretation": "Pure-theory filtering is a real SAT/EUF interaction lever for NEQ016_size8, but the same static family and size7 predecessor can regress. Keep pure-filter mode in the SMAC/portfolio search space; do not promote a default-off heuristic from this local evidence."
+      },
+      "evidence_status": "current_local",
+      "notes": "This is not a CC implementation change. It follows from the CC review because filtering changes which assigned theory literals reach FlatCongruenceClosure and therefore changes explanation workload and delivered propagation."
     }
   ]
 }
