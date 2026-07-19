@@ -289,7 +289,10 @@ Use `scripts/slurm_qfuf_phase_compare.sbatch` for a narrower default-versus
 union. It runs the current default and `--theory-phase=auto` over the same
 de-duplicated manifest, writes one result directory per variant, and is intended
 as the fast guard before considering whether the auto phase heuristic is ready
-for a broader 334-row or full-QF_UF campaign.
+for a broader 334-row or full-QF_UF campaign. Each SLURM array task writes its
+own manifest through a temporary file and atomic rename; the manifest must not
+be shared across tasks because concurrent truncation can make valid paths appear
+missing.
 
 The narrower `benchmarks/qfuf-smac-iso-train.txt` and
 `benchmarks/qfuf-smac-iso-validate.txt` manifests are diagnostic only. They

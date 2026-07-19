@@ -2998,6 +2998,48 @@
       },
       "evidence_status": "current-slurm",
       "notes": "All 16 shards completed with exit code 0. Earlier job 111493 is non-evidence: it failed immediately because the phase-compare script passed manifest paths with a doubled tmp/QF_UF prefix; commit 4fd7e05 fixed that before this replacement run. This 39-row SLURM guard supports broader validation of --theory-phase=auto but is not yet a full 334-row or full-QF_UF default-promotion result."
+    },
+    {
+      "id": "2026-07-19-qfuf-phase-compare-111525-rejected",
+      "started_at": "2026-07-19T12:16:00+02:00",
+      "recorded_at": "2026-07-19",
+      "kind": "benchmark-infrastructure",
+      "scope": "Rejected SLURM default versus --theory-phase=auto comparison on the 334-row user HTML QF_UF manifest",
+      "commit": "7d63bbc",
+      "environment": {
+        "type": "slurm",
+        "host": "janotmik@10.35.125.63",
+        "job_id": "111525"
+      },
+      "command": "sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+      },
+      "references": [
+        {
+          "name": "Primo default",
+          "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 334,
+        "timeout_seconds": 120,
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "summary": null,
+        "results": "remote-only partial results/qfuf-phase-compare-111525",
+        "logs": "remote-only logs/primo-qfuf-phase-111525-*.out and logs/primo-qfuf-phase-111525-*.err",
+        "bugs": null
+      },
+      "summary": {
+        "status": "rejected",
+        "reason": "The array tasks concurrently rewrote one shared manifest file. Some tasks read a truncated row and failed with a false missing-file error for QG-classification/qg7/gensys_icl001.smt2."
+      },
+      "evidence_status": "rejected",
+      "notes": "Do not use job 111525 for performance claims. The follow-up script change gives each array task its own atomically renamed manifest."
     }
   ]
 }

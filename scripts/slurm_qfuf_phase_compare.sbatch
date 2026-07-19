@@ -42,12 +42,14 @@ case "$variant_index" in
     ;;
 esac
 
-manifest="$OUT_ROOT/manifest.txt"
+manifest="$OUT_ROOT/manifest-${TASK_ID}.txt"
+manifest_tmp="$manifest.$$"
 {
   for input_manifest in $MANIFESTS; do
     sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d; s#^tmp/QF_UF/##' "$input_manifest"
   done
-} | awk '!seen[$0]++' > "$manifest"
+} | awk '!seen[$0]++' > "$manifest_tmp"
+mv "$manifest_tmp" "$manifest"
 
 "$SOLVER" --version
 python3 scripts/bench_qf_uf_full.py \
