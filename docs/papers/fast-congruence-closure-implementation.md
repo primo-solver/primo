@@ -546,3 +546,21 @@ yet the same matrix did not improve: `NEQ016_size7` proof-forest remained around
 seconds to about 2.80 seconds. The patch was reverted. The remaining cost is
 therefore not dominated by zeroing the auxiliary arrays; it is still the proof
 path obligations, reason shape, and resulting SAT search.
+
+A fresh size8 review after the rejected hybrid experiment checked
+`NEQ016_size8` and `PEQ002_size8` with 20-second option ablations and
+50,000-theory-conflict capped proof diagnostics. The result again separates
+path traversal from clause quality. On `NEQ016_size8`, proof-forest emission
+was faster at the fixed conflict cap than default BFS, but increased total
+explanation length and the number of conflicts with more than 64 reason
+literals. On `PEQ002_size8`, the capped proof-forest run was also faster, but
+the emitted reasons became much larger: the over-64-literal conflict bucket and
+maximum reason length both grew substantially, matching the full-run timeout
+seen when proof forest is used directly. The current conclusion is therefore
+not that Section 3 congruence discovery or rollback is visibly unsound, and not
+that the existing proof-forest switch should become a default. The next
+paper-grounded CC implementation target is a reason-quality policy around
+Section 5-style explanations: preserve the cheaper proof traversal only when it
+does not emit clauses that are materially worse for SAT search, or implement a
+fuller Section 4/5 proof-forest and reorientation design whose invariants
+control both explanation cost and learned-clause shape.

@@ -8628,6 +8628,52 @@
       },
       "evidence_status": "rejected",
       "notes": "This matrix explains why the tempting iso_icl_repgen006 proof-forest win is not enough: mixed PEQ/NEQ/SEQ guard rows expose regressions that erase the targeted wins."
+    },
+    {
+      "id": "2026-07-20-local-flatcc-size8-ablation-review",
+      "recorded_at": "2026-07-20T07:09:31+02:00",
+      "kind": "local_benchmark",
+      "scope": "Fresh FlatCongruenceClosure review on hard size8 NEQ/PEQ rows after rejected proof-forest hybrid experiment",
+      "commit": "9a40248",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "No solver source changes were made. This records focused option ablation and proof-forest diagnostic evidence requested during the CC review."
+      },
+      "command": {
+        "option_ablation": "local shell loop over default, --euf-prop=conflict, --euf-prop=off, --euf-prop=online --prop-delivery-budget 0, --euf-prop=online --prop-assign-threshold 1, --euf-explain-search=bidirectional, --euf-explain-search=proof-forest, --pure-theory-filter=off, and --theory-phase=polarity on tmp/QF_UF/NEQ/NEQ016_size8.smt2 and tmp/QF_UF/PEQ/PEQ002_size8.smt2 with 20s timeout",
+        "proof_diagnostics": "for f in tmp/QF_UF/NEQ/NEQ016_size8.smt2 tmp/QF_UF/PEQ/PEQ002_size8.smt2; do ./build/primo --quiet --stats --max-theory-conflicts 50000 [$mode] $f; done, with modes default, --euf-proof-forest-diagnostics, and --euf-explain-search=proof-forest"
+      },
+      "benchmark": {
+        "suite": "two local QF_UF equality-family hard rows",
+        "logic": "QF_UF",
+        "timeout_seconds": 20,
+        "manifest": "tmp/QF_UF/NEQ/NEQ016_size8.smt2 and tmp/QF_UF/PEQ/PEQ002_size8.smt2"
+      },
+      "artifacts": {
+        "terminal_capture": "not persisted as CSV; summarized in this run-log entry"
+      },
+      "summary": {
+        "NEQ016_size8_ablation": "At 20s, default, conflict-only, propagation-off, bidirectional, proof-forest, pure-filter-off, and polarity all returned unknown. Default reported 214507 EUF conflicts, 45.6M explain calls, 15.1M BFS searches, 160.7M BFS visits, 311.5M trail entries, 100.6M use-list appends, and CaDiCaL stats of 0 conflicts and 0 decisions. Propagation-off shifted work into CaDiCaL, with 32188 SAT conflicts and 10.1M decisions, but still timed out.",
+        "PEQ002_size8_ablation": "Default and conflict-only both solved unsat in about 16.6s with the same shape: 95096 EUF conflicts, about 31.6M explain calls, 9.5M BFS searches, 226.1M trail entries, and 68.6M use-list appends. Propagation-off timed out at 20s. Raising the online assignment threshold to 1.0 and proof-forest mode also timed out with CaDiCaL reporting 0 internal conflicts and 0 decisions, showing that excessive external EUF callback work can starve ordinary SAT search on this family.",
+        "NEQ016_size8_capped": "With --max-theory-conflicts 50000, default took 3.44s with 9.52M explain calls, 3.19M BFS searches, 35.6M BFS visits, 11,571 conflicts over 64 reason literals, and max reason length 157. Proof-forest diagnostics classified path lengths as 619,935 shorter than BFS, 2,170,290 equal, and 396,685 longer. Emitting proof-forest reasons took 2.87s at the cap, but increased explain length from 2.34M to 2.77M and conflicts over 64 literals from 11,571 to 16,790.",
+        "PEQ002_size8_capped": "With --max-theory-conflicts 50000, default took 6.49s with 16.23M explain calls, 4.86M BFS searches, 48.1M BFS visits, 17,578 conflicts over 64 reason literals, and max reason length 173. Diagnostics classified proof paths as 482,784 shorter, 2,809,126 equal, and 1,570,485 longer. Emitting proof-forest reasons took 4.05s at the cap but worsened reason quality sharply: total explain length 4.61M, 29,491 conflicts over 64 literals, and max reason length 283.",
+        "decision": "Do not promote proof-forest, bidirectional BFS, higher online propagation threshold, or propagation-off from this evidence. The CC Section 3 discovery and rollback code still has no newly identified invariant violation. The actionable CC gap is a paper-derived explanation policy that preserves the traversal win of proof-forest on NEQ without emitting longer clauses that regress PEQ/SAT search."
+      },
+      "verification": {
+        "passed": [
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json",
+          "make docs"
+        ],
+        "pending": [],
+        "warnings": [
+          "Evidence is local-only and not a SLURM headline benchmark.",
+          "No accepted solver behavior change was made, so no fuzz gate was run for this evidence-only entry."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "The review argues against treating CC as a simple Section 3 correctness failure. Current performance is dominated by recursive explanation and learned-reason quality; proof-forest path traversal alone can be faster per fixed conflict budget while hurting full-solve search through larger clauses."
     }
   ]
 }
