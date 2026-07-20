@@ -490,3 +490,17 @@ about 0.38s to 0.93s, while `NEQ027_size8`, `PEQ019_size7`, `SEQ035_size6`,
 and `iso_brn_repgen_sk011` improved or stayed close to default but were often
 still behind the existing bidirectional BFS option. The option is therefore a
 research/tuning hook, not a reference-parity claim.
+
+A later CC review pass profiled current head after parent-restore batching on
+`NEQ016_size7`. The remaining current-head gprof sample still put
+`FlatCongruenceClosure::explain_equal_into` first, followed by CaDiCaL
+propagation, `merge_classes`, `process_use_list`, and `append_use_tracked`.
+The profile also exposed avoidable overhead: every explanation called the
+proof-forest path-length diagnostic helper even when
+`--euf-proof-forest-diagnostics` was disabled. The implementation now guards
+that call at the caller, and the hot merge/node-growth paths test the
+proof-forest mode flags directly instead of calling a tiny helper. Default
+mode therefore avoids disabled proof-forest diagnostic/maintenance calls. This
+is a small implementation cleanup only; it does not change emitted reasons,
+does not implement the Section 4-5 optimized proof forest, and does not close
+the NEQ/reference gap by itself.

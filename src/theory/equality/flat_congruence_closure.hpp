@@ -170,7 +170,6 @@ class FlatCongruenceClosure {
   bool explain_proof_forest_path(FlatTermId from, FlatTermId ancestor, std::size_t max_edge_index,
                                  std::vector<sat::Lit>& reason,
                                  std::vector<ProofObligation>& pending_proofs) const;
-  bool maintain_proof_forest() const;
   void record_proof_parent(FlatTermId from, FlatTermId to, FlatTermId label_endpoint,
                            std::size_t edge_index);
   std::optional<std::size_t> proof_forest_path_length(FlatTermId lhs, FlatTermId rhs,

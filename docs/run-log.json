@@ -8186,6 +8186,70 @@
       },
       "evidence_status": "current_local",
       "notes": "This change reduces rollback/trail memory traffic in the current CC implementation. It does not address SAT search quality, explanation reason quality, or the remaining iso ICL timeouts."
+    },
+    {
+      "id": "2026-07-20-local-flatcc-review-diagnostic-guard",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Current-head FlatCongruenceClosure review on NEQ and iso single instances",
+      "commit": "working tree after c95f8fa",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo and build-gprof/primo",
+        "notes": "Release stats matrix used build/primo. gprof sample used a separate RelWithDebInfo -pg build in build-gprof."
+      },
+      "command": {
+        "profile": "rm -f gmon.out; /usr/bin/time -f 'elapsed %e' ./build-gprof/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size7.smt2 >/tmp/primo-gprof-neq016.out 2>/tmp/primo-gprof-neq016.err; gprof ./build-gprof/primo gmon.out > results/local-gap-triage-20260720/cc-review-neq016-gprof.txt",
+        "matrix": "python3 local single-instance matrix over default, bidirectional, proof-forest, proof diagnostics, lazy, and no-online variants"
+      },
+      "benchmark": {
+        "suite": "QF_UF local single-instance CC review",
+        "logic": "QF_UF",
+        "timeout_seconds": 30,
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+        ]
+      },
+      "artifacts": {
+        "summary": "results/local-gap-triage-20260720/cc-review-single-instance-matrix.csv",
+        "profile": "results/local-gap-triage-20260720/cc-review-neq016-gprof.txt",
+        "post_change_profile": "results/local-gap-triage-20260720/cc-review-neq016-after-diagnostic-guard-gprof.txt",
+        "fuzz": "fuzz-results/qf_uf-fuzzsmt-cc-diagnostic-guard-1000/summary.csv"
+      },
+      "summary": {
+        "profile": "Current-head NEQ016_size7 gprof put FlatCongruenceClosure::explain_equal_into first at 19.41% self time, followed by CaDiCaL::Internal::propagate 11.84%, merge_classes 9.54%, process_use_list 7.57%, append_use_tracked 7.24%, notify_assignment 5.92%, and restore_trail_entry 3.62%. The default run made 8,570,703 explain calls, 2,939,459 BFS searches, 84,296,375 trail entries, and 26,642,726 use-list appends.",
+        "option_matrix": "NEQ016_size7 default 4.316s, bidirectional 3.512s, proof-forest 2.677s; NEQ023_size7 default 0.389s, bidirectional 0.354s, proof-forest 0.946s; iso_icl_repgen006 default 0.467s and proof-forest 0.381s; iso_brn_repgen033 default 0.029s. Lazy EUF timed out at 30s on all four matrix rows.",
+        "implementation": "Guard proof_forest_path_length at the caller so default explanations do not call the proof-forest diagnostic helper when diagnostics are disabled. Replace the hot maintain_proof_forest helper calls with direct flag checks in node growth and merge paths.",
+        "fuzz": "QF_UF FuzzSMT passed 1000/1000 against Z3 with seed 2026072008: sat 898, unsat 102, wrong 0, crash 0, timeout 0.",
+        "decision": "Accept as a narrow no-op diagnostic overhead cleanup. The profile still points to explanation reason generation, merge/use-list maintenance, and SAT search interaction as the real remaining CC work."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j2",
+          "./build/primo_euf_solver_tests",
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json",
+          "make test",
+          "make check",
+          "make asan-test",
+          "make lint",
+          "make docs",
+          "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --seed 2026072008 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-cc-diagnostic-guard-1000"
+        ],
+        "pending": [
+          "commit exact hash after source commit"
+        ],
+        "warnings": [
+          "perf stat returned rc=234 with no counters in this container, so gprof was used instead.",
+          "The special -pg build produced GCC warning noise in preprocessing but built successfully; normal verification remains on build/.",
+          "Post-change gprof still attributes samples and calls from merge_classes to proof_forest_path_length even though the source no longer has such a call path; treat that symbol line as gprof attribution noise and rely on source inspection plus stats counters for disabled diagnostic behavior."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This review found no new Section 3 congruence-discovery correctness bug. It found a small disabled-diagnostic overhead and confirmed proof-forest mode remains mixed: useful for NEQ016 and iso_icl_repgen006 locally, but regressive on NEQ023."
     }
   ]
 }

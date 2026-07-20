@@ -98,7 +98,8 @@ void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {
   use_list_marks_.resize(node_count);
   disequality_lists_.resize(node_count);
   edge_adjacency_.resize(node_count);
-  if (maintain_proof_forest()) {
+  if (proof_forest_diagnostics_ ||
+      explanation_search_mode_ == FlatExplanationSearchMode::ProofForest) {
     proof_parent_.resize(node_count, kInvalidFlatTermId);
     proof_parent_label_endpoint_.resize(node_count, kInvalidFlatTermId);
     proof_parent_edge_.resize(node_count, edges_.size());
@@ -312,7 +313,8 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
   if (pending.congruence) {
     ++stats_.congruence_merges;
   }
-  if (maintain_proof_forest()) {
+  if (proof_forest_diagnostics_ ||
+      explanation_search_mode_ == FlatExplanationSearchMode::ProofForest) {
     record_proof_parent(lhs_repr, proof_to, proof_from_endpoint, edge_index);
   }
   check_disequalities_touching(lhs_repr, rhs_repr);
@@ -600,11 +602,6 @@ bool FlatCongruenceClosure::append_edge_reason(std::size_t edge_index,
   return true;
 }
 
-bool FlatCongruenceClosure::maintain_proof_forest() const {
-  return proof_forest_diagnostics_ ||
-         explanation_search_mode_ == FlatExplanationSearchMode::ProofForest;
-}
-
 void FlatCongruenceClosure::record_proof_parent(FlatTermId from, FlatTermId to,
                                                 FlatTermId label_endpoint, std::size_t edge_index) {
   if (from >= proof_parent_.size() || to >= proof_parent_.size()) {
@@ -876,8 +873,10 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
     }
     ++stats_.explain_cache_bound_misses;
   }
-  const std::optional<std::size_t> proof_path_edges =
-      proof_forest_path_length(lhs, rhs, max_edge_index);
+  std::optional<std::size_t> proof_path_edges;
+  if (proof_forest_diagnostics_) {
+    proof_path_edges = proof_forest_path_length(lhs, rhs, max_edge_index);
+  }
   stats_.explain_max_recursion_depth =
       std::max(stats_.explain_max_recursion_depth, explanation_depth_);
   if (explanation_search_mode_ == FlatExplanationSearchMode::ProofForest) {
