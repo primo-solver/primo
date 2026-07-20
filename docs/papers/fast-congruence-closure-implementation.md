@@ -72,6 +72,12 @@ congruence consequences that SAT backtracking will discard.
 - Disequalities are stored as theory literals and checked after each merge.
 - Explanations are sound SAT-literal sets collected from an explicit equality
   graph. They are not the optimized proof forests of Sections 4 and 5.
+- Explanation adjacency lists are chronological: each endpoint list receives
+  edge identifiers in the same append order as `edges_`. Bounded recursive
+  explanations may therefore stop scanning a node's adjacency list when the
+  first edge at or after the causal bound is reached; all later entries are
+  also outside the allowed proof prefix. Checkpoint rollback removes adjacency
+  entries from the back, preserving this order.
 
 ## Complexity Expectations
 

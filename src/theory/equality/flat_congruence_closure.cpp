@@ -723,7 +723,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
           for (const std::size_t edge_index : edge_adjacency_[current]) {
             if (edge_index >= max_edge_index) {
               ++stats_.explain_causal_edge_skips;
-              continue;
+              break;
             }
             const Edge& edge = edges_[edge_index];
             FlatTermId next = kInvalidFlatTermId;
@@ -780,7 +780,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
       for (const std::size_t edge_index : edge_adjacency_[current]) {
         if (edge_index >= max_edge_index) {
           ++stats_.explain_causal_edge_skips;
-          continue;
+          break;
         }
         const Edge& edge = edges_[edge_index];
         FlatTermId next = kInvalidFlatTermId;

@@ -580,6 +580,18 @@ void flat_congruence_closure_explanation_cache_respects_edge_bounds() {
   check(closure.stats().explain_bfs_searches > bfs_after_broad_query);
 }
 
+void flat_congruence_closure_stops_at_chronological_explanation_bound() {
+  FlatCongruenceClosure closure(4);
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+  closure.assert_equal(0, 2, {primo::sat::Lit{-2}});
+  closure.assert_equal(0, 3, {primo::sat::Lit{-3}});
+
+  std::vector<primo::sat::Lit> reason;
+  FlatCongruenceClosureTestAccess::begin_reason(closure, reason);
+  check(!FlatCongruenceClosureTestAccess::explain_pair_with_bound(closure, 0, 2, reason, 1));
+  check(closure.stats().explain_causal_edge_skips == 1);
+}
+
 void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
   primo::core::SymbolTable symbols;
   const auto sort = symbols.declare_sort("A");
@@ -855,6 +867,7 @@ int main() {
   flat_congruence_closure_reuses_repeated_sub_explanations();
   flat_congruence_closure_uses_causal_edges_for_congruence_reasons();
   flat_congruence_closure_explanation_cache_respects_edge_bounds();
+  flat_congruence_closure_stops_at_chronological_explanation_bound();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_backtracks_nested_merges();
   flat_congruence_closure_proof_diagnostics_backtrack();

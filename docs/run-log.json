@@ -7507,6 +7507,51 @@
       },
       "evidence_status": "current_local",
       "notes": "This is local development evidence. A broad SLURM rerun is still needed for headline solved/PAR2 claims on the QG family."
+    },
+    {
+      "id": "2026-07-20-local-cc-causal-bound-adjacency-break",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Flat EUF explanation BFS causal-bound scan review",
+      "commit": "uncommitted",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Built current ./build/primo and a separate /tmp/primo-cc-prev worktree at 0c639b8. Compared five repeated runs of --quiet --stats --euf-proof-forest-diagnostics on PEQ019_size7, SEQ035_size6, and qg7/iso_icl_repgen006 before/after changing bounded explanation adjacency scans to break at the first future edge.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-proof-forest-diagnostics"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/SEQ/SEQ035_size6.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2"
+        ],
+        "timeout_seconds": 30
+      },
+      "artifacts": {
+        "previous_worktree": "/tmp/primo-cc-prev",
+        "previous_binary": "/tmp/primo-cc-prev/build/primo",
+        "peq019_perf": "/tmp/primo-peq019-cc.perf",
+        "seq035_perf": "/tmp/primo-seq035-cc.perf",
+        "fuzz_summary_csv": "fuzz-results/qf_uf-fuzzsmt-cc-causal-bound-break-1000/summary.csv",
+        "fuzz_generated_inputs": "fuzz-results/qf_uf-fuzzsmt-cc-causal-bound-break-1000/generated",
+        "fuzz_bugs_dir": "fuzz-results/qf_uf-fuzzsmt-cc-causal-bound-break-1000/bugs"
+      },
+      "summary": {
+        "diagnosis": "Explanation adjacency lists are chronological because edge ids are appended to endpoint lists as edges_ grows and rollback pops from the back. Recursive bounded explanations do not need to scan later adjacency entries after the first edge at or after the bound.",
+        "peq019": "Answer/conflicts/BFS counts unchanged. Median with stats+diagnostics was 0.9281s before and 1.0138s after; causal future-edge skips dropped from 651,810 to 397,567.",
+        "seq035": "Answer/conflicts/BFS counts unchanged. Median was 1.2948s before and 1.2867s after; causal future-edge skips dropped from 1,177,205 to 493,855.",
+        "qg7_iso_icl_repgen006": "Answer/conflicts/BFS counts unchanged. Median was 0.5177s before and 0.5152s after; causal future-edge skips dropped from 17,038,485 to 764,402.",
+        "fuzz": "QF_UF FuzzSMT merge gate passed 1000/1000 against Z3; ours sat 882, unsat 118; wrong 0, crash 0, timeout 0.",
+        "decision": "Accepted as a local CC hygiene improvement with a focused unit test. It reduces unnecessary bounded-adjacency scans but is not the missing Section 4-5 proof-forest explanation implementation."
+      },
+      "evidence_status": "current_local",
+      "notes": "Wall-time movement on cheap rows is mostly noise; the value is removing avoidable inner-loop work before pursuing the larger paper-derived explanation design."
     }
   ]
 }
