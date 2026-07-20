@@ -7423,7 +7423,7 @@
       "recorded_at": "2026-07-20",
       "kind": "local_benchmark",
       "scope": "Default-off proof-forest path-length diagnostic for flat EUF explanations",
-      "commit": "uncommitted",
+      "commit": "42e32cd",
       "environment": {
         "type": "local",
         "host": "workspace",
