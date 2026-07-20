@@ -339,3 +339,13 @@ paper-derived explanation design: either implement and validate the Section 4-5
 proof-forest machinery with reason-length safeguards, or add a diagnostic mode
 that computes proof-forest path lengths without changing emitted clauses before
 attempting another replacement.
+
+A rejected micro-optimization tried to cache failed bounded explanations during
+one reason collection: if no path exists using edges before bound `N`, stricter
+bounds cannot succeed either. The focused unit test passed, but local probes on
+`NEQ016_size8`, `NEQ016_size7`, `NEQ023_size7`, `PEQ019_size7`,
+`PEQ002_size8`, and `qg7/iso_brn_repgen033` produced zero failure-cache hits.
+The patch would therefore add a hash lookup to the hottest explanation path
+without reducing BFS work on the sampled rows, so it was reverted. This leaves
+successful bounded-pair reuse as the only current per-reason cache and again
+points at proof-tree shape, not failed-query repetition, as the next CC target.

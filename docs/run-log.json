@@ -7328,6 +7328,47 @@
       },
       "evidence_status": "current_local",
       "notes": "Documentation-only evidence update. No solver behavior changed in this entry, so no fuzz gate is required for this audit note."
+    },
+    {
+      "id": "2026-07-20-rejected-flatcc-bounded-failure-cache",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "rejected_experiment",
+      "scope": "FlatCongruenceClosure per-reason cache for failed bounded explanation queries",
+      "commit": "f091ffa",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Temporary source patch added failed_explanation_cache_ keyed by explanation pair and max_edge_index, plus :euf.incremental.explain-cache-failure-hits. Built and ran ctest --test-dir build -R primo_euf_solver_tests --output-on-failure, then probed timeout 45s ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size8.smt2 and timeout 35s ./build/primo --quiet --stats on NEQ016_size7, NEQ023_size7, PEQ019_size7, PEQ002_size8, and QG qg7/iso_brn_repgen033. Source patch was reverted after measurement.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats with temporary failed bounded-explanation cache"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+        ],
+        "timeout_seconds": 35
+      },
+      "artifacts": {
+        "neq016_size8_stdout": "/tmp/neq016-failcache.stdout",
+        "neq016_size8_stderr": "/tmp/neq016-failcache.stderr"
+      },
+      "summary": {
+        "unit_test": "Focused euf solver test target passed with the temporary cache.",
+        "NEQ016_size8": "45s timeout; no :euf.incremental.explain-cache-failure-hits counter appeared; 74,229,151 explain calls, 24,522,972 BFS searches, and 260,053,303 BFS nodes visited, essentially unchanged from the current audit shape.",
+        "sample_rows": "NEQ016_size7 solved in 4.97s, NEQ023_size7 in 0.39s, PEQ019_size7 in 0.91s, PEQ002_size8 in 17.21s, and iso_brn_repgen033 in 0.04s; none reported nonzero failed-cache hits.",
+        "decision": "Rejected and reverted. The measured CC hotspot is not repeated failed bounded queries, and the extra hash lookup would sit in the hottest explanation function without evidence of benefit."
+      },
+      "evidence_status": "rejected",
+      "notes": "This records a negative result only; no source behavior from the temporary cache remains in the worktree."
     }
   ]
 }
