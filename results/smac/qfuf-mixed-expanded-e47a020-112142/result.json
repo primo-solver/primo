@@ -1,0 +1,48 @@
+{
+  "default_guard": {
+    "cost": 508.6330919999999,
+    "error": 0,
+    "ok": 14,
+    "timeout": 1,
+    "total": 15,
+    "unknown": 0,
+    "wrong": 0
+  },
+  "default_validation_cost": 478.016602,
+  "incumbent": {
+    "adaptive_extra": 7,
+    "adaptive_shrink": 1,
+    "cadical_profile": "default",
+    "eq_bridge": "off",
+    "equality_definitions": "default",
+    "euf_engine": "incremental",
+    "euf_explain_search": "bidirectional",
+    "euf_prop": "conflict",
+    "ground_congruence": "off",
+    "ground_unit_substitution": "off",
+    "guarded_ground_unit_substitution": "on",
+    "passes": 3,
+    "post_amo": "off",
+    "preprocess": "default",
+    "prop_budget": "1000",
+    "prop_delivery": "1000",
+    "prop_interval": "8",
+    "prop_threshold": "1.0",
+    "pure_filter": "off",
+    "solved_constants": "on",
+    "symmetry": "off",
+    "theory_phase": "positive",
+    "value_precedence": "off"
+  },
+  "incumbent_guard": {
+    "cost": 1748.1573039999998,
+    "error": 0,
+    "ok": 9,
+    "timeout": 6,
+    "total": 15,
+    "unknown": 0,
+    "wrong": 0
+  },
+  "incumbent_validation_cost": 1315.2930600000002,
+  "rejected_by_guard": true
+}

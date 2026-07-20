@@ -7610,7 +7610,7 @@
       "commit": "e47a020",
       "environment": {
         "type": "slurm",
-        "host": "node-head submit, running on node-01 at submission check",
+        "host": "node-head submit, completed on node-01",
         "slurm_job_id": "112142",
         "remote_workdir": "/home/janotmik/primo-cadical-profile"
       },
@@ -7633,15 +7633,25 @@
       "artifacts": {
         "remote_out_dir": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-expanded-e47a020-112142",
         "remote_stdout": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-112142.out",
-        "remote_stderr": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-112142.err"
+        "remote_stderr": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-112142.err",
+        "local_result": "results/smac/qfuf-mixed-expanded-e47a020-112142/result.json",
+        "local_incumbent": "results/smac/qfuf-mixed-expanded-e47a020-112142/incumbent.json",
+        "local_target_runs": "results/smac/qfuf-mixed-expanded-e47a020-112142/target-runs.csv",
+        "local_trial_summary": "results/smac/qfuf-mixed-expanded-e47a020-112142/trial-summary.csv",
+        "local_validation_runs": "results/smac/qfuf-mixed-expanded-e47a020-112142/validation-runs.csv",
+        "local_stdout": "logs/primo-qfuf-smac-112142.out",
+        "local_stderr": "logs/primo-qfuf-smac-112142.err"
       },
       "summary": {
-        "submission": "Job 112142 was RUNNING on node-01 at the first queue check. The remote log printed the intended e47a020 Primo binary and CaDiCaL version.",
+        "submission": "Job 112142 completed with sacct state COMPLETED and exit code 0:0 after 01:15:57. The remote log printed the intended e47a020 Primo binary and CaDiCaL version.",
         "purpose": "Search a mixed QF_UF profile rather than an iso-only profile. The space includes phase/preprocessing/symmetry/quality-bridge/pure-filter/CaDiCaL choices plus --no-finite-domain-post-amo and --euf-explain-search.",
-        "decision": "Running. No performance conclusion yet; results must be collected and compared against the current default and reference solvers before any profile is accepted."
+        "incumbent": "--preprocessing-passes=3 --preprocessing-adaptive-extra-passes=7 --preprocessing-adaptive-shrink-percent=1 --no-uf-symmetry-breaking --no-finite-domain-value-precedence --no-finite-domain-post-amo --no-eq-bridge --guarded-ground-unit-substitution --euf-engine=incremental --euf-explain-search=bidirectional --euf-prop=conflict --pure-theory-filter=off --theory-phase=positive --euf-prop-budget=1000 --euf-prop-delivery=1000 --prop-interval=8 --prop-assign-threshold=1.0",
+        "validation_cost": "default 478.016602 versus incumbent 1315.2930600000002",
+        "guard_cost": "default guard total 15, ok 14, timeout 1, wrong 0, cost 508.6330919999999; incumbent guard total 15, ok 9, timeout 6, wrong 0, cost 1748.1573039999998",
+        "decision": "Rejected by guard and validation cost. Do not promote this profile; the expanded mixed search mostly rediscovered a QG/phase/preprocessing overfit that damages equality-family guard rows."
       },
-      "evidence_status": "running",
-      "notes": "This is the SMAC run requested after local CC/preprocessing diagnosis. It is not headline benchmark evidence until the job completes and validation/guard summaries are inspected."
+      "evidence_status": "rejected",
+      "notes": "This is useful negative tuning evidence. It supports keeping bidirectional explanation search, positive phase, pure-filter off, disabled symmetry, and post-AMO off as explicit SMAC/family knobs rather than defaults."
     },
     {
       "id": "2026-07-20-local-cc-review-propagation-stop-tests",
