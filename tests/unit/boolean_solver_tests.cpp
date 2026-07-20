@@ -1774,6 +1774,57 @@ void conflict_euf_callback_learns_external_conflict_without_propagation() {
   assert(result.statistics.get(":euf.propagation.rounds") == 0);
 }
 
+void conflict_propagation_final_check_reuses_incremental_closure() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (= (f a) (f b)))
+    (assert (not (= b c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  // The online/conflict propagator resolves the assignment internally, so the
+  // outer solve_qf_uf loop should reach a verdict without needing a second
+  // full theory-check pass over the assignment.
+  assert(result.statistics.get(":euf.checks") == 1);
+}
+
+void lazy_engine_with_online_propagation_still_sound() {
+  // EufEngine::Lazy has no persistent incremental closure, even when the
+  // online/conflict propagator is connected (it only owns one for
+  // EufEngine::Incremental). The final conflict check must keep using the
+  // legacy find_theory_conflict path here rather than the propagator's
+  // (absent) incremental closure, or this would unsoundly report Sat.
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_engine = primo::smt::EufEngine::Lazy;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (assert (= a b))
+    (assert (= b c))
+    (assert (not (= a c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void theory_conflict_limit_stops_lazy_search_with_unknown() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
@@ -1996,6 +2047,8 @@ int main() {
   online_euf_propagation_handles_predicate_congruence();
   online_euf_propagation_keeps_conflicts_external();
   conflict_euf_callback_learns_external_conflict_without_propagation();
+  conflict_propagation_final_check_reuses_incremental_closure();
+  lazy_engine_with_online_propagation_still_sound();
   theory_conflict_limit_stops_lazy_search_with_unknown();
   theory_conflict_limit_stops_external_search_with_unknown();
   qf_uf_basic_polarity_portfolio_returns_first_success();

@@ -60,9 +60,18 @@ disjunctions, but it does not assert or propagate any theory fact.
 
 `--euf-engine=incremental|lazy` selects the EUF checker used for final conflicts
 and propagation reason queries. `incremental` is the default. The incremental
-engine is conservative: it uses the paper-style flat data structures, while
-final model checks and model-time propagation still rebuild equality state from
-the complete SAT assignment.
+engine is conservative: it uses the paper-style flat data structures, and
+model-time propagation (`--euf-prop=model`) still rebuilds equality state from
+the complete SAT assignment. When `--euf-prop` selects `conflict` or `online`,
+the final per-solve-call conflict check reuses the persistent flat closure that
+the CaDiCaL external propagator already kept in sync with the trail, instead of
+rebuilding an equivalent closure from the complete assignment; this closure's
+conflict state is authoritative once `backend.solve()` reports SAT, because
+every observed-variable assignment was asserted into it synchronously via
+`notify_assignment`, and any conflict is delivered back to CaDiCaL through
+`cb_has_external_clause` before search can settle on a full model. `off` and
+`model` propagation modes have no persistent propagator-owned closure, so their
+final conflict check still rebuilds from the complete assignment.
 
 `--euf-prop=auto|off|conflict|model|online`,
 `--euf-prop-budget=auto|unlimited|N`, and
@@ -490,9 +499,12 @@ propagation checker over deterministic Curry-style flat definitions. Online
 incremental propagation owns a persistent flat closure and uses SAT
 decision-level callbacks with assignment-trail checkpoints. Closure checkpoint
 creation is lazy per decision level and rollback uses a sparse undo trail, but
-backtracking is not yet the paper's timestamped lookup undo structure. Final
-conflict checks and model-time propagation still rebuild flat closures from
-complete assignments.
+backtracking is not yet the paper's timestamped lookup undo structure. Under
+`conflict`/`online` propagation, the final per-solve-call conflict check reuses
+that persistent closure's already-verified conflict state instead of rebuilding
+a flat closure from the complete assignment. Model-time propagation
+(`--euf-prop=model`) and the final conflict check under `off`/`model`
+propagation still rebuild flat closures from complete assignments.
 Primo does not yet implement the Section 4-5 proof-producing union-find.
 
 Deharbe et al., *Exploiting symmetry in SMT problems*, and Reger and Suda,

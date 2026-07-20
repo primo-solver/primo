@@ -1978,6 +1978,17 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
   }
 
+  // The propagator's incremental closure already asserts and checks every
+  // observed-variable assignment synchronously via notify_assignment, and any
+  // conflict it finds is delivered to CaDiCaL through cb_has_external_clause
+  // before search can report SAT. So once backend.solve() returns SAT, this
+  // closure's conflict state is already the authoritative answer for the
+  // current full assignment; the caller does not need to rebuild a second
+  // closure from scratch to re-derive it.
+  std::optional<sat::Clause> incremental_conflict() const {
+    return incremental_state_.has_value() ? incremental_state_->conflict() : std::nullopt;
+  }
+
   int cb_propagate() override {
     if (options_.euf_propagation == EufPropagationMode::Conflict) {
       return 0;
@@ -2690,11 +2701,18 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       publish_sat_stats(backend.statistics(), statistics);
     }
 
-    std::optional<sat::Clause> conflict_clause =
-        options.euf_engine == EufEngine::Incremental
-            ? find_incremental_theory_conflict(prepared_flat_theory.value(), assigned_atoms,
-                                               statistics)
-            : find_theory_conflict(terms, assigned_atoms, true_term, false_term);
+    std::optional<sat::Clause> conflict_clause;
+    if (options.euf_engine == EufEngine::Incremental && online_propagator.has_value()) {
+      // The online/conflict SAT-callback propagator already owns a persistent
+      // flat closure kept in sync with the trail; reuse its verdict instead of
+      // rebuilding an equivalent closure from the full assignment below.
+      conflict_clause = online_propagator->incremental_conflict();
+    } else if (options.euf_engine == EufEngine::Incremental) {
+      conflict_clause = find_incremental_theory_conflict(prepared_flat_theory.value(),
+                                                         assigned_atoms, statistics);
+    } else {
+      conflict_clause = find_theory_conflict(terms, assigned_atoms, true_term, false_term);
+    }
     if (!conflict_clause.has_value()) {
       publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
