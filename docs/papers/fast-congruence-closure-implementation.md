@@ -380,3 +380,15 @@ proof-forest replacement needs reason-quality safeguards: proof-path edge counts
 were lower than BFS path edge counts on `NEQ016_size7` and `PEQ019_size7`, but
 higher on `PEQ002_size8`, the same row where earlier reason-shape experiments
 regressed.
+
+A subsequent CC review against Section 5 found no new rollback or explanation
+soundness defect in the current adjacency-BFS implementation, but it did close
+two test gaps and one local performance hygiene issue. `propagate()` now stops
+draining pending merges after `conflict_` is set, because those merges cannot
+change the current theory answer and only add class, use-list, explanation-edge,
+and trail work. The unit suite now covers bidirectional BFS causal-bound and
+cache-bound behavior, and checks a nested-congruence disequality conflict reason
+against the naive flat oracle. This still leaves the important paper gap
+unchanged: Primo does not store labeled reoriented proof-forest edges for
+`Explain`, and it does not use the per-explanation auxiliary union-find with
+`HighestNode` from Section 5.2 to avoid repeated subproof traversal.

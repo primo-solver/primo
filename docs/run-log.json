@@ -7642,6 +7642,57 @@
       },
       "evidence_status": "running",
       "notes": "This is the SMAC run requested after local CC/preprocessing diagnosis. It is not headline benchmark evidence until the job completes and validation/guard summaries are inspected."
+    },
+    {
+      "id": "2026-07-20-local-cc-review-propagation-stop-tests",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Focused FlatCongruenceClosure review after NEQ/PEQ/QG performance gaps",
+      "commit": "c69acc3 plus current working-tree CC review patch",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Reviewed src/theory/equality/flat_congruence_closure.{hpp,cpp}, tests/unit/euf_solver_tests.cpp, and Nieuwenhuis-Oliveras Section 5.2 text; ran ./build/primo --quiet --stats and --euf-proof-forest-diagnostics on PEQ016_size7 and QG iso rows; ran focused ctest for primo_euf_solver_tests. Two read-only subagent audits independently reviewed paper conformance and local rollback/use-list/explanation risks without inspecting reference solver code.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/PEQ/PEQ016_size7.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+        ],
+        "timeout_seconds": 30
+      },
+      "artifacts": {
+        "mixed39_csv": "results/local-current-mixed39-primo-llm-z3-20260720.csv",
+        "peq016_profile_perf": "/tmp/primo-peq016-size7.perf",
+        "peq016_profile_stdout": "/tmp/primo-peq016-size7.out",
+        "peq016_profile_stderr": "/tmp/primo-peq016-size7.err",
+        "peq016_proofdiag_stdout": "/tmp/primo-peq016-proofdiag.out",
+        "peq016_proofdiag_stderr": "/tmp/primo-peq016-proofdiag.err",
+        "smoke_logs": "/tmp/primo-{PEQ016_size7,iso_icl_repgen006,iso_brn_repgen033}-ccreview.{out,err}",
+        "fuzz_summary_csv": "fuzz-results/qf_uf-fuzzsmt-cc-review-propagation-stop-1000/summary.csv",
+        "fuzz_generated_inputs": "fuzz-results/qf_uf-fuzzsmt-cc-review-propagation-stop-1000/generated",
+        "fuzz_bugs_dir": "fuzz-results/qf_uf-fuzzsmt-cc-review-propagation-stop-1000/bugs"
+      },
+      "summary": {
+        "mixed39_current": "Primo solved 33/39 with PAR2 123.868 at 8s; tuned LLM2SMT solved 32/39 with PAR2 169.761; Z3 solved 33/39 with PAR2 119.918. Remaining local gaps include SEQ026_size7 vs tuned LLM2SMT, PEQ016_size7 vs tuned LLM2SMT, and PEQ002/NEQ016/QG rows vs Z3.",
+        "paper_review": "Current FlatCongruenceClosure matches a Section-3 affected-use-list/signature-lookup closure and has causal adjacency-BFS explanations. It still does not implement Section 5 proof-forest Explain: no labeled reoriented proof-forest edges, no pending-proof worklist, and no per-explanation auxiliary union-find with HighestNode.",
+        "subagent_audit": "Independent read-only reviews found no definite rollback or explanation soundness bug. They classified proof-forest Explain as the missing optimized mechanism and flagged duplicate-heavy use lists, stale lookup signatures, post-conflict propagation, missing bidirectional tests, and missing conflict-reason oracle checks as risks/test gaps.",
+        "accepted_change": "propagate() now stops draining pending merges after conflict_ is set. Added unit coverage for bidirectional BFS causal-bound/cache-bound behavior, bidirectional rollback, and nested-congruence disequality conflict reasons checked against the naive flat oracle.",
+        "peq016_after_patch": "PEQ016_size7 solved unsat in 3.45s. Search counters stayed in the same shape as before: theory conflicts 7331, explain calls 14,780,429, BFS searches 2,838,287, BFS visited 60,040,372, use-list appends 27,353,334. Trail entries dropped from the earlier 53,311,077 diagnostic to 51,838,864 because post-conflict closure mutations are skipped.",
+        "peq016_proofdiag": "Proof-parent diagnostic had no missing LCA on PEQ016_size7: BFS path edges 18,633,363; proof-parent path edges 15,275,609; shorter/equal/longer 845,378/1,582,340/410,569. This supports implementing Section 5 carefully, but the proof-parent path is not uniformly better on all families.",
+        "qg_smoke_after_patch": "iso_icl_repgen006 solved in 0.47s with 16,869 theory conflicts, 2,473,699 explain calls, 6,223,995 BFS visits, and 7,446,302 trail entries. iso_brn_repgen033 solved in 0.02s with 596 theory conflicts, 17,120 explain calls, and 125,013 BFS visits.",
+        "focused_verification": "ctest --test-dir build -R primo_euf_solver_tests --output-on-failure passed after the patch. Broader make/fuzz gates are required before commit.",
+        "verification": "make test, make check, make asan-test, make lint, make docs, and QF_UF FuzzSMT 1000 against Z3 all passed. Fuzz results: PASS 1000, sat 893, unsat 107, wrong 0, crash 0, timeout 0, bug files 0."
+      },
+      "evidence_status": "current_local",
+      "notes": "This is a CC review and hygiene patch, not reference parity. The next substantive CC implementation target remains a paper-derived Section 5 Explain design with reason-quality safeguards. Earlier failed bounded-search caching is not revived because prior sampled runs had zero hits."
     }
   ]
 }

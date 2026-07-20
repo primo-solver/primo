@@ -217,7 +217,7 @@ void FlatCongruenceClosure::enqueue_congruence(const Definition& lhs, const Defi
 }
 
 void FlatCongruenceClosure::propagate() {
-  while (!pending_.empty()) {
+  while (!pending_.empty() && !conflict_.has_value()) {
     PendingMerge pending = std::move(pending_.back());
     pending_.pop_back();
     ++stats_.pending_pops;

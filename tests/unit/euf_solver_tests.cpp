@@ -566,8 +566,44 @@ void flat_congruence_closure_uses_causal_edges_for_congruence_reasons() {
   check(!uses_later_edge);
 }
 
+void flat_congruence_closure_bidirectional_uses_causal_edges_for_congruence_reasons() {
+  FlatCongruenceClosure closure(11, FlatExplanationSearchMode::BidirectionalBfs);
+  closure.add_definition(primo::theory::equality::FlatDefinition{10, 0, 4});
+  closure.add_definition(primo::theory::equality::FlatDefinition{10, 2, 5});
+
+  closure.assert_equal(0, 6, {primo::sat::Lit{-1}});
+  closure.assert_equal(6, 7, {primo::sat::Lit{-2}});
+  closure.assert_equal(7, 2, {primo::sat::Lit{-3}});
+  check(closure.are_equal(4, 5));
+
+  closure.assert_equal(6, 4, {primo::sat::Lit{-4}});
+  const auto reason = closure.explain_equal(4, 5);
+
+  check(reason.has_value());
+  bool uses_later_edge = false;
+  for (const primo::sat::Lit lit : reason.value()) {
+    uses_later_edge = uses_later_edge || lit.value == -4;
+  }
+  check(!uses_later_edge);
+  check(closure.stats().explain_bfs_searches >= 1);
+}
+
 void flat_congruence_closure_explanation_cache_respects_edge_bounds() {
   FlatCongruenceClosure closure(3);
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+  closure.assert_equal(1, 2, {primo::sat::Lit{-2}});
+
+  std::vector<primo::sat::Lit> reason;
+  FlatCongruenceClosureTestAccess::begin_reason(closure, reason);
+  check(FlatCongruenceClosureTestAccess::explain_pair_with_bound(closure, 0, 2, reason, 2));
+  const std::size_t bfs_after_broad_query = closure.stats().explain_bfs_searches;
+  check(!FlatCongruenceClosureTestAccess::explain_pair_with_bound(closure, 0, 2, reason, 1));
+  check(closure.stats().explain_cache_bound_misses >= 1);
+  check(closure.stats().explain_bfs_searches > bfs_after_broad_query);
+}
+
+void flat_congruence_closure_bidirectional_explanation_cache_respects_edge_bounds() {
+  FlatCongruenceClosure closure(3, FlatExplanationSearchMode::BidirectionalBfs);
   closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
   closure.assert_equal(1, 2, {primo::sat::Lit{-2}});
 
@@ -590,6 +626,30 @@ void flat_congruence_closure_stops_at_chronological_explanation_bound() {
   FlatCongruenceClosureTestAccess::begin_reason(closure, reason);
   check(!FlatCongruenceClosureTestAccess::explain_pair_with_bound(closure, 0, 2, reason, 1));
   check(closure.stats().explain_causal_edge_skips == 1);
+}
+
+void flat_congruence_closure_bidirectional_backtracks_nested_merges() {
+  FlatCongruenceClosure closure(4, FlatExplanationSearchMode::BidirectionalBfs);
+
+  const std::size_t outer = closure.push();
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+  check(closure.are_equal(0, 1));
+
+  const std::size_t inner = closure.push();
+  closure.assert_equal(1, 2, {primo::sat::Lit{-2}});
+  check(closure.are_equal(0, 2));
+  const auto reason = closure.explain_equal(0, 2);
+  check(reason.has_value());
+  check(closure.stats().explain_bfs_searches >= 1);
+
+  closure.pop(inner);
+  check(closure.are_equal(0, 1));
+  check(!closure.are_equal(0, 2));
+
+  closure.pop(outer);
+  check(!closure.are_equal(0, 1));
+  check(!closure.are_equal(1, 2));
+  check(closure.stats().backtracks == 1);
 }
 
 void flat_congruence_closure_backtracks_and_rediscoveres_congruence() {
@@ -685,6 +745,37 @@ void flat_congruence_closure_backtracks_disequality_conflict() {
   closure.assert_equal(0, 1, {primo::sat::Lit{5}});
   check(!closure.conflict().has_value());
   check(closure.are_equal(0, 1));
+}
+
+void flat_congruence_closure_conflict_reason_entails_nested_congruence() {
+  constexpr std::size_t kNodeCount = 8;
+  const std::vector<primo::theory::equality::FlatDefinition> definitions{
+      {4, 0, 2},
+      {4, 1, 3},
+      {5, 2, 6},
+      {5, 3, 7},
+  };
+  FlatCongruenceClosure closure(8);
+  for (const auto& definition : definitions) {
+    closure.add_definition(definition);
+  }
+
+  const std::size_t checkpoint = closure.push();
+  closure.assert_distinct(6, 7, {primo::sat::Lit{-2}});
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+
+  const auto conflict = closure.conflict();
+  check(conflict.has_value());
+  check(explanation_entails_equality(kNodeCount, definitions, {{0, 1}}, conflict.value(), 6, 7));
+  bool has_disequality_literal = false;
+  for (const primo::sat::Lit lit : conflict.value()) {
+    has_disequality_literal = has_disequality_literal || lit.value == -2;
+  }
+  check(has_disequality_literal);
+
+  closure.pop(checkpoint);
+  check(!closure.conflict().has_value());
+  check(!closure.are_equal(6, 7));
 }
 
 void flat_congruence_closure_backtracks_post_checkpoint_definitions() {
@@ -870,12 +961,16 @@ int main() {
   flat_congruence_closure_keeps_signed_reason_literals_distinct();
   flat_congruence_closure_reuses_repeated_sub_explanations();
   flat_congruence_closure_uses_causal_edges_for_congruence_reasons();
+  flat_congruence_closure_bidirectional_uses_causal_edges_for_congruence_reasons();
   flat_congruence_closure_explanation_cache_respects_edge_bounds();
+  flat_congruence_closure_bidirectional_explanation_cache_respects_edge_bounds();
   flat_congruence_closure_stops_at_chronological_explanation_bound();
+  flat_congruence_closure_bidirectional_backtracks_nested_merges();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_backtracks_nested_merges();
   flat_congruence_closure_proof_diagnostics_backtrack();
   flat_congruence_closure_backtracks_disequality_conflict();
+  flat_congruence_closure_conflict_reason_entails_nested_congruence();
   flat_congruence_closure_backtracks_post_checkpoint_definitions();
   flat_congruence_closure_lookup_hit_definition_keeps_future_congruence();
   flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack();

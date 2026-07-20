@@ -295,6 +295,10 @@ only reused for an equal or looser bound. Stricter recursive premise queries
 therefore recompute instead of reusing a path that may mention later proof
 edges. `:euf.incremental.explain-cache-bound-misses` counts these rejected
 cache hits.
+Once a theory conflict is recorded, flat-closure propagation stops draining
+pending merges for the current check. Those merges cannot change the current
+theory answer and continuing would only add class, use-list, explanation-edge,
+and trail mutations that will be discarded by SAT backtracking.
 Use-list appends do not scan the destination vector for duplicates. Duplicates
 can arise when the same flat definition mentions two classes that later merge,
 so the closure removes duplicate affected results with a generation-stamp
