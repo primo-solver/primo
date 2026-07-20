@@ -7600,6 +7600,48 @@
       },
       "evidence_status": "current_local",
       "notes": "The broad reference-parity goal remains open. A proof-forest explanation engine still needs a paper-derived design with clause-quality checks and full fuzz/benchmark validation before it can be considered as a default."
+    },
+    {
+      "id": "2026-07-20-slurm-qfuf-smac-mixed-expanded-112142",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "slurm_smac",
+      "scope": "Expanded mixed QF_UF SMAC run including finite-domain post-AMO and EUF explanation-search knobs",
+      "commit": "e47a020",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head submit, running on node-01 at submission check",
+        "slurm_job_id": "112142",
+        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+      },
+      "command": "Validated scripts/slurm_qfuf_smac.sbatch with scripts/slurm_validate_sbatch.py and bash -n; ran scripts/slurm_prepare_benchmark_workspace.py --check-only for /home/janotmik/primo-cadical-profile; submitted with sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt,PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt,PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt,PRIMO_SMAC_TRIALS=160,PRIMO_SMAC_TIMEOUT=45,PRIMO_SMAC_VALIDATION_TIMEOUT=120,PRIMO_SMAC_GUARD_TIMEOUT=120,PRIMO_SMAC_SEED=20260720,PRIMO_SMAC_LABEL=qfuf-mixed-expanded-e47a020 scripts/slurm_qfuf_smac.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo",
+        "version": "primo 0.1.0; git: e47a020; cadical: cadical-3.0.0-7b99c07"
+      },
+      "inputs": {
+        "train_manifest": "benchmarks/qfuf-smac-mixed-train.txt",
+        "validate_manifest": "benchmarks/qfuf-smac-mixed-validate.txt",
+        "guard_manifest": "benchmarks/qfuf-smac-equality-guard.txt",
+        "trials": 160,
+        "train_timeout_seconds": 45,
+        "validation_timeout_seconds": 120,
+        "guard_timeout_seconds": 120,
+        "seed": 20260720
+      },
+      "artifacts": {
+        "remote_out_dir": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-expanded-e47a020-112142",
+        "remote_stdout": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-112142.out",
+        "remote_stderr": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-112142.err"
+      },
+      "summary": {
+        "submission": "Job 112142 was RUNNING on node-01 at the first queue check. The remote log printed the intended e47a020 Primo binary and CaDiCaL version.",
+        "purpose": "Search a mixed QF_UF profile rather than an iso-only profile. The space includes phase/preprocessing/symmetry/quality-bridge/pure-filter/CaDiCaL choices plus --no-finite-domain-post-amo and --euf-explain-search.",
+        "decision": "Running. No performance conclusion yet; results must be collected and compared against the current default and reference solvers before any profile is accepted."
+      },
+      "evidence_status": "running",
+      "notes": "This is the SMAC run requested after local CC/preprocessing diagnosis. It is not headline benchmark evidence until the job completes and validation/guard summaries are inspected."
     }
   ]
 }
