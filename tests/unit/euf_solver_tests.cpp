@@ -421,6 +421,31 @@ void flat_congruence_closure_drains_changed_terms_from_merges() {
   check(changed.empty());
 }
 
+void flat_congruence_closure_pop_does_not_restore_drained_changed_terms() {
+  FlatCongruenceClosure closure(8);
+  closure.assert_equal(5, 6);
+  const std::size_t checkpoint = closure.push();
+
+  std::vector<primo::theory::equality::FlatTermId> changed;
+  closure.drain_changed_terms(changed);
+  check(!changed.empty());
+
+  changed.clear();
+  closure.assert_equal(1, 2);
+  closure.pop(checkpoint);
+  closure.drain_changed_terms(changed);
+  check(changed.empty());
+}
+
+void flat_congruence_closure_adds_self_application_to_one_use_list() {
+  FlatCongruenceClosure closure(6);
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 0, 5});
+
+  check(closure.stats().use_list_appends == 1);
+  check(closure.stats().use_list_duplicate_skips == 1);
+  check(closure.stats().max_use_list_size == 1);
+}
+
 void flat_congruence_closure_skips_unrelated_disequality_scans() {
   FlatCongruenceClosure closure(6);
   closure.assert_distinct(0, 1, {primo::sat::Lit{-1}});
@@ -983,9 +1008,10 @@ void flat_congruence_closure_matches_naive_oracle_under_backtracking() {
   }
 }
 
-void flat_congruence_closure_explanations_match_naive_oracle_under_backtracking() {
+void flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
+    FlatExplanationSearchMode explanation_mode) {
   constexpr std::size_t kNodeCount = 30;
-  FlatCongruenceClosure closure(kNodeCount);
+  FlatCongruenceClosure closure(kNodeCount, explanation_mode);
   const std::vector<primo::theory::equality::FlatDefinition> definitions{
       {6, 0, 9},   {6, 1, 10},  {6, 2, 11},  {6, 3, 12},  {6, 4, 13},  {6, 5, 14},  {7, 0, 15},
       {7, 1, 16},  {7, 2, 17},  {7, 3, 18},  {7, 4, 19},  {7, 5, 20},  {8, 9, 21},  {8, 10, 22},
@@ -1042,6 +1068,15 @@ void flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
   }
 }
 
+void flat_congruence_closure_explanations_match_naive_oracle_under_backtracking() {
+  flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
+      FlatExplanationSearchMode::OneSidedBfs);
+  flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
+      FlatExplanationSearchMode::BidirectionalBfs);
+  flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
+      FlatExplanationSearchMode::ProofForest);
+}
+
 }  // namespace
 
 int main() {
@@ -1057,6 +1092,8 @@ int main() {
   flat_terms_share_nested_subterms_and_flatten_equalities();
   flat_congruence_closure_uses_curried_definitions();
   flat_congruence_closure_drains_changed_terms_from_merges();
+  flat_congruence_closure_pop_does_not_restore_drained_changed_terms();
+  flat_congruence_closure_adds_self_application_to_one_use_list();
   flat_congruence_closure_skips_unrelated_disequality_scans();
   flat_congruence_closure_scans_only_crossing_disequalities();
   flat_congruence_closure_reports_direct_conflict_before_use_list_scan();

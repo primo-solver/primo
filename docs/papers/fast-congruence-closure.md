@@ -11,8 +11,11 @@ This paper is the target reference for Primo's fast QF_UF theory solver. The
 default engine selected with `--euf-engine=incremental` implements the Section 3
 use-list and signature-lookup shape over Primo's own flat term representation.
 The older lazy scaffold remains available with `--euf-engine=lazy` for
-diagnostics. The Section 4 and 5 proof-producing union-find machinery is not
-implemented.
+diagnostics. A default-off `--euf-explain-search=proof-forest` mode implements
+a Section 5.2-shaped experimental explainer over Primo's current
+representative-oriented proof-parent forest. The full Section 4/5 optimized
+proof-producing union-find machinery, including the paper's reorientation
+policy, is not implemented.
 
 ## Implemented Subsets
 
@@ -35,20 +38,23 @@ The default incremental path adds:
 - disequality conflict detection;
 - sparse `push`/`pop` checkpoints and an undo trail for online propagation
   experiments;
+- drained changed-term notifications that are not resurrected by later pops;
 - counters for terms, flat definitions, lookup probes and hits, pending pops,
   congruence merges, conflicts, explanation length, and backtracks.
 
 This is a Section 3 shaped subset, not the complete optimized paper algorithm.
 Explanations still come from a simple equality edge graph and are sound but not
-minimal. Backtracking trails ordinary mutable closure state rather than using
-the paper's optimized timestamped lookup-table policy.
+minimal by default. The proof-forest mode is an experimental explanation
+alternative, not a default or a complete paper implementation. Backtracking
+trails ordinary mutable closure state rather than using the paper's optimized
+timestamped lookup-table policy.
 
 ## Remaining implementation checklist
 
 Before claiming that Primo implements the full Nieuwenhuis-Oliveras fast
 congruence closure, the code must add and document:
 
-- explanation/proof-forest data structures for equality reasons;
+- the full Section 4/5 proof-forest reorientation and explanation policy;
 - the paper's timestamped lookup-table backtracking policy;
 - pure-class performance probes showing the Section 3 machinery improves the
   intended QF_UF families;

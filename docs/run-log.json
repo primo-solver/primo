@@ -8499,7 +8499,8 @@
           "git diff --check",
           "make test",
           "make docs",
-          "make lint"
+          "make lint",
+          "make tidy"
         ],
         "pending": [],
         "warnings": [
@@ -8509,6 +8510,65 @@
       },
       "evidence_status": "current_local",
       "notes": "Added because previous local CSVs left SAT conflicts and decisions empty, making NEQ and diamond-equality slowdowns hard to attribute during CC review."
+    },
+    {
+      "id": "2026-07-20-local-flat-cc-review-changed-terms",
+      "recorded_at": "2026-07-20T08:20:00+02:00",
+      "kind": "profile",
+      "scope": "FlatCongruenceClosure review, proof-forest probe, and changed-term rollback fix",
+      "commit": "ba0fc9e",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo and build-gprof/primo",
+        "notes": "Clean-room review against Primo docs and Nieuwenhuis-Oliveras design notes; /tmp/llm2smt was used only for option and behavior comparison."
+      },
+      "command": {
+        "gprof_build": "cmake -S . -B build-gprof -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/workspace/contrib/local -DCMAKE_CXX_FLAGS_RELEASE='-O2 -g -pg -DNDEBUG' -DCMAKE_EXE_LINKER_FLAGS='-pg' && cmake --build build-gprof --target primo -j2",
+        "gprof_iso": "./build-gprof/primo --quiet --stats tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+        "proof_forest_probe": "for mode in one-sided bidirectional proof-forest; do ./build/primo --quiet --stats --euf-explain-search $mode tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2; done",
+        "fuzz": "make fuzzsmt"
+      },
+      "benchmark": {
+        "suite": "Local CC review probes",
+        "logic": "QF_UF",
+        "timeout_seconds": 20,
+        "instances": [
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+          "tmp/QF_UF/NEQ/NEQ027_size8.smt2"
+        ]
+      },
+      "artifacts": {
+        "gprof_stdout": "/tmp/gprof-iso.out",
+        "gprof_stderr": "/tmp/gprof-iso.err",
+        "fuzz_summary": "fuzz-results/qf_uf-fuzzsmt/summary.csv"
+      },
+      "summary": {
+        "gprof": "On iso_icl_repgen006, gprof put FlatCongruenceClosure::explain_equal_into first at 20.69% self time, merge_classes also 20.69%, OnlineEufPropagator::notify_assignment 13.79%, and process_use_list 6.90%. The same run reported :sat.conflicts 215, :sat.decisions 39519, :euf.incremental.explain-calls 2473699, and :euf.incremental.explain-bfs-searches 1449645.",
+        "proof_forest_probe": "On iso_icl_repgen006, one-sided and bidirectional both took about 0.44-0.45s locally. The default-off proof-forest mode took about 0.37s, removed BFS searches, and reduced direct/congruence edge work, but increased total explain calls to 3468464 and changed SAT conflicts from 215 to 395. It remains a candidate, not a default.",
+        "review_findings": "Two independent clean-room review agents found no concrete Section 3 lookup/use-list/explanation causal-edge soundness bug. They did identify documentation overclaim risk around proof-forest mode and a changed_terms_ rollback bug when notifications are drained after a checkpoint.",
+        "accepted_fix": "drain_changed_terms now lowers active checkpoint changed-term baselines so pop cannot resurrect already-consumed notifications. add_definition also registers self-applications in one affected use list instead of appending the same result twice.",
+        "local_smoke_after_fix": "iso_icl_repgen006 and NEQ027_size8 retained the same SAT/EUF search-counter shape after the fix; these rows do not exercise the self-application duplicate case."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j2 && ./build/primo_euf_solver_tests",
+          "make asan-test",
+          "make fuzzsmt",
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json",
+          "git diff --check",
+          "make test",
+          "make docs",
+          "make lint"
+        ],
+        "pending": [],
+        "warnings": [
+          "FuzzSMT gate was the repository's 20-case local smoke target, not the 1000+ merge gate requested for default-profile promotions.",
+          "No SLURM headline benchmark claim is made."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This closes one concrete CC rollback issue and strengthens proof-forest tests/documentation, but it does not close the broad reference performance gap. The remaining CC work is explanation quality and proof-forest policy, not another SAT phase knob."
     }
   ]
 }

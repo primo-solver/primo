@@ -150,8 +150,14 @@ void FlatCongruenceClosure::add_definition(const FlatDefinition& definition) {
     trail_.push_back(std::move(entry));
     ++stats_.trail_entries;
   }
-  append_use_tracked(representative(stored.function), stored.result);
-  append_use_tracked(representative(stored.argument), stored.result);
+  const FlatTermId function_repr = representative(stored.function);
+  const FlatTermId argument_repr = representative(stored.argument);
+  append_use_tracked(function_repr, stored.result);
+  if (argument_repr != function_repr) {
+    append_use_tracked(argument_repr, stored.result);
+  } else {
+    ++stats_.use_list_duplicate_skips;
+  }
 }
 
 void FlatCongruenceClosure::assert_equal(FlatTermId lhs, FlatTermId rhs,
@@ -198,6 +204,9 @@ bool FlatCongruenceClosure::are_equal(FlatTermId lhs, FlatTermId rhs) {
 void FlatCongruenceClosure::drain_changed_terms(std::vector<FlatTermId>& out) {
   out.insert(out.end(), changed_terms_.begin(), changed_terms_.end());
   changed_terms_.clear();
+  for (Checkpoint& checkpoint : checkpoints_) {
+    checkpoint.changed_terms_size = 0;
+  }
 }
 
 FlatTermId FlatCongruenceClosure::representative(FlatTermId term) const {

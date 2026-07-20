@@ -384,7 +384,15 @@ and lookup maps. Destination class-member lists are rolled back with one compact
 merge record containing the kept representative, restored representative, and
 moved-member count; rollback moves the appended tail back after later merges
 have already been undone. This preserves the same backtracking state while
-avoiding a full loser-list copy on merge-heavy finite-domain problems. The BFS marks, parent-edge arrays, queue storage,
+avoiding a full loser-list copy on merge-heavy finite-domain problems.
+Changed-term notifications are a consumed queue for online propagation
+candidate discovery: `drain_changed_terms` clears the queue and lowers active
+checkpoint baselines so a later pop can discard post-checkpoint notifications
+without resurrecting notifications already delivered to the SAT callback.
+Self-applications whose function and argument are already in the same class are
+registered once in the affected use list; duplicate use-list entries remain
+tolerated and are deduplicated when an affected representative is processed.
+The BFS marks, parent-edge arrays, queue storage,
 per-recursion path buffers, and reason-literal marks are owned by the closure
 and reused across explanation queries; signed SAT literals are marked
 separately, so `p` and `not p` can both occur in a non-minimal reason when
