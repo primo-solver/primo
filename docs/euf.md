@@ -361,6 +361,13 @@ current reason. Diagnostic parent links store the merge-edge index and obey the
 same causal edge bound as recursive BFS explanations. Local probes show that
 proof paths can be shorter on some NEQ rows but longer on `PEQ002_size7`,
 `SEQ035_size6`, and `iso_icl_repgen006`.
+Primo currently steers SAT search for EUF atoms through initial phase selection
+and external propagation/conflict clauses, not through a theory decision
+callback. A July 20, 2026 clean-room inspection of the local reference checkout
+found that its combined propagator exposes `cb_decide`, but the EUF solver in
+that checkout does not override the default no-op decision callback. This makes
+EUF decision hints a possible future experiment, but not an identified
+reference-behavior gap for the current NEQ/PEQ investigation.
 Online-mode checkpoints are created lazily on the first theory assignment in a
 SAT decision level, so levels with only Boolean search do not allocate closure
 rollback state. Checkpoints remember vector sizes, conflict state, stats, and

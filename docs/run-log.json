@@ -8359,6 +8359,55 @@
       },
       "evidence_status": "rejected",
       "notes": "This entry intentionally records a reverted experiment so future CC reviews do not repeat the same auxiliary-UF lazy initialization attempt without a stronger reason."
+    },
+    {
+      "id": "2026-07-20-local-finite-domain-eqdefs-neq-peq-probe",
+      "recorded_at": "2026-07-20T06:22:00+02:00",
+      "kind": "local_benchmark",
+      "scope": "Finite-domain equality-definition and EUF decision-callback triage for NEQ/PEQ gaps",
+      "commit": "06838e9",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "reference_checkout": "/tmp/llm2smt"
+      },
+      "command": {
+        "eqdefs_matrix": "python3 local matrix over default, --finite-domain-equality-definitions, unbounded auto equality definitions, --qf-uf-preprocess=strong, and strong+eqdefs on NEQ016_size7, NEQ016_size8, and PEQ002_size8",
+        "reference_decision_inspection": "rg/sed inspection of /tmp/llm2smt main propagator and EUF solver cb_decide declarations/implementations under clean-room policy"
+      },
+      "benchmark": {
+        "suite": "QF_UF local single-instance preprocessing probe",
+        "logic": "QF_UF",
+        "timeout_seconds": 30,
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2"
+        ]
+      },
+      "artifacts": {
+        "eqdefs_matrix": "results/local-gap-triage-20260720/finite-domain-eqdefs-neq-peq-probe.csv"
+      },
+      "summary": {
+        "eqdefs": "Forced finite-domain equality definitions generated no clauses on NEQ016_size7 or NEQ016_size8. On PEQ002_size8, unbounded forced equality definitions generated 10,752 clauses from 448 candidate pairs but slowed the 50,000-theory-conflict capped run from 6.244s default to 6.605s or worse.",
+        "decision_callback": "The local reference checkout exposes cb_decide in the combined propagator, but rg found no EUF-specific cb_decide override; the EUF path appears to inherit the default no-op decision callback. Primo also has no EUF cb_decide path and currently uses phase plus propagation/conflict clauses.",
+        "decision": "Do not promote finite-domain equality definitions for NEQ/PEQ from this evidence. Do not treat EUF decision hints as an established reference gap for these rows; they remain a possible future experiment only."
+      },
+      "verification": {
+        "passed": [
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json"
+        ],
+        "pending": [
+          "make docs before committing this documentation-only evidence record"
+        ],
+        "warnings": [
+          "No accepted solver behavior change was made.",
+          "The reference checkout was inspected for behavior only; no code, comments, tests, or build logic were copied."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This probe redirects the NEQ/PEQ work away from the existing observed-pair equality-definition pass and away from assuming an EUF SAT-decision callback is missing relative to the inspected reference checkout."
     }
   ]
 }

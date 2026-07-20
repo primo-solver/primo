@@ -518,6 +518,15 @@ families. They are counted by `:preprocessing.equality-definitions`;
 `:preprocessing.equality-definitions.candidate-pairs` counts observed same-domain
 term equalities.
 
+A July 20, 2026 local probe on the NEQ/PEQ gap confirmed the limits of this
+observed-pair design. Forced finite-domain equality definitions generated no
+clauses on `NEQ016_size7` or `NEQ016_size8`, because the observed equality pairs
+were not pairs of terms with explicit recognized finite-domain choices. On
+`PEQ002_size8`, unbounded forced equality definitions generated 10,752 clauses
+but made the 50,000-theory-conflict capped run slower. The pass therefore
+remains guarded and is not a default solution for the NEQ/PEQ operation-table
+slowdown.
+
 `--ground-congruence` emits a bounded subset of ordinary ground-EUF congruence
 clauses over applications already present in the formula:
 
