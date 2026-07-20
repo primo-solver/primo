@@ -326,8 +326,9 @@ ranked slow `iso_brn_nogen_sk*` siblings, and `iso_icl_repgen006.smt2`. Do not
 promote an iso-only incumbent; rerun with the mixed manifests, the equality
 guard, and then the broader 334-row/full-QF_UF validation. The search space
 includes preprocessing strength, finite-domain symmetry/value-precedence and
-equality-definition toggles, bounded ground-congruence, EUF engine/propagation
-settings, theory phase, and the existing CaDiCaL incremental profile.
+equality-definition toggles, post-simplification finite-domain AMO, bounded
+ground-congruence, EUF engine/propagation settings, EUF explanation search,
+theory phase, and the existing CaDiCaL incremental profile.
 
 The first completed campaign for commit `c2c7e0e` found an incumbent that solves
 `NEQ015_size6` in 25.36s under the 120s validation cap, while the default timed

@@ -127,6 +127,8 @@ def solver_args(config: Any) -> list[str]:
         args.append("--finite-domain-equality-definitions")
     elif equality_definitions == "off":
         args.append("--no-finite-domain-equality-definitions")
+    if config_value(config, "post_amo", "on") == "off":
+        args.append("--no-finite-domain-post-amo")
     if config_value(config, "eq_bridge", "on") == "off":
         args.append("--no-eq-bridge")
     if config_value(config, "solved_constants", "on") == "off":
@@ -139,6 +141,9 @@ def solver_args(config: Any) -> list[str]:
         args.append("--guarded-ground-unit-substitution")
 
     args.append(f"--euf-engine={config_value(config, 'euf_engine', 'incremental')}")
+    args.append(
+        f"--euf-explain-search={config_value(config, 'euf_explain_search', 'one-sided')}"
+    )
     args.append(f"--euf-prop={config_value(config, 'euf_prop', 'auto')}")
     args.append(f"--pure-theory-filter={config_value(config, 'pure_filter', 'auto')}")
     args.append(f"--theory-phase={config_value(config, 'theory_phase', 'negative')}")
@@ -245,6 +250,7 @@ def make_configspace(seed: int):
             CategoricalHyperparameter(
                 "equality_definitions", ["default", "on", "off"], default_value="default"
             ),
+            CategoricalHyperparameter("post_amo", ["on", "off"], default_value="on"),
             CategoricalHyperparameter("eq_bridge", ["on", "off"], default_value="on"),
             CategoricalHyperparameter(
                 "solved_constants", ["on", "off"], default_value="on"
@@ -260,6 +266,11 @@ def make_configspace(seed: int):
             ),
             CategoricalHyperparameter(
                 "euf_engine", ["incremental", "lazy"], default_value="incremental"
+            ),
+            CategoricalHyperparameter(
+                "euf_explain_search",
+                ["one-sided", "bidirectional"],
+                default_value="one-sided",
             ),
             CategoricalHyperparameter(
                 "euf_prop", ["auto", "conflict", "online", "off"], default_value="auto"
