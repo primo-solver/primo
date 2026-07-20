@@ -8248,6 +8248,62 @@
       },
       "evidence_status": "current_local",
       "notes": "This review found no new Section 3 congruence-discovery correctness bug. It found a small disabled-diagnostic overhead and confirmed proof-forest mode remains mixed: useful for NEQ016 and iso_icl_repgen006 locally, but regressive on NEQ023."
+    },
+    {
+      "id": "2026-07-20-local-flatcc-review-proof-forest-recheck",
+      "recorded_at": "2026-07-20T06:10:27+02:00",
+      "kind": "local_profile",
+      "scope": "Current-head FlatCongruenceClosure review after diagnostic-guard cleanup",
+      "commit": "0be41eb",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "Same local binary; reference checkout /tmp/llm2smt inspected only for design/behavior signals under the Primo clean-room policy."
+      },
+      "command": {
+        "mode_matrix": "python3 local matrix over default, proof-forest, bidirectional, euf-prop=off, euf-prop=off with proof-forest, and theory-phase=polarity on NEQ016_size7, NEQ023_size7, and iso_icl_repgen005 with a 20s per-run timeout",
+        "size8_capped": "python3 local matrix over default, proof-forest, bidirectional, and top-level-or-tseitin on NEQ016_size8 with --max-theory-conflicts 50000",
+        "size8_direct_probe": "/usr/bin/time -f 'elapsed %e' ./build/primo --quiet --stats --euf-explain-search=proof-forest tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+      },
+      "benchmark": {
+        "suite": "QF_UF local single-instance CC review",
+        "logic": "QF_UF",
+        "timeout_seconds": 20,
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen005.smt2"
+        ]
+      },
+      "artifacts": {
+        "mode_matrix": "results/local-gap-triage-20260720/cc-review-20260720-mode-matrix.csv",
+        "size8_capped": "results/local-gap-triage-20260720/cc-review-20260720-neq016-size8-capped.csv",
+        "mixed_gap_matrix": "results/local-gap-triage-20260720/current-head-primo-mixed-neq-10s.csv",
+        "ranked_gaps": "results/local-gap-triage-20260720/current-head-ranked-gaps-mixed-neq-10s.csv"
+      },
+      "summary": {
+        "mode_matrix": "NEQ016_size7 default 4.377s, proof-forest 2.426s, bidirectional 3.676s, euf-prop=off timeout20, phase-polarity 5.851s. NEQ023_size7 default 0.350s, proof-forest 1.015s, bidirectional 0.356s, euf-prop=off timeout20. iso_icl_repgen005 default 2.104s, proof-forest 2.038s, bidirectional 2.251s, euf-prop=off timeout20.",
+        "size8_capped": "On NEQ016_size8 with --max-theory-conflicts 50000: default 3.642s and 9.52M explain calls; proof-forest 2.490s and 11.14M explain calls; bidirectional 3.165s and 7.75M explain calls; top-level-or-tseitin 3.614s and 8.68M explain calls.",
+        "size8_direct_probe": "The direct proof-forest solve attempt on NEQ016_size8 was interrupted after 68.80s, so proof-forest is not an immediate default/profile fix for the timeout row.",
+        "decision": "No source change accepted. The review found no new Section 3 CC discovery/rollback defect. It strengthens the diagnosis that online EUF propagation is required and that the remaining CC-specific gap is recursive explanation/reason quality, not lookup/use-list discovery alone."
+      },
+      "verification": {
+        "passed": [
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json"
+        ],
+        "pending": [
+          "make docs if this documentation-only evidence commit is kept",
+          "broader SLURM comparison before making any headline solver-performance claim"
+        ],
+        "warnings": [
+          "No behavior-changing source patch was made in this review, so fuzzing was not rerun.",
+          "All results are local single-instance evidence and must not be reported as SLURM benchmark parity."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This entry records the requested additional CC review. It keeps the proof-forest experiment default-off and points the next implementation step at a paper-derived reason-quality/proof-forest policy rather than another blind option flip."
     }
   ]
 }

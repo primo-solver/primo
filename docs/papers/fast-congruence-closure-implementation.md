@@ -504,3 +504,32 @@ mode therefore avoids disabled proof-forest diagnostic/maintenance calls. This
 is a small implementation cleanup only; it does not change emitted reasons,
 does not implement the Section 4-5 optimized proof forest, and does not close
 the NEQ/reference gap by itself.
+
+The next CC-focused review re-ran the comparison on current commit `0be41eb`
+after the diagnostic-guard cleanup. Source inspection again found no new
+Section 3 representative, lookup, use-list, or rollback invariant violation in
+`FlatCongruenceClosure`: current probes are built from current representatives,
+lookup insertions after checkpoints are removed on pop, use-list duplicate
+metadata is scratch-only, and causal explanation bounds are applied to recursive
+congruence-premise explanations.
+
+The new evidence sharpens the remaining gap. On a same-binary local matrix,
+disabling EUF propagation timed out at 20 seconds on `NEQ016_size7`,
+`NEQ023_size7`, and `iso_icl_repgen005`, so the persistent online closure is
+not optional for these rows. The experimental `proof-forest` explainer improved
+`NEQ016_size7` from about 4.38 seconds to about 2.43 seconds, but regressed
+`NEQ023_size7` from about 0.35 seconds to about 1.02 seconds and left
+`iso_icl_repgen005` around 2 seconds with more explanation calls. On
+`NEQ016_size8` with `--max-theory-conflicts 50000`, proof-forest reduced the
+fixed-conflict time from about 3.64 seconds to about 2.49 seconds, but a direct
+solve attempt was still running after 68.8 seconds and was interrupted. This
+rejects both extremes: the proof-forest experiment is a real CC direction for
+NEQ, but it is not yet a default or reference-parity solution.
+
+The current paper-derived implementation target therefore remains narrower than
+"rewrite CC": preserve the Section 3 discovery engine, then design a
+reason-quality guard or a fuller Section 4-5 proof-forest/reorientation policy
+that improves recursive congruence-premise explanation without changing SAT
+search badly on nearby NEQ/PEQ/QG rows. Any accepted change needs independent
+reason-oracle tests, QF_UF fuzzing, and SLURM evidence before it can be promoted
+from local diagnostic evidence.
