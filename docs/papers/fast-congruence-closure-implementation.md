@@ -610,3 +610,15 @@ improved `NEQ027_size8`, but regressed `NEQ023_size7` from about 0.37s to
 0.85s and left `PEQ002_size8` slower than default. The temporary FIFO patch was
 reverted. Pending order is therefore a real CC tuning axis, but not a default
 fix without a family-specific reason-shape policy and mixed-suite evidence.
+
+Another proof-forest micro-experiment at commit `53a6442` added a bounded
+per-reason cache for completed proof obligations inside
+`explain_equal_with_proof_forest_into`, mirroring the cache already used by the
+BFS explainer. The focused EUF oracle tests passed, but every measured
+proof-forest row reported zero cache hits: `NEQ023_size7`, `NEQ027_size8`,
+`PEQ019_size7`, `PEQ002_size8`, `iso_icl_repgen006`, and
+`iso_icl_repgen005`. The patch did not fix `PEQ002_size8`, which still timed
+out at 25s in proof-forest mode, and it did not improve the QG rows. The patch
+was reverted. This rules out missing repeated-obligation caching as the main
+proof-forest regression source; the remaining issue is first-time proof
+obligation shape and the SAT effect of the emitted clauses.

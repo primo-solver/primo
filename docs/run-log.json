@@ -8824,6 +8824,56 @@
       },
       "evidence_status": "rejected",
       "notes": "This review supports more CC work, but specifically on paper-derived explanation/reorientation and reason-shape control, not on broad claims that Section 3 congruence discovery is missing."
+    },
+    {
+      "id": "2026-07-20-local-rejected-proof-forest-obligation-cache",
+      "recorded_at": "2026-07-20T07:46:18+02:00",
+      "kind": "local_benchmark",
+      "scope": "Rejected proof-forest completed-obligation cache",
+      "commit": "53a6442",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "Temporary source patch added a bounded per-reason explanation_cache_ check/emplace around each recursive proof-forest obligation in FlatCongruenceClosure::explain_equal_with_proof_forest_into. The patch was reverted after measurement."
+      },
+      "command": {
+        "build_and_test": "cmake --build build --target primo_euf_solver_tests primo -j4 && ./build/primo_euf_solver_tests",
+        "matrix": "python3 local loop over default and temporary proof-forest obligation-cache patch on NEQ023_size7, NEQ027_size8, PEQ019_size7, PEQ002_size8, iso_icl_repgen006, and iso_icl_repgen005 with 25s timeout, writing results/local-proof-forest-obligation-cache-20260720/matrix.csv"
+      },
+      "benchmark": {
+        "suite": "Focused local NEQ/PEQ/QG proof-forest cache rows",
+        "logic": "QF_UF",
+        "timeout_seconds": 25,
+        "manifest": "NEQ023_size7, NEQ027_size8, PEQ019_size7, PEQ002_size8, iso_icl_repgen006, iso_icl_repgen005"
+      },
+      "artifacts": {
+        "matrix": "results/local-proof-forest-obligation-cache-20260720/matrix.csv"
+      },
+      "summary": {
+        "proof_forest_cache": "NEQ023_size7 0.959s, NEQ027_size8 0.428s, PEQ019_size7 0.674s, PEQ002_size8 timeout at 25.009s, iso_icl_repgen006 0.510s, iso_icl_repgen005 2.269s.",
+        "cache_signal": "The temporary cache reported zero :euf.incremental.explain-cache-hits on every proof_forest_cache row, including PEQ002_size8 with 58,922,813 explain calls.",
+        "decision": "Rejected and reverted. The proof-forest auxiliary union-find already skips the repeated obligations this cache could eliminate. The proof-forest regressions are dominated by first-time proof obligations, emitted reason shape, and resulting SAT search, not by missing completed-obligation memoization."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j4 for temporary patch",
+          "./build/primo_euf_solver_tests for temporary patch",
+          "source patch reverted before documentation edit"
+        ],
+        "pending": [
+          "python3 -m json.tool docs/run-log.json",
+          "make docs",
+          "git status --short and git log --oneline -3 before final"
+        ],
+        "warnings": [
+          "Evidence is local-only and timing-sensitive.",
+          "No accepted solver behavior change remains from the temporary patch.",
+          "No fuzz gate was run because the behavior-changing patch was rejected and reverted."
+        ]
+      },
+      "evidence_status": "rejected",
+      "notes": "This narrows the next CC target: avoid another memoization pass and focus on proof obligation/reorientation policy or choose a different performance lever."
     }
   ]
 }
