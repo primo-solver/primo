@@ -7514,7 +7514,7 @@
       "recorded_at": "2026-07-20",
       "kind": "local_profile",
       "scope": "Flat EUF explanation BFS causal-bound scan review",
-      "commit": "uncommitted",
+      "commit": "8ede895",
       "environment": {
         "type": "local",
         "host": "workspace",
