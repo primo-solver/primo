@@ -1410,7 +1410,7 @@ void default_theory_phase_keeps_negative_phase() {
          result.statistics.get(":euf.theory-atoms"));
 }
 
-void theory_phase_auto_uses_polarity_on_balanced_finite_domain_shape() {
+void theory_phase_auto_keeps_negative_phase_on_small_balanced_finite_domain_shape() {
   primo::smt::CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
   options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
@@ -1429,9 +1429,8 @@ void theory_phase_auto_uses_polarity_on_balanced_finite_domain_shape() {
       options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.finite-domain.domains") == 1);
-  assert(result.statistics.get(":sat.phase.auto-polarity") == 1);
-  assert(result.statistics.get(":sat.phase.theory-negative") > 0);
-  assert(result.statistics.get(":sat.phase.theory-negative") <
+  assert(result.statistics.get(":sat.phase.auto-polarity") == 0);
+  assert(result.statistics.get(":sat.phase.theory-negative") ==
          result.statistics.get(":euf.theory-atoms"));
 }
 
@@ -1978,7 +1977,7 @@ int main() {
   no_symmetry_breaking_disables_strong_preset_symmetry_only();
   theory_phase_option_can_leave_backend_phase_unset();
   default_theory_phase_keeps_negative_phase();
-  theory_phase_auto_uses_polarity_on_balanced_finite_domain_shape();
+  theory_phase_auto_keeps_negative_phase_on_small_balanced_finite_domain_shape();
   theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape();
   theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape();
   strong_preprocessing_enables_ground_congruence_clauses();

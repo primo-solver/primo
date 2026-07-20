@@ -7753,6 +7753,62 @@
       },
       "evidence_status": "current_local",
       "notes": "This is a CC rollback-layout optimization and option-ablation record. It is not a proof-forest Explain implementation and not reference parity."
+    },
+    {
+      "id": "2026-07-20-local-narrow-auto-phase-seq-review",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Narrow --theory-phase=auto after profiling non-iso SEQ035_size6 and mixed PEQ/NEQ/QG guards",
+      "commit": "7658757 plus current working-tree narrowed auto-phase patch",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": "SMAC 112142 still running validation on e47a020; not evidence for this patch"
+      },
+      "command": "Ranked results/local-current-mixed39-primo-llm-z3-20260720.csv; profiled tmp/QF_UF/SEQ/SEQ035_size6.smt2 with ./build/primo --quiet --stats under default, --theory-phase=auto, --theory-phase=polarity, propagation modes, portfolio, finite-domain preprocessing toggles, tuned /tmp/llm2smt, and /workspace/contrib/local/bin/z3. Then removed the broad balanced finite-domain branch from resolve_theory_phase_mode so --theory-phase=auto only selects polarity for finite-domain/UF-symmetry shapes with at most 25 pure-negative atoms and at least 100 pure-positive atoms.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats and ./build/primo --quiet --stats --theory-phase=auto"
+      },
+      "inputs": {
+        "target": "tmp/QF_UF/SEQ/SEQ035_size6.smt2",
+        "mixed_manifest_source": "results/local-current-mixed39-primo-llm-z3-20260720.csv",
+        "timeout_seconds": "12 for mixed39, 15 to 20 for focused ablations"
+      },
+      "artifacts": {
+        "ranked_gaps": "results/local-current-mixed39-ranked-gaps-20260720.csv",
+        "seq035_diagnostic": "results/local-seq035-size6-diagnostic-20260720.csv",
+        "seq035_propagation_ablation": "results/local-seq035-prop-ablation-20260720.csv",
+        "seq035_portfolio_ablation": "results/local-portfolio-seq035-ablation-20260720.csv",
+        "phase_structure": "results/local-phase-auto-structure-20260720.csv",
+        "broad_auto_mixed39": "results/local-mixed39-phase-auto-current-20260720.csv",
+        "narrow_auto_mixed39": "results/local-mixed39-narrow-auto-current-20260720.csv"
+      },
+      "summary": {
+        "target_gap": "On the local mixed39 ranking, SEQ035_size6 is a cheap non-iso gap: Primo default around 1.1 to 1.3s, Z3 around 0.036s in the existing artifact, and tuned LLM2SMT around 5.2 to 5.7s locally.",
+        "diagnosis": "SEQ035_size6 is dominated by SAT search and EUF conflict callbacks over finite-domain choices. Default negative phase had about 639k EUF assignments and 47.5k theory conflicts. --theory-phase=auto/polarity reduced this to about 145k assignments and 14.4k conflicts. Propagation off/model modes timed out, and ground congruence or bidirectional explanation made this row worse.",
+        "portfolio_rejection": "The existing --qf-uf-portfolio=basic-polarity did not capture the SEQ035 win. With 500, 2000, and 10000 conflict caps it fell back on SEQ035 and added overhead on PEQ/NEQ/Goel guards.",
+        "selector_change": "The previous auto resolver also selected polarity for balanced finite-domain PEQ rows with hundreds of pure-negative atoms. The patch removes that broad branch and keeps only the low-negative positive-dominated branch.",
+        "focused_after_patch": "After rebuilding ./build/primo, --theory-phase=auto selected polarity on SEQ035_size6 and SEQ026_size7 but not on PEQ002_size7, PEQ004_size9, or PEQ013_size8. SEQ035 improved from about 1.11s to 0.29s; SEQ026_size7 improved from about 9.42s to 7.94s.",
+        "mixed39_after_patch": "Post-patch mixed39 local run solved 36/39 for both default and narrowed auto. PAR2 was 123.156 for default and 123.648 for narrowed auto in this noisy run; selected rows were SEQ026_size6, SEQ035_size6, and SEQ026_size7. This is not default-promotion evidence.",
+        "decision": "Accepted as a narrowing of the explicit --theory-phase=auto heuristic because it avoids known broad PEQ selections while preserving SEQ low-negative wins. Not promoted to the command-line default pending SLURM/full-manifest evidence."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo -j2",
+          "ctest --test-dir build -R 'primo_boolean_solver_tests|primo_euf_solver_tests' --output-on-failure",
+          "make test",
+          "make check",
+          "make asan-test",
+          "make lint",
+          "make docs",
+          "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --theory-phase=auto' --refs z3 --logic QF_UF --count 1000 --seed 2026072004 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-narrow-auto-phase-1000",
+          "focused SEQ/PEQ selector smoke listed above"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This patch changes an explicit tuning mode, not the default profile. It narrows auto phase based on current profiling and rejects both broad auto defaulting and the existing basic-polarity portfolio for this target. The QF_UF FuzzSMT gate for --theory-phase=auto passed 1000/1000 cases against Z3 with seed 2026072004: sat 895, unsat 105, wrong 0, crash 0, timeout 0, bug files 0."
     }
   ]
 }

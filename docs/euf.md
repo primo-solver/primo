@@ -90,12 +90,12 @@ CaDiCaL phase set for theory atoms before solving. The default is `negative`,
 which tries disequality assignments first and preserves the current validated
 QF_UF benchmark profile. The `auto` mode is an experimental static heuristic
 that keeps the negative phase unless preprocessing found finite-domain or
-UF-symmetry structure and the clausified theory atoms are not strongly
-positive-dominated. It also uses polarity for low-negative finite-domain shapes
-with at most 25 pure-negative theory atoms and at least 100 pure-positive theory
-atoms; this covers some NEQ/SEQ-style rows where setting every theory atom
-negative causes many avoidable SAT assignments and EUF callbacks. When the
-heuristic selects polarity, it reports `:sat.phase.auto-polarity`.
+UF-symmetry structure, at most 25 theory atoms occur only negatively, and at
+least 100 theory atoms occur only positively. This low-negative guard covers
+some NEQ/SEQ-style rows where setting every theory atom negative causes many
+avoidable SAT assignments and EUF callbacks, while avoiding broader PEQ/QG
+regressions seen when all balanced finite-domain shapes used polarity. When
+the heuristic selects polarity, it reports `:sat.phase.auto-polarity`.
 
 The other modes remain available for ablation and tuning: `positive` tries
 equality assignments first,

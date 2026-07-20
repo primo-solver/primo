@@ -1,0 +1,10 @@
+file,:input.assertions,:preprocessing.term-size.initial,:preprocessing.assertions,:preprocessing.forced-atoms.facts,:preprocessing.forced-atoms.disequalities,:preprocessing.finite-domain.domains,:preprocessing.finite-domain.raw-choices,:preprocessing.finite-domain.raw-amo-clauses,:preprocessing.finite-domain.amo-clauses,:preprocessing.uf-symmetry.accepted-sets,:preprocessing.uf-symmetry.values,:preprocessing.uf-symmetry.terms,:preprocessing.uf-symmetry.constraints,:preprocessing.auto.single-assertion,:preprocessing.auto.basic-single,:sat.vars,:sat.clauses,:sat.phase.auto-polarity,:euf.theory-atoms,:euf.pure-atoms.positive,:euf.pure-atoms.negative
+tmp/QF_UF/SEQ/SEQ035_size6.smt2,1,1047,832,462,30,39,39,585,585,1,6,3,15,1,0,467,871,1,467,216,17
+tmp/QF_UF/SEQ/SEQ026_size7.smt2,1,13992,3121,6204,44,0,500,10500,0,1,7,3,18,0,1,6602,3620,1,6602,6562,22
+tmp/QF_UF/PEQ/PEQ002_size7.smt2,1,4954,5620,3447,1242,101,101,2121,4256,1,7,3,18,1,0,2052,5720,1,2052,735,610
+tmp/QF_UF/PEQ/PEQ004_size9.smt2,1,9662,6623,7626,255,102,93,3348,4032,1,9,3,24,1,0,4195,7363,1,4195,2520,829
+tmp/QF_UF/PEQ/PEQ013_size8.smt2,1,9731,15000,7714,1879,139,139,3892,12108,1,8,3,21,1,0,3982,15138,1,3982,1945,925
+tmp/QF_UF/PEQ/PEQ002_size8.smt2,1,7360,12423,5143,1879,131,131,3668,10388,1,8,3,21,1,0,3061,12553,1,3061,1088,925
+tmp/QF_UF/NEQ/NEQ015_size6.smt2,1,72047,24521,5293,64,1540,1539,23085,23115,1,6,9,45,1,0,28522,49135,0,28522,9365,1105
+tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2,16,2662,425,826,630,0,0,0,0,0,0,0,0,0,0,1344,1177,0,1337,728,609
+tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2,52,8424,464,840,630,0,0,0,0,0,0,0,0,0,0,3906,3864,0,3864,1827,2037

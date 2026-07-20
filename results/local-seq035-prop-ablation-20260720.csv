@@ -1,0 +1,12 @@
+config,status,answer,seconds,exit_code,solve_calls,checks,assignments,conflicts,prop_rounds,delivered,trail,bfs
+default,ok,sat,1.112382,0,1,1,639558,47536,131160,0,22412912,5080889
+phase_auto,ok,sat,0.276351,0,1,1,145223,14426,36802,0,5788893,1431893
+prop_off,timeout,unknown,20.003666,124,39791,39790,0,39790,0,0,0,3827106
+prop_off_auto,timeout,unknown,20.004292,124,51576,51575,0,51575,0,0,0,5851764
+prop_conflict,ok,sat,1.141400,0,1,1,639558,47536,0,0,22412912,5076015
+prop_conflict_auto,ok,sat,0.297705,0,1,1,145223,14426,0,0,5788893,1430549
+prop_model,timeout,unknown,20.003547,124,459,459,0,458,459,35932,0,13149084
+prop_model_auto,timeout,unknown,20.003838,124,567,567,0,566,567,29299,0,15959736
+lazy_off_auto,timeout,unknown,20.003616,124,1568,1568,0,1567,0,0,0,0
+none,ok,sat,0.411188,0,1,1,221708,20504,53211,0,8576251,2097450
+positive_conflict,ok,sat,0.473053,0,1,1,256677,25574,0,0,10077906,2646552

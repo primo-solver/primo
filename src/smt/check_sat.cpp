@@ -1192,9 +1192,6 @@ TheoryPhaseMode resolve_theory_phase_mode(TheoryPhaseMode mode,
       pure_positive >= kLowNegativeMinimumPositiveAtoms) {
     return TheoryPhaseMode::Polarity;
   }
-  if (pure_positive <= pure_negative || pure_positive <= 5 * pure_negative) {
-    return TheoryPhaseMode::Polarity;
-  }
   return TheoryPhaseMode::Negative;
 }
 
