@@ -323,3 +323,19 @@ correctness and diagnostics tightening, not a performance win: on local
 BFS work while preserving the same timeout outcome. That reinforces the earlier
 conclusion that the remaining CC-specific performance gap is the missing
 Section 4-5 proof-forest explanation mechanism and reason-quality policy.
+
+A fresh local audit on commit `5621a24` repeated the `NEQ016_size8` stats and
+perf profile after the cache-bound fix. The 45-second capped stats run still
+timed out with 72.3M explanation calls, but only 366k top-level explanation
+queries; nearly all work came from recursive congruence-premise explanations.
+The same run reported 23.9M BFS searches, 253.6M BFS nodes visited, 65.7M
+expanded congruence edges, 29.5M causal edge skips, 7.0M cache-bound misses,
+833M trailed closure mutations, and zero affected-use-list duplicate skips.
+The corresponding perf sample put `FlatCongruenceClosure::explain_equal_into`
+first at 19.0 percent self time, followed by CaDiCaL propagation, class merges,
+rollback, and use-list processing. This review did not find a new Section 3
+congruence-discovery or rollback bug. It narrows the next CC work to a
+paper-derived explanation design: either implement and validate the Section 4-5
+proof-forest machinery with reason-length safeguards, or add a diagnostic mode
+that computes proof-forest path lengths without changing emitted clauses before
+attempting another replacement.

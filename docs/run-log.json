@@ -7284,6 +7284,50 @@
       },
       "evidence_status": "current_local",
       "notes": "Fresh local merge-gate fuzzing for the FlatCongruenceClosure explanation-cache causal-bound behavior change. This is correctness evidence, not a performance claim."
+    },
+    {
+      "id": "2026-07-20-local-flatcc-neq016-review-after-cache-bound",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "profile",
+      "scope": "Fresh local FlatCongruenceClosure review on NEQ016_size8 after cache-bound fix",
+      "commit": "5621a24",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "timeout 45s ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size8.smt2 > /tmp/primo-neq016-cc-audit.stdout 2> /tmp/primo-neq016-cc-audit.stderr; perf record -g -o /tmp/primo-neq016-cc-audit.perf.data -- timeout 25s ./build/primo --quiet tmp/QF_UF/NEQ/NEQ016_size8.smt2; perf report -i /tmp/primo-neq016-cc-audit.perf.data --stdio --no-children --sort comm,dso,symbol",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "reference": {
+        "name": "Nieuwenhuis-Oliveras and clean-room LLM2SMT behavior notes",
+        "argv": "/tmp/llm2smt inspected only for high-level behavior"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+        ],
+        "stats_timeout_seconds": 45,
+        "perf_timeout_seconds": 25
+      },
+      "artifacts": {
+        "stats_stdout": "/tmp/primo-neq016-cc-audit.stdout",
+        "stats_stderr": "/tmp/primo-neq016-cc-audit.stderr",
+        "perf_data": "/tmp/primo-neq016-cc-audit.perf.data"
+      },
+      "summary": {
+        "status": "timeout at 45s with answer unknown",
+        "preprocessing": "Raw finite-domain AMO preservation is active on this row: 67 raw choices and 1876 raw/post/deduped AMO clauses.",
+        "cc_stats": "328,671 theory conflicts; 72,342,626 explanation calls; 366,610 top-level explanation queries; 71,962,026 recursive queries; 23,915,372 BFS searches; 253,558,519 BFS nodes visited; 101,277,955 BFS path edges; 65,738,678 expanded congruence edges; 29,489,067 causal edge skips; 7,024,111 cache-bound misses.",
+        "rollback_and_use_lists": "833,247,412 trail entries; 272,338,635 class-member trail entries saved; 171,549,928 use-list appends; zero affected-use-list duplicate skips; maximum use-list size 847.",
+        "perf_top": "explain_equal_into 19.01 percent self; CaDiCaL::Internal::propagate 11.75 percent; merge_classes 9.30 percent; restore_trail_entry 7.99 percent; process_use_list 7.48 percent; ApplyKey unordered_map find 6.40 percent; OnlineEufPropagator::notify_assignment 5.04 percent.",
+        "interpretation": "No new Section 3 congruence-discovery or rollback bug was found in this audit. The active CC gap is the missing Section 4-5 proof-forest explanation mechanism and reason-quality policy; NEQ016 is dominated by recursive congruence-premise explanation, not use-list duplicate scanning."
+      },
+      "evidence_status": "current_local",
+      "notes": "Documentation-only evidence update. No solver behavior changed in this entry, so no fuzz gate is required for this audit note."
     }
   ]
 }
