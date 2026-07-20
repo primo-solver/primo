@@ -576,3 +576,14 @@ reason-length fallback is too late and too costly. A useful guard must predict
 or shape proof obligations before constructing a large proof reason, or the
 implementation must move closer to the full Section 4/5 reorientation policy
 so that path cost and emitted clause shape improve together.
+
+The next temporary patch moved that cutoff into proof construction itself:
+proof-forest explanation aborted as soon as the partial reason crossed the
+64-literal threshold, then retried the same query with BFS. This also lost the
+same mixed guard matrix. It preserved the PEQ timeouts, regressed
+`NEQ023_size7` and `SEQ026_size7`, and had worse PAR2 than the default and the
+unguarded proof-forest mode. Fixed literal-count fallback is therefore not the
+right abstraction for this gap. Further CC work should either implement a
+paper-derived reorientation/premise policy that improves proof path and clause
+shape together, or move to a different ranked performance lever before spending
+more time on proof-forest fallback variants.

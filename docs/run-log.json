@@ -8723,6 +8723,55 @@
       },
       "evidence_status": "rejected",
       "notes": "This rejected experiment is stronger evidence than the previous proof-forest-only matrix: a simple reason-length fallback cannot recover the proof-forest wins without PEQ/SEQ regressions."
+    },
+    {
+      "id": "2026-07-20-local-rejected-early-guarded-proof-forest",
+      "recorded_at": "2026-07-20T07:27:07+02:00",
+      "kind": "local_benchmark",
+      "scope": "Rejected early-abort guarded proof-forest explanation mode",
+      "commit": "710bb85",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "Temporary source patch added --euf-explain-search=early-guarded-proof-forest. It maintained proof parents, attempted proof-forest explanation only at top-level queries, aborted proof construction as soon as the partial reason exceeded 64 literals, and then fell back to the default BFS reason. The source patch was reverted after measurement."
+      },
+      "command": {
+        "build_and_test": "cmake --build build --target primo_euf_solver_tests primo -j2 && ./build/primo_euf_solver_tests",
+        "matrix": "python3 local loop over default, --euf-explain-search=proof-forest, and temporary --euf-explain-search=early-guarded-proof-forest on 11 NEQ/PEQ/SEQ/QG rows with 20s timeout, writing results/local-early-guarded-proof-forest-20260720/matrix.csv"
+      },
+      "benchmark": {
+        "suite": "11-row local mixed QF_UF CC guard matrix",
+        "logic": "QF_UF",
+        "timeout_seconds": 20,
+        "manifest": "NEQ016_size7, NEQ023_size7, NEQ016_size8, PEQ002_size8, PEQ003_size10, PEQ016_size7, SEQ026_size7, SEQ035_size6, iso_icl_repgen005, iso_icl_repgen006, iso_brn_repgen033"
+      },
+      "artifacts": {
+        "matrix": "results/local-early-guarded-proof-forest-20260720/matrix.csv"
+      },
+      "summary": {
+        "default": "solved 10/11, PAR2 86.570",
+        "proof_forest": "solved 8/11, PAR2 135.384",
+        "early_guarded_proof_forest": "solved 8/11, PAR2 144.929",
+        "notable_rows": "Early-guarded proof forest still timed out on NEQ016_size8, PEQ002_size8, and PEQ003_size10. It improved iso_icl_repgen005 from 2.012s default to 1.864s and iso_icl_repgen006 from 0.512s to 0.445s, but regressed NEQ023_size7 from 0.370s to 0.959s and SEQ026_size7 from 9.618s to 13.340s.",
+        "decision": "Rejected and reverted. Early literal-count abort did not fix the PEQ timeouts and did not beat the previous post-construction guard. The remaining proof-forest direction needs a different mechanism: predict bad proof obligations before maintaining/attempting the proof forest, or implement a fuller Section 4/5 reorientation policy rather than another fixed-size fallback."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j2 && ./build/primo_euf_solver_tests for the temporary patch",
+          "source patch reverted; git diff was empty before recording this documentation-only entry",
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json",
+          "make docs"
+        ],
+        "pending": [],
+        "warnings": [
+          "Evidence is local-only and timing-sensitive.",
+          "No accepted solver behavior change remains from the temporary patch.",
+          "No fuzz gate was run because the behavior-changing source patch was rejected and reverted."
+        ]
+      },
+      "evidence_status": "rejected",
+      "notes": "This closes the obvious fixed 64-literal guard variants: both post-construction fallback and early-abort fallback lose the same mixed guard matrix."
     }
   ]
 }
