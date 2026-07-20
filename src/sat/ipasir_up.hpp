@@ -20,6 +20,9 @@ struct BackendStatistics {
   std::size_t clause_literals = 0;
   std::size_t unit_clauses = 0;
   std::size_t binary_clauses = 0;
+  std::size_t conflicts = 0;
+  std::size_t decisions = 0;
+  std::size_t propagations = 0;
 };
 
 class IpasirUpBackend {

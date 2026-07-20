@@ -47,6 +47,20 @@ calls with small deltas should be checked with an incremental profile such as
 slowdown to Primo's EUF code. Invalid option names or values are rejected by the
 backend and reported as unsupported input for that run.
 
+## Search statistics
+
+`sat::CadicalBackend::statistics()` combines Primo-owned clause counters with
+CaDiCaL-owned search counters read through the public
+`CaDiCaL::Solver::get_statistic_value()` API. The SMT layer publishes the
+additional counters as `:sat.conflicts`, `:sat.decisions`, and
+`:sat.propagations`.
+
+These counters are diagnostic only. Root-level simplification, unit propagation,
+or an external EUF conflict may solve or stop a small instance while conflicts
+and decisions remain zero, so benchmark analysis should compare them with the
+EUF counters rather than treating nonzero SAT conflicts as a precondition for
+real solver work.
+
 ## CaDiCaL version checks
 
 Primo links one CaDiCaL library into each solver binary. The CLI therefore

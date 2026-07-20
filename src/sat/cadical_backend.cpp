@@ -1,6 +1,7 @@
 #include "sat/cadical_backend.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -14,6 +15,20 @@
 #endif
 
 namespace primo::sat {
+
+namespace {
+
+#if PRIMO_HAVE_IPASIR
+std::size_t nonnegative_statistic(CaDiCaL::Solver* solver, const char* name) {
+  if (solver == nullptr) {
+    return 0;
+  }
+  const std::int64_t value = solver->get_statistic_value(name);
+  return value < 0 ? 0 : static_cast<std::size_t>(value);
+}
+#endif
+
+}  // namespace
 
 std::string_view cadical_signature() {
 #if PRIMO_HAVE_IPASIR
@@ -152,7 +167,15 @@ bool CadicalBackend::failed(Lit lit) const {
 #endif
 }
 
-BackendStatistics CadicalBackend::statistics() const { return statistics_; }
+BackendStatistics CadicalBackend::statistics() const {
+  BackendStatistics stats = statistics_;
+#if PRIMO_HAVE_IPASIR
+  stats.conflicts = nonnegative_statistic(solver_, "conflicts");
+  stats.decisions = nonnegative_statistic(solver_, "decisions");
+  stats.propagations = nonnegative_statistic(solver_, "propagations");
+#endif
+  return stats;
+}
 
 void CadicalBackend::phase(Lit lit) {
 #if PRIMO_HAVE_IPASIR

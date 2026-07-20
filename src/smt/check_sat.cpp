@@ -123,6 +123,9 @@ constexpr util::StatKey kStatSatClauses = util::StatKey::SatClauses;
 constexpr util::StatKey kStatSatClauseLits = util::StatKey::SatClauseLits;
 constexpr util::StatKey kStatSatUnitClauses = util::StatKey::SatUnitClauses;
 constexpr util::StatKey kStatSatBinaryClauses = util::StatKey::SatBinaryClauses;
+constexpr util::StatKey kStatSatConflicts = util::StatKey::SatConflicts;
+constexpr util::StatKey kStatSatDecisions = util::StatKey::SatDecisions;
+constexpr util::StatKey kStatSatPropagations = util::StatKey::SatPropagations;
 constexpr util::StatKey kStatSolverBoolean = util::StatKey::SolverBoolean;
 constexpr util::StatKey kStatSolverQfUf = util::StatKey::SolverQfUf;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
@@ -283,6 +286,9 @@ void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics
   statistics.set(kStatSatClauseLits, sat_stats.clause_literals);
   statistics.set(kStatSatUnitClauses, sat_stats.unit_clauses);
   statistics.set(kStatSatBinaryClauses, sat_stats.binary_clauses);
+  statistics.set(kStatSatConflicts, sat_stats.conflicts);
+  statistics.set(kStatSatDecisions, sat_stats.decisions);
+  statistics.set(kStatSatPropagations, sat_stats.propagations);
 }
 
 EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,

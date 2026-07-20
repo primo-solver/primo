@@ -75,6 +75,9 @@ scripts and result artifacts. Current counters include:
 - `:sat.clause-lits`;
 - `:sat.unit-clauses`;
 - `:sat.binary-clauses`;
+- `:sat.conflicts`;
+- `:sat.decisions`;
+- `:sat.propagations`;
 - `:sat.solve-calls`;
 - `:euf.theory-atoms`;
 - `:euf.predicate-atoms`;

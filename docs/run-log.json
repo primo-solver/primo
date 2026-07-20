@@ -8460,6 +8460,55 @@
       },
       "evidence_status": "rejected",
       "notes": "This result rejects a tempting reference-inspired auto-backoff policy as a default. Future propagation work should target reason quality or candidate usefulness, not only fewer scans."
+    },
+    {
+      "id": "2026-07-20-local-cadical-search-statistics",
+      "recorded_at": "2026-07-20T07:15:00+02:00",
+      "kind": "debugging",
+      "scope": "Expose CaDiCaL SAT search counters for EUF/CC performance triage",
+      "commit": "6c41d1a",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "Instrumentation change in working tree; no solver search behavior intended."
+      },
+      "command": {
+        "unit": "cmake --build . --target primo_boolean_solver_tests primo -j2 && ./primo_boolean_solver_tests",
+        "smoke": "./build/primo --quiet --stats --max-theory-conflicts 100 tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+      },
+      "benchmark": {
+        "suite": "Single local NEQ smoke instance",
+        "logic": "QF_UF",
+        "timeout_seconds": null,
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+        ]
+      },
+      "artifacts": {},
+      "summary": {
+        "change": "Publish CaDiCaL-owned search counters as :sat.conflicts, :sat.decisions, and :sat.propagations alongside existing Primo-owned SAT clause counters.",
+        "smoke_result": "The capped NEQ016_size8 run returned unknown at :euf.theory-conflicts 100 and reported :sat.conflicts 2, :sat.decisions 2579, and :sat.propagations 7916.",
+        "interpretation": "The counters separate SAT search work from EUF/CC work in local performance triage. They are not a performance improvement by themselves; small formulas can still report zero conflicts or decisions when solved by simplification, unit propagation, or an external EUF conflict."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build . --target primo_boolean_solver_tests primo -j2 && ./primo_boolean_solver_tests",
+          "./build/primo --quiet --stats --max-theory-conflicts 100 tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json",
+          "git diff --check",
+          "make test",
+          "make docs",
+          "make lint"
+        ],
+        "pending": [],
+        "warnings": [
+          "No default solver behavior change is intended.",
+          "Fuzzing is not required for this instrumentation-only change unless later edits alter preprocessing, SAT interaction, or EUF behavior."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Added because previous local CSVs left SAT conflicts and decisions empty, making NEQ and diamond-equality slowdowns hard to attribute during CC review."
     }
   ]
 }

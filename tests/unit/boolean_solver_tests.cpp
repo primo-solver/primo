@@ -1819,6 +1819,10 @@ void theory_conflict_limit_stops_external_search_with_unknown() {
   assert(result.message == "theory conflict limit reached");
   assert(result.statistics.get(":euf.theory-conflicts") == 1);
   assert(result.statistics.get(":euf.assignments") >= 3);
+  assert(result.statistics.contains(":sat.conflicts"));
+  assert(result.statistics.contains(":sat.decisions"));
+  assert(result.statistics.contains(":sat.propagations"));
+  assert(result.statistics.get(":sat.propagations") >= 1);
 }
 
 void qf_uf_basic_polarity_portfolio_returns_first_success() {
