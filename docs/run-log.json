@@ -8772,6 +8772,58 @@
       },
       "evidence_status": "rejected",
       "notes": "This closes the obvious fixed 64-literal guard variants: both post-construction fallback and early-abort fallback lose the same mixed guard matrix."
+    },
+    {
+      "id": "2026-07-20-local-cc-review-proof-diagnostics-and-fifo",
+      "recorded_at": "2026-07-20T07:42:22+02:00",
+      "kind": "local_benchmark",
+      "scope": "CC implementation review: proof diagnostics and rejected FIFO pending-order experiment",
+      "commit": "3a152f8",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "Clean-room source review inspected /tmp/llm2smt for behavior only. The temporary FIFO patch changed FlatCongruenceClosure pending merge draining order and was reverted after measurement."
+      },
+      "command": {
+        "proof_diagnostic_matrix": "python3 local loop over default, --euf-proof-forest-diagnostics, and --euf-explain-search proof-forest on NEQ023_size7, NEQ027_size8, PEQ019_size7, and PEQ002_size8 with 25s timeout, writing results/local-cc-review-20260720/cc-review-matrix.csv",
+        "fifo_probe": "Temporary patch changed FlatCongruenceClosure::propagate from LIFO pending_.back()/pop_back() to FIFO pending_.front()/erase(begin); built with cmake --build build --target primo_euf_solver_tests primo -j4; ran ./build/primo_euf_solver_tests and local 25s probes on NEQ023_size7, NEQ027_size8, PEQ019_size7, PEQ002_size8, and iso_icl_repgen006; source patch reverted."
+      },
+      "benchmark": {
+        "suite": "Focused local NEQ/PEQ/QG CC review rows",
+        "logic": "QF_UF",
+        "timeout_seconds": 25,
+        "manifest": "NEQ023_size7, NEQ027_size8, PEQ019_size7, PEQ002_size8, iso_icl_repgen006 for FIFO only"
+      },
+      "artifacts": {
+        "proof_diagnostic_matrix": "results/local-cc-review-20260720/cc-review-matrix.csv",
+        "fifo_probe": "terminal-recorded local output; summarized in this entry"
+      },
+      "summary": {
+        "proof_diagnostics": "Default versus proof-forest was mixed: NEQ023_size7 default 0.367s, proof_forest 1.007s; NEQ027_size8 default 0.456s, proof_forest 0.417s; PEQ019_size7 default 0.898s, proof_forest 0.645s; PEQ002_size8 default 15.708s, proof_forest timed out at 25.006s.",
+        "proof_path_counters": "Proof diagnostics found no missing LCA in the measured rows. Examples: NEQ023_size7 had shorter/equal/longer proof-parent paths 3907/22025/796; PEQ002_size8 had 940785/5455359/3105126.",
+        "fifo_probe": "FIFO pending order changed search: NEQ023_size7 regressed to 0.851s with 21479 SAT conflicts; NEQ027_size8 improved slightly to 0.435s; PEQ019_size7 improved to 0.709s with fewer explain calls; PEQ002_size8 solved in 17.717s but remained slower than default; iso_icl_repgen006 was 0.472s.",
+        "decision": "Rejected and reverted. The Section 3 representative/use-list/lookup implementation still looks structurally covered by current oracle tests, while explanation graph shape and pending-order-induced proof shape remain the CC-specific performance gap. Neither proof-forest mode nor FIFO pending order is default-ready."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j4 for temporary FIFO patch",
+          "./build/primo_euf_solver_tests for temporary FIFO patch",
+          "source patch reverted before documentation commit",
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log-check.json"
+        ],
+        "pending": [
+          "make docs after documentation edit",
+          "git status --short and git log --oneline -3 before final"
+        ],
+        "warnings": [
+          "Evidence is local-only and timing-sensitive.",
+          "No accepted solver behavior change remains from the temporary FIFO patch.",
+          "No fuzz gate was run because this is a rejected source experiment plus documentation."
+        ]
+      },
+      "evidence_status": "rejected",
+      "notes": "This review supports more CC work, but specifically on paper-derived explanation/reorientation and reason-shape control, not on broad claims that Section 3 congruence discovery is missing."
     }
   ]
 }

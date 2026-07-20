@@ -587,3 +587,26 @@ right abstraction for this gap. Further CC work should either implement a
 paper-derived reorientation/premise policy that improves proof path and clause
 shape together, or move to a different ranked performance lever before spending
 more time on proof-forest fallback variants.
+
+A fresh review at commit `3a152f8` rechecked the implemented Section 3 closure
+against the current code and the allowed local reference checkout. The reviewed
+default path still has the expected class-list/use-list/lookup shape: current
+signature probes use current representatives, lookup insertions after a
+checkpoint are trailed, use-list duplicates are tolerated and removed when the
+affected list is processed, and randomized flat-oracle tests cover equality
+reachability and explanations under push/pop. This pass again did not identify
+a concrete representative, use-list, or rollback bug that would explain the
+NEQ/PEQ gap.
+
+The same review found two explanation-shape levers that do change search but
+remain mixed. First, proof-forest diagnostics on `NEQ023_size7`,
+`NEQ027_size8`, `PEQ019_size7`, and `PEQ002_size8` showed no missing LCAs, so
+the maintained parent forest usually has a path. The path-quality counters are
+not decisive: on `PEQ019_size7`, proof-forest emission improved runtime from
+about 0.90s to 0.64s, but on `PEQ002_size8` it timed out at 25s while default
+solved in about 15.7s. Second, a temporary FIFO pending-merge order changed the
+proof graph and search substantially. It improved `PEQ019_size7` and slightly
+improved `NEQ027_size8`, but regressed `NEQ023_size7` from about 0.37s to
+0.85s and left `PEQ002_size8` slower than default. The temporary FIFO patch was
+reverted. Pending order is therefore a real CC tuning axis, but not a default
+fix without a family-specific reason-shape policy and mixed-suite evidence.
