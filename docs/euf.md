@@ -210,6 +210,13 @@ When `--euf-prop=auto` selects the online path, zero-delivery propagation rounds
 adaptively increase the callback discovery interval up to 1024 rounds. Explicit
 `--euf-prop=online` keeps the configured `--prop-interval` cadence for
 experiments.
+A July 20, 2026 local experiment tried the predecessor-style policy of backing
+off after every auto propagation scan, including productive scans. It reduced
+candidate scans on the 51-row local NEQ/PEQ/QG/SEQ micro-manifest, but PAR2
+slightly worsened and nearby solved rows regressed, including `NEQ023_size7`,
+`PEQ002_size7`, `PEQ016_size7`, and `iso_icl_repgen006`. The change was
+reverted; the current auto policy still resets the interval after a delivered
+propagation.
 This is still an initial online subset: it does not choose decisions. Like
 `conflict`, it can serve EUF conflict clauses through CaDiCaL's external-clause
 callback.

@@ -8408,6 +8408,58 @@
       },
       "evidence_status": "current_local",
       "notes": "This probe redirects the NEQ/PEQ work away from the existing observed-pair equality-definition pass and away from assuming an EUF SAT-decision callback is missing relative to the inspected reference checkout."
+    },
+    {
+      "id": "2026-07-20-local-rejected-euf-prop-unconditional-backoff",
+      "recorded_at": "2026-07-20T06:30:00+02:00",
+      "kind": "local_benchmark",
+      "scope": "Rejected online EUF propagation auto-interval policy experiment",
+      "commit": "5ed82b7",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "Temporary source patch was applied, measured, and reverted before this run-log entry."
+      },
+      "command": {
+        "interval_probe": "python3 local matrix over default, --euf-prop=online --prop-interval 256, --euf-prop=online --prop-interval 1024, and --euf-prop=conflict on NEQ016_size7, NEQ016_size8, PEQ002_size8, and iso_icl005",
+        "patched_micro_manifest": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/bench_qf_uf_full.py --root . --manifest results/local-gap-triage-20260720/current-head-mixed-neq-manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 10 --out results/local-gap-triage-20260720/euf-prop-adaptive-unconditional-mixed-neq-10s.csv --summary results/local-gap-triage-20260720/euf-prop-adaptive-unconditional-mixed-neq-10s-summary.csv"
+      },
+      "benchmark": {
+        "suite": "QF_UF local 51-row mixed NEQ/PEQ/QG/SEQ/Goel micro-manifest",
+        "logic": "QF_UF",
+        "timeout_seconds": 10,
+        "manifest": "results/local-gap-triage-20260720/current-head-mixed-neq-manifest.txt"
+      },
+      "artifacts": {
+        "interval_probe": "results/local-gap-triage-20260720/euf-prop-interval-probe.csv",
+        "patched_matrix": "results/local-gap-triage-20260720/euf-prop-adaptive-unconditional-probe.csv",
+        "patched_manifest": "results/local-gap-triage-20260720/euf-prop-adaptive-unconditional-mixed-neq-10s.csv",
+        "patched_summary": "results/local-gap-triage-20260720/euf-prop-adaptive-unconditional-mixed-neq-10s-summary.csv",
+        "baseline_manifest": "results/local-gap-triage-20260720/current-head-primo-mixed-neq-10s.csv",
+        "baseline_summary": "results/local-gap-triage-20260720/current-head-primo-mixed-neq-10s-summary.csv"
+      },
+      "summary": {
+        "implementation_attempt": "In auto online EUF propagation, back off the propagation discovery interval after every candidate scan, including productive scans, instead of resetting the interval to --prop-interval after a delivered propagation. Explicit --euf-prop=online remains fixed-interval because adaptive backoff is disabled there.",
+        "single_instance_probe": "Fixed larger intervals were mixed: online-256 improved the NEQ016_size8 50,000-conflict capped run from 3.570s default to 3.332s, but online-1024 and conflict-only did not consistently help, and PEQ/iso changes were small.",
+        "micro_manifest": "On the 51-row micro-manifest, the temporary patch kept solved=48, wrong=0, timeouts=3, but PAR2 worsened from 126.470931 to 126.607646. Candidate scans dropped from 227,870 to 114,965, but total explain calls and theory conflicts increased.",
+        "regressions": "Top local slowdowns included PEQ016_size7 +0.332s, NEQ015_size6 +0.230s, PEQ002_size7 +0.226s, NEQ023_size7 +0.132s, PEQ004_size9 +0.116s, iso_icl_repgen005 +0.056s, and iso_icl_repgen006 +0.049s.",
+        "decision": "Rejected and reverted. Less frequent auto propagation reduces scan work but perturbs SAT/EUF search enough to worsen this mixed local slice."
+      },
+      "verification": {
+        "passed": [
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json",
+          "make docs"
+        ],
+        "pending": [],
+        "warnings": [
+          "No accepted solver behavior change remains from this experiment.",
+          "Fuzzing was not rerun because the source patch was rejected and reverted.",
+          "Evidence is local; no SLURM headline claim is made."
+        ]
+      },
+      "evidence_status": "rejected",
+      "notes": "This result rejects a tempting reference-inspired auto-backoff policy as a default. Future propagation work should target reason quality or candidate usefulness, not only fewer scans."
     }
   ]
 }
