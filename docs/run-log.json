@@ -7465,7 +7465,7 @@
       "recorded_at": "2026-07-20",
       "kind": "local_profile",
       "scope": "Parser allocation hotspot on QG many-assertion iso/nogen rows",
-      "commit": "uncommitted",
+      "commit": "ba782b1",
       "environment": {
         "type": "local",
         "host": "workspace",
