@@ -8104,6 +8104,88 @@
       },
       "evidence_status": "current_local",
       "notes": "This entry records progress and a rejected local experiment only. It does not claim reference parity or a default performance improvement."
+    },
+    {
+      "id": "2026-07-20-local-flatcc-parent-restore-batching",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_benchmark",
+      "scope": "FlatCongruenceClosure parent rollback batching using ClassMembersMerge suffix records",
+      "commit": "working tree after 974d8d9",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Implemented a sparse rollback change that removes per-member Parent trail entries and restores moved parent_ representatives in the existing ClassMembersMerge rollback entry; compared ./build/primo against /tmp/primo-baseline-89dd4b3/build/primo on selected NEQ, PEQ, QG, and Goel rows with --stats.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats [--euf-explain-search=proof-forest]"
+      },
+      "references": [
+        {
+          "name": "Primo baseline",
+          "argv": "/tmp/primo-baseline-89dd4b3/build/primo built from commit 89dd4b3"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 12,
+        "timeout_seconds": 15,
+        "manifest": null,
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ031_size10.smt2",
+          "tmp/QF_UF/NEQ/NEQ041_size8.smt2",
+          "tmp/QF_UF/NEQ/NEQ041_size9.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ011_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ014_size9.smt2",
+          "tmp/QF_UF/PEQ/PEQ016_size7.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_nogen007.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen004.smt2",
+          "tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.1.prop1_ab_br_max.smt2"
+        ]
+      },
+      "artifacts": {
+        "summary": "results/local-gap-triage-20260720/parent-restore-ab-matrix.csv",
+        "results": "results/local-gap-triage-20260720/parent-restore-repeat-matrix.csv",
+        "logs": "fuzz-results/qf_uf-fuzzsmt-parent-restore-1000/summary.csv",
+        "bugs": null
+      },
+      "summary": {
+        "implementation": "The class merge trail no longer records one Parent entry per moved class member. ClassMembersMerge rollback restores the moved suffix to the old representative list and resets parent_[member] to that representative for each restored member.",
+        "trail_counts": "Trail entries dropped on every completed single-run matrix row: NEQ016_size7 default 109,691,307 -> 84,296,375; PEQ016_size7 default 51,838,864 -> 38,064,369; iso_icl_repgen004 default 31,326,926 -> 26,234,053; Goel sokoban.1 default 95,510 -> 44,571.",
+        "timing": "Single-run timing was mixed but without the prior PEQ blow-up pattern: NEQ031_size10 default 2.846s -> 2.817s, PEQ002_size7 proof 2.403s -> 2.219s, PEQ011_size8 proof 3.685s -> 3.763s, iso_icl_nogen007 default 5.053s -> 5.300s. Partial three-rep medians were favorable on NEQ016_size7 default 4.357s -> 4.254s, NEQ016_size7 proof 2.756s -> 2.632s, PEQ016_size7 default 3.595s -> 3.413s, PEQ016_size7 proof 2.163s -> 2.107s, with NEQ041_size9 default a small regression 3.621s -> 3.682s.",
+        "fuzz": "QF_UF FuzzSMT passed 1000/1000 against Z3 with seed 2026072007: sat 895, unsat 105, wrong 0, crash 0, timeout 0, bug files 0.",
+        "decision": "Accept as a narrow rollback representation improvement and trail-volume reduction, not as reference parity or a headline speedup. Fresh SLURM evidence is still required before claiming mixed-suite performance improvement."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j2",
+          "./build/primo_euf_solver_tests",
+          "python3 local A/B scripts recorded in parent-restore-ab-matrix.csv and parent-restore-repeat-matrix.csv",
+          "make test",
+          "make check",
+          "make asan-test",
+          "make lint",
+          "make docs",
+          "clang-tidy -p build --quiet src/theory/equality/flat_congruence_closure.cpp tests/unit/euf_solver_tests.cpp",
+          "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --seed 2026072007 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-parent-restore-1000"
+        ],
+        "warnings": [
+          "The partial three-rep timing matrix was interrupted after 41 rows; completed medians were enough to check the largest NEQ/PEQ rows, but this is still local evidence only.",
+          "misc-include-cleaner repeated paired-header advisory warnings for FlatTermId, FlatDefinition, and sat::Lit in flat_congruence_closure.cpp; the normal clang-tidy run on touched files was clean."
+        ],
+        "pending": [
+          "commit exact hash after source commit"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This change reduces rollback/trail memory traffic in the current CC implementation. It does not address SAT search quality, explanation reason quality, or the remaining iso ICL timeouts."
     }
   ]
 }

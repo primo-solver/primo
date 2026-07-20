@@ -65,6 +65,13 @@ congruence consequences that SAT backtracking will discard.
 - `parent_[t]` is the eager representative for every member `t` of a live class.
 - `class_members_[r]` contains exactly the members of representative `r`;
   non-representative class lists are empty after a merge.
+- Backtracking uses the class-list merge record to restore both
+  `class_members_` and the eager `parent_` representative for every moved
+  member. This is an implementation-local sparse rollback representation of the
+  Section 3 class-list operation; it does not change the paper's merge
+  semantics. Class sizes, use-list swaps, lookup insertions, disequality lists,
+  edge adjacency, and proof-parent diagnostics remain separately trailed because
+  their rollback lifetimes are not identical to the moved class suffix.
 - `lookup_` entries are keyed by current flat representatives at insertion time.
   Stale keys may remain after a merge but are not queried because new probes are
   built from current representatives.
@@ -255,6 +262,12 @@ Next CC review items:
   for `UseListRestore` swaps in `process_use_list`, not only append-only growth.
 - Keep reference-solver CC code as behavioral evidence only. The implemented
   Primo design must remain paper-derived and tested through local invariants.
+- The accepted parent-restore batching removes per-member `Parent` trail
+  entries and restores moved parents from the existing `ClassMembersMerge`
+  suffix record. On a local NEQ/PEQ/QG/Goel matrix it reduced trail-entry counts
+  on every completed row, for example `NEQ016_size7` default
+  109,691,307 -> 84,296,375, while wall-time medians were mixed and should not
+  be reported as a headline speedup without fresh SLURM evidence.
 
 The follow-up audit on the same date rechecked the current `FlatCongruenceClosure`
 implementation against the Section 3 data-structure checklist and the

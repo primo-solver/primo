@@ -290,6 +290,12 @@ equalities only when a conflict or propagation explanation asks for the reason.
 Recursive expansion is causal: when a congruence edge is explained, child
 equality explanations ignore equality-graph edges added at or after that
 congruence edge. This keeps premise explanations tied to facts that existed
+when the congruence merge was created. Rollback is sparse: a class merge records
+the moved suffix of the kept class list once, and that same trail entry restores
+the eager `parent_` representative for every moved member. Use-list swaps,
+lookup insertions, disequality-list changes, edge adjacency, proof-parent state,
+and class sizes keep separate trail entries because their lifetimes do not align
+with the moved class suffix.
 when the congruence merge was produced and avoids recursive BFS paths through
 later proof edges. The diagnostic counter
 `:euf.incremental.explain-causal-edge-skips` reports how often recursive

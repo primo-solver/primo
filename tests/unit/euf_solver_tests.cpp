@@ -708,6 +708,25 @@ void flat_congruence_closure_backtracks_nested_merges() {
   check(closure.stats().backtracks == 1);
 }
 
+void flat_congruence_closure_batches_parent_restore_with_class_members() {
+  FlatCongruenceClosure closure(6);
+  closure.assert_equal(0, 1);
+  closure.assert_equal(2, 3);
+
+  const std::size_t checkpoint = closure.push();
+  const std::size_t trail_before = closure.stats().trail_entries;
+  closure.assert_equal(0, 2);
+  check(closure.are_equal(0, 3));
+  const std::size_t new_trail_entries = closure.stats().trail_entries - trail_before;
+  check(new_trail_entries <= 8);
+
+  closure.pop(checkpoint);
+  check(closure.are_equal(0, 1));
+  check(closure.are_equal(2, 3));
+  check(!closure.are_equal(0, 2));
+  check(!closure.are_equal(1, 3));
+}
+
 void flat_congruence_closure_proof_diagnostics_backtrack() {
   FlatCongruenceClosure closure(4, FlatExplanationSearchMode::OneSidedBfs, true);
   closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
@@ -1051,6 +1070,7 @@ int main() {
   flat_congruence_closure_bidirectional_backtracks_nested_merges();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_backtracks_nested_merges();
+  flat_congruence_closure_batches_parent_restore_with_class_members();
   flat_congruence_closure_proof_diagnostics_backtrack();
   flat_congruence_closure_proof_diagnostics_respect_causal_bounds();
   flat_congruence_closure_backtracks_disequality_conflict();

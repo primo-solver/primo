@@ -94,7 +94,6 @@ class FlatCongruenceClosure {
   };
 
   enum class TrailKind {
-    Parent,
     ClassSize,
     ClassMembersMerge,
     UseListRestore,
@@ -108,7 +107,7 @@ class FlatCongruenceClosure {
   };
 
   struct TrailEntry {
-    TrailKind kind = TrailKind::Parent;
+    TrailKind kind = TrailKind::ClassSize;
     std::size_t index = 0;
     FlatTermId flat_value = kInvalidFlatTermId;
     FlatTermId flat_value2 = kInvalidFlatTermId;
@@ -146,7 +145,6 @@ class FlatCongruenceClosure {
   void merge_classes(PendingMerge pending);
   void process_use_list(FlatTermId old_repr, FlatTermId new_repr);
   void append_use_tracked(FlatTermId representative, FlatTermId result);
-  void push_parent_change(FlatTermId term);
   void push_class_size_change(FlatTermId term);
   void restore_trail_entry(TrailEntry& entry);
   bool check_disequality(const Disequality& disequality);

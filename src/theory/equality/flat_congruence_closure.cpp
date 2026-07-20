@@ -290,7 +290,6 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
   const std::size_t merged_member_count = class_members_[lhs_repr].size();
   for (const FlatTermId member : class_members_[lhs_repr]) {
     changed_terms_.push_back(member);
-    push_parent_change(member);
     parent_[member] = rhs_repr;
     class_members_[rhs_repr].push_back(member);
   }
@@ -415,18 +414,6 @@ void FlatCongruenceClosure::append_use_tracked(FlatTermId representative, FlatTe
   stats_.max_use_list_size = std::max(stats_.max_use_list_size, use_list.size());
 }
 
-void FlatCongruenceClosure::push_parent_change(FlatTermId term) {
-  if (checkpoints_.empty()) {
-    return;
-  }
-  TrailEntry entry;
-  entry.kind = TrailKind::Parent;
-  entry.index = term;
-  entry.flat_value = parent_[term];
-  trail_.push_back(std::move(entry));
-  ++stats_.trail_entries;
-}
-
 void FlatCongruenceClosure::push_class_size_change(FlatTermId term) {
   if (checkpoints_.empty()) {
     return;
@@ -441,11 +428,6 @@ void FlatCongruenceClosure::push_class_size_change(FlatTermId term) {
 
 void FlatCongruenceClosure::restore_trail_entry(TrailEntry& entry) {
   switch (entry.kind) {
-    case TrailKind::Parent:
-      if (entry.index < parent_.size()) {
-        parent_[entry.index] = entry.flat_value;
-      }
-      return;
     case TrailKind::ClassSize:
       if (entry.index < class_size_.size()) {
         class_size_[entry.index] = entry.size_value;
@@ -457,6 +439,9 @@ void FlatCongruenceClosure::restore_trail_entry(TrailEntry& entry) {
       const std::size_t restore_count = entry.size_value;
       const std::size_t first_restored = kept.size() - restore_count;
       restored.assign(kept.begin() + static_cast<std::ptrdiff_t>(first_restored), kept.end());
+      for (const FlatTermId member : restored) {
+        parent_[member] = entry.flat_value;
+      }
       kept.resize(first_restored);
       return;
     }
