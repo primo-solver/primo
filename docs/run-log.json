@@ -7369,6 +7369,53 @@
       },
       "evidence_status": "rejected",
       "notes": "This records a negative result only; no source behavior from the temporary cache remains in the worktree."
+    },
+    {
+      "id": "2026-07-20-local-euf-explain-search-bidirectional-option",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_benchmark",
+      "scope": "Same-binary local probe for opt-in bidirectional flat EUF explanation search",
+      "commit": "uncommitted",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build --target primo primo_euf_solver_tests -j2; ctest --test-dir build -R primo_euf_solver_tests --output-on-failure; for mode in one-sided bidirectional, run timeout 40s ./build/primo --quiet --stats --euf-explain-search=$mode on NEQ016_size7, PEQ019_size7, PEQ002_size8, and qg7/iso_brn_repgen033; separately ran timeout 45s ./build/primo --quiet --stats --euf-explain-search=bidirectional on NEQ016_size8.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-explain-search={one-sided,bidirectional}"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+        ],
+        "timeout_seconds": 40
+      },
+      "artifacts": {
+        "last_probe_stdout": "/tmp/explain-mode.out",
+        "last_probe_stderr": "/tmp/explain-mode.err",
+        "neq016_size8_bidirectional_stdout": "/tmp/neq016-bidir.stdout",
+        "neq016_size8_bidirectional_stderr": "/tmp/neq016-bidir.stderr",
+        "fuzz_summary_csv": "fuzz-results/qf_uf-fuzzsmt-bidir-explain-1000/summary.csv",
+        "fuzz_generated_inputs": "fuzz-results/qf_uf-fuzzsmt-bidir-explain-1000/generated",
+        "fuzz_bugs_dir": "fuzz-results/qf_uf-fuzzsmt-bidir-explain-1000/bugs"
+      },
+      "summary": {
+        "default_preserved": "With --euf-explain-search=one-sided, the same-binary rows matched the previous default shape: NEQ016_size7 4.92s, PEQ019_size7 0.96s, PEQ002_size8 17.22s, iso_brn_repgen033 0.04s.",
+        "bidirectional_wins": "Bidirectional solved NEQ016_size7 in 4.33s with BFS visited 29.2M -> 18.0M, and PEQ019_size7 in 0.47s with BFS visited 3.84M -> 1.51M. iso_brn_repgen033 remained 0.04s with BFS visited 125k -> 39k.",
+        "bidirectional_regressions": "PEQ002_size8 regressed from 17.22s to 32.25s; theory conflicts increased 95,096 -> 138,912 and conflicts over 64 literals increased 31,562 -> 39,383.",
+        "NEQ016_size8": "Bidirectional still timed out at 45s, but reduced internal work: theory conflicts 328,671 -> 299,585, explain calls 72.3M -> 62.4M, BFS searches 23.9M -> 19.8M, BFS visited 253.6M -> 173.9M, and conflicts over 64 literals 93,984 -> 77,586.",
+        "fuzz": "QF_UF FuzzSMT merge gate with --euf-explain-search=bidirectional passed 1000/1000 against Z3; sat 888, unsat 112, wrong 0, crash 0, timeout 0, bugs 0.",
+        "decision": "Accepted only as an explicit experimental option. It is not default-ready because proof-path changes regress PEQ002_size8. This is a graph-search baseline, not the Nieuwenhuis-Oliveras Section 4-5 proof forest."
+      },
+      "evidence_status": "current_local",
+      "notes": "Standard local verification passed before commit: make test, make check, make asan-test, make lint, make docs, and the recorded QF_UF FuzzSMT gate. Broader SMAC/SLURM evaluation can now include --euf-explain-search=bidirectional as a knob."
     }
   ]
 }

@@ -349,3 +349,14 @@ The patch would therefore add a hash lookup to the hottest explanation path
 without reducing BFS work on the sampled rows, so it was reverted. This leaves
 successful bounded-pair reuse as the only current per-reason cache and again
 points at proof-tree shape, not failed-query repetition, as the next CC target.
+
+The next accepted source change kept the default explanation path unchanged and
+added `--euf-explain-search=bidirectional` as an explicit experiment. This mode
+uses bidirectional BFS over the same causal equality-edge graph. It is a
+baseline graph-search alternative, not a proof-forest implementation. Local
+same-binary probes showed why it is not a default: it improved `NEQ016_size7`
+and `PEQ019_size7` and reduced BFS visits on `NEQ016_size8`, but it regressed
+`PEQ002_size8` badly by changing proof paths and SAT search. The option exists
+so SMAC and focused local runs can test whether bidirectional search is useful
+inside a family-specific profile while the validated default remains
+one-sided BFS.

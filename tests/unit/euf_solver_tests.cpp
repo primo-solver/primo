@@ -558,7 +558,11 @@ void flat_congruence_closure_uses_causal_edges_for_congruence_reasons() {
   const auto reason = closure.explain_equal(4, 5);
 
   check(reason.has_value());
-  check(closure.stats().explain_causal_edge_skips >= 1);
+  bool uses_later_edge = false;
+  for (const primo::sat::Lit lit : reason.value()) {
+    uses_later_edge = uses_later_edge || lit.value == -4;
+  }
+  check(!uses_later_edge);
 }
 
 void flat_congruence_closure_explanation_cache_respects_edge_bounds() {

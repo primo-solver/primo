@@ -315,6 +315,14 @@ The explanation-shape counters
 `:euf.incremental.explain-cache-bound-misses`, are diagnostic only: they measure
 the current BFS explanation path and do not implement or select a proof-forest
 reason engine.
+`--euf-explain-search=one-sided|bidirectional` selects how the incremental flat
+closure searches the existing equality-edge graph when building explanations.
+The default `one-sided` mode preserves the validated reason shape. The
+experimental `bidirectional` mode expands from both requested endpoints and can
+reduce BFS visits on some NEQ/PEQ rows, but it changes selected proof paths and
+has known PEQ regressions in the local run log. It is therefore a tuning and
+diagnostic knob, not a default and not the paper's Section 4-5 proof-forest
+algorithm.
 Online-mode checkpoints are created lazily on the first theory assignment in a
 SAT decision level, so levels with only Boolean search do not allocate closure
 rollback state. Checkpoints remember vector sizes, conflict state, stats, and

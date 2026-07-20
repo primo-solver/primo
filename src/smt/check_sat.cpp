@@ -221,6 +221,17 @@ constexpr util::StatKey kStatEufIncrementalAffectedUseListDedup =
 constexpr util::StatKey kStatEufIncrementalMaxUseListSize =
     util::StatKey::EufIncrementalMaxUseListSize;
 
+theory::equality::FlatExplanationSearchMode flat_explanation_search_mode(
+    EufExplainSearchMode mode) {
+  switch (mode) {
+    case EufExplainSearchMode::BidirectionalBfs:
+      return theory::equality::FlatExplanationSearchMode::BidirectionalBfs;
+    case EufExplainSearchMode::OneSidedBfs:
+      return theory::equality::FlatExplanationSearchMode::OneSidedBfs;
+  }
+  return theory::equality::FlatExplanationSearchMode::OneSidedBfs;
+}
+
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
 constexpr std::size_t kAutoBasicMultiTermLimit = 20000;
 constexpr std::size_t kAutoBasicSingleTermLimit = 15000;
@@ -1433,7 +1444,8 @@ struct FlatAssignedTheoryAtom {
 struct PreparedFlatTheory {
   PreparedFlatTheory(const core::TermManager& terms,
                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-                     core::TermId true_term, core::TermId false_term);
+                     core::TermId true_term, core::TermId false_term,
+                     EufExplainSearchMode explain_search_mode);
 
   theory::equality::FlatTermIndex flat;
   theory::equality::FlatCongruenceClosure base_closure;
@@ -1462,8 +1474,8 @@ FlatAssignedTheoryAtom flatten_assigned_atom(theory::equality::FlatTermIndex& fl
 
 PreparedFlatTheory::PreparedFlatTheory(
     const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-    core::TermId true_term, core::TermId false_term)
-    : flat(terms), base_closure(0) {
+    core::TermId true_term, core::TermId false_term, EufExplainSearchMode explain_search_mode)
+    : flat(terms), base_closure(0, flat_explanation_search_mode(explain_search_mode)) {
   true_flat = flat.flatten(true_term);
   false_flat = flat.flatten(false_term);
   flat_atoms.reserve(theory_atoms.size());
@@ -1510,7 +1522,7 @@ std::optional<std::vector<sat::Lit>> flat_candidate_explanation(
 std::optional<sat::Clause> flat_model_propagation_clause_for(
     const core::TermManager& terms, const std::vector<AssignedTheoryAtom>& atoms,
     std::size_t candidate_index, core::TermId true_term, core::TermId false_term,
-    util::Statistics* statistics) {
+    EufExplainSearchMode explain_search_mode, util::Statistics* statistics) {
   theory::equality::FlatTermIndex flat(terms);
   const theory::equality::FlatTermId true_flat = flat.flatten(true_term);
   const theory::equality::FlatTermId false_flat = flat.flatten(false_term);
@@ -1520,7 +1532,8 @@ std::optional<sat::Clause> flat_model_propagation_clause_for(
     flat_atoms.push_back(flatten_assigned_atom(flat, terms, atom, false_flat));
   }
 
-  theory::equality::FlatCongruenceClosure closure(flat.size());
+  theory::equality::FlatCongruenceClosure closure(
+      flat.size(), flat_explanation_search_mode(explain_search_mode));
   for (const theory::equality::FlatDefinition& definition : flat.definitions()) {
     closure.add_definition(definition);
   }
@@ -1563,11 +1576,12 @@ class IncrementalFlatAssignmentState {
                                  const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                  core::TermId true_term, core::TermId false_term,
                                  PureTheoryFilterMode pure_theory_filter,
+                                 EufExplainSearchMode explain_search_mode,
                                  util::Statistics& statistics, bool flush_live_stats)
       : terms_(terms),
         pure_theory_filter_(pure_theory_filter),
         flat_(terms),
-        closure_(0),
+        closure_(0, flat_explanation_search_mode(explain_search_mode)),
         statistics_(statistics),
         flush_live_stats_(flush_live_stats) {
     true_flat_ = flat_.flatten(true_term);
@@ -1843,8 +1857,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
     if (options_.euf_engine == EufEngine::Incremental) {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
-                                 options_.pure_theory_filter, statistics_,
-                                 options_.live_statistics != nullptr);
+                                 options_.pure_theory_filter, options_.euf_explain_search,
+                                 statistics_, options_.live_statistics != nullptr);
       build_candidate_index();
     }
   }
@@ -2174,7 +2188,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     std::optional<sat::Clause> clause =
         options_.euf_engine == EufEngine::Incremental
             ? flat_model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_,
-                                                false_term_, &statistics_)
+                                                false_term_, options_.euf_explain_search,
+                                                &statistics_)
             : model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_,
                                            false_term_);
     if (clause.has_value()) {
@@ -2379,7 +2394,8 @@ ModelPropagationResult learn_model_propagations(const core::TermManager& terms,
     ++result.candidates;
     std::optional<sat::Clause> clause =
         options.euf_engine == EufEngine::Incremental
-            ? flat_model_propagation_clause_for(terms, atoms, i, true_term, false_term, &statistics)
+            ? flat_model_propagation_clause_for(terms, atoms, i, true_term, false_term,
+                                                options.euf_explain_search, &statistics)
             : model_propagation_clause_for(terms, atoms, i, true_term, false_term);
     if (!clause.has_value()) {
       continue;
@@ -2527,7 +2543,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   std::unordered_set<std::string> learned_model_propagations;
   std::optional<PreparedFlatTheory> prepared_flat_theory;
   if (options.euf_engine == EufEngine::Incremental) {
-    prepared_flat_theory.emplace(terms, clausifier.theory_atoms(), true_term, false_term);
+    prepared_flat_theory.emplace(terms, clausifier.theory_atoms(), true_term, false_term,
+                                 options.euf_explain_search);
   }
 
 #if PRIMO_HAVE_IPASIR

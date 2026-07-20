@@ -31,7 +31,9 @@ std::size_t FlatCongruenceClosure::ExplanationKeyHash::operator()(const Explanat
   return seed;
 }
 
-FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count) {
+FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count,
+                                             FlatExplanationSearchMode explanation_search_mode)
+    : explanation_search_mode_(explanation_search_mode) {
   definitions_.reserve(node_count);
   definition_by_result_.reserve(node_count);
   lookup_.reserve(node_count);
@@ -614,50 +616,125 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
   ++visit_generation_;
   if (visit_generation_ == 0) {
     std::fill(visit_marks_.begin(), visit_marks_.end(), 0);
+    std::fill(reverse_visit_marks_.begin(), reverse_visit_marks_.end(), 0);
     ++visit_generation_;
   }
   queue_scratch_.clear();
   std::size_t queue_index = 0;
   visit_marks_[lhs] = visit_generation_;
   queue_scratch_.push_back(lhs);
-
-  while (queue_index < queue_scratch_.size() && visit_marks_[rhs] != visit_generation_) {
-    const FlatTermId current = queue_scratch_[queue_index++];
-    ++stats_.explain_bfs_visited;
-    for (const std::size_t edge_index : edge_adjacency_[current]) {
-      if (edge_index >= max_edge_index) {
-        ++stats_.explain_causal_edge_skips;
-        continue;
-      }
-      const Edge& edge = edges_[edge_index];
-      FlatTermId next = kInvalidFlatTermId;
-      if (edge.lhs == current) {
-        next = edge.rhs;
-      } else if (edge.rhs == current) {
-        next = edge.lhs;
-      }
-      if (next == kInvalidFlatTermId || next >= visit_marks_.size() ||
-          visit_marks_[next] == visit_generation_) {
-        continue;
-      }
-      visit_marks_[next] = visit_generation_;
-      parent_scratch_[next] = current;
-      parent_edge_scratch_[next] = edge_index;
-      queue_scratch_.push_back(next);
-    }
-  }
-  stats_.explain_bfs_max_queue = std::max(stats_.explain_bfs_max_queue, queue_scratch_.size());
-
-  if (visit_marks_[rhs] != visit_generation_) {
-    return false;
-  }
   if (path_edges_scratch_.size() <= explanation_depth_) {
     path_edges_scratch_.resize(explanation_depth_ + 1);
   }
   std::vector<std::size_t>& path_edges = path_edges_scratch_[explanation_depth_++];
   path_edges.clear();
-  for (FlatTermId current = rhs; current != lhs; current = parent_scratch_[current]) {
-    path_edges.push_back(parent_edge_scratch_[current]);
+
+  if (explanation_search_mode_ == FlatExplanationSearchMode::BidirectionalBfs) {
+    if (reverse_visit_marks_.size() < parent_.size()) {
+      reverse_visit_marks_.resize(parent_.size(), 0);
+      reverse_parent_edge_scratch_.resize(parent_.size(), edges_.size());
+      reverse_parent_scratch_.resize(parent_.size(), kInvalidFlatTermId);
+    }
+    reverse_queue_scratch_.clear();
+    std::size_t reverse_queue_index = 0;
+    reverse_visit_marks_[rhs] = visit_generation_;
+    reverse_queue_scratch_.push_back(rhs);
+    FlatTermId meeting = kInvalidFlatTermId;
+
+    auto expand_frontier =
+        [&](std::vector<FlatTermId>& queue, std::size_t& queue_position,
+            std::vector<std::size_t>& own_marks, std::vector<std::size_t>& other_marks,
+            std::vector<FlatTermId>& own_parents, std::vector<std::size_t>& own_parent_edges) {
+          const FlatTermId current = queue[queue_position++];
+          ++stats_.explain_bfs_visited;
+          for (const std::size_t edge_index : edge_adjacency_[current]) {
+            if (edge_index >= max_edge_index) {
+              ++stats_.explain_causal_edge_skips;
+              continue;
+            }
+            const Edge& edge = edges_[edge_index];
+            FlatTermId next = kInvalidFlatTermId;
+            if (edge.lhs == current) {
+              next = edge.rhs;
+            } else if (edge.rhs == current) {
+              next = edge.lhs;
+            }
+            if (next == kInvalidFlatTermId || next >= own_marks.size() ||
+                own_marks[next] == visit_generation_) {
+              continue;
+            }
+            own_marks[next] = visit_generation_;
+            own_parents[next] = current;
+            own_parent_edges[next] = edge_index;
+            if (other_marks[next] == visit_generation_) {
+              meeting = next;
+              return;
+            }
+            queue.push_back(next);
+          }
+        };
+
+    while (meeting == kInvalidFlatTermId && (queue_index < queue_scratch_.size() ||
+                                             reverse_queue_index < reverse_queue_scratch_.size())) {
+      const std::size_t forward_remaining = queue_scratch_.size() - queue_index;
+      const std::size_t reverse_remaining = reverse_queue_scratch_.size() - reverse_queue_index;
+      if (reverse_remaining == 0 ||
+          (forward_remaining != 0 && forward_remaining <= reverse_remaining)) {
+        expand_frontier(queue_scratch_, queue_index, visit_marks_, reverse_visit_marks_,
+                        parent_scratch_, parent_edge_scratch_);
+      } else {
+        expand_frontier(reverse_queue_scratch_, reverse_queue_index, reverse_visit_marks_,
+                        visit_marks_, reverse_parent_scratch_, reverse_parent_edge_scratch_);
+      }
+    }
+    stats_.explain_bfs_max_queue = std::max(stats_.explain_bfs_max_queue,
+                                            queue_scratch_.size() + reverse_queue_scratch_.size());
+
+    if (meeting == kInvalidFlatTermId) {
+      --explanation_depth_;
+      return false;
+    }
+    for (FlatTermId current = meeting; current != lhs; current = parent_scratch_[current]) {
+      path_edges.push_back(parent_edge_scratch_[current]);
+    }
+    for (FlatTermId current = meeting; current != rhs; current = reverse_parent_scratch_[current]) {
+      path_edges.push_back(reverse_parent_edge_scratch_[current]);
+    }
+  } else {
+    while (queue_index < queue_scratch_.size() && visit_marks_[rhs] != visit_generation_) {
+      const FlatTermId current = queue_scratch_[queue_index++];
+      ++stats_.explain_bfs_visited;
+      for (const std::size_t edge_index : edge_adjacency_[current]) {
+        if (edge_index >= max_edge_index) {
+          ++stats_.explain_causal_edge_skips;
+          continue;
+        }
+        const Edge& edge = edges_[edge_index];
+        FlatTermId next = kInvalidFlatTermId;
+        if (edge.lhs == current) {
+          next = edge.rhs;
+        } else if (edge.rhs == current) {
+          next = edge.lhs;
+        }
+        if (next == kInvalidFlatTermId || next >= visit_marks_.size() ||
+            visit_marks_[next] == visit_generation_) {
+          continue;
+        }
+        visit_marks_[next] = visit_generation_;
+        parent_scratch_[next] = current;
+        parent_edge_scratch_[next] = edge_index;
+        queue_scratch_.push_back(next);
+      }
+    }
+    stats_.explain_bfs_max_queue = std::max(stats_.explain_bfs_max_queue, queue_scratch_.size());
+
+    if (visit_marks_[rhs] != visit_generation_) {
+      --explanation_depth_;
+      return false;
+    }
+    for (FlatTermId current = rhs; current != lhs; current = parent_scratch_[current]) {
+      path_edges.push_back(parent_edge_scratch_[current]);
+    }
   }
   stats_.explain_bfs_path_edges += path_edges.size();
   for (const std::size_t edge_index : path_edges) {

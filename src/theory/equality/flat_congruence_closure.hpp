@@ -13,9 +13,16 @@ namespace primo::theory::equality {
 
 class FlatCongruenceClosureTestAccess;
 
+enum class FlatExplanationSearchMode {
+  OneSidedBfs,
+  BidirectionalBfs,
+};
+
 class FlatCongruenceClosure {
  public:
-  explicit FlatCongruenceClosure(std::size_t node_count = 0);
+  explicit FlatCongruenceClosure(
+      std::size_t node_count = 0,
+      FlatExplanationSearchMode explanation_search_mode = FlatExplanationSearchMode::OneSidedBfs);
 
   std::size_t push();
   void pop(std::size_t checkpoint);
@@ -160,9 +167,13 @@ class FlatCongruenceClosure {
   std::optional<std::vector<sat::Lit>> conflict_;
   mutable IncrementalCongruenceClosureStats stats_;
   mutable std::vector<std::size_t> visit_marks_;
+  mutable std::vector<std::size_t> reverse_visit_marks_;
   mutable std::vector<std::size_t> parent_edge_scratch_;
+  mutable std::vector<std::size_t> reverse_parent_edge_scratch_;
   mutable std::vector<FlatTermId> parent_scratch_;
+  mutable std::vector<FlatTermId> reverse_parent_scratch_;
   mutable std::vector<FlatTermId> queue_scratch_;
+  mutable std::vector<FlatTermId> reverse_queue_scratch_;
   mutable std::vector<std::vector<std::size_t>> path_edges_scratch_;
   mutable std::unordered_map<ExplanationKey, std::size_t, ExplanationKeyHash> explanation_cache_;
   mutable std::size_t explanation_depth_ = 0;
@@ -171,6 +182,7 @@ class FlatCongruenceClosure {
   mutable std::size_t reason_generation_ = 0;
   std::vector<std::size_t> use_list_marks_;
   std::size_t use_list_generation_ = 0;
+  FlatExplanationSearchMode explanation_search_mode_ = FlatExplanationSearchMode::OneSidedBfs;
 
   friend class FlatCongruenceClosureTestAccess;
 };

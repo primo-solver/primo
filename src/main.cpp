@@ -137,6 +137,7 @@ int main(int argc, char** argv) {
   std::string qf_uf_portfolio = "off";
   std::string euf_engine = "incremental";
   std::string euf_prop = "auto";
+  std::string euf_explain_search = "one-sided";
   std::string pure_theory_filter = "auto";
   std::string theory_phase = "negative";
   std::string euf_prop_budget = "auto";
@@ -218,6 +219,9 @@ int main(int argc, char** argv) {
       ->check(CLI::IsMember({"auto", "off", "conflict", "model", "online"}));
   app.add_option("--euf-engine", euf_engine, "EUF engine: incremental or lazy")
       ->check(CLI::IsMember({"lazy", "incremental"}));
+  app.add_option("--euf-explain-search", euf_explain_search,
+                 "Incremental EUF explanation search: one-sided or bidirectional")
+      ->check(CLI::IsMember({"one-sided", "bidirectional"}));
   app.add_option("--pure-theory-filter", pure_theory_filter,
                  "T-pure theory literal filtering mode: auto, on, or off")
       ->check(CLI::IsMember({"auto", "on", "off"}));
@@ -379,6 +383,11 @@ int main(int argc, char** argv) {
     solver_options.euf_engine = primo::smt::EufEngine::Incremental;
   } else {
     solver_options.euf_engine = primo::smt::EufEngine::Lazy;
+  }
+  if (euf_explain_search == "bidirectional") {
+    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::BidirectionalBfs;
+  } else {
+    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::OneSidedBfs;
   }
   if (pure_theory_filter == "off") {
     solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
