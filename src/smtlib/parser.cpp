@@ -1,31 +1,24 @@
 #include "smtlib/parser.hpp"
 
-#include <antlr4-runtime.h>
-
+#include <cstddef>
 #include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
-#include "smtlib/antlr/SMTLIBv2Lexer.h"
-#include "smtlib/antlr/SMTLIBv2Parser.h"
+#include "smtlib/ast.hpp"
+#include "smtlib/commands.hpp"
+#include "smtlib/lexer.hpp"
 
 namespace primo::smtlib {
 
 namespace {
 
-class ThrowingErrorListener final : public antlr4::BaseErrorListener {
- public:
-  void syntaxError(antlr4::Recognizer* /*recognizer*/, antlr4::Token* offendingSymbol,
-                   std::size_t /*line*/, std::size_t charPositionInLine, const std::string& msg,
-                   std::exception_ptr /*exception*/) override {
-    const std::size_t offset =
-        offendingSymbol == nullptr ? charPositionInLine : offendingSymbol->getStartIndex();
-    throw ParseError(msg, offset);
-  }
-};
-
 class TokenSExprParser {
  public:
-  explicit TokenSExprParser(const std::vector<antlr4::Token*>& tokens) : tokens_(tokens) {}
+  explicit TokenSExprParser(std::string_view input) : lexer_(input) { advance(); }
 
   std::vector<SExpr> parse_all() {
     std::vector<SExpr> expressions;
@@ -36,40 +29,44 @@ class TokenSExprParser {
   }
 
  private:
-  bool at_end() const {
-    return cursor_ >= tokens_.size() || tokens_[cursor_]->getType() == antlr4::Token::EOF;
-  }
+  bool at_end() const { return current_.kind == TokenKind::End; }
 
-  const antlr4::Token& current() const {
+  void advance() { current_ = lexer_.next(); }
+
+  const Token& current() const {
     if (at_end()) {
-      throw ParseError("unexpected end of input", 0);
+      throw ParseError("unexpected end of input", current_.offset);
     }
-    return *tokens_[cursor_];
+    return current_;
   }
 
   SExpr parse_one() {
-    const antlr4::Token& token = current();
-    if (token.getType() == SMTLIBv2Lexer::ParOpen) {
-      ++cursor_;
+    const Token token = current();
+    if (token.kind == TokenKind::LParen) {
+      advance();
       std::vector<SExpr> elements;
-      while (!at_end() && current().getType() != SMTLIBv2Lexer::ParClose) {
+      while (!at_end() && current().kind != TokenKind::RParen) {
         elements.push_back(parse_one());
       }
       if (at_end()) {
-        throw ParseError("unexpected end of input in list", token.getStartIndex());
+        throw ParseError("unexpected end of input in list", token.offset);
       }
-      ++cursor_;
+      advance();
       return SExpr::make_list(std::move(elements));
     }
-    if (token.getType() == SMTLIBv2Lexer::ParClose) {
-      throw ParseError("unexpected closing parenthesis", token.getStartIndex());
+    if (token.kind == TokenKind::RParen) {
+      throw ParseError("unexpected closing parenthesis", token.offset);
     }
-    ++cursor_;
-    return SExpr::make_atom(token.getText());
+    if ((token.text.starts_with('|') && !token.text.ends_with('|')) ||
+        (token.text.starts_with('"') && !token.text.ends_with('"'))) {
+      throw ParseError("unterminated quoted token", token.offset);
+    }
+    advance();
+    return SExpr::make_atom(token.text);
   }
 
-  const std::vector<antlr4::Token*>& tokens_;
-  std::size_t cursor_ = 0;
+  Lexer lexer_;
+  Token current_;
 };
 
 }  // namespace
@@ -90,24 +87,7 @@ std::vector<Command> Parser::parse_commands() {
 }
 
 std::vector<SExpr> Parser::parse_sexprs() const {
-  antlr4::ANTLRInputStream input(input_);
-  SMTLIBv2Lexer lexer(&input);
-  antlr4::CommonTokenStream tokens(&lexer);
-  SMTLIBv2Parser parser(&tokens);
-  ThrowingErrorListener errors;
-  lexer.removeErrorListeners();
-  parser.removeErrorListeners();
-  lexer.addErrorListener(&errors);
-  parser.addErrorListener(&errors);
-
-  parser.start_();
-  if (parser.getNumberOfSyntaxErrors() != 0) {
-    throw ParseError("SMT-LIB parse failed", 0);
-  }
-
-  tokens.fill();
-  const std::vector<antlr4::Token*> token_vector = tokens.getTokens();
-  TokenSExprParser sexprs(token_vector);
+  TokenSExprParser sexprs(input_);
   return sexprs.parse_all();
 }
 

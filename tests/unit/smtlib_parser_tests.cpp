@@ -5,6 +5,8 @@
 #include <cassert>
 #include <string>
 
+#include "smtlib/ast.hpp"
+#include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
 
 using primo::smtlib::CommandKind;
@@ -73,7 +75,10 @@ void parses_nested_boolean_assertion() {
 void parses_benchmark_metadata_and_quoted_symbols() {
   Parser parser(R"(
     (set-info :smt-lib-version 2.6)
-    (set-info :source "generated benchmark")
+    (set-info :source |
+      generated benchmark
+    |)
+    (set-info :category "crafted")
     (set-option :print-success false)
     (set-logic QF_UF)
     (declare-sort U 0)
@@ -84,15 +89,16 @@ void parses_benchmark_metadata_and_quoted_symbols() {
     (exit)
   )");
   const auto commands = parser.parse_commands();
-  assert(commands.size() == 10);
+  assert(commands.size() == 11);
   assert(commands[0].kind == CommandKind::Ignored);
   assert(commands[1].kind == CommandKind::Ignored);
   assert(commands[2].kind == CommandKind::Ignored);
-  assert(commands[5].kind == CommandKind::DeclareFun);
-  assert(commands[5].name == "|+i|");
-  assert(commands[7].kind == CommandKind::Assert);
-  assert(commands[7].assertion.list[0].is_atom("let"));
-  assert(commands[9].kind == CommandKind::Ignored);
+  assert(commands[3].kind == CommandKind::Ignored);
+  assert(commands[6].kind == CommandKind::DeclareFun);
+  assert(commands[6].name == "|+i|");
+  assert(commands[8].kind == CommandKind::Assert);
+  assert(commands[8].assertion.list[0].is_atom("let"));
+  assert(commands[10].kind == CommandKind::Ignored);
 }
 
 void parses_define_fun_macros() {
@@ -125,6 +131,8 @@ void rejects_malformed_or_unsupported_input() {
   expect_parse_error([] { Parser("(define-fun f (x A) Bool true)").parse_commands(); });
   expect_parse_error([] { Parser("(push 1)").parse_commands(); });
   expect_parse_error([] { Parser("(assert (= a b)").parse_commands(); });
+  expect_parse_error([] { Parser("(set-info :source |unterminated)").parse_commands(); });
+  expect_parse_error([] { Parser("(set-info :source \"unterminated)").parse_commands(); });
 }
 
 }  // namespace

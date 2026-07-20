@@ -7458,6 +7458,55 @@
       },
       "evidence_status": "current_local",
       "notes": "This option does not change emitted clauses. It is intended to guide a future paper-derived Section 4-5 explanation implementation before changing reason production."
+    },
+    {
+      "id": "2026-07-20-local-smtlib-fast-sexpr-parser-qg",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Parser allocation hotspot on QG many-assertion iso/nogen rows",
+      "commit": "uncommitted",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "perf record/report on ./build/primo --quiet --stats tmp/QF_UF/QG-classification/qg7/iso_brn_nogen007.smt2 before and after replacing ANTLR parse-tree validation with the local smtlib::Lexer S-expression parser; smoke matrix on iso_brn_repgen033, iso_brn_repgen043, iso_brn_nogen007, PEQ019_size7, and NEQ023_size7; PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026072005 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-fast-sexpr-parser-1000.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen007.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen043.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2"
+        ],
+        "timeout_seconds": 30
+      },
+      "artifacts": {
+        "before_perf": "/tmp/primo-nogen007.perf",
+        "after_perf": "/tmp/primo-nogen007-fastparse.perf",
+        "target_stdout": "/tmp/nogen-fastparse.out",
+        "target_stderr": "/tmp/nogen-fastparse.err",
+        "smoke_stdout": "/tmp/fastparse-smoke.out",
+        "smoke_stderr": "/tmp/fastparse-smoke.err",
+        "fuzz_summary_csv": "fuzz-results/qf_uf-fuzzsmt-fast-sexpr-parser-1000/summary.csv",
+        "fuzz_generated_inputs": "fuzz-results/qf_uf-fuzzsmt-fast-sexpr-parser-1000/generated",
+        "fuzz_bugs_dir": "fuzz-results/qf_uf-fuzzsmt-fast-sexpr-parser-1000/bugs"
+      },
+      "summary": {
+        "diagnosis": "On iso_brn_nogen007, perf before the patch was dominated by malloc/free under antlr4 parse-tree construction and teardown in Parser::parse_commands/parse_sexprs, not by EUF.",
+        "target_result": "iso_brn_nogen007 remained sat with identical high-level solver stats and improved from about 4.37s before the parser patch to 0.91-0.97s after it.",
+        "smoke": "Current-head smoke results after the patch: iso_brn_repgen033 sat 0.02s, iso_brn_repgen043 sat 0.72s, iso_brn_nogen007 sat 0.97s, PEQ019_size7 unsat 0.96s, NEQ023_size7 unsat 0.39s.",
+        "fuzz": "QF_UF FuzzSMT merge gate passed 1000/1000 against Z3; ours sat 892, unsat 108; wrong 0, crash 0, timeout 0.",
+        "reference_context": "Local tuned LLM2SMT on iso_brn_nogen007 reported total_ms 3024 but wall 4.37s on this host; local Z3 solved in 0.56s. This patch closes most of the local Primo-vs-Z3 gap for this parser-heavy row.",
+        "decision": "Accepted. The change targets supported SMT-LIB S-expression parsing only and leaves command/frontend validation in Primo."
+      },
+      "evidence_status": "current_local",
+      "notes": "This is local development evidence. A broad SLURM rerun is still needed for headline solved/PAR2 claims on the QG family."
     }
   ]
 }

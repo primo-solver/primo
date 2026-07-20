@@ -1,6 +1,10 @@
 #include "smtlib/lexer.hpp"
 
 #include <cctype>
+#include <cstddef>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace primo::smtlib {
 
@@ -19,6 +23,28 @@ Token Lexer::next() {
   }
   if (current == ')') {
     return Token{TokenKind::RParen, ")", token_offset};
+  }
+  if (current == '|') {
+    std::string text(1, current);
+    while (!at_end()) {
+      const char next_char = advance();
+      text.push_back(next_char);
+      if (next_char == '|') {
+        return Token{TokenKind::Symbol, std::move(text), token_offset};
+      }
+    }
+    return Token{TokenKind::Symbol, std::move(text), token_offset};
+  }
+  if (current == '"') {
+    std::string text(1, current);
+    while (!at_end()) {
+      const char next_char = advance();
+      text.push_back(next_char);
+      if (next_char == '"') {
+        return Token{TokenKind::Symbol, std::move(text), token_offset};
+      }
+    }
+    return Token{TokenKind::Symbol, std::move(text), token_offset};
   }
 
   std::string text(1, current);
