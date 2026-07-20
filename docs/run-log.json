@@ -8674,6 +8674,55 @@
       },
       "evidence_status": "current_local",
       "notes": "The review argues against treating CC as a simple Section 3 correctness failure. Current performance is dominated by recursive explanation and learned-reason quality; proof-forest path traversal alone can be faster per fixed conflict budget while hurting full-solve search through larger clauses."
+    },
+    {
+      "id": "2026-07-20-local-rejected-guarded-proof-forest",
+      "recorded_at": "2026-07-20T07:18:32+02:00",
+      "kind": "local_benchmark",
+      "scope": "Rejected guarded proof-forest explanation mode with fixed short-reason fallback",
+      "commit": "cf40d28",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "Temporary source patch added --euf-explain-search=guarded-proof-forest. It constructed a proof-forest reason first, emitted it only when the reason had at most 64 literals, and otherwise fell back to the default BFS reason. The source patch was reverted after measurement."
+      },
+      "command": {
+        "build_and_test": "cmake --build build --target primo_euf_solver_tests primo -j2 && ./build/primo_euf_solver_tests",
+        "matrix": "python3 local loop over default, --euf-explain-search=proof-forest, and temporary --euf-explain-search=guarded-proof-forest on 11 NEQ/PEQ/SEQ/QG rows with 20s timeout, writing results/local-guarded-proof-forest-20260720/matrix.csv"
+      },
+      "benchmark": {
+        "suite": "11-row local mixed QF_UF CC guard matrix",
+        "logic": "QF_UF",
+        "timeout_seconds": 20,
+        "manifest": "NEQ016_size7, NEQ023_size7, NEQ016_size8, PEQ002_size8, PEQ003_size10, PEQ016_size7, SEQ026_size7, SEQ035_size6, iso_icl_repgen005, iso_icl_repgen006, iso_brn_repgen033"
+      },
+      "artifacts": {
+        "matrix": "results/local-guarded-proof-forest-20260720/matrix.csv"
+      },
+      "summary": {
+        "default": "solved 10/11, PAR2 87.543",
+        "proof_forest": "solved 8/11, PAR2 134.979",
+        "guarded_proof_forest": "solved 8/11, PAR2 145.813",
+        "notable_rows": "Guarded proof forest improved iso_icl_repgen005 from 2.190s default to 1.851s and iso_icl_repgen006 from 0.552s to 0.432s, but timed out on NEQ016_size8, PEQ002_size8, and PEQ003_size10. It also regressed NEQ023_size7 from 0.398s default to 0.974s and SEQ026_size7 from 9.829s default to 14.036s.",
+        "decision": "Rejected and reverted. A post-construction 64-literal guard is too late and too expensive: it preserves the PEQ timeouts and loses to both default and proof-forest PAR2 on this mixed matrix. The next CC explanation design needs an earlier proof-obligation or path-shape predictor, or a fuller Section 4/5 reorientation policy that avoids constructing and then discarding large proof reasons."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j2 && ./build/primo_euf_solver_tests for the temporary patch",
+          "source patch reverted; git diff was empty before recording this documentation-only entry",
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json",
+          "make docs"
+        ],
+        "pending": [],
+        "warnings": [
+          "Evidence is local-only and timing-sensitive.",
+          "No accepted solver behavior change remains from the temporary patch.",
+          "No fuzz gate was run because the behavior-changing source patch was rejected and reverted."
+        ]
+      },
+      "evidence_status": "rejected",
+      "notes": "This rejected experiment is stronger evidence than the previous proof-forest-only matrix: a simple reason-length fallback cannot recover the proof-forest wins without PEQ/SEQ regressions."
     }
   ]
 }

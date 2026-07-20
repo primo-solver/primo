@@ -564,3 +564,15 @@ Section 5-style explanations: preserve the cheaper proof traversal only when it
 does not emit clauses that are materially worse for SAT search, or implement a
 fuller Section 4/5 proof-forest and reorientation design whose invariants
 control both explanation cost and learned-clause shape.
+
+A direct follow-up tried the simplest such guard as a temporary default-off
+mode: construct the proof-forest reason first, emit it only when it has at most
+64 literals, and otherwise fall back to the current BFS reason. The focused
+flat-CC oracle test passed, but the mixed local matrix rejected the idea.
+Guarded proof forest still timed out on `PEQ002_size8` and `PEQ003_size10`,
+regressed `NEQ023_size7` and `SEQ026_size7`, and had worse PAR2 than both the
+default and unguarded proof-forest modes. The lesson is that post-construction
+reason-length fallback is too late and too costly. A useful guard must predict
+or shape proof obligations before constructing a large proof reason, or the
+implementation must move closer to the full Section 4/5 reorientation policy
+so that path cost and emitted clause shape improve together.
