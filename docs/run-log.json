@@ -7864,6 +7864,77 @@
       },
       "evidence_status": "current_local",
       "notes": "The remaining CC performance target is still a paper-derived Section 5 Explain design with reason-quality safeguards. The diagnostic parent forest is only a bounded path-length probe. QF_UF FuzzSMT passed 1000/1000 against Z3 with seed 2026072005: sat 892, unsat 108, wrong 0, crash 0, timeout 0, bug files 0."
+    },
+    {
+      "id": "2026-07-20-local-cc-cleanroom-proof-diagnostic-review",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Clean-room FlatCongruenceClosure review against Nieuwenhuis-Oliveras Section 3 and Section 5 explanation obligations",
+      "commit": "f5549ea",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Reviewed src/theory/equality/flat_congruence_closure.{hpp,cpp}, tests/unit/euf_solver_tests.cpp, docs/papers/fast-congruence-closure-implementation.md, allowed high-level behavior in /tmp/llm2smt/src/theories/euf, and Nieuwenhuis-Oliveras Fast congruence closure and extensions Sections 3 and 5; ran ./build/primo_euf_solver_tests and local proof-forest diagnostic probes.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats [--euf-proof-forest-diagnostics]"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT",
+          "argv": "clean-room behavior/design inspection only, no source copied"
+        },
+        {
+          "name": "Nieuwenhuis-Oliveras",
+          "argv": "Fast congruence closure and extensions, Information and Computation 205 (2007), Sections 3 and 5"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 2,
+        "timeout_seconds": 20,
+        "manifest": null,
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen005.smt2"
+        ]
+      },
+      "artifacts": {
+        "summary": "results/local-cc-cleanroom-proof-diagnostic-review-20260720.csv",
+        "results": "/tmp/neq023-*.err and /tmp/iso005-*.err local scratch, not committed",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "audit": "No new active Section 3 congruence-discovery or rollback soundness bug was found in Primo's emitted-default path. The current hotspot remains explanation traversal: iso_icl_repgen005 reported 7832965 explain calls and 5341921 BFS searches.",
+        "clean_room_reference_observation": "The allowed reference checkout exposes a proof-producing explanation path with a per-call auxiliary union-find and SAT decision callback behavior. This was used only as behavioral evidence; no source, comments, tests, build logic, or docs were copied.",
+        "diagnostic_limitation": "Primo's --euf-proof-forest-diagnostics mode records representative parent paths only. A real Section 5 proof edge must also account for the original endpoint in the merged class when that endpoint is not the representative, so the diagnostic can understate the work and reason size of a full proof-forest Explain replacement.",
+        "local_shape": "NEQ023_size7 proof-parent diagnostics: 26728 queries, 44734 proof path edges versus 49176 BFS path edges, shorter/equal/longer 3907/22025/796, missing LCA 0. iso_icl_repgen005: 5341921 queries, 9482620 proof path edges versus 9390461 BFS path edges, shorter/equal/longer 331218/4547349/463354, missing LCA 0.",
+        "decision": "Do not replace BFS with the current representative-only proof-parent diagnostic. The next CC implementation should be a paper-derived Section 5 Explain design with endpoint-label obligations, auxiliary union-find/highest-node mechanics, and reason-quality safeguards."
+      },
+      "verification": {
+        "passed": [
+          "./build/primo_euf_solver_tests",
+          "timeout 30s ./build/primo --quiet --stats --euf-proof-forest-diagnostics tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "timeout 30s ./build/primo --quiet --stats --euf-proof-forest-diagnostics tmp/QF_UF/QG-classification/qg7/iso_icl_repgen005.smt2",
+          "python3 -m json.tool docs/run-log.json",
+          "make docs"
+        ],
+        "pending": [
+          "make test",
+          "make check",
+          "make asan-test",
+          "make lint",
+          "fresh fuzz gate, required before any future solver-behavior change is presented as complete"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This is review evidence and documentation synchronization only; it does not change solver behavior and is not reference parity."
     }
   ]
 }

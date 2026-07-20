@@ -420,3 +420,36 @@ link and stop parent walks at the same causal edge bound used by recursive BFS
 explanations. The diagnostic is still only a path-length comparison beside the
 current BFS reason engine; it is not the Section 5 `Explain` algorithm and does
 not emit proof-forest reasons.
+
+A clean-room comparison against the allowed local reference checkout and a fresh
+read of Sections 3 and 5 of Nieuwenhuis-Oliveras refined that limitation. The
+reference behavior includes a proof-producing explanation path with a per-call
+auxiliary union-find, while Primo's active implementation still emits reasons
+from the causally bounded equality-edge BFS. Primo's
+`--euf-proof-forest-diagnostics` mode is useful for checking whether
+representative proof-parent LCAs exist, but it is not an exact predictor of
+Section 5 explanation cost: a real proof edge must also account for the original
+endpoint in the merged class when that endpoint is not the representative. The
+current diagnostic stores only the representative parent edge and therefore can
+understate the extra sub-explanation work a full proof-forest replacement would
+need.
+
+The same review did not find a new Section 3 congruence-discovery or rollback
+bug in the emitted-default path. The lookup table still has the intended
+Primo-specific backtracking discipline: entries inserted after a checkpoint are
+trailed and removed, older keys may become stale after merges, and current
+probes use current representatives so stale keys containing dead
+representatives are not reachable until rollback restores those
+representatives. Use-list entries remain duplicate-tolerant and are deduplicated
+only when an affected representative is processed.
+
+Local proof-diagnostic probes on `NEQ023_size7` and `iso_icl_repgen005` showed
+why the next CC implementation needs a guarded paper-derived design rather than
+a direct parent-path substitution. On `NEQ023_size7`, diagnostic proof-parent
+paths were shorter than BFS on 3907 queries, equal on 22025, longer on 796, and
+had no missing LCAs. On `iso_icl_repgen005`, they were shorter on 331218
+queries, equal on 4547349, longer on 463354, and had no missing LCAs. The
+`iso_icl_repgen005` run still spent 7.83M calls and 5.34M BFS searches in
+explanation, so the hotspot is real, but the representative-only diagnostic
+does not justify replacing the emitted reason path without implementing the
+full Section 5 endpoint-label and auxiliary-union-find obligations.
