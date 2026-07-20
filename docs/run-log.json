@@ -8874,6 +8874,52 @@
       },
       "evidence_status": "rejected",
       "notes": "This narrows the next CC target: avoid another memoization pass and focus on proof obligation/reorientation policy or choose a different performance lever."
+    },
+    {
+      "id": "2026-07-20-local-online-conflict-final-check-reuse",
+      "recorded_at": "2026-07-20T09:12:00+02:00",
+      "kind": "local_benchmark",
+      "scope": "Reuse online/conflict propagator's incremental closure for the final per-solve EUF conflict check instead of rebuilding one from the complete assignment",
+      "commit": "b281ceb",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo",
+        "notes": "Differential run compared a pre-fix binary (build/primo_before, git checkout with the two check_sat.cpp hunks reverted) against the fixed build/primo."
+      },
+      "command": {
+        "build_and_test": "cmake --build build -j14 && ctest --test-dir build --output-on-failure",
+        "differential": "for f in $(shuf -n 500 <(find fuzz-results -iname '*.smt2')); do timeout 3 ./build/primo_before --quiet --euf-prop=conflict \"$f\"; timeout 3 ./build/primo --quiet --euf-prop=conflict \"$f\"; done, diffed per-file",
+        "stats_comparison": "./build/primo_before --quiet --stats --euf-prop=conflict benchmarks/regression/qf_uf/online_reason_cache.smt2; ./build/primo --quiet --stats --euf-prop=conflict benchmarks/regression/qf_uf/online_reason_cache.smt2"
+      },
+      "benchmark": {
+        "suite": "500-file random sample of locally cached fuzz-results/**/*.smt2 QF_UF instances, plus benchmarks/regression/qf_uf/online_reason_cache.smt2",
+        "logic": "QF_UF",
+        "timeout_seconds": 3
+      },
+      "artifacts": {
+        "note": "Differential run used session scratch files under /tmp, not preserved as repo artifacts; result distribution and stats deltas are recorded in the summary below."
+      },
+      "summary": {
+        "differential": "500/500 files agreed between pre-fix and fixed binaries under --euf-prop=conflict (454 sat, 46 unsat on both sides), 0 mismatches.",
+        "stats_delta": "On online_reason_cache.smt2 under --euf-prop=conflict: :euf.incremental.merges 17630 to 17485, :euf.incremental.lookup-probes 17945 to 17619, :euf.incremental.disequality-checks 12570 to 12268. :euf.checks stayed at 1, confirming the online/conflict propagator resolves the assignment internally in one solve() call in these instances, so the eliminated rebuild is a fixed one-time O(atoms) pass per solve rather than one per theory conflict.",
+        "decision": "Accepted. Also fixes a stats double-counting artifact where the rebuilt closure's counters were published on top of the propagator's own accumulated counters."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build -j14 (all targets) then ctest --test-dir build --output-on-failure: 7/7 passed",
+          "500-file differential run: 0 mismatches",
+          "clang-format --dry-run --Werror on changed files: clean",
+          "bash scripts/build_docs.sh: build succeeded"
+        ],
+        "pending": [],
+        "warnings": [
+          "Local-only evidence; no SLURM/full-benchmark-scale confirmation of the performance delta.",
+          "Sample corpus is locally cached fuzz-results output, not a tracked/reproducible manifest."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Two new regression tests added in the same commit: one pins that --euf-prop=conflict resolves in a single outer theory-check pass, one guards the EufEngine::Lazy + Online/Conflict combination (no persistent closure to reuse) against silently reporting Sat on an unsat instance."
     }
   ]
 }
