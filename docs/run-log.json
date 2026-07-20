@@ -8569,6 +8569,65 @@
       },
       "evidence_status": "current_local",
       "notes": "This closes one concrete CC rollback issue and strengthens proof-forest tests/documentation, but it does not close the broad reference performance gap. The remaining CC work is explanation quality and proof-forest policy, not another SAT phase knob."
+    },
+    {
+      "id": "2026-07-20-local-rejected-proof-forest-hybrid",
+      "recorded_at": "2026-07-20T09:05:00+02:00",
+      "kind": "local_benchmark",
+      "scope": "Mixed-manifest proof-forest and hybrid proof-forest explanation policy evaluation",
+      "commit": "628abbe",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo and /tmp/llm2smt/build/bin/llm2smt",
+        "notes": "Temporary source experiments for proof-obligation caching and hybrid-proof-forest mode were measured and reverted before this run-log entry."
+      },
+      "command": {
+        "default": "python3 scripts/bench_qf_uf_full.py --root . --manifest results/local-gap-triage-20260720/current-head-mixed-neq-manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 10 --out results/local-proof-forest-20260720/default-51.csv --summary results/local-proof-forest-20260720/default-51-summary.csv",
+        "proof_forest": "python3 scripts/bench_qf_uf_full.py --root . --manifest results/local-gap-triage-20260720/current-head-mixed-neq-manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-explain-search --solver-arg=proof-forest --timeout 10 --out results/local-proof-forest-20260720/proof-forest-51.csv --summary results/local-proof-forest-20260720/proof-forest-51-summary.csv",
+        "proof_forest_cache_patch": "same command with temporary proof-forest internal proof-obligation cache patch, writing results/local-proof-forest-20260720/proof-forest-cache-51.csv",
+        "hybrid_patch": "same command with temporary --euf-explain-search=hybrid-proof-forest mode, writing results/local-proof-forest-20260720/hybrid-proof-forest-51.csv",
+        "llm2smt_reference": "python3 scripts/bench_qf_uf_full.py --root . --manifest results/local-gap-triage-20260720/current-head-mixed-neq-manifest.txt --solver /tmp/llm2smt/build/bin/llm2smt --solver-arg=--quiet --solver-arg=--stats --solver-arg=--preprocess-passes --solver-arg=4 --solver-arg=--eq-bridge --solver-arg=--uf-symmetry-breaking --solver-arg=--prop-interval --solver-arg=32 --solver-arg=--prop-assign-threshold --solver-arg=0.25 --solver-arg=--prop-delivery-budget --solver-arg=1000 --timeout 10 --out results/local-proof-forest-20260720/llm2smt-tuned-51.csv --summary results/local-proof-forest-20260720/llm2smt-tuned-51-summary.csv"
+      },
+      "benchmark": {
+        "suite": "51-row local mixed QG/NEQ/PEQ/SEQ/Goel manifest",
+        "logic": "QF_UF",
+        "timeout_seconds": 10,
+        "manifest": "results/local-gap-triage-20260720/current-head-mixed-neq-manifest.txt"
+      },
+      "artifacts": {
+        "default": "results/local-proof-forest-20260720/default-51.csv",
+        "default_summary": "results/local-proof-forest-20260720/default-51-summary.csv",
+        "proof_forest": "results/local-proof-forest-20260720/proof-forest-51.csv",
+        "proof_forest_summary": "results/local-proof-forest-20260720/proof-forest-51-summary.csv",
+        "proof_forest_cache": "results/local-proof-forest-20260720/proof-forest-cache-51.csv",
+        "hybrid": "results/local-proof-forest-20260720/hybrid-proof-forest-51.csv",
+        "llm2smt_reference": "results/local-proof-forest-20260720/llm2smt-tuned-51.csv"
+      },
+      "summary": {
+        "default": "solved 48/51, wrong 0, timeouts 3, PAR2 127.272",
+        "proof_forest": "solved 47/51, wrong 0, timeouts 4, PAR2 140.418. It helped SEQ026_size7 by 4.081s, NEQ016_size7 by 1.817s, and PEQ016_size7 by 1.036s, but timed out on PEQ003_size10 where default solved in 8.934s and regressed NEQ046_size6 by 3.821s.",
+        "proof_forest_cache_patch": "solved 47/51, wrong 0, timeouts 4, PAR2 140.244. The internal proof-obligation cache was only a 0.174 PAR2 improvement over proof-forest and did not remove the extra PEQ timeout.",
+        "hybrid_patch": "solved 48/51, wrong 0, timeouts 3, PAR2 128.702. The thresholded hybrid avoided the extra PEQ timeout but missed the main proof-forest wins and remained 1.430 PAR2 worse than default.",
+        "llm2smt_reference": "The local tuned LLM2SMT run solved 43/51 with PAR2 229.053 at 10s on this workstation, so it is not used as headline reference evidence for this slice. It was used only to keep option parity visible.",
+        "decision": "Rejected. Do not promote proof-forest, proof-obligation caching, or the first hybrid threshold as default behavior. Keep proof-forest as an explicit tuning knob; the next CC direction needs either a better reason-quality guard or a fuller paper-grounded proof-forest/reorientation design."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j2 && ./build/primo_euf_solver_tests for the temporary proof-obligation-cache and hybrid patches",
+          "source patches reverted; git diff was empty before recording this documentation-only entry",
+          "python3 -m json.tool docs/run-log.json >/tmp/run-log.pretty.json",
+          "make docs"
+        ],
+        "pending": [],
+        "warnings": [
+          "Evidence is local-only and timing-sensitive.",
+          "No accepted solver behavior change remains from the temporary patches.",
+          "No SLURM headline benchmark claim is made."
+        ]
+      },
+      "evidence_status": "rejected",
+      "notes": "This matrix explains why the tempting iso_icl_repgen006 proof-forest win is not enough: mixed PEQ/NEQ/SEQ guard rows expose regressions that erase the targeted wins."
     }
   ]
 }
