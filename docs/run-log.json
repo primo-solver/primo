@@ -7376,7 +7376,7 @@
       "recorded_at": "2026-07-20",
       "kind": "local_benchmark",
       "scope": "Same-binary local probe for opt-in bidirectional flat EUF explanation search",
-      "commit": "uncommitted",
+      "commit": "d63f6d6",
       "environment": {
         "type": "local",
         "host": "workspace",
