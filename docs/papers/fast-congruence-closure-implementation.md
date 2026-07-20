@@ -533,3 +533,16 @@ that improves recursive congruence-premise explanation without changing SAT
 search badly on nearby NEQ/PEQ/QG rows. Any accepted change needs independent
 reason-oracle tests, QF_UF fuzzing, and SLURM evidence before it can be promoted
 from local diagnostic evidence.
+
+A follow-up micro-optimization tried to replace the proof-forest explainer's
+full per-query auxiliary union-find initialization with generation-stamped lazy
+node initialization. This is compatible with the paper's scratch `Explain`
+union-find idea, but the local evidence rejected it as an implementation
+priority. The focused EUF oracle tests passed after sentinel handling was fixed,
+yet the same matrix did not improve: `NEQ016_size7` proof-forest remained around
+2.5 seconds, `NEQ023_size7` still regressed relative to default, and
+`iso_icl_repgen005` became slightly worse in that run. On `NEQ016_size8` with
+`--max-theory-conflicts 50000`, proof-forest moved from the previous 2.49
+seconds to about 2.80 seconds. The patch was reverted. The remaining cost is
+therefore not dominated by zeroing the auxiliary arrays; it is still the proof
+path obligations, reason shape, and resulting SAT search.
