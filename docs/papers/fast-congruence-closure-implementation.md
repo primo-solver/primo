@@ -360,3 +360,15 @@ and `PEQ019_size7` and reduced BFS visits on `NEQ016_size8`, but it regressed
 so SMAC and focused local runs can test whether bidirectional search is useful
 inside a family-specific profile while the validated default remains
 one-sided BFS.
+
+The next review step added `--euf-proof-forest-diagnostics`, a default-off
+measurement mode that maintains a rollback-aware proof-parent forest beside the
+existing explanation graph. This is still not the Section 4-5 `Explain`
+algorithm: emitted conflict and propagation clauses continue to use the current
+causally bounded BFS reasons. The diagnostic records how many cache-miss
+explanation queries have a proof-forest path, the total proof-path edge count,
+the maximum path length, and missing-LCA cases. A local probe found no missing
+LCAs on the sampled rows. It also showed why a direct proof-forest replacement
+needs reason-quality safeguards: proof-path edge counts were lower than BFS path
+edge counts on `NEQ016_size7` and `PEQ019_size7`, but higher on
+`PEQ002_size8`, the same row where earlier reason-shape experiments regressed.

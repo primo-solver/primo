@@ -323,6 +323,13 @@ reduce BFS visits on some NEQ/PEQ rows, but it changes selected proof paths and
 has known PEQ regressions in the local run log. It is therefore a tuning and
 diagnostic knob, not a default and not the paper's Section 4-5 proof-forest
 algorithm.
+`--euf-proof-forest-diagnostics` maintains a rollback-aware proof-parent forest
+beside the current explanation graph and records path-length counters for
+cache-miss explanation queries. The flag does not change emitted conflict or
+propagation clauses. It is a measurement tool for deciding whether a later
+Section 4-5 proof-forest explanation engine is worth implementing for a given
+family; local probes show that proof paths can be shorter on some NEQ/PEQ rows
+but longer on `PEQ002_size8`.
 Online-mode checkpoints are created lazily on the first theory assignment in a
 SAT decision level, so levels with only Boolean search do not allocate closure
 rollback state. Checkpoints remember vector sizes, conflict state, stats, and

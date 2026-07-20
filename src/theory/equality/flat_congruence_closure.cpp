@@ -32,8 +32,10 @@ std::size_t FlatCongruenceClosure::ExplanationKeyHash::operator()(const Explanat
 }
 
 FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count,
-                                             FlatExplanationSearchMode explanation_search_mode)
-    : explanation_search_mode_(explanation_search_mode) {
+                                             FlatExplanationSearchMode explanation_search_mode,
+                                             bool proof_forest_diagnostics)
+    : explanation_search_mode_(explanation_search_mode),
+      proof_forest_diagnostics_(proof_forest_diagnostics) {
   definitions_.reserve(node_count);
   definition_by_result_.reserve(node_count);
   lookup_.reserve(node_count);
@@ -72,6 +74,7 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   use_list_marks_.resize(state.node_count);
   disequality_lists_.resize(state.node_count);
   edge_adjacency_.resize(state.node_count);
+  proof_parent_.resize(state.node_count);
   conflict_ = std::move(state.conflict);
   stats_ = state.stats;
   ++stats_.backtracks;
@@ -90,6 +93,9 @@ void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {
   use_list_marks_.resize(node_count);
   disequality_lists_.resize(node_count);
   edge_adjacency_.resize(node_count);
+  if (proof_forest_diagnostics_) {
+    proof_parent_.resize(node_count, kInvalidFlatTermId);
+  }
   for (std::size_t i = old_size; i < node_count; ++i) {
     parent_[i] = i;
     class_size_[i] = 1;
@@ -243,6 +249,7 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
   if (class_size_[lhs_repr] > class_size_[rhs_repr]) {
     std::swap(lhs_repr, rhs_repr);
   }
+  const FlatTermId proof_to = representative(pending.lhs) == lhs_repr ? pending.rhs : pending.lhs;
 
   const std::size_t edge_index = edges_.size();
   edges_.push_back(Edge{lhs, rhs, std::move(pending.reason), pending.congruence,
@@ -288,6 +295,9 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
   ++stats_.merges;
   if (pending.congruence) {
     ++stats_.congruence_merges;
+  }
+  if (proof_forest_diagnostics_) {
+    record_proof_parent(lhs_repr, proof_to);
   }
   check_disequalities_touching(lhs_repr, rhs_repr);
   if (conflict_.has_value()) {
@@ -451,6 +461,11 @@ void FlatCongruenceClosure::restore_trail_entry(TrailEntry& entry) {
     case TrailKind::DefinitionByResultInsertion:
       definition_by_result_.erase(static_cast<FlatTermId>(entry.index));
       return;
+    case TrailKind::ProofParent:
+      if (entry.index < proof_parent_.size()) {
+        proof_parent_[entry.index] = entry.flat_value;
+      }
+      return;
   }
 }
 
@@ -578,6 +593,63 @@ bool FlatCongruenceClosure::append_edge_reason(std::size_t edge_index,
   return true;
 }
 
+void FlatCongruenceClosure::record_proof_parent(FlatTermId from, FlatTermId to) {
+  if (from >= proof_parent_.size() || to >= proof_parent_.size()) {
+    return;
+  }
+  if (!checkpoints_.empty()) {
+    TrailEntry entry;
+    entry.kind = TrailKind::ProofParent;
+    entry.index = from;
+    entry.flat_value = proof_parent_[from];
+    trail_.push_back(std::move(entry));
+    ++stats_.trail_entries;
+  }
+  proof_parent_[from] = to;
+}
+
+void FlatCongruenceClosure::record_proof_forest_path_length(FlatTermId lhs, FlatTermId rhs) const {
+  if (!proof_forest_diagnostics_ || lhs == rhs || lhs >= proof_parent_.size() ||
+      rhs >= proof_parent_.size()) {
+    return;
+  }
+  ++stats_.explain_proof_forest_queries;
+  if (proof_lca_marks_.size() < proof_parent_.size()) {
+    proof_lca_marks_.resize(proof_parent_.size(), 0);
+    proof_lca_depths_.resize(proof_parent_.size(), 0);
+  }
+  ++proof_lca_generation_;
+  if (proof_lca_generation_ == 0) {
+    std::fill(proof_lca_marks_.begin(), proof_lca_marks_.end(), 0);
+    ++proof_lca_generation_;
+  }
+
+  FlatTermId current = lhs;
+  std::size_t lhs_depth = 0;
+  while (current != kInvalidFlatTermId && current < proof_parent_.size() &&
+         proof_lca_marks_[current] != proof_lca_generation_) {
+    proof_lca_marks_[current] = proof_lca_generation_;
+    proof_lca_depths_[current] = lhs_depth;
+    current = proof_parent_[current];
+    ++lhs_depth;
+  }
+
+  current = rhs;
+  std::size_t rhs_depth = 0;
+  while (current != kInvalidFlatTermId && current < proof_parent_.size()) {
+    if (proof_lca_marks_[current] == proof_lca_generation_) {
+      const std::size_t path_edges = proof_lca_depths_[current] + rhs_depth;
+      stats_.explain_proof_forest_path_edges += path_edges;
+      stats_.explain_proof_forest_max_path_edges =
+          std::max(stats_.explain_proof_forest_max_path_edges, path_edges);
+      return;
+    }
+    current = proof_parent_[current];
+    ++rhs_depth;
+  }
+  ++stats_.explain_proof_forest_missing_lca;
+}
+
 bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
                                                std::vector<sat::Lit>& reason,
                                                std::size_t max_edge_index) const {
@@ -605,6 +677,7 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
     }
     ++stats_.explain_cache_bound_misses;
   }
+  record_proof_forest_path_length(lhs, rhs);
   stats_.explain_max_recursion_depth =
       std::max(stats_.explain_max_recursion_depth, explanation_depth_);
   if (visit_marks_.size() < parent_.size()) {

@@ -7416,6 +7416,48 @@
       },
       "evidence_status": "current_local",
       "notes": "Standard local verification passed before commit: make test, make check, make asan-test, make lint, make docs, and the recorded QF_UF FuzzSMT gate. Broader SMAC/SLURM evaluation can now include --euf-explain-search=bidirectional as a knob."
+    },
+    {
+      "id": "2026-07-20-local-euf-proof-forest-diagnostics",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_benchmark",
+      "scope": "Default-off proof-forest path-length diagnostic for flat EUF explanations",
+      "commit": "uncommitted",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build --target primo primo_euf_solver_tests -j2; ctest --test-dir build -R primo_euf_solver_tests --output-on-failure; for f in NEQ016_size7, PEQ019_size7, PEQ002_size8 run timeout 45s ./build/primo --quiet --stats --euf-proof-forest-diagnostics $f; PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --euf-proof-forest-diagnostics' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026072004 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-proofdiag-1000",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-proof-forest-diagnostics"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2"
+        ],
+        "timeout_seconds": 45
+      },
+      "artifacts": {
+        "last_probe_stdout": "/tmp/proofdiag-run.out",
+        "last_probe_stderr": "/tmp/proofdiag-run.err",
+        "fuzz_summary_csv": "fuzz-results/qf_uf-fuzzsmt-proofdiag-1000/summary.csv",
+        "fuzz_generated_inputs": "fuzz-results/qf_uf-fuzzsmt-proofdiag-1000/generated",
+        "fuzz_bugs_dir": "fuzz-results/qf_uf-fuzzsmt-proofdiag-1000/bugs"
+      },
+      "summary": {
+        "NEQ016_size7": "unsat in 5.18s; BFS searches 2,941,496, BFS visited 29,198,449, BFS path edges 12,005,743, proof-forest path edges 11,518,651, max proof path 95, missing LCA 0.",
+        "PEQ019_size7": "unsat in 0.94s; BFS searches 397,592, BFS visited 3,837,930, BFS path edges 1,745,828, proof-forest path edges 1,598,418, max proof path 41, missing LCA 0.",
+        "PEQ002_size8": "unsat in 17.99s; BFS searches 9,501,485, BFS visited 93,056,417, BFS path edges 38,770,005, proof-forest path edges 43,232,810, max proof path 68, missing LCA 0.",
+        "fuzz": "QF_UF FuzzSMT merge gate with --euf-proof-forest-diagnostics passed 1000/1000 against Z3; ours sat 895, unsat 105; wrong 0, crash 0, timeout 0.",
+        "decision": "Accepted as a diagnostic only. It confirms the current CC has a coherent rollback-aware proof forest, but a proof-forest reason engine is not automatically a PEQ win because proof-path edge count can be worse than the current BFS path shape."
+      },
+      "evidence_status": "current_local",
+      "notes": "This option does not change emitted clauses. It is intended to guide a future paper-derived Section 4-5 explanation implementation before changing reason production."
     }
   ]
 }

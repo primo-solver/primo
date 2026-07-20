@@ -22,7 +22,8 @@ class FlatCongruenceClosure {
  public:
   explicit FlatCongruenceClosure(
       std::size_t node_count = 0,
-      FlatExplanationSearchMode explanation_search_mode = FlatExplanationSearchMode::OneSidedBfs);
+      FlatExplanationSearchMode explanation_search_mode = FlatExplanationSearchMode::OneSidedBfs,
+      bool proof_forest_diagnostics = false);
 
   std::size_t push();
   void pop(std::size_t checkpoint);
@@ -102,6 +103,7 @@ class FlatCongruenceClosure {
     EdgeAdjacencyPop,
     LookupInsertion,
     DefinitionByResultInsertion,
+    ProofParent,
   };
 
   struct TrailEntry {
@@ -148,6 +150,8 @@ class FlatCongruenceClosure {
   bool append_edge_reason(std::size_t edge_index, std::vector<sat::Lit>& reason) const;
   bool explain_equal_into(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason,
                           std::size_t max_edge_index) const;
+  void record_proof_parent(FlatTermId from, FlatTermId to);
+  void record_proof_forest_path_length(FlatTermId lhs, FlatTermId rhs) const;
 
   std::vector<FlatTermId> parent_;
   std::vector<std::size_t> class_size_;
@@ -160,6 +164,7 @@ class FlatCongruenceClosure {
   std::vector<Disequality> disequalities_;
   std::vector<std::vector<std::size_t>> disequality_lists_;
   std::vector<Edge> edges_;
+  std::vector<FlatTermId> proof_parent_;
   std::vector<FlatTermId> changed_terms_;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Checkpoint> checkpoints_;
@@ -175,6 +180,9 @@ class FlatCongruenceClosure {
   mutable std::vector<FlatTermId> queue_scratch_;
   mutable std::vector<FlatTermId> reverse_queue_scratch_;
   mutable std::vector<std::vector<std::size_t>> path_edges_scratch_;
+  mutable std::vector<std::size_t> proof_lca_marks_;
+  mutable std::vector<std::size_t> proof_lca_depths_;
+  mutable std::size_t proof_lca_generation_ = 0;
   mutable std::unordered_map<ExplanationKey, std::size_t, ExplanationKeyHash> explanation_cache_;
   mutable std::size_t explanation_depth_ = 0;
   mutable std::size_t visit_generation_ = 0;
@@ -183,6 +191,7 @@ class FlatCongruenceClosure {
   std::vector<std::size_t> use_list_marks_;
   std::size_t use_list_generation_ = 0;
   FlatExplanationSearchMode explanation_search_mode_ = FlatExplanationSearchMode::OneSidedBfs;
+  bool proof_forest_diagnostics_ = false;
 
   friend class FlatCongruenceClosureTestAccess;
 };

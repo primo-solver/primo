@@ -186,6 +186,14 @@ constexpr util::StatKey kStatEufIncrementalExplainBfsPathEdges =
     util::StatKey::EufIncrementalExplainBfsPathEdges;
 constexpr util::StatKey kStatEufIncrementalExplainBfsMaxQueue =
     util::StatKey::EufIncrementalExplainBfsMaxQueue;
+constexpr util::StatKey kStatEufIncrementalExplainProofForestQueries =
+    util::StatKey::EufIncrementalExplainProofForestQueries;
+constexpr util::StatKey kStatEufIncrementalExplainProofForestPathEdges =
+    util::StatKey::EufIncrementalExplainProofForestPathEdges;
+constexpr util::StatKey kStatEufIncrementalExplainProofForestMaxPathEdges =
+    util::StatKey::EufIncrementalExplainProofForestMaxPathEdges;
+constexpr util::StatKey kStatEufIncrementalExplainProofForestMissingLca =
+    util::StatKey::EufIncrementalExplainProofForestMissingLca;
 constexpr util::StatKey kStatEufIncrementalExplainCausalEdgeSkips =
     util::StatKey::EufIncrementalExplainCausalEdgeSkips;
 constexpr util::StatKey kStatEufIncrementalExplainDirectEdges =
@@ -1253,6 +1261,17 @@ void add_incremental_stats(util::Statistics& statistics,
   if (stats.explain_bfs_max_queue > statistics.get(kStatEufIncrementalExplainBfsMaxQueue)) {
     statistics.set(kStatEufIncrementalExplainBfsMaxQueue, stats.explain_bfs_max_queue);
   }
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainProofForestQueries,
+                            stats.explain_proof_forest_queries);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainProofForestPathEdges,
+                            stats.explain_proof_forest_path_edges);
+  if (stats.explain_proof_forest_max_path_edges >
+      statistics.get(kStatEufIncrementalExplainProofForestMaxPathEdges)) {
+    statistics.set(kStatEufIncrementalExplainProofForestMaxPathEdges,
+                   stats.explain_proof_forest_max_path_edges);
+  }
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainProofForestMissingLca,
+                            stats.explain_proof_forest_missing_lca);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCausalEdgeSkips,
                             stats.explain_causal_edge_skips);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainDirectEdges,
@@ -1320,6 +1339,10 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.explain_bfs_visited, rhs.explain_bfs_visited),
       positive_delta(lhs.explain_bfs_path_edges, rhs.explain_bfs_path_edges),
       lhs.explain_bfs_max_queue,
+      positive_delta(lhs.explain_proof_forest_queries, rhs.explain_proof_forest_queries),
+      positive_delta(lhs.explain_proof_forest_path_edges, rhs.explain_proof_forest_path_edges),
+      lhs.explain_proof_forest_max_path_edges,
+      positive_delta(lhs.explain_proof_forest_missing_lca, rhs.explain_proof_forest_missing_lca),
       positive_delta(lhs.explain_causal_edge_skips, rhs.explain_causal_edge_skips),
       positive_delta(lhs.explain_direct_edges, rhs.explain_direct_edges),
       positive_delta(lhs.explain_congruence_edges, rhs.explain_congruence_edges),
@@ -1445,7 +1468,7 @@ struct PreparedFlatTheory {
   PreparedFlatTheory(const core::TermManager& terms,
                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                      core::TermId true_term, core::TermId false_term,
-                     EufExplainSearchMode explain_search_mode);
+                     EufExplainSearchMode explain_search_mode, bool proof_forest_diagnostics);
 
   theory::equality::FlatTermIndex flat;
   theory::equality::FlatCongruenceClosure base_closure;
@@ -1474,8 +1497,10 @@ FlatAssignedTheoryAtom flatten_assigned_atom(theory::equality::FlatTermIndex& fl
 
 PreparedFlatTheory::PreparedFlatTheory(
     const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-    core::TermId true_term, core::TermId false_term, EufExplainSearchMode explain_search_mode)
-    : flat(terms), base_closure(0, flat_explanation_search_mode(explain_search_mode)) {
+    core::TermId true_term, core::TermId false_term, EufExplainSearchMode explain_search_mode,
+    bool proof_forest_diagnostics)
+    : flat(terms),
+      base_closure(0, flat_explanation_search_mode(explain_search_mode), proof_forest_diagnostics) {
   true_flat = flat.flatten(true_term);
   false_flat = flat.flatten(false_term);
   flat_atoms.reserve(theory_atoms.size());
@@ -1522,7 +1547,8 @@ std::optional<std::vector<sat::Lit>> flat_candidate_explanation(
 std::optional<sat::Clause> flat_model_propagation_clause_for(
     const core::TermManager& terms, const std::vector<AssignedTheoryAtom>& atoms,
     std::size_t candidate_index, core::TermId true_term, core::TermId false_term,
-    EufExplainSearchMode explain_search_mode, util::Statistics* statistics) {
+    EufExplainSearchMode explain_search_mode, bool proof_forest_diagnostics,
+    util::Statistics* statistics) {
   theory::equality::FlatTermIndex flat(terms);
   const theory::equality::FlatTermId true_flat = flat.flatten(true_term);
   const theory::equality::FlatTermId false_flat = flat.flatten(false_term);
@@ -1533,7 +1559,7 @@ std::optional<sat::Clause> flat_model_propagation_clause_for(
   }
 
   theory::equality::FlatCongruenceClosure closure(
-      flat.size(), flat_explanation_search_mode(explain_search_mode));
+      flat.size(), flat_explanation_search_mode(explain_search_mode), proof_forest_diagnostics);
   for (const theory::equality::FlatDefinition& definition : flat.definitions()) {
     closure.add_definition(definition);
   }
@@ -1577,11 +1603,12 @@ class IncrementalFlatAssignmentState {
                                  core::TermId true_term, core::TermId false_term,
                                  PureTheoryFilterMode pure_theory_filter,
                                  EufExplainSearchMode explain_search_mode,
-                                 util::Statistics& statistics, bool flush_live_stats)
+                                 bool proof_forest_diagnostics, util::Statistics& statistics,
+                                 bool flush_live_stats)
       : terms_(terms),
         pure_theory_filter_(pure_theory_filter),
         flat_(terms),
-        closure_(0, flat_explanation_search_mode(explain_search_mode)),
+        closure_(0, flat_explanation_search_mode(explain_search_mode), proof_forest_diagnostics),
         statistics_(statistics),
         flush_live_stats_(flush_live_stats) {
     true_flat_ = flat_.flatten(true_term);
@@ -1738,6 +1765,12 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.explain_bfs_path_edges += stats.explain_bfs_path_edges;
     accumulated_stats_.explain_bfs_max_queue =
         std::max(accumulated_stats_.explain_bfs_max_queue, stats.explain_bfs_max_queue);
+    accumulated_stats_.explain_proof_forest_queries += stats.explain_proof_forest_queries;
+    accumulated_stats_.explain_proof_forest_path_edges += stats.explain_proof_forest_path_edges;
+    accumulated_stats_.explain_proof_forest_max_path_edges =
+        std::max(accumulated_stats_.explain_proof_forest_max_path_edges,
+                 stats.explain_proof_forest_max_path_edges);
+    accumulated_stats_.explain_proof_forest_missing_lca += stats.explain_proof_forest_missing_lca;
     accumulated_stats_.explain_causal_edge_skips += stats.explain_causal_edge_skips;
     accumulated_stats_.explain_direct_edges += stats.explain_direct_edges;
     accumulated_stats_.explain_congruence_edges += stats.explain_congruence_edges;
@@ -1858,7 +1891,8 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     if (options_.euf_engine == EufEngine::Incremental) {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
                                  options_.pure_theory_filter, options_.euf_explain_search,
-                                 statistics_, options_.live_statistics != nullptr);
+                                 options_.euf_proof_forest_diagnostics, statistics_,
+                                 options_.live_statistics != nullptr);
       build_candidate_index();
     }
   }
@@ -2189,7 +2223,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
         options_.euf_engine == EufEngine::Incremental
             ? flat_model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_,
                                                 false_term_, options_.euf_explain_search,
-                                                &statistics_)
+                                                options_.euf_proof_forest_diagnostics, &statistics_)
             : model_propagation_clause_for(terms_, atoms, atoms.size() - 1, true_term_,
                                            false_term_);
     if (clause.has_value()) {
@@ -2395,7 +2429,8 @@ ModelPropagationResult learn_model_propagations(const core::TermManager& terms,
     std::optional<sat::Clause> clause =
         options.euf_engine == EufEngine::Incremental
             ? flat_model_propagation_clause_for(terms, atoms, i, true_term, false_term,
-                                                options.euf_explain_search, &statistics)
+                                                options.euf_explain_search,
+                                                options.euf_proof_forest_diagnostics, &statistics)
             : model_propagation_clause_for(terms, atoms, i, true_term, false_term);
     if (!clause.has_value()) {
       continue;
@@ -2544,7 +2579,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
   std::optional<PreparedFlatTheory> prepared_flat_theory;
   if (options.euf_engine == EufEngine::Incremental) {
     prepared_flat_theory.emplace(terms, clausifier.theory_atoms(), true_term, false_term,
-                                 options.euf_explain_search);
+                                 options.euf_explain_search, options.euf_proof_forest_diagnostics);
   }
 
 #if PRIMO_HAVE_IPASIR

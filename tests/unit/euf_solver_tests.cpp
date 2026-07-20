@@ -17,6 +17,7 @@ using primo::theory::equality::EufSolver;
 using primo::theory::equality::ExplainedCongruenceClosure;
 using primo::theory::equality::FlatCongruenceClosure;
 using primo::theory::equality::FlatCongruenceClosureTestAccess;
+using primo::theory::equality::FlatExplanationSearchMode;
 using primo::theory::equality::FlatTermIndex;
 using primo::theory::equality::IncrementalCongruenceClosure;
 
@@ -634,6 +635,27 @@ void flat_congruence_closure_backtracks_nested_merges() {
   check(closure.stats().backtracks == 1);
 }
 
+void flat_congruence_closure_proof_diagnostics_backtrack() {
+  FlatCongruenceClosure closure(4, FlatExplanationSearchMode::OneSidedBfs, true);
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+  const std::size_t checkpoint = closure.push();
+  closure.assert_equal(2, 3, {primo::sat::Lit{-2}});
+  closure.assert_equal(1, 2, {primo::sat::Lit{-3}});
+
+  const auto before_pop = closure.explain_equal(0, 3);
+  check(before_pop.has_value());
+  check(closure.stats().explain_proof_forest_queries >= 1);
+  check(closure.stats().explain_proof_forest_path_edges >= 1);
+  check(closure.stats().explain_proof_forest_missing_lca == 0);
+
+  closure.pop(checkpoint);
+  check(!closure.are_equal(0, 3));
+  const auto after_pop = closure.explain_equal(0, 1);
+  check(after_pop.has_value());
+  check(closure.stats().explain_proof_forest_queries >= 1);
+  check(closure.stats().explain_proof_forest_missing_lca == 0);
+}
+
 void flat_congruence_closure_backtracks_disequality_conflict() {
   FlatCongruenceClosure closure(2);
 
@@ -835,6 +857,7 @@ int main() {
   flat_congruence_closure_explanation_cache_respects_edge_bounds();
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_backtracks_nested_merges();
+  flat_congruence_closure_proof_diagnostics_backtrack();
   flat_congruence_closure_backtracks_disequality_conflict();
   flat_congruence_closure_backtracks_post_checkpoint_definitions();
   flat_congruence_closure_lookup_hit_definition_keeps_future_congruence();
