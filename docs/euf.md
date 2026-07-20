@@ -328,8 +328,10 @@ beside the current explanation graph and records path-length counters for
 cache-miss explanation queries. The flag does not change emitted conflict or
 propagation clauses. It is a measurement tool for deciding whether a later
 Section 4-5 proof-forest explanation engine is worth implementing for a given
-family; local probes show that proof paths can be shorter on some NEQ/PEQ rows
-but longer on `PEQ002_size8`.
+family. The diagnostic also classifies each measured proof-forest path as
+shorter than, equal to, or longer than the BFS path that actually emitted the
+current reason. Local probes show that proof paths can be shorter on some
+NEQ/PEQ rows but longer on `PEQ002_size8`.
 Online-mode checkpoints are created lazily on the first theory assignment in a
 SAT decision level, so levels with only Boolean search do not allocate closure
 rollback state. Checkpoints remember vector sizes, conflict state, stats, and

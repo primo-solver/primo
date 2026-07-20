@@ -151,7 +151,9 @@ class FlatCongruenceClosure {
   bool explain_equal_into(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason,
                           std::size_t max_edge_index) const;
   void record_proof_parent(FlatTermId from, FlatTermId to);
-  void record_proof_forest_path_length(FlatTermId lhs, FlatTermId rhs) const;
+  std::optional<std::size_t> proof_forest_path_length(FlatTermId lhs, FlatTermId rhs) const;
+  void record_proof_forest_path_comparison(std::size_t proof_path_edges,
+                                           std::size_t bfs_path_edges) const;
 
   std::vector<FlatTermId> parent_;
   std::vector<std::size_t> class_size_;

@@ -194,6 +194,12 @@ constexpr util::StatKey kStatEufIncrementalExplainProofForestMaxPathEdges =
     util::StatKey::EufIncrementalExplainProofForestMaxPathEdges;
 constexpr util::StatKey kStatEufIncrementalExplainProofForestMissingLca =
     util::StatKey::EufIncrementalExplainProofForestMissingLca;
+constexpr util::StatKey kStatEufIncrementalExplainProofForestShorterThanBfs =
+    util::StatKey::EufIncrementalExplainProofForestShorterThanBfs;
+constexpr util::StatKey kStatEufIncrementalExplainProofForestEqualToBfs =
+    util::StatKey::EufIncrementalExplainProofForestEqualToBfs;
+constexpr util::StatKey kStatEufIncrementalExplainProofForestLongerThanBfs =
+    util::StatKey::EufIncrementalExplainProofForestLongerThanBfs;
 constexpr util::StatKey kStatEufIncrementalExplainCausalEdgeSkips =
     util::StatKey::EufIncrementalExplainCausalEdgeSkips;
 constexpr util::StatKey kStatEufIncrementalExplainDirectEdges =
@@ -1272,6 +1278,12 @@ void add_incremental_stats(util::Statistics& statistics,
   }
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainProofForestMissingLca,
                             stats.explain_proof_forest_missing_lca);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainProofForestShorterThanBfs,
+                            stats.explain_proof_forest_shorter_than_bfs);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainProofForestEqualToBfs,
+                            stats.explain_proof_forest_equal_to_bfs);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainProofForestLongerThanBfs,
+                            stats.explain_proof_forest_longer_than_bfs);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainCausalEdgeSkips,
                             stats.explain_causal_edge_skips);
   increment_stat_if_nonzero(statistics, kStatEufIncrementalExplainDirectEdges,
@@ -1343,6 +1355,11 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.explain_proof_forest_path_edges, rhs.explain_proof_forest_path_edges),
       lhs.explain_proof_forest_max_path_edges,
       positive_delta(lhs.explain_proof_forest_missing_lca, rhs.explain_proof_forest_missing_lca),
+      positive_delta(lhs.explain_proof_forest_shorter_than_bfs,
+                     rhs.explain_proof_forest_shorter_than_bfs),
+      positive_delta(lhs.explain_proof_forest_equal_to_bfs, rhs.explain_proof_forest_equal_to_bfs),
+      positive_delta(lhs.explain_proof_forest_longer_than_bfs,
+                     rhs.explain_proof_forest_longer_than_bfs),
       positive_delta(lhs.explain_causal_edge_skips, rhs.explain_causal_edge_skips),
       positive_delta(lhs.explain_direct_edges, rhs.explain_direct_edges),
       positive_delta(lhs.explain_congruence_edges, rhs.explain_congruence_edges),
@@ -1771,6 +1788,11 @@ class IncrementalFlatAssignmentState {
         std::max(accumulated_stats_.explain_proof_forest_max_path_edges,
                  stats.explain_proof_forest_max_path_edges);
     accumulated_stats_.explain_proof_forest_missing_lca += stats.explain_proof_forest_missing_lca;
+    accumulated_stats_.explain_proof_forest_shorter_than_bfs +=
+        stats.explain_proof_forest_shorter_than_bfs;
+    accumulated_stats_.explain_proof_forest_equal_to_bfs += stats.explain_proof_forest_equal_to_bfs;
+    accumulated_stats_.explain_proof_forest_longer_than_bfs +=
+        stats.explain_proof_forest_longer_than_bfs;
     accumulated_stats_.explain_causal_edge_skips += stats.explain_causal_edge_skips;
     accumulated_stats_.explain_direct_edges += stats.explain_direct_edges;
     accumulated_stats_.explain_congruence_edges += stats.explain_congruence_edges;
@@ -2803,9 +2825,24 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufIncrementalExplainBfsVisited, 0);
   statistics.set(kStatEufIncrementalExplainBfsPathEdges, 0);
   statistics.set(kStatEufIncrementalExplainBfsMaxQueue, 0);
+  statistics.set(kStatEufIncrementalExplainProofForestQueries, 0);
+  statistics.set(kStatEufIncrementalExplainProofForestPathEdges, 0);
+  statistics.set(kStatEufIncrementalExplainProofForestMaxPathEdges, 0);
+  statistics.set(kStatEufIncrementalExplainProofForestMissingLca, 0);
+  statistics.set(kStatEufIncrementalExplainProofForestShorterThanBfs, 0);
+  statistics.set(kStatEufIncrementalExplainProofForestEqualToBfs, 0);
+  statistics.set(kStatEufIncrementalExplainProofForestLongerThanBfs, 0);
+  statistics.set(kStatEufIncrementalExplainCausalEdgeSkips, 0);
   statistics.set(kStatEufIncrementalExplainDirectEdges, 0);
   statistics.set(kStatEufIncrementalExplainCongruenceEdges, 0);
   statistics.set(kStatEufIncrementalExplainReasonDuplicateLiterals, 0);
+  statistics.set(kStatEufIncrementalConflictReasonMaxLength, 0);
+  statistics.set(kStatEufIncrementalConflictReasonLengthLe4, 0);
+  statistics.set(kStatEufIncrementalConflictReasonLengthLe8, 0);
+  statistics.set(kStatEufIncrementalConflictReasonLengthLe16, 0);
+  statistics.set(kStatEufIncrementalConflictReasonLengthLe32, 0);
+  statistics.set(kStatEufIncrementalConflictReasonLengthLe64, 0);
+  statistics.set(kStatEufIncrementalConflictReasonLengthGt64, 0);
   statistics.set(kStatEufIncrementalBacktracks, 0);
   statistics.set(kStatEufIncrementalTrailEntries, 0);
   statistics.set(kStatEufIncrementalClassMemberTrailEntriesSaved, 0);

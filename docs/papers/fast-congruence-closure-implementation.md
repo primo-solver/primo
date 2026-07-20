@@ -373,8 +373,10 @@ existing explanation graph. This is still not the Section 4-5 `Explain`
 algorithm: emitted conflict and propagation clauses continue to use the current
 causally bounded BFS reasons. The diagnostic records how many cache-miss
 explanation queries have a proof-forest path, the total proof-path edge count,
-the maximum path length, and missing-LCA cases. A local probe found no missing
-LCAs on the sampled rows. It also showed why a direct proof-forest replacement
-needs reason-quality safeguards: proof-path edge counts were lower than BFS path
-edge counts on `NEQ016_size7` and `PEQ019_size7`, but higher on
-`PEQ002_size8`, the same row where earlier reason-shape experiments regressed.
+the maximum path length, missing-LCA cases, and per-query shorter/equal/longer
+comparisons against the BFS path that actually emitted the reason. A local probe
+found no missing LCAs on the sampled rows. It also showed why a direct
+proof-forest replacement needs reason-quality safeguards: proof-path edge counts
+were lower than BFS path edge counts on `NEQ016_size7` and `PEQ019_size7`, but
+higher on `PEQ002_size8`, the same row where earlier reason-shape experiments
+regressed.

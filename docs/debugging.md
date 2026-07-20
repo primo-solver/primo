@@ -110,6 +110,9 @@ scripts and result artifacts. Current counters include:
 - `:euf.incremental.explain-calls`;
 - `:euf.incremental.explain-cache-hits`;
 - `:euf.incremental.explain-length`;
+- `:euf.incremental.explain-proof-forest.shorter-than-bfs`;
+- `:euf.incremental.explain-proof-forest.equal-to-bfs`;
+- `:euf.incremental.explain-proof-forest.longer-than-bfs`;
 - `:euf.incremental.backtracks`;
 - `:euf.incremental.trail-entries`;
 - `:euf.incremental.class-member-trail-entries-saved`.

@@ -7552,6 +7552,54 @@
       },
       "evidence_status": "current_local",
       "notes": "Wall-time movement on cheap rows is mostly noise; the value is removing avoidable inner-loop work before pursuing the larger paper-derived explanation design."
+    },
+    {
+      "id": "2026-07-20-local-cc-proof-forest-path-comparison",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Flat EUF proof-forest diagnostic review on representative QF_UF equality families",
+      "commit": "9804aa5",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build --target primo_euf_solver_tests primo -j2; ctest --test-dir build -R primo_euf_solver_tests --output-on-failure; for selected rows, run timeout ./build/primo --quiet --stats --euf-proof-forest-diagnostics and extract BFS/proof-forest path comparison counters.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-proof-forest-diagnostics"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2",
+          "tmp/QF_UF/SEQ/SEQ035_size6.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+        ],
+        "timeout_seconds": "20 seconds except PEQ002_size8 at 35 seconds"
+      },
+      "artifacts": {
+        "terminal_summary": "local command output in current agent run",
+        "fuzz_summary_csv": "fuzz-results/qf_uf-fuzzsmt-proofdiag-path-compare-1000/summary.csv",
+        "fuzz_generated_inputs": "fuzz-results/qf_uf-fuzzsmt-proofdiag-path-compare-1000/generated",
+        "fuzz_bugs_dir": "fuzz-results/qf_uf-fuzzsmt-proofdiag-path-compare-1000/bugs"
+      },
+      "summary": {
+        "diagnosis": "The current flat CC proof-parent forest has no missing LCAs on the sampled rows, but proof-forest paths are not uniformly shorter than the current BFS explanation paths. This supports continuing CC review around Section 4-5 explanation design and reason-quality safeguards rather than swapping in proof-forest paths blindly.",
+        "NEQ023_size7": "BFS path edges 49,176; proof-forest path edges 44,734; shorter/equal/longer queries 3,907/22,025/796; max conflict reason 14; large reasons 0.",
+        "PEQ019_size7": "BFS path edges 1,745,828; proof-forest path edges 1,598,418; shorter/equal/longer queries 105,021/236,926/55,645; max conflict reason 187; large reasons 1,239.",
+        "PEQ002_size8": "BFS path edges 38,770,005; proof-forest path edges 43,232,810; shorter/equal/longer queries 940,798/5,455,496/3,105,191; max conflict reason 173; large reasons 31,562.",
+        "SEQ035_size6": "BFS path edges 1,950,801; proof-forest path edges 2,000,013; shorter/equal/longer queries 81,394/907,482/106,818; max conflict reason 34; large reasons 0.",
+        "qg7_iso_icl_repgen006": "BFS path edges 2,722,807; proof-forest path edges 2,810,149; shorter/equal/longer queries 170,449/1,063,621/215,575; max conflict reason 45; large reasons 0.",
+        "qg7_iso_brn_repgen033": "BFS path edges 34,865; proof-forest path edges 36,152; shorter/equal/longer queries 305/12,246/1,010; max conflict reason 59; large reasons 0.",
+        "verification": "make test, make check, make asan-test, make lint, make docs, clang-tidy on touched C++ files, and QF_UF FuzzSMT 1000 against Z3 all passed. Fuzz results: PASS 1000, sat 892, unsat 108, wrong 0, crash 0, timeout 0.",
+        "decision": "Accepted as diagnostic instrumentation only. It does not change emitted EUF reasons, SAT decisions, propagation, or defaults."
+      },
+      "evidence_status": "current_local",
+      "notes": "The broad reference-parity goal remains open. A proof-forest explanation engine still needs a paper-derived design with clause-quality checks and full fuzz/benchmark validation before it can be considered as a default."
     }
   ]
 }

@@ -659,6 +659,10 @@ void flat_congruence_closure_proof_diagnostics_backtrack() {
   check(closure.stats().explain_proof_forest_queries >= 1);
   check(closure.stats().explain_proof_forest_path_edges >= 1);
   check(closure.stats().explain_proof_forest_missing_lca == 0);
+  check(closure.stats().explain_proof_forest_shorter_than_bfs +
+            closure.stats().explain_proof_forest_equal_to_bfs +
+            closure.stats().explain_proof_forest_longer_than_bfs >=
+        1);
 
   closure.pop(checkpoint);
   check(!closure.are_equal(0, 3));

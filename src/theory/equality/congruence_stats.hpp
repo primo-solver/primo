@@ -30,6 +30,9 @@ struct IncrementalCongruenceClosureStats {
   std::size_t explain_proof_forest_path_edges = 0;
   std::size_t explain_proof_forest_max_path_edges = 0;
   std::size_t explain_proof_forest_missing_lca = 0;
+  std::size_t explain_proof_forest_shorter_than_bfs = 0;
+  std::size_t explain_proof_forest_equal_to_bfs = 0;
+  std::size_t explain_proof_forest_longer_than_bfs = 0;
   std::size_t explain_causal_edge_skips = 0;
   std::size_t explain_direct_edges = 0;
   std::size_t explain_congruence_edges = 0;
