@@ -7559,7 +7559,7 @@
       "recorded_at": "2026-07-20",
       "kind": "local_profile",
       "scope": "Flat EUF proof-forest diagnostic review on representative QF_UF equality families",
-      "commit": "9804aa5",
+      "commit": "a7e9dd8",
       "environment": {
         "type": "local",
         "host": "workspace",
