@@ -7809,6 +7809,61 @@
       },
       "evidence_status": "current_local",
       "notes": "This patch changes an explicit tuning mode, not the default profile. It narrows auto phase based on current profiling and rejects both broad auto defaulting and the existing basic-polarity portfolio for this target. The QF_UF FuzzSMT gate for --theory-phase=auto passed 1000/1000 cases against Z3 with seed 2026072004: sat 895, unsat 105, wrong 0, crash 0, timeout 0, bug files 0."
+    },
+    {
+      "id": "2026-07-20-local-cc-invariant-review",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Focused FlatCongruenceClosure review against documented Nieuwenhuis-Oliveras Section 3/5 invariants",
+      "commit": "bf30266 plus current working-tree CC invariant patch",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Reviewed docs/papers/fast-congruence-closure*.md, src/theory/equality/flat_congruence_closure.{hpp,cpp}, and tests/unit/euf_solver_tests.cpp; ran ./build/primo_euf_solver_tests and ./build/primo --quiet --stats --euf-proof-forest-diagnostics on SEQ035_size6, PEQ002_size7, NEQ027_size8, and qg7/iso_icl_repgen006.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-proof-forest-diagnostics"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/SEQ/SEQ035_size6.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ027_size8.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen006.smt2"
+        ],
+        "timeout_seconds": 20
+      },
+      "artifacts": {
+        "proof_forest_diagnostic_csv": "results/local-cc-proof-forest-diagnostic-review-20260720.csv"
+      },
+      "summary": {
+        "audit": "No new Section 3 congruence-discovery or rollback soundness bug was found. Two invariant issues were fixed: conflicting duplicate flat definitions for one result id are now rejected, and proof-parent diagnostics now store merge-edge indices and obey recursive explanation causal bounds.",
+        "documentation_correction": "Older paper notes overclaimed that lookup entries always agree with current representatives and that use lists are exact. The implementation intentionally allows stale lookup keys and duplicate-tolerant use lists; docs now state current-signature probing and process-time deduplication.",
+        "diagnostic_shape": "Proof-parent LCAs were present on all four sampled rows after the bound-aware diagnostic change. Proof-path edge totals were lower than BFS on NEQ027_size8 (114301 vs 120736) but higher on SEQ035_size6 (1998243 vs 1949077), PEQ002_size7 (8331362 vs 7120376), and iso_icl_repgen006 (2810149 vs 2722807). This confirms that a naive proof-path replacement is not safe default performance work.",
+        "decision": "Accepted as correctness/diagnostic hygiene and documentation synchronization. It is not reference parity and not a Section 5 Explain implementation."
+      },
+      "verification": {
+        "passed": [
+          "clang-format -i src/theory/equality/flat_congruence_closure.hpp src/theory/equality/flat_congruence_closure.cpp tests/unit/euf_solver_tests.cpp",
+          "cmake --build build --target primo_euf_solver_tests -j2",
+          "./build/primo_euf_solver_tests",
+          "./build/primo --quiet --stats --euf-proof-forest-diagnostics tmp/QF_UF/NEQ/NEQ027_size8.smt2",
+          "local four-row proof-forest diagnostic CSV listed in artifacts"
+        ],
+        "pending": [
+          "make test",
+          "make check",
+          "make asan-test",
+          "make lint",
+          "make docs",
+          "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --seed 2026072005 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-cc-invariant-review-1000"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "The remaining CC performance target is still a paper-derived Section 5 Explain design with reason-quality safeguards. The diagnostic parent forest is only a bounded path-length probe. QF_UF FuzzSMT passed 1000/1000 against Z3 with seed 2026072005: sat 892, unsat 108, wrong 0, crash 0, timeout 0, bug files 0."
     }
   ]
 }

@@ -31,7 +31,7 @@ The default incremental path adds:
 - eager representatives and class lists;
 - affected-definition use lists;
 - sparse signature lookup for congruent flat applications;
-- a pending merge queue for explicit and congruence merges;
+- a pending merge worklist for explicit and congruence merges;
 - disequality conflict detection;
 - sparse `push`/`pop` checkpoints and an undo trail for online propagation
   experiments;
@@ -89,10 +89,13 @@ Current scaffold invariants:
 
 Incremental subset invariants:
 
-- lookup table entries agree with current representatives;
+- lookup probes are built from current representatives; older lookup keys may
+  remain after representative changes and are ignored by current-signature
+  probes;
 - every pending merge is either processed or invalidated by backtracking;
-- use lists contain exactly the applications that can become congruent after a
-  class merge;
+- use lists contain applications that must be reconsidered after a class merge;
+  duplicate entries are tolerated and deduplicated when an affected list is
+  processed;
 - explanation edges only cite SAT literals supplied by the SMT layer.
 
 ## Tests derived from the paper

@@ -269,7 +269,7 @@ prototype of the Section 3 data structure:
 - class lists and class sizes in `class_members_` and `class_size_`;
 - affected-application use lists in `use_lists_`;
 - sparse signature lookup in `lookup_`;
-- pending explicit and congruence merges in `pending_`;
+- pending explicit and congruence merges in the `pending_` worklist;
 - disequality conflict checks in `disequalities_`, with per-representative
   index lists in `disequality_lists_`;
 - non-minimal explanation paths in `edges_`;
@@ -299,6 +299,11 @@ only reused for an equal or looser bound. Stricter recursive premise queries
 therefore recompute instead of reusing a path that may mention later proof
 edges. `:euf.incremental.explain-cache-bound-misses` counts these rejected
 cache hits.
+Each flat result has at most one definition inside `FlatCongruenceClosure`.
+Exact duplicate definitions are ignored, and conflicting duplicate result
+definitions are rejected as invariant violations. This keeps lookup witnesses,
+use-list entries, and congruence-edge explanations tied to one flat application
+signature.
 Once a theory conflict is recorded, flat-closure propagation stops draining
 pending merges for the current check. Those merges cannot change the current
 theory answer and continuing would only add class, use-list, explanation-edge,
@@ -338,8 +343,10 @@ propagation clauses. It is a measurement tool for deciding whether a later
 Section 4-5 proof-forest explanation engine is worth implementing for a given
 family. The diagnostic also classifies each measured proof-forest path as
 shorter than, equal to, or longer than the BFS path that actually emitted the
-current reason. Local probes show that proof paths can be shorter on some
-NEQ/PEQ rows but longer on `PEQ002_size8`.
+current reason. Diagnostic parent links store the merge-edge index and obey the
+same causal edge bound as recursive BFS explanations. Local probes show that
+proof paths can be shorter on some NEQ rows but longer on `PEQ002_size7`,
+`SEQ035_size6`, and `iso_icl_repgen006`.
 Online-mode checkpoints are created lazily on the first theory assignment in a
 SAT decision level, so levels with only Boolean search do not allocate closure
 rollback state. Checkpoints remember vector sizes, conflict state, stats, and
@@ -403,7 +410,7 @@ Implemented:
 - equality and disequality checking;
 - explanation graph for explicit and congruence equality reasons;
 - deterministic Curry-style flat definitions at the equality-theory boundary;
-- opt-in use-list, signature-lookup, pending-queue congruence closure for
+- opt-in use-list, signature-lookup, pending-worklist congruence closure for
   final conflict checks;
 - order-preserving flat disequality scans over per-class candidate lists;
 - intersection-only disequality checks when two flat classes merge, so a merge

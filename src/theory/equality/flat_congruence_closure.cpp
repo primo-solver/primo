@@ -78,6 +78,7 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   disequality_lists_.resize(state.node_count);
   edge_adjacency_.resize(state.node_count);
   proof_parent_.resize(state.node_count);
+  proof_parent_edge_.resize(state.node_count);
   conflict_ = std::move(state.conflict);
   stats_ = state.stats;
   ++stats_.backtracks;
@@ -98,6 +99,7 @@ void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {
   edge_adjacency_.resize(node_count);
   if (proof_forest_diagnostics_) {
     proof_parent_.resize(node_count, kInvalidFlatTermId);
+    proof_parent_edge_.resize(node_count, edges_.size());
   }
   for (std::size_t i = old_size; i < node_count; ++i) {
     parent_[i] = i;
@@ -108,6 +110,14 @@ void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {
 
 void FlatCongruenceClosure::add_definition(const FlatDefinition& definition) {
   ensure_node_count(std::max({definition.function, definition.argument, definition.result}) + 1);
+  if (const auto found = definition_by_result_.find(definition.result);
+      found != definition_by_result_.end()) {
+    const Definition& existing = definitions_[found->second];
+    if (existing.function != definition.function || existing.argument != definition.argument) {
+      throw std::logic_error("flat congruence closure result has conflicting definitions");
+    }
+    return;
+  }
   ++stats_.flat_definitions;
   const auto inserted_definition =
       definition_by_result_.emplace(definition.result, definitions_.size());
@@ -300,7 +310,7 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
     ++stats_.congruence_merges;
   }
   if (proof_forest_diagnostics_) {
-    record_proof_parent(lhs_repr, proof_to);
+    record_proof_parent(lhs_repr, proof_to, edge_index);
   }
   check_disequalities_touching(lhs_repr, rhs_repr);
   if (conflict_.has_value()) {
@@ -470,6 +480,7 @@ void FlatCongruenceClosure::restore_trail_entry(TrailEntry& entry) {
     case TrailKind::ProofParent:
       if (entry.index < proof_parent_.size()) {
         proof_parent_[entry.index] = entry.flat_value;
+        proof_parent_edge_[entry.index] = entry.size_value;
       }
       return;
   }
@@ -599,7 +610,8 @@ bool FlatCongruenceClosure::append_edge_reason(std::size_t edge_index,
   return true;
 }
 
-void FlatCongruenceClosure::record_proof_parent(FlatTermId from, FlatTermId to) {
+void FlatCongruenceClosure::record_proof_parent(FlatTermId from, FlatTermId to,
+                                                std::size_t edge_index) {
   if (from >= proof_parent_.size() || to >= proof_parent_.size()) {
     return;
   }
@@ -608,14 +620,16 @@ void FlatCongruenceClosure::record_proof_parent(FlatTermId from, FlatTermId to) 
     entry.kind = TrailKind::ProofParent;
     entry.index = from;
     entry.flat_value = proof_parent_[from];
+    entry.size_value = proof_parent_edge_[from];
     trail_.push_back(std::move(entry));
     ++stats_.trail_entries;
   }
   proof_parent_[from] = to;
+  proof_parent_edge_[from] = edge_index;
 }
 
-std::optional<std::size_t> FlatCongruenceClosure::proof_forest_path_length(FlatTermId lhs,
-                                                                           FlatTermId rhs) const {
+std::optional<std::size_t> FlatCongruenceClosure::proof_forest_path_length(
+    FlatTermId lhs, FlatTermId rhs, std::size_t max_edge_index) const {
   if (!proof_forest_diagnostics_ || lhs == rhs || lhs >= proof_parent_.size() ||
       rhs >= proof_parent_.size()) {
     return std::nullopt;
@@ -637,6 +651,9 @@ std::optional<std::size_t> FlatCongruenceClosure::proof_forest_path_length(FlatT
          proof_lca_marks_[current] != proof_lca_generation_) {
     proof_lca_marks_[current] = proof_lca_generation_;
     proof_lca_depths_[current] = lhs_depth;
+    if (proof_parent_edge_[current] >= max_edge_index) {
+      break;
+    }
     current = proof_parent_[current];
     ++lhs_depth;
   }
@@ -650,6 +667,9 @@ std::optional<std::size_t> FlatCongruenceClosure::proof_forest_path_length(FlatT
       stats_.explain_proof_forest_max_path_edges =
           std::max(stats_.explain_proof_forest_max_path_edges, path_edges);
       return path_edges;
+    }
+    if (proof_parent_edge_[current] >= max_edge_index) {
+      break;
     }
     current = proof_parent_[current];
     ++rhs_depth;
@@ -698,7 +718,8 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
     }
     ++stats_.explain_cache_bound_misses;
   }
-  const std::optional<std::size_t> proof_path_edges = proof_forest_path_length(lhs, rhs);
+  const std::optional<std::size_t> proof_path_edges =
+      proof_forest_path_length(lhs, rhs, max_edge_index);
   stats_.explain_max_recursion_depth =
       std::max(stats_.explain_max_recursion_depth, explanation_depth_);
   if (visit_marks_.size() < parent_.size()) {

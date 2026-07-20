@@ -151,8 +151,9 @@ class FlatCongruenceClosure {
   bool append_edge_reason(std::size_t edge_index, std::vector<sat::Lit>& reason) const;
   bool explain_equal_into(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason,
                           std::size_t max_edge_index) const;
-  void record_proof_parent(FlatTermId from, FlatTermId to);
-  std::optional<std::size_t> proof_forest_path_length(FlatTermId lhs, FlatTermId rhs) const;
+  void record_proof_parent(FlatTermId from, FlatTermId to, std::size_t edge_index);
+  std::optional<std::size_t> proof_forest_path_length(FlatTermId lhs, FlatTermId rhs,
+                                                      std::size_t max_edge_index) const;
   void record_proof_forest_path_comparison(std::size_t proof_path_edges,
                                            std::size_t bfs_path_edges) const;
 
@@ -168,6 +169,7 @@ class FlatCongruenceClosure {
   std::vector<std::vector<std::size_t>> disequality_lists_;
   std::vector<Edge> edges_;
   std::vector<FlatTermId> proof_parent_;
+  std::vector<std::size_t> proof_parent_edge_;
   std::vector<FlatTermId> changed_terms_;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Checkpoint> checkpoints_;

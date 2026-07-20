@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <optional>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -732,6 +733,20 @@ void flat_congruence_closure_proof_diagnostics_backtrack() {
   check(closure.stats().explain_proof_forest_missing_lca == 0);
 }
 
+void flat_congruence_closure_proof_diagnostics_respect_causal_bounds() {
+  FlatCongruenceClosure closure(3, FlatExplanationSearchMode::OneSidedBfs, true);
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+  closure.assert_equal(1, 2, {primo::sat::Lit{-2}});
+
+  std::vector<primo::sat::Lit> reason;
+  FlatCongruenceClosureTestAccess::begin_reason(closure, reason);
+  check(FlatCongruenceClosureTestAccess::explain_pair_with_bound(closure, 0, 2, reason, 2));
+  const std::size_t missing_lca_before = closure.stats().explain_proof_forest_missing_lca;
+
+  check(!FlatCongruenceClosureTestAccess::explain_pair_with_bound(closure, 0, 2, reason, 1));
+  check(closure.stats().explain_proof_forest_missing_lca > missing_lca_before);
+}
+
 void flat_congruence_closure_backtracks_disequality_conflict() {
   FlatCongruenceClosure closure(2);
 
@@ -808,6 +823,23 @@ void flat_congruence_closure_lookup_hit_definition_keeps_future_congruence() {
   check(closure.are_equal(5, 6));
   check(closure.stats().lookup_hits >= 2);
   check(closure.stats().congruence_merges >= 2);
+}
+
+void flat_congruence_closure_rejects_conflicting_result_definitions() {
+  FlatCongruenceClosure closure(5);
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 2});
+  const std::size_t definitions_after_first = closure.stats().flat_definitions;
+
+  closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 2});
+  check(closure.stats().flat_definitions == definitions_after_first);
+
+  bool rejected = false;
+  try {
+    closure.add_definition(primo::theory::equality::FlatDefinition{3, 4, 2});
+  } catch (const std::logic_error&) {
+    rejected = true;
+  }
+  check(rejected);
 }
 
 void flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack() {
@@ -969,10 +1001,12 @@ int main() {
   flat_congruence_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_backtracks_nested_merges();
   flat_congruence_closure_proof_diagnostics_backtrack();
+  flat_congruence_closure_proof_diagnostics_respect_causal_bounds();
   flat_congruence_closure_backtracks_disequality_conflict();
   flat_congruence_closure_conflict_reason_entails_nested_congruence();
   flat_congruence_closure_backtracks_post_checkpoint_definitions();
   flat_congruence_closure_lookup_hit_definition_keeps_future_congruence();
+  flat_congruence_closure_rejects_conflicting_result_definitions();
   flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack();
   flat_congruence_closure_matches_naive_oracle_under_backtracking();
   flat_congruence_closure_explanations_match_naive_oracle_under_backtracking();

@@ -19,8 +19,10 @@ equality atoms to flat endpoints.
 
 Paper data structures map as follows:
 
-- `Pending`: `FlatCongruenceClosure::pending_`, containing explicit equality
-  merges and congruence merges discovered through lookup hits.
+- `Pending`: `FlatCongruenceClosure::pending_`, a LIFO merge worklist
+  containing explicit equality merges and congruence merges discovered through
+  lookup hits. The worklist order is sound for closure but can affect proof
+  shape and SAT search.
 - `Representative`: `FlatCongruenceClosure::parent_`, where every class member
   eagerly stores the current representative.
 - `ClassList`: `class_members_` and `class_size_`, used to merge the smaller
@@ -66,6 +68,10 @@ congruence consequences that SAT backtracking will discard.
 - `lookup_` entries are keyed by current flat representatives at insertion time.
   Stale keys may remain after a merge but are not queried because new probes are
   built from current representatives.
+- Each flat result id has at most one definition. Re-adding the same
+  `(function, argument, result)` triple is ignored; adding the same result with a
+  different signature is rejected as an invariant violation before it can corrupt
+  lookup witnesses or congruence explanations.
 - `use_lists_[r]` contains definitions that must be reconsidered when `r` stops
   being a representative. Duplicates are tolerated while appending and are
   suppressed with a generation-stamp scratch vector when a list is processed.
@@ -404,3 +410,13 @@ PEQ/SEQ/NEQ/QG smoke runs preserved answers and the main search counters. This
 reduces hot trail-entry memory traffic in the existing checkpoint trail, but it
 is not the missing Section 4-5 explanation algorithm and should not be reported
 as reference parity.
+
+A follow-up CC review tightened two invariants. First, `add_definition` now
+rejects conflicting duplicate flat definitions for the same result id and
+ignores exact duplicates; `FlatTermIndex` normally creates unique definitions,
+but the closure now enforces that precondition directly. Second, proof-forest
+diagnostics now trail the merge-edge index attached to each diagnostic parent
+link and stop parent walks at the same causal edge bound used by recursive BFS
+explanations. The diagnostic is still only a path-length comparison beside the
+current BFS reason engine; it is not the Section 5 `Explain` algorithm and does
+not emit proof-forest reasons.
