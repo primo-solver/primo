@@ -7952,7 +7952,7 @@
       "recorded_at": "2026-07-20",
       "kind": "local_profile",
       "scope": "Default-off FlatCongruenceClosure proof-forest explanation experiment based on Nieuwenhuis-Oliveras Section 5.2",
-      "commit": "c736eb2",
+      "commit": "066c021",
       "environment": {
         "type": "local",
         "host": "workspace",
