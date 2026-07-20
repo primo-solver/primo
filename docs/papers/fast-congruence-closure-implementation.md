@@ -100,6 +100,11 @@ Two deviations matter for performance claims:
   and lookup maps. This is correct for SAT integration and avoids copying the
   whole closure on every checkpoint, but it is still not the paper's timestamped
   lookup-table backtracking policy.
+  Hot undo entries store only scalar rollback data; operations that need full
+  vector snapshots, currently use-list restore and disequality-list restore,
+  place those snapshots in side payload arrays whose sizes are checkpointed
+  with the main trail. This is a storage-layout choice for the current
+  rollback implementation, not a separate paper operation.
 - Final model checks and model-time propagation still rebuild the flat equality
   state from a complete SAT assignment.
 - Opt-in online propagation with `--euf-engine=incremental` owns a persistent
@@ -392,3 +397,10 @@ against the naive flat oracle. This still leaves the important paper gap
 unchanged: Primo does not store labeled reoriented proof-forest edges for
 `Explain`, and it does not use the per-explanation auxiliary union-find with
 `HighestNode` from Section 5.2 to avoid repeated subproof traversal.
+
+The next rollback audit split rare vector snapshots out of `TrailEntry` and
+kept them in checkpointed side payload arrays. Focused tests and local
+PEQ/SEQ/NEQ/QG smoke runs preserved answers and the main search counters. This
+reduces hot trail-entry memory traffic in the existing checkpoint trail, but it
+is not the missing Section 4-5 explanation algorithm and should not be reported
+as reference parity.

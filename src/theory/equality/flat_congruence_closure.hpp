@@ -111,8 +111,7 @@ class FlatCongruenceClosure {
     std::size_t index = 0;
     FlatTermId flat_value = kInvalidFlatTermId;
     std::size_t size_value = 0;
-    std::vector<FlatTermId> flat_vector;
-    std::vector<std::size_t> size_vector;
+    std::size_t payload_index = 0;
     ApplyKey lookup_key;
   };
 
@@ -124,6 +123,8 @@ class FlatCongruenceClosure {
     std::size_t edges_size = 0;
     std::size_t changed_terms_size = 0;
     std::size_t trail_size = 0;
+    std::size_t flat_vector_trail_size = 0;
+    std::size_t size_vector_trail_size = 0;
     std::optional<std::vector<sat::Lit>> conflict;
     IncrementalCongruenceClosureStats stats;
   };
@@ -171,6 +172,8 @@ class FlatCongruenceClosure {
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Checkpoint> checkpoints_;
   std::vector<TrailEntry> trail_;
+  std::vector<std::vector<FlatTermId>> flat_vector_trail_;
+  std::vector<std::vector<std::size_t>> size_vector_trail_;
   std::optional<std::vector<sat::Lit>> conflict_;
   mutable IncrementalCongruenceClosureStats stats_;
   mutable std::vector<std::size_t> visit_marks_;

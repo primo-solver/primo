@@ -1,0 +1,6 @@
+name,file,config,status,answer,seconds,trail_entries,bfs_visited,conflicts
+SEQ026_size7,tmp/QF_UF/SEQ/SEQ026_size7.smt2,default,ok,unsat,9.789,164592764,168271929,38101
+SEQ026_size7_strong_bidir,tmp/QF_UF/SEQ/SEQ026_size7.smt2,--qf-uf-preprocess=strong --euf-explain-search=bidirectional,ok,unsat,7.251,122204677,59389063,12166
+PEQ016_size7,tmp/QF_UF/PEQ/PEQ016_size7.smt2,default,ok,unsat,3.586,51838864,60040372,7331
+NEQ027_size8,tmp/QF_UF/NEQ/NEQ027_size8.smt2,default,ok,unsat,0.470,4144909,440962,4642
+iso_brn_repgen033,tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2,default,ok,sat,0.027,28326,125013,596

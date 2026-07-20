@@ -48,7 +48,8 @@ FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count,
 std::size_t FlatCongruenceClosure::push() {
   checkpoints_.push_back(Checkpoint{parent_.size(), definitions_.size(), pending_.size(),
                                     disequalities_.size(), edges_.size(), changed_terms_.size(),
-                                    trail_.size(), conflict_, stats_});
+                                    trail_.size(), flat_vector_trail_.size(),
+                                    size_vector_trail_.size(), conflict_, stats_});
   return checkpoints_.size() - 1;
 }
 
@@ -62,6 +63,8 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
     restore_trail_entry(trail_.back());
     trail_.pop_back();
   }
+  flat_vector_trail_.resize(state.flat_vector_trail_size);
+  size_vector_trail_.resize(state.size_vector_trail_size);
   definitions_.resize(state.definitions_size);
   pending_.resize(state.pending_size);
   disequalities_.resize(state.disequalities_size);
@@ -316,13 +319,15 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
     TrailEntry rhs_entry;
     rhs_entry.kind = TrailKind::DisequalityListRestore;
     rhs_entry.index = rhs_repr;
-    rhs_entry.size_vector = disequality_lists_[rhs_repr];
+    rhs_entry.payload_index = size_vector_trail_.size();
+    size_vector_trail_.push_back(disequality_lists_[rhs_repr]);
     trail_.push_back(std::move(rhs_entry));
     ++stats_.trail_entries;
     TrailEntry lhs_entry;
     lhs_entry.kind = TrailKind::DisequalityListRestore;
     lhs_entry.index = lhs_repr;
-    lhs_entry.size_vector = disequality_lists_[lhs_repr];
+    lhs_entry.payload_index = size_vector_trail_.size();
+    size_vector_trail_.push_back(disequality_lists_[lhs_repr]);
     trail_.push_back(std::move(lhs_entry));
     ++stats_.trail_entries;
   }
@@ -336,7 +341,8 @@ void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new
     TrailEntry entry;
     entry.kind = TrailKind::UseListRestore;
     entry.index = old_repr;
-    entry.flat_vector = use_lists_[old_repr];
+    entry.payload_index = flat_vector_trail_.size();
+    flat_vector_trail_.push_back(use_lists_[old_repr]);
     trail_.push_back(std::move(entry));
     ++stats_.trail_entries;
   }
@@ -441,13 +447,13 @@ void FlatCongruenceClosure::restore_trail_entry(TrailEntry& entry) {
       return;
     }
     case TrailKind::UseListRestore:
-      use_lists_[entry.index] = std::move(entry.flat_vector);
+      use_lists_[entry.index] = std::move(flat_vector_trail_[entry.payload_index]);
       return;
     case TrailKind::UseListPop:
       use_lists_[entry.index].pop_back();
       return;
     case TrailKind::DisequalityListRestore:
-      disequality_lists_[entry.index] = std::move(entry.size_vector);
+      disequality_lists_[entry.index] = std::move(size_vector_trail_[entry.payload_index]);
       return;
     case TrailKind::DisequalityListPop:
       disequality_lists_[entry.index].pop_back();

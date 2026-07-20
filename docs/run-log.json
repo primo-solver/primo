@@ -7693,6 +7693,66 @@
       },
       "evidence_status": "current_local",
       "notes": "This is a CC review and hygiene patch, not reference parity. The next substantive CC implementation target remains a paper-derived Section 5 Explain design with reason-quality safeguards. Earlier failed bounded-search caching is not revived because prior sampled runs had zero hits."
+    },
+    {
+      "id": "2026-07-20-local-cc-compact-trail-audit",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "FlatCongruenceClosure rollback-trail representation audit on SEQ/PEQ/NEQ/QG rows",
+      "commit": "6e76de0 plus current compact TrailEntry working-tree patch",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Reviewed src/theory/equality/flat_congruence_closure.{hpp,cpp}; changed TrailEntry to keep only scalar hot undo data and store use-list/disequality-list vector snapshots in checkpointed side payload arrays; ran ./build/primo_euf_solver_tests and local ./build/primo --quiet --stats smoke comparisons. Also ran an option ablation for --qf-uf-preprocess=strong and --euf-explain-search=bidirectional on selected SEQ/PEQ/QG rows.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats",
+        "version": "local build from 6e76de0 plus working-tree compact-trail patch"
+      },
+      "inputs": {
+        "instances": [
+          "tmp/QF_UF/SEQ/SEQ026_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ003_size10.smt2",
+          "tmp/QF_UF/PEQ/PEQ014_size10.smt2",
+          "tmp/QF_UF/PEQ/PEQ004_size9.smt2",
+          "tmp/QF_UF/PEQ/PEQ016_size7.smt2",
+          "tmp/QF_UF/PEQ/PEQ002_size8.smt2",
+          "tmp/QF_UF/NEQ/NEQ027_size8.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen033.smt2"
+        ],
+        "timeout_seconds": "18 for the strong/bidirectional ablation; 25 to 30 for compact-trail smoke comparisons"
+      },
+      "artifacts": {
+        "strong_bidir_ablation_csv": "results/local-strong-bidir-ablation-20260720.csv",
+        "compact_trail_smoke_csv": "results/local-cc-compact-trail-smoke-20260720.csv",
+        "compact_trail_prev_current_csv": "results/local-cc-compact-trail-prev-current-20260720.csv"
+      },
+      "summary": {
+        "cc_review": "No new congruence-discovery or explanation soundness bug was found in the inspected paths. The implementation remains a Section 3 affected-use-list/signature-lookup closure with causal adjacency-BFS explanations; the Section 4-5 proof-forest Explain algorithm is still missing.",
+        "accepted_change": "TrailEntry no longer embeds std::vector payload fields in every undo record. UseListRestore and DisequalityListRestore entries now point into side payload vectors, and checkpoints store those side-vector sizes so pop() truncates payload state with the main trail.",
+        "smoke_results": "Current compact-trail build solved SEQ026_size7 default in 9.789s, SEQ026_size7 strong+bidir in 7.251s, PEQ016_size7 in 3.586s, NEQ027_size8 in 0.470s, and iso_brn_repgen033 in 0.027s. Answers matched expected sat/unsat and main BFS/conflict counters matched the existing search shape.",
+        "prev_current_caveat": "The preserved /tmp/primo-cc-prev checkout is not an exact immediate parent of this patch, so its trail-entry counts also reflect earlier CC changes. The paired run is evidence that answers and main search shape are preserved, not an isolated wall-time proof for the storage-layout patch.",
+        "strong_bidir_ablation": "On selected rows, strong+bidir matched tuned LLM2SMT on SEQ026_size7 (6.753s) and helped PEQ014_size10 (4.894s), but timed out PEQ003_size10 at 18s and regressed iso_brn_repgen033 sat from about 0.025s to about 2.160s. This option combination is not default-ready; it remains a SMAC candidate only.",
+        "fuzz": "QF_UF FuzzSMT merge gate against Z3 passed 1000/1000 cases with seed 2026072003: sat 888, unsat 112, wrong 0, crash 0, timeout 0, bug files 0."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests -j2",
+          "./build/primo_euf_solver_tests",
+          "make test",
+          "make check",
+          "make asan-test",
+          "make lint",
+          "make docs",
+          "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build/primo --refs z3 --logic QF_UF --count 1000 --seed 2026072003 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-cc-compact-trail-1000",
+          "local stats smoke runs listed in artifacts"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This is a CC rollback-layout optimization and option-ablation record. It is not a proof-forest Explain implementation and not reference parity."
     }
   ]
 }

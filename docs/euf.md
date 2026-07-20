@@ -185,6 +185,10 @@ retained assignment after each backtrack and avoids copying the closure for
 decision levels that never touch theory state, but it is still an
 implementation-local trail rather than the paper's timestamped lookup undo
 structure.
+The trail entry itself is kept scalar for the common undo records. Full vector
+snapshots for use-list and disequality-list restore operations live in separate
+checkpointed payload arrays so ordinary parent, class-size, adjacency, lookup,
+and pop records do not each carry unused vector members.
 The closure's detailed counters are rollback-sensitive because checkpoints
 restore the closure state. The online assignment state therefore accumulates
 counter snapshots before rollback can erase them and once more when final stats
