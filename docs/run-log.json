@@ -8111,7 +8111,7 @@
       "recorded_at": "2026-07-20",
       "kind": "local_benchmark",
       "scope": "FlatCongruenceClosure parent rollback batching using ClassMembersMerge suffix records",
-      "commit": "working tree after 974d8d9",
+      "commit": "24d5b4b",
       "environment": {
         "type": "local",
         "host": "workspace",
