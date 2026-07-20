@@ -328,14 +328,22 @@ The explanation-shape counters
 `:euf.incremental.explain-cache-bound-misses`, are diagnostic only: they measure
 the current BFS explanation path and do not implement or select a proof-forest
 reason engine.
-`--euf-explain-search=one-sided|bidirectional` selects how the incremental flat
-closure searches the existing equality-edge graph when building explanations.
-The default `one-sided` mode preserves the validated reason shape. The
-experimental `bidirectional` mode expands from both requested endpoints and can
-reduce BFS visits on some NEQ/PEQ rows, but it changes selected proof paths and
-has known PEQ regressions in the local run log. It is therefore a tuning and
-diagnostic knob, not a default and not the paper's Section 4-5 proof-forest
-algorithm.
+`--euf-explain-search=one-sided|bidirectional|proof-forest` selects how the
+incremental flat closure builds explanations. The default `one-sided` mode
+preserves the validated reason shape by searching the current causal
+equality-edge graph. The experimental `bidirectional` mode expands from both
+requested endpoints and can reduce BFS visits on some NEQ/PEQ rows, but it
+changes selected proof paths and has known PEQ regressions in the local run log.
+`proof-forest` is a default-off Section 5.2 experiment: it maintains the
+rollback-aware proof-parent forest, then answers explanations with a
+per-explanation auxiliary union-find, `HighestNode` jumps, and a pending-proof
+worklist. Each proof-parent edge stores the original endpoint in the merged
+class; when that endpoint is not the disappearing representative, the explainer
+adds a bounded endpoint-detour obligation before using the edge label. This is
+still not a default because it uses Primo's existing representative-oriented
+proof forest rather than the full reoriented Section 4 forest, and local matrix
+runs show mixed reason quality and search effects. It is a tuning and research
+knob until broader fuzzing and SLURM evidence justify a profile.
 `--euf-proof-forest-diagnostics` maintains a rollback-aware proof-parent forest
 beside the current explanation graph and records path-length counters for
 cache-miss explanation queries. The flag does not change emitted conflict or

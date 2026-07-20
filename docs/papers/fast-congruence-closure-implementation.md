@@ -453,3 +453,27 @@ queries, equal on 4547349, longer on 463354, and had no missing LCAs. The
 explanation, so the hotspot is real, but the representative-only diagnostic
 does not justify replacing the emitted reason path without implementing the
 full Section 5 endpoint-label and auxiliary-union-find obligations.
+
+The next implementation step added `--euf-explain-search=proof-forest` as a
+default-off Section 5.2 experiment. This mode no longer uses the earlier
+representative-only diagnostic as an explanation. Every maintained proof-parent
+edge stores the original endpoint from the disappearing class, and the explainer
+uses a per-explanation auxiliary union-find with `HighestNode` jumps and a
+pending-proof worklist. When the stored endpoint differs from the disappearing
+representative, the worklist receives a bounded endpoint-detour obligation
+before the edge label is accepted. Congruence labels add bounded child
+obligations for the function and argument premises instead of recursively
+calling the BFS explainer.
+
+Implemented subset and limitations: the mode follows the Section 5.2
+pending-proof/auxiliary-union-find explanation shape over Primo's current
+representative-oriented proof-parent forest. It does not yet implement the full
+Section 4 reorientation policy, structural-class proof forests from Section
+5.5, or a reason-quality guard from Section 5.4. The emitted reasons are tested
+against the existing independent naive flat-oracle checks, including a
+non-representative endpoint-detour case and a nested congruence conflict. Local
+same-binary probes kept the option default-off: `NEQ023_size7` regressed from
+about 0.38s to 0.93s, while `NEQ027_size8`, `PEQ019_size7`, `SEQ035_size6`,
+and `iso_brn_repgen_sk011` improved or stayed close to default but were often
+still behind the existing bidirectional BFS option. The option is therefore a
+research/tuning hook, not a reference-parity claim.

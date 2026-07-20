@@ -240,6 +240,8 @@ theory::equality::FlatExplanationSearchMode flat_explanation_search_mode(
   switch (mode) {
     case EufExplainSearchMode::BidirectionalBfs:
       return theory::equality::FlatExplanationSearchMode::BidirectionalBfs;
+    case EufExplainSearchMode::ProofForest:
+      return theory::equality::FlatExplanationSearchMode::ProofForest;
     case EufExplainSearchMode::OneSidedBfs:
       return theory::equality::FlatExplanationSearchMode::OneSidedBfs;
   }

@@ -16,6 +16,7 @@ class FlatCongruenceClosureTestAccess;
 enum class FlatExplanationSearchMode {
   OneSidedBfs,
   BidirectionalBfs,
+  ProofForest,
 };
 
 class FlatCongruenceClosure {
@@ -110,9 +111,16 @@ class FlatCongruenceClosure {
     TrailKind kind = TrailKind::Parent;
     std::size_t index = 0;
     FlatTermId flat_value = kInvalidFlatTermId;
+    FlatTermId flat_value2 = kInvalidFlatTermId;
     std::size_t size_value = 0;
     std::size_t payload_index = 0;
     ApplyKey lookup_key;
+  };
+
+  struct ProofObligation {
+    FlatTermId lhs = kInvalidFlatTermId;
+    FlatTermId rhs = kInvalidFlatTermId;
+    std::size_t max_edge_index = 0;
   };
 
   struct Checkpoint {
@@ -151,7 +159,22 @@ class FlatCongruenceClosure {
   bool append_edge_reason(std::size_t edge_index, std::vector<sat::Lit>& reason) const;
   bool explain_equal_into(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason,
                           std::size_t max_edge_index) const;
-  void record_proof_parent(FlatTermId from, FlatTermId to, std::size_t edge_index);
+  bool explain_equal_with_proof_forest_into(FlatTermId lhs, FlatTermId rhs,
+                                            std::vector<sat::Lit>& reason,
+                                            std::size_t max_edge_index) const;
+  void append_proof_edge_label(std::size_t edge_index, std::vector<sat::Lit>& reason,
+                               std::vector<ProofObligation>& pending_proofs) const;
+  FlatTermId proof_explain_find(FlatTermId term) const;
+  FlatTermId proof_explain_highest(FlatTermId term) const;
+  void proof_explain_union_to_parent(FlatTermId child, FlatTermId parent) const;
+  std::optional<FlatTermId> proof_forest_nearest_common_ancestor(FlatTermId lhs, FlatTermId rhs,
+                                                                 std::size_t max_edge_index) const;
+  bool explain_proof_forest_path(FlatTermId from, FlatTermId ancestor, std::size_t max_edge_index,
+                                 std::vector<sat::Lit>& reason,
+                                 std::vector<ProofObligation>& pending_proofs) const;
+  bool maintain_proof_forest() const;
+  void record_proof_parent(FlatTermId from, FlatTermId to, FlatTermId label_endpoint,
+                           std::size_t edge_index);
   std::optional<std::size_t> proof_forest_path_length(FlatTermId lhs, FlatTermId rhs,
                                                       std::size_t max_edge_index) const;
   void record_proof_forest_path_comparison(std::size_t proof_path_edges,
@@ -169,6 +192,7 @@ class FlatCongruenceClosure {
   std::vector<std::vector<std::size_t>> disequality_lists_;
   std::vector<Edge> edges_;
   std::vector<FlatTermId> proof_parent_;
+  std::vector<FlatTermId> proof_parent_label_endpoint_;
   std::vector<std::size_t> proof_parent_edge_;
   std::vector<FlatTermId> changed_terms_;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
@@ -190,6 +214,9 @@ class FlatCongruenceClosure {
   mutable std::vector<std::size_t> proof_lca_marks_;
   mutable std::vector<std::size_t> proof_lca_depths_;
   mutable std::size_t proof_lca_generation_ = 0;
+  mutable std::vector<FlatTermId> proof_explain_parent_;
+  mutable std::vector<FlatTermId> proof_explain_highest_;
+  mutable std::vector<ProofObligation> proof_obligation_scratch_;
   mutable std::unordered_map<ExplanationKey, std::size_t, ExplanationKeyHash> explanation_cache_;
   mutable std::size_t explanation_depth_ = 0;
   mutable std::size_t visit_generation_ = 0;

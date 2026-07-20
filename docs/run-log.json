@@ -7945,6 +7945,89 @@
       },
       "evidence_status": "current_local",
       "notes": "This is review evidence and documentation synchronization only; it does not change solver behavior and is not reference parity."
+    },
+    {
+      "id": "2026-07-20-local-euf-proof-forest-explain-option",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Default-off FlatCongruenceClosure proof-forest explanation experiment based on Nieuwenhuis-Oliveras Section 5.2",
+      "commit": "c736eb2",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Ran local default/bidirectional/proof-forest matrix over NEQ, PEQ, SEQ, and QG iso representatives; ran focused unit tests, make test/check/asan-test/lint/docs, clang-tidy, include-cleaner, and a QF_UF FuzzSMT 1000-case gate against Z3.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats [--euf-explain-search=bidirectional|proof-forest]"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3, used by fuzz_external.py as answer reference"
+        },
+        {
+          "name": "Nieuwenhuis-Oliveras",
+          "argv": "Fast congruence closure and extensions, Information and Computation 205 (2007), Section 5.2"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 2026072006,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null,
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ027_size8.smt2",
+          "tmp/QF_UF/PEQ/PEQ019_size7.smt2",
+          "tmp/QF_UF/SEQ/SEQ035_size6.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_repgen005.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk011.smt2"
+        ]
+      },
+      "artifacts": {
+        "summary": "results/local-proof-forest-explain-matrix-20260720.csv",
+        "results": "results/local-proof-forest-explain-matrix-20260720.csv",
+        "logs": "fuzz-results/qf_uf-fuzzsmt-proof-forest-explain-1000/summary.csv",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-proof-forest-explain-1000/bugs"
+      },
+      "summary": {
+        "implementation": "Added --euf-explain-search=proof-forest as a default-off experimental explanation mode. It keeps Primo's existing CC merge/search code but replaces equality explanation with a Section-5.2-shaped proof-parent walk, per-call auxiliary union-find/highest-node state, endpoint detour obligations, and congruence child obligations.",
+        "local_matrix": "NEQ023_size7 regressed from 0.378s default to 0.926s proof_forest; NEQ027_size8 improved from 0.430s to 0.406s; PEQ019_size7 improved from 0.844s to 0.650s but bidirectional was 0.430s; SEQ035_size6 improved from 1.253s to 1.195s but bidirectional was 0.561s; iso_icl_repgen005 was neutral/slightly worse at 1.987s default versus 2.008s proof_forest; iso_brn_repgen_sk011 improved from 0.753s to 0.389s but bidirectional was 0.166s.",
+        "fuzz": "QF_UF FuzzSMT passed 1000/1000 against Z3 with seed 2026072006: sat 882, unsat 118, wrong 0, crash 0, timeout 0, bug files 0.",
+        "decision": "Do not promote proof-forest explanation to the default. The experiment improves some pure equality cases but is not reference parity, regresses NEQ023_size7, remains neutral on the iso_icl representative, and rebuilds scratch auxiliary state per explanation. Keep it as a review knob for the next CC investigation."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j2",
+          "./build/primo_euf_solver_tests",
+          "timeout 20s ./build/primo --quiet --stats --euf-explain-search=proof-forest tmp/QF_UF/NEQ/NEQ023_size7.smt2",
+          "timeout 20s ./build/primo --quiet --stats --euf-explain-search=proof-forest tmp/QF_UF/QG-classification/qg7/iso_icl_repgen005.smt2",
+          "make test",
+          "make check",
+          "make asan-test",
+          "make lint",
+          "make docs",
+          "git diff --check",
+          "git ls-files 'src/*.cpp' 'src/**/*.cpp' 'tests/**/*.cpp' | grep -v generated | xargs -n 8 clang-tidy -p build --quiet",
+          "clang-tidy -p build --quiet --checks=-*,misc-include-cleaner src/theory/equality/flat_congruence_closure.cpp src/smt/check_sat.cpp src/main.cpp tests/unit/euf_solver_tests.cpp",
+          "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --euf-explain-search=proof-forest' --refs z3 --logic QF_UF --count 1000 --seed 2026072006 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-proof-forest-explain-1000"
+        ],
+        "warnings": [
+          "Whole-tree clang-tidy emitted analyzer warnings from generated src/smtlib/antlr sources; no changed CC file warning was emitted in the regular run.",
+          "misc-include-cleaner reported paired-header-provided FlatTermId/FlatDefinition/sat::Lit declarations in flat_congruence_closure.cpp; treated as advisory and left unchanged."
+        ],
+        "pending": [
+          "SLURM mixed-suite comparison before any default promotion",
+          "Profile the next slow equality-family target before adding more CC logic"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This is a CC review/proof-explanation experiment, not a performance fix. It documents a rejected default and leaves the broader reference-parity goal open."
     }
   ]
 }

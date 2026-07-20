@@ -825,6 +825,57 @@ void flat_congruence_closure_lookup_hit_definition_keeps_future_congruence() {
   check(closure.stats().congruence_merges >= 2);
 }
 
+void flat_congruence_closure_proof_forest_explains_nonrepresentative_merge_endpoint() {
+  constexpr std::size_t kNodeCount = 5;
+  FlatCongruenceClosure closure(kNodeCount, FlatExplanationSearchMode::ProofForest);
+  std::vector<std::pair<std::size_t, std::size_t>> labelled_equalities;
+  auto add_equal = [&](std::size_t lhs, std::size_t rhs) {
+    labelled_equalities.emplace_back(lhs, rhs);
+    closure.assert_equal(lhs, rhs,
+                         {primo::sat::Lit{-static_cast<int>(labelled_equalities.size())}});
+  };
+
+  add_equal(0, 1);
+  add_equal(2, 3);
+  add_equal(3, 4);
+  add_equal(0, 2);
+
+  const auto reason = closure.explain_equal(1, 2);
+  check(reason.has_value());
+  check(explanation_entails_equality(kNodeCount, {}, labelled_equalities, reason.value(), 1, 2));
+  bool has_first_merge = false;
+  bool has_bridge_merge = false;
+  for (const primo::sat::Lit lit : reason.value()) {
+    has_first_merge = has_first_merge || lit.value == -1;
+    has_bridge_merge = has_bridge_merge || lit.value == -4;
+  }
+  check(has_first_merge);
+  check(has_bridge_merge);
+  check(closure.stats().explain_proof_forest_queries >= 1);
+  check(closure.stats().explain_proof_forest_path_edges >= 1);
+}
+
+void flat_congruence_closure_proof_forest_conflict_reason_entails_nested_congruence() {
+  constexpr std::size_t kNodeCount = 8;
+  const std::vector<primo::theory::equality::FlatDefinition> definitions{
+      {4, 0, 2},
+      {4, 1, 3},
+      {5, 2, 6},
+      {5, 3, 7},
+  };
+  FlatCongruenceClosure closure(kNodeCount, FlatExplanationSearchMode::ProofForest);
+  for (const auto& definition : definitions) {
+    closure.add_definition(definition);
+  }
+
+  closure.assert_distinct(6, 7, {primo::sat::Lit{-2}});
+  closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+
+  const auto conflict = closure.conflict();
+  check(conflict.has_value());
+  check(explanation_entails_equality(kNodeCount, definitions, {{0, 1}}, conflict.value(), 6, 7));
+}
+
 void flat_congruence_closure_rejects_conflicting_result_definitions() {
   FlatCongruenceClosure closure(5);
   closure.add_definition(primo::theory::equality::FlatDefinition{0, 1, 2});
@@ -1006,6 +1057,8 @@ int main() {
   flat_congruence_closure_conflict_reason_entails_nested_congruence();
   flat_congruence_closure_backtracks_post_checkpoint_definitions();
   flat_congruence_closure_lookup_hit_definition_keeps_future_congruence();
+  flat_congruence_closure_proof_forest_explains_nonrepresentative_merge_endpoint();
+  flat_congruence_closure_proof_forest_conflict_reason_entails_nested_congruence();
   flat_congruence_closure_rejects_conflicting_result_definitions();
   flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack();
   flat_congruence_closure_matches_naive_oracle_under_backtracking();

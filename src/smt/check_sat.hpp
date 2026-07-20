@@ -48,6 +48,7 @@ enum class TheoryPhaseMode {
 enum class EufExplainSearchMode {
   OneSidedBfs,
   BidirectionalBfs,
+  ProofForest,
 };
 
 enum class QfUfPortfolioMode {

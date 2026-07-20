@@ -221,8 +221,8 @@ int main(int argc, char** argv) {
   app.add_option("--euf-engine", euf_engine, "EUF engine: incremental or lazy")
       ->check(CLI::IsMember({"lazy", "incremental"}));
   app.add_option("--euf-explain-search", euf_explain_search,
-                 "Incremental EUF explanation search: one-sided or bidirectional")
-      ->check(CLI::IsMember({"one-sided", "bidirectional"}));
+                 "Incremental EUF explanation search: one-sided, bidirectional, or proof-forest")
+      ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest"}));
   app.add_flag("--euf-proof-forest-diagnostics", euf_proof_forest_diagnostics,
                "Record proof-forest path counters for incremental EUF explanations");
   app.add_option("--pure-theory-filter", pure_theory_filter,
@@ -389,6 +389,8 @@ int main(int argc, char** argv) {
   }
   if (euf_explain_search == "bidirectional") {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::BidirectionalBfs;
+  } else if (euf_explain_search == "proof-forest") {
+    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::ProofForest;
   } else {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::OneSidedBfs;
   }
