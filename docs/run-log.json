@@ -8028,6 +8028,82 @@
       },
       "evidence_status": "current_local",
       "notes": "This is a CC review/proof-explanation experiment, not a performance fix. It documents a rejected default and leaves the broader reference-parity goal open."
+    },
+    {
+      "id": "2026-07-20-local-neq016-cc-profile-lookup-rejected",
+      "started_at": "2026-07-20",
+      "recorded_at": "2026-07-20",
+      "kind": "local_profile",
+      "scope": "Fresh current-head QF_UF gap triage, NEQ016_size7 CC profiling, and rejected ApplyKey lookup-table experiment",
+      "commit": "89dd4b3 plus rejected local source experiment, reverted before recording",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "Ranked stale QF_UF artifacts with scripts/rank_qfuf_gaps.py; probed 57 historically bad rows from results/user-primo-html-2026-07-18/parsed.csv against current ./build/primo; profiled NEQ016_size7 default and proof-forest modes with perf; built /tmp/primo-baseline-89dd4b3 from commit 89dd4b3 for a partial A/B of a custom open-addressed ApplyKey lookup table, then reverted the source change after regressions.",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats [--euf-explain-search=proof-forest]"
+      },
+      "references": [
+        {
+          "name": "LLM2SMT",
+          "argv": "/tmp/llm2smt/build/bin/llm2smt"
+        },
+        {
+          "name": "Z3/cvc5/historical references",
+          "argv": "Existing parsed and SLURM CSV artifacts only for candidate selection"
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 57,
+        "timeout_seconds": 5,
+        "manifest": null,
+        "instances": [
+          "tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "tmp/QF_UF/NEQ/NEQ041_size9.smt2",
+          "tmp/QF_UF/PEQ/PEQ016_size7.smt2",
+          "tmp/QF_UF/QG-classification/qg7/iso_icl_nogen007.smt2",
+          "tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.1.prop1_ab_br_max.smt2"
+        ]
+      },
+      "artifacts": {
+        "summary": "results/local-gap-triage-20260720/current-head-probe.csv",
+        "results": "results/local-gap-triage-20260720/qfuf-gaps-vs-refs.csv and results/local-gap-triage-20260720/lookup-table-ab-matrix.csv",
+        "logs": "results/local-profile-neq016-20260720/perf-default-flat.txt, results/local-profile-neq016-20260720/perf-default-children.txt, results/local-profile-neq016-20260720/perf-proof-flat.txt, results/local-profile-neq016-20260720/perf-proof-children.txt",
+        "bugs": null
+      },
+      "summary": {
+        "fresh_triage": "Several old SLURM/user rows are stale for current HEAD: NEQ041_size6, iso_brn_repgen033, and Goel sokoban.1 all solved locally in under 0.1s. A fresh 57-row current-head probe still found slow local cases, led by QG iso/gensys ICL timeouts at 5s and non-iso NEQ016_size7 at 4.48s.",
+        "neq016_stats": "NEQ016_size7 default solved unsat in 5.76s with 57,206 theory conflicts, 1,090,260 assignments, 6,146,238 merges, 26,641,764 lookup probes, 8,570,703 explain calls, 2,939,459 BFS searches, and 109,691,307 trail entries. Proof-forest mode solved in 2.99s with fewer assignments/conflicts but remains default-off because prior mixed-suite evidence was not default-safe.",
+        "profile": "perf default top self costs: explain_equal_into 16.6%, restore_trail_entry 9.3%, CaDiCaL propagate 8.6%, ApplyKey unordered_map find 7.2%, merge_classes 6.2%, process_use_list 6.1%. In proof mode the top costs shifted to restore_trail_entry 12.2%, merge_classes 8.7%, ApplyKey find 8.6%, process_use_list 6.7%, and TrailEntry vector emplace 7.4%.",
+        "rejected_experiment": "A custom open-addressed signature table was tested and reverted. Partial A/B against 89dd4b3 was mixed: NEQ041_size8 default improved 1.343s to 1.279s and NEQ041_size9 proof improved 4.314s to 4.031s, but PEQ016_size7 regressed 3.626s to 5.078s default and 2.226s to 3.708s proof; PEQ002_size7 regressed about 24-25%.",
+        "decision": "Do not replace unordered_map ApplyKey lookup with the tested open-addressed table. Keep the profiler evidence: the next useful CC work should focus on reducing rollback/trail volume or search decisions/conflict count, not only raw signature-table lookup."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j2",
+          "./build/primo_euf_solver_tests",
+          "timeout 20s ./build/primo --quiet --stats tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "timeout 20s ./build/primo --quiet --stats --euf-explain-search=proof-forest tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "perf record -F 999 -g -o results/local-profile-neq016-20260720/perf-default.data -- timeout 20s ./build/primo --quiet tmp/QF_UF/NEQ/NEQ016_size7.smt2",
+          "perf record -F 999 -g -o results/local-profile-neq016-20260720/perf-proof.data -- timeout 20s ./build/primo --quiet --euf-explain-search=proof-forest tmp/QF_UF/NEQ/NEQ016_size7.smt2"
+        ],
+        "warnings": [
+          "The broad A/B matrix was interrupted after 43 rows because several iso ICL cases were near the 12s per-run cap; completed rows were sufficient to reject the source experiment.",
+          "perf warned that kernel address maps were restricted; userspace symbols were still collected and reported.",
+          "No solver source change from the rejected lookup-table experiment remains in the worktree."
+        ],
+        "pending": [
+          "Fresh SLURM evaluation is needed before treating old full-suite gap CSVs as current evidence"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This entry records progress and a rejected local experiment only. It does not claim reference parity or a default performance improvement."
     }
   ]
 }

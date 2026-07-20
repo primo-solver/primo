@@ -1,0 +1,163 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 4K of event 'cycles:P'
+# Event count (approx.): 19618642334
+#
+# Overhead  Command  Shared Object         Symbol
+# ........  .......  ....................  ..........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+#
+    16.59%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::explain_equal_into(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&, unsigned long) const
+            |
+             --16.35%--primo::theory::equality::FlatCongruenceClosure::explain_equal_into(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&, unsigned long) const
+
+     9.26%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::restore_trail_entry(primo::theory::equality::FlatCongruenceClosure::TrailEntry&)
+            |
+            |--8.42%--primo::theory::equality::FlatCongruenceClosure::restore_trail_entry(primo::theory::equality::FlatCongruenceClosure::TrailEntry&)
+            |          |
+            |           --0.88%--0
+            |
+             --0.60%--primo::theory::equality::FlatCongruenceClosure::pop(unsigned long)
+
+     8.62%  primo    primo                 [.] CaDiCaL::Internal::propagate()
+            |
+            ---CaDiCaL::Internal::propagate()
+
+     7.15%  primo    primo                 [.] std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::find(primo::theory::equality::FlatCongruenceClosure::ApplyKey const&) [clone .isra.0]
+            |
+             --7.04%--std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::find(primo::theory::equality::FlatCongruenceClosure::ApplyKey const&) [clone .isra.0]
+
+     6.20%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)
+            |
+             --5.58%--primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)
+
+     6.11%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::process_use_list(unsigned long, unsigned long)
+            |
+             --5.54%--primo::theory::equality::FlatCongruenceClosure::process_use_list(unsigned long, unsigned long)
+                       |
+                        --0.60%--0
+
+     5.48%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::TrailEntry& std::vector<primo::theory::equality::FlatCongruenceClosure::TrailEntry, std::allocator<primo::theory::equality::FlatCongruenceClosure::TrailEntry> >::emplace_back<primo::theory::equality::FlatCongruenceClosure::TrailEntry>(primo::theory::equality::FlatCongruenceClosure::TrailEntry&&) [clone .isra.0]
+            |
+             --5.14%--primo::theory::equality::FlatCongruenceClosure::TrailEntry& std::vector<primo::theory::equality::FlatCongruenceClosure::TrailEntry, std::allocator<primo::theory::equality::FlatCongruenceClosure::TrailEntry> >::emplace_back<primo::theory::equality::FlatCongruenceClosure::TrailEntry>(primo::theory::equality::FlatCongruenceClosure::TrailEntry&&) [clone .isra.0]
+
+     3.83%  primo    primo                 [.] primo::smt::(anonymous namespace)::OnlineEufPropagator::notify_assignment(std::vector<int, std::allocator<int> > const&)
+            |
+            ---primo::smt::(anonymous namespace)::OnlineEufPropagator::notify_assignment(std::vector<int, std::allocator<int> > const&)
+               |
+                --2.03%--0
+
+     2.68%  primo    libc.so.6             [.] _int_malloc
+            |
+             --2.64%--_int_malloc
+                       malloc
+                       operator new(unsigned long)
+                       |
+                        --1.06%--std::pair<std::__detail::_Node_iterator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, false, true>, bool> std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_emplace<primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long const&>(std::integral_constant<bool, true>, primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long const&) [clone .isra.0]
+
+     2.68%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::pop(unsigned long)
+            |
+            |--2.06%--primo::theory::equality::FlatCongruenceClosure::pop(unsigned long)
+            |
+             --0.62%--primo::theory::equality::FlatCongruenceClosure::restore_trail_entry(primo::theory::equality::FlatCongruenceClosure::TrailEntry&)
+
+     2.31%  primo    primo                 [.] std::_Hashtable<unsigned long, std::pair<unsigned long const, unsigned long>, std::allocator<std::pair<unsigned long const, unsigned long> >, std::__detail::_Select1st, std::equal_to<unsigned long>, std::hash<unsigned long>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(unsigned long const&) [clone .isra.0]
+            |
+            ---std::_Hashtable<unsigned long, std::pair<unsigned long const, unsigned long>, std::allocator<std::pair<unsigned long const, unsigned long> >, std::__detail::_Select1st, std::equal_to<unsigned long>, std::hash<unsigned long>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(unsigned long const&) [clone .isra.0]
+
+     2.03%  primo    libc.so.6             [.] malloc
+            |
+             --1.85%--malloc
+                       operator new(unsigned long)
+                       |
+                        --0.54%--std::pair<std::__detail::_Node_iterator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, false, true>, bool> std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_emplace<primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long const&>(std::integral_constant<bool, true>, primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long const&) [clone .isra.0]
+
+     2.00%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::append_use_tracked(unsigned long, unsigned long)
+            |
+             --1.91%--primo::theory::equality::FlatCongruenceClosure::append_use_tracked(unsigned long, unsigned long)
+                       |
+                        --1.36%--0x5abecaa5a940
+                                  0x1
+
+     1.83%  primo    libc.so.6             [.] _int_free
+            |
+             --1.65%--_int_free
+                       cfree@GLIBC_2.2.5
+
+     1.67%  primo    primo                 [.] std::pair<std::__detail::_Node_iterator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, false, true>, bool> std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_emplace<primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long const&>(std::integral_constant<bool, true>, primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long const&) [clone .isra.0]
+            |
+             --1.54%--std::pair<std::__detail::_Node_iterator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, false, true>, bool> std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_emplace<primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long const&>(std::integral_constant<bool, true>, primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long const&) [clone .isra.0]
+
+     1.28%  primo    libc.so.6             [.] cfree@GLIBC_2.2.5
+            |
+             --1.10%--cfree@GLIBC_2.2.5
+
+     1.20%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::enqueue_congruence(primo::theory::equality::FlatCongruenceClosure::Definition const&, primo::theory::equality::FlatCongruenceClosure::Definition const&)
+            |
+            ---primo::theory::equality::FlatCongruenceClosure::enqueue_congruence(primo::theory::equality::FlatCongruenceClosure::Definition const&, primo::theory::equality::FlatCongruenceClosure::Definition const&)
+               |
+                --1.11%--0x5abecaa5a940
+                          0x1
+
+     1.00%  primo    primo                 [.] CaDiCaL::Internal::explain_reason(int, CaDiCaL::Clause*, int&) [clone .part.0]
+            |
+            ---CaDiCaL::Internal::explain_reason(int, CaDiCaL::Clause*, int&) [clone .part.0]
+
+     0.97%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::append_edge_reason(unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&) const
+            |
+             --0.82%--primo::theory::equality::FlatCongruenceClosure::append_edge_reason(unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&) const
+                       |
+                        --0.75%--0x5abecaa5a940
+                                  |
+                                   --0.71%--0x1
+
+     0.96%  primo    libc.so.6             [.] __memmove_avx_unaligned_erms
+            |
+             --0.93%--__memmove_avx_unaligned_erms
+
+     0.82%  primo    libc.so.6             [.] malloc_consolidate
+            |
+            ---malloc_consolidate
+               |
+                --0.80%--_int_malloc
+                          malloc
+                          operator new(unsigned long)
+                          |
+                           --0.72%--primo::theory::equality::FlatCongruenceClosure::append_use_tracked(unsigned long, unsigned long)
+                                     0x5abecaa5a940
+                                     0x1
+
+     0.79%  primo    primo                 [.] std::pair<std::__detail::_Node_iterator<std::pair<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const, unsigned long>, false, true>, bool> std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ExplanationKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ExplanationKey>, primo::theory::equality::FlatCongruenceClosure::ExplanationKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_emplace<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const&, unsigned long&>(std::integral_constant<bool, true>, primo::theory::equality::FlatCongruenceClosure::ExplanationKey const&, unsigned long&) [clone .isra.0]
+            |
+             --0.71%--std::pair<std::__detail::_Node_iterator<std::pair<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const, unsigned long>, false, true>, bool> std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ExplanationKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ExplanationKey>, primo::theory::equality::FlatCongruenceClosure::ExplanationKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_emplace<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const&, unsigned long&>(std::integral_constant<bool, true>, primo::theory::equality::FlatCongruenceClosure::ExplanationKey const&, unsigned long&) [clone .isra.0]
+
+     0.78%  primo    primo                 [.] CaDiCaL::Internal::explain_external_propagations()
+            |
+            ---CaDiCaL::Internal::explain_external_propagations()
+
+     0.65%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::append_unique_reason(std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> > const&) const
+            |
+             --0.63%--primo::theory::equality::FlatCongruenceClosure::append_unique_reason(std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> > const&) const
+                       |
+                        --0.61%--0x5abecaa5a940
+                                  |
+                                   --0.59%--0x1
+
+     0.65%  primo    libstdc++.so.6.0.33   [.] operator new(unsigned long)
+            |
+             --0.52%--operator new(unsigned long)
+
+     0.60%  primo    primo                 [.] CaDiCaL::Internal::analyze()
+            |
+             --0.58%--CaDiCaL::Internal::analyze()
+
+     0.56%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::propagate()
+     0.54%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::representative(unsigned long) const
+     0.52%  primo    primo                 [.] primo::theory::equality::FlatCongruenceClosure::check_disequalities_touching(unsigned long, unsigned long) [clone .part.0]
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
