@@ -8192,7 +8192,7 @@
       "recorded_at": "2026-07-20",
       "kind": "local_profile",
       "scope": "Current-head FlatCongruenceClosure review on NEQ and iso single instances",
-      "commit": "working tree after c95f8fa",
+      "commit": "f6126d3",
       "environment": {
         "type": "local",
         "host": "workspace",
@@ -8239,9 +8239,7 @@
           "make docs",
           "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --seed 2026072008 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-cc-diagnostic-guard-1000"
         ],
-        "pending": [
-          "commit exact hash after source commit"
-        ],
+        "pending": [],
         "warnings": [
           "perf stat returned rc=234 with no counters in this container, so gprof was used instead.",
           "The special -pg build produced GCC warning noise in preprocessing but built successfully; normal verification remains on build/.",
