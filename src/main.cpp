@@ -127,6 +127,7 @@ int main(int argc, char** argv) {
   bool no_solved_constant_substitution = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
+  bool no_auto_top_level_or_tseitin = false;
   bool no_auto_basic_single = false;
   bool no_auto_basic_single_predicate_polarity = false;
   bool auto_basic_multi = false;
@@ -186,6 +187,9 @@ int main(int argc, char** argv) {
   app.add_flag("--no-top-level-or-tseitin", no_top_level_or_tseitin,
                "Keep top-level disjunctions as one clause")
       ->default_val(false);
+  app.add_flag("--no-auto-top-level-or-tseitin", no_auto_top_level_or_tseitin,
+               "Disable guarded automatic top-level disjunction Tseitin encoding")
+      ->default_val(false);
   app.add_flag("--preprocess-only", solver_options.preprocess_only,
                "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
@@ -221,8 +225,10 @@ int main(int argc, char** argv) {
   app.add_option("--euf-engine", euf_engine, "EUF engine: incremental or lazy")
       ->check(CLI::IsMember({"lazy", "incremental"}));
   app.add_option("--euf-explain-search", euf_explain_search,
-                 "Incremental EUF explanation search: one-sided, bidirectional, or proof-forest")
-      ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest"}));
+                 "Incremental EUF explanation search: one-sided, bidirectional, proof-forest, "
+                 "reoriented-proof-forest, or structural-proof-forest")
+      ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest", "reoriented-proof-forest",
+                             "structural-proof-forest"}));
   app.add_flag("--euf-proof-forest-diagnostics", euf_proof_forest_diagnostics,
                "Record proof-forest path counters for incremental EUF explanations");
   app.add_option("--pure-theory-filter", pure_theory_filter,
@@ -352,6 +358,10 @@ int main(int argc, char** argv) {
   }
   if (no_top_level_or_tseitin) {
     solver_options.top_level_or_tseitin = false;
+    solver_options.auto_top_level_or_tseitin = false;
+  }
+  if (no_auto_top_level_or_tseitin) {
+    solver_options.auto_top_level_or_tseitin = false;
   }
   if (no_auto_basic_single) {
     solver_options.auto_basic_single_preprocessing = false;
@@ -391,6 +401,10 @@ int main(int argc, char** argv) {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::BidirectionalBfs;
   } else if (euf_explain_search == "proof-forest") {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::ProofForest;
+  } else if (euf_explain_search == "reoriented-proof-forest") {
+    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::ReorientedProofForest;
+  } else if (euf_explain_search == "structural-proof-forest") {
+    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::StructuralProofForest;
   } else {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::OneSidedBfs;
   }

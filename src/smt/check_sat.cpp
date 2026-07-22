@@ -245,6 +245,10 @@ theory::equality::FlatExplanationSearchMode flat_explanation_search_mode(
       return theory::equality::FlatExplanationSearchMode::BidirectionalBfs;
     case EufExplainSearchMode::ProofForest:
       return theory::equality::FlatExplanationSearchMode::ProofForest;
+    case EufExplainSearchMode::ReorientedProofForest:
+      return theory::equality::FlatExplanationSearchMode::ReorientedProofForest;
+    case EufExplainSearchMode::StructuralProofForest:
+      return theory::equality::FlatExplanationSearchMode::StructuralProofForest;
     case EufExplainSearchMode::OneSidedBfs:
       return theory::equality::FlatExplanationSearchMode::OneSidedBfs;
   }
@@ -1069,6 +1073,68 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
     }
   }
   return false;
+}
+
+struct BooleanShape {
+  std::size_t or_nodes = 0;
+  std::size_t not_nodes = 0;
+  std::size_t top_level_or_nodes = 0;
+  std::size_t max_top_level_or_children = 0;
+};
+
+void collect_boolean_shape(const core::TermManager& terms, core::TermId term_id,
+                           std::unordered_set<core::TermId>& seen, BooleanShape& shape) {
+  if (!seen.insert(term_id).second) {
+    return;
+  }
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Or) {
+    ++shape.or_nodes;
+  } else if (term.kind == core::TermKind::Not) {
+    ++shape.not_nodes;
+  }
+  for (const core::TermId child : term.children) {
+    collect_boolean_shape(terms, child, seen, shape);
+  }
+}
+
+void collect_top_level_or_shape(const core::TermManager& terms, core::TermId term_id,
+                                BooleanShape& shape) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::And) {
+    for (const core::TermId child : term.children) {
+      collect_top_level_or_shape(terms, child, shape);
+    }
+    return;
+  }
+  if (term.kind == core::TermKind::Or) {
+    ++shape.top_level_or_nodes;
+    shape.max_top_level_or_children =
+        std::max(shape.max_top_level_or_children, term.children.size());
+  }
+}
+
+BooleanShape boolean_shape(const core::TermManager& terms,
+                           const std::vector<core::TermId>& assertions) {
+  BooleanShape shape;
+  std::unordered_set<core::TermId> seen;
+  for (const core::TermId assertion : assertions) {
+    collect_boolean_shape(terms, assertion, seen, shape);
+    collect_top_level_or_shape(terms, assertion, shape);
+  }
+  return shape;
+}
+
+bool should_use_auto_top_level_or_tseitin(const CheckSatOptions& options,
+                                          const FiniteDomainAtMostOneResult& finite_domain,
+                                          const BooleanShape& shape) {
+  constexpr std::size_t kMinTopLevelOrNodes = 1000;
+  constexpr std::size_t kMaxTopLevelOrNodes = 2500;
+  constexpr std::size_t kMaxNotNodes = 700;
+  return options.auto_top_level_or_tseitin && !options.top_level_or_tseitin &&
+         finite_domain.choices != 0 && !finite_domain.clauses.empty() &&
+         shape.top_level_or_nodes >= kMinTopLevelOrNodes &&
+         shape.top_level_or_nodes <= kMaxTopLevelOrNodes && shape.not_nodes <= kMaxNotNodes;
 }
 
 void publish_theory_atom_purity_stats(const core::TermManager& terms,
@@ -3179,6 +3245,20 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       return CheckSatOutcome{CheckSatResult::Unknown, "preprocess-only", statistics};
     }
 
+    CheckSatOptions solve_options = options;
+    const BooleanShape final_boolean_shape = boolean_shape(frontend.terms(), assertions);
+    statistics.set(":preprocessing.boolean-shape.or-nodes", final_boolean_shape.or_nodes);
+    statistics.set(":preprocessing.boolean-shape.not-nodes", final_boolean_shape.not_nodes);
+    statistics.set(":preprocessing.boolean-shape.top-level-or-nodes",
+                   final_boolean_shape.top_level_or_nodes);
+    statistics.set(":preprocessing.boolean-shape.max-top-level-or-children",
+                   final_boolean_shape.max_top_level_or_children);
+    if (should_use_auto_top_level_or_tseitin(options, raw_finite_domain_result,
+                                             final_boolean_shape)) {
+      solve_options.top_level_or_tseitin = true;
+      statistics.increment(":sat.top-level-or-tseitin.auto");
+    }
+
     const bool has_equality = [&] {
       for (const core::TermId assertion : assertions) {
         if (contains_equality(frontend.terms(), assertion)) {
@@ -3188,12 +3268,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       return false;
     }();
     if (has_equality) {
-      return solve_qf_uf(frontend.terms(), assertions, options, statistics);
+      return solve_qf_uf(frontend.terms(), assertions, solve_options, statistics);
     }
     try {
-      return solve_boolean_conjunction(frontend.terms(), assertions, options, statistics);
+      return solve_boolean_conjunction(frontend.terms(), assertions, solve_options, statistics);
     } catch (const UnsupportedInput&) {
-      return solve_qf_uf(frontend.terms(), assertions, options, statistics);
+      return solve_qf_uf(frontend.terms(), assertions, solve_options, statistics);
     }
   } catch (const UnsupportedInput& error) {
     return CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics};

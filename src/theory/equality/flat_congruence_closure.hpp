@@ -8,6 +8,7 @@
 #include "sat/lit.hpp"
 #include "theory/equality/congruence_stats.hpp"
 #include "theory/equality/flat_terms.hpp"
+#include "theory/equality/proof_forest.hpp"
 
 namespace primo::theory::equality {
 
@@ -17,6 +18,20 @@ enum class FlatExplanationSearchMode {
   OneSidedBfs,
   BidirectionalBfs,
   ProofForest,
+  // Nieuwenhuis and Oliveras Section 4/5.2, via the standalone ProofForest
+  // class: proof edges link the raw merge endpoints (not representatives)
+  // and are reoriented at every union, unlike `ProofForest` above, which
+  // links via representatives and was rejected for producing oversized
+  // conflict reasons. See docs/papers/fast-congruence-closure.md.
+  ReorientedProofForest,
+  // Section 5.5's structural-class refinement on top of the above: a
+  // congruence merge coalesces the newly discovered structural-class member
+  // into its class's existing canonical member (`ProofForest::
+  // coalesce_into_structural_class`) instead of adding a tree edge; direct
+  // (non-congruence) equation endpoints are resolved to their structural
+  // class's tree identity before the ordinary Section 4 Union. See
+  // docs/papers/fast-congruence-closure.md.
+  StructuralProofForest,
 };
 
 class FlatCongruenceClosure {
@@ -176,6 +191,10 @@ class FlatCongruenceClosure {
                                                       std::size_t max_edge_index) const;
   void record_proof_forest_path_comparison(std::size_t proof_path_edges,
                                            std::size_t bfs_path_edges) const;
+  bool explain_equal_via_reoriented_proof_forest_into(FlatTermId lhs, FlatTermId rhs,
+                                                      std::vector<sat::Lit>& reason) const;
+  bool explain_equal_via_structural_proof_forest_into(FlatTermId lhs, FlatTermId rhs,
+                                                      std::vector<sat::Lit>& reason) const;
 
   std::vector<FlatTermId> parent_;
   std::vector<std::size_t> class_size_;
@@ -191,6 +210,8 @@ class FlatCongruenceClosure {
   std::vector<FlatTermId> proof_parent_;
   std::vector<FlatTermId> proof_parent_label_endpoint_;
   std::vector<std::size_t> proof_parent_edge_;
+  ProofForest reoriented_proof_forest_;
+  ProofForest structural_proof_forest_;
   std::vector<FlatTermId> changed_terms_;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Checkpoint> checkpoints_;

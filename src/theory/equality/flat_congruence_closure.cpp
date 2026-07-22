@@ -1,6 +1,7 @@
 #include "theory/equality/flat_congruence_closure.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <iterator>
 #include <optional>
@@ -50,6 +51,10 @@ std::size_t FlatCongruenceClosure::push() {
                                     disequalities_.size(), edges_.size(), changed_terms_.size(),
                                     trail_.size(), flat_vector_trail_.size(),
                                     size_vector_trail_.size(), conflict_, stats_});
+  // Kept in lockstep with checkpoints_ so the same index is valid for both;
+  // cheap no-op when reoriented_proof_forest_ is empty (mode not selected).
+  reoriented_proof_forest_.push();
+  structural_proof_forest_.push();
   return checkpoints_.size() - 1;
 }
 
@@ -80,6 +85,8 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   proof_parent_.resize(state.node_count);
   proof_parent_label_endpoint_.resize(state.node_count);
   proof_parent_edge_.resize(state.node_count);
+  reoriented_proof_forest_.pop(checkpoint);
+  structural_proof_forest_.pop(checkpoint);
   conflict_ = std::move(state.conflict);
   stats_ = state.stats;
   ++stats_.backtracks;
@@ -103,6 +110,12 @@ void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {
     proof_parent_.resize(node_count, kInvalidFlatTermId);
     proof_parent_label_endpoint_.resize(node_count, kInvalidFlatTermId);
     proof_parent_edge_.resize(node_count, edges_.size());
+  }
+  if (explanation_search_mode_ == FlatExplanationSearchMode::ReorientedProofForest) {
+    reoriented_proof_forest_.ensure_node_count(node_count);
+  }
+  if (explanation_search_mode_ == FlatExplanationSearchMode::StructuralProofForest) {
+    structural_proof_forest_.ensure_node_count(node_count);
   }
   for (std::size_t i = old_size; i < node_count; ++i) {
     parent_[i] = i;
@@ -210,9 +223,15 @@ void FlatCongruenceClosure::drain_changed_terms(std::vector<FlatTermId>& out) {
 }
 
 FlatTermId FlatCongruenceClosure::representative(FlatTermId term) const {
-  if (term >= parent_.size()) {
-    throw std::out_of_range("flat congruence closure term out of range");
-  }
+  // Every call site validates term against parent_.size() before reaching
+  // here, either via ensure_node_count (assert_equal, assert_distinct,
+  // are_equal, add_definition) or an explicit bounds check earlier in the
+  // same expression (explain_equal_into, explain_equal_with_proof_forest_into).
+  // gprof on NEQ016_size7 showed 154.7M calls to this function; the
+  // always-live throw path was preventing the optimizer from collapsing it to
+  // a single array load. assert() keeps the invariant checked under
+  // asan-test/debug builds while costing nothing in Release (NDEBUG).
+  assert(term < parent_.size() && "flat congruence closure term out of range");
   return parent_[term];
 }
 
@@ -325,6 +344,53 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
   if (proof_forest_diagnostics_ ||
       explanation_search_mode_ == FlatExplanationSearchMode::ProofForest) {
     record_proof_parent(lhs_repr, proof_to, proof_from_endpoint, edge_index);
+  }
+  if (explanation_search_mode_ == FlatExplanationSearchMode::ReorientedProofForest) {
+    // Section 4's Union(e, e'): e is the raw endpoint on the smaller-class
+    // side (proof_from_endpoint), matching the paper's "insert edge a -> b"
+    // where a, b are the equation's own endpoints, not representatives.
+    ProofForestLabel label;
+    if (pending.congruence) {
+      label.congruence = std::make_pair(
+          ProofForestObligation{pending.lhs_definition.function, pending.rhs_definition.function},
+          ProofForestObligation{pending.lhs_definition.argument, pending.rhs_definition.argument});
+    } else {
+      label.reason = edge_index;
+    }
+    reoriented_proof_forest_.union_nodes(proof_from_endpoint, proof_to, std::move(label));
+  }
+  if (explanation_search_mode_ == FlatExplanationSearchMode::StructuralProofForest) {
+    if (pending.congruence) {
+      // Section 5.5: pending.lhs is always the newly discovered structural-
+      // class member and pending.rhs its class's existing canonical member
+      // (enqueue_congruence's callers always pass the arriving definition
+      // as lhs and the lookup-table hit as rhs) -- coalesce rather than
+      // adding a tree edge. Unlike proof_from_endpoint/proof_to above, this
+      // is not swapped by the class-size wlog choice: structural-class
+      // canonicalness is unrelated to live class-list size.
+      ProofForestLabel label;
+      label.congruence = std::make_pair(
+          ProofForestObligation{pending.lhs_definition.function, pending.rhs_definition.function},
+          ProofForestObligation{pending.lhs_definition.argument, pending.rhs_definition.argument});
+      structural_proof_forest_.coalesce_into_structural_class(pending.lhs, pending.rhs,
+                                                              std::move(label));
+    } else {
+      // A direct equation's own endpoints may themselves be non-canonical
+      // structural-class members (paper's Example 23: "a1=c" where c was
+      // already coalesced) -- using resolve() here (as an earlier version
+      // of this code did) would attach `edge_index`'s reason to an edge
+      // between the *resolved* nodes while silently dropping the endpoint's
+      // own bridge fact, unsound exactly like coalescing a twice-aliased
+      // member (see ProofForest::materialize's comment). Materialize both
+      // raw endpoints into real tree nodes first, then Union them directly
+      // -- Section 4's own path-reversal handles whatever tree position
+      // each one is already in.
+      structural_proof_forest_.materialize(proof_from_endpoint);
+      structural_proof_forest_.materialize(proof_to);
+      ProofForestLabel label;
+      label.reason = edge_index;
+      structural_proof_forest_.union_nodes(proof_from_endpoint, proof_to, std::move(label));
+    }
   }
   check_disequalities_touching(lhs_repr, rhs_repr);
   if (conflict_.has_value()) {
@@ -855,6 +921,30 @@ void FlatCongruenceClosure::record_proof_forest_path_comparison(std::size_t proo
   ++stats_.explain_proof_forest_longer_than_bfs;
 }
 
+bool FlatCongruenceClosure::explain_equal_via_reoriented_proof_forest_into(
+    FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason) const {
+  const std::optional<std::vector<std::size_t>> result = reoriented_proof_forest_.explain(lhs, rhs);
+  if (!result.has_value()) {
+    return false;
+  }
+  for (const std::size_t edge_index : result.value()) {
+    append_unique_reason(reason, edges_[edge_index].reason);
+  }
+  return true;
+}
+
+bool FlatCongruenceClosure::explain_equal_via_structural_proof_forest_into(
+    FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit>& reason) const {
+  const std::optional<std::vector<std::size_t>> result = structural_proof_forest_.explain(lhs, rhs);
+  if (!result.has_value()) {
+    return false;
+  }
+  for (const std::size_t edge_index : result.value()) {
+    append_unique_reason(reason, edges_[edge_index].reason);
+  }
+  return true;
+}
+
 bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
                                                std::vector<sat::Lit>& reason,
                                                std::size_t max_edge_index) const {
@@ -890,6 +980,26 @@ bool FlatCongruenceClosure::explain_equal_into(FlatTermId lhs, FlatTermId rhs,
       std::max(stats_.explain_max_recursion_depth, explanation_depth_);
   if (explanation_search_mode_ == FlatExplanationSearchMode::ProofForest) {
     const bool explained = explain_equal_with_proof_forest_into(lhs, rhs, reason, max_edge_index);
+    if (explained) {
+      const auto [cached, inserted] = explanation_cache_.emplace(key, max_edge_index);
+      if (!inserted && max_edge_index < cached->second) {
+        cached->second = max_edge_index;
+      }
+    }
+    return explained;
+  }
+  if (explanation_search_mode_ == FlatExplanationSearchMode::ReorientedProofForest) {
+    const bool explained = explain_equal_via_reoriented_proof_forest_into(lhs, rhs, reason);
+    if (explained) {
+      const auto [cached, inserted] = explanation_cache_.emplace(key, max_edge_index);
+      if (!inserted && max_edge_index < cached->second) {
+        cached->second = max_edge_index;
+      }
+    }
+    return explained;
+  }
+  if (explanation_search_mode_ == FlatExplanationSearchMode::StructuralProofForest) {
+    const bool explained = explain_equal_via_structural_proof_forest_into(lhs, rhs, reason);
     if (explained) {
       const auto [cached, inserted] = explanation_cache_.emplace(key, max_edge_index);
       if (!inserted && max_edge_index < cached->second) {

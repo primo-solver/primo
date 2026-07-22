@@ -49,6 +49,8 @@ enum class EufExplainSearchMode {
   OneSidedBfs,
   BidirectionalBfs,
   ProofForest,
+  ReorientedProofForest,
+  StructuralProofForest,
 };
 
 enum class QfUfPortfolioMode {
@@ -101,6 +103,7 @@ struct CheckSatOptions {
   bool guarded_ground_unit_substitution = false;
   bool solved_constant_substitution = true;
   bool top_level_or_tseitin = false;
+  bool auto_top_level_or_tseitin = true;
   bool auto_basic_single_preprocessing = true;
   bool auto_basic_single_predicate_polarity = true;
   bool auto_basic_multi_preprocessing = true;

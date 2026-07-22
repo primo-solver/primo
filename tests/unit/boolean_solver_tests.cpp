@@ -99,6 +99,39 @@ void top_level_or_can_use_tseitin_support_clauses() {
   assert(encoded.statistics.get(":sat.unit-clauses") == 1);
 }
 
+void auto_top_level_or_tseitin_selects_sparse_negated_finite_domain_shape() {
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun a () A)\n";
+  input << "(declare-fun b () A)\n";
+  input << "(declare-fun p () Bool)\n";
+  input << "(declare-fun q () Bool)\n";
+  for (int i = 0; i < 60; ++i) {
+    input << "(declare-fun x" << i << " () A)\n";
+  }
+  input << "(assert (and (distinct a b)";
+  for (int i = 0; i < 60; ++i) {
+    input << " (or (= x" << i << " a) (= x" << i << " b))";
+  }
+  for (int i = 0; i < 1000; ++i) {
+    input << " (or p q)";
+  }
+  input << "))\n(check-sat)\n";
+
+  primo::smt::CheckSatOptions options;
+  options.solved_constant_substitution = false;
+  const auto selected = check_sat_smtlib(input.str(), options);
+  assert(selected.result == CheckSatResult::Sat);
+  assert(selected.statistics.get(":sat.top-level-or-tseitin.auto") == 1);
+  assert(selected.statistics.get(":preprocessing.boolean-shape.top-level-or-nodes") >= 100);
+
+  options.auto_top_level_or_tseitin = false;
+  const auto disabled = check_sat_smtlib(input.str(), options);
+  assert(disabled.result == CheckSatResult::Sat);
+  assert(disabled.statistics.get(":sat.top-level-or-tseitin.auto") == 0);
+}
+
 void pure_boolean_unsat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -1971,6 +2004,7 @@ int main() {
   pure_boolean_sat();
   top_level_conjunction_does_not_allocate_auxiliary();
   top_level_or_can_use_tseitin_support_clauses();
+  auto_top_level_or_tseitin_selects_sparse_negated_finite_domain_shape();
   pure_boolean_unsat();
   implication_is_clausified();
   implication_is_right_associative();

@@ -350,7 +350,8 @@ The explanation-shape counters
 `:euf.incremental.explain-cache-bound-misses`, are diagnostic only: they measure
 the current BFS explanation path and do not implement or select a proof-forest
 reason engine.
-`--euf-explain-search=one-sided|bidirectional|proof-forest` selects how the
+`--euf-explain-search=one-sided|bidirectional|proof-forest|reoriented-proof-forest`
+selects how the
 incremental flat closure builds explanations. The default `one-sided` mode
 preserves the validated reason shape by searching the current causal
 equality-edge graph. The experimental `bidirectional` mode expands from both
@@ -366,6 +367,32 @@ still not a default because it uses Primo's existing representative-oriented
 proof forest rather than the full reoriented Section 4 forest, and local matrix
 runs show mixed reason quality and search effects. It is a tuning and research
 knob until broader fuzzing and SLURM evidence justify a profile.
+`reoriented-proof-forest` is a separate, from-the-paper-text implementation
+(`src/theory/equality/proof_forest.{hpp,cpp}`) of the same Section 4/5.2
+mechanism, fixing exactly the deviation named above: proof edges link the raw
+merge endpoints directly (no endpoint-detour obligation needed) and are
+reversed-and-relinked at every union per Section 4's `Union` procedure, not
+overlaid on the existing representative-oriented merge tree. It cuts
+`explain-calls` by 100-170x on the local NEQ016_size7/PEQ002_size8 matrix,
+confirming the paper's near-linear Explain bound, but the result is still
+mixed: a real win on `NEQ016_size7` (40% fewer SAT conflicts), a real loss on
+`PEQ002_size8` (80% more theory conflicts, driving CaDiCaL's own clause-database
+subsumption cost up sharply). See `docs/papers/fast-congruence-closure.md` for
+the full analysis; the working hypothesis was that Section 5.5's
+structural-class proof-forest nodes were needed to consistently match or
+beat the BFS default's reason quality. Not a default.
+`structural-proof-forest` implements that Section 5.5 refinement
+(`ProofForest::coalesce_into_structural_class`/`resolve`): congruence
+merges coalesce the newly discovered structural-class member into its
+class's existing canonical member instead of adding a tree edge. It is
+verified correct -- hand-derived tests from the paper's own Example 22/23,
+plus the randomized backtracking oracle test, pass under both the default
+and ASAN/UBSan suites -- but is blocked on a serious, not yet understood
+performance regression on `NEQ016_size7` (does not finish in 180+ seconds,
+versus 3-4s for every other mode); see
+`docs/papers/fast-congruence-closure.md` for the full writeup. Not a
+default, and not yet benchmarked to a conclusion against
+`reoriented-proof-forest`.
 `--euf-proof-forest-diagnostics` maintains a rollback-aware proof-parent forest
 beside the current explanation graph and records path-length counters for
 cache-miss explanation queries. The flag does not change emitted conflict or

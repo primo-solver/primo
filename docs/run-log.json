@@ -8920,6 +8920,107 @@
       },
       "evidence_status": "current_local",
       "notes": "Two new regression tests added in the same commit: one pins that --euf-prop=conflict resolves in a single outer theory-check pass, one guards the EufEngine::Lazy + Online/Conflict combination (no persistent closure to reuse) against silently reporting Sat on an unsat instance."
+    },
+    {
+      "id": "2026-07-22-local-reoriented-proof-forest-mixed",
+      "recorded_at": "2026-07-22T00:00:00+02:00",
+      "kind": "local_benchmark",
+      "scope": "New paper-correct Section 4/5.2 proof forest (ProofForest, raw-endpoint edges, reoriented on every union) integrated as --euf-explain-search=reoriented-proof-forest, benchmarked against the two cases that sank the prior representative-based proof-forest attempt",
+      "commit": "uncommitted (branch euf-explain-lca-ancestor-stamp)",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-feature-rel/primo (Release)",
+        "notes": "Read the actual paper (docs/oliveras-euf.pdf) Sections 4 and 5.1-5.5 directly before implementing. New standalone class src/theory/equality/proof_forest.{hpp,cpp}, unit-tested against hand-derived cases (not copied from paper diagrams) plus the existing randomized 180-step interleaved-backtracking oracle test, under default and ASAN suites."
+      },
+      "command": {
+        "unit_tests": "cmake --build build --target primo_euf_solver_tests -j14 && ./build/primo_euf_solver_tests; same under build-asan",
+        "benchmark": "/usr/bin/time -f '%e s' build-feature-rel/primo --quiet [--euf-explain-search=reoriented-proof-forest] tmp/QF_UF/{PEQ/PEQ002_size8,NEQ/NEQ016_size7}.smt2; build-feature-gprof/primo (Release, -pg) with gprof for profiling"
+      },
+      "benchmark": {
+        "suite": "2-file targeted matrix: the two cases documented in docs/papers/fast-congruence-closure-implementation.md as having sunk the prior (representative-based) proof-forest attempt",
+        "logic": "QF_UF",
+        "manifest": "PEQ002_size8, NEQ016_size7"
+      },
+      "artifacts": {
+        "note": "Single uncontended local runs, not preserved as repo artifacts; see docs/papers/fast-congruence-closure.md 2026-07-22 status section for the full table."
+      },
+      "summary": {
+        "correctness": "Both files still solved unsat (sound) under the new mode. Randomized 180-step oracle test with interleaved backtracking passes for the new mode under default and ASAN builds.",
+        "explain_cost": "explain-calls dropped 100-170x versus the default BFS explainer: PEQ002_size8 31,655,604 -> 183,286; NEQ016_size7 5,352,993 -> 45,228, matching the paper's near-linear Explain complexity bound.",
+        "neq016_size7": "Real modest win: SAT conflicts 18,221 -> 11,013 (-40%), wall time 3.5s -> 3.1s.",
+        "peq002_size8": "Real loss: theory conflicts 99,698 -> 179,492 (+80%), wall time 15.5s -> 35.5s. gprof shows the extra cost is not in ProofForest itself (~5% combined self-time) but in CaDiCaL::Closure::find_subsuming_clause, whose absolute self-time rose ~10x (1.27s -> 12.11s) -- the larger/more-numerous clauses this mode produces make CaDiCaL's own clause-database subsumption bookkeeping far more expensive.",
+        "bug_fixed_before_measuring": "ProofForest::explain originally reset its auxiliary union-find with an eager O(n) assign on every top-level call; with ~180K calls on PEQ002_size8 this alone dominated wall time. Fixed with the generation-stamp pattern already used elsewhere in this file.",
+        "decision": "Kept as an opt-in mode, not promoted to default. Reproduces the same mixed correct-but-not-high-quality-explanation pattern every prior (differently broken) proof-forest attempt hit, now with a provably paper-correct implementation ruling out 'the tree was built wrong' as the explanation. Points at Section 5.5's structural-class nodes (documented separately as the paper's own fix for redundant/lower-quality explanations) as the next thing to try, not another variant of plain reorientation."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build --target primo_euf_solver_tests primo -j14 && ./build/primo_euf_solver_tests",
+          "ASAN build and test suite (build-asan), ASAN_OPTIONS=detect_leaks=1:strict_init_order=1",
+          "clang-format --dry-run --Werror on all changed files",
+          "bash scripts/build_docs.sh"
+        ],
+        "pending": [
+          "Broader local matrix beyond these 2 files",
+          "SLURM full-corpus comparison",
+          "Fuzz gate (opfuzz/yinyang) -- not run this session"
+        ],
+        "warnings": [
+          "2-file matrix only; do not generalize beyond 'mixed, instance-dependent' without more evidence.",
+          "No fuzz gate run yet for this new solver behavior; do not treat as fully validated for soundness beyond the oracle test and these 2 files."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This is the first proof-forest attempt where the underlying tree construction itself is verified correct against the actual paper text (not memory or a reference solver), via hand-derived tests plus the existing randomized oracle. The mixed benchmark result is therefore attributable to the paper's own documented explanation-quality gap (Section 5.4), not to a construction bug, which is new information: previous rejected attempts could not distinguish 'wrong construction' from 'inherent quality gap' because none of them had a verified-correct construction to compare against."
+    },
+    {
+      "id": "2026-07-22-local-structural-proof-forest-correct-perf-blocked",
+      "recorded_at": "2026-07-22T00:00:00+02:00",
+      "kind": "local_benchmark",
+      "scope": "Section 5.5 structural-class proof-forest nodes (ProofForest::coalesce_into_structural_class/resolve) integrated as --euf-explain-search=structural-proof-forest, on top of the reoriented-proof-forest baseline",
+      "commit": "uncommitted (branch euf-explain-lca-ancestor-stamp)",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-rel/primo (Release)",
+        "notes": "Re-read Section 5.5 and Theorem 21 directly from docs/oliveras-euf.pdf; corrected a wrong prior characterization of 'structural class' (it is congruence-produced terms sharing one (function,argument) representative pair, not constants pre-merged by direct equations). Hand-derived unit tests built directly from the paper's own Example 22 and Example 23, plus the existing randomized 180-step interleaved-backtracking oracle test extended to this mode, under default and ASAN/UBSan builds."
+      },
+      "command": {
+        "unit_tests": "cmake --build build-rel --target primo_euf_solver_tests -j$(nproc) && ./build-rel/primo_euf_solver_tests; same under a freshly configured ASAN+UBSan build (PRIMO_SANITIZERS=address,undefined)",
+        "benchmark": "/usr/bin/time -f 'WALL %e s' timeout 90 build-rel/primo --quiet --stats [mode] tmp/QF_UF/{PEQ/PEQ002_size8,NEQ/NEQ016_size7}.smt2"
+      },
+      "benchmark": {
+        "suite": "2-file targeted matrix: same PEQ002_size8/NEQ016_size7 pair used for the reoriented-proof-forest run",
+        "logic": "QF_UF",
+        "manifest": "PEQ002_size8, NEQ016_size7"
+      },
+      "artifacts": {
+        "note": "Single uncontended local runs, not preserved as repo artifacts; see docs/papers/fast-congruence-closure.md 2026-07-22 structural-class status section for the full writeup."
+      },
+      "summary": {
+        "correctness": "Three distinct soundness bugs found and fixed during implementation, all the same root cause (a node's own signature can be rehashed and rediscovered congruent more than once, so naively resolving to 'current identity' and linking through that silently drops a bridge fact from the explanation): (1) ProofForest::explain only alias-resolved the top-level query, not obligations produced mid-walk; (2) re-coalescing an already-aliased member needs its old alias materialized into a real tree edge first, not overwritten; (3) the same applies to the canonical side and to direct-equation endpoints, plus a has_incoming_edge_ tracker was needed since a self-rooted node can already have a real incoming edge a naive parent_[node]==node check would miss. After all three fixes: hand-derived Example 22/23 tests pass, and the 180-step randomized backtracking oracle test passes under both default and ASAN/UBSan builds.",
+        "peq002_size8": "29.82s wall, 151,420 theory conflicts -- solves correctly, and faster than reoriented-proof-forest's 38.51s/169,270 conflicts on this same machine/build.",
+        "neq016_size7": "Does not finish within 180s (reoriented-proof-forest: 3.29s/40,897 conflicts; default: 3.82s/37,931 conflicts on the same run). Stats captured mid-run show it is not stuck in a single call -- 5,120+ backtracks and 3.4M+ trail entries already recorded, versus ~750K assignments other modes need for this file -- so this looks like a real blowup, not a literal infinite loop. Working hypothesis, not confirmed: materialize()'s retroactive reversals happen outside the normal Union-driven growth pattern Lemma 13's amortized O(log n) bound depends on ('each reversal at least doubles the reversed edge's tree size'), and may violate that invariant. Not investigated further this session.",
+        "decision": "Correctness verified and complete. Performance is blocked on the NEQ016_size7 regression -- explicitly not promoted, and not benchmarked to a conclusion against reoriented-proof-forest. Kept as an opt-in mode (--euf-explain-search=structural-proof-forest), off by default, so this does not affect any other mode. User explicitly chose to stop and document rather than continue profiling this session."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build-rel --target primo_euf_solver_tests primo_boolean_solver_tests primo -j$(nproc); ./build-rel/primo_euf_solver_tests (exit 0); (cd build-rel && ./primo_boolean_solver_tests) (exit 0, needs to run from the build dir for its relative benchmark path)",
+          "Freshly configured Debug+ASAN+UBSan build (cmake -DCMAKE_BUILD_TYPE=Debug -DPRIMO_SANITIZERS=address,undefined): primo_euf_solver_tests exit 0"
+        ],
+        "pending": [
+          "NEQ016_size7 performance regression root-caused and fixed",
+          "Broader local matrix beyond these 2 files",
+          "SLURM full-corpus comparison",
+          "Fuzz gate (opfuzz/yinyang) -- not run this session"
+        ],
+        "warnings": [
+          "Do not enable structural-proof-forest for any benchmarking or production use until the NEQ016_size7 regression is understood -- it can apparently make some instances dramatically (50x+) slower, not just differently-shaped.",
+          "2-file matrix only; do not generalize beyond these two specific outcomes."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Continuation of the reoriented-proof-forest session's own stated next step. The three soundness bugs were all found via the same 180-step randomized oracle test already in the suite (extended to cover this new mode), each requiring a targeted hand-trace of the actual proof-forest state (parent_/alias_ arrays) at the failing step to diagnose -- not caught by the hand-derived Example 22/23 tests alone, which is itself useful evidence that the randomized oracle test is pulling real weight beyond the hand-derived cases."
     }
   ]
 }

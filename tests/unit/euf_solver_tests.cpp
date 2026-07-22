@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <optional>
@@ -13,14 +14,19 @@
 #include "theory/equality/flat_congruence_closure.hpp"
 #include "theory/equality/flat_terms.hpp"
 #include "theory/equality/incremental_congruence_closure.hpp"
+#include "theory/equality/proof_forest.hpp"
 
 using primo::theory::equality::EufSolver;
 using primo::theory::equality::ExplainedCongruenceClosure;
 using primo::theory::equality::FlatCongruenceClosure;
 using primo::theory::equality::FlatCongruenceClosureTestAccess;
 using primo::theory::equality::FlatExplanationSearchMode;
+using primo::theory::equality::FlatTermId;
 using primo::theory::equality::FlatTermIndex;
 using primo::theory::equality::IncrementalCongruenceClosure;
+using primo::theory::equality::ProofForest;
+using primo::theory::equality::ProofForestLabel;
+using primo::theory::equality::ProofForestObligation;
 
 namespace primo::theory::equality {
 class FlatCongruenceClosureTestAccess {
@@ -1075,6 +1081,186 @@ void flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
       FlatExplanationSearchMode::BidirectionalBfs);
   flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
       FlatExplanationSearchMode::ProofForest);
+  flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
+      FlatExplanationSearchMode::ReorientedProofForest);
+  flat_congruence_closure_explanations_match_naive_oracle_under_backtracking(
+      FlatExplanationSearchMode::StructuralProofForest);
+}
+
+ProofForestLabel proof_forest_direct_reason(std::size_t reason) {
+  ProofForestLabel label;
+  label.reason = reason;
+  return label;
+}
+
+// Hand-derived from Nieuwenhuis and Oliveras Section 4's Union procedure:
+// "reverse all edges on the path between e and the root of its tree, [then]
+// add an edge e -> e'." Sequence: 0=1 (r10), 2=0 (r11), 1=3 (r12), 0=4 (r13).
+// By the time 0=4 is unioned, e=0 is not the root of its own tree (0's tree
+// is 2->0->1->3, rooted at 3): this specifically exercises the reversal
+// step, not merely a trivial link, and r13 (0=4) is irrelevant to 2=3 so it
+// must not appear in the explanation.
+void proof_forest_reverses_path_on_non_root_union() {
+  ProofForest forest(5);
+  forest.union_nodes(0, 1, proof_forest_direct_reason(10));
+  forest.union_nodes(2, 0, proof_forest_direct_reason(11));
+  forest.union_nodes(1, 3, proof_forest_direct_reason(12));
+  forest.union_nodes(0, 4, proof_forest_direct_reason(13));
+
+  const std::optional<std::vector<std::size_t>> result = forest.explain(2, 3);
+  check(result.has_value());
+  std::vector<std::size_t> reasons = result.value();
+  std::sort(reasons.begin(), reasons.end());
+  check((reasons == std::vector<std::size_t>{10, 11, 12}));
+}
+
+// Section 5.2: a congruence-step edge is labelled with a pair of child
+// obligations that Explain resolves recursively within the same call
+// (the paper's PendingProofs loop), not by the caller.
+void proof_forest_recursively_explains_congruence_obligations() {
+  ProofForest forest(6);
+  // Function-argument equalities that justify the congruence step.
+  forest.union_nodes(0, 1, proof_forest_direct_reason(20));  // fn1 = fn2
+  forest.union_nodes(2, 3, proof_forest_direct_reason(21));  // arg1 = arg2
+  ProofForestLabel congruence;
+  congruence.congruence = std::make_pair(ProofForestObligation{0, 1}, ProofForestObligation{2, 3});
+  forest.union_nodes(4, 5, std::move(congruence));  // f(fn1,arg1) = f(fn2,arg2)
+
+  const std::optional<std::vector<std::size_t>> result = forest.explain(4, 5);
+  check(result.has_value());
+  std::vector<std::size_t> reasons = result.value();
+  std::sort(reasons.begin(), reasons.end());
+  check((reasons == std::vector<std::size_t>{20, 21}));
+}
+
+void proof_forest_backtracks_union() {
+  ProofForest forest(3);
+  const std::size_t checkpoint = forest.push();
+  forest.union_nodes(0, 1, proof_forest_direct_reason(30));
+  check(forest.explain(0, 1).has_value());
+
+  forest.pop(checkpoint);
+  check(!forest.explain(0, 1).has_value());
+
+  // The forest must still be usable (and correctly rooted) after rollback.
+  forest.union_nodes(1, 2, proof_forest_direct_reason(31));
+  const std::optional<std::vector<std::size_t>> result = forest.explain(1, 2);
+  check(result.has_value());
+  check((result.value() == std::vector<std::size_t>{31}));
+  check(!forest.explain(0, 1).has_value());
+}
+
+void proof_forest_explain_returns_nullopt_when_unconnected() {
+  ProofForest forest(4);
+  forest.union_nodes(0, 1, proof_forest_direct_reason(40));
+  check(!forest.explain(0, 2).has_value());
+  check(!forest.explain(2, 3).has_value());
+}
+
+void proof_forest_explain_same_node_is_trivial() {
+  ProofForest forest(2);
+  const std::optional<std::vector<std::size_t>> result = forest.explain(0, 0);
+  check(result.has_value());
+  check(result.value().empty());
+}
+
+// f(x,x)-shaped congruence bridge: both obligation slots equal, matching
+// how Nieuwenhuis and Oliveras Examples 22-23 apply a single-argument
+// function to the same argument twice.
+ProofForestLabel proof_forest_congruence_label(FlatTermId member_arg, FlatTermId canonical_arg) {
+  ProofForestLabel label;
+  const ProofForestObligation obligation{member_arg, canonical_arg};
+  label.congruence = std::make_pair(obligation, obligation);
+  return label;
+}
+
+// Hand-derived from Section 5.5's Example 22: input equations a1=b1, a1=c1,
+// f(a1,a1)=a, f(b1,b1)=b, f(c1,c1)=c. The paper: "the proof forest will
+// consist of the two trees ... [a, b, c] and b1 -> a1 <- c1" -- a, b, c
+// collapse into a single structural-class node (no edge among them), and
+// "Explain(a=c) will return only the structural equations involving a and c
+// and the corresponding recursive explanation that a1=c1."
+// Nodes: a1=0, b1=1, c1=2, a=3 (canonical), b=4, c=5.
+void proof_forest_structural_class_coalesces_congruence_members() {
+  ProofForest forest(6);
+  forest.union_nodes(1, 0, proof_forest_direct_reason(200));  // a1=b1: parent(b1)=a1
+  forest.union_nodes(2, 0, proof_forest_direct_reason(201));  // a1=c1: parent(c1)=a1
+  forest.coalesce_into_structural_class(4, 3, proof_forest_congruence_label(1, 0));  // b joins [a]
+  forest.coalesce_into_structural_class(5, 3, proof_forest_congruence_label(2, 0));  // c joins [a]
+
+  check(forest.resolve(3) == 3);
+  check(forest.resolve(4) == 3);
+  check(forest.resolve(5) == 3);
+
+  // Explain(a, c): both resolve to the same node, so no tree walk at all is
+  // needed -- only c's bridge to the shared canonical, i.e. a1=c1.
+  const std::optional<std::vector<std::size_t>> a_c = forest.explain(3, 5);
+  check(a_c.has_value());
+  std::vector<std::size_t> a_c_reasons = a_c.value();
+  std::sort(a_c_reasons.begin(), a_c_reasons.end());
+  a_c_reasons.erase(std::unique(a_c_reasons.begin(), a_c_reasons.end()), a_c_reasons.end());
+  check((a_c_reasons == std::vector<std::size_t>{201}));
+
+  // Explain(b, c): neither is canonical; both bridges fire (a1=b1, a1=c1).
+  const std::optional<std::vector<std::size_t>> b_c = forest.explain(4, 5);
+  check(b_c.has_value());
+  std::vector<std::size_t> b_c_reasons = b_c.value();
+  std::sort(b_c_reasons.begin(), b_c_reasons.end());
+  b_c_reasons.erase(std::unique(b_c_reasons.begin(), b_c_reasons.end()), b_c_reasons.end());
+  check((b_c_reasons == std::vector<std::size_t>{200, 201}));
+}
+
+// Hand-derived from Section 5.5's Example 23 (the redundancy example),
+// restricted to the five structural (non-definitional) input equations:
+// 5. a1=b1  6. c1=d1  7. a1=c  8. a1=a  9. d=d1
+// with structural classes [a,b] (canonical a) and [c,d] (canonical c)
+// formed as a side effect of equations 5 and 6. The paper's own final tree
+// is "[a, b] -> a1 <- [c, d] <- d1 <- c1" with b1 also parented at a1;
+// equation 9 ("d=d1") is a direct equation whose own endpoint d is a
+// non-canonical structural-class member, exercising resolve()-before-Union.
+// Nodes: a1=0, b1=1, c1=2, d1=3, a=4 (canonical [a,b]), b=5,
+//        c=6 (canonical [c,d]), d=7.
+void proof_forest_structural_class_resolves_direct_equation_endpoint() {
+  ProofForest forest(8);
+  forest.union_nodes(1, 0, proof_forest_direct_reason(105));  // eq5 a1=b1: parent(b1)=a1
+  forest.coalesce_into_structural_class(5, 4, proof_forest_congruence_label(1, 0));  // b joins [a]
+  forest.union_nodes(2, 3, proof_forest_direct_reason(106));  // eq6 c1=d1: parent(c1)=d1
+  forest.coalesce_into_structural_class(7, 6, proof_forest_congruence_label(3, 2));  // d joins [c]
+  forest.union_nodes(forest.resolve(6), forest.resolve(0),
+                     proof_forest_direct_reason(107));  // eq7 a1=c: parent(c)=a1
+  forest.union_nodes(forest.resolve(4), forest.resolve(0),
+                     proof_forest_direct_reason(108));  // eq8 a1=a: parent(a)=a1
+  // eq9 "d=d1": d (7) is a non-canonical member of [c,d] -- resolve before
+  // Union, exactly as FlatCongruenceClosure's merge_classes now does for
+  // direct-equation endpoints in structural-proof-forest mode.
+  forest.union_nodes(forest.resolve(3), forest.resolve(7),
+                     proof_forest_direct_reason(109));  // parent(d1)=c
+
+  check(forest.resolve(5) == 4);
+  check(forest.resolve(7) == 6);
+
+  const std::optional<std::vector<std::size_t>> result = forest.explain(5, 3);  // Explain(b, d1)
+  check(result.has_value());
+  std::vector<std::size_t> reasons = result.value();
+  std::sort(reasons.begin(), reasons.end());
+  reasons.erase(std::unique(reasons.begin(), reasons.end()), reasons.end());
+  // 106 (c1=d1) is not needed to connect b to d1 here -- it only bridges
+  // d's own coalescing, which this path never traverses; 108 (a1=a)
+  // appearing is exactly the paper's point that structural-class forests
+  // can still be redundant (Theorem 24), not a bug in this construction.
+  check((reasons == std::vector<std::size_t>{105, 107, 108, 109}));
+}
+
+void proof_forest_structural_class_coalescing_backtracks() {
+  ProofForest forest(3);
+  const std::size_t checkpoint = forest.push();
+  forest.coalesce_into_structural_class(0, 1, proof_forest_congruence_label(2, 2));
+  check(forest.resolve(0) == 1);
+  check(forest.explain(0, 1).has_value());
+
+  forest.pop(checkpoint);
+  check(forest.resolve(0) == 0);
+  check(!forest.explain(0, 1).has_value());
 }
 
 }  // namespace
@@ -1120,5 +1306,13 @@ int main() {
   flat_congruence_closure_deduplicates_affected_use_lists_after_backtrack();
   flat_congruence_closure_matches_naive_oracle_under_backtracking();
   flat_congruence_closure_explanations_match_naive_oracle_under_backtracking();
+  proof_forest_reverses_path_on_non_root_union();
+  proof_forest_recursively_explains_congruence_obligations();
+  proof_forest_backtracks_union();
+  proof_forest_explain_returns_nullopt_when_unconnected();
+  proof_forest_explain_same_node_is_trivial();
+  proof_forest_structural_class_coalesces_congruence_members();
+  proof_forest_structural_class_resolves_direct_equation_endpoint();
+  proof_forest_structural_class_coalescing_backtracks();
   return 0;
 }
