@@ -290,11 +290,18 @@ bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) 
     }
     case core::TermKind::Application:
     case core::TermKind::Equality:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
     case core::TermKind::BoolValue:
     case core::TermKind::Not:
     case core::TermKind::And:
     case core::TermKind::Or:
     case core::TermKind::Implies:
+      return false;
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Neg:
+      // Real-sorted; unreachable past the bool_sort() guard above.
       return false;
   }
   return false;
@@ -312,12 +319,19 @@ bool is_forced_atom(const core::TermManager& terms, core::TermId term_id) {
     }
     case core::TermKind::Application:
     case core::TermKind::Equality:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       return true;
     case core::TermKind::BoolValue:
     case core::TermKind::Not:
     case core::TermKind::And:
     case core::TermKind::Or:
     case core::TermKind::Implies:
+      return false;
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Neg:
+      // Real-sorted; unreachable past the bool_sort() guard above.
       return false;
   }
   return false;
@@ -448,6 +462,14 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
+    // QF_LRA and QF_UF are mutually exclusive at dispatch (check_sat.cpp),
+    // so this pass never actually sees arithmetic/Le/Lt terms; treated as
+    // opaque leaves for switch exhaustiveness.
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Neg:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       return term_id;
     case core::TermKind::Equality: {
       const core::TermId lhs =
@@ -535,6 +557,11 @@ core::TermId simplify_with_forced_atoms(core::TermManager& terms, core::TermId t
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Neg:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       rewritten = term_id;
       break;
     case core::TermKind::Equality: {
@@ -768,6 +795,11 @@ core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId ter
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Neg:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       return term;
     case core::TermKind::Equality:
       return closure.are_equal(node_children.at(0), node_children.at(1)) ? terms.mk_bool(true)
@@ -1416,6 +1448,11 @@ core::TermId rewrite_with_ground_unit_equalities(
   switch (node.kind) {
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Neg:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       break;
     case core::TermKind::Application: {
       std::vector<core::TermId> children;
@@ -1499,6 +1536,11 @@ core::TermId rewrite_with_solved_constants(
   switch (term.kind) {
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Neg:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       break;
     case core::TermKind::Application: {
       std::vector<core::TermId> rewritten_children;
@@ -1765,6 +1807,11 @@ core::TermId simplify_with_finite_domain_evaluation(core::TermManager& terms, co
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Neg:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       return term;
     case core::TermKind::Equality: {
       bool cutoff = false;

@@ -8,6 +8,7 @@ namespace primo::core {
 
 enum class SortKind {
   Bool,
+  Real,
   Uninterpreted,
 };
 

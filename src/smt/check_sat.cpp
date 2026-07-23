@@ -875,8 +875,14 @@ class BooleanClausifier {
         }
         return;
       case core::TermKind::Equality:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
         record_theory_atom_polarity(term_id, positive);
         return;
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Neg:
+        throw UnsupportedInput("Real-sorted term used in a Boolean context");
     }
   }
 
@@ -942,8 +948,14 @@ class BooleanClausifier {
       case core::TermKind::Constant:
       case core::TermKind::Application:
       case core::TermKind::Equality:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
         backend_.add_clause(sat::Clause{encode(term_id)});
         return;
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Neg:
+        break;
     }
     throw UnsupportedInput("unsupported Boolean assertion");
   }
@@ -988,10 +1000,15 @@ class BooleanClausifier {
         }
         return theory_atom_for_term(term_id).lit;
       case core::TermKind::Equality:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
         return theory_atom_for_term(term_id).lit;
       case core::TermKind::BoolValue:
       case core::TermKind::Constant:
       case core::TermKind::Not:
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Neg:
         break;
     }
     throw UnsupportedInput("unsupported Boolean term");

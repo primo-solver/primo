@@ -6,6 +6,7 @@
 
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
+#include "util/rational.hpp"
 
 namespace primo::core {
 
@@ -22,6 +23,14 @@ class TermManager {
   TermId mk_or(std::vector<TermId> children);
   TermId mk_implies(TermId lhs, TermId rhs);
 
+  // Linear real arithmetic (QF_LRA). See the TermKind comment in term.hpp
+  // for why there is no mk_times/mk_minus/mk_ge/mk_gt.
+  TermId mk_rational(util::Rational value);
+  TermId mk_plus(std::vector<TermId> children);
+  TermId mk_neg(TermId child);
+  TermId mk_le(TermId lhs, TermId rhs);
+  TermId mk_lt(TermId lhs, TermId rhs);
+
   const Term& get(TermId id) const;
   const SymbolTable& symbols() const;
   std::size_t size() const;
@@ -33,6 +42,7 @@ class TermManager {
     SymbolId symbol = kInvalidSymbolId;
     std::vector<TermId> children;
     bool bool_value = false;
+    util::Rational rational_value;
 
     bool operator==(const Key& other) const = default;
   };
