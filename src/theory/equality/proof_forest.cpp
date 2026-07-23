@@ -353,6 +353,16 @@ std::optional<std::vector<std::size_t>> ProofForest::explain(FlatTermId c1, Flat
   if (ancestor_marks_.size() < parent_.size()) {
     ancestor_marks_.resize(parent_.size(), 0);
   }
+  // Same lazy generation-stamp reset for the alias-bridge seeding dedup
+  // below (see seed_marks_'s comment).
+  if (seed_marks_.size() < parent_.size()) {
+    seed_marks_.resize(parent_.size(), 0);
+  }
+  ++seed_generation_;
+  if (seed_generation_ == 0) {
+    std::fill(seed_marks_.begin(), seed_marks_.end(), 0);
+    ++seed_generation_;
+  }
 
   std::vector<std::size_t> reasons;
   std::vector<ProofForestObligation> pending_proofs;
@@ -365,13 +375,22 @@ std::optional<std::vector<std::size_t>> ProofForest::explain(FlatTermId c1, Flat
   // being tree-identity nodes. Bridge each side to its tree identity right
   // before use, seeding its own bridge obligations onto the same worklist
   // so a multi-hop alias chain (see coalesce_into_structural_class) is
-  // resolved recursively rather than only one level deep.
+  // resolved recursively rather than only one level deep. A node's bridge
+  // obligations are only pushed the *first* time it is seeded within this
+  // call (seed_marks_) -- otherwise a popular coalesced node referenced by
+  // many different obligations in the same call would have its bridge
+  // re-derived once per reference. The walk to find the resolved identity
+  // still always runs regardless (cheap, and needed for correctness); only
+  // the obligation-pushing is deduplicated.
   auto seed_and_resolve = [&](FlatTermId raw) {
     FlatTermId node = raw;
     while (alias_[node] != node) {
-      const auto& [first, second] = *alias_label_[node].congruence;
-      pending_proofs.push_back(first);
-      pending_proofs.push_back(second);
+      if (seed_marks_[node] != seed_generation_) {
+        seed_marks_[node] = seed_generation_;
+        const auto& [first, second] = *alias_label_[node].congruence;
+        pending_proofs.push_back(first);
+        pending_proofs.push_back(second);
+      }
       node = alias_[node];
     }
     return node;

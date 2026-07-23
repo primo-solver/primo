@@ -213,6 +213,18 @@ class ProofForest {
   mutable std::vector<std::size_t> ancestor_marks_;
   mutable std::size_t ancestor_generation_ = 0;
 
+  // Same generation-stamp idea, but for `explain`'s alias-bridge seeding
+  // (see `resolve`/`coalesce_into_structural_class`), which the aux
+  // union-find above does not cover: that structure only deduplicates
+  // repeat *tree*-edge congruence obligations reached via
+  // `explain_along_path`'s NCA walk, not repeat *alias*-bridge obligations
+  // reached via `seed_and_resolve`. Without this, a popular coalesced node
+  // referenced by many different obligations within the same top-level
+  // Explain call would have its bridge obligations re-pushed once per
+  // reference instead of once per call.
+  mutable std::vector<std::size_t> seed_marks_;
+  mutable std::size_t seed_generation_ = 0;
+
   void aux_ensure_fresh(FlatTermId node) const;
 
   friend class ProofForestTestAccess;
