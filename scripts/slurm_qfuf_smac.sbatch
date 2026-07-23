@@ -28,7 +28,11 @@ mkdir -p logs "$OUT_DIR"
 if [ ! -x .venv-smac/bin/python ]; then
   python3 -m venv .venv-smac
   .venv-smac/bin/python -m pip install --upgrade pip
-  .venv-smac/bin/python -m pip install 'smac>=2,<3'
+  # SMAC 2.x's RandomForest surrogate imports internals that scikit-learn
+  # removed in 1.7+ (sklearn.tree._tree.DTYPE, sklearn.utils.validation's
+  # pre-validate_data API). Pin to the newest scikit-learn SMAC 2.4.0 still
+  # declares support for (>=1.6.1) so the import doesn't break silently.
+  .venv-smac/bin/python -m pip install 'smac>=2,<3' 'scikit-learn==1.6.1'
 fi
 
 "$SOLVER" --version

@@ -269,7 +269,12 @@ def make_configspace(seed: int):
             ),
             CategoricalHyperparameter(
                 "euf_explain_search",
-                ["one-sided", "bidirectional"],
+                [
+                    "one-sided",
+                    "bidirectional",
+                    "reoriented-proof-forest",
+                    "structural-proof-forest",
+                ],
                 default_value="one-sided",
             ),
             CategoricalHyperparameter(
