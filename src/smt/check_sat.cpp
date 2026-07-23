@@ -29,6 +29,7 @@
 #include "theory/equality/explained_congruence_closure.hpp"
 #include "theory/equality/flat_congruence_closure.hpp"
 #include "theory/equality/flat_terms.hpp"
+#include "util/rational.hpp"
 #include "util/statistics.hpp"
 
 #if PRIMO_HAVE_IPASIR
@@ -371,6 +372,11 @@ class UnsupportedInput : public std::runtime_error {
 class Frontend {
  public:
   core::TermId build_term(const smtlib::SExpr& expr) {
+    const auto rational_literal = parse_rational_literal(expr);
+    if (rational_literal.has_value()) {
+      return terms_.mk_rational(rational_literal.value());
+    }
+
     if (expr.kind == smtlib::SExpr::Kind::Atom) {
       if (expr.atom == "true") {
         return terms_.mk_bool(true);
@@ -444,6 +450,25 @@ class Frontend {
     if (head == "distinct") {
       return build_distinct(expr);
     }
+    if (head == "+") {
+      return build_plus(expr);
+    }
+    if (head == "-") {
+      return build_minus(expr);
+    }
+    if (head == "*") {
+      return build_times(expr);
+    }
+    if (head == "/") {
+      // A well-formed literal ratio-of-numerals was already handled by the
+      // parse_rational_literal check above; anything reaching here divides
+      // a non-literal, which is outside QF_LRA's linear fragment (`/` only
+      // ever builds a rational-literal coefficient in QF_LRA).
+      throw UnsupportedInput("/ is only supported between rational literals in QF_LRA");
+    }
+    if (head == "<=" || head == "<" || head == ">=" || head == ">") {
+      return build_comparison(expr, head);
+    }
 
     if (!definitions_.empty()) {
       const auto defined = definitions_.find(head);
@@ -475,7 +500,7 @@ class Frontend {
       case smtlib::CommandKind::Ignored:
         return;
       case smtlib::CommandKind::SetLogic:
-        if (command.logic != "QF_UF") {
+        if (command.logic != "QF_UF" && command.logic != "QF_LRA") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
         }
         return;
@@ -685,6 +710,105 @@ class Frontend {
       return disequalities.front();
     }
     return terms_.mk_and(std::move(disequalities));
+  }
+
+  // Recognizes an SMT-LIB QF_LRA rational-literal S-expression: a bare
+  // NUMERAL/DECIMAL atom, `(- lit)`, or `(/ lit nonzero-numeral)` (a ratio
+  // of literals -- QF_LRA's only use of `/`). Never calls build_term or
+  // looks up symbols, so it safely returns nullopt (rather than throwing)
+  // for anything that isn't pure literal syntax, e.g. a variable or `(- x)`.
+  static std::optional<util::Rational> parse_rational_literal(const smtlib::SExpr& expr) {
+    if (expr.kind == smtlib::SExpr::Kind::Atom) {
+      return util::Rational::parse(expr.atom);
+    }
+    if (expr.list.empty() || expr.list[0].kind != smtlib::SExpr::Kind::Atom) {
+      return std::nullopt;
+    }
+    const std::string& head = expr.list[0].atom;
+    if (head == "-" && expr.list.size() == 2) {
+      const auto inner = parse_rational_literal(expr.list[1]);
+      if (!inner.has_value()) {
+        return std::nullopt;
+      }
+      return -inner.value();
+    }
+    if (head == "/" && expr.list.size() == 3) {
+      const auto numerator = parse_rational_literal(expr.list[1]);
+      const auto denominator = parse_rational_literal(expr.list[2]);
+      if (!numerator.has_value() || !denominator.has_value() || denominator->is_zero()) {
+        return std::nullopt;
+      }
+      return numerator.value() / denominator.value();
+    }
+    return std::nullopt;
+  }
+
+  core::TermId build_plus(const smtlib::SExpr& expr) {
+    if (expr.list.size() < 2) {
+      throw UnsupportedInput("+ has wrong arity");
+    }
+    std::vector<core::TermId> children;
+    children.reserve(expr.list.size() - 1);
+    for (std::size_t i = 1; i < expr.list.size(); ++i) {
+      children.push_back(build_term(expr.list[i]));
+    }
+    return terms_.mk_plus(std::move(children));
+  }
+
+  core::TermId build_minus(const smtlib::SExpr& expr) {
+    if (expr.list.size() == 2) {
+      return terms_.mk_times(util::Rational(-1), build_term(expr.list[1]));
+    }
+    if (expr.list.size() < 3) {
+      throw UnsupportedInput("- has wrong arity");
+    }
+    std::vector<core::TermId> children;
+    children.reserve(expr.list.size() - 1);
+    children.push_back(build_term(expr.list[1]));
+    for (std::size_t i = 2; i < expr.list.size(); ++i) {
+      children.push_back(terms_.mk_times(util::Rational(-1), build_term(expr.list[i])));
+    }
+    return terms_.mk_plus(std::move(children));
+  }
+
+  core::TermId build_times(const smtlib::SExpr& expr) {
+    require_arity(expr, 3, "*");
+    const auto lhs_literal = parse_rational_literal(expr.list[1]);
+    const auto rhs_literal = parse_rational_literal(expr.list[2]);
+    if (lhs_literal.has_value() && rhs_literal.has_value()) {
+      return terms_.mk_rational(lhs_literal.value() * rhs_literal.value());
+    }
+    if (lhs_literal.has_value()) {
+      return terms_.mk_times(lhs_literal.value(), build_term(expr.list[2]));
+    }
+    if (rhs_literal.has_value()) {
+      return terms_.mk_times(rhs_literal.value(), build_term(expr.list[1]));
+    }
+    throw UnsupportedInput("* requires a literal rational coefficient operand (QF_LRA)");
+  }
+
+  core::TermId build_comparison(const smtlib::SExpr& expr, const std::string& head) {
+    if (expr.list.size() < 3) {
+      throw UnsupportedInput(head + " has wrong arity");
+    }
+    const bool strict = head == "<" || head == ">";
+    const bool flipped = head == ">=" || head == ">";
+    std::vector<core::TermId> operands;
+    operands.reserve(expr.list.size() - 1);
+    for (std::size_t i = 1; i < expr.list.size(); ++i) {
+      operands.push_back(build_term(expr.list[i]));
+    }
+    std::vector<core::TermId> atoms;
+    atoms.reserve(operands.size() - 1);
+    for (std::size_t i = 0; i + 1 < operands.size(); ++i) {
+      const core::TermId lhs = flipped ? operands[i + 1] : operands[i];
+      const core::TermId rhs = flipped ? operands[i] : operands[i + 1];
+      atoms.push_back(strict ? terms_.mk_lt(lhs, rhs) : terms_.mk_le(lhs, rhs));
+    }
+    if (atoms.size() == 1) {
+      return atoms.front();
+    }
+    return terms_.mk_and(std::move(atoms));
   }
 
   core::TermId build_pairwise_equality(core::TermId lhs, core::TermId rhs) {
@@ -1112,6 +1236,19 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   }
   for (const core::TermId child : term.children) {
     if (contains_equality(terms, child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool contains_arithmetic_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+    return true;
+  }
+  for (const core::TermId child : term.children) {
+    if (contains_arithmetic_atom(terms, child)) {
       return true;
     }
   }
@@ -3318,6 +3455,27 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       }
       return false;
     }();
+    const bool has_arithmetic = [&] {
+      for (const core::TermId assertion : assertions) {
+        if (contains_arithmetic_atom(frontend.terms(), assertion)) {
+          return true;
+        }
+      }
+      return false;
+    }();
+    if (has_equality && has_arithmetic) {
+      // QF_UF + QF_LRA combination (QF_UFLRA) would need real Nelson-Oppen
+      // style theory combination -- out of scope; reject rather than
+      // silently mishandle one theory's atoms.
+      throw UnsupportedInput("combined equality and arithmetic (QF_UFLRA) is not supported");
+    }
+    if (has_arithmetic) {
+      // TODO(qf-lra milestone 1): route to a real QF_LRA theory solver.
+      // Until then, refuse rather than silently fall through to
+      // solve_boolean_conjunction, which would treat Le/Lt atoms as
+      // independent Booleans and return unsound "sat" answers.
+      throw UnsupportedInput("QF_LRA theory solving is not yet implemented");
+    }
     if (has_equality) {
       return solve_qf_uf(frontend.terms(), assertions, solve_options, statistics);
     }
