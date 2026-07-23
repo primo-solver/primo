@@ -163,6 +163,28 @@ else()
   message(STATUS "IPASIR-UP/CaDiCaL not found; SAT backend remains a scaffold")
 endif()
 
+find_path(GMP_INCLUDE_DIR
+  NAMES gmp.h
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include"
+)
+find_path(GMPXX_INCLUDE_DIR
+  NAMES gmpxx.h
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include"
+)
+find_library(GMPXX_LIBRARY
+  NAMES gmpxx
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib"
+)
+find_library(GMP_LIBRARY
+  NAMES gmp
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib"
+)
+if(GMP_INCLUDE_DIR AND GMPXX_INCLUDE_DIR AND GMP_LIBRARY AND GMPXX_LIBRARY)
+  message(STATUS "Found GMP: ${GMP_LIBRARY}")
+else()
+  message(FATAL_ERROR "GMP (with C++ wrapper) not found. Run `make contrib-gmp` or install GMP so gmp.h/gmpxx.h are available.")
+endif()
+
 file(GLOB_RECURSE PRIMO_LIBRARY_SOURCES CONFIGURE_DEPENDS
   src/cli/*.cpp
   src/core/*.cpp
@@ -190,6 +212,8 @@ target_include_directories(primo_core PUBLIC src)
 target_include_directories(primo_core SYSTEM PUBLIC "${ANTLR4_RUNTIME_INCLUDE_DIR}")
 target_compile_definitions(primo_core PUBLIC ANTLR4CPP_STATIC=1)
 target_link_libraries(primo_core PUBLIC "${ANTLR4_RUNTIME_LIBRARY}")
+target_include_directories(primo_core SYSTEM PUBLIC "${GMP_INCLUDE_DIR}" "${GMPXX_INCLUDE_DIR}")
+target_link_libraries(primo_core PUBLIC "${GMPXX_LIBRARY}" "${GMP_LIBRARY}")
 if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=1)
   target_compile_definitions(primo_core PUBLIC
