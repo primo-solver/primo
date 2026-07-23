@@ -2,6 +2,19 @@ cmake_minimum_required(VERSION 3.20)
 
 project(primo LANGUAGES CXX)
 
+# Default to a Release build when the user (or an IDE/script) doesn't ask
+# for a specific one: an unset CMAKE_BUILD_TYPE is unoptimized with no
+# NDEBUG, and gives no indication in the binary that that's what happened
+# (see the version banner's build-type field) -- easy to mistake for a
+# real performance regression instead of a plain unconfigured build.
+# Multi-config generators (Ninja Multi-Config, Visual Studio, Xcode) select
+# configuration at build time instead, so this only applies when there
+# isn't one.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+endif()
+
 include(CheckCXXSourceCompiles)
 
 set(CMAKE_CXX_STANDARD 20)
