@@ -150,6 +150,9 @@ enum class StatKey : std::size_t {
   EufIncrementalUseListDuplicateSkips,
   EufIncrementalAffectedUseListDedup,
   EufIncrementalMaxUseListSize,
+  SolverQfLra,
+  LraTheoryChecks,
+  LraTheoryConflicts,
   Count,
 };
 

@@ -152,6 +152,9 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":euf.incremental.use-list-duplicate-skips"sv,
     ":euf.incremental.affected-use-list-dedup"sv,
     ":euf.incremental.max-use-list-size"sv,
+    ":solver.qf-lra"sv,
+    ":lra.theory-checks"sv,
+    ":lra.theory-conflicts"sv,
 };
 
 }  // namespace

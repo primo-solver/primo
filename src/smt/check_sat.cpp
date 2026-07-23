@@ -25,6 +25,8 @@
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/arithmetic/lra_atom.hpp"
+#include "theory/arithmetic/lra_tableau.hpp"
 #include "theory/equality/congruence_stats.hpp"
 #include "theory/equality/explained_congruence_closure.hpp"
 #include "theory/equality/flat_congruence_closure.hpp"
@@ -129,6 +131,9 @@ constexpr util::StatKey kStatSatDecisions = util::StatKey::SatDecisions;
 constexpr util::StatKey kStatSatPropagations = util::StatKey::SatPropagations;
 constexpr util::StatKey kStatSolverBoolean = util::StatKey::SolverBoolean;
 constexpr util::StatKey kStatSolverQfUf = util::StatKey::SolverQfUf;
+constexpr util::StatKey kStatSolverQfLra = util::StatKey::SolverQfLra;
+constexpr util::StatKey kStatLraTheoryChecks = util::StatKey::LraTheoryChecks;
+constexpr util::StatKey kStatLraTheoryConflicts = util::StatKey::LraTheoryConflicts;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -372,17 +377,15 @@ class UnsupportedInput : public std::runtime_error {
 class Frontend {
  public:
   core::TermId build_term(const smtlib::SExpr& expr) {
-    const auto rational_literal = parse_rational_literal(expr);
-    if (rational_literal.has_value()) {
-      return terms_.mk_rational(rational_literal.value());
-    }
-
     if (expr.kind == smtlib::SExpr::Kind::Atom) {
       if (expr.atom == "true") {
         return terms_.mk_bool(true);
       }
       if (expr.atom == "false") {
         return terms_.mk_bool(false);
+      }
+      if (const auto literal = util::Rational::parse(expr.atom); literal.has_value()) {
+        return terms_.mk_rational(literal.value());
       }
       const auto bound = lookup_bound_term(expr.atom);
       if (bound.has_value()) {
@@ -460,11 +463,7 @@ class Frontend {
       return build_times(expr);
     }
     if (head == "/") {
-      // A well-formed literal ratio-of-numerals was already handled by the
-      // parse_rational_literal check above; anything reaching here divides
-      // a non-literal, which is outside QF_LRA's linear fragment (`/` only
-      // ever builds a rational-literal coefficient in QF_LRA).
-      throw UnsupportedInput("/ is only supported between rational literals in QF_LRA");
+      return build_divide(expr);
     }
     if (head == "<=" || head == "<" || head == ">=" || head == ">") {
       return build_comparison(expr, head);
@@ -712,37 +711,6 @@ class Frontend {
     return terms_.mk_and(std::move(disequalities));
   }
 
-  // Recognizes an SMT-LIB QF_LRA rational-literal S-expression: a bare
-  // NUMERAL/DECIMAL atom, `(- lit)`, or `(/ lit nonzero-numeral)` (a ratio
-  // of literals -- QF_LRA's only use of `/`). Never calls build_term or
-  // looks up symbols, so it safely returns nullopt (rather than throwing)
-  // for anything that isn't pure literal syntax, e.g. a variable or `(- x)`.
-  static std::optional<util::Rational> parse_rational_literal(const smtlib::SExpr& expr) {
-    if (expr.kind == smtlib::SExpr::Kind::Atom) {
-      return util::Rational::parse(expr.atom);
-    }
-    if (expr.list.empty() || expr.list[0].kind != smtlib::SExpr::Kind::Atom) {
-      return std::nullopt;
-    }
-    const std::string& head = expr.list[0].atom;
-    if (head == "-" && expr.list.size() == 2) {
-      const auto inner = parse_rational_literal(expr.list[1]);
-      if (!inner.has_value()) {
-        return std::nullopt;
-      }
-      return -inner.value();
-    }
-    if (head == "/" && expr.list.size() == 3) {
-      const auto numerator = parse_rational_literal(expr.list[1]);
-      const auto denominator = parse_rational_literal(expr.list[2]);
-      if (!numerator.has_value() || !denominator.has_value() || denominator->is_zero()) {
-        return std::nullopt;
-      }
-      return numerator.value() / denominator.value();
-    }
-    return std::nullopt;
-  }
-
   core::TermId build_plus(const smtlib::SExpr& expr) {
     if (expr.list.size() < 2) {
       throw UnsupportedInput("+ has wrong arity");
@@ -771,20 +739,51 @@ class Frontend {
     return terms_.mk_plus(std::move(children));
   }
 
+  // `*`/`/` recognize a "literal" operand by building it via build_term
+  // (like everything else) and checking the *resulting* term's kind, not
+  // by pattern-matching the raw S-expression. This is deliberate, not
+  // just simpler: build_term already resolves let-bindings, definitions,
+  // and nested arithmetic that constant-folds via TermManager's mk_plus/
+  // mk_times, so e.g. `(let ((c 3)) (* c x))` or `(* (+ 1 2) x)` are
+  // correctly recognized as coefficient*variable even though `c`/`(+ 1 2)`
+  // aren't raw numeral tokens. An earlier version of this code tried to
+  // recognize literals purely syntactically before calling build_term,
+  // which silently rejected almost every fuzzsmt-generated QF_LRA formula
+  // (fuzzsmt let-binds nearly every literal) -- found via the fuzz gate,
+  // not by inspection.
   core::TermId build_times(const smtlib::SExpr& expr) {
     require_arity(expr, 3, "*");
-    const auto lhs_literal = parse_rational_literal(expr.list[1]);
-    const auto rhs_literal = parse_rational_literal(expr.list[2]);
-    if (lhs_literal.has_value() && rhs_literal.has_value()) {
-      return terms_.mk_rational(lhs_literal.value() * rhs_literal.value());
+    const core::TermId lhs = build_term(expr.list[1]);
+    const core::TermId rhs = build_term(expr.list[2]);
+    const bool lhs_is_literal = terms_.get(lhs).kind == core::TermKind::Rational;
+    const bool rhs_is_literal = terms_.get(rhs).kind == core::TermKind::Rational;
+    if (lhs_is_literal && rhs_is_literal) {
+      return terms_.mk_rational(terms_.get(lhs).rational_value * terms_.get(rhs).rational_value);
     }
-    if (lhs_literal.has_value()) {
-      return terms_.mk_times(lhs_literal.value(), build_term(expr.list[2]));
+    if (lhs_is_literal) {
+      return terms_.mk_times(terms_.get(lhs).rational_value, rhs);
     }
-    if (rhs_literal.has_value()) {
-      return terms_.mk_times(rhs_literal.value(), build_term(expr.list[1]));
+    if (rhs_is_literal) {
+      return terms_.mk_times(terms_.get(rhs).rational_value, lhs);
     }
     throw UnsupportedInput("* requires a literal rational coefficient operand (QF_LRA)");
+  }
+
+  core::TermId build_divide(const smtlib::SExpr& expr) {
+    require_arity(expr, 3, "/");
+    const core::TermId lhs = build_term(expr.list[1]);
+    const core::TermId rhs = build_term(expr.list[2]);
+    if (terms_.get(lhs).kind != core::TermKind::Rational ||
+        terms_.get(rhs).kind != core::TermKind::Rational) {
+      // `/` only ever builds a rational-literal coefficient in QF_LRA;
+      // general term division is outside the linear fragment.
+      throw UnsupportedInput("/ is only supported between rational literals in QF_LRA");
+    }
+    const util::Rational& denominator = terms_.get(rhs).rational_value;
+    if (denominator.is_zero()) {
+      throw UnsupportedInput("division by zero is not a valid QF_LRA literal");
+    }
+    return terms_.mk_rational(terms_.get(lhs).rational_value / denominator);
   }
 
   core::TermId build_comparison(const smtlib::SExpr& expr, const std::string& head) {
@@ -2810,6 +2809,146 @@ std::optional<sat::Clause> find_incremental_theory_conflict(
   return std::nullopt;
 }
 
+bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
+  return term.kind == core::TermKind::Equality &&
+        terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+}
+
+// Lazy/batch QF_LRA theory check (Dutertre & de Moura Section 3, via
+// LraTableau): rebuilds a fresh tableau from every currently-assigned
+// arithmetic atom each SAT round, mirroring find_theory_conflict's
+// rebuild-per-round shape for EUF's Lazy engine. One slack variable per
+// atom (not deduplicated by polynomial content -- see lra_tableau.hpp's
+// empty-row note); original problem variables are shared across atoms via
+// var_ids. Plain Boolean theory atoms (e.g. a bare declared Bool constant)
+// are skipped -- they carry no arithmetic constraint.
+std::optional<sat::Clause> find_lra_theory_conflict(const core::TermManager& terms,
+                                                     const std::vector<AssignedTheoryAtom>& atoms) {
+  theory::arithmetic::LraTableau tableau;
+  std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
+  auto get_var = [&](core::TermId term_id) {
+    const auto found = var_ids.find(term_id);
+    if (found != var_ids.end()) {
+      return found->second;
+    }
+    const theory::arithmetic::LraVarId id = tableau.add_variable();
+    var_ids.emplace(term_id, id);
+    return id;
+  };
+
+  for (const AssignedTheoryAtom& atom : atoms) {
+    if (atom.filtered) {
+      continue;
+    }
+    const core::Term& term = terms.get(atom.term);
+    const bool is_comparison = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
+    if (!is_comparison && !is_real_equality_term(terms, term)) {
+      continue;
+    }
+
+    const theory::arithmetic::LraAtom normalized = theory::arithmetic::normalize_atom(terms, atom.term);
+    std::vector<std::pair<theory::arithmetic::LraVarId, util::Rational>> row;
+    row.reserve(normalized.polynomial.terms().size());
+    for (const auto& [var_term, coefficient] : normalized.polynomial.terms()) {
+      row.emplace_back(get_var(var_term), coefficient);
+    }
+    const theory::arithmetic::LraVarId slack = tableau.add_variable();
+    tableau.add_row(slack, row);
+
+    const sat::Lit reason = blocking_lit(atom);
+    const util::Rational& rhs = normalized.rhs;
+    std::optional<std::vector<sat::Lit>> conflict;
+    switch (normalized.relation) {
+      case theory::arithmetic::LraRelation::Eq:
+        if (!atom.value) {
+          throw UnsupportedInput(
+              "QF_LRA disequality (a negated Real equality) is not yet supported");
+        }
+        conflict = tableau.assert_upper(slack, theory::arithmetic::DeltaRational::from_rational(rhs),
+                                        reason);
+        if (!conflict.has_value()) {
+          conflict = tableau.assert_lower(
+              slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
+        }
+        break;
+      case theory::arithmetic::LraRelation::Le:
+        conflict = atom.value
+                       ? tableau.assert_upper(
+                             slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason)
+                       : tableau.assert_lower(
+                             slack, theory::arithmetic::DeltaRational{rhs, util::Rational(1)}, reason);
+        break;
+      case theory::arithmetic::LraRelation::Lt:
+        conflict = atom.value
+                       ? tableau.assert_upper(
+                             slack, theory::arithmetic::DeltaRational{rhs, util::Rational(-1)}, reason)
+                       : tableau.assert_lower(
+                             slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
+        break;
+    }
+    if (conflict.has_value()) {
+      return conflict.value();
+    }
+  }
+
+  return tableau.check();
+}
+
+CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
+                             const std::vector<core::TermId>& assertions,
+                             const CheckSatOptions& options, util::Statistics& statistics) {
+  statistics.increment(kStatSolverQfLra);
+  sat::CadicalBackend backend(options.cadical_options);
+  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
+  for (const core::TermId assertion : assertions) {
+    clausifier.assert_formula(assertion);
+  }
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
+  publish_sat_stats(backend.statistics(), statistics);
+
+  while (true) {
+    statistics.increment(kStatSatSolveCalls);
+    const sat::SatResult sat_result = backend.solve();
+    publish_sat_stats(backend.statistics(), statistics);
+    if (sat_result != sat::SatResult::Sat) {
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics};
+    }
+    statistics.increment(kStatLraTheoryChecks);
+
+    std::vector<AssignedTheoryAtom> assigned_atoms;
+    for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      const std::optional<bool> assignment = backend.value(var);
+      if (!assignment.has_value()) {
+        return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
+                               statistics};
+      }
+      const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
+      // Deliberately not reusing options.pure_theory_filter here: that
+      // optimization's soundness was established for EUF specifically, and
+      // hasn't been independently verified for LRA's bound-based
+      // reasoning. Always process every assigned atom until it has.
+      assigned_atoms.push_back(
+          assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value));
+    }
+
+    const std::optional<sat::Clause> conflict_clause = find_lra_theory_conflict(terms, assigned_atoms);
+    if (!conflict_clause.has_value()) {
+      publish_sat_stats(backend.statistics(), statistics);
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
+    }
+    statistics.increment(kStatLraTheoryConflicts);
+    if (conflict_clause->empty()) {
+      publish_sat_stats(backend.statistics(), statistics);
+      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics};
+    }
+    backend.add_clause(conflict_clause.value());
+    publish_sat_stats(backend.statistics(), statistics);
+  }
+}
+
 CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
                             const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfUf);
@@ -3069,6 +3208,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatSatBinaryClauses, 0);
   statistics.set(kStatSolverBoolean, 0);
   statistics.set(kStatSolverQfUf, 0);
+  statistics.set(kStatSolverQfLra, 0);
   statistics.set(kStatSatSolveCalls, 0);
   statistics.set(kStatTheoryAtoms, 0);
   statistics.set(kStatEufPredicateAtoms, 0);
@@ -3481,11 +3621,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       throw UnsupportedInput("combined equality and arithmetic (QF_UFLRA) is not supported");
     }
     if (has_arithmetic) {
-      // TODO(qf-lra milestone 1): route to a real QF_LRA theory solver.
-      // Until then, refuse rather than silently fall through to
-      // solve_boolean_conjunction, which would treat Le/Lt atoms as
-      // independent Booleans and return unsound "sat" answers.
-      throw UnsupportedInput("QF_LRA theory solving is not yet implemented");
+      return solve_qf_lra(frontend.terms(), assertions, solve_options, statistics);
     }
     if (has_equality) {
       return solve_qf_uf(frontend.terms(), assertions, solve_options, statistics);

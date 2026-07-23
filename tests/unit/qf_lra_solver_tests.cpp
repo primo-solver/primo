@@ -12,20 +12,6 @@ using primo::smt::CheckSatResult;
 
 namespace {
 
-// Milestone 1 grammar/frontend coverage: no tableau exists yet, so every
-// case here either reaches the "QF_LRA theory solving is not yet
-// implemented" stub (proving the input parsed and dispatched correctly) or
-// is rejected earlier with a specific, distinguishable parse-time message
-// (proving grammar restrictions are enforced before ever reaching the
-// solver). Update the not-yet-implemented assertions to real Sat/Unsat
-// expectations once solve_qf_lra lands.
-
-bool reaches_lra_backend_stub(const primo::smt::CheckSatOutcome& outcome) {
-  return outcome.result == CheckSatResult::Unsupported &&
-        outcome.message.find("QF_LRA theory solving is not yet implemented") !=
-            std::string::npos;
-}
-
 void accepts_set_logic_and_real_declarations() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -35,7 +21,7 @@ void accepts_set_logic_and_real_declarations() {
     (assert (< 0 x))
     (check-sat)
   )");
-  assert(reaches_lra_backend_stub(result));
+  assert(result.result == CheckSatResult::Sat);
 }
 
 void accepts_chained_comparisons_and_decimal_literals() {
@@ -48,17 +34,18 @@ void accepts_chained_comparisons_and_decimal_literals() {
     (assert (= x 1.5))
     (check-sat)
   )");
-  assert(reaches_lra_backend_stub(result));
+  assert(result.result == CheckSatResult::Sat);
 }
 
 void accepts_nary_minus_and_ratio_literal_coefficient() {
+  // x - 1 - 2 > 1/2  <=>  x > 3.5
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)
     (assert (> (- x 1 2) (/ 1 2)))
     (check-sat)
   )");
-  assert(reaches_lra_backend_stub(result));
+  assert(result.result == CheckSatResult::Sat);
 }
 
 void accepts_negative_literal_coefficient_via_unary_minus() {
@@ -68,7 +55,7 @@ void accepts_negative_literal_coefficient_via_unary_minus() {
     (assert (<= (* (- 1.5) x) 5))
     (check-sat)
   )");
-  assert(reaches_lra_backend_stub(result));
+  assert(result.result == CheckSatResult::Sat);
 }
 
 void accepts_coefficient_times_compound_linear_term() {
@@ -82,7 +69,36 @@ void accepts_coefficient_times_compound_linear_term() {
     (assert (<= (* 2 (+ x y)) 5))
     (check-sat)
   )");
-  assert(reaches_lra_backend_stub(result));
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void recognizes_let_bound_literal_coefficients() {
+  // Regression test for a real bug found via the fuzz gate: build_times/
+  // build_divide used to pattern-match the raw S-expression for a literal
+  // operand *before* calling build_term, so a let-bound alias of a literal
+  // (e.g. `(let ((c 3)) (* c x))`) wasn't recognized as a coefficient at
+  // all -- even though it resolves to one after build_term's own
+  // let-binding lookup. fuzzsmt let-binds nearly every literal in its
+  // QF_LRA output, so this silently rejected almost all fuzzer-generated
+  // input as UnsupportedInput before the fix (build via build_term first,
+  // then check the *resulting* term's kind).
+  const auto multiplication = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (let ((c 3)) (<= (* c x) 9)))
+    (assert (>= x 4))
+    (check-sat)
+  )");
+  assert(multiplication.result == CheckSatResult::Unsat);  // 3*4=12 > 9
+
+  const auto division = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (let ((n 6) (d 2)) (<= (* (/ n d) x) 9)))
+    (assert (>= x 4))
+    (check-sat)
+  )");
+  assert(division.result == CheckSatResult::Unsat);  // n/d=3, same as above
 }
 
 void rejects_two_variable_multiplication() {
@@ -152,10 +168,10 @@ void real_equality_is_not_misclassified_as_euf() {
     (assert (<= x 5))
     (check-sat)
   )");
-  assert(reaches_lra_backend_stub(result));
+  assert(result.result == CheckSatResult::Sat);
 }
 
-void does_not_silently_treat_arithmetic_atoms_as_opaque_booleans() {
+void detects_direct_bound_conflict() {
   // Regression test for a real bug hit while implementing this milestone:
   // before the has_arithmetic dispatch guard existed, this formula fell
   // through to solve_boolean_conjunction, which treated the two Le atoms as
@@ -169,7 +185,73 @@ void does_not_silently_treat_arithmetic_atoms_as_opaque_booleans() {
     (assert (>= x 1))
     (check-sat)
   )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void detects_conflict_requiring_an_actual_pivot() {
+  // x+y<=1 and x+y>=3 are only discoverable as contradictory via a repair
+  // pivot (each atom gets its own slack row, so the tableau doesn't see
+  // them as "the same" expression directly) -- exercises LraTableau::check
+  // end to end through the SMT-LIB frontend, not just LraTableau's own
+  // white-box tests.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 1))
+    (assert (>= (+ x y) 3))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void strict_boundary_is_unsat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (< x 5))
+    (assert (>= x 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void boolean_structure_over_arithmetic_atoms_can_require_branching() {
+  // (x<=0 or x>=10) together with 3<=x<=7 rules out both disjuncts.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (<= 3 x))
+    (assert (<= x 7))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+
+  const auto satisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (= x 10))
+    (check-sat)
+  )");
+  assert(satisfiable.result == CheckSatResult::Sat);
+}
+
+void rejects_disequality() {
+  // Negated Real equality (x != 3) needs case-splitting (x<3 or x>3), not
+  // representable as a single bound -- explicitly out of scope for this
+  // milestone, see find_lra_theory_conflict's Eq-relation handling.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (not (= x 3)))
+    (check-sat)
+  )");
   assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("disequality") != std::string::npos);
 }
 
 }  // namespace
@@ -180,11 +262,16 @@ int main() {
   accepts_nary_minus_and_ratio_literal_coefficient();
   accepts_negative_literal_coefficient_via_unary_minus();
   accepts_coefficient_times_compound_linear_term();
+  recognizes_let_bound_literal_coefficients();
   rejects_two_variable_multiplication();
   rejects_three_operand_multiplication();
   rejects_general_term_division();
   rejects_combined_equality_and_arithmetic();
   real_equality_is_not_misclassified_as_euf();
-  does_not_silently_treat_arithmetic_atoms_as_opaque_booleans();
+  detects_direct_bound_conflict();
+  detects_conflict_requiring_an_actual_pivot();
+  strict_boundary_is_unsat();
+  boolean_structure_over_arithmetic_atoms_can_require_branching();
+  rejects_disequality();
   return 0;
 }
