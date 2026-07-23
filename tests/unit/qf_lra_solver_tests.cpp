@@ -121,15 +121,38 @@ void rejects_general_term_division() {
 }
 
 void rejects_combined_equality_and_arithmetic() {
+  // Uses an uninterpreted-sort equality alongside a Real comparison -- a
+  // genuine EUF+LRA mix. (= x y) between two *Real* terms is itself a pure
+  // QF_LRA atom (see real_equality_is_not_misclassified_as_euf below), not
+  // a case of this rejection.
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
     (declare-fun x () Real)
-    (declare-fun y () Real)
-    (assert (or (= x y) (<= x 5)))
+    (assert (or (= a b) (<= x 5)))
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsupported);
   assert(result.message.find("QF_UFLRA") != std::string::npos);
+}
+
+void real_equality_is_not_misclassified_as_euf() {
+  // Regression test for a real bug hit while implementing this milestone:
+  // mk_eq is sort-agnostic, so (= x y) on two Real terms builds the same
+  // TermKind::Equality node EUF equality uses. Without checking operand
+  // sort, contains_equality/has_equality misclassified this as EUF,
+  // spuriously tripping the QF_UFLRA rejection above for pure QF_LRA input.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= x y))
+    (assert (<= x 5))
+    (check-sat)
+  )");
+  assert(reaches_lra_backend_stub(result));
 }
 
 void does_not_silently_treat_arithmetic_atoms_as_opaque_booleans() {
@@ -161,6 +184,7 @@ int main() {
   rejects_three_operand_multiplication();
   rejects_general_term_division();
   rejects_combined_equality_and_arithmetic();
+  real_equality_is_not_misclassified_as_euf();
   does_not_silently_treat_arithmetic_atoms_as_opaque_booleans();
   return 0;
 }

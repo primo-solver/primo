@@ -1229,9 +1229,16 @@ CheckSatResult map_sat_result(sat::SatResult result) {
   return CheckSatResult::Unknown;
 }
 
+// `(= a b)` is built by the sort-agnostic mk_eq for any sort, including
+// Real, so a Real-sorted equality must NOT count as an "EUF equality" for
+// theory dispatch purposes -- it's a QF_LRA atom (see contains_arithmetic_atom
+// below), and misclassifying it would make plain QF_LRA input requiring
+// `=` between two Real terms spuriously trip the has_equality &&
+// has_arithmetic "QF_UFLRA unsupported" guard.
 bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Equality) {
+  if (term.kind == core::TermKind::Equality &&
+      terms.get(term.children.at(0)).sort != terms.symbols().real_sort()) {
     return true;
   }
   for (const core::TermId child : term.children) {
@@ -1245,6 +1252,10 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
 bool contains_arithmetic_atom(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+    return true;
+  }
+  if (term.kind == core::TermKind::Equality &&
+      terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
     return true;
   }
   for (const core::TermId child : term.children) {
