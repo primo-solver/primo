@@ -18,15 +18,17 @@ void ProofForest::ensure_node_count(std::size_t node_count) {
   alias_.resize(node_count);
   alias_label_.resize(node_count);
   has_incoming_edge_.resize(node_count);
+  size_.resize(node_count);
   for (std::size_t i = old_size; i < node_count; ++i) {
     parent_[i] = i;
     alias_[i] = i;
+    size_[i] = 1;
   }
 }
 
 std::size_t ProofForest::push() {
   checkpoints_.push_back(Checkpoint{parent_.size(), trail_.size(), alias_trail_.size(),
-                                    incoming_edge_trail_.size()});
+                                    incoming_edge_trail_.size(), size_trail_.size()});
   return checkpoints_.size() - 1;
 }
 
@@ -56,11 +58,18 @@ void ProofForest::pop(std::size_t checkpoint) {
     }
     incoming_edge_trail_.pop_back();
   }
+  while (size_trail_.size() > state.size_trail_size) {
+    for (const auto& [node, old_size] : size_trail_.back()) {
+      size_[node] = old_size;
+    }
+    size_trail_.pop_back();
+  }
   parent_.resize(state.node_count);
   label_.resize(state.node_count);
   alias_.resize(state.node_count);
   alias_label_.resize(state.node_count);
   has_incoming_edge_.resize(state.node_count);
+  size_.resize(state.node_count);
 }
 
 FlatTermId ProofForest::resolve(FlatTermId node) const {
@@ -68,6 +77,17 @@ FlatTermId ProofForest::resolve(FlatTermId node) const {
   // assuming, since a violated precondition should still terminate.
   while (alias_[node] != node) {
     node = alias_[node];
+  }
+  return node;
+}
+
+FlatTermId ProofForest::find_root(FlatTermId node) const {
+  // Plain walk, no path compression: parent_ is read directly by `explain`
+  // to reconstruct the actual proof path, so compressing it here would
+  // corrupt the labels `explain_along_path` relies on. Compare `aux_find`,
+  // which compresses a separate, Explain-call-local auxiliary structure.
+  while (parent_[node] != node) {
+    node = parent_[node];
   }
   return node;
 }
@@ -149,6 +169,23 @@ void ProofForest::coalesce_into_structural_class(FlatTermId member, FlatTermId c
 void ProofForest::union_nodes(FlatTermId e, FlatTermId e_prime, ProofForestLabel label) {
   ensure_node_count(std::max(e, e_prime) + 1);
 
+  // Lemma 13's amortized O(log n) bound on the number of times any single
+  // edge gets reversed requires the reversed side to always be the smaller
+  // one, so its subtree size at least doubles between reversals. The
+  // caller's e/e' choice does not necessarily satisfy that once structural-
+  // class coalescing is involved (see size_'s comment), so it is enforced
+  // here regardless of which argument the caller passed as which: reverse
+  // whichever side's *real* tree is smaller, swapping roles if needed. This
+  // is sound because a tree edge's label proves its two endpoints equal
+  // however it is attached; nothing about the label depends on which
+  // physical node plays e versus e'.
+  FlatTermId e_root = find_root(e);
+  FlatTermId e_prime_root = find_root(e_prime);
+  if (e_root != e_prime_root && size_[e_root] > size_[e_prime_root]) {
+    std::swap(e, e_prime);
+    std::swap(e_root, e_prime_root);
+  }
+
   // Section 4, Union(e, e'): walk from e to the root of e's own tree,
   // recording each node's pre-mutation (parent, label) so the whole
   // operation -- reversal and the final link -- can be undone as one unit.
@@ -177,6 +214,17 @@ void ProofForest::union_nodes(FlatTermId e, FlatTermId e_prime, ProofForestLabel
   parent_[e] = e_prime;
   label_[e] = std::move(label);
   trail_.push_back(std::move(batch));
+
+  // e_root (the tree e used to be part of) is no longer a root, so its
+  // size_ entry is left untouched -- stale until (if ever) a backtrack
+  // makes it a root again, at which point it is already correct again,
+  // since nothing here ever modifies it. Only the absorbing side's size,
+  // e_prime_root (still the combined tree's root: e_prime's own path is
+  // never touched above), needs updating and trailing.
+  if (e_root != e_prime_root) {
+    size_trail_.push_back({{e_prime_root, size_[e_prime_root]}});
+    size_[e_prime_root] += size_[e_root];
+  }
 
   // `parent_[e_prime]` itself is never touched above, so a self-rooted
   // e_prime would otherwise still look untouched to any later freshness

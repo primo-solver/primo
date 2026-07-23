@@ -96,15 +96,22 @@ class ProofForest {
   FlatTermId resolve(FlatTermId node) const;
 
   // Section 4 Union(e, e'): reverses every proof-forest edge on the path
-  // from `e` to the root of e's own tree, then adds an edge e -> e'
-  // labelled `label`. The caller chooses which of the two merged equation
-  // endpoints plays `e` (conventionally the endpoint on the
-  // smaller-by-ordinary-classlist-size side, matching the paper's Section
-  // 5.1 "wlog" choice) versus `e_prime`; Union itself does not compare
-  // sizes, since it operates on the independent proof-forest tree sizes,
-  // not the congruence-closure classlist sizes. Precondition: `e` and
-  // `e_prime` are not already connected in the proof forest (the paper's
-  // "a' != b'" guard) -- Union does not check this.
+  // from the smaller-by-real-tree-size of {e, e'} to the root of its own
+  // tree, then adds an edge from it to the other one, labelled `label`.
+  // The caller picks which argument is nominally `e` versus `e_prime`
+  // (conventionally the endpoint on the smaller-by-ordinary-classlist-size
+  // side, matching the paper's Section 5.1 "wlog" choice, e.g. for a plain
+  // per-constant forest with no structural-class coalescing, where live
+  // classlist size and real tree size always agree) but Union itself may
+  // swap their roles internally if the *actual* tracked proof-forest tree
+  // sizes disagree with that choice -- required for Lemma 13's amortized
+  // reversal bound, and necessary once structural-class coalescing is in
+  // play, since a class's live size and its real tree size can diverge
+  // (see `size_`'s comment). This is why the label is not permitted to
+  // depend on which physical node plays `e`: it must equally justify the
+  // edge in either direction. Precondition: `e` and `e_prime` are not
+  // already connected in the proof forest (the paper's "a' != b'" guard)
+  // -- Union does not check this.
   void union_nodes(FlatTermId e, FlatTermId e_prime, ProofForestLabel label);
 
   // Section 5.2 Explain(c1, c2): recursively resolves congruence-step
@@ -131,8 +138,10 @@ class ProofForest {
     std::size_t trail_size = 0;
     std::size_t alias_trail_size = 0;
     std::size_t incoming_edge_trail_size = 0;
+    std::size_t size_trail_size = 0;
   };
 
+  FlatTermId find_root(FlatTermId node) const;
   FlatTermId highest_node(FlatTermId node) const;
   FlatTermId aux_find(FlatTermId node) const;
   void aux_union_to(FlatTermId child, FlatTermId parent) const;
@@ -171,6 +180,23 @@ class ProofForest {
   // instead of a plain alias.
   std::vector<bool> has_incoming_edge_;
   std::vector<std::vector<FlatTermId>> incoming_edge_trail_;
+
+  // Real proof-forest tree size, valid (and meaningful) only while `node`
+  // is currently a root (parent_[node] == node); stale otherwise, since it
+  // is never written when a node stops being a root, only read via a fresh
+  // find_root() each time. Lemma 13's amortized O(log n) reversal bound
+  // requires every Union to reverse the *smaller* side's path (so a given
+  // edge's subtree size at least doubles between reversals) -- `union_nodes`
+  // uses this to pick which of its two arguments actually plays Section 4's
+  // `e` (reversed) versus `e'`, independent of which one the caller passed
+  // as which. This is tracked here rather than reusing FlatCongruenceClosure's
+  // live class_size_ (what the direct-equation caller uses to choose its
+  // own initial e/e' before calling union_nodes) because that stops being
+  // an accurate proxy for real tree size once structural-class fast-path
+  // aliasing exists: an aliased member inflates its live union-find class
+  // without adding any real tree depth at all.
+  std::vector<std::size_t> size_;
+  std::vector<std::vector<std::pair<FlatTermId, std::size_t>>> size_trail_;
 
   // Explain-local scratch: the auxiliary union-find (Section 5.2) and the
   // ancestor-search marks, logically reset at the start of every top-level

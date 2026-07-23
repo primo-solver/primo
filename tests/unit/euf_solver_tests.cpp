@@ -1096,10 +1096,21 @@ ProofForestLabel proof_forest_direct_reason(std::size_t reason) {
 // Hand-derived from Nieuwenhuis and Oliveras Section 4's Union procedure:
 // "reverse all edges on the path between e and the root of its tree, [then]
 // add an edge e -> e'." Sequence: 0=1 (r10), 2=0 (r11), 1=3 (r12), 0=4 (r13).
-// By the time 0=4 is unioned, e=0 is not the root of its own tree (0's tree
-// is 2->0->1->3, rooted at 3): this specifically exercises the reversal
-// step, not merely a trivial link, and r13 (0=4) is irrelevant to 2=3 so it
-// must not appear in the explanation.
+// Union now additionally rebalances by real tree size (see union_nodes's
+// comment -- required for Lemma 13's amortized bound once structural-class
+// coalescing can make live class size diverge from real tree size), so
+// which physical node actually gets its path reversed at each step is no
+// longer exactly the naive "e is whatever the caller passed" reading of
+// this sequence: with all nodes starting at equal size, rebalancing prefers
+// reversing whichever side is currently smallest, which is not always the
+// side named `e` above -- and since a tree edge's label proves its two
+// endpoints equal regardless of which physical node carries it, there is no
+// way to observe through Explain's output alone whether a given step
+// reversed the "expected" side or the rebalanced one; both are equally
+// sound. So this test pins down the one thing that must hold regardless of
+// which internal shape rebalancing picks: Explain(2, 3) is sound and
+// includes exactly the reasons that actually justify it, not r13 (0=4),
+// which is irrelevant to 2=3.
 void proof_forest_reverses_path_on_non_root_union() {
   ProofForest forest(5);
   forest.union_nodes(0, 1, proof_forest_direct_reason(10));
