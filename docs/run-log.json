@@ -9073,6 +9073,59 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct lesson recorded here because it changed how this specific bug was found: user prompted 'I thought we were fuzzing this????' partway through a slower manual benchmark-diffing investigation of what was, at the time, believed to be purely a performance regression. Switching to the existing fuzz_external.py tooling found the actual root cause (a crash, not a pure slowdown) in under a minute of fuzzing versus a full prior session of hand-tracing. For a stateful data structure like this proof forest, the fuzz gate should run during development of a new mode, not only as a post-hoc benchmark exercise."
+    },
+    {
+      "id": "2026-07-23-structural-proof-forest-depth-and-memoization-fix",
+      "recorded_at": "2026-07-23T00:00:00+02:00",
+      "kind": "local_benchmark",
+      "scope": "Two profiling-found performance bugs in --euf-explain-search=structural-proof-forest fixed on top of the earlier crash fix: unenforced Lemma 13 size-based tree rebalancing, and unmemoized alias-bridge obligations within a single Explain call",
+      "commit": "ebcd2f3",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-rel/primo (Release) for benchmarking/perf; build-asan-ws/primo (Debug, PRIMO_SANITIZERS=address,undefined) for fuzzing; build-gprof/primo and perf record for profiling",
+        "notes": "User pushed back on treating a single-file (NEQ016_size7) slowdown as conclusive ('regression on 1 problem itself is not necessarily an issue'), prompting the full 334-file sweep that first surfaced the crash (recorded separately). After the crash fix, the corrected 334-file sweep still showed a real, broad performance loss, so this entry profiles and fixes that."
+      },
+      "command": {
+        "profile_gprof": "cmake --build build-gprof --target primo; ./build-gprof/primo --quiet --euf-explain-search=structural-proof-forest tmp/QF_UF/PEQ/PEQ002_size8.smt2 (completes, clean gmon.out); gprof build-gprof/primo gmon.out",
+        "profile_perf": "perf record -g -o perf.data -- timeout 20 ./build-rel/primo --quiet --euf-explain-search=structural-proof-forest tmp/QF_UF/NEQ/NEQ016_size7.smt2 (bounded window since the process did not terminate on its own pre-fix); perf report --no-children --sort=overhead,symbol",
+        "instrumentation": "Temporary static counters/fprintf added directly in ProofForest::union_nodes (max reversal-batch size seen) and ProofForest::explain (top-level call count, obligations processed, seed_and_resolve call/hop counts), removed after each finding was confirmed",
+        "benchmark": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UF --manifest benchmarks/user-primo-html334-2026-07-18.txt --solver build-rel/primo --solver-arg=--quiet --solver-arg=--stats [--solver-arg=--euf-explain-search=<mode>] --timeout 10 --shards 14 --shard-index <0..13>, run locally across all 3 modes, before and after each fix",
+        "fuzz_regression": "python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver '<asan-build>/primo --quiet --euf-explain-search=structural-proof-forest' --refs z3 --logic QF_UF --count 2000 --timeout 5 --seed <3/4> --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2', run after each fix"
+      },
+      "benchmark": {
+        "suite": "Full 334-row primo.html QF_UF subset, this project's standard option-comparison corpus",
+        "logic": "QF_UF",
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "note": "results/structural-proof-forest-334-local/{default,reoriented,structural}/shard-*.csv (local, not committed, overwritten between the pre-fix and post-fix sweeps); perf.data and gmon.out were scratch, not preserved."
+      },
+      "summary": {
+        "profile_finding": "perf record on NEQ016_size7 (20s bounded window, process did not terminate pre-fix) showed ~76% of all samples inside ProofForest::explain and its two NCA-search helpers: aux_find 38%, explain 19%, nearest_common_ancestor 13%, explain_along_path 6%. Every other function, including all of FlatCongruenceClosure's own merge/backtrack machinery, was individually under 0.1%. This is the inverse of every other mode's profile.",
+        "bug_1_tree_depth": "Lemma 13's amortized O(log n) reversal bound requires every Union to reverse the smaller side's path. reoriented-proof-forest's direct-equation caller already does this (chooses e/e' by live class_size_ before calling union_nodes). coalesce_into_structural_class's fallback branch (member vs canonical, chosen by lookup-table arrival order) and materialize (always reverses the alias source's path) had no size discipline at all, and live class_size_ stops being an accurate proxy for real tree size once fast-path aliasing exists (an aliased member inflates its live class without adding real tree depth). Fixed by adding ProofForest's own size_ tracking and making union_nodes itself swap which physical node plays e vs e' when the caller's choice disagrees with tracked size -- sound regardless of caller intent, since a tree edge's label proves its two endpoints equal however it is attached. Verified via direct instrumentation: max real tree depth stayed at 46 after 200,000 union_nodes calls post-fix, versus growing unboundedly before.",
+        "bug_2_memoization": "Fixing bug 1 alone did not fix NEQ016_size7 (still did not finish in 30s). Further instrumentation showed seed_and_resolve (explain's alias-chain walker) called over 1 billion times in 15 seconds against only ~5,000 top-level Explain calls in that window; alias-chain hop count itself stayed flat (max 1 hop, confirming bug 1's fix was working and this was a separate issue). The auxiliary union-find already deduplicates repeat tree-edge congruence obligations reached via explain_along_path's NCA walk (the mechanism Section 5.2's own complexity argument depends on), but nothing deduplicated repeat alias-bridge obligations reached via seed_and_resolve -- a coalesced node's bridge obligations were pushed once per referencing obligation, not once per Explain call, and structural-class coalescing routinely produces a few popular hub canonical nodes referenced many times within one call. Fixed with the same generation-stamped mark pattern already used for aux_generation_/ancestor_generation_ in this file (seed_marks_/seed_generation_): a node's bridge obligations are now pushed at most once per top-level Explain call.",
+        "result": "NEQ016_size7 standalone: 180s+ (not finishing) -> 3.67s, in line with default (3.11s) and reoriented-proof-forest (3.05s). 334-file sweep (10s timeout): solved 232->248 (PAR2 9.329->8.643); reoriented-proof-forest in the same post-fix run was 254/8.279, so the gap closed from 27 files behind to 6 files behind, and file-level divergence dropped from 43/334 to 20/334. Not yet a clear win over reoriented-proof-forest, but no longer a clear, broad loss.",
+        "verification": "Unit tests and a freshly-configured ASAN/UBSan build pass after each of the two fixes. A 2000-instance fuzzsmt-against-z3 round against the ASAN/UBSan build came back 2000/2000 PASS after each fix (0 crashes, 0 disagreements) -- confirms neither fix introduced a new soundness issue, including the size-based e/e' swap in union_nodes, which changes the internal tree shape for every mode sharing that function (reoriented-proof-forest included) but was argued sound because a tree edge's label does not depend on which physical node carries it; the existing full test suite (including reoriented-proof-forest's own tests) still passes unchanged."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build-rel --target primo_euf_solver_tests primo -j$(nproc); ./build-rel/primo_euf_solver_tests (exit 0) after each fix",
+          "Freshly configured Debug+ASAN+UBSan build: primo_euf_solver_tests exit 0 after each fix",
+          "2000-instance fuzzsmt-against-z3 round against the ASAN/UBSan build after each fix: 2000/2000 PASS, 0 bugs",
+          "NEQ016_size7 standalone: 3.67s under structural-proof-forest post-fix, versus 180s+ (not finishing) pre-fix"
+        ],
+        "pending": [
+          "The remaining 6-file gap to reoriented-proof-forest on the 334-file corpus -- not profiled further this session",
+          "SLURM full-corpus comparison",
+          "Broader fuzz campaign (opfuzz/yinyang, not just fuzzsmt)"
+        ],
+        "warnings": [
+          "Absolute solved-counts for default and reoriented-proof-forest shift by a handful of files between sweeps run at different times, from shared-core contention during the 14-way parallel local run, not from any code change to those modes -- compare structural's relative position within a single sweep, not absolute counts across sweeps."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of the crash-fix session (2026-07-22-structural-proof-forest-fuzz-found-crash-fix): after that fix, the 334-file sweep was clean but still showed a real, broad performance loss, which this entry profiles and fixes down to a 6-file gap. The pattern across all three fixes this branch has needed for structural-proof-forest (crash, tree-depth, memoization) is the same: profile/fuzz first, hypothesize second -- every one of the three was found by direct measurement (fuzzing or perf/gprof plus targeted instrumentation), not by reasoning about the code in isolation, and in two of the three cases an earlier hypothesis based on reasoning alone (the crash's suspected cause, and the depth fix being assumed sufficient on its own) turned out to be incomplete or wrong until measured."
     }
   ]
 }

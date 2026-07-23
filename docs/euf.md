@@ -388,12 +388,18 @@ class's existing canonical member instead of adding a tree edge. It is
 verified correct -- hand-derived tests from the paper's own Example 22/23,
 the randomized backtracking oracle test, and (after a crash the tests above
 missed, found by fuzzing) a 2000-instance fuzzsmt-against-z3 round all pass
-clean under both the default and ASAN/UBSan suites -- but is a consistent
-net performance loss on the project's standard 334-file primo.html
-benchmark subset (232/334 solved at a 10s timeout, PAR2 9.329, versus
-270/7.500 for default and 259/7.982 for reoriented-proof-forest), not just
-an isolated slow case; see `docs/papers/fast-congruence-closure.md` for the
-full writeup. Not a default.
+clean under both the default and ASAN/UBSan suites. Performance needed two
+more profiling-found fixes on top of the crash fix: `ProofForest` was not
+enforcing Lemma 13's size-based rebalancing on every real tree edge it
+creates (only the direct-equation caller was), and `explain`'s alias-bridge
+seeding had no within-call memoization (unlike the tree-walk's auxiliary
+union-find, which already had it). With both fixed, the project's standard
+334-file primo.html benchmark subset went from a clear net loss (232/334
+solved at a 10s timeout, PAR2 9.329) to close to competitive with
+reoriented-proof-forest (248/334, PAR2 8.643, versus 254/8.279 for
+reoriented-proof-forest in the same run -- only 6 files behind, versus 27
+before these fixes); see `docs/papers/fast-congruence-closure.md` for the
+full writeup. Not yet a clear win, so still not a default.
 `--euf-proof-forest-diagnostics` maintains a rollback-aware proof-parent forest
 beside the current explanation graph and records path-length counters for
 cache-miss explanation queries. The flag does not change emitted conflict or

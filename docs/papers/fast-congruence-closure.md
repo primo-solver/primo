@@ -304,37 +304,83 @@ data structure this stateful, run the fuzz gate *during* development, not
 only benchmarks after -- it found in under a minute what several rounds of
 hand-tracing benchmark failures took a full session to isolate.
 
-**Performance: real, not a fluke, and still unresolved.** With the crash
-fixed, the project's standard 334-file primo.html benchmark subset
-(`benchmarks/user-primo-html334-2026-07-18.txt`) gives a clean comparison
-at a 10s timeout for the first time:
+**Performance: two real bugs, both found by profiling and fixed.** With the
+crash fixed, the project's standard 334-file primo.html benchmark subset
+(`benchmarks/user-primo-html334-2026-07-18.txt`) initially gave a clean but
+bad comparison: default 270/334 solved (PAR2 7.500), reoriented-proof-forest
+259/334 (7.982), structural-proof-forest 232/334 (9.329) -- a clear,
+consistent net loss, and `NEQ016_size7` standalone did not finish in 60+
+seconds (versus 3.1s for the other two modes). `perf record` on
+`NEQ016_size7` (bounded to a 20s window, since the process did not
+terminate on its own) showed why: ~76% of all samples were inside
+`ProofForest::explain` and its two NCA-search helpers, `aux_find` (38%) and
+`nearest_common_ancestor` (13%) -- the opposite of every other mode's
+profile, where theory/SAT-search code dominates and the explain family
+barely registers. Two distinct causes, found and fixed in sequence:
+
+1. **Tree depth wasn't bounded.** Lemma 13's amortized O(log n) reversal
+   bound requires every Union to reverse the *smaller* side's path, so a
+   given edge's subtree size at least doubles between reversals.
+   `reoriented-proof-forest`'s direct-equation caller already gets this
+   right (chooses e/e' by live `class_size_` before calling `union_nodes`).
+   `coalesce_into_structural_class`'s fallback branch and `materialize`
+   both created real tree edges by semantic role (member vs canonical,
+   alias source vs target) with no size discipline at all -- and once
+   fast-path aliasing exists, live class size stops being an accurate
+   proxy for real tree size anyway (an aliased member inflates its live
+   class without adding real tree depth). Fixed by giving `ProofForest`
+   its own tree-size tracking (`size_`) and making `union_nodes` itself
+   swap which physical node plays `e` vs `e'` when the caller's choice
+   disagrees with size -- sound regardless of caller intent, since a tree
+   edge's label proves its two endpoints equal however it is attached.
+   Confirmed via direct instrumentation: max real tree depth stayed at 46
+   after 200,000 `union_nodes` calls on `NEQ016_size7`, versus unbounded
+   growth before.
+2. **Alias-bridge obligations weren't deduplicated within a call.** Fixing
+   (1) alone did not fix `NEQ016_size7`. Further instrumentation showed
+   `seed_and_resolve` (the alias-chain walker inside `explain`) being
+   called over a *billion* times in 15 seconds against only ~5,000
+   top-level `Explain` calls in that window. The auxiliary union-find
+   (`aux_find`/`aux_union_to`) already deduplicates repeat *tree*-edge
+   congruence obligations reached via `explain_along_path`'s NCA walk --
+   that compression is what Section 5.2's own complexity argument depends
+   on. It does not cover *alias*-bridge obligations reached via
+   `seed_and_resolve`: a coalesced node's bridge obligations were pushed
+   onto `pending_proofs` every time *any* obligation referenced it, with
+   no memoization, and structural-class coalescing routinely produces a
+   few popular "hub" canonical nodes referenced by many different
+   obligations within one `Explain` call. Fixed with the same
+   generation-stamped mark pattern already used for
+   `aux_generation_`/`ancestor_generation_` in this file: a node's bridge
+   obligations are pushed at most once per top-level `Explain` call.
+
+Combined, both fixes take `NEQ016_size7` from not finishing in 180+ seconds
+to solving in 3.67s -- in line with default (3.11s) and
+reoriented-proof-forest (3.05s) -- and move the 334-file comparison from a
+clear net loss to close to competitive:
 
 | mode | solved / 334 | PAR2 |
 |---|---:|---:|
-| default | 270 | 7.500 |
-| reoriented-proof-forest | 259 | 7.982 |
-| structural-proof-forest | 232 | 9.329 |
+| default | 262 | 7.989 |
+| reoriented-proof-forest | 254 | 8.279 |
+| structural-proof-forest | 248 | 8.643 |
 
-structural-proof-forest is a clear net loss across the corpus, not an
-isolated case. `NEQ016_size7` specifically still does not finish in 60+
-seconds standalone (versus 3.1s for both other modes), confirming the
-single-file finding from before the crash fix was real and representative,
-not an artifact of the crash. Working hypothesis, not yet confirmed:
-`materialize`'s retroactive reversals happen outside the normal
-Union-driven growth pattern Lemma 13's amortized bound depends on ("each
-reversal at least doubles the reversed edge's tree size"), and may be
-violating that invariant. Not investigated further this session.
+(Absolute counts shift a few files run-to-run from shared-core contention
+during the 14-way parallel sweep -- default and reoriented's own code did
+not change between the two sweeps -- so the meaningful comparison is
+structural's *relative* position: only 6 files behind reoriented now,
+versus 27 before these fixes, with divergence down to 20/334 from 43/334.)
+Verified against unit tests, a freshly-configured ASAN/UBSan build, and a
+2000-instance `fuzzsmt`-against-z3 round after each fix (0 crashes, 0
+disagreements both times).
 
-**Decision:** implementation is now verified *correct* (fuzzed clean, not
-just unit-tested clean), but is a consistent net performance loss across
-the standard benchmark subset -- do not promote. Kept as an opt-in mode
-(`--euf-explain-search=structural-proof-forest`), off by default, so this
-does not affect any other mode. Next session should profile where the
-per-operation cost actually goes, or try the cheap experiment of never
-taking the fast alias path (always `union_nodes`, giving up the
-edge-avoidance benefit entirely) to see if that alone isolates the
-regression to `materialize`'s reversal pattern specifically. See
-`docs/run-log.json` for the run record.
+**Decision:** implementation is verified correct (fuzzed clean) and is now
+close to competitive with reoriented-proof-forest rather than a clear
+performance loss -- still not a clear net *win*, so still not promoted to
+default. Kept as an opt-in mode (`--euf-explain-search=
+structural-proof-forest`). The remaining 6-file gap has not been profiled
+further this session; that would be the natural next step before any
+promotion decision. See `docs/run-log.json` for the run record.
 
 ## Remaining implementation checklist
 
