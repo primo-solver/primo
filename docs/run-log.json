@@ -9126,6 +9126,55 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct continuation of the crash-fix session (2026-07-22-structural-proof-forest-fuzz-found-crash-fix): after that fix, the 334-file sweep was clean but still showed a real, broad performance loss, which this entry profiles and fixes down to a 6-file gap. The pattern across all three fixes this branch has needed for structural-proof-forest (crash, tree-depth, memoization) is the same: profile/fuzz first, hypothesize second -- every one of the three was found by direct measurement (fuzzing or perf/gprof plus targeted instrumentation), not by reasoning about the code in isolation, and in two of the three cases an earlier hypothesis based on reasoning alone (the crash's suspected cause, and the depth fix being assumed sufficient on its own) turned out to be incomplete or wrong until measured."
+    },
+    {
+      "id": "2026-07-23-slurm-qfuf-smac-gap-explain-modes-113148",
+      "started_at": "2026-07-23",
+      "recorded_at": "2026-07-23",
+      "kind": "slurm_smac",
+      "scope": "First real (80-trial) SMAC run over the widened qfuf-gap config space, adding reoriented-proof-forest/structural-proof-forest to euf_explain_search, to test whether propagation/explain-mode tuning helps the known-hard NEQ016_size8/PEQ002_size8-adjacent files. A same-day lightweight 24-trial local run (8s timeout, 3-unique-instance intensifier subsample) had already come back inconclusive/negative; this is the follow-up with a real budget on the cluster.",
+      "commit": "f3388b5",
+      "environment": {
+        "type": "slurm",
+        "host": "node-head submit, ran on node-07",
+        "slurm_job_id": "113148",
+        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile (synced f3388b5, rebuilt CaDiCaL + build-slurm-rel/primo, verified version); sbatch scripts/slurm_qfuf_smac.sbatch with script defaults (TRIALS=80 TIMEOUT=45 VALIDATION_TIMEOUT=120 SEED=20260718, train/validate = benchmarks/qfuf-smac-gap-{train,validate}.txt, no guard manifest)",
+      "solver": {
+        "name": "Primo",
+        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo",
+        "version": "primo 0.1.0; git: f3388b5; cadical: cadical-3.0.0-7b99c07"
+      },
+      "inputs": {
+        "train_manifest": "benchmarks/qfuf-smac-gap-train.txt",
+        "validate_manifest": "benchmarks/qfuf-smac-gap-validate.txt",
+        "guard_manifest": null,
+        "trials": 80,
+        "train_timeout_seconds": 45,
+        "validation_timeout_seconds": 120,
+        "seed": 20260718
+      },
+      "artifacts": {
+        "remote_out_dir": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-gap-113148",
+        "remote_stdout": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-113148.out",
+        "local_result": "results/smac/qfuf-gap-113148/result.json",
+        "local_incumbent": "results/smac/qfuf-gap-113148/incumbent.json",
+        "local_target_runs": "results/smac/qfuf-gap-113148/target-runs.csv",
+        "local_trial_summary": "results/smac/qfuf-gap-113148/trial-summary.csv",
+        "local_validation_runs": "results/smac/qfuf-gap-113148/validation-runs.csv",
+        "local_stdout": "logs/primo-qfuf-smac-113148.out"
+      },
+      "summary": {
+        "submission": "Job 113148 completed with sacct state COMPLETED, exit 0:0, elapsed 00:38:03.",
+        "purpose": "Test whether SMAC can find an option combination (including the now-tunable reoriented-proof-forest/structural-proof-forest explain modes and prop_budget/prop_delivery/prop_interval/prop_threshold) that helps NEQ016_size8, PEQ002_size8, PEQ013_size8, PEQ014_size10, PEQ003_size10 (the qfuf-smac-gap validate manifest) beyond the default profile.",
+        "incumbent": "--preprocessing-adaptive-extra-passes=8 --preprocessing-adaptive-shrink-percent=3 --no-eq-bridge --finite-domain-equality-definitions --preprocess=auto --euf-engine=incremental --euf-explain-search=bidirectional --euf-prop=auto --no-finite-domain-post-amo --euf-prop-budget=500 --euf-prop-delivery=unlimited --prop-interval=32 --prop-assign-threshold=0.50 --theory-phase=polarity",
+        "validation_cost": "default 440.90 versus incumbent 1049.25 (7-file validate manifest, 120s timeout, cost = 2x timeout on timeout/error)",
+        "per_file": "default: NEQ015_size6 ok 12.3s, NEQ016_size8 TIMEOUT, PEQ002_size8 ok 43.4s, PEQ003_size10 ok 26.6s, PEQ013_size8 ok 70.3s, PEQ014_size10 ok 21.5s, SEQ026_size7 ok 26.8s. incumbent: NEQ015_size6 ok 12.8s, NEQ016_size8 TIMEOUT (unchanged), PEQ002_size8 ok 56.0s (regressed), PEQ003_size10 TIMEOUT (regressed from 26.6s solved), PEQ013_size8 TIMEOUT (regressed from 70.3s solved), PEQ014_size10 TIMEOUT (regressed from 21.5s solved), SEQ026_size7 ok 20.5s (improved).",
+        "decision": "Reject the incumbent. SMAC intensification only compares configs against 3 of the 8 train instances at a time (abstract_intensifier.py 'Cut instance-seed keys to 3 entries'), so an 80-trial budget still overfits to that subsample: the incumbent regressed 3 of 7 validate files from solved to timeout while only marginally improving 1, and NEQ016_size8 (the original motivating file) stayed unsolved either way. Confirms the qualitative conclusion already reached by profiling (docs/euf.md): these hard files are search-heuristic-bound, not option/propagation-tuning-bound, and no SMAC budget explored here changes that."
+      },
+      "evidence_status": "rejected",
+      "notes": "Direct follow-up to the user asking whether propagation could be made more aggressive for structural-proof-forest and whether SMAC tuning could help the known-hard files. A same-day 24-trial local smoke run (8s timeout) had already shown the same qualitative pattern (incumbent regressing on the validate set) but was too small a budget to trust; this real 80-trial cluster run confirms the negative result was not a budget artifact. euf_explain_search=bidirectional (already the default) remained the intensifier's SMAC-selected choice throughout -- reoriented-proof-forest/structural-proof-forest, now tunable after this session's config-space fix, were sampled during the run but never became incumbent, consistent with the primo.html finding that these hard files' cost is dominated by CDCL search rather than EUF explain-mode choice."
     }
   ]
 }
