@@ -14,6 +14,39 @@ mixed-integer, and quantified-arithmetic work is included only where it
 directly informs a QF_LRA decision procedure, and is marked as out of scope
 otherwise so it doesn't get mistaken for near-term reading.
 
+## Access status
+
+Checked by actually fetching each URL, not just search-result snippets.
+
+Freely accessible (fetched and read the actual PDF):
+- King/Barrett/Dutertre, "Simplex with Sum of Infeasibilities for SMT" (FMCAD 2013)
+- King/Barrett/Tinelli, "Leveraging Linear and Mixed Integer Programming for SMT" (FMCAD 2014)
+- Nalbach et al., "FMplex" (arXiv 2310.00995)
+- Bromberger/Weidenbach, "Computing a Complete Basis for Equalities..." (SMT@IJCAR 2016, MPI repository)
+- Bixby, "Solving Real-World Linear Programs" (Operations Research 2002, gwern.net mirror)
+- "Local Search For SMT On Linear and Multilinear Real Arithmetic" (arXiv 2303.06676)
+- Fast Cube Tests for LIA / New Techniques for Linear Arithmetic (MPI-hosted, same publisher pattern as the equalities paper above — not individually re-verified)
+
+Paywalled, no open mirror found — need institutional access or the user to
+fetch a copy:
+- Korovin, Tsiskaridze, Voronkov, **"Conflict Resolution"** (CP 2009, Springer
+  LNCS 5732) — checked Manchester eScholar (dead link) and Semantic Scholar
+  (no PDF surfaced); the most important gap since it's the strongest
+  non-Simplex alternative listed. Its companion "Implementing Conflict
+  Resolution" (Ershov 2011) is equally paywalled.
+- Bland, "New Finite Pivoting Rules for the Simplex Method" (Math. of OR, 1977)
+- Harris, "Pivot Selection Methods of the Devex LP Code" (Math. Programming, 1973)
+- Forrest & Goldfarb, "Steepest-Edge Simplex Algorithms for Linear Programming" (Math. Programming, 1992)
+- Maros, *Computational Techniques of the Simplex Method* (Springer, 2003) — a book, not a paper; needs a library/purchase regardless
+
+## Follow-up leads found while reading the above
+
+- SOI-Simplex's own related-work section (Section I) points to **Alberto
+  Griggio's PhD thesis** for "a number of details on implementation and
+  additional pivoting heuristics" for QF_LRA — likely a strong practical
+  reference given MathSAT's QF_LRA solver is Simplex-for-DPLL(T)-based; not
+  yet located/fetched.
+
 ## Direct extensions of Simplex-for-DPLL(T)
 
 **Tim King, Clark Barrett, Bruno Dutertre. "Simplex with Sum of
