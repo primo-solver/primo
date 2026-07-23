@@ -36,6 +36,41 @@ from-scratch tableau proves to be a maintenance burden); the MIP
 branch-and-cut half is LIA/mixed and out of scope for now (see below).
 https://theory.stanford.edu/~barrett/pubs/KBT14.pdf
 
+## Standard Simplex heuristics (general LP, not SMT-specific)
+
+Dutertre-de Moura's tableau is a bounded-variable Simplex; how it pivots
+(which entering/leaving variable it picks each step) is a classic LP
+engineering question, independent of the DPLL(T) integration questions
+above. Worth knowing before hand-rolling a pivoting rule from scratch:
+
+**Pivoting/pricing rules.** Robert Bland, "New Finite Pivoting Rules for the
+Simplex Method" (Math. of OR, 1977) — the anti-cycling rule (smallest-index
+entering/leaving variable) that Dutertre-de Moura's own termination argument
+already relies on; worth reading directly rather than only through the SMT
+papers that cite it. Dantzig's original largest-coefficient rule is cheapest
+per pivot but weakest on degenerate/cycling-prone instances. Devex pricing
+(Paula Harris, "Pivot Selection Methods of the Devex LP Code," Math.
+Programming 1973) approximates steepest-edge pricing at much lower cost per
+pivot and is the de facto industry default (used in CPLEX, and reportedly in
+Yices' own Simplex). Forrest & Goldfarb, "Steepest-Edge Simplex Algorithms
+for Linear Programming" (Math. Programming 1992) covers the more expensive
+but iteration-minimal alternative. A recent comparative benchmark of six
+rules (Bland, Dantzig, Greatest Increment, Least-Recently-Considered,
+Partial Pricing, Steepest Edge) found Dantzig fastest per-instance wall time
+but Steepest Edge fewest iterations, with Bland notably *not* the most
+robust choice outside its anti-cycling guarantee — a useful sanity check
+before assuming any one rule dominates.
+
+**General engineering (presolve, scaling, degeneracy, refactorization).**
+Robert Bixby, "Solving Real-World Linear Programs: A Decade and More of
+Progress" (Operations Research 50(1), 2002) — a implementor's-eye survey of
+what actually made Simplex fast in practice over ~15 years of commercial LP
+codes (presolve, scaling, LU refactorization, dual vs. primal Simplex,
+degeneracy handling), useful as an engineering checklist independent of any
+single algorithm choice. Istvan Maros, "Computational Techniques of the
+Simplex Method" (Springer, 2003) is the standard book-length reference for
+the same territory if a deeper dive is ever warranted.
+
 ## Alternative (non-Simplex) decision procedures
 
 **Konstantin Korovin, Nestan Tsiskaridze, Andrei Voronkov. "Conflict
