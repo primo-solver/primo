@@ -386,13 +386,14 @@ beat the BFS default's reason quality. Not a default.
 merges coalesce the newly discovered structural-class member into its
 class's existing canonical member instead of adding a tree edge. It is
 verified correct -- hand-derived tests from the paper's own Example 22/23,
-plus the randomized backtracking oracle test, pass under both the default
-and ASAN/UBSan suites -- but is blocked on a serious, not yet understood
-performance regression on `NEQ016_size7` (does not finish in 180+ seconds,
-versus 3-4s for every other mode); see
-`docs/papers/fast-congruence-closure.md` for the full writeup. Not a
-default, and not yet benchmarked to a conclusion against
-`reoriented-proof-forest`.
+the randomized backtracking oracle test, and (after a crash the tests above
+missed, found by fuzzing) a 2000-instance fuzzsmt-against-z3 round all pass
+clean under both the default and ASAN/UBSan suites -- but is a consistent
+net performance loss on the project's standard 334-file primo.html
+benchmark subset (232/334 solved at a 10s timeout, PAR2 9.329, versus
+270/7.500 for default and 259/7.982 for reoriented-proof-forest), not just
+an isolated slow case; see `docs/papers/fast-congruence-closure.md` for the
+full writeup. Not a default.
 `--euf-proof-forest-diagnostics` maintains a rollback-aware proof-parent forest
 beside the current explanation graph and records path-length counters for
 cache-miss explanation queries. The flag does not change emitted conflict or

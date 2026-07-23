@@ -271,40 +271,70 @@ not just suboptimal. Concretely:
    (set on `e_prime` inside `union_nodes`, trailed for backtracking) to
    catch this; the fast alias path now additionally requires
    `!has_incoming_edge_[member]`.
+4. **Found by fuzzing, not by the tests above.** The hand-derived Example
+   22/23 tests and the 180-step randomized oracle test all passed after
+   fix 3 -- and still missed a fourth instance of the same class of bug: a
+   node could become an alias *target* (something else's
+   `coalesce_into_structural_class` fast-path pointed at it) without
+   `has_incoming_edge_` being set, since that flag was only set inside
+   `union_nodes` for real tree edges. Such a node could then itself be
+   fast-aliased away, leaving whoever pointed at it via a later
+   `materialize()`-created real tree edge dead-ended at a self-rooted
+   `parent_` the ordinary tree walk cannot see past (it only follows
+   `parent_`, never `alias_`, past the initial query). This surfaced as an
+   uncaught `std::logic_error` ("flat congruence closure failed to explain
+   disequality conflict") from `FlatCongruenceClosure::check_disequality`
+   -- a different call path than the public `explain_equal` the unit tests
+   exercise. `scripts/fuzz_external.py --fuzzer fuzzsmt` against z3 found
+   it in the first 500 generated QF_UF instances (6 crashes); `ddsmt`
+   shrank one to an 8-line reproduction in two passes. Fixed by marking
+   `has_incoming_edge_[canonical]` on the fast alias path too, not only
+   inside `union_nodes`.
 
 Verified against hand-derived unit tests built directly from the paper's
 Example 22 and Example 23 (`proof_forest_structural_class_*` in
 `tests/unit/euf_solver_tests.cpp`, same rigor as the existing
 `proof_forest_*` tests -- traced by hand against the paper's own worked
-examples, not copied from a diagram), plus the existing 180-step
-randomized backtracking oracle test extended to cover this mode, under
-both the default and ASAN/UBSan suites. All pass.
+examples, not copied from a diagram), the existing 180-step randomized
+backtracking oracle test extended to cover this mode, and -- after finding
+fix 4 required going beyond what those catch -- a 2000-instance
+`fuzzsmt`-against-z3 round against an ASAN/UBSan build (0 crashes, 0
+reference disagreements). All pass. The lesson for next time: for a
+data structure this stateful, run the fuzz gate *during* development, not
+only benchmarks after -- it found in under a minute what several rounds of
+hand-tracing benchmark failures took a full session to isolate.
 
-**Performance: blocked.** `PEQ002_size8` is fine (29.8s vs
-reoriented-proof-forest's 38.5s -- better, even). But `NEQ016_size7`, which
-solves in 3.3-3.8s under every other mode including
-reoriented-proof-forest, does not finish in 180+ seconds under
-structural-proof-forest. Stats after 180s show it is not stuck in one
-call -- it is actively backtracking (5,120+ backtracks, 3.4M+ trail
-entries, versus ~750K assignments needed by other modes for the same
-file) -- so this looks like a real blowup, not a literal infinite loop.
-Working hypothesis, not yet confirmed: `materialize`'s retroactive
-reversals happen outside the normal Union-driven growth pattern Lemma 13's
-amortized bound depends on ("each reversal at least doubles the reversed
-edge's tree size"), and may be violating that invariant. Not
-investigated further this session -- kept as a known, explicitly
-documented open issue rather than promoted or silently left broken. The
-code is opt-in (`--euf-explain-search=structural-proof-forest`) and off by
-default, so this does not affect any other mode.
+**Performance: real, not a fluke, and still unresolved.** With the crash
+fixed, the project's standard 334-file primo.html benchmark subset
+(`benchmarks/user-primo-html334-2026-07-18.txt`) gives a clean comparison
+at a 10s timeout for the first time:
 
-**Decision:** implementation is correct (verified above) but not benchmarked
-to a conclusion -- do not promote, and do not spend further time on quality
-comparisons against reoriented-proof-forest, until the NEQ016_size7
-regression is understood. Next session should either profile where the
-185s+ actually goes, or try the cheap experiment of never taking the fast
-alias path (always `union_nodes`, giving up some of the edge-avoidance
-benefit) to see if that alone isolates the cause to `materialize`'s
-reversal pattern specifically. See `docs/run-log.json` for the run record.
+| mode | solved / 334 | PAR2 |
+|---|---:|---:|
+| default | 270 | 7.500 |
+| reoriented-proof-forest | 259 | 7.982 |
+| structural-proof-forest | 232 | 9.329 |
+
+structural-proof-forest is a clear net loss across the corpus, not an
+isolated case. `NEQ016_size7` specifically still does not finish in 60+
+seconds standalone (versus 3.1s for both other modes), confirming the
+single-file finding from before the crash fix was real and representative,
+not an artifact of the crash. Working hypothesis, not yet confirmed:
+`materialize`'s retroactive reversals happen outside the normal
+Union-driven growth pattern Lemma 13's amortized bound depends on ("each
+reversal at least doubles the reversed edge's tree size"), and may be
+violating that invariant. Not investigated further this session.
+
+**Decision:** implementation is now verified *correct* (fuzzed clean, not
+just unit-tested clean), but is a consistent net performance loss across
+the standard benchmark subset -- do not promote. Kept as an opt-in mode
+(`--euf-explain-search=structural-proof-forest`), off by default, so this
+does not affect any other mode. Next session should profile where the
+per-operation cost actually goes, or try the cheap experiment of never
+taking the fast alias path (always `union_nodes`, giving up the
+edge-avoidance benefit entirely) to see if that alone isolates the
+regression to `materialize`'s reversal pattern specifically. See
+`docs/run-log.json` for the run record.
 
 ## Remaining implementation checklist
 

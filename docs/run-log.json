@@ -9021,6 +9021,58 @@
       },
       "evidence_status": "current_local",
       "notes": "Continuation of the reoriented-proof-forest session's own stated next step. The three soundness bugs were all found via the same 180-step randomized oracle test already in the suite (extended to cover this new mode), each requiring a targeted hand-trace of the actual proof-forest state (parent_/alias_ arrays) at the failing step to diagnose -- not caught by the hand-derived Example 22/23 tests alone, which is itself useful evidence that the randomized oracle test is pulling real weight beyond the hand-derived cases."
+    },
+    {
+      "id": "2026-07-22-structural-proof-forest-fuzz-found-crash-fix",
+      "recorded_at": "2026-07-22T00:00:00+02:00",
+      "kind": "fuzz",
+      "scope": "Fuzzing-found crash in --euf-explain-search=structural-proof-forest (a fourth instance of the alias-vs-real-tree-edge dead-end bug class), fixed, then a corrected clean 334-file benchmark comparison against default and reoriented-proof-forest",
+      "commit": "6362c4c",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-rel/primo (Release) for benchmarking; build-asan-ws/primo (Debug, PRIMO_SANITIZERS=address,undefined) for fuzzing",
+        "notes": "Prompted directly ('I thought we were fuzzing this????') after a manual benchmark-diffing investigation was already underway; switched to scripts/fuzz_external.py --fuzzer fuzzsmt against z3, which found the bug in the first 500 generated QF_UF instances -- far faster than the benchmark-diffing approach that was already in progress."
+      },
+      "command": {
+        "fuzz_initial": "python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver 'build-rel/primo --quiet --euf-explain-search=structural-proof-forest' --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 1 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2'",
+        "minimize": "ddsmt <bug-file> <out> ./check_bug.sh, where check_bug.sh greps primo's output for 'failed to explain disequality conflict'; shrank a 58-line fuzzsmt instance to 8 lines in two passes",
+        "fuzz_regression": "Same fuzz_external.py invocation but --count 2000 --seed 2 against the ASAN/UBSan build, after the fix",
+        "benchmark": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UF --manifest benchmarks/user-primo-html334-2026-07-18.txt --solver build-rel/primo --solver-arg=--quiet --solver-arg=--stats [--solver-arg=--euf-explain-search=<mode>] --timeout 10 --shards 14 --shard-index <0..13>, run locally across all 3 modes (default, reoriented-proof-forest, structural-proof-forest), 14-way sharded"
+      },
+      "benchmark": {
+        "suite": "Full 334-row primo.html QF_UF subset, this project's standard option-comparison corpus",
+        "logic": "QF_UF",
+        "manifest": "benchmarks/user-primo-html334-2026-07-18.txt"
+      },
+      "artifacts": {
+        "note": "results/structural-proof-forest-334-local/{default,reoriented,structural}/shard-*.csv (local, not committed); fuzz bug reproductions were in a scratchpad directory, not preserved."
+      },
+      "summary": {
+        "bug": "has_incoming_edge_ (added to gate ProofForest::coalesce_into_structural_class's cheap alias fast path, see the previous run's fix 3) only covered real union_nodes e_prime targets, not coalesce_into_structural_class's own fast-path alias targets. A node that only ever gained an incoming *alias* edge still looked eligible for the fast path and could be fast-aliased away itself; a later materialize()-created real tree edge from whoever pointed at it would then dead-end at its self-rooted parent_, since the ordinary tree walk (nearest_common_ancestor/explain_along_path) only follows parent_ and never consults alias_ past the initial query. Surfaced as an uncaught std::logic_error from FlatCongruenceClosure::check_disequality -- a different call path than explain_equal, which is why the existing hand-derived and randomized-oracle unit tests missed it entirely.",
+        "how_found": "6 out of the first 500 fuzzsmt-generated QF_UF instances crashed against z3 as reference, all the same root cause. This is also what caused 179/334 (54%) 'unsupported' failures on the primo.html benchmark subset in the prior (uncorrected) benchmark run, which had been misread as a performance-only issue before the crash was noticed in the raw per-file answer column.",
+        "fix": "Mark has_incoming_edge_[canonical] inside coalesce_into_structural_class's fast alias-path branch too, trailed for backtracking exactly like union_nodes already does for has_incoming_edge_[e_prime].",
+        "verification": "All 6 original crash reproductions now solve correctly. Unit tests (primo_euf_solver_tests) and boolean solver tests pass under default and a freshly-configured ASAN/UBSan build. A follow-up 2000-instance fuzzsmt-against-z3 round against the ASAN/UBSan build came back 2000/2000 PASS, 0 crashes, 0 reference disagreements.",
+        "corrected_benchmark": "With the crash gone, the 334-file sweep at a 10s timeout is now a clean comparison for the first time: default 270/334 solved (PAR2 7.500), reoriented-proof-forest 259/334 (PAR2 7.982), structural-proof-forest 232/334 (PAR2 9.329). structural-proof-forest is a consistent net loss across the corpus (43/334 files disagree with reoriented-proof-forest on solved/timeout, and the large majority of those favor reoriented). NEQ016_size7 standalone still does not finish in 60+ seconds under structural-proof-forest (versus 3.1s for default and reoriented-proof-forest), confirming the single-file finding from the prior (crash-confounded) run was real and representative, not an artifact of the crash."
+      },
+      "verification": {
+        "passed": [
+          "cmake --build build-rel --target primo_euf_solver_tests primo_boolean_solver_tests primo -j$(nproc); ./build-rel/primo_euf_solver_tests (exit 0); (cd build-rel && ./primo_boolean_solver_tests) (exit 0)",
+          "Freshly configured Debug+ASAN+UBSan build: primo_euf_solver_tests exit 0",
+          "6/6 original fuzz-found crash reproductions now solve correctly",
+          "2000-instance fuzzsmt-against-z3 round against the ASAN/UBSan build: 2000/2000 PASS, 0 bugs"
+        ],
+        "pending": [
+          "structural-proof-forest performance regression itself (why it is slower, not just confirmation that it is) -- not investigated this session",
+          "SLURM full-corpus comparison",
+          "Broader fuzz campaign (opfuzz/yinyang, not just fuzzsmt) -- not run this session"
+        ],
+        "warnings": [
+          "structural-proof-forest is now believed crash-free but is a confirmed, consistent net performance loss on the standard 334-file corpus -- do not enable for any production or default-candidate use."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct lesson recorded here because it changed how this specific bug was found: user prompted 'I thought we were fuzzing this????' partway through a slower manual benchmark-diffing investigation of what was, at the time, believed to be purely a performance regression. Switching to the existing fuzz_external.py tooling found the actual root cause (a crash, not a pure slowdown) in under a minute of fuzzing versus a full prior session of hand-tracing. For a stateful data structure like this proof forest, the fuzz gate should run during development of a new mode, not only as a post-hoc benchmark exercise."
     }
   ]
 }
