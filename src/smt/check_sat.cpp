@@ -295,6 +295,32 @@ void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics
   statistics.set(kStatSatPropagations, sat_stats.propagations);
 }
 
+// See check_sat.hpp's refresh_active_solve_stats() comment for why this
+// exists: CaDiCaL's own counters are live at any time, but check_sat only
+// copies them into the caller-visible Statistics synchronously around each
+// blocking solve() call, so a signal handler firing mid-solve otherwise
+// sees stale (often zero) values. `backend`/`statistics` here point at the
+// call's own locals for the duration of the enclosing solve function only;
+// the guard's destructor clears them on every exit path (normal return or
+// stack unwinding), so there is never a dangling pointer for the handler to
+// read from outside that scope.
+const sat::IpasirUpBackend* g_active_backend = nullptr;
+util::Statistics* g_active_backend_statistics = nullptr;
+
+class ActiveSolveStatsGuard {
+ public:
+  ActiveSolveStatsGuard(const sat::IpasirUpBackend& backend, util::Statistics& statistics) {
+    g_active_backend = &backend;
+    g_active_backend_statistics = &statistics;
+  }
+  ~ActiveSolveStatsGuard() {
+    g_active_backend = nullptr;
+    g_active_backend_statistics = nullptr;
+  }
+  ActiveSolveStatsGuard(const ActiveSolveStatsGuard&) = delete;
+  ActiveSolveStatsGuard& operator=(const ActiveSolveStatsGuard&) = delete;
+};
+
 EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,
                                                 std::size_t theory_atom_count,
                                                 util::Statistics& statistics) {
@@ -1147,6 +1173,7 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
                                           util::Statistics& statistics) {
   statistics.increment(kStatSolverBoolean);
   sat::CadicalBackend backend(options.cadical_options);
+  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -2622,6 +2649,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
                             const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend(options.cadical_options);
+  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -2799,6 +2827,12 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 }
 
 }  // namespace
+
+void refresh_active_solve_stats() {
+  if (g_active_backend != nullptr && g_active_backend_statistics != nullptr) {
+    publish_sat_stats(g_active_backend->statistics(), *g_active_backend_statistics);
+  }
+}
 
 CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions options) {
   util::Statistics local_statistics;

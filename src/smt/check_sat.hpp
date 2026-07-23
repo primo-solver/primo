@@ -127,4 +127,17 @@ struct CheckSatOptions {
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options = {});
 std::string_view to_string(CheckSatResult result);
 
+// Copies the currently in-flight solve's live sat.* counters (decisions,
+// conflicts, propagations, ...) into its Statistics object, if a solve is
+// in flight. CaDiCaL's own counters (see sat::IpasirUpBackend::statistics())
+// are safe to read at any time; what this exists to fix is that check_sat's
+// own copy into the caller-visible Statistics only happens synchronously
+// immediately before and after each blocking solve() call, so a timeout
+// signal handler firing mid-solve would otherwise report whatever was last
+// captured before that call started (often all zero, on the very first
+// solve() of a run) instead of the search's actual current progress.
+// Intended to be called from a SIGTERM/timeout handler right before
+// printing --stats output; a no-op if no solve is currently in flight.
+void refresh_active_solve_stats();
+
 }  // namespace primo::smt

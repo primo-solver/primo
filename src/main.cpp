@@ -27,6 +27,12 @@ bool g_print_timeout_statistics = false;
 void handle_sigterm(int) {
   [[maybe_unused]] const ssize_t written = write(STDOUT_FILENO, "unknown\n", 8);
   if (g_print_timeout_statistics) {
+    // Without this, sat.decisions/sat.conflicts/sat.propagations read
+    // whatever was captured before the in-flight solve() call started
+    // (often all zero) -- solve() is blocking, so check_sat's own copy
+    // into g_live_statistics only happens synchronously around each call,
+    // not while one is running. See check_sat.hpp's comment.
+    primo::smt::refresh_active_solve_stats();
     primo::util::print_statistics(std::cerr, g_live_statistics);
   }
   std::exit(0);
