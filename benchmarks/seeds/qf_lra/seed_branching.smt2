@@ -1,0 +1,7 @@
+(set-logic QF_LRA)
+(set-info :status unsat)
+(declare-fun x () Real)
+(assert (or (<= x 0) (>= x 10)))
+(assert (<= 3 x))
+(assert (<= x 7))
+(check-sat)

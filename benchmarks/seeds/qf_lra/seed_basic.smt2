@@ -1,0 +1,8 @@
+(set-logic QF_LRA)
+(set-info :status sat)
+(declare-fun x () Real)
+(declare-fun y () Real)
+(assert (<= (+ x (* 2 y)) 5))
+(assert (< 0 x))
+(assert (>= y 0))
+(check-sat)
