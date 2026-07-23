@@ -9175,6 +9175,48 @@
       },
       "evidence_status": "rejected",
       "notes": "Direct follow-up to the user asking whether propagation could be made more aggressive for structural-proof-forest and whether SMAC tuning could help the known-hard files. A same-day 24-trial local smoke run (8s timeout) had already shown the same qualitative pattern (incumbent regressing on the validate set) but was too small a budget to trust; this real 80-trial cluster run confirms the negative result was not a budget artifact. euf_explain_search=bidirectional (already the default) remained the intensifier's SMAC-selected choice throughout -- reoriented-proof-forest/structural-proof-forest, now tunable after this session's config-space fix, were sampled during the run but never became incumbent, consistent with the primo.html finding that these hard files' cost is dominated by CDCL search rather than EUF explain-mode choice."
+    },
+    {
+      "id": "2026-07-23-qf-lra-milestone1-fuzz-smoke-gate",
+      "started_at": "2026-07-23",
+      "recorded_at": "2026-07-23",
+      "kind": "fuzz",
+      "scope": "Fuzz-gate smoke check for QF_LRA Milestone 1 (frontend + batch Simplex tableau), required by AGENTS.md before treating a new logic as minimally working. Two rounds: first round found a real coverage bug (let-bound literal coefficients unrecognized), second round re-verified after the fix.",
+      "commit": "d5d6943 (bug found and fixed within this same session; a9f3d3d is the commit this entry is recorded against)",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-asan-ws/primo (Debug, ASAN+UBSan)"
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build-asan-ws/primo --refs z3 --logic QF_LRA --count 300 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_lra-smoke2 --seed 1",
+      "benchmark": {
+        "suite": "fuzzsmt-generated QF_LRA, referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-smoke/ (round 1, pre-fix) and fuzz-results/qf_lra-smoke2/ (round 2, post-fix) -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "round1_pre_fix": "300 cases: 257 UNSUPPORTED_INPUT (sat refs), 38 UNSUPPORTED_INPUT (unsat refs), 5 CRASH, 0 PASS. Nearly universal UNSUPPORTED_INPUT traced to a real bug: build_times/build_divide recognized a literal `*`/`/` operand by pattern-matching the raw S-expression before ever calling build_term, so a let-bound alias of a literal (e.g. `(let ((c 3)) (* c x))`) was never recognized as a coefficient, even though it resolves to one after build_term's own let-binding lookup. fuzzsmt let-binds nearly every literal in its QF_LRA output, so this rejected almost all fuzzer-generated input.",
+        "fix": "Rewrote build_times/build_divide to build both operands via build_term first (which already resolves let-bindings, definitions, and nested arithmetic that constant-folds via TermManager's own mk_plus/mk_times), then check the *resulting* term's TermKind::Rational-ness -- simpler than the original raw-syntax-matching design, not just more correct. The top-level bare-numeral-atom fast path was also simplified to a plain util::Rational::parse(expr.atom) check inside build_term's Atom branch, since compound literal forms (`(- lit)`, `(/ lit n)`) are now handled correctly by the ordinary build_minus/build_divide recursive-build path with no special-casing needed.",
+        "round2_post_fix": "Same 300-case campaign re-run after the fix: 251 UNSUPPORTED_INPUT (sat refs), 17 UNSUPPORTED_INPUT (unsat refs), 20 PASS (unsat/unsat), 3 PASS (sat/sat), 6 CRASH, 3 TIMEOUT (5s budget). Zero wrong-answer disagreements against z3 across both rounds -- the critical soundness property held throughout.",
+        "crash_triage": "All 6 crashes share one signature: AddressSanitizer stack-overflow inside primo::smtlib::SExpr's recursive copy constructor, triggered purely by S-expression nesting depth, before any theory-specific code runs. Confirmed NOT QF_LRA-specific: reproduced the same fuzzer settings against QF_UF (100 cases) with zero crashes, but QF_UF's fuzzsmt output at these settings averaged ~136 lines/file versus QF_LRA's ~534 lines/file (fuzzsmt's arithmetic term generator produces deeper nesting) -- QF_LRA just happens to hit the same latent, pre-existing, theory-agnostic parser-robustness gap more often, not a new one. Out of scope for this milestone; tracked as a follow-up (would need converting SExpr copying and/or build_term's recursion to be iterative, or adding an explicit depth limit).",
+        "remaining_unsupported_input": "Manually sampled several post-fix UNSUPPORTED_INPUT cases: overwhelmingly the known, explicitly-tested disequality gap (\"QF_LRA disequality (a negated Real equality) is not yet supported\") -- fuzzsmt generates many equalities that end up negated somewhere in the formula. This is an intentional, documented Milestone 1 scope boundary (case-splitting for disequality isn't implemented yet), not an unknown bug."
+      },
+      "verification": {
+        "passed": [
+          "primo_rational_tests, primo_linear_polynomial_tests, primo_lra_atom_tests, primo_lra_tableau_tests, primo_qf_lra_solver_tests, and the full existing suite (12 targets total): exit 0 under both Release and Debug+ASAN+UBSan builds, before and after the fix.",
+          "300-case fuzzsmt QF_LRA campaign against z3 (ASAN/UBSan build): zero wrong-answer disagreements, both before and after the fix."
+        ],
+        "pending": [
+          "Disequality (case-split) support -- not implemented this milestone.",
+          "The pre-existing SExpr recursive-copy stack-overflow on deeply-nested input -- not fixed, out of scope for QF_LRA work specifically.",
+          "A larger merge/campaign-tier fuzz gate (per AGENTS.md's three-tier discipline) before describing QF_LRA as supported/default rather than a Milestone-1 first cut."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of implementing the QF_LRA plan's Milestone 1 (see /home/user/.claude/plans/piped-wondering-fairy.md). This is the first time this project's fuzz-gate discipline has been applied to a brand-new logic rather than an existing one's modification, and it caught a real, high-impact coverage bug (not a crash or soundness bug) that manual/unit testing had completely missed, since none of the hand-written unit tests happened to use let-bindings around literals."
     }
   ]
 }
