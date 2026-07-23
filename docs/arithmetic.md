@@ -2,6 +2,10 @@
 
 Arithmetic is a future target. The initial scaffold does not implement full Simplex or difference logic.
 
+See [](papers/fast-linear-arithmetic-dpllt.md) for the planned base algorithm
+and [](papers/lra-related-work.md) for a literature survey of extensions and
+alternatives to consider before/while implementing it.
+
 ## Future LRA data structures
 
 ```text
