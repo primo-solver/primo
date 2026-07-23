@@ -48,12 +48,14 @@ std::string version_text() {
   std::ostringstream version;
   version << "primo 0.1.0\n";
   version << "git: " << PRIMO_GIT_REVISION << "\n";
+  version << "build: " << PRIMO_BUILD_TYPE << ", sanitizers: " << PRIMO_SANITIZERS_BANNER << "\n";
   version << "cadical: " << primo::sat::cadical_signature();
   return version.str();
 }
 
 void print_startup_banner() {
-  std::cerr << "primo git " << PRIMO_GIT_REVISION << "\n";
+  std::cerr << "primo git " << PRIMO_GIT_REVISION << " (" << PRIMO_BUILD_TYPE
+            << ", sanitizers: " << PRIMO_SANITIZERS_BANNER << ")\n";
   std::cerr << "cadical " << primo::sat::cadical_signature() << "\n";
 }
 

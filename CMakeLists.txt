@@ -192,6 +192,15 @@ else()
 endif()
 
 add_executable(primo src/main.cpp)
+if(PRIMO_SANITIZERS)
+  list(JOIN PRIMO_SANITIZERS "," primo_sanitizers_joined)
+else()
+  set(primo_sanitizers_joined "none")
+endif()
+target_compile_definitions(primo PRIVATE
+  "PRIMO_BUILD_TYPE=\"$<IF:$<CONFIG:>,unspecified,$<CONFIG>>\""
+  "PRIMO_SANITIZERS_BANNER=\"${primo_sanitizers_joined}\""
+)
 add_custom_target(primo_git_revision_header ALL
   COMMAND "${CMAKE_COMMAND}"
     -DPRIMO_SOURCE_DIR=${CMAKE_SOURCE_DIR}
