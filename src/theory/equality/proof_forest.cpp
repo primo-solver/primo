@@ -125,6 +125,18 @@ void ProofForest::coalesce_into_structural_class(FlatTermId member, FlatTermId c
     alias_trail_.push_back({entry});
     alias_[member] = canonical;
     alias_label_[member] = std::move(label);
+    // `canonical` is now an alias *target*: if it is later itself coalesced
+    // as someone else's member, the fast path above must not apply to it,
+    // or `member`'s eventual materialize()-created real tree edge into
+    // `canonical` would dead-end at a self-rooted parent_[canonical] the
+    // ordinary tree walk cannot see past alias_ from (alias_ is only
+    // consulted at the start of an obligation, not for nodes reached
+    // mid-walk via parent_). has_incoming_edge_ must track alias-incoming
+    // exactly like tree-incoming for that check to be sound.
+    if (!has_incoming_edge_[canonical]) {
+      has_incoming_edge_[canonical] = true;
+      incoming_edge_trail_.push_back({canonical});
+    }
     return;
   }
   // member already has real tree structure (either just materialized above,

@@ -152,15 +152,23 @@ class ProofForest {
   std::vector<ProofForestLabel> alias_label_;
   std::vector<std::vector<AliasEntry>> alias_trail_;
 
-  // Tracks, per node, whether it has ever been used as `union_nodes`'s
-  // `e_prime` (the union target). `parent_[node] == node` alone is not
-  // enough to tell whether `node` is safe for the cheap alias fast path in
-  // `coalesce_into_structural_class`: `union_nodes` never rewrites
-  // `parent_[e_prime]` itself, so a node can already have a real incoming
-  // tree edge from some earlier `e` while still looking self-rooted. Once
-  // set, a node stays ineligible for the fast path even if reorientation
-  // later moves its incoming edge elsewhere -- conservative, but the only
-  // cost is an occasional unnecessary tree edge instead of a plain alias.
+  // Tracks, per node, whether anything else already points *at* it -- as a
+  // real `union_nodes` `e_prime` target, or as a `coalesce_into_structural_
+  // class` fast-path alias target. `parent_[node] == node` alone is not
+  // enough to tell whether `node` is safe for the cheap alias fast path:
+  // `union_nodes` never rewrites `parent_[e_prime]` itself, so a node can
+  // have a real incoming tree edge while still looking self-rooted, and an
+  // alias target's `parent_` is untouched by definition. Either kind of
+  // incoming pointer is a problem if `node` is later fast-aliased away
+  // too: whoever points at it may eventually be `materialize`d into a real
+  // tree edge landing on `node`, and the ordinary tree walk (`parent_`
+  // only, never `alias_`, once past the obligation seeded at the start of
+  // `explain`) would then dead-end at `node`'s self-loop instead of
+  // continuing to wherever it got aliased. So both cases must be tracked
+  // uniformly here. Once set, a node stays ineligible for the fast path
+  // even if reorientation later moves its incoming edge elsewhere --
+  // conservative, but the only cost is an occasional unnecessary tree edge
+  // instead of a plain alias.
   std::vector<bool> has_incoming_edge_;
   std::vector<std::vector<FlatTermId>> incoming_edge_trail_;
 
