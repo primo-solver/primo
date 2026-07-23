@@ -300,7 +300,7 @@ bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) 
       return false;
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
       // Real-sorted; unreachable past the bool_sort() guard above.
       return false;
   }
@@ -330,7 +330,7 @@ bool is_forced_atom(const core::TermManager& terms, core::TermId term_id) {
       return false;
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
       // Real-sorted; unreachable past the bool_sort() guard above.
       return false;
   }
@@ -467,7 +467,7 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
     // opaque leaves for switch exhaustiveness.
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
       return term_id;
@@ -559,7 +559,7 @@ core::TermId simplify_with_forced_atoms(core::TermManager& terms, core::TermId t
     case core::TermKind::Application:
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
       rewritten = term_id;
@@ -797,7 +797,7 @@ core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId ter
     case core::TermKind::Application:
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
       return term;
@@ -1450,7 +1450,7 @@ core::TermId rewrite_with_ground_unit_equalities(
     case core::TermKind::Constant:
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
       break;
@@ -1538,7 +1538,7 @@ core::TermId rewrite_with_solved_constants(
     case core::TermKind::Constant:
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
       break;
@@ -1809,7 +1809,7 @@ core::TermId simplify_with_finite_domain_evaluation(core::TermManager& terms, co
     case core::TermKind::Application:
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
       return term;

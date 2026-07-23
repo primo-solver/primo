@@ -881,7 +881,7 @@ class BooleanClausifier {
         return;
       case core::TermKind::Rational:
       case core::TermKind::Plus:
-      case core::TermKind::Neg:
+      case core::TermKind::Times:
         throw UnsupportedInput("Real-sorted term used in a Boolean context");
     }
   }
@@ -954,7 +954,7 @@ class BooleanClausifier {
         return;
       case core::TermKind::Rational:
       case core::TermKind::Plus:
-      case core::TermKind::Neg:
+      case core::TermKind::Times:
         break;
     }
     throw UnsupportedInput("unsupported Boolean assertion");
@@ -1008,7 +1008,7 @@ class BooleanClausifier {
       case core::TermKind::Not:
       case core::TermKind::Rational:
       case core::TermKind::Plus:
-      case core::TermKind::Neg:
+      case core::TermKind::Times:
         break;
     }
     throw UnsupportedInput("unsupported Boolean term");

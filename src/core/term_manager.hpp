@@ -24,10 +24,11 @@ class TermManager {
   TermId mk_implies(TermId lhs, TermId rhs);
 
   // Linear real arithmetic (QF_LRA). See the TermKind comment in term.hpp
-  // for why there is no mk_times/mk_minus/mk_ge/mk_gt.
+  // for why mk_times takes a single child (coefficient * child, not
+  // general multiplication) and there is no mk_minus/mk_ge/mk_gt.
   TermId mk_rational(util::Rational value);
   TermId mk_plus(std::vector<TermId> children);
-  TermId mk_neg(TermId child);
+  TermId mk_times(util::Rational coefficient, TermId child);
   TermId mk_le(TermId lhs, TermId rhs);
   TermId mk_lt(TermId lhs, TermId rhs);
 

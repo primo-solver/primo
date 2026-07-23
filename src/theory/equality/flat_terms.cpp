@@ -49,7 +49,7 @@ FlatTermId FlatTermIndex::flatten(core::TermId term) {
       throw std::invalid_argument("Boolean formula nodes are not EUF flat terms");
     case core::TermKind::Rational:
     case core::TermKind::Plus:
-    case core::TermKind::Neg:
+    case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
       throw std::invalid_argument("QF_LRA arithmetic nodes are not EUF flat terms");

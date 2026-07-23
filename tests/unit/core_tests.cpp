@@ -165,10 +165,12 @@ void arithmetic_terms_are_hash_consed_and_checked() {
   assert(terms.get(sum0).kind == TermKind::Plus);
   assert(terms.get(sum0).sort == symbols.real_sort());
 
-  const auto neg_x0 = terms.mk_neg(x);
-  const auto neg_x1 = terms.mk_neg(x);
-  assert(neg_x0 == neg_x1);
-  assert(terms.get(neg_x0).kind == TermKind::Neg);
+  const auto scaled_x0 = terms.mk_times(Rational(2), x);
+  const auto scaled_x1 = terms.mk_times(Rational(2), x);
+  assert(scaled_x0 == scaled_x1);
+  assert(terms.get(scaled_x0).kind == TermKind::Times);
+  assert(terms.get(scaled_x0).rational_value == Rational(2));
+  assert(terms.get(scaled_x0).children == std::vector{x});
 
   const auto le0 = terms.mk_le(x, y);
   const auto le1 = terms.mk_le(x, y);
@@ -182,7 +184,7 @@ void arithmetic_terms_are_hash_consed_and_checked() {
   assert(lt0 != le0);
 
   expect_invalid_argument([&] { terms.mk_plus({x, a}); });
-  expect_invalid_argument([&] { terms.mk_neg(a); });
+  expect_invalid_argument([&] { terms.mk_times(Rational(2), a); });
   expect_invalid_argument([&] { terms.mk_le(x, a); });
   expect_invalid_argument([&] { terms.mk_plus({}); });
 }
@@ -196,14 +198,19 @@ void arithmetic_terms_are_simplified() {
   // Constant folding.
   assert(terms.mk_plus({terms.mk_rational(Rational(2)), terms.mk_rational(Rational(3))}) ==
         terms.mk_rational(Rational(5)));
-  assert(terms.mk_neg(terms.mk_rational(Rational(3))) == terms.mk_rational(Rational(-3)));
+  assert(terms.mk_times(Rational(-1), terms.mk_rational(Rational(3))) ==
+        terms.mk_rational(Rational(-3)));
   assert(terms.mk_le(terms.mk_rational(Rational(2)), terms.mk_rational(Rational(3))) ==
         terms.mk_bool(true));
   assert(terms.mk_lt(terms.mk_rational(Rational(3)), terms.mk_rational(Rational(2))) ==
         terms.mk_bool(false));
 
-  // Double negation and zero-constant elision.
-  assert(terms.mk_neg(terms.mk_neg(x)) == x);
+  // Coefficient folding: nested Times multiplies coefficients; 0 elides to
+  // the zero constant; 1 is the identity; nested Rational folds directly.
+  assert(terms.mk_times(Rational(3), terms.mk_times(Rational(2), x)) ==
+        terms.mk_times(Rational(6), x));
+  assert(terms.mk_times(Rational(0), x) == terms.mk_rational(Rational(0)));
+  assert(terms.mk_times(Rational(1), x) == x);
   assert(terms.mk_plus({x, terms.mk_rational(Rational(0))}) == x);
 
   // Nested Plus flattens.

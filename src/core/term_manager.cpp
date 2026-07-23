@@ -195,19 +195,25 @@ TermId TermManager::mk_plus(std::vector<TermId> children) {
                      false, util::Rational(0)});
 }
 
-TermId TermManager::mk_neg(TermId child) {
+TermId TermManager::mk_times(util::Rational coefficient, TermId child) {
   const Term& child_term = require_term(child);
   if (child_term.sort != symbols_.real_sort()) {
     throw std::invalid_argument("expected Real term");
   }
+  if (coefficient.is_zero()) {
+    return mk_rational(util::Rational(0));
+  }
   if (child_term.kind == TermKind::Rational) {
-    return mk_rational(-child_term.rational_value);
+    return mk_rational(coefficient * child_term.rational_value);
   }
-  if (child_term.kind == TermKind::Neg) {
-    return child_term.children.at(0);
+  if (child_term.kind == TermKind::Times) {
+    return mk_times(coefficient * child_term.rational_value, child_term.children.at(0));
   }
-  return intern(
-      Key{TermKind::Neg, symbols_.real_sort(), kInvalidSymbolId, {child}, false, util::Rational(0)});
+  if (coefficient == util::Rational(1)) {
+    return child;
+  }
+  return intern(Key{TermKind::Times, symbols_.real_sort(), kInvalidSymbolId, {child}, false,
+                     std::move(coefficient)});
 }
 
 TermId TermManager::mk_le(TermId lhs, TermId rhs) {
