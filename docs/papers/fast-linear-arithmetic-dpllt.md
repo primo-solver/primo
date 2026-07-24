@@ -11,7 +11,7 @@ This paper is the base algorithm for Primo's QF_LRA support. See
 `docs/arithmetic.md` for the current implementation status and
 `/home/user/.claude/plans/piped-wondering-fairy.md` for the full milestone plan.
 
-## Implemented (Milestones 1-3b)
+## Implemented (Milestones 1-4a)
 
 - **Section 2** (normalized linear terms/atoms): `LinearPolynomial`
   (`src/theory/arithmetic/linear_polynomial.{hpp,cpp}`) and the canonical
@@ -19,11 +19,18 @@ This paper is the base algorithm for Primo's QF_LRA support. See
 - **Section 3** (Assert-Bound, Check, Pivot) and **3.2** (conflict
   explanation via the row coefficients and stuck variables' binding
   bounds -- a Farkas-certificate-style argument): `LraTableau`
-  (`src/theory/arithmetic/lra_tableau.{hpp,cpp}`). Bland's rule is used
-  for both violated-variable and entering-variable selection, for the
-  paper's termination guarantee -- not for speed; see
-  `docs/papers/lra-related-work.md` for faster pivoting-rule alternatives
-  a later milestone could adopt.
+  (`src/theory/arithmetic/lra_tableau.{hpp,cpp}`). `PivotingRule::Bland`
+  (default) selects both violated-variable and entering-variable by
+  smallest index, for the paper's termination guarantee. `PivotingRule::
+  Dantzig` (Milestone 4a, 2026-07-24, opt-in) instead picks the
+  most-violated basic variable and the largest-`|coefficient|` entering
+  candidate -- cheaper per pivot and faster per-instance per
+  `docs/papers/lra-related-work.md`'s survey, at the cost of no inherent
+  anti-cycling guarantee, so `check()` reverts to Bland's-rule selection
+  once a heuristic pivot-count threshold is crossed *within that call* (a
+  finite Dantzig prefix followed by a Bland's-rule suffix still
+  terminates, since the paper's own argument covers the suffix on its
+  own). Devex/Steepest-Edge (also surveyed there) remain unimplemented.
 - **Section 3.1's infinitesimal-delta trick** for exact strict-inequality
   handling: `DeltaRational` (q + k*delta, lexicographically ordered), no
   floating point anywhere.
@@ -84,9 +91,13 @@ tableau algorithm itself.
 
 ## Implemented subset vs. deviations vs. limitations
 
-- No anti-cycling beyond Bland's rule itself, no alternative pivoting
-  rules, no sum-of-infeasibilities-style global objective (see
-  `docs/papers/lra-related-work.md`'s SOI-Simplex entry) -- Milestone 4.
+- No Devex/Steepest-Edge pricing, no sum-of-infeasibilities-style global
+  objective (see `docs/papers/lra-related-work.md`'s SOI-Simplex entry) --
+  Dantzig (Milestone 4a) covers the cheapest/fastest-per-instance option
+  from the survey, not the others.
+- Dantzig's anti-cycling fallback threshold (`4 * vars_.size() + 64` in
+  `check()`) is a heuristic, not a formally derived bound -- generous but
+  untuned.
 - Slack variables are deduplicated by *exact* polynomial content only, not
   scale-invariant (`x<=5` and `2x<=10` still get separate slacks, so
   propagation can't relate them) -- a deliberate scope cut for Milestone
@@ -122,3 +133,13 @@ tableau algorithm itself.
   full picture; the mechanism's correctness is independently confirmed at
   the unit-test level (propagation measurably avoids decisions on hand-
   built cases).
+- ~~LRA7: Milestone 4a, opt-in Dantzig pivoting rule~~ -- **done
+  (2026-07-24)**, see above. Local verification (full suite Release +
+  ASAN/UBSan, hand-built multi-pivot cases under both rules, a 500-case
+  fuzz merge-gate with `--lra-pivoting-rule dantzig`) found zero
+  wrong-answer disagreements against z3; see `docs/run-log.json`.
+- **LRA8: Milestone 4b, campaign-tier fuzz gate** -- pending. A QF_LRA
+  campaign job is queued on the `llm2smt-slurm` cluster (multi-day queue
+  at submission time, see `docs/run-log.json`); this is the gate that
+  promotes QF_LRA from "experimental" to "supported"/default per
+  AGENTS.md's discipline (>=3000 cases plus a seed-mutation campaign).

@@ -1,11 +1,13 @@
 # Arithmetic
 
 QF_LRA (quantifier-free linear real arithmetic) is implemented through
-Milestone 3b of the plan described below: a full SMT-LIB QF_LRA frontend
+Milestone 4a of the plan described below: a full SMT-LIB QF_LRA frontend
 plus a bounded-variable Simplex theory solver integrated into DPLL(T) via a
 trail-synced CaDiCaL external propagator, with both conflict detection and
 same-slack bound propagation, following Dutertre & de Moura's "A Fast
-Linear-Arithmetic Solver for DPLL(T)".
+Linear-Arithmetic Solver for DPLL(T)". Still **experimental**, not
+"supported"/default -- see Milestone 4b below for the campaign-tier fuzz
+gate that promotion is gated on.
 Difference logic (QF_IDL/QF_RDL) remains unimplemented; `difference_logic.hpp`
 is an empty placeholder reserved for that, separate future work.
 
@@ -13,7 +15,7 @@ See [](papers/fast-linear-arithmetic-dpllt.md) for the base algorithm and
 [](papers/lra-related-work.md) for a literature survey of extensions and
 alternatives considered before/while implementing it.
 
-## Implemented (Milestones 1-3b)
+## Implemented (Milestones 1-4a)
 
 - **Grammar/frontend** (`src/smt/check_sat.cpp`): `(set-logic QF_LRA)`,
   `Real`-sorted declarations, `+ - * <= < >= > =` per the SMT-LIB QF_LRA
@@ -73,6 +75,20 @@ alternatives considered before/while implementing it.
   (no candidate/budget/backoff machinery like EUF's propagation needs).
   Gated behind `CheckSatOptions::lra_propagation` (default on),
   `--lra-propagation`/`--no-lra-propagation` CLI flags.
+- **Selectable pivoting rule** (Milestone 4a, `lra_tableau.{hpp,cpp}`):
+  `LraTableau::PivotingRule::{Bland, Dantzig}`. Dantzig picks the
+  most-violated basic variable and largest-`|coefficient|` entering
+  variable in `check()`'s Check/Pivot loop -- cheaper per pivot and faster
+  per-instance than Bland's smallest-index selection (per
+  `docs/papers/lra-related-work.md`'s survey), but with no anti-cycling
+  guarantee on its own, so `check()` falls back to Bland's-rule selection
+  once a heuristic pivot-count threshold is exceeded *within that call*.
+  A finite Dantzig prefix followed by a Bland's-rule suffix still
+  terminates (the paper's termination argument applies to the suffix on
+  its own). Opt-in via `CheckSatOptions::lra_pivoting_rule`
+  (`--lra-pivoting-rule {bland,dantzig}`) -- **default stays Bland**, the
+  already campaign-fuzzed behavior; `kStatLraBlandFallbacks` reports how
+  often the fallback engages.
 - **Disequality**: `Real`-sorted `=` is desugared to `(t1 <= t2) AND (t2 <= t1)`
   at parse time (`Frontend::mk_theory_equality`, since Real is a total
   order), not handled as a special relation in the tableau at all. `NOT(t1=t2)`
@@ -98,9 +114,12 @@ alternatives considered before/while implementing it.
   operand may be a compound linear term (`(* 2 (+ x y))`), not only a bare
   variable -- harmless (still linear) and simpler to implement than
   enforcing the stricter grammar.
-- **No pivoting-rule choice yet** (Bland's rule only, for termination
-  correctness, not speed -- see `docs/papers/lra-related-work.md`'s survey
-  of faster alternatives for a later milestone).
+- ~~No pivoting-rule choice yet~~ -- **added 2026-07-24** (Milestone 4a):
+  `LraTableau::PivotingRule::Dantzig`, opt-in, default stays Bland. Devex
+  and Steepest-Edge (`docs/papers/lra-related-work.md`'s survey) remain
+  unimplemented -- Dantzig alone already closes most of the practical gap
+  per the cited comparative benchmark (fastest per-instance wall time),
+  and adding either of the other two is a bigger, separate undertaking.
 - **Polynomial dedup is exact-match only, not scale-invariant**: `x<=5` and
   `2x<=10` still get separate slacks (and so can't propagate against each
   other), even though they constrain the same line. A documented,
@@ -126,7 +145,8 @@ alternatives considered before/while implementing it.
 ## Milestone roadmap
 
 See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
-Milestones 1-3b (above) are done, plus disequality support. Remaining:
+Milestones 1-4a (above) are done, plus disequality support and the
+recursion-removal pass. Remaining:
 
 - **Milestone 3b's real-benchmark impact**: a 500-case fuzz merge-gate
   re-run found zero wrong-answer disagreements against z3 (a real bug --
@@ -142,7 +162,11 @@ Milestones 1-3b (above) are done, plus disequality support. Remaining:
   for the milestone -- see `docs/run-log.json` for the full picture,
   including unit-test-level evidence (decision-count reduction on
   hand-built cases) that the mechanism itself works correctly.
-- **Milestone 4**: anti-cycling/pivoting-rule hardening (mostly already
-  done -- Bland's rule has been in `LraTableau::check()` since Milestone 1),
-  campaign-tier fuzz gate, before describing QF_LRA as supported/default
-  rather than a first-cut milestone.
+- **Milestone 4b (pending)**: the campaign-tier fuzz gate (AGENTS.md:
+  >=3000 cases plus a seed-mutation campaign) that promotes QF_LRA from
+  "experimental" to "supported"/default. A QF_LRA campaign job is queued
+  on the `llm2smt-slurm` cluster (see `docs/run-log.json`'s 2026-07-24
+  entries and the `feedback_fuzzing_on_slurm` note on that cluster's
+  multi-day queue times) -- once the post-4a commit's campaign run comes
+  back clean, this doc and `docs/papers/fast-linear-arithmetic-dpllt.md`
+  should drop the "experimental" framing.
