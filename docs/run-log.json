@@ -9517,6 +9517,80 @@
       },
       "evidence_status": "current_local",
       "notes": "Prompted mid-session by explicit, repeated user direction: first specifically about the recurring SExpr crash, then generalized to 'we shouldn't be using recursion ever, we should have explicit stack' as a standing principle (see feedback_no_recursion_explicit_stack memory). Also prompted a correction to an earlier session belief that no Slurm cluster was reachable from this sandbox -- it is, via SSH (see feedback_fuzzing_on_slurm memory's 2026-07-24 correction)."
+    },
+    {
+      "id": "2026-07-24-qf-lra-milestone4a-dantzig-local-fuzz",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "Local merge-gate-tier fuzz verification for Milestone 4a (LraTableau::PivotingRule::Dantzig, an opt-in alternative to the default Bland's-rule Check/Pivot selection, with an anti-cycling fallback to Bland's rule after a heuristic pivot-count threshold within one check() call). Same 500-case fuzzsmt-vs-z3 campaign shape used for every other QF_LRA milestone this session, run with --lra-pivoting-rule dantzig.",
+      "commit": "67bdcb5",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-asan-ws/primo (Debug, ASAN+UBSan)"
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver \"./build-asan-ws/primo --quiet --lra-pivoting-rule dantzig\" --refs z3 --logic QF_LRA --count 500 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_lra-dantzig-smoke --seed 1",
+      "benchmark": {
+        "suite": "fuzzsmt-generated QF_LRA, referenced against z3, --lra-pivoting-rule dantzig",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-dantzig-smoke/ -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "result": "421 PASS, 79 TIMEOUT, 0 CRASH, 0 WRONG -- closely matches the same-seed default-Bland baseline (423 PASS, 77 TIMEOUT, 0 CRASH, 0 WRONG from the 2026-07-24 recursion-fix entry), well within run-to-run noise. Zero wrong-answer disagreements against z3 under the new pivoting rule.",
+        "significance": "Confirms Dantzig's correctness (not just its termination-guarantee reasoning) before relying on it for the campaign-tier gate. Also confirms it doesn't materially change the crash-rate profile versus Bland -- no new crash signatures introduced by the alternative selection logic."
+      },
+      "verification": {
+        "passed": [
+          "Full unit suite (12 targets, incl. 3 new lra_tableau_tests.cpp Dantzig cases and 1 new qf_lra_solver_tests.cpp Dantzig case) under Release and Debug+ASAN+UBSan.",
+          "500-case fuzzsmt QF_LRA campaign with --lra-pivoting-rule dantzig (ASAN/UBSan): 0 crashes, 0 wrong answers."
+        ],
+        "pending": [
+          "Campaign-tier (>=3000 case) confirmation -- see the companion Slurm entry."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Milestone 4a (Dantzig pivoting rule). See docs/arithmetic.md and docs/papers/fast-linear-arithmetic-dpllt.md for the design writeup."
+    },
+    {
+      "id": "2026-07-24-qf-lra-milestone4b-slurm-campaign-setup",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "Milestone 4b: campaign-tier (>=3000 case) QF_LRA fuzz gate on the llm2smt-slurm cluster, the promotion gate for calling QF_LRA supported/default (AGENTS.md). Submitted against the final post-Milestone-4a commit (superseding the earlier 2026-07-24 job 113267, which tested a pre-M4 commit and, it turned out, ran against a broken remote toolchain -- see below).",
+      "commit": "605caad",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile; then sbatch scripts/slurm_qfuf_fuzz_gate.sbatch with QF_LRA env overrides (see the 113267 entry) plus TYPEFUZZ=<remote .venv-yinyang>/bin/typefuzz and PATH prepended with contrib/local/bin -- job 113319 (6 fuzzsmt shards x 500 = 3000 cases, 2 yinyang mutation shards) plus a small supplementary job 113328 (the single opfuzz task, resubmitted separately after fixing a PATH gap specific to that task).",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 6 shards x 500 cases) + yinyang typefuzz mutation (2 shards) + opfuzz (1 task), all seeded/referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113319/ and .../qfuf-gate-113328/ on llm2smt-slurm -- not committed."
+      },
+      "summary": {
+        "result": "Two real infrastructure bugs found and fixed while getting this campaign running (neither is a Primo correctness issue): (1) the first submission (job 113267, against the pre-M4 commit) completed in ~1 second with 'fuzzsmt is not installed; skipping external fuzzing' -- slurm_prepare_benchmark_workspace.py only builds the primo binary, not the fuzzsmt/z3 tooling scripts/fuzz_external.py depends on, so that job silently did nothing rather than actually fuzzing. Fixed by running `make contrib-fuzzsmt contrib-z3` remotely and setting up a .venv-yinyang venv with yinyang/z3-solver installed for opfuzz/typefuzz. (2) The very next slurm_prepare_benchmark_workspace.py sync (to pick up the M4 commits) then clobbered that remote contrib/local with the LOCAL machine's contrib/local via rsync (contrib/local wasn't excluded), reintroducing the same failure via a different symptom (fuzzsmt's wrapper script has a host-specific absolute jarfile path baked in at install time) -- fixed by excluding contrib/local and contrib/src from the rsync (commit 605caad), then re-provisioning remotely. A remaining minor PATH gap (opfuzz specifically resolves via bare PATH lookup, not the TYPEFUZZ override) was caught and fixed with a small supplementary single-task job (113328) rather than restarting the whole array. As of this entry, job 113319's core fuzzsmt shards (0-5) are running (confirmed genuinely executing, not instantly completing); yinyang shards (7-8) already completed cleanly (14/14 seeds valid, 0 bug triggers); opfuzz (113328) is running. Full campaign results to be recorded in a follow-up entry once complete.",
+        "significance": "The 'no crashes in 500 cases' evidence this session has relied on for QF_LRA milestones was always genuine (run locally, directly observed), but this is a reminder that remote/CI-style fuzz infrastructure needs its own end-to-end verification (did it actually run real cases?) rather than trusting a clean exit code alone -- job 113267's 1-second 'success' would have been a false promotion signal if not directly inspected."
+      },
+      "verification": {
+        "passed": [
+          "Remote fuzzsmt/z3/yinyang tooling confirmed working via direct smoke invocations after each fix.",
+          "Yinyang mutation shards (113319 tasks 7-8): 14/14 real seeds valid, 0 bug triggers."
+        ],
+        "pending": [
+          "job 113319's 6 fuzzsmt shards (3000 cases) and job 113328's opfuzz task -- still running as of this entry; results pending, to be recorded once complete."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Per feedback_fuzzing_on_slurm memory: campaign-tier fuzzing belongs on Slurm, checked back on periodically rather than tight-polled. This entry intentionally records the infra-debugging process in detail since it's a real, reusable fix (scripts/slurm_prepare_benchmark_workspace.py) other campaigns benefit from too, not just this one."
     }
   ]
 }
