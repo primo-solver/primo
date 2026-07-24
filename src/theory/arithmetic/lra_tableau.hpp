@@ -80,6 +80,20 @@ struct DeltaRational {
 // operates on FlatTermId rather than core::TermId directly.
 class LraTableau {
  public:
+  // Selects how check()'s Check/Pivot loop picks which out-of-bound basic
+  // variable to repair and which non-basic variable enters the basis.
+  // Bland is the paper's own choice (smallest-index for both), the only
+  // one with a direct termination proof. Dantzig (largest violation /
+  // largest |coefficient|) is cheaper per pivot and faster in practice
+  // (docs/papers/lra-related-work.md's survey) but has no anti-cycling
+  // guarantee on its own -- check() falls back to Bland's-rule selection
+  // after enough pivots within one call to still terminate; see check()'s
+  // definition for why a finite Dantzig prefix followed by a Bland's-rule
+  // suffix is still covered by the paper's termination argument.
+  enum class PivotingRule { Bland, Dantzig };
+
+  explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {}
+
   // Allocates a fresh non-basic variable with assignment 0 and no bounds.
   LraVarId add_variable();
 
@@ -143,6 +157,13 @@ class LraTableau {
     return BoundInfo{bound->value, bound->reason};
   }
 
+  // Cumulative count of check() calls (across this tableau's lifetime,
+  // including anything replayed via copy) that hit the Dantzig anti-cycling
+  // fallback -- always 0 under PivotingRule::Bland. Callers that want a
+  // per-round delta (e.g. for a statistics counter) should snapshot this
+  // before and after a check() call themselves.
+  std::size_t bland_fallback_count() const { return bland_fallback_count_; }
+
  private:
   struct Bound {
     DeltaRational value;
@@ -184,6 +205,8 @@ class LraTableau {
   void undo(const TrailEntry& entry);
   void rebuild_occurs_in_index();
 
+  PivotingRule rule_;
+  std::size_t bland_fallback_count_ = 0;
   std::vector<VarState> vars_;
   std::unordered_map<LraVarId, Row> rows_;
   std::unordered_map<LraVarId, std::vector<LraVarId>> occurs_in_;

@@ -176,23 +176,58 @@ std::vector<sat::Lit> LraTableau::build_conflict(LraVarId violated, bool too_low
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::check() {
+  // Anti-cycling fallback for PivotingRule::Dantzig (see the PivotingRule
+  // class comment): once more than this many pivots have happened within
+  // this call, switch to Bland's-rule selection (both loops below) for
+  // the remainder. A heuristic threshold, not a formally derived bound --
+  // generous relative to the tableau size, not tuned. Reset every call
+  // (cycling risk is per Check/Pivot episode, not global across the
+  // tableau's lifetime).
+  const std::size_t bland_fallback_threshold = 4 * vars_.size() + 64;
+  std::size_t pivot_count = 0;
+  bool fallback_counted = false;
+
   while (true) {
+    if (rule_ == PivotingRule::Dantzig && !fallback_counted && pivot_count > bland_fallback_threshold) {
+      ++bland_fallback_count_;
+      fallback_counted = true;
+    }
+    const bool use_bland = rule_ == PivotingRule::Bland || pivot_count > bland_fallback_threshold;
+
     LraVarId violated = vars_.size();
     bool too_low = false;
+    DeltaRational best_violation;
     for (LraVarId id = 0; id < vars_.size(); ++id) {
       const VarState& state = vars_[id];
       if (!state.is_basic) {
         continue;
       }
+      bool candidate_too_low = false;
+      bool is_violated = false;
+      DeltaRational violation;
       if (state.lower.has_value() && state.assignment < state.lower->value) {
+        is_violated = true;
+        candidate_too_low = true;
+        violation = state.lower->value - state.assignment;
+      } else if (state.upper.has_value() && state.assignment > state.upper->value) {
+        is_violated = true;
+        candidate_too_low = false;
+        violation = state.assignment - state.upper->value;
+      }
+      if (!is_violated) {
+        continue;
+      }
+      if (use_bland) {
         violated = id;
-        too_low = true;
+        too_low = candidate_too_low;
         break;
       }
-      if (state.upper.has_value() && state.assignment > state.upper->value) {
+      // Dantzig-style: pick the most-violated basic variable (largest
+      // magnitude out-of-bounds), tie-breaking by smallest index.
+      if (violated == vars_.size() || violation > best_violation) {
         violated = id;
-        too_low = false;
-        break;
+        too_low = candidate_too_low;
+        best_violation = violation;
       }
     }
     if (violated == vars_.size()) {
@@ -200,6 +235,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
     }
 
     LraVarId entering = vars_.size();
+    util::Rational best_abs_coeff(0);
     for (const auto& [var, coeff] : rows_.at(violated)) {
       const VarState& var_state = vars_.at(var);
       const bool positive = coeff.sign() > 0;
@@ -208,8 +244,24 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
                               : (!var_state.lower.has_value() || var_state.assignment > var_state.lower->value))
                  : (positive ? (!var_state.lower.has_value() || var_state.assignment > var_state.lower->value)
                               : (!var_state.upper.has_value() || var_state.assignment < var_state.upper->value));
-      if (can_move && var < entering) {
+      if (!can_move) {
+        continue;
+      }
+      if (use_bland) {
+        if (var < entering) {
+          entering = var;
+        }
+        continue;
+      }
+      // Dantzig-style: pick the largest |coefficient| among eligible
+      // entering candidates, tie-breaking by smallest index -- Row isn't
+      // sorted by var id, so the index comparison has to be explicit
+      // (can't rely on scan order the way the Bland branch above does).
+      const util::Rational abs_coeff = coeff.sign() < 0 ? -coeff : coeff;
+      if (entering == vars_.size() || abs_coeff > best_abs_coeff ||
+          (abs_coeff == best_abs_coeff && var < entering)) {
         entering = var;
+        best_abs_coeff = abs_coeff;
       }
     }
     if (entering == vars_.size()) {
@@ -220,6 +272,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         too_low ? vars_.at(violated).lower->value : vars_.at(violated).upper->value;
     pivot(violated, entering);
     update(violated, target);
+    ++pivot_count;
   }
 }
 

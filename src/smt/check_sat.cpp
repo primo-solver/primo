@@ -137,6 +137,7 @@ constexpr util::StatKey kStatSolverQfLra = util::StatKey::SolverQfLra;
 constexpr util::StatKey kStatLraTheoryChecks = util::StatKey::LraTheoryChecks;
 constexpr util::StatKey kStatLraTheoryConflicts = util::StatKey::LraTheoryConflicts;
 constexpr util::StatKey kStatLraTheoryPropagations = util::StatKey::LraTheoryPropagations;
+constexpr util::StatKey kStatLraBlandFallbacks = util::StatKey::LraBlandFallbacks;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -262,6 +263,16 @@ theory::equality::FlatExplanationSearchMode flat_explanation_search_mode(
       return theory::equality::FlatExplanationSearchMode::OneSidedBfs;
   }
   return theory::equality::FlatExplanationSearchMode::OneSidedBfs;
+}
+
+theory::arithmetic::LraTableau::PivotingRule lra_pivoting_rule_from_options(LraPivotingRule rule) {
+  switch (rule) {
+    case LraPivotingRule::Dantzig:
+      return theory::arithmetic::LraTableau::PivotingRule::Dantzig;
+    case LraPivotingRule::Bland:
+      return theory::arithmetic::LraTableau::PivotingRule::Bland;
+  }
+  return theory::arithmetic::LraTableau::PivotingRule::Bland;
 }
 
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
@@ -3194,7 +3205,8 @@ PolynomialKey polynomial_key(const theory::arithmetic::LinearPolynomial& polynom
 // they essentially never would.
 struct PreparedLraTheory {
   PreparedLraTheory(const core::TermManager& terms,
-                    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms);
+                    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                    theory::arithmetic::LraTableau::PivotingRule pivoting_rule);
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -3214,7 +3226,9 @@ struct PreparedLraTheory {
 };
 
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
-                                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms) {
+                                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule)
+    : base_tableau(pivoting_rule) {
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
   auto get_var = [&](core::TermId term_id) {
     const auto found = var_ids.find(term_id);
@@ -3522,7 +3536,10 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     // work across many assignments before a conflict actually appears --
     // acceptable for a first correctness-focused milestone, a documented
     // opportunity to optimize later (e.g. deferring to cb_has_external_clause).
+    const std::size_t fallbacks_before = tableau_.bland_fallback_count();
     conflict_ = tableau_.check();
+    statistics_.increment(kStatLraBlandFallbacks,
+                          tableau_.bland_fallback_count() - fallbacks_before);
   }
 
   // Scans the other atoms sharing `slack` with the atom that was just
@@ -3597,7 +3614,8 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
-  const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms());
+  const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms(),
+                                          lra_pivoting_rule_from_options(options.lra_pivoting_rule));
 
 #if PRIMO_HAVE_IPASIR
   // The trail-synced online propagator (Milestone 3a) is always preferred

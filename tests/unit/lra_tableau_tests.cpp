@@ -301,6 +301,85 @@ void bound_accessors_report_value_and_reason() {
   assert(tableau.upper_bound(x)->reason.value == upper_reason.value);
 }
 
+// Milestone 4: PivotingRule::Dantzig must reach the same answers as the
+// default Bland's-rule selection on scenarios that actually require a
+// pivot -- the two rules only differ in *which* variable each loop picks,
+// never in correctness. Re-uses satisfiable_system_via_a_slack_row's and
+// infeasible_system_requires_a_pivot_to_discover's exact scenarios above.
+void satisfiable_system_via_a_slack_row_under_dantzig() {
+  LraTableau tableau(LraTableau::PivotingRule::Dantzig);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+
+  assert(!tableau.assert_upper(s, rat(5), Lit{1}).has_value());
+  assert(!tableau.assert_lower(x, rat(1), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(1), Lit{3}).has_value());
+
+  const auto result = tableau.check();
+  assert(!result.has_value());
+  assert(tableau.assignment(x) + tableau.assignment(y) == tableau.assignment(s));
+  assert(tableau.assignment(s) <= rat(5));
+  assert(tableau.assignment(x) >= rat(1));
+  assert(tableau.assignment(y) >= rat(1));
+  assert(tableau.bland_fallback_count() == 0);
+}
+
+void infeasible_system_requires_a_pivot_to_discover_under_dantzig() {
+  LraTableau tableau(LraTableau::PivotingRule::Dantzig);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(1)}});
+
+  const Lit upper_reason{1};
+  const Lit lower_reason{2};
+  assert(!tableau.assert_upper(s1, rat(1), upper_reason).has_value());
+  assert(!tableau.assert_lower(s2, rat(3), lower_reason).has_value());
+  assert(!tableau.assert_lower(x, rat(0), Lit{3}).has_value());
+  assert(!tableau.assert_lower(y, rat(0), Lit{4}).has_value());
+
+  const auto conflict = tableau.check();
+  assert(conflict.has_value());
+  assert(conflict->size() == 2);
+  assert(has_reason(*conflict, upper_reason));
+  assert(has_reason(*conflict, lower_reason));
+  assert(tableau.bland_fallback_count() == 0);
+}
+
+// A scenario with rows of differing coefficient magnitude and differing
+// violation sizes, so Dantzig's "largest coefficient"/"largest violation"
+// selection actually has more than one candidate to choose between (not
+// just a single trivial pivot) -- still only checked for the same
+// end-to-end correctness as Bland, per the class comment's scope (the
+// specific pivot sequence chosen isn't part of the contract).
+void multi_pivot_system_with_varied_coefficients_under_dantzig() {
+  // s1 = 2x + y, s2 = x + 3y, x >= 0, y >= 0, s1 <= 4, s2 <= 9.
+  // Feasible, e.g. x=0, y=3: s1=3<=4, s2=9<=9.
+  LraTableau tableau(LraTableau::PivotingRule::Dantzig);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{x, Rational(2)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(3)}});
+
+  assert(!tableau.assert_lower(x, rat(0), Lit{1}).has_value());
+  assert(!tableau.assert_lower(y, rat(0), Lit{2}).has_value());
+  assert(!tableau.assert_upper(s1, rat(4), Lit{3}).has_value());
+  assert(!tableau.assert_upper(s2, rat(9), Lit{4}).has_value());
+  // Force both rows out of their upper bounds via a large lower bound
+  // on y, requiring the Check/Pivot loop to actually run.
+  assert(!tableau.assert_lower(y, rat(20), Lit{5}).has_value());
+
+  const auto conflict = tableau.check();
+  assert(conflict.has_value());
+  assert(tableau.bland_fallback_count() == 0);
+}
+
 }  // namespace
 
 int main() {
@@ -317,5 +396,8 @@ int main() {
   nested_push_pop_levels();
   bound_accessors_report_nullopt_before_any_assertion();
   bound_accessors_report_value_and_reason();
+  satisfiable_system_via_a_slack_row_under_dantzig();
+  infeasible_system_requires_a_pivot_to_discover_under_dantzig();
+  multi_pivot_system_with_varied_coefficients_under_dantzig();
   return 0;
 }

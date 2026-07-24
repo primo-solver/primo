@@ -11,6 +11,7 @@
 using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
+using primo::smt::LraPivotingRule;
 using primo::util::StatKey;
 
 namespace {
@@ -326,6 +327,51 @@ void boolean_structure_over_arithmetic_atoms_can_require_branching() {
   assert(satisfiable.result == CheckSatResult::Sat);
 }
 
+// Milestone 4: the Dantzig pivoting rule (opt-in via CheckSatOptions, not
+// the default) must reach the same sat/unsat answers as Bland's rule on
+// scenarios that actually require pivots -- re-uses
+// detects_conflict_requiring_an_actual_pivot's and
+// boolean_structure_over_arithmetic_atoms_can_require_branching's exact
+// formulas above.
+void dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
+  CheckSatOptions dantzig;
+  dantzig.lra_pivoting_rule = LraPivotingRule::Dantzig;
+
+  const auto unsat_pivot = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 1))
+    (assert (>= (+ x y) 3))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )",
+                                            dantzig);
+  assert(unsat_pivot.result == CheckSatResult::Unsat);
+
+  const auto unsat_branching = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (<= 3 x))
+    (assert (<= x 7))
+    (check-sat)
+  )",
+                                                dantzig);
+  assert(unsat_branching.result == CheckSatResult::Unsat);
+
+  const auto sat_branching = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (= x 10))
+    (check-sat)
+  )",
+                                              dantzig);
+  assert(sat_branching.result == CheckSatResult::Sat);
+}
+
 void handles_disequality_via_boolean_level_case_splitting() {
   // Real is a total order, so t1 = t2 <=> t1 <= t2 AND t2 <= t1 -- Frontend
   // desugars Real equality to that conjunction at parse time (mk_theory_equality),
@@ -432,6 +478,7 @@ int main() {
   same_slack_propagation_can_reach_a_conflict();
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
+  dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
   handles_disequality_via_boolean_level_case_splitting();
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();

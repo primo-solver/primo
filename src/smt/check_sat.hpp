@@ -58,6 +58,17 @@ enum class QfUfPortfolioMode {
   BasicPolarity,
 };
 
+// Mirrors theory::arithmetic::LraTableau::PivotingRule -- kept as a
+// separate check_sat.hpp-local enum (translated at the wiring point, see
+// lra_pivoting_rule_from_options in check_sat.cpp) rather than reused
+// directly, the same way EufExplainSearchMode is distinct from
+// theory::equality::FlatExplanationSearchMode -- keeps this header free
+// of theory-layer includes.
+enum class LraPivotingRule {
+  Bland,
+  Dantzig,
+};
+
 struct AutoBudget {
   enum class Kind {
     Auto,
@@ -98,6 +109,10 @@ struct CheckSatOptions {
   // the propagation check is exact and cheap (O(atoms sharing a slack)),
   // so there's no heuristic budget/backoff tuning to expose.
   bool lra_propagation = true;
+  // Milestone 4: default stays Bland (today's already-fuzz-tested
+  // behavior) until Dantzig has its own campaign-tier confirmation --
+  // see docs/papers/lra-related-work.md's pivoting-rule survey.
+  LraPivotingRule lra_pivoting_rule = LraPivotingRule::Bland;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;

@@ -148,6 +148,7 @@ int main(int argc, char** argv) {
   std::string euf_engine = "incremental";
   std::string euf_prop = "auto";
   std::string euf_explain_search = "one-sided";
+  std::string lra_pivoting_rule = "bland";
   bool euf_proof_forest_diagnostics = false;
   std::string pure_theory_filter = "auto";
   std::string theory_phase = "negative";
@@ -184,6 +185,11 @@ int main(int argc, char** argv) {
                "Enable QF_LRA same-slack bound propagation (Milestone 3b)");
   app.add_flag("--no-lra-propagation", no_lra_propagation,
                "Disable QF_LRA bound propagation (conflict detection only)");
+  app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
+                 "QF_LRA Check/Pivot variable-selection rule: bland (default, "
+                 "anti-cycling-proven) or dantzig (largest-violation/largest-coefficient, "
+                 "falls back to bland after enough pivots within one check())")
+      ->check(CLI::IsMember({"bland", "dantzig"}));
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_flag("--ground-unit-substitution", solver_options.ground_unit_substitution,
@@ -425,6 +431,11 @@ int main(int argc, char** argv) {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::OneSidedBfs;
   }
   solver_options.euf_proof_forest_diagnostics = euf_proof_forest_diagnostics;
+  if (lra_pivoting_rule == "dantzig") {
+    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Dantzig;
+  } else {
+    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Bland;
+  }
   if (pure_theory_filter == "off") {
     solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
   } else if (pure_theory_filter == "on") {
