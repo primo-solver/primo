@@ -3105,14 +3105,24 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
         const int var = var_trail_.back();
         var_trail_.pop_back();
         assigned_[static_cast<std::size_t>(var)] = 0;
+        // Only erase reasons_ entries for literals actually unassigned by
+        // this backtrack -- CaDiCaL can still legitimately ask (e.g. during
+        // conflict analysis of a *later* conflict) for the reason of an
+        // earlier propagation that remains on the trail after backtracking
+        // to new_level, and clearing it unconditionally here would answer
+        // that with an empty (invalid) reason clause.
+        reasons_.erase(var);
+        reasons_.erase(-var);
       }
       level_starts_.resize(new_level);
     }
     conflict_.reset();
     external_clause_.clear();
     external_clause_index_ = 0;
+    // pending_ entries are just candidates, not delivered propagations --
+    // safe to drop unconditionally (unlike reasons_ above): at worst a
+    // still-valid candidate gets rediscovered next time its slack changes.
     pending_.clear();
-    reasons_.clear();
     reason_stream_active_lit_ = 0;
     reason_stream_index_ = 0;
   }
