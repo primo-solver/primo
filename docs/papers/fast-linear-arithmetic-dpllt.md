@@ -11,7 +11,7 @@ This paper is the base algorithm for Primo's QF_LRA support. See
 `docs/arithmetic.md` for the current implementation status and
 `/home/user/.claude/plans/piped-wondering-fairy.md` for the full milestone plan.
 
-## Implemented (Milestone 1)
+## Implemented (Milestones 1-2)
 
 - **Section 2** (normalized linear terms/atoms): `LinearPolynomial`
   (`src/theory/arithmetic/linear_polynomial.{hpp,cpp}`) and the canonical
@@ -27,18 +27,26 @@ This paper is the base algorithm for Primo's QF_LRA support. See
 - **Section 3.1's infinitesimal-delta trick** for exact strict-inequality
   handling: `DeltaRational` (q + k*delta, lexicographically ordered), no
   floating point anywhere.
-- **DPLL(T) integration** (`check_sat.cpp`'s `solve_qf_lra`): currently the
-  *lazy* shape only (rebuild the tableau from the full SAT assignment each
-  round), mirroring how EUF's `Lazy` engine works via `find_theory_conflict`
-  -- not yet the paper's fully incremental, trail-based integration (that's
-  Milestone 2), and not yet mid-search theory propagation via a CaDiCaL
-  external propagator (Milestone 3, mirroring `OnlineEufPropagator`).
+- **Section 4 (backtracking)**: `LraTableau::push()`/`pop(checkpoint)`,
+  genuinely trail-based (a `TrailEntry` per bound/assignment/pivot change,
+  replayed backwards on pop) -- not full state snapshotting. Pivots are
+  undone on pop, since a row's equation and the assignment it was derived
+  under are coupled; see the class comment in `lra_tableau.hpp` for why
+  this doesn't contradict the paper's point that pivot choice itself isn't
+  tied to search depth.
+- **DPLL(T) integration** (`check_sat.cpp`): `PreparedLraTheory` precomputes
+  the tableau structure once (mirroring `PreparedFlatTheory`);
+  `solve_qf_lra`/`find_incremental_lra_theory_conflict` copy that base
+  tableau and assert bounds each round, mirroring how EUF's
+  `find_incremental_theory_conflict` copies a precomputed `base_closure`
+  rather than using `FlatCongruenceClosure`'s own push/pop for cross-round
+  reuse. `LraTableau`'s push/pop exist and are tested, but aren't
+  exercised by this wiring yet -- real trail-synced reuse across SAT
+  decision levels (via `notify_new_decision_level`/`notify_backtrack`) is
+  an online-propagator concern, Milestone 3's `OnlineLraPropagator`.
 
 ## Implemented subset vs. deviations vs. limitations
 
-- No backtracking/incrementality within a single theory check yet (batch
-  only -- a fresh tableau every SAT round). The paper's backtracking-friendly
-  tableau design (referenced in Section 4) is Milestone 2.
 - No anti-cycling beyond Bland's rule itself, no alternative pivoting
   rules, no sum-of-infeasibilities-style global objective (see
   `docs/papers/lra-related-work.md`'s SOI-Simplex entry) -- Milestone 4.
@@ -50,13 +58,18 @@ This paper is the base algorithm for Primo's QF_LRA support. See
 - One slack variable per *atom*, not deduplicated by polynomial content --
   sound (see `LraTableau`'s empty-row handling) but not the most efficient
   possible encoding; not something the paper prescribes either way.
+- `LraTableau`'s pivot-undo rebuilds the `occurs_in_` reverse index from
+  scratch on every pop (O(tableau size)), rather than incrementally
+  diffing it -- simplicity over speed for this milestone.
 
 ## Milestones
 
 - ~~LRA0: linear polynomial representation~~ -- done.
 - ~~LRA1: normalization of arithmetic atoms~~ -- done.
-- ~~LRA2: tableau scaffold~~ -- done (batch/non-incremental).
+- ~~LRA2: tableau scaffold~~ -- done.
 - ~~LRA3: feasibility checking~~ -- done (Check/Pivot).
 - ~~LRA4: conflict explanations~~ -- done (Farkas-certificate style).
-- LRA5: backtracking and propagation -- in progress (Milestones 2-3 of the
-  plan: incremental trail-based tableau, then `OnlineLraPropagator`).
+- ~~LRA5: backtracking~~ -- done (`push`/`pop`, trail-based).
+- LRA6 (not in the original list, added once it became clear propagation
+  needed its own milestone): mid-search theory propagation via
+  `OnlineLraPropagator` -- Milestone 3 of the plan, not started.

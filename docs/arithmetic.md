@@ -1,17 +1,18 @@
 # Arithmetic
 
-QF_LRA (quantifier-free linear real arithmetic) is implemented, Milestone 1
-of the plan described below: a full SMT-LIB QF_LRA frontend plus a batch
-(non-incremental) bounded-variable Simplex theory solver, following
-Dutertre & de Moura's "A Fast Linear-Arithmetic Solver for DPLL(T)".
-Difference logic (QF_IDL/QF_RDL) remains unimplemented; `difference_logic.hpp`
-is an empty placeholder reserved for that, separate future work.
+QF_LRA (quantifier-free linear real arithmetic) is implemented through
+Milestone 2 of the plan described below: a full SMT-LIB QF_LRA frontend
+plus an incremental, trail-based bounded-variable Simplex theory solver,
+following Dutertre & de Moura's "A Fast Linear-Arithmetic Solver for
+DPLL(T)". Difference logic (QF_IDL/QF_RDL) remains unimplemented;
+`difference_logic.hpp` is an empty placeholder reserved for that, separate
+future work.
 
 See [](papers/fast-linear-arithmetic-dpllt.md) for the base algorithm and
 [](papers/lra-related-work.md) for a literature survey of extensions and
 alternatives considered before/while implementing it.
 
-## Implemented (Milestone 1)
+## Implemented (Milestones 1-2)
 
 - **Grammar/frontend** (`src/smt/check_sat.cpp`): `(set-logic QF_LRA)`,
   `Real`-sorted declarations, `+ - * <= < >= > =` per the SMT-LIB QF_LRA
@@ -36,10 +37,24 @@ alternatives considered before/while implementing it.
   `LraTableau` implements Assert-Bound, Check/Pivot (Bland's rule, for
   termination), and Farkas-certificate conflict explanation (Section 3,
   3.2). Strict inequalities via `DeltaRational` (q + k*delta, exact, no
-  floating point). Batch/non-incremental -- no push/pop yet.
-- **DPLL(T) wiring** (`check_sat.cpp`): `solve_qf_lra`/`find_lra_theory_conflict`
-  rebuild a fresh tableau from the current SAT assignment each round,
-  mirroring EUF's `Lazy` engine shape (`find_theory_conflict`).
+  floating point). Incremental: `push()`/`pop(checkpoint)` are genuinely
+  trail-based (Section 4), mirroring `FlatCongruenceClosure`'s discipline
+  -- every bound change, assignment change, and pivot's row rewrite pushes
+  a `TrailEntry`, and `pop` replays them backwards. Pivots ARE undone on
+  pop (a row's equation and the assignment it was computed under are
+  coupled; see the class comment for why the paper's "pivots don't track
+  search depth" framing doesn't mean "don't undo them").
+- **DPLL(T) wiring** (`check_sat.cpp`): `PreparedLraTheory` precomputes the
+  tableau's structural part (one row per arithmetic atom) exactly once,
+  mirroring `PreparedFlatTheory`; `solve_qf_lra`/`find_incremental_lra_theory_conflict`
+  copy that base tableau and assert bounds each SAT round -- avoiding
+  re-normalizing every atom from its term representation every round, the
+  same way EUF's `find_incremental_theory_conflict` copies a precomputed
+  `base_closure` rather than rebuilding from scratch. `push()`/`pop()`
+  aren't exercised by this wiring yet (each round still asserts into a
+  fresh copy, not a shared trail-synced tableau) -- real cross-round trail
+  reuse via `push`/`pop` synced to the SAT decision level is an
+  online-propagator concern, Milestone 3's `OnlineLraPropagator`.
 
 ### Implemented subset vs. deviations vs. limitations
 
@@ -70,13 +85,14 @@ alternatives considered before/while implementing it.
 ## Milestone roadmap
 
 See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
-Milestone 1 (above) is done. Remaining:
+Milestones 1-2 (above) are done. Remaining:
 
-- **Milestone 2**: incremental, trail-based tableau (push/pop), mirroring
-  `FlatCongruenceClosure`'s discipline.
 - **Milestone 3**: `OnlineLraPropagator`, full CaDiCaL external-propagator
   integration mirroring `OnlineEufPropagator` (mid-search propagation, not
-  just conflict-on-full-assignment).
+  just conflict-on-full-assignment) -- this is what would actually put
+  `LraTableau::push`/`pop` to use for cross-round reuse, not just internal
+  correctness (it's fully implemented and tested, just not wired into
+  `solve_qf_lra`'s per-round copy-based loop yet).
 - **Milestone 4**: anti-cycling/pivoting-rule hardening, campaign-tier fuzz
   gate, before describing QF_LRA as supported/default rather than a
-  Milestone-1 first cut.
+  first-cut milestone.

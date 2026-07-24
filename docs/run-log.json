@@ -9217,6 +9217,42 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct continuation of implementing the QF_LRA plan's Milestone 1 (see /home/user/.claude/plans/piped-wondering-fairy.md). This is the first time this project's fuzz-gate discipline has been applied to a brand-new logic rather than an existing one's modification, and it caught a real, high-impact coverage bug (not a crash or soundness bug) that manual/unit testing had completely missed, since none of the hand-written unit tests happened to use let-bindings around literals."
+    },
+    {
+      "id": "2026-07-24-qf-lra-milestone2-fuzz-regression-check",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "Regression check for QF_LRA Milestone 2 (LraTableau push/pop, PreparedLraTheory/find_incremental_lra_theory_conflict wired into solve_qf_lra, replacing Milestone 1's per-round-renormalize path). LraTableau's copy constructor is now exercised on every SAT round (via `LraTableau tableau = prepared.base_tableau;`), a materially different code path from Milestone 1's fresh-tableau-per-round approach, so re-running the fuzz gate was worthwhile rather than assuming Milestone 1's result still applied.",
+      "commit": "79020e3",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-asan-ws/primo (Debug, ASAN+UBSan)"
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build-asan-ws/primo --refs z3 --logic QF_LRA --count 300 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_lra-milestone2 --seed 1",
+      "benchmark": {
+        "suite": "fuzzsmt-generated QF_LRA, referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-milestone2/ -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "result": "300 cases: 250 UNSUPPORTED_INPUT (sat refs), 17 UNSUPPORTED_INPUT (unsat refs), 20 PASS (unsat/unsat), 3 PASS (sat/sat), 5 CRASH, 5 TIMEOUT. Zero wrong-answer disagreements against z3 -- consistent with the Milestone 1 post-fix baseline (same seed, same fuzzer args), confirming the PreparedLraTheory/copy-based rewrite didn't introduce a regression. Crash/UNSUPPORTED_INPUT breakdown matches the already-triaged Milestone 1 causes (the pre-existing SExpr stack-overflow, and the known disequality gap) -- not re-triaged individually since the signatures are identical to the prior run."
+      },
+      "verification": {
+        "passed": [
+          "Full existing suite (12 targets) under both Release and Debug+ASAN+UBSan builds, including the new push/pop-specific LraTableau tests.",
+          "300-case fuzzsmt QF_LRA campaign against z3 (ASAN/UBSan build): zero wrong-answer disagreements."
+        ],
+        "pending": [
+          "LraTableau's push/pop are implemented and unit-tested but not yet exercised by solve_qf_lra's per-round-copy wiring -- real cross-round trail reuse is Milestone 3 (OnlineLraPropagator)."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of Milestone 2 (see /home/user/.claude/plans/piped-wondering-fairy.md and the 2026-07-23 Milestone 1 fuzz-gate entry). No new bugs found this round -- included primarily as a regression check given how much of solve_qf_lra's internal control flow changed (copy-based per-round tableau construction is a new code path relative to Milestone 1's fresh-add_row-per-round approach), not because a specific concern was being chased down."
     }
   ]
 }
