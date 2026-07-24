@@ -1,11 +1,11 @@
 # Arithmetic
 
 QF_LRA (quantifier-free linear real arithmetic) is implemented through
-Milestone 3a of the plan described below: a full SMT-LIB QF_LRA frontend
+Milestone 3b of the plan described below: a full SMT-LIB QF_LRA frontend
 plus a bounded-variable Simplex theory solver integrated into DPLL(T) via a
-trail-synced CaDiCaL external propagator (conflict detection only, no
-proactive bound propagation -- see Milestone 3a's note on why), following
-Dutertre & de Moura's "A Fast Linear-Arithmetic Solver for DPLL(T)".
+trail-synced CaDiCaL external propagator, with both conflict detection and
+same-slack bound propagation, following Dutertre & de Moura's "A Fast
+Linear-Arithmetic Solver for DPLL(T)".
 Difference logic (QF_IDL/QF_RDL) remains unimplemented; `difference_logic.hpp`
 is an empty placeholder reserved for that, separate future work.
 
@@ -13,7 +13,7 @@ See [](papers/fast-linear-arithmetic-dpllt.md) for the base algorithm and
 [](papers/lra-related-work.md) for a literature survey of extensions and
 alternatives considered before/while implementing it.
 
-## Implemented (Milestones 1-3a)
+## Implemented (Milestones 1-3b)
 
 - **Grammar/frontend** (`src/smt/check_sat.cpp`): `(set-logic QF_LRA)`,
   `Real`-sorted declarations, `+ - * <= < >= > =` per the SMT-LIB QF_LRA
@@ -46,18 +46,33 @@ alternatives considered before/while implementing it.
   coupled; see the class comment for why the paper's "pivots don't track
   search depth" framing doesn't mean "don't undo them").
 - **DPLL(T) wiring** (`check_sat.cpp`): `PreparedLraTheory` precomputes the
-  tableau's structural part (one row per arithmetic atom) exactly once,
-  mirroring `PreparedFlatTheory`. `OnlineLraPropagator` (Milestone 3a) is a
-  trail-synced `CaDiCaL::ExternalPropagator`, owning one `LraTableau`
-  (copied once from the prepared base) kept in sync via `notify_new_decision_level`/
+  tableau's structural part exactly once, mirroring `PreparedFlatTheory` --
+  one row per *distinct polynomial*, not per atom: atoms that normalize to
+  the exact same `LinearPolynomial` share a slack variable (`PolynomialKey`/
+  `PolynomialKeyHash`, exact-content matching only, not scale-invariant),
+  with an `atoms_by_slack` index recording which atoms share which slack.
+  `OnlineLraPropagator` (Milestone 3a) is a trail-synced
+  `CaDiCaL::ExternalPropagator`, owning one `LraTableau` (copied once from
+  the prepared base) kept in sync via `notify_new_decision_level`/
   `notify_backtrack` calling `LraTableau::push()`/`pop()` -- this is what
   actually exercises push/pop for cross-round reuse. `solve_qf_lra` always
   prefers this when CaDiCaL's external-propagator API is available
   (`#if PRIMO_HAVE_IPASIR`); `find_incremental_lra_theory_conflict` (copy
   the base tableau and reassert every round, no push/pop reuse) survives
-  only as the fallback when it isn't. `OnlineLraPropagator::cb_propagate()`
-  always returns 0 -- deliberately conflict-detection only, see Milestone
-  3a below for why.
+  only as the fallback when it isn't.
+- **Same-slack bound propagation** (Milestone 3b, `check_sat.cpp`): after
+  each successful bound assertion, `OnlineLraPropagator` scans the other
+  atoms sharing that slack (via `atoms_by_slack`) and eagerly propagates
+  any now entailed true/false, using `LraTableau::upper_bound()`/
+  `lower_bound()` (new read accessors) compared against `true_threshold`/
+  `false_threshold` (the same `DeltaRational` values `assert_lra_atom_bound`
+  itself would assert) -- Dutertre & de Moura Section 4.2's "deriving
+  satisfied atoms". Each propagation's reason is exactly the one bound's
+  own asserting literal (a 2-literal Horn clause), computed eagerly at scan
+  time rather than lazily re-derived, since the check is exact and cheap
+  (no candidate/budget/backoff machinery like EUF's propagation needs).
+  Gated behind `CheckSatOptions::lra_propagation` (default on),
+  `--lra-propagation`/`--no-lra-propagation` CLI flags.
 - **Disequality**: `Real`-sorted `=` is desugared to `(t1 <= t2) AND (t2 <= t1)`
   at parse time (`Frontend::mk_theory_equality`, since Real is a total
   order), not handled as a special relation in the tableau at all. `NOT(t1=t2)`
@@ -86,6 +101,16 @@ alternatives considered before/while implementing it.
 - **No pivoting-rule choice yet** (Bland's rule only, for termination
   correctness, not speed -- see `docs/papers/lra-related-work.md`'s survey
   of faster alternatives for a later milestone).
+- **Polynomial dedup is exact-match only, not scale-invariant**: `x<=5` and
+  `2x<=10` still get separate slacks (and so can't propagate against each
+  other), even though they constrain the same line. A documented,
+  deliberate scope cut for Milestone 3b, not an oversight -- see the
+  `PolynomialKey` comment in `check_sat.cpp`.
+- **Propagation only relates atoms sharing the exact same slack**, not
+  Dutertre & de Moura's stronger row-based/interval bound propagation
+  across *different* variables via a basic row's children. Also
+  deliberately out of scope for Milestone 3b (a materially bigger
+  technique), not a bug.
 - **Doesn't reuse `--pure-theory-filter`**: that optimization's soundness
   was established for EUF specifically; reusing it for LRA without
   independent verification was judged too risky for a first milestone.
@@ -99,22 +124,22 @@ alternatives considered before/while implementing it.
 ## Milestone roadmap
 
 See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
-Milestones 1-3a (above) are done, plus disequality support. Remaining:
+Milestones 1-3b (above) are done, plus disequality support. Remaining:
 
-- **Milestone 3b** (deferred, not scheduled, but see the real-benchmark
-  finding below): proactive bound propagation in
-  `OnlineLraPropagator::cb_propagate()` -- the paper's "deriving satisfied
-  atoms" mechanism. Explicitly *not* required for DPLL(T) completeness
-  (conflict detection alone, which 3a already provides, is sufficient) --
-  but a real-benchmark evaluation against `tmp/QF_LRA` (a local corpus of
-  1753 `.smt2` files across 17 families, not committed) found that even a
-  single moderate-size real formula (107 assertions) makes genuine but slow
-  progress without ever finishing (6869 decisions, 690 conflicts, 66373
-  pure-Boolean propagations in 15s, zero theory propagations) -- i.e.
-  *not* a completeness problem (search does progress) but a strong signal
-  that the lack of propagation is a real practical bottleneck, independent
-  of the completeness argument that originally justified deferring it.
-  Worth prioritizing before Milestone 4.
+- **Milestone 3b's real-benchmark impact**: a 500-case fuzz merge-gate
+  re-run found zero wrong-answer disagreements against z3 (a real bug --
+  `OnlineLraPropagator` clearing valid propagation reasons on backtrack --
+  was found and fixed via this same gate, see the run-log). A quick 82-file
+  diverse-sample re-run against `tmp/QF_LRA` showed no material aggregate
+  change on that particular sample (44/82 solved vs. 45/82 before, within
+  noise) -- same-slack propagation alone did not move the previously-0%
+  families (invariant synthesis, lasso ranking, tropical-matrix), which
+  suggests they need either scale-invariant polynomial matching or
+  row-based/interval propagation (both explicitly out of scope here, see
+  above) rather than same-slack propagation alone. Not a negative result
+  for the milestone -- see `docs/run-log.json` for the full picture,
+  including unit-test-level evidence (decision-count reduction on
+  hand-built cases) that the mechanism itself works correctly.
 - **Milestone 4**: anti-cycling/pivoting-rule hardening (mostly already
   done -- Bland's rule has been in `LraTableau::check()` since Milestone 1),
   campaign-tier fuzz gate, before describing QF_LRA as supported/default

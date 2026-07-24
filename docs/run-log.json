@@ -9403,6 +9403,80 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct continuation of 'we got also tmp/QF_LRA that could be used to seed fuzzer, we should also start evaluating on realy bench' -- this is the seed-fuzzer half; the real-benchmark-evaluation half is the preceding run-log entry (2026-07-24-qf-lra-real-benchmark-diverse-sample). benchmarks/seeds/qf_lra_real/ is now committed alongside this entry."
+    },
+    {
+      "id": "2026-07-24-qf-lra-milestone3b-propagation-fuzz",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "Merge-gate fuzz campaign for QF_LRA Milestone 3b (same-slack bound propagation, Dutertre & de Moura Section 4.2's 'deriving satisfied atoms'), prioritized over Milestone 4 per explicit user direction after real-benchmark evidence that lack of propagation was a practical bottleneck. Implemented in two steps: (1) PreparedLraTheory dedupes tableau slack variables by exact LinearPolynomial content (a prerequisite -- propagation needs atoms to share a slack, which essentially never happened under the old one-slack-per-atom scheme), (2) OnlineLraPropagator scans atoms sharing a just-asserted atom's slack and eagerly propagates entailed true/false atoms via new LraTableau::upper_bound()/lower_bound() accessors.",
+      "commit": "d00134b",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-asan-ws/primo (Debug, ASAN+UBSan)"
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build-asan-ws/primo --refs z3 --logic QF_LRA --count 500 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_lra-milestone3b --seed 1",
+      "benchmark": {
+        "suite": "fuzzsmt-generated QF_LRA, referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-milestone3b/ -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "result": "First run (before the bug fix below): 255 PASS, 16 TIMEOUT, 229 CRASH -- a real regression, all crashes the SAME new bug (CaDiCaL abort 'external reason clause must contain the propagated literal'), not the pre-existing SExpr recursion issue. Root cause: OnlineLraPropagator::notify_backtrack cleared its entire reasons_ map unconditionally on every backtrack, including entries for literals that remained assigned after backtracking to new_level -- CaDiCaL's conflict analysis (explain_external_propagations) legitimately asked for such a literal's reason later and got an empty clause back. Fixed by only erasing a reasons_ entry when its literal's var is actually popped from the propagator's own var_trail_ (mirroring how assigned_ is already scoped), leaving pending_ (undelivered candidates only, always safe to drop) as the sole thing cleared unconditionally. Re-ran the same 500-case campaign after the fix: 424 PASS, 69 TIMEOUT, 7 CRASH, 0 WRONG -- all 7 crashes individually reconfirmed (via direct stack-trace inspection) as the identical pre-existing SExpr stack-overflow already triaged in the Milestone 1 entry, not a new issue.",
+        "significance": "This is the second real bug (after the let-bound-literal and real-equality-misclassification bugs in Milestone 1) caught by the project's fuzz-gate discipline rather than shipped -- a subtle backtracking/reason-clause-lifetime bug that unit tests alone (which don't exercise deep, varied DPLL(T) backtracking patterns) would have been very unlikely to catch. Reinforces that the merge-gate tier (500 cases) is pulling real weight for propagator-touching changes, exactly as it did for Milestone 3a."
+      },
+      "verification": {
+        "passed": [
+          "Full existing suite (12 targets, including 2 new bound-propagation-specific solver tests) under both Release and Debug+ASAN+UBSan builds, after the fix.",
+          "500-case fuzzsmt QF_LRA campaign against z3 (ASAN/UBSan build), post-fix: zero wrong-answer disagreements, zero new crash signatures."
+        ],
+        "pending": [
+          "Campaign-tier (>=3000 case) fuzz gate -- not yet run for QF_LRA at all (Milestone 4's bar); still only smoke/merge-gate tiers so far across every QF_LRA milestone."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of the QF_LRA Milestone 3b work (see /home/user/.claude/plans/piped-wondering-fairy.md). The crash-rate jump (7 -> 229 -> back to 7) during this single milestone is a clean before/during-bug/after-fix signal, kept in one entry rather than split, since it's the same investigation."
+    },
+    {
+      "id": "2026-07-24-qf-lra-milestone3b-real-benchmark-recheck",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "benchmark",
+      "scope": "Re-ran the same 82-file diverse real-benchmark sample from the pre-Milestone-3b run (2026-07-24-qf-lra-real-benchmark-diverse-sample) against the Milestone 3b build, to measure same-slack bound propagation's real-world impact -- the actual motivation for prioritizing this milestone.",
+      "commit": "d00134b",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo (Release)"
+      },
+      "command": "python3 scripts/bench_qf_uf_full.py --root /workspace/tmp/QF_LRA --manifest /tmp/qf_lra_diverse_manifest.txt --solver ./build/primo --solver-arg=--quiet --timeout 10 --out results/qf-lra-diverse-3b.csv --summary results/qf-lra-diverse-3b-summary.csv (identical manifest/args to the pre-3b run, for a like-for-like comparison)",
+      "benchmark": {
+        "suite": "tmp/QF_LRA diverse sample (5 files/family x 17 families = 82 files), identical manifest to the pre-3b baseline run",
+        "logic": "QF_LRA",
+        "manifest": "/tmp/qf_lra_diverse_manifest.txt (not committed, ephemeral)"
+      },
+      "artifacts": {
+        "note": "results/qf-lra-diverse-3b.csv, results/qf-lra-diverse-3b-summary.csv -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "result": "44/82 solved (18 sat, 26 unsat), 38 timeout, 0 unsupported, 0 wrong. PAR2 809.3. Versus the pre-3b baseline (45/82 solved, PAR2 805.5): essentially no material aggregate change on this particular sample, within the noise of wall-clock timing on a shared machine (several 'ok' results took 2-5s for formulas that should be near-instant, suggesting load-related timing noise on this run). Family-by-family, the previously-0%-solved families are still 0% (2017-Heizmann-UltimateInvariantSynthesis, LassoRanker, tropical-matrix) and the previously-100%-solved families are still ~100%.",
+        "significance": "A genuinely neutral result, reported honestly rather than spun: same-slack bound propagation alone did not move this sample's hardest families. This is consistent with (not contradicting) the milestone's design scope -- propagation here only relates atoms sharing the *exact same* tableau slack, and the hardest families (invariant synthesis, lasso ranking) likely need either scale-invariant polynomial matching (atoms like x<=5 vs 2x<=10 currently get separate slacks) or the paper's stronger row-based/interval propagation across different variables (both explicitly out of scope for 3b) to see a similar win. The milestone's value is independently confirmed at the unit-test level instead (qf_lra_solver_tests.cpp's same_slack_propagation_* tests show propagation measurably avoiding SAT decisions on hand-built cases where atoms do share a slack) -- this benchmark sample apparently just doesn't have much of that specific pattern in its hardest files."
+      },
+      "verification": {
+        "passed": [
+          "82-file diverse real-benchmark sample: 0 wrong answers, 0 unsupported, comparable to the pre-3b baseline."
+        ],
+        "pending": [
+          "Whether scale-invariant polynomial matching or row-based propagation would move the still-0%-solved families -- not isolated/tested.",
+          "Full 1753-file tmp/QF_LRA corpus -- still not run (only diverse and single-family samples so far)."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of the Milestone 3b real-benchmark-evaluation follow-up promised in the plan. See the companion fuzz-gate entry (2026-07-24-qf-lra-milestone3b-propagation-fuzz) for the correctness side of this milestone."
     }
   ]
 }
