@@ -207,6 +207,31 @@ void detects_conflict_requiring_an_actual_pivot() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void atoms_sharing_identical_polynomial_solve_correctly() {
+  // x<=5 and x<=3 both normalize to the exact same polynomial ("x"), so
+  // PreparedLraTheory now gives them the same tableau slack/row -- this is
+  // a regression guard on that dedup: both atoms' truth values must still
+  // be respected together, not merged/dropped.
+  const auto satisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= x 5))
+    (assert (<= x 3))
+    (assert (>= x 1))
+    (check-sat)
+  )");
+  assert(satisfiable.result == CheckSatResult::Sat);
+
+  const auto unsatisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= x 2))
+    (assert (not (<= x 5)))
+    (check-sat)
+  )");
+  assert(unsatisfiable.result == CheckSatResult::Unsat);
+}
+
 void strict_boundary_is_unsat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -320,6 +345,7 @@ int main() {
   real_equality_is_not_misclassified_as_euf();
   detects_direct_bound_conflict();
   detects_conflict_requiring_an_actual_pivot();
+  atoms_sharing_identical_polynomial_solve_correctly();
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   handles_disequality_via_boolean_level_case_splitting();

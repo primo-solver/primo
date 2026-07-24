@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <deque>
 #include <exception>
+#include <functional>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -2869,12 +2870,53 @@ std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(theory::arithmetic::L
   throw std::logic_error("unreachable: LraRelation switch is exhaustive");
 }
 
-// Precomputes the QF_LRA tableau's structural part -- one row per
-// arithmetic theory atom, shared problem variables -- exactly once,
+// Canonical, order-independent identity for a LinearPolynomial's variable
+// content (not its constant, which normalize_atom already moved to the
+// atom's rhs): a sorted-by-TermId vector of (var, coefficient) pairs, used
+// to let atoms that normalize to the *exact* same polynomial share a
+// tableau slack variable/row (see PreparedLraTheory below). Deliberately
+// exact-match only, not scale-invariant (`x<=5` and `2x<=10` still get
+// separate slacks) -- see the class comment on PreparedLraTheory for why.
+struct PolynomialKey {
+  std::vector<std::pair<core::TermId, util::Rational>> sorted_terms;
+
+  bool operator==(const PolynomialKey& other) const { return sorted_terms == other.sorted_terms; }
+};
+
+struct PolynomialKeyHash {
+  std::size_t operator()(const PolynomialKey& key) const {
+    std::size_t seed = key.sorted_terms.size();
+    const util::RationalHash rational_hash;
+    for (const auto& [var, coefficient] : key.sorted_terms) {
+      seed ^= std::hash<core::TermId>{}(var) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      seed ^= rational_hash(coefficient) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
+
+PolynomialKey polynomial_key(const theory::arithmetic::LinearPolynomial& polynomial) {
+  PolynomialKey key;
+  key.sorted_terms.assign(polynomial.terms().begin(), polynomial.terms().end());
+  std::sort(key.sorted_terms.begin(), key.sorted_terms.end(),
+            [](const auto& a, const auto& b) { return a.first < b.first; });
+  return key;
+}
+
+// Precomputes the QF_LRA tableau's structural part -- one row per distinct
+// arithmetic-atom polynomial, shared problem variables -- exactly once,
 // independent of any SAT assignment (Dutertre & de Moura Section 4).
 // Mirrors PreparedFlatTheory's role for EUF: the per-round work becomes
 // "copy this base and assert bounds", not "re-normalize and re-add rows
 // from scratch every round" (what the fully-lazy path above still does).
+//
+// Atoms that normalize to the exact same LinearPolynomial (e.g. two `x<=...`
+// atoms on the same variable, or the same compound term appearing in two
+// different assertions) share a single slack variable/row rather than each
+// getting its own -- this is what makes same-slack bound propagation
+// (OnlineLraPropagator, below) find anything to propagate: propagation
+// needs multiple atoms to share a tableau variable, and without this dedup
+// they essentially never would.
 struct PreparedLraTheory {
   PreparedLraTheory(const core::TermManager& terms,
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms);
@@ -2888,6 +2930,12 @@ struct PreparedLraTheory {
 
   theory::arithmetic::LraTableau base_tableau;
   std::vector<PreparedAtom> atoms;  // parallel to theory_atoms
+  // Indices (into `atoms`) of every arithmetic atom sharing a given slack
+  // variable -- built once here so OnlineLraPropagator's propagation scan
+  // doesn't have to search linearly. Only populated for real slacks
+  // (PreparedAtom::is_arithmetic); non-arithmetic atoms' default slack (0)
+  // is a sentinel, not a real tableau variable, and must not be mixed in.
+  std::unordered_map<theory::arithmetic::LraVarId, std::vector<std::size_t>> atoms_by_slack;
 };
 
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
@@ -2903,6 +2951,8 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     return id;
   };
 
+  std::unordered_map<PolynomialKey, theory::arithmetic::LraVarId, PolynomialKeyHash> slack_by_polynomial;
+
   atoms.reserve(theory_atoms.size());
   for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
     const core::Term& term = terms.get(atom.term);
@@ -2913,15 +2963,24 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     }
 
     const theory::arithmetic::LraAtom normalized = theory::arithmetic::normalize_atom(terms, atom.term);
-    std::vector<std::pair<theory::arithmetic::LraVarId, util::Rational>> row;
-    row.reserve(normalized.polynomial.terms().size());
-    for (const auto& [var_term, coefficient] : normalized.polynomial.terms()) {
-      row.emplace_back(get_var(var_term), coefficient);
+    const PolynomialKey key = polynomial_key(normalized.polynomial);
+    const auto existing_slack = slack_by_polynomial.find(key);
+    theory::arithmetic::LraVarId slack;
+    if (existing_slack != slack_by_polynomial.end()) {
+      slack = existing_slack->second;
+    } else {
+      std::vector<std::pair<theory::arithmetic::LraVarId, util::Rational>> row;
+      row.reserve(key.sorted_terms.size());
+      for (const auto& [var_term, coefficient] : key.sorted_terms) {
+        row.emplace_back(get_var(var_term), coefficient);
+      }
+      slack = base_tableau.add_variable();
+      base_tableau.add_row(slack, row);
+      slack_by_polynomial.emplace(key, slack);
     }
-    const theory::arithmetic::LraVarId slack = base_tableau.add_variable();
-    base_tableau.add_row(slack, row);
-    atoms.push_back(
-        PreparedAtom{true, slack, normalized.relation, normalized.rhs});
+    const std::size_t atom_index = atoms.size();
+    atoms.push_back(PreparedAtom{true, slack, normalized.relation, normalized.rhs});
+    atoms_by_slack[slack].push_back(atom_index);
   }
 }
 
