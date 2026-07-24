@@ -20,50 +20,61 @@ class TokenSExprParser {
  public:
   explicit TokenSExprParser(std::string_view input) : lexer_(input) { advance(); }
 
+  // Iterative, explicit-stack-based (deliberately not recursive descent):
+  // one Frame per currently-open '(' rather than one call stack frame,
+  // so deeply-nested input (fuzzer-generated QF_LRA in particular tends
+  // to nest deeply, e.g. long chains of `let`) can't stack-overflow this.
   std::vector<SExpr> parse_all() {
-    std::vector<SExpr> expressions;
-    while (!at_end()) {
-      expressions.push_back(parse_one());
+    std::vector<SExpr> top_level;
+    std::vector<Frame> stack;
+
+    while (!stack.empty() || !at_end()) {
+      if (at_end()) {
+        throw ParseError("unexpected end of input in list", stack.back().open_offset);
+      }
+      const Token token = current_;
+      if (token.kind == TokenKind::LParen) {
+        advance();
+        stack.push_back(Frame{{}, token.offset});
+        continue;
+      }
+      if (token.kind == TokenKind::RParen) {
+        if (stack.empty()) {
+          throw ParseError("unexpected closing parenthesis", token.offset);
+        }
+        advance();
+        Frame frame = std::move(stack.back());
+        stack.pop_back();
+        push_result(stack, top_level, SExpr::make_list(std::move(frame.elements)));
+        continue;
+      }
+      if ((token.text.starts_with('|') && !token.text.ends_with('|')) ||
+          (token.text.starts_with('"') && !token.text.ends_with('"'))) {
+        throw ParseError("unterminated quoted token", token.offset);
+      }
+      advance();
+      push_result(stack, top_level, SExpr::make_atom(token.text));
     }
-    return expressions;
+    return top_level;
   }
 
  private:
+  struct Frame {
+    std::vector<SExpr> elements;
+    std::size_t open_offset;
+  };
+
+  static void push_result(std::vector<Frame>& stack, std::vector<SExpr>& top_level, SExpr value) {
+    if (stack.empty()) {
+      top_level.push_back(std::move(value));
+    } else {
+      stack.back().elements.push_back(std::move(value));
+    }
+  }
+
   bool at_end() const { return current_.kind == TokenKind::End; }
 
   void advance() { current_ = lexer_.next(); }
-
-  const Token& current() const {
-    if (at_end()) {
-      throw ParseError("unexpected end of input", current_.offset);
-    }
-    return current_;
-  }
-
-  SExpr parse_one() {
-    const Token token = current();
-    if (token.kind == TokenKind::LParen) {
-      advance();
-      std::vector<SExpr> elements;
-      while (!at_end() && current().kind != TokenKind::RParen) {
-        elements.push_back(parse_one());
-      }
-      if (at_end()) {
-        throw ParseError("unexpected end of input in list", token.offset);
-      }
-      advance();
-      return SExpr::make_list(std::move(elements));
-    }
-    if (token.kind == TokenKind::RParen) {
-      throw ParseError("unexpected closing parenthesis", token.offset);
-    }
-    if ((token.text.starts_with('|') && !token.text.ends_with('|')) ||
-        (token.text.starts_with('"') && !token.text.ends_with('"'))) {
-      throw ParseError("unterminated quoted token", token.offset);
-    }
-    advance();
-    return SExpr::make_atom(token.text);
-  }
 
   Lexer lexer_;
   Token current_;

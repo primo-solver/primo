@@ -125,6 +125,34 @@ void parses_define_fun_macros() {
   assert(commands[1].result_sort == "A");
 }
 
+// SExpr parsing, copying, and destruction are all iterative (explicit
+// stack), not recursive descent -- see ast.cpp/parser.cpp's class/function
+// comments. Deeply nested input like this used to stack-overflow (found
+// via fuzzing, since fuzzers routinely generate deep `let`/arithmetic
+// chains); this is a regression guard well beyond any depth a native
+// recursive implementation could tolerate.
+void parses_and_copies_pathologically_deep_nesting() {
+  constexpr int kDepth = 200000;
+  std::string input = "(assert ";
+  input.append(kDepth, '(');
+  input += "a";
+  input.append(kDepth, ')');
+  input += ")";
+
+  Parser parser(input);
+  const auto commands = parser.parse_commands();
+  assert(commands.size() == 1);
+
+  // Force a real copy (not just a move) of the deeply nested tree, to
+  // exercise SExpr's iterative copy constructor specifically.
+  const SExpr copy = commands.front().assertion;
+  assert(copy.kind == SExpr::Kind::List);
+
+  // Both the original Command and this copy go out of scope at the end of
+  // this function, exercising the iterative destructor on two separate
+  // deep trees.
+}
+
 void rejects_malformed_or_unsupported_input() {
   expect_parse_error([] { Parser("(check-sat extra)").parse_commands(); });
   expect_parse_error([] { Parser("(declare-sort A 1)").parse_commands(); });
@@ -142,6 +170,7 @@ int main() {
   parses_nested_boolean_assertion();
   parses_benchmark_metadata_and_quoted_symbols();
   parses_define_fun_macros();
+  parses_and_copies_pathologically_deep_nesting();
   rejects_malformed_or_unsupported_input();
   return 0;
 }
