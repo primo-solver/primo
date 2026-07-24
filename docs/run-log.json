@@ -9365,6 +9365,44 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct continuation of the disequality-support and real-benchmark-evaluation work this session (see /home/user/.claude/plans/piped-wondering-fairy.md). tmp/QF_LRA itself is a large (2.5GB) local extraction, analogous to tmp/QF_UF's role for the QF_UF benchmark workflows in docs/experiments.md -- not committed to the repo, consistent with how tmp/QF_UF is handled."
+    },
+    {
+      "id": "2026-07-24-qf-lra-yinyang-mutation-real-seeds",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "First mutation-based (yinyang/typefuzz) differential fuzz campaign for QF_LRA, seeded from real benchmark files rather than generator (fuzzsmt) output -- complements the grammar-generator fuzz gates already run for Milestones 1/2/3a/disequality. Seeds: benchmarks/seeds/qf_lra_real/ (14 small <5KB .smt2 files hand-picked from tmp/QF_LRA's best-performing families in the diverse-sample benchmark run: keymaera, sal, spider_benchmarks, check, DTP-Scheduling).",
+      "commit": "8a57bd0",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-asan-ws/primo (Debug, ASAN+UBSan)"
+      },
+      "command": "PATH=\"$PWD/.venv/bin:$PWD/contrib/local/bin:$PATH\" scripts/yinyang_fuzz.sh --seeds benchmarks/seeds/qf_lra_real --solver 'build-asan-ws/primo --quiet' --ref 'z3 model_validate=true' --seconds 240 --iterations 60 --solver-timeout 5 --bugs fuzz-results/qf_lra-yinyang/bugs --scratch fuzz-results/qf_lra-yinyang/scratch",
+      "benchmark": {
+        "suite": "typefuzz mutation fuzzing, seeded from real tmp/QF_LRA benchmark files, referenced against z3 (model_validate=true)",
+        "logic": "QF_LRA",
+        "manifest": "benchmarks/seeds/qf_lra_real/ (14 files, committed)"
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-yinyang/ -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "result": "14/14 seeds processed, 14 valid, 0 invalid. ~1700 solver calls over ~4 minutes wall clock (~18 calls/s, ~50% mutation-acceptance efficiency, ~9 mutants/s). 0 bug triggers found -- no wrong-answer disagreements against z3 and no crashes across the whole run.",
+        "significance": "First differential fuzz evidence combining real-world formula structure (via seeding) with adversarial mutation (via typefuzz), rather than either pure grammar-generation (fuzzsmt) or pure real-benchmark replay (the diverse-sample run) alone. Zero bugs is a positive but modest signal given the run was intentionally small/local (~1700 calls) -- see the Slurm follow-up note below for scaling this up properly."
+      },
+      "verification": {
+        "passed": [
+          "14/14 real seeds valid and processed by typefuzz.",
+          "0 bug triggers (wrong-answer or crash) over ~1700 mutation-fuzzed solver calls against z3."
+        ],
+        "pending": [
+          "Only a small local run so far (~1700 calls, 4 minutes) -- not yet a campaign-tier (AGENTS.md, >=3000 cases) run.",
+          "User direction (2026-07-24): future fuzz campaigns, including mutation-based ones, should run on Slurm rather than locally in-session, to actually reach campaign scale."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of 'we got also tmp/QF_LRA that could be used to seed fuzzer, we should also start evaluating on realy bench' -- this is the seed-fuzzer half; the real-benchmark-evaluation half is the preceding run-log entry (2026-07-24-qf-lra-real-benchmark-diverse-sample). benchmarks/seeds/qf_lra_real/ is now committed alongside this entry."
     }
   ]
 }
