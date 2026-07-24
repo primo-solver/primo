@@ -138,8 +138,15 @@ tableau algorithm itself.
   ASAN/UBSan, hand-built multi-pivot cases under both rules, a 500-case
   fuzz merge-gate with `--lra-pivoting-rule dantzig`) found zero
   wrong-answer disagreements against z3; see `docs/run-log.json`.
-- **LRA8: Milestone 4b, campaign-tier fuzz gate** -- pending. A QF_LRA
-  campaign job is queued on the `llm2smt-slurm` cluster (multi-day queue
-  at submission time, see `docs/run-log.json`); this is the gate that
-  promotes QF_LRA from "experimental" to "supported"/default per
-  AGENTS.md's discipline (>=3000 cases plus a seed-mutation campaign).
+- ~~LRA8: Milestone 4b, campaign-tier fuzz gate~~ -- **done (2026-07-24)**.
+  Ran on the `llm2smt-slurm` cluster after fixing two remote-infrastructure
+  gaps (missing fuzzsmt/z3/yinyang tooling; a workspace-sync rsync
+  clobbering provisioned tooling with host-specific local paths -- see
+  `docs/run-log.json` and the `feedback_fuzzing_on_slurm` memory). Result:
+  3000/3000 fuzzsmt cases (0 crash, 0 wrong, 149 timeout) plus opfuzz and
+  two yinyang typefuzz mutation shards (14/14 real seeds each, 0 bug
+  triggers) -- fully clean, clearing AGENTS.md's campaign-tier bar
+  (>=3000 cases plus a seed-mutation campaign). **QF_LRA is now
+  supported/default, not experimental.** Covered the default (Bland)
+  pivoting rule at campaign scale; Dantzig has only merge-gate-tier
+  (500-case) local confirmation so far.

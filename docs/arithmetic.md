@@ -1,13 +1,14 @@
 # Arithmetic
 
 QF_LRA (quantifier-free linear real arithmetic) is implemented through
-Milestone 4a of the plan described below: a full SMT-LIB QF_LRA frontend
+Milestone 4 of the plan described below: a full SMT-LIB QF_LRA frontend
 plus a bounded-variable Simplex theory solver integrated into DPLL(T) via a
 trail-synced CaDiCaL external propagator, with both conflict detection and
 same-slack bound propagation, following Dutertre & de Moura's "A Fast
-Linear-Arithmetic Solver for DPLL(T)". Still **experimental**, not
-"supported"/default -- see Milestone 4b below for the campaign-tier fuzz
-gate that promotion is gated on.
+Linear-Arithmetic Solver for DPLL(T)". **Supported**, not just
+experimental, as of the 2026-07-24 campaign-tier fuzz gate (3000 fuzzsmt
+cases plus opfuzz/yinyang mutation seeded from real benchmarks, all clean
+-- see `docs/run-log.json`'s Milestone 4b entries and Milestone 4b below).
 Difference logic (QF_IDL/QF_RDL) remains unimplemented; `difference_logic.hpp`
 is an empty placeholder reserved for that, separate future work.
 
@@ -15,7 +16,7 @@ See [](papers/fast-linear-arithmetic-dpllt.md) for the base algorithm and
 [](papers/lra-related-work.md) for a literature survey of extensions and
 alternatives considered before/while implementing it.
 
-## Implemented (Milestones 1-4a)
+## Implemented (Milestones 1-4, supported)
 
 - **Grammar/frontend** (`src/smt/check_sat.cpp`): `(set-logic QF_LRA)`,
   `Real`-sorted declarations, `+ - * <= < >= > =` per the SMT-LIB QF_LRA
@@ -145,8 +146,8 @@ alternatives considered before/while implementing it.
 ## Milestone roadmap
 
 See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
-Milestones 1-4a (above) are done, plus disequality support and the
-recursion-removal pass. Remaining:
+Milestones 1-4 (above) are all done, plus disequality support and the
+recursion-removal pass -- QF_LRA is **supported**, not experimental.
 
 - **Milestone 3b's real-benchmark impact**: a 500-case fuzz merge-gate
   re-run found zero wrong-answer disagreements against z3 (a real bug --
@@ -162,11 +163,24 @@ recursion-removal pass. Remaining:
   for the milestone -- see `docs/run-log.json` for the full picture,
   including unit-test-level evidence (decision-count reduction on
   hand-built cases) that the mechanism itself works correctly.
-- **Milestone 4b (pending)**: the campaign-tier fuzz gate (AGENTS.md:
-  >=3000 cases plus a seed-mutation campaign) that promotes QF_LRA from
-  "experimental" to "supported"/default. A QF_LRA campaign job is queued
-  on the `llm2smt-slurm` cluster (see `docs/run-log.json`'s 2026-07-24
-  entries and the `feedback_fuzzing_on_slurm` note on that cluster's
-  multi-day queue times) -- once the post-4a commit's campaign run comes
-  back clean, this doc and `docs/papers/fast-linear-arithmetic-dpllt.md`
-  should drop the "experimental" framing.
+- **Milestone 4b (done, 2026-07-24)**: the campaign-tier fuzz gate
+  (AGENTS.md: >=3000 cases plus a seed-mutation campaign) that promotes
+  QF_LRA from "experimental" to "supported"/default. Ran on the
+  `llm2smt-slurm` cluster after fixing two remote-infrastructure gaps
+  (missing fuzzsmt/z3/yinyang tooling; a workspace-sync rsync clobbering
+  provisioned tooling with host-specific local paths -- see
+  `docs/run-log.json` and the `feedback_fuzzing_on_slurm` memory).
+  Result: 3000/3000 fuzzsmt cases (0 crash, 0 wrong, 149 timeout) plus
+  opfuzz and two yinyang typefuzz mutation shards (14/14 real seeds each,
+  0 bug triggers) -- fully clean. Covered the default (Bland) pivoting
+  rule at campaign scale; Dantzig has only merge-gate-tier (500-case)
+  local confirmation, consistent with it being opt-in rather than the
+  behavior being promoted.
+
+**Not yet scheduled** (natural next candidates, not designed in detail):
+scale-invariant polynomial matching or row-based/interval propagation
+(Milestone 3b's real-benchmark finding suggests either would move the
+still-hard families further than same-slack propagation alone); Devex or
+Steepest-Edge pivoting (Milestone 4a covered only Dantzig); a
+campaign-tier confirmation specifically for `--lra-pivoting-rule dantzig`
+if it's ever considered for becoming the default.

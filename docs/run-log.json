@@ -9591,6 +9591,44 @@
       },
       "evidence_status": "current_local",
       "notes": "Per feedback_fuzzing_on_slurm memory: campaign-tier fuzzing belongs on Slurm, checked back on periodically rather than tight-polled. This entry intentionally records the infra-debugging process in detail since it's a real, reusable fix (scripts/slurm_prepare_benchmark_workspace.py) other campaigns benefit from too, not just this one."
+    },
+    {
+      "id": "2026-07-24-qf-lra-milestone4b-slurm-campaign-result",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "Result of Milestone 4b's campaign-tier QF_LRA fuzz gate on llm2smt-slurm (jobs 113319 + 113328, see the companion 2026-07-24-qf-lra-milestone4b-slurm-campaign-setup entry for the infrastructure fixes needed to get this running). Default (Bland pivoting rule) configuration, against the final post-Milestone-4a commit -- the promotion gate for calling QF_LRA supported/default per AGENTS.md (>=3000 cases plus a seed-mutation campaign).",
+      "commit": "605caad",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config)",
+        "binary": "build-slurm-rel/primo (remote Release)"
+      },
+      "command": "sbatch scripts/slurm_qfuf_fuzz_gate.sbatch (QF_LRA env overrides, see prior entry) as jobs 113319 (6 fuzzsmt shards x 500 cases + 2 yinyang mutation shards) and 113328 (1 opfuzz task, resubmitted separately after a PATH fix); results aggregated via a remote python csv scan across the 6 shard summary.csv files.",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 6 shards x 500 = 3000 cases) + yinyang typefuzz mutation (2 shards) + opfuzz (1 task), all seeded/referenced against z3; mutation/opfuzz seeded from benchmarks/seeds/qf_lra_real (14 real-benchmark files)",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113319/ and .../qfuf-gate-113328/ on llm2smt-slurm -- not committed, not copied locally (aggregated counts pulled back via a remote python one-liner instead of the raw per-file CSVs)."
+      },
+      "summary": {
+        "result": "fuzzsmt: 3000/3000 cases -- 2851 PASS, 149 TIMEOUT, 0 CRASH, 0 WRONG. opfuzz: 14/14 real seeds valid, 0 bug triggers. yinyang typefuzz (2 shards): 14/14 real seeds valid each, 0 bug triggers each. Fully clean campaign: no wrong-answer disagreements against z3, no crashes, no unsupported-input rejections, across both generator-based (fuzzsmt) and mutation-based (opfuzz/yinyang) fuzzing, seeded from both synthetic and real-world formulas.",
+        "significance": "Clears AGENTS.md's campaign-tier fuzz-gate bar (>=3000 cases plus a seed-mutation campaign) for QF_LRA at its current feature set (Milestones 1-4a: full frontend, incremental trail-based tableau, online conflict-detecting + same-slack-propagating CaDiCaL propagator, disequality via Boolean-level desugaring, opt-in Dantzig pivoting with Bland fallback, iterative/non-recursive frontend). This is the promotion gate Milestone 4 was scoped around -- docs/arithmetic.md and docs/papers/fast-linear-arithmetic-dpllt.md should drop the 'experimental' framing as of this result."
+      },
+      "verification": {
+        "passed": [
+          "3000-case campaign-tier fuzzsmt-vs-z3 QF_LRA run: 0 crashes, 0 wrong answers, 0 unsupported.",
+          "opfuzz + 2 yinyang typefuzz mutation shards, seeded from 14 real QF_LRA benchmark files: 0 bug triggers across all three."
+        ],
+        "pending": [
+          "This campaign covered the default (Bland) pivoting rule only, not --lra-pivoting-rule dantzig at campaign scale (Dantzig has only the 500-case local ASAN merge-gate-tier confirmation from the companion entry) -- acceptable per the milestone's own scoping decision (Dantzig is opt-in, not the default being promoted).",
+          "Remote build is Release-only (ASAN+UBSan build still broken on llm2smt-slurm, see feedback_fuzzing_on_slurm memory) -- local ASAN/UBSan coverage from earlier entries substitutes."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Completes Milestone 4 (both 4a and 4b). See docs/arithmetic.md/docs/papers/fast-linear-arithmetic-dpllt.md for the promotion-status update this result justifies."
     }
   ]
 }
