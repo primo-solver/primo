@@ -270,6 +270,37 @@ void nested_push_pop_levels() {
   assert(!tableau.assert_lower(x, rat(1000), Lit{5}).has_value());
 }
 
+void bound_accessors_report_nullopt_before_any_assertion() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  assert(!tableau.upper_bound(x).has_value());
+  assert(!tableau.lower_bound(x).has_value());
+}
+
+void bound_accessors_report_value_and_reason() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const Lit upper_reason{1};
+  const Lit lower_reason{2};
+  assert(!tableau.assert_upper(x, rat(5), upper_reason).has_value());
+  assert(!tableau.assert_lower(x, rat(1), lower_reason).has_value());
+
+  const auto upper = tableau.upper_bound(x);
+  assert(upper.has_value());
+  assert(upper->value == rat(5));
+  assert(upper->reason.value == upper_reason.value);
+
+  const auto lower = tableau.lower_bound(x);
+  assert(lower.has_value());
+  assert(lower->value == rat(1));
+  assert(lower->reason.value == lower_reason.value);
+
+  // A weaker bound is a silent no-op (per assert_upper's own contract), so
+  // the accessor must still report the original, tighter bound/reason.
+  assert(!tableau.assert_upper(x, rat(10), Lit{3}).has_value());
+  assert(tableau.upper_bound(x)->reason.value == upper_reason.value);
+}
+
 }  // namespace
 
 int main() {
@@ -284,5 +315,7 @@ int main() {
   push_pop_restores_state_across_a_pivot();
   push_pop_restores_propagated_basic_assignment();
   nested_push_pop_levels();
+  bound_accessors_report_nullopt_before_any_assertion();
+  bound_accessors_report_value_and_reason();
   return 0;
 }

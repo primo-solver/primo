@@ -119,6 +119,30 @@ class LraTableau {
 
   const DeltaRational& assignment(LraVarId var) const { return vars_.at(var).assignment; }
 
+  // Read-only access to a variable's current upper/lower bound (if any) and
+  // the literal that established it -- used by OnlineLraPropagator's
+  // same-slack "deriving satisfied atoms" propagation (Dutertre & de
+  // Moura, Section 4.2) to find bounds tight enough to entail other atoms
+  // on the same slack variable.
+  struct BoundInfo {
+    DeltaRational value;
+    sat::Lit reason;
+  };
+  std::optional<BoundInfo> upper_bound(LraVarId var) const {
+    const auto& bound = vars_.at(var).upper;
+    if (!bound.has_value()) {
+      return std::nullopt;
+    }
+    return BoundInfo{bound->value, bound->reason};
+  }
+  std::optional<BoundInfo> lower_bound(LraVarId var) const {
+    const auto& bound = vars_.at(var).lower;
+    if (!bound.has_value()) {
+      return std::nullopt;
+    }
+    return BoundInfo{bound->value, bound->reason};
+  }
+
  private:
   struct Bound {
     DeltaRational value;
