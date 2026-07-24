@@ -58,16 +58,27 @@ alternatives considered before/while implementing it.
   only as the fallback when it isn't. `OnlineLraPropagator::cb_propagate()`
   always returns 0 -- deliberately conflict-detection only, see Milestone
   3a below for why.
+- **Disequality**: `Real`-sorted `=` is desugared to `(t1 <= t2) AND (t2 <= t1)`
+  at parse time (`Frontend::mk_theory_equality`, since Real is a total
+  order), not handled as a special relation in the tableau at all. `NOT(t1=t2)`
+  is then just `NOT(AND(Le,Le))`, already correctly handled by
+  `BooleanClausifier`'s existing Tseitin/CNF machinery for arbitrary
+  Boolean structure -- ordinary CDCL branching over the two underlying
+  `Le` atoms explores `t1<t2` vs `t1>t2` for free. No case-splitting or
+  lemma-learning code exists anywhere in `LraTableau`/`OnlineLraPropagator`;
+  `LraAtom`'s `Eq` relation is unreachable through the frontend (kept as
+  defensive dead code, not removed, in case a future code path builds a
+  `Real` equality term some other way).
 
 ### Implemented subset vs. deviations vs. limitations
 
 - **Real-only.** No `Int` sort, no QF_LIA/QF_UFLRA. Mixing `Real` equality
   with uninterpreted-sort equality is explicitly rejected (`Unsupported`),
   not silently mishandled -- would need real Nelson-Oppen combination.
-- **Disequality (negated `=`) is rejected**, not supported. `t != c` needs
-  case-splitting (`t < c OR t > c`), which this milestone doesn't implement.
-  Found to matter in practice: fuzzsmt-generated QF_LRA input hits this
-  constantly (see the 2026-07-23 fuzz run-log entry).
+- ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
+  above. Was the dominant cause of `UnsupportedInput` in every fuzz
+  campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in
+  the same 500-case campaign.
 - **`*` is more permissive than strict QF_LRA syntax**: the non-literal
   operand may be a compound linear term (`(* 2 (+ x y))`), not only a bare
   variable -- harmless (still linear) and simpler to implement than
@@ -88,15 +99,23 @@ alternatives considered before/while implementing it.
 ## Milestone roadmap
 
 See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
-Milestones 1-3a (above) are done. Remaining:
+Milestones 1-3a (above) are done, plus disequality support. Remaining:
 
-- **Milestone 3b** (deferred, not scheduled): proactive bound propagation
-  in `OnlineLraPropagator::cb_propagate()` -- the paper's "deriving
-  satisfied atoms" mechanism. Explicitly *not* required for DPLL(T)
-  completeness (conflict detection alone, which 3a already provides, is
-  sufficient); this is a pure search-efficiency optimization, deferred per
-  user direction rather than bundled into "the online propagator
-  milestone" by default.
-- **Milestone 4**: anti-cycling/pivoting-rule hardening, campaign-tier fuzz
-  gate, before describing QF_LRA as supported/default rather than a
-  first-cut milestone.
+- **Milestone 3b** (deferred, not scheduled, but see the real-benchmark
+  finding below): proactive bound propagation in
+  `OnlineLraPropagator::cb_propagate()` -- the paper's "deriving satisfied
+  atoms" mechanism. Explicitly *not* required for DPLL(T) completeness
+  (conflict detection alone, which 3a already provides, is sufficient) --
+  but a real-benchmark evaluation against `tmp/QF_LRA` (a local corpus of
+  1753 `.smt2` files across 17 families, not committed) found that even a
+  single moderate-size real formula (107 assertions) makes genuine but slow
+  progress without ever finishing (6869 decisions, 690 conflicts, 66373
+  pure-Boolean propagations in 15s, zero theory propagations) -- i.e.
+  *not* a completeness problem (search does progress) but a strong signal
+  that the lack of propagation is a real practical bottleneck, independent
+  of the completeness argument that originally justified deferring it.
+  Worth prioritizing before Milestone 4.
+- **Milestone 4**: anti-cycling/pivoting-rule hardening (mostly already
+  done -- Bland's rule has been in `LraTableau::check()` since Milestone 1),
+  campaign-tier fuzz gate, before describing QF_LRA as supported/default
+  rather than a first-cut milestone.

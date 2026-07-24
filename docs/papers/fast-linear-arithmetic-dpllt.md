@@ -57,16 +57,25 @@ This paper is the base algorithm for Primo's QF_LRA support. See
   returns 0 under `EufPropagationMode::Conflict` while still using the
   full trail-synced machinery `EufPropagationMode::Online` uses.
 
+**Disequality (2026-07-24, done)**: rather than adding a case-split
+mechanism to `LraTableau`/`OnlineLraPropagator` for negated equality atoms
+(what the earlier planning discussion assumed would be needed), `Real`
+equality is desugared to `(t1 <= t2) AND (t2 <= t1)` at parse time
+(`Frontend::mk_theory_equality` in `check_sat.cpp`) -- valid because Real
+is a total order. `NOT(t1=t2)` then reduces to ordinary Boolean structure
+(`NOT(AND(Le,Le))`) that `BooleanClausifier` already clausifies correctly,
+and CDCL branching over the two `Le` atoms does the case-split for free.
+No paper section covers this directly (its theory-atom framing assumes
+DPLL(T) delivers each atom's truth value directly, sidestepping the
+question of how a compound relation like `=` decomposes at the Boolean
+level) -- this is a frontend/encoding decision, not a deviation from the
+tableau algorithm itself.
+
 ## Implemented subset vs. deviations vs. limitations
 
 - No anti-cycling beyond Bland's rule itself, no alternative pivoting
   rules, no sum-of-infeasibilities-style global objective (see
   `docs/papers/lra-related-work.md`'s SOI-Simplex entry) -- Milestone 4.
-- Disequality (a negated equality atom) is explicitly rejected rather than
-  handled via case-splitting. The paper doesn't need to address this
-  directly (its theory-atom framing assumes DPLL(T) delivers each atom's
-  truth value directly), but a real implementation needs *some* strategy
-  for it before general formulas work; deferred rather than guessed at.
 - One slack variable per *atom*, not deduplicated by polynomial content --
   sound (see `LraTableau`'s empty-row handling) but not the most efficient
   possible encoding; not something the paper prescribes either way.
@@ -88,4 +97,9 @@ This paper is the base algorithm for Primo's QF_LRA support. See
   needed its own milestone): mid-search theory propagation via
   `OnlineLraPropagator::cb_propagate()` -- Milestone 3b of the plan,
   deferred/not scheduled (conflict detection, Milestone 3a, is done and is
-  sufficient for completeness).
+  sufficient for completeness). **Priority note (2026-07-24):** a
+  real-benchmark evaluation against `tmp/QF_LRA` (1753 real-world files,
+  not committed) found genuine but very slow progress on a moderate-size
+  real formula without ever finishing -- not a completeness bug, but
+  evidence this milestone matters for practical performance well before
+  Milestone 4's pivoting-rule/hardening work does.

@@ -9290,6 +9290,44 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct continuation of Milestone 3a (see /home/user/.claude/plans/piped-wondering-fairy.md). The disequality gap continues to dominate UNSUPPORTED_INPUT counts (same root cause as Milestones 1-2's runs) -- not a new finding, just consistently reproduced."
+    },
+    {
+      "id": "2026-07-24-qf-lra-disequality-fuzz",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "Regression/coverage check for QF_LRA disequality support (Real equality desugared to (t1<=t2 AND t2<=t1) at parse time, so NOT(t1=t2) is handled by ordinary Boolean-structure CDCL branching, not tableau-level case-splitting). Disequality had been the dominant cause of UnsupportedInput in every prior QF_LRA fuzz campaign (Milestones 1, 2, 3a).",
+      "commit": "6acf42d",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-asan-ws/primo (Debug, ASAN+UBSan)"
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build-asan-ws/primo --refs z3 --logic QF_LRA --count 500 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_lra-disequality --seed 1",
+      "benchmark": {
+        "suite": "fuzzsmt-generated QF_LRA, referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-disequality/ -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "result": "500 cases (same seed/args as the Milestone 3a run): 349 PASS (sat/sat), 60 PASS (unsat/unsat) -- 409 total, up from 62 in the pre-disequality-fix run. Zero UNSUPPORTED_INPUT (down from 418/500). Zero wrong-answer disagreements against z3. 79 TIMEOUT (sat refs) + 5 TIMEOUT (unsat refs) -- up from 13 total previously, expected: formulas that were instantly rejected as Unsupported before are now fully attempted, and some are genuinely hard to solve without theory propagation (Milestone 3b, deferred). 7 CRASH, individually re-run and reconfirmed as the identical pre-existing SExpr stack-overflow already triaged in the Milestone 1 entry (2026-07-23).",
+        "real_benchmark_followup": "A real-world QF_LRA corpus is available locally at tmp/QF_LRA (1753 .smt2 files across 17 families: meti-tarski, LassoRanker, sc, sal, 2019-ezsmt, DTP-Scheduling, uart, tta_startup, 2017-Heizmann-UltimateInvariantSynthesis, spider_benchmarks, miplib, clock_synchro, TM, keymaera, latendresse, tropical-matrix, check). A 30-file sample from 2017-Heizmann-UltimateInvariantSynthesis timed out 30/30 at 5s; direct inspection of one file (233 lines, 107 assertions) with --stats showed genuine active search (6869 decisions, 690 conflicts, 66373 propagations within 15s, still inside the first backend.solve() call) rather than a hang -- strong evidence that the lack of theory propagation (Milestone 3b, deferred as not required for completeness) is a real practical performance bottleneck on realistic-size formulas, distinct from the completeness question. A more diverse 82-file sample (5 files per family) is running to get a fuller picture; see the next run-log entry for results."
+      },
+      "verification": {
+        "passed": [
+          "Full existing suite (12 targets) under both Release and Debug+ASAN+UBSan builds.",
+          "500-case fuzzsmt QF_LRA campaign against z3 (ASAN/UBSan build): zero wrong-answer disagreements."
+        ],
+        "pending": [
+          "Real-benchmark evaluation against tmp/QF_LRA -- in progress, see follow-up entry.",
+          "Milestone 3b (bound propagation) -- increasingly looks important for practical performance on real formulas, not just a nice-to-have; priority to revisit given this finding."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of the disequality-support work (see /home/user/.claude/plans/piped-wondering-fairy.md). The real-benchmark timeout finding is the more consequential result of this session even though it wasn't the primary target -- it reframes Milestone 3b from 'deferred, revisit later' to 'likely the next real priority for making QF_LRA practically useful,' independent of the completeness argument that justified deferring it in the first place."
     }
   ]
 }
