@@ -9328,6 +9328,43 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct continuation of the disequality-support work (see /home/user/.claude/plans/piped-wondering-fairy.md). The real-benchmark timeout finding is the more consequential result of this session even though it wasn't the primary target -- it reframes Milestone 3b from 'deferred, revisit later' to 'likely the next real priority for making QF_LRA practically useful,' independent of the completeness argument that justified deferring it in the first place."
+    },
+    {
+      "id": "2026-07-24-qf-lra-real-benchmark-diverse-sample",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "benchmark",
+      "scope": "First real-world (non-fuzzer) benchmark evaluation of QF_LRA, against a local corpus at tmp/QF_LRA (1753 .smt2 files across 17 families: meti-tarski, LassoRanker, sc, sal, 2019-ezsmt, DTP-Scheduling, uart, tta_startup, 2017-Heizmann-UltimateInvariantSynthesis, spider_benchmarks, miplib, clock_synchro, TM, keymaera, latendresse, tropical-matrix, check; not committed to the repo). A diverse 5-files-per-family sample (82 files total) was used rather than the full corpus, to get a representative cross-section quickly given real per-file solve times vary hugely by family.",
+      "commit": "6acf42d",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo (Release)"
+      },
+      "command": "python3 scripts/bench_qf_uf_full.py --root /workspace/tmp/QF_LRA --manifest /tmp/qf_lra_diverse_manifest.txt --solver ./build/primo --solver-arg=--quiet --timeout 10 --out results/qf-lra-diverse.csv --summary results/qf-lra-diverse-summary.csv (manifest: first 5 files per family, sorted; reused bench_qf_uf_full.py as-is -- it's already fully generic aside from cosmetic QF_UF-specific family-name remapping that doesn't apply to this corpus's already-clean family names)",
+      "benchmark": {
+        "suite": "tmp/QF_LRA diverse sample (5 files/family x 17 families = 82 files)",
+        "logic": "QF_LRA",
+        "manifest": "/tmp/qf_lra_diverse_manifest.txt (not committed, ephemeral)"
+      },
+      "artifacts": {
+        "note": "results/qf-lra-diverse.csv, results/qf-lra-diverse-summary.csv -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "result": "82 files, 10s timeout: 45 solved (19 sat, 26 unsat), 37 timeout, 0 unsupported, 0 wrong (out of 74 files with a checkable :status). PAR2 805.5. Solve rate is heavily family-dependent, not uniform: 6 families 100% solved within 10s (DTP-Scheduling, keymaera, meti-tarski, sal, spider_benchmarks, check), 4 families 0% solved (2017-Heizmann-UltimateInvariantSynthesis, LassoRanker, latendresse, tropical-matrix), the rest partial. The 0%-solved families are exactly the ones with large formulas (invariant synthesis, lasso ranking termination arguments) -- consistent with the earlier single-file investigation (2026-07-24 disequality entry) showing genuine but slow search progress without theory propagation.",
+        "significance": "Zero wrong answers and zero unsupported across a completely different, much larger and more structurally realistic distribution than fuzzsmt's generated formulas is meaningful independent soundness/coverage evidence -- this is the first time QF_LRA has been evaluated against anything other than synthetic fuzzer output or hand-written unit tests. The solved-rate split by family reinforces (does not merely repeat) the propagation-importance finding: it's not that QF_LRA is broadly too slow, it's specifically the large/complex families that stall, matching the theory-propagation-starved-search hypothesis rather than e.g. a uniform per-atom overhead problem."
+      },
+      "verification": {
+        "passed": [
+          "82-file diverse real-benchmark sample: 0 wrong answers against SMT-LIB :status metadata, 0 unsupported."
+        ],
+        "pending": [
+          "Full 1753-file tmp/QF_LRA corpus -- not yet run (only a 82-file diverse sample and a 30-file single-family sample so far).",
+          "Investigating whether Milestone 3b (propagation) would move the 0%-solved families materially, versus them being hard for other reasons (tableau size, pivoting-rule choice, etc.) -- not yet isolated."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of the disequality-support and real-benchmark-evaluation work this session (see /home/user/.claude/plans/piped-wondering-fairy.md). tmp/QF_LRA itself is a large (2.5GB) local extraction, analogous to tmp/QF_UF's role for the QF_UF benchmark workflows in docs/experiments.md -- not committed to the repo, consistent with how tmp/QF_UF is handled."
     }
   ]
 }
