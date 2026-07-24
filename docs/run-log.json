@@ -9477,6 +9477,46 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct continuation of the Milestone 3b real-benchmark-evaluation follow-up promised in the plan. See the companion fuzz-gate entry (2026-07-24-qf-lra-milestone3b-propagation-fuzz) for the correctness side of this milestone."
+    },
+    {
+      "id": "2026-07-24-sexpr-and-build-term-recursion-removed",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "Theory-agnostic robustness fix, prompted by the same pre-existing SExpr stack-overflow crash resurfacing in essentially every QF_LRA fuzz campaign this session. Per explicit user direction ('we shouldn't be using recursion ever, we should have explicit stack'), replaced every recursive tree-walk in the SMT-LIB frontend with an explicit-stack/heap-based iterative equivalent: smtlib::SExpr's copy constructor and destructor (ast.cpp), parser.cpp's parse_one (recursive descent), and check_sat.cpp's Frontend::build_term (the whole recursive-descent term builder, replaced by a continuation-passing TermBuilder driven by an explicit pending_ stack).",
+      "commit": "1e43a99",
+      "environment": {
+        "type": "local+slurm",
+        "host": "workspace (local dev/ASAN verification) + llm2smt-slurm (campaign fuzz gate)",
+        "binary": "build/primo (Release), build-asan-ws/primo (Debug+ASAN+UBSan), build-slurm-rel/primo (remote Release)"
+      },
+      "command": "Local: full unit suite (Release + ASAN/UBSan) incl. two new synthetic-depth regression tests (200000-deep nested list in smtlib_parser_tests, 50000-deep nested + in qf_lra_solver_tests); 500-case QF_LRA + 300-case QF_UF fuzzsmt-vs-z3 campaigns under ASAN/UBSan (scripts/fuzz_external.py). Remote: python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile, then sbatch scripts/slurm_qfuf_fuzz_gate.sbatch (env-overridden for QF_LRA: PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA, QF_LRA-tuned FUZZSMT_ARGS, opfuzz/yinyang seeded from benchmarks/seeds/qf_lra_real) as job 113267 -- 6 fuzzsmt shards x 500 cases = 3000 cases (campaign tier) plus 1 opfuzz task + 2 yinyang mutation shards, all vs z3.",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA and QF_UF) + opfuzz/yinyang mutation, referenced against z3",
+        "logic": "QF_LRA and QF_UF (build_term is shared code)",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-recursion-fix/, fuzz-results/qf_uf-recursion-fix/ (local, pre-Slurm-submission verification), remote fuzz-results/qfuf-gate-113267/ on llm2smt-slurm -- none committed (gitignored / remote)."
+      },
+      "summary": {
+        "result": "Two bugs found and fixed in sequence, each caught before landing cleanly: (1) SExpr's recursive copy ctor/destructor and parser.cpp's recursive parse_one both replaced with iterative algorithms (Frame-stack based) -- fixed all 7 crashes from the prior Milestone 3b fuzz-gate entry (confirmed: same corpus files, re-run after this fix alone, all 7 stopped crashing). (2) Frontend::build_term's own recursive descent turned out to be a SEPARATE, deeper bug: even with SExpr fixed, a synthetic 200000-deep nested `+` still segfaulted (Release build) via TermManager::mk_plus's call chain through build_term/build_ite/etc, and ASAN's larger stack frames meant it was actually THIS bug, not the SExpr one, causing all 7 of the Milestone 3b fuzz-gate crashes under ASAN. Fixed via TermBuilder, a continuation-passing iterative driver. Caught a genuine design mistake in the first TermBuilder attempt during local testing (before it ever reached fuzzing): only child-descent was trampolined, not continuation delivery, so long chains still recursed natively via direct k(...) calls -- fixed by routing every continuation invocation through resume() too. Local verification (500 QF_LRA + 300 QF_UF fuzzsmt cases, ASAN/UBSan): 0 crashes, 0 wrong answers, both up from a 7/500 crash rate before the fix. A campaign-tier (3000+ case) QF_LRA fuzz gate was additionally submitted to the llm2smt-slurm cluster (job 113267) for independent confirmation at scale, per standing project guidance that campaign-tier fuzzing belongs on Slurm rather than run locally.",
+        "significance": "Removes a theory-agnostic crash class that had been present (and repeatedly rediscovered/re-triaged as 'pre-existing, out of scope') since Milestone 1's fuzz gate. Also a notable methodological point: the Milestone 3b fuzz-gate's crash count (~7/500, stable across several campaigns) was consistently attributed to the SExpr issue by inspection of the stack trace signature, but was actually dominated by the build_term recursion once examined under ASAN's stack-frame overhead -- a reminder that superficially-similar 'stack-overflow' signatures can have different root causes, and that fixing the first plausible cause doesn't guarantee the crash is gone (confirmed here only by re-running the exact same crashing files after each fix in isolation)."
+      },
+      "verification": {
+        "passed": [
+          "Full unit suite (12 targets, incl. 2 new synthetic-depth regression tests) under Release and Debug+ASAN+UBSan.",
+          "500-case QF_LRA + 300-case QF_UF fuzzsmt-vs-z3 campaigns (ASAN/UBSan): 0 crashes (down from 7/500), 0 wrong answers.",
+          "Hand-crafted chained-`=`-with-`ite` sat/unsat cases against z3 (TermBuilder's most intricate rewritten piece).",
+          "200000-deep nested-list smtlib_parser_tests case; 50000-deep nested-`+` qf_lra_solver_tests case; both previously guaranteed to crash, now pass under Release and ASAN/UBSan."
+        ],
+        "pending": [
+          "Slurm job 113267 (campaign-tier QF_LRA fuzz gate, 3000+ fuzzsmt cases + opfuzz/yinyang mutation) -- submitted, not yet complete as of this entry; results to be recorded in a follow-up run-log entry.",
+          "Remote build-slurm-fuzz (ASAN+UBSan) build failed on llm2smt-slurm (linker could not find /usr/lib64/libasan.so.6.0.0 despite libasan being present under versioned GCCcore module paths) -- the Slurm campaign above runs the Release build only; local ASAN/UBSan coverage (above) substitutes for now. Worth revisiting the remote toolchain/library path separately."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Prompted mid-session by explicit, repeated user direction: first specifically about the recurring SExpr crash, then generalized to 'we shouldn't be using recursion ever, we should have explicit stack' as a standing principle (see feedback_no_recursion_explicit_stack memory). Also prompted a correction to an earlier session belief that no Slurm cluster was reachable from this sandbox -- it is, via SSH (see feedback_fuzzing_on_slurm memory's 2026-07-24 correction)."
     }
   ]
 }

@@ -114,12 +114,14 @@ alternatives considered before/while implementing it.
 - **Doesn't reuse `--pure-theory-filter`**: that optimization's soundness
   was established for EUF specifically; reusing it for LRA without
   independent verification was judged too risky for a first milestone.
-- **A pre-existing, theory-agnostic robustness gap, found via this
-  milestone's fuzz-gate but not caused by it**: deeply-nested S-expressions
-  can stack-overflow `smtlib::SExpr`'s recursive copy constructor. QF_LRA's
-  typically-deeper fuzzer output hits this more often than QF_UF's, but it
-  reproduces for QF_UF too given large enough input. Not fixed here --
-  tracked as a follow-up, out of scope for arithmetic specifically.
+- ~~A pre-existing, theory-agnostic robustness gap: deeply-nested
+  S-expressions can stack-overflow `smtlib::SExpr`'s recursive copy
+  constructor~~ -- **fixed 2026-07-24**, theory-agnostic (not an
+  arithmetic-specific change): `SExpr` parsing/copying/destruction and
+  `Frontend::build_term`'s term-building (both shared by QF_UF and
+  QF_LRA) are now iterative, not recursive descent. See
+  `docs/papers/fast-linear-arithmetic-dpllt.md`'s note and the
+  `parser.cpp`/`ast.cpp`/`check_sat.cpp` (`TermBuilder`) class comments.
 
 ## Milestone roadmap
 
