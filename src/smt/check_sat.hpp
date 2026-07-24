@@ -92,6 +92,12 @@ struct CheckSatOptions {
   bool euf_proof_forest_diagnostics = false;
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
+  // QF_LRA same-slack bound propagation (Milestone 3b: Dutertre & de Moura
+  // Section 4.2's "deriving satisfied atoms"). Unlike euf_propagation,
+  // this is a plain on/off performance switch, not a multi-mode choice --
+  // the propagation check is exact and cheap (O(atoms sharing a slack)),
+  // so there's no heuristic budget/backoff tuning to expose.
+  bool lra_propagation = true;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;

@@ -6,9 +6,12 @@
 #include <string>
 
 #include "smt/check_sat.hpp"
+#include "util/statistics.hpp"
 
 using primo::smt::check_sat_smtlib;
+using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
+using primo::util::StatKey;
 
 namespace {
 
@@ -232,6 +235,64 @@ void atoms_sharing_identical_polynomial_solve_correctly() {
   assert(unsatisfiable.result == CheckSatResult::Unsat);
 }
 
+void same_slack_propagation_drives_boolean_structure() {
+  // (<= x 3) is never asserted directly -- only (<= x 1) is, which tightens
+  // the shared "x" slack's upper bound to 1, entailing (<= x 3) TRUE via
+  // Milestone 3b's same-slack propagation without ever deciding y. With
+  // propagation off, the same formula must still be solved correctly (via
+  // a decision instead), so both modes must agree on sat/unsat; only the
+  // stats should differ.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= x 5))
+    (assert (or (<= x 3) (>= y 1000)))
+    (assert (<= x 1))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_propagation;
+  with_propagation.lra_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_propagation);
+  assert(propagated.result == CheckSatResult::Sat);
+  assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
+
+  CheckSatOptions without_propagation;
+  without_propagation.lra_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, without_propagation);
+  assert(not_propagated.result == CheckSatResult::Sat);
+  assert(not_propagated.statistics.get(StatKey::LraTheoryPropagations) == 0);
+}
+
+void same_slack_propagation_can_reach_a_conflict() {
+  // (not (<= x 10)) is never asserted directly -- (<= x 1) entails it FALSE
+  // (x<=1 implies x<=10), which together with (>= y 1000) being ruled out
+  // by (< y 1000) makes the top-level or unsatisfiable via propagation
+  // alone, no decisions needed.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= x 5))
+    (assert (or (not (<= x 10)) (>= y 1000)))
+    (assert (<= x 1))
+    (assert (< y 1000))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_propagation;
+  with_propagation.lra_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_propagation);
+  assert(propagated.result == CheckSatResult::Unsat);
+  assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
+
+  CheckSatOptions without_propagation;
+  without_propagation.lra_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, without_propagation);
+  assert(not_propagated.result == CheckSatResult::Unsat);
+}
+
 void strict_boundary_is_unsat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -346,6 +407,8 @@ int main() {
   detects_direct_bound_conflict();
   detects_conflict_requiring_an_actual_pivot();
   atoms_sharing_identical_polynomial_solve_correctly();
+  same_slack_propagation_drives_boolean_structure();
+  same_slack_propagation_can_reach_a_conflict();
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   handles_disequality_via_boolean_level_case_splitting();

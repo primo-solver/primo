@@ -153,6 +153,7 @@ enum class StatKey : std::size_t {
   SolverQfLra,
   LraTheoryChecks,
   LraTheoryConflicts,
+  LraTheoryPropagations,
   Count,
 };
 

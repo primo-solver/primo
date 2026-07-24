@@ -132,6 +132,7 @@ int main(int argc, char** argv) {
   bool no_finite_domain_equality_definitions = false;
   bool no_finite_domain_post_amo = false;
   bool no_eq_bridge = false;
+  bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
@@ -179,6 +180,10 @@ int main(int argc, char** argv) {
                "Add equalities implied by every branch of selected QF_UF disjunctions");
   app.add_flag("--no-eq-bridge", no_eq_bridge,
                "Disable equality bridging unless required by the preprocessing preset");
+  app.add_flag("--lra-propagation", solver_options.lra_propagation,
+               "Enable QF_LRA same-slack bound propagation (Milestone 3b)");
+  app.add_flag("--no-lra-propagation", no_lra_propagation,
+               "Disable QF_LRA bound propagation (conflict detection only)");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_flag("--ground-unit-substitution", solver_options.ground_unit_substitution,
@@ -357,6 +362,9 @@ int main(int argc, char** argv) {
   }
   if (no_eq_bridge) {
     solver_options.eq_bridge = false;
+  }
+  if (no_lra_propagation) {
+    solver_options.lra_propagation = false;
   }
   if (no_solved_constant_substitution) {
     solver_options.solved_constant_substitution = false;

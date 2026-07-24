@@ -155,6 +155,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":solver.qf-lra"sv,
     ":lra.theory-checks"sv,
     ":lra.theory-conflicts"sv,
+    ":lra.theory-propagations"sv,
 };
 
 }  // namespace

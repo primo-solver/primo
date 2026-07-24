@@ -135,6 +135,7 @@ constexpr util::StatKey kStatSolverQfUf = util::StatKey::SolverQfUf;
 constexpr util::StatKey kStatSolverQfLra = util::StatKey::SolverQfLra;
 constexpr util::StatKey kStatLraTheoryChecks = util::StatKey::LraTheoryChecks;
 constexpr util::StatKey kStatLraTheoryConflicts = util::StatKey::LraTheoryConflicts;
+constexpr util::StatKey kStatLraTheoryPropagations = util::StatKey::LraTheoryPropagations;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -2832,6 +2833,30 @@ bool is_real_equality_term(const core::TermManager& terms, const core::Term& ter
         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
 }
 
+// The DeltaRational value an atom's TRUE case bounds its slack's upper
+// bound by, and its FALSE case bounds its slack's lower bound by (Section
+// 3.1's infinitesimal-delta trick for strict inequalities). Shared between
+// assert_lra_atom_bound (which applies these as actual Assert-Bound calls)
+// and OnlineLraPropagator's propagation scan (which only compares against
+// them, via LraTableau::upper_bound/lower_bound, to check whether some
+// *other* atom on the same slack is already entailed). LraRelation::Eq
+// isn't handled here -- it's unreachable via the frontend (Real equality
+// is desugared to a pair of Le atoms, see mk_theory_equality) and doesn't
+// fit the single-threshold shape these two cases share.
+theory::arithmetic::DeltaRational true_threshold(theory::arithmetic::LraRelation relation,
+                                                 const util::Rational& rhs) {
+  return relation == theory::arithmetic::LraRelation::Lt
+             ? theory::arithmetic::DeltaRational{rhs, util::Rational(-1)}
+             : theory::arithmetic::DeltaRational::from_rational(rhs);
+}
+
+theory::arithmetic::DeltaRational false_threshold(theory::arithmetic::LraRelation relation,
+                                                  const util::Rational& rhs) {
+  return relation == theory::arithmetic::LraRelation::Lt
+             ? theory::arithmetic::DeltaRational::from_rational(rhs)
+             : theory::arithmetic::DeltaRational{rhs, util::Rational(1)};
+}
+
 // Applies one assigned LRA atom's relation+truth-value+strictness to
 // `tableau` as a single Assert-Bound call (Eq asserts both bounds). Shared
 // between the fully-lazy per-round-normalize path (not currently used by
@@ -2855,17 +2880,9 @@ std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(theory::arithmetic::L
       return tableau.assert_lower(slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
     }
     case theory::arithmetic::LraRelation::Le:
-      return atom_value
-                 ? tableau.assert_upper(slack, theory::arithmetic::DeltaRational::from_rational(rhs),
-                                        reason)
-                 : tableau.assert_lower(
-                       slack, theory::arithmetic::DeltaRational{rhs, util::Rational(1)}, reason);
     case theory::arithmetic::LraRelation::Lt:
-      return atom_value
-                 ? tableau.assert_upper(
-                       slack, theory::arithmetic::DeltaRational{rhs, util::Rational(-1)}, reason)
-                 : tableau.assert_lower(slack, theory::arithmetic::DeltaRational::from_rational(rhs),
-                                        reason);
+      return atom_value ? tableau.assert_upper(slack, true_threshold(relation, rhs), reason)
+                        : tableau.assert_lower(slack, false_threshold(relation, rhs), reason);
   }
   throw std::logic_error("unreachable: LraRelation switch is exhaustive");
 }
@@ -3039,14 +3056,20 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
  public:
   OnlineLraPropagator(const PreparedLraTheory& prepared,
-                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms)
-      : theory_atoms_(theory_atoms), prepared_(prepared), tableau_(prepared.base_tableau) {
+                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                      bool propagation_enabled, util::Statistics& statistics)
+      : theory_atoms_(theory_atoms),
+        prepared_(prepared),
+        tableau_(prepared.base_tableau),
+        propagation_enabled_(propagation_enabled),
+        statistics_(statistics) {
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
       max_theory_var =
           std::max(max_theory_var, atom.lit.value > 0 ? atom.lit.value : -atom.lit.value);
     }
     observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    assigned_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, theory_atoms_.size());
     for (std::size_t i = 0; i < theory_atoms_.size(); ++i) {
       const BooleanClausifier::TheoryAtom& atom = theory_atoms_[i];
@@ -3066,23 +3089,82 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   void notify_assignment(int lit, bool /*is_fixed*/) override { notify_assignment_lit(lit); }
 #endif
 
-  void notify_new_decision_level() override { checkpoints_.push_back(tableau_.push()); }
+  void notify_new_decision_level() override {
+    checkpoints_.push_back(tableau_.push());
+    level_starts_.push_back(var_trail_.size());
+  }
 
   void notify_backtrack(size_t new_level) override {
     if (new_level < checkpoints_.size()) {
       tableau_.pop(checkpoints_[new_level]);
       checkpoints_.resize(new_level);
     }
+    if (new_level < level_starts_.size()) {
+      const std::size_t keep = level_starts_[new_level];
+      while (var_trail_.size() > keep) {
+        const int var = var_trail_.back();
+        var_trail_.pop_back();
+        assigned_[static_cast<std::size_t>(var)] = 0;
+      }
+      level_starts_.resize(new_level);
+    }
     conflict_.reset();
     external_clause_.clear();
     external_clause_index_ = 0;
+    pending_.clear();
+    reasons_.clear();
+    reason_stream_active_lit_ = 0;
+    reason_stream_index_ = 0;
   }
 
   bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
 
-  // Deliberately inert -- see the class comment. Milestone 3b territory.
-  int cb_propagate() override { return 0; }
-  int cb_add_reason_clause_lit(int /*propagated_lit*/) override { return 0; }
+  // Same-slack "deriving satisfied atoms" propagation (Dutertre & de
+  // Moura, Section 4.2): pops literals queued by notify_assignment_lit's
+  // propagation scan. Never propagates once a conflict is pending this
+  // round (mirrors notify_assignment_lit's own early-return), and lazily
+  // skips any queued entry whose var got assigned some other way in the
+  // meantime (a decision, a different propagation) rather than proactively
+  // pruning pending_ on every assignment.
+  int cb_propagate() override {
+    if (conflict_.has_value()) {
+      return 0;
+    }
+    while (!pending_.empty()) {
+      const auto [lit, antecedent] = pending_.front();
+      pending_.pop_front();
+      const int var = lit > 0 ? lit : -lit;
+      if (is_assigned_var(var)) {
+        continue;
+      }
+      reasons_[lit] = antecedent;
+      statistics_.increment(kStatLraTheoryPropagations);
+      return lit;
+    }
+    return 0;
+  }
+
+  int cb_add_reason_clause_lit(int propagated_lit) override {
+    const auto found = reasons_.find(propagated_lit);
+    if (found == reasons_.end()) {
+      return 0;
+    }
+    if (reason_stream_active_lit_ != propagated_lit) {
+      reason_stream_active_lit_ = propagated_lit;
+      reason_stream_index_ = 0;
+    }
+    if (reason_stream_index_ == 0) {
+      ++reason_stream_index_;
+      return propagated_lit;
+    }
+    if (reason_stream_index_ == 1) {
+      ++reason_stream_index_;
+      return found->second.value;
+    }
+    reason_stream_active_lit_ = 0;
+    reason_stream_index_ = 0;
+    return 0;
+  }
 
   // Authoritative once backend.solve() returns SAT, for the same reason
   // OnlineEufPropagator::incremental_conflict() is: every observed
@@ -3127,6 +3209,11 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
            observed_vars_[static_cast<std::size_t>(var)] != 0;
   }
 
+  bool is_assigned_var(int var) const {
+    return var >= 0 && static_cast<std::size_t>(var) < assigned_.size() &&
+           assigned_[static_cast<std::size_t>(var)] != 0;
+  }
+
   void notify_assignment_lit(int lit) {
     if (conflict_.has_value()) {
       // Already found a conflict this round; CaDiCaL hasn't pulled it via
@@ -3139,6 +3226,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     if (!is_observed_var(var)) {
       return;
     }
+    assigned_[static_cast<std::size_t>(var)] = 1;
+    var_trail_.push_back(var);
     const std::size_t atom_index = atom_index_by_var_[static_cast<std::size_t>(var)];
     const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
     if (!prepared_atom.is_arithmetic) {
@@ -3155,6 +3244,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       conflict_ = direct_conflict;
       return;
     }
+    if (propagation_enabled_) {
+      scan_for_propagations(atom_index, prepared_atom.slack);
+    }
     // Eagerly re-checks after every single assignment, mirroring how EUF's
     // IncrementalFlatAssignmentState::assert_assignment eagerly detects
     // conflicts rather than deferring to a batched end-of-round check.
@@ -3165,12 +3257,58 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     conflict_ = tableau_.check();
   }
 
+  // Scans the other atoms sharing `slack` with the atom that was just
+  // asserted (index `triggering_atom_index`, already applied to `tableau_`
+  // with no direct conflict) for ones now entailed true/false by the
+  // slack's current upper/lower bound (Dutertre & de Moura Section 4.2).
+  // Only needs to look at this one slack: bounds only ever change via
+  // explicit assert_upper/assert_lower (never via check()'s pivots, which
+  // only touch assignments/row structure), so no other slack's bounds
+  // could have changed as a side effect of this assertion.
+  void scan_for_propagations(std::size_t triggering_atom_index, theory::arithmetic::LraVarId slack) {
+    const auto found = prepared_.atoms_by_slack.find(slack);
+    if (found == prepared_.atoms_by_slack.end()) {
+      return;
+    }
+    for (const std::size_t atom_index : found->second) {
+      if (atom_index == triggering_atom_index) {
+        continue;
+      }
+      const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      if (is_assigned_var(var)) {
+        continue;
+      }
+      const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+      const auto upper = tableau_.upper_bound(prepared_atom.slack);
+      if (upper.has_value() &&
+          upper->value <= true_threshold(prepared_atom.relation, prepared_atom.rhs)) {
+        pending_.emplace_back(atom.lit.value, upper->reason);
+        continue;
+      }
+      const auto lower = tableau_.lower_bound(prepared_atom.slack);
+      if (lower.has_value() &&
+          lower->value >= false_threshold(prepared_atom.relation, prepared_atom.rhs)) {
+        pending_.emplace_back(-atom.lit.value, lower->reason);
+      }
+    }
+  }
+
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
   const PreparedLraTheory& prepared_;
   theory::arithmetic::LraTableau tableau_;
+  bool propagation_enabled_;
+  util::Statistics& statistics_;
   std::vector<char> observed_vars_;
+  std::vector<char> assigned_;
+  std::vector<int> var_trail_;
   std::vector<std::size_t> atom_index_by_var_;
   std::vector<std::size_t> checkpoints_;
+  std::vector<std::size_t> level_starts_;
+  std::deque<std::pair<int, sat::Lit>> pending_;
+  std::unordered_map<int, sat::Lit> reasons_;
+  int reason_stream_active_lit_ = 0;
+  int reason_stream_index_ = 0;
   std::optional<sat::Clause> conflict_;
   sat::Clause external_clause_;
   std::size_t external_clause_index_ = 0;
@@ -3202,7 +3340,8 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
   // against it via the fuzz gate (see docs/run-log.json). No
   // CheckSatOptions toggle for this yet -- there's no second online mode
   // to choose between until Milestone 3b (bound propagation) exists.
-  OnlineLraPropagator online_propagator(prepared_theory, clausifier.theory_atoms());
+  OnlineLraPropagator online_propagator(prepared_theory, clausifier.theory_atoms(),
+                                        options.lra_propagation, statistics);
   backend.connect_external_propagator(&online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
