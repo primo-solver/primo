@@ -11,7 +11,7 @@ This paper is the base algorithm for Primo's QF_LRA support. See
 `docs/arithmetic.md` for the current implementation status and
 `/home/user/.claude/plans/piped-wondering-fairy.md` for the full milestone plan.
 
-## Implemented (Milestones 1-2)
+## Implemented (Milestones 1-3a)
 
 - **Section 2** (normalized linear terms/atoms): `LinearPolynomial`
   (`src/theory/arithmetic/linear_polynomial.{hpp,cpp}`) and the canonical
@@ -35,15 +35,27 @@ This paper is the base algorithm for Primo's QF_LRA support. See
   this doesn't contradict the paper's point that pivot choice itself isn't
   tied to search depth.
 - **DPLL(T) integration** (`check_sat.cpp`): `PreparedLraTheory` precomputes
-  the tableau structure once (mirroring `PreparedFlatTheory`);
-  `solve_qf_lra`/`find_incremental_lra_theory_conflict` copy that base
-  tableau and assert bounds each round, mirroring how EUF's
-  `find_incremental_theory_conflict` copies a precomputed `base_closure`
-  rather than using `FlatCongruenceClosure`'s own push/pop for cross-round
-  reuse. `LraTableau`'s push/pop exist and are tested, but aren't
-  exercised by this wiring yet -- real trail-synced reuse across SAT
-  decision levels (via `notify_new_decision_level`/`notify_backtrack`) is
-  an online-propagator concern, Milestone 3's `OnlineLraPropagator`.
+  the tableau structure once (mirroring `PreparedFlatTheory`).
+  `OnlineLraPropagator` (Milestone 3a) is a trail-synced
+  `CaDiCaL::ExternalPropagator`: one `LraTableau` per solve, kept in sync
+  via `notify_new_decision_level`/`notify_backtrack` calling
+  `LraTableau::push()`/`pop()` -- real cross-round trail reuse, not a
+  fresh copy every round. `solve_qf_lra` always prefers this when
+  available; `find_incremental_lra_theory_conflict` (copy the base tableau,
+  reassert every round, mirroring EUF's `find_incremental_theory_conflict`'s
+  own `base_closure`-copying style) is now only compiled as the fallback
+  for builds without CaDiCaL's external-propagator API
+  (`#if !PRIMO_HAVE_IPASIR`).
+- **Deliberately not Section 4's propagation half yet.**
+  `OnlineLraPropagator::cb_propagate()` always returns 0 -- per explicit
+  user direction (2026-07-24), conflict detection alone is sufficient for
+  DPLL(T) completeness; proactive bound propagation is a search-efficiency
+  optimization layered on top, not a correctness requirement, so it's
+  deferred as Milestone 3b (not scheduled) rather than bundled into "the
+  online propagator milestone" by default. This mirrors a distinction
+  EUF's own propagator already makes: `OnlineEufPropagator::cb_propagate()`
+  returns 0 under `EufPropagationMode::Conflict` while still using the
+  full trail-synced machinery `EufPropagationMode::Online` uses.
 
 ## Implemented subset vs. deviations vs. limitations
 
@@ -69,7 +81,11 @@ This paper is the base algorithm for Primo's QF_LRA support. See
 - ~~LRA2: tableau scaffold~~ -- done.
 - ~~LRA3: feasibility checking~~ -- done (Check/Pivot).
 - ~~LRA4: conflict explanations~~ -- done (Farkas-certificate style).
-- ~~LRA5: backtracking~~ -- done (`push`/`pop`, trail-based).
+- ~~LRA5: backtracking~~ -- done (`push`/`pop`, trail-based, and now
+  actually exercised via `OnlineLraPropagator`'s trail sync, not just
+  tested in isolation).
 - LRA6 (not in the original list, added once it became clear propagation
   needed its own milestone): mid-search theory propagation via
-  `OnlineLraPropagator` -- Milestone 3 of the plan, not started.
+  `OnlineLraPropagator::cb_propagate()` -- Milestone 3b of the plan,
+  deferred/not scheduled (conflict detection, Milestone 3a, is done and is
+  sufficient for completeness).

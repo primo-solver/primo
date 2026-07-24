@@ -1,18 +1,19 @@
 # Arithmetic
 
 QF_LRA (quantifier-free linear real arithmetic) is implemented through
-Milestone 2 of the plan described below: a full SMT-LIB QF_LRA frontend
-plus an incremental, trail-based bounded-variable Simplex theory solver,
-following Dutertre & de Moura's "A Fast Linear-Arithmetic Solver for
-DPLL(T)". Difference logic (QF_IDL/QF_RDL) remains unimplemented;
-`difference_logic.hpp` is an empty placeholder reserved for that, separate
-future work.
+Milestone 3a of the plan described below: a full SMT-LIB QF_LRA frontend
+plus a bounded-variable Simplex theory solver integrated into DPLL(T) via a
+trail-synced CaDiCaL external propagator (conflict detection only, no
+proactive bound propagation -- see Milestone 3a's note on why), following
+Dutertre & de Moura's "A Fast Linear-Arithmetic Solver for DPLL(T)".
+Difference logic (QF_IDL/QF_RDL) remains unimplemented; `difference_logic.hpp`
+is an empty placeholder reserved for that, separate future work.
 
 See [](papers/fast-linear-arithmetic-dpllt.md) for the base algorithm and
 [](papers/lra-related-work.md) for a literature survey of extensions and
 alternatives considered before/while implementing it.
 
-## Implemented (Milestones 1-2)
+## Implemented (Milestones 1-3a)
 
 - **Grammar/frontend** (`src/smt/check_sat.cpp`): `(set-logic QF_LRA)`,
   `Real`-sorted declarations, `+ - * <= < >= > =` per the SMT-LIB QF_LRA
@@ -46,15 +47,17 @@ alternatives considered before/while implementing it.
   search depth" framing doesn't mean "don't undo them").
 - **DPLL(T) wiring** (`check_sat.cpp`): `PreparedLraTheory` precomputes the
   tableau's structural part (one row per arithmetic atom) exactly once,
-  mirroring `PreparedFlatTheory`; `solve_qf_lra`/`find_incremental_lra_theory_conflict`
-  copy that base tableau and assert bounds each SAT round -- avoiding
-  re-normalizing every atom from its term representation every round, the
-  same way EUF's `find_incremental_theory_conflict` copies a precomputed
-  `base_closure` rather than rebuilding from scratch. `push()`/`pop()`
-  aren't exercised by this wiring yet (each round still asserts into a
-  fresh copy, not a shared trail-synced tableau) -- real cross-round trail
-  reuse via `push`/`pop` synced to the SAT decision level is an
-  online-propagator concern, Milestone 3's `OnlineLraPropagator`.
+  mirroring `PreparedFlatTheory`. `OnlineLraPropagator` (Milestone 3a) is a
+  trail-synced `CaDiCaL::ExternalPropagator`, owning one `LraTableau`
+  (copied once from the prepared base) kept in sync via `notify_new_decision_level`/
+  `notify_backtrack` calling `LraTableau::push()`/`pop()` -- this is what
+  actually exercises push/pop for cross-round reuse. `solve_qf_lra` always
+  prefers this when CaDiCaL's external-propagator API is available
+  (`#if PRIMO_HAVE_IPASIR`); `find_incremental_lra_theory_conflict` (copy
+  the base tableau and reassert every round, no push/pop reuse) survives
+  only as the fallback when it isn't. `OnlineLraPropagator::cb_propagate()`
+  always returns 0 -- deliberately conflict-detection only, see Milestone
+  3a below for why.
 
 ### Implemented subset vs. deviations vs. limitations
 
@@ -85,14 +88,15 @@ alternatives considered before/while implementing it.
 ## Milestone roadmap
 
 See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
-Milestones 1-2 (above) are done. Remaining:
+Milestones 1-3a (above) are done. Remaining:
 
-- **Milestone 3**: `OnlineLraPropagator`, full CaDiCaL external-propagator
-  integration mirroring `OnlineEufPropagator` (mid-search propagation, not
-  just conflict-on-full-assignment) -- this is what would actually put
-  `LraTableau::push`/`pop` to use for cross-round reuse, not just internal
-  correctness (it's fully implemented and tested, just not wired into
-  `solve_qf_lra`'s per-round copy-based loop yet).
+- **Milestone 3b** (deferred, not scheduled): proactive bound propagation
+  in `OnlineLraPropagator::cb_propagate()` -- the paper's "deriving
+  satisfied atoms" mechanism. Explicitly *not* required for DPLL(T)
+  completeness (conflict detection alone, which 3a already provides, is
+  sufficient); this is a pure search-efficiency optimization, deferred per
+  user direction rather than bundled into "the online propagator
+  milestone" by default.
 - **Milestone 4**: anti-cycling/pivoting-rule hardening, campaign-tier fuzz
   gate, before describing QF_LRA as supported/default rather than a
   first-cut milestone.

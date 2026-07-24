@@ -9253,6 +9253,43 @@
       },
       "evidence_status": "current_local",
       "notes": "Direct continuation of Milestone 2 (see /home/user/.claude/plans/piped-wondering-fairy.md and the 2026-07-23 Milestone 1 fuzz-gate entry). No new bugs found this round -- included primarily as a regression check given how much of solve_qf_lra's internal control flow changed (copy-based per-round tableau construction is a new code path relative to Milestone 1's fresh-add_row-per-round approach), not because a specific concern was being chased down."
+    },
+    {
+      "id": "2026-07-24-qf-lra-milestone3a-online-propagator-fuzz",
+      "started_at": "2026-07-24",
+      "recorded_at": "2026-07-24",
+      "kind": "fuzz",
+      "scope": "Merge-gate fuzz check for QF_LRA Milestone 3a (OnlineLraPropagator: trail-synced CaDiCaL external-propagator integration, conflict-detection only, no bound propagation). This exercises genuinely new machinery relative to Milestones 1-2: LraTableau::push()/pop() are now driven by real DPLL(T) backtracking across arbitrary decision-level trees via notify_new_decision_level/notify_backtrack, not just the hand-derived push/pop unit tests or Milestone 2's per-round-copy path. Larger count than the Milestone 1/2 smoke runs (500 vs 300) given this is a merge-gate-tier change per AGENTS.md's three-tier fuzz discipline, not a smoke-tier one.",
+      "commit": "3a97cd6",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build-asan-ws/primo (Debug, ASAN+UBSan)"
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build-asan-ws/primo --refs z3 --logic QF_LRA --count 500 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_lra-milestone3a --seed 1",
+      "benchmark": {
+        "suite": "fuzzsmt-generated QF_LRA, referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-milestone3a/ -- local, not committed (gitignored)."
+      },
+      "summary": {
+        "result": "500 cases: 394 UNSUPPORTED_INPUT (sat refs), 24 UNSUPPORTED_INPUT (unsat refs), 38 PASS (unsat/unsat), 24 PASS (sat/sat), 7 CRASH, 13 TIMEOUT. Zero wrong-answer disagreements against z3 (62 PASS total, up from 23 in the Milestone 1/2 runs at 300 cases). All 7 crashes individually re-run and reconfirmed as the identical pre-existing SExpr recursive-copy-constructor stack-overflow already triaged in the Milestone 1 entry (2026-07-23) as theory-agnostic and out of scope -- not re-triaged from scratch, just spot-checked to rule out a new failure mode hiding among them."
+      },
+      "verification": {
+        "passed": [
+          "Full existing suite (12 targets) under both Release and Debug+ASAN+UBSan builds.",
+          "500-case fuzzsmt QF_LRA campaign against z3 (ASAN/UBSan build): zero wrong-answer disagreements."
+        ],
+        "pending": [
+          "Bound propagation (Milestone 3b) -- explicitly deferred, not scheduled, per user direction that it isn't needed for completeness.",
+          "A campaign-tier fuzz gate (>=3000 cases) before describing QF_LRA as supported/default -- this is still a merge-gate-tier check (Milestone 4's job)."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "Direct continuation of Milestone 3a (see /home/user/.claude/plans/piped-wondering-fairy.md). The disequality gap continues to dominate UNSUPPORTED_INPUT counts (same root cause as Milestones 1-2's runs) -- not a new finding, just consistently reproduced."
     }
   ]
 }
