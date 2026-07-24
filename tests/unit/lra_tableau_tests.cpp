@@ -166,6 +166,110 @@ void empty_row_from_a_trivially_true_atom_is_handled() {
   (void)x;
 }
 
+void push_pop_restores_a_bound() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+
+  assert(!tableau.assert_upper(x, rat(5), Lit{1}).has_value());
+  const std::size_t checkpoint = tableau.push();
+  // Tighten the bound inside the pushed level.
+  assert(!tableau.assert_upper(x, rat(2), Lit{2}).has_value());
+  // Asserting a lower bound of 3 conflicts with the *tightened* bound...
+  const auto conflict_while_pushed = tableau.assert_lower(x, rat(3), Lit{3});
+  assert(conflict_while_pushed.has_value());
+  assert(has_reason(*conflict_while_pushed, Lit{2}));
+
+  tableau.pop(checkpoint);
+  // ...but not with the original bound of 5, once popped: 3 <= 5 is fine.
+  const auto after_pop = tableau.assert_lower(x, rat(3), Lit{3});
+  assert(!after_pop.has_value());
+}
+
+void push_pop_restores_state_across_a_pivot() {
+  // Same scenario as infeasible_system_requires_a_pivot_to_discover, but
+  // the conflicting bound (and the pivot check() performs to discover it)
+  // happens *inside* a pushed level. After pop, the tableau must be back
+  // to a state indistinguishable from having never asserted that bound or
+  // pivoted at all -- verified by checking it's SAT again, and that
+  // reasserting the same bound reproduces the identical conflict a fresh
+  // tableau would find.
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(1)}});
+
+  const Lit upper_reason{1};
+  assert(!tableau.assert_upper(s1, rat(1), upper_reason).has_value());
+  assert(!tableau.assert_lower(x, rat(0), Lit{3}).has_value());
+  assert(!tableau.assert_lower(y, rat(0), Lit{4}).has_value());
+  assert(!tableau.check().has_value());  // feasible so far
+
+  const std::size_t checkpoint = tableau.push();
+  const Lit lower_reason{2};
+  assert(!tableau.assert_lower(s2, rat(3), lower_reason).has_value());
+  const auto conflict = tableau.check();  // forces a repair pivot, then finds the conflict
+  assert(conflict.has_value());
+  assert(conflict->size() == 2);
+  assert(has_reason(*conflict, upper_reason));
+  assert(has_reason(*conflict, lower_reason));
+
+  tableau.pop(checkpoint);
+  assert(!tableau.check().has_value());  // feasible again
+
+  // Redo the exact same assertion; must reproduce the identical conflict.
+  const auto redone_conflict = tableau.assert_lower(s2, rat(3), lower_reason);
+  const auto redone_check_conflict = redone_conflict.has_value() ? redone_conflict : tableau.check();
+  assert(redone_check_conflict.has_value());
+  assert(redone_check_conflict->size() == 2);
+  assert(has_reason(*redone_check_conflict, upper_reason));
+  assert(has_reason(*redone_check_conflict, lower_reason));
+}
+
+void push_pop_restores_propagated_basic_assignment() {
+  // s = x + y; asserting a lower bound on the *non-basic* x propagates
+  // into s's (basic) assignment via update()'s propagation loop -- verify
+  // that propagated change is undone on pop too, not just x's own bound.
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+  assert(tableau.assignment(s) == rat(0));
+
+  const std::size_t checkpoint = tableau.push();
+  assert(!tableau.assert_lower(x, rat(5), Lit{1}).has_value());
+  assert(tableau.assignment(x) == rat(5));
+  assert(tableau.assignment(s) == rat(5));  // propagated
+
+  tableau.pop(checkpoint);
+  assert(tableau.assignment(x) == rat(0));
+  assert(tableau.assignment(s) == rat(0));
+}
+
+void nested_push_pop_levels() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+
+  assert(!tableau.assert_lower(x, rat(0), Lit{1}).has_value());
+  const std::size_t level1 = tableau.push();
+  assert(!tableau.assert_upper(x, rat(10), Lit{2}).has_value());
+  const std::size_t level2 = tableau.push();
+  assert(!tableau.assert_upper(x, rat(3), Lit{3}).has_value());  // tighter still
+
+  // A lower bound of 4 conflicts with the innermost (3) but not level1's (10).
+  assert(tableau.assert_lower(x, rat(4), Lit{4}).has_value());
+  tableau.pop(level2);
+  assert(!tableau.assert_lower(x, rat(4), Lit{4}).has_value());  // 4 <= 10, fine now
+
+  tableau.pop(level1);
+  // Back to the base level: only the original lower bound of 0 remains, no
+  // upper bound at all, so even a huge lower bound is unconstrained above.
+  assert(!tableau.assert_lower(x, rat(1000), Lit{5}).has_value());
+}
+
 }  // namespace
 
 int main() {
@@ -176,5 +280,9 @@ int main() {
   strict_inequality_conflicts_with_touching_nonstrict_bound();
   strict_inequality_is_satisfiable_when_not_touching();
   empty_row_from_a_trivially_true_atom_is_handled();
+  push_pop_restores_a_bound();
+  push_pop_restores_state_across_a_pivot();
+  push_pop_restores_propagated_basic_assignment();
+  nested_push_pop_levels();
   return 0;
 }

@@ -38,6 +38,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, Delt
   if (state.lower.has_value() && value < state.lower->value) {
     return std::vector<sat::Lit>{state.lower->reason, reason};
   }
+  trail_.push_back(BoundTrailEntry{var, true, state.upper});
   state.upper = Bound{value, reason};
   if (!state.is_basic && state.assignment > value) {
     update(var, value);
@@ -54,6 +55,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, Delt
   if (state.upper.has_value() && value > state.upper->value) {
     return std::vector<sat::Lit>{state.upper->reason, reason};
   }
+  trail_.push_back(BoundTrailEntry{var, false, state.lower});
   state.lower = Bound{value, reason};
   if (!state.is_basic && state.assignment < value) {
     update(var, value);
@@ -64,6 +66,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, Delt
 void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
   VarState& state = vars_.at(nonbasic_var);
   const DeltaRational delta = new_value - state.assignment;
+  trail_.push_back(AssignmentTrailEntry{nonbasic_var, state.assignment});
   state.assignment = new_value;
   const auto found = occurs_in_.find(nonbasic_var);
   if (found == occurs_in_.end()) {
@@ -73,6 +76,7 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
     for (const auto& [var, coefficient] : rows_.at(basic_var)) {
       if (var == nonbasic_var) {
         VarState& basic_state = vars_.at(basic_var);
+        trail_.push_back(AssignmentTrailEntry{basic_var, basic_state.assignment});
         basic_state.assignment = basic_state.assignment + delta.scaled(coefficient);
         break;
       }
@@ -81,6 +85,11 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
 }
 
 void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
+  PivotTrailEntry trail_entry;
+  trail_entry.basic_var = basic_var;
+  trail_entry.entering_var = entering_var;
+  trail_entry.old_basic_row = rows_.at(basic_var);
+
   Row old_row = std::move(rows_.at(basic_var));
   rows_.erase(basic_var);
 
@@ -113,7 +122,8 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   occurs_in_.erase(entering_var);
 
   for (const LraVarId other_basic : affected) {
-    Row other_row = std::move(rows_.at(other_basic));
+    Row other_row = rows_.at(other_basic);
+    trail_entry.old_other_rows.emplace_back(other_basic, other_row);
     rows_.erase(other_basic);
 
     std::unordered_map<LraVarId, util::Rational> combined;
@@ -148,6 +158,8 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     occurs_in_[var].push_back(entering_var);
   }
   rows_.emplace(entering_var, std::move(new_entering_row));
+
+  trail_.push_back(std::move(trail_entry));
 }
 
 std::vector<sat::Lit> LraTableau::build_conflict(LraVarId violated, bool too_low) const {
@@ -208,6 +220,47 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         too_low ? vars_.at(violated).lower->value : vars_.at(violated).upper->value;
     pivot(violated, entering);
     update(violated, target);
+  }
+}
+
+void LraTableau::pop(std::size_t checkpoint) {
+  while (trail_.size() > checkpoint) {
+    undo(trail_.back());
+    trail_.pop_back();
+  }
+}
+
+void LraTableau::undo(const TrailEntry& entry) {
+  if (const auto* bound = std::get_if<BoundTrailEntry>(&entry)) {
+    VarState& state = vars_.at(bound->var);
+    if (bound->is_upper) {
+      state.upper = bound->previous;
+    } else {
+      state.lower = bound->previous;
+    }
+    return;
+  }
+  if (const auto* assignment = std::get_if<AssignmentTrailEntry>(&entry)) {
+    vars_.at(assignment->var).assignment = assignment->previous;
+    return;
+  }
+  const auto& pivot_entry = std::get<PivotTrailEntry>(entry);
+  rows_.erase(pivot_entry.entering_var);
+  rows_[pivot_entry.basic_var] = pivot_entry.old_basic_row;
+  vars_.at(pivot_entry.basic_var).is_basic = true;
+  vars_.at(pivot_entry.entering_var).is_basic = false;
+  for (const auto& [other_basic, old_row] : pivot_entry.old_other_rows) {
+    rows_[other_basic] = old_row;
+  }
+  rebuild_occurs_in_index();
+}
+
+void LraTableau::rebuild_occurs_in_index() {
+  occurs_in_.clear();
+  for (const auto& [basic_var, row] : rows_) {
+    for (const auto& [var, coefficient] : row) {
+      occurs_in_[var].push_back(basic_var);
+    }
   }
 }
 

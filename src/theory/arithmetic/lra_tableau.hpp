@@ -4,6 +4,7 @@
 #include <optional>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "sat/lit.hpp"
@@ -55,8 +56,23 @@ struct DeltaRational {
 // Assert-Bound, Check/Pivot with Bland's-rule variable selection (for
 // termination, not performance -- see docs/papers/lra-related-work.md for
 // faster pivoting rules a later milestone could adopt), and Farkas-
-// certificate-style conflict explanation. Batch/non-incremental in this
-// milestone: no push/pop, callers rebuild a fresh tableau per SAT round.
+// certificate-style conflict explanation.
+//
+// Incremental via push()/pop(checkpoint), genuinely trail-based (mirroring
+// FlatCongruenceClosure's discipline, not full state snapshotting): every
+// bound change, assignment change, and pivot's row rewrite pushes a
+// TrailEntry recording enough to undo it, and pop() replays entries
+// backwards. Per the paper's Section 4 design, pivots (which basic/
+// non-basic partition and row structure are current) are NOT semantically
+// tied to search depth -- they're just an internal representation choice
+// -- but they still have to be undone on pop here, because leaving a
+// pivot's row rewrite in place while reverting the bounds/assignments it
+// was performed under would violate the invariant that every basic
+// variable's row equation holds for the current assignment.
+//
+// Rows must all be added via add_row() before the first push() in the
+// caller's intended usage (build the full tableau once, then push/assert/
+// pop as the SAT search proceeds) -- add_row() itself is not trailed.
 //
 // Operates on abstract dense variable ids (LraVarId), not core::TermId --
 // the caller (check_sat.cpp's solve_qf_lra) is responsible for mapping
@@ -71,8 +87,16 @@ class LraTableau {
   // basic_var must not already have a row. Coefficients of zero are
   // dropped; an empty `terms` is allowed (basic_var's row is the constant
   // 0 -- reachable when two syntactically different atoms normalize to the
-  // same polynomial, see lra_atom.cpp).
+  // same polynomial, see lra_atom.cpp). Not trailed -- see the class
+  // comment; must be called before the first push().
   void add_row(LraVarId basic_var, const std::vector<std::pair<LraVarId, util::Rational>>& terms);
+
+  // Returns a checkpoint token for the current trail position.
+  std::size_t push() const { return trail_.size(); }
+
+  // Undoes every bound/assignment/pivot change made since `checkpoint`
+  // (which must have come from an earlier push()), in reverse order.
+  void pop(std::size_t checkpoint);
 
   // Section 3.1's Assert-Bound. Returns a conflict (the reasons of the two
   // directly-contradicting bounds) if the new bound is immediately
@@ -110,13 +134,36 @@ class LraTableau {
 
   using Row = std::vector<std::pair<LraVarId, util::Rational>>;
 
+  struct BoundTrailEntry {
+    LraVarId var;
+    bool is_upper;
+    std::optional<Bound> previous;
+  };
+  struct AssignmentTrailEntry {
+    LraVarId var;
+    DeltaRational previous;
+  };
+  // A pivot's row rewrite touches the pivoted basic/entering pair plus
+  // every other basic row that referenced entering_var -- snapshot every
+  // row touched (before the rewrite) rather than trying to diff them.
+  struct PivotTrailEntry {
+    LraVarId basic_var;
+    LraVarId entering_var;
+    Row old_basic_row;
+    std::vector<std::pair<LraVarId, Row>> old_other_rows;
+  };
+  using TrailEntry = std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry>;
+
   void update(LraVarId nonbasic_var, const DeltaRational& new_value);
   void pivot(LraVarId basic_var, LraVarId entering_var);
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
+  void undo(const TrailEntry& entry);
+  void rebuild_occurs_in_index();
 
   std::vector<VarState> vars_;
   std::unordered_map<LraVarId, Row> rows_;
   std::unordered_map<LraVarId, std::vector<LraVarId>> occurs_in_;
+  std::vector<TrailEntry> trail_;
 };
 
 }  // namespace primo::theory::arithmetic
