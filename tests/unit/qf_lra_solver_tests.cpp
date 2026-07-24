@@ -390,6 +390,27 @@ void distinct_on_reals_works() {
   assert(unsatisfiable.result == CheckSatResult::Unsat);
 }
 
+// Frontend::build_term (TermBuilder in check_sat.cpp) is iterative, not
+// recursive descent -- see the TermBuilder class comment. A deeply nested
+// `+` chain like this used to stack-overflow (found via fuzzing under
+// ASAN, where larger stack frames made even fuzzer-typical nesting depths
+// unsafe); this synthetic depth is far beyond anything a native recursive
+// implementation could tolerate even in a Release build.
+void handles_pathologically_deep_arithmetic_nesting() {
+  constexpr int kDepth = 50000;
+  std::string formula =
+      "(set-logic QF_LRA)\n(declare-fun x () Real)\n(assert (<= x ";
+  for (int i = 0; i < kDepth; ++i) {
+    formula += "(+ 1 ";
+  }
+  formula += "0";
+  formula.append(kDepth, ')');
+  formula += "))\n(check-sat)\n";
+
+  const auto result = check_sat_smtlib(formula);
+  assert(result.result == CheckSatResult::Sat);
+}
+
 }  // namespace
 
 int main() {
@@ -412,6 +433,7 @@ int main() {
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   handles_disequality_via_boolean_level_case_splitting();
+  handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
   return 0;
 }
