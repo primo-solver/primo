@@ -2814,35 +2814,84 @@ bool is_real_equality_term(const core::TermManager& terms, const core::Term& ter
         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
 }
 
-// Lazy/batch QF_LRA theory check (Dutertre & de Moura Section 3, via
-// LraTableau): rebuilds a fresh tableau from every currently-assigned
-// arithmetic atom each SAT round, mirroring find_theory_conflict's
-// rebuild-per-round shape for EUF's Lazy engine. One slack variable per
-// atom (not deduplicated by polynomial content -- see lra_tableau.hpp's
-// empty-row note); original problem variables are shared across atoms via
-// var_ids. Plain Boolean theory atoms (e.g. a bare declared Bool constant)
-// are skipped -- they carry no arithmetic constraint.
-std::optional<sat::Clause> find_lra_theory_conflict(const core::TermManager& terms,
-                                                     const std::vector<AssignedTheoryAtom>& atoms) {
-  theory::arithmetic::LraTableau tableau;
+// Applies one assigned LRA atom's relation+truth-value+strictness to
+// `tableau` as a single Assert-Bound call (Eq asserts both bounds). Shared
+// between the fully-lazy per-round-normalize path (not currently used by
+// solve_qf_lra, kept for reference/tests) and the incremental
+// prepared-atom path below.
+std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(theory::arithmetic::LraTableau& tableau,
+                                                            theory::arithmetic::LraVarId slack,
+                                                            theory::arithmetic::LraRelation relation,
+                                                            const util::Rational& rhs, bool atom_value,
+                                                            sat::Lit reason) {
+  switch (relation) {
+    case theory::arithmetic::LraRelation::Eq: {
+      if (!atom_value) {
+        throw UnsupportedInput("QF_LRA disequality (a negated Real equality) is not yet supported");
+      }
+      auto conflict =
+          tableau.assert_upper(slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
+      if (conflict.has_value()) {
+        return conflict;
+      }
+      return tableau.assert_lower(slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
+    }
+    case theory::arithmetic::LraRelation::Le:
+      return atom_value
+                 ? tableau.assert_upper(slack, theory::arithmetic::DeltaRational::from_rational(rhs),
+                                        reason)
+                 : tableau.assert_lower(
+                       slack, theory::arithmetic::DeltaRational{rhs, util::Rational(1)}, reason);
+    case theory::arithmetic::LraRelation::Lt:
+      return atom_value
+                 ? tableau.assert_upper(
+                       slack, theory::arithmetic::DeltaRational{rhs, util::Rational(-1)}, reason)
+                 : tableau.assert_lower(slack, theory::arithmetic::DeltaRational::from_rational(rhs),
+                                        reason);
+  }
+  throw std::logic_error("unreachable: LraRelation switch is exhaustive");
+}
+
+// Precomputes the QF_LRA tableau's structural part -- one row per
+// arithmetic theory atom, shared problem variables -- exactly once,
+// independent of any SAT assignment (Dutertre & de Moura Section 4).
+// Mirrors PreparedFlatTheory's role for EUF: the per-round work becomes
+// "copy this base and assert bounds", not "re-normalize and re-add rows
+// from scratch every round" (what the fully-lazy path above still does).
+struct PreparedLraTheory {
+  PreparedLraTheory(const core::TermManager& terms,
+                    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms);
+
+  struct PreparedAtom {
+    bool is_arithmetic = false;
+    theory::arithmetic::LraVarId slack = 0;
+    theory::arithmetic::LraRelation relation = theory::arithmetic::LraRelation::Le;
+    util::Rational rhs;
+  };
+
+  theory::arithmetic::LraTableau base_tableau;
+  std::vector<PreparedAtom> atoms;  // parallel to theory_atoms
+};
+
+PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
+                                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms) {
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
   auto get_var = [&](core::TermId term_id) {
     const auto found = var_ids.find(term_id);
     if (found != var_ids.end()) {
       return found->second;
     }
-    const theory::arithmetic::LraVarId id = tableau.add_variable();
+    const theory::arithmetic::LraVarId id = base_tableau.add_variable();
     var_ids.emplace(term_id, id);
     return id;
   };
 
-  for (const AssignedTheoryAtom& atom : atoms) {
-    if (atom.filtered) {
-      continue;
-    }
+  atoms.reserve(theory_atoms.size());
+  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
     const core::Term& term = terms.get(atom.term);
     const bool is_comparison = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
     if (!is_comparison && !is_real_equality_term(terms, term)) {
+      atoms.push_back(PreparedAtom{});
       continue;
     }
 
@@ -2852,40 +2901,32 @@ std::optional<sat::Clause> find_lra_theory_conflict(const core::TermManager& ter
     for (const auto& [var_term, coefficient] : normalized.polynomial.terms()) {
       row.emplace_back(get_var(var_term), coefficient);
     }
-    const theory::arithmetic::LraVarId slack = tableau.add_variable();
-    tableau.add_row(slack, row);
+    const theory::arithmetic::LraVarId slack = base_tableau.add_variable();
+    base_tableau.add_row(slack, row);
+    atoms.push_back(
+        PreparedAtom{true, slack, normalized.relation, normalized.rhs});
+  }
+}
 
-    const sat::Lit reason = blocking_lit(atom);
-    const util::Rational& rhs = normalized.rhs;
-    std::optional<std::vector<sat::Lit>> conflict;
-    switch (normalized.relation) {
-      case theory::arithmetic::LraRelation::Eq:
-        if (!atom.value) {
-          throw UnsupportedInput(
-              "QF_LRA disequality (a negated Real equality) is not yet supported");
-        }
-        conflict = tableau.assert_upper(slack, theory::arithmetic::DeltaRational::from_rational(rhs),
-                                        reason);
-        if (!conflict.has_value()) {
-          conflict = tableau.assert_lower(
-              slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
-        }
-        break;
-      case theory::arithmetic::LraRelation::Le:
-        conflict = atom.value
-                       ? tableau.assert_upper(
-                             slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason)
-                       : tableau.assert_lower(
-                             slack, theory::arithmetic::DeltaRational{rhs, util::Rational(1)}, reason);
-        break;
-      case theory::arithmetic::LraRelation::Lt:
-        conflict = atom.value
-                       ? tableau.assert_upper(
-                             slack, theory::arithmetic::DeltaRational{rhs, util::Rational(-1)}, reason)
-                       : tableau.assert_lower(
-                             slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
-        break;
+// Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
+// the precomputed base tableau (cheap relative to re-normalizing every
+// atom from its term representation, which the copy skips entirely) and
+// asserts bounds for the round's assigned atoms into the copy.
+std::optional<sat::Clause> find_incremental_lra_theory_conflict(
+    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& atoms) {
+  if (atoms.size() != prepared.atoms.size()) {
+    throw UnsupportedInput("internal theory atom mapping mismatch");
+  }
+
+  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
+  for (std::size_t i = 0; i < atoms.size(); ++i) {
+    const AssignedTheoryAtom& atom = atoms[i];
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
+    if (!prepared_atom.is_arithmetic || atom.filtered) {
+      continue;
     }
+    const auto conflict = assert_lra_atom_bound(tableau, prepared_atom.slack, prepared_atom.relation,
+                                                prepared_atom.rhs, atom.value, blocking_lit(atom));
     if (conflict.has_value()) {
       return conflict.value();
     }
@@ -2907,6 +2948,8 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
+
+  const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms());
 
   while (true) {
     statistics.increment(kStatSatSolveCalls);
@@ -2934,7 +2977,8 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
           assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value));
     }
 
-    const std::optional<sat::Clause> conflict_clause = find_lra_theory_conflict(terms, assigned_atoms);
+    const std::optional<sat::Clause> conflict_clause =
+        find_incremental_lra_theory_conflict(prepared_theory, assigned_atoms);
     if (!conflict_clause.has_value()) {
       publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
