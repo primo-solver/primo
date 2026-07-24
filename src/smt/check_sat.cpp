@@ -2912,6 +2912,12 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
 // the precomputed base tableau (cheap relative to re-normalizing every
 // atom from its term representation, which the copy skips entirely) and
 // asserts bounds for the round's assigned atoms into the copy.
+//
+// Only compiled when CaDiCaL's external-propagator API isn't available --
+// when it is, OnlineLraPropagator (below) is strictly better (real
+// incremental reuse via LraTableau::push/pop) and is always preferred, so
+// this would otherwise be dead code.
+#if !PRIMO_HAVE_IPASIR
 std::optional<sat::Clause> find_incremental_lra_theory_conflict(
     const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& atoms) {
   if (atoms.size() != prepared.atoms.size()) {
@@ -2934,6 +2940,166 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 
   return tableau.check();
 }
+#endif  // !PRIMO_HAVE_IPASIR
+
+#if PRIMO_HAVE_IPASIR
+// Trail-synced CaDiCaL external propagator for QF_LRA (Milestone 3a of the
+// QF_LRA plan): mirrors OnlineEufPropagator structurally, but deliberately
+// conflict-detection only -- cb_propagate() always returns 0. Per the
+// user's explicit direction, this is intentional and not a stopgap:
+// proactive bound propagation is a search-efficiency optimization, not a
+// DPLL(T) completeness requirement (EUF's own OnlineEufPropagator already
+// draws this exact line via EufPropagationMode::Conflict, which uses this
+// same trail-synced machinery and also always returns 0 from
+// cb_propagate()). Bound propagation, if ever added, is Milestone 3b --
+// deliberately not scheduled.
+//
+// Owns its own LraTableau (copied once from PreparedLraTheory's base, not
+// per SAT round), kept in sync with the CaDiCaL trail via
+// notify_new_decision_level/notify_backtrack calling LraTableau::push()/
+// pop() -- this is what actually exercises push/pop for cross-round reuse,
+// unlike solve_qf_lra's other path (find_incremental_lra_theory_conflict),
+// which copies the base tableau fresh every round.
+class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
+ public:
+  OnlineLraPropagator(const PreparedLraTheory& prepared,
+                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms)
+      : theory_atoms_(theory_atoms), prepared_(prepared), tableau_(prepared.base_tableau) {
+    int max_theory_var = 0;
+    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+      max_theory_var =
+          std::max(max_theory_var, atom.lit.value > 0 ? atom.lit.value : -atom.lit.value);
+    }
+    observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, theory_atoms_.size());
+    for (std::size_t i = 0; i < theory_atoms_.size(); ++i) {
+      const BooleanClausifier::TheoryAtom& atom = theory_atoms_[i];
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      observed_vars_[static_cast<std::size_t>(var)] = 1;
+      atom_index_by_var_[static_cast<std::size_t>(var)] = i;
+    }
+  }
+
+#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
+  void notify_assignment(const std::vector<int>& lits) override {
+    for (const int lit : lits) {
+      notify_assignment_lit(lit);
+    }
+  }
+#else
+  void notify_assignment(int lit, bool /*is_fixed*/) override { notify_assignment_lit(lit); }
+#endif
+
+  void notify_new_decision_level() override { checkpoints_.push_back(tableau_.push()); }
+
+  void notify_backtrack(size_t new_level) override {
+    if (new_level < checkpoints_.size()) {
+      tableau_.pop(checkpoints_[new_level]);
+      checkpoints_.resize(new_level);
+    }
+    conflict_.reset();
+    external_clause_.clear();
+    external_clause_index_ = 0;
+  }
+
+  bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
+
+  // Deliberately inert -- see the class comment. Milestone 3b territory.
+  int cb_propagate() override { return 0; }
+  int cb_add_reason_clause_lit(int /*propagated_lit*/) override { return 0; }
+
+  // Authoritative once backend.solve() returns SAT, for the same reason
+  // OnlineEufPropagator::incremental_conflict() is: every observed
+  // variable's assignment has already been asserted (and checked)
+  // synchronously via notify_assignment before solve() can return, so
+  // there is nothing left to recompute.
+  std::optional<sat::Clause> conflict() const { return conflict_; }
+
+#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
+  bool cb_has_external_clause(bool& is_forgettable) override {
+    if (!conflict_.has_value()) {
+      return false;
+    }
+    external_clause_ = conflict_.value();
+    external_clause_index_ = 0;
+    is_forgettable = false;
+    return true;
+  }
+#else
+  bool cb_has_external_clause() override {
+    if (!conflict_.has_value()) {
+      return false;
+    }
+    external_clause_ = conflict_.value();
+    external_clause_index_ = 0;
+    return true;
+  }
+#endif
+
+  int cb_add_external_clause_lit() override {
+    if (external_clause_index_ >= external_clause_.size()) {
+      external_clause_.clear();
+      external_clause_index_ = 0;
+      return 0;
+    }
+    return external_clause_[external_clause_index_++].value;
+  }
+
+ private:
+  bool is_observed_var(int var) const {
+    return var >= 0 && static_cast<std::size_t>(var) < observed_vars_.size() &&
+           observed_vars_[static_cast<std::size_t>(var)] != 0;
+  }
+
+  void notify_assignment_lit(int lit) {
+    if (conflict_.has_value()) {
+      // Already found a conflict this round; CaDiCaL hasn't pulled it via
+      // cb_has_external_clause yet, so further asserts would just be
+      // wasted (and potentially confusing, since assert_lra_atom_bound
+      // isn't meant to be called against an already-inconsistent tableau).
+      return;
+    }
+    const int var = lit > 0 ? lit : -lit;
+    if (!is_observed_var(var)) {
+      return;
+    }
+    const std::size_t atom_index = atom_index_by_var_[static_cast<std::size_t>(var)];
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+    if (!prepared_atom.is_arithmetic) {
+      return;
+    }
+    const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+    const bool atom_value = atom.lit.value > 0 ? lit > 0 : lit < 0;
+    const AssignedTheoryAtom assigned =
+        assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value);
+    const auto direct_conflict =
+        assert_lra_atom_bound(tableau_, prepared_atom.slack, prepared_atom.relation,
+                              prepared_atom.rhs, atom_value, blocking_lit(assigned));
+    if (direct_conflict.has_value()) {
+      conflict_ = direct_conflict;
+      return;
+    }
+    // Eagerly re-checks after every single assignment, mirroring how EUF's
+    // IncrementalFlatAssignmentState::assert_assignment eagerly detects
+    // conflicts rather than deferring to a batched end-of-round check.
+    // Real cost: O(pivots-to-repair) per assignment, potentially repeated
+    // work across many assignments before a conflict actually appears --
+    // acceptable for a first correctness-focused milestone, a documented
+    // opportunity to optimize later (e.g. deferring to cb_has_external_clause).
+    conflict_ = tableau_.check();
+  }
+
+  const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
+  const PreparedLraTheory& prepared_;
+  theory::arithmetic::LraTableau tableau_;
+  std::vector<char> observed_vars_;
+  std::vector<std::size_t> atom_index_by_var_;
+  std::vector<std::size_t> checkpoints_;
+  std::optional<sat::Clause> conflict_;
+  sat::Clause external_clause_;
+  std::size_t external_clause_index_ = 0;
+};
+#endif  // PRIMO_HAVE_IPASIR
 
 CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
                              const std::vector<core::TermId>& assertions,
@@ -2951,6 +3117,23 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
 
   const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms());
 
+#if PRIMO_HAVE_IPASIR
+  // The trail-synced online propagator (Milestone 3a) is always preferred
+  // when CaDiCaL's external-propagator API is available: it's strictly
+  // better than the copy-per-round fallback below (real incremental reuse
+  // via LraTableau::push/pop instead of reasserting everything from
+  // scratch every SAT round), and correctness has already been verified
+  // against it via the fuzz gate (see docs/run-log.json). No
+  // CheckSatOptions toggle for this yet -- there's no second online mode
+  // to choose between until Milestone 3b (bound propagation) exists.
+  OnlineLraPropagator online_propagator(prepared_theory, clausifier.theory_atoms());
+  backend.connect_external_propagator(&online_propagator);
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+    backend.add_observed_var(var);
+  }
+#endif
+
   while (true) {
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
@@ -2960,6 +3143,13 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
     }
     statistics.increment(kStatLraTheoryChecks);
 
+#if PRIMO_HAVE_IPASIR
+    // Authoritative already -- see OnlineLraPropagator::conflict()'s
+    // comment. Always nullopt in practice at this point (a real conflict
+    // would have blocked CaDiCaL from ever returning SAT), but re-checking
+    // costs nothing and mirrors solve_qf_uf's own belt-and-suspenders style.
+    const std::optional<sat::Clause> conflict_clause = online_propagator.conflict();
+#else
     std::vector<AssignedTheoryAtom> assigned_atoms;
     for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -2979,6 +3169,7 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
 
     const std::optional<sat::Clause> conflict_clause =
         find_incremental_lra_theory_conflict(prepared_theory, assigned_atoms);
+#endif
     if (!conflict_clause.has_value()) {
       publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
