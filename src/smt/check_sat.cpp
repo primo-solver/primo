@@ -607,9 +607,10 @@ class Frontend {
 
     const core::TermId auxiliary = fresh_auxiliary_constant(result_sort, "ite");
     ++auxiliary_ites_;
-    side_assertions_.push_back(terms_.mk_implies(condition, terms_.mk_eq(auxiliary, then_term)));
     side_assertions_.push_back(
-        terms_.mk_implies(terms_.mk_not(condition), terms_.mk_eq(auxiliary, else_term)));
+        terms_.mk_implies(condition, mk_theory_equality(auxiliary, then_term)));
+    side_assertions_.push_back(
+        terms_.mk_implies(terms_.mk_not(condition), mk_theory_equality(auxiliary, else_term)));
     return auxiliary;
   }
 
@@ -810,6 +811,22 @@ class Frontend {
     return terms_.mk_and(std::move(atoms));
   }
 
+  // Builds an equality atom appropriate to lhs/rhs's sort. Real is a total
+  // order, so t1 = t2 <=> t1 <= t2 AND t2 <= t1 -- desugaring equality this
+  // way at parse time (rather than adding disequality-specific
+  // case-splitting/lemma machinery to LraTableau/OnlineLraPropagator) means
+  // NOT(t1=t2) is just NOT(AND(Le,Le)), already handled correctly by
+  // BooleanClausifier's existing Tseitin/CNF machinery for arbitrary
+  // Boolean structure: ordinary CDCL branching explores t1<t2 vs t1>t2 for
+  // free, no bespoke case-split code needed anywhere. For every other sort
+  // (uninterpreted), falls through to the ordinary EUF equality term.
+  core::TermId mk_theory_equality(core::TermId lhs, core::TermId rhs) {
+    if (terms_.get(lhs).sort == symbols_.real_sort()) {
+      return terms_.mk_and({terms_.mk_le(lhs, rhs), terms_.mk_le(rhs, lhs)});
+    }
+    return terms_.mk_eq(lhs, rhs);
+  }
+
   core::TermId build_pairwise_equality(core::TermId lhs, core::TermId rhs) {
     const core::SortId lhs_sort = terms_.get(lhs).sort;
     if (lhs_sort != terms_.get(rhs).sort) {
@@ -818,7 +835,7 @@ class Frontend {
     if (lhs_sort == symbols_.bool_sort()) {
       return terms_.mk_and({terms_.mk_implies(lhs, rhs), terms_.mk_implies(rhs, lhs)});
     }
-    return terms_.mk_eq(lhs, rhs);
+    return mk_theory_equality(lhs, rhs);
   }
 
   core::TermId build_pairwise_disequality(core::TermId lhs, core::TermId rhs) {
@@ -830,7 +847,7 @@ class Frontend {
       return terms_.mk_or(
           {terms_.mk_and({lhs, terms_.mk_not(rhs)}), terms_.mk_and({terms_.mk_not(lhs), rhs})});
     }
-    return terms_.mk_not(terms_.mk_eq(lhs, rhs));
+    return terms_.mk_not(mk_theory_equality(lhs, rhs));
   }
 
   core::TermId bind_bool_argument_if_needed(core::TermId term) {

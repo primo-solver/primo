@@ -240,18 +240,68 @@ void boolean_structure_over_arithmetic_atoms_can_require_branching() {
   assert(satisfiable.result == CheckSatResult::Sat);
 }
 
-void rejects_disequality() {
-  // Negated Real equality (x != 3) needs case-splitting (x<3 or x>3), not
-  // representable as a single bound -- explicitly out of scope for this
-  // milestone, see find_lra_theory_conflict's Eq-relation handling.
-  const auto result = check_sat_smtlib(R"(
+void handles_disequality_via_boolean_level_case_splitting() {
+  // Real is a total order, so t1 = t2 <=> t1 <= t2 AND t2 <= t1 -- Frontend
+  // desugars Real equality to that conjunction at parse time (mk_theory_equality),
+  // so NOT(t1=t2) is just NOT(AND(Le,Le)), handled by BooleanClausifier's
+  // ordinary Tseitin/CNF machinery. No case-split/lemma code exists in
+  // LraTableau or OnlineLraPropagator; CDCL branching over the two
+  // underlying Le atoms does the case-splitting for free. This used to be
+  // explicitly rejected ("QF_LRA disequality ... is not yet supported");
+  // now supported without any tableau-level changes at all.
+  const auto satisfiable = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)
     (assert (not (= x 3)))
     (check-sat)
   )");
-  assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("disequality") != std::string::npos);
+  assert(satisfiable.result == CheckSatResult::Sat);
+
+  const auto satisfiable_with_bounds = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (not (= x 3)))
+    (assert (<= 2 x))
+    (assert (<= x 4))
+    (check-sat)
+  )");
+  assert(satisfiable_with_bounds.result == CheckSatResult::Sat);
+
+  const auto unsatisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (not (= x 3)))
+    (assert (<= 3 x))
+    (assert (<= x 3))
+    (check-sat)
+  )");
+  assert(unsatisfiable.result == CheckSatResult::Unsat);
+}
+
+void distinct_on_reals_works() {
+  const auto satisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (distinct x y z))
+    (assert (<= 0 x)) (assert (<= x 1))
+    (assert (<= 0 y)) (assert (<= y 1))
+    (assert (<= 0 z)) (assert (<= z 1))
+    (check-sat)
+  )");
+  assert(satisfiable.result == CheckSatResult::Sat);
+
+  const auto unsatisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (distinct x y))
+    (assert (= x 1))
+    (assert (= y 1))
+    (check-sat)
+  )");
+  assert(unsatisfiable.result == CheckSatResult::Unsat);
 }
 
 }  // namespace
@@ -272,6 +322,7 @@ int main() {
   detects_conflict_requiring_an_actual_pivot();
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
-  rejects_disequality();
+  handles_disequality_via_boolean_level_case_splitting();
+  distinct_on_reals_works();
   return 0;
 }
