@@ -199,6 +199,21 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   mutation shards, 14/14 real seeds each, 0 bug triggers) both came back
   fully clean. This item is **done** and as trusted as Milestone 4b's
   disequality behavior -- see `docs/run-log.json`.
+- **Competitiveness roadmap item 1 follow-up (2026-07-25): Gaussian
+  elimination over asserted linear equality systems.** The plain
+  recognizer above only catches `x = t` with a bare variable on one side;
+  `--gaussian-elimination` (opt-in, default off) additionally row-reduces
+  (Gauss-Jordan, exact rationals) the whole system of asserted Real
+  equalities, catching single equations with a coefficient (`2x = 5`) and
+  genuine multi-equation systems (`2x+3y=5` and `x-y=1` jointly solving
+  for both `x` and `y`) that the plain recognizer can't. Merges into the
+  same candidate list/accept-reject pipeline the plain recognizer uses --
+  no new correctness logic there. Full suite (Release + ASAN/UBSan) and
+  new unit tests pass. Opt-in specifically because it's materially new
+  algorithmic machinery (not yet campaign-fuzzed the way the rest of
+  solve-eqs has) -- see `docs/preprocessing.md`'s "Gaussian Elimination"
+  section for the design and `docs/run-log.json` for verification status;
+  promote to default-on once campaign-tier Slurm confirmation lands.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching or row-based/interval propagation

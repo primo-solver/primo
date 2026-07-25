@@ -384,6 +384,45 @@ converts Real equality to `Le`/`Lt` form, which runs *after* this one so
 solve-eqs (and eq-bridging, forced-atom/unit-equality propagation) see the
 Real case at all.
 
+### Gaussian Elimination (opt-in)
+
+The plain solve-eqs recognizer above only catches the shape `x = t` with a
+bare, non-Boolean constant on one side -- it misses (a) a single equation
+with a nonzero coefficient but no bare-variable side, e.g. `2x = 5`, and
+(b) a genuine system where no single equation alone defines a variable but
+several row-reduced together do, e.g. `2x+3y=5` and `x-y=1`. Standard LP
+presolve ("doubleton/multi-row equality substitution", see Bixby's survey
+referenced from `docs/papers/lra-related-work.md`) covers both.
+
+`--gaussian-elimination` row-reduces (Gauss-Jordan, exact `util::Rational`
+arithmetic, no floating point) the system of all Real-sorted equalities
+collected from the same top-level-assertion/top-level-conjunct scope as
+plain solve-eqs. Each variable that ends up with a pivot row after full
+reduction becomes an ordinary `SolvedConstantCandidate`, merged into the
+same candidate list the plain recognizer produces and run through the
+exact same cycle-rejection/occurrence-counting/blowup-rejection/rewrite
+pipeline -- no separate accept/reject logic. Pivot order is deterministic
+(variables sorted by `TermId`) for fuzz-test reproducibility. Bounded by
+two defensive caps (number of equations, number of eligible variables) to
+keep the O(equations^2 x variables) elimination cost from blowing up on
+adversarial input; exceeding either cap makes the pass bail out cleanly
+(contributes zero candidates, no crash/hang). Reported by
+`:preprocessing.solve-eqs.gaussian-candidates`, alongside the existing
+solve-eqs stats (which already aggregate across both candidate sources).
+
+A genuinely contradictory system (e.g. `2x+3y=5` and `2x+3y=6`) is not
+specially detected by this pass -- the contradictory row simply never
+becomes anyone's pivot and is silently dropped; the contradiction is still
+caught soundly by the ordinary LRA tableau once the (possibly still
+partially-substituted) assertions reach it. No unsoundness, just no early
+detection.
+
+**Opt-in, default off** (`CheckSatOptions::gaussian_elimination = false`):
+this is materially new algorithmic machinery (row reduction), not just a
+recognizer extension, so it hasn't yet been through campaign-tier fuzzing
+the way the rest of solve-eqs has. Promote to default-on once it has, per
+`docs/arithmetic.md`'s Milestone roadmap.
+
 ## Real-Equality Lowering
 
 Real is a total order, so `t1 = t2 <=> t1 <= t2 AND t2 <= t1`. Rather than
