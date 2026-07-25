@@ -90,17 +90,23 @@ alternatives considered before/while implementing it.
   (`--lra-pivoting-rule {bland,dantzig}`) -- **default stays Bland**, the
   already campaign-fuzzed behavior; `kStatLraBlandFallbacks` reports how
   often the fallback engages.
-- **Disequality**: `Real`-sorted `=` is desugared to `(t1 <= t2) AND (t2 <= t1)`
-  at parse time (`Frontend::mk_theory_equality`, since Real is a total
-  order), not handled as a special relation in the tableau at all. `NOT(t1=t2)`
-  is then just `NOT(AND(Le,Le))`, already correctly handled by
-  `BooleanClausifier`'s existing Tseitin/CNF machinery for arbitrary
-  Boolean structure -- ordinary CDCL branching over the two underlying
-  `Le` atoms explores `t1<t2` vs `t1>t2` for free. No case-splitting or
-  lemma-learning code exists anywhere in `LraTableau`/`OnlineLraPropagator`;
-  `LraAtom`'s `Eq` relation is unreachable through the frontend (kept as
-  defensive dead code, not removed, in case a future code path builds a
-  `Real` equality term some other way).
+- **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
+  (since Real is a total order), not handled as a special relation in the
+  tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already
+  correctly handled by `BooleanClausifier`'s existing Tseitin/CNF machinery
+  for arbitrary Boolean structure -- ordinary CDCL branching over the two
+  underlying `Le` atoms explores `t1<t2` vs `t1>t2` for free. No
+  case-splitting or lemma-learning code exists anywhere in
+  `LraTableau`/`OnlineLraPropagator`; `LraAtom`'s `Eq` relation is
+  unreachable through the frontend (kept as defensive dead code, not
+  removed, in case a future code path builds a `Real` equality term some
+  other way). The lowering itself (`lower_real_equalities` in
+  `preprocessing.cpp`) runs once, as the last step of the preprocessing
+  pipeline, immediately before the `has_equality`/`has_arithmetic` theory
+  dispatch -- **not** at parse time as originally implemented (changed
+  2026-07-25) -- so solve-eqs and the other Equality-aware preprocessing
+  passes see genuine Real `Equality` nodes first. See
+  `docs/preprocessing.md`'s "Real-Equality Lowering" section.
 
 ### Implemented subset vs. deviations vs. limitations
 
@@ -176,6 +182,20 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   rule at campaign scale; Dantzig has only merge-gate-tier (500-case)
   local confirmation, consistent with it being opt-in rather than the
   behavior being promoted.
+
+- **Competitiveness roadmap item 1 (2026-07-25): LRA-aware solve-eqs.**
+  Real-equality lowering moved from parse time to a dedicated
+  `lower_real_equalities` pass at the end of preprocessing (see
+  "Disequality" above), so `substitute_solved_constants` ("solve-eqs")
+  now fires on genuine Real `Equality` nodes instead of silently no-op'ing
+  for QF_LRA. `rewrite_with_solved_constants` and
+  `rewrite_with_ground_unit_equalities` were both extended to recurse into
+  `Plus`/`Times`/`Le`/`Lt` so a substitution actually propagates through
+  arithmetic subterms. Full suite (Release + ASAN/UBSan) and new unit
+  tests pass; local merge-gate fuzz and a fresh campaign-tier Slurm
+  confirmation of the (re-touched) disequality path are the remaining
+  verification steps before this is as trusted as Milestone 4b's already
+  campaign-fuzzed behavior -- see `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching or row-based/interval propagation

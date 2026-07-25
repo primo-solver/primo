@@ -374,6 +374,40 @@ including Boolean constants, equalities hidden under disjunction, and
 context-safe conditional definitions from lowered ITE chains, remains future
 work and needs a separate design note before implementation.
 
+This pass now also fires for QF_LRA: Real equality (`x = t`) is a genuine
+`Equality` node throughout the entire preprocessing pipeline (the frontend
+builds it via the same sort-agnostic `mk_eq` used for uninterpreted sorts),
+so `x = 5` is eliminated the same way an EUF definitional equality would be,
+with the rewrite propagating through arithmetic subterms (`Plus`/`Times`/
+`Le`/`Lt`) as well. See "Real-Equality Lowering" below for the pass that
+converts Real equality to `Le`/`Lt` form, which runs *after* this one so
+solve-eqs (and eq-bridging, forced-atom/unit-equality propagation) see the
+Real case at all.
+
+## Real-Equality Lowering
+
+Real is a total order, so `t1 = t2 <=> t1 <= t2 AND t2 <= t1`. Rather than
+adding disequality case-split machinery to `LraTableau`/`OnlineLraPropagator`
+for negated Real equality, Primo lowers every Real-sorted `Equality` node to
+`And(Le(t1,t2), Le(t2,t1))` -- so `NOT(t1=t2)` reduces to ordinary Boolean
+structure (`NOT(AND(Le,Le))`) that `BooleanClausifier`'s existing Tseitin/CNF
+machinery already handles, and CDCL branching over the two `Le` atoms
+explores `t1<t2` vs `t1>t2` for free, with no bespoke case-split code
+anywhere.
+
+This lowering runs once, as the very last step of the preprocessing
+pipeline, immediately before the `has_equality`/`has_arithmetic` theory
+dispatch. Running it *last* (rather than at parse time, where it used to
+happen) means every other preprocessing pass -- solve-eqs, equality
+bridging, forced-atom propagation, unit-equality congruence closure -- gets
+to see and reason about genuine Real `Equality` nodes, instead of a second,
+parallel `And(Le,Le)` representation those passes would otherwise need to
+special-case. It must still run before `BooleanClausifier`/theory dispatch,
+or QF_LRA disequality would regress to needing the case-split machinery this
+design avoids. Reported by `:preprocessing.real-equality-lowering.lowered`.
+Not optional (no CLI flag) -- it is load-bearing for correctness, not a
+heuristic.
+
 ## ITE Lowering
 
 The SMT-LIB frontend eliminates ITEs before Boolean clausification because the

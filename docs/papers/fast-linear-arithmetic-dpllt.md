@@ -75,11 +75,11 @@ This paper is the base algorithm for Primo's QF_LRA support. See
   `--no-lra-propagation`) purely as an A/B performance switch, unlike
   EUF's multi-mode `EufPropagationMode`.
 
-**Disequality (2026-07-24, done)**: rather than adding a case-split
+**Disequality (2026-07-24, done; lowering moved from parse time to
+late-pipeline preprocessing 2026-07-25)**: rather than adding a case-split
 mechanism to `LraTableau`/`OnlineLraPropagator` for negated equality atoms
 (what the earlier planning discussion assumed would be needed), `Real`
-equality is desugared to `(t1 <= t2) AND (t2 <= t1)` at parse time
-(`Frontend::mk_theory_equality` in `check_sat.cpp`) -- valid because Real
+equality is lowered to `(t1 <= t2) AND (t2 <= t1)` -- valid because Real
 is a total order. `NOT(t1=t2)` then reduces to ordinary Boolean structure
 (`NOT(AND(Le,Le))`) that `BooleanClausifier` already clausifies correctly,
 and CDCL branching over the two `Le` atoms does the case-split for free.
@@ -88,6 +88,22 @@ DPLL(T) delivers each atom's truth value directly, sidestepping the
 question of how a compound relation like `=` decomposes at the Boolean
 level) -- this is a frontend/encoding decision, not a deviation from the
 tableau algorithm itself.
+
+Originally this lowering happened at parse time
+(`Frontend::mk_theory_equality`), before any preprocessing ran -- which
+meant no genuine `Equality` node for a Real term ever existed for
+solve-eqs (or any other Equality-aware preprocessing pass) to see,
+silently making solve-eqs a no-op for QF_LRA. The lowering now happens
+once, as the final step of the preprocessing pipeline
+(`lower_real_equalities` in `preprocessing.cpp`/`check_sat.cpp`),
+immediately before the `has_equality`/`has_arithmetic` theory dispatch --
+so solve-eqs, equality bridging, forced-atom propagation, and
+unit-equality congruence closure all get to reason about genuine Real
+`Equality` nodes first, while `BooleanClausifier`/`LraTableau`/
+`OnlineLraPropagator` still only ever see the same `Le`/`Lt`-pair shape
+they always have. See `docs/preprocessing.md`'s "Real-Equality Lowering"
+section for the full design and `/home/user/.claude/plans/piped-wondering-fairy.md`
+item 1 for the rationale.
 
 ## Implemented subset vs. deviations vs. limitations
 
