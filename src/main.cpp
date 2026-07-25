@@ -192,9 +192,12 @@ int main(int argc, char** argv) {
       ->default_val(false);
   app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
                  "QF_LRA Check/Pivot variable-selection rule: bland (default, "
-                 "anti-cycling-proven) or dantzig (largest-violation/largest-coefficient, "
+                 "anti-cycling-proven), dantzig (largest-violation/largest-coefficient, "
+                 "falls back to bland after enough pivots within one check()), or soi "
+                 "(Sum-of-Infeasibilities Simplex, King/Barrett/Dutertre FMCAD 2013 -- a "
+                 "global Check/Pivot objective across every violated row at once, also "
                  "falls back to bland after enough pivots within one check())")
-      ->check(CLI::IsMember({"bland", "dantzig"}));
+      ->check(CLI::IsMember({"bland", "dantzig", "soi"}));
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_flag("--ground-unit-substitution", solver_options.ground_unit_substitution,
@@ -447,6 +450,8 @@ int main(int argc, char** argv) {
   solver_options.euf_proof_forest_diagnostics = euf_proof_forest_diagnostics;
   if (lra_pivoting_rule == "dantzig") {
     solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Dantzig;
+  } else if (lra_pivoting_rule == "soi") {
+    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Soi;
   } else {
     solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Bland;
   }

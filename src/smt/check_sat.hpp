@@ -67,6 +67,7 @@ enum class QfUfPortfolioMode {
 enum class LraPivotingRule {
   Bland,
   Dantzig,
+  Soi,
 };
 
 struct AutoBudget {

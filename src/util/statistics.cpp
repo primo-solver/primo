@@ -160,6 +160,8 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":preprocessing.real-equality-lowering.lowered"sv,
     ":preprocessing.solve-eqs.gaussian-candidates"sv,
     ":lra.row-propagations"sv,
+    ":lra.soi-multi-row-conflicts"sv,
+    ":lra.soi-quickxplain-calls"sv,
 };
 
 }  // namespace

@@ -89,10 +89,27 @@ class LraTableau {
   // guarantee on its own -- check() falls back to Bland's-rule selection
   // after enough pivots within one call to still terminate; see check()'s
   // definition for why a finite Dantzig prefix followed by a Bland's-rule
-  // suffix is still covered by the paper's termination argument.
-  enum class PivotingRule { Bland, Dantzig };
+  // suffix is still covered by the paper's termination argument. Soi
+  // (competitiveness-roadmap item 4, King/Barrett/Dutertre FMCAD 2013,
+  // "Simplex with Sum of Infeasibilities for SMT") replaces the
+  // single-row objective with a global one -- minimize the sum of
+  // infeasibilities across *every* out-of-bound basic variable at once --
+  // giving pivot selection a global progress criterion Bland/Dantzig
+  // both lack. See the SOI-specific members/methods below.
+  enum class PivotingRule { Bland, Dantzig, Soi };
 
-  explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {}
+  explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {
+    if (rule_ == PivotingRule::Soi) {
+      // The objective row (Section V): a real extra variable/row so
+      // pivot()'s existing, already-correct substitution logic keeps it
+      // consistent across basis changes for free -- only the d_i-flip-
+      // driven additive update (set_soi_direction()) is genuinely new.
+      // Empty initially: no variable is in error before any bounds are
+      // asserted, so every d_i starts at 0.
+      f_var_ = add_variable();
+      add_row(*f_var_, {});
+    }
+  }
 
   // A basic variable's row: basic_var = sum(coefficient * var), one
   // (var, coefficient) pair per term. Not sorted by var id.
@@ -168,6 +185,13 @@ class LraTableau {
   // before and after a check() call themselves.
   std::size_t bland_fallback_count() const { return bland_fallback_count_; }
 
+  // PivotingRule::Soi observability: how many times check() had to build a
+  // multi-row conflict (Section V-B, Flex(f) empty with 2+ rows still
+  // violated), and how many of those invoked QuickXplain-style
+  // minimization (minimize_soi_conflict()). Always 0 under Bland/Dantzig.
+  std::size_t soi_multi_row_conflict_count() const { return soi_multi_row_conflict_count_; }
+  std::size_t soi_quickxplain_call_count() const { return soi_quickxplain_call_count_; }
+
   // Whether `var` is currently a basic (row-defining) variable -- pivots
   // can change this over time, so this reflects the current pivot state,
   // not a static structural property.
@@ -221,7 +245,16 @@ class LraTableau {
     Row old_basic_row;
     std::vector<std::pair<LraVarId, Row>> old_other_rows;
   };
-  using TrailEntry = std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry>;
+  // PivotingRule::Soi only: records one set_soi_direction() call's effect
+  // on f_var_'s row and on `var`'s tracked direction, atomically, so
+  // pop() can't desync the two (see set_soi_direction()'s comment).
+  struct FRowTrailEntry {
+    Row previous_f_row;
+    LraVarId var;
+    int previous_direction;
+  };
+  using TrailEntry =
+      std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry, FRowTrailEntry>;
 
   void update(LraVarId nonbasic_var, const DeltaRational& new_value);
   void pivot(LraVarId basic_var, LraVarId entering_var);
@@ -229,8 +262,69 @@ class LraTableau {
   void undo(const TrailEntry& entry);
   void rebuild_occurs_in_index();
 
+  // -- PivotingRule::Soi (Section V) --
+
+  // eq (3)'s directional multiplier: -1 if `var` (assumed currently
+  // basic) is below its lower bound, +1 if above its upper bound, 0 if
+  // within bounds (or unbounded on the relevant side).
+  int soi_direction(LraVarId var) const;
+
+  // The incremental core of Section V's f-row maintenance ("efficiently...
+  // by instrumenting UPDATE"): if `new_direction` differs from `var`'s
+  // last-recorded direction, merges `(new_direction - old) * var_row`
+  // into f_var_'s row (rebuilding that Row + f_var_'s occurs_in_ entries)
+  // and records an FRowTrailEntry. `var_row` is passed explicitly (rather
+  // than read via rows_.at(var) internally) because the leaving-variable
+  // reset call in pivot() must run *before* that row is erased from
+  // rows_ -- see pivot()'s call site.
+  void set_soi_direction(LraVarId var, int new_direction, const Row& var_row);
+
+  // One SOISELECT call (Fig 5, Section V-A): picks the entering variable,
+  // leaving row, and step size that most reduces the sum-of-infeasibilities
+  // objective, via the breakpoint-sorted DeltaVio(j,delta) walk. Returns
+  // nullopt if no candidate makes progress (Flex(f) is empty) -- the
+  // caller must then check whether E is also empty (satisfiable) or not
+  // (stuck -- build_soi_conflict()).
+  struct SoiSelection {
+    LraVarId entering;
+    LraVarId leaving;
+    DeltaRational delta;
+  };
+  std::optional<SoiSelection> soi_select() const;
+
+  // f_S = sum of d_i*row_i over only `subset` -- shared by
+  // build_soi_conflict and soi_subset_still_conflicts.
+  std::unordered_map<LraVarId, util::Rational> restricted_soi_row(
+      const std::vector<LraVarId>& subset) const;
+
+  // Section V-B's multi-row conflict, restricted to `error_vars` (the
+  // full violated set, or a minimize_soi_conflict()-shrunk subset of it):
+  // f_S's own row (same sign-branching pattern as build_conflict) plus
+  // every var in `error_vars`'s own bound reason.
+  std::vector<sat::Lit> build_soi_conflict(const std::vector<LraVarId>& error_vars) const;
+
+  // Standard QuickXplain (Junker 2001, cited by the paper as [21]) over
+  // `error_vars`, using an is-still-a-conflict oracle that computes a
+  // *restricted* f_S (sum of d_i*row_i over only a candidate subset) and
+  // checks whether any nonbasic variable could still locally reduce it.
+  // Returns a subset of `error_vars` sufficient for build_soi_conflict to
+  // still produce a sound conflict -- not necessarily globally minimal,
+  // but usually is in practice (paper: "most of the time... |S|=2").
+  std::vector<LraVarId> minimize_soi_conflict(const std::vector<LraVarId>& error_vars) const;
+  bool soi_subset_still_conflicts(const std::vector<LraVarId>& subset) const;
+  // The recursive QuickXplain step: minimal subset of `candidates` that,
+  // combined with `background`, still conflicts. Standard algorithm
+  // (Junker 2001) -- not itself paper-specific, just the well-known
+  // divide-and-conquer minimization technique the paper cites by name.
+  std::vector<LraVarId> quickxplain(const std::vector<LraVarId>& background,
+                                    const std::vector<LraVarId>& candidates) const;
+
   PivotingRule rule_;
   std::size_t bland_fallback_count_ = 0;
+  std::size_t soi_multi_row_conflict_count_ = 0;
+  std::size_t soi_quickxplain_call_count_ = 0;
+  std::optional<LraVarId> f_var_;
+  std::unordered_map<LraVarId, int> soi_directions_;
   std::vector<VarState> vars_;
   std::unordered_map<LraVarId, Row> rows_;
   std::unordered_map<LraVarId, std::vector<LraVarId>> occurs_in_;

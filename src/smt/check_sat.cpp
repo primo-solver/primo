@@ -141,6 +141,8 @@ constexpr util::StatKey kStatLraTheoryChecks = util::StatKey::LraTheoryChecks;
 constexpr util::StatKey kStatLraTheoryConflicts = util::StatKey::LraTheoryConflicts;
 constexpr util::StatKey kStatLraTheoryPropagations = util::StatKey::LraTheoryPropagations;
 constexpr util::StatKey kStatLraBlandFallbacks = util::StatKey::LraBlandFallbacks;
+constexpr util::StatKey kStatLraSoiMultiRowConflicts = util::StatKey::LraSoiMultiRowConflicts;
+constexpr util::StatKey kStatLraSoiQuickxplainCalls = util::StatKey::LraSoiQuickxplainCalls;
 constexpr util::StatKey kStatLraRowPropagations = util::StatKey::LraRowPropagations;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
@@ -275,6 +277,8 @@ theory::arithmetic::LraTableau::PivotingRule lra_pivoting_rule_from_options(LraP
       return theory::arithmetic::LraTableau::PivotingRule::Dantzig;
     case LraPivotingRule::Bland:
       return theory::arithmetic::LraTableau::PivotingRule::Bland;
+    case LraPivotingRule::Soi:
+      return theory::arithmetic::LraTableau::PivotingRule::Soi;
   }
   return theory::arithmetic::LraTableau::PivotingRule::Bland;
 }
@@ -3617,9 +3621,15 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     // acceptable for a first correctness-focused milestone, a documented
     // opportunity to optimize later (e.g. deferring to cb_has_external_clause).
     const std::size_t fallbacks_before = tableau_.bland_fallback_count();
+    const std::size_t multi_row_conflicts_before = tableau_.soi_multi_row_conflict_count();
+    const std::size_t quickxplain_calls_before = tableau_.soi_quickxplain_call_count();
     conflict_ = tableau_.check();
     statistics_.increment(kStatLraBlandFallbacks,
                           tableau_.bland_fallback_count() - fallbacks_before);
+    statistics_.increment(kStatLraSoiMultiRowConflicts,
+                          tableau_.soi_multi_row_conflict_count() - multi_row_conflicts_before);
+    statistics_.increment(kStatLraSoiQuickxplainCalls,
+                          tableau_.soi_quickxplain_call_count() - quickxplain_calls_before);
   }
 
   // Scans the other atoms sharing `slack` with the atom that was just

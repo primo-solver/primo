@@ -158,6 +158,8 @@ enum class StatKey : std::size_t {
   RealEqualityLowered,
   SolvedConstantGaussianCandidates,
   LraRowPropagations,
+  LraSoiMultiRowConflicts,
+  LraSoiQuickxplainCalls,
   Count,
 };
 

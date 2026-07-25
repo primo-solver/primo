@@ -437,6 +437,70 @@ void dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
   assert(sat_branching.result == CheckSatResult::Sat);
 }
 
+void soi_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
+  // Mirrors dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios
+  // exactly, under PivotingRule::Soi (competitiveness-roadmap item 4).
+  CheckSatOptions soi;
+  soi.lra_pivoting_rule = LraPivotingRule::Soi;
+
+  const auto unsat_pivot = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 1))
+    (assert (>= (+ x y) 3))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )",
+                                            soi);
+  assert(unsat_pivot.result == CheckSatResult::Unsat);
+
+  const auto unsat_branching = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (<= 3 x))
+    (assert (<= x 7))
+    (check-sat)
+  )",
+                                                soi);
+  assert(unsat_branching.result == CheckSatResult::Unsat);
+
+  const auto sat_branching = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (= x 10))
+    (check-sat)
+  )",
+                                              soi);
+  assert(sat_branching.result == CheckSatResult::Sat);
+}
+
+void soi_multi_row_conflict_fires_end_to_end() {
+  // x+y<=10 and y+z<=10 both violated simultaneously (x>=8,y>=5,z>=8),
+  // sharing y -- exercises the multi-row conflict + QuickXplain path
+  // through the full solver stack, not just LraTableau directly.
+  CheckSatOptions soi;
+  soi.lra_pivoting_rule = LraPivotingRule::Soi;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (<= (+ x y) 10))
+    (assert (<= (+ y z) 10))
+    (assert (>= x 8))
+    (assert (>= z 8))
+    (assert (>= y 5))
+    (check-sat)
+  )",
+                                       soi);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::LraSoiMultiRowConflicts) > 0);
+}
+
 void handles_disequality_via_boolean_level_case_splitting() {
   // Real is a total order, so t1 = t2 <=> t1 <= t2 AND t2 <= t1 -- Frontend
   // desugars Real equality to that conjunction at parse time (mk_theory_equality),
@@ -620,6 +684,8 @@ int main() {
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
+  soi_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
+  soi_multi_row_conflict_fires_end_to_end();
   handles_disequality_via_boolean_level_case_splitting();
   solve_eqs_fires_for_real_definitional_equality();
   gaussian_elimination_solves_joint_system_by_default();

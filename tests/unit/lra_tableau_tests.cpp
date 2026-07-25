@@ -380,6 +380,205 @@ void multi_pivot_system_with_varied_coefficients_under_dantzig() {
   assert(tableau.bland_fallback_count() == 0);
 }
 
+// PivotingRule::Soi (competitiveness-roadmap item 4, King/Barrett/Dutertre
+// FMCAD 2013 "Simplex with Sum of Infeasibilities for SMT"). The paper's
+// own Fig 6 worked example, reproduced exactly: T: x1 = 2*x2 - x3;
+// 3<=x1<=7 (violated, a(x1)=1); x2<=3 (a(x2)=1); 1<=x3 (a(x3)=1). The
+// paper hand-traces SOISELECT choosing entering=x2, delta=1, leaving=x1,
+// reaching Vio(V)=0 in that single pivot -- verified here end-to-end via
+// check()'s final state (is_basic/assignment), not by reaching into
+// soi_select() directly, since it's private.
+//
+// Primo's tableau only ever moves a nonbasic variable's assignment away
+// from 0 via a violated-bound update(), so to reproduce a(x2)=1 (which
+// has no lower bound in the paper's own setup) a harmless x2>=1 lower
+// bound is added here -- it doesn't change Flex(f) eligibility or the
+// breakpoint search for x2 in this scenario (eligibility only checks the
+// upper-bound side here, since f's coefficient for x2 is negative; see
+// the test body), so it's a faithful reproduction, not a different
+// scenario.
+void soi_reproduces_paper_fig6_worked_example() {
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const LraVarId x2 = tableau.add_variable();
+  const LraVarId x3 = tableau.add_variable();
+  const LraVarId x1 = tableau.add_variable();
+  tableau.add_row(x1, {{x2, Rational(2)}, {x3, Rational(-1)}});
+
+  // Order matters: asserting x3's lower bound first, then x2's, drives
+  // x1's assignment (propagated via update()) to exactly 1 = 2*1 - 1,
+  // matching the paper's a(x1)=1 purely through ordinary bound-assertion
+  // propagation, no private/manual state poking.
+  assert(!tableau.assert_lower(x3, rat(1), Lit{1}).has_value());
+  assert(!tableau.assert_lower(x2, rat(1), Lit{2}).has_value());  // see comment above
+  assert(!tableau.assert_upper(x2, rat(3), Lit{3}).has_value());
+  assert(tableau.assignment(x2) == rat(1));
+  assert(tableau.assignment(x3) == rat(1));
+  assert(tableau.assignment(x1) == rat(1));
+
+  assert(!tableau.assert_lower(x1, rat(3), Lit{4}).has_value());
+  assert(!tableau.assert_upper(x1, rat(7), Lit{5}).has_value());
+  // x1 (basic) now violates its lower bound (1 < 3) -- exactly the
+  // paper's starting point, Vio(V)=2.
+
+  const auto result = tableau.check();
+  assert(!result.has_value());  // satisfiable after exactly one pivot
+  assert(!tableau.is_basic(x1));
+  assert(tableau.is_basic(x2));
+  assert(tableau.assignment(x1) == rat(3));  // reached its lower bound exactly
+  assert(tableau.assignment(x2) == rat(2));  // 1 + delta(=1)
+  assert(tableau.assignment(x3) == rat(1));  // unaffected by this pivot
+  assert(tableau.soi_multi_row_conflict_count() == 0);
+}
+
+void soi_matches_bland_on_multi_pivot_scenarios() {
+  // Mirrors satisfiable_system_via_a_slack_row/
+  // infeasible_system_requires_a_pivot_to_discover under Soi.
+  {
+    LraTableau tableau(LraTableau::PivotingRule::Soi);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s = tableau.add_variable();
+    tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+    assert(!tableau.assert_upper(s, rat(5), Lit{1}).has_value());
+    assert(!tableau.assert_lower(x, rat(1), Lit{2}).has_value());
+    assert(!tableau.assert_lower(y, rat(1), Lit{3}).has_value());
+    const auto result = tableau.check();
+    assert(!result.has_value());
+    assert(tableau.assignment(x) + tableau.assignment(y) == tableau.assignment(s));
+    assert(tableau.assignment(s) <= rat(5));
+  }
+  {
+    LraTableau tableau(LraTableau::PivotingRule::Soi);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+    tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(1)}});
+    const Lit upper_reason{1};
+    const Lit lower_reason{2};
+    assert(!tableau.assert_upper(s1, rat(1), upper_reason).has_value());
+    assert(!tableau.assert_lower(s2, rat(3), lower_reason).has_value());
+    assert(!tableau.assert_lower(x, rat(0), Lit{3}).has_value());
+    assert(!tableau.assert_lower(y, rat(0), Lit{4}).has_value());
+    const auto conflict = tableau.check();
+    assert(conflict.has_value());
+  }
+}
+
+void soi_push_pop_restores_state_across_a_pivot() {
+  // Mirrors push_pop_restores_state_across_a_pivot exactly, under Soi --
+  // directly targets the highest-risk, paper-uncovered piece (f_var_'s
+  // row / soi_directions_ trail integration): after pop(), the tableau
+  // must behave identically to having never pivoted under Soi at all.
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(1)}});
+
+  const Lit upper_reason{1};
+  assert(!tableau.assert_upper(s1, rat(1), upper_reason).has_value());
+  assert(!tableau.assert_lower(x, rat(0), Lit{3}).has_value());
+  assert(!tableau.assert_lower(y, rat(0), Lit{4}).has_value());
+  assert(!tableau.check().has_value());  // feasible so far
+
+  const std::size_t checkpoint = tableau.push();
+  const Lit lower_reason{2};
+  assert(!tableau.assert_lower(s2, rat(3), lower_reason).has_value());
+  const auto conflict = tableau.check();  // forces a repair pivot, then finds the conflict
+  assert(conflict.has_value());
+
+  tableau.pop(checkpoint);
+  assert(!tableau.check().has_value());  // feasible again
+
+  // Redo the exact same assertion; must reproduce an equally sound
+  // conflict (Soi's own conflict set may legitimately differ in size
+  // from Bland's, but must still be sound and reproducible run to run).
+  const auto redone_conflict = tableau.assert_lower(s2, rat(3), lower_reason);
+  const auto redone_check_conflict = redone_conflict.has_value() ? redone_conflict : tableau.check();
+  assert(redone_check_conflict.has_value());
+  assert(has_reason(*redone_check_conflict, upper_reason));
+  assert(has_reason(*redone_check_conflict, lower_reason));
+}
+
+void soi_multi_row_conflict_includes_every_violated_row() {
+  // s1 = x+y, s2 = y+z, x>=8, z>=8, y>=5 -- both s1<=10 and s2<=10 are
+  // simultaneously violated (13>10 each) with y shared between them.
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{y, Rational(1)}, {z, Rational(1)}});
+
+  const Lit x_lower{1};
+  const Lit z_lower{2};
+  const Lit y_lower{3};
+  const Lit s1_upper{4};
+  const Lit s2_upper{5};
+  assert(!tableau.assert_lower(x, rat(8), x_lower).has_value());
+  assert(!tableau.assert_lower(z, rat(8), z_lower).has_value());
+  assert(!tableau.assert_lower(y, rat(5), y_lower).has_value());
+  assert(!tableau.assert_upper(s1, rat(10), s1_upper).has_value());
+  assert(!tableau.assert_upper(s2, rat(10), s2_upper).has_value());
+
+  const auto conflict = tableau.check();
+  assert(conflict.has_value());
+  assert(tableau.soi_multi_row_conflict_count() == 1);
+  // Sound regardless of exactly which rows minimize_soi_conflict kept:
+  // every cited reason must be one of the five asserted above.
+  for (const Lit reason : *conflict) {
+    assert(reason.value == x_lower.value || reason.value == z_lower.value ||
+          reason.value == y_lower.value || reason.value == s1_upper.value ||
+          reason.value == s2_upper.value);
+  }
+}
+
+void soi_quickxplain_minimizes_independent_conflicts() {
+  // Three independently-pinned, independently-violated rows sharing no
+  // variables -- each is already a complete conflict on its own (its
+  // only term is pinned to a single point, no possible movement), so
+  // minimize_soi_conflict must return exactly one of them, never all
+  // three -- directly tests minimization behavior, not just soundness.
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const LraVarId a = tableau.add_variable();
+  const LraVarId b = tableau.add_variable();
+  const LraVarId c = tableau.add_variable();
+  const LraVarId r1 = tableau.add_variable();
+  const LraVarId r2 = tableau.add_variable();
+  const LraVarId r3 = tableau.add_variable();
+  tableau.add_row(r1, {{a, Rational(1)}});
+  tableau.add_row(r2, {{b, Rational(1)}});
+  tableau.add_row(r3, {{c, Rational(1)}});
+
+  assert(!tableau.assert_lower(a, rat(0), Lit{1}).has_value());
+  assert(!tableau.assert_upper(a, rat(0), Lit{2}).has_value());
+  assert(!tableau.assert_lower(b, rat(0), Lit{3}).has_value());
+  assert(!tableau.assert_upper(b, rat(0), Lit{4}).has_value());
+  assert(!tableau.assert_lower(c, rat(0), Lit{5}).has_value());
+  assert(!tableau.assert_upper(c, rat(0), Lit{6}).has_value());
+
+  const Lit r1_reason{7};
+  const Lit r2_reason{8};
+  const Lit r3_reason{9};
+  assert(!tableau.assert_lower(r1, rat(5), r1_reason).has_value());
+  assert(!tableau.assert_lower(r2, rat(5), r2_reason).has_value());
+  assert(!tableau.assert_lower(r3, rat(5), r3_reason).has_value());
+
+  const auto conflict = tableau.check();
+  assert(conflict.has_value());
+  assert(tableau.soi_multi_row_conflict_count() == 1);
+  const bool has_r1 = has_reason(*conflict, r1_reason);
+  const bool has_r2 = has_reason(*conflict, r2_reason);
+  const bool has_r3 = has_reason(*conflict, r3_reason);
+  assert((has_r1 ? 1 : 0) + (has_r2 ? 1 : 0) + (has_r3 ? 1 : 0) == 1);
+}
+
 }  // namespace
 
 int main() {
@@ -399,5 +598,10 @@ int main() {
   satisfiable_system_via_a_slack_row_under_dantzig();
   infeasible_system_requires_a_pivot_to_discover_under_dantzig();
   multi_pivot_system_with_varied_coefficients_under_dantzig();
+  soi_reproduces_paper_fig6_worked_example();
+  soi_matches_bland_on_multi_pivot_scenarios();
+  soi_push_pop_restores_state_across_a_pivot();
+  soi_multi_row_conflict_includes_every_violated_row();
+  soi_quickxplain_minimizes_independent_conflicts();
   return 0;
 }
