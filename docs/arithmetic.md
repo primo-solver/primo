@@ -76,6 +76,44 @@ alternatives considered before/while implementing it.
   (no candidate/budget/backoff machinery like EUF's propagation needs).
   Gated behind `CheckSatOptions::lra_propagation` (default on),
   `--lra-propagation`/`--no-lra-propagation` CLI flags.
+- **Row-based/interval bound propagation** (competitiveness-roadmap item 2,
+  2026-07-25, `check_sat.cpp`): generalizes same-slack propagation to a
+  *derived* rather than only directly-asserted bound. For a row `basic_var
+  = sum(coeff_j * var_j)`, `compute_implied_bound` sums each term's own
+  maximum/minimum contribution (`var_j`'s upper bound if `coeff_j` is
+  positive, lower if negative, for the implied-upper case; symmetric for
+  implied-lower) into an implied interval for `basic_var`, then checks it
+  against `atoms_by_slack[basic_var]` exactly like same-slack propagation
+  does. Triggered from the same `notify_assignment_lit` hook, right after
+  the same-slack scan, on whatever slack was just tightened.
+  **Bounds in this tableau design only ever live on slacks** (every atom,
+  even a bare single-variable one like `(<= x 2)`, gets its own dedicated
+  slack/row -- structural variables like `x` never receive a bound
+  directly), so a row's *term* variables need an extra indirection to find
+  their current bound at all: `PreparedLraTheory::single_variable_slack`
+  (built once at construction, alongside the existing `atoms_by_slack`)
+  maps a raw variable to the slack that wraps it alone (coefficient
+  exactly 1 -- a deliberate first-cut scope limit, not a fundamental one),
+  when such an atom exists in the formula; `variable_for_single_slack` is
+  its reverse, used on the trigger side to decide whether a just-changed
+  slack is even relevant to rescan. Reasons are genuinely multi-literal
+  (one antecedent per row term used, unlike same-slack propagation's
+  single-literal reason) -- `OnlineLraPropagator`'s `pending_`/`reasons_`/
+  `cb_add_reason_clause_lit` were widened from a single `sat::Lit` to
+  `vector<sat::Lit>` to carry this (same-slack entries become singleton
+  vectors, unchanged behavior). Two defensive, non-adaptive caps
+  (`kRowBasedPropagationMaxRowSize`, `kRowBasedPropagationMaxFanout`,
+  both 64) bound the O(row size) per-affected-row cost this technique has
+  that same-slack propagation's O(atoms sharing a slack) doesn't. Reported
+  by `:lra.row-propagations`, alongside the existing aggregate
+  `:lra.theory-propagations`. **Opt-in**
+  (`CheckSatOptions::lra_row_propagation = false`,
+  `--lra-row-propagation`), only takes effect when `lra_propagation` is
+  also enabled -- materially new algorithmic machinery, not yet
+  campaign-fuzzed. Only derives a row's *own* implied bound and checks its
+  *own* slack's atoms -- does not (yet) rearrange a row to tighten one of
+  its *children's* bounds from the basic variable's own bound (Section 4's
+  fuller bidirectional treatment), a natural, bigger follow-up.
 - **Selectable pivoting rule** (Milestone 4a, `lra_tableau.{hpp,cpp}`):
   `LraTableau::PivotingRule::{Bland, Dantzig}`. Dantzig picks the
   most-violated basic variable and largest-`|coefficient|` entering
@@ -217,11 +255,28 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   answers/bug triggers) both came back fully clean -- see
   `docs/preprocessing.md`'s "Gaussian Elimination" section for the design
   and `docs/run-log.json` for the full verification trail.
+- **Competitiveness roadmap item 2 (2026-07-25): row-based/interval bound
+  propagation.** See "Row-based/interval bound propagation" above for the
+  design. Full suite (Release + ASAN/UBSan) and new unit tests pass. Opt-in
+  (`--lra-row-propagation`), same staged-rollout reasoning as item 1's
+  Gaussian elimination. A quick 17-file real-benchmark re-run (the same
+  sample as this roadmap's original quick-eval) showed the mechanism does
+  fire on several real files (`:lra.row-propagations` nonzero, up to
+  thousands of propagations on some, confirmed via `--stats`, including on
+  some of the still-0%-solved families) but did **not** move the sat/unsat
+  outcome on that narrow 17-file/5s-timeout sample -- 6/17 solved either
+  way, same set, no wrong answers. This mirrors Milestone 3b's own
+  same-slack-propagation finding exactly (real work happening, timeout
+  cases stay timeouts at this sample size/budget) -- not a negative
+  result for the mechanism, just evidence that propagation reach alone
+  isn't what's gating these particular hard families; see `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
-scale-invariant polynomial matching or row-based/interval propagation
-(Milestone 3b's real-benchmark finding suggests either would move the
-still-hard families further than same-slack propagation alone); Devex or
-Steepest-Edge pivoting (Milestone 4a covered only Dantzig); a
+scale-invariant polynomial matching (item 3, would extend both same-slack
+and row-based propagation's reach by letting proportional polynomials like
+`x<=5`/`2x<=10` share a slack); the row-based propagation follow-up noted
+above (tightening a row's *children* from its own bound, not just deriving
+the row's own implied bound); Devex or Steepest-Edge pivoting (Milestone
+4a covered only Dantzig); a
 campaign-tier confirmation specifically for `--lra-pivoting-rule dantzig`
 if it's ever considered for becoming the default.
