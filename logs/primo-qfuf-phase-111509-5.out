@@ -6,5 +6,5 @@ cadical: cadical-3.0.0-7b99c07
 [3/5] QG tmp/QF_UF/QG-classification/qg7/iso_brn_repgen_sk033.smt2: ok sat 0.445927s
 [4/5] PEQ tmp/QF_UF/PEQ/PEQ002_size8.smt2: timeout unknown 60.063827s
 [5/5] Goel tmp/QF_UF/2018-Goel-hwbench/QF_UF_adding.3.prop1_ab_reg_max.smt2: ok sat 0.557392s
-wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111509/default/shard-5.csv
-wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111509/default/shard-5-summary.csv
+wrote <slurm-workdir>/results/qfuf-phase-compare-111509/default/shard-5.csv
+wrote <slurm-workdir>/results/qfuf-phase-compare-111509/default/shard-5-summary.csv

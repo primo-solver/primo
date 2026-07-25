@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=primo-qg-raw-amo
-#SBATCH --output=/home/janotmik/primo-raw-amo/results/qg-raw-amo-slurm-2905733/logs/%A_%a.out
-#SBATCH --error=/home/janotmik/primo-raw-amo/results/qg-raw-amo-slurm-2905733/logs/%A_%a.err
+#SBATCH --output=results/qg-raw-amo-slurm-2905733/logs/%A_%a.out
+#SBATCH --error=results/qg-raw-amo-slurm-2905733/logs/%A_%a.err
 #SBATCH --array=0-7
 #SBATCH --time=02:30:00
 #SBATCH --cpus-per-task=2
@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-WORKDIR=/home/janotmik/primo-raw-amo
+WORKDIR=${PRIMO_WORKDIR:-$HOME/primo-raw-amo}
 RESULT_DIR="$WORKDIR/results/qg-raw-amo-slurm-2905733"
 SHARDS=8
 SHARD_INDEX="${SLURM_ARRAY_TASK_ID:-0}"

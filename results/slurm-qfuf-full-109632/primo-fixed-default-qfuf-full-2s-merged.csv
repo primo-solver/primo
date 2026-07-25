@@ -25,7 +25,7 @@ primo,0,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.3.prop1_ab_reg_max.smt2,Goel,
 primo,0,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_state_machine_ab_reg_max.smt2,Goel,ok,unsat,0.009308,false,0,
 primo,0,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.5.prop1_ab_cti_max.smt2,Goel,ok,sat,0.349350,false,0,
 primo,0,tmp/QF_UF/2018-Goel-hwbench/QF_UF_v_DAIO_ab_cti_max.smt2,Goel,ok,sat,0.052677,false,0,
-primo,0,tmp/QF_UF/20190906-CLEARSY/0015/00249.smt2,20190906-CLEARSY,ok,unsupported,0.013002,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00249.smt2: unsupported command: define-fun\n
+primo,0,tmp/QF_UF/20190906-CLEARSY/0015/00249.smt2,20190906-CLEARSY,ok,unsupported,0.013002,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00249.smt2: unsupported command: define-fun\n
 primo,0,tmp/QF_UF/NEQ/NEQ015_size6.smt2,NEQ,timeout,error,2.022264,true,124,
 primo,0,tmp/QF_UF/NEQ/NEQ046_size6.smt2,NEQ,timeout,error,2.023291,true,124,
 primo,0,tmp/QF_UF/PEQ/PEQ013_size8.smt2,PEQ,timeout,error,2.009256,true,124,
@@ -260,7 +260,7 @@ primo,1,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.4.prop1_ab_cti_max.smt2,Goel,
 primo,1,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_sym_ex_ab_cti_max.smt2,Goel,ok,sat,0.015512,false,0,
 primo,1,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.5.prop1_ab_reg_max.smt2,Goel,ok,sat,0.015856,false,0,
 primo,1,tmp/QF_UF/2018-Goel-hwbench/QF_UF_v_DAIO_ab_fp_max.smt2,Goel,ok,sat,0.430835,false,0,
-primo,1,tmp/QF_UF/20190906-CLEARSY/0015/00251.smt2,20190906-CLEARSY,ok,unsupported,0.012767,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00251.smt2: unsupported command: define-fun\n
+primo,1,tmp/QF_UF/20190906-CLEARSY/0015/00251.smt2,20190906-CLEARSY,ok,unsupported,0.012767,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00251.smt2: unsupported command: define-fun\n
 primo,1,tmp/QF_UF/NEQ/NEQ016_size5.smt2,NEQ,timeout,error,2.004646,true,124,
 primo,1,tmp/QF_UF/NEQ/NEQ048_size6.smt2,NEQ,timeout,error,2.008991,true,124,
 primo,1,tmp/QF_UF/PEQ/PEQ014_size10.smt2,PEQ,timeout,error,2.020747,true,124,
@@ -494,8 +494,8 @@ primo,10,tmp/QF_UF/2018-Goel-hwbench/QF_UF_resistance.2.prop3_ab_reg_max.smt2,Go
 primo,10,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sdlx_ab_fp_max.smt2,Goel,ok,sat,0.072679,false,0,
 primo,10,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synabs2_ab_reg_max.smt2,Goel,ok,sat,0.011245,false,0,
 primo,10,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.5.prop1_ab_cti_max.smt2,Goel,ok,sat,0.471352,false,0,
-primo,10,tmp/QF_UF/20190906-CLEARSY/0001/00304.smt2,20190906-CLEARSY,ok,unsupported,0.037930,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00304.smt2: unsupported command: define-fun\n
-primo,10,tmp/QF_UF/20190906-CLEARSY/0016/00428.smt2,20190906-CLEARSY,ok,unsupported,0.016300,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00428.smt2: unsupported command: define-fun\n
+primo,10,tmp/QF_UF/20190906-CLEARSY/0001/00304.smt2,20190906-CLEARSY,ok,unsupported,0.037930,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00304.smt2: unsupported command: define-fun\n
+primo,10,tmp/QF_UF/20190906-CLEARSY/0016/00428.smt2,20190906-CLEARSY,ok,unsupported,0.016300,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00428.smt2: unsupported command: define-fun\n
 primo,10,tmp/QF_UF/NEQ/NEQ027_size11.smt2,NEQ,timeout,error,2.016475,true,124,
 primo,10,tmp/QF_UF/PEQ/PEQ003_size7.smt2,PEQ,timeout,error,2.011853,true,124,
 primo,10,tmp/QF_UF/PEQ/PEQ018_size5.smt2,PEQ,timeout,error,2.005213,true,124,
@@ -729,8 +729,8 @@ primo,11,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.1.prop1_ab_cti_max.smt2,Goel,o
 primo,11,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sdlx_ab_reg_max.smt2,Goel,ok,sat,0.014309,false,0,
 primo,11,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_cti_max.smt2,Goel,ok,sat,0.009527,false,0,
 primo,11,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.5.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.012961,false,0,
-primo,11,tmp/QF_UF/20190906-CLEARSY/0001/00314.smt2,20190906-CLEARSY,ok,unsupported,0.031381,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00314.smt2: unsupported command: define-fun\n
-primo,11,tmp/QF_UF/20190906-CLEARSY/0016/00793.smt2,20190906-CLEARSY,ok,unsupported,0.072277,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00793.smt2: unsupported command: define-fun\n
+primo,11,tmp/QF_UF/20190906-CLEARSY/0001/00314.smt2,20190906-CLEARSY,ok,unsupported,0.031381,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00314.smt2: unsupported command: define-fun\n
+primo,11,tmp/QF_UF/20190906-CLEARSY/0016/00793.smt2,20190906-CLEARSY,ok,unsupported,0.072277,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00793.smt2: unsupported command: define-fun\n
 primo,11,tmp/QF_UF/NEQ/NEQ027_size8.smt2,NEQ,timeout,error,2.010326,true,124,
 primo,11,tmp/QF_UF/PEQ/PEQ003_size8.smt2,PEQ,timeout,error,2.008139,true,124,
 primo,11,tmp/QF_UF/PEQ/PEQ018_size6.smt2,PEQ,timeout,error,2.006122,true,124,
@@ -964,8 +964,8 @@ primo,12,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.1.prop1_ab_reg_max.smt2,Goel,o
 primo,12,tmp/QF_UF/2018-Goel-hwbench/QF_UF_seq_ab_cti_max.smt2,Goel,ok,sat,0.008868,false,0,
 primo,12,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.1.prop1_ab_cti_max.smt2,Goel,ok,sat,0.368163,false,0,
 primo,12,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.6.prop1_ab_cti_max.smt2,Goel,ok,sat,0.392097,false,0,
-primo,12,tmp/QF_UF/20190906-CLEARSY/0001/00346.smt2,20190906-CLEARSY,ok,unsupported,0.024143,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00346.smt2: unsupported command: define-fun\n
-primo,12,tmp/QF_UF/20190906-CLEARSY/0016/01052.smt2,20190906-CLEARSY,ok,unsupported,0.011425,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/01052.smt2: unsupported command: define-fun\n
+primo,12,tmp/QF_UF/20190906-CLEARSY/0001/00346.smt2,20190906-CLEARSY,ok,unsupported,0.024143,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00346.smt2: unsupported command: define-fun\n
+primo,12,tmp/QF_UF/20190906-CLEARSY/0016/01052.smt2,20190906-CLEARSY,ok,unsupported,0.011425,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/01052.smt2: unsupported command: define-fun\n
 primo,12,tmp/QF_UF/NEQ/NEQ027_size9.smt2,NEQ,timeout,error,2.010772,true,124,
 primo,12,tmp/QF_UF/PEQ/PEQ003_size9.smt2,PEQ,timeout,error,2.010258,true,124,
 primo,12,tmp/QF_UF/PEQ/PEQ018_size7.smt2,PEQ,timeout,error,2.007663,true,124,
@@ -1199,8 +1199,8 @@ primo,13,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.2.prop1_ab_cti_max.smt2,Goel,o
 primo,13,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.1.prop1_ab_br_max.smt2,Goel,timeout,error,2.006319,true,124,
 primo,13,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.2.prop1_ab_cti_max.smt2,Goel,ok,sat,0.465764,false,0,
 primo,13,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.7.prop1_ab_cti_max.smt2,Goel,ok,sat,0.350421,false,0,
-primo,13,tmp/QF_UF/20190906-CLEARSY/0001/00379.smt2,20190906-CLEARSY,ok,unsupported,0.031014,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00379.smt2: unsupported command: define-fun\n
-primo,13,tmp/QF_UF/20190906-CLEARSY/0021/00001.smt2,20190906-CLEARSY,ok,unsupported,0.011958,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0021/00001.smt2: unsupported command: define-fun\n
+primo,13,tmp/QF_UF/20190906-CLEARSY/0001/00379.smt2,20190906-CLEARSY,ok,unsupported,0.031014,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00379.smt2: unsupported command: define-fun\n
+primo,13,tmp/QF_UF/20190906-CLEARSY/0021/00001.smt2,20190906-CLEARSY,ok,unsupported,0.011958,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0021/00001.smt2: unsupported command: define-fun\n
 primo,13,tmp/QF_UF/NEQ/NEQ031_size10.smt2,NEQ,timeout,error,2.014216,true,124,
 primo,13,tmp/QF_UF/PEQ/PEQ004_size6.smt2,PEQ,timeout,error,2.006263,true,124,
 primo,13,tmp/QF_UF/PEQ/PEQ019_size4.smt2,PEQ,ok,unsat,0.110332,false,0,
@@ -1434,8 +1434,8 @@ primo,14,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.2.prop1_ab_reg_max.smt2,Goel,o
 primo,14,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.1.prop1_ab_cti_max.smt2,Goel,timeout,error,2.006683,true,124,
 primo,14,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.2.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.355259,false,0,
 primo,14,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.7.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.286973,false,0,
-primo,14,tmp/QF_UF/20190906-CLEARSY/0001/00435.smt2,20190906-CLEARSY,ok,unsupported,0.040895,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00435.smt2: unsupported command: define-fun\n
-primo,14,tmp/QF_UF/20190906-CLEARSY/0021/00002.smt2,20190906-CLEARSY,ok,unsupported,0.012333,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0021/00002.smt2: unsupported command: define-fun\n
+primo,14,tmp/QF_UF/20190906-CLEARSY/0001/00435.smt2,20190906-CLEARSY,ok,unsupported,0.040895,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00435.smt2: unsupported command: define-fun\n
+primo,14,tmp/QF_UF/20190906-CLEARSY/0021/00002.smt2,20190906-CLEARSY,ok,unsupported,0.012333,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0021/00002.smt2: unsupported command: define-fun\n
 primo,14,tmp/QF_UF/NEQ/NEQ031_size7.smt2,NEQ,timeout,error,2.010633,true,124,
 primo,14,tmp/QF_UF/PEQ/PEQ004_size7.smt2,PEQ,timeout,error,2.007559,true,124,
 primo,14,tmp/QF_UF/PEQ/PEQ019_size5.smt2,PEQ,ok,unsat,0.816240,false,0,
@@ -1669,8 +1669,8 @@ primo,15,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.3.prop1_ab_cti_max.smt2,Goel,o
 primo,15,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.1.prop1_ab_reg_max.smt2,Goel,timeout,error,2.007102,true,124,
 primo,15,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.3.prop1_ab_cti_max.smt2,Goel,ok,sat,0.536136,false,0,
 primo,15,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.8.prop1_ab_cti_max.smt2,Goel,ok,sat,0.472084,false,0,
-primo,15,tmp/QF_UF/20190906-CLEARSY/0004/00003.smt2,20190906-CLEARSY,ok,unsupported,0.013734,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0004/00003.smt2: unsupported command: define-fun\n
-primo,15,tmp/QF_UF/20190906-CLEARSY/0022/00014.smt2,20190906-CLEARSY,ok,unsupported,0.012380,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0022/00014.smt2: unsupported command: define-fun\n
+primo,15,tmp/QF_UF/20190906-CLEARSY/0004/00003.smt2,20190906-CLEARSY,ok,unsupported,0.013734,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0004/00003.smt2: unsupported command: define-fun\n
+primo,15,tmp/QF_UF/20190906-CLEARSY/0022/00014.smt2,20190906-CLEARSY,ok,unsupported,0.012380,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0022/00014.smt2: unsupported command: define-fun\n
 primo,15,tmp/QF_UF/NEQ/NEQ031_size8.smt2,NEQ,timeout,error,2.010452,true,124,
 primo,15,tmp/QF_UF/PEQ/PEQ004_size8.smt2,PEQ,timeout,error,2.009474,true,124,
 primo,15,tmp/QF_UF/PEQ/PEQ019_size6.smt2,PEQ,timeout,error,2.005696,true,124,
@@ -1903,8 +1903,8 @@ primo,16,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.3.prop1_ab_reg_max.smt2,Goel,o
 primo,16,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.2.prop1_ab_br_max.smt2,Goel,timeout,error,2.020042,true,124,
 primo,16,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.3.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.012123,false,0,
 primo,16,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.8.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.013553,false,0,
-primo,16,tmp/QF_UF/20190906-CLEARSY/0005/00011.smt2,20190906-CLEARSY,ok,unsupported,0.019494,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0005/00011.smt2: unsupported command: define-fun\n
-primo,16,tmp/QF_UF/20190906-CLEARSY/0023/00152.smt2,20190906-CLEARSY,ok,unsupported,0.011093,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00152.smt2: unsupported command: define-fun\n
+primo,16,tmp/QF_UF/20190906-CLEARSY/0005/00011.smt2,20190906-CLEARSY,ok,unsupported,0.019494,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0005/00011.smt2: unsupported command: define-fun\n
+primo,16,tmp/QF_UF/20190906-CLEARSY/0023/00152.smt2,20190906-CLEARSY,ok,unsupported,0.011093,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00152.smt2: unsupported command: define-fun\n
 primo,16,tmp/QF_UF/NEQ/NEQ031_size9.smt2,NEQ,timeout,error,2.011629,true,124,
 primo,16,tmp/QF_UF/PEQ/PEQ004_size9.smt2,PEQ,timeout,error,2.010937,true,124,
 primo,16,tmp/QF_UF/PEQ/PEQ019_size7.smt2,PEQ,timeout,error,2.006419,true,124,
@@ -2137,8 +2137,8 @@ primo,17,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.4.prop1_ab_cti_max.smt2,Goel,o
 primo,17,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.2.prop1_ab_cti_max.smt2,Goel,timeout,error,2.007300,true,124,
 primo,17,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.4.prop1_ab_cti_max.smt2,Goel,ok,sat,0.635872,false,0,
 primo,17,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.1.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.011272,false,0,
-primo,17,tmp/QF_UF/20190906-CLEARSY/0005/00081.smt2,20190906-CLEARSY,ok,unsupported,0.015255,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0005/00081.smt2: unsupported command: define-fun\n
-primo,17,tmp/QF_UF/20190906-CLEARSY/0023/00235.smt2,20190906-CLEARSY,ok,unsupported,0.010979,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00235.smt2: unsupported command: define-fun\n
+primo,17,tmp/QF_UF/20190906-CLEARSY/0005/00081.smt2,20190906-CLEARSY,ok,unsupported,0.015255,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0005/00081.smt2: unsupported command: define-fun\n
+primo,17,tmp/QF_UF/20190906-CLEARSY/0023/00235.smt2,20190906-CLEARSY,ok,unsupported,0.010979,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00235.smt2: unsupported command: define-fun\n
 primo,17,tmp/QF_UF/NEQ/NEQ032_size3.smt2,NEQ,timeout,error,2.005918,true,124,
 primo,17,tmp/QF_UF/PEQ/PEQ010_size5.smt2,PEQ,timeout,error,2.008924,true,124,
 primo,17,tmp/QF_UF/PEQ/PEQ020_size5.smt2,PEQ,timeout,error,2.005659,true,124,
@@ -2371,8 +2371,8 @@ primo,18,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.4.prop1_ab_reg_max.smt2,Goel,o
 primo,18,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.2.prop1_ab_fp_max.smt2,Goel,timeout,error,2.005826,true,124,
 primo,18,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.4.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.012677,false,0,
 primo,18,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.2.prop1_ab_cti_max.smt2,Goel,ok,sat,0.179597,false,0,
-primo,18,tmp/QF_UF/20190906-CLEARSY/0008/00060.smt2,20190906-CLEARSY,ok,unsupported,0.017774,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0008/00060.smt2: unsupported command: define-fun\n
-primo,18,tmp/QF_UF/20190906-CLEARSY/0023/00293.smt2,20190906-CLEARSY,ok,unsupported,0.010106,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00293.smt2: unsupported command: define-fun\n
+primo,18,tmp/QF_UF/20190906-CLEARSY/0008/00060.smt2,20190906-CLEARSY,ok,unsupported,0.017774,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0008/00060.smt2: unsupported command: define-fun\n
+primo,18,tmp/QF_UF/20190906-CLEARSY/0023/00293.smt2,20190906-CLEARSY,ok,unsupported,0.010106,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00293.smt2: unsupported command: define-fun\n
 primo,18,tmp/QF_UF/NEQ/NEQ032_size4.smt2,NEQ,timeout,error,2.008732,true,124,
 primo,18,tmp/QF_UF/PEQ/PEQ010_size6.smt2,PEQ,timeout,error,2.007215,true,124,
 primo,18,tmp/QF_UF/PEQ/PEQ020_size6.smt2,PEQ,timeout,error,2.009298,true,124,
@@ -2605,8 +2605,8 @@ primo,19,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.5.prop1_ab_cti_max.smt2,Goel,o
 primo,19,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.3.prop1_ab_br_max.smt2,Goel,timeout,error,2.013496,true,124,
 primo,19,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.5.prop1_ab_cti_max.smt2,Goel,ok,sat,0.567216,false,0,
 primo,19,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.2.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.012589,false,0,
-primo,19,tmp/QF_UF/20190906-CLEARSY/0009/00020.smt2,20190906-CLEARSY,ok,unsupported,0.014106,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00020.smt2: unsupported command: define-fun\n
-primo,19,tmp/QF_UF/20190906-CLEARSY/0023/00913.smt2,20190906-CLEARSY,ok,unsupported,0.013282,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00913.smt2: unsupported command: define-fun\n
+primo,19,tmp/QF_UF/20190906-CLEARSY/0009/00020.smt2,20190906-CLEARSY,ok,unsupported,0.014106,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00020.smt2: unsupported command: define-fun\n
+primo,19,tmp/QF_UF/20190906-CLEARSY/0023/00913.smt2,20190906-CLEARSY,ok,unsupported,0.013282,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00913.smt2: unsupported command: define-fun\n
 primo,19,tmp/QF_UF/NEQ/NEQ032_size5.smt2,NEQ,timeout,error,2.016060,true,124,
 primo,19,tmp/QF_UF/PEQ/PEQ010_size7.smt2,PEQ,timeout,error,2.009497,true,124,
 primo,19,tmp/QF_UF/PEQ/PEQ020_size7.smt2,PEQ,timeout,error,2.012969,true,124,
@@ -2840,7 +2840,7 @@ primo,2,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.4.prop1_ab_reg_max.smt2,Goel,
 primo,2,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_sym_ex_ab_reg_max.smt2,Goel,ok,unsat,0.008818,false,0,
 primo,2,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.1.prop1_ab_cti_max.smt2,Goel,ok,sat,0.124055,false,0,
 primo,2,tmp/QF_UF/2018-Goel-hwbench/QF_UF_v_DAIO_ab_reg_max.smt2,Goel,ok,sat,0.011818,false,0,
-primo,2,tmp/QF_UF/20190906-CLEARSY/0015/00294.smt2,20190906-CLEARSY,ok,unsupported,0.010534,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00294.smt2: unsupported command: define-fun\n
+primo,2,tmp/QF_UF/20190906-CLEARSY/0015/00294.smt2,20190906-CLEARSY,ok,unsupported,0.010534,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00294.smt2: unsupported command: define-fun\n
 primo,2,tmp/QF_UF/NEQ/NEQ016_size6.smt2,NEQ,timeout,error,2.004841,true,124,
 primo,2,tmp/QF_UF/NEQ/NEQ048_size7.smt2,NEQ,timeout,error,2.011810,true,124,
 primo,2,tmp/QF_UF/PEQ/PEQ014_size11.smt2,PEQ,timeout,error,2.019516,true,124,
@@ -3074,8 +3074,8 @@ primo,20,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.5.prop1_ab_reg_max.smt2,Goel,o
 primo,20,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sokoban.3.prop1_ab_reg_max.smt2,Goel,timeout,error,2.012420,true,124,
 primo,20,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.5.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.428326,false,0,
 primo,20,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.3.prop1_ab_cti_max.smt2,Goel,ok,sat,0.178185,false,0,
-primo,20,tmp/QF_UF/20190906-CLEARSY/0009/00035.smt2,20190906-CLEARSY,ok,unsupported,0.013699,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00035.smt2: unsupported command: define-fun\n
-primo,20,tmp/QF_UF/20190906-CLEARSY/0023/00967.smt2,20190906-CLEARSY,ok,unsupported,0.012918,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00967.smt2: unsupported command: define-fun\n
+primo,20,tmp/QF_UF/20190906-CLEARSY/0009/00035.smt2,20190906-CLEARSY,ok,unsupported,0.013699,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00035.smt2: unsupported command: define-fun\n
+primo,20,tmp/QF_UF/20190906-CLEARSY/0023/00967.smt2,20190906-CLEARSY,ok,unsupported,0.012918,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0023/00967.smt2: unsupported command: define-fun\n
 primo,20,tmp/QF_UF/NEQ/NEQ032_size6.smt2,NEQ,timeout,error,2.011750,true,124,
 primo,20,tmp/QF_UF/PEQ/PEQ010_size8.smt2,PEQ,timeout,error,2.012134,true,124,
 primo,20,tmp/QF_UF/QG-classification/loops6/dead_dnd001.smt2,QG,timeout,error,2.005913,true,124,
@@ -3308,7 +3308,7 @@ primo,21,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.6.prop1_ab_cti_max.smt2,Goel,o
 primo,21,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_ball2001_ab_cti_max.smt2,Goel,ok,sat,0.016312,false,0,
 primo,21,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.6.prop1_ab_cti_max.smt2,Goel,ok,sat,0.670238,false,0,
 primo,21,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.3.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.100767,false,0,
-primo,21,tmp/QF_UF/20190906-CLEARSY/0009/00102.smt2,20190906-CLEARSY,ok,unsupported,0.013233,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00102.smt2: unsupported command: define-fun\n
+primo,21,tmp/QF_UF/20190906-CLEARSY/0009/00102.smt2,20190906-CLEARSY,ok,unsupported,0.013233,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00102.smt2: unsupported command: define-fun\n
 primo,21,tmp/QF_UF/NEQ/NEQ004_size4.smt2,NEQ,ok,unsat,0.485441,false,0,
 primo,21,tmp/QF_UF/NEQ/NEQ033_size3.smt2,NEQ,timeout,error,2.008887,true,124,
 primo,21,tmp/QF_UF/PEQ/PEQ011_size5.smt2,PEQ,ok,unsat,0.769441,false,0,
@@ -3542,7 +3542,7 @@ primo,22,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.6.prop1_ab_reg_max.smt2,Goel,o
 primo,22,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_ball2004_1_ab_cti_max.smt2,Goel,ok,sat,0.012629,false,0,
 primo,22,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.6.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.013598,false,0,
 primo,22,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.4.prop1_ab_cti_max.smt2,Goel,ok,sat,0.342714,false,0,
-primo,22,tmp/QF_UF/20190906-CLEARSY/0009/00122.smt2,20190906-CLEARSY,ok,unsupported,0.014187,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00122.smt2: unsupported command: define-fun\n
+primo,22,tmp/QF_UF/20190906-CLEARSY/0009/00122.smt2,20190906-CLEARSY,ok,unsupported,0.014187,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00122.smt2: unsupported command: define-fun\n
 primo,22,tmp/QF_UF/NEQ/NEQ004_size5.smt2,NEQ,timeout,error,2.005231,true,124,
 primo,22,tmp/QF_UF/NEQ/NEQ033_size4.smt2,NEQ,timeout,error,2.019780,true,124,
 primo,22,tmp/QF_UF/PEQ/PEQ011_size6.smt2,PEQ,timeout,error,2.005873,true,124,
@@ -3776,7 +3776,7 @@ primo,23,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.7.prop1_ab_cti_max.smt2,Goel,o
 primo,23,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_ball2004_1_ab_reg_max.smt2,Goel,ok,unsat,0.008978,false,0,
 primo,23,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.7.prop1_ab_cti_max.smt2,Goel,ok,sat,0.828950,false,0,
 primo,23,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.4.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.154447,false,0,
-primo,23,tmp/QF_UF/20190906-CLEARSY/0009/00124.smt2,20190906-CLEARSY,ok,unsupported,0.012505,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00124.smt2: unsupported command: define-fun\n
+primo,23,tmp/QF_UF/20190906-CLEARSY/0009/00124.smt2,20190906-CLEARSY,ok,unsupported,0.012505,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00124.smt2: unsupported command: define-fun\n
 primo,23,tmp/QF_UF/NEQ/NEQ004_size6.smt2,NEQ,timeout,error,2.005798,true,124,
 primo,23,tmp/QF_UF/NEQ/NEQ033_size5.smt2,NEQ,timeout,error,2.015513,true,124,
 primo,23,tmp/QF_UF/PEQ/PEQ011_size7.smt2,PEQ,timeout,error,2.006954,true,124,
@@ -4010,7 +4010,7 @@ primo,24,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rether.7.prop1_ab_reg_max.smt2,Goel,o
 primo,24,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_ball2004_2_ab_cti_max.smt2,Goel,ok,sat,0.016005,false,0,
 primo,24,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synapse.7.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.597974,false,0,
 primo,24,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.5.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.161563,false,0,
-primo,24,tmp/QF_UF/20190906-CLEARSY/0009/00125.smt2,20190906-CLEARSY,ok,unsupported,0.013385,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00125.smt2: unsupported command: define-fun\n
+primo,24,tmp/QF_UF/20190906-CLEARSY/0009/00125.smt2,20190906-CLEARSY,ok,unsupported,0.013385,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00125.smt2: unsupported command: define-fun\n
 primo,24,tmp/QF_UF/NEQ/NEQ004_size7.smt2,NEQ,timeout,error,2.007070,true,124,
 primo,24,tmp/QF_UF/NEQ/NEQ033_size6.smt2,NEQ,timeout,error,2.009547,true,124,
 primo,24,tmp/QF_UF/PEQ/PEQ011_size8.smt2,PEQ,timeout,error,2.008740,true,124,
@@ -4244,7 +4244,7 @@ primo,25,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.1.prop1_ab_br_max.smt2,Goel,
 primo,25,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_ball2004_2_ab_reg_max.smt2,Goel,ok,unsat,0.016867,false,0,
 primo,25,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.1.prop1_ab_cti_max.smt2,Goel,ok,sat,0.164133,false,0,
 primo,25,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.6.prop1_ab_br_max.smt2,Goel,ok,unsat,0.178212,false,0,
-primo,25,tmp/QF_UF/20190906-CLEARSY/0009/00235.smt2,20190906-CLEARSY,ok,unsupported,0.015582,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00235.smt2: unsupported command: define-fun\n
+primo,25,tmp/QF_UF/20190906-CLEARSY/0009/00235.smt2,20190906-CLEARSY,ok,unsupported,0.015582,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00235.smt2: unsupported command: define-fun\n
 primo,25,tmp/QF_UF/NEQ/NEQ006_size3.smt2,NEQ,timeout,error,2.006579,true,124,
 primo,25,tmp/QF_UF/NEQ/NEQ041_size6.smt2,NEQ,timeout,error,2.009422,true,124,
 primo,25,tmp/QF_UF/PEQ/PEQ012_size3.smt2,PEQ,ok,unsat,0.222301,false,0,
@@ -4478,7 +4478,7 @@ primo,26,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.1.prop1_ab_cti_max.smt2,Goel
 primo,26,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_loop_ab_cti_max.smt2,Goel,ok,sat,0.014660,false,0,
 primo,26,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.1.prop1_ab_reg_max.smt2,Goel,ok,sat,0.012890,false,0,
 primo,26,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.6.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.013180,false,0,
-primo,26,tmp/QF_UF/20190906-CLEARSY/0009/00247.smt2,20190906-CLEARSY,ok,unsupported,0.012886,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00247.smt2: unsupported command: define-fun\n
+primo,26,tmp/QF_UF/20190906-CLEARSY/0009/00247.smt2,20190906-CLEARSY,ok,unsupported,0.012886,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0009/00247.smt2: unsupported command: define-fun\n
 primo,26,tmp/QF_UF/NEQ/NEQ006_size4.smt2,NEQ,timeout,error,2.010536,true,124,
 primo,26,tmp/QF_UF/NEQ/NEQ041_size7.smt2,NEQ,timeout,error,2.013072,true,124,
 primo,26,tmp/QF_UF/PEQ/PEQ012_size4.smt2,PEQ,timeout,error,2.004760,true,124,
@@ -4712,7 +4712,7 @@ primo,27,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.1.prop1_ab_reg_max.smt2,Goel
 primo,27,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_loop_ab_fp_max.smt2,Goel,ok,sat,0.013966,false,0,
 primo,27,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.2.prop1_ab_cti_max.smt2,Goel,ok,sat,0.141519,false,0,
 primo,27,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.7.prop1_ab_cti_max.smt2,Goel,ok,sat,0.596587,false,0,
-primo,27,tmp/QF_UF/20190906-CLEARSY/0014/00001.smt2,20190906-CLEARSY,ok,unsupported,0.013982,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0014/00001.smt2: unsupported command: define-fun\n
+primo,27,tmp/QF_UF/20190906-CLEARSY/0014/00001.smt2,20190906-CLEARSY,ok,unsupported,0.013982,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0014/00001.smt2: unsupported command: define-fun\n
 primo,27,tmp/QF_UF/NEQ/NEQ006_size5.smt2,NEQ,timeout,error,2.012660,true,124,
 primo,27,tmp/QF_UF/NEQ/NEQ041_size8.smt2,NEQ,timeout,error,2.016158,true,124,
 primo,27,tmp/QF_UF/PEQ/PEQ012_size5.smt2,PEQ,timeout,error,2.005423,true,124,
@@ -4946,7 +4946,7 @@ primo,28,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.2.prop1_ab_br_max.smt2,Goel,
 primo,28,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_loop_ab_reg_max.smt2,Goel,ok,unsat,0.013598,false,0,
 primo,28,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.2.prop1_ab_reg_max.smt2,Goel,ok,sat,0.011588,false,0,
 primo,28,tmp/QF_UF/2018-Goel-hwbench/QF_UF_train-gate.7.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.012039,false,0,
-primo,28,tmp/QF_UF/20190906-CLEARSY/0015/00085.smt2,20190906-CLEARSY,ok,unsupported,0.012043,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00085.smt2: unsupported command: define-fun\n
+primo,28,tmp/QF_UF/20190906-CLEARSY/0015/00085.smt2,20190906-CLEARSY,ok,unsupported,0.012043,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00085.smt2: unsupported command: define-fun\n
 primo,28,tmp/QF_UF/NEQ/NEQ006_size6.smt2,NEQ,timeout,error,2.011738,true,124,
 primo,28,tmp/QF_UF/NEQ/NEQ041_size9.smt2,NEQ,timeout,error,2.010171,true,124,
 primo,28,tmp/QF_UF/PEQ/PEQ012_size6.smt2,PEQ,timeout,error,2.005325,true,124,
@@ -5180,7 +5180,7 @@ primo,29,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.2.prop1_ab_cti_max.smt2,Goel
 primo,29,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_loop_v_ab_cti_max.smt2,Goel,ok,sat,0.013870,false,0,
 primo,29,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.3.prop1_ab_cti_max.smt2,Goel,ok,sat,0.229757,false,0,
 primo,29,tmp/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_cti_max.smt2,Goel,ok,sat,0.126776,false,0,
-primo,29,tmp/QF_UF/20190906-CLEARSY/0015/00104.smt2,20190906-CLEARSY,ok,unsupported,0.015901,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00104.smt2: unsupported command: define-fun\n
+primo,29,tmp/QF_UF/20190906-CLEARSY/0015/00104.smt2,20190906-CLEARSY,ok,unsupported,0.015901,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00104.smt2: unsupported command: define-fun\n
 primo,29,tmp/QF_UF/NEQ/NEQ015_size3.smt2,NEQ,timeout,error,2.008813,true,124,
 primo,29,tmp/QF_UF/NEQ/NEQ046_size3.smt2,NEQ,timeout,error,2.009166,true,124,
 primo,29,tmp/QF_UF/PEQ/PEQ013_size5.smt2,PEQ,timeout,error,2.006130,true,124,
@@ -5415,7 +5415,7 @@ primo,3,tmp/QF_UF/2018-Goel-hwbench/QF_UF_schedule_world.1.prop1_ab_cti_max.smt2
 primo,3,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_sym_ex_v_ab_cti_max.smt2,Goel,ok,sat,0.015511,false,0,
 primo,3,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.1.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.011160,false,0,
 primo,3,tmp/QF_UF/2018-Goel-hwbench/QF_UF_v_FIFO_ab_fp_max.smt2,Goel,ok,sat,0.162228,false,0,
-primo,3,tmp/QF_UF/20190906-CLEARSY/0015/00324.smt2,20190906-CLEARSY,ok,unsupported,0.013805,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00324.smt2: unsupported command: define-fun\n
+primo,3,tmp/QF_UF/20190906-CLEARSY/0015/00324.smt2,20190906-CLEARSY,ok,unsupported,0.013805,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00324.smt2: unsupported command: define-fun\n
 primo,3,tmp/QF_UF/NEQ/NEQ016_size7.smt2,NEQ,timeout,error,2.006511,true,124,
 primo,3,tmp/QF_UF/NEQ/NEQ048_size8.smt2,NEQ,timeout,error,2.008476,true,124,
 primo,3,tmp/QF_UF/PEQ/PEQ014_size8.smt2,PEQ,timeout,error,2.011085,true,124,
@@ -5649,7 +5649,7 @@ primo,30,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.2.prop1_ab_reg_max.smt2,Goel
 primo,30,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_loop_v_ab_reg_max.smt2,Goel,ok,unsat,0.009347,false,0,
 primo,30,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.3.prop1_ab_reg_max.smt2,Goel,ok,sat,0.012716,false,0,
 primo,30,tmp/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_reg_max.smt2,Goel,ok,unsat,0.011663,false,0,
-primo,30,tmp/QF_UF/20190906-CLEARSY/0015/00105.smt2,20190906-CLEARSY,ok,unsupported,0.015047,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00105.smt2: unsupported command: define-fun\n
+primo,30,tmp/QF_UF/20190906-CLEARSY/0015/00105.smt2,20190906-CLEARSY,ok,unsupported,0.015047,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00105.smt2: unsupported command: define-fun\n
 primo,30,tmp/QF_UF/NEQ/NEQ015_size4.smt2,NEQ,timeout,error,2.015836,true,124,
 primo,30,tmp/QF_UF/NEQ/NEQ046_size4.smt2,NEQ,timeout,error,2.017041,true,124,
 primo,30,tmp/QF_UF/PEQ/PEQ013_size6.smt2,PEQ,timeout,error,2.008321,true,124,
@@ -5883,7 +5883,7 @@ primo,31,tmp/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.3.prop1_ab_cti_max.smt2,Goel
 primo,31,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_state_machine_ab_cti_max.smt2,Goel,ok,sat,0.016557,false,0,
 primo,31,tmp/QF_UF/2018-Goel-hwbench/QF_UF_szymanski.4.prop1_ab_reg_max.smt2,Goel,ok,sat,0.013376,false,0,
 primo,31,tmp/QF_UF/2018-Goel-hwbench/QF_UF_v_DAIO_ab_br_max.smt2,Goel,timeout,error,2.006041,true,124,
-primo,31,tmp/QF_UF/20190906-CLEARSY/0015/00243.smt2,20190906-CLEARSY,ok,unsupported,0.013691,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00243.smt2: unsupported command: define-fun\n
+primo,31,tmp/QF_UF/20190906-CLEARSY/0015/00243.smt2,20190906-CLEARSY,ok,unsupported,0.013691,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0015/00243.smt2: unsupported command: define-fun\n
 primo,31,tmp/QF_UF/NEQ/NEQ015_size5.smt2,NEQ,timeout,error,2.011743,true,124,
 primo,31,tmp/QF_UF/NEQ/NEQ046_size5.smt2,NEQ,timeout,error,2.013058,true,124,
 primo,31,tmp/QF_UF/PEQ/PEQ013_size7.smt2,PEQ,timeout,error,2.011427,true,124,
@@ -6118,7 +6118,7 @@ primo,4,tmp/QF_UF/2018-Goel-hwbench/QF_UF_schedule_world.1.prop1_ab_reg_max.smt2
 primo,4,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sw_sym_ex_v_ab_reg_max.smt2,Goel,ok,unsat,0.014849,false,0,
 primo,4,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.2.prop1_ab_cti_max.smt2,Goel,ok,sat,0.195672,false,0,
 primo,4,tmp/QF_UF/2018-Goel-hwbench/QF_UF_v_Unidec_ab_br_max.smt2,Goel,timeout,error,2.016956,true,124,
-primo,4,tmp/QF_UF/20190906-CLEARSY/0016/00003.smt2,20190906-CLEARSY,ok,unsupported,0.011890,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00003.smt2: unsupported command: define-fun\n
+primo,4,tmp/QF_UF/20190906-CLEARSY/0016/00003.smt2,20190906-CLEARSY,ok,unsupported,0.011890,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00003.smt2: unsupported command: define-fun\n
 primo,4,tmp/QF_UF/NEQ/NEQ016_size8.smt2,NEQ,timeout,error,2.008393,true,124,
 primo,4,tmp/QF_UF/NEQ/NEQ048_size9.smt2,NEQ,timeout,error,2.011206,true,124,
 primo,4,tmp/QF_UF/PEQ/PEQ014_size9.smt2,PEQ,timeout,error,2.015697,true,124,
@@ -6353,7 +6353,7 @@ primo,5,tmp/QF_UF/2018-Goel-hwbench/QF_UF_schedule_world.2.prop1_ab_br_max.smt2,
 primo,5,tmp/QF_UF/2018-Goel-hwbench/QF_UF_swap_three_ab_br_max.smt2,Goel,ok,sat,0.010753,false,0,
 primo,5,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.2.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.011533,false,0,
 primo,5,tmp/QF_UF/2018-Goel-hwbench/QF_UF_v_Unidec_ab_cti_max.smt2,Goel,ok,sat,0.164450,false,0,
-primo,5,tmp/QF_UF/20190906-CLEARSY/0016/00149.smt2,20190906-CLEARSY,ok,unsupported,0.011845,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00149.smt2: unsupported command: define-fun\n
+primo,5,tmp/QF_UF/20190906-CLEARSY/0016/00149.smt2,20190906-CLEARSY,ok,unsupported,0.011845,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00149.smt2: unsupported command: define-fun\n
 primo,5,tmp/QF_UF/NEQ/NEQ023_size4.smt2,NEQ,timeout,error,2.007078,true,124,
 primo,5,tmp/QF_UF/PEQ/PEQ002_size5.smt2,PEQ,timeout,error,2.006112,true,124,
 primo,5,tmp/QF_UF/PEQ/PEQ016_size4.smt2,PEQ,timeout,error,2.009608,true,124,
@@ -6588,7 +6588,7 @@ primo,6,tmp/QF_UF/2018-Goel-hwbench/QF_UF_schedule_world.2.prop1_ab_cti_max.smt2
 primo,6,tmp/QF_UF/2018-Goel-hwbench/QF_UF_swap_three_ab_cti_max.smt2,Goel,ok,sat,0.011105,false,0,
 primo,6,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.3.prop1_ab_cti_max.smt2,Goel,ok,sat,0.264662,false,0,
 primo,6,tmp/QF_UF/2018-Goel-hwbench/QF_UF_v_Unidec_ab_fp_max.smt2,Goel,timeout,error,2.006912,true,124,
-primo,6,tmp/QF_UF/20190906-CLEARSY/0016/00194.smt2,20190906-CLEARSY,ok,unsupported,0.013299,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00194.smt2: unsupported command: define-fun\n
+primo,6,tmp/QF_UF/20190906-CLEARSY/0016/00194.smt2,20190906-CLEARSY,ok,unsupported,0.013299,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00194.smt2: unsupported command: define-fun\n
 primo,6,tmp/QF_UF/NEQ/NEQ023_size5.smt2,NEQ,timeout,error,2.009213,true,124,
 primo,6,tmp/QF_UF/PEQ/PEQ002_size6.smt2,PEQ,timeout,error,2.008453,true,124,
 primo,6,tmp/QF_UF/PEQ/PEQ016_size5.smt2,PEQ,timeout,error,2.009879,true,124,
@@ -6822,8 +6822,8 @@ primo,7,tmp/QF_UF/2018-Goel-hwbench/QF_UF_resistance.2.prop2_ab_cti_max.smt2,Goe
 primo,7,tmp/QF_UF/2018-Goel-hwbench/QF_UF_schedule_world.2.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.010677,false,0,
 primo,7,tmp/QF_UF/2018-Goel-hwbench/QF_UF_swap_two_ab_br_max.smt2,Goel,ok,sat,0.010305,false,0,
 primo,7,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.3.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.012457,false,0,
-primo,7,tmp/QF_UF/20190906-CLEARSY/0000/00068.smt2,20190906-CLEARSY,ok,unsupported,0.022200,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0000/00068.smt2: unsupported command: define-fun\n
-primo,7,tmp/QF_UF/20190906-CLEARSY/0016/00402.smt2,20190906-CLEARSY,ok,unsupported,0.014090,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00402.smt2: unsupported command: define-fun\n
+primo,7,tmp/QF_UF/20190906-CLEARSY/0000/00068.smt2,20190906-CLEARSY,ok,unsupported,0.022200,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0000/00068.smt2: unsupported command: define-fun\n
+primo,7,tmp/QF_UF/20190906-CLEARSY/0016/00402.smt2,20190906-CLEARSY,ok,unsupported,0.014090,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00402.smt2: unsupported command: define-fun\n
 primo,7,tmp/QF_UF/NEQ/NEQ023_size6.smt2,NEQ,timeout,error,2.016132,true,124,
 primo,7,tmp/QF_UF/PEQ/PEQ002_size7.smt2,PEQ,timeout,error,2.010667,true,124,
 primo,7,tmp/QF_UF/PEQ/PEQ016_size6.smt2,PEQ,timeout,error,2.016474,true,124,
@@ -7057,8 +7057,8 @@ primo,8,tmp/QF_UF/2018-Goel-hwbench/QF_UF_resistance.2.prop2_ab_reg_max.smt2,Goe
 primo,8,tmp/QF_UF/2018-Goel-hwbench/QF_UF_schedule_world.3.prop1_ab_reg_max.smt2,Goel,ok,sat,0.148859,false,0,
 primo,8,tmp/QF_UF/2018-Goel-hwbench/QF_UF_swap_two_ab_cti_max.smt2,Goel,ok,sat,0.010347,false,0,
 primo,8,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.4.prop1_ab_cti_max.smt2,Goel,ok,sat,0.302554,false,0,
-primo,8,tmp/QF_UF/20190906-CLEARSY/0001/00019.smt2,20190906-CLEARSY,ok,unsupported,0.038275,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00019.smt2: unsupported command: define-fun\n
-primo,8,tmp/QF_UF/20190906-CLEARSY/0016/00413.smt2,20190906-CLEARSY,ok,unsupported,0.019941,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00413.smt2: unsupported command: define-fun\n
+primo,8,tmp/QF_UF/20190906-CLEARSY/0001/00019.smt2,20190906-CLEARSY,ok,unsupported,0.038275,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00019.smt2: unsupported command: define-fun\n
+primo,8,tmp/QF_UF/20190906-CLEARSY/0016/00413.smt2,20190906-CLEARSY,ok,unsupported,0.019941,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00413.smt2: unsupported command: define-fun\n
 primo,8,tmp/QF_UF/NEQ/NEQ023_size7.smt2,NEQ,timeout,error,2.010290,true,124,
 primo,8,tmp/QF_UF/PEQ/PEQ002_size8.smt2,PEQ,timeout,error,2.016299,true,124,
 primo,8,tmp/QF_UF/PEQ/PEQ016_size7.smt2,PEQ,timeout,error,2.018138,true,124,
@@ -7292,8 +7292,8 @@ primo,9,tmp/QF_UF/2018-Goel-hwbench/QF_UF_resistance.2.prop3_ab_cti_max.smt2,Goe
 primo,9,tmp/QF_UF/2018-Goel-hwbench/QF_UF_sdlx_ab_cti_max.smt2,Goel,ok,sat,0.251222,false,0,
 primo,9,tmp/QF_UF/2018-Goel-hwbench/QF_UF_synabs2_ab_cti_max.smt2,Goel,ok,sat,0.011741,false,0,
 primo,9,tmp/QF_UF/2018-Goel-hwbench/QF_UF_telephony.4.prop1_ab_reg_max.smt2,Goel,ok,unsat,0.251346,false,0,
-primo,9,tmp/QF_UF/20190906-CLEARSY/0001/00069.smt2,20190906-CLEARSY,ok,unsupported,0.024303,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00069.smt2: unsupported command: define-fun\n
-primo,9,tmp/QF_UF/20190906-CLEARSY/0016/00415.smt2,20190906-CLEARSY,ok,unsupported,0.017384,false,2,/home/janotmik/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00415.smt2: unsupported command: define-fun\n
+primo,9,tmp/QF_UF/20190906-CLEARSY/0001/00069.smt2,20190906-CLEARSY,ok,unsupported,0.024303,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0001/00069.smt2: unsupported command: define-fun\n
+primo,9,tmp/QF_UF/20190906-CLEARSY/0016/00415.smt2,20190906-CLEARSY,ok,unsupported,0.017384,false,2,/home/<slurm-user>/primo-qfuf-eval/tmp/QF_UF/20190906-CLEARSY/0016/00415.smt2: unsupported command: define-fun\n
 primo,9,tmp/QF_UF/NEQ/NEQ027_size10.smt2,NEQ,timeout,error,2.012348,true,124,
 primo,9,tmp/QF_UF/PEQ/PEQ003_size10.smt2,PEQ,timeout,error,2.012898,true,124,
 primo,9,tmp/QF_UF/PEQ/PEQ018_size4.smt2,PEQ,timeout,error,2.004720,true,124,

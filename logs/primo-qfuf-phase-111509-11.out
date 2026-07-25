@@ -6,5 +6,5 @@ cadical: cadical-3.0.0-7b99c07
 [3/5] Goel tmp/QF_UF/2018-Goel-hwbench/QF_UF_Heap_ab_reg_max.smt2: ok sat 0.083209s
 [4/5] NEQ tmp/QF_UF/NEQ/NEQ015_size6.smt2: ok unsat 32.923086s
 [5/5] Goel tmp/QF_UF/2018-Goel-hwbench/QF_UF_Heap_ab_cti_max.smt2: ok sat 0.135502s
-wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111509/auto/shard-3.csv
-wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111509/auto/shard-3-summary.csv
+wrote <slurm-workdir>/results/qfuf-phase-compare-111509/auto/shard-3.csv
+wrote <slurm-workdir>/results/qfuf-phase-compare-111509/auto/shard-3-summary.csv

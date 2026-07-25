@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-WORKDIR=${PRIMO_WORKDIR:-/home/janotmik/primo-cadical-profile}
+WORKDIR=${PRIMO_WORKDIR:-$HOME/primo-cadical-profile}
 SOLVER=${PRIMO_SOLVER:-"$WORKDIR/build-slurm-rel/primo"}
 OUT_ROOT=${PRIMO_TSEITIN_OUT_ROOT:-"$WORKDIR/results/qfuf-tseitin-compare-${SLURM_ARRAY_JOB_ID:-manual}"}
 TIMEOUT=${PRIMO_TSEITIN_TIMEOUT:-60}

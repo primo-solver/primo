@@ -22,5 +22,5 @@ cadical: cadical-3.0.0-7b99c07
 [19/21] QG tmp/QF_UF/QG-classification/qg7/iso_brn_nogen_sk019.smt2: ok sat 8.603314s
 [20/21] QG tmp/QF_UF/QG-classification/qg7/iso_icl_nogen005.smt2: ok unsat 10.219366s
 [21/21] QG tmp/QF_UF/QG-classification/qg7/iso_icl_repgen_sk001.smt2: ok unsat 5.146056s
-wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111557/auto/shard-1.csv
-wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111557/auto/shard-1-summary.csv
+wrote <slurm-workdir>/results/qfuf-phase-compare-111557/auto/shard-1.csv
+wrote <slurm-workdir>/results/qfuf-phase-compare-111557/auto/shard-1-summary.csv

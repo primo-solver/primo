@@ -422,10 +422,10 @@
         "host": "llm2smt-slurm",
         "slurm_job_id": "111040"
       },
-      "command": "SLURM array 0-5; each shard: python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver /home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 699200+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\"",
+      "command": "SLURM array 0-5; each shard: python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver <slurm-workdir>/build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 699200+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\"",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet"
+        "argv": "<slurm-workdir>/build-slurm-fuzz/primo --quiet"
       },
       "references": [
         {
@@ -476,10 +476,10 @@
         "host": "llm2smt-slurm",
         "slurm_job_id": "111046"
       },
-      "command": "SLURM array 0-8 under /home/janotmik/primo-cadical-profile. Tasks 0-5: scripts/fuzz_external.py --fuzzer fuzzsmt --solver build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 500000+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\". Task 6: opfuzz -i 200 -t 5 over seven QF_UF seeds with Primo and z3. Tasks 7-8: yinyang semantic fusion -i 100 -t 5 over unsat and sat QF_UF seed sets with Primo.",
+      "command": "SLURM array 0-8 under <slurm-workdir>. Tasks 0-5: scripts/fuzz_external.py --fuzzer fuzzsmt --solver build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 500000+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\". Task 6: opfuzz -i 200 -t 5 over seven QF_UF seeds with Primo and z3. Tasks 7-8: yinyang semantic fusion -i 100 -t 5 over unsat and sat QF_UF seed sets with Primo.",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet"
+        "argv": "<slurm-workdir>/build-slurm-fuzz/primo --quiet"
       },
       "references": [
         {
@@ -735,10 +735,10 @@
         "host": "node-head/node-01",
         "slurm_job_id": "111067,111076"
       },
-      "command": "SLURM array under /home/janotmik/primo-cadical-profile. Job 111067 tasks 6-8 ran opfuzz/yinyang; tasks 0-5 failed immediately because the FuzzSMT wrapper still pointed at /workspace/contrib/local/share/fuzzsmt/fuzzsmt.jar. After regenerating the wrapper with the remote jar path, job 111076 tasks 0-5 ran scripts/fuzz_external.py --fuzzer fuzzsmt --solver /home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 603000+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\". Job 111067 task 6 ran opfuzz -i 200 -t 5 over fuzz-seeds/qf_uf/all with Primo and z3. Tasks 7-8 ran yinyang semantic fusion -i 100 -t 5 over unsat and sat QF_UF seed sets with Primo.",
+      "command": "SLURM array under <slurm-workdir>. Job 111067 tasks 6-8 ran opfuzz/yinyang; tasks 0-5 failed immediately because the FuzzSMT wrapper still pointed at /workspace/contrib/local/share/fuzzsmt/fuzzsmt.jar. After regenerating the wrapper with the remote jar path, job 111076 tasks 0-5 ran scripts/fuzz_external.py --fuzzer fuzzsmt --solver <slurm-workdir>/build-slurm-fuzz/primo --quiet --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 603000+shard --fuzzer-args \"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2\". Job 111067 task 6 ran opfuzz -i 200 -t 5 over fuzz-seeds/qf_uf/all with Primo and z3. Tasks 7-8 ran yinyang semantic fusion -i 100 -t 5 over unsat and sat QF_UF seed sets with Primo.",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet"
+        "argv": "<slurm-workdir>/build-slurm-fuzz/primo --quiet"
       },
       "references": [
         {
@@ -800,10 +800,10 @@
         "host": "node-head/node-01..node-04",
         "slurm_job_id": "111216"
       },
-      "command": "SLURM array 0-95 under /home/janotmik/primo-cadical-profile: python3 scripts/bench_qf_uf_full.py --root tmp/QF_UF --solver build-slurm-fuzz/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 96",
+      "command": "SLURM array 0-95 under <slurm-workdir>: python3 scripts/bench_qf_uf_full.py --root tmp/QF_UF --solver build-slurm-fuzz/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 96",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet --stats"
+        "argv": "<slurm-workdir>/build-slurm-fuzz/primo --quiet --stats"
       },
       "references": [
         {
@@ -906,12 +906,12 @@
       "command": "Job 111312 tasks 6-7: opfuzz -i 250 -t 5 and yinyang -o sat -i 120 -t 5 over benchmarks/seeds/qf_uf with Primo and z3. Job 111312 tasks 0-5 failed because the FuzzSMT wrapper pointed at /workspace; after rewriting contrib/local/bin/fuzzsmt to the remote jar path, job 111320 tasks 0-5 ran scripts/fuzz_external.py --fuzzer fuzzsmt --count 500 --seed 703000+shard --timeout 5.",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-fuzz/primo --quiet"
+        "argv": "<slurm-workdir>/build-slurm-fuzz/primo --quiet"
       },
       "references": [
         {
           "name": "Z3",
-          "argv": "/home/janotmik/primo-cadical-profile/contrib/local/bin/z3 model_validate=true"
+          "argv": "<slurm-workdir>/contrib/local/bin/z3 model_validate=true"
         }
       ],
       "inputs": {
@@ -959,15 +959,15 @@
         "host": "llm2smt-slurm",
         "slurm_job_id": "111370"
       },
-      "command": "Validated /tmp/primo-phase-targets.sbatch with scripts/slurm_validate_sbatch.py and bash -n; SLURM array 0-31 under /home/janotmik/primo-cadical-profile; modes default, polarity, none, positive; timeout 130s wrapper around build-slurm-rel/primo --quiet --stats",
+      "command": "Validated /tmp/primo-phase-targets.sbatch with scripts/slurm_validate_sbatch.py and bash -n; SLURM array 0-31 under <slurm-workdir>; modes default, polarity, none, positive; timeout 130s wrapper around build-slurm-rel/primo --quiet --stats",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats [--theory-phase=polarity|none|positive]"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats [--theory-phase=polarity|none|positive]"
       },
       "references": [
         {
           "name": "LLM2SMT",
-          "argv": "/home/janotmik/llm2smt-reference-src/build-ref-rel/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+          "argv": "<llm2smt-reference-workdir>/build-ref-rel/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
         }
       ],
       "inputs": {
@@ -1002,12 +1002,12 @@
       "command": "Validated /tmp/primo-html334-phase.sbatch with scripts/slurm_validate_sbatch.py and bash -n; copied /tmp/user_primo_html_336_manifest.txt to benchmarks/user-primo-html-2026-07-18-manifest.txt on the SLURM workspace; SLURM array 0-31 with 16 shards each for default and --theory-phase=polarity; python3 scripts/bench_qf_uf_full.py --root tmp/QF_UF --manifest benchmarks/user-primo-html-2026-07-18-manifest.txt --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats"
       },
       "references": [
         {
           "name": "LLM2SMT",
-          "argv": "/home/janotmik/llm2smt-reference-src/build-ref-rel/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
+          "argv": "<llm2smt-reference-workdir>/build-ref-rel/bin/llm2smt --quiet --stats --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000"
         }
       ],
       "inputs": {
@@ -1163,7 +1163,7 @@
         "host": "llm2smt-slurm",
         "slurm_job_id": "111466"
       },
-      "command": "sbatch results/qg-raw-amo-slurm-2905733/qg-focused.sbatch; script invokes python3 scripts/bench_qf_uf_full.py --repo /home/janotmik/primo-raw-amo --root tmp/QF_UF --manifest results/qg-raw-amo-slurm-2905733/target-manifest.txt --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 8",
+      "command": "sbatch results/qg-raw-amo-slurm-2905733/qg-focused.sbatch; script invokes python3 scripts/bench_qf_uf_full.py --repo <slurm-workdir> --root tmp/QF_UF --manifest results/qg-raw-amo-slurm-2905733/target-manifest.txt --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 8",
       "solver": {
         "name": "Primo",
         "argv": "build-slurm-rel/primo --quiet --stats"
@@ -1232,7 +1232,7 @@
         "host": "llm2smt-slurm",
         "slurm_job_id": "111474"
       },
-      "command": "sbatch results/html334-raw-amo-2905733/html334-default.sbatch; script invokes python3 scripts/bench_qf_uf_full.py --repo /home/janotmik/primo-raw-amo --root tmp/QF_UF --manifest results/html334-raw-amo-2905733/manifest.txt --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 16",
+      "command": "sbatch results/html334-raw-amo-2905733/html334-default.sbatch; script invokes python3 scripts/bench_qf_uf_full.py --repo <slurm-workdir> --root tmp/QF_UF --manifest results/html334-raw-amo-2905733/manifest.txt --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 120 --shards 16",
       "solver": {
         "name": "Primo",
         "argv": "build-slurm-rel/primo --quiet --stats"
@@ -1572,10 +1572,10 @@
         "host": "llm2smt-slurm",
         "slurm_job_id": "111490"
       },
-      "command": "After python3 scripts/slurm_prepare_benchmark_workspace.py --remote-dir /home/janotmik/primo-cadical-profile --check-only verified build-slurm-rel/primo reports git: c2363b3 and cadical: cadical-3.0.0-7b99c07, submitted sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-iso-train.txt,PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-iso-validate.txt,PRIMO_SMAC_LABEL=qfuf-iso,PRIMO_SMAC_TRIALS=80,PRIMO_SMAC_TIMEOUT=20,PRIMO_SMAC_VALIDATION_TIMEOUT=60,PRIMO_SMAC_SEED=20260718 scripts/slurm_qfuf_smac.sbatch",
+      "command": "After python3 scripts/slurm_prepare_benchmark_workspace.py --remote-dir <slurm-workdir> --check-only verified build-slurm-rel/primo reports git: c2363b3 and cadical: cadical-3.0.0-7b99c07, submitted sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-iso-train.txt,PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-iso-validate.txt,PRIMO_SMAC_LABEL=qfuf-iso,PRIMO_SMAC_TRIALS=80,PRIMO_SMAC_TIMEOUT=20,PRIMO_SMAC_VALIDATION_TIMEOUT=60,PRIMO_SMAC_SEED=20260718 scripts/slurm_qfuf_smac.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo"
       },
       "references": [],
       "inputs": {
@@ -1587,9 +1587,9 @@
         "manifest": "benchmarks/qfuf-smac-iso-train.txt; holdout benchmarks/qfuf-smac-iso-validate.txt with 60s validation timeout"
       },
       "artifacts": {
-        "summary": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-iso-111490/result.json",
-        "results": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-iso-111490",
-        "logs": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-111490.out and .err",
+        "summary": "<slurm-workdir>/results/smac/qfuf-iso-111490/result.json",
+        "results": "<slurm-workdir>/results/smac/qfuf-iso-111490",
+        "logs": "<slurm-workdir>/logs/primo-qfuf-smac-111490.out and .err",
         "bugs": null
       },
       "summary": {
@@ -1648,7 +1648,7 @@
       "command": "Local py_compile/lint/docs/sbatch validation; remote smoke with .venv-smac/bin/python patched qfuf_gap_tune.py --train benchmarks/qfuf-smac-iso-validate.txt --validate same --guard qfuf-smac-equality-guard.txt --timeout 0.5 --validation-timeout 0.5 --guard-timeout 0.5 --trials 2",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo"
       },
       "references": [],
       "inputs": {
@@ -1660,8 +1660,8 @@
         "manifest": "benchmarks/qfuf-smac-iso-validate.txt plus benchmarks/qfuf-smac-equality-guard.txt"
       },
       "artifacts": {
-        "summary": "remote /home/janotmik/primo-cadical-profile/results/smac/smoke-instance3/result.json",
-        "results": "remote /home/janotmik/primo-cadical-profile/results/smac/smoke-instance3",
+        "summary": "remote <slurm-workdir>/results/smac/smoke-instance3/result.json",
+        "results": "remote <slurm-workdir>/results/smac/smoke-instance3",
         "logs": null,
         "bugs": null
       },
@@ -1739,7 +1739,7 @@
       "commit": "014fe3cea49dbbd10b45082575fd681afc6e8f65",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "slurm_job_id": "111491"
       },
       "command": "PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt PRIMO_SMAC_LABEL=qfuf-mixed PRIMO_SMAC_TRIALS=160 PRIMO_SMAC_TIMEOUT=20 PRIMO_SMAC_VALIDATION_TIMEOUT=60 PRIMO_SMAC_GUARD_TIMEOUT=60 PRIMO_SMAC_SEED=20260719 sbatch .../primo-qfuf-smac.sbatch",
@@ -1757,8 +1757,8 @@
         "manifest": "benchmarks/qfuf-smac-mixed-train.txt, benchmarks/qfuf-smac-mixed-validate.txt, benchmarks/qfuf-smac-equality-guard.txt"
       },
       "artifacts": {
-        "summary": "remote /home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed/result.json",
-        "results": "remote /home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed",
+        "summary": "remote <slurm-workdir>/results/smac/qfuf-mixed/result.json",
+        "results": "remote <slurm-workdir>/results/smac/qfuf-mixed",
         "logs": "remote SLURM output for job 111491",
         "bugs": null
       },
@@ -1923,7 +1923,7 @@
         "host": "workspace",
         "slurm_job_id": null
       },
-      "command": "Opened https://people.ciirc.cvut.cz/~janotmik/llm2smt/primo.html; ran build/primo --quiet --stats, --qf-uf-preprocess=basic, --no-uf-symmetry-breaking, --pure-theory-filter=auto; ran tuned LLM2SMT and local Z3 on tmp/QF_UF/NEQ/NEQ023_size7.smt2 with 60s timeout",
+      "command": "Opened https://<public-results-host>/<user>/llm2smt/primo.html; ran build/primo --quiet --stats, --qf-uf-preprocess=basic, --no-uf-symmetry-breaking, --pure-theory-filter=auto; ran tuned LLM2SMT and local Z3 on tmp/QF_UF/NEQ/NEQ023_size7.smt2 with 60s timeout",
       "solver": {
         "name": "Primo",
         "argv": "build/primo --quiet --stats and local option ablations"
@@ -1939,7 +1939,7 @@
         },
         {
           "name": "published primo.html",
-          "argv": "https://people.ciirc.cvut.cz/~janotmik/llm2smt/primo.html"
+          "argv": "https://<public-results-host>/<user>/llm2smt/primo.html"
         }
       ],
       "inputs": {
@@ -2319,13 +2319,13 @@
       "commit": "9d7e4ac",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "slurm_job_id": "111492"
       },
-      "command": "Remote /home/janotmik/primo-cadical-profile, after scripts/slurm_prepare_benchmark_workspace.py --check-only verified build-slurm-rel/primo reports git 9d7e4ac and cadical-3.0.0-7b99c07; submitted with PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt PRIMO_SMAC_LABEL=qfuf-mixed-auto PRIMO_SMAC_TRIALS=160 PRIMO_SMAC_TIMEOUT=20 PRIMO_SMAC_VALIDATION_TIMEOUT=60 PRIMO_SMAC_GUARD_TIMEOUT=60 PRIMO_SMAC_SEED=20260720 sbatch scripts/slurm_qfuf_smac.sbatch",
+      "command": "Remote <slurm-workdir>, after scripts/slurm_prepare_benchmark_workspace.py --check-only verified build-slurm-rel/primo reports git 9d7e4ac and cadical-3.0.0-7b99c07; submitted with PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt PRIMO_SMAC_LABEL=qfuf-mixed-auto PRIMO_SMAC_TRIALS=160 PRIMO_SMAC_TIMEOUT=20 PRIMO_SMAC_VALIDATION_TIMEOUT=60 PRIMO_SMAC_GUARD_TIMEOUT=60 PRIMO_SMAC_SEED=20260720 sbatch scripts/slurm_qfuf_smac.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo"
       },
       "references": [],
       "inputs": {
@@ -2337,9 +2337,9 @@
         "manifest": "benchmarks/qfuf-smac-mixed-train.txt; validation benchmarks/qfuf-smac-mixed-validate.txt; guard benchmarks/qfuf-smac-equality-guard.txt"
       },
       "artifacts": {
-        "summary": "pending: /home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-auto-111492/",
+        "summary": "pending: <slurm-workdir>/results/smac/qfuf-mixed-auto-111492/",
         "results": "pending",
-        "logs": "pending: /home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-111492.{out,err}",
+        "logs": "pending: <slurm-workdir>/logs/primo-qfuf-smac-111492.{out,err}",
         "bugs": null
       },
       "summary": {
@@ -2359,13 +2359,13 @@
       "commit": "014fe3c",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "slurm_job_id": "111491"
       },
       "command": "PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt PRIMO_SMAC_GUARD=benchmarks/qfuf-smac-equality-guard.txt PRIMO_SMAC_LABEL=qfuf-mixed PRIMO_SMAC_TRIALS=160 PRIMO_SMAC_TIMEOUT=20 PRIMO_SMAC_VALIDATION_TIMEOUT=60 PRIMO_SMAC_GUARD_TIMEOUT=60 PRIMO_SMAC_SEED=20260719 sbatch scripts/slurm_qfuf_smac.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo"
       },
       "references": [],
       "inputs": {
@@ -2377,14 +2377,14 @@
         "manifest": "benchmarks/qfuf-smac-mixed-train.txt; validation benchmarks/qfuf-smac-mixed-validate.txt; guard benchmarks/qfuf-smac-equality-guard.txt"
       },
       "artifacts": {
-        "summary": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-111491/",
-        "results": "/home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-111491/{target-runs.csv,trial-summary.csv,validation-runs.csv,incumbent.json}",
-        "logs": "/home/janotmik/primo-cadical-profile/logs/primo-qfuf-smac-111491.{out,err}",
+        "summary": "<slurm-workdir>/results/smac/qfuf-mixed-111491/",
+        "results": "<slurm-workdir>/results/smac/qfuf-mixed-111491/{target-runs.csv,trial-summary.csv,validation-runs.csv,incumbent.json}",
+        "logs": "<slurm-workdir>/logs/primo-qfuf-smac-111491.{out,err}",
         "bugs": null
       },
       "summary": {
         "status": "invalid",
-        "failure": "After SMAC exhausted 160 trials, guard validation crashed with FileNotFoundError for /home/janotmik/primo-cadical-profile/build-slurm-rel/primo.",
+        "failure": "After SMAC exhausted 160 trials, guard validation crashed with FileNotFoundError for <slurm-workdir>/build-slurm-rel/primo.",
         "cause": "The shared remote workspace was resynced/rebuilt for commit 9d7e4ac while job 111491 was still running, removing build-slurm-rel/primo out from under the old job.",
         "usable_evidence": "none for incumbent acceptance or guard results"
       },
@@ -2552,7 +2552,7 @@
         "host": "workspace",
         "related_slurm_job_id": "111492"
       },
-      "command": "Local Python loop over the 39-row mixed train/validation/guard union with 20s timeout using incumbent snapshot args from /home/janotmik/primo-cadical-profile/results/smac/qfuf-mixed-auto-111492/incumbent.json while the SLURM job was still running: ./build/primo --quiet --qf-uf-preprocess=auto --preprocessing-passes=4 --preprocessing-adaptive-extra-passes=0 --preprocessing-adaptive-shrink-percent=8 --no-uf-symmetry-breaking --no-finite-domain-equality-definitions --no-eq-bridge --guarded-ground-unit-substitution --euf-engine=incremental --euf-prop=conflict --pure-theory-filter=off --theory-phase=polarity --euf-prop-budget=10000 --euf-prop-delivery=3000 --prop-interval=16 --prop-assign-threshold=0.10",
+      "command": "Local Python loop over the 39-row mixed train/validation/guard union with 20s timeout using incumbent snapshot args from <slurm-workdir>/results/smac/qfuf-mixed-auto-111492/incumbent.json while the SLURM job was still running: ./build/primo --quiet --qf-uf-preprocess=auto --preprocessing-passes=4 --preprocessing-adaptive-extra-passes=0 --preprocessing-adaptive-shrink-percent=8 --no-uf-symmetry-breaking --no-finite-domain-equality-definitions --no-eq-bridge --guarded-ground-unit-substitution --euf-engine=incremental --euf-prop=conflict --pure-theory-filter=off --theory-phase=polarity --euf-prop-budget=10000 --euf-prop-delivery=3000 --prop-interval=16 --prop-assign-threshold=0.10",
       "solver": {
         "name": "Primo",
         "argv": "./build/primo with the incumbent snapshot listed in command"
@@ -2782,18 +2782,18 @@
       "commit": "9d7e4ac",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "job_id": "111492"
       },
-      "command": "sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt,PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt,PRIMO_SMAC_LABEL=qfuf-mixed-auto,PRIMO_SMAC_TRIALS=160,PRIMO_SMAC_TIMEOUT=20,PRIMO_SMAC_VALIDATION_TIMEOUT=60 scripts/slurm_qfuf_smac.sbatch",
+      "command": "sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_SMAC_TRAIN=benchmarks/qfuf-smac-mixed-train.txt,PRIMO_SMAC_VALIDATE=benchmarks/qfuf-smac-mixed-validate.txt,PRIMO_SMAC_LABEL=qfuf-mixed-auto,PRIMO_SMAC_TRIALS=160,PRIMO_SMAC_TIMEOUT=20,PRIMO_SMAC_VALIDATION_TIMEOUT=60 scripts/slurm_qfuf_smac.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats with SMAC-selected options"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats with SMAC-selected options"
       },
       "references": [
         {
           "name": "Primo default",
-          "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+          "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats"
         }
       ],
       "inputs": {
@@ -2938,18 +2938,18 @@
       "commit": "4fd7e05",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "job_id": "111509"
       },
-      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=60,PRIMO_PHASE_SHARDS=8 scripts/slurm_qfuf_phase_compare.sbatch",
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir <slurm-workdir> --check-only; sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_PHASE_TIMEOUT=60,PRIMO_PHASE_SHARDS=8 scripts/slurm_qfuf_phase_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
       },
       "references": [
         {
           "name": "Primo default",
-          "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+          "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats"
         }
       ],
       "inputs": {
@@ -3008,18 +3008,18 @@
       "commit": "7d63bbc",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "job_id": "111525"
       },
-      "command": "sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
+      "command": "sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
       },
       "references": [
         {
           "name": "Primo default",
-          "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+          "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats"
         }
       ],
       "inputs": {
@@ -3099,18 +3099,18 @@
       "commit": "82a4f50",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "job_id": "111557"
       },
-      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir <slurm-workdir> --check-only; sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
       },
       "references": [
         {
           "name": "Primo default",
-          "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats"
+          "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats"
         }
       ],
       "inputs": {
@@ -3263,13 +3263,13 @@
       "commit": "e30988a",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "job_id": "111589"
       },
-      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir <slurm-workdir> --check-only; sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
       },
       "inputs": {
         "logic": "QF_UF",
@@ -3423,13 +3423,13 @@
       "commit": "af5ad64",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "job_id": "111621"
       },
-      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_TSEITIN_TIMEOUT=120,PRIMO_TSEITIN_SHARDS=16,PRIMO_TSEITIN_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_tseitin_compare.sbatch",
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir <slurm-workdir> --check-only; sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_TSEITIN_TIMEOUT=120,PRIMO_TSEITIN_SHARDS=16,PRIMO_TSEITIN_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_tseitin_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --no-top-level-or-tseitin"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats and the same command plus --no-top-level-or-tseitin"
       },
       "inputs": {
         "logic": "QF_UF",
@@ -3576,14 +3576,14 @@
       "commit": "c409c91",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "job_id": "111653",
-        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+        "remote_workdir": "<slurm-workdir>"
       },
-      "command": "sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
+      "command": "sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_PHASE_TIMEOUT=120,PRIMO_PHASE_SHARDS=16,PRIMO_PHASE_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_phase_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats and the same command plus --theory-phase=auto"
       },
       "inputs": {
         "logic": "QF_UF",
@@ -3675,14 +3675,14 @@
       "commit": "e411821",
       "environment": {
         "type": "slurm",
-        "host": "janotmik@10.35.125.63",
+        "host": "<slurm-user>@<slurm-host>",
         "job_id": "111685",
-        "remote_workdir": "/home/janotmik/primo-cadical-profile"
+        "remote_workdir": "<slurm-workdir>"
       },
-      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir /home/janotmik/primo-cadical-profile --check-only; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_PORTFOLIO_TIMEOUT=120,PRIMO_PORTFOLIO_SHARDS=16,PRIMO_PORTFOLIO_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_portfolio_compare.sbatch",
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-ssh/config --remote primo-slurm --remote-dir <slurm-workdir> --check-only; sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_PORTFOLIO_TIMEOUT=120,PRIMO_PORTFOLIO_SHARDS=16,PRIMO_PORTFOLIO_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_portfolio_compare.sbatch",
       "solver": {
         "name": "Primo",
-        "argv": "/home/janotmik/primo-cadical-profile/build-slurm-rel/primo --quiet --stats and the same command plus --qf-uf-portfolio=basic-polarity"
+        "argv": "<slurm-workdir>/build-slurm-rel/primo --quiet --stats and the same command plus --qf-uf-portfolio=basic-polarity"
       },
       "inputs": {
         "logic": "QF_UF",
@@ -3829,7 +3829,7 @@
         "host": "node-head",
         "job_id": "111717"
       },
-      "command": "sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_option_compare.sbatch",
+      "command": "sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt scripts/slurm_qfuf_option_compare.sbatch",
       "solver": {
         "name": "Primo",
         "argv": "build-slurm-rel/primo --quiet --stats",
@@ -3993,7 +3993,7 @@
         "host": "node-head",
         "job_id": "111765"
       },
-      "command": "Validated scripts/slurm_qfuf_option_compare.sbatch with scripts/slurm_validate_sbatch.py and bash -n; preflighted /home/janotmik/primo-cadical-profile build-slurm-rel/primo as git a5b17f4; sbatch --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-cadical-profile,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= old-auto=--no-auto-basic-multi' scripts/slurm_qfuf_option_compare.sbatch",
+      "command": "Validated scripts/slurm_qfuf_option_compare.sbatch with scripts/slurm_validate_sbatch.py and bash -n; preflighted <slurm-workdir> build-slurm-rel/primo as git a5b17f4; sbatch --export=ALL,PRIMO_WORKDIR=<slurm-workdir>,PRIMO_OPTION_TIMEOUT=120,PRIMO_OPTION_SHARDS=16,PRIMO_OPTION_MANIFESTS=benchmarks/user-primo-html334-2026-07-18.txt,PRIMO_OPTION_VARIANTS='default= old-auto=--no-auto-basic-multi' scripts/slurm_qfuf_option_compare.sbatch",
       "solver": {
         "name": "Primo",
         "argv": "build-slurm-rel/primo --quiet --stats",

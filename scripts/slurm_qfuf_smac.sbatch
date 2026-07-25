@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-WORKDIR=${PRIMO_WORKDIR:-/home/janotmik/primo-cadical-profile}
+WORKDIR=${PRIMO_WORKDIR:-$HOME/primo-cadical-profile}
 SOLVER=${PRIMO_SOLVER:-"$WORKDIR/build-slurm-rel/primo"}
 TRAIN=${PRIMO_SMAC_TRAIN:-benchmarks/qfuf-smac-gap-train.txt}
 VALIDATE=${PRIMO_SMAC_VALIDATE:-benchmarks/qfuf-smac-gap-validate.txt}
