@@ -384,7 +384,7 @@ converts Real equality to `Le`/`Lt` form, which runs *after* this one so
 solve-eqs (and eq-bridging, forced-atom/unit-equality propagation) see the
 Real case at all.
 
-### Gaussian Elimination (opt-in)
+### Gaussian Elimination
 
 The plain solve-eqs recognizer above only catches the shape `x = t` with a
 bare, non-Boolean constant on one side -- it misses (a) a single equation
@@ -417,11 +417,13 @@ caught soundly by the ordinary LRA tableau once the (possibly still
 partially-substituted) assertions reach it. No unsoundness, just no early
 detection.
 
-**Opt-in, default off** (`CheckSatOptions::gaussian_elimination = false`):
+**Default on** (`CheckSatOptions::gaussian_elimination = true`,
+`--no-gaussian-elimination` for ablation). Landed opt-in (2026-07-25) since
 this is materially new algorithmic machinery (row reduction), not just a
-recognizer extension, so it hasn't yet been through campaign-tier fuzzing
-the way the rest of solve-eqs has. Promote to default-on once it has, per
-`docs/arithmetic.md`'s Milestone roadmap.
+recognizer extension; promoted to default-on the same day after a
+campaign-tier Slurm fuzz gate (3000 fuzzsmt cases plus opfuzz/yinyang
+mutation shards, 0 crashes/wrong-answers/bug triggers) -- see
+`docs/arithmetic.md`'s Milestone roadmap and `docs/run-log.json`.
 
 ## Real-Equality Lowering
 

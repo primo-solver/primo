@@ -9739,6 +9739,42 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/preprocessing.md's 'Gaussian Elimination (opt-in)' section and docs/arithmetic.md's Milestone-roadmap follow-up entry under competitiveness-roadmap item 1 for the design this run verifies. Commits: 1470b5c (code+tests), 4901358 (docs)."
+    },
+    {
+      "id": "2026-07-25-qf-lra-gaussian-elimination-slurm-campaign-result",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "fuzz",
+      "scope": "Campaign-tier (>=3000 case) QF_LRA fuzz gate on llm2smt-slurm for the opt-in --gaussian-elimination solve-eqs extension (commit 1470b5c/4901358/036600e), following on from the companion merge-gate smoke test (2026-07-25-qf-lra-gaussian-elimination-slurm-smoke-gate, job 113406). This is the promotion gate for moving CheckSatOptions::gaussian_elimination from opt-in (default false) to default-on, per the staged rollout decided when the feature was designed (mirroring how Dantzig pivoting was rolled out).",
+      "commit": "036600e",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --gaussian-elimination (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile; then sbatch --export=ALL,PATH=<contrib/local/bin + .venv-yinyang/bin prepended>,TYPEFUZZ=<remote .venv-yinyang/bin/typefuzz>,PRIMO_FUZZ_SOLVER='.../build-slurm-rel/primo --gaussian-elimination',PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_SEEDS=.../benchmarks/seeds/qf_lra_real,PRIMO_FUZZ_YINYANG_SEEDS=.../benchmarks/seeds/qf_lra_real scripts/slurm_qfuf_fuzz_gate.sbatch (default 9-task layout: 6 fuzzsmt shards x 500 = 3000 cases, 1 opfuzz task, 2 yinyang typefuzz mutation shards) as job 113407 -- completed cleanly on the first submission, no infrastructure issues (PATH/TYPEFUZZ set correctly from the start this time, learning from job 113405's earlier PATH gap).",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 6 shards x 500 = 3000 cases) + yinyang typefuzz mutation (2 shards) + opfuzz (1 task), all seeded/referenced against z3; mutation/opfuzz seeded from benchmarks/seeds/qf_lra_real (14 real-benchmark files)",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113407/ on llm2smt-slurm -- not committed, aggregated via a remote python csv scan across the 6 shard summary.csv files plus the opfuzz/yinyang bugs directory listings and log tails confirming real seed processing."
+      },
+      "summary": {
+        "result": "fuzzsmt: 3000/3000 cases -- 2854 PASS, 146 TIMEOUT, 0 CRASH, 0 WRONG, 0 UNSUPPORTED_INPUT. opfuzz: 14/14 real seeds valid, 0 bug triggers. yinyang typefuzz (2 shards): 14/14 real seeds valid each, 0 bug triggers each. Fully clean campaign, matching the shape of the main real-equality-lowering campaign (job 113357: 2854 PASS/146 TIMEOUT out of 3000) almost exactly.",
+        "significance": "Clears the campaign-tier bar for the new Gaussian-elimination solve-eqs machinery (row reduction over asserted linear equality systems): zero wrong-answer disagreements against z3, zero crashes, zero unsupported-input rejections, across both generator-based (fuzzsmt) and mutation-based (opfuzz/yinyang) fuzzing, seeded from both synthetic and real-world formulas, with the opt-in flag explicitly enabled throughout. This is the evidence the staged-rollout decision (opt-in first, promote once campaign-fuzzed) was waiting on -- see the companion docs/arithmetic.md/docs/preprocessing.md update promoting CheckSatOptions::gaussian_elimination's default to true."
+      },
+      "verification": {
+        "passed": [
+          "3000-case campaign-tier fuzzsmt-vs-z3 QF_LRA run with --gaussian-elimination enabled: 0 crashes, 0 wrong answers, 0 unsupported-input rejections.",
+          "opfuzz + 2 yinyang typefuzz mutation shards, seeded from 14 real QF_LRA benchmark files, all with --gaussian-elimination enabled: 0 bug triggers across all three.",
+          "Prior merge-gate-tier (500-case) Slurm smoke test (job 113406) and full unit suite (Release + ASAN/UBSan) were also clean prior to this campaign run."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "Completes the verification staging for the Gaussian-elimination solve-eqs follow-up under competitiveness-roadmap item 1. See docs/preprocessing.md's 'Gaussian Elimination' section and docs/arithmetic.md's Milestone-roadmap entry for the promotion-status update this result justifies."
     }
   ]
 }
