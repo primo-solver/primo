@@ -9846,6 +9846,44 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for competitiveness-roadmap item 4 and docs/papers/lra-related-work.md's updated SOI-Simplex entry."
+    },
+    {
+      "id": "2026-07-25-qf-lra-soi-simplex-slurm-smoke-gate",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "fuzz",
+      "scope": "Merge-gate-tier (500-case) fuzz smoke test for the new opt-in --lra-pivoting-rule soi (SOI-Simplex, competitiveness-roadmap item 4, commit fc06922/0cd1c34/bcdf7ef): the full King/Barrett/Dutertre FMCAD 2013 algorithm (incremental f-row, breakpoint-sorted DeltaVio walk, multi-row conflict + QuickXplain minimization). Run on llm2smt-slurm per the standing correction that all fuzzing, including merge-gate smoke checks, should be dispatched there.",
+      "commit": "bcdf7ef",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --lra-pivoting-rule soi (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile; then sbatch --array=0-0 --export=ALL,PATH=<contrib/local/bin prepended>,PRIMO_FUZZ_SOLVER='.../build-slurm-rel/primo --lra-pivoting-rule soi',PRIMO_FUZZ_FUZZSMT_SHARDS=1,PRIMO_FUZZ_FUZZSMT_COUNT=500,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0 scripts/slurm_qfuf_fuzz_gate.sbatch -- single 500-case fuzzsmt task as job 113439, completed cleanly on first submission.",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 500 cases), seeded/referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113439/ on llm2smt-slurm -- not committed."
+      },
+      "summary": {
+        "result": "500/500 cases: 324 PASS, 176 TIMEOUT, 0 CRASH, 0 WRONG, 0 UNSUPPORTED_INPUT. Job took 18m28s wall-clock (vs. ~4m for the analogous Gaussian-elimination/row-propagation merge-gate runs) and the timeout rate (176/500, ~35%) is notably higher than those runs' (~25-32/500, ~5-6%).",
+        "significance": "Correctness is clean: no crashes, no wrong-answer disagreements against z3, no unsupported-input rejections. The elevated timeout rate is a performance observation, not a correctness concern -- consistent with the paper's own framing (SOI-Simplex trades extra per-pivot analysis, the breakpoint-sorted DeltaVio walk over every Flex(f) candidate, for robustness on HARD instances specifically, not necessarily average-case speed on typical/random ones). fuzzsmt-generated formulas are often large synthetic instances requiring many pivots, where SOI's higher per-pivot cost compounds; this doesn't contradict the quick-eval finding (identical 7/17 on the small real-benchmark sample) since that sample's hard cases were dominated by a different bottleneck (still timing out regardless of pivoting rule) rather than pivot-count-bound cases SOI would help with."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run with --lra-pivoting-rule soi: 0 crashes, 0 wrong answers, 0 unsupported-input rejections.",
+          "Full unit test suite (Release + ASAN/UBSan) green, including the Fig-6-paper-reproduction test and the heap-use-after-free fix found during manual smoke testing prior to this run."
+        ],
+        "pending": [
+          "Campaign-tier (>=3000 case) Slurm confirmation before promoting --lra-pivoting-rule soi from opt-in to default-on (not currently planned given the elevated timeout rate suggests it isn't a clear win as-is).",
+          "If SOI is pursued further, the elevated timeout rate suggests the per-pivot cost (full breakpoint-walk over every Flex(f) candidate, not the paper's own further-optimized incremental variant) may need profiling/optimization before it's competitive with Bland/Dantzig on typical instances, separately from its robustness value on genuinely hard ones."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's 'SOI-Simplex pivoting' section for the design this run verifies, and the companion 2026-07-25-qf-lra-soi-simplex-quick-eval entry for the real-benchmark comparison."
     }
   ]
 }

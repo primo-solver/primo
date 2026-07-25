@@ -174,6 +174,17 @@ alternatives considered before/while implementing it.
   - Reported by `:lra.soi-multi-row-conflicts`/`:lra.soi-quickxplain-calls`,
     alongside the existing `:lra.bland-fallbacks`. **Opt-in**
     (`--lra-pivoting-rule soi`), same rollout precedent as Dantzig.
+  - **Merge-gate fuzz result (job 113439, 2026-07-25): correctness-clean
+    (500/500, 0 crashes/wrong-answers) but a notably higher timeout rate
+    (176/500, ~35%) than the analogous Gaussian-elimination/row-
+    propagation runs (~5-6%)**, and ~4.5x the wall-clock time for the
+    same 500 cases. Consistent with the paper's own framing -- SOI's
+    breakpoint-sorted `ΔVio` walk over every `Flex(f)` candidate each
+    pivot is genuinely more expensive per-pivot than Bland/Dantzig's
+    O(row size) selection, trading that cost for robustness on hard
+    instances specifically, not average-case speed on typical ones. Not
+    campaign-tier confirmed and not currently planned for default-on
+    promotion given this; see `docs/run-log.json`.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already
