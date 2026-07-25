@@ -186,6 +186,10 @@ int main(int argc, char** argv) {
                "Enable QF_LRA same-slack bound propagation (Milestone 3b)");
   app.add_flag("--no-lra-propagation", no_lra_propagation,
                "Disable QF_LRA bound propagation (conflict detection only)");
+  app.add_flag("--lra-row-propagation", solver_options.lra_row_propagation,
+               "Enable experimental QF_LRA row-based/interval bound propagation across "
+               "different variables (only takes effect if --lra-propagation is also on)")
+      ->default_val(false);
   app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
                  "QF_LRA Check/Pivot variable-selection rule: bland (default, "
                  "anti-cycling-proven) or dantzig (largest-violation/largest-coefficient, "

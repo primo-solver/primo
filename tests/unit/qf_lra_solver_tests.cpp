@@ -294,6 +294,71 @@ void same_slack_propagation_can_reach_a_conflict() {
   assert(not_propagated.result == CheckSatResult::Unsat);
 }
 
+void row_based_propagation_drives_boolean_structure() {
+  // x's and y's bounds are each directly asserted, but (+ x y) itself
+  // never is -- same-slack propagation alone can't entail
+  // (<= (+ x y) 10) since no atom directly bounds that polynomial's own
+  // slack. Row-based propagation derives (+ x y)'s implied upper bound
+  // (2+3=5 <= 10) from x's and y's current bounds, entailing the atom
+  // TRUE without ever deciding w/the disjunction.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (<= x 2))
+    (assert (<= y 3))
+    (assert (or (<= (+ x y) 10) (>= w 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_row_propagation;
+  with_row_propagation.lra_propagation = true;
+  with_row_propagation.lra_row_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_row_propagation);
+  assert(propagated.result == CheckSatResult::Sat);
+  assert(propagated.statistics.get(StatKey::LraRowPropagations) > 0);
+  assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
+
+  CheckSatOptions without_row_propagation;
+  without_row_propagation.lra_propagation = true;
+  without_row_propagation.lra_row_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, without_row_propagation);
+  assert(not_propagated.result == CheckSatResult::Sat);
+  assert(not_propagated.statistics.get(StatKey::LraRowPropagations) == 0);
+}
+
+void row_based_propagation_can_reach_a_conflict() {
+  // Same row (+ x y) as above, but the disjunction's other branch is also
+  // ruled out (< w 1000), and the shared-polynomial atom is negated --
+  // x<=2, y<=3 imply (+ x y)<=5, so NOT(<= (+ x y) 10) is FALSE, closing
+  // the whole formula UNSAT via row-based propagation alone, no decisions.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (<= x 2))
+    (assert (<= y 3))
+    (assert (or (not (<= (+ x y) 10)) (>= w 1000)))
+    (assert (< w 1000))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_row_propagation;
+  with_row_propagation.lra_propagation = true;
+  with_row_propagation.lra_row_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_row_propagation);
+  assert(propagated.result == CheckSatResult::Unsat);
+  assert(propagated.statistics.get(StatKey::LraRowPropagations) > 0);
+
+  CheckSatOptions without_row_propagation;
+  without_row_propagation.lra_propagation = true;
+  without_row_propagation.lra_row_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, without_row_propagation);
+  assert(not_propagated.result == CheckSatResult::Unsat);
+}
+
 void strict_boundary_is_unsat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -550,6 +615,8 @@ int main() {
   atoms_sharing_identical_polynomial_solve_correctly();
   same_slack_propagation_drives_boolean_structure();
   same_slack_propagation_can_reach_a_conflict();
+  row_based_propagation_drives_boolean_structure();
+  row_based_propagation_can_reach_a_conflict();
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();

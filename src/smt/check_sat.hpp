@@ -109,6 +109,13 @@ struct CheckSatOptions {
   // the propagation check is exact and cheap (O(atoms sharing a slack)),
   // so there's no heuristic budget/backoff tuning to expose.
   bool lra_propagation = true;
+  // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
+  // generalizing lra_propagation's same-slack case to derive an implied
+  // bound for a row from its terms' current bounds). Only takes effect
+  // when lra_propagation is also enabled. Opt-in (materially new
+  // algorithmic machinery, not yet campaign-fuzzed) -- see
+  // docs/arithmetic.md's Milestone roadmap.
+  bool lra_row_propagation = false;
   // Milestone 4: default stays Bland (today's already-fuzz-tested
   // behavior) until Dantzig has its own campaign-tier confirmation --
   // see docs/papers/lra-related-work.md's pivoting-rule survey.

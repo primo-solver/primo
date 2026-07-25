@@ -141,6 +141,7 @@ constexpr util::StatKey kStatLraTheoryChecks = util::StatKey::LraTheoryChecks;
 constexpr util::StatKey kStatLraTheoryConflicts = util::StatKey::LraTheoryConflicts;
 constexpr util::StatKey kStatLraTheoryPropagations = util::StatKey::LraTheoryPropagations;
 constexpr util::StatKey kStatLraBlandFallbacks = util::StatKey::LraBlandFallbacks;
+constexpr util::StatKey kStatLraRowPropagations = util::StatKey::LraRowPropagations;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -3114,6 +3115,16 @@ theory::arithmetic::DeltaRational false_threshold(theory::arithmetic::LraRelatio
              : theory::arithmetic::DeltaRational{rhs, util::Rational(1)};
 }
 
+// Defensive bounds on row-based/interval bound propagation's O(row size)
+// per-affected-row cost -- unlike same-slack propagation (O(atoms sharing
+// a slack), typically small), this is triggered by *any* bound change on
+// a variable that occurs in potentially many rows. Not precisely derived;
+// generous enough to matter for real formulas, small enough to bound
+// worst-case cost on an adversarial/fuzzed input, tunable later against
+// real evidence (mirrors the Gaussian-elimination caps' own precedent).
+constexpr std::size_t kRowBasedPropagationMaxRowSize = 64;
+constexpr std::size_t kRowBasedPropagationMaxFanout = 64;
+
 // Applies one assigned LRA atom's relation+truth-value+strictness to
 // `tableau` as a single Assert-Bound call (Eq asserts both bounds). Shared
 // between the fully-lazy per-round-normalize path (not currently used by
@@ -3211,6 +3222,27 @@ struct PreparedLraTheory {
   // (PreparedAtom::is_arithmetic); non-arithmetic atoms' default slack (0)
   // is a sentinel, not a real tableau variable, and must not be mixed in.
   std::unordered_map<theory::arithmetic::LraVarId, std::vector<std::size_t>> atoms_by_slack;
+  // Raw problem variable -> the slack that wraps it ALONE (row = {var: 1},
+  // e.g. what a bare `(<= x c)`-style atom's polynomial normalizes to),
+  // when such an atom exists in the formula. Every atom (even a
+  // single-variable one) gets its own dedicated slack in this tableau
+  // design -- bounds are only ever asserted on slacks, never directly on
+  // the raw structural variables a row's terms reference -- so row-based
+  // propagation (OnlineLraPropagator::compute_implied_bound) needs this
+  // indirection to find a row TERM's current bound at all. Coefficient-1
+  // only for now (a deliberate first-cut scope cut, see the
+  // competitiveness-roadmap plan); a term whose only directly-bounded
+  // source atom has a different coefficient (e.g. only `(<= (* 2 x) 4)`
+  // exists, never a bare `x`) simply isn't found here and contributes
+  // nothing to an implied bound.
+  std::unordered_map<theory::arithmetic::LraVarId, theory::arithmetic::LraVarId> single_variable_slack;
+  // The reverse of single_variable_slack (slack -> the one variable it
+  // wraps), used on the trigger side: when a slack's bound changes,
+  // row-based propagation only needs to rescan anything if that slack is
+  // itself some variable's single-variable wrapper (otherwise no other
+  // row's compute_implied_bound could ever be reading this slack's bound
+  // at all, via the indirection above).
+  std::unordered_map<theory::arithmetic::LraVarId, theory::arithmetic::LraVarId> variable_for_single_slack;
 };
 
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
@@ -3255,6 +3287,11 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
       base_tableau.add_row(slack, row);
       slack_by_polynomial.emplace(key, slack);
     }
+    if (key.sorted_terms.size() == 1 && key.sorted_terms[0].second == util::Rational(1)) {
+      const theory::arithmetic::LraVarId wrapped_var = get_var(key.sorted_terms[0].first);
+      single_variable_slack.emplace(wrapped_var, slack);
+      variable_for_single_slack.emplace(slack, wrapped_var);
+    }
     const std::size_t atom_index = atoms.size();
     atoms.push_back(PreparedAtom{true, slack, normalized.relation, normalized.rhs});
     atoms_by_slack[slack].push_back(atom_index);
@@ -3296,16 +3333,60 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 #endif  // !PRIMO_HAVE_IPASIR
 
 #if PRIMO_HAVE_IPASIR
+// Row-based/interval bound propagation (Dutertre & de Moura Section 4,
+// generalized beyond scan_for_propagations' same-slack case): the implied
+// upper (want_upper=true) or lower (want_upper=false) bound on `basic_var`
+// from its row's terms' CURRENT bounds -- basic_var = sum(coeff_j * var_j),
+// so basic_var's maximum is the sum of each term's own maximum contribution
+// (var_j's upper bound if coeff_j is positive, since a bigger var_j means a
+// bigger term then; var_j's lower bound if coeff_j is negative), and
+// symmetrically for the minimum/lower case. Bounds in this tableau design
+// only ever live on slacks, never on the raw structural variables a row's
+// terms reference directly -- so each term is looked up via
+// prepared.single_variable_slack (the slack, if any, that wraps that
+// variable alone), not tableau.upper_bound/lower_bound(var) directly.
+// Returns nullopt if the row exceeds the size cap, a term has no such
+// wrapping slack, or that slack lacks the needed-direction bound (an
+// unbounded term makes the whole sum unbounded in that direction, not just
+// weaker). The returned reasons are one asserting literal per row term
+// actually used -- a genuine multi-literal antecedent, unlike same-slack
+// propagation's single-literal one.
+std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
+compute_implied_bound(const theory::arithmetic::LraTableau& tableau, const PreparedLraTheory& prepared,
+                      theory::arithmetic::LraVarId basic_var, bool want_upper) {
+  const auto& row = tableau.row(basic_var);
+  if (row.size() > kRowBasedPropagationMaxRowSize) {
+    return std::nullopt;
+  }
+  theory::arithmetic::DeltaRational total =
+      theory::arithmetic::DeltaRational::from_rational(util::Rational(0));
+  std::vector<sat::Lit> reasons;
+  reasons.reserve(row.size());
+  for (const auto& [var, coeff] : row) {
+    const auto slack_found = prepared.single_variable_slack.find(var);
+    if (slack_found == prepared.single_variable_slack.end()) {
+      return std::nullopt;
+    }
+    const bool need_upper_of_var = want_upper == (coeff.sign() > 0);
+    const auto bound = need_upper_of_var ? tableau.upper_bound(slack_found->second)
+                                         : tableau.lower_bound(slack_found->second);
+    if (!bound.has_value()) {
+      return std::nullopt;
+    }
+    total = total + bound->value.scaled(coeff);
+    reasons.push_back(bound->reason);
+  }
+  return std::make_pair(total, std::move(reasons));
+}
+
 // Trail-synced CaDiCaL external propagator for QF_LRA (Milestone 3a of the
-// QF_LRA plan): mirrors OnlineEufPropagator structurally, but deliberately
-// conflict-detection only -- cb_propagate() always returns 0. Per the
-// user's explicit direction, this is intentional and not a stopgap:
-// proactive bound propagation is a search-efficiency optimization, not a
-// DPLL(T) completeness requirement (EUF's own OnlineEufPropagator already
-// draws this exact line via EufPropagationMode::Conflict, which uses this
-// same trail-synced machinery and also always returns 0 from
-// cb_propagate()). Bound propagation, if ever added, is Milestone 3b --
-// deliberately not scheduled.
+// QF_LRA plan): mirrors OnlineEufPropagator structurally. cb_propagate()
+// delivers same-slack propagations (Milestone 3b, scan_for_propagations)
+// and, opt-in, row-based/interval propagations (competitiveness-roadmap
+// item 2, scan_row_based_propagations) -- both gated behind
+// propagation_enabled_/row_propagation_enabled_ respectively, off entirely
+// falls back to conflict-detection-only, mirroring EUF's own
+// EufPropagationMode::Conflict line.
 //
 // Owns its own LraTableau (copied once from PreparedLraTheory's base, not
 // per SAT round), kept in sync with the CaDiCaL trail via
@@ -3317,11 +3398,13 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
  public:
   OnlineLraPropagator(const PreparedLraTheory& prepared,
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-                      bool propagation_enabled, util::Statistics& statistics)
+                      bool propagation_enabled, bool row_propagation_enabled,
+                      util::Statistics& statistics)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
         propagation_enabled_(propagation_enabled),
+        row_propagation_enabled_(row_propagation_enabled),
         statistics_(statistics) {
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
@@ -3401,14 +3484,19 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       return 0;
     }
     while (!pending_.empty()) {
-      const auto [lit, antecedent] = pending_.front();
+      PendingPropagation candidate = std::move(pending_.front());
       pending_.pop_front();
-      const int var = lit > 0 ? lit : -lit;
+      const int var = candidate.lit > 0 ? candidate.lit : -candidate.lit;
       if (is_assigned_var(var)) {
         continue;
       }
-      reasons_[lit] = antecedent;
+      const int lit = candidate.lit;
+      const bool row_based = candidate.row_based;
+      reasons_[lit] = std::move(candidate.reasons);
       statistics_.increment(kStatLraTheoryPropagations);
+      if (row_based) {
+        statistics_.increment(kStatLraRowPropagations);
+      }
       return lit;
     }
     return 0;
@@ -3427,9 +3515,10 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       ++reason_stream_index_;
       return propagated_lit;
     }
-    if (reason_stream_index_ == 1) {
+    const std::size_t antecedent_index = static_cast<std::size_t>(reason_stream_index_ - 1);
+    if (antecedent_index < found->second.size()) {
       ++reason_stream_index_;
-      return found->second.value;
+      return found->second[antecedent_index].value;
     }
     reason_stream_active_lit_ = 0;
     reason_stream_index_ = 0;
@@ -3516,6 +3605,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     }
     if (propagation_enabled_) {
       scan_for_propagations(atom_index, prepared_atom.slack);
+      if (row_propagation_enabled_) {
+        scan_row_based_propagations(prepared_atom.slack);
+      }
     }
     // Eagerly re-checks after every single assignment, mirroring how EUF's
     // IncrementalFlatAssignmentState::assert_assignment eagerly detects
@@ -3556,21 +3648,84 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       const auto upper = tableau_.upper_bound(prepared_atom.slack);
       if (upper.has_value() &&
           upper->value <= true_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-        pending_.emplace_back(atom.lit.value, upper->reason);
+        pending_.push_back(PendingPropagation{atom.lit.value, {upper->reason}, false});
         continue;
       }
       const auto lower = tableau_.lower_bound(prepared_atom.slack);
       if (lower.has_value() &&
           lower->value >= false_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-        pending_.emplace_back(-atom.lit.value, lower->reason);
+        pending_.push_back(PendingPropagation{-atom.lit.value, {lower->reason}, false});
       }
     }
   }
+
+  // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
+  // generalizing scan_for_propagations to a *derived* rather than
+  // directly-asserted bound): `changed_slack`'s bound was just tightened.
+  // Bounds in this tableau design only ever live on slacks, so this only
+  // matters for row-based propagation if `changed_slack` is itself some
+  // variable's single-variable wrapper (prepared_.variable_for_single_slack)
+  // -- if so, any row currently mentioning that raw variable
+  // (tableau_.occurs_in) could now have a tighter implied bound. For each
+  // such row (its basic variable is itself a slack, so the same
+  // atoms_by_slack lookup and true_threshold/false_threshold comparison
+  // scan_for_propagations uses applies unchanged), compute the implied
+  // upper/lower via compute_implied_bound and check entailment for atoms
+  // sharing that row's own slack.
+  void scan_row_based_propagations(theory::arithmetic::LraVarId changed_slack) {
+    const auto wrapped_var = prepared_.variable_for_single_slack.find(changed_slack);
+    if (wrapped_var == prepared_.variable_for_single_slack.end()) {
+      return;
+    }
+    const std::vector<theory::arithmetic::LraVarId>& affected_rows =
+        tableau_.occurs_in(wrapped_var->second);
+    if (affected_rows.size() > kRowBasedPropagationMaxFanout) {
+      return;
+    }
+    for (const theory::arithmetic::LraVarId basic_var : affected_rows) {
+      const auto found = prepared_.atoms_by_slack.find(basic_var);
+      if (found == prepared_.atoms_by_slack.end()) {
+        continue;
+      }
+      for (const std::size_t atom_index : found->second) {
+        const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+        const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+        if (is_assigned_var(var)) {
+          continue;
+        }
+        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+        const auto implied_upper =
+            compute_implied_bound(tableau_, prepared_, basic_var, /*want_upper=*/true);
+        if (implied_upper.has_value() &&
+            implied_upper->first <= true_threshold(prepared_atom.relation, prepared_atom.rhs)) {
+          pending_.push_back(PendingPropagation{atom.lit.value, implied_upper->second, true});
+          continue;
+        }
+        const auto implied_lower =
+            compute_implied_bound(tableau_, prepared_, basic_var, /*want_upper=*/false);
+        if (implied_lower.has_value() &&
+            implied_lower->first >= false_threshold(prepared_atom.relation, prepared_atom.rhs)) {
+          pending_.push_back(PendingPropagation{-atom.lit.value, implied_lower->second, true});
+        }
+      }
+    }
+  }
+
+  // A queued propagation candidate: the CaDiCaL literal to propagate, its
+  // antecedent reason literals (one for same-slack propagation; up to a
+  // row's term count for row-based propagation), and whether it came from
+  // the row-based scan (for the LraRowPropagations breakdown stat).
+  struct PendingPropagation {
+    int lit;
+    std::vector<sat::Lit> reasons;
+    bool row_based;
+  };
 
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
   const PreparedLraTheory& prepared_;
   theory::arithmetic::LraTableau tableau_;
   bool propagation_enabled_;
+  bool row_propagation_enabled_;
   util::Statistics& statistics_;
   std::vector<char> observed_vars_;
   std::vector<char> assigned_;
@@ -3578,8 +3733,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   std::vector<std::size_t> atom_index_by_var_;
   std::vector<std::size_t> checkpoints_;
   std::vector<std::size_t> level_starts_;
-  std::deque<std::pair<int, sat::Lit>> pending_;
-  std::unordered_map<int, sat::Lit> reasons_;
+  std::deque<PendingPropagation> pending_;
+  std::unordered_map<int, std::vector<sat::Lit>> reasons_;
   int reason_stream_active_lit_ = 0;
   int reason_stream_index_ = 0;
   std::optional<sat::Clause> conflict_;
@@ -3611,11 +3766,10 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
   // better than the copy-per-round fallback below (real incremental reuse
   // via LraTableau::push/pop instead of reasserting everything from
   // scratch every SAT round), and correctness has already been verified
-  // against it via the fuzz gate (see docs/run-log.json). No
-  // CheckSatOptions toggle for this yet -- there's no second online mode
-  // to choose between until Milestone 3b (bound propagation) exists.
+  // against it via the fuzz gate (see docs/run-log.json).
   OnlineLraPropagator online_propagator(prepared_theory, clausifier.theory_atoms(),
-                                        options.lra_propagation, statistics);
+                                        options.lra_propagation, options.lra_row_propagation,
+                                        statistics);
   backend.connect_external_propagator(&online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;

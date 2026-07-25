@@ -94,6 +94,10 @@ class LraTableau {
 
   explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {}
 
+  // A basic variable's row: basic_var = sum(coefficient * var), one
+  // (var, coefficient) pair per term. Not sorted by var id.
+  using Row = std::vector<std::pair<LraVarId, util::Rational>>;
+
   // Allocates a fresh non-basic variable with assignment 0 and no bounds.
   LraVarId add_variable();
 
@@ -164,6 +168,28 @@ class LraTableau {
   // before and after a check() call themselves.
   std::size_t bland_fallback_count() const { return bland_fallback_count_; }
 
+  // Whether `var` is currently a basic (row-defining) variable -- pivots
+  // can change this over time, so this reflects the current pivot state,
+  // not a static structural property.
+  bool is_basic(LraVarId var) const { return vars_.at(var).is_basic; }
+
+  // `var`'s current row (basic_var = sum(coefficient * var)). `var` must
+  // currently be basic (see is_basic()); throws std::out_of_range
+  // otherwise, matching this class's existing .at()-style conventions.
+  const Row& row(LraVarId var) const { return rows_.at(var); }
+
+  // The basic variable ids of every row whose terms currently mention
+  // `var` -- the reverse of row() -- used by row-based/interval bound
+  // propagation to find which rows could have a newly-tightened implied
+  // bound after `var`'s own bound changes. Empty (not an error) if `var`
+  // occurs in no row. Reflects the current pivot state, kept correct
+  // across add_row/pivot/pop (see occurs_in_'s own maintenance).
+  const std::vector<LraVarId>& occurs_in(LraVarId var) const {
+    static const std::vector<LraVarId> kEmpty;
+    const auto found = occurs_in_.find(var);
+    return found == occurs_in_.end() ? kEmpty : found->second;
+  }
+
  private:
   struct Bound {
     DeltaRational value;
@@ -176,8 +202,6 @@ class LraTableau {
     std::optional<Bound> lower;
     std::optional<Bound> upper;
   };
-
-  using Row = std::vector<std::pair<LraVarId, util::Rational>>;
 
   struct BoundTrailEntry {
     LraVarId var;

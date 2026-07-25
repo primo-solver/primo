@@ -159,6 +159,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.bland-fallbacks"sv,
     ":preprocessing.real-equality-lowering.lowered"sv,
     ":preprocessing.solve-eqs.gaussian-candidates"sv,
+    ":lra.row-propagations"sv,
 };
 
 }  // namespace

@@ -157,6 +157,7 @@ enum class StatKey : std::size_t {
   LraBlandFallbacks,
   RealEqualityLowered,
   SolvedConstantGaussianCandidates,
+  LraRowPropagations,
   Count,
 };
 
