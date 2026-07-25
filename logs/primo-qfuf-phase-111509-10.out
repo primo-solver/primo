@@ -6,5 +6,5 @@ cadical: cadical-3.0.0-7b99c07
 [3/5] Goel tmp/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.3.prop2_ab_reg_max.smt2: ok sat 1.295207s
 [4/5] QG tmp/QF_UF/QG-classification/qg6/iso_brn_nogen_sk006.smt2: ok sat 1.179872s
 [5/5] Goel tmp/QF_UF/2018-Goel-hwbench/QF_UF_AR_ab_cti_max.smt2: ok sat 0.070865s
-wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111509/auto/shard-2.csv
-wrote /home/janotmik/primo-cadical-profile/results/qfuf-phase-compare-111509/auto/shard-2-summary.csv
+wrote <remote-home>/primo-cadical-profile/results/qfuf-phase-compare-111509/auto/shard-2.csv
+wrote <remote-home>/primo-cadical-profile/results/qfuf-phase-compare-111509/auto/shard-2-summary.csv

@@ -26,8 +26,10 @@ loop:
 ```
 
 The current conflict clause is justified by the explained congruence closure.
-Reasons are sound but not guaranteed minimum; the optimized proof-forest
-structure from the fast congruence-closure literature is still deferred.
+Reasons are sound but not guaranteed minimum. Primo has default-off
+proof-forest explanation modes based on the fast congruence-closure
+literature, but the BFS explanation search remains the default because the
+opt-in proof-forest modes are not yet a net performance win.
 
 Before invoking EUF checks, Primo applies T-pure-literal filtering in the sense
 of Sebastiani's lazy SMT survey, §6.10. Polarity is collected for original
@@ -348,9 +350,9 @@ The explanation-shape counters
 `:euf.incremental.explain-repeated-pair-queries`, and
 `:euf.incremental.explain-max-recursion-depth`, together with
 `:euf.incremental.explain-cache-bound-misses`, are diagnostic only: they measure
-the current BFS explanation path and do not implement or select a proof-forest
+the selected explanation path and do not themselves select a proof-forest
 reason engine.
-`--euf-explain-search=one-sided|bidirectional|proof-forest|reoriented-proof-forest`
+`--euf-explain-search=one-sided|bidirectional|proof-forest|reoriented-proof-forest|structural-proof-forest`
 selects how the
 incremental flat closure builds explanations. The default `one-sided` mode
 preserves the validated reason shape by searching the current causal
@@ -518,7 +520,7 @@ Implemented:
 
 Deferred:
 
-- optimized explanation-producing proof forests;
+- default-ready proof-forest explanation policy with broad benchmark wins;
 - richer online conflict-clause injection;
 - minimal theory-propagation reasons;
 - proof output for preprocessing-generated lemmas;
@@ -539,7 +541,12 @@ that persistent closure's already-verified conflict state instead of rebuilding
 a flat closure from the complete assignment. Model-time propagation
 (`--euf-prop=model`) and the final conflict check under `off`/`model`
 propagation still rebuild flat closures from complete assignments.
-Primo does not yet implement the Section 4-5 proof-producing union-find.
+Primo implements Section 4/5.2-style reoriented proof forests and Section 5.5
+structural-class nodes as default-off explanation modes. These are not promoted
+to the default QF_UF path because current evidence is mixed: they are correct on
+the recorded tests and fuzzing, but they do not yet beat the default
+explanation policy across the standard QF_UF benchmark subset. Primo still does
+not implement proof output for these proof-forest explanations.
 
 Deharbe et al., *Exploiting symmetry in SMT problems*, and Reger and Suda,
 *Using SAT and SMT Solvers for Finite Model Finding with Sorts*, motivate the

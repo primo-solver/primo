@@ -1,7 +1,7 @@
 # QF_UF 10s SLURM comparison: llm2smt vs Primo
 
 - Corpus: `tmp/QF_UF`, 7,503 SMT-LIB files on SLURM.
-- llm2smt: `/home/janotmik/llm2smt-reference/build-slurm-rel/bin/llm2smt`, version 0.2.4, commit unknown from local `/tmp/llm2smt` checkout.
+- llm2smt: `<remote-home>/llm2smt-reference/build-slurm-rel/bin/llm2smt`, version 0.2.4, commit unknown from local `/tmp/llm2smt` checkout.
 - llm2smt options: `--quiet --uf-symmetry-breaking --preprocess-passes 4 --eq-bridge --prop-interval 32 --prop-assign-threshold 0.25 --prop-delivery-budget 1000`.
 - Primo comparator: SLURM job 109913, commit `a03eae9`, same 10s timeout and old-style performance defaults.
 - Solved means a non-wrong `sat` or `unsat` answer; `unsupported` is not counted as solved.

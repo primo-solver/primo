@@ -13,6 +13,6 @@ export PRIMO_OPTION_MANIFESTS=${PRIMO_OPTION_MANIFESTS:-"benchmarks/user-primo-h
 export PRIMO_OPTION_VARIANTS=${PRIMO_OPTION_VARIANTS:-"default= no-basic-single=--no-auto-basic-single"}
 export PRIMO_OPTION_SHARDS=${PRIMO_OPTION_SHARDS:-16}
 export PRIMO_OPTION_TIMEOUT=${PRIMO_OPTION_TIMEOUT:-120}
-export PRIMO_OPTION_OUT_ROOT=${PRIMO_OPTION_OUT_ROOT:-"${PRIMO_WORKDIR:-/home/janotmik/primo-cadical-profile}/results/qfuf-auto-basic-single-${SLURM_ARRAY_JOB_ID:-manual}"}
+export PRIMO_OPTION_OUT_ROOT=${PRIMO_OPTION_OUT_ROOT:-"${PRIMO_WORKDIR:-$PWD}/results/qfuf-auto-basic-single-${SLURM_ARRAY_JOB_ID:-manual}"}
 
 bash scripts/slurm_qfuf_option_compare.sbatch
