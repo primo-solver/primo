@@ -123,6 +123,7 @@ struct CheckSatOptions {
   bool ground_unit_substitution = false;
   bool guarded_ground_unit_substitution = false;
   bool solved_constant_substitution = true;
+  bool gaussian_elimination = false;
   bool top_level_or_tseitin = false;
   bool auto_top_level_or_tseitin = true;
   bool auto_basic_single_preprocessing = true;

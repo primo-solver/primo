@@ -64,10 +64,19 @@ struct SolvedConstantSubstitutionResult {
   std::size_t rewrites = 0;
   std::size_t rejected_cycles = 0;
   std::size_t rejected_blowups = 0;
+  std::size_t gaussian_candidates = 0;
 };
 
+// enable_gaussian_elimination additionally row-reduces (Gauss-Jordan,
+// exact rationals) the system of asserted Real-sorted linear equalities
+// before the ordinary bare-variable-equality candidate scan, catching
+// definitions the latter can't (e.g. `2x = 5`, or a variable only solvable
+// jointly from several equations). Opt-in (default false in
+// CheckSatOptions) since it's materially new algorithmic machinery, not
+// yet campaign-fuzzed.
 SolvedConstantSubstitutionResult substitute_solved_constants(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions);
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    bool enable_gaussian_elimination = false);
 
 struct BooleanUnitPropagationResult {
   std::vector<core::TermId> assertions;

@@ -78,6 +78,8 @@ constexpr util::StatKey kStatSolvedConstantRejectedCycles =
 constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
 constexpr util::StatKey kStatRealEqualityLowered = util::StatKey::RealEqualityLowered;
+constexpr util::StatKey kStatSolvedConstantGaussianCandidates =
+    util::StatKey::SolvedConstantGaussianCandidates;
 constexpr util::StatKey kStatFiniteDomainDomains = util::StatKey::FiniteDomainDomains;
 constexpr util::StatKey kStatFiniteDomainAmoClauses = util::StatKey::FiniteDomainAmoClauses;
 constexpr util::StatKey kStatFiniteDomainRawChoices = util::StatKey::FiniteDomainRawChoices;
@@ -3892,6 +3894,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatSolvedConstantRejectedCycles, 0);
   statistics.set(kStatSolvedConstantRejectedBlowups, 0);
   statistics.set(kStatRealEqualityLowered, 0);
+  statistics.set(kStatSolvedConstantGaussianCandidates, 0);
   statistics.set(kStatFiniteDomainDomains, 0);
   statistics.set(kStatFiniteDomainAmoClauses, 0);
   statistics.set(kStatFiniteDomainRawChoices, 0);
@@ -4116,14 +4119,16 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
     }
     if (auto_large_assertion_skip && options.solved_constant_substitution) {
-      SolvedConstantSubstitutionResult solved_constants =
-          substitute_solved_constants(frontend.terms(), assertions);
+      SolvedConstantSubstitutionResult solved_constants = substitute_solved_constants(
+          frontend.terms(), assertions, options.gaussian_elimination);
       assertions = std::move(solved_constants.assertions);
       statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
       statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
       statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
       statistics.increment(kStatSolvedConstantRejectedCycles, solved_constants.rejected_cycles);
       statistics.increment(kStatSolvedConstantRejectedBlowups, solved_constants.rejected_blowups);
+      statistics.increment(kStatSolvedConstantGaussianCandidates,
+                           solved_constants.gaussian_candidates);
     }
     for (std::size_t pass = 0; preprocessing_enabled && pass < preprocessing_pass_limit; ++pass) {
       const std::vector<core::TermId> before = assertions;
@@ -4174,14 +4179,16 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                   forced_atoms.disequality_pairs.begin(),
                                   forced_atoms.disequality_pairs.end());
       if (options.solved_constant_substitution) {
-        SolvedConstantSubstitutionResult solved_constants =
-            substitute_solved_constants(frontend.terms(), assertions);
+        SolvedConstantSubstitutionResult solved_constants = substitute_solved_constants(
+            frontend.terms(), assertions, options.gaussian_elimination);
         assertions = std::move(solved_constants.assertions);
         statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
         statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
         statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
         statistics.increment(kStatSolvedConstantRejectedCycles, solved_constants.rejected_cycles);
         statistics.increment(kStatSolvedConstantRejectedBlowups, solved_constants.rejected_blowups);
+        statistics.increment(kStatSolvedConstantGaussianCandidates,
+                             solved_constants.gaussian_candidates);
       }
       if (use_ground_unit_substitution || use_guarded_ground_unit_substitution) {
         GroundEqualitySubstitutionResult ground_substitution =

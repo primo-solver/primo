@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -10,6 +11,7 @@
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
 #include "smt/preprocessing.hpp"
+#include "util/rational.hpp"
 
 namespace {
 
@@ -68,6 +70,7 @@ struct RealFixture {
   primo::core::SortId real_sort = symbols.real_sort();
   primo::core::SymbolId x = symbols.declare_constant("x", real_sort);
   primo::core::SymbolId y = symbols.declare_constant("y", real_sort);
+  primo::core::SymbolId z = symbols.declare_constant("z", real_sort);
   primo::core::TermManager terms{symbols};
 
   primo::core::TermId constant(primo::core::SymbolId symbol) { return terms.mk_constant(symbol); }
@@ -350,6 +353,80 @@ void solved_constant_substitution_eliminates_real_equality_definition() {
       fixture.terms.mk_le(fixture.terms.mk_plus({five, y}), fixture.rational(10));
   check(std::find(result.assertions.begin(), result.assertions.end(), rewritten) !=
         result.assertions.end());
+}
+
+void gaussian_elimination_solves_joint_linear_system() {
+  // Neither equation alone defines a variable (solved_constant_candidate_
+  // from_equality requires a bare Constant on one side), but row-reducing
+  // 2x+3y=5 and x-y=1 together gives x=8/5, y=3/5.
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId eq1 = fixture.terms.mk_eq(
+      fixture.terms.mk_plus({fixture.terms.mk_times(2, x), fixture.terms.mk_times(3, y)}),
+      fixture.rational(5));
+  const primo::core::TermId eq2 = fixture.terms.mk_eq(
+      fixture.terms.mk_plus({x, fixture.terms.mk_times(-1, y)}), fixture.rational(1));
+  const primo::core::TermId formula = fixture.terms.mk_le(fixture.terms.mk_plus({x, y}), fixture.rational(10));
+
+  const primo::smt::SolvedConstantSubstitutionResult result = primo::smt::substitute_solved_constants(
+      fixture.terms, {eq1, eq2, formula}, /*enable_gaussian_elimination=*/true);
+
+  check(result.gaussian_candidates == 2);
+  check(result.accepted == 2);
+  check(result.rejected_cycles == 0);
+  const primo::core::TermId x_value = fixture.terms.mk_rational(primo::util::Rational(8, 5));
+  const primo::core::TermId y_value = fixture.terms.mk_rational(primo::util::Rational(3, 5));
+  const primo::core::TermId rewritten =
+      fixture.terms.mk_le(fixture.terms.mk_plus({x_value, y_value}), fixture.rational(10));
+  check(std::find(result.assertions.begin(), result.assertions.end(), rewritten) !=
+        result.assertions.end());
+}
+
+void gaussian_elimination_solves_single_equation_with_coefficient() {
+  // `2x = 5` has no bare-variable side, so solved_constant_candidate_
+  // from_equality finds nothing; the Gaussian pass still solves it as a
+  // degenerate 1x1 system.
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId eq = fixture.terms.mk_eq(fixture.terms.mk_times(2, x), fixture.rational(5));
+  const primo::core::TermId formula = fixture.terms.mk_le(x, fixture.rational(100));
+
+  const primo::smt::SolvedConstantSubstitutionResult result = primo::smt::substitute_solved_constants(
+      fixture.terms, {eq, formula}, /*enable_gaussian_elimination=*/true);
+
+  check(result.gaussian_candidates == 1);
+  check(result.accepted == 1);
+  const primo::core::TermId rewritten = fixture.terms.mk_le(
+      fixture.terms.mk_rational(primo::util::Rational(5, 2)), fixture.rational(100));
+  check(std::find(result.assertions.begin(), result.assertions.end(), rewritten) !=
+        result.assertions.end());
+}
+
+void gaussian_elimination_bails_out_above_equation_cap() {
+  // Defensive bound on the O(equations^2 * variables) elimination cost --
+  // 129 equations (one more than kGaussianEliminationMaxEquations) should
+  // make the pass bail out cleanly (no crash/hang, gaussian_candidates
+  // stays 0), even though every individual `xi = 1` equation is trivially
+  // solvable and would normally be found (each is also caught by the
+  // ordinary bare-variable recognizer regardless, so accepted still ends
+  // up nonzero -- only the Gaussian-specific contribution is under test).
+  Fixture uninterpreted;  // reused only for its SymbolTable/TermManager
+  primo::core::SymbolTable& symbols = uninterpreted.symbols;
+  primo::core::TermManager& terms = uninterpreted.terms;
+  const primo::core::SortId real_sort = symbols.real_sort();
+
+  std::vector<primo::core::TermId> equalities;
+  for (int i = 0; i < 129; ++i) {
+    const primo::core::SymbolId variable =
+        symbols.declare_constant("gauss_cap_" + std::to_string(i), real_sort);
+    equalities.push_back(terms.mk_eq(terms.mk_constant(variable), terms.mk_rational(1)));
+  }
+
+  const primo::smt::SolvedConstantSubstitutionResult result =
+      primo::smt::substitute_solved_constants(terms, equalities, /*enable_gaussian_elimination=*/true);
+
+  check(result.gaussian_candidates == 0);
 }
 
 void lower_real_equalities_rewrites_real_sorted_equality_only() {
@@ -824,6 +901,9 @@ int main() {
   solved_constant_substitution_eliminates_acyclic_definition();
   solved_constant_substitution_rejects_cycles();
   solved_constant_substitution_eliminates_real_equality_definition();
+  gaussian_elimination_solves_joint_linear_system();
+  gaussian_elimination_solves_single_equation_with_coefficient();
+  gaussian_elimination_bails_out_above_equation_cap();
   lower_real_equalities_rewrites_real_sorted_equality_only();
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();

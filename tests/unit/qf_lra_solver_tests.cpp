@@ -455,6 +455,59 @@ void solve_eqs_fires_for_real_definitional_equality() {
   assert(result.statistics.get(StatKey::SolvedConstantRewrites) > 0);
 }
 
+void gaussian_elimination_solves_joint_system_when_enabled() {
+  // 2x+3y=5 and x-y=1 jointly solve for x=8/5, y=3/5; neither equation
+  // alone is a bare-variable definition, so this only fires via the
+  // opt-in Gaussian elimination pass (--gaussian-elimination), not the
+  // ordinary solve-eqs recognizer.
+  CheckSatOptions with_gaussian;
+  with_gaussian.gaussian_elimination = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (+ (* 2 x) (* 3 y)) 5))
+    (assert (= (- x y) 1))
+    (check-sat)
+  )",
+                                       with_gaussian);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::SolvedConstantGaussianCandidates) > 0);
+}
+
+void gaussian_elimination_is_inert_by_default() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (+ (* 2 x) (* 3 y)) 5))
+    (assert (= (- x y) 1))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::SolvedConstantGaussianCandidates) == 0);
+}
+
+void gaussian_elimination_detects_contradictory_system() {
+  // Same left-hand polynomial, different right-hand constants -- neither
+  // equation alone is bare-variable-shaped, so this contradiction is only
+  // ever caught by the ordinary LRA tableau, not by solve-eqs itself
+  // (the Gaussian pass has no special contradiction detection -- see the
+  // roadmap design note). This confirms end-to-end soundness either way.
+  CheckSatOptions with_gaussian;
+  with_gaussian.gaussian_elimination = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (+ (* 2 x) (* 3 y)) 5))
+    (assert (= (+ (* 2 x) (* 3 y)) 6))
+    (check-sat)
+  )",
+                                       with_gaussian);
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 // Frontend::build_term (TermBuilder in check_sat.cpp) is iterative, not
 // recursive descent -- see the TermBuilder class comment. A deeply nested
 // `+` chain like this used to stack-overflow (found via fuzzing under
@@ -500,6 +553,9 @@ int main() {
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
   handles_disequality_via_boolean_level_case_splitting();
   solve_eqs_fires_for_real_definitional_equality();
+  gaussian_elimination_solves_joint_system_when_enabled();
+  gaussian_elimination_is_inert_by_default();
+  gaussian_elimination_detects_contradictory_system();
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
   return 0;

@@ -200,6 +200,10 @@ int main(int argc, char** argv) {
   app.add_flag("--no-solved-constant-substitution", no_solved_constant_substitution,
                "Disable default QF_UF solved-constant substitution")
       ->default_val(false);
+  app.add_flag("--gaussian-elimination", solver_options.gaussian_elimination,
+               "Enable experimental QF_LRA Gauss-Jordan elimination over asserted linear "
+               "equality systems, feeding solve-eqs")
+      ->default_val(false);
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Encode top-level disjunctions with Tseitin support clauses")
       ->default_val(false);
