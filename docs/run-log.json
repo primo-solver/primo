@@ -9629,6 +9629,43 @@
       },
       "evidence_status": "current_local",
       "notes": "Completes Milestone 4 (both 4a and 4b). See docs/arithmetic.md/docs/papers/fast-linear-arithmetic-dpllt.md for the promotion-status update this result justifies."
+    },
+    {
+      "id": "2026-07-25-qf-lra-real-equality-lowering-smoke-gate",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "fuzz",
+      "scope": "Local merge-gate-tier (500-case) fuzz smoke test for the competitiveness-roadmap item 1 redesign: Real-equality lowering (previously And(Le,Le) desugaring in Frontend::mk_theory_equality at parse time) moved to a new lower_real_equalities preprocessing pass run once, at the end of the preprocessing pipeline, immediately before the has_equality/has_arithmetic theory dispatch -- so solve-eqs and other Equality-aware preprocessing passes see genuine Real Equality nodes. Highest-risk surface: re-touches the disequality encoding that already cleared Milestone 4b's campaign-tier gate, so this smoke test specifically checks nothing regressed before scheduling a fresh campaign-tier confirmation.",
+      "commit": "6b868f4",
+      "environment": {
+        "type": "local",
+        "host": "workspace container",
+        "binary": "build-asan-ws/primo (ASAN+UBSan)"
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build-asan-ws/primo --refs z3 --logic QF_LRA --count 500 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_lra-real-equality-lowering --seed 1",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 500 cases), seeded/referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "fuzz-results/qf_lra-real-equality-lowering/{generated,bugs,summary.csv} (not committed) -- bugs/ holds all 83 TIMEOUT cases (fuzz_external.py copies every non-PASS/non-UNKNOWN_INVOLVED outcome there, timeouts included, not just crashes/wrong-answers)."
+      },
+      "summary": {
+        "result": "500/500 cases: 417 PASS, 83 TIMEOUT, 0 CRASH, 0 REF_DISAGREEMENT, 0 UNSUPPORTED_INPUT, 0 UNKNOWN_INVOLVED.",
+        "significance": "No regression from moving Real-equality lowering out of the frontend into a late preprocessing pass: disequality (NOT(a=b)), distinct, and ordinary equality/solve-eqs formulas all still solve correctly against z3 at this sample size, with zero wrong-answer disagreements or unsupported-input rejections. Clears the local merge-gate bar; a fresh campaign-tier (>=3000 case) Slurm run is still needed before this is as trusted as Milestone 4b's already campaign-fuzzed disequality behavior."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run under ASAN+UBSan: 0 crashes, 0 wrong answers, 0 unsupported-input rejections.",
+          "Full unit test suite (Release + ASAN/UBSan) green, including new solve-eqs-fires-for-Real-equality and lower_real_equalities-specific tests, and the pre-existing disequality/distinct regression tests unchanged."
+        ],
+        "pending": [
+          "Campaign-tier (>=3000 case) Slurm confirmation, per AGENTS.md's bar for re-touching already-campaign-fuzzed behavior (this redesign changes when/how the disequality-enabling And(Le,Le) lowering happens)."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/preprocessing.md's 'Real-Equality Lowering' section and docs/arithmetic.md's Disequality bullet/Milestone-roadmap entry for the design this run verifies. Commit 6b868f4 (code+tests), 1585d7d (docs)."
     }
   ]
 }
