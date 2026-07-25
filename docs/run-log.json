@@ -9884,6 +9884,42 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's 'SOI-Simplex pivoting' section for the design this run verifies, and the companion 2026-07-25-qf-lra-soi-simplex-quick-eval entry for the real-benchmark comparison."
+    },
+    {
+      "id": "2026-07-25-qf-lra-competitiveness-item0-empirical-baseline",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "benchmark",
+      "scope": "Competitiveness-roadmap item 0: empirical Primo-vs-z3/cvc5 baseline over a new reusable stratified sample (benchmarks/qf-lra-stratified-sample.txt, up to 15 files per family, all 17 QF_LRA corpus families, fixed seed=42, 237 files total), 10s timeout, on llm2smt-slurm (jobs 113461 for z3/cvc5 + 113464 for a corrected primo-only re-run, commit f62af5b). Two real sbatch-script bugs were found and fixed along the way (not caught until inspecting task logs): a semicolon-vs-space delimiter collision that shifted array-task indices and dropped cvc5 off the end of the range (job 113450, cancelled), and an argparse nargs='+' gotcha where a multi-word solver command's own flag (--quiet) was left as an unrecognized argument (job 113461 task 0, primo, failed immediately) -- fixed by routing extra words through --solver-arg instead. A broken cvc5 install (missing libc++ shared libraries) was also found and fixed on both the local sandbox and the remote before this could run at all -- see the companion contrib/install_cvc5.py fix (commit ac52a7c).",
+      "commit": "f62af5b",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet (remote Release) vs. contrib/local/bin/{z3,cvc5}"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py ...; then sbatch scripts/slurm_qf_lra_solver_compare.sbatch (new reusable template, one array task per solver) -- job 113461 (z3, cvc5; primo task failed) + job 113464 (primo-only re-run into the same results/qf-lra-solver-compare-113461/ output directory after the argparse fix).",
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-stratified-sample.txt (237 files, up to 15/family across all 17 QF_LRA corpus families)",
+        "logic": "QF_LRA",
+        "manifest": "benchmarks/qf-lra-stratified-sample.txt"
+      },
+      "artifacts": {
+        "note": "Remote results/qf-lra-solver-compare-113461/{primo,z3,cvc5}.csv and *-summary.csv pulled back locally (not committed -- large per-file detail, reproducible from the manifest)."
+      },
+      "summary": {
+        "result": "Solved (of 237): primo 102 (43%), z3 167 (70%), cvc5 150 (63%). PAR2 (10s timeout): primo 2799, z3 1531, cvc5 1885. Zero 3-way disagreements on concrete sat/unsat answers across all 237 files -- Primo's answers, where it produces one, are never wrong relative to either reference solver. Per-family breakdown is NOT uniform: Primo fully matches z3/cvc5 (15/15 or 2/2) on keymaera, meti-tarski, sal, spider_benchmarks, check, and is close on DTP-Scheduling (11 vs 15/13); on 2017-Heizmann-UltimateInvariantSynthesis, LassoRanker, and tropical-matrix all three solvers struggle roughly equally (these are genuinely hard for everyone, matching earlier quick-eval findings). But on TM (4 vs 15/14), sc (4 vs 13/12), uart (3 vs 13/12), 2019-ezsmt (3 vs 10/7), tta_startup (8 vs 14/13), and miplib (1 vs 6/5), Primo is specifically and substantially behind while z3/cvc5 mostly solve these within the same 10s budget. Spot-checking TM/uart's primo failures: purely TIMEOUT (not wrong-answer, not error, not unsupported) -- and the cases Primo DOES solve in these families solve fast (1.9-8.8s), suggesting a threshold effect (some difficulty/size crossing point) rather than uniform slowness.",
+        "significance": "First genuine empirical evidence of WHERE Primo is behind, rather than inferring from a 17-file one-per-family sample dominated by the 'hard for everyone' families. This broader, family-stratified sample reveals a *different*, more tractable-looking set of gap families (TM, sc, uart, 2019-ezsmt, tta_startup, miplib) that the earlier narrow sample never surfaced -- these are prime candidates for follow-up investigation (e.g. profiling what's actually slow on a representative TM/uart timeout case) before further committing to items 2/3/4's engineering directions, since none of those (row-based propagation, SOI-Simplex) were evaluated against this specific, more informative family set."
+      },
+      "verification": {
+        "passed": [
+          "Zero wrong-answer disagreements across all 237 files, primo vs. z3 vs. cvc5 (3-way cross-check, not just against embedded :status metadata)."
+        ],
+        "pending": [
+          "Root-cause investigation of the TM/sc/uart/2019-ezsmt/tta_startup/miplib timeout gap -- not yet profiled to determine what's actually the bottleneck (Simplex search itself, preprocessing overhead, something else)."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for competitiveness-roadmap item 0. benchmarks/qf-lra-stratified-sample.txt and scripts/slurm_qf_lra_solver_compare.sbatch are both reusable for future QF_LRA (or QF_UF, via --root/manifest overrides) solver comparisons."
     }
   ]
 }

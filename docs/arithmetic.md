@@ -344,6 +344,36 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   honest findings that none of solve-eqs/row-based propagation/SOI-
   Simplex individually closes this sample's timeouts. See
   `docs/run-log.json`.
+- **Competitiveness roadmap item 0 (2026-07-25, done last, out of
+  priority order): empirical baseline vs. z3/cvc5.** A new reusable
+  stratified sample, `benchmarks/qf-lra-stratified-sample.txt` (up to 15
+  files per family, all 17 corpus families, fixed seed, 237 files --
+  much broader than items 1/2/4's own 17-file one-per-family quick-eval
+  sample), compared against z3 and cvc5 at a 10s timeout via the new
+  `scripts/slurm_qf_lra_solver_compare.sbatch` template. **Solved: primo
+  102/237 (43%), z3 167/237 (70%), cvc5 150/237 (63%); PAR2 primo 2799,
+  z3 1531, cvc5 1885. Zero 3-way wrong-answer disagreements.** Crucially,
+  the gap is **not uniform**: Primo fully matches both reference solvers
+  on keymaera/meti-tarski/sal/spider_benchmarks/check, and all three
+  struggle roughly equally on 2017-Heizmann-UltimateInvariantSynthesis/
+  LassoRanker/tropical-matrix (confirming those are genuinely hard for
+  everyone, not Primo-specific) -- but on **TM, sc, uart, 2019-ezsmt,
+  tta_startup, and miplib, Primo is specifically and substantially
+  behind** while z3/cvc5 mostly solve them within the same budget.
+  Spot-checked TM/uart's failures: pure timeouts (not wrong/error/
+  unsupported), with a threshold effect (solved cases finish in
+  1.9-8.8s, failed ones hit the wall exactly at 10s) suggesting some
+  specific size/structure crossing point, not uniform slowness. **This
+  is the first genuine evidence of *where* Primo is behind** -- none of
+  items 1/2/4 were evaluated against this broader, more representative
+  family set (their own quick-evals used the narrow 17-file sample,
+  dominated by the "hard for everyone" families) -- making the TM/sc/
+  uart/2019-ezsmt/tta_startup/miplib gap a concrete, prioritized target
+  for follow-up profiling before further engineering investment. Two
+  real sbatch-script bugs (a delimiter collision, an argparse `nargs='+'`
+  gotcha) and a broken cvc5 install (missing libc++ shared libraries,
+  fixed via `contrib/install_cvc5.py` preferring static release assets)
+  were found and fixed along the way. See `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
@@ -353,10 +383,13 @@ above (tightening a row's *children* from its own bound, not just deriving
 the row's own implied bound); Devex or Steepest-Edge pivoting (Milestone
 4a covered only Dantzig, and SOI-Simplex, item 4, is now done without
 closing the quick-eval sample's gap -- neither pricing rule choice nor a
-global objective alone seems to be the bottleneck for these particular
-hard families); a campaign-tier confirmation specifically for
-`--lra-pivoting-rule dantzig`/`soi` if either is ever considered for
-becoming the default; the actual empirical baseline vs. z3/cvc5 (item 0,
-still not done) to understand what IS actually gating these families,
-now that three different engineering levers (items 1, 2, 4) have each
-individually failed to move them.
+global objective alone seems to be the bottleneck for the "hard for
+everyone" families in that narrow sample); a campaign-tier confirmation
+specifically for `--lra-pivoting-rule dantzig`/`soi` if either is ever
+considered for becoming the default; and, now the concrete priority per
+item 0's broader empirical baseline (done, see above): profiling what's
+actually slow on a representative TM/sc/uart/2019-ezsmt/tta_startup/
+miplib timeout case (these solve fine for z3/cvc5 within the same
+budget, unlike the narrow sample's "hard for everyone" families) --
+likely the most informative next step before committing further
+engineering effort to items 1/2/4's own directions on faith alone.
