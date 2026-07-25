@@ -192,10 +192,13 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   `rewrite_with_ground_unit_equalities` were both extended to recurse into
   `Plus`/`Times`/`Le`/`Lt` so a substitution actually propagates through
   arithmetic subterms. Full suite (Release + ASAN/UBSan) and new unit
-  tests pass; local merge-gate fuzz and a fresh campaign-tier Slurm
-  confirmation of the (re-touched) disequality path are the remaining
-  verification steps before this is as trusted as Milestone 4b's already
-  campaign-fuzzed behavior -- see `docs/run-log.json`.
+  tests pass; a local 500-case merge-gate fuzz smoke test (417 PASS, 83
+  TIMEOUT, 0 wrong-answers/crashes) and a fresh campaign-tier Slurm run
+  (job 113357, 2026-07-25: 3000/3000 fuzzsmt cases -- 2854 PASS, 146
+  TIMEOUT, 0 CRASH, 0 WRONG -- plus opfuzz and two yinyang typefuzz
+  mutation shards, 14/14 real seeds each, 0 bug triggers) both came back
+  fully clean. This item is **done** and as trusted as Milestone 4b's
+  disequality behavior -- see `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching or row-based/interval propagation

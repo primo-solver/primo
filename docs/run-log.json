@@ -9666,6 +9666,42 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/preprocessing.md's 'Real-Equality Lowering' section and docs/arithmetic.md's Disequality bullet/Milestone-roadmap entry for the design this run verifies. Commit 6b868f4 (code+tests), 1585d7d (docs)."
+    },
+    {
+      "id": "2026-07-25-qf-lra-real-equality-lowering-slurm-campaign-result",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "fuzz",
+      "scope": "Campaign-tier (>=3000 case) QF_LRA fuzz gate on llm2smt-slurm confirming competitiveness-roadmap item 1's redesign (moving Real-equality And(Le,Le) lowering from Frontend::mk_theory_equality at parse time to a new lower_real_equalities pass at the end of preprocessing, commit 6b868f4/1585d7d/bdd827c). This re-touches the disequality encoding that already cleared Milestone 4b's campaign-tier gate (2026-07-24), so per AGENTS.md a fresh campaign-tier confirmation was required before treating the new design as equally trustworthy, not just the local merge-gate smoke test (2026-07-25-qf-lra-real-equality-lowering-smoke-gate) that would normally suffice for a preprocessing-only change.",
+      "commit": "bdd827c",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile; then sbatch --export=ALL,PRIMO_FUZZ_SOLVER=.../build-slurm-rel/primo,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_SEEDS=.../benchmarks/seeds/qf_lra_real,PRIMO_FUZZ_YINYANG_SEEDS=.../benchmarks/seeds/qf_lra_real scripts/slurm_qfuf_fuzz_gate.sbatch (with TYPEFUZZ and PATH set to include contrib/local/bin and .venv-yinyang/bin, per the Milestone 4b setup) as job 113357 -- 9 tasks (6 fuzzsmt shards x 500 = 3000 cases, 1 opfuzz task, 2 yinyang typefuzz mutation shards), all completed cleanly on the first submission with no queue wait and no infrastructure fixes needed this time (both bugs found during Milestone 4b's setup were already fixed/provisioned).",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 6 shards x 500 = 3000 cases) + yinyang typefuzz mutation (2 shards) + opfuzz (1 task), all seeded/referenced against z3; mutation/opfuzz seeded from benchmarks/seeds/qf_lra_real (14 real-benchmark files)",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113357/ on llm2smt-slurm -- not committed, aggregated counts pulled back via a remote python one-liner across the 6 shard summary.csv files plus the opfuzz/yinyang bugs directory listings."
+      },
+      "summary": {
+        "result": "fuzzsmt: 3000/3000 cases -- 2854 PASS, 146 TIMEOUT, 0 CRASH, 0 WRONG, 0 UNSUPPORTED_INPUT. opfuzz: 14/14 real seeds valid, 0 bug triggers. yinyang typefuzz (2 shards): 14/14 real seeds valid each, 0 bug triggers each. Fully clean campaign, matching Milestone 4b's own result shape (2851 PASS/149 TIMEOUT out of 3000 there vs. 2854/146 here -- within normal fuzzsmt-generation variance, not a regression).",
+        "significance": "Confirms the redesign (Real-equality lowering moved from parse time to the end of preprocessing) introduced no regression in the disequality/solve-eqs-sensitive behavior it re-touches: zero wrong-answer disagreements against z3, zero crashes, zero unsupported-input rejections, across both generator-based (fuzzsmt) and mutation-based (opfuzz/yinyang) fuzzing, seeded from both synthetic and real-world formulas. Competitiveness-roadmap item 1 (docs/arithmetic.md) is now done and verified to the same standard as Milestone 4b's already-promoted disequality behavior."
+      },
+      "verification": {
+        "passed": [
+          "3000-case campaign-tier fuzzsmt-vs-z3 QF_LRA run against the redesigned lowering pass: 0 crashes, 0 wrong answers, 0 unsupported-input rejections.",
+          "opfuzz + 2 yinyang typefuzz mutation shards, seeded from 14 real QF_LRA benchmark files: 0 bug triggers across all three.",
+          "Local 500-case merge-gate smoke test under ASAN+UBSan (companion entry) and the full unit suite (Release + ASAN/UBSan) were also clean prior to this campaign run."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "Completes competitiveness-roadmap item 1 (LRA-aware solve-eqs via the Real-equality-lowering redesign). See docs/arithmetic.md's Milestone-roadmap entry and docs/preprocessing.md's 'Real-Equality Lowering' section for the design this campaign verifies."
     }
   ]
 }
