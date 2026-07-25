@@ -48,15 +48,26 @@ if [[ -z "$name" || "$name" == "$spec" ]]; then
   exit 2
 fi
 IFS=' ' read -r -a solver_words <<< "$command_str"
+solver_binary=${solver_words[0]}
+solver_extra_args=("${solver_words[@]:1}")
 
 echo "task $TASK_ID: solver=$name command=${solver_words[*]}"
-"${solver_words[0]}" --version || true
+"$solver_binary" --version || true
 
+# --solver takes only the base binary: bench_qf_uf_full.py's --solver
+# uses argparse nargs="+", which stops consuming as soon as it sees a
+# token starting with "-" (an extra flag like --quiet looks exactly like
+# a new option to argparse, whether or not it's a *defined* one) --
+# found by inspecting job 113461's task 0 failure ("unrecognized
+# arguments: --quiet") before trusting results. Any extra words go
+# through --solver-arg instead, one per flag, matching the existing
+# slurm_qfuf_option_compare.sbatch convention.
 python3 scripts/bench_qf_uf_full.py \
   --repo "$WORKDIR" \
   --root "$ROOT" \
   --manifest "$MANIFEST" \
-  --solver "${solver_words[@]}" \
+  --solver "$solver_binary" \
+  "${solver_extra_args[@]/#/--solver-arg=}" \
   --timeout "$TIMEOUT" \
   --out "$OUT_ROOT/$name.csv" \
   --summary "$OUT_ROOT/$name-summary.csv"
