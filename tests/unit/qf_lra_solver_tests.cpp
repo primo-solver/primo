@@ -455,27 +455,13 @@ void solve_eqs_fires_for_real_definitional_equality() {
   assert(result.statistics.get(StatKey::SolvedConstantRewrites) > 0);
 }
 
-void gaussian_elimination_solves_joint_system_when_enabled() {
+void gaussian_elimination_solves_joint_system_by_default() {
   // 2x+3y=5 and x-y=1 jointly solve for x=8/5, y=3/5; neither equation
-  // alone is a bare-variable definition, so this only fires via the
-  // opt-in Gaussian elimination pass (--gaussian-elimination), not the
-  // ordinary solve-eqs recognizer.
-  CheckSatOptions with_gaussian;
-  with_gaussian.gaussian_elimination = true;
-  const auto result = check_sat_smtlib(R"(
-    (set-logic QF_LRA)
-    (declare-fun x () Real)
-    (declare-fun y () Real)
-    (assert (= (+ (* 2 x) (* 3 y)) 5))
-    (assert (= (- x y) 1))
-    (check-sat)
-  )",
-                                       with_gaussian);
-  assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(StatKey::SolvedConstantGaussianCandidates) > 0);
-}
-
-void gaussian_elimination_is_inert_by_default() {
+  // alone is a bare-variable definition, so this only fires via Gaussian
+  // elimination, not the ordinary solve-eqs recognizer. Default-on since
+  // 2026-07-25's campaign-tier Slurm confirmation (job 113407: 3000/3000
+  // fuzzsmt cases + opfuzz/yinyang mutation shards, 0 crashes/wrong
+  // answers/bug triggers).
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)
@@ -484,6 +470,22 @@ void gaussian_elimination_is_inert_by_default() {
     (assert (= (- x y) 1))
     (check-sat)
   )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::SolvedConstantGaussianCandidates) > 0);
+}
+
+void gaussian_elimination_can_be_disabled() {
+  CheckSatOptions without_gaussian;
+  without_gaussian.gaussian_elimination = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (+ (* 2 x) (* 3 y)) 5))
+    (assert (= (- x y) 1))
+    (check-sat)
+  )",
+                                       without_gaussian);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(StatKey::SolvedConstantGaussianCandidates) == 0);
 }
@@ -553,8 +555,8 @@ int main() {
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
   handles_disequality_via_boolean_level_case_splitting();
   solve_eqs_fires_for_real_definitional_equality();
-  gaussian_elimination_solves_joint_system_when_enabled();
-  gaussian_elimination_is_inert_by_default();
+  gaussian_elimination_solves_joint_system_by_default();
+  gaussian_elimination_can_be_disabled();
   gaussian_elimination_detects_contradictory_system();
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();

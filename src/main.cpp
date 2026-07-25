@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
   bool no_eq_bridge = false;
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
+  bool no_gaussian_elimination = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
   bool no_auto_top_level_or_tseitin = false;
@@ -201,8 +202,10 @@ int main(int argc, char** argv) {
                "Disable default QF_UF solved-constant substitution")
       ->default_val(false);
   app.add_flag("--gaussian-elimination", solver_options.gaussian_elimination,
-               "Enable experimental QF_LRA Gauss-Jordan elimination over asserted linear "
-               "equality systems, feeding solve-eqs")
+               "Enable default-on QF_LRA Gauss-Jordan elimination over asserted linear "
+               "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25)");
+  app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
+               "Disable QF_LRA Gauss-Jordan equality-system elimination")
       ->default_val(false);
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Encode top-level disjunctions with Tseitin support clauses")
@@ -378,6 +381,9 @@ int main(int argc, char** argv) {
   }
   if (no_solved_constant_substitution) {
     solver_options.solved_constant_substitution = false;
+  }
+  if (no_gaussian_elimination) {
+    solver_options.gaussian_elimination = false;
   }
   if (top_level_or_tseitin) {
     solver_options.top_level_or_tseitin = true;
