@@ -77,6 +77,7 @@ constexpr util::StatKey kStatSolvedConstantRejectedCycles =
     util::StatKey::SolvedConstantRejectedCycles;
 constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
+constexpr util::StatKey kStatRealEqualityLowered = util::StatKey::RealEqualityLowered;
 constexpr util::StatKey kStatFiniteDomainDomains = util::StatKey::FiniteDomainDomains;
 constexpr util::StatKey kStatFiniteDomainAmoClauses = util::StatKey::FiniteDomainAmoClauses;
 constexpr util::StatKey kStatFiniteDomainRawChoices = util::StatKey::FiniteDomainRawChoices;
@@ -555,22 +556,6 @@ class Frontend {
   }
 
 
-  // Builds an equality atom appropriate to lhs/rhs's sort. Real is a total
-  // order, so t1 = t2 <=> t1 <= t2 AND t2 <= t1 -- desugaring equality this
-  // way at parse time (rather than adding disequality-specific
-  // case-splitting/lemma machinery to LraTableau/OnlineLraPropagator) means
-  // NOT(t1=t2) is just NOT(AND(Le,Le)), already handled correctly by
-  // BooleanClausifier's existing Tseitin/CNF machinery for arbitrary
-  // Boolean structure: ordinary CDCL branching explores t1<t2 vs t1>t2 for
-  // free, no bespoke case-split code needed anywhere. For every other sort
-  // (uninterpreted), falls through to the ordinary EUF equality term.
-  core::TermId mk_theory_equality(core::TermId lhs, core::TermId rhs) {
-    if (terms_.get(lhs).sort == symbols_.real_sort()) {
-      return terms_.mk_and({terms_.mk_le(lhs, rhs), terms_.mk_le(rhs, lhs)});
-    }
-    return terms_.mk_eq(lhs, rhs);
-  }
-
   core::TermId build_pairwise_equality(core::TermId lhs, core::TermId rhs) {
     const core::SortId lhs_sort = terms_.get(lhs).sort;
     if (lhs_sort != terms_.get(rhs).sort) {
@@ -579,7 +564,7 @@ class Frontend {
     if (lhs_sort == symbols_.bool_sort()) {
       return terms_.mk_and({terms_.mk_implies(lhs, rhs), terms_.mk_implies(rhs, lhs)});
     }
-    return mk_theory_equality(lhs, rhs);
+    return terms_.mk_eq(lhs, rhs);
   }
 
   core::TermId build_pairwise_disequality(core::TermId lhs, core::TermId rhs) {
@@ -591,7 +576,7 @@ class Frontend {
       return terms_.mk_or(
           {terms_.mk_and({lhs, terms_.mk_not(rhs)}), terms_.mk_and({terms_.mk_not(lhs), rhs})});
     }
-    return terms_.mk_not(mk_theory_equality(lhs, rhs));
+    return terms_.mk_not(terms_.mk_eq(lhs, rhs));
   }
 
   core::TermId bind_bool_argument_if_needed(core::TermId term) {
@@ -919,9 +904,9 @@ void TermBuilder::finish_ite(core::TermId condition, core::TermId then_term, cor
   const core::TermId auxiliary = frontend_.fresh_auxiliary_constant(result_sort, "ite");
   ++frontend_.auxiliary_ites_;
   frontend_.side_assertions_.push_back(
-      frontend_.terms_.mk_implies(condition, frontend_.mk_theory_equality(auxiliary, then_term)));
+      frontend_.terms_.mk_implies(condition, frontend_.terms_.mk_eq(auxiliary, then_term)));
   frontend_.side_assertions_.push_back(frontend_.terms_.mk_implies(
-      frontend_.terms_.mk_not(condition), frontend_.mk_theory_equality(auxiliary, else_term)));
+      frontend_.terms_.mk_not(condition), frontend_.terms_.mk_eq(auxiliary, else_term)));
   resume(std::move(k), auxiliary);
 }
 
@@ -3110,8 +3095,9 @@ bool is_real_equality_term(const core::TermManager& terms, const core::Term& ter
 // them, via LraTableau::upper_bound/lower_bound, to check whether some
 // *other* atom on the same slack is already entailed). LraRelation::Eq
 // isn't handled here -- it's unreachable via the frontend (Real equality
-// is desugared to a pair of Le atoms, see mk_theory_equality) and doesn't
-// fit the single-threshold shape these two cases share.
+// is lowered to a pair of Le atoms by the lower_real_equalities
+// preprocessing pass, which always runs before theory dispatch) and
+// doesn't fit the single-threshold shape these two cases share.
 theory::arithmetic::DeltaRational true_threshold(theory::arithmetic::LraRelation relation,
                                                  const util::Rational& rhs) {
   return relation == theory::arithmetic::LraRelation::Lt
@@ -3905,6 +3891,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatSolvedConstantRewrites, 0);
   statistics.set(kStatSolvedConstantRejectedCycles, 0);
   statistics.set(kStatSolvedConstantRejectedBlowups, 0);
+  statistics.set(kStatRealEqualityLowered, 0);
   statistics.set(kStatFiniteDomainDomains, 0);
   statistics.set(kStatFiniteDomainAmoClauses, 0);
   statistics.set(kStatFiniteDomainRawChoices, 0);
@@ -4230,6 +4217,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         ++preprocessing_pass_limit;
         statistics.increment(kStatPreprocessingAdaptivePasses);
       }
+    }
+    {
+      // Runs once, after every pass above that reasons about genuine
+      // Equality nodes (solve-eqs, eq-bridging, forced-atom/unit-equality
+      // propagation), so Real equalities are visible to all of them. Must
+      // still land before symmetry breaking/finite-domain clause
+      // generation below and the has_equality/has_arithmetic dispatch, so
+      // downstream passes/the tableau see the same Le/Lt-pair shape they
+      // always have.
+      RealEqualityLoweringResult lowered_equalities =
+          lower_real_equalities(frontend.terms(), assertions);
+      assertions = std::move(lowered_equalities.assertions);
+      statistics.increment(kStatRealEqualityLowered, lowered_equalities.lowered);
     }
     if (use_symmetry_breaking) {
       if (!symmetry_result.has_value()) {

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <utility>
 #include <vector>
@@ -60,6 +61,17 @@ struct Fixture {
     const primo::core::TermId c_term = constant(c);
     return {neq(a_term, b_term), neq(a_term, c_term), neq(b_term, c_term)};
   }
+};
+
+struct RealFixture {
+  primo::core::SymbolTable symbols;
+  primo::core::SortId real_sort = symbols.real_sort();
+  primo::core::SymbolId x = symbols.declare_constant("x", real_sort);
+  primo::core::SymbolId y = symbols.declare_constant("y", real_sort);
+  primo::core::TermManager terms{symbols};
+
+  primo::core::TermId constant(primo::core::SymbolId symbol) { return terms.mk_constant(symbol); }
+  primo::core::TermId rational(std::int64_t value) { return terms.mk_rational(value); }
 };
 
 void symmetric_fixed_terms_get_value_precedence() {
@@ -311,6 +323,58 @@ void solved_constant_substitution_rejects_cycles() {
   check(result.rewrites == 0);
   check(result.rejected_cycles == 1);
   check(result.assertions == std::vector{definition});
+}
+
+void solved_constant_substitution_eliminates_real_equality_definition() {
+  // Real equality now reaches this pass as a genuine TermKind::Equality
+  // node (mk_eq is called uniformly at parse time; lowering to Le/Lt
+  // happens later, see lower_real_equalities), so the existing
+  // Equality-kind recognizer fires for Real terms with no LRA-specific
+  // recognizer needed.
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId five = fixture.rational(5);
+  const primo::core::TermId definition = fixture.terms.mk_eq(x, five);
+  const primo::core::TermId formula =
+      fixture.terms.mk_le(fixture.terms.mk_plus({x, y}), fixture.rational(10));
+
+  const primo::smt::SolvedConstantSubstitutionResult result =
+      primo::smt::substitute_solved_constants(fixture.terms, {definition, formula});
+
+  check(result.candidates == 1);
+  check(result.accepted == 1);
+  check(result.rewrites >= 1);
+  check(result.rejected_cycles == 0);
+  const primo::core::TermId rewritten =
+      fixture.terms.mk_le(fixture.terms.mk_plus({five, y}), fixture.rational(10));
+  check(std::find(result.assertions.begin(), result.assertions.end(), rewritten) !=
+        result.assertions.end());
+}
+
+void lower_real_equalities_rewrites_real_sorted_equality_only() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId equality = fixture.terms.mk_eq(x, y);
+
+  const primo::smt::RealEqualityLoweringResult result =
+      primo::smt::lower_real_equalities(fixture.terms, {equality});
+
+  check(result.lowered == 1);
+  check(result.assertions.size() == 1);
+  const primo::core::TermId expected =
+      fixture.terms.mk_and({fixture.terms.mk_le(x, y), fixture.terms.mk_le(y, x)});
+  check(result.assertions.front() == expected);
+
+  Fixture uninterpreted;
+  const primo::core::TermId a = uninterpreted.constant(uninterpreted.a);
+  const primo::core::TermId b = uninterpreted.constant(uninterpreted.b);
+  const primo::core::TermId uf_equality = uninterpreted.terms.mk_eq(a, b);
+  const primo::smt::RealEqualityLoweringResult uf_result =
+      primo::smt::lower_real_equalities(uninterpreted.terms, {uf_equality});
+  check(uf_result.lowered == 0);
+  check(uf_result.assertions.front() == uf_equality);
 }
 
 void boolean_unit_propagation_simplifies_boolean_structure_and_arguments() {
@@ -759,6 +823,8 @@ int main() {
   ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts();
   solved_constant_substitution_eliminates_acyclic_definition();
   solved_constant_substitution_rejects_cycles();
+  solved_constant_substitution_eliminates_real_equality_definition();
+  lower_real_equalities_rewrites_real_sorted_equality_only();
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();
   forced_atom_propagation_simplifies_predicate_units();

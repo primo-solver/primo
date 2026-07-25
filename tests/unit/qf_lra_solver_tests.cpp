@@ -436,6 +436,25 @@ void distinct_on_reals_works() {
   assert(unsatisfiable.result == CheckSatResult::Unsat);
 }
 
+void solve_eqs_fires_for_real_definitional_equality() {
+  // Regression test for the redesign that moved Real-equality desugaring
+  // from parse time to a late lower_real_equalities preprocessing pass:
+  // solve-eqs now sees a genuine TermKind::Equality node for `(= x 5)`
+  // (previously this was a complete no-op for QF_LRA, silently, since the
+  // Real equality had already become And(Le,Le) before this pass ran).
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= x 5))
+    (assert (<= (+ x y) 10))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::SolvedConstantAccepted) > 0);
+  assert(result.statistics.get(StatKey::SolvedConstantRewrites) > 0);
+}
+
 // Frontend::build_term (TermBuilder in check_sat.cpp) is iterative, not
 // recursive descent -- see the TermBuilder class comment. A deeply nested
 // `+` chain like this used to stack-overflow (found via fuzzing under
@@ -480,6 +499,7 @@ int main() {
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
   handles_disequality_via_boolean_level_case_splitting();
+  solve_eqs_fires_for_real_definitional_equality();
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
   return 0;

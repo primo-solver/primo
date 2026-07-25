@@ -39,6 +39,24 @@ struct GroundEqualitySubstitutionResult {
 GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
     core::TermManager& terms, const std::vector<core::TermId>& assertions);
 
+struct RealEqualityLoweringResult {
+  std::vector<core::TermId> assertions;
+  std::size_t lowered = 0;
+};
+
+// Rewrites every Equality node whose operands are Real-sorted into
+// `And(Le(a,b), Le(b,a))` (valid since Real is a total order). Must run
+// after every other preprocessing pass that reasons about genuine
+// Equality nodes (solve-eqs, eq-bridging, forced-atom/unit-equality
+// propagation) but before Boolean clausification/theory dispatch, so
+// NOT(a=b) still reduces to ordinary Boolean structure
+// (NOT(AND(Le,Le))) that BooleanClausifier already handles -- this is
+// what lets QF_LRA disequality avoid needing case-split machinery in
+// LraTableau/OnlineLraPropagator. Non-Real equalities are left
+// untouched.
+RealEqualityLoweringResult lower_real_equalities(core::TermManager& terms,
+                                                 const std::vector<core::TermId>& assertions);
+
 struct SolvedConstantSubstitutionResult {
   std::vector<core::TermId> assertions;
   std::size_t candidates = 0;

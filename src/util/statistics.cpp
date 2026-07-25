@@ -157,6 +157,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.theory-conflicts"sv,
     ":lra.theory-propagations"sv,
     ":lra.bland-fallbacks"sv,
+    ":preprocessing.real-equality-lowering.lowered"sv,
 };
 
 }  // namespace
