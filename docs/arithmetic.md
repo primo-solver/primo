@@ -374,6 +374,38 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   gotcha) and a broken cvc5 install (missing libc++ shared libraries,
   fixed via `contrib/install_cvc5.py` preferring static release assets)
   were found and fixed along the way. See `docs/run-log.json`.
+- **Item 0 follow-up (2026-07-25): pivot() allocation profiling.**
+  Profiled (`perf record`/`perf report`, not just `--stats` guesswork)
+  the 3 most dramatic timeout-vs-instant cases item 0 surfaced
+  (`tmp/QF_LRA/sc/sc-21.induction3.cvc.smt2`,
+  `tmp/QF_LRA/uart/uart-18.induction.cvc.smt2`,
+  `tmp/QF_LRA/TM/p5-zenonumeric_s5.smt2`). Finding: 50-60% of runtime was
+  in malloc/free/GMP-allocation machinery, with `LraTableau::pivot()`'s
+  per-affected-row combine step (a fresh
+  `std::unordered_map<LraVarId, Rational>` built and torn down for every
+  row touched by every pivot) as the dominant contributor;
+  `set_soi_direction()` had the identical pattern. Fixed (commit
+  `04a6c73`) by replacing both with a reused member vector, sort-merged
+  instead of hashed -- a first attempt that just reused an
+  `unordered_map` member as-is did **not** help (re-profiling showed the
+  same signature unchanged), since `unordered_map` is node-based: every
+  element is its own heap allocation no matter how the container itself
+  is reused. The still-larger remaining allocation source, **not yet
+  addressed**: `rows_`/`occurs_in_` are themselves
+  `std::unordered_map<LraVarId, ...>` keyed by a dense small integer
+  (`LraVarId` is a plain index into `vars_`, already a
+  `std::vector<VarState>`) that could instead index a flat vector
+  directly, eliminating per-pivot map-node insert/erase entirely -- a
+  bigger, more invasive change (touches the trail/undo machinery
+  throughout this file) flagged as the natural next step rather than
+  attempted here. Full suite (Release + ASAN/UBSan) green, no behavior
+  change; merge-gate Slurm fuzz smoke (job 113938: 500 fuzzsmt cases,
+  471 PASS/29 TIMEOUT/0 CRASH/0 WRONG) came back clean. Re-timing showed
+  a real but mixed effect: TM/p5-zenonumeric_s5 dropped from 20.58s to
+  11.05s (~47% faster); sc-21 and uart-18 improved more modestly/noisily.
+  None of the 3 files come close to z3/cvc5's sub-1s times either way --
+  this closes one real constant-factor cost, not the competitiveness gap
+  itself. See `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack

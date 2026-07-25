@@ -9920,6 +9920,44 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for competitiveness-roadmap item 0. benchmarks/qf-lra-stratified-sample.txt and scripts/slurm_qf_lra_solver_compare.sbatch are both reusable for future QF_LRA (or QF_UF, via --root/manifest overrides) solver comparisons."
+    },
+    {
+      "id": "2026-07-25-qf-lra-pivot-allocation-fix-slurm-smoke-gate",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "fuzz",
+      "scope": "Merge-gate-tier (500-case) fuzz smoke test for the LraTableau::pivot()/set_soi_direction() allocation fix (commit 04a6c73), following up on item 0's empirical baseline by profiling (perf) the 3 most dramatic Primo-timeout-but-z3/cvc5-instant cases it surfaced: tmp/QF_LRA/sc/sc-21.induction3.cvc.smt2, tmp/QF_LRA/uart/uart-18.induction.cvc.smt2, tmp/QF_LRA/TM/p5-zenonumeric_s5.smt2. perf showed 50-60% of runtime in malloc/free/GMP-allocation machinery, with pivot()'s per-affected-row combine step (a fresh std::unordered_map<LraVarId, Rational> built and torn down for every row touched by every pivot) as the dominant contributor; set_soi_direction() had the identical pattern. Fixed by replacing both with a reused member vector, sort-merged instead of hashed (a first attempt that just reused an unordered_map member did NOT help -- unordered_map is node-based, so every element is its own heap allocation regardless of container reuse; confirmed by re-profiling). Run on llm2smt-slurm per the standing policy that all fuzzing, including merge-gate smoke checks, is dispatched to Slurm rather than run locally.",
+      "commit": "04a6c73",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then sbatch --array=0-0 --export=ALL,PATH=<contrib/local/bin prepended>,PRIMO_FUZZ_SOLVER='.../build-slurm-rel/primo --quiet',PRIMO_FUZZ_FUZZSMT_SHARDS=1,PRIMO_FUZZ_FUZZSMT_COUNT=500,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0 scripts/slurm_qfuf_fuzz_gate.sbatch -- job 113938, no new CLI flag needed since this fix is unconditional (not opt-in), so the default pivoting path was exercised directly.",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 500 cases), seeded/referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113938/ on llm2smt-slurm -- not committed. Aggregated via a remote python csv scan of fuzzsmt/shard-0/summary.csv."
+      },
+      "summary": {
+        "result": "500/500 cases: 471 PASS, 29 TIMEOUT, 0 CRASH, 0 WRONG, 0 UNSUPPORTED_INPUT.",
+        "significance": "No wrong-answer disagreements against z3 and no crashes from this hot-path pivot rewrite -- the highest-risk part of this change (same trail/undo machinery item 4's SOI-Simplex work already flagged as its own highest-risk surface). Re-timing the 3 profiled files after the fix: TM/p5-zenonumeric_s5 dropped from 20.58s to 11.05s (~47% faster, wall-clock, single local run); sc-21 and uart-18 improved more modestly and noisily (sc-21 56.28s->47.85s; uart-18 21.27s->22.09s, within measurement noise) -- re-profiling confirmed the allocator overhead from this specific combine step is gone, but rows_/occurs_in_ themselves (both still std::unordered_map<LraVarId,...>, keyed by a dense small integer that could instead index a flat vector) remain a second, larger allocation source in the same pivot()/set_soi_direction() hot path, not yet addressed. None of the 3 files solve anywhere near z3/cvc5's <1s either way -- this fix reduces one real constant-factor cost, it does not close the competitiveness gap item 0 measured."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run, default pivoting path (no new flag): 0 crashes, 0 wrong-answer disagreements.",
+          "Full local suite (Release + ASAN/UBSan) green before submitting."
+        ],
+        "pending": [
+          "Campaign-tier (>=3000 case) Slurm confirmation, matching the discipline other QF_LRA changes this cycle went through, before treating this as equally trustworthy for anything beyond the merge-gate bar.",
+          "The larger rows_/occurs_in_ unordered_map-to-vector conversion this profiling run surfaced as the next allocation bottleneck -- not started."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for this fix. Directly follows up on item 0's empirical baseline (docs/run-log.json id 2026-07-25-qf-lra-competitiveness-item0-empirical-baseline), which identified TM/sc/uart/2019-ezsmt/tta_startup/miplib as the families where Primo specifically lags z3/cvc5."
     }
   ]
 }
