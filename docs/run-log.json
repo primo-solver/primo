@@ -9288,6 +9288,102 @@
       },
       "evidence_status": "current_slurm",
       "notes": "This rerun addresses the typefuzz blocker from 2026-07-25-slurm-qfuf-fuzz-gate-113366. Together, jobs 113366 and 113403 give QF_UF 0292767 a clean 3000-case FuzzSMT gate, opfuzz smoke, and patched typefuzz/YinYang mutation coverage over the in-repo custom-sort QF_UF seeds."
+    },
+    {
+      "id": "2026-07-25-slurm-main-qfuf-fuzz-gate-113416",
+      "recorded_at": "2026-07-25T15:55:00+01:00",
+      "kind": "slurm_fuzz",
+      "scope": "Fresh QF_UF fuzz gate after merging QF_UF work onto main",
+      "commit": "c81319e",
+      "tooling_commit": {
+        "repository": "git@github.com:MikolasJanota/yinyang.git",
+        "commit": "3458e8e2fc523bab85ed0f714f019097ae6495fc",
+        "summary": "Handle QF_UF custom sorts in typefuzz"
+      },
+      "environment": {
+        "type": "slurm",
+        "host": "<slurm-cluster>",
+        "slurm_job_id": "113416",
+        "remote_workdir": "<remote-workdir>",
+        "binary": "<remote-workdir>/build-slurm-rel/primo --quiet",
+        "binary_version": "primo 0.1.0; git: c81319e; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "The remote workspace was synced from main and then the tracked logs/results/fuzz-results directories were synced as well so the remote git checkout reported a clean c81319e stamp. Patched YinYang was installed into <remote-workdir>/.venv-yinyang from a synced checkout under <remote-workdir>/vendor/yinyang-fork. Private host, user, and absolute home-directory details are intentionally redacted."
+      },
+      "command": {
+        "validate_sbatch": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qfuf_fuzz_gate.sbatch",
+        "bash_n": "bash -n scripts/slurm_qfuf_fuzz_gate.sbatch",
+        "workspace_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --ssh-config <ssh-config> --remote <slurm-alias> --remote-dir <remote-workdir> --local-dir . --target primo --jobs 4",
+        "remote_typefuzz_smoke": "PATH=<remote-workdir>/.venv-yinyang/bin:<remote-workdir>/contrib/local/bin:$PATH timeout 120 typefuzz --iterations 20 --timeout 5 'z3 model_validate=true;z3 model_validate=true' benchmarks/seeds/qf_uf",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=<remote-workdir>,PRIMO_FUZZ_SOLVER=<remote-workdir>/build-slurm-rel/primo,PATH=<remote-workdir>/.venv-yinyang/bin:<remote-workdir>/contrib/local/bin:$PATH scripts/slurm_qfuf_fuzz_gate.sbatch",
+        "fuzzsmt": "SLURM tasks 0-5: python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver '<remote-workdir>/build-slurm-rel/primo --quiet' --refs z3 --logic QF_UF --count 500 --timeout 5 --seed 213416+shard --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2'",
+        "opfuzz": "SLURM task 6: scripts/yinyang_fuzz.sh --typefuzz opfuzz --seeds benchmarks/seeds/qf_uf --solver '<remote-workdir>/build-slurm-rel/primo --quiet' --ref 'z3 model_validate=true' --seconds 1500 --iterations 200 --solver-timeout 5",
+        "typefuzz": "SLURM tasks 7-8: scripts/yinyang_fuzz.sh --typefuzz typefuzz --seeds benchmarks/seeds/qf_uf --solver '<remote-workdir>/build-slurm-rel/primo --quiet' --ref 'z3 model_validate=true' --seconds 1500 --iterations 100 --solver-timeout 5"
+      },
+      "fuzzer": {
+        "logic": "QF_UF",
+        "generator": "FuzzSMT plus opfuzz and typefuzz from patched YinYang fork",
+        "reference": "z3 / z3 model_validate=true",
+        "seed": "FuzzSMT seeds 213416..213421; benchmarks/seeds/qf_uf for opfuzz and typefuzz",
+        "timeout_seconds": 5,
+        "tasks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "artifacts": {
+        "remote_root": "<remote-workdir>/fuzz-results/qfuf-gate-113416",
+        "remote_logs": "<remote-workdir>/logs/primo-qfuf-fuzz-gate-113416-{0..8}.{out,err}",
+        "fuzzsmt_summaries": "<remote-workdir>/fuzz-results/qfuf-gate-113416/fuzzsmt/shard-*/summary.csv",
+        "bug_dirs": "All inspected FuzzSMT, opfuzz, and typefuzz bug directories were empty."
+      },
+      "summary": {
+        "slurm_tasks_completed": 9,
+        "slurm_tasks_failed": 0,
+        "fuzzsmt_total": 3000,
+        "fuzzsmt_pass": 3000,
+        "fuzzsmt_answers": {
+          "sat_sat": 2668,
+          "unsat_unsat": 332
+        },
+        "opfuzz_seeds_processed": 3,
+        "opfuzz_valid_seed_files": 3,
+        "opfuzz_invalid_seed_files": 0,
+        "opfuzz_bug_triggers": 0,
+        "typefuzz_tasks": 2,
+        "typefuzz_seed_files_per_task": 3,
+        "typefuzz_valid_seed_files_per_task": 3,
+        "typefuzz_invalid_seed_files": 0,
+        "typefuzz_bug_triggers": 0,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "error": 0
+      },
+      "verification": {
+        "passed": [
+          "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qfuf_fuzz_gate.sbatch",
+          "bash -n scripts/slurm_qfuf_fuzz_gate.sbatch",
+          "SLURM preflight reported Primo commit c81319e and CaDiCaL cadical-3.0.0-7b99c07",
+          "Remote typefuzz smoke over benchmarks/seeds/qf_uf processed 3 valid seeds with 0 bug triggers",
+          "SLURM job 113416 tasks 0-8 completed with exit code 0:0",
+          "FuzzSMT 3000/3000 generated QF_UF cases matched Z3 with 0 wrong answers, crashes, timeouts, or harness errors",
+          "opfuzz processed the available QF_UF seeds without bug triggers",
+          "typefuzz processed the available QF_UF seeds in both tasks without bug triggers",
+          "All inspected bug directories were empty"
+        ],
+        "pending": [
+          "Make the SLURM workspace preparation script preserve tracked artifact directories or inject an explicit revision override so a clean commit stamp does not require manual artifact-dir sync."
+        ]
+      },
+      "evidence_status": "current_slurm",
+      "notes": "Fresh main fuzz evidence after the QF_UF branch fast-forward merge. The only setup issue was the known revision-stamp fragility caused by syncing a git checkout while excluding tracked artifact directories; syncing those directories restored a clean c81319e stamp before the submitted job."
     }
   ]
 }
