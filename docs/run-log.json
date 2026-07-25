@@ -9775,6 +9775,44 @@
       },
       "evidence_status": "current_local",
       "notes": "Completes the verification staging for the Gaussian-elimination solve-eqs follow-up under competitiveness-roadmap item 1. See docs/preprocessing.md's 'Gaussian Elimination' section and docs/arithmetic.md's Milestone-roadmap entry for the promotion-status update this result justifies."
+    },
+    {
+      "id": "2026-07-25-qf-lra-row-propagation-slurm-smoke-gate",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "fuzz",
+      "scope": "Merge-gate-tier (500-case) fuzz smoke test for the new opt-in --lra-row-propagation QF_LRA extension (commit 6661352/45fa2bc): row-based/interval bound propagation, generalizing Milestone 3b's same-slack propagation to a derived (not just directly-asserted) bound via compute_implied_bound. Run on llm2smt-slurm per the standing correction that all fuzzing, including merge-gate smoke checks, should be dispatched there rather than run locally.",
+      "commit": "45fa2bc",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --lra-row-propagation (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile; then sbatch --array=0-0 --export=ALL,PATH=<contrib/local/bin prepended>,PRIMO_FUZZ_SOLVER='.../build-slurm-rel/primo --lra-row-propagation',PRIMO_FUZZ_FUZZSMT_SHARDS=1,PRIMO_FUZZ_FUZZSMT_COUNT=500,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0 scripts/slurm_qfuf_fuzz_gate.sbatch -- single 500-case fuzzsmt task as job 113434, completed cleanly on first submission (PATH set correctly from the start).",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 500 cases), seeded/referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113434/ on llm2smt-slurm -- not committed. Aggregated via a remote python csv scan of fuzzsmt/shard-0/summary.csv."
+      },
+      "summary": {
+        "result": "500/500 cases: 468 PASS, 32 TIMEOUT, 0 CRASH, 0 WRONG, 0 UNSUPPORTED_INPUT.",
+        "significance": "First fuzz evidence for row-based/interval bound propagation: no wrong-answer disagreements against z3, no crashes, no unsupported-input rejections, with the opt-in flag explicitly enabled -- correctness held despite the new multi-literal-reason plumbing (pending_/reasons_/cb_add_reason_clause_lit widened from single-literal to vector<sat::Lit>) and the single_variable_slack/variable_for_single_slack indirection needed to find a row term's actual bound. Clears merge-gate tier; campaign-tier (>=3000 case) confirmation still needed before promoting from opt-in to default-on, per docs/arithmetic.md's Milestone roadmap."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run with --lra-row-propagation explicitly enabled: 0 crashes, 0 wrong answers, 0 unsupported-input rejections.",
+          "Full unit test suite (Release + ASAN/UBSan) green, including new row_based_propagation_drives_boolean_structure/can_reach_a_conflict tests and the pre-existing same-slack propagation tests (unaffected by the pending_/reasons_ type widening).",
+          "Quick 17-file real-benchmark re-run (docs/run-log.json, same session): mechanism fires on real formulas (verified via :lra.row-propagations, up to thousands on some files) though doesn't move the sat/unsat outcome on that narrow sample -- expected, mirrors Milestone 3b's own finding."
+        ],
+        "pending": [
+          "Campaign-tier (>=3000 case) Slurm confirmation before promoting --lra-row-propagation from opt-in to default-on."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's 'Row-based/interval bound propagation' section and Milestone-roadmap entry for the design this run verifies. Commits: 6661352 (code+tests), 45fa2bc (docs)."
     }
   ]
 }
