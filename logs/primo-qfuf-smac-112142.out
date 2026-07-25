@@ -8,9 +8,9 @@ smac unknown
 [INFO][abstract_intensifier.py:313] Using only one seed for deterministic scenario.
 [INFO][abstract_intensifier.py:324] Cut instance-seed keys to 3 entries.
 [INFO][abstract_intensifier.py:523] Added config bb8426 as new incumbent because there are no incumbents yet.
-[INFO][abstract_intensifier.py:630] Added config 208327 and rejected config bb8426 as incumbent because it is not better than the incumbents on 3 instances: 
+[INFO][abstract_intensifier.py:630] Added config 208327 and rejected config bb8426 as incumbent because it is not better than the incumbents on 3 instances:
 [INFO][smbo.py:334] Finished 50 trials.
-[INFO][abstract_intensifier.py:630] Added config 281bad and rejected config 208327 as incumbent because it is not better than the incumbents on 3 instances: 
+[INFO][abstract_intensifier.py:630] Added config 281bad and rejected config 208327 as incumbent because it is not better than the incumbents on 3 instances:
 [INFO][smbo.py:334] Finished 100 trials.
 [INFO][smbo.py:334] Finished 150 trials.
 [INFO][smbo.py:342] Configuration budget is exhausted:

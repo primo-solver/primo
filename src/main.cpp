@@ -229,8 +229,8 @@ int main(int argc, char** argv) {
   app.add_option("--euf-explain-search", euf_explain_search,
                  "Incremental EUF explanation search: one-sided, bidirectional, proof-forest, "
                  "reoriented-proof-forest, or structural-proof-forest")
-      ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest", "reoriented-proof-forest",
-                             "structural-proof-forest"}));
+      ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest",
+                             "reoriented-proof-forest", "structural-proof-forest"}));
   app.add_flag("--euf-proof-forest-diagnostics", euf_proof_forest_diagnostics,
                "Record proof-forest path counters for incremental EUF explanations");
   app.add_option("--pure-theory-filter", pure_theory_filter,
