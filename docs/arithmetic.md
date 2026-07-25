@@ -125,9 +125,55 @@ alternatives considered before/while implementing it.
   A finite Dantzig prefix followed by a Bland's-rule suffix still
   terminates (the paper's termination argument applies to the suffix on
   its own). Opt-in via `CheckSatOptions::lra_pivoting_rule`
-  (`--lra-pivoting-rule {bland,dantzig}`) -- **default stays Bland**, the
+  (`--lra-pivoting-rule {bland,dantzig,soi}`) -- **default stays Bland**, the
   already campaign-fuzzed behavior; `kStatLraBlandFallbacks` reports how
   often the fallback engages.
+- **SOI-Simplex pivoting** (competitiveness-roadmap item 4, 2026-07-25,
+  King/Barrett/Dutertre FMCAD 2013 "Simplex with Sum of Infeasibilities
+  for SMT", `lra_tableau.{hpp,cpp}`): `PivotingRule::Soi` replaces
+  Bland/Dantzig's single-row objective with a global one -- minimize the
+  sum of infeasibilities across *every* out-of-bound basic variable at
+  once, addressing Dutertre-de Moura's own documented weak point (no
+  global progress criterion). Full paper algorithm, not a scoped-down
+  version:
+  - An incrementally-maintained "f-row" (`f_var_`, a real extra
+    `LraVarId`/row so `pivot()`'s existing row-rewrite logic keeps it
+    correct across basis changes for free) tracks `sum(d_i * row_i)` over
+    every currently-violated basic variable, updated via
+    `set_soi_direction()` whenever a basic variable's direction (`d_i`,
+    eq 3) flips -- hooked into `assert_upper`/`assert_lower` (bound
+    tightened while already basic), `update()` (assignment changed via
+    propagation), and `pivot()` (leaving variable resets to the nonbasic
+    baseline). This trail/incremental integration is genuinely new
+    design beyond the paper (which only describes one non-incremental
+    `Check` call, not DPLL(T) backtracking) -- a new `FRowTrailEntry`
+    trail variant undoes it on `pop()`.
+  - `soi_select()` (Section V-A) picks the entering variable/leaving
+    row/step size via the paper's own breakpoint-sorted `ΔVio(j,δ)`
+    walk, not a cheaper approximation.
+  - `build_soi_conflict()`/`minimize_soi_conflict()` (Section V-B) handle
+    the case where several rows are simultaneously stuck: a multi-row
+    conflict generalizing the existing single-row `build_conflict`, then
+    standard QuickXplain (Junker 2001) minimization via
+    `soi_subset_still_conflicts()`'s restricted-objective oracle.
+  - Defensive pivot-count fallback to plain Bland selection, belt-and-
+    suspenders beyond the paper's own tie-breaking-reduces-to-Bland
+    termination argument (Section V-C), reusing the existing
+    `bland_fallback_count_` machinery.
+  - **Directly verified against the paper**: a white-box test
+    (`lra_tableau_tests.cpp`) reproduces the paper's own Fig 6 worked
+    example exactly (entering=x2, δ=1, leaving=x1, `Vio(V)` reaching 0 in
+    one pivot) via `check()`'s final state.
+  - A real heap-use-after-free was found (not just theorized) during
+    manual smoke testing before any fuzzing: `update()`'s dependent-
+    basic-row loop iterated `occurs_in_[nonbasic_var]` by reference while
+    `set_soi_direction()` (called inside that same loop) could mutate
+    that exact vector, when `nonbasic_var` was itself a term in
+    `f_var_`'s row -- fixed by copying the affected-rows list before
+    iterating.
+  - Reported by `:lra.soi-multi-row-conflicts`/`:lra.soi-quickxplain-calls`,
+    alongside the existing `:lra.bland-fallbacks`. **Opt-in**
+    (`--lra-pivoting-rule soi`), same rollout precedent as Dantzig.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already
@@ -270,6 +316,23 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   cases stay timeouts at this sample size/budget) -- not a negative
   result for the mechanism, just evidence that propagation reach alone
   isn't what's gating these particular hard families; see `docs/run-log.json`.
+- **Competitiveness roadmap item 4 (2026-07-25): SOI-Simplex pivoting.**
+  See "SOI-Simplex pivoting" above for the full design -- the complete
+  paper algorithm (King/Barrett/Dutertre FMCAD 2013), not a scoped-down
+  version, per explicit direction. Full suite (Release + ASAN/UBSan) and
+  new unit tests pass, including a direct reproduction of the paper's own
+  Fig 6 worked example. Opt-in (`--lra-pivoting-rule soi`). A real heap-
+  use-after-free was found and fixed during manual smoke testing before
+  any fuzzing (see "SOI-Simplex pivoting" above) -- a reminder that this
+  item's trail/incremental-integration piece (genuinely new beyond the
+  paper) was exactly the highest-risk area it was flagged as during
+  design. A quick 17-file real-benchmark re-run (same sample as items
+  1-2's) showed **identical results to Bland**: 7/17 solved, the exact
+  same files, no wrong answers either way -- SOI's global objective
+  didn't move this particular narrow sample, matching items 1-2's own
+  honest findings that none of solve-eqs/row-based propagation/SOI-
+  Simplex individually closes this sample's timeouts. See
+  `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
@@ -277,6 +340,12 @@ and row-based propagation's reach by letting proportional polynomials like
 `x<=5`/`2x<=10` share a slack); the row-based propagation follow-up noted
 above (tightening a row's *children* from its own bound, not just deriving
 the row's own implied bound); Devex or Steepest-Edge pivoting (Milestone
-4a covered only Dantzig); a
-campaign-tier confirmation specifically for `--lra-pivoting-rule dantzig`
-if it's ever considered for becoming the default.
+4a covered only Dantzig, and SOI-Simplex, item 4, is now done without
+closing the quick-eval sample's gap -- neither pricing rule choice nor a
+global objective alone seems to be the bottleneck for these particular
+hard families); a campaign-tier confirmation specifically for
+`--lra-pivoting-rule dantzig`/`soi` if either is ever considered for
+becoming the default; the actual empirical baseline vs. z3/cvc5 (item 0,
+still not done) to understand what IS actually gating these families,
+now that three different engineering levers (items 1, 2, 4) have each
+individually failed to move them.

@@ -107,10 +107,13 @@ item 1 for the rationale.
 
 ## Implemented subset vs. deviations vs. limitations
 
-- No Devex/Steepest-Edge pricing, no sum-of-infeasibilities-style global
-  objective (see `docs/papers/lra-related-work.md`'s SOI-Simplex entry) --
-  Dantzig (Milestone 4a) covers the cheapest/fastest-per-instance option
-  from the survey, not the others.
+- No Devex/Steepest-Edge pricing -- Dantzig (Milestone 4a) covers the
+  cheapest/fastest-per-instance option from the survey, not those. A
+  sum-of-infeasibilities-style global objective (King/Barrett/Dutertre's
+  SOI-Simplex, see `docs/papers/lra-related-work.md`'s entry) **is**
+  implemented (competitiveness-roadmap item 4, 2026-07-25,
+  `PivotingRule::Soi`, opt-in via `--lra-pivoting-rule soi`) -- see
+  `docs/arithmetic.md`'s "SOI-Simplex pivoting" section.
 - Dantzig's anti-cycling fallback threshold (`4 * vars_.size() + 64` in
   `check()`) is a heuristic, not a formally derived bound -- generous but
   untuned.
