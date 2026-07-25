@@ -329,6 +329,25 @@ class LraTableau {
   std::unordered_map<LraVarId, Row> rows_;
   std::unordered_map<LraVarId, std::vector<LraVarId>> occurs_in_;
   std::vector<TrailEntry> trail_;
+  // Reused across pivot()'s per-affected-row combine step and
+  // set_soi_direction()'s f-row combine step, both of which need to merge
+  // two sparse coefficient rows. Profiling (perf, on
+  // tmp/QF_LRA/sc/sc-21.induction3.cvc.smt2 and
+  // tmp/QF_LRA/uart/uart-18.induction.cvc.smt2, both of which time out at
+  // 10s while z3/cvc5 solve in under 1s) showed malloc/free/GMP-allocation
+  // machinery consuming 50-60% of runtime. A first attempt reused an
+  // unordered_map member instead of a fresh local -- that did NOT help:
+  // unordered_map is node-based, so every element is its own heap
+  // allocation regardless of whether the container itself is reused
+  // (clear() frees each node). A flat vector, sorted then merged, does the
+  // same combine with only this member's own backing array (which clear()
+  // does NOT deallocate) -- no per-element heap allocation at all beyond
+  // each Rational's own unavoidable GMP storage. Safe to share one
+  // instance: neither user ever holds it populated across a call into the
+  // other (pivot()'s own set_soi_direction() call happens before pivot()'s
+  // own use of this member, and completes fully first), and LraTableau is
+  // not reentrant.
+  std::vector<std::pair<LraVarId, util::Rational>> combine_scratch_;
 };
 
 }  // namespace primo::theory::arithmetic

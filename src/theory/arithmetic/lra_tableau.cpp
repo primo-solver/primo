@@ -160,29 +160,43 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     trail_entry.old_other_rows.emplace_back(other_basic, other_row);
     rows_.erase(other_basic);
 
-    std::unordered_map<LraVarId, util::Rational> combined;
+    // Reused member (see combine_scratch_'s own comment): sort-merge
+    // instead of a hash-based combine, avoiding per-element heap
+    // allocation on every affected row of every pivot.
+    combine_scratch_.clear();
     util::Rational entering_in_other(0);
     for (const auto& [var, coeff] : other_row) {
       if (var == entering_var) {
         entering_in_other = coeff;
         continue;
       }
-      combined[var] += coeff;
+      combine_scratch_.emplace_back(var, coeff);
       auto& occurrences = occurs_in_[var];
       occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
                         occurrences.end());
     }
     for (const auto& [var, coeff] : new_entering_row) {
-      combined[var] += entering_in_other * coeff;
+      combine_scratch_.emplace_back(var, entering_in_other * coeff);
     }
+    std::sort(combine_scratch_.begin(), combine_scratch_.end(),
+              [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
     Row rebuilt;
-    rebuilt.reserve(combined.size());
-    for (auto& [var, coeff] : combined) {
-      if (coeff.is_zero()) {
+    rebuilt.reserve(combine_scratch_.size());
+    std::size_t combine_index = 0;
+    while (combine_index < combine_scratch_.size()) {
+      const LraVarId var = combine_scratch_[combine_index].first;
+      util::Rational sum = combine_scratch_[combine_index].second;
+      ++combine_index;
+      while (combine_index < combine_scratch_.size() &&
+             combine_scratch_[combine_index].first == var) {
+        sum += combine_scratch_[combine_index].second;
+        ++combine_index;
+      }
+      if (sum.is_zero()) {
         continue;
       }
-      rebuilt.emplace_back(var, coeff);
+      rebuilt.emplace_back(var, sum);
       occurs_in_[var].push_back(other_basic);
     }
     rows_.emplace(other_basic, std::move(rebuilt));
@@ -231,14 +245,17 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
 
   trail_.push_back(FRowTrailEntry{rows_.at(*f_var_), var, previous});
 
-  std::unordered_map<LraVarId, util::Rational> combined;
+  // Reused member -- see combine_scratch_'s own comment.
+  combine_scratch_.clear();
   for (const auto& [term_var, coeff] : rows_.at(*f_var_)) {
-    combined[term_var] += coeff;
+    combine_scratch_.emplace_back(term_var, coeff);
   }
   const util::Rational delta_rational(delta);
   for (const auto& [term_var, coeff] : var_row) {
-    combined[term_var] += coeff * delta_rational;
+    combine_scratch_.emplace_back(term_var, coeff * delta_rational);
   }
+  std::sort(combine_scratch_.begin(), combine_scratch_.end(),
+            [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
   Row& f_row = rows_.at(*f_var_);
   for (const auto& [term_var, coeff] : f_row) {
@@ -247,12 +264,21 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
                       occurrences.end());
   }
   Row rebuilt;
-  rebuilt.reserve(combined.size());
-  for (auto& [term_var, coeff] : combined) {
-    if (coeff.is_zero()) {
+  rebuilt.reserve(combine_scratch_.size());
+  std::size_t combine_index = 0;
+  while (combine_index < combine_scratch_.size()) {
+    const LraVarId term_var = combine_scratch_[combine_index].first;
+    util::Rational sum = combine_scratch_[combine_index].second;
+    ++combine_index;
+    while (combine_index < combine_scratch_.size() &&
+           combine_scratch_[combine_index].first == term_var) {
+      sum += combine_scratch_[combine_index].second;
+      ++combine_index;
+    }
+    if (sum.is_zero()) {
       continue;
     }
-    rebuilt.emplace_back(term_var, coeff);
+    rebuilt.emplace_back(term_var, sum);
     occurs_in_[term_var].push_back(*f_var_);
   }
   f_row = std::move(rebuilt);
