@@ -9702,6 +9702,43 @@
       },
       "evidence_status": "current_local",
       "notes": "Completes competitiveness-roadmap item 1 (LRA-aware solve-eqs via the Real-equality-lowering redesign). See docs/arithmetic.md's Milestone-roadmap entry and docs/preprocessing.md's 'Real-Equality Lowering' section for the design this campaign verifies."
+    },
+    {
+      "id": "2026-07-25-qf-lra-gaussian-elimination-slurm-smoke-gate",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "fuzz",
+      "scope": "Merge-gate-tier (500-case) fuzz smoke test for the new opt-in --gaussian-elimination QF_LRA solve-eqs extension (commit 1470b5c/4901358): Gauss-Jordan row reduction over asserted linear equality systems, feeding the same solved-constant candidate/accept-reject pipeline the plain bare-variable recognizer uses. Run on llm2smt-slurm rather than locally, per explicit user correction during this session that all fuzzing -- including small merge-gate smoke checks, not just campaign-tier gates -- should be dispatched to Slurm (see feedback_fuzzing_on_slurm memory).",
+      "commit": "4901358",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --gaussian-elimination (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile; then sbatch --array=0-0 --export=ALL,PATH=<contrib/local/bin prepended>,PRIMO_FUZZ_SOLVER='.../build-slurm-rel/primo --gaussian-elimination',PRIMO_FUZZ_FUZZSMT_SHARDS=1,PRIMO_FUZZ_FUZZSMT_COUNT=500,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0 scripts/slurm_qfuf_fuzz_gate.sbatch -- the existing QF_LRA campaign sbatch template, shard/task counts turned down to a single 500-case fuzzsmt task for a smoke-tier run. First submission (job 113405) hit the known 'fuzzsmt is not installed' silent-no-op failure mode from forgetting to prepend contrib/local/bin to PATH in --export=...; fixed and resubmitted as job 113406.",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 500 cases), seeded/referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113406/ on llm2smt-slurm -- not committed. Aggregated via a remote python csv scan of fuzzsmt/shard-0/summary.csv."
+      },
+      "summary": {
+        "result": "500/500 cases: 471 PASS, 29 TIMEOUT, 0 CRASH, 0 WRONG, 0 UNSUPPORTED_INPUT.",
+        "significance": "First fuzz evidence for the new Gaussian-elimination solve-eqs extension: no wrong-answer disagreements against z3, no crashes, no unsupported-input rejections, with the opt-in flag explicitly enabled (the default off-path is unaffected either way and already covered by existing QF_LRA campaigns). Clears merge-gate tier; campaign-tier (>=3000 case) confirmation on Slurm still needed before promoting this from opt-in to default-on, per docs/arithmetic.md's Milestone roadmap and docs/preprocessing.md's 'Gaussian Elimination' section."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run with --gaussian-elimination explicitly enabled: 0 crashes, 0 wrong answers, 0 unsupported-input rejections.",
+          "Full unit test suite (Release + ASAN/UBSan) green, including new Gaussian-elimination-specific unit tests (joint 2-equation system, single-equation-with-coefficient, equation-cap bail-out, contradictory-system soundness)."
+        ],
+        "pending": [
+          "Campaign-tier (>=3000 case) Slurm confirmation before promoting --gaussian-elimination from opt-in to default-on."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/preprocessing.md's 'Gaussian Elimination (opt-in)' section and docs/arithmetic.md's Milestone-roadmap follow-up entry under competitiveness-roadmap item 1 for the design this run verifies. Commits: 1470b5c (code+tests), 4901358 (docs)."
     }
   ]
 }
