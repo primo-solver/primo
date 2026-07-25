@@ -9813,6 +9813,39 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's 'Row-based/interval bound propagation' section and Milestone-roadmap entry for the design this run verifies. Commits: 6661352 (code+tests), 45fa2bc (docs)."
+    },
+    {
+      "id": "2026-07-25-qf-lra-soi-simplex-quick-eval",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-25",
+      "kind": "benchmark",
+      "scope": "Quick 17-file real-benchmark comparison (the same tmp/QF_LRA sample used for items 1-2's own quick-evals, one file per family, 5s timeout) between --lra-pivoting-rule bland (default) and soi (competitiveness-roadmap item 4, commit fc06922), to see whether SOI-Simplex's global sum-of-infeasibilities objective moves any of the sample's timeout cases. Also re-ran bland at the same time (rather than trusting an earlier session measurement) for an apples-to-apples comparison, since borderline 5s-timeout cases can be sensitive to system load.",
+      "commit": "fc06922",
+      "environment": {
+        "type": "local",
+        "host": "workspace container",
+        "binary": "build/primo (Release)"
+      },
+      "benchmark": {
+        "suite": "tmp/QF_LRA quick-eval sample (17 files, one per real-benchmark family)",
+        "logic": "QF_LRA",
+        "manifest": "/tmp/quick_qflra_manifest.txt"
+      },
+      "artifacts": {
+        "note": "Not committed -- one-off manual comparison, not a fuzz run."
+      },
+      "summary": {
+        "result": "Both bland and soi solved the identical 7/17 files (DTP-Scheduling, check, keymaera, meti-tarski, sal, spider_benchmarks, tta_startup), same sat/unsat answers, 0 disagreements. The remaining 10 files still time out under both.",
+        "significance": "SOI-Simplex's global objective did not move this narrow sample -- matching items 1 (solve-eqs) and 2 (row-based propagation)'s own quick-eval findings that neither more preprocessing nor more propagation reach nor a different Simplex search objective individually closes this sample's timeouts. Strengthens the case for running item 0 (empirical z3/cvc5 baseline, still not done) to understand what's actually gating these families before investing further engineering effort guided by literature-plausibility alone. Note: an earlier session turn's own memory of item 2's baseline said 6/17 for bland; this fresh re-measurement got 7/17 for bland on the same sample just now -- likely timing variance near the 5s cutoff on a shared machine, not a regression (not chased further, doesn't affect this entry's bland-vs-soi comparison since both were measured in the same run)."
+      },
+      "verification": {
+        "passed": [
+          "17-file real-benchmark comparison: 0 wrong-answer disagreements between bland and soi."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for competitiveness-roadmap item 4 and docs/papers/lra-related-work.md's updated SOI-Simplex entry."
     }
   ]
 }
