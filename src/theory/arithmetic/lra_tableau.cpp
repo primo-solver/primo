@@ -47,8 +47,11 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, Delt
     if (state.assignment > value) {
       update(var, value);
     }
-  } else if (rule_ == PivotingRule::Soi) {
-    set_soi_direction(var, soi_direction(var), rows_.at(var));
+  } else {
+    update_violation_status(var);
+    if (rule_ == PivotingRule::Soi) {
+      set_soi_direction(var, soi_direction(var), rows_.at(var));
+    }
   }
   return std::nullopt;
 }
@@ -68,8 +71,11 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, Delt
     if (state.assignment < value) {
       update(var, value);
     }
-  } else if (rule_ == PivotingRule::Soi) {
-    set_soi_direction(var, soi_direction(var), rows_.at(var));
+  } else {
+    update_violation_status(var);
+    if (rule_ == PivotingRule::Soi) {
+      set_soi_direction(var, soi_direction(var), rows_.at(var));
+    }
   }
   return std::nullopt;
 }
@@ -79,6 +85,15 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
   const DeltaRational delta = new_value - state.assignment;
   trail_.push_back(AssignmentTrailEntry{nonbasic_var, state.assignment});
   state.assignment = new_value;
+  // nonbasic_var is, by this function's own contract, never basic --
+  // update_violation_status() therefore always erases it here (a no-op if
+  // it was never a member). This specifically matters right after
+  // check()'s own `pivot(violated, entering); update(violated, target);`
+  // sequence: `violated` just became nonbasic via pivot() (which doesn't
+  // touch violated_vars_ itself for the leaving variable -- see pivot()'s
+  // own comment), so this call is what actually clears its now-stale
+  // membership.
+  update_violation_status(nonbasic_var);
   // Copy the affected-rows list before iterating: set_soi_direction()
   // below can mutate occurs_in_[some_var]'s vector (adding/removing
   // f_var_ from it) as a side effect, and if nonbasic_var itself happens
@@ -93,6 +108,9 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
         VarState& basic_state = vars_.at(basic_var);
         trail_.push_back(AssignmentTrailEntry{basic_var, basic_state.assignment});
         basic_state.assignment = basic_state.assignment + delta.scaled(coefficient);
+        // f_var_ is harmless to include here too: it has no bounds, so
+        // update_violation_status() always computes "not violated" for it.
+        update_violation_status(basic_var);
         // f_var_ itself is excluded: it has no bounds, so soi_direction()
         // is always 0 for it and the hook would be a no-op.
         if (rule_ == PivotingRule::Soi && (!f_var_.has_value() || basic_var != *f_var_)) {
@@ -110,6 +128,16 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   trail_entry.basic_var = basic_var;
   trail_entry.entering_var = entering_var;
   trail_entry.old_basic_row = rows_.at(basic_var);
+
+  // No violated_vars_ update here for basic_var (about to become
+  // nonbasic): both of this function's call sites in check() always
+  // immediately follow pivot() with update(basic_var, target), and
+  // update()'s own top-level update_violation_status(nonbasic_var) call
+  // clears basic_var's now-stale membership there instead -- see its
+  // comment. entering_var's own post-pivot violation status is likewise
+  // resolved via that same update() call's dependent-basic-variable loop
+  // (entering_var's new row is built in terms of basic_var, so it's
+  // always in occurs_in_[basic_var] by the time update() reads it).
 
   // basic_var is about to become nonbasic and stop contributing to f_var_'s
   // row entirely -- its tracked direction must be reset to the nonbasic
@@ -611,12 +639,9 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       if (!selection.has_value()) {
         // Flex(f) empty (Section V/V-B): either satisfiable (no basic
         // variable remains violated) or a genuine multi-row conflict.
-        std::vector<LraVarId> error_vars;
-        for (LraVarId id = 0; id < vars_.size(); ++id) {
-          if (vars_[id].is_basic && soi_direction(id) != 0) {
-            error_vars.push_back(id);
-          }
-        }
+        // soi_direction(id)!=0 is exactly "id is basic and violated", so
+        // violated_vars_ (see its own comment) already is this set.
+        const std::vector<LraVarId> error_vars(violated_vars_.begin(), violated_vars_.end());
         if (error_vars.empty()) {
           return std::nullopt;
         }
@@ -675,25 +700,20 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
     LraVarId violated = vars_.size();
     bool too_low = false;
     DeltaRational best_violation;
-    for (LraVarId id = 0; id < vars_.size(); ++id) {
+    // Iterate violated_vars_ (see its own comment) instead of every
+    // variable in the tableau: membership already guarantees `id` is
+    // basic and currently out of exactly one bound, so there's no
+    // is_basic/is_violated guard to re-check here -- just which bound.
+    for (const LraVarId id : violated_vars_) {
       const VarState& state = vars_[id];
-      if (!state.is_basic) {
-        continue;
-      }
       bool candidate_too_low = false;
-      bool is_violated = false;
       DeltaRational violation;
       if (state.lower.has_value() && state.assignment < state.lower->value) {
-        is_violated = true;
         candidate_too_low = true;
         violation = state.lower->value - state.assignment;
-      } else if (state.upper.has_value() && state.assignment > state.upper->value) {
-        is_violated = true;
+      } else {
         candidate_too_low = false;
         violation = state.assignment - state.upper->value;
-      }
-      if (!is_violated) {
-        continue;
       }
       if (use_bland) {
         violated = id;
@@ -755,10 +775,19 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
 }
 
 void LraTableau::pop(std::size_t checkpoint) {
+  if (trail_.size() <= checkpoint) {
+    return;
+  }
   while (trail_.size() > checkpoint) {
     undo(trail_.back());
     trail_.pop_back();
   }
+  // violated_vars_ isn't patched incrementally per undo case (bound/
+  // assignment/pivot/f-row trail entries interact in too many
+  // combinations to do that safely) -- see rebuild_violated_vars()'s own
+  // comment for why a full rebuild here, rather than per-entry patching,
+  // is the right tradeoff.
+  rebuild_violated_vars();
 }
 
 void LraTableau::undo(const TrailEntry& entry) {
@@ -813,6 +842,25 @@ void LraTableau::rebuild_occurs_in_index() {
     for (const auto& [var, coefficient] : rows_[basic_var]) {
       occurs_in_[var].push_back(basic_var);
     }
+  }
+}
+
+void LraTableau::update_violation_status(LraVarId var) {
+  const VarState& state = vars_.at(var);
+  const bool violated =
+      state.is_basic && ((state.lower.has_value() && state.assignment < state.lower->value) ||
+                         (state.upper.has_value() && state.assignment > state.upper->value));
+  if (violated) {
+    violated_vars_.insert(var);
+  } else {
+    violated_vars_.erase(var);
+  }
+}
+
+void LraTableau::rebuild_violated_vars() {
+  violated_vars_.clear();
+  for (LraVarId var = 0; var < vars_.size(); ++var) {
+    update_violation_status(var);
   }
 }
 

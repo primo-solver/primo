@@ -228,6 +228,60 @@ void push_pop_restores_state_across_a_pivot() {
   assert(has_reason(*redone_check_conflict, lower_reason));
 }
 
+bool same_reason_set(const std::optional<std::vector<Lit>>& a, const std::optional<std::vector<Lit>>& b) {
+  if (a.has_value() != b.has_value()) {
+    return false;
+  }
+  if (!a.has_value()) {
+    return true;
+  }
+  if (a->size() != b->size()) {
+    return false;
+  }
+  return std::all_of(a->begin(), a->end(), [&](Lit lit) { return has_reason(*b, lit); });
+}
+
+void push_pop_rebuilds_violated_vars_across_multiple_simultaneous_violations() {
+  // Targets violated_vars_'s own trickiest invariant (see its comment in
+  // lra_tableau.hpp): a single bound assertion that simultaneously
+  // violates *two* different basic rows (x appears in both s1 and s2),
+  // forcing check()'s pivot loop to work through more than one entry in
+  // the set, followed by a pop() that must reconstruct that set correctly
+  // from scratch rather than by patching individual undo cases. The
+  // oracle is push_pop_restores_state_across_a_pivot's own pattern:
+  // whatever check() finds the first time (inside the pushed level) must
+  // be bit-for-bit reproducible by redoing the identical assertion after
+  // popping -- this doesn't require hand-predicting the exact SAT/
+  // conflict outcome, only that push/pop is a true no-op on it.
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(-1)}});
+
+  assert(!tableau.assert_lower(x, rat(0), Lit{1}).has_value());
+  assert(!tableau.assert_upper(s1, rat(1), Lit{2}).has_value());
+  assert(!tableau.assert_upper(s2, rat(1), Lit{3}).has_value());
+  assert(!tableau.check().has_value());  // feasible: x=y=0, s1=s2=0
+
+  const std::size_t checkpoint = tableau.push();
+  const Lit trigger_reason{4};
+  // x jumping to 10 (y still 0) makes s1=x+y=10>1 *and* s2=x-y=10>1
+  // simultaneously -- both rows enter violated_vars_ from this one call.
+  assert(!tableau.assert_lower(x, rat(10), trigger_reason).has_value());
+  const auto result_inside_push = tableau.check();
+
+  tableau.pop(checkpoint);
+  assert(!tableau.check().has_value());  // back to the pre-push feasible state
+
+  assert(!tableau.assert_lower(x, rat(10), trigger_reason).has_value());
+  const auto result_after_pop_and_redo = tableau.check();
+
+  assert(same_reason_set(result_inside_push, result_after_pop_and_redo));
+}
+
 void push_pop_restores_propagated_basic_assignment() {
   // s = x + y; asserting a lower bound on the *non-basic* x propagates
   // into s's (basic) assignment via update()'s propagation loop -- verify
@@ -591,6 +645,7 @@ int main() {
   empty_row_from_a_trivially_true_atom_is_handled();
   push_pop_restores_a_bound();
   push_pop_restores_state_across_a_pivot();
+  push_pop_rebuilds_violated_vars_across_multiple_simultaneous_violations();
   push_pop_restores_propagated_basic_assignment();
   nested_push_pop_levels();
   bound_accessors_report_nullopt_before_any_assertion();

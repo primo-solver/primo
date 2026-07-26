@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <set>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -271,6 +272,25 @@ class LraTableau {
   void undo(const TrailEntry& entry);
   void rebuild_occurs_in_index();
 
+  // Keeps violated_vars_ (see its own comment) in sync going *forward*:
+  // checks `var`'s current is_basic/assignment/bounds and inserts/erases
+  // it from the set accordingly. Called from the two places a basic
+  // variable's violation status can change during ordinary (non-undo)
+  // operation: assert_upper/assert_lower's is_basic branch, and update()'s
+  // dependent-basic-variable assignment-change loop. A non-basic variable
+  // is never a member (there is nothing to remove if `var` just became
+  // non-basic via pivot() -- see pivot()'s own call site for why that's
+  // still handled correctly without a dedicated hook there).
+  void update_violation_status(LraVarId var);
+
+  // Full O(vars_.size()) rebuild of violated_vars_ from scratch, mirroring
+  // rebuild_occurs_in_index()'s existing precedent: pop() can undo bound/
+  // assignment/pivot/f-row trail entries in combinations too varied to
+  // patch incrementally without real correctness risk, but pop() itself
+  // is rare (once per backtrack, not once per pivot), so a full rescan
+  // here is cheap relative to what it replaces.
+  void rebuild_violated_vars();
+
   // -- PivotingRule::Soi (Section V) --
 
   // eq (3)'s directional multiplier: -1 if `var` (assumed currently
@@ -353,6 +373,16 @@ class LraTableau {
   std::vector<VarState> vars_;
   std::vector<Row> rows_;
   std::vector<std::vector<LraVarId>> occurs_in_;
+  // Currently-violated basic variable ids (assignment outside its own
+  // bound), kept incrementally in sync -- see update_violation_status()'s
+  // comment. A sorted set gives Bland's smallest-index selection for
+  // free and lets Dantzig/SOI's own scans iterate just this (typically
+  // small) set instead of every variable in the tableau.
+  // `soi_direction(var) != 0` is exactly equivalent to `var ∈
+  // violated_vars_` by construction (both mean "basic and currently out
+  // of bounds"), so this one set also serves SOI's error-var collection
+  // in check() -- no separate SOI-specific bookkeeping needed.
+  std::set<LraVarId> violated_vars_;
   std::vector<TrailEntry> trail_;
   // Reused across pivot()'s per-affected-row combine step and
   // set_soi_direction()'s f-row combine step, both of which need to merge
