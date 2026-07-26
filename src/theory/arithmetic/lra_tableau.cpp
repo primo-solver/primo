@@ -9,6 +9,9 @@ namespace primo::theory::arithmetic {
 LraVarId LraTableau::add_variable() {
   const LraVarId id = vars_.size();
   vars_.push_back(VarState{});
+  rows_.emplace_back();
+  occurs_in_.emplace_back();
+  soi_directions_.push_back(0);
   return id;
 }
 
@@ -26,7 +29,7 @@ void LraTableau::add_row(LraVarId basic_var, const std::vector<std::pair<LraVarI
   }
   vars_.at(basic_var).is_basic = true;
   vars_.at(basic_var).assignment = assignment;
-  rows_.emplace(basic_var, std::move(row));
+  rows_[basic_var] = std::move(row);
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, DeltaRational value,
@@ -76,10 +79,6 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
   const DeltaRational delta = new_value - state.assignment;
   trail_.push_back(AssignmentTrailEntry{nonbasic_var, state.assignment});
   state.assignment = new_value;
-  const auto found = occurs_in_.find(nonbasic_var);
-  if (found == occurs_in_.end()) {
-    return;
-  }
   // Copy the affected-rows list before iterating: set_soi_direction()
   // below can mutate occurs_in_[some_var]'s vector (adding/removing
   // f_var_ from it) as a side effect, and if nonbasic_var itself happens
@@ -87,7 +86,7 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
   // exact occurs_in_[nonbasic_var] entry -- iterating the live reference
   // directly caused a real heap-use-after-free (found via manual ASAN
   // testing this round, not just theorized).
-  const std::vector<LraVarId> affected = found->second;
+  const std::vector<LraVarId> affected = occurs_in_.at(nonbasic_var);
   for (const LraVarId basic_var : affected) {
     for (const auto& [var, coefficient] : rows_.at(basic_var)) {
       if (var == nonbasic_var) {
@@ -124,8 +123,11 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     set_soi_direction(basic_var, 0, trail_entry.old_basic_row);
   }
 
+  // No explicit erase of basic_var's slot: it's about to become nonbasic,
+  // and rebuild_occurs_in_index() (the only place that ever iterates all
+  // of rows_ rather than a specific known-basic index) gates by is_basic,
+  // not by content, so the moved-from (empty) leftover here is harmless.
   Row old_row = std::move(rows_.at(basic_var));
-  rows_.erase(basic_var);
 
   util::Rational entering_coeff(0);
   Row remainder;
@@ -153,12 +155,11 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   vars_.at(entering_var).is_basic = true;
 
   const std::vector<LraVarId> affected = occurs_in_[entering_var];
-  occurs_in_.erase(entering_var);
+  occurs_in_[entering_var].clear();
 
   for (const LraVarId other_basic : affected) {
     Row other_row = rows_.at(other_basic);
     trail_entry.old_other_rows.emplace_back(other_basic, other_row);
-    rows_.erase(other_basic);
 
     // Reused member (see combine_scratch_'s own comment): sort-merge
     // instead of a hash-based combine, avoiding per-element heap
@@ -199,13 +200,13 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
       rebuilt.emplace_back(var, sum);
       occurs_in_[var].push_back(other_basic);
     }
-    rows_.emplace(other_basic, std::move(rebuilt));
+    rows_[other_basic] = std::move(rebuilt);
   }
 
   for (const auto& [var, coeff] : new_entering_row) {
     occurs_in_[var].push_back(entering_var);
   }
-  rows_.emplace(entering_var, std::move(new_entering_row));
+  rows_[entering_var] = std::move(new_entering_row);
 
   trail_.push_back(std::move(trail_entry));
 }
@@ -480,8 +481,7 @@ std::unordered_map<LraVarId, util::Rational> LraTableau::restricted_soi_row(
     const std::vector<LraVarId>& subset) const {
   std::unordered_map<LraVarId, util::Rational> restricted;
   for (const LraVarId basic_var : subset) {
-    const auto found = soi_directions_.find(basic_var);
-    const int direction = found == soi_directions_.end() ? 0 : found->second;
+    const int direction = soi_directions_.at(basic_var);
     if (direction == 0) {
       continue;
     }
@@ -775,7 +775,10 @@ void LraTableau::undo(const TrailEntry& entry) {
     return;
   }
   if (const auto* pivot_entry = std::get_if<PivotTrailEntry>(&entry)) {
-    rows_.erase(pivot_entry->entering_var);
+    // No explicit clear of entering_var's slot: it's about to become
+    // nonbasic again, and rebuild_occurs_in_index() below is is_basic-
+    // gated, not content-gated (see rows_'s own comment), so the stale
+    // leftover here is harmless.
     rows_[pivot_entry->basic_var] = pivot_entry->old_basic_row;
     vars_.at(pivot_entry->basic_var).is_basic = true;
     vars_.at(pivot_entry->entering_var).is_basic = false;
@@ -795,9 +798,18 @@ void LraTableau::undo(const TrailEntry& entry) {
 }
 
 void LraTableau::rebuild_occurs_in_index() {
-  occurs_in_.clear();
-  for (const auto& [basic_var, row] : rows_) {
-    for (const auto& [var, coefficient] : row) {
+  // rows_ has a slot for every variable, not just currently-basic ones
+  // (see rows_'s own comment) -- a nonbasic slot's leftover content must
+  // not be walked here, hence the explicit is_basic gate rather than
+  // iterating rows_ directly.
+  for (std::vector<LraVarId>& entry : occurs_in_) {
+    entry.clear();
+  }
+  for (LraVarId basic_var = 0; basic_var < vars_.size(); ++basic_var) {
+    if (!vars_[basic_var].is_basic) {
+      continue;
+    }
+    for (const auto& [var, coefficient] : rows_[basic_var]) {
       occurs_in_[var].push_back(basic_var);
     }
   }

@@ -200,6 +200,10 @@ class LraTableau {
   // `var`'s current row (basic_var = sum(coefficient * var)). `var` must
   // currently be basic (see is_basic()); throws std::out_of_range
   // otherwise, matching this class's existing .at()-style conventions.
+  // Note: rows_ stores a slot for every variable (not just currently-basic
+  // ones -- see rows_'s own comment), so this only throws for a genuinely
+  // invalid `var`, not for a merely-nonbasic one; callers must still gate
+  // on is_basic() themselves, since a nonbasic slot's content is stale.
   const Row& row(LraVarId var) const { return rows_.at(var); }
 
   // The basic variable ids of every row whose terms currently mention
@@ -208,11 +212,7 @@ class LraTableau {
   // bound after `var`'s own bound changes. Empty (not an error) if `var`
   // occurs in no row. Reflects the current pivot state, kept correct
   // across add_row/pivot/pop (see occurs_in_'s own maintenance).
-  const std::vector<LraVarId>& occurs_in(LraVarId var) const {
-    static const std::vector<LraVarId> kEmpty;
-    const auto found = occurs_in_.find(var);
-    return found == occurs_in_.end() ? kEmpty : found->second;
-  }
+  const std::vector<LraVarId>& occurs_in(LraVarId var) const { return occurs_in_.at(var); }
 
  private:
   struct Bound {
@@ -324,10 +324,25 @@ class LraTableau {
   std::size_t soi_multi_row_conflict_count_ = 0;
   std::size_t soi_quickxplain_call_count_ = 0;
   std::optional<LraVarId> f_var_;
-  std::unordered_map<LraVarId, int> soi_directions_;
+  // soi_directions_/rows_/occurs_in_ are all dense, indexed directly by
+  // LraVarId (a plain index into vars_, not an opaque key) -- a further
+  // profiling follow-up beyond combine_scratch_'s own fix (see its
+  // comment): rows_/occurs_in_ were still std::unordered_map, so every
+  // pivot's rows_.erase+emplace and occurs_in_ insert/erase was itself a
+  // per-call heap-allocated map-node churn, independent of and additional
+  // to the combine step's own cost -- re-profiling after the
+  // combine_scratch_ fix confirmed this (std::__detail::_Map_base still
+  // hot). Since LraVarId is dense and only grows during initial tableau
+  // construction (add_variable()/add_row(), always called before the
+  // first push()/check() -- see the class comment), sizing these vectors
+  // in lockstep with vars_ (in add_variable()) makes every index always
+  // valid: a slot for a currently-nonbasic variable simply holds stale,
+  // unread content (rebuild_occurs_in_index() gates by is_basic rather
+  // than by presence, exactly to make this safe -- see its own comment).
+  std::vector<int> soi_directions_;
   std::vector<VarState> vars_;
-  std::unordered_map<LraVarId, Row> rows_;
-  std::unordered_map<LraVarId, std::vector<LraVarId>> occurs_in_;
+  std::vector<Row> rows_;
+  std::vector<std::vector<LraVarId>> occurs_in_;
   std::vector<TrailEntry> trail_;
   // Reused across pivot()'s per-affected-row combine step and
   // set_soi_direction()'s f-row combine step, both of which need to merge
