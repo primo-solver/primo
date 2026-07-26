@@ -3472,6 +3472,13 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       level_starts_.resize(new_level);
     }
     conflict_.reset();
+    // Sound to drop unconditionally per notify_assignment_lit's own
+    // verified invariant: a new decision level can never open while a
+    // deferred check is still outstanding (cb_has_external_clause -- and
+    // thus run_deferred_check_if_needed() -- is always consulted first),
+    // so needs_check_ can never be true across a backtrack in a way that
+    // would lose an actually-outstanding repair.
+    needs_check_ = false;
     external_clause_.clear();
     external_clause_index_ = 0;
     // pending_ entries are just candidates, not delivered propagations --
@@ -3538,14 +3545,18 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   }
 
   // Authoritative once backend.solve() returns SAT, for the same reason
-  // OnlineEufPropagator::incremental_conflict() is: every observed
-  // variable's assignment has already been asserted (and checked)
-  // synchronously via notify_assignment before solve() can return, so
-  // there is nothing left to recompute.
+  // OnlineEufPropagator::incremental_conflict() is: cb_has_external_clause()
+  // (which runs the deferred Check/Pivot repair -- see
+  // run_deferred_check_if_needed()) is always asked, and any resulting
+  // conflict resolved, before CaDiCaL's own main loop can reach a
+  // decision or declare a model satisfied (see notify_assignment_lit's
+  // comment for the verified invariant), so there is nothing left to
+  // recompute once solve() actually returns SAT.
   std::optional<sat::Clause> conflict() const { return conflict_; }
 
 #if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
+    run_deferred_check_if_needed();
     if (!conflict_.has_value()) {
       return false;
     }
@@ -3556,6 +3567,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   }
 #else
   bool cb_has_external_clause() override {
+    run_deferred_check_if_needed();
     if (!conflict_.has_value()) {
       return false;
     }
@@ -3613,6 +3625,13 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
                               prepared_atom.rhs, atom_value, blocking_lit(assigned));
     if (direct_conflict.has_value()) {
       conflict_ = direct_conflict;
+      // needs_check_ may already be true from an earlier, non-conflicting
+      // literal in this same batch -- clear it, or run_deferred_check_if_
+      // needed() would later overwrite this genuine direct conflict with
+      // a stale tableau_.check() result. (The offending bound itself was
+      // never actually stored by assert_upper/assert_lower's own direct-
+      // conflict branch, so check() alone wouldn't even rediscover it.)
+      needs_check_ = false;
       return;
     }
     if (propagation_enabled_) {
@@ -3621,13 +3640,43 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
         scan_row_based_propagations(prepared_atom.slack);
       }
     }
-    // Eagerly re-checks after every single assignment, mirroring how EUF's
-    // IncrementalFlatAssignmentState::assert_assignment eagerly detects
-    // conflicts rather than deferring to a batched end-of-round check.
-    // Real cost: O(pivots-to-repair) per assignment, potentially repeated
-    // work across many assignments before a conflict actually appears --
-    // acceptable for a first correctness-focused milestone, a documented
-    // opportunity to optimize later (e.g. deferring to cb_has_external_clause).
+    // Defer the expensive Check/Pivot repair rather than running it
+    // eagerly after every single assignment (decisions *and* propagated
+    // literals both land here): notify_assignment_lit can be called
+    // tens of thousands of times more often than CaDiCaL actually needs
+    // a verdict from us. Verified against CaDiCaL's own source
+    // (contrib/src/cadical/src/{internal,external_propagate}.cpp): with
+    // this propagator in eager mode (is_lazy left at its default
+    // `false`), cb_has_external_clause() is asked exactly once per
+    // quiescence point (once per decision plus once per conflict/
+    // backjump, not once per literal), and cb_propagate() is always
+    // fully drained *before* it's asked -- so same-slack/row-based
+    // propagation above (which reads only bound state, never the
+    // current assignment) is completely unaffected by deferring this.
+    // See run_deferred_check_if_needed(), called from both
+    // cb_has_external_clause() overloads.
+    needs_check_ = true;
+  }
+
+  // The actual Check/Pivot repair, run lazily right before CaDiCaL is
+  // told whether there's a conflict clause to add -- see
+  // notify_assignment_lit's own comment for why this specific hook
+  // point is both correct (propagation doesn't depend on it) and the
+  // right frequency (once per quiescence point, not once per literal).
+  void run_deferred_check_if_needed() {
+    if (!needs_check_) {
+      return;
+    }
+    needs_check_ = false;
+    // Belt-and-suspenders: notify_assignment_lit's direct-conflict branch
+    // already clears needs_check_ itself (see its own comment), but never
+    // overwrite an already-discovered conflict with a fresh
+    // tableau_.check() result regardless -- tableau_.check() only sees
+    // whatever bounds actually made it into the tableau, and a rejected
+    // direct-conflict bound never does.
+    if (conflict_.has_value()) {
+      return;
+    }
     const std::size_t fallbacks_before = tableau_.bland_fallback_count();
     const std::size_t multi_row_conflicts_before = tableau_.soi_multi_row_conflict_count();
     const std::size_t quickxplain_calls_before = tableau_.soi_quickxplain_call_count();
@@ -3761,6 +3810,10 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   std::optional<sat::Clause> conflict_;
   sat::Clause external_clause_;
   std::size_t external_clause_index_ = 0;
+  // See notify_assignment_lit's comment: set instead of running
+  // tableau_.check() eagerly per literal, resolved lazily by
+  // run_deferred_check_if_needed() (called from cb_has_external_clause()).
+  bool needs_check_ = false;
 };
 #endif  // PRIMO_HAVE_IPASIR
 

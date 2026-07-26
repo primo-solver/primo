@@ -359,6 +359,40 @@ void row_based_propagation_can_reach_a_conflict() {
   assert(not_propagated.result == CheckSatResult::Unsat);
 }
 
+void deferred_check_runs_once_per_quiescence_point_not_per_literal() {
+  // Roadmap item 6: OnlineLraPropagator::notify_assignment_lit used to
+  // call tableau_.check() eagerly after every single assigned literal
+  // (decisions *and* propagated ones). It now defers to
+  // cb_has_external_clause, which CaDiCaL only asks once per quiescence
+  // point (once per decision plus once per conflict). Same-slack
+  // propagation on x's shared slack means asserting (<= x 1) entails
+  // (<= x 2), (<= x 3), and (<= x 4) directly TRUE, satisfying each `or`
+  // clause's left disjunct without ever needing y1/y2/y3's own values --
+  // three extra arithmetic-atom assignments (LraTheoryPropagations) that
+  // must NOT each trigger their own check() call.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y1 () Real)
+    (declare-fun y2 () Real)
+    (declare-fun y3 () Real)
+    (assert (<= x 1))
+    (assert (or (<= x 2) (>= y1 1000)))
+    (assert (or (<= x 3) (>= y2 1000)))
+    (assert (or (<= x 4) (>= y3 1000)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::LraTheoryPropagations) > 0);
+  // The actual point: check() runs at most once per quiescence point
+  // (one before the first decision, then one more per decision/conflict)
+  // -- not once per arithmetic-atom assignment, however many of those a
+  // single quiescence point's propagation ends up delivering.
+  const auto quiescence_points =
+      result.statistics.get(StatKey::SatDecisions) + result.statistics.get(StatKey::SatConflicts) + 1;
+  assert(result.statistics.get(StatKey::LraOnlineCheckCalls) <= quiescence_points);
+}
+
 void strict_boundary_is_unsat() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -681,6 +715,7 @@ int main() {
   same_slack_propagation_can_reach_a_conflict();
   row_based_propagation_drives_boolean_structure();
   row_based_propagation_can_reach_a_conflict();
+  deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
