@@ -125,6 +125,14 @@ struct CheckSatOptions {
   // lra_row_propagation) so the two directions can be A/B tested
   // independently -- see docs/arithmetic.md's Milestone roadmap.
   bool lra_bidirectional_row_propagation = false;
+  // Competitiveness-roadmap item 8: theory-guided decisions via CaDiCaL's
+  // cb_decide -- the arithmetic theory actively ranks and supplies a
+  // decision literal on (almost) every decision, rather than leaving every
+  // decision to CaDiCaL's generic VSIDS. Independent of lra_propagation/
+  // lra_row_propagation (it fires at decision time, not propagation time),
+  // so it has its own flag rather than depending on either -- see
+  // docs/arithmetic.md's Milestone roadmap.
+  bool lra_theory_decisions = false;
   // Milestone 4: default stays Bland (today's already-fuzz-tested
   // behavior) until Dantzig has its own campaign-tier confirmation --
   // see docs/papers/lra-related-work.md's pivoting-rule survey.

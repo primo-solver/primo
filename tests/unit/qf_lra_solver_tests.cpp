@@ -411,6 +411,79 @@ void bidirectional_row_propagation_can_reach_a_conflict() {
   assert(not_propagated.result == CheckSatResult::Unsat);
 }
 
+void theory_decisions_prefer_free_atoms() {
+  // Competitiveness-roadmap item 8: x's and y's bounds are directly
+  // asserted (default assignment 0 already satisfies both), so both
+  // remaining case-split atoms ((<= (+ x y) 10), (>= w 1000)) have a
+  // polarity the live model already agrees with -- cb_decide should
+  // supply both decisions itself (:lra.theory-decisions == :sat.decisions)
+  // and both should be the free (cost-0) case
+  // (:lra.theory-decision-free == :lra.theory-decisions).
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (<= x 2))
+    (assert (<= y 3))
+    (assert (or (<= (+ x y) 10) (>= w 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_theory_decisions;
+  with_theory_decisions.lra_theory_decisions = true;
+  const auto decided = check_sat_smtlib(formula, with_theory_decisions);
+  assert(decided.result == CheckSatResult::Sat);
+  assert(decided.statistics.get(StatKey::LraTheoryDecisions) > 0);
+  assert(decided.statistics.get(StatKey::LraTheoryDecisions) ==
+        decided.statistics.get(StatKey::LraTheoryDecisionFree));
+
+  CheckSatOptions without_theory_decisions;
+  const auto undecided = check_sat_smtlib(formula, without_theory_decisions);
+  assert(undecided.result == CheckSatResult::Sat);
+  assert(undecided.statistics.get(StatKey::LraTheoryDecisions) == 0);
+}
+
+void theory_decisions_resolve_via_cost_ranking() {
+  // Competitiveness-roadmap item 8's "required" scope (not just
+  // "opportunistic"): v1/v2 each occur in a row already upper-bounded
+  // tightly enough ((+ v1 q1) <= 4, q1 <= 2) that asserting EITHER
+  // polarity of (<= v1 5)/(<= v2 5) pushes that row's estimated total
+  // above its own bound -- true (substituting 5) gives 5+0=5 > 4; false
+  // (substituting just-over-5) is worse still. Neither candidate has a
+  // free (cost-0) direction, so a purely opportunistic design would fall
+  // back to VSIDS for both decisions -- this design must still supply
+  // both (:lra.theory-decisions == :sat.decisions) and still reach the
+  // correct (Sat) answer, with :lra.theory-decision-free never touched
+  // (both decisions costed > 0).
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun q1 () Real)
+    (declare-fun v1 () Real)
+    (declare-fun q2 () Real)
+    (declare-fun v2 () Real)
+    (assert (<= (+ v1 q1) 4))
+    (assert (<= q1 2))
+    (assert (<= (+ v2 q2) 4))
+    (assert (<= q2 2))
+    (assert (or (<= v1 5) (<= v2 5)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_theory_decisions;
+  with_theory_decisions.lra_theory_decisions = true;
+  const auto decided = check_sat_smtlib(formula, with_theory_decisions);
+  assert(decided.result == CheckSatResult::Sat);
+  assert(decided.statistics.get(StatKey::LraTheoryDecisions) > 0);
+  assert(decided.statistics.get(StatKey::LraTheoryDecisions) ==
+        decided.statistics.get(StatKey::SatDecisions));
+  assert(!decided.statistics.contains(StatKey::LraTheoryDecisionFree));
+
+  CheckSatOptions without_theory_decisions;
+  const auto undecided = check_sat_smtlib(formula, without_theory_decisions);
+  assert(undecided.result == CheckSatResult::Sat);
+}
+
 void row_based_propagation_can_reach_a_conflict() {
   // Same row (+ x y) as above, but the disjunction's other branch is also
   // ruled out (< w 1000), and the shared-polynomial atom is negated --
@@ -800,6 +873,8 @@ int main() {
   row_based_propagation_can_reach_a_conflict();
   bidirectional_row_propagation_drives_boolean_structure();
   bidirectional_row_propagation_can_reach_a_conflict();
+  theory_decisions_prefer_free_atoms();
+  theory_decisions_resolve_via_cost_ranking();
   deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();

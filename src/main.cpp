@@ -196,6 +196,11 @@ int main(int argc, char** argv) {
                "other terms from its own bound, not just derive the row's own implied "
                "bound (only takes effect if --lra-row-propagation is also on)")
       ->default_val(false);
+  app.add_flag("--lra-theory-decisions", solver_options.lra_theory_decisions,
+               "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
+               "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
+               "literal itself instead of leaving every decision to generic VSIDS")
+      ->default_val(false);
   app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
                  "QF_LRA Check/Pivot variable-selection rule: bland (default, "
                  "anti-cycling-proven), dantzig (largest-violation/largest-coefficient, "
