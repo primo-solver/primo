@@ -10172,6 +10172,75 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 7 and /home/user/.claude/plans/piped-wondering-fairy.md's item 7 section for the full design and empirical results. This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-7). The underlying TM/sc/uart-vs-z3/cvc5 gap remains substantially open -- z3/cvc5 both still win primarily via far fewer pivots (not cheaper ones), and this item's mixed result suggests row-rearrangement propagation alone isn't the missing piece for most of these files."
+    },
+    {
+      "id": "2026-07-26-qf-lra-theory-decisions-nine-file-comparison",
+      "started_at": "2026-07-26",
+      "recorded_at": "2026-07-27",
+      "kind": "benchmark",
+      "scope": "Roadmap item 8 (commit 17f8faf): theory-guided decisions via CaDiCaL's cb_decide, --lra-theory-decisions vs. default, on the 9 dramatic-gap files from job 114200 (both z3 and cvc5 solve in <1s, Primo timed out at 10s in that sample). Re-derived the exact 9 filenames from the local results/qf-lra-solver-compare-114200/{primo,z3,cvc5}.csv (status=='ok' for z3/cvc5 with seconds<1.0, status=='timeout' for primo), matching the file list already named in docs/arithmetic.md's item 7 entry. Ran each file with and without --lra-theory-decisions at a 60s timeout (looser than the 10s solver-compare budget, to see whether the flag changes the eventual outcome not just whether it clears one fixed budget), reporting :sat.decisions, :lra.pivots, and wall-clock for each.",
+      "commit": "17f8faf",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-theory-decisions] (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then, directly via ssh (not sbatch -- single-file timing runs, not a batch fuzz campaign), for each of the 9 files: timeout 60 build-slurm-rel/primo --quiet --stats [--lra-theory-decisions] <file>, wall-clock timed via date +%s.%N before/after.",
+      "benchmark": {
+        "suite": "tmp/QF_LRA/{TM/p-DepotsNum_s8.msat.smt2, TM/p6-zenonumeric_s5.smt2, sc/sc-17.induction3.cvc.smt2, sc/sc-19.induction3.cvc.smt2, sc/sc-21.induction3.cvc.smt2, sc/sc-27.induction.cvc.smt2, uart/uart-16.induction.cvc.smt2, uart/uart-17.induction.cvc.smt2, uart/uart-18.induction.cvc.smt2}",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Raw per-file output captured in the session transcript only -- not saved as a separate file/CSV, given only 9 files and a single before/after comparison per file (unlike the 237-file solver-compare runs, which do get their own results/ directory)."
+      },
+      "summary": {
+        "result": "TM/p6-zenonumeric_s5: 57.5s->13.9s (-76%), decisions 128,313->20,326, pivots 113,806->11,018. TM/p-DepotsNum_s8: 52.4s->45.8s (-13%), decisions 19,666->47,431 (more), pivots 83,172->44,798 (fewer). uart-17: 19.2s->17.9s (-7%). sc-17/sc-19/sc-21: all flip from solved (25-49s) to timed-out at the 60s budget. sc-27: timed-out either way, more pivots with the flag (9,270->22,842). uart-16: 14.5s->43.4s (~3x slower). uart-18: 13.0s->20.4s (~1.6x slower). 0 wrong-answer disagreements (every completed run's Sat/Unsat verdict was unchanged by the flag).",
+        "significance": "Genuinely mixed, with real regressions, not just a wash -- the highest-variance result of any QF_LRA competitiveness-roadmap item to date. One file (TM/p6) shows the mechanism can deliver a dramatic win (decision-guidance genuinely mattering, not just reshuffling pivots elsewhere), but three sc-family files regress from solved to unsolved within the same time budget, and two uart files get markedly slower while still solving. Decision counts frequently increase even where pivots drop, suggesting the cost-ranking scan's own per-decision overhead (and its effect on which decisions actually get made) isn't a uniform win. Not recommended for default-on promotion on this evidence -- see docs/arithmetic.md's item 8 entry for the full write-up."
+      },
+      "verification": {
+        "passed": [],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 8 and /home/user/.claude/plans/piped-wondering-fairy.md's item 8 section for the full design, literature trail (including the retracted CaDiCaL-freezing hypothesis), and this same empirical breakdown."
+    },
+    {
+      "id": "2026-07-26-qf-lra-theory-decisions-slurm-fuzz-gate",
+      "started_at": "2026-07-26",
+      "recorded_at": "2026-07-27",
+      "kind": "fuzz",
+      "scope": "Merge-gate-tier (500-case) and campaign-gate-tier fuzz confirmation for roadmap item 8 (commit 17f8faf): theory-guided decisions via CaDiCaL's cb_decide, opt-in via --lra-theory-decisions. Unlike item 7 (where campaign-tier was skipped after the mixed result led to a not-promoted decision), the plan for this item explicitly called for campaign-gate confirmation regardless of the promotion decision, given its larger risk surface (new per-decision hot-path bookkeeping, bypasses VSIDS on essentially every decision rather than only opportunistically).",
+      "commit": "17f8faf",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet --lra-theory-decisions (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then sbatch --array=0-0 --export=ALL,PATH=<contrib/local/bin prepended>,PRIMO_FUZZ_SOLVER='.../primo --quiet --lra-theory-decisions',PRIMO_FUZZ_FUZZSMT_SHARDS=1,PRIMO_FUZZ_FUZZSMT_COUNT=500,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0 scripts/slurm_qfuf_fuzz_gate.sbatch for merge-gate (job 114204); then sbatch (default 9-task array) with PRIMO_FUZZ_FUZZSMT_LOGIC/ARGS as above, PRIMO_FUZZ_OPFUZZ_SEEDS/PRIMO_FUZZ_YINYANG_SEEDS=.../benchmarks/seeds/qf_lra_real, TYPEFUZZ=.../.venv-yinyang/bin/typefuzz for campaign-gate (job 114205). Job 114205's opfuzz task (task 6) failed with 'opfuzz not found' since the sbatch script's opfuzz path (--typefuzz opfuzz, a bare PATH lookup, distinct from the TYPEFUZZ override which only applies to the yinyang-typefuzz tasks) wasn't on PATH in this non-interactive submission -- re-ran just that one task as job 114214 (--array=6-6, PATH with .venv-yinyang/bin prepended, PRIMO_FUZZ_OUT_ROOT pointed back at job 114205's own results directory so both jobs' output live under one place) rather than re-running the whole campaign; fuzzsmt shards and yinyang shards from job 114205 itself were unaffected by this and did not need re-running.",
+      "benchmark": {
+        "suite": "Merge-gate: fuzzsmt (QF_LRA, 500 cases), seeded/referenced against z3. Campaign-gate: fuzzsmt (QF_LRA, 6 shards x 500 = 3000 cases) + opfuzz (1 task, 200 iterations/seed) + yinyang typefuzz mutation (2 shards, 100 iterations/seed), opfuzz/yinyang seeded from benchmarks/seeds/qf_lra_real (14 real-benchmark files), all referenced/model-validated against z3.",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-114204/ (merge-gate) and fuzz-results/qfuf-gate-114205/ (campaign-gate, including job 114214's opfuzz re-run output under its own opfuzz/task-6/) on llm2smt-slurm -- not committed, aggregated via remote python csv scans of fuzzsmt/shard-*/summary.csv and log tails/bugs-directory listings for opfuzz/yinyang."
+      },
+      "summary": {
+        "result": "Merge-gate (job 114204): 500/500 cases -- 488 PASS, 12 TIMEOUT, 0 CRASH, 0 WRONG. Campaign-gate (job 114205 fuzzsmt+yinyang, job 114214 opfuzz re-run): fuzzsmt 3000/3000 across 6 shards -- 2909 PASS, 91 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz 14/14 real seeds valid, 0 invalid, 0 bug triggers (~5,500+ solver calls); yinyang typefuzz mutation, 2 shards, 0 bug triggers in either shard's bugs directory.",
+        "significance": "No wrong-answer disagreements against z3 and no crashes anywhere across merge-gate or campaign-gate, with --lra-theory-decisions explicitly enabled throughout -- confirms cb_decide's cost-ranking logic (estimate_assertion_cost, the rotating candidate scan) is sound under fuzzing, not just the two hand-built black-box unit tests. Per the plan, this campaign-gate confirmation was obtained regardless of the promotion decision (see the companion nine-file-comparison entry, 2026-07-26-qf-lra-theory-decisions-nine-file-comparison, for why item 8 is staying opt-in and not being promoted to default-on despite this clean fuzz result)."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run with --lra-theory-decisions explicitly enabled: 0 crashes, 0 wrong-answer disagreements.",
+          "3000-case campaign-gate-tier fuzzsmt-vs-z3 QF_LRA run, same flag: 0 crashes, 0 wrong-answer disagreements.",
+          "Campaign-gate opfuzz (14/14 real qf_lra_real seeds valid) and yinyang typefuzz mutation (2 shards) against the same seed corpus: 0 bug triggers in either.",
+          "Full local suite (Release + ASAN/UBSan) green, including two new black-box tests (free-win path and cost-ranked-no-free-candidate path)."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 8 and /home/user/.claude/plans/piped-wondering-fairy.md's item 8 section for the full design and both empirical results (this fuzz-soundness result plus the separate nine-file wall-clock/decision/pivot comparison). This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-8)."
     }
   ]
 }

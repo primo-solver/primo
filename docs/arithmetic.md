@@ -580,13 +580,85 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   not-promoted features (e.g. SOI-Simplex pivoting). See
   `docs/run-log.json`.
 
+  Item 7 closed out items 0-7 of the roadmap; item 8 below picks the
+  underlying TM/sc/uart-vs-z3/cvc5 gap back up from a different angle.
+
+- **Competitiveness roadmap item 8 (2026-07-26, done, opt-in, not
+  promoted): theory-guided decisions via CaDiCaL's `cb_decide`.** A
+  follow-up literature pass ("are we missing something?", prompted by
+  item 7's own "gap remains substantially open" framing) first chased and
+  explicitly **retracted** a dead end: CaDiCaL's IPASIR-UP interface
+  freezes every observed variable, disabling CaDiCaL's own inprocessing
+  on them (Fazekas et al., "IPASIR-UP: User Propagators for CDCL", SAT
+  2023, Section 2.4, calls this an open problem) -- but that same paper's
+  own Table 2 shows cvc5-ipasirup (the identical frozen-variable
+  architecture) *solving more* `QF_LinearRealArith` benchmarks in *less*
+  aggregate time than native cvc5 (1,766 vs. 1,721 solved, 113,919s vs.
+  130,408s), refuting the freezing theory for this division. The real
+  lead, from the same paper plus a companion talk (Preiner, "CaDiCaL(T):
+  CaDiCaL as CDCL(T) Engine in cvc5", Shonan 2023): CaDiCaL's `cb_decide`
+  callback lets an external theory supply its own decision literal
+  instead of leaving every decision to generic VSIDS -- cvc5-ipasirup
+  uses it for "theory decisions (required): decision strategies used by
+  theory solvers". `grep -rn cb_decide src` found **zero** overrides in
+  either `OnlineEufPropagator` or `OnlineLraPropagator` -- every one of
+  Primo's 119,793 decisions on `TM/p6-zenonumeric_s5.smt2` (vs. z3's 322
+  and cvc5's 498 on the same file) was, and until this item remains by
+  default, pure VSIDS.
+
+  Implements the "required" scope explicitly chosen by the user over a
+  smaller "opportunistic, free-wins-only" cut: `OnlineLraPropagator::
+  cb_decide()` scans a bounded, rotating window of not-yet-decided
+  arithmetic atoms (`kTheoryDecisionScanBudget = 64`) and ranks each
+  candidate polarity via a new `estimate_assertion_cost` -- a cheap,
+  *non-committal* probe (no `pivot()`/`update()` call) that counts how
+  many rows referencing the candidate's variable (via the already-public
+  `LraTableau::occurs_in`/`row`/`assignment`/`upper_bound`/`lower_bound`
+  accessors) would have their live-assignment-based implied value pushed
+  outside their own existing bound -- then supplies the cheapest
+  candidate's literal directly, falling back to VSIDS only when the scan
+  window finds nothing scoreable. Opt-in via `--lra-theory-decisions`, new
+  stats `:lra.theory-decisions` (how many decisions this hook actually
+  supplied) and `:lra.theory-decision-free` (how many of those were
+  genuinely free, cost-0 wins).
+
+  **Empirical result on the 9 dramatic-gap files: mixed, with real
+  regressions, not just a wash.** Two clear wins -- `TM/p6-zenonumeric_s5`
+  57.5s->13.9s (-76%, decisions 128,313->20,326, pivots 113,806->11,018)
+  and `TM/p-DepotsNum_s8` 52.4s->45.8s (-13%, pivots 83,172->44,798 despite
+  *more* decisions, 19,666->47,431) -- plus one small win (`uart-17`,
+  19.2s->17.9s). But three files flip from solved to timed-out at the same
+  60s budget (`sc-17`, `sc-19`, `sc-21`, all previously solving in
+  25-49s), one stays timed-out either way while doing substantially more
+  work (`sc-27`), and two get markedly *slower* while still solving
+  (`uart-16` 14.5s->43.4s, ~3x; `uart-18` 13.0s->20.4s, ~1.6x). Decision
+  *counts* often increased substantially even where pivots dropped
+  (`uart-16`: 27,123->56,374) -- the per-decision cost-ranking scan's own
+  overhead, and its effect on which decisions get made, isn't uniformly a
+  win the way item 7's forward/reverse propagation reuse was. **Not
+  recommended for default-on promotion** -- a more file-shape-dependent,
+  higher-variance lever than any other item in this roadmap, with real
+  downside risk (three genuine solved-to-timeout regressions) alongside
+  its one dramatic win. Merge-gate Slurm fuzz (job 114204: 500 cases, 488
+  PASS/12 TIMEOUT/0 CRASH/0 WRONG) and campaign-gate Slurm fuzz (job
+  114205 fuzzsmt+yinyang, job 114214 opfuzz re-run after a PATH fix --
+  see below: fuzzsmt 3000/3000, 2909 PASS/91 TIMEOUT/0 CRASH/0 WRONG;
+  opfuzz 14/14 real seeds valid, 0 bug triggers; yinyang 2 shards, 0 bug
+  triggers) both clean -- campaign-gate was run regardless of the
+  promotion decision here (unlike item 7), since this item's risk profile
+  (bypassing VSIDS on every decision, new hot-path bookkeeping) warranted
+  the extra confirmation even while staying opt-in. See
+  `docs/run-log.json` for the full trail.
+
   This closes out all of the QF_LRA competitiveness roadmap's
-  currently-planned items (0-7). The underlying TM/sc/uart-vs-z3/cvc5
-  gap remains substantially open: both reference solvers still win
-  primarily via far fewer pivots, not cheaper ones, and this item's
-  mixed result suggests row-rearrangement propagation alone isn't the
-  missing piece for most of these files -- a bigger, separate question
-  than anything in this roadmap has yet addressed.
+  currently-planned items (0-8). The underlying TM/sc/uart-vs-z3/cvc5 gap
+  remains open: item 8's dramatic per-file win (`TM/p6`, -76%) confirms
+  decision-guidance *can* matter enormously on the right file shape, but
+  its regressions on the `sc` family show a cost-ranking heuristic this
+  cheap isn't a uniform answer -- the honest state is that no single
+  technique tried across items 0-8 closes the gap for every family, and a
+  smarter (or per-family-adaptive) version of this exact idea is the most
+  concrete remaining lead, not yet designed.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
