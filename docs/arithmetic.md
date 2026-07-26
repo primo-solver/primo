@@ -518,6 +518,24 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   call-volume costs, not the underlying competitiveness gap item 0
   measured.
 
+  **Broader-sample check (2026-07-26, job 114200): re-ran item 0's exact
+  237-file comparison against the post-item-6 code.** Solved: primo
+  108/237 (45.6%, up from 102/43.0%), z3 167/237 (unchanged), cvc5
+  150/237 (unchanged). PAR2: primo 2676s (down from 2799s, ~4.4%), z3/cvc5
+  unchanged within jitter. Zero 3-way disagreements, same as before. Per
+  previously-lagging family (primo solved/15, prior count in parens): TM
+  6 (4), sc 5 (4), uart 4 (3), 2019-ezsmt 3 (3, unchanged), tta_startup 9
+  (8), miplib 1 (1, unchanged). A real but modest aggregate gain -- exactly
+  what the 3-file profiling result predicts, since a per-file speedup
+  only flips a timeout to solved within this sample's fixed 10s budget if
+  the post-fix time actually lands under 10s (uart-18's case would;
+  sc-21's 23.11s still wouldn't). 2019-ezsmt and miplib not moving at all
+  are the clearest candidates for a fresh profiling pass if this gap is
+  revisited. See `docs/run-log.json`. Rendered as a colored per-instance
+  HTML table via the new `scripts/render_solver_compare_html.py`
+  (styled after `people.ciirc.cvut.cz/~janotmik/llm2smt/primo.html`) --
+  now the standard way to report a solver-comparison result.
+
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
 and row-based propagation's reach by letting proportional polynomials like

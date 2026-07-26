@@ -10103,6 +10103,40 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry and /home/user/.claude/plans/piped-wondering-fairy.md's item 6 section for the full design. This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-6). Stacked across items 0's baseline profiling through item 6, the 3 originally-profiled files went from (pre-optimization baseline) sc-21 56.28s/uart-18 21.27s/TM-p5 20.58s to (post item 6) sc-21 23.11s/uart-18 6.24s/TM-p5 4.21s -- roughly 2.4x-4.9x faster depending on the file -- while remaining far from z3/cvc5's sub-1s times on these same files, confirming these fixes closed real constant-factor and call-volume costs without closing the underlying competitiveness gap item 0 measured."
+    },
+    {
+      "id": "2026-07-26-qf-lra-competitiveness-post-items-0-6-rerun",
+      "started_at": "2026-07-26",
+      "recorded_at": "2026-07-26",
+      "kind": "benchmark",
+      "scope": "Re-ran item 0's exact 237-file QF_LRA stratified-sample comparison (benchmarks/qf-lra-stratified-sample.txt, 10s timeout) against the current code (commit 28f573d, after the two pivot-allocation fixes plus roadmap items 5-6) to see whether the broader benchmark set -- not just the 3 hand-picked worst-case files profiled along the way -- shows improvement. Job 114200 (primo/z3/cvc5, all 3 tasks). In hindsight this was more than necessary: z3/cvc5 are unchanged binaries and re-running them just reproduced their own prior numbers within jitter (PAR2 1532 vs 1531, 1887 vs 1885) -- a future re-run like this should submit only the primo task and diff against the existing z3.csv/cvc5.csv (see the new feedback_dont_rerun_unchanged_reference_solvers memory).",
+      "commit": "28f573d",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet (remote Release) vs. contrib/local/bin/{z3,cvc5}"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then sbatch scripts/slurm_qf_lra_solver_compare.sbatch (default array 0-2, default manifest/timeout/solvers) as job 114200.",
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-stratified-sample.txt (same 237-file sample as item 0's original baseline)",
+        "logic": "QF_LRA",
+        "manifest": "benchmarks/qf-lra-stratified-sample.txt"
+      },
+      "artifacts": {
+        "note": "Remote results/qf-lra-solver-compare-114200/{primo,z3,cvc5}.csv pulled back to results/qf-lra-solver-compare-114200/ locally (not committed, matching the original baseline's handling). Rendered as a colored HTML comparison table via the new scripts/render_solver_compare_html.py and published as an Artifact."
+      },
+      "summary": {
+        "result": "Solved (of 237): primo 108 (45.6%, up from 102/43.0%), z3 167 (70.5%, unchanged), cvc5 150 (63.3%, unchanged). PAR2: primo 2676s (down from 2799s), z3 1532s (~unchanged), cvc5 1887s (~unchanged). Zero 3-way disagreements, same as the original baseline. Per previously-lagging family (primo solved / 15, vs. the original baseline in parens): TM 6 (was 4), sc 5 (was 4), uart 4 (was 3), 2019-ezsmt 3 (was 3, unchanged), tta_startup 9 (was 8), miplib 1 (was 1, unchanged).",
+        "significance": "A real but modest aggregate improvement (+6 files, +2.6 points, PAR2 down ~4.4%) from items 0-6's combined perf work -- consistent with, and explained by, the fact that the 3 profiled files' dramatic per-file speedups (2.4x-4.9x) only flip a file from timeout to solved within this sample's fixed 10s budget if its post-fix time actually drops under 10s (e.g. uart-18's 21.27s->6.24s would; sc-21's 56.28s->23.11s would not). Confirms the item 0-6 thread's own honest framing: these were real, verified constant-factor and call-volume fixes on the Simplex engine's mechanics, not a fix for the underlying competitiveness gap -- most of the previously-identified gap families (TM/sc/uart/2019-ezsmt/tta_startup/miplib) remain substantially behind z3/cvc5, and the two families that didn't move at all (2019-ezsmt, miplib) are candidates for a fresh round of profiling if this gap is revisited."
+      },
+      "verification": {
+        "passed": [
+          "Zero wrong-answer disagreements across all 237 files, primo vs. z3 vs. cvc5, same as the original baseline."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap items 0-6 summary for the narrative. scripts/render_solver_compare_html.py (new, commit 9df3094) is now the standard way to visualize a solver-comparison result -- see feedback_dont_rerun_unchanged_reference_solvers memory for both standing directives established this round (don't re-run unchanged reference solvers; always render this table)."
     }
   ]
 }
