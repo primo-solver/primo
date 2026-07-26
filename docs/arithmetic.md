@@ -423,8 +423,14 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   further to 8.62s (~58% faster than the original pre-fix baseline);
   sc-21 43.24s, uart-18 18.04s. None of the 3 files come close to
   z3/cvc5's sub-1s times either way -- these two fixes close two real
-  constant-factor costs, not the competitiveness gap itself. See
-  `docs/run-log.json`.
+  constant-factor costs, not the competitiveness gap itself.
+  **Campaign-tier confirmation (2026-07-26, job 113941): clean.** 3000/3000
+  fuzzsmt cases (2857 PASS, 143 TIMEOUT, 0 CRASH, 0 WRONG) plus opfuzz and
+  two yinyang typefuzz mutation shards (14/14 real QF_LRA seeds valid
+  each, 0 bug triggers across all three) on the default Bland path --
+  both fixes are now trusted at the same level as any other default-on
+  QF_LRA behavior, closing the campaign-tier gap the merge-gate-only
+  entries above had left open. See `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack

@@ -9996,6 +9996,41 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for this fix. Directly follows up on the combine_scratch_ fix (docs/run-log.json id 2026-07-25-qf-lra-pivot-allocation-fix-slurm-smoke-gate), which itself followed up on item 0's empirical baseline."
+    },
+    {
+      "id": "2026-07-26-qf-lra-pivot-allocation-fixes-slurm-campaign-result",
+      "started_at": "2026-07-26",
+      "recorded_at": "2026-07-26",
+      "kind": "fuzz",
+      "scope": "Campaign-tier (>=3000 case) QF_LRA fuzz gate on llm2smt-slurm for the two pivot-allocation fixes to LraTableau (commit 04a6c73's combine_scratch_ fix + commit 2222b8f's rows_/occurs_in_/soi_directions_ vectorization), following the companion merge-gate smoke tests (2026-07-25-qf-lra-pivot-allocation-fix-slurm-smoke-gate job 113938, 2026-07-26-qf-lra-rows-occurs-in-vectorization-slurm-smoke-gate jobs 113939/113940). Both fixes touch the default (unconditional, not opt-in) pivoting path and its highest-risk surface (the trail/undo machinery), so this campaign is the promotion-confidence gate closing out the 'pending' campaign-tier verification item both prior entries flagged, mirroring the discipline Milestone 4b and the Gaussian-elimination feature (job 113407) went through before being trusted beyond merge-gate tier.",
+      "commit": "2222b8f",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet (remote Release, default Bland pivoting path)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then sbatch --export=ALL,PATH=<contrib/local/bin + .venv-yinyang/bin prepended>,TYPEFUZZ=<remote .venv-yinyang/bin/typefuzz>,PRIMO_FUZZ_SOLVER='.../build-slurm-rel/primo --quiet',PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_SEEDS=.../benchmarks/seeds/qf_lra_real,PRIMO_FUZZ_YINYANG_SEEDS=.../benchmarks/seeds/qf_lra_real scripts/slurm_qfuf_fuzz_gate.sbatch (default 9-task layout: 6 fuzzsmt shards x 500 = 3000 cases, 1 opfuzz task, 2 yinyang typefuzz mutation shards) as job 113941 -- completed cleanly on the first submission.",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 6 shards x 500 = 3000 cases) + yinyang typefuzz mutation (2 shards) + opfuzz (1 task), all seeded/referenced against z3; mutation/opfuzz seeded from benchmarks/seeds/qf_lra_real (14 real-benchmark files)",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113941/ on llm2smt-slurm -- not committed, aggregated via a remote python csv scan across the 6 shard summary.csv files plus the opfuzz/yinyang bugs directory listings and log tails confirming real seed processing."
+      },
+      "summary": {
+        "result": "fuzzsmt: 3000/3000 cases -- 2857 PASS, 143 TIMEOUT, 0 CRASH, 0 WRONG (per-shard: 477/23, 472/28, 475/25, 480/20, 481/19, 472/28). opfuzz (task 6): 14/14 real seeds valid, 0 bug triggers. yinyang typefuzz (tasks 7 and 8): 14/14 real seeds valid each, 0 bug triggers each.",
+        "significance": "Fully clean campaign-tier result on both fixes together, promoting them from merge-gate-tier to the same trust level as Milestone 4b's own default-path confirmation. This closes out the 'pending' verification item both prior merge-gate entries flagged. The two fixes are now as trusted as any other default-on QF_LRA behavior -- no wrong-answer disagreements against z3, no crashes, across a broad fuzzsmt distribution plus real-benchmark-seeded mutation testing on both the generator and mutation-fuzzing axes."
+      },
+      "verification": {
+        "passed": [
+          "3000-case campaign-tier fuzzsmt-vs-z3 QF_LRA run: 0 crashes, 0 wrong-answer disagreements.",
+          "opfuzz + 2 yinyang typefuzz mutation shards, all 14/14 real QF_LRA seeds valid, 0 bug triggers across all 3 mutation tasks."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for the pivot-allocation fix. Closes out the campaign-tier verification gap left open by 2026-07-25-qf-lra-pivot-allocation-fix-slurm-smoke-gate and 2026-07-26-qf-lra-rows-occurs-in-vectorization-slurm-smoke-gate."
     }
   ]
 }
