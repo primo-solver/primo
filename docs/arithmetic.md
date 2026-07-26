@@ -431,6 +431,38 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   both fixes are now trusted at the same level as any other default-on
   QF_LRA behavior, closing the campaign-tier gap the merge-gate-only
   entries above had left open. See `docs/run-log.json`.
+- **Competitiveness roadmap item 5 (2026-07-26, done): violated-variable
+  worklist in `LraTableau::check()`.** New `:lra.pivots`/
+  `:lra.online-check-calls` stats (added while investigating the two
+  allocation fixes above) showed `check()`'s Bland/Dantzig
+  violated-variable scan and SOI's end-of-check error-var collection both
+  doing a full `O(vars_.size())` linear scan over every variable, once
+  per pivot-loop iteration, on every `check()` call -- 25-49% of which
+  find nothing violated at all (e.g. TM/p5-zenonumeric_s5: 64,350
+  `check()` calls for only 8,617 decisions, since propagated literals
+  trigger the same eager repair as decisions do). Replaced both scans
+  with iteration over a new incrementally-maintained
+  `std::set<LraVarId> violated_vars_` -- `soi_direction(var)!=0` is
+  exactly "var is basic and violated" by construction, so one set serves
+  Bland, Dantzig, *and* SOI's error-var scan with no separate
+  bookkeeping. Kept in sync going forward via `update_violation_status()`
+  (called from `assert_upper`/`assert_lower`'s is_basic branch and
+  `update()`'s two assignment-change sites); `pop()` rebuilds it from
+  scratch rather than patching every undo case individually, mirroring
+  `rebuild_occurs_in_index()`'s existing precedent. Commit `80b617b`.
+  `:sat.decisions`/`:sat.conflicts`/`:lra.pivots`/
+  `:lra.online-check-calls` bit-identical to the pre-item-5 commit on all
+  3 profiled files (pure perf change, confirmed no selection-order
+  change); wall-clock further improved: uart-18 18.04s->12.45s (~31%
+  faster), TM/p5-zenonumeric_s5 8.62s->6.54s (~24% faster), sc-21
+  slightly faster. Stacked with the two prior allocation fixes, TM/p5 is
+  now roughly 2.5x faster than the original pre-optimization baseline
+  (20.58s->6.54s). Full suite (Release + ASAN/UBSan) green, including a
+  new push/pop regression test targeting the set's rebuild-after-pop
+  invariant. **Merge-gate (jobs 113950 Bland, 113951 SOI) and
+  campaign-gate (job 113952, Bland only, matching the SOI-stays-opt-in
+  precedent) both clean**: 0 crash/wrong-answer across all three. See
+  `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack

@@ -10031,6 +10031,42 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for the pivot-allocation fix. Closes out the campaign-tier verification gap left open by 2026-07-25-qf-lra-pivot-allocation-fix-slurm-smoke-gate and 2026-07-26-qf-lra-rows-occurs-in-vectorization-slurm-smoke-gate."
+    },
+    {
+      "id": "2026-07-26-qf-lra-violated-vars-worklist-slurm-fuzz-result",
+      "started_at": "2026-07-26",
+      "recorded_at": "2026-07-26",
+      "kind": "fuzz",
+      "scope": "Merge-gate (both pivoting paths) plus campaign-tier (default path) QF_LRA fuzz gate on llm2smt-slurm for roadmap item 5 (commit 80b617b): LraTableau::check()'s Bland/Dantzig violated-variable scan and SOI's error-var collection converted from an O(vars_.size()) linear scan to iterating an incrementally-maintained std::set<LraVarId> violated_vars_. Three jobs: 113950 (Bland merge-gate, 500 fuzzsmt cases), 113951 (--lra-pivoting-rule soi merge-gate, 500 cases), 113952 (Bland campaign-gate, 3000 fuzzsmt cases + opfuzz + 2 yinyang typefuzz mutation shards on benchmarks/seeds/qf_lra_real). SOI was not run at campaign tier, consistent with the precedent set for the two pivot-allocation fixes (SOI stays opt-in, merge-gate-tier confirmation only).",
+      "commit": "80b617b",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-pivoting-rule soi] (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then sbatch --array=0-0 scripts/slurm_qfuf_fuzz_gate.sbatch twice (jobs 113950 Bland, 113951 soi -- PRIMO_FUZZ_FUZZSMT_SHARDS=1, PRIMO_FUZZ_FUZZSMT_COUNT=500, PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA, PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2', PRIMO_FUZZ_OPFUZZ_TASKS=0, PRIMO_FUZZ_YINYANG_SHARDS=0); then sbatch scripts/slurm_qfuf_fuzz_gate.sbatch with its default 9-task array (job 113952, Bland only -- same PRIMO_FUZZ_FUZZSMT_ARGS, PRIMO_FUZZ_OPFUZZ_SEEDS/PRIMO_FUZZ_YINYANG_SEEDS=.../benchmarks/seeds/qf_lra_real, TYPEFUZZ=.../.venv-yinyang/bin/typefuzz).",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 500 cases x2 merge-gate + 6 shards x 500 = 3000 cases campaign) + yinyang typefuzz mutation (2 shards) + opfuzz (1 task) for the campaign job, all seeded/referenced against z3; mutation/opfuzz seeded from benchmarks/seeds/qf_lra_real (14 real-benchmark files)",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113950/, -113951/, -113952/ on llm2smt-slurm -- not committed, aggregated via remote python csv scans plus opfuzz/yinyang bugs directory listings and log tails confirming real seed processing."
+      },
+      "summary": {
+        "result": "Merge-gate: job 113950 (Bland) 500/500 -- 473 PASS, 27 TIMEOUT, 0 CRASH, 0 WRONG. Job 113951 (SOI) 500/500 -- 334 PASS, 166 TIMEOUT, 0 CRASH, 0 WRONG (SOI's higher timeout rate matches its already-documented characteristic, not a regression). Campaign-gate: job 113952 (Bland) fuzzsmt 3000/3000 -- 2883 PASS, 117 TIMEOUT, 0 CRASH, 0 WRONG (per-shard: 488/12, 478/22, 473/27, 478/22, 477/23, 489/11); opfuzz (task 6) 14/14 real seeds valid, 0 bug triggers; yinyang typefuzz (tasks 7, 8) 14/14 real seeds valid each, 0 bug triggers each.",
+        "significance": "Fully clean at both merge-gate and campaign-gate tiers -- promotes item 5's violated_vars_ worklist to the same trust level as the two pivot-allocation fixes it builds on. Locally measured (see docs/arithmetic.md): :sat.decisions/:sat.conflicts/:lra.pivots/:lra.online-check-calls bit-identical to the pre-item-5 commit on all 3 profiled files (pure perf change, confirmed no selection-order change), with wall-clock further improved: uart-18 18.04s->12.45s (~31% faster), TM/p5-zenonumeric_s5 8.62s->6.54s (~24% faster), sc-21 slightly faster. Stacked with the two prior allocation fixes, TM/p5 is now roughly 2.5x faster than the original pre-optimization baseline (20.58s->6.54s), though still far from z3/cvc5's sub-1s times on these specific files."
+      },
+      "verification": {
+        "passed": [
+          "Merge-gate: 0 crashes, 0 wrong-answer disagreements on both Bland and SOI pivoting paths.",
+          "Campaign-gate: 0 crashes, 0 wrong-answer disagreements across 3000 fuzzsmt cases plus opfuzz and 2 yinyang mutation shards, all seeded from real QF_LRA benchmarks.",
+          "Full local suite (Release + ASAN/UBSan) green, including a new push/pop regression test targeting violated_vars_'s rebuild-after-pop invariant."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry and /home/user/.claude/plans/piped-wondering-fairy.md's item 5 section for the full design. Item 6 (deferring LraTableau::check() to CaDiCaL's cb_has_external_clause) is next per the plan's own stated sequencing."
     }
   ]
 }
