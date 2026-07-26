@@ -10067,6 +10067,42 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry and /home/user/.claude/plans/piped-wondering-fairy.md's item 5 section for the full design. Item 6 (deferring LraTableau::check() to CaDiCaL's cb_has_external_clause) is next per the plan's own stated sequencing."
+    },
+    {
+      "id": "2026-07-26-qf-lra-deferred-check-slurm-fuzz-result",
+      "started_at": "2026-07-26",
+      "recorded_at": "2026-07-26",
+      "kind": "fuzz",
+      "scope": "Merge-gate and campaign-tier QF_LRA fuzz gate on llm2smt-slurm, on BOTH pivoting paths, for roadmap item 6 (commit 28f573d): deferring OnlineLraPropagator's Check/Pivot repair from every assigned literal (notify_assignment_lit) to CaDiCaL's cb_has_external_clause callback, which is only asked once per quiescence point. Four jobs: 114174 (Bland merge-gate, 500 fuzzsmt cases), 114175 (soi merge-gate, 500 cases), 114182 (Bland campaign-gate, 3000 fuzzsmt cases + opfuzz + 2 yinyang typefuzz mutation shards on benchmarks/seeds/qf_lra_real), 114183 (soi campaign-gate, same layout). Unlike item 5 (SOI only merge-gate-tier), this item required campaign-gate confirmation on BOTH paths per the plan, since it touches CaDiCaL protocol integration rather than an internal-only data structure.",
+      "commit": "28f573d",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-pivoting-rule soi] (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then sbatch --array=0-0 scripts/slurm_qfuf_fuzz_gate.sbatch twice for merge-gate (jobs 114174 Bland, 114175 soi -- PRIMO_FUZZ_FUZZSMT_SHARDS=1, PRIMO_FUZZ_FUZZSMT_COUNT=500, PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA, PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2', PRIMO_FUZZ_OPFUZZ_TASKS=0, PRIMO_FUZZ_YINYANG_SHARDS=0); then sbatch scripts/slurm_qfuf_fuzz_gate.sbatch (default 9-task array) twice for campaign-gate (jobs 114182 Bland, 114183 soi -- same PRIMO_FUZZ_FUZZSMT_ARGS, PRIMO_FUZZ_OPFUZZ_SEEDS/PRIMO_FUZZ_YINYANG_SEEDS=.../benchmarks/seeds/qf_lra_real, TYPEFUZZ=.../.venv-yinyang/bin/typefuzz), run concurrently on the same node.",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 500 cases x2 merge-gate + 6 shards x 500 = 3000 cases x2 campaign) + yinyang typefuzz mutation (2 shards x2) + opfuzz (1 task x2), all seeded/referenced against z3; mutation/opfuzz seeded from benchmarks/seeds/qf_lra_real (14 real-benchmark files)",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-114174/, -114175/, -114182/, -114183/ on llm2smt-slurm -- not committed, aggregated via remote python csv scans plus opfuzz/yinyang bugs directory listings and log tails confirming real seed processing."
+      },
+      "summary": {
+        "result": "Merge-gate: job 114174 (Bland) 500/500 -- 477 PASS, 23 TIMEOUT, 0 CRASH, 0 WRONG. Job 114175 (soi) 500/500 -- 339 PASS, 161 TIMEOUT, 0 CRASH, 0 WRONG. Campaign-gate: job 114182 (Bland) fuzzsmt 3000/3000 -- 2860 PASS, 140 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz+2 yinyang shards, 14/14 real seeds valid each, 0 bug triggers each. Job 114183 (soi) fuzzsmt 3000/3000 -- 2024 PASS, 976 TIMEOUT, 0 CRASH, 0 WRONG (soi's much higher timeout rate under this campaign's args matches its already-documented characteristic, not a regression); opfuzz+2 yinyang shards, 14/14 real seeds valid each, 0 bug triggers each.",
+        "significance": "Fully clean at both tiers on both pivoting paths -- the highest verification bar any QF_LRA change has been held to this cycle, matching the plan's explicit requirement for this item given it touches CaDiCaL protocol integration (conflict-detection timing) rather than an internal-only data structure. A real bug was caught and fixed during local testing before this fuzzing even started (see commit 28f573d's message: a stale needs_check_ flag could let a later direct bound conflict get silently overwritten by a stale tableau_.check() result) -- the existing black-box test suite (not fuzzing) is what caught it, reinforcing that full-suite-before-fuzzing discipline. Measured locally (see docs/arithmetic.md): :lra.online-check-calls dropped 57-95% across the 3 profiled files (largest drop on the most propagation-heavy file, TM/p5-zenonumeric_s5); wall-clock further improved: sc-21 40.93s->23.11s, uart-18 12.45s->6.24s, TM/p5-zenonumeric_s5 6.54s->4.21s. Unlike items 5 and the two allocation fixes, :sat.decisions/:sat.conflicts/:lra.pivots are NOT bit-identical to the pre-item-6 commit -- expected, since deferring conflict discovery legitimately reshapes the search trajectory (still fully correct, just a different valid path, matching the exact same reordering effect observed with the earlier pivot-allocation fixes)."
+      },
+      "verification": {
+        "passed": [
+          "Merge-gate: 0 crashes, 0 wrong-answer disagreements on both Bland and soi pivoting paths.",
+          "Campaign-gate: 0 crashes, 0 wrong-answer disagreements across 3000 fuzzsmt cases plus opfuzz and 2 yinyang mutation shards, on BOTH pivoting paths, all seeded from real QF_LRA benchmarks.",
+          "Full local suite (Release + ASAN/UBSan) green, including a new black-box test asserting :lra.online-check-calls stays bounded by decisions+conflicts+1 regardless of how many extra atoms propagation resolves alongside."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry and /home/user/.claude/plans/piped-wondering-fairy.md's item 6 section for the full design. This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-6). Stacked across items 0's baseline profiling through item 6, the 3 originally-profiled files went from (pre-optimization baseline) sc-21 56.28s/uart-18 21.27s/TM-p5 20.58s to (post item 6) sc-21 23.11s/uart-18 6.24s/TM-p5 4.21s -- roughly 2.4x-4.9x faster depending on the file -- while remaining far from z3/cvc5's sub-1s times on these same files, confirming these fixes closed real constant-factor and call-volume costs without closing the underlying competitiveness gap item 0 measured."
     }
   ]
 }

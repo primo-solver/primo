@@ -463,6 +463,60 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   campaign-gate (job 113952, Bland only, matching the SOI-stays-opt-in
   precedent) both clean**: 0 crash/wrong-answer across all three. See
   `docs/run-log.json`.
+- **Competitiveness roadmap item 6 (2026-07-26, done): defer
+  `LraTableau::check()` to CaDiCaL's `cb_has_external_clause`.**
+  `OnlineLraPropagator::notify_assignment_lit` used to run the full
+  Check/Pivot repair eagerly after *every* assigned literal (decisions
+  *and* propagated ones) -- the code's own comment already flagged this
+  as a known cost. Verified against CaDiCaL's own source
+  (`contrib/src/cadical/src/{internal,external_propagate}.cpp`): in
+  eager external-propagator mode (unchanged, `is_lazy` still defaults to
+  `false`), `cb_has_external_clause()` is asked exactly once per
+  quiescence point (once per decision plus once per conflict/backjump,
+  not once per literal), and `cb_propagate()` is always fully drained
+  first -- so same-slack/row-based propagation (which reads only bound
+  state, never the current assignment) is completely unaffected by
+  moving the repair there. Commit `28f573d`. A new `needs_check_` flag
+  replaces the inline `tableau_.check()` call; `run_deferred_check_if_
+  needed()` (called from both `cb_has_external_clause` overloads)
+  resolves it lazily. **A real bug was found and fixed during local
+  testing** (the existing black-box test
+  `atoms_sharing_identical_polynomial_solve_correctly` caught it, not
+  fuzzing): a direct same-variable bound conflict found on a later
+  literal in a batch could leave an earlier literal's `needs_check_=true`
+  flag dangling, so the deferred-check helper would later overwrite the
+  genuine direct conflict with a stale (wrong) `tableau_.check()` result
+  -- the rejected bound is never actually stored by `assert_upper`/
+  `assert_lower`'s own direct-conflict branch, so `check()` alone
+  wouldn't even rediscover it. Fixed by clearing `needs_check_` in that
+  branch, plus a defensive guard in the deferred-check helper itself.
+  Full suite (Release + ASAN/UBSan) green, including a new black-box test
+  asserting `:lra.online-check-calls` stays bounded by
+  `decisions+conflicts+1` regardless of how many extra atoms propagation
+  resolves alongside. Measured on the 3 profiled files:
+  `:lra.online-check-calls` dropped 57-95% (largest on TM/p5, the most
+  propagation-heavy file); wall-clock further improved: sc-21
+  40.93s->23.11s, uart-18 12.45s->6.24s, TM/p5-zenonumeric_s5
+  6.54s->4.21s. Unlike item 5, `:sat.decisions`/`:sat.conflicts`/
+  `:lra.pivots` are **not** bit-identical to the pre-item-6 commit --
+  expected, since deferring conflict discovery legitimately reshapes the
+  search trajectory (still fully correct, just a different valid path,
+  matching the same reordering effect the two allocation fixes showed
+  earlier). Given this touches CaDiCaL protocol integration rather than
+  an internal-only data structure, verified at the highest bar of any
+  QF_LRA change this cycle: **merge-gate (jobs 114174 Bland, 114175 SOI)
+  and campaign-gate (jobs 114182 Bland, 114183 SOI) all clean** on both
+  pivoting paths -- 0 crash/wrong-answer throughout. See
+  `docs/run-log.json`.
+
+  **Stacked across items 0-6**, the 3 originally-profiled files went
+  from the pre-optimization baseline (sc-21 56.28s, uart-18 21.27s,
+  TM/p5-zenonumeric_s5 20.58s) to sc-21 23.11s, uart-18 6.24s,
+  TM/p5-zenonumeric_s5 4.21s -- roughly 2.4x-4.9x faster depending on the
+  file. None of the 3 come close to z3/cvc5's sub-1s times on these same
+  files either way: these items closed real constant-factor and
+  call-volume costs, not the underlying competitiveness gap item 0
+  measured.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
