@@ -390,22 +390,41 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   `unordered_map` member as-is did **not** help (re-profiling showed the
   same signature unchanged), since `unordered_map` is node-based: every
   element is its own heap allocation no matter how the container itself
-  is reused. The still-larger remaining allocation source, **not yet
-  addressed**: `rows_`/`occurs_in_` are themselves
-  `std::unordered_map<LraVarId, ...>` keyed by a dense small integer
-  (`LraVarId` is a plain index into `vars_`, already a
-  `std::vector<VarState>`) that could instead index a flat vector
-  directly, eliminating per-pivot map-node insert/erase entirely -- a
-  bigger, more invasive change (touches the trail/undo machinery
-  throughout this file) flagged as the natural next step rather than
-  attempted here. Full suite (Release + ASAN/UBSan) green, no behavior
-  change; merge-gate Slurm fuzz smoke (job 113938: 500 fuzzsmt cases,
-  471 PASS/29 TIMEOUT/0 CRASH/0 WRONG) came back clean. Re-timing showed
-  a real but mixed effect: TM/p5-zenonumeric_s5 dropped from 20.58s to
+  is reused. Full suite (Release + ASAN/UBSan) green, no behavior change;
+  merge-gate Slurm fuzz smoke (job 113938: 500 fuzzsmt cases, 471
+  PASS/29 TIMEOUT/0 CRASH/0 WRONG) came back clean. Re-timing showed a
+  real but mixed effect: TM/p5-zenonumeric_s5 dropped from 20.58s to
   11.05s (~47% faster); sc-21 and uart-18 improved more modestly/noisily.
-  None of the 3 files come close to z3/cvc5's sub-1s times either way --
-  this closes one real constant-factor cost, not the competitiveness gap
-  itself. See `docs/run-log.json`.
+  **Follow-up (2026-07-26, commit `2222b8f`):** re-profiling after the
+  above still showed `std::__detail::_Map_base` hot -- `rows_`/
+  `occurs_in_` were themselves `std::unordered_map<LraVarId, ...>` keyed
+  by a dense small integer (`LraVarId` is a plain index into `vars_`,
+  already a `std::vector<VarState>`), so every pivot's `rows_.erase`+
+  `emplace` and `occurs_in_` insert/erase was its own per-call
+  heap-allocated map-node churn, independent of the combine step already
+  fixed. Converted `rows_`/`occurs_in_`/`soi_directions_` to plain
+  vectors sized in lockstep with `vars_` (valid to do since
+  `add_variable()`/`add_row()` are only ever called before the first
+  `push()`, a documented class contract -- so their size never changes
+  once solving starts); a nonbasic slot's stale content is harmless
+  because `rebuild_occurs_in_index()` (the only place that ever iterated
+  all of `rows_`) now gates by `is_basic` instead of by map-key presence.
+  Full suite green again, `:sat.decisions`/`:sat.conflicts` bit-identical
+  to the pre-vectorization commit (pure perf change). Merge-gate Slurm
+  fuzz smoke on **both** pivoting paths came back clean (job 113939,
+  Bland: 480 PASS/20 TIMEOUT/0 CRASH/0 WRONG; job 113940, `--lra-
+  pivoting-rule soi`: 338 PASS/162 TIMEOUT/0 CRASH/0 WRONG -- SOI's
+  higher timeout rate matches its already-known characteristic, not a
+  regression). Re-profiling confirmed the `unordered_map` overhead is
+  now gone entirely from the hot path; what remains is GMP's own --
+  `mpq_class`'s arithmetic operators canonicalize (GCD-reduce) on every
+  add/multiply by design, an inherent cost of exact rational arithmetic
+  no container-level fix can remove. Re-timing: TM/p5-zenonumeric_s5 down
+  further to 8.62s (~58% faster than the original pre-fix baseline);
+  sc-21 43.24s, uart-18 18.04s. None of the 3 files come close to
+  z3/cvc5's sub-1s times either way -- these two fixes close two real
+  constant-factor costs, not the competitiveness gap itself. See
+  `docs/run-log.json`.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack

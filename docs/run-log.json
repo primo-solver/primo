@@ -9958,6 +9958,44 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for this fix. Directly follows up on item 0's empirical baseline (docs/run-log.json id 2026-07-25-qf-lra-competitiveness-item0-empirical-baseline), which identified TM/sc/uart/2019-ezsmt/tta_startup/miplib as the families where Primo specifically lags z3/cvc5."
+    },
+    {
+      "id": "2026-07-26-qf-lra-rows-occurs-in-vectorization-slurm-smoke-gate",
+      "started_at": "2026-07-25",
+      "recorded_at": "2026-07-26",
+      "kind": "fuzz",
+      "scope": "Merge-gate-tier (500-case x2) fuzz smoke test for commit 2222b8f: converting LraTableau::rows_/occurs_in_/soi_directions_ from std::unordered_map<LraVarId, ...> to dense std::vector<...> indexed directly by LraVarId. Follow-up to the combine_scratch_ fix (id 2026-07-25-qf-lra-pivot-allocation-fix-slurm-smoke-gate): re-profiling that fix on the same 3 files (perf) showed std::__detail::_Map_base was still hot -- rows_/occurs_in_ were themselves unordered_map, so every pivot's rows_.erase+emplace and occurs_in_ insert/erase was its own per-call heap-allocated map-node churn. Since LraVarId is a dense index into vars_ (already a plain vector) and add_variable()/add_row() are only ever called during initial tableau setup before the first push()/check() (a documented class contract), sizing rows_/occurs_in_/soi_directions_ in lockstep with vars_ makes every index always valid, eliminating that map-node churn entirely. Ran two merge-gate jobs on llm2smt-slurm (per the standing all-fuzzing-on-Slurm policy): job 113939 (default Bland pivoting path) and job 113940 (--lra-pivoting-rule soi, since this change also touches soi_directions_/FRowTrailEntry undo, exercised more heavily under SOI).",
+      "commit": "2222b8f",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-pivoting-rule soi] (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then two sbatch --array=0-0 submissions of scripts/slurm_qfuf_fuzz_gate.sbatch with PRIMO_FUZZ_FUZZSMT_SHARDS=1,PRIMO_FUZZ_FUZZSMT_COUNT=500,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0 -- job 113939 with PRIMO_FUZZ_SOLVER='.../build-slurm-rel/primo --quiet', job 113940 with PRIMO_FUZZ_SOLVER='.../build-slurm-rel/primo --quiet --lra-pivoting-rule soi'.",
+      "benchmark": {
+        "suite": "fuzzsmt (QF_LRA, 500 cases x2), seeded/referenced against z3",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-113939/ and qfuf-gate-113940/ on llm2smt-slurm -- not committed. Aggregated via a remote python csv scan of each fuzzsmt/shard-0/summary.csv."
+      },
+      "summary": {
+        "result": "Job 113939 (Bland): 500/500 cases, 480 PASS, 20 TIMEOUT, 0 CRASH, 0 WRONG. Job 113940 (SOI): 500/500 cases, 338 PASS, 162 TIMEOUT, 0 CRASH, 0 WRONG. SOI's materially higher timeout rate matches its already-documented characteristic from when it was first introduced (see the SOI-Simplex pivoting section) -- not a regression from this change, just SOI's existing per-pivot cost being what it is.",
+        "significance": "No wrong-answer disagreements against z3 and no crashes on either pivoting path -- confirms the vectorization (which re-touches the same trail/undo machinery this session already flagged as the highest-risk surface, and specifically rewrote rebuild_occurs_in_index()'s iteration to be is_basic-gated instead of map-presence-gated) didn't break anything under either default or SOI-heavy exercise. Re-profiling (perf) after this fix confirmed std::__detail::_Map_base is gone from the hot path entirely; the remaining allocation is GMP's own -- mpq_class's arithmetic operators (used throughout util::Rational) canonicalize (GCD-reduce) on every add/multiply by design, an inherent cost of exact rational arithmetic that this kind of container-level fix cannot remove. Wall-clock, single local runs on the 3 profiled files: sc-21 47.85s->43.24s, uart-18 22.09s->18.04s, TM/p5-zenonumeric_s5 11.05s->8.62s (down from the original pre-fix 20.58s, ~58% faster overall). None of the 3 files reach z3/cvc5's sub-1s times either way -- this closes a second real constant-factor cost on top of the first, it does not close the competitiveness gap item 0 measured."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run on both the default (Bland) and --lra-pivoting-rule soi paths: 0 crashes, 0 wrong-answer disagreements on either.",
+          "Full local suite (Release + ASAN/UBSan) green before submitting, including all existing SOI-specific white-box tests (Fig 6 worked example, push/pop, multi-row conflict, quickxplain).",
+          ":sat.decisions/:sat.conflicts identical to the pre-vectorization commit on all 3 profiled files -- confirms pure performance change, no behavior difference."
+        ],
+        "pending": [
+          "Campaign-tier (>=3000 case) Slurm confirmation, matching the discipline other QF_LRA changes this cycle went through, before treating this as equally trustworthy for anything beyond the merge-gate bar."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for this fix. Directly follows up on the combine_scratch_ fix (docs/run-log.json id 2026-07-25-qf-lra-pivot-allocation-fix-slurm-smoke-gate), which itself followed up on item 0's empirical baseline."
     }
   ]
 }
