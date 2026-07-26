@@ -536,21 +536,65 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   (styled after `people.ciirc.cvut.cz/~janotmik/llm2smt/primo.html`) --
   now the standard way to report a solver-comparison result.
 
+- **Competitiveness roadmap item 7 (2026-07-26, done, opt-in, not
+  promoted): bidirectional row-based propagation.** Profiling one of
+  item 0's 9 dramatic-gap files (`TM/p6-zenonumeric_s5.smt2`: 22.56s vs.
+  z3 0.18s/cvc5 0.56s) and checking the *reference solvers' own* stats
+  found the real story: z3's final LP tableau is tiny (36 rows/728
+  columns) and cvc5 spent only 8ms of its 645ms runtime pivoting
+  (`theory::arith::pivots = 129`, `unatePropagateCalls = 15,595`) --
+  both win via far more complete propagation, not cheaper pivoting. A
+  full Bromberger/Weidenbach-style implied-equality-basis computation
+  was considered and set aside (paper-sized undertaking, and its own
+  experiments don't measure SMT search speedup); instead this item
+  implements item 2's own explicitly-flagged-as-deferred "reverse
+  direction" -- `compute_implied_child_bound` derives a bound on one of
+  a row's *other* terms from the row's own bound plus its remaining
+  terms, instead of only deriving the row's own bound. Opt-in via
+  `--lra-bidirectional-row-propagation` (requires `--lra-row-propagation`
+  also on), its own smaller size caps, new stat
+  `:lra.bidirectional-row-propagations`. Found and worked around a real
+  pre-existing quirk while writing the tests (not introduced by this
+  item): `single_variable_slack` only registers a bare variable's
+  *positive*-coefficient normalized form, so `>=` atoms (which normalize
+  to a negated, coefficient-(-1) polynomial) never get an entry --
+  asserting both `<=` and `>=` on the same variable splits its bound
+  across two slacks with only one direction visible on each.
+
+  **Empirical result on the 9 dramatic-gap files: genuinely mixed, not a
+  clear win.** Item 2 alone (already-shipped) turned out to help far
+  more on this file set than its original narrow quick-eval suggested --
+  pivot reductions on 7/9 files, sometimes dramatically (TM/p6:
+  113,806->58,736 pivots, ~48% fewer). This item's *own* addition only
+  ever fires on TM/uart's Boolean-guarded-equality structure (never on
+  sc's min-max comparator chains) and is net-negative as often as
+  positive: wall-clock wins on 3/9 (TM/p6 -44%, uart-16 -11%, uart-17
+  -25%), losses on 4/9 (TM/p-DepotsNum, sc-17, sc-21, uart-18), roughly
+  flat on 2/9 -- and the extra per-assertion scanning overhead
+  measurably slows sc-17 down even on the zero occasions it fires there.
+  **Not recommended for default-on promotion on this evidence** -- a
+  genuinely file-shape-dependent lever. Merge-gate Slurm fuzz (job
+  114203, both new flags explicitly enabled: 500 cases, 483 PASS/17
+  TIMEOUT/0 CRASH/0 WRONG) clean; campaign-tier not pursued given the
+  promotion decision, matching the precedent for other opt-in,
+  not-promoted features (e.g. SOI-Simplex pivoting). See
+  `docs/run-log.json`.
+
+  This closes out all of the QF_LRA competitiveness roadmap's
+  currently-planned items (0-7). The underlying TM/sc/uart-vs-z3/cvc5
+  gap remains substantially open: both reference solvers still win
+  primarily via far fewer pivots, not cheaper ones, and this item's
+  mixed result suggests row-rearrangement propagation alone isn't the
+  missing piece for most of these files -- a bigger, separate question
+  than anything in this roadmap has yet addressed.
+
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
 and row-based propagation's reach by letting proportional polynomials like
-`x<=5`/`2x<=10` share a slack); the row-based propagation follow-up noted
-above (tightening a row's *children* from its own bound, not just deriving
-the row's own implied bound); Devex or Steepest-Edge pivoting (Milestone
+`x<=5`/`2x<=10` share a slack); Devex or Steepest-Edge pivoting (Milestone
 4a covered only Dantzig, and SOI-Simplex, item 4, is now done without
 closing the quick-eval sample's gap -- neither pricing rule choice nor a
 global objective alone seems to be the bottleneck for the "hard for
 everyone" families in that narrow sample); a campaign-tier confirmation
 specifically for `--lra-pivoting-rule dantzig`/`soi` if either is ever
-considered for becoming the default; and, now the concrete priority per
-item 0's broader empirical baseline (done, see above): profiling what's
-actually slow on a representative TM/sc/uart/2019-ezsmt/tta_startup/
-miplib timeout case (these solve fine for z3/cvc5 within the same
-budget, unlike the narrow sample's "hard for everyone" families) --
-likely the most informative next step before committing further
-engineering effort to items 1/2/4's own directions on faith alone.
+considered for becoming the default.
