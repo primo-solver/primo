@@ -190,6 +190,12 @@ int main(int argc, char** argv) {
                "Enable experimental QF_LRA row-based/interval bound propagation across "
                "different variables (only takes effect if --lra-propagation is also on)")
       ->default_val(false);
+  app.add_flag("--lra-bidirectional-row-propagation",
+               solver_options.lra_bidirectional_row_propagation,
+               "Enable the reverse direction of --lra-row-propagation: tighten a row's "
+               "other terms from its own bound, not just derive the row's own implied "
+               "bound (only takes effect if --lra-row-propagation is also on)")
+      ->default_val(false);
   app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
                  "QF_LRA Check/Pivot variable-selection rule: bland (default, "
                  "anti-cycling-proven), dantzig (largest-violation/largest-coefficient, "

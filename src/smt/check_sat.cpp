@@ -152,6 +152,8 @@ constexpr util::StatKey kStatLraPivots = util::StatKey::LraPivots;
 // This one counts exactly that.
 constexpr util::StatKey kStatLraOnlineCheckCalls = util::StatKey::LraOnlineCheckCalls;
 constexpr util::StatKey kStatLraRowPropagations = util::StatKey::LraRowPropagations;
+constexpr util::StatKey kStatLraBidirectionalRowPropagations =
+    util::StatKey::LraBidirectionalRowPropagations;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -3137,6 +3139,16 @@ theory::arithmetic::DeltaRational false_threshold(theory::arithmetic::LraRelatio
 constexpr std::size_t kRowBasedPropagationMaxRowSize = 64;
 constexpr std::size_t kRowBasedPropagationMaxFanout = 64;
 
+// Competitiveness-roadmap item 7 (bidirectional row-based propagation):
+// separate, smaller caps for the reverse (child-tightening) direction,
+// since it does an O(row size) compute_implied_child_bound call for
+// *each* other term of an affected row, not just once per row --
+// multiplicatively pricier than item 2's own forward-only caps above.
+// Not precisely derived either; deliberately smaller pending real
+// evidence from this item's own quick-eval.
+constexpr std::size_t kBidirectionalRowPropagationMaxRowSize = 32;
+constexpr std::size_t kBidirectionalRowPropagationMaxFanout = 32;
+
 // Applies one assigned LRA atom's relation+truth-value+strictness to
 // `tableau` as a single Assert-Bound call (Eq asserts both bounds). Shared
 // between the fully-lazy per-round-normalize path (not currently used by
@@ -3391,6 +3403,61 @@ compute_implied_bound(const theory::arithmetic::LraTableau& tableau, const Prepa
   return std::make_pair(total, std::move(reasons));
 }
 
+// Competitiveness-roadmap item 7's reverse direction: derive an implied
+// bound on one *other* term of basic_var's row (target_var, with
+// coefficient target_coeff in that row) from basic_var's own current
+// bound plus the row's remaining terms' bounds -- the rearrangement
+// `basic_var = target_coeff*target_var + Σ_other coeff_j*var_j`.
+//
+// Sign rule (verified algebraically, not guessed): treating basic_var as
+// a term of coefficient +1 and each *other* row term as a term of
+// coefficient -coeff_j (moving them to the other side) maps this onto
+// compute_implied_bound's own existing sign convention:
+//   want_upper_of_basic = want_upper_of_target == (target_coeff.sign() > 0)
+//   need_upper_of_var_j = want_upper_of_basic != (coeff_j.sign() > 0)
+// Missing any needed bound (basic_var's own, any other term's, or a term
+// lacking a single_variable_slack entry) makes this nullopt for this
+// round, same all-or-nothing behavior as compute_implied_bound.
+std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
+compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
+                            const PreparedLraTheory& prepared, theory::arithmetic::LraVarId basic_var,
+                            theory::arithmetic::LraVarId target_var, const util::Rational& target_coeff,
+                            bool want_upper_of_target) {
+  const auto& row = tableau.row(basic_var);
+  if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
+    return std::nullopt;
+  }
+  const bool want_upper_of_basic = want_upper_of_target == (target_coeff.sign() > 0);
+  const auto basic_bound =
+      want_upper_of_basic ? tableau.upper_bound(basic_var) : tableau.lower_bound(basic_var);
+  if (!basic_bound.has_value()) {
+    return std::nullopt;
+  }
+  theory::arithmetic::DeltaRational total = basic_bound->value;
+  std::vector<sat::Lit> reasons;
+  reasons.reserve(row.size());
+  reasons.push_back(basic_bound->reason);
+  for (const auto& [var, coeff] : row) {
+    if (var == target_var) {
+      continue;
+    }
+    const auto slack_found = prepared.single_variable_slack.find(var);
+    if (slack_found == prepared.single_variable_slack.end()) {
+      return std::nullopt;
+    }
+    const bool need_upper_of_var = want_upper_of_basic != (coeff.sign() > 0);
+    const auto bound = need_upper_of_var ? tableau.upper_bound(slack_found->second)
+                                         : tableau.lower_bound(slack_found->second);
+    if (!bound.has_value()) {
+      return std::nullopt;
+    }
+    total = total - bound->value.scaled(coeff);
+    reasons.push_back(bound->reason);
+  }
+  const util::Rational inv = util::Rational(1) / target_coeff;
+  return std::make_pair(total.scaled(inv), std::move(reasons));
+}
+
 // Trail-synced CaDiCaL external propagator for QF_LRA (Milestone 3a of the
 // QF_LRA plan): mirrors OnlineEufPropagator structurally. cb_propagate()
 // delivers same-slack propagations (Milestone 3b, scan_for_propagations)
@@ -3411,12 +3478,13 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   OnlineLraPropagator(const PreparedLraTheory& prepared,
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                       bool propagation_enabled, bool row_propagation_enabled,
-                      util::Statistics& statistics)
+                      bool bidirectional_row_propagation_enabled, util::Statistics& statistics)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
         propagation_enabled_(propagation_enabled),
         row_propagation_enabled_(row_propagation_enabled),
+        bidirectional_row_propagation_enabled_(bidirectional_row_propagation_enabled),
         statistics_(statistics) {
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
@@ -3511,10 +3579,14 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       }
       const int lit = candidate.lit;
       const bool row_based = candidate.row_based;
+      const bool bidirectional = candidate.bidirectional;
       reasons_[lit] = std::move(candidate.reasons);
       statistics_.increment(kStatLraTheoryPropagations);
       if (row_based) {
         statistics_.increment(kStatLraRowPropagations);
+      }
+      if (bidirectional) {
+        statistics_.increment(kStatLraBidirectionalRowPropagations);
       }
       return lit;
     }
@@ -3778,6 +3850,60 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
           pending_.push_back(PendingPropagation{-atom.lit.value, implied_lower->second, true});
         }
       }
+      if (bidirectional_row_propagation_enabled_ &&
+          affected_rows.size() <= kBidirectionalRowPropagationMaxFanout) {
+        scan_row_child_propagations(basic_var, wrapped_var->second);
+      }
+    }
+  }
+
+  // Competitiveness-roadmap item 7 (the reverse direction of
+  // scan_row_based_propagations): for each *other* term of basic_var's
+  // row (skipping exclude_var, whose own bound is what just triggered
+  // this scan -- nothing new to derive about it from itself), check
+  // whether compute_implied_child_bound now entails one of that term's
+  // own atoms. Gated by its own (smaller) size caps -- see their comment.
+  void scan_row_child_propagations(theory::arithmetic::LraVarId basic_var,
+                                   theory::arithmetic::LraVarId exclude_var) {
+    const auto& row = tableau_.row(basic_var);
+    if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
+      return;
+    }
+    for (const auto& [target_var, target_coeff] : row) {
+      if (target_var == exclude_var) {
+        continue;
+      }
+      const auto wrapping_slack = prepared_.single_variable_slack.find(target_var);
+      if (wrapping_slack == prepared_.single_variable_slack.end()) {
+        continue;
+      }
+      const auto found = prepared_.atoms_by_slack.find(wrapping_slack->second);
+      if (found == prepared_.atoms_by_slack.end()) {
+        continue;
+      }
+      for (const std::size_t atom_index : found->second) {
+        const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+        const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+        if (is_assigned_var(var)) {
+          continue;
+        }
+        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+        const auto implied_upper = compute_implied_child_bound(
+            tableau_, prepared_, basic_var, target_var, target_coeff, /*want_upper_of_target=*/true);
+        if (implied_upper.has_value() &&
+            implied_upper->first <= true_threshold(prepared_atom.relation, prepared_atom.rhs)) {
+          pending_.push_back(
+              PendingPropagation{atom.lit.value, implied_upper->second, true, true});
+          continue;
+        }
+        const auto implied_lower = compute_implied_child_bound(
+            tableau_, prepared_, basic_var, target_var, target_coeff, /*want_upper_of_target=*/false);
+        if (implied_lower.has_value() &&
+            implied_lower->first >= false_threshold(prepared_atom.relation, prepared_atom.rhs)) {
+          pending_.push_back(
+              PendingPropagation{-atom.lit.value, implied_lower->second, true, true});
+        }
+      }
     }
   }
 
@@ -3789,6 +3915,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     int lit;
     std::vector<sat::Lit> reasons;
     bool row_based;
+    bool bidirectional = false;  // competitiveness-roadmap item 7
   };
 
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
@@ -3796,6 +3923,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   theory::arithmetic::LraTableau tableau_;
   bool propagation_enabled_;
   bool row_propagation_enabled_;
+  bool bidirectional_row_propagation_enabled_;
   util::Statistics& statistics_;
   std::vector<char> observed_vars_;
   std::vector<char> assigned_;
@@ -3843,7 +3971,7 @@ CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
   // against it via the fuzz gate (see docs/run-log.json).
   OnlineLraPropagator online_propagator(prepared_theory, clausifier.theory_atoms(),
                                         options.lra_propagation, options.lra_row_propagation,
-                                        statistics);
+                                        options.lra_bidirectional_row_propagation, statistics);
   backend.connect_external_propagator(&online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;

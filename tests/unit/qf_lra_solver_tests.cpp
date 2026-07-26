@@ -328,6 +328,89 @@ void row_based_propagation_drives_boolean_structure() {
   assert(not_propagated.statistics.get(StatKey::LraRowPropagations) == 0);
 }
 
+void bidirectional_row_propagation_drives_boolean_structure() {
+  // s := (+ x y) has a directly-asserted lower bound (>= s 5) and x has a
+  // directly-asserted upper bound (<= x 2), so x+y>=5 and x<=2 together
+  // force y>=3 -- but y's own bound is never directly asserted anywhere.
+  // Plain (forward) row-based propagation can't help here -- s's own
+  // bound is already directly given, there's nothing to derive about s
+  // itself. Only the *reverse* direction (rearranging s's row using s's
+  // own bound plus x's bound to derive a bound on y) can entail (<= y 2)
+  // FALSE (since y is forced >=3, contradicting y<=2), forcing the
+  // disjunction's other branch without ever deciding (<= y 2) directly.
+  //
+  // The specific atom shapes here aren't arbitrary: single_variable_slack
+  // only registers a bare variable's *positive*-coefficient normalized
+  // form (`>=` normalizes to a negated/coefficient-(-1) polynomial and
+  // never gets an entry at all -- a pre-existing quirk this test must
+  // respect, not something item 7 changes), and the specific bound
+  // *direction* combination used here (s's lower bound + x's upper
+  // bound, deriving y's lower bound) is the one that's actually available
+  // given that same quirk -- asserting *both* (<= x 2) and (>= x 2)
+  // would split x's bound across two different slacks with only one
+  // direction visible on each, making the other combination unreachable.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (>= (+ x y) 5))
+    (assert (<= x 2))
+    (assert (or (<= y 2) (>= w 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_bidirectional;
+  with_bidirectional.lra_propagation = true;
+  with_bidirectional.lra_row_propagation = true;
+  with_bidirectional.lra_bidirectional_row_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_bidirectional);
+  assert(propagated.result == CheckSatResult::Sat);
+  assert(propagated.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
+  assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
+
+  CheckSatOptions forward_only;
+  forward_only.lra_propagation = true;
+  forward_only.lra_row_propagation = true;
+  forward_only.lra_bidirectional_row_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, forward_only);
+  assert(not_propagated.result == CheckSatResult::Sat);
+  assert(not_propagated.statistics.get(StatKey::LraBidirectionalRowPropagations) == 0);
+}
+
+void bidirectional_row_propagation_can_reach_a_conflict() {
+  // Same setup (x+y>=5, x<=2, so y is forced >=3), but now the
+  // disjunction's other branch is also directly ruled out -- resolves
+  // the whole formula UNSAT via bidirectional propagation deriving
+  // (<= y 2) FALSE plus a direct contradiction, no decisions.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (>= (+ x y) 5))
+    (assert (<= x 2))
+    (assert (or (<= y 2) (>= w 1000)))
+    (assert (< w 1000))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_bidirectional;
+  with_bidirectional.lra_propagation = true;
+  with_bidirectional.lra_row_propagation = true;
+  with_bidirectional.lra_bidirectional_row_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_bidirectional);
+  assert(propagated.result == CheckSatResult::Unsat);
+  assert(propagated.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
+
+  CheckSatOptions forward_only;
+  forward_only.lra_propagation = true;
+  forward_only.lra_row_propagation = true;
+  forward_only.lra_bidirectional_row_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, forward_only);
+  assert(not_propagated.result == CheckSatResult::Unsat);
+}
+
 void row_based_propagation_can_reach_a_conflict() {
   // Same row (+ x y) as above, but the disjunction's other branch is also
   // ruled out (< w 1000), and the shared-polynomial atom is negated --
@@ -715,6 +798,8 @@ int main() {
   same_slack_propagation_can_reach_a_conflict();
   row_based_propagation_drives_boolean_structure();
   row_based_propagation_can_reach_a_conflict();
+  bidirectional_row_propagation_drives_boolean_structure();
+  bidirectional_row_propagation_can_reach_a_conflict();
   deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();

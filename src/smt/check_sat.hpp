@@ -117,6 +117,14 @@ struct CheckSatOptions {
   // algorithmic machinery, not yet campaign-fuzzed) -- see
   // docs/arithmetic.md's Milestone roadmap.
   bool lra_row_propagation = false;
+  // Competitiveness-roadmap item 7: the reverse direction of
+  // lra_row_propagation -- tighten one of a row's *other* terms from the
+  // row's own basic-variable bound plus its remaining terms, rather than
+  // only deriving the row's own implied bound. Only takes effect when
+  // lra_row_propagation is also enabled. Its own flag (not folded into
+  // lra_row_propagation) so the two directions can be A/B tested
+  // independently -- see docs/arithmetic.md's Milestone roadmap.
+  bool lra_bidirectional_row_propagation = false;
   // Milestone 4: default stays Bland (today's already-fuzz-tested
   // behavior) until Dantzig has its own campaign-tier confirmation --
   // see docs/papers/lra-related-work.md's pivoting-rule survey.

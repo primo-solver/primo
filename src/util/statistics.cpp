@@ -164,6 +164,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.soi-quickxplain-calls"sv,
     ":lra.pivots"sv,
     ":lra.online-check-calls"sv,
+    ":lra.bidirectional-row-propagations"sv,
 };
 
 }  // namespace
