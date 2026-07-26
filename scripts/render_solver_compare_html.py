@@ -124,14 +124,19 @@ STYLE = """
   --text-muted: #6B6860;
   --border: #E4E1DA;
   --accent: #2F6F6D;
-  --status-win: #12B27A;        --status-win-bg: rgba(18,178,122,0.14);
-  --status-solved: #42976F;     --status-solved-bg: rgba(66,151,111,0.12);
-  --status-unique: #0EA5E9;     --status-unique-bg: rgba(14,165,233,0.14);
-  --status-wrong: #D64545;      --status-wrong-bg: rgba(214,69,69,0.15);
-  --status-timeout: #C97A2E;    --status-timeout-bg: rgba(201,122,46,0.15);
-  --status-error: #B23A6B;      --status-error-bg: rgba(178,58,107,0.14);
-  --status-unsupported: #7C6FDB; --status-unsupported-bg: rgba(124,111,219,0.14);
-  --status-notrun: #78756E;     --status-notrun-bg: rgba(120,117,110,0.13);
+  /* Status chips: solid, high-contrast backgrounds with white text --
+     the whole point of this table is fast visual scanning, so these
+     stay the same across themes (a self-contained colored block reads
+     fine regardless of page background) rather than being tinted/muted
+     per theme like the page chrome above. */
+  --status-win: #189B6C;        --status-win-fg: #ffffff;
+  --status-solved: #3D7A5D;     --status-solved-fg: #ffffff;
+  --status-unique: #0B79B5;     --status-unique-fg: #ffffff;
+  --status-wrong: #C13B32;      --status-wrong-fg: #ffffff;
+  --status-timeout: #B0631F;    --status-timeout-fg: #ffffff;
+  --status-error: #9C3D6B;      --status-error-fg: #ffffff;
+  --status-unsupported: #5748C4; --status-unsupported-fg: #ffffff;
+  --status-notrun: #55524B;     --status-notrun-fg: #ffffff;
   --font-display: ui-sans-serif, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
 }
@@ -140,41 +145,17 @@ STYLE = """
     --bg: #15161A; --surface: #1D1F24; --surface-alt: #24262C;
     --text: #E7E5DF; --text-muted: #9A978F; --border: #2C2E33;
     --accent: #6FD6C9;
-    --status-win: #22C98A;        --status-win-bg: rgba(34,201,138,0.20);
-    --status-solved: #5EA88C;     --status-solved-bg: rgba(94,168,140,0.16);
-    --status-unique: #38BDF8;     --status-unique-bg: rgba(56,189,248,0.20);
-    --status-wrong: #F16565;      --status-wrong-bg: rgba(241,101,101,0.20);
-    --status-timeout: #E29A55;    --status-timeout-bg: rgba(226,154,85,0.20);
-    --status-error: #D6699B;      --status-error-bg: rgba(214,105,155,0.18);
-    --status-unsupported: #9C8FF0; --status-unsupported-bg: rgba(156,143,240,0.20);
-    --status-notrun: #9A978F;     --status-notrun-bg: rgba(154,151,143,0.16);
   }
 }
 :root[data-theme="dark"] {
   --bg: #15161A; --surface: #1D1F24; --surface-alt: #24262C;
   --text: #E7E5DF; --text-muted: #9A978F; --border: #2C2E33;
   --accent: #6FD6C9;
-  --status-win: #22C98A;        --status-win-bg: rgba(34,201,138,0.20);
-  --status-solved: #5EA88C;     --status-solved-bg: rgba(94,168,140,0.16);
-  --status-unique: #38BDF8;     --status-unique-bg: rgba(56,189,248,0.20);
-  --status-wrong: #F16565;      --status-wrong-bg: rgba(241,101,101,0.20);
-  --status-timeout: #E29A55;    --status-timeout-bg: rgba(226,154,85,0.20);
-  --status-error: #D6699B;      --status-error-bg: rgba(214,105,155,0.18);
-  --status-unsupported: #9C8FF0; --status-unsupported-bg: rgba(156,143,240,0.20);
-  --status-notrun: #9A978F;     --status-notrun-bg: rgba(154,151,143,0.16);
 }
 :root[data-theme="light"] {
   --bg: #FAF8F5; --surface: #FFFFFF; --surface-alt: #F1EEE7;
   --text: #23221F; --text-muted: #6B6860; --border: #E4E1DA;
   --accent: #2F6F6D;
-  --status-win: #12B27A;        --status-win-bg: rgba(18,178,122,0.14);
-  --status-solved: #42976F;     --status-solved-bg: rgba(66,151,111,0.12);
-  --status-unique: #0EA5E9;     --status-unique-bg: rgba(14,165,233,0.14);
-  --status-wrong: #D64545;      --status-wrong-bg: rgba(214,69,69,0.15);
-  --status-timeout: #C97A2E;    --status-timeout-bg: rgba(201,122,46,0.15);
-  --status-error: #B23A6B;      --status-error-bg: rgba(178,58,107,0.14);
-  --status-unsupported: #7C6FDB; --status-unsupported-bg: rgba(124,111,219,0.14);
-  --status-notrun: #78756E;     --status-notrun-bg: rgba(120,117,110,0.13);
 }
 * { box-sizing: border-box; }
 .compare-page {
@@ -204,16 +185,15 @@ tr.family-row td { background: var(--surface-alt); font-family: var(--font-displ
 tr.instance-row:hover td { background: var(--surface-alt); }
 tbody td { padding: 0.35rem 0.7rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
 td.problem { color: var(--text); max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
-.chip { display: inline-flex; align-items: baseline; gap: 0.4rem; padding: 0.12rem 0.5rem; border-radius: 6px; font-variant-numeric: tabular-nums; }
-.chip .dot { display: none; }
-.chip-win { background: var(--status-win-bg); color: var(--status-win); }
-.chip-solved { background: var(--status-solved-bg); color: var(--status-solved); }
-.chip-unique { background: var(--status-unique-bg); color: var(--status-unique); }
-.chip-wrong { background: var(--status-wrong-bg); color: var(--status-wrong); }
-.chip-timeout { background: var(--status-timeout-bg); color: var(--status-timeout); }
-.chip-error { background: var(--status-error-bg); color: var(--status-error); }
-.chip-unsupported { background: var(--status-unsupported-bg); color: var(--status-unsupported); }
-.chip-notrun { background: var(--status-notrun-bg); color: var(--status-notrun); }
+.chip { display: inline-flex; align-items: baseline; gap: 0.4rem; padding: 0.16rem 0.55rem; border-radius: 6px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.chip-win { background: var(--status-win); color: var(--status-win-fg); }
+.chip-solved { background: var(--status-solved); color: var(--status-solved-fg); }
+.chip-unique { background: var(--status-unique); color: var(--status-unique-fg); }
+.chip-wrong { background: var(--status-wrong); color: var(--status-wrong-fg); }
+.chip-timeout { background: var(--status-timeout); color: var(--status-timeout-fg); }
+.chip-error { background: var(--status-error); color: var(--status-error-fg); }
+.chip-unsupported { background: var(--status-unsupported); color: var(--status-unsupported-fg); }
+.chip-notrun { background: var(--status-notrun); color: var(--status-notrun-fg); }
 """
 
 SCRIPT = """
