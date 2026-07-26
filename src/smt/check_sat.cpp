@@ -143,6 +143,14 @@ constexpr util::StatKey kStatLraTheoryPropagations = util::StatKey::LraTheoryPro
 constexpr util::StatKey kStatLraBlandFallbacks = util::StatKey::LraBlandFallbacks;
 constexpr util::StatKey kStatLraSoiMultiRowConflicts = util::StatKey::LraSoiMultiRowConflicts;
 constexpr util::StatKey kStatLraSoiQuickxplainCalls = util::StatKey::LraSoiQuickxplainCalls;
+constexpr util::StatKey kStatLraPivots = util::StatKey::LraPivots;
+// Distinct from kStatLraTheoryChecks: that one counts iterations of
+// solve_qf_lra's outer backend.solve() loop (always 1 under the IPASIR
+// online-propagator path, since the whole search happens inside a single
+// solve() call) -- not useful for measuring how often the eager
+// per-literal tableau_.check() in notify_assignment_lit actually runs.
+// This one counts exactly that.
+constexpr util::StatKey kStatLraOnlineCheckCalls = util::StatKey::LraOnlineCheckCalls;
 constexpr util::StatKey kStatLraRowPropagations = util::StatKey::LraRowPropagations;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
@@ -3623,6 +3631,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     const std::size_t fallbacks_before = tableau_.bland_fallback_count();
     const std::size_t multi_row_conflicts_before = tableau_.soi_multi_row_conflict_count();
     const std::size_t quickxplain_calls_before = tableau_.soi_quickxplain_call_count();
+    const std::size_t pivots_before = tableau_.pivot_count();
+    statistics_.increment(kStatLraOnlineCheckCalls);
     conflict_ = tableau_.check();
     statistics_.increment(kStatLraBlandFallbacks,
                           tableau_.bland_fallback_count() - fallbacks_before);
@@ -3630,6 +3640,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
                           tableau_.soi_multi_row_conflict_count() - multi_row_conflicts_before);
     statistics_.increment(kStatLraSoiQuickxplainCalls,
                           tableau_.soi_quickxplain_call_count() - quickxplain_calls_before);
+    statistics_.increment(kStatLraPivots, tableau_.pivot_count() - pivots_before);
   }
 
   // Scans the other atoms sharing `slack` with the atom that was just

@@ -162,6 +162,8 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.row-propagations"sv,
     ":lra.soi-multi-row-conflicts"sv,
     ":lra.soi-quickxplain-calls"sv,
+    ":lra.pivots"sv,
+    ":lra.online-check-calls"sv,
 };
 
 }  // namespace

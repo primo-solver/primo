@@ -160,6 +160,8 @@ enum class StatKey : std::size_t {
   LraRowPropagations,
   LraSoiMultiRowConflicts,
   LraSoiQuickxplainCalls,
+  LraPivots,
+  LraOnlineCheckCalls,
   Count,
 };
 

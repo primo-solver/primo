@@ -105,6 +105,7 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
 }
 
 void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
+  ++pivot_count_;
   PivotTrailEntry trail_entry;
   trail_entry.basic_var = basic_var;
   trail_entry.entering_var = entering_var;

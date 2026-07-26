@@ -185,6 +185,15 @@ class LraTableau {
   // before and after a check() call themselves.
   std::size_t bland_fallback_count() const { return bland_fallback_count_; }
 
+  // Cumulative count of pivot() calls across this tableau's lifetime --
+  // diagnostic only (measuring whether check()'s current eager-per-literal
+  // invocation from OnlineLraPropagator::notify_assignment_lit does
+  // redundant repair work across closely-spaced assignments, a documented
+  // opportunity noted at that call site). Callers that want a per-round
+  // delta should snapshot this before/after, same convention as
+  // bland_fallback_count().
+  std::size_t pivot_count() const { return pivot_count_; }
+
   // PivotingRule::Soi observability: how many times check() had to build a
   // multi-row conflict (Section V-B, Flex(f) empty with 2+ rows still
   // violated), and how many of those invoked QuickXplain-style
@@ -321,6 +330,7 @@ class LraTableau {
 
   PivotingRule rule_;
   std::size_t bland_fallback_count_ = 0;
+  std::size_t pivot_count_ = 0;
   std::size_t soi_multi_row_conflict_count_ = 0;
   std::size_t soi_quickxplain_call_count_ = 0;
   std::optional<LraVarId> f_var_;
