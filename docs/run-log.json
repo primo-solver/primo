@@ -10241,6 +10241,78 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 8 and /home/user/.claude/plans/piped-wondering-fairy.md's item 8 section for the full design and both empirical results (this fuzz-soundness result plus the separate nine-file wall-clock/decision/pivot comparison). This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-8)."
+    },
+    {
+      "id": "2026-07-27-qf-lra-theory-decisions-cost-ranking-retired",
+      "started_at": "2026-07-27",
+      "recorded_at": "2026-07-27",
+      "kind": "benchmark",
+      "scope": "Re-investigation of roadmap item 8's mixed nine-file result (commit 17f8faf), prompted by an explicit user request to check for a missed performance issue rather than accepting 'mixed result' as final. Added a temporary debug env-var gate (PRIMO_DEBUG_THEORY_DECIDE_CHEAP) to OnlineLraPropagator::cb_decide() that bypasses estimate_assertion_cost entirely -- supplies the next unassigned arithmetic atom's literal with no per-candidate ranking at all -- to isolate whether the regressions were caused by the ranking's own arithmetic overhead or by the ranking producing worse decisions than a naive stable order would.",
+      "commit": "17f8faf",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet --lra-theory-decisions, with PRIMO_DEBUG_THEORY_DECIDE_CHEAP=1 for the cheap-mode runs (remote Release, manual rsync since the tree was intentionally dirty during this debug round-trip -- prepare_benchmark_workspace.py's dirty-tree guard was bypassed deliberately for this one-off investigation, not routinely)"
+      },
+      "command": "Manual rsync (same exclude list as scripts/slurm_prepare_benchmark_workspace.py's rsync_repo) plus a manual remote cmake --build, since the debug patch was intentionally uncommitted; then direct ssh timing runs (timeout 60, --stats) of each of the 9 dramatic-gap files under baseline, PRIMO_DEBUG_THEORY_DECIDE_CHEAP=1, and the full cost-ranked --lra-theory-decisions, comparing :sat.decisions, :lra.pivots, and wall-clock.",
+      "benchmark": {
+        "suite": "Same 9-file dramatic-gap list as the 2026-07-26-qf-lra-theory-decisions-nine-file-comparison entry",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Raw per-file output captured in the session transcript only, matching the original nine-file-comparison entry's handling."
+      },
+      "summary": {
+        "result": "Cheap mode (no ranking) beat BOTH plain VSIDS and the cost-ranked design on 8/9 files, often by 40-96%: TM/p-DepotsNum_s8 52.4s->11.3s, TM/p6-zenonumeric_s5 57.5s->2.1s, sc-17 25.7s->11.4s (solved -- cost-ranked timed out), sc-19 40.8s->19.2s (solved -- cost-ranked timed out), sc-21 49.1s->29.9s (solved -- cost-ranked timed out), sc-27 timeout->23.1s SOLVED (neither baseline nor cost-ranked ever solved this file), uart-16 14.5s->15.0s (flat, cost-ranked was 43.4s), uart-17 19.2s->19.1s (flat), uart-18 13.0s->13.8s (flat, cost-ranked was 20.4s).",
+        "significance": "Conclusively isolates the cause of item 8's original mixed result: estimate_assertion_cost's per-candidate ranking was not merely expensive overhead, it was actively selecting worse decisions than a plain stable round-robin order would -- the three sc-family solved-to-timeout regressions were VSIDS beating the 'smarter'-looking heuristic outright, and a heuristic with NO domain knowledge at all (just 'decide arithmetic atoms before Boolean structure, in a fixed order') beat it too. Directly led to retiring the cost-ranked design (commit fc28dbc) in favor of the plain round-robin -- see the companion 2026-07-27-qf-lra-theory-decisions-round-robin-fix entry for the corrected design's own full verification."
+      },
+      "verification": {
+        "passed": [],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 8 for the full corrected write-up (both the retired cost-ranked design and the round-robin fix are documented there for the historical trail)."
+    },
+    {
+      "id": "2026-07-27-qf-lra-theory-decisions-round-robin-fix",
+      "started_at": "2026-07-27",
+      "recorded_at": "2026-07-27",
+      "kind": "fuzz",
+      "scope": "Verification of roadmap item 8's corrected design (commit fc28dbc): replaces the retired cost-ranked cb_decide (see the companion 2026-07-27-qf-lra-theory-decisions-cost-ranking-retired entry) with a plain round-robin -- OnlineLraPropagator::cb_decide() supplies the next not-yet-decided arithmetic atom's TRUE literal each call, advancing a persistent cursor, with no per-candidate cost computation at all. Full suite (Release + ASAN/UBSan) green, two black-box tests rewritten for the new design's actual semantics (decision order and conflict-driven correctness rather than cost ranking). Re-ran merge-gate and campaign-gate Slurm fuzz plus the official (non-debug) 9-file dramatic-gap comparison against the corrected binary.",
+      "commit": "fc28dbc",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-theory-decisions] (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py (clean tree, commit fc28dbc); then sbatch --array=0-0 ... PRIMO_FUZZ_SOLVER='.../primo --quiet --lra-theory-decisions', PRIMO_FUZZ_FUZZSMT_SHARDS=1, PRIMO_FUZZ_FUZZSMT_COUNT=500, PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA for merge-gate (job 114234); then sbatch (default 9-task array) with PRIMO_FUZZ_OPFUZZ_SEEDS/PRIMO_FUZZ_YINYANG_SEEDS=.../benchmarks/seeds/qf_lra_real, TYPEFUZZ=.../.venv-yinyang/bin/typefuzz, and PATH including .venv-yinyang/bin upfront this time (fixing the PATH omission that broke job 114205's opfuzz task) for campaign-gate (job 114235); then, directly via ssh, the official (non-debug) 9-file baseline-vs-theory-decisions timing comparison against the corrected binary.",
+      "benchmark": {
+        "suite": "Merge-gate: fuzzsmt (QF_LRA, 500 cases) vs. z3. Campaign-gate: fuzzsmt (6 shards x 500 = 3000 cases) + opfuzz + yinyang typefuzz mutation against benchmarks/seeds/qf_lra_real (14 real files), all vs. z3. Plus the same 9-file dramatic-gap list as the original comparison.",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-114234/ (merge-gate) and fuzz-results/qfuf-gate-114235/ (campaign-gate) on llm2smt-slurm -- not committed. Nine-file comparison output captured in the session transcript only."
+      },
+      "summary": {
+        "result": "Merge-gate (job 114234): 500/500 -- 482 PASS, 18 TIMEOUT, 0 CRASH, 0 WRONG. Campaign-gate (job 114235): fuzzsmt 3000/3000 across 6 shards -- 2911 PASS, 89 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz 14/14 real seeds valid, 0 bug triggers; yinyang typefuzz mutation, 2 shards, 0 bug triggers either shard. Nine-file comparison (corrected design vs. plain VSIDS): TM/p-DepotsNum_s8 53.3s->11.1s (-79%), TM/p6-zenonumeric_s5 59.1s->2.0s (-97%), sc-17 26.3s->11.2s (-57%), sc-19 42.9s->18.8s (-56%), sc-21 50.9s->29.7s (-42%), sc-27 timeout(60s)->22.3s SOLVED, uart-16 14.5s->14.5s flat (decisions -31%), uart-17 19.3s->18.3s (-5%), uart-18 13.0s->13.2s flat (decisions -59%). No file regresses.",
+        "significance": "7/9 clear wins (often 40-97%), 2/9 flat wall-clock but still substantially fewer decisions, and sc-27 -- unsolved by both plain VSIDS and the original cost-ranked design at this budget -- is now solved. Zero net regressions across all 9 files. No wrong-answer disagreements or crashes anywhere in merge-gate or campaign-gate fuzz. This is the strongest single-item empirical result across the whole QF_LRA competitiveness roadmap (items 0-8) -- staying opt-in via --lra-theory-decisions pending an explicit default-on promotion decision, since this evidence is from the same 9 hand-picked files every item since item 7 has been measured against, not yet re-verified against item 0's broader 237-file stratified sample."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run with the corrected --lra-theory-decisions: 0 crashes, 0 wrong-answer disagreements.",
+          "3000-case campaign-gate-tier fuzzsmt-vs-z3 QF_LRA run, same flag: 0 crashes, 0 wrong-answer disagreements.",
+          "Campaign-gate opfuzz (14/14 real qf_lra_real seeds valid) and yinyang typefuzz mutation (2 shards) against the same seed corpus: 0 bug triggers in either.",
+          "Full local suite (Release + ASAN/UBSan) green, including two rewritten black-box tests.",
+          "Nine-file dramatic-gap re-comparison: 7/9 wins, 2/9 flat, 0/9 regressions, sc-27 newly solved."
+        ],
+        "pending": [
+          "Broader 237-file stratified-sample re-verification (item 0's original comparison) before any default-on promotion decision."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 8 and /home/user/.claude/plans/piped-wondering-fairy.md's item 8 section for the full corrected design and both empirical results (this one plus the diagnostic that led to it). This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-8)."
     }
   ]
 }

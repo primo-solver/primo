@@ -583,9 +583,9 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   Item 7 closed out items 0-7 of the roadmap; item 8 below picks the
   underlying TM/sc/uart-vs-z3/cvc5 gap back up from a different angle.
 
-- **Competitiveness roadmap item 8 (2026-07-26, done, opt-in, not
-  promoted): theory-guided decisions via CaDiCaL's `cb_decide`.** A
-  follow-up literature pass ("are we missing something?", prompted by
+- **Competitiveness roadmap item 8 (2026-07-26/27, done, opt-in, pending a
+  promotion decision): theory-guided decisions via CaDiCaL's `cb_decide`.**
+  A follow-up literature pass ("are we missing something?", prompted by
   item 7's own "gap remains substantially open" framing) first chased and
   explicitly **retracted** a dead end: CaDiCaL's IPASIR-UP interface
   freezes every observed variable, disabling CaDiCaL's own inprocessing
@@ -606,59 +606,74 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   and cvc5's 498 on the same file) was, and until this item remains by
   default, pure VSIDS.
 
-  Implements the "required" scope explicitly chosen by the user over a
-  smaller "opportunistic, free-wins-only" cut: `OnlineLraPropagator::
-  cb_decide()` scans a bounded, rotating window of not-yet-decided
-  arithmetic atoms (`kTheoryDecisionScanBudget = 64`) and ranks each
-  candidate polarity via a new `estimate_assertion_cost` -- a cheap,
-  *non-committal* probe (no `pivot()`/`update()` call) that counts how
-  many rows referencing the candidate's variable (via the already-public
-  `LraTableau::occurs_in`/`row`/`assignment`/`upper_bound`/`lower_bound`
-  accessors) would have their live-assignment-based implied value pushed
-  outside their own existing bound -- then supplies the cheapest
-  candidate's literal directly, falling back to VSIDS only when the scan
-  window finds nothing scoreable. Opt-in via `--lra-theory-decisions`, new
-  stats `:lra.theory-decisions` (how many decisions this hook actually
-  supplied) and `:lra.theory-decision-free` (how many of those were
-  genuinely free, cost-0 wins).
+  **First attempt (commit `17f8faf`, retired): a per-candidate cost
+  ranking.** Implementing the "required" scope explicitly chosen by the
+  user over a smaller "opportunistic, free-wins-only" cut, `cb_decide()`
+  scanned a bounded, rotating window of not-yet-decided arithmetic atoms
+  and ranked each candidate polarity via a new `estimate_assertion_cost`
+  probe (counting how many rows referencing the candidate's variable
+  would have their live-assignment-based implied value pushed outside
+  their own existing bound), supplying the cheapest candidate's literal.
+  On the 9 dramatic-gap files this was **genuinely mixed with real
+  regressions**: two wins (`TM/p6-zenonumeric_s5` -76%, `TM/p-DepotsNum_s8`
+  -13%) plus one small win, but three files flipped from solved to
+  timed-out at the same 60s budget (`sc-17`/`sc-19`/`sc-21`) and two got
+  markedly slower while still solving (`uart-16` ~3x, `uart-18` ~1.6x).
 
-  **Empirical result on the 9 dramatic-gap files: mixed, with real
-  regressions, not just a wash.** Two clear wins -- `TM/p6-zenonumeric_s5`
-  57.5s->13.9s (-76%, decisions 128,313->20,326, pivots 113,806->11,018)
-  and `TM/p-DepotsNum_s8` 52.4s->45.8s (-13%, pivots 83,172->44,798 despite
-  *more* decisions, 19,666->47,431) -- plus one small win (`uart-17`,
-  19.2s->17.9s). But three files flip from solved to timed-out at the same
-  60s budget (`sc-17`, `sc-19`, `sc-21`, all previously solving in
-  25-49s), one stays timed-out either way while doing substantially more
-  work (`sc-27`), and two get markedly *slower* while still solving
-  (`uart-16` 14.5s->43.4s, ~3x; `uart-18` 13.0s->20.4s, ~1.6x). Decision
-  *counts* often increased substantially even where pivots dropped
-  (`uart-16`: 27,123->56,374) -- the per-decision cost-ranking scan's own
-  overhead, and its effect on which decisions get made, isn't uniformly a
-  win the way item 7's forward/reverse propagation reuse was. **Not
-  recommended for default-on promotion** -- a more file-shape-dependent,
-  higher-variance lever than any other item in this roadmap, with real
-  downside risk (three genuine solved-to-timeout regressions) alongside
-  its one dramatic win. Merge-gate Slurm fuzz (job 114204: 500 cases, 488
-  PASS/12 TIMEOUT/0 CRASH/0 WRONG) and campaign-gate Slurm fuzz (job
-  114205 fuzzsmt+yinyang, job 114214 opfuzz re-run after a PATH fix --
-  see below: fuzzsmt 3000/3000, 2909 PASS/91 TIMEOUT/0 CRASH/0 WRONG;
-  opfuzz 14/14 real seeds valid, 0 bug triggers; yinyang 2 shards, 0 bug
-  triggers) both clean -- campaign-gate was run regardless of the
-  promotion decision here (unlike item 7), since this item's risk profile
-  (bypassing VSIDS on every decision, new hot-path bookkeeping) warranted
-  the extra confirmation even while staying opt-in. See
-  `docs/run-log.json` for the full trail.
+  **Re-investigated after being asked to check for a missed performance
+  issue -- the ranking itself was the bug, not just its overhead.** A
+  debug build that bypassed `estimate_assertion_cost` entirely (supply
+  the next unassigned arithmetic atom's literal, no ranking at all --
+  "cheap mode") beat *both* plain VSIDS *and* the cost-ranked design on
+  8/9 files, sometimes by 40-96%, and was the only one of the three that
+  solved `sc-27` at all within the shared budget. The cost ranking wasn't
+  merely expensive -- it was actively steering search into worse
+  territory (the three solved-to-timeout regressions were VSIDS beating
+  the *smarter*-looking heuristic outright). Commit `fc28dbc` replaces
+  `cb_decide()` with exactly that "cheap mode": supply the next
+  not-yet-decided arithmetic atom's TRUE literal each call, advancing a
+  persistent round-robin cursor, no per-candidate arithmetic at all.
+  Removed `estimate_assertion_cost`, its fanout/scan-budget caps, and the
+  now-unmeasurable `:lra.theory-decision-free` stat.
+
+  **Final empirical result on the 9 dramatic-gap files (corrected design):
+  a near-uniform win, zero net regressions.**
+
+  | file | baseline | round-robin | delta |
+  |---|---|---|---|
+  | TM/p-DepotsNum_s8 | 53.3s | 11.1s | -79% |
+  | TM/p6-zenonumeric_s5 | 59.1s | 2.0s | -97% |
+  | sc-17 | 26.3s | 11.2s | -57% |
+  | sc-19 | 42.9s | 18.8s | -56% |
+  | sc-21 | 50.9s | 29.7s | -42% |
+  | sc-27 | timeout (60s) | 22.3s, **solved** | unsolved -> solved |
+  | uart-16 | 14.5s | 14.5s | flat (dec -31%, piv +21%) |
+  | uart-17 | 19.3s | 18.3s | -5% |
+  | uart-18 | 13.0s | 13.2s | flat (dec -59%, piv -31%) |
+
+  7/9 clear wins (often 40-97%), 2/9 flat (both still show substantially
+  fewer decisions, `uart-18` -59%), and `sc-27` -- unsolved by *both*
+  plain VSIDS and the original cost-ranked design at this budget -- is
+  now solved. No file regresses. Merge-gate Slurm fuzz (job 114234: 500
+  cases, 482 PASS/18 TIMEOUT/0 CRASH/0 WRONG) and campaign-gate Slurm
+  fuzz (job 114235: fuzzsmt 3000/3000 -- 2911 PASS/89 TIMEOUT/0 CRASH/0
+  WRONG; opfuzz 14/14 real seeds valid/0 bug triggers; yinyang 2 shards/0
+  bug triggers) both clean on the corrected design. Two black-box tests
+  rewritten for the round-robin's actual semantics (decision order and
+  conflict-driven correctness, not cost ranking). Full suite (Release +
+  ASAN/UBSan) green throughout. See `docs/run-log.json` for the full
+  trail, including the earlier (retired) cost-ranked design's own fuzz
+  confirmation (jobs 114204/114205/114214) kept on record for the
+  historical trail even though that design was replaced.
 
   This closes out all of the QF_LRA competitiveness roadmap's
-  currently-planned items (0-8). The underlying TM/sc/uart-vs-z3/cvc5 gap
-  remains open: item 8's dramatic per-file win (`TM/p6`, -76%) confirms
-  decision-guidance *can* matter enormously on the right file shape, but
-  its regressions on the `sc` family show a cost-ranking heuristic this
-  cheap isn't a uniform answer -- the honest state is that no single
-  technique tried across items 0-8 closes the gap for every family, and a
-  smarter (or per-family-adaptive) version of this exact idea is the most
-  concrete remaining lead, not yet designed.
+  currently-planned items (0-8). Staying opt-in via `--lra-theory-decisions`
+  pending an explicit promotion decision (this evidence is from the same
+  9 hand-picked dramatic-gap files every item since item 7 has been
+  measured against, not yet re-verified against item 0's broader 237-file
+  stratified sample) -- but on this evidence it is the strongest
+  single-item result in the whole roadmap, and the clearest candidate for
+  promotion to default-on of anything items 0-8 produced.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
