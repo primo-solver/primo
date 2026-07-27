@@ -208,6 +208,48 @@ performance explanation for these weak NEQ/PEQ/SEQ manifests. Further QF_UF
 work should target the observed search/explanation costs instead of implementing
 this disequality-propagation rule first.
 
+## Ackermannization Cost Diagnostic
+
+Bruttomesso, Cimatti, Franzen, Griggio, Santuari, and Sebastiani's "To
+Ackermann-ize or not to Ackermann-ize?" studies when replacing UF applications
+with fresh variables and adding Ackermann functional-consistency constraints is
+likely to reduce SMT search. Their setting is `SMT(EUF union T)`, especially EUF
+combined with arithmetic, so it does not directly justify full Ackermannization
+for Primo's pure `QF_UF` path. It is relevant as a cost model: for each function
+symbol `f` with `|O_f|` distinct applications, full Ackermann expansion adds one
+functional-consistency constraint per application pair and up to `arity(f) + 1`
+new equality atoms per pair.
+
+This branch implements only an opt-in diagnostic, enabled with
+`--euf-ackermann-diagnostics`. It does not rewrite terms or add clauses. The
+diagnostic walks the reachable post-preprocessing assertions, groups distinct
+application terms by symbol, and records:
+
+- `:euf.ackermann.applications`;
+- `:euf.ackermann.function-symbols`;
+- `:euf.ackermann.eligible-symbols`;
+- `:euf.ackermann.unary-symbols`;
+- `:euf.ackermann.nary-symbols`;
+- `:euf.ackermann.estimated-constraints`;
+- `:euf.ackermann.estimated-equalities`;
+- `:euf.ackermann.estimated-clause-lits`;
+- `:euf.ackermann.max-symbol-applications`;
+- `:euf.ackermann.max-symbol-arity`;
+- `:euf.ackermann.symbols-cost-le-100`;
+- `:euf.ackermann.symbols-cost-le-1000`;
+- `:euf.ackermann.symbols-cost-le-10000`.
+
+Use `scripts/summarize_qfuf_ackermann_diagnostics.py` on CSV files produced by
+`scripts/bench_qf_uf_full.py --solver-arg=--stats
+--solver-arg=--euf-ackermann-diagnostics` to aggregate the cost estimate and rank
+the top files. The `symbols-cost-le-*` counters count eligible function symbols
+whose per-symbol Ackermann pair count is at most the threshold, giving a coarse
+PARTIAL-style probe without recording benchmark symbol names. If weak rows have
+low estimated Ackermann cost but high EUF explanation/search cost, partial
+Ackermannization is a plausible next experiment. If both the full estimate and
+the low-cost symbol counts are poor, this should be rejected before adding any
+encoding code.
+
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:

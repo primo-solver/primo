@@ -118,6 +118,26 @@ ordinary runs:
 - `:euf.diseq-prop.guarded-function-guard-candidates`;
 - `:euf.diseq-prop.guarded-argument-guard-candidates`;
 
+The diagnostic-only Ackermannization cost counters below are populated when
+`--euf-ackermann-diagnostics` is enabled. They count distinct reachable
+post-preprocessing UF applications and estimate the SAT-level functional
+consistency constraints from Bruttomesso et al.'s LPAR 2006 cost model. They are
+zero in ordinary runs:
+
+- `:euf.ackermann.applications`;
+- `:euf.ackermann.function-symbols`;
+- `:euf.ackermann.eligible-symbols`;
+- `:euf.ackermann.unary-symbols`;
+- `:euf.ackermann.nary-symbols`;
+- `:euf.ackermann.estimated-constraints`;
+- `:euf.ackermann.estimated-equalities`;
+- `:euf.ackermann.estimated-clause-lits`;
+- `:euf.ackermann.max-symbol-applications`;
+- `:euf.ackermann.max-symbol-arity`;
+- `:euf.ackermann.symbols-cost-le-100`;
+- `:euf.ackermann.symbols-cost-le-1000`;
+- `:euf.ackermann.symbols-cost-le-10000`;
+
 The incremental closure counters include:
 
 - `:euf.incremental.terms`;

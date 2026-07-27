@@ -176,6 +176,25 @@ constexpr std::string_view kStatEufDiseqPropGuardedFunctionGuardCandidates =
     ":euf.diseq-prop.guarded-function-guard-candidates";
 constexpr std::string_view kStatEufDiseqPropGuardedArgumentGuardCandidates =
     ":euf.diseq-prop.guarded-argument-guard-candidates";
+constexpr std::string_view kStatEufAckermannApplications = ":euf.ackermann.applications";
+constexpr std::string_view kStatEufAckermannFunctionSymbols = ":euf.ackermann.function-symbols";
+constexpr std::string_view kStatEufAckermannEligibleSymbols = ":euf.ackermann.eligible-symbols";
+constexpr std::string_view kStatEufAckermannUnarySymbols = ":euf.ackermann.unary-symbols";
+constexpr std::string_view kStatEufAckermannNarySymbols = ":euf.ackermann.nary-symbols";
+constexpr std::string_view kStatEufAckermannEstimatedConstraints =
+    ":euf.ackermann.estimated-constraints";
+constexpr std::string_view kStatEufAckermannEstimatedEqualities =
+    ":euf.ackermann.estimated-equalities";
+constexpr std::string_view kStatEufAckermannEstimatedClauseLits =
+    ":euf.ackermann.estimated-clause-lits";
+constexpr std::string_view kStatEufAckermannMaxSymbolApplications =
+    ":euf.ackermann.max-symbol-applications";
+constexpr std::string_view kStatEufAckermannMaxSymbolArity = ":euf.ackermann.max-symbol-arity";
+constexpr std::string_view kStatEufAckermannSymbolsCostLe100 = ":euf.ackermann.symbols-cost-le-100";
+constexpr std::string_view kStatEufAckermannSymbolsCostLe1000 =
+    ":euf.ackermann.symbols-cost-le-1000";
+constexpr std::string_view kStatEufAckermannSymbolsCostLe10000 =
+    ":euf.ackermann.symbols-cost-le-10000";
 constexpr util::StatKey kStatEufIncrementalTerms = util::StatKey::EufIncrementalTerms;
 constexpr util::StatKey kStatEufIncrementalFlatDefinitions =
     util::StatKey::EufIncrementalFlatDefinitions;
@@ -304,6 +323,86 @@ std::size_t reachable_term_count(const core::TermManager& terms,
     work.insert(work.end(), term.children.begin(), term.children.end());
   }
   return count;
+}
+
+void record_ackermann_cost_diagnostics(const core::TermManager& terms,
+                                       const std::vector<core::TermId>& roots,
+                                       util::Statistics& statistics) {
+  std::vector<unsigned char> seen(terms.size(), 0);
+  std::vector<core::TermId> work = roots;
+  std::unordered_map<core::SymbolId, std::vector<core::TermId>> applications_by_symbol;
+  while (!work.empty()) {
+    const core::TermId term_id = work.back();
+    work.pop_back();
+    if (term_id >= seen.size()) {
+      seen.resize(term_id + 1, 0);
+    }
+    if (seen[term_id] != 0) {
+      continue;
+    }
+    seen[term_id] = 1;
+    const core::Term& term = terms.get(term_id);
+    if (term.kind == core::TermKind::Application) {
+      applications_by_symbol[term.symbol].push_back(term_id);
+    }
+    work.insert(work.end(), term.children.begin(), term.children.end());
+  }
+
+  std::size_t applications = 0;
+  std::size_t eligible_symbols = 0;
+  std::size_t unary_symbols = 0;
+  std::size_t nary_symbols = 0;
+  std::size_t estimated_constraints = 0;
+  std::size_t estimated_equalities = 0;
+  std::size_t max_symbol_applications = 0;
+  std::size_t max_symbol_arity = 0;
+  std::size_t symbols_cost_le_100 = 0;
+  std::size_t symbols_cost_le_1000 = 0;
+  std::size_t symbols_cost_le_10000 = 0;
+
+  for (const auto& [symbol_id, symbol_applications] : applications_by_symbol) {
+    const core::Symbol& symbol = terms.symbols().get_symbol(symbol_id);
+    const std::size_t arity = symbol.arg_sorts.size();
+    const std::size_t count = symbol_applications.size();
+    applications += count;
+    max_symbol_applications = std::max(max_symbol_applications, count);
+    max_symbol_arity = std::max(max_symbol_arity, arity);
+    if (arity == 1) {
+      ++unary_symbols;
+    } else if (arity > 1) {
+      ++nary_symbols;
+    }
+    if (count < 2) {
+      continue;
+    }
+    ++eligible_symbols;
+    const std::size_t pairs = count * (count - 1U) / 2U;
+    if (pairs <= 100) {
+      ++symbols_cost_le_100;
+    }
+    if (pairs <= 1000) {
+      ++symbols_cost_le_1000;
+    }
+    if (pairs <= 10000) {
+      ++symbols_cost_le_10000;
+    }
+    estimated_constraints += pairs;
+    estimated_equalities += pairs * (arity + 1U);
+  }
+
+  statistics.set(kStatEufAckermannApplications, applications);
+  statistics.set(kStatEufAckermannFunctionSymbols, applications_by_symbol.size());
+  statistics.set(kStatEufAckermannEligibleSymbols, eligible_symbols);
+  statistics.set(kStatEufAckermannUnarySymbols, unary_symbols);
+  statistics.set(kStatEufAckermannNarySymbols, nary_symbols);
+  statistics.set(kStatEufAckermannEstimatedConstraints, estimated_constraints);
+  statistics.set(kStatEufAckermannEstimatedEqualities, estimated_equalities);
+  statistics.set(kStatEufAckermannEstimatedClauseLits, estimated_equalities);
+  statistics.set(kStatEufAckermannMaxSymbolApplications, max_symbol_applications);
+  statistics.set(kStatEufAckermannMaxSymbolArity, max_symbol_arity);
+  statistics.set(kStatEufAckermannSymbolsCostLe100, symbols_cost_le_100);
+  statistics.set(kStatEufAckermannSymbolsCostLe1000, symbols_cost_le_1000);
+  statistics.set(kStatEufAckermannSymbolsCostLe10000, symbols_cost_le_10000);
 }
 
 void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics& statistics) {
@@ -3069,6 +3168,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufDiseqPropFlatSameFunctionArgAtomFalse, 0);
   statistics.set(kStatEufDiseqPropGuardedFunctionGuardCandidates, 0);
   statistics.set(kStatEufDiseqPropGuardedArgumentGuardCandidates, 0);
+  statistics.set(kStatEufAckermannApplications, 0);
+  statistics.set(kStatEufAckermannFunctionSymbols, 0);
+  statistics.set(kStatEufAckermannEligibleSymbols, 0);
+  statistics.set(kStatEufAckermannUnarySymbols, 0);
+  statistics.set(kStatEufAckermannNarySymbols, 0);
+  statistics.set(kStatEufAckermannEstimatedConstraints, 0);
+  statistics.set(kStatEufAckermannEstimatedEqualities, 0);
+  statistics.set(kStatEufAckermannEstimatedClauseLits, 0);
+  statistics.set(kStatEufAckermannMaxSymbolApplications, 0);
+  statistics.set(kStatEufAckermannMaxSymbolArity, 0);
+  statistics.set(kStatEufAckermannSymbolsCostLe100, 0);
+  statistics.set(kStatEufAckermannSymbolsCostLe1000, 0);
+  statistics.set(kStatEufAckermannSymbolsCostLe10000, 0);
   statistics.set(kStatEufIncrementalTerms, 0);
   statistics.set(kStatEufIncrementalFlatDefinitions, 0);
   statistics.set(kStatEufIncrementalMerges, 0);
@@ -3408,6 +3520,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatAssertionsFinal, assertions.size());
     statistics.set(kStatPreprocessingTermSizeFinal,
                    reachable_term_count(frontend.terms(), assertions));
+    if (options.euf_ackermann_diagnostics) {
+      record_ackermann_cost_diagnostics(frontend.terms(), assertions, statistics);
+    }
     for (const core::TermId assertion : assertions) {
       const core::Term& node = frontend.terms().get(assertion);
       if (node.kind == core::TermKind::BoolValue && !node.bool_value) {

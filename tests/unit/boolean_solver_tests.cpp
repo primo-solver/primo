@@ -1639,6 +1639,61 @@ void disequality_propagation_diagnostic_rejects_unguarded_nary_pairwise_claim() 
   assert(result.statistics.get(":euf.diseq-prop.guarded-argument-guard-candidates") == 0);
 }
 
+void ackermann_diagnostic_counts_symbol_pair_costs() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_ackermann_diagnostics = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun f (A) A)
+    (declare-fun g (A A) A)
+    (assert (= (f a) (f b)))
+    (assert (= (f b) (f c)))
+    (assert (= (g a b) (g b c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.ackermann.applications") == 5);
+  assert(result.statistics.get(":euf.ackermann.function-symbols") == 2);
+  assert(result.statistics.get(":euf.ackermann.eligible-symbols") == 2);
+  assert(result.statistics.get(":euf.ackermann.unary-symbols") == 1);
+  assert(result.statistics.get(":euf.ackermann.nary-symbols") == 1);
+  assert(result.statistics.get(":euf.ackermann.estimated-constraints") == 4);
+  assert(result.statistics.get(":euf.ackermann.estimated-equalities") == 9);
+  assert(result.statistics.get(":euf.ackermann.estimated-clause-lits") == 9);
+  assert(result.statistics.get(":euf.ackermann.max-symbol-applications") == 3);
+  assert(result.statistics.get(":euf.ackermann.max-symbol-arity") == 2);
+  assert(result.statistics.get(":euf.ackermann.symbols-cost-le-100") == 2);
+  assert(result.statistics.get(":euf.ackermann.symbols-cost-le-1000") == 2);
+  assert(result.statistics.get(":euf.ackermann.symbols-cost-le-10000") == 2);
+}
+
+void ackermann_diagnostic_is_zero_without_flag() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= (f a) (f b)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.ackermann.applications") == 0);
+  assert(result.statistics.get(":euf.ackermann.estimated-equalities") == 0);
+  assert(result.statistics.get(":euf.ackermann.symbols-cost-le-100") == 0);
+}
+
 void model_euf_propagation_learns_congruence_lemma() {
   primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
@@ -2157,6 +2212,8 @@ int main() {
   disequality_propagation_diagnostic_counts_syntactic_unary_opportunity();
   disequality_propagation_diagnostic_counts_flat_curried_opportunity();
   disequality_propagation_diagnostic_rejects_unguarded_nary_pairwise_claim();
+  ackermann_diagnostic_counts_symbol_pair_costs();
+  ackermann_diagnostic_is_zero_without_flag();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();
   model_euf_propagation_handles_predicate_congruence();
