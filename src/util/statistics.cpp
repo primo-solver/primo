@@ -166,7 +166,6 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.online-check-calls"sv,
     ":lra.bidirectional-row-propagations"sv,
     ":lra.theory-decisions"sv,
-    ":lra.theory-decision-free"sv,
 };
 
 }  // namespace

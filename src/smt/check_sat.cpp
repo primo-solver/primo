@@ -155,7 +155,6 @@ constexpr util::StatKey kStatLraRowPropagations = util::StatKey::LraRowPropagati
 constexpr util::StatKey kStatLraBidirectionalRowPropagations =
     util::StatKey::LraBidirectionalRowPropagations;
 constexpr util::StatKey kStatLraTheoryDecisions = util::StatKey::LraTheoryDecisions;
-constexpr util::StatKey kStatLraTheoryDecisionFree = util::StatKey::LraTheoryDecisionFree;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -3151,16 +3150,6 @@ constexpr std::size_t kRowBasedPropagationMaxFanout = 64;
 constexpr std::size_t kBidirectionalRowPropagationMaxRowSize = 32;
 constexpr std::size_t kBidirectionalRowPropagationMaxFanout = 32;
 
-// Competitiveness-roadmap item 8 (theory-guided decisions): caps on
-// cb_decide()'s per-call cost. Unlike items 2/7's caps (triggered by every
-// propagated literal), this only runs once per SAT decision -- far less
-// frequent -- so a larger per-call budget is affordable, but still needs a
-// real bound rather than an unbounded scan on an adversarial/fuzzed input.
-// Not precisely derived; tunable later against real evidence (see the
-// competitiveness-roadmap plan's own note that this needs re-deriving).
-constexpr std::size_t kTheoryDecisionMaxFanout = 64;
-constexpr std::size_t kTheoryDecisionScanBudget = 64;
-
 // Applies one assigned LRA atom's relation+truth-value+strictness to
 // `tableau` as a single Assert-Bound call (Eq asserts both bounds). Shared
 // between the fully-lazy per-round-normalize path (not currently used by
@@ -3470,79 +3459,6 @@ compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
   return std::make_pair(total.scaled(inv), std::move(reasons));
 }
 
-// Competitiveness-roadmap item 8 (theory-guided decisions): a cheap,
-// *non-committal* estimate of how disruptive it would be to assert
-// `candidate_value` as `var`'s upper (want_upper=true) or lower bound --
-// used by OnlineLraPropagator::cb_decide() to rank candidate atoms before
-// any of them is actually committed via assert_upper/assert_lower/check().
-//
-// Deliberately an estimate, not a sound derivation like compute_implied_
-// bound/compute_implied_child_bound above: it reads each row's OTHER
-// terms' *current live assignment* (tableau.assignment, always available,
-// tracks whatever Simplex currently believes each slack's value is) rather
-// than their asserted bounds, so it can score a row even when a term has
-// no directly-asserted bound in the needed direction. A term with no
-// single_variable_slack entry at all makes that one row unscoreable (its
-// current value isn't obtainable this way either) -- skipped, contributing
-// neither a good nor bad signal, mirroring compute_implied_bound's own
-// all-or-nothing philosophy applied per-row instead of per-call.
-//
-// cost = (1 if var's own current assignment already violates the
-// candidate bound, else 0) + (1 per affected row, via occurs_in, whose
-// recomputed value -- substituting var's real current value for
-// candidate_value -- would fall outside that row's own existing bound).
-// 0 means "free": asserting this candidate wouldn't (as far as this cheap
-// probe can tell) require any repair at all.
-std::size_t estimate_assertion_cost(const theory::arithmetic::LraTableau& tableau,
-                                    const PreparedLraTheory& prepared, theory::arithmetic::LraVarId var,
-                                    const theory::arithmetic::DeltaRational& candidate_value,
-                                    bool want_upper) {
-  std::size_t cost = 0;
-  const theory::arithmetic::DeltaRational& current = tableau.assignment(var);
-  if (want_upper ? current > candidate_value : current < candidate_value) {
-    ++cost;
-  }
-  const auto wrapped = prepared.variable_for_single_slack.find(var);
-  if (wrapped == prepared.variable_for_single_slack.end()) {
-    return cost;
-  }
-  const std::vector<theory::arithmetic::LraVarId>& affected_rows = tableau.occurs_in(wrapped->second);
-  if (affected_rows.size() > kTheoryDecisionMaxFanout) {
-    return cost + kTheoryDecisionMaxFanout + 1;
-  }
-  for (const theory::arithmetic::LraVarId basic_var : affected_rows) {
-    const auto& row = tableau.row(basic_var);
-    if (row.size() > kRowBasedPropagationMaxRowSize) {
-      continue;
-    }
-    theory::arithmetic::DeltaRational total =
-        theory::arithmetic::DeltaRational::from_rational(util::Rational(0));
-    bool scoreable = true;
-    for (const auto& [term_var, coeff] : row) {
-      if (term_var == wrapped->second) {
-        total = total + candidate_value.scaled(coeff);
-        continue;
-      }
-      const auto slack_found = prepared.single_variable_slack.find(term_var);
-      if (slack_found == prepared.single_variable_slack.end()) {
-        scoreable = false;
-        break;
-      }
-      total = total + tableau.assignment(slack_found->second).scaled(coeff);
-    }
-    if (!scoreable) {
-      continue;
-    }
-    const auto row_upper = tableau.upper_bound(basic_var);
-    const auto row_lower = tableau.lower_bound(basic_var);
-    if ((row_upper.has_value() && total > row_upper->value) ||
-        (row_lower.has_value() && total < row_lower->value)) {
-      ++cost;
-    }
-  }
-  return cost;
-}
-
 // Trail-synced CaDiCaL external propagator for QF_LRA (Milestone 3a of the
 // QF_LRA plan): mirrors OnlineEufPropagator structurally. cb_propagate()
 // delivers same-slack propagations (Milestone 3b, scan_for_propagations)
@@ -3648,24 +3564,32 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
 
   // Competitiveness-roadmap item 8: called by CaDiCaL right before it would
   // otherwise make a generic VSIDS decision (Internal::ask_decision(),
-  // contrib/src/cadical/src/external_propagate.cpp) -- ranks a bounded
-  // window of not-yet-decided arithmetic atoms via estimate_assertion_cost
-  // and returns the cheapest one's literal, so the arithmetic theory
-  // supplies (almost) every decision itself rather than leaving it to
-  // VSIDS. Returning 0 defers to VSIDS, exactly like today's default
-  // behavior -- only happens here when no scoreable candidate is found in
-  // the scan window this call (see decide_cursor_'s own comment).
+  // contrib/src/cadical/src/external_propagate.cpp) -- supplies the next
+  // not-yet-decided arithmetic atom's TRUE literal, advancing a persistent
+  // rotating cursor across calls. A fixed, deterministic decision ORDER
+  // over arithmetic atoms, not a per-candidate cost analysis.
+  //
+  // An earlier version of this (see git history around commit 17f8faf)
+  // ranked candidates by a cheap per-atom infeasibility-cost estimate
+  // instead of just taking the next one -- re-measured against this much
+  // simpler alternative on the same 9 real-benchmark files (docs/
+  // arithmetic.md's Milestone roadmap has the full trail), the cost-ranked
+  // version was *worse* than plain VSIDS on 3 of them (solved regressed to
+  // timed-out at the same budget) and worse than this round-robin version
+  // on 8/9 -- sometimes dramatically (a 96% wall-clock regression on one
+  // file). The ranking wasn't just expensive overhead; it was actively
+  // steering search into worse territory. This version -- "the theory
+  // decides, in a stable order, no per-candidate arithmetic at all" -- is
+  // strictly better on this evidence, and the only one of the three that
+  // solves the campaign's hardest file (sc-27) at all within a shared
+  // budget. Returning 0 defers to VSIDS -- only happens once every
+  // arithmetic atom is already decided.
   int cb_decide() override {
     if (!theory_decisions_enabled_ || theory_atoms_.empty()) {
       return 0;
     }
-    int best_lit = 0;
-    std::size_t best_cost = 0;
-    std::size_t best_atom_index = 0;
-    bool have_best = false;
     const std::size_t atom_count = theory_atoms_.size();
-    const std::size_t budget = std::min(kTheoryDecisionScanBudget, atom_count);
-    for (std::size_t scanned = 0; scanned < budget; ++scanned) {
+    for (std::size_t scanned = 0; scanned < atom_count; ++scanned) {
       const std::size_t atom_index = decide_cursor_;
       decide_cursor_ = (decide_cursor_ + 1) % atom_count;
       const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
@@ -3677,30 +3601,10 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       if (is_assigned_var(var)) {
         continue;
       }
-      const std::size_t cost_true = estimate_assertion_cost(
-          tableau_, prepared_, prepared_atom.slack,
-          true_threshold(prepared_atom.relation, prepared_atom.rhs), /*want_upper=*/true);
-      const std::size_t cost_false = estimate_assertion_cost(
-          tableau_, prepared_, prepared_atom.slack,
-          false_threshold(prepared_atom.relation, prepared_atom.rhs), /*want_upper=*/false);
-      const bool prefer_true = cost_true <= cost_false;
-      const std::size_t cost = prefer_true ? cost_true : cost_false;
-      if (!have_best || cost < best_cost ||
-          (cost == best_cost && atom_index < best_atom_index)) {
-        have_best = true;
-        best_cost = cost;
-        best_atom_index = atom_index;
-        best_lit = prefer_true ? atom.lit.value : -atom.lit.value;
-      }
+      statistics_.increment(kStatLraTheoryDecisions);
+      return atom.lit.value;
     }
-    if (!have_best) {
-      return 0;
-    }
-    statistics_.increment(kStatLraTheoryDecisions);
-    if (best_cost == 0) {
-      statistics_.increment(kStatLraTheoryDecisionFree);
-    }
-    return best_lit;
+    return 0;
   }
 
   // Same-slack "deriving satisfied atoms" propagation (Dutertre & de
@@ -4087,13 +3991,12 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   // tableau_.check() eagerly per literal, resolved lazily by
   // run_deferred_check_if_needed() (called from cb_has_external_clause()).
   bool needs_check_ = false;
-  // cb_decide()'s rotating scan start (competitiveness-roadmap item 8):
-  // advances by the scan window every call so a bounded per-call budget
-  // still gives every atom index a fair chance to be ranked over many
-  // decisions, rather than only ever re-scanning the same prefix. Not
-  // reset on backtrack -- it's just a scan-fairness cursor, not trail
-  // state; a stale position after backtracking is harmless (worst case,
-  // one call's window is less well-chosen than usual).
+  // cb_decide()'s rotating position (competitiveness-roadmap item 8):
+  // gives cb_decide() a stable, persistent round-robin order over
+  // arithmetic atoms across calls, rather than always restarting from
+  // index 0. Not reset on backtrack -- it's just a decision-order cursor,
+  // not trail state; a stale position after backtracking is harmless
+  // (worst case, this decision's order is less well-chosen than usual).
   std::size_t decide_cursor_ = 0;
 };
 #endif  // PRIMO_HAVE_IPASIR
