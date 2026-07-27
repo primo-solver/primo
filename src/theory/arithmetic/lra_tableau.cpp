@@ -778,9 +778,26 @@ void LraTableau::pop(std::size_t checkpoint) {
   if (trail_.size() <= checkpoint) {
     return;
   }
+  // occurs_in_ only depends on rows_/is_basic (see rebuild_occurs_in_index()'s
+  // own comment) -- never on occurs_in_ itself -- so it's safe to defer one
+  // full rebuild to the end of this loop instead of doing it inside undo()
+  // for every individual PivotTrailEntry/FRowTrailEntry undone. Profiling
+  // p5-zenonumeric_s5.smt2 (gprof) found rebuild_occurs_in_index() at ~9% of
+  // runtime with a call count matching the *pivot* count almost exactly --
+  // undo() was rebuilding it once per pivot undone, not once per pop() call,
+  // so a pop() that unwinds N pivots at once did N redundant full rebuilds.
+  bool occurs_in_index_stale = false;
   while (trail_.size() > checkpoint) {
-    undo(trail_.back());
+    const TrailEntry& entry = trail_.back();
+    if (std::holds_alternative<PivotTrailEntry>(entry) ||
+        std::holds_alternative<FRowTrailEntry>(entry)) {
+      occurs_in_index_stale = true;
+    }
+    undo(entry);
     trail_.pop_back();
+  }
+  if (occurs_in_index_stale) {
+    rebuild_occurs_in_index();
   }
   // violated_vars_ isn't patched incrementally per undo case (bound/
   // assignment/pivot/f-row trail entries interact in too many
@@ -806,25 +823,26 @@ void LraTableau::undo(const TrailEntry& entry) {
   }
   if (const auto* pivot_entry = std::get_if<PivotTrailEntry>(&entry)) {
     // No explicit clear of entering_var's slot: it's about to become
-    // nonbasic again, and rebuild_occurs_in_index() below is is_basic-
-    // gated, not content-gated (see rows_'s own comment), so the stale
-    // leftover here is harmless.
+    // nonbasic again, and pop()'s own end-of-loop rebuild_occurs_in_index()
+    // call is is_basic-gated, not content-gated (see rows_'s own comment),
+    // so the stale leftover here is harmless. That rebuild is deferred to
+    // pop() (once per pop() call, not once per entry undone here) -- see
+    // pop()'s own comment for why.
     rows_[pivot_entry->basic_var] = pivot_entry->old_basic_row;
     vars_.at(pivot_entry->basic_var).is_basic = true;
     vars_.at(pivot_entry->entering_var).is_basic = false;
     for (const auto& [other_basic, old_row] : pivot_entry->old_other_rows) {
       rows_[other_basic] = old_row;
     }
-    rebuild_occurs_in_index();
     return;
   }
   // PivotingRule::Soi only: undo one set_soi_direction() call's effect,
   // restoring both f_var_'s row and the affected variable's tracked
-  // direction atomically (see FRowTrailEntry's comment).
+  // direction atomically (see FRowTrailEntry's comment). Same deferred-
+  // rebuild reasoning as the PivotTrailEntry branch above.
   const auto& f_row_entry = std::get<FRowTrailEntry>(entry);
   rows_[*f_var_] = f_row_entry.previous_f_row;
   soi_directions_[f_row_entry.var] = f_row_entry.previous_direction;
-  rebuild_occurs_in_index();
 }
 
 void LraTableau::rebuild_occurs_in_index() {
