@@ -9384,6 +9384,81 @@
       },
       "evidence_status": "current_slurm",
       "notes": "Fresh main fuzz evidence after the QF_UF branch fast-forward merge. The only setup issue was the known revision-stamp fragility caused by syncing a git checkout while excluding tracked artifact directories; syncing those directories restored a clean c81319e stamp before the submitted job."
+    },
+    {
+      "id": "2026-07-27-local-qfuf-diseq-diagnostics-smoke-2960394",
+      "recorded_at": "2026-07-27T00:00:00+02:00",
+      "kind": "benchmark",
+      "scope": "Local smoke run for opt-in QF_UF disequality-propagation diagnostic counters",
+      "commit": "2960394",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: 2960394; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "No private host or absolute home-directory details are recorded."
+      },
+      "command": {
+        "build": "cmake --build build --target primo",
+        "manifest": "find benchmarks/seeds/qf_uf benchmarks/smoke/qf_uf benchmarks/regression/qf_uf -type f -name '*.smt2' -print | sort | sed 's#^benchmarks/##' > results/qfuf-diseq-diagnostics-2960394-local/manifest.txt",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root benchmarks --manifest results/qfuf-diseq-diagnostics-2960394-local/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-diseq-prop-diagnostics --timeout 5 --out results/qfuf-diseq-diagnostics-2960394-local/results.csv --summary results/qfuf-diseq-diagnostics-2960394-local/summary.csv --log-dir results/qfuf-diseq-diagnostics-2960394-local/logs",
+        "summarize": "python3 scripts/summarize_qfuf_diseq_diagnostics.py results/qfuf-diseq-diagnostics-2960394-local/results.csv --out results/qfuf-diseq-diagnostics-2960394-local/diseq-summary.csv --top 10"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-diseq-prop-diagnostics"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 9,
+        "timeout_seconds": 5,
+        "manifest": "results/qfuf-diseq-diagnostics-2960394-local/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-diseq-diagnostics-2960394-local/summary.csv",
+        "results": "results/qfuf-diseq-diagnostics-2960394-local/results.csv",
+        "diagnostic_summary": "results/qfuf-diseq-diagnostics-2960394-local/diseq-summary.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "total": 9,
+        "solved": 9,
+        "wrong": 0,
+        "timeouts": 0,
+        "par2": 0.048436,
+        "diagnostic_totals": {
+          ":euf.diseq-prop.assigned-app-disequalities": 100,
+          ":euf.diseq-prop.source-unary-candidates": 0,
+          ":euf.diseq-prop.source-unary-existing-arg-atom": 0,
+          ":euf.diseq-prop.flat-same-function-candidates": 50,
+          ":euf.diseq-prop.flat-same-function-existing-arg-atom": 50,
+          ":euf.diseq-prop.guarded-function-guard-candidates": 0,
+          ":euf.diseq-prop.guarded-argument-guard-candidates": 0
+        },
+        "active_files": {
+          ":euf.diseq-prop.assigned-app-disequalities": 1,
+          ":euf.diseq-prop.flat-same-function-candidates": 1,
+          ":euf.diseq-prop.flat-same-function-existing-arg-atom": 1
+        },
+        "top_file": "benchmarks/regression/qf_uf/online_reason_cache.smt2"
+      },
+      "verification": {
+        "passed": [
+          "python3 -m py_compile scripts/summarize_qfuf_diseq_diagnostics.py",
+          "The diagnostic run solved all 9 local QF_UF inputs with 0 wrong answers and 0 timeouts",
+          "The summarizer produced aggregate totals and top-file output"
+        ],
+        "pending": [
+          "Run the same diagnostic flag on the weak QF_UF manifests under tmp/QF_UF on SLURM; the local tmp/QF_UF corpus and SLURM SSH config were unavailable in this workspace."
+        ]
+      },
+      "evidence_status": "current_local_smoke",
+      "notes": "This validates the diagnostic evidence pipeline only. It is not sufficient evidence to accept or reject H1 for weak QF_UF benchmark families."
     }
   ]
 }

@@ -1,0 +1,9 @@
+regression/qf_uf/online_reason_cache.smt2
+seeds/qf_uf/qg_symmetry_fixed_terms.smt2
+seeds/qf_uf/qg_symmetry_residual_domain.smt2
+seeds/qf_uf/seed_basic.smt2
+smoke/qf_uf/binary_congruence_contradiction.smt2
+smoke/qf_uf/direct_equality_contradiction.smt2
+smoke/qf_uf/sat_nested_functions.smt2
+smoke/qf_uf/sat_uninterpreted_constants.smt2
+smoke/qf_uf/unary_congruence_contradiction.smt2

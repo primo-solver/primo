@@ -187,6 +187,16 @@ a same-prefix child disequality opportunity. The guarded counters require a
 currently true sibling equality and a SAT-visible target equality atom; they are
 diagnostic only and do not yet construct guard reasons.
 
+Use `scripts/summarize_qfuf_diseq_diagnostics.py` on CSV files produced by
+`scripts/bench_qf_uf_full.py --solver-arg=--stats
+--solver-arg=--euf-diseq-prop-diagnostics` to aggregate these counters by total,
+active file count, family, and top contributing files. A local smoke run at
+commit `2960394` checked the diagnostic pipeline on the in-repo QF_UF seeds,
+smoke tests, and regression case. It found opportunity counters only in
+`benchmarks/regression/qf_uf/online_reason_cache.smt2`, so it is harness evidence
+rather than evidence for accepting or rejecting H1 on the weak benchmark
+manifests.
+
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:
