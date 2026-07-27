@@ -101,6 +101,25 @@ scripts and result artifacts. Current counters include:
 - `:euf.propagation.auto-online`;
 - `:euf.propagation.auto-conflict`;
 - `:euf.propagation.auto-off`;
+
+The diagnostic-only disequality-propagation opportunity counters below are
+populated when `--euf-diseq-prop-diagnostics` is enabled. They are zero in
+ordinary runs:
+
+- `:euf.diseq-prop.assigned-app-disequalities`;
+- `:euf.diseq-prop.source-unary-candidates`;
+- `:euf.diseq-prop.source-unary-existing-arg-atom`;
+- `:euf.diseq-prop.source-unary-arg-atom-true`;
+- `:euf.diseq-prop.source-unary-arg-atom-false`;
+- `:euf.diseq-prop.flat-same-function-candidates`;
+- `:euf.diseq-prop.flat-same-function-existing-arg-atom`;
+- `:euf.diseq-prop.flat-same-function-arg-atom-true`;
+- `:euf.diseq-prop.flat-same-function-arg-atom-false`;
+- `:euf.diseq-prop.guarded-function-guard-candidates`;
+- `:euf.diseq-prop.guarded-argument-guard-candidates`;
+
+The incremental closure counters include:
+
 - `:euf.incremental.terms`;
 - `:euf.incremental.flat-definitions`;
 - `:euf.incremental.merges`;

@@ -154,6 +154,28 @@ constexpr util::StatKey kStatEufPropagationHitRateCutoffs =
 constexpr util::StatKey kStatEufPropagationAutoOnline = util::StatKey::EufPropagationAutoOnline;
 constexpr util::StatKey kStatEufPropagationAutoConflict = util::StatKey::EufPropagationAutoConflict;
 constexpr util::StatKey kStatEufPropagationAutoOff = util::StatKey::EufPropagationAutoOff;
+constexpr std::string_view kStatEufDiseqPropAssignedAppDisequalities =
+    ":euf.diseq-prop.assigned-app-disequalities";
+constexpr std::string_view kStatEufDiseqPropSourceUnaryCandidates =
+    ":euf.diseq-prop.source-unary-candidates";
+constexpr std::string_view kStatEufDiseqPropSourceUnaryExistingArgAtom =
+    ":euf.diseq-prop.source-unary-existing-arg-atom";
+constexpr std::string_view kStatEufDiseqPropSourceUnaryArgAtomTrue =
+    ":euf.diseq-prop.source-unary-arg-atom-true";
+constexpr std::string_view kStatEufDiseqPropSourceUnaryArgAtomFalse =
+    ":euf.diseq-prop.source-unary-arg-atom-false";
+constexpr std::string_view kStatEufDiseqPropFlatSameFunctionCandidates =
+    ":euf.diseq-prop.flat-same-function-candidates";
+constexpr std::string_view kStatEufDiseqPropFlatSameFunctionExistingArgAtom =
+    ":euf.diseq-prop.flat-same-function-existing-arg-atom";
+constexpr std::string_view kStatEufDiseqPropFlatSameFunctionArgAtomTrue =
+    ":euf.diseq-prop.flat-same-function-arg-atom-true";
+constexpr std::string_view kStatEufDiseqPropFlatSameFunctionArgAtomFalse =
+    ":euf.diseq-prop.flat-same-function-arg-atom-false";
+constexpr std::string_view kStatEufDiseqPropGuardedFunctionGuardCandidates =
+    ":euf.diseq-prop.guarded-function-guard-candidates";
+constexpr std::string_view kStatEufDiseqPropGuardedArgumentGuardCandidates =
+    ":euf.diseq-prop.guarded-argument-guard-candidates";
 constexpr util::StatKey kStatEufIncrementalTerms = util::StatKey::EufIncrementalTerms;
 constexpr util::StatKey kStatEufIncrementalFlatDefinitions =
     util::StatKey::EufIncrementalFlatDefinitions;
@@ -1565,6 +1587,51 @@ struct PreparedFlatTheory {
   std::vector<FlatAssignedTheoryAtom> flat_atoms;
 };
 
+struct TermPairKey {
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+
+  bool operator==(const TermPairKey& other) const = default;
+};
+
+struct TermPairKeyHash {
+  std::size_t operator()(const TermPairKey& key) const {
+    std::size_t seed = key.lhs + 0x9e3779b97f4a7c15ULL;
+    seed ^= key.rhs + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+    return seed;
+  }
+};
+
+TermPairKey canonical_term_pair(core::TermId lhs, core::TermId rhs) {
+  if (rhs < lhs) {
+    std::swap(lhs, rhs);
+  }
+  return TermPairKey{lhs, rhs};
+}
+
+struct FlatPairKey {
+  theory::equality::FlatTermId lhs = theory::equality::kInvalidFlatTermId;
+  theory::equality::FlatTermId rhs = theory::equality::kInvalidFlatTermId;
+
+  bool operator==(const FlatPairKey& other) const = default;
+};
+
+struct FlatPairKeyHash {
+  std::size_t operator()(const FlatPairKey& key) const {
+    std::size_t seed = key.lhs + 0x9e3779b97f4a7c15ULL;
+    seed ^= key.rhs + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+    return seed;
+  }
+};
+
+FlatPairKey canonical_flat_pair(theory::equality::FlatTermId lhs,
+                                theory::equality::FlatTermId rhs) {
+  if (rhs < lhs) {
+    std::swap(lhs, rhs);
+  }
+  return FlatPairKey{lhs, rhs};
+}
+
 FlatAssignedTheoryAtom flatten_assigned_atom(theory::equality::FlatTermIndex& flat,
                                              const core::TermManager& terms,
                                              const AssignedTheoryAtom& atom,
@@ -2618,6 +2685,100 @@ std::optional<sat::Clause> find_incremental_theory_conflict(
   return std::nullopt;
 }
 
+void record_disequality_propagation_opportunities(const core::TermManager& terms,
+                                                  const PreparedFlatTheory& prepared,
+                                                  const std::vector<AssignedTheoryAtom>& atoms,
+                                                  util::Statistics& statistics) {
+  if (atoms.size() != prepared.flat_atoms.size()) {
+    throw UnsupportedInput("internal theory atom mapping mismatch");
+  }
+
+  std::unordered_map<TermPairKey, bool, TermPairKeyHash> source_equalities;
+  std::unordered_map<FlatPairKey, bool, FlatPairKeyHash> flat_equalities;
+  source_equalities.reserve(atoms.size());
+  flat_equalities.reserve(atoms.size());
+
+  for (std::size_t i = 0; i < atoms.size(); ++i) {
+    if (atoms[i].filtered || !prepared.flat_atoms[i].equality) {
+      continue;
+    }
+    const core::Term& term = terms.get(atoms[i].term);
+    if (term.kind != core::TermKind::Equality || term.children.size() != 2) {
+      continue;
+    }
+    source_equalities.emplace(canonical_term_pair(term.children[0], term.children[1]),
+                              atoms[i].value);
+    flat_equalities.emplace(
+        canonical_flat_pair(prepared.flat_atoms[i].lhs, prepared.flat_atoms[i].rhs),
+        atoms[i].value);
+  }
+
+  std::unordered_map<theory::equality::FlatTermId, theory::equality::FlatDefinition>
+      definition_by_result;
+  definition_by_result.reserve(prepared.flat.definitions().size());
+  for (const theory::equality::FlatDefinition& definition : prepared.flat.definitions()) {
+    definition_by_result.emplace(definition.result, definition);
+  }
+
+  for (std::size_t i = 0; i < atoms.size(); ++i) {
+    if (atoms[i].filtered || !prepared.flat_atoms[i].equality || atoms[i].value) {
+      continue;
+    }
+
+    const auto lhs_definition = definition_by_result.find(prepared.flat_atoms[i].lhs);
+    const auto rhs_definition = definition_by_result.find(prepared.flat_atoms[i].rhs);
+    if (lhs_definition == definition_by_result.end() ||
+        rhs_definition == definition_by_result.end()) {
+      continue;
+    }
+    statistics.increment(kStatEufDiseqPropAssignedAppDisequalities);
+
+    const core::Term& source = terms.get(atoms[i].term);
+    if (source.kind == core::TermKind::Equality && source.children.size() == 2) {
+      const core::Term& lhs_source = terms.get(source.children[0]);
+      const core::Term& rhs_source = terms.get(source.children[1]);
+      if (lhs_source.kind == core::TermKind::Application &&
+          rhs_source.kind == core::TermKind::Application &&
+          lhs_source.symbol == rhs_source.symbol && lhs_source.children.size() == 1 &&
+          rhs_source.children.size() == 1) {
+        statistics.increment(kStatEufDiseqPropSourceUnaryCandidates);
+        const auto found = source_equalities.find(
+            canonical_term_pair(lhs_source.children[0], rhs_source.children[0]));
+        if (found != source_equalities.end()) {
+          statistics.increment(kStatEufDiseqPropSourceUnaryExistingArgAtom);
+          statistics.increment(found->second ? kStatEufDiseqPropSourceUnaryArgAtomTrue
+                                             : kStatEufDiseqPropSourceUnaryArgAtomFalse);
+        }
+      }
+    }
+
+    const theory::equality::FlatDefinition& lhs = lhs_definition->second;
+    const theory::equality::FlatDefinition& rhs = rhs_definition->second;
+    const auto argument_equality =
+        flat_equalities.find(canonical_flat_pair(lhs.argument, rhs.argument));
+    if (lhs.function == rhs.function) {
+      statistics.increment(kStatEufDiseqPropFlatSameFunctionCandidates);
+      if (argument_equality != flat_equalities.end()) {
+        statistics.increment(kStatEufDiseqPropFlatSameFunctionExistingArgAtom);
+        statistics.increment(argument_equality->second
+                                 ? kStatEufDiseqPropFlatSameFunctionArgAtomTrue
+                                 : kStatEufDiseqPropFlatSameFunctionArgAtomFalse);
+      }
+    }
+
+    const auto function_equality =
+        flat_equalities.find(canonical_flat_pair(lhs.function, rhs.function));
+    if (function_equality != flat_equalities.end() && function_equality->second &&
+        argument_equality != flat_equalities.end()) {
+      statistics.increment(kStatEufDiseqPropGuardedFunctionGuardCandidates);
+    }
+    if (argument_equality != flat_equalities.end() && argument_equality->second &&
+        function_equality != flat_equalities.end()) {
+      statistics.increment(kStatEufDiseqPropGuardedArgumentGuardCandidates);
+    }
+  }
+}
+
 CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
                             const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfUf);
@@ -2743,6 +2904,10 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
           assigned_theory_atom(options.pure_theory_filter, atom, atom_value);
       count_filtered_assignment(assigned, statistics);
       assigned_atoms.push_back(assigned);
+    }
+    if (resolved_options.euf_diseq_propagation_diagnostics && prepared_flat_theory.has_value()) {
+      record_disequality_propagation_opportunities(terms, prepared_flat_theory.value(),
+                                                   assigned_atoms, statistics);
     }
 
     if (euf_propagation == EufPropagationMode::Model) {
@@ -2893,6 +3058,17 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufPropagationAutoOnline, 0);
   statistics.set(kStatEufPropagationAutoConflict, 0);
   statistics.set(kStatEufPropagationAutoOff, 0);
+  statistics.set(kStatEufDiseqPropAssignedAppDisequalities, 0);
+  statistics.set(kStatEufDiseqPropSourceUnaryCandidates, 0);
+  statistics.set(kStatEufDiseqPropSourceUnaryExistingArgAtom, 0);
+  statistics.set(kStatEufDiseqPropSourceUnaryArgAtomTrue, 0);
+  statistics.set(kStatEufDiseqPropSourceUnaryArgAtomFalse, 0);
+  statistics.set(kStatEufDiseqPropFlatSameFunctionCandidates, 0);
+  statistics.set(kStatEufDiseqPropFlatSameFunctionExistingArgAtom, 0);
+  statistics.set(kStatEufDiseqPropFlatSameFunctionArgAtomTrue, 0);
+  statistics.set(kStatEufDiseqPropFlatSameFunctionArgAtomFalse, 0);
+  statistics.set(kStatEufDiseqPropGuardedFunctionGuardCandidates, 0);
+  statistics.set(kStatEufDiseqPropGuardedArgumentGuardCandidates, 0);
   statistics.set(kStatEufIncrementalTerms, 0);
   statistics.set(kStatEufIncrementalFlatDefinitions, 0);
   statistics.set(kStatEufIncrementalMerges, 0);

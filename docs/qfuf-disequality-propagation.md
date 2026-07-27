@@ -156,6 +156,37 @@ literal counts. This decides whether the new work should target online
 propagation, model-time propagation, or a SAT-level preprocessing clause
 experiment.
 
+This branch first implements an opt-in diagnostic-only upper-bound pass enabled
+by `--euf-diseq-prop-diagnostics`. It does not learn clauses or propagate
+literals. At each completed SAT assignment, the pass counts assigned app-result
+disequalities and checks whether the equality atoms needed by the proposed H1/H2
+rules already exist in the SAT abstraction. Because final theory checks see a
+complete SAT assignment, the diagnostic splits existing argument-equality atoms
+by their current assigned value instead of claiming to observe "unassigned"
+targets directly. These counters are still the right upper bound for whether
+online propagation could have had a SAT-visible target earlier in the search.
+
+The diagnostic counters are:
+
+- `:euf.diseq-prop.assigned-app-disequalities`;
+- `:euf.diseq-prop.source-unary-candidates`;
+- `:euf.diseq-prop.source-unary-existing-arg-atom`;
+- `:euf.diseq-prop.source-unary-arg-atom-true`;
+- `:euf.diseq-prop.source-unary-arg-atom-false`;
+- `:euf.diseq-prop.flat-same-function-candidates`;
+- `:euf.diseq-prop.flat-same-function-existing-arg-atom`;
+- `:euf.diseq-prop.flat-same-function-arg-atom-true`;
+- `:euf.diseq-prop.flat-same-function-arg-atom-false`;
+- `:euf.diseq-prop.guarded-function-guard-candidates`;
+- `:euf.diseq-prop.guarded-argument-guard-candidates`.
+
+The source-unary counters answer the narrow H1 question for syntactically unary
+SMT-LIB applications. The flat-same-function counters answer the same question
+after Primo's curried flattening, where a binary or larger application can expose
+a same-prefix child disequality opportunity. The guarded counters require a
+currently true sibling equality and a SAT-visible target equality atom; they are
+diagnostic only and do not yet construct guard reasons.
+
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:
@@ -233,16 +264,19 @@ Add focused tests before accepting any implementation:
 
 1. Establish a current-branch baseline on the focused NEQ manifests and the
    mixed QF_UF manifests using existing SLURM option-comparison scripts.
-2. Implement H1 behind an explicit option. Add stats for candidates inspected,
+2. Run the diagnostic-only upper-bound pass on the focused weak manifests and
+   full-suite fast-reference/slow-Primo gaps. Reject or narrow H1 if the
+   existing-target counts are too small.
+3. Implement H1 behind an explicit option. Add stats for candidates inspected,
    candidates rejected by missing existing atom, candidates rejected by missing
    guard, delivered propagations, and reason literal totals.
-3. Run unit tests, `make lint`, `make check`, and a local smoke fuzz gate.
-4. Compare H1 against the baseline on the focused NEQ manifest. If wrong
+4. Run unit tests, `make lint`, `make check`, and a local smoke fuzz gate.
+5. Compare H1 against the baseline on the focused NEQ manifest. If wrong
    answers or crashes appear, stop and fix correctness before performance work.
-5. If focused NEQ improves, evaluate on mixed QF_UF manifests. Keep the option
+6. If focused NEQ improves, evaluate on mixed QF_UF manifests. Keep the option
    default-off unless mixed-suite PAR2 is neutral or better and the fuzz gate is
    clean.
-6. Only then evaluate H2/H3. Record rejected experiments in `docs/run-log.json`
+7. Only then evaluate H2/H3. Record rejected experiments in `docs/run-log.json`
    and revert source changes that are not accepted.
 
 ## Initial acceptance bar

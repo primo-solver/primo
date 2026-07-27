@@ -90,6 +90,7 @@ struct CheckSatOptions {
   TheoryPhaseMode theory_phase = TheoryPhaseMode::Negative;
   EufExplainSearchMode euf_explain_search = EufExplainSearchMode::OneSidedBfs;
   bool euf_proof_forest_diagnostics = false;
+  bool euf_diseq_propagation_diagnostics = false;
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
   bool uf_symmetry_breaking = true;

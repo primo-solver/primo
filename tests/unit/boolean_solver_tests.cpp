@@ -1555,6 +1555,90 @@ void strong_preprocessing_enables_ground_congruence_clauses() {
   assert(result.statistics.get(":preprocessing.ground-congruence-clauses") >= 1);
 }
 
+void disequality_propagation_diagnostic_counts_syntactic_unary_opportunity() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
+  options.euf_diseq_propagation_diagnostics = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (not (= (f a) (f b))))
+    (assert (not (= a b)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-prop.assigned-app-disequalities") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-candidates") == 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-existing-arg-atom") == 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-arg-atom-false") == 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-candidates") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-existing-arg-atom") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-arg-atom-false") >= 1);
+}
+
+void disequality_propagation_diagnostic_counts_flat_curried_opportunity() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
+  options.euf_diseq_propagation_diagnostics = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (declare-fun f (A A) A)
+    (assert (not (= (f a x) (f a y))))
+    (assert (not (= x y)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-prop.assigned-app-disequalities") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-candidates") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-existing-arg-atom") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-arg-atom-false") >= 1);
+}
+
+void disequality_propagation_diagnostic_rejects_unguarded_nary_pairwise_claim() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
+  options.euf_diseq_propagation_diagnostics = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (declare-fun f (A A) A)
+    (assert (not (= (f a x) (f b y))))
+    (assert (not (= a b)))
+    (assert (not (= x y)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-prop.assigned-app-disequalities") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-prop.guarded-function-guard-candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-prop.guarded-argument-guard-candidates") == 0);
+}
+
 void model_euf_propagation_learns_congruence_lemma() {
   primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
@@ -2070,6 +2154,9 @@ int main() {
   theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape();
   theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape();
   strong_preprocessing_enables_ground_congruence_clauses();
+  disequality_propagation_diagnostic_counts_syntactic_unary_opportunity();
+  disequality_propagation_diagnostic_counts_flat_curried_opportunity();
+  disequality_propagation_diagnostic_rejects_unguarded_nary_pairwise_claim();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();
   model_euf_propagation_handles_predicate_congruence();
