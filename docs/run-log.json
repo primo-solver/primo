@@ -10313,6 +10313,38 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 8 and /home/user/.claude/plans/piped-wondering-fairy.md's item 8 section for the full corrected design and both empirical results (this one plus the diagnostic that led to it). This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-8)."
+    },
+    {
+      "id": "2026-07-27-qf-lra-theory-decisions-237-file-verification",
+      "started_at": "2026-07-27",
+      "recorded_at": "2026-07-27",
+      "kind": "benchmark",
+      "scope": "Broader 237-file stratified-sample re-verification of roadmap item 8's corrected round-robin design (commit fc28dbc), requested by the user before any default-on promotion decision -- the dramatic 9-file result (2026-07-27-qf-lra-theory-decisions-round-robin-fix) is from the same hand-picked 'both z3 and cvc5 solve in <1s, Primo timed out' files every item since item 7 has been measured against, not a representative sample. Only the primo task was resubmitted (--lra-theory-decisions), diffed against the unchanged z3.csv/cvc5.csv from job 114200, per the standing practice of not re-running reference solvers that haven't changed.",
+      "commit": "fc28dbc",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet --lra-theory-decisions (remote Release) vs. contrib/local/bin/{z3,cvc5} (unchanged, results reused from job 114200)"
+      },
+      "command": "sbatch --array=0-0 --export=ALL,PRIMO_COMPARE_SOLVERS='primo=build-slurm-rel/primo --quiet --lra-theory-decisions' scripts/slurm_qf_lra_solver_compare.sbatch as job 114244 (default manifest/timeout: benchmarks/qf-lra-stratified-sample.txt, 10s).",
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-stratified-sample.txt (same 237-file sample as item 0's baseline)",
+        "logic": "QF_LRA",
+        "manifest": "benchmarks/qf-lra-stratified-sample.txt"
+      },
+      "artifacts": {
+        "note": "Remote results/qf-lra-solver-compare-114244/primo.csv pulled back to results/qf-lra-solver-compare-114244/ locally (not committed), z3.csv/cvc5.csv copied over unchanged from results/qf-lra-solver-compare-114200/. Rendered as a colored per-instance HTML table via scripts/render_solver_compare_html.py and published as an Artifact."
+      },
+      "summary": {
+        "result": "Solved (of 237): primo-with-theory-decisions 106 (44.7%, DOWN from 108/45.6% pre-item-8), z3 167 (unchanged, reused), cvc5 150 (unchanged, reused). PAR2: 2682.0s, up slightly from 2675.6s (+0.2%). 0 wrong-answer disagreements. 4 files regress from solved to unsolved (LassoRanker/CooperatingT2/p-43.t2.c_Iteration5_Loop_4-pieceTemplate, sal/gasburner/gasburner-prop3-19, tta_startup/simple_startup_8nodes.synchro.induct, uart-10.base) against only 2 that newly solve.",
+        "significance": "The dramatic 9-dramatic-gap-file win (7/9 faster by 40-97%, sc-27 newly solved, zero regressions on that sample) does NOT generalize to the broader, more representative 237-file sample -- aggregate result is roughly flat, slightly negative. The round-robin decision order that dominates on the TM/sc/uart 'dramatic-gap' family (Boolean-guarded chains of many similar arithmetic atoms, where any stable order beats VSIDS's churn) is a wash-to-net-negative once families with different structure (LassoRanker, sal, tta_startup) are included in the sample. Confirms this is a real, useful but narrow lever, not a general-purpose improvement -- staying opt-in, not promoted to default-on. Also a concrete process lesson for this roadmap: the 9-file dramatic-gap sample is good for *finding* candidate techniques but not sufficient on its own for a promotion decision; the 237-file broader sample (as used for items 0-6's own promotion decisions) is the real bar."
+      },
+      "verification": {
+        "passed": [],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 8 for the final, complete writeup (retired cost-ranked design -> round-robin fix -> 9-file win -> 237-file non-generalization -> final not-promoted decision). This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-8), with item 8 staying opt-in."
     }
   ]
 }

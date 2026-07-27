@@ -666,14 +666,38 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   confirmation (jobs 114204/114205/114214) kept on record for the
   historical trail even though that design was replaced.
 
+  **Broader 237-file re-verification (job 114244, per the user's explicit
+  request before any promotion decision): the dramatic 9-file win does
+  NOT generalize.** Re-ran item 0's stratified sample (only the primo
+  task, diffed against the unchanged z3.csv/cvc5.csv from job 114200 --
+  per the standing "don't rerun unchanged reference solvers" practice).
+  Aggregate result is roughly flat, slightly negative: solved 108->106/237
+  (-2), PAR2 2675.6s->2682.0s (+0.2%), 0 wrong-answer disagreements, but 4
+  files regress from solved to unsolved (`LassoRanker/CooperatingT2/
+  p-43...`, `sal/gasburner-prop3-19`, `tta_startup/simple_startup_8nodes...`,
+  `uart-10.base`) against only 2 that newly solve. The round-robin order
+  that dominates on the TM/sc/uart "dramatic-gap" family (Boolean-guarded
+  chains of many similar arithmetic atoms, where *any* stable decision
+  order beats VSIDS's churn) is a wash-to-net-negative once families with
+  different structure (LassoRanker, sal, tta_startup) are included --
+  those 9 files were never a representative sample, they were specifically
+  the ones z3/cvc5 found easy and Primo didn't, which turns out to
+  correlate with exactly the file shape this heuristic helps. Rendered as
+  a colored per-instance HTML table via `scripts/render_solver_compare_
+  html.py`, matching standard practice.
+
   This closes out all of the QF_LRA competitiveness roadmap's
-  currently-planned items (0-8). Staying opt-in via `--lra-theory-decisions`
-  pending an explicit promotion decision (this evidence is from the same
-  9 hand-picked dramatic-gap files every item since item 7 has been
-  measured against, not yet re-verified against item 0's broader 237-file
-  stratified sample) -- but on this evidence it is the strongest
-  single-item result in the whole roadmap, and the clearest candidate for
-  promotion to default-on of anything items 0-8 produced.
+  currently-planned items (0-8). **Staying opt-in, not recommended for
+  default-on promotion** on the broader evidence -- despite being the
+  most dramatic *narrow*-sample win in the roadmap, it doesn't clear the
+  bar item 0-6's unconditional/promoted changes did (broad-sample
+  improvement, not narrow-sample-only). A useful lever for exactly the
+  TM/sc/uart Boolean-guarded-chain file shape (worth keeping available via
+  the flag), not a general-purpose default. This is also a concrete
+  lesson for how this roadmap evaluates future items: the 9-file
+  dramatic-gap sample is useful for *finding* techniques worth trying, but
+  not sufficient on its own for a promotion decision -- the 237-file
+  broader sample is the real bar, as it was for items 0-6.
 
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
