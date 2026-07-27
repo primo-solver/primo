@@ -9459,6 +9459,110 @@
       },
       "evidence_status": "current_local_smoke",
       "notes": "This validates the diagnostic evidence pipeline only. It is not sufficient evidence to accept or reject H1 for weak QF_UF benchmark families."
+    },
+    {
+      "id": "2026-07-27-local-qfuf-diseq-diagnostics-weak-4ada99d",
+      "recorded_at": "2026-07-27T00:00:00+02:00",
+      "kind": "benchmark",
+      "scope": "Local QF_UF disequality-propagation diagnostic run on weak NEQ/PEQ/SEQ manifests",
+      "commit": "4ada99d",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: 4ada99d; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "The external QF_UF.tar.zst archive was inspected for relative paths, extracted into ignored tmp/QF_UF, and added to .gitignore so the corpus tarball is not accidentally staged."
+      },
+      "command": {
+        "archive_list": "tar --zstd -tf QF_UF.tar.zst",
+        "archive_path_scan": "tar --zstd -tf QF_UF.tar.zst | rg -n <private-path-and-host-patterns>",
+        "extract": "mkdir -p tmp/QF_UF && tar --zstd -xf QF_UF.tar.zst -C tmp/QF_UF --strip-components=2",
+        "build": "cmake --build build --target primo",
+        "manifest": "Create results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/manifest.txt from the de-duplicated union of qfuf-smac-neq-validate, qfuf-smac-gap-train, and qfuf-smac-gap-validate with tmp/QF_UF/ stripped.",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-diseq-prop-diagnostics --timeout 60 --out results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/results.csv --summary results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/summary.csv --log-dir results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/logs",
+        "summarize": "python3 scripts/summarize_qfuf_diseq_diagnostics.py results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/results.csv --out results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/diseq-summary.csv --top 21"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-diseq-prop-diagnostics"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 21,
+        "timeout_seconds": 60,
+        "manifest": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/summary.csv",
+        "results": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/results.csv",
+        "diagnostic_summary": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/diseq-summary.csv",
+        "logs": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 21,
+        "solved": 20,
+        "wrong": 0,
+        "timeouts": 1,
+        "timed_out_with_stats": 1,
+        "par2": 230.868646,
+        "families": {
+          "NEQ": {
+            "total": 10,
+            "solved": 9,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "PEQ": {
+            "total": 8,
+            "solved": 8,
+            "timeouts": 0,
+            "wrong": 0
+          },
+          "SEQ": {
+            "total": 3,
+            "solved": 3,
+            "timeouts": 0,
+            "wrong": 0
+          }
+        },
+        "diagnostic_totals": {
+          ":euf.diseq-assignments": 15017654,
+          ":euf.diseq-prop.assigned-app-disequalities": 1,
+          ":euf.diseq-prop.source-unary-candidates": 0,
+          ":euf.diseq-prop.source-unary-existing-arg-atom": 0,
+          ":euf.diseq-prop.flat-same-function-candidates": 0,
+          ":euf.diseq-prop.flat-same-function-existing-arg-atom": 0,
+          ":euf.diseq-prop.guarded-function-guard-candidates": 0,
+          ":euf.diseq-prop.guarded-argument-guard-candidates": 0
+        },
+        "active_files": {
+          ":euf.diseq-prop.assigned-app-disequalities": 1
+        },
+        "timeout_files": [
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+        ],
+        "top_diagnostic_file": "tmp/QF_UF/SEQ/SEQ035_size6.smt2"
+      },
+      "verification": {
+        "passed": [
+          "QF_UF.tar.zst listed 7503 relative SMT-LIB paths under non-incremental/QF_UF",
+          "Archive path scan found no absolute paths, parent traversal entries, IP-like strings, or private-looking identifiers",
+          "The three weak manifests resolved with 0 missing files after extraction",
+          "build/primo --version reported git 4ada99d",
+          "The diagnostic run completed with 20 solved, 1 timeout, and 0 wrong answers",
+          "The diagnostic summary found zero source-unary, flat same-function, or guarded target opportunities"
+        ],
+        "pending": [
+          "A full 7503-file diagnostic campaign was not run locally because the weak-manifest result already rejects H1/H2 for the targeted NEQ/PEQ/SEQ weak set and a full run is better suited to SLURM."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This is negative evidence for implementing f(a) != f(b) -> a != b propagation as the next performance technique on the targeted weak manifests. The weak files contain many assigned disequality literals, but almost none are app-result disequalities with SAT-visible target atoms."
     }
   ]
 }

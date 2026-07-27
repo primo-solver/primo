@@ -197,6 +197,17 @@ smoke tests, and regression case. It found opportunity counters only in
 rather than evidence for accepting or rejecting H1 on the weak benchmark
 manifests.
 
+After unpacking the external `QF_UF.tar.zst` corpus into ignored `tmp/QF_UF`, a
+local 60-second diagnostic run at commit `4ada99d` covered the 21 unique files in
+`benchmarks/qfuf-smac-neq-validate.txt`, `benchmarks/qfuf-smac-gap-train.txt`,
+and `benchmarks/qfuf-smac-gap-validate.txt`. The run solved 20 files, timed out
+on `NEQ016_size8`, and reported 15,017,654 assigned disequality literals but
+only one assigned app-result disequality and zero source-unary, flat
+same-function, or guarded target opportunities. This rejects H1/H2 as a likely
+performance explanation for these weak NEQ/PEQ/SEQ manifests. Further QF_UF
+work should target the observed search/explanation costs instead of implementing
+this disequality-propagation rule first.
+
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:
