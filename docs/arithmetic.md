@@ -738,7 +738,23 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   `soi_directions_` vectorization fix and the `violated_vars_` worklist
   item. See `docs/run-log.json` for the full trail.
 
-**Not yet scheduled** (natural next candidates, not designed in detail):
+**Next round of heuristics (2026-07-27, designed, not implemented):** see
+[](qf-lra-heuristics.md) for a prioritized design note picking the
+remaining 61-file gap back up from fresh profiling and tableau-shape
+instrumentation at commit `35878c4`. Its headline findings: ~54% of runtime
+is allocator/GMP-copy overhead on *tiny* numbers (correcting item 0's
+follow-up conclusion that the remaining cost was inherent GCD
+canonicalization -- measured at under 2%); 36-95% of tableau rows on the
+lagging families are trivial single-variable slack rows that Dutertre & de
+Moura's own Section 2 would not create at all; and rows densify 3-5x during
+search (one variable reaching 2,127 `occurs_in_` entries) while none of
+Bland/Dantzig/SOI prices a pivot by its cost. The note also reclassifies
+the gap into three distinct bottleneck classes (pure-LP single-`check()`,
+pivot-cost-dominated, and assignment-volume-dominated) rather than one.
+
+**Not yet scheduled** (natural next candidates, not designed in detail;
+scale-invariant polynomial matching is now folded into
+[](qf-lra-heuristics.md)'s H1):
 scale-invariant polynomial matching (item 3, would extend both same-slack
 and row-based propagation's reach by letting proportional polynomials like
 `x<=5`/`2x<=10` share a slack); Devex or Steepest-Edge pivoting (Milestone

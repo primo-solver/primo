@@ -10383,6 +10383,67 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry (under 'Item 0 follow-up (2026-07-27, done, unconditional)') for the full writeup, including the gprof flat-profile finding that led to this fix."
+    },
+    {
+      "id": "2026-07-27-qf-lra-heuristics-design-profiling",
+      "started_at": "2026-07-27",
+      "recorded_at": "2026-07-27",
+      "kind": "profile",
+      "scope": "Local profiling + throwaway tableau-shape/fill-in instrumentation to ground docs/qf-lra-heuristics.md, a prioritized design note for the next round of QF_LRA speedup heuristics after competitiveness-roadmap items 0-8. Re-analyzed job 114200's 237-file comparison to isolate the 61 files z3 or cvc5 solve and Primo does not, then profiled and instrumented one representative instance per bottleneck class. Design only -- no solver source changed; the instrumentation was reverted (git checkout) after measurement and is not committed.",
+      "commit": "35878c4",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo (Release, commit 35878c4) plus two temporary instrumented rebuilds of the same tree",
+        "notes": "Local profiling for design purposes only. Per AGENTS.md, no measurement here is a benchmark claim; any speedup from implementing these items must be measured on Slurm."
+      },
+      "command": {
+        "gap_analysis": "python3 over results/qf-lra-solver-compare-114200/{primo,z3,cvc5}.csv, grouping status=='ok' by family and listing files where primo is unsolved but a reference is solved",
+        "stats": "./build/primo --quiet --stats <instance> under `timeout 15..25`, reading :sat.decisions, :sat.conflicts, :lra.pivots, :lra.online-check-calls, :lra.theory-propagations",
+        "perf": "perf record -q -g -o p1.data ./build/primo --quiet tmp/QF_LRA/DTP-Scheduling/constraints-tempo-width-30.smt2 ; perf report --stdio --no-children -g none",
+        "shape_instrumentation": "TEMPORARY (reverted): env-gated PRIMO_LRA_SHAPE fprintf after PreparedLraTheory construction in check_sat.cpp, reporting atom count, distinct slack/row count, count of rows with exactly one term, and average/max row length",
+        "fillin_instrumentation": "TEMPORARY (reverted): env-gated PRIMO_LRA_FILL fprintf every N pivots in LraTableau::pivot(), reporting basic-row count, average/max row length, and average/max occurs_in_ size",
+        "revert": "git checkout src/theory/arithmetic/lra_tableau.cpp src/smt/check_sat.cpp"
+      },
+      "benchmark": {
+        "suite": "Representative instances from the 61 gap files of benchmarks/qf-lra-stratified-sample.txt (job 114200)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 25,
+        "instances": [
+          "tmp/QF_LRA/latendresse/ecoliFBAyicesTest-500.smt2",
+          "tmp/QF_LRA/DTP-Scheduling/constraints-tempo-width-30.smt2",
+          "tmp/QF_LRA/clock_synchro/clocksynchro_2clocks.main_invar.induct.smt2",
+          "tmp/QF_LRA/miplib/pp08a-12000.smt2",
+          "tmp/QF_LRA/tta_startup/simple_startup_4nodes.bug.induct.smt2",
+          "tmp/QF_LRA/TM/p6-zenonumeric_s5.smt2",
+          "tmp/QF_LRA/uart/uart-17.induction.cvc.smt2",
+          "tmp/QF_LRA/sc/sc-17.induction3.cvc.smt2",
+          "tmp/QF_LRA/2019-ezsmt/blending/3.smt2",
+          "tmp/QF_LRA/LassoRanker/CooperatingT2/selectSort.t2.c_Iteration3_Loop_7-phaseTemplate.smt2",
+          "tmp/QF_LRA/2017-Heizmann-UltimateInvariantSynthesis/_standard_two_index_06.i_3_2_2.bpl_7.smt2"
+        ]
+      },
+      "artifacts": {
+        "design_note": "docs/qf-lra-heuristics.md",
+        "reanalyzed_comparison": "results/qf-lra-solver-compare-114200/ (Slurm job 114200, unchanged, reused)",
+        "perf_data": "session scratchpad p1.data (local-only, not retained)"
+      },
+      "summary": {
+        "gap_shape": "61 of 237 files are solved by z3 or cvc5 but not Primo. Concentrated in TM (9), uart (9), sc (8), 2019-ezsmt (7), latendresse (6), miplib (5), tta_startup (5), DTP-Scheduling (4), clock_synchro (4), Heizmann/LassoRanker (3). Fastest reference times are 0.13-0.57s on most of them. Families where Primo already ties both references (keymaera, meti-tarski, sal, spider_benchmarks, check) and where all three fail (tropical-matrix) are excluded as design targets.",
+        "three_bottleneck_classes": "Class A (latendresse): 0 decisions, 1 check() call -- one conjunctive LP that never finishes, so SAT-side heuristics are irrelevant there. Class B (clock_synchro 1,515 decisions / 8,997 pivots / 13.9s; miplib pp08a-12000 4,564 / 8,314 / 13.9s): ~1.5 ms per pivot. Class C (DTP-Scheduling constraints-tempo-width-30: 60,750 decisions, ZERO conflicts, 63,021 check calls, 7,182 pivots, 19.5s): ~320 microseconds per decision with no learning at all.",
+        "perf_flat_profile": "On constraints-tempo-width-30: LraTableau::pivot 31.4% self; allocator ~42% (_int_malloc 10.5, _int_free 7.9, malloc 5.8, cfree 5.2, malloc_consolidate 5.2, unlink_chunk 4.3, gmp_default_allocate 1.5); GMP copy/init ~12% (__gmpn_copyi 5.6, __gmpz_init_set 3.4, __gmpq_clear 1.6); actual bignum arithmetic ~5% (__gmpz_mul 1.4, __gmpq_mul 1.0, __gmpz_gcd 0.8, __gmpn_gcd_1 0.7, __gmpz_divexact_gcd 0.5, __gmpq_aors 0.5); rebuild_occurs_in_index 1.3%.",
+        "corrects_prior_conclusion": "This contradicts the conclusion recorded under roadmap item 0's follow-up (2026-07-26) that what remained after the container fixes was inherent mpq_class GCD canonicalization that 'no container-level fix can remove'. Measured, canonicalization/GCD is under 2% and ALL real bignum arithmetic is ~5%; ~54% is malloc/free plus copying of TINY numbers. The values are small, the representation is expensive -- which makes a small-rational (int64/int64 with GMP fallback) fast path the single largest available lever, not a dead end.",
+        "tableau_shape": "Share of prepared rows that are a single-variable slack (row = c*x): latendresse/ecoliFBAyicesTest-500 3,161/4,555 (69%); TM/p6-zenonumeric_s5 1,311/1,378 (95%); miplib/pp08a-12000 262/400 (66%); sc-17 462/1,185 (39%); uart-17 526/1,446 (36%); tta_startup 84/584 (14%); LassoRanker/selectSort 653/9,469 (7%); clock_synchro 5/264 (2%); DTP-Scheduling/constraints-tempo-width-30 0/3,932 (0%, average row exactly 2.00 and max row 2 -- a pure difference-logic problem in QF_LRA clothing). Dutertre & de Moura Section 2 introduces slack variables only for compound polynomials; Primo allocates one per distinct polynomial including bare variables, and because polynomial keys are exact-content matches, '(<= 0 r1)' and '(<= r1 1000)' land on two DIFFERENT slacks for the same variable.",
+        "fill_in": "Rows densify 3-5x during search. constraints-tempo-width-30: average row 2.00 -> 3.7-8.9, max row 33, max occurs_in 2,127. clocksynchro_2clocks: 2.75 -> 8.1-14.3, max row 34, max occurs_in 174. ecoliFBAyicesTest-500: 3.39 -> 7.9-23.9, max row 961, and fewer than 2,000 pivots in 30+s (>15 ms per pivot). Since pivot() costs |occurs_in(entering)| * |row(leaving)| rational operations, and none of Bland/Dantzig/SOI prices a pivot by its cost, fill-in is currently unopposed.",
+        "design_output": "docs/qf-lra-heuristics.md proposes six items in priority order: H2 small-rational fast path in util::Rational; H1 direct bounds for single-variable atoms plus scale-canonical polynomial keys (which subsumes not-yet-scheduled roadmap item 3 and removes item 7's documented single_variable_slack positive-coefficient quirk); H3 fill-in-aware Markowitz-style entering-variable selection with a prefer-|coeff|=1 tie-break and partial pricing; H5 model-based phase selection via CaDiCaL's phase()/unphase() to keep item 8's win without its VSIDS-override regressions; H4 batched bound assertion deferring update() to item 6's existing quiescence point; H6 difference-logic fragment detection (Tier 1) with Cotton & Maler DL0-DL4 as the larger Tier 2. Recommended order: H2 -> H1 -> H3 -> H5 -> H4 -> H6."
+      },
+      "verification": {
+        "instrumentation_reverted": "git checkout src/theory/arithmetic/lra_tableau.cpp src/smt/check_sat.cpp; git status --short clean for src/ afterwards; build/primo rebuilt from the reverted tree",
+        "source_changes": "none -- this entry is design evidence only",
+        "reference_solvers": "results/qf-lra-solver-compare-114200/{z3,cvc5}.csv reused unchanged, not re-run (standing practice for unchanged reference solvers)"
+      },
+      "evidence_status": "current",
+      "followups": "Implement in the recommended order. Each item needs unit tests for its own invariant, make check plus ASAN/UBSan, :lra.pivots / :lra.online-check-calls / :sat.decisions / :sat.conflicts reported alongside wall time, a Slurm merge-gate fuzz run (campaign-gate on both Bland and SOI paths for H1/H2/H4, which change unconditional core behavior), and the 237-file stratified sample as the promotion bar. Also add :lra.rows / :lra.tableau-vars / :lra.row-nonzeros stats -- their absence is why the fill-in explosion went unnoticed through eight roadmap items."
     }
   ]
 }

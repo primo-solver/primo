@@ -7,6 +7,7 @@ chapters:
   - file: euf
   - file: preprocessing
   - file: arithmetic
+  - file: qf-lra-heuristics
   - file: difference_logic
   - file: debugging
   - file: experiments
@@ -19,5 +20,6 @@ chapters:
   - file: papers/smt-symmetry-breaking
   - file: papers/finite-model-finding-sorts
   - file: papers/fast-linear-arithmetic-dpllt
+  - file: papers/lra-related-work
   - file: papers/difference-constraint-propagation
   - file: reference/llm2smt-retrospective
