@@ -9563,6 +9563,142 @@
       },
       "evidence_status": "current_local",
       "notes": "This is negative evidence for implementing f(a) != f(b) -> a != b propagation as the next performance technique on the targeted weak manifests. The weak files contain many assigned disequality literals, but almost none are app-result disequalities with SAT-visible target atoms."
+    },
+    {
+      "id": "2026-07-27-local-qfuf-ackermann-diagnostics-weak-451feb2",
+      "recorded_at": "2026-07-27T00:00:00+02:00",
+      "kind": "benchmark",
+      "scope": "Local QF_UF Ackermann cost diagnostic run on weak NEQ/PEQ/SEQ manifests",
+      "commit": "451feb2",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: 451feb2; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "The external QF_UF.tar.zst archive remained ignored and extracted under ignored tmp/QF_UF. No archive contents or private path metadata were added."
+      },
+      "command": {
+        "build": "cmake --build build --target primo -j2",
+        "manifest": "Create results/qfuf-ackermann-diagnostics-451feb2-weak-local/manifest.txt from the de-duplicated union of qfuf-smac-neq-validate, qfuf-smac-gap-train, and qfuf-smac-gap-validate with tmp/QF_UF/ stripped.",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest results/qfuf-ackermann-diagnostics-451feb2-weak-local/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-ackermann-diagnostics --solver-arg=--euf-diseq-prop-diagnostics --timeout 60 --out results/qfuf-ackermann-diagnostics-451feb2-weak-local/results.csv --summary results/qfuf-ackermann-diagnostics-451feb2-weak-local/summary.csv --log-dir results/qfuf-ackermann-diagnostics-451feb2-weak-local/logs",
+        "summarize_ackermann": "python3 scripts/summarize_qfuf_ackermann_diagnostics.py results/qfuf-ackermann-diagnostics-451feb2-weak-local/results.csv --out results/qfuf-ackermann-diagnostics-451feb2-weak-local/ackermann-summary.csv --top 21",
+        "summarize_diseq": "python3 scripts/summarize_qfuf_diseq_diagnostics.py results/qfuf-ackermann-diagnostics-451feb2-weak-local/results.csv --out results/qfuf-ackermann-diagnostics-451feb2-weak-local/diseq-summary.csv --top 21"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-ackermann-diagnostics --euf-diseq-prop-diagnostics"
+      },
+      "references": [
+        {
+          "kind": "paper",
+          "citation": "Roberto Bruttomesso, Alessandro Cimatti, Anders Franzen, Alberto Griggio, Alessandro Santuari, and Roberto Sebastiani, To Ackermann-ize or not to Ackermann-ize? On Efficiently Handling Uninterpreted Function Symbols in SMT(EUF union T), LPAR 2006.",
+          "use": "Cost-model motivation only; no Ackermann rewriting or clause generation was implemented."
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 21,
+        "timeout_seconds": 60,
+        "manifest": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/summary.csv",
+        "results": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/results.csv",
+        "ackermann_summary": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/ackermann-summary.csv",
+        "diseq_summary": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/diseq-summary.csv",
+        "logs": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 21,
+        "solved": 20,
+        "wrong": 0,
+        "timeouts": 1,
+        "timed_out_with_stats": 1,
+        "par2": 212.654533,
+        "families": {
+          "NEQ": {
+            "total": 10,
+            "solved": 9,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "PEQ": {
+            "total": 8,
+            "solved": 8,
+            "timeouts": 0,
+            "wrong": 0
+          },
+          "SEQ": {
+            "total": 3,
+            "solved": 3,
+            "timeouts": 0,
+            "wrong": 0
+          }
+        },
+        "ackermann_totals": {
+          ":euf.ackermann.applications": 88539,
+          ":euf.ackermann.function-symbols": 218,
+          ":euf.ackermann.eligible-symbols": 218,
+          ":euf.ackermann.unary-symbols": 107,
+          ":euf.ackermann.nary-symbols": 111,
+          ":euf.ackermann.estimated-constraints": 133942973,
+          ":euf.ackermann.estimated-equalities": 404721026,
+          ":euf.ackermann.estimated-clause-lits": 404721026,
+          ":euf.ackermann.max-symbol-applications": 51762,
+          ":euf.ackermann.max-symbol-arity": 50,
+          ":euf.ackermann.symbols-cost-le-100": 65,
+          ":euf.ackermann.symbols-cost-le-1000": 102,
+          ":euf.ackermann.symbols-cost-le-10000": 150
+        },
+        "timeout_file": {
+          "file": "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "applications": 1307,
+          "function_symbols": 4,
+          "eligible_symbols": 4,
+          "unary_symbols": 3,
+          "nary_symbols": 1,
+          "estimated_constraints": 599212,
+          "estimated_equalities": 1789752,
+          "max_symbol_applications": 1088,
+          "max_symbol_arity": 2,
+          "symbols_cost_le_100": 0,
+          "symbols_cost_le_1000": 0,
+          "symbols_cost_le_10000": 3,
+          "euf_assignments": 8868487,
+          "diseq_assignments": 5762805,
+          "incremental_conflicts": 335002,
+          "explain_bfs_searches": 20343911,
+          "explain_bfs_visited": 228643107
+        },
+        "diseq_diagnostic_totals": {
+          ":euf.diseq-assignments": 15663172,
+          ":euf.diseq-prop.assigned-app-disequalities": 1,
+          ":euf.diseq-prop.source-unary-candidates": 0,
+          ":euf.diseq-prop.flat-same-function-candidates": 0,
+          ":euf.diseq-prop.guarded-function-guard-candidates": 0,
+          ":euf.diseq-prop.guarded-argument-guard-candidates": 0
+        },
+        "top_full_ackermann_cost_file": "tmp/QF_UF/NEQ/NEQ015_size6.smt2"
+      },
+      "verification": {
+        "passed": [
+          "build/primo --version reported git 451feb2",
+          "The diagnostic run completed with 20 solved, 1 timeout, and 0 wrong answers",
+          "The Ackermann summary estimated 404,721,026 full equality/clause literals across the weak manifest",
+          "The timeout row had zero eligible symbols at pair-cost <= 100 or <= 1000 and three at pair-cost <= 10000",
+          "The paired disequality diagnostic again found zero source-unary, flat same-function, or guarded target opportunities"
+        ],
+        "pending": [
+          "A full 7503-file Ackermann diagnostic campaign was not run locally; use SLURM before promoting any partial-Ackermannization experiment.",
+          "No Ackermann rewriting or clause generation was implemented, so this run is negative design evidence rather than a behavior-change fuzz gate."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This rejects full Ackermannization as the next QF_UF weak-set technique. The paper remains relevant as a cost model and for future bounded PARTIAL-style preprocessing, but the measured weak rows have too many repeated applications for eager full Ackermann constraints."
     }
   ]
 }

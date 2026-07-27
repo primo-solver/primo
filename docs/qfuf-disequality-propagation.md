@@ -250,6 +250,19 @@ Ackermannization is a plausible next experiment. If both the full estimate and
 the low-cost symbol counts are poor, this should be rejected before adding any
 encoding code.
 
+The local weak-manifest run at commit `451feb2` enabled both Ackermann and
+disequality diagnostics on the 21-file NEQ/PEQ/SEQ set. It solved 20 files,
+timed out on `NEQ016_size8`, and reported no wrong answers. Full
+Ackermannization is rejected for this set: the diagnostic estimated 133,942,973
+pair constraints and 404,721,026 equality/clause literals across the 21 files.
+The timeout row alone had 1,307 reachable applications over four eligible
+symbols, 599,212 estimated pair constraints, 1,789,752 estimated equality/clause
+literals, and a largest symbol with 1,088 applications. Its low-cost symbol
+buckets were zero at pair-cost <= 100 and <= 1000, and three at <= 10000. That
+leaves only a bounded partial-Ackermannization experiment as possible future
+work, and only after profiling confirms that SAT-visible consistency clauses for
+those cheap symbols attack the dominant explanation/search cost.
+
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:
