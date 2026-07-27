@@ -699,6 +699,45 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   not sufficient on its own for a promotion decision -- the 237-file
   broader sample is the real bar, as it was for items 0-6.
 
+- **Item 0 follow-up (2026-07-27, done, unconditional): deferred
+  `occurs_in_` rebuild in `LraTableau::pop()`.** Asked to gprof-profile
+  `TM/p5-zenonumeric_s5.smt2` (one of the 3 files item 0's follow-up
+  originally profiled) turned up a real, previously-missed bug:
+  `rebuild_occurs_in_index()` showed up at ~9% self-time in the flat
+  profile, second only to `pivot()` itself, with a call count (17,665)
+  almost exactly matching the file's total pivot count (18,097). Root
+  cause: `undo()` called it once per `PivotTrailEntry`/`FRowTrailEntry`
+  it undid, not once per `pop()` call -- so a single `pop()` unwinding N
+  pivots at once (a full multi-decision-level backtrack) did N redundant
+  full `O(vars_.size())` rebuilds instead of one. The function only ever
+  reads `rows_`/`is_basic` (never `occurs_in_` itself), so there's no
+  ordering dependency across the undo loop -- deferring it to run once at
+  the end of `pop()`, mirroring the existing `rebuild_violated_vars()`
+  precedent, is sound. Re-profiling confirms the call count drops to 535
+  (-97%) on the same file.
+
+  Verified with a paired same-node, same-time A/B on the Slurm remote
+  (alternating before/after binary runs to control for cluster-load drift,
+  which had made a naive historical comparison misleading -- the cluster
+  was running noticeably slower than when items 0-6 were first measured,
+  confounding a straight before/after against old documented numbers):
+  `TM/p5-zenonumeric_s5` -10.6% (9.92s->8.87s avg of 3 runs),
+  `sc-21.induction3` -4.2% (50.51s->48.40s), `uart-18.induction` -9.4%
+  (13.18s->11.95s). `:sat.decisions`/`:lra.pivots` bit-identical
+  before/after on all three (pure perf change, no selection-order
+  change, matching every other item-0-follow-up fix's own invariant).
+  Full suite (Release + ASAN/UBSan) green. Since this touches
+  unconditional core Check/Pivot code, verified at both merge-gate (jobs
+  114707 Bland: 500 cases, 472 PASS/28 TIMEOUT/0 CRASH/0 WRONG; 114708
+  SOI: 500 cases, 341 PASS/159 TIMEOUT/0 CRASH/0 WRONG) and campaign-gate
+  (jobs 114709 Bland: fuzzsmt 3000/3000 -- 2882 PASS/118 TIMEOUT/0
+  CRASH/0 WRONG, opfuzz 14/14 valid/0 bugs, yinyang 0 bugs; 114710 SOI:
+  fuzzsmt 3000/3000 -- 2035 PASS/965 TIMEOUT/0 CRASH/0 WRONG, opfuzz
+  14/14 valid/0 bugs, yinyang 0 bugs) tiers, on both pivoting paths,
+  matching the precedent set by the original `occurs_in_`/`rows_`/
+  `soi_directions_` vectorization fix and the `violated_vars_` worklist
+  item. See `docs/run-log.json` for the full trail.
+
 **Not yet scheduled** (natural next candidates, not designed in detail):
 scale-invariant polynomial matching (item 3, would extend both same-slack
 and row-based propagation's reach by letting proportional polynomials like

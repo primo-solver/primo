@@ -10345,6 +10345,44 @@
       },
       "evidence_status": "current_local",
       "notes": "See docs/arithmetic.md's Milestone-roadmap entry for item 8 for the final, complete writeup (retired cost-ranked design -> round-robin fix -> 9-file win -> 237-file non-generalization -> final not-promoted decision). This closes out all of the QF_LRA competitiveness roadmap's currently-planned items (0-8), with item 8 staying opt-in."
+    },
+    {
+      "id": "2026-07-27-qf-lra-occurs-in-rebuild-deferred-fix",
+      "started_at": "2026-07-27",
+      "recorded_at": "2026-07-27",
+      "kind": "fuzz",
+      "scope": "Merge-gate and campaign-gate fuzz confirmation for an unconditional LraTableau::pop()/undo() fix (commit 9b2c712), found via gprof-profiling TM/p5-zenonumeric_s5.smt2 at the user's request. rebuild_occurs_in_index() was ~9% self-time in the flat profile (second only to pivot()), called once per PivotTrailEntry/FRowTrailEntry undone inside undo() rather than once per pop() call -- a single pop() unwinding N pivots did N redundant full O(vars_.size()) rebuilds. Fixed by deferring the rebuild to once at the end of pop()'s while loop (the function only reads rows_/is_basic, never occurs_in_ itself, so there's no ordering dependency), mirroring the existing rebuild_violated_vars() precedent. Since this touches unconditional core Check/Pivot code, verified at merge-gate and campaign-gate tiers on both Bland and SOI pivoting paths, matching the precedent set by the original occurs_in_/rows_/soi_directions_ vectorization fix and the violated_vars_ worklist item.",
+      "commit": "9b2c712",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via SSH config /tmp/llm2smt_slurm_ssh_config, ProxyJump jump-data-ciirc)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-pivoting-rule soi] (remote Release)"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py; then sbatch --array=0-0 ... PRIMO_FUZZ_SOLVER='.../primo --quiet [--lra-pivoting-rule soi]', PRIMO_FUZZ_FUZZSMT_SHARDS=1, PRIMO_FUZZ_FUZZSMT_COUNT=500, PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA for merge-gate (jobs 114707 Bland, 114708 SOI); then sbatch (default 9-task array) with PRIMO_FUZZ_OPFUZZ_SEEDS/PRIMO_FUZZ_YINYANG_SEEDS=.../benchmarks/seeds/qf_lra_real, TYPEFUZZ=.../.venv-yinyang/bin/typefuzz, PATH including .venv-yinyang/bin, for campaign-gate (jobs 114709 Bland, 114710 SOI). Separately (not part of the fuzz gate itself): a paired same-node A/B timing comparison, building the pre-fix binary in a `git worktree add /tmp/primo-before-fix <parent commit>` (with contrib/local symlinked from the main checkout to avoid rebuilding vendored deps) and alternating before/after runs on the same node to control for cluster-load drift that had made a naive comparison against old historical numbers misleading; worktree removed afterward.",
+      "benchmark": {
+        "suite": "Merge-gate: fuzzsmt (QF_LRA, 500 cases) vs. z3, each pivoting rule. Campaign-gate: fuzzsmt (6 shards x 500 = 3000 cases) + opfuzz + yinyang typefuzz mutation against benchmarks/seeds/qf_lra_real (14 real files), each pivoting rule, all vs. z3.",
+        "logic": "QF_LRA",
+        "manifest": null
+      },
+      "artifacts": {
+        "note": "Remote fuzz-results/qfuf-gate-114707/ through -114710/ on llm2smt-slurm -- not committed. Paired A/B timing output captured in the session transcript only."
+      },
+      "summary": {
+        "result": "Merge-gate: Bland (114707) 500/500 -- 472 PASS/28 TIMEOUT/0 CRASH/0 WRONG; SOI (114708) 500/500 -- 341 PASS/159 TIMEOUT/0 CRASH/0 WRONG (SOI's higher timeout rate is expected/pre-existing). Campaign-gate: Bland (114709) fuzzsmt 3000/3000 -- 2882 PASS/118 TIMEOUT/0 CRASH/0 WRONG, opfuzz 14/14 valid/0 bugs, yinyang 0 bugs; SOI (114710) fuzzsmt 3000/3000 -- 2035 PASS/965 TIMEOUT/0 CRASH/0 WRONG, opfuzz 14/14 valid/0 bugs, yinyang 0 bugs. Paired A/B timing (same node, same time window, 3 alternating runs each): TM/p5-zenonumeric_s5 9.92s->8.87s avg (-10.6%), sc-21.induction3 50.51s->48.40s avg (-4.2%), uart-18.induction 13.18s->11.95s avg (-9.4%). :sat.decisions/:lra.pivots bit-identical before/after on all three.",
+        "significance": "No wrong-answer disagreements or crashes on either pivoting path at either fuzz tier -- confirms deferring the occurs_in_ rebuild is sound, not just locally unit-tested. The paired-timing methodology was itself a necessary finding: a naive comparison against old documented baseline numbers (TM/p5 4.21s, sc-21 23.11s, uart-18 6.24s from item 6) showed this run's numbers ~2x slower across the board on both before and after binaries, which briefly looked like a regression until a same-time paired comparison isolated it as cluster-load drift rather than anything code-related -- the real, load-controlled effect is a modest but consistent 4-11% wall-clock improvement with zero decision/pivot-count change (a pure perf fix, exactly like the other item-0-follow-up allocation fixes)."
+      },
+      "verification": {
+        "passed": [
+          "500-case merge-gate-tier fuzzsmt-vs-z3 QF_LRA run on both Bland and SOI pivoting paths: 0 crashes, 0 wrong-answer disagreements.",
+          "3000-case campaign-gate-tier fuzzsmt-vs-z3 QF_LRA run on both paths: 0 crashes, 0 wrong-answer disagreements.",
+          "Campaign-gate opfuzz (14/14 real qf_lra_real seeds valid) and yinyang typefuzz mutation (2 shards) on both paths: 0 bug triggers anywhere.",
+          "Full local suite (Release + ASAN/UBSan) green, including primo_lra_tableau_tests.",
+          "Paired same-node A/B timing: 4-11% wall-clock improvement on 3 previously-profiled files, decisions/pivots bit-identical."
+        ],
+        "pending": []
+      },
+      "evidence_status": "current_local",
+      "notes": "See docs/arithmetic.md's Milestone-roadmap entry (under 'Item 0 follow-up (2026-07-27, done, unconditional)') for the full writeup, including the gprof flat-profile finding that led to this fix."
     }
   ]
 }
