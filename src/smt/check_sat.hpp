@@ -68,6 +68,7 @@ enum class LraPivotingRule {
   Bland,
   Dantzig,
   Soi,
+  Sparse,
 };
 
 struct AutoBudget {
@@ -137,6 +138,9 @@ struct CheckSatOptions {
   // behavior) until Dantzig has its own campaign-tier confirmation --
   // see docs/papers/lra-related-work.md's pivoting-rule survey.
   LraPivotingRule lra_pivoting_rule = LraPivotingRule::Bland;
+  // Only meaningful with LraPivotingRule::Sparse -- see
+  // LraTableau::set_sparse_leaving.
+  bool lra_sparse_leaving = false;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;

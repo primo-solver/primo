@@ -15,7 +15,8 @@ LraVarId LraTableau::add_variable() {
   return id;
 }
 
-void LraTableau::add_row(LraVarId basic_var, const std::vector<std::pair<LraVarId, util::Rational>>& terms) {
+void LraTableau::add_row(LraVarId basic_var,
+                         const std::vector<std::pair<LraVarId, util::Rational>>& terms) {
   Row row;
   row.reserve(terms.size());
   DeltaRational assignment = DeltaRational::from_rational(util::Rational(0));
@@ -33,7 +34,7 @@ void LraTableau::add_row(LraVarId basic_var, const std::vector<std::pair<LraVarI
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, DeltaRational value,
-                                                               sat::Lit reason) {
+                                                              sat::Lit reason) {
   VarState& state = vars_.at(var);
   if (state.upper.has_value() && value >= state.upper->value) {
     return std::nullopt;
@@ -57,7 +58,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, Delt
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, DeltaRational value,
-                                                               sat::Lit reason) {
+                                                              sat::Lit reason) {
   VarState& state = vars_.at(var);
   if (state.lower.has_value() && value <= state.lower->value) {
     return std::nullopt;
@@ -186,8 +187,15 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   const std::vector<LraVarId> affected = occurs_in_[entering_var];
   occurs_in_[entering_var].clear();
 
+  // What this pivot actually costs, in the two quantities item H3's sparsity
+  // rule minimizes -- see row_update_count()/row_term_op_count(). Counting
+  // them here rather than estimating from :lra.pivots is the difference
+  // between explaining a result and guessing at one.
+  row_update_count_ += affected.size();
+
   for (const LraVarId other_basic : affected) {
     Row other_row = rows_.at(other_basic);
+    row_term_op_count_ += other_row.size() + new_entering_row.size();
     trail_entry.old_other_rows.emplace_back(other_basic, other_row);
 
     // Reused member (see combine_scratch_'s own comment): sort-merge
@@ -346,7 +354,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
     // increasing j helps if t0j<0 and j isn't pinned at its upper bound.
     const bool eligible =
         t0j_positive ? (!j_state.lower.has_value() || j_state.assignment > j_state.lower->value)
-                    : (!j_state.upper.has_value() || j_state.assignment < j_state.upper->value);
+                     : (!j_state.upper.has_value() || j_state.assignment < j_state.upper->value);
     if (!eligible) {
       continue;
     }
@@ -435,8 +443,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
           best_k_for_j = k;
           best_delta_vio_for_j = delta_vio;
         } else {
-          const DeltaRational best_abs =
-              delta_positive ? best_delta_for_j : -best_delta_for_j;
+          const DeltaRational best_abs = delta_positive ? best_delta_for_j : -best_delta_for_j;
           if (delta_vio < best_delta_vio_for_j ||
               (delta_vio == best_delta_vio_for_j && abs_delta < best_abs) ||
               (delta_vio == best_delta_vio_for_j && abs_delta == best_abs && k < best_k_for_j)) {
@@ -485,7 +492,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       best_j = j;
       best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j};
     } else if (sign < best_sign || (sign == best_sign && abs_score > best_abs_score) ||
-              (sign == best_sign && abs_score == best_abs_score && j < best_j)) {
+               (sign == best_sign && abs_score == best_abs_score && j < best_j)) {
       best_sign = sign;
       best_abs_score = abs_score;
       best_j = j;
@@ -522,7 +529,8 @@ std::unordered_map<LraVarId, util::Rational> LraTableau::restricted_soi_row(
   return restricted;
 }
 
-std::vector<sat::Lit> LraTableau::build_soi_conflict(const std::vector<LraVarId>& error_vars) const {
+std::vector<sat::Lit> LraTableau::build_soi_conflict(
+    const std::vector<LraVarId>& error_vars) const {
   // Section V-B: f_S restricted to `error_vars` (NOT the full f_var_ row,
   // which reflects every originally-violated row -- error_vars may be a
   // minimize_soi_conflict()-shrunk subset of that), same sign-branching
@@ -563,7 +571,7 @@ bool LraTableau::soi_subset_still_conflicts(const std::vector<LraVarId>& subset)
     const bool t0j_positive = t0j.sign() > 0;
     const bool eligible =
         t0j_positive ? (!j_state.lower.has_value() || j_state.assignment > j_state.lower->value)
-                    : (!j_state.upper.has_value() || j_state.assignment < j_state.upper->value);
+                     : (!j_state.upper.has_value() || j_state.assignment < j_state.upper->value);
     if (eligible) {
       return false;
     }
@@ -613,8 +621,110 @@ std::vector<LraVarId> LraTableau::quickxplain(const std::vector<LraVarId>& backg
 #pragma GCC diagnostic pop
 #endif
 
-std::vector<LraVarId> LraTableau::minimize_soi_conflict(const std::vector<LraVarId>& error_vars) const {
+std::vector<LraVarId> LraTableau::minimize_soi_conflict(
+    const std::vector<LraVarId>& error_vars) const {
   return quickxplain({}, error_vars);
+}
+
+// Whether a non-basic variable with coefficient `coeff` in the violated
+// variable's row can move in the direction that would repair the violation.
+// Every candidate passing this test repairs it by the same amount, which is
+// what makes the choice among them free with respect to progress -- see
+// PivotingRule::Sparse's comment.
+bool LraTableau::can_enter(const util::Rational& coeff, const VarState& state, bool too_low) const {
+  const bool positive = coeff.sign() > 0;
+  if (too_low) {
+    return positive ? (!state.upper.has_value() || state.assignment < state.upper->value)
+                    : (!state.lower.has_value() || state.assignment > state.lower->value);
+  }
+  return positive ? (!state.lower.has_value() || state.assignment > state.lower->value)
+                  : (!state.upper.has_value() || state.assignment < state.upper->value);
+}
+
+LraVarId LraTableau::select_entering_variable(LraVarId violated, bool too_low, bool use_bland) {
+  const Row& row = rows_.at(violated);
+
+  if (use_bland) {
+    // Bland's rule: smallest index among the eligible candidates.
+    LraVarId entering = vars_.size();
+    for (const auto& [var, coeff] : row) {
+      if (can_enter(coeff, vars_.at(var), too_low) && var < entering) {
+        entering = var;
+      }
+    }
+    return entering;
+  }
+
+  if (rule_ == PivotingRule::Sparse) {
+    return select_sparse_entering_variable(row, too_low);
+  }
+
+  // Dantzig-style: pick the largest |coefficient| among eligible entering
+  // candidates, tie-breaking by smallest index -- Row isn't sorted by var id,
+  // so the index comparison has to be explicit (can't rely on scan order the
+  // way the Bland branch above does).
+  LraVarId entering = vars_.size();
+  util::Rational best_abs_coeff(0);
+  for (const auto& [var, coeff] : row) {
+    if (!can_enter(coeff, vars_.at(var), too_low)) {
+      continue;
+    }
+    const util::Rational abs_coeff = coeff.sign() < 0 ? -coeff : coeff;
+    if (entering == vars_.size() || abs_coeff > best_abs_coeff ||
+        (abs_coeff == best_abs_coeff && var < entering)) {
+      entering = var;
+      best_abs_coeff = abs_coeff;
+    }
+  }
+  return entering;
+}
+
+// PivotingRule::Sparse's entering choice (heuristics-note item H3): among the
+// eligible candidates, the one occurring in the fewest rows, because pivot()
+// rewrites exactly those rows.
+//
+// The scan is bounded (kSparsePricingCandidateLimit) but only in how many
+// *eligible* candidates it scores -- never in how much of the row it reads
+// before concluding there are none. Returning "none" is what check() turns
+// into a conflict, so an early exit before finding one would be unsound, not
+// merely suboptimal. The loop below therefore only breaks after the counter
+// has been incremented, i.e. after at least one candidate is in hand.
+LraVarId LraTableau::select_sparse_entering_variable(const Row& row, bool too_low) {
+  LraVarId entering = vars_.size();
+  std::size_t best_occurrences = 0;
+  bool best_has_unit_coeff = false;
+  std::size_t scored = 0;
+
+  const std::size_t size = row.size();
+  const std::size_t start = size == 0 ? 0 : sparse_pricing_cursor_ % size;
+  for (std::size_t offset = 0; offset < size; ++offset) {
+    const auto& [var, coeff] = row[(start + offset) % size];
+    if (!can_enter(coeff, vars_.at(var), too_low)) {
+      continue;
+    }
+    const std::size_t occurrences = occurs_in_[var].size();
+    // Prefer pivoting on +/-1: then 1/coeff is integral and the rewrite
+    // introduces no new denominators, keeping coefficients inside
+    // util::Rational's machine-word fast path (observable as
+    // :rational.promotions staying flat).
+    const bool has_unit_coeff = coeff == util::Rational(1) || coeff == util::Rational(-1);
+    const bool better = entering == vars_.size() || occurrences < best_occurrences ||
+                        (occurrences == best_occurrences &&
+                         (has_unit_coeff != best_has_unit_coeff ? has_unit_coeff : var < entering));
+    if (better) {
+      entering = var;
+      best_occurrences = occurrences;
+      best_has_unit_coeff = has_unit_coeff;
+    }
+    if (++scored >= kSparsePricingCandidateLimit) {
+      break;
+    }
+  }
+
+  if (entering != vars_.size()) {
+    ++sparse_pricing_cursor_;
+  }
+  return entering;
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::check() {
@@ -691,7 +801,8 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
   }
 
   while (true) {
-    if (rule_ == PivotingRule::Dantzig && !fallback_counted && pivot_count > bland_fallback_threshold) {
+    if (rule_ == PivotingRule::Dantzig && !fallback_counted &&
+        pivot_count > bland_fallback_threshold) {
       ++bland_fallback_count_;
       fallback_counted = true;
     }
@@ -700,6 +811,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
     LraVarId violated = vars_.size();
     bool too_low = false;
     DeltaRational best_violation;
+    std::size_t best_row_size = 0;
     // Iterate violated_vars_ (see its own comment) instead of every
     // variable in the tableau: membership already guarantees `id` is
     // basic and currently out of exactly one bound, so there's no
@@ -720,6 +832,23 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         too_low = candidate_too_low;
         break;
       }
+      // PivotingRule::Sparse with the opt-in leaving-side knob (see
+      // set_sparse_leaving): repair a *short* row first, since the row being
+      // pivoted out becomes the substituted-in row and its length is the
+      // second Markowitz factor. Violation magnitude drops to a tie-break.
+      // Unlike the entering-side rule this changes which infeasibility gets
+      // repaired, which is why it is separately gated.
+      if (sparse_leaving_ && rule_ == PivotingRule::Sparse) {
+        const std::size_t row_size = rows_[id].size();
+        if (violated == vars_.size() || row_size < best_row_size ||
+            (row_size == best_row_size && violation > best_violation)) {
+          violated = id;
+          too_low = candidate_too_low;
+          best_violation = violation;
+          best_row_size = row_size;
+        }
+        continue;
+      }
       // Dantzig-style: pick the most-violated basic variable (largest
       // magnitude out-of-bounds), tie-breaking by smallest index.
       if (violated == vars_.size() || violation > best_violation) {
@@ -732,36 +861,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       return std::nullopt;
     }
 
-    LraVarId entering = vars_.size();
-    util::Rational best_abs_coeff(0);
-    for (const auto& [var, coeff] : rows_.at(violated)) {
-      const VarState& var_state = vars_.at(var);
-      const bool positive = coeff.sign() > 0;
-      const bool can_move =
-          too_low ? (positive ? (!var_state.upper.has_value() || var_state.assignment < var_state.upper->value)
-                              : (!var_state.lower.has_value() || var_state.assignment > var_state.lower->value))
-                 : (positive ? (!var_state.lower.has_value() || var_state.assignment > var_state.lower->value)
-                              : (!var_state.upper.has_value() || var_state.assignment < var_state.upper->value));
-      if (!can_move) {
-        continue;
-      }
-      if (use_bland) {
-        if (var < entering) {
-          entering = var;
-        }
-        continue;
-      }
-      // Dantzig-style: pick the largest |coefficient| among eligible
-      // entering candidates, tie-breaking by smallest index -- Row isn't
-      // sorted by var id, so the index comparison has to be explicit
-      // (can't rely on scan order the way the Bland branch above does).
-      const util::Rational abs_coeff = coeff.sign() < 0 ? -coeff : coeff;
-      if (entering == vars_.size() || abs_coeff > best_abs_coeff ||
-          (abs_coeff == best_abs_coeff && var < entering)) {
-        entering = var;
-        best_abs_coeff = abs_coeff;
-      }
-    }
+    const LraVarId entering = select_entering_variable(violated, too_low, use_bland);
     if (entering == vars_.size()) {
       return build_conflict(violated, too_low);
     }

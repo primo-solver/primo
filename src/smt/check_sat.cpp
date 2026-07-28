@@ -144,6 +144,11 @@ constexpr util::StatKey kStatLraBlandFallbacks = util::StatKey::LraBlandFallback
 constexpr util::StatKey kStatLraSoiMultiRowConflicts = util::StatKey::LraSoiMultiRowConflicts;
 constexpr util::StatKey kStatLraSoiQuickxplainCalls = util::StatKey::LraSoiQuickxplainCalls;
 constexpr util::StatKey kStatLraPivots = util::StatKey::LraPivots;
+// Item H3's cost accounting: what the pivots actually cost, not just how
+// many there were -- a sparsity rule's whole risk is trading one for the
+// other, so both have to be visible.
+constexpr util::StatKey kStatLraPivotRowUpdates = util::StatKey::LraPivotRowUpdates;
+constexpr util::StatKey kStatLraPivotTermOps = util::StatKey::LraPivotTermOps;
 // Distinct from kStatLraTheoryChecks: that one counts iterations of
 // solve_qf_lra's outer backend.solve() loop (always 1 under the IPASIR
 // online-propagator path, since the whole search happens inside a single
@@ -290,6 +295,8 @@ theory::arithmetic::LraTableau::PivotingRule lra_pivoting_rule_from_options(LraP
       return theory::arithmetic::LraTableau::PivotingRule::Bland;
     case LraPivotingRule::Soi:
       return theory::arithmetic::LraTableau::PivotingRule::Soi;
+    case LraPivotingRule::Sparse:
+      return theory::arithmetic::LraTableau::PivotingRule::Sparse;
   }
   return theory::arithmetic::LraTableau::PivotingRule::Bland;
 }
@@ -3327,9 +3334,13 @@ CanonicalPolynomial canonical_polynomial(const theory::arithmetic::LinearPolynom
 // needs multiple atoms to share a tableau variable, and without this dedup
 // they essentially never would.
 struct PreparedLraTheory {
+  // `sparse_leaving` is a search option rather than a structural one, but it
+  // is configured here because the base tableau is what every solving path
+  // copies from -- both OnlineLraPropagator and the non-IPASIR fallback.
   PreparedLraTheory(const core::TermManager& terms,
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-                    theory::arithmetic::LraTableau::PivotingRule pivoting_rule);
+                    theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
+                    bool sparse_leaving);
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -3357,8 +3368,10 @@ struct PreparedLraTheory {
 
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-                                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule)
+                                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
+                                     bool sparse_leaving)
     : base_tableau(pivoting_rule) {
+  base_tableau.set_sparse_leaving(sparse_leaving);
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
   auto get_var = [&](core::TermId term_id) {
     const auto found = var_ids.find(term_id);
@@ -3932,6 +3945,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     const std::size_t multi_row_conflicts_before = tableau_.soi_multi_row_conflict_count();
     const std::size_t quickxplain_calls_before = tableau_.soi_quickxplain_call_count();
     const std::size_t pivots_before = tableau_.pivot_count();
+    const std::size_t row_updates_before = tableau_.row_update_count();
+    const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
     conflict_ = tableau_.check();
     statistics_.increment(kStatLraBlandFallbacks,
@@ -3941,6 +3956,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     statistics_.increment(kStatLraSoiQuickxplainCalls,
                           tableau_.soi_quickxplain_call_count() - quickxplain_calls_before);
     statistics_.increment(kStatLraPivots, tableau_.pivot_count() - pivots_before);
+    statistics_.increment(kStatLraPivotRowUpdates,
+                          tableau_.row_update_count() - row_updates_before);
+    statistics_.increment(kStatLraPivotTermOps, tableau_.row_term_op_count() - term_ops_before);
   }
 
   // Scans the other atoms sharing `slack` with the atom that was just
@@ -4180,8 +4198,9 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
-  const PreparedLraTheory prepared_theory(
-      terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule));
+  const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms(),
+                                          lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+                                          options.lra_sparse_leaving);
   publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR

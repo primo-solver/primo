@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <utility>
 #include <vector>
 
 #include "sat/lit.hpp"
@@ -221,14 +222,16 @@ void push_pop_restores_state_across_a_pivot() {
 
   // Redo the exact same assertion; must reproduce the identical conflict.
   const auto redone_conflict = tableau.assert_lower(s2, rat(3), lower_reason);
-  const auto redone_check_conflict = redone_conflict.has_value() ? redone_conflict : tableau.check();
+  const auto redone_check_conflict =
+      redone_conflict.has_value() ? redone_conflict : tableau.check();
   assert(redone_check_conflict.has_value());
   assert(redone_check_conflict->size() == 2);
   assert(has_reason(*redone_check_conflict, upper_reason));
   assert(has_reason(*redone_check_conflict, lower_reason));
 }
 
-bool same_reason_set(const std::optional<std::vector<Lit>>& a, const std::optional<std::vector<Lit>>& b) {
+bool same_reason_set(const std::optional<std::vector<Lit>>& a,
+                     const std::optional<std::vector<Lit>>& b) {
   if (a.has_value() != b.has_value()) {
     return false;
   }
@@ -434,6 +437,126 @@ void multi_pivot_system_with_varied_coefficients_under_dantzig() {
   assert(tableau.bland_fallback_count() == 0);
 }
 
+// PivotingRule::Sparse (heuristics-note item H3, Monniaux CAV 2009 p.8).
+// Among the entering candidates that all repair the violation equally, take
+// the one occurring in the fewest rows -- those are exactly the rows pivot()
+// rewrites.
+
+void sparse_picks_the_column_occurring_in_fewest_rows() {
+  // s0 = x + y, and y additionally occurs in s1 and s2 while x occurs
+  // nowhere else. Repairing s0 admits either x or y; Bland would take the
+  // smaller index (x is 0, y is 1 -- so Bland happens to agree here, which is
+  // why the coefficients below make Dantzig disagree), Dantzig would take the
+  // larger |coefficient| (y, at 5), and Sparse must take x, which occurs in
+  // one row rather than three.
+  const auto build = [](LraTableau::PivotingRule rule) {
+    LraTableau tableau(rule);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s0 = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    tableau.add_row(s0, {{x, Rational(1)}, {y, Rational(5)}});
+    tableau.add_row(s1, {{y, Rational(1)}});
+    tableau.add_row(s2, {{y, Rational(1)}});
+    // Drive s0 below a lower bound so check() must pivot to repair it.
+    assert(!tableau.assert_lower(s0, rat(10), Lit{1}).has_value());
+    assert(!tableau.check().has_value());
+    return tableau;
+  };
+
+  const LraTableau sparse = build(LraTableau::PivotingRule::Sparse);
+  const LraTableau dantzig = build(LraTableau::PivotingRule::Dantzig);
+  // Sparse brings in x (one occurrence); Dantzig brings in y (coefficient 5).
+  assert(sparse.is_basic(0));
+  assert(!sparse.is_basic(1));
+  assert(!dantzig.is_basic(0));
+  assert(dantzig.is_basic(1));
+  // Whichever entered, the repaired system must satisfy the bound -- the
+  // choice is a cost decision, never a correctness one.
+  assert(sparse.assignment(2) >= rat(10));
+  assert(dantzig.assignment(2) >= rat(10));
+}
+
+void sparse_prefers_a_unit_coefficient_when_occurrences_tie() {
+  // Both x and y occur in exactly one row, so the sparsity score ties and the
+  // tie-break decides: x's coefficient is 3, y's is 1. Pivoting on +/-1
+  // introduces no new denominator, which is what keeps coefficients inside
+  // util::Rational's machine-word fast path.
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(3)}, {y, Rational(1)}});
+
+  assert(!tableau.assert_lower(s, rat(6), Lit{1}).has_value());
+  assert(!tableau.check().has_value());
+  assert(!tableau.is_basic(x));
+  assert(tableau.is_basic(y));
+  assert(tableau.assignment(s) >= rat(6));
+}
+
+void sparse_bounded_pricing_still_finds_the_only_eligible_candidate() {
+  // The candidate scan is capped, but the cap may only bound how many
+  // *eligible* candidates get scored -- never how much of the row is read
+  // before concluding there are none, because "none" is what check() turns
+  // into a conflict. Here the row is far wider than the cap and every term
+  // except the last is pinned at a bound it cannot move away from, so the one
+  // eligible candidate sits past where a naive cap would stop looking. The
+  // system is satisfiable, so reporting a conflict would be unsound.
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  constexpr int kWidth = 64;  // Comfortably past kSparsePricingCandidateLimit.
+  std::vector<std::pair<LraVarId, Rational>> row;
+  std::vector<LraVarId> pinned;
+  for (int i = 0; i < kWidth; ++i) {
+    const LraVarId v = tableau.add_variable();
+    pinned.push_back(v);
+    row.emplace_back(v, Rational(1));
+  }
+  const LraVarId free_var = tableau.add_variable();
+  row.emplace_back(free_var, Rational(1));
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, row);
+
+  // Pin every term but the last to exactly 0, so none of them can increase.
+  for (int i = 0; i < kWidth; ++i) {
+    assert(
+        !tableau.assert_upper(pinned[static_cast<std::size_t>(i)], rat(0), Lit{i + 1}).has_value());
+  }
+  // s >= 1 is repairable only by raising free_var.
+  assert(!tableau.assert_lower(s, rat(1), Lit{1000}).has_value());
+
+  assert(!tableau.check().has_value());  // Must pivot, not report a conflict.
+  assert(tableau.is_basic(free_var));
+  assert(tableau.assignment(s) >= rat(1));
+}
+
+void sparse_matches_bland_on_multi_pivot_scenarios() {
+  // Same shape as soi_matches_bland_on_multi_pivot_scenarios: the rule is a
+  // pure cost lever, so it must agree with Bland on every verdict.
+  const auto run = [](LraTableau::PivotingRule rule, bool sparse_leaving) {
+    LraTableau tableau(rule);
+    tableau.set_sparse_leaving(sparse_leaving);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    tableau.add_row(s1, {{x, Rational(2)}, {y, Rational(1)}});
+    tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(3)}});
+    assert(!tableau.assert_lower(x, rat(0), Lit{1}).has_value());
+    assert(!tableau.assert_lower(y, rat(0), Lit{2}).has_value());
+    assert(!tableau.assert_upper(s1, rat(4), Lit{3}).has_value());
+    assert(!tableau.assert_upper(s2, rat(9), Lit{4}).has_value());
+    assert(!tableau.assert_lower(y, rat(20), Lit{5}).has_value());
+    return tableau.check().has_value();
+  };
+  const bool bland = run(LraTableau::PivotingRule::Bland, false);
+  assert(run(LraTableau::PivotingRule::Sparse, false) == bland);
+  // The leaving-side knob is a separate opt-in and must not change verdicts
+  // either.
+  assert(run(LraTableau::PivotingRule::Sparse, true) == bland);
+}
+
 // PivotingRule::Soi (competitiveness-roadmap item 4, King/Barrett/Dutertre
 // FMCAD 2013 "Simplex with Sum of Infeasibilities for SMT"). The paper's
 // own Fig 6 worked example, reproduced exactly: T: x1 = 2*x2 - x3;
@@ -552,7 +675,8 @@ void soi_push_pop_restores_state_across_a_pivot() {
   // conflict (Soi's own conflict set may legitimately differ in size
   // from Bland's, but must still be sound and reproducible run to run).
   const auto redone_conflict = tableau.assert_lower(s2, rat(3), lower_reason);
-  const auto redone_check_conflict = redone_conflict.has_value() ? redone_conflict : tableau.check();
+  const auto redone_check_conflict =
+      redone_conflict.has_value() ? redone_conflict : tableau.check();
   assert(redone_check_conflict.has_value());
   assert(has_reason(*redone_check_conflict, upper_reason));
   assert(has_reason(*redone_check_conflict, lower_reason));
@@ -588,8 +712,8 @@ void soi_multi_row_conflict_includes_every_violated_row() {
   // every cited reason must be one of the five asserted above.
   for (const Lit reason : *conflict) {
     assert(reason.value == x_lower.value || reason.value == z_lower.value ||
-          reason.value == y_lower.value || reason.value == s1_upper.value ||
-          reason.value == s2_upper.value);
+           reason.value == y_lower.value || reason.value == s1_upper.value ||
+           reason.value == s2_upper.value);
   }
 }
 
@@ -653,6 +777,10 @@ int main() {
   satisfiable_system_via_a_slack_row_under_dantzig();
   infeasible_system_requires_a_pivot_to_discover_under_dantzig();
   multi_pivot_system_with_varied_coefficients_under_dantzig();
+  sparse_picks_the_column_occurring_in_fewest_rows();
+  sparse_prefers_a_unit_coefficient_when_occurrences_tie();
+  sparse_bounded_pricing_still_finds_the_only_eligible_candidate();
+  sparse_matches_bland_on_multi_pivot_scenarios();
   soi_reproduces_paper_fig6_worked_example();
   soi_matches_bland_on_multi_pivot_scenarios();
   soi_push_pop_restores_state_across_a_pivot();

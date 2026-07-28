@@ -169,6 +169,8 @@ enum class StatKey : std::size_t {
   LraTableauVars,
   LraRows,
   LraRowNonzeros,
+  LraPivotRowUpdates,
+  LraPivotTermOps,
   Count,
 };
 

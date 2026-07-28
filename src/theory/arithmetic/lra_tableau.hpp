@@ -99,7 +99,25 @@ class LraTableau {
   // infeasibilities across *every* out-of-bound basic variable at once --
   // giving pivot selection a global progress criterion Bland/Dantzig
   // both lack. See the SOI-specific members/methods below.
-  enum class PivotingRule { Bland, Dantzig, Soi };
+  //
+  // Sparse (heuristics-note item H3) prices what a pivot *costs* rather than
+  // what it achieves: it keeps Dantzig's most-violated leaving choice and
+  // picks, among the eligible entering candidates, the one occurring in the
+  // fewest rows. pivot() rewrites every row in occurs_in_[entering], merging
+  // in a row of length |row(leaving)|, so a pivot's cost and the fill-in it
+  // creates are the Markowitz product |occurs_in(entering)| * |row(leaving)|
+  // -- and none of Bland, Dantzig or Soi prices either factor. Crucially,
+  // once the leaving variable is fixed, *every* eligible entering candidate
+  // repairs the same violation by the same amount, so this choice is free
+  // with respect to progress: Bland and Dantzig are already picking
+  // arbitrarily among equivalent options, and Sparse just picks the cheapest
+  // of them. Same anti-cycling story as Dantzig (fallback to Bland selection
+  // past a per-call pivot threshold). Source: Monniaux, "On using
+  // floating-point computations to help an exact linear arithmetic decision
+  // procedure" (CAV 2009), p.8, which sorts by "number of occurrences in
+  // equations" for the same reason -- only that sparsity criterion is taken
+  // from the paper, not its floating-point preprocessing contribution.
+  enum class PivotingRule { Bland, Dantzig, Soi, Sparse };
 
   explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {
     if (rule_ == PivotingRule::Soi) {
@@ -187,6 +205,28 @@ class LraTableau {
   // per-round delta (e.g. for a statistics counter) should snapshot this
   // before and after a check() call themselves.
   std::size_t bland_fallback_count() const { return bland_fallback_count_; }
+
+  // PivotingRule::Sparse only: prefer a violated variable with a short row
+  // when choosing which one to repair, rather than the most-violated one.
+  // This is the *other* Markowitz factor (Monniaux p.8's first sorting
+  // criterion), and unlike the entering-side choice it is NOT
+  // progress-neutral -- it changes which infeasibility gets repaired -- so it
+  // is a separate opt-in knob, measured on its own rather than confounded
+  // with the entering-side rule. Off by default; no effect under any other
+  // pivoting rule.
+  void set_sparse_leaving(bool enabled) { sparse_leaving_ = enabled; }
+
+  // Cost accounting for the Check/Pivot loop, in the two quantities item H3
+  // actually minimizes -- pivot *count* alone cannot distinguish "fewer
+  // pivots" from "cheaper pivots", and the whole risk of a sparsity rule is
+  // that it trades one for the other. Cumulative across this tableau's
+  // lifetime; callers wanting a per-round delta snapshot before and after,
+  // the same convention pivot_count() uses.
+  //
+  // row_update_count: rows rewritten, i.e. sum of |occurs_in(entering)|.
+  // row_term_op_count: terms merged while rewriting them.
+  std::size_t row_update_count() const { return row_update_count_; }
+  std::size_t row_term_op_count() const { return row_term_op_count_; }
 
   // Cumulative count of pivot() calls across this tableau's lifetime --
   // diagnostic only (measuring whether check()'s current eager-per-literal
@@ -279,6 +319,14 @@ class LraTableau {
 
   void update(LraVarId nonbasic_var, const DeltaRational& new_value);
   void pivot(LraVarId basic_var, LraVarId entering_var);
+
+  // check()'s entering-variable choice, split out so the three rules stay
+  // readable side by side. can_enter() is the eligibility test they share --
+  // every candidate passing it repairs the violation by the same amount.
+  bool can_enter(const util::Rational& coeff, const VarState& state, bool too_low) const;
+  LraVarId select_entering_variable(LraVarId violated, bool too_low, bool use_bland);
+  LraVarId select_sparse_entering_variable(const Row& row, bool too_low);
+
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
   void undo(const TrailEntry& entry);
   void rebuild_occurs_in_index();
@@ -359,9 +407,32 @@ class LraTableau {
   std::vector<LraVarId> quickxplain(const std::vector<LraVarId>& background,
                                     const std::vector<LraVarId>& candidates) const;
 
+  // PivotingRule::Sparse: how many *eligible* entering candidates to score
+  // before settling for the best seen so far. Rows reach several hundred
+  // terms on real instances (691 on latendresse/ecoliFBAyicesTest-500), and
+  // scoring all of them would spend on selection what the rule is trying to
+  // save on the pivot. Not precisely derived; small enough to bound the scan,
+  // large enough that the sparsest candidate is usually among those seen.
+  //
+  // This caps only how many eligible candidates are *scored*. It must never
+  // cut the scan short of establishing that at least one exists: "no eligible
+  // entering candidate" is exactly what check() reports as a conflict, so
+  // giving up early without having found one would manufacture an unsound
+  // conflict rather than merely a worse pivot. See select_entering_variable.
+  static constexpr std::size_t kSparsePricingCandidateLimit = 16;
+
   PivotingRule rule_;
+  bool sparse_leaving_ = false;
+  // Rotating start offset for Sparse's bounded candidate scan. pivot()
+  // rebuilds rows in sorted-by-variable-id order, so always starting at the
+  // front would bias the bounded scan toward low-numbered variables; rotating
+  // spreads it. Search state, not tableau state -- deliberately not trailed,
+  // since it only affects which equally-valid pivot is chosen.
+  std::size_t sparse_pricing_cursor_ = 0;
   std::size_t bland_fallback_count_ = 0;
   std::size_t pivot_count_ = 0;
+  std::size_t row_update_count_ = 0;
+  std::size_t row_term_op_count_ = 0;
   std::size_t soi_multi_row_conflict_count_ = 0;
   std::size_t soi_quickxplain_call_count_ = 0;
   std::optional<LraVarId> f_var_;

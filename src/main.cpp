@@ -207,8 +207,17 @@ int main(int argc, char** argv) {
                  "falls back to bland after enough pivots within one check()), or soi "
                  "(Sum-of-Infeasibilities Simplex, King/Barrett/Dutertre FMCAD 2013 -- a "
                  "global Check/Pivot objective across every violated row at once, also "
-                 "falls back to bland after enough pivots within one check())")
-      ->check(CLI::IsMember({"bland", "dantzig", "soi"}));
+                 "falls back to bland after enough pivots within one check()), or sparse "
+                 "(prices what a pivot costs: among the entering candidates that all "
+                 "repair the violation equally, take the one occurring in the fewest "
+                 "rows, since those are exactly the rows the pivot rewrites)")
+      ->check(CLI::IsMember({"bland", "dantzig", "soi", "sparse"}));
+  app.add_flag("--lra-sparse-leaving", solver_options.lra_sparse_leaving,
+               "With --lra-pivoting-rule sparse, also prefer repairing a violated "
+               "variable whose row is short, using violation magnitude only as a "
+               "tie-break. Unlike the entering-side rule this changes which "
+               "infeasibility gets repaired, so it is separately gated")
+      ->default_val(false);
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_flag("--ground-unit-substitution", solver_options.ground_unit_substitution,
@@ -271,8 +280,8 @@ int main(int argc, char** argv) {
   app.add_option("--euf-explain-search", euf_explain_search,
                  "Incremental EUF explanation search: one-sided, bidirectional, proof-forest, "
                  "reoriented-proof-forest, or structural-proof-forest")
-      ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest", "reoriented-proof-forest",
-                             "structural-proof-forest"}));
+      ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest",
+                             "reoriented-proof-forest", "structural-proof-forest"}));
   app.add_flag("--euf-proof-forest-diagnostics", euf_proof_forest_diagnostics,
                "Record proof-forest path counters for incremental EUF explanations");
   app.add_option("--pure-theory-filter", pure_theory_filter,
@@ -463,6 +472,8 @@ int main(int argc, char** argv) {
     solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Dantzig;
   } else if (lra_pivoting_rule == "soi") {
     solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Soi;
+  } else if (lra_pivoting_rule == "sparse") {
+    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Sparse;
   } else {
     solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Bland;
   }

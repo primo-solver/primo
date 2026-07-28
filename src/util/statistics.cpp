@@ -171,6 +171,8 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.tableau-vars"sv,
     ":lra.rows"sv,
     ":lra.row-nonzeros"sv,
+    ":lra.pivot-row-updates"sv,
+    ":lra.pivot-term-ops"sv,
 };
 
 }  // namespace

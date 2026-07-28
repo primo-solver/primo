@@ -634,6 +634,59 @@ void dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
   assert(sat_branching.result == CheckSatResult::Sat);
 }
 
+void sparse_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
+  // Mirrors the dantzig/soi variants above, under PivotingRule::Sparse
+  // (heuristics-note item H3). The rule prices what a pivot costs; every
+  // entering candidate it chooses between repairs the same violation by the
+  // same amount, so verdicts must be identical to Bland's -- and the
+  // leaving-side knob, which is *not* progress-neutral, must not change them
+  // either.
+  for (const bool sparse_leaving : {false, true}) {
+    CheckSatOptions sparse;
+    sparse.lra_pivoting_rule = LraPivotingRule::Sparse;
+    sparse.lra_sparse_leaving = sparse_leaving;
+
+    const auto unsat_pivot = check_sat_smtlib(R"(
+      (set-logic QF_LRA)
+      (declare-fun x () Real)
+      (declare-fun y () Real)
+      (assert (<= (+ x y) 1))
+      (assert (>= (+ x (* 2 y)) 3))
+      (assert (>= x 0))
+      (assert (>= y 0))
+      (check-sat)
+    )",
+                                              sparse);
+    assert(unsat_pivot.result == CheckSatResult::Unsat);
+    assert(unsat_pivot.statistics.get(StatKey::LraPivots) > 0);
+    // The cost counters must actually move when pivots happen -- they are
+    // what any promotion decision for this rule rests on.
+    assert(unsat_pivot.statistics.get(StatKey::LraPivotRowUpdates) > 0);
+    assert(unsat_pivot.statistics.get(StatKey::LraPivotTermOps) > 0);
+
+    const auto unsat_branching = check_sat_smtlib(R"(
+      (set-logic QF_LRA)
+      (declare-fun x () Real)
+      (assert (or (<= x 0) (>= x 10)))
+      (assert (<= 3 x))
+      (assert (<= x 7))
+      (check-sat)
+    )",
+                                                  sparse);
+    assert(unsat_branching.result == CheckSatResult::Unsat);
+
+    const auto sat_branching = check_sat_smtlib(R"(
+      (set-logic QF_LRA)
+      (declare-fun x () Real)
+      (assert (or (<= x 0) (>= x 10)))
+      (assert (= x 10))
+      (check-sat)
+    )",
+                                                sparse);
+    assert(sat_branching.result == CheckSatResult::Sat);
+  }
+}
+
 void soi_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
   // Mirrors dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios
   // exactly, under PivotingRule::Soi (competitiveness-roadmap item 4).
@@ -1049,6 +1102,7 @@ int main() {
   strict_boundary_is_unsat();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
+  sparse_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
   soi_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
   soi_multi_row_conflict_fires_end_to_end();
   handles_disequality_via_boolean_level_case_splitting();
