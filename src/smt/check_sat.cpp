@@ -464,12 +464,12 @@ class TermBuilder {
   // replacement for `for (child : children) results.push_back(build_term(child));`.
   void schedule_all(std::shared_ptr<std::vector<const smtlib::SExpr*>> exprs,
                     std::function<void(std::vector<core::TermId>)> done);
-  void schedule_all_from(std::shared_ptr<std::vector<const smtlib::SExpr*>> exprs, std::size_t index,
-                         std::vector<core::TermId> results,
+  void schedule_all_from(std::shared_ptr<std::vector<const smtlib::SExpr*>> exprs,
+                         std::size_t index, std::vector<core::TermId> results,
                          std::function<void(std::vector<core::TermId>)> done);
 
   static std::shared_ptr<std::vector<const smtlib::SExpr*>> collect(const smtlib::SExpr& expr,
-                                                                     std::size_t start);
+                                                                    std::size_t start);
 
   void dispatch(const smtlib::SExpr& expr, Continuation k);
   void dispatch_let(const smtlib::SExpr& expr, Continuation k);
@@ -572,7 +572,6 @@ class Frontend {
     return expr.kind == smtlib::SExpr::Kind::List && !expr.list.empty() &&
            expr.list[0].kind == smtlib::SExpr::Kind::Atom && expr.list[0].atom == head;
   }
-
 
   core::TermId build_pairwise_equality(core::TermId lhs, core::TermId rhs) {
     const core::SortId lhs_sort = terms_.get(lhs).sort;
@@ -766,20 +765,23 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
   const std::string& head = expr.list[0].atom;
   if (head == "not") {
     Frontend::require_arity(expr, 2, "not");
-    schedule(expr.list[1],
-             [this, k = std::move(k)](core::TermId x) mutable { resume(std::move(k), frontend_.terms_.mk_not(x)); });
+    schedule(expr.list[1], [this, k = std::move(k)](core::TermId x) mutable {
+      resume(std::move(k), frontend_.terms_.mk_not(x));
+    });
     return;
   }
   if (head == "and") {
-    schedule_all(collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
-      resume(std::move(k), frontend_.terms_.mk_and(std::move(children)));
-    });
+    schedule_all(collect(expr, 1),
+                 [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
+                   resume(std::move(k), frontend_.terms_.mk_and(std::move(children)));
+                 });
     return;
   }
   if (head == "or") {
-    schedule_all(collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
-      resume(std::move(k), frontend_.terms_.mk_or(std::move(children)));
-    });
+    schedule_all(collect(expr, 1),
+                 [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
+                   resume(std::move(k), frontend_.terms_.mk_or(std::move(children)));
+                 });
     return;
   }
   if (head == "=>") {
@@ -837,9 +839,10 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
   if (!frontend_.definitions_.empty()) {
     const auto defined = frontend_.definitions_.find(head);
     if (defined != frontend_.definitions_.end()) {
-      schedule_all(collect(expr, 1), [this, k = std::move(k), head](std::vector<core::TermId> args) mutable {
-        dispatch_instantiate_definition(head, std::move(args), k);
-      });
+      schedule_all(collect(expr, 1),
+                   [this, k = std::move(k), head](std::vector<core::TermId> args) mutable {
+                     dispatch_instantiate_definition(head, std::move(args), k);
+                   });
       return;
     }
   }
@@ -848,15 +851,15 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
   if (!symbol.has_value()) {
     throw UnsupportedInput("unknown function symbol: " + head);
   }
-  schedule_all(collect(expr, 1),
-               [this, k = std::move(k), symbol = symbol.value()](std::vector<core::TermId> raw_args) mutable {
-                 std::vector<core::TermId> args;
-                 args.reserve(raw_args.size());
-                 for (const core::TermId a : raw_args) {
-                   args.push_back(frontend_.bind_bool_argument_if_needed(a));
-                 }
-                 resume(std::move(k), frontend_.terms_.mk_app(symbol, std::move(args)));
-               });
+  schedule_all(collect(expr, 1), [this, k = std::move(k), symbol = symbol.value()](
+                                     std::vector<core::TermId> raw_args) mutable {
+    std::vector<core::TermId> args;
+    args.reserve(raw_args.size());
+    for (const core::TermId a : raw_args) {
+      args.push_back(frontend_.bind_bool_argument_if_needed(a));
+    }
+    resume(std::move(k), frontend_.terms_.mk_app(symbol, std::move(args)));
+  });
 }
 
 void TermBuilder::dispatch_let(const smtlib::SExpr& expr, Continuation k) {
@@ -901,7 +904,8 @@ void TermBuilder::dispatch_ite(const smtlib::SExpr& expr, Continuation k) {
     }
     auto branches = std::make_shared<std::vector<const smtlib::SExpr*>>(
         std::vector<const smtlib::SExpr*>{&expr.list[2], &expr.list[3]});
-    schedule_all(branches, [this, condition, k = std::move(k)](std::vector<core::TermId> branch_terms) mutable {
+    schedule_all(branches, [this, condition,
+                            k = std::move(k)](std::vector<core::TermId> branch_terms) mutable {
       finish_ite(condition, branch_terms[0], branch_terms[1], std::move(k));
     });
   });
@@ -915,8 +919,10 @@ void TermBuilder::finish_ite(core::TermId condition, core::TermId then_term, cor
   }
   if (result_sort == frontend_.symbols_.bool_sort()) {
     ++frontend_.boolean_ites_;
-    resume(std::move(k), frontend_.terms_.mk_or({frontend_.terms_.mk_and({condition, then_term}),
-                              frontend_.terms_.mk_and({frontend_.terms_.mk_not(condition), else_term})}));
+    resume(std::move(k),
+           frontend_.terms_.mk_or(
+               {frontend_.terms_.mk_and({condition, then_term}),
+                frontend_.terms_.mk_and({frontend_.terms_.mk_not(condition), else_term})}));
     return;
   }
   const core::TermId auxiliary = frontend_.fresh_auxiliary_constant(result_sort, "ite");
@@ -954,12 +960,14 @@ void TermBuilder::dispatch_xor(const smtlib::SExpr& expr, Continuation k) {
   if (expr.list.size() < 3) {
     throw UnsupportedInput("xor has wrong arity");
   }
-  schedule_all(collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> operands) mutable {
+  schedule_all(collect(expr, 1), [this,
+                                  k = std::move(k)](std::vector<core::TermId> operands) mutable {
     core::TermId result = operands[0];
     for (std::size_t i = 1; i < operands.size(); ++i) {
       const core::TermId rhs = operands[i];
-      result = frontend_.terms_.mk_or({frontend_.terms_.mk_and({result, frontend_.terms_.mk_not(rhs)}),
-                                       frontend_.terms_.mk_and({frontend_.terms_.mk_not(result), rhs})});
+      result =
+          frontend_.terms_.mk_or({frontend_.terms_.mk_and({result, frontend_.terms_.mk_not(rhs)}),
+                                  frontend_.terms_.mk_and({frontend_.terms_.mk_not(result), rhs})});
     }
     resume(std::move(k), result);
   });
@@ -1037,35 +1045,40 @@ void TermBuilder::dispatch_equality(const smtlib::SExpr& expr, Continuation k) {
     previous_term_valid = true;
   }
 
-  schedule_all(flat_exprs, [this, k = std::move(k), steps](std::vector<core::TermId> results) mutable {
-    std::vector<core::TermId> equalities;
-    equalities.reserve(steps->size());
-    std::optional<core::TermId> previous_term;
-    for (const Step& step : *steps) {
-      if (step.current_is_ite) {
-        const core::TermId lhs = step.reuse_previous ? previous_term.value() : results[step.lhs_index];
-        equalities.push_back(finish_pairwise_equality_to_ite(
-            lhs, results[step.ite_cond_index], results[step.ite_then_index], results[step.ite_else_index]));
-        previous_term.reset();
-        continue;
-      }
-      const core::TermId current = results[step.current_index];
-      if (step.previous_is_ite) {
-        equalities.push_back(finish_pairwise_equality_to_ite(current, results[step.prev_ite_cond_index],
-                                                              results[step.prev_ite_then_index],
-                                                              results[step.prev_ite_else_index]));
-      } else {
-        const core::TermId lhs = step.reuse_previous ? previous_term.value() : results[step.lhs_index];
-        equalities.push_back(frontend_.build_pairwise_equality(lhs, current));
-      }
-      previous_term = current;
-    }
-    resume(std::move(k), frontend_.terms_.mk_and(std::move(equalities)));
-  });
+  schedule_all(
+      flat_exprs, [this, k = std::move(k), steps](std::vector<core::TermId> results) mutable {
+        std::vector<core::TermId> equalities;
+        equalities.reserve(steps->size());
+        std::optional<core::TermId> previous_term;
+        for (const Step& step : *steps) {
+          if (step.current_is_ite) {
+            const core::TermId lhs =
+                step.reuse_previous ? previous_term.value() : results[step.lhs_index];
+            equalities.push_back(finish_pairwise_equality_to_ite(lhs, results[step.ite_cond_index],
+                                                                 results[step.ite_then_index],
+                                                                 results[step.ite_else_index]));
+            previous_term.reset();
+            continue;
+          }
+          const core::TermId current = results[step.current_index];
+          if (step.previous_is_ite) {
+            equalities.push_back(finish_pairwise_equality_to_ite(
+                current, results[step.prev_ite_cond_index], results[step.prev_ite_then_index],
+                results[step.prev_ite_else_index]));
+          } else {
+            const core::TermId lhs =
+                step.reuse_previous ? previous_term.value() : results[step.lhs_index];
+            equalities.push_back(frontend_.build_pairwise_equality(lhs, current));
+          }
+          previous_term = current;
+        }
+        resume(std::move(k), frontend_.terms_.mk_and(std::move(equalities)));
+      });
 }
 
 core::TermId TermBuilder::finish_pairwise_equality_to_ite(core::TermId term, core::TermId condition,
-                                                          core::TermId then_term, core::TermId else_term) {
+                                                          core::TermId then_term,
+                                                          core::TermId else_term) {
   if (frontend_.terms_.get(condition).sort != frontend_.symbols_.bool_sort()) {
     throw UnsupportedInput("ite condition is not Boolean");
   }
@@ -1106,9 +1119,10 @@ void TermBuilder::dispatch_plus(const smtlib::SExpr& expr, Continuation k) {
   if (expr.list.size() < 2) {
     throw UnsupportedInput("+ has wrong arity");
   }
-  schedule_all(collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
-    resume(std::move(k), frontend_.terms_.mk_plus(std::move(children)));
-  });
+  schedule_all(collect(expr, 1),
+               [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
+                 resume(std::move(k), frontend_.terms_.mk_plus(std::move(children)));
+               });
 }
 
 void TermBuilder::dispatch_minus(const smtlib::SExpr& expr, Continuation k) {
@@ -1121,35 +1135,39 @@ void TermBuilder::dispatch_minus(const smtlib::SExpr& expr, Continuation k) {
   if (expr.list.size() < 3) {
     throw UnsupportedInput("- has wrong arity");
   }
-  schedule_all(collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> operands) mutable {
-    std::vector<core::TermId> children;
-    children.reserve(operands.size());
-    children.push_back(operands[0]);
-    for (std::size_t i = 1; i < operands.size(); ++i) {
-      children.push_back(frontend_.terms_.mk_times(util::Rational(-1), operands[i]));
-    }
-    resume(std::move(k), frontend_.terms_.mk_plus(std::move(children)));
-  });
+  schedule_all(collect(expr, 1),
+               [this, k = std::move(k)](std::vector<core::TermId> operands) mutable {
+                 std::vector<core::TermId> children;
+                 children.reserve(operands.size());
+                 children.push_back(operands[0]);
+                 for (std::size_t i = 1; i < operands.size(); ++i) {
+                   children.push_back(frontend_.terms_.mk_times(util::Rational(-1), operands[i]));
+                 }
+                 resume(std::move(k), frontend_.terms_.mk_plus(std::move(children)));
+               });
 }
 
 void TermBuilder::dispatch_times(const smtlib::SExpr& expr, Continuation k) {
   Frontend::require_arity(expr, 3, "*");
-  schedule_all(collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> operands) mutable {
+  schedule_all(collect(expr, 1), [this,
+                                  k = std::move(k)](std::vector<core::TermId> operands) mutable {
     const core::TermId lhs = operands[0];
     const core::TermId rhs = operands[1];
     const bool lhs_is_literal = frontend_.terms_.get(lhs).kind == core::TermKind::Rational;
     const bool rhs_is_literal = frontend_.terms_.get(rhs).kind == core::TermKind::Rational;
     if (lhs_is_literal && rhs_is_literal) {
       resume(std::move(k), frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value *
-                                     frontend_.terms_.get(rhs).rational_value));
+                                                        frontend_.terms_.get(rhs).rational_value));
       return;
     }
     if (lhs_is_literal) {
-      resume(std::move(k), frontend_.terms_.mk_times(frontend_.terms_.get(lhs).rational_value, rhs));
+      resume(std::move(k),
+             frontend_.terms_.mk_times(frontend_.terms_.get(lhs).rational_value, rhs));
       return;
     }
     if (rhs_is_literal) {
-      resume(std::move(k), frontend_.terms_.mk_times(frontend_.terms_.get(rhs).rational_value, lhs));
+      resume(std::move(k),
+             frontend_.terms_.mk_times(frontend_.terms_.get(rhs).rational_value, lhs));
       return;
     }
     throw UnsupportedInput("* requires a literal rational coefficient operand (QF_LRA)");
@@ -1158,7 +1176,8 @@ void TermBuilder::dispatch_times(const smtlib::SExpr& expr, Continuation k) {
 
 void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
   Frontend::require_arity(expr, 3, "/");
-  schedule_all(collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> operands) mutable {
+  schedule_all(collect(expr, 1), [this,
+                                  k = std::move(k)](std::vector<core::TermId> operands) mutable {
     const core::TermId lhs = operands[0];
     const core::TermId rhs = operands[1];
     if (frontend_.terms_.get(lhs).kind != core::TermKind::Rational ||
@@ -1169,17 +1188,20 @@ void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
     if (denominator.is_zero()) {
       throw UnsupportedInput("division by zero is not a valid QF_LRA literal");
     }
-    resume(std::move(k), frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value / denominator));
+    resume(std::move(k),
+           frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value / denominator));
   });
 }
 
-void TermBuilder::dispatch_comparison(const smtlib::SExpr& expr, const std::string& head, Continuation k) {
+void TermBuilder::dispatch_comparison(const smtlib::SExpr& expr, const std::string& head,
+                                      Continuation k) {
   if (expr.list.size() < 3) {
     throw UnsupportedInput(head + " has wrong arity");
   }
   const bool strict = head == "<" || head == ">";
   const bool flipped = head == ">=" || head == ">";
-  schedule_all(collect(expr, 1), [this, k = std::move(k), strict, flipped](std::vector<core::TermId> operands) mutable {
+  schedule_all(collect(expr, 1), [this, k = std::move(k), strict,
+                                  flipped](std::vector<core::TermId> operands) mutable {
     std::vector<core::TermId> atoms;
     atoms.reserve(operands.size() - 1);
     for (std::size_t i = 0; i + 1 < operands.size(); ++i) {
@@ -1195,8 +1217,8 @@ void TermBuilder::dispatch_comparison(const smtlib::SExpr& expr, const std::stri
   });
 }
 
-void TermBuilder::dispatch_instantiate_definition(const std::string& name, std::vector<core::TermId> args,
-                                                  Continuation k) {
+void TermBuilder::dispatch_instantiate_definition(const std::string& name,
+                                                  std::vector<core::TermId> args, Continuation k) {
   const auto found = frontend_.definitions_.find(name);
   if (found == frontend_.definitions_.end()) {
     throw UnsupportedInput("unknown definition: " + name);
@@ -3102,7 +3124,7 @@ std::optional<sat::Clause> find_incremental_theory_conflict(
 
 bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
   return term.kind == core::TermKind::Equality &&
-        terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
 }
 
 // The DeltaRational value an atom's TRUE case bounds its slack's upper
@@ -3156,21 +3178,22 @@ constexpr std::size_t kBidirectionalRowPropagationMaxFanout = 32;
 // solve_qf_lra, kept for reference/tests) and the incremental
 // prepared-atom path below.
 std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(theory::arithmetic::LraTableau& tableau,
-                                                            theory::arithmetic::LraVarId slack,
-                                                            theory::arithmetic::LraRelation relation,
-                                                            const util::Rational& rhs, bool atom_value,
-                                                            sat::Lit reason) {
+                                                           theory::arithmetic::LraVarId slack,
+                                                           theory::arithmetic::LraRelation relation,
+                                                           const util::Rational& rhs,
+                                                           bool atom_value, sat::Lit reason) {
   switch (relation) {
     case theory::arithmetic::LraRelation::Eq: {
       if (!atom_value) {
         throw UnsupportedInput("QF_LRA disequality (a negated Real equality) is not yet supported");
       }
-      auto conflict =
-          tableau.assert_upper(slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
+      auto conflict = tableau.assert_upper(
+          slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
       if (conflict.has_value()) {
         return conflict;
       }
-      return tableau.assert_lower(slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
+      return tableau.assert_lower(slack, theory::arithmetic::DeltaRational::from_rational(rhs),
+                                  reason);
     }
     case theory::arithmetic::LraRelation::Le:
     case theory::arithmetic::LraRelation::Lt:
@@ -3260,14 +3283,16 @@ struct PreparedLraTheory {
   // source atom has a different coefficient (e.g. only `(<= (* 2 x) 4)`
   // exists, never a bare `x`) simply isn't found here and contributes
   // nothing to an implied bound.
-  std::unordered_map<theory::arithmetic::LraVarId, theory::arithmetic::LraVarId> single_variable_slack;
+  std::unordered_map<theory::arithmetic::LraVarId, theory::arithmetic::LraVarId>
+      single_variable_slack;
   // The reverse of single_variable_slack (slack -> the one variable it
   // wraps), used on the trigger side: when a slack's bound changes,
   // row-based propagation only needs to rescan anything if that slack is
   // itself some variable's single-variable wrapper (otherwise no other
   // row's compute_implied_bound could ever be reading this slack's bound
   // at all, via the indirection above).
-  std::unordered_map<theory::arithmetic::LraVarId, theory::arithmetic::LraVarId> variable_for_single_slack;
+  std::unordered_map<theory::arithmetic::LraVarId, theory::arithmetic::LraVarId>
+      variable_for_single_slack;
 };
 
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
@@ -3285,7 +3310,8 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     return id;
   };
 
-  std::unordered_map<PolynomialKey, theory::arithmetic::LraVarId, PolynomialKeyHash> slack_by_polynomial;
+  std::unordered_map<PolynomialKey, theory::arithmetic::LraVarId, PolynomialKeyHash>
+      slack_by_polynomial;
 
   atoms.reserve(theory_atoms.size());
   for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
@@ -3296,7 +3322,8 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
       continue;
     }
 
-    const theory::arithmetic::LraAtom normalized = theory::arithmetic::normalize_atom(terms, atom.term);
+    const theory::arithmetic::LraAtom normalized =
+        theory::arithmetic::normalize_atom(terms, atom.term);
     const PolynomialKey key = polynomial_key(normalized.polynomial);
     const auto existing_slack = slack_by_polynomial.find(key);
     theory::arithmetic::LraVarId slack;
@@ -3346,8 +3373,9 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
     if (!prepared_atom.is_arithmetic || atom.filtered) {
       continue;
     }
-    const auto conflict = assert_lra_atom_bound(tableau, prepared_atom.slack, prepared_atom.relation,
-                                                prepared_atom.rhs, atom.value, blocking_lit(atom));
+    const auto conflict =
+        assert_lra_atom_bound(tableau, prepared_atom.slack, prepared_atom.relation,
+                              prepared_atom.rhs, atom.value, blocking_lit(atom));
     if (conflict.has_value()) {
       return conflict.value();
     }
@@ -3377,8 +3405,9 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 // actually used -- a genuine multi-literal antecedent, unlike same-slack
 // propagation's single-literal one.
 std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
-compute_implied_bound(const theory::arithmetic::LraTableau& tableau, const PreparedLraTheory& prepared,
-                      theory::arithmetic::LraVarId basic_var, bool want_upper) {
+compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
+                      const PreparedLraTheory& prepared, theory::arithmetic::LraVarId basic_var,
+                      bool want_upper) {
   const auto& row = tableau.row(basic_var);
   if (row.size() > kRowBasedPropagationMaxRowSize) {
     return std::nullopt;
@@ -3421,9 +3450,10 @@ compute_implied_bound(const theory::arithmetic::LraTableau& tableau, const Prepa
 // round, same all-or-nothing behavior as compute_implied_bound.
 std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
 compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
-                            const PreparedLraTheory& prepared, theory::arithmetic::LraVarId basic_var,
-                            theory::arithmetic::LraVarId target_var, const util::Rational& target_coeff,
-                            bool want_upper_of_target) {
+                            const PreparedLraTheory& prepared,
+                            theory::arithmetic::LraVarId basic_var,
+                            theory::arithmetic::LraVarId target_var,
+                            const util::Rational& target_coeff, bool want_upper_of_target) {
   const auto& row = tableau.row(basic_var);
   if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
     return std::nullopt;
@@ -3820,7 +3850,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   // explicit assert_upper/assert_lower (never via check()'s pivots, which
   // only touch assignments/row structure), so no other slack's bounds
   // could have changed as a side effect of this assertion.
-  void scan_for_propagations(std::size_t triggering_atom_index, theory::arithmetic::LraVarId slack) {
+  void scan_for_propagations(std::size_t triggering_atom_index,
+                             theory::arithmetic::LraVarId slack) {
     const auto found = prepared_.atoms_by_slack.find(slack);
     if (found == prepared_.atoms_by_slack.end()) {
       return;
@@ -3936,16 +3967,17 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
           continue;
         }
         const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
-        const auto implied_upper = compute_implied_child_bound(
-            tableau_, prepared_, basic_var, target_var, target_coeff, /*want_upper_of_target=*/true);
+        const auto implied_upper =
+            compute_implied_child_bound(tableau_, prepared_, basic_var, target_var, target_coeff,
+                                        /*want_upper_of_target=*/true);
         if (implied_upper.has_value() &&
             implied_upper->first <= true_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-          pending_.push_back(
-              PendingPropagation{atom.lit.value, implied_upper->second, true, true});
+          pending_.push_back(PendingPropagation{atom.lit.value, implied_upper->second, true, true});
           continue;
         }
-        const auto implied_lower = compute_implied_child_bound(
-            tableau_, prepared_, basic_var, target_var, target_coeff, /*want_upper_of_target=*/false);
+        const auto implied_lower =
+            compute_implied_child_bound(tableau_, prepared_, basic_var, target_var, target_coeff,
+                                        /*want_upper_of_target=*/false);
         if (implied_lower.has_value() &&
             implied_lower->first >= false_threshold(prepared_atom.relation, prepared_atom.rhs)) {
           pending_.push_back(
@@ -4015,8 +4047,8 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
-  const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms(),
-                                          lra_pivoting_rule_from_options(options.lra_pivoting_rule));
+  const PreparedLraTheory prepared_theory(
+      terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule));
 
 #if PRIMO_HAVE_IPASIR
   // The trail-synced online propagator (Milestone 3a) is always preferred
@@ -4065,8 +4097,7 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
       // optimization's soundness was established for EUF specifically, and
       // hasn't been independently verified for LRA's bound-based
       // reasoning. Always process every assigned atom until it has.
-      assigned_atoms.push_back(
-          assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value));
+      assigned_atoms.push_back(assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value));
     }
 
     const std::optional<sat::Clause> conflict_clause =
@@ -4559,8 +4590,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
     }
     if (auto_large_assertion_skip && options.solved_constant_substitution) {
-      SolvedConstantSubstitutionResult solved_constants = substitute_solved_constants(
-          frontend.terms(), assertions, options.gaussian_elimination);
+      SolvedConstantSubstitutionResult solved_constants =
+          substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
       assertions = std::move(solved_constants.assertions);
       statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
       statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
@@ -4619,8 +4650,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                   forced_atoms.disequality_pairs.begin(),
                                   forced_atoms.disequality_pairs.end());
       if (options.solved_constant_substitution) {
-        SolvedConstantSubstitutionResult solved_constants = substitute_solved_constants(
-            frontend.terms(), assertions, options.gaussian_elimination);
+        SolvedConstantSubstitutionResult solved_constants =
+            substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
         assertions = std::move(solved_constants.assertions);
         statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
         statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
