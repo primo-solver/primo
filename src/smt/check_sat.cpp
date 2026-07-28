@@ -3253,10 +3253,19 @@ std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(
 // Canonical, order-independent identity for a LinearPolynomial's variable
 // content (not its constant, which normalize_atom already moved to the
 // atom's rhs): a sorted-by-TermId vector of (var, coefficient) pairs, used
-// to let atoms that normalize to the *exact* same polynomial share a
-// tableau slack variable/row (see PreparedLraTheory below). Deliberately
-// exact-match only, not scale-invariant (`x<=5` and `2x<=10` still get
-// separate slacks) -- see the class comment on PreparedLraTheory for why.
+// to let atoms that normalize to the same polynomial share a tableau slack
+// variable/row (see PreparedLraTheory below).
+//
+// Scale-canonical (heuristics-note item H1b, the long-deferred roadmap item
+// 3): every coefficient is divided by the coefficient of the lowest-indexed
+// variable, so proportional polynomials collapse to one key -- `x + y <= 5`,
+// `2x + 2y <= 10` and `-x - y <= -5` all key to `{x: 1, y: 1}` and share a
+// slack, where before they got three separate ones and could not propagate
+// against each other or see each other's bounds. Monniaux (CAV 2009,
+// Section 2.1) describes the same normalization, "so that two inequalities
+// constraining the same direction in space appear with the exact same
+// left-hand side"; his form scales to coprime *integers*, ours to a leading
+// coefficient of 1, which is the same equivalence class.
 struct PolynomialKey {
   std::vector<std::pair<core::TermId, util::Rational>> sorted_terms;
 
@@ -3275,12 +3284,32 @@ struct PolynomialKeyHash {
   }
 };
 
-PolynomialKey polynomial_key(const theory::arithmetic::LinearPolynomial& polynomial) {
+// A polynomial's scale-canonical key together with the factor divided out.
+// The caller needs the factor because dividing the polynomial has to be
+// matched by dividing the atom's right-hand side, and a negative factor
+// reverses the relation (which PreparedAtom::asserts_lower_when_true
+// records).
+struct CanonicalPolynomial {
   PolynomialKey key;
-  key.sorted_terms.assign(polynomial.terms().begin(), polynomial.terms().end());
-  std::sort(key.sorted_terms.begin(), key.sorted_terms.end(),
+  util::Rational scale{1};
+};
+
+CanonicalPolynomial canonical_polynomial(const theory::arithmetic::LinearPolynomial& polynomial) {
+  CanonicalPolynomial canonical;
+  canonical.key.sorted_terms.assign(polynomial.terms().begin(), polynomial.terms().end());
+  std::sort(canonical.key.sorted_terms.begin(), canonical.key.sorted_terms.end(),
             [](const auto& a, const auto& b) { return a.first < b.first; });
-  return key;
+  if (canonical.key.sorted_terms.empty()) {
+    return canonical;  // A constant polynomial has nothing to scale by.
+  }
+  canonical.scale = canonical.key.sorted_terms.front().second;
+  if (canonical.scale == util::Rational(1)) {
+    return canonical;  // Already canonical; skip the divisions entirely.
+  }
+  for (auto& [var, coefficient] : canonical.key.sorted_terms) {
+    coefficient = coefficient / canonical.scale;
+  }
+  return canonical;
 }
 
 // Precomputes the QF_LRA tableau's structural part -- one row per distinct
@@ -3355,50 +3384,54 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
 
     const theory::arithmetic::LraAtom normalized =
         theory::arithmetic::normalize_atom(terms, atom.term);
-    const PolynomialKey key = polynomial_key(normalized.polynomial);
+    // Scale-canonicalize first (item H1b), then divide the atom's right-hand
+    // side by the same factor. A negative factor reverses the relation, which
+    // is what asserts_lower_when_true records -- interpreted in exactly one
+    // place, bound_assertion().
+    const CanonicalPolynomial canonical = canonical_polynomial(normalized.polynomial);
+    const util::Rational rhs =
+        canonical.scale == util::Rational(1) ? normalized.rhs : normalized.rhs / canonical.scale;
+    const bool flipped = canonical.scale.sign() < 0;
 
-    // A single-variable atom `c*x ~ rhs` is a bound on `x` itself: divide the
-    // coefficient out and assert it directly, introducing no slack and no row
-    // at all. Monniaux (CAV 2009, Section 2.1) states this as ordinary
-    // practice -- "for each left hand side that is not a variable, a new
-    // variable is introduced" -- and Dutertre & de Moura's Section 2 does the
-    // same; Primo previously introduced a slack for *every* distinct
+    // A single-variable atom is a bound on that variable itself: no slack and
+    // no row at all (item H1a). Monniaux (CAV 2009, Section 2.1) states this
+    // as ordinary practice -- "for each left hand side that is not a variable,
+    // a new variable is introduced" -- and Dutertre & de Moura's Section 2
+    // does the same; Primo previously introduced a slack for *every* distinct
     // polynomial, which on the lagging families meant 36-95% of all tableau
     // rows were trivial `s = c*x` rows (measurements in
-    // docs/qf-lra-heuristics.md, item H1). Dividing by a negative coefficient
-    // reverses the relation, which is what asserts_lower_when_true records.
+    // docs/qf-lra-heuristics.md, item H1). After canonicalization the single
+    // remaining coefficient is exactly 1, so the variable is the polynomial.
     //
-    // This also makes one variable's lower and upper bound share a tableau
-    // variable: `(<= 0 x)` normalizes to a coefficient of -1 and `(<= x 10)`
-    // to +1, so under the old exact-content polynomial key they landed on two
-    // *different* slacks and the tableau could not see that `x` was bounded
-    // on both sides without pivoting.
-    if (key.sorted_terms.size() == 1) {
-      const auto& [var_term, coefficient] = key.sorted_terms[0];
-      const theory::arithmetic::LraVarId bound_var = get_var(var_term);
+    // Together with canonicalization this puts one variable's lower and upper
+    // bound on the same tableau variable: `(<= 0 x)` normalizes to a
+    // coefficient of -1 and `(<= x 10)` to +1, so under the old exact-content
+    // key they landed on two *different* slacks and the tableau could not see
+    // that `x` was bounded on both sides without pivoting.
+    if (canonical.key.sorted_terms.size() == 1) {
+      const theory::arithmetic::LraVarId bound_var = get_var(canonical.key.sorted_terms[0].first);
       const std::size_t atom_index = atoms.size();
-      atoms.push_back(PreparedAtom{true, bound_var, normalized.relation,
-                                   normalized.rhs / coefficient, coefficient.sign() < 0});
+      atoms.push_back(PreparedAtom{true, bound_var, normalized.relation, rhs, flipped});
       atoms_by_bound_var[bound_var].push_back(atom_index);
       continue;
     }
 
-    const auto existing_slack = slack_by_polynomial.find(key);
+    const auto existing_slack = slack_by_polynomial.find(canonical.key);
     theory::arithmetic::LraVarId slack;
     if (existing_slack != slack_by_polynomial.end()) {
       slack = existing_slack->second;
     } else {
       std::vector<std::pair<theory::arithmetic::LraVarId, util::Rational>> row;
-      row.reserve(key.sorted_terms.size());
-      for (const auto& [var_term, coefficient] : key.sorted_terms) {
+      row.reserve(canonical.key.sorted_terms.size());
+      for (const auto& [var_term, coefficient] : canonical.key.sorted_terms) {
         row.emplace_back(get_var(var_term), coefficient);
       }
       slack = base_tableau.add_variable();
       base_tableau.add_row(slack, row);
-      slack_by_polynomial.emplace(key, slack);
+      slack_by_polynomial.emplace(canonical.key, slack);
     }
     const std::size_t atom_index = atoms.size();
-    atoms.push_back(PreparedAtom{true, slack, normalized.relation, normalized.rhs, false});
+    atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped});
     atoms_by_bound_var[slack].push_back(atom_index);
   }
 }

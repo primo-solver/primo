@@ -192,29 +192,37 @@ void detects_direct_bound_conflict() {
 }
 
 void detects_conflict_requiring_an_actual_pivot() {
-  // x+y<=1 and x+y>=3 are only discoverable as contradictory via a repair
-  // pivot (each atom gets its own slack row, so the tableau doesn't see
-  // them as "the same" expression directly) -- exercises LraTableau::check
-  // end to end through the SMT-LIB frontend, not just LraTableau's own
-  // white-box tests.
+  // Exercises LraTableau::check end to end through the SMT-LIB frontend, not
+  // just LraTableau's own white-box tests: x+y <= 1 with x, y >= 0 forces
+  // x+2y <= 2, contradicting x+2y >= 3, and the two compound polynomials are
+  // not proportional so they genuinely occupy separate rows.
+  //
+  // This used to use x+y <= 1 against x+y >= 3, which item H1b's
+  // scale-canonical keys now collapse onto a single shared slack -- making it
+  // a direct bound conflict with zero pivots, so it silently stopped covering
+  // the pivot path. The :lra.pivots assertion below is there so that can't
+  // happen again unnoticed.
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)
     (declare-fun y () Real)
     (assert (<= (+ x y) 1))
-    (assert (>= (+ x y) 3))
+    (assert (>= (+ x (* 2 y)) 3))
     (assert (>= x 0))
     (assert (>= y 0))
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::LraRows) == 2);
+  assert(result.statistics.get(StatKey::LraPivots) > 0);
 }
 
 void atoms_sharing_identical_polynomial_solve_correctly() {
-  // x<=5 and x<=3 both normalize to the exact same polynomial ("x"), so
-  // PreparedLraTheory now gives them the same tableau slack/row -- this is
-  // a regression guard on that dedup: both atoms' truth values must still
-  // be respected together, not merged/dropped.
+  // x<=5 and x<=3 both normalize to the same polynomial ("x"), so
+  // PreparedLraTheory maps them onto the same tableau variable -- since item
+  // H1a that is `x` itself rather than a shared slack, but the guard is the
+  // same either way: both atoms' truth values must still be respected
+  // together, not merged/dropped.
   const auto satisfiable = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)
@@ -949,6 +957,55 @@ void single_variable_atom_strictness_survives_the_flip() {
   assert(sat_of("(assert (not (< (* (- 1) x) (- 5))))(assert (< 5 x))") == CheckSatResult::Unsat);
 }
 
+void proportional_polynomials_share_one_slack() {
+  // Item H1b (the long-deferred roadmap item 3): polynomial keys are
+  // scale-canonical, so proportional compound polynomials collapse to one
+  // slack instead of getting one each. `x+y <= 5`, `2x+2y <= 10` and
+  // `-x-y <= -5` are the same constraint written three ways.
+  //
+  // Checked structurally via :lra.rows rather than only by answer, because
+  // the answer would be the same either way -- what H1b changes is how many
+  // rows the tableau needs and whether these atoms can see each other's
+  // bounds at all.
+  const std::string proportional = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 5))
+    (assert (<= (+ (* 2 x) (* 2 y)) 10))
+    (assert (<= (+ (* (- 1) x) (* (- 1) y)) (- 5)))
+    (check-sat)
+  )";
+  const auto shared = check_sat_smtlib(proportional);
+  assert(shared.result == CheckSatResult::Sat);
+  assert(shared.statistics.get(StatKey::LraRows) == 1);
+
+  // Non-proportional compounds must still get their own rows -- the
+  // canonicalization must not over-merge.
+  const auto separate = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 5))
+    (assert (<= (+ x (* 2 y)) 10))
+    (check-sat)
+  )");
+  assert(separate.result == CheckSatResult::Sat);
+  assert(separate.statistics.get(StatKey::LraRows) == 2);
+
+  // Sharing a slack must not lose a constraint: scaled forms of *conflicting*
+  // bounds still have to conflict.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 5))
+    (assert (<= (+ (* (- 2) x) (* (- 2) y)) (- 12)))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Unsat);  // x+y <= 5 and x+y >= 6
+}
+
 void handles_pathologically_deep_arithmetic_nesting() {
   constexpr int kDepth = 50000;
   std::string formula = "(set-logic QF_LRA)\n(declare-fun x () Real)\n(assert (<= x ";
@@ -1002,6 +1059,7 @@ int main() {
   single_variable_atoms_share_one_bound_variable();
   single_variable_atom_coefficients_are_divided_out();
   single_variable_atom_strictness_survives_the_flip();
+  proportional_polynomials_share_one_slack();
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
   return 0;
