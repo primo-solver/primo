@@ -320,6 +320,19 @@ This is enough signal to justify a real default-off, capped dynamic-clause
 experiment, but it also confirms that the selector must be far tighter than
 "all SAT-visible local Ackermann clauses."
 
+That experiment was tried locally at commit `f83828f` with a default-off
+`--euf-dynamic-ackermann` option that emitted only already SAT-visible unit or
+conflicting local Ackermann clauses, capped at width three and 1000 clauses per
+`check-sat`. The 21-file weak-manifest run solved 18 files, timed out on three,
+and reported no wrong answers. It added 990 unit clauses and zero conflict
+clauses, but inspected 546,770,890 candidates and regressed PAR2 to 506.863169
+from the previous 260.742822 local shadow-run baseline. This is a strong local
+warning, not headline evidence: the apples-to-apples decision still needs a
+same-binary SLURM A/B comparison of `f83828f` with `default=` versus
+`dynamic=--euf-dynamic-ackermann`. The implementation was reverted in `160ce4e`
+while awaiting that comparison so the branch does not carry a locally regressing
+option.
+
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:

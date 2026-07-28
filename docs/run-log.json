@@ -9824,6 +9824,118 @@
       },
       "evidence_status": "current_local",
       "notes": "The result supports trying a bounded, default-off real dynamic Ackermann clause experiment, because low-width unit opportunities exist on the weak rows. It rejects an unbounded SAT-visible clause generator: useful unit hits are sparse compared with 2.59M inspected result pairs and 913k SAT-visible candidates."
+    },
+    {
+      "id": "2026-07-28-qfuf-dynamic-ackermann-real-f83828f-weak-local",
+      "date": "2026-07-28",
+      "kind": "benchmark",
+      "scope": "QF_UF weak NEQ/PEQ/SEQ manifest, local real dynamic Ackermann clause experiment requiring SLURM revalidation",
+      "commit": "f83828f",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: f83828f; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "This local run is not headline apples-to-apples evidence. Same-binary SLURM A/B revalidation is required before treating the experiment as accepted or rejected."
+      },
+      "command": {
+        "build": "cmake --build build --target primo",
+        "manifest": "cp results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/manifest.txt results/qfuf-dynamic-ack-f83828f-weak-local/manifest.txt",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest results/qfuf-dynamic-ack-f83828f-weak-local/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-dynamic-ackermann --timeout 60 --out results/qfuf-dynamic-ack-f83828f-weak-local/results.csv --summary results/qfuf-dynamic-ack-f83828f-weak-local/summary.csv --log-dir results/qfuf-dynamic-ack-f83828f-weak-local/logs",
+        "summarize": "python3 scripts/summarize_qfuf_dynamic_ackermann.py results/qfuf-dynamic-ack-f83828f-weak-local/results.csv --out results/qfuf-dynamic-ack-f83828f-weak-local/dynamic-ack-summary.csv"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-dynamic-ackermann"
+      },
+      "references": [
+        {
+          "kind": "design_note",
+          "path": "docs/qfuf-disequality-propagation.md",
+          "use": "Local warning for scan-based dynamic Ackermann clause experiment."
+        },
+        {
+          "kind": "previous_local_baseline",
+          "id": "2026-07-28-qfuf-dynamic-ackermann-shadow-b74acfe-weak-local",
+          "use": "Same 21-file weak manifest and timeout; shadow baseline solved 20/21 with PAR2 260.742822."
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 21,
+        "timeout_seconds": 60,
+        "manifest": "results/qfuf-dynamic-ack-f83828f-weak-local/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-dynamic-ack-f83828f-weak-local/summary.csv",
+        "results": "results/qfuf-dynamic-ack-f83828f-weak-local/results.csv",
+        "dynamic_ackermann_summary": "results/qfuf-dynamic-ack-f83828f-weak-local/dynamic-ack-summary.csv",
+        "logs": "results/qfuf-dynamic-ack-f83828f-weak-local/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 21,
+        "solved": 18,
+        "wrong": 0,
+        "timeouts": 3,
+        "timed_out_with_stats": 3,
+        "par2": 506.863169,
+        "families": {
+          "NEQ": {
+            "total": 10,
+            "solved": 9,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "PEQ": {
+            "total": 8,
+            "solved": 7,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "SEQ": {
+            "total": 3,
+            "solved": 2,
+            "timeouts": 1,
+            "wrong": 0
+          }
+        },
+        "dynamic_ackermann_totals": {
+          ":euf.dynamic-ack.candidates": 5020,
+          ":euf.dynamic-ack.candidates-inspected": 546770890,
+          ":euf.dynamic-ack.clauses-added": 990,
+          ":euf.dynamic-ack.unit-clauses": 990,
+          ":euf.dynamic-ack.conflict-clauses": 0,
+          ":euf.dynamic-ack.duplicate-skips": 98010161,
+          ":euf.dynamic-ack.nonunit-skips": 397947543,
+          ":euf.dynamic-ack.satisfied-skips": 50812193,
+          ":euf.dynamic-ack.width-skips": 0,
+          ":euf.dynamic-ack.cap-hits": 0
+        },
+        "regressed_timeout_files": [
+          "tmp/QF_UF/PEQ/PEQ013_size8.smt2",
+          "tmp/QF_UF/SEQ/SEQ026_size7.smt2"
+        ]
+      },
+      "verification": {
+        "passed": [
+          "make check passed before the f83828f implementation commit",
+          "make docs passed before the f83828f implementation commit",
+          "make asan-test passed before the f83828f implementation commit",
+          "make tidy passed before the f83828f implementation commit",
+          "make include-cleaner completed as an advisory whole-tree scan with existing warnings",
+          "The focused run completed with 0 wrong answers"
+        ],
+        "pending": [
+          "No fuzz gate was run for f83828f because the focused benchmark rejected the implementation before correctness promotion.",
+          "No SLURM headline benchmark was run because the local focused gate regressed solved count and PAR2."
+        ]
+      },
+      "evidence_status": "needs_revalidation",
+      "notes": "Local warning only. The scan-based selector added 990 unit clauses and no conflicts, but repeatedly rescanned 546.8M candidates, producing two additional local timeouts and much worse local PAR2 on the weak manifest. A same-binary SLURM A/B comparison of f83828f default versus --euf-dynamic-ackermann is still required for an apples-to-apples decision."
     }
   ]
 }
