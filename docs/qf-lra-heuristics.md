@@ -507,6 +507,42 @@ measured, since they may move these families on their own.
 
 ## 4. Suggested order of work, and the evaluation each item needs
 
+### 4.0 Re-ranking after H2 and H1 (2026-07-28)
+
+The original ranking below was written against the Section 1.2 profile, in
+which `LraTableau::pivot` was 31.4% of runtime and the allocator 42%. Both
+H2 and H1 have since landed, so that profile no longer describes the solver.
+Re-profiling `DTP-Scheduling/constraints-tempo-width-30` at the current head:
+
+```
+75.8%  LraTableau::pivot          (was 31.4%)
+ 5.0%  allocator                  (was 42.0%)
+ ~8%   util::Rational operators and construction
+```
+
+**H3 is now unambiguously the next item, and by a wider margin than the
+original ranking gave it.** Three independent lines of evidence converge:
+
+1. `pivot()` went from a third of runtime to three quarters. H2 and H1
+   removed the costs *around* it; nothing removed fill-in.
+2. H1's own falsifier fired on the Class A instance:
+   `latendresse/ecoliFBAyicesTest-500` lost 69% of its rows and did not speed
+   up at all, so for the one family that is pure LP, row count was never the
+   cost. H3 is the only remaining lever there -- and latendresse is still
+   0/15 while z3 solves 6.
+3. H1b's DTP-Scheduling regression is a fill-in effect: merging proportional
+   rows cut decisions 8.6-fold and pivots to 4,248, yet wall time rose,
+   because the surviving rows are denser. A cost-aware entering-variable rule
+   is what that asks for.
+
+The rest of the order is unchanged (**H5 → H4 → H6**), with one revision:
+H4's premise was "~320 µs per decision" on DTP-Scheduling, measured when
+that instance took 19.5s. It now takes ~6-8s with far fewer decisions, so
+H4's expected value has dropped and it should be re-measured before being
+picked up rather than implemented on the old number.
+
+### 4.1 Original ranking
+
 Recommended sequence: **H2 → H1 → H3 → H5 → H4 → H6 (Tier 1)**.
 
 H2 first because it is the largest measured share, benefits every other
