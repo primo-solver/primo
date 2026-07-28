@@ -339,6 +339,50 @@ alternatives considered before/while implementing it.
     fuzzsmt cases, two opfuzz runs and four yinyang typefuzz shards over real
     QF_LRA seeds -- 0 crashes, 0 wrong answers throughout, with the Bland
     merge gate coming back 500/500 PASS with no timeouts at all.
+- **Fill-in-aware pivot selection** (heuristics-note item H3, 2026-07-28,
+  `lra_tableau.{hpp,cpp}`, **opt-in**): `PivotingRule::Sparse`, via
+  `--lra-pivoting-rule sparse`. `pivot()` rewrites every row in
+  `occurs_in_[entering]`, merging in a row of length `|row(leaving)|`, so a
+  pivot's cost -- and the fill-in it creates -- is the Markowitz product
+  `|occurs_in(entering)| * |row(leaving)|`. Bland prices by index, Dantzig by
+  coefficient magnitude, SOI by global objective decrease; **none of the three
+  prices either factor**. That is defensible in floating-point LP, where
+  stability dominates the entering choice and an LU refactorization layer
+  absorbs fill-in, but Primo has exact rationals and neither constraint, so
+  the fill-in term is unopposed.
+  - **Entering side** (the rule itself): among the eligible candidates,
+    minimise `occurs_in(v).size()`. Once the leaving variable is fixed every
+    eligible candidate repairs the same violation by the same amount, so this
+    choice is free with respect to progress -- Bland and Dantzig already pick
+    arbitrarily among equivalent options, and this picks the cheapest. That is
+    what distinguishes it from roadmap item 8's cost ranking, which was
+    choosing what to *decide* and could steer search wrong.
+  - **Tie-break**: prefer `|coefficient| = 1`, so `1/coeff` is integral and
+    the rewrite introduces no new denominators. Visible in the counters: on
+    `clock_synchro`, `:rational.promotions` falls 358,801 -> 5,916.
+  - **Bounded pricing**: rows reach 691 terms, so the scan scores at most
+    `kSparsePricingCandidateLimit` eligible candidates from a rotating start.
+    The cap governs only how many *eligible* candidates are scored, never how
+    much of the row is read before concluding there are none -- "none" is what
+    `check()` turns into a conflict, so an early exit before finding one would
+    be unsound. Pinned by its own test.
+  - **Leaving side** (`--lra-sparse-leaving`, separate opt-in): Monniaux's
+    other criterion, repair a short row first. Unlike the entering choice this
+    changes *which* infeasibility gets repaired, so it is gated and measured
+    separately.
+  - Source: Monniaux (CAV 2009) p.8 -- see [](papers/lra-related-work.md).
+    Only that sparsity criterion is taken from the paper.
+  - New `:lra.pivot-row-updates` / `:lra.pivot-term-ops` count what the pivots
+    cost, not just how many there were; trading fewer-but-costlier pivots for
+    more-but-cheaper ones is this rule's whole risk, so both are reported.
+  - **First local result**: sparse beats bland on `sc-21` (1.56s -> 0.72s),
+    `clock_synchro` (1.17 -> 0.22) and `DTP-Scheduling` (7.41 -> 1.93), and
+    loses on `miplib/pp08a` (1.63 -> 1.82, pivots +43%). **And
+    `sparse --lra-sparse-leaving` solves every `latendresse` file in ~0.65s** --
+    a family Primo has never solved at all, where Dantzig takes ~19.5s and
+    Bland times out. Promotion pending a four-way 237-file run
+    (bland/dantzig/sparse/sparse+leaving); Dantzig is included because it has
+    never been run on that bar and it, too, solves `latendresse`.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already

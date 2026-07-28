@@ -330,6 +330,41 @@ width ablation could still move.
 
 ### H3 -- Fill-in-aware (Markowitz-style) entering-variable selection
 
+**Status: implemented 2026-07-28 as `--lra-pivoting-rule sparse`, opt-in,
+pending its 237-file run.** See [](arithmetic.md)'s "Fill-in-aware pivot
+selection" for the shipped design. First local numbers, and one result that
+was not anticipated:
+
+| instance | bland | dantzig | sparse | sparse + leaving |
+|---|---|---|---|---|
+| `sc-21.induction3` | 1.56s | 3.43s | **0.72s** | -- |
+| `clock_synchro/clocksynchro_2clocks` | 1.17s | 0.50s | **0.22s** | -- |
+| `DTP-Scheduling/constraints-tempo-width-30` | 7.41s | 5.96s | **1.93s** | -- |
+| `miplib/pp08a-12000` | 1.63s | **0.86s** | 1.82s | -- |
+| `latendresse/ecoliFBAyicesTest-*` (6 files) | timeout | ~19.5s | timeout | **~0.65s** |
+
+**The unanticipated result is the last row.** The leaving-side knob
+(`--lra-sparse-leaving`, repair a short row first) was planned as a
+lower-priority follow-up precisely because it is *not* progress-neutral. It
+turns out to be what cracks Class A: every `latendresse` file goes from
+"never solved by Primo" to ~0.65s, roughly 30x faster than the only other
+rule that solves them at all, with `:lra.pivot-term-ops` 8.7M against
+Dantzig's 130.9M. That family is 0/15 on the promotion bar today and z3 only
+manages 6/15.
+
+In hindsight it is the expected shape: a pure-LP instance is one `check()`
+call with no Boolean structure, so "which infeasibility to repair" has no
+search-trajectory consequences to get wrong -- the objection that made the
+knob risky simply does not apply to Class A. It is still a real risk on the
+Boolean-heavy classes, which is why it stays a separate flag and gets its own
+column rather than being folded into `sparse`.
+
+Second finding, also worth keeping: **Dantzig has never been run on the
+237-file bar** in three roadmap cycles, and it solves `latendresse` where
+Bland does not. Any sparse-vs-bland comparison that omits it would
+misattribute part of the win, which is why the promotion run is four-way
+(bland / dantzig / sparse / sparse+leaving).
+
 **Targets:** Class B (clock_synchro, miplib) and Class A (latendresse)
 directly; helps Class C too, since Section 1.2's profile is from a Class C
 file and still shows `pivot()` first.
