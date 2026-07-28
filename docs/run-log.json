@@ -10444,6 +10444,59 @@
       },
       "evidence_status": "current",
       "followups": "Implement in the recommended order. Each item needs unit tests for its own invariant, make check plus ASAN/UBSan, :lra.pivots / :lra.online-check-calls / :sat.decisions / :sat.conflicts reported alongside wall time, a Slurm merge-gate fuzz run (campaign-gate on both Bland and SOI paths for H1/H2/H4, which change unconditional core behavior), and the 237-file stratified sample as the promotion bar. Also add :lra.rows / :lra.tableau-vars / :lra.row-nonzeros stats -- their absence is why the fill-in explosion went unnoticed through eight roadmap items."
+    },
+    {
+      "id": "2026-07-28-qf-lra-rational-small-value-fast-path",
+      "started_at": "2026-07-28",
+      "recorded_at": "2026-07-28",
+      "kind": "fuzz",
+      "scope": "Verification for docs/qf-lra-heuristics.md item H2 (commit 02e2d47): util::Rational gains a machine-word fast path -- small values held inline as int64/int64, falling back to a heap mpq_class only when a value genuinely needs more than 64 bits. Unconditional core change, so verified at merge-gate and campaign-gate fuzz tiers on BOTH pivoting paths, matching the precedent set by the occurs_in_/rows_ vectorization and the violated_vars_ worklist. Also records the paired local A/B timing, the mechanism-level :rational.promotions counters, and the 237-file stratified-sample promotion-bar re-run. The two-tier representation is Monniaux's own (CAV 2009, Section 4); the arithmetic is Knuth TAOCP Vol. 2 Sec. 4.5.1's two-gcd form -- see docs/papers/lra-related-work.md for what is and is not taken from that paper.",
+      "commit": "02e2d47",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (node-head, via /tmp/llm2smt_slurm_ssh_config, ProxyJump data.ciirc.cvut.cz); local paired timing and profiling on the workstation",
+        "binary": "build-slurm-rel/primo --quiet [--lra-pivoting-rule soi] (remote Release); build/primo and a git-worktree build of d5e1a54 for the local A/B",
+        "notes": "The SSH config had to be recreated (it lived in /tmp and did not survive) and needs an explicit UserKnownHostsFile=/home/user/.ssh/known_hosts, because uid 1000's passwd home is /home/mikolas while the key material is in /home/user/.ssh. The remote binary reports 02e2d47-dirty: the workspace rsync does not carry tracked fuzz-results/results CSVs, a pre-existing sync artifact, not uncommitted source."
+      },
+      "command": {
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile (confirmed remote primo reports git: 02e2d47 and cadical-3.0.0-7b99c07)",
+        "merge_gate": "sbatch --array=0-0 --job-name=primo-lra-h2-merge-{bland,soi} --export=ALL,PATH=<workdir>/contrib/local/bin:...,PRIMO_FUZZ_SOLVER='<workdir>/build-slurm-rel/primo [--lra-pivoting-rule soi]',PRIMO_FUZZ_FUZZSMT_SHARDS=1,PRIMO_FUZZ_FUZZSMT_COUNT=500,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA scripts/slurm_qfuf_fuzz_gate.sbatch",
+        "campaign_gate": "sbatch --job-name=primo-lra-h2-camp-{bland,soi} --export=ALL,PATH=<workdir>/.venv-yinyang/bin:<workdir>/contrib/local/bin:...,TYPEFUZZ=<workdir>/.venv-yinyang/bin/typefuzz,PRIMO_FUZZ_SOLVER=...,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_OPFUZZ_SEEDS=<workdir>/benchmarks/seeds/qf_lra_real,PRIMO_FUZZ_YINYANG_SEEDS=<workdir>/benchmarks/seeds/qf_lra_real scripts/slurm_qfuf_fuzz_gate.sbatch (default 9-task layout: 6 fuzzsmt shards x 500 + 1 opfuzz + 2 yinyang)",
+        "promotion_bar": "sbatch --array=0-0 --job-name=primo-lra-h2-compare --export=ALL,'PRIMO_COMPARE_SOLVERS=primo=build-slurm-rel/primo --quiet' scripts/slurm_qf_lra_solver_compare.sbatch (primo task only; z3/cvc5 reused unchanged from job 114200 per the standing practice)",
+        "local_paired_timing": "git worktree add <scratch>/before d5e1a54 with contrib/local symlinked from the main checkout; then three alternating before/after rounds over the five profiled instances, reporting every round",
+        "local_tests": "cmake --build build && ctest (Release); cmake --build build-asan-ws && ctest (Debug + address,undefined); make lint; clang-tidy -p build on src/util/rational.cpp, src/util/statistics.cpp, src/smt/check_sat.cpp",
+        "local_fuzz_smoke": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build/primo --refs z3 --logic QF_LRA --count 200 --timeout 5"
+      },
+      "benchmark": {
+        "suite": "Merge gate: fuzzsmt QF_LRA 500 cases vs z3, per pivoting rule. Campaign gate: fuzzsmt 6x500=3000 + opfuzz + 2 yinyang typefuzz shards over benchmarks/seeds/qf_lra_real, per pivoting rule. Promotion bar: benchmarks/qf-lra-stratified-sample.txt (237 files, 17 families, 10s timeout).",
+        "logic": "QF_LRA",
+        "timeout_seconds": 5
+      },
+      "job_id": "114896 (merge Bland), 114897 (merge SOI), 114898 (campaign Bland), 114899 (campaign SOI), 114900 (237-file comparison). 114894/114895 were an aborted first attempt -- see the summary.",
+      "artifacts": {
+        "merge_gate": "remote fuzz-results/lra-h2-merge-{bland,soi}",
+        "campaign_gate": "remote fuzz-results/lra-h2-camp-{bland,soi}",
+        "comparison": "remote results/qf-lra-solver-compare-h2, fetched to results/qf-lra-solver-compare-h2",
+        "baseline_reference": "results/qf-lra-solver-compare-114200 (z3.csv/cvc5.csv reused unchanged)"
+      },
+      "summary": {
+        "merge_gate": "Job 114896 (Bland): 500 fuzzsmt QF_LRA cases -- 495 PASS, 5 TIMEOUT, 0 CRASH, 0 WRONG. Job 114897 (SOI): 500 cases -- 436 PASS, 64 TIMEOUT, 0 CRASH, 0 WRONG. The saved bug files are exactly the timeout cases in both.",
+        "campaign_gate": "Job 114898 (Bland): fuzzsmt 3000/3000 across 6 shards -- 2972 PASS, 28 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz 14/14 real QF_LRA seeds valid, 0 bug triggers; yinyang typefuzz 2 shards, 14/14 valid each, 0 bug triggers each. Job 114899 (SOI): fuzzsmt 3000/3000 -- 2676 PASS, 324 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz 14/14 valid, 0 bug triggers; yinyang 2 shards, 14/14 valid each, 0 bug triggers each.",
+        "fuzz_timeout_rates_fell": "Incidentally confirms the speedup on the fuzz corpus itself: the Bland campaign's timeouts dropped from the 118-143 range recorded for the same gate before this change to 28, and SOI's from 965-976 to 324. Not a correctness signal, but the same effect the benchmark timings show.",
+        "promotion_bar": "Job 114900, benchmarks/qf-lra-stratified-sample.txt (237 files, 10s timeout), primo task only, diffed against the unchanged z3.csv/cvc5.csv from job 114200. Solved: primo 124/237 (52.3%, up from 108/45.6%), z3 167 (70.5%), cvc5 150 (63.3%). PAR2: primo 2380.9s (down from 2675.6s, -11.0%), z3 1531.6s, cvc5 1887.1s. Zero wrong answers. 16 files newly solved and ZERO regressed -- unlike roadmap item 8, whose narrow-sample win did not survive this bar. Per family (new vs pre-H2): TM 10 (6), miplib 4 (1), uart 7 (4), 2017-Heizmann 2 (0), tta_startup 11 (9), clock_synchro 7 (6), sc 6 (5); everything else unchanged. The gap to z3 narrows from 59 files to 43, and to cvc5 from 42 to 26.",
+        "local_paired_timing": "Three alternating before/after rounds on one idle workstation, every round reported so drift is visible. TM/p5-zenonumeric_s5 3.66/4.65/5.77s -> 0.75/0.79/0.94s (best-of-3 4.9x, median 5.9x); sc-21.induction3 27.73/32.17/41.76 -> 6.79/7.52/8.14 (4.1x / 4.3x); uart-18.induction 7.31/7.36/7.77 -> 1.40/1.78/2.70 (5.2x / 4.1x); clocksynchro_2clocks 11.77/14.13/14.76 -> 5.56/6.27/6.73 (2.1x / 2.3x); latendresse/ecoliFBAyicesTest-500 times out at 90s either way. :sat.decisions/:sat.conflicts/:lra.pivots/:lra.online-check-calls/:lra.theory-propagations bit-identical before and after on every instance, confirming a pure representation change with no effect on search.",
+        "mechanism_counters": "New :rational.promotions / :rational.big-operations. Zero on TM/p5-zenonumeric_s5, sc-21.induction3, uart-18.induction and miplib/pp08a-12000 -- the machine-word fast path is taken 100% of the time there. 1.22M promotions / 1.27M big operations on clock_synchro/clocksynchro_2clocks, whose coefficients genuinely outgrow 64 bits; that is both why it gains least (2.1x) and the first hard evidence for which instances a different small-form width could still move.",
+        "bug_found_during_implementation": "The debug/ASAN-only check_invariant() caught a real disagreement between from_mpq's 'fits small' test (mpz_fits_slong_p, which admits INT64_MIN) and the small form's own range (which excludes INT64_MIN so negation can never overflow). The two differed by exactly that one value, which would have produced a big-form value that also fit the small form -- two representations for one number, hashing two ways, silently breaking PolynomialKey hash-consing rather than giving a wrong answer. Fixed by giving both a single shared predicate. Separately, a deliberate-mutation check (disabling demotion) confirmed the unit tests fail loudly when the invariant is broken.",
+        "local_verification": "Release ctest 12/12 and ASAN/UBSan ctest 12/12 green. make lint introduces no new violations (the 208 that remain are all pre-existing and unchanged, so `make check` fails at the lint step at HEAD too -- src/util/rational.hpp's own pre-existing violation is fixed by this change). clang-tidy clean on src/util/rational.cpp, src/util/statistics.cpp, and on the changed region of src/smt/check_sat.cpp. Local QF_LRA fuzz smoke (200 fuzzsmt cases vs z3): 198 PASS, 2 TIMEOUT, 0 CRASH, 0 WRONG."
+      },
+      "verification": {
+        "correctness": "Zero wrong answers and zero crashes across 7,000 fuzzsmt cases (merge gates 500 + 500, campaign gates 3,000 + 3,000) covering both pivoting paths, plus two opfuzz runs and four yinyang typefuzz shards over real QF_LRA seeds (14/14 seeds valid, 0 bug triggers each), plus the 237-file benchmark run (0 wrong answers).",
+        "no_search_change": "Every search counter bit-identical before/after on all five profiled instances -- the strongest available evidence that this is a representation change and nothing else.",
+        "reference_solvers": "z3.csv/cvc5.csv reused unchanged from job 114200, per the standing practice of not re-running unchanged reference solvers.",
+        "rendered": "results/qf-lra-solver-compare-h2/compare.html via scripts/render_solver_compare_html.py, matching standard practice."
+      },
+      "evidence_status": "current",
+      "followups": "H1 (direct bounds for single-variable atoms) is next per docs/qf-lra-heuristics.md's recommended order; its own gates and 237-file run are separate. The small-form width ablation (32-bit vs 64-bit, kSmallMax being the single knob) is still to run -- clock_synchro is now known to be the instance class where it could matter. The 5 non-lint verification steps above are all that this change needed; no blocker remains."
     }
   ]
 }

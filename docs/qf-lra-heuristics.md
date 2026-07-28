@@ -203,8 +203,12 @@ H3/H2 are the whole story.
 **Status: implemented, unconditional, 2026-07-28.** See
 [](arithmetic.md)'s "Two-tier rational representation" for the shipped design
 and `docs/run-log.json` for the verification trail. Paired local A/B on the
-profiled instances: **2.6x-4.5x faster**, with every search counter
-bit-identical (a pure representation change). Two design points below were
+profiled instances: **2.1x-5.2x faster** (best-of-3), with every search counter
+bit-identical (a pure representation change). **On the 237-file promotion bar:
+solved 108 -> 124, PAR2 -11%, 16 newly solved, zero regressions, zero wrong
+answers** (Slurm job 114900) -- it clears the bar that item 8 failed. Clean at
+merge-gate and campaign-gate fuzz tiers on both pivoting paths. Two design
+points below were
 revised during implementation and are corrected in place: the small form is
 64-bit rather than 32-bit (an ablation, not a settled question), and demotion
 is **required**, not forbidden -- see the canonical-form paragraph.
@@ -269,9 +273,13 @@ silent.
 solver-wide on QF_LRA, and it compounds with every other item here since
 they all reduce *counts* of the same operations.
 
-**Measured: 2.6x-4.5x** on the profiled instances -- better than expected,
+**Measured: 2.1x-5.2x** on the profiled instances -- better than expected,
 because the allocator cost was compounding across `DeltaRational` (two
-`Rational`s per bound and per assignment) rather than being paid once.
+`Rational`s per bound and per assignment) rather than being paid once. The
+weakest case (`clocksynchro_2clocks`, 2.1x) is the one instance whose
+coefficients genuinely outgrow 64 bits: 1.22M promotions, so it keeps paying
+GMP's cost. That is also the first hard evidence for which instances the
+width ablation could still move.
 
 ### H3 -- Fill-in-aware (Markowitz-style) entering-variable selection
 

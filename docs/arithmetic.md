@@ -228,15 +228,39 @@ alternatives considered before/while implementing it.
     `clock_synchro/clocksynchro_2clocks.main_invar.induct`, whose coefficients
     genuinely blow up through pivoting -- which is itself the explanation for
     that instance's ~1.5 ms/pivot cost.
-  - **Effect** (paired local A/B, alternating before/after binaries on one
-    idle host, `:sat.decisions`/`:sat.conflicts`/`:lra.pivots`/
+  - **Effect** (paired local A/B: three alternating before/after rounds on one
+    idle host, reporting each round so cluster/host drift is visible rather
+    than averaged away; `:sat.decisions`/`:sat.conflicts`/`:lra.pivots`/
     `:lra.online-check-calls`/`:lra.theory-propagations` **bit-identical**
-    throughout, confirming a pure representation change): TM/p5-zenonumeric_s5
-    4.48s -> 0.99s (~4.5x), sc-21.induction3 31.3s -> 8.7s (~3.6x),
-    uart-18.induction 8.2s -> 1.9s (~4.4x), clocksynchro_2clocks 13.0s -> 5.1s
-    (~2.6x). `latendresse/ecoliFBAyicesTest-500` still times out -- it is a
-    single `check()` call over one large LP, which is H1/H3 territory, not
-    H2's.
+    throughout, confirming a pure representation change):
+
+    | instance | before (3 runs, s) | after (3 runs, s) | best-of-3 | median |
+    |---|---|---|---|---|
+    | `TM/p5-zenonumeric_s5` | 3.66 / 4.65 / 5.77 | 0.75 / 0.79 / 0.94 | 4.9x | 5.9x |
+    | `sc-21.induction3` | 27.73 / 32.17 / 41.76 | 6.79 / 7.52 / 8.14 | 4.1x | 4.3x |
+    | `uart-18.induction` | 7.31 / 7.36 / 7.77 | 1.40 / 1.78 / 2.70 | 5.2x | 4.1x |
+    | `clocksynchro_2clocks` | 11.77 / 14.13 / 14.76 | 5.56 / 6.27 / 6.73 | 2.1x | 2.3x |
+    | `latendresse/ecoliFBAyicesTest-500` | timeout (90s) | timeout (90s) | -- | -- |
+
+    `clocksynchro_2clocks` gains least, consistent with its 1.22M promotions:
+    it is the one instance here whose coefficients really do outgrow 64 bits,
+    so it keeps paying GMP's cost. `ecoliFBAyicesTest-500` does not move at all
+    -- it is a single `check()` call over one large LP, which is H1/H3
+    territory, not H2's.
+  - **Promotion bar (Slurm job 114900, the 237-file stratified sample at a 10s
+    timeout, diffed against the unchanged z3/cvc5 results from job 114200):
+    solved 108 -> 124/237 (45.6% -> 52.3%), PAR2 2675.6s -> 2380.9s (-11.0%),
+    zero wrong answers, and 16 files newly solved against ZERO regressions.**
+    Per family: TM 6->10, miplib 1->4, uart 4->7, 2017-Heizmann 0->2,
+    tta_startup 9->11, clock_synchro 6->7, sc 5->6. The gap to z3 (167) narrows
+    from 59 files to 43 and to cvc5 (150) from 42 to 26. Unlike roadmap item 8,
+    whose dramatic narrow-sample win did not survive this bar, this one does.
+  - **Verified at merge-gate and campaign-gate fuzz tiers on both pivoting
+    paths** (jobs 114896/114897 merge, 114898/114899 campaign): 7,000 fuzzsmt
+    cases, two opfuzz runs and four yinyang typefuzz shards over real QF_LRA
+    seeds -- 0 crashes, 0 wrong answers throughout. Incidentally, the gates'
+    own timeout rates fell sharply (Bland campaign 118-143 -> 28, SOI campaign
+    965-976 -> 324), the same speedup showing up in the fuzz corpus.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already
