@@ -1768,56 +1768,6 @@ void dynamic_ackermann_shadow_is_zero_without_flag() {
   assert(result.statistics.get(":euf.dynamic-ack.shadow.conflicting") == 0);
 }
 
-void dynamic_ackermann_adds_unit_clause_for_sat_visible_pair() {
-  primo::smt::CheckSatOptions options;
-  options.euf_dynamic_ackermann = true;
-  options.euf_propagation = primo::smt::EufPropagationMode::Online;
-  options.euf_propagation_interval = 1;
-  options.euf_propagation_assign_threshold = 1.0;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
-  const auto result = check_sat_smtlib(
-      R"(
-    (set-logic QF_UF)
-    (declare-sort A 0)
-    (declare-fun a () A)
-    (declare-fun b () A)
-    (declare-fun f (A) A)
-    (assert (not (= (f a) (f b))))
-    (assert (or (= a b) (not (= a b))))
-    (check-sat)
-  )",
-      options);
-  assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(":euf.dynamic-ack.candidates") >= 1);
-  assert(result.statistics.get(":euf.dynamic-ack.candidates-inspected") >= 1);
-  assert(result.statistics.get(":euf.dynamic-ack.clauses-added") >= 1);
-  assert(result.statistics.get(":euf.dynamic-ack.unit-clauses") >= 1);
-  assert(result.statistics.get(":euf.dynamic-ack.max-width") == 2);
-}
-
-void dynamic_ackermann_is_zero_without_flag() {
-  primo::smt::CheckSatOptions options;
-  options.euf_propagation = primo::smt::EufPropagationMode::Online;
-  options.euf_propagation_interval = 1;
-  options.euf_propagation_assign_threshold = 1.0;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
-  const auto result = check_sat_smtlib(
-      R"(
-    (set-logic QF_UF)
-    (declare-sort A 0)
-    (declare-fun a () A)
-    (declare-fun b () A)
-    (declare-fun f (A) A)
-    (assert (not (= (f a) (f b))))
-    (assert (or (= a b) (not (= a b))))
-    (check-sat)
-  )",
-      options);
-  assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(":euf.dynamic-ack.candidates") == 0);
-  assert(result.statistics.get(":euf.dynamic-ack.clauses-added") == 0);
-}
-
 void model_euf_propagation_learns_congruence_lemma() {
   primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
@@ -2341,8 +2291,6 @@ int main() {
   dynamic_ackermann_shadow_counts_full_assignment_conflict_shape();
   dynamic_ackermann_shadow_counts_online_unit_shape();
   dynamic_ackermann_shadow_is_zero_without_flag();
-  dynamic_ackermann_adds_unit_clause_for_sat_visible_pair();
-  dynamic_ackermann_is_zero_without_flag();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();
   model_euf_propagation_handles_predicate_congruence();

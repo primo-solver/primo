@@ -159,25 +159,6 @@ add clauses or create missing atoms:
 - `:euf.dynamic-ack.shadow.width-le-3`;
 - `:euf.dynamic-ack.shadow.width-gt-3`;
 
-The real dynamic Ackermann counters below are populated when
-`--euf-dynamic-ackermann` is enabled. This mode uses the same SAT-visible
-candidate definition, but it can add capped external clauses from the online EUF
-propagator. It emits only candidates that are unit or conflicting under the
-current CaDiCaL assignment, does not create missing equality atoms, and remains
-default-off:
-
-- `:euf.dynamic-ack.candidates`;
-- `:euf.dynamic-ack.candidates-inspected`;
-- `:euf.dynamic-ack.clauses-added`;
-- `:euf.dynamic-ack.unit-clauses`;
-- `:euf.dynamic-ack.conflict-clauses`;
-- `:euf.dynamic-ack.duplicate-skips`;
-- `:euf.dynamic-ack.nonunit-skips`;
-- `:euf.dynamic-ack.satisfied-skips`;
-- `:euf.dynamic-ack.width-skips`;
-- `:euf.dynamic-ack.cap-hits`;
-- `:euf.dynamic-ack.max-width`;
-
 The incremental closure counters include:
 
 - `:euf.incremental.terms`;

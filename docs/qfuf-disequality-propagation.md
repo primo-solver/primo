@@ -320,62 +320,6 @@ This is enough signal to justify a real default-off, capped dynamic-clause
 experiment, but it also confirms that the selector must be far tighter than
 "all SAT-visible local Ackermann clauses."
 
-### Capped dynamic Ackermann clauses
-
-The default-off option `--euf-dynamic-ackermann` implements the first real
-dynamic-clause experiment. It uses the same SAT-visible candidate index as the
-shadow diagnostic, and therefore only emits clauses over theory atoms that
-already exist in the Boolean abstraction:
-
-```text
-f(a1, ..., an) = f(b1, ..., bn) or a1 != b1 or ... or an != bn
-```
-
-The implementation lives in the online EUF propagator in `src/smt/check_sat.cpp`.
-It builds the candidate index from `BooleanClausifier::TheoryAtom` objects during
-propagator construction. No new equality atoms are created, and no SMT-LIB AST
-nodes are used below the SMT layer. During `cb_has_external_clause`, the
-propagator first gives priority to ordinary incremental-EUF conflict clauses.
-If there is no pending external clause, it scans the dynamic-Ackermann candidates
-and emits only clauses that are currently unit or conflicting under CaDiCaL's
-partial assignment. Satisfied clauses and clauses with more than one unassigned
-literal are skipped.
-
-The initial selector is deliberately conservative:
-
-- `--euf-dynamic-ackermann-max-clauses=N` caps learned clauses per `check-sat`
-  call; the default is 1000.
-- `--euf-dynamic-ackermann-max-width=N` skips wider candidates; the default is
-  3.
-- duplicate candidate clauses are remembered and emitted at most once per
-  `check-sat`.
-- the feature is default-off until focused and mixed-suite evidence is neutral
-  or better and a fresh QF_UF fuzz gate is recorded.
-
-This is not a full implementation of Oliveras-style dynamic Ackermannization.
-It does not introduce fresh equality atoms, does not run a global cheapest-clause
-selection algorithm, and does not batch all currently violated functional
-consistency clauses. The point of this subset is narrower: test whether
-low-width clauses that are already SAT-visible can prune earlier than waiting
-for an EUF explanation, while avoiding the full Ackermann blowup measured above.
-
-The real-clause counters are:
-
-- `:euf.dynamic-ack.candidates`;
-- `:euf.dynamic-ack.candidates-inspected`;
-- `:euf.dynamic-ack.clauses-added`;
-- `:euf.dynamic-ack.unit-clauses`;
-- `:euf.dynamic-ack.conflict-clauses`;
-- `:euf.dynamic-ack.duplicate-skips`;
-- `:euf.dynamic-ack.nonunit-skips`;
-- `:euf.dynamic-ack.satisfied-skips`;
-- `:euf.dynamic-ack.width-skips`;
-- `:euf.dynamic-ack.cap-hits`;
-- `:euf.dynamic-ack.max-width`.
-
-Use `scripts/summarize_qfuf_dynamic_ackermann.py` on benchmark CSVs produced
-with `--solver-arg=--stats --solver-arg=--euf-dynamic-ackermann`.
-
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:
