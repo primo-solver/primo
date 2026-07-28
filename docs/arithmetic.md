@@ -215,10 +215,32 @@ alternatives considered before/while implementing it.
     check needed is on the reduced result. Comparisons cross-multiply in
     `__int128` and never allocate or change representation.
   - **Deviation from the paper**: the small form is 64-bit, not Monniaux's
-    32-bit. `kSmallMax` is the single knob, so the two widths can be compared
-    empirically (a planned ablation) rather than argued about; `__int128` is
-    a GCC/Clang extension, introduced under `__extension__` because the build
-    is `-Wpedantic -Werror`.
+    32-bit. `kSmallMax` is the single knob, and the two widths were compared
+    empirically rather than argued about; `__int128` is a GCC/Clang
+    extension, introduced under `__extension__` because the build is
+    `-Wpedantic -Werror`.
+  - **Width ablation (2026-07-28, local, two alternating rounds; the same
+    commit built twice, changing only `kSmallMax`).** 64-bit is kept, and the
+    trade-off is exactly the predicted one:
+
+    | instance | 32-bit | 64-bit | 64/32 | promotions (32 / 64) |
+    |---|---|---|---|---|
+    | `TM/p5-zenonumeric_s5` | 0.13s | 0.13s | 1.00x | 0 / 0 |
+    | `sc-21.induction3` | 1.56s | 1.55s | 1.01x | 0 / 0 |
+    | `uart-18.induction` | 0.57s | 0.53s | 1.08x | 0 / 0 |
+    | `clock_synchro/clocksynchro_2clocks` | 2.44s | **1.10s** | **2.22x** | 668k / 359k |
+    | `miplib/pp08a-12000` | 1.48s | 1.59s | 0.93x | 0 / 0 |
+    | `DTP-Scheduling/constraints-tempo-width-30` | 7.59s | 8.77s | 0.87x | 0 / 0 |
+
+    On every instance whose coefficients never leave 32 bits, the two are
+    within noise or 32-bit is up to ~13% faster -- `__int128` operations are
+    multi-instruction where 64-bit ones are not, and that cost is paid on
+    every add and multiply. On the one instance that does overflow, 64-bit is
+    2.2x faster because it cuts big-form operations 12-fold (4.44M -> 365k).
+    A few percent on the common case buys a factor of two on the hard one, so
+    64-bit stays. The ablation also earned its keep by finding a real latent
+    bug: `Rational(std::int64_t)` range-checked only one side, which is
+    vacuous at `kSmallMax == INT64_MAX` and wrong at any narrower width.
   - **Observability**: `:rational.promotions` and `:rational.big-operations`
     report how often the fast path was left. Measured: **zero** on
     `TM/p5-zenonumeric_s5`, `sc-21.induction3`, `uart-18.induction` and

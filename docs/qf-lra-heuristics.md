@@ -1,10 +1,25 @@
 # QF_LRA Speedup Heuristics: Design Note
 
-Status: **design only** (2026-07-27). Nothing here is implemented yet. This
-note picks up where the competitiveness roadmap's items 0-8 (see
-[](arithmetic.md)'s Milestone roadmap) left off, and is grounded in a fresh
-local profiling/instrumentation pass run at commit `35878c4` -- not in the
-older 3-file evidence items 0-6 were designed against.
+Written 2026-07-27 as a design note; **H2 and H1a are now implemented and
+promoted, H1b is implemented pending its own evaluation, and H3/H4/H5/H6
+remain designs** (each item below carries its own status). It picks up where
+the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s Milestone
+roadmap) left off, and is grounded in a fresh local
+profiling/instrumentation pass run at commit `35878c4` -- not in the older
+3-file evidence items 0-6 were designed against.
+
+**Where things stand on the 237-file promotion bar** (10s timeout, z3 167 and
+cvc5 150 unchanged throughout):
+
+| | solved / 237 | PAR2 | gap to z3 |
+|---|---|---|---|
+| before this note (job 114200) | 108 (45.6%) | 2675.6s | 59 files |
+| + H2 (job 114900) | 124 (52.3%) | 2380.9s | 43 files |
+| + H1a (job 115172) | **136 (57.4%)** | **2149.8s** | **31 files** |
+
+Zero wrong answers and **zero regressed files** at either step. Sections 1.1
+and 1.2 below describe the state *before* those two items; Section 2's
+per-item status blocks describe what changed.
 
 The roadmap's own closing lesson is taken as binding here: **the 9-file
 "dramatic-gap" sample is for *finding* techniques, the 237-file stratified
@@ -135,8 +150,12 @@ Priority = (measured share of the bottleneck) × (breadth of families hit) ÷
 
 ### H1 -- Direct bounds for single-variable atoms (+ scale-canonical polynomials)
 
-**Status: H1a implemented, unconditional, 2026-07-28; H1b (scale-canonical
-keys for *compound* polynomials) still open.** See [](arithmetic.md)'s
+**Status: H1a implemented, unconditional and promoted (237-file bar: 124 ->
+136 solved, PAR2 -9.7%, zero regressions); H1b implemented 2026-07-28 but
+*pending its own evaluation* -- its local evidence is mixed
+(clock_synchro 3.1x faster, uart-18 1.5x, but DTP-Scheduling 0.74x slower
+despite 8.6x fewer decisions), so the 237-file run decides whether it
+stays.** See [](arithmetic.md)'s
 "Direct bounds for single-variable atoms". The predicted row reductions were
 confirmed exactly, family by family, via a new `:lra.rows` statistic --
 ecoliFBA -69%, TM/p6 -95%, pp08a -66%, sc-17 -39%, uart-17 -36%, tta_startup
@@ -272,7 +291,13 @@ fully encapsulating) public API:
 - No call-site changes: `mpq_class` already appears only inside
   `rational.hpp/.cpp`, exactly as that file's own comment intends.
 - Width: 64-bit rather than Monniaux's 32-bit, behind the single `kSmallMax`
-  knob so the two can be compared empirically. Deferred ablation.
+  knob so the two can be compared empirically. **Ablation run 2026-07-28 --
+  64-bit kept.** On instances whose coefficients never leave 32 bits the two
+  widths are within noise, or 32-bit is up to ~13% faster (`__int128`
+  operations are multi-instruction); on the one instance that does overflow,
+  64-bit is 2.2x faster because it cuts big-form operations 12-fold. A few
+  percent on the common case for a factor of two on the hard one. The
+  ablation also turned up a real latent bug -- see [](arithmetic.md).
 
 **Risk: moderate, concentrated and testable.** It is the numeric core, so a
 bug is a wrong answer rather than a slowdown. Mitigation as planned:

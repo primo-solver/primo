@@ -10544,6 +10544,40 @@
       },
       "evidence_status": "current",
       "followups": "H1b (scale-canonical polynomial keys for compound polynomials, the long-deferred roadmap item 3) is implemented on top of this but NOT yet judged: local evidence is mixed (clock_synchro 3.1x faster, uart-18 1.5x, DTP-Scheduling 0.74x SLOWER despite 8.6x fewer decisions), so it needs its own 237-file run before being kept or reverted. Profiling DTP under H1b puts LraTableau::pivot at 75.8% of runtime -- with H2 and H1a having removed the allocator and row-count costs, fill-in is now unambiguously the dominant remaining cost, which is exactly H3's target."
+    },
+    {
+      "id": "2026-07-28-qf-lra-rational-small-form-width-ablation",
+      "started_at": "2026-07-28",
+      "recorded_at": "2026-07-28",
+      "kind": "benchmark",
+      "scope": "The 32-bit vs 64-bit small-form width ablation that docs/qf-lra-heuristics.md's item H2 deferred: Monniaux (CAV 2009, Section 4) uses two 32-bit numbers, Primo shipped 64-bit with __int128 intermediates, and kSmallMax is the single knob so the question is empirical rather than a matter of argument. Local only -- this is a design decision between two builds of the same commit, not a headline performance claim.",
+      "commit": "1e6554d (plus the constructor fix this ablation found, committed as 251d29e)",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo (kSmallMax = INT64_MAX) vs a git-worktree build with kSmallMax = INT32_MAX, same commit otherwise",
+        "notes": "Two alternating rounds per binary on an idle host; best-of-2 reported alongside both raw runs."
+      },
+      "command": {
+        "variant_build": "git worktree add <scratch>/w32 HEAD; sed -i 's/kSmallMax = INT64_MAX/kSmallMax = INT32_MAX/' src/util/rational.hpp; cmake -S . -B b -DCMAKE_BUILD_TYPE=Release && cmake --build b",
+        "measure": "alternating rounds of ./primo --quiet --stats over six instances, reading wall time plus :rational.promotions and :rational.big-operations"
+      },
+      "benchmark": {
+        "suite": "Six instances spanning both cases: five whose coefficients never leave 32 bits, and clock_synchro/clocksynchro_2clocks, which does overflow",
+        "logic": "QF_LRA",
+        "timeout_seconds": 90
+      },
+      "summary": {
+        "result": "64-bit kept. TM/p5-zenonumeric_s5 0.13s vs 0.13s (1.00x), sc-21.induction3 1.56 vs 1.55 (1.01x), uart-18.induction 0.57 vs 0.53 (1.08x), miplib/pp08a-12000 1.48 vs 1.59 (0.93x), DTP-Scheduling/constraints-tempo-width-30 7.59 vs 8.77 (0.87x) -- all five with ZERO promotions under both widths. clock_synchro/clocksynchro_2clocks 2.44s (32-bit) vs 1.10s (64-bit), 2.22x, with promotions 668,002 vs 358,801 and big-form operations 4,435,074 vs 364,834.",
+        "interpretation": "The trade-off is exactly the one predicted when the deviation was documented, now measured. Where coefficients stay small the widths are within noise or 32-bit is up to ~13% faster, because __int128 add/multiply are multi-instruction sequences where 64-bit ones are single instructions -- a cost paid on every operation. Where coefficients genuinely outgrow 32 bits, the wider fast path cuts big-form operations 12-fold and wins by 2.2x. A few percent on the common case buys a factor of two on the hard case.",
+        "bug_found": "Building the 32-bit variant immediately failed the existing representation_transitions unit test: Rational(std::int64_t) range-checked only `value >= -kSmallMax`, which is vacuous at kSmallMax == INT64_MAX (every std::int64_t satisfies it) but lets out-of-range values into the small form at any narrower width, violating the canonical-form invariant. Fixed in commit 251d29e. A latent bug in a knob nobody had turned yet."
+      },
+      "verification": {
+        "both_widths_tested": "Release ctest 12/12 at both widths after the fix; ASAN/UBSan 12/12 at the shipped 64-bit width.",
+        "scope": "Local design-decision evidence, explicitly not a benchmark claim -- no Slurm run was made for the 32-bit variant, and none is warranted since it is not being shipped."
+      },
+      "evidence_status": "current",
+      "followups": "None for the width itself. If a future benchmark family turns out to promote heavily (clock_synchro is the only one found so far), :rational.promotions is the counter that would show it."
     }
   ]
 }
