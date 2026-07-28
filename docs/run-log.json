@@ -10497,6 +10497,53 @@
       },
       "evidence_status": "current",
       "followups": "H1 (direct bounds for single-variable atoms) is next per docs/qf-lra-heuristics.md's recommended order; its own gates and 237-file run are separate. The small-form width ablation (32-bit vs 64-bit, kSmallMax being the single knob) is still to run -- clock_synchro is now known to be the instance class where it could matter. The 5 non-lint verification steps above are all that this change needed; no blocker remains."
+    },
+    {
+      "id": "2026-07-28-qf-lra-single-variable-direct-bounds",
+      "started_at": "2026-07-28",
+      "recorded_at": "2026-07-28",
+      "kind": "fuzz",
+      "scope": "Verification for docs/qf-lra-heuristics.md item H1a (commit 077beec): an atom whose normalized polynomial is a single term c*x is asserted as a bound on x itself -- coefficient divided out, relation flipped when c is negative -- instead of getting its own slack variable and row. Unconditional core change, so verified at merge-gate and campaign-gate fuzz tiers on both pivoting paths, plus the 237-file stratified-sample promotion bar. Stacks on top of item H2 (commit 02e2d47), whose own verification is the preceding run-log entry. Monniaux (CAV 2009, Section 2.1) states this as ordinary practice; see docs/papers/lra-related-work.md.",
+      "commit": "077beec",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (node-head, via /tmp/llm2smt_slurm_ssh_config); local paired timing and profiling on the workstation",
+        "binary": "build-slurm-rel/primo --quiet [--lra-pivoting-rule soi] (remote Release); build/primo and a git-worktree build of 3146707 (H2 only) for the local A/B"
+      },
+      "command": {
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote-dir /home/janotmik/primo-cadical-profile (remote primo reports git: 077beec)",
+        "gates": "Same sbatch invocations as the H2 entry, with job names primo-lra-h1a-{merge,camp}-{bland,soi} and PRIMO_FUZZ_OUT_ROOT=fuzz-results/lra-h1a-*",
+        "promotion_bar": "sbatch --array=0-0 --job-name=primo-lra-h1a-compare --export=ALL,'PRIMO_COMPARE_SOLVERS=primo=build-slurm-rel/primo --quiet',PRIMO_COMPARE_OUT_ROOT=.../results/qf-lra-solver-compare-h1a scripts/slurm_qf_lra_solver_compare.sbatch",
+        "local_paired_timing": "git worktree at 3146707 (H2 only) built alongside; two alternating rounds over seven instances",
+        "row_counts": "./build/primo --quiet --stats <instance> | grep :lra.rows (new statistic added by this change)"
+      },
+      "benchmark": {
+        "suite": "Merge gate: fuzzsmt QF_LRA 500 cases vs z3 per pivoting rule. Campaign gate: fuzzsmt 6x500=3000 + opfuzz + 2 yinyang shards over benchmarks/seeds/qf_lra_real, per pivoting rule. Promotion bar: benchmarks/qf-lra-stratified-sample.txt (237 files, 10s timeout).",
+        "logic": "QF_LRA",
+        "timeout_seconds": 5
+      },
+      "job_id": "115168 (merge Bland), 115169 (merge SOI), 115170 (campaign Bland), 115171 (campaign SOI), 115172 (237-file comparison)",
+      "artifacts": {
+        "gates": "remote fuzz-results/lra-h1a-{merge,camp}-{bland,soi}",
+        "comparison": "results/qf-lra-solver-compare-h1a (fetched; compare.html rendered)",
+        "baseline_reference": "results/qf-lra-solver-compare-114200 (z3/cvc5 reused unchanged), results/qf-lra-solver-compare-h2 (the H2-only primo run)"
+      },
+      "summary": {
+        "merge_gate": "Job 115168 (Bland): 500/500 PASS, 0 TIMEOUT, 0 CRASH, 0 WRONG. Job 115169 (SOI): 483 PASS, 17 TIMEOUT, 0 CRASH, 0 WRONG.",
+        "campaign_gate": "Job 115170 (Bland): fuzzsmt 3000/3000 -- 2993 PASS, 7 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz 14/14 seeds valid, 0 bug triggers; yinyang 2 shards, 14/14 valid each, 0 bug triggers each. Job 115171 (SOI): fuzzsmt 3000/3000 -- 2818 PASS, 182 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz and yinyang likewise clean. Timeout rates fell again on top of H2's own drop (Bland campaign 28 -> 7).",
+        "promotion_bar": "Job 115172. Solved: 124 -> 136/237 (52.3% -> 57.4%); PAR2 2380.9s -> 2149.8s (-9.7%); 12 files newly solved, ZERO regressed, zero wrong answers. Cumulatively with H2: 108 -> 136 (+28 files, 45.6% -> 57.4%), PAR2 2675.6 -> 2149.8 (-19.6%). Per family (H1a vs H2 vs pre-H2): TM 15/10/6 -- now matching z3's 15/15 -- 2019-ezsmt 7/3/3, sc 8/6/5, tta_startup 12/11/9. The gap to z3 (167) narrows from 59 files pre-H2 to 31; to cvc5 (150) from 42 to 14.",
+        "row_counts": "Measured via the new :lra.rows statistic, against the pre-H1 shape measurements in docs/qf-lra-heuristics.md Section 1.3. Every instance matches that section's predicted single-variable share exactly: latendresse/ecoliFBAyicesTest-500 4,555 -> 1,394 (-69%), TM/p6-zenonumeric_s5 1,378 -> 67 (-95%), miplib/pp08a-12000 400 -> 138 (-66%), sc-17.induction3 1,185 -> 723 (-39%), uart-17.induction 1,446 -> 920 (-36%), tta_startup/simple_startup_4nodes 584 -> 500 (-14%), clock_synchro/clocksynchro_2clocks 264 -> 259 (-2%), DTP-Scheduling/constraints-tempo-width-30 3,932 -> 3,932 (unchanged -- 100% difference constraints, so no single-variable atoms to remove).",
+        "local_paired_timing": "Against the H2-only build, two alternating rounds: TM/p5-zenonumeric_s5 0.63s -> 0.12s (5.3x; decisions 13,230 -> 1,435, pivots 18,097 -> 230), sc-21.induction3 6.33 -> 1.98 (3.2x), uart-18.induction 1.18 -> 0.94, miplib/pp08a-12000 1.97 -> 1.72, clock_synchro and DTP-Scheduling flat within noise (their row counts barely move or not at all). Not a pure representation change, unlike H2: variable numbering and propagation strength both change, so search counters legitimately move.",
+        "falsifier_partially_triggered": "docs/qf-lra-heuristics.md's H1 entry predicted 'if row counts drop as predicted but wall time does not improve on latendresse/TM/miplib, then row count was never the cost'. Row counts dropped exactly as predicted everywhere. Wall time followed on TM, sc, uart and miplib -- but NOT on latendresse/ecoliFBAyicesTest-500, which lost 69% of its rows and did not move at all, still timing out. For that pure-LP instance the falsifier fired: its cost is the remaining 1,394-row LP with a 691-term dense row, i.e. H3's fill-in problem, not H1's row count. That sharpens H3 from 'helps Class B' to 'the only remaining lever for Class A'.",
+        "test_that_had_to_change": "theory_decisions_can_reach_a_conflict used (or (<= x 0) (>= x 10)) with 3 <= x <= 7; all four atoms now bound x directly, so propagation closes the formula with zero decisions and cb_decide was no longer exercised at all. Rewritten over compound disjuncts, which still require a decision. Answer unchanged (unsat) throughout -- the test stopped covering its mechanism, it did not start failing."
+      },
+      "verification": {
+        "correctness": "Zero wrong answers and zero crashes across 7,000 fuzzsmt cases on both pivoting paths, two opfuzz runs and four yinyang typefuzz shards (14/14 seeds valid, 0 bug triggers each), and the 237-file benchmark run.",
+        "local": "Release ctest 12/12 and ASAN/UBSan ctest 12/12 green, including three new single_variable_atom_* tests pinning all four rows of bound_assertion()'s relation/orientation table in both truth directions. Local QF_LRA fuzz smoke (200 cases): 194 PASS, 6 TIMEOUT, 0 CRASH, 0 WRONG. make lint introduces no new violations.",
+        "reference_solvers": "z3.csv/cvc5.csv reused unchanged from job 114200."
+      },
+      "evidence_status": "current",
+      "followups": "H1b (scale-canonical polynomial keys for compound polynomials, the long-deferred roadmap item 3) is implemented on top of this but NOT yet judged: local evidence is mixed (clock_synchro 3.1x faster, uart-18 1.5x, DTP-Scheduling 0.74x SLOWER despite 8.6x fewer decisions), so it needs its own 237-file run before being kept or reverted. Profiling DTP under H1b puts LraTableau::pivot at 75.8% of runtime -- with H2 and H1a having removed the allocator and row-count costs, fill-in is now unambiguously the dominant remaining cost, which is exactly H3's target."
     }
   ]
 }

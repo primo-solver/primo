@@ -306,6 +306,17 @@ alternatives considered before/while implementing it.
     Unlike H2 this is *not* a pure representation change: it renumbers
     tableau variables and strengthens propagation, so search counters
     legitimately move.
+  - **Promotion bar (Slurm job 115172): solved 124 -> 136/237, PAR2 2380.9s
+    -> 2149.8s (-9.7%), 12 files newly solved, ZERO regressions, zero wrong
+    answers.** Per family: TM 10 -> 15 (now matching z3's 15/15), 2019-ezsmt
+    3 -> 7, sc 6 -> 8, tta_startup 11 -> 12. **Stacked with H2: 108 -> 136
+    (+28 files, 45.6% -> 57.4%), PAR2 -19.6%**, and the gap to z3 (167)
+    narrows from 59 files to 31, to cvc5 (150) from 42 to 14.
+  - **Verified at merge-gate and campaign-gate fuzz tiers on both pivoting
+    paths** (jobs 115168/115169 merge, 115170/115171 campaign): 7,000
+    fuzzsmt cases, two opfuzz runs and four yinyang typefuzz shards over real
+    QF_LRA seeds -- 0 crashes, 0 wrong answers throughout, with the Bland
+    merge gate coming back 500/500 PASS with no timeouts at all.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already
