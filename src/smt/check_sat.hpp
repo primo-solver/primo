@@ -93,6 +93,9 @@ struct CheckSatOptions {
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
   bool euf_dynamic_ackermann_shadow = false;
+  bool euf_dynamic_ackermann = false;
+  std::size_t euf_dynamic_ackermann_max_clauses = 1000;
+  std::size_t euf_dynamic_ackermann_max_width = 3;
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
   bool uf_symmetry_breaking = true;

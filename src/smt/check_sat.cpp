@@ -216,6 +216,18 @@ constexpr std::string_view kStatEufDynamicAckShadowWidthTotal =
 constexpr std::string_view kStatEufDynamicAckShadowMaxWidth = ":euf.dynamic-ack.shadow.max-width";
 constexpr std::string_view kStatEufDynamicAckShadowWidthLe3 = ":euf.dynamic-ack.shadow.width-le-3";
 constexpr std::string_view kStatEufDynamicAckShadowWidthGt3 = ":euf.dynamic-ack.shadow.width-gt-3";
+constexpr std::string_view kStatEufDynamicAckCandidates = ":euf.dynamic-ack.candidates";
+constexpr std::string_view kStatEufDynamicAckCandidatesInspected =
+    ":euf.dynamic-ack.candidates-inspected";
+constexpr std::string_view kStatEufDynamicAckClausesAdded = ":euf.dynamic-ack.clauses-added";
+constexpr std::string_view kStatEufDynamicAckUnitClauses = ":euf.dynamic-ack.unit-clauses";
+constexpr std::string_view kStatEufDynamicAckConflictClauses = ":euf.dynamic-ack.conflict-clauses";
+constexpr std::string_view kStatEufDynamicAckDuplicateSkips = ":euf.dynamic-ack.duplicate-skips";
+constexpr std::string_view kStatEufDynamicAckNonunitSkips = ":euf.dynamic-ack.nonunit-skips";
+constexpr std::string_view kStatEufDynamicAckSatisfiedSkips = ":euf.dynamic-ack.satisfied-skips";
+constexpr std::string_view kStatEufDynamicAckWidthSkips = ":euf.dynamic-ack.width-skips";
+constexpr std::string_view kStatEufDynamicAckCapHits = ":euf.dynamic-ack.cap-hits";
+constexpr std::string_view kStatEufDynamicAckMaxWidth = ":euf.dynamic-ack.max-width";
 constexpr util::StatKey kStatEufIncrementalTerms = util::StatKey::EufIncrementalTerms;
 constexpr util::StatKey kStatEufIncrementalFlatDefinitions =
     util::StatKey::EufIncrementalFlatDefinitions;
@@ -1752,27 +1764,36 @@ FlatPairKey canonical_flat_pair(theory::equality::FlatTermId lhs,
   return FlatPairKey{lhs, rhs};
 }
 
-void record_dynamic_ackermann_shadow(const core::TermManager& terms,
-                                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-                                     const std::vector<std::optional<bool>>& atom_values,
-                                     util::Statistics& statistics) {
-  if (atom_values.size() != theory_atoms.size()) {
-    throw UnsupportedInput("internal dynamic Ackermann shadow assignment mismatch");
-  }
+struct DynamicAckermannCandidate {
+  std::size_t result_atom_index = 0;
+  std::vector<std::size_t> argument_atom_indices;
+  sat::Clause clause;
+  std::size_t width = 0;
+};
 
-  statistics.increment(kStatEufDynamicAckShadowInvocations);
+struct DynamicAckermannCandidateIndex {
+  std::vector<DynamicAckermannCandidate> candidates;
+  std::size_t result_pairs = 0;
+  std::size_t missing_argument_atoms = 0;
+};
+
+DynamicAckermannCandidateIndex build_dynamic_ackermann_candidate_index(
+    const core::TermManager& terms,
+    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms) {
+  DynamicAckermannCandidateIndex index;
   std::unordered_map<TermPairKey, std::size_t, TermPairKeyHash> equality_atom_by_pair;
   equality_atom_by_pair.reserve(theory_atoms.size());
-  for (std::size_t index = 0; index < theory_atoms.size(); ++index) {
-    const core::Term& term = terms.get(theory_atoms[index].term);
+  for (std::size_t atom_index = 0; atom_index < theory_atoms.size(); ++atom_index) {
+    const core::Term& term = terms.get(theory_atoms[atom_index].term);
     if (term.kind != core::TermKind::Equality || term.children.size() != 2) {
       continue;
     }
-    equality_atom_by_pair.emplace(canonical_term_pair(term.children[0], term.children[1]), index);
+    equality_atom_by_pair.emplace(canonical_term_pair(term.children[0], term.children[1]),
+                                  atom_index);
   }
 
-  for (std::size_t index = 0; index < theory_atoms.size(); ++index) {
-    const core::Term& result_equality = terms.get(theory_atoms[index].term);
+  for (std::size_t atom_index = 0; atom_index < theory_atoms.size(); ++atom_index) {
+    const core::Term& result_equality = terms.get(theory_atoms[atom_index].term);
     if (result_equality.kind != core::TermKind::Equality || result_equality.children.size() != 2) {
       continue;
     }
@@ -1783,9 +1804,12 @@ void record_dynamic_ackermann_shadow(const core::TermManager& terms,
       continue;
     }
 
-    statistics.increment(kStatEufDynamicAckShadowResultPairs);
-    std::vector<std::size_t> argument_atom_indices;
-    argument_atom_indices.reserve(lhs.children.size());
+    ++index.result_pairs;
+    DynamicAckermannCandidate candidate;
+    candidate.result_atom_index = atom_index;
+    candidate.argument_atom_indices.reserve(lhs.children.size());
+    candidate.clause.reserve(lhs.children.size() + 1U);
+    candidate.clause.push_back(theory_atoms[atom_index].lit);
     std::size_t missing_argument_atoms = 0;
     for (std::size_t child_index = 0; child_index < lhs.children.size(); ++child_index) {
       const auto found = equality_atom_by_pair.find(
@@ -1794,14 +1818,29 @@ void record_dynamic_ackermann_shadow(const core::TermManager& terms,
         ++missing_argument_atoms;
         continue;
       }
-      argument_atom_indices.push_back(found->second);
+      candidate.argument_atom_indices.push_back(found->second);
+      candidate.clause.push_back(sat::Lit{-theory_atoms[found->second].lit.value});
     }
     if (missing_argument_atoms != 0) {
-      statistics.increment(kStatEufDynamicAckShadowArgAtomsMissing, missing_argument_atoms);
+      index.missing_argument_atoms += missing_argument_atoms;
       continue;
     }
+    candidate.width = candidate.clause.size();
+    index.candidates.push_back(std::move(candidate));
+  }
+  return index;
+}
 
-    const std::size_t width = lhs.children.size() + 1U;
+void record_dynamic_ackermann_shadow(const DynamicAckermannCandidateIndex& candidate_index,
+                                     const std::vector<std::optional<bool>>& atom_values,
+                                     util::Statistics& statistics) {
+  statistics.increment(kStatEufDynamicAckShadowInvocations);
+  statistics.increment(kStatEufDynamicAckShadowResultPairs, candidate_index.result_pairs);
+  statistics.increment(kStatEufDynamicAckShadowArgAtomsMissing,
+                       candidate_index.missing_argument_atoms);
+
+  for (const DynamicAckermannCandidate& candidate : candidate_index.candidates) {
+    const std::size_t width = candidate.width;
     statistics.increment(kStatEufDynamicAckShadowSatVisibleClauses);
     statistics.increment(kStatEufDynamicAckShadowWidthTotal, width);
     if (width > statistics.get(kStatEufDynamicAckShadowMaxWidth)) {
@@ -1812,7 +1851,7 @@ void record_dynamic_ackermann_shadow(const core::TermManager& terms,
 
     std::size_t true_literals = 0;
     std::size_t unassigned_literals = 0;
-    const std::optional<bool> result_value = atom_values[index];
+    const std::optional<bool> result_value = atom_values.at(candidate.result_atom_index);
     if (!result_value.has_value()) {
       ++unassigned_literals;
     } else if (result_value.value()) {
@@ -1821,9 +1860,9 @@ void record_dynamic_ackermann_shadow(const core::TermManager& terms,
       statistics.increment(kStatEufDynamicAckShadowResultDiseqAssigned);
     }
 
-    bool all_arguments_equal_assigned = !argument_atom_indices.empty();
-    for (const std::size_t argument_index : argument_atom_indices) {
-      const std::optional<bool> argument_value = atom_values[argument_index];
+    bool all_arguments_equal_assigned = !candidate.argument_atom_indices.empty();
+    for (const std::size_t argument_index : candidate.argument_atom_indices) {
+      const std::optional<bool> argument_value = atom_values.at(argument_index);
       if (!argument_value.has_value()) {
         ++unassigned_literals;
         all_arguments_equal_assigned = false;
@@ -2264,6 +2303,14 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       observed_vars_[index] = 1;
       atom_by_var_[index] = &atom;
     }
+    if (options_.euf_dynamic_ackermann_shadow || options_.euf_dynamic_ackermann) {
+      dynamic_ackermann_candidates_ =
+          build_dynamic_ackermann_candidate_index(terms_, theory_atoms_);
+      if (options_.euf_dynamic_ackermann) {
+        statistics_.set(kStatEufDynamicAckCandidates,
+                        dynamic_ackermann_candidates_.candidates.size());
+      }
+    }
     if (options_.euf_engine == EufEngine::Incremental) {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
                                  options_.pure_theory_filter, options_.euf_explain_search,
@@ -2350,7 +2397,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
       const bool assignment = assigned_value(var);
       atom_values.push_back(atom.lit.value > 0 ? assignment : !assignment);
     }
-    record_dynamic_ackermann_shadow(terms_, theory_atoms_, atom_values, statistics_);
+    record_dynamic_ackermann_shadow(dynamic_ackermann_candidates_, atom_values, statistics_);
   }
 
   int cb_propagate() override {
@@ -2399,6 +2446,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
 #if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
     maybe_store_conflict();
+    maybe_store_dynamic_ackermann_clause();
     if (external_clause_.empty()) {
       return false;
     }
@@ -2408,6 +2456,7 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
 #else
   bool cb_has_external_clause() override {
     maybe_store_conflict();
+    maybe_store_dynamic_ackermann_clause();
     return !external_clause_.empty();
   }
 #endif
@@ -2770,6 +2819,81 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     statistics_.increment(kStatTheoryConflicts);
   }
 
+  struct ClauseState {
+    std::size_t true_literals = 0;
+    std::size_t unassigned_literals = 0;
+  };
+
+  ClauseState current_clause_state(const sat::Clause& clause) const {
+    ClauseState state;
+    for (const sat::Lit lit : clause) {
+      const int var = lit.value > 0 ? lit.value : -lit.value;
+      if (!is_assigned_var(var)) {
+        ++state.unassigned_literals;
+        continue;
+      }
+      const bool assignment = assigned_value(var);
+      const bool literal_true = lit.value > 0 ? assignment : !assignment;
+      if (literal_true) {
+        ++state.true_literals;
+      }
+    }
+    return state;
+  }
+
+  void maybe_store_dynamic_ackermann_clause() {
+    if (!external_clause_.empty() || !options_.euf_dynamic_ackermann ||
+        dynamic_ackermann_clauses_added_ >= options_.euf_dynamic_ackermann_max_clauses) {
+      if (options_.euf_dynamic_ackermann &&
+          dynamic_ackermann_clauses_added_ >= options_.euf_dynamic_ackermann_max_clauses &&
+          !dynamic_ackermann_cap_recorded_) {
+        statistics_.increment(kStatEufDynamicAckCapHits);
+        dynamic_ackermann_cap_recorded_ = true;
+      }
+      return;
+    }
+    if (dynamic_ackermann_last_nohit_trail_size_ == trail_.size()) {
+      return;
+    }
+
+    for (const DynamicAckermannCandidate& candidate : dynamic_ackermann_candidates_.candidates) {
+      statistics_.increment(kStatEufDynamicAckCandidatesInspected);
+      if (candidate.width > options_.euf_dynamic_ackermann_max_width) {
+        statistics_.increment(kStatEufDynamicAckWidthSkips);
+        continue;
+      }
+      const std::string key = clause_key(candidate.clause);
+      if (learned_dynamic_ackermann_clauses_.contains(key)) {
+        statistics_.increment(kStatEufDynamicAckDuplicateSkips);
+        continue;
+      }
+
+      const ClauseState state = current_clause_state(candidate.clause);
+      if (state.true_literals != 0) {
+        statistics_.increment(kStatEufDynamicAckSatisfiedSkips);
+        continue;
+      }
+      if (state.unassigned_literals > 1) {
+        statistics_.increment(kStatEufDynamicAckNonunitSkips);
+        continue;
+      }
+
+      learned_dynamic_ackermann_clauses_.insert(key);
+      external_clause_ = candidate.clause;
+      external_clause_index_ = 0;
+      ++dynamic_ackermann_clauses_added_;
+      statistics_.increment(kStatEufDynamicAckClausesAdded);
+      statistics_.increment(state.unassigned_literals == 1 ? kStatEufDynamicAckUnitClauses
+                                                           : kStatEufDynamicAckConflictClauses);
+      if (candidate.width > statistics_.get(kStatEufDynamicAckMaxWidth)) {
+        statistics_.set(kStatEufDynamicAckMaxWidth, candidate.width);
+      }
+      return;
+    }
+
+    dynamic_ackermann_last_nohit_trail_size_ = trail_.size();
+  }
+
   const core::TermManager& terms_;
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
   core::TermId true_term_ = core::kInvalidTermId;
@@ -2790,9 +2914,14 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
   std::vector<std::vector<std::size_t>> candidate_indices_by_flat_term_;
   std::vector<theory::equality::FlatTermId> changed_terms_scratch_;
   std::unordered_map<int, Reason> reasons_;
+  DynamicAckermannCandidateIndex dynamic_ackermann_candidates_;
+  std::unordered_set<std::string> learned_dynamic_ackermann_clauses_;
   std::optional<IncrementalFlatAssignmentState> incremental_state_;
   sat::Clause external_clause_;
   std::size_t external_clause_index_ = 0;
+  std::size_t dynamic_ackermann_clauses_added_ = 0;
+  bool dynamic_ackermann_cap_recorded_ = false;
+  std::size_t dynamic_ackermann_last_nohit_trail_size_ = static_cast<std::size_t>(-1);
   std::size_t propagation_interval_ = options_.euf_propagation_interval;
   std::size_t next_propagation_round_ = 1;
 };
@@ -3144,12 +3273,14 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
                                                    assigned_atoms, statistics);
     }
     if (resolved_options.euf_dynamic_ackermann_shadow) {
+      const DynamicAckermannCandidateIndex dynamic_ackermann_candidates =
+          build_dynamic_ackermann_candidate_index(terms, clausifier.theory_atoms());
       std::vector<std::optional<bool>> atom_values;
       atom_values.reserve(assigned_atoms.size());
       for (const AssignedTheoryAtom& atom : assigned_atoms) {
         atom_values.push_back(atom.value);
       }
-      record_dynamic_ackermann_shadow(terms, clausifier.theory_atoms(), atom_values, statistics);
+      record_dynamic_ackermann_shadow(dynamic_ackermann_candidates, atom_values, statistics);
     }
 
     if (euf_propagation == EufPropagationMode::Model) {
@@ -3337,6 +3468,17 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufDynamicAckShadowMaxWidth, 0);
   statistics.set(kStatEufDynamicAckShadowWidthLe3, 0);
   statistics.set(kStatEufDynamicAckShadowWidthGt3, 0);
+  statistics.set(kStatEufDynamicAckCandidates, 0);
+  statistics.set(kStatEufDynamicAckCandidatesInspected, 0);
+  statistics.set(kStatEufDynamicAckClausesAdded, 0);
+  statistics.set(kStatEufDynamicAckUnitClauses, 0);
+  statistics.set(kStatEufDynamicAckConflictClauses, 0);
+  statistics.set(kStatEufDynamicAckDuplicateSkips, 0);
+  statistics.set(kStatEufDynamicAckNonunitSkips, 0);
+  statistics.set(kStatEufDynamicAckSatisfiedSkips, 0);
+  statistics.set(kStatEufDynamicAckWidthSkips, 0);
+  statistics.set(kStatEufDynamicAckCapHits, 0);
+  statistics.set(kStatEufDynamicAckMaxWidth, 0);
   statistics.set(kStatEufIncrementalTerms, 0);
   statistics.set(kStatEufIncrementalFlatDefinitions, 0);
   statistics.set(kStatEufIncrementalMerges, 0);
