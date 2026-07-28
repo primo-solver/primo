@@ -138,6 +138,27 @@ zero in ordinary runs:
 - `:euf.ackermann.symbols-cost-le-1000`;
 - `:euf.ackermann.symbols-cost-le-10000`;
 
+The dynamic Ackermann shadow counters below are populated when
+`--euf-dynamic-ackermann-shadow` is enabled. They inspect only candidate
+functional-consistency clauses whose result equality is already a SAT-visible
+theory atom, and they classify a candidate as SAT-visible only when every
+argument equality is also already a SAT-visible theory atom. The pass does not
+add clauses or create missing atoms:
+
+- `:euf.dynamic-ack.shadow.invocations`;
+- `:euf.dynamic-ack.shadow.result-pairs`;
+- `:euf.dynamic-ack.shadow.arg-atoms-missing`;
+- `:euf.dynamic-ack.shadow.sat-visible-clauses`;
+- `:euf.dynamic-ack.shadow.satisfied`;
+- `:euf.dynamic-ack.shadow.unit`;
+- `:euf.dynamic-ack.shadow.conflicting`;
+- `:euf.dynamic-ack.shadow.result-diseq-assigned`;
+- `:euf.dynamic-ack.shadow.all-args-eq-assigned`;
+- `:euf.dynamic-ack.shadow.width-total`;
+- `:euf.dynamic-ack.shadow.max-width`;
+- `:euf.dynamic-ack.shadow.width-le-3`;
+- `:euf.dynamic-ack.shadow.width-gt-3`;
+
 The incremental closure counters include:
 
 - `:euf.incremental.terms`;

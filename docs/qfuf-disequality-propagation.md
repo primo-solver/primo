@@ -263,6 +263,52 @@ leaves only a bounded partial-Ackermannization experiment as possible future
 work, and only after profiling confirms that SAT-visible consistency clauses for
 those cheap symbols attack the dominant explanation/search cost.
 
+### Dynamic Ackermann shadow diagnostic
+
+The next step before adding real dynamic Ackermann clauses is the default-off
+shadow diagnostic `--euf-dynamic-ackermann-shadow`. It measures the local clause
+shape:
+
+```text
+f(a1, ..., an) = f(b1, ..., bn) or a1 != b1 or ... or an != bn
+```
+
+without adding the clause and without creating new SAT atoms. A candidate is
+counted only when the result equality `f(args) = f(args')` is already a theory
+atom. It is classified as SAT-visible only when every argument equality
+`ai = bi` is also already a theory atom. This is intentionally stricter than
+full Ackermannization: the diagnostic answers whether local clauses can reuse
+the Boolean abstraction that already exists.
+
+The shadow pass runs at two solver points. During online propagation rounds it
+can classify clauses that would be unit under the current partial assignment,
+which is the strongest evidence that a real dynamic clause could prune search
+earlier than an EUF explanation. During final full-assignment checks it can
+classify clauses that would be conflicting. The counters are:
+
+- `:euf.dynamic-ack.shadow.invocations`;
+- `:euf.dynamic-ack.shadow.result-pairs`;
+- `:euf.dynamic-ack.shadow.arg-atoms-missing`;
+- `:euf.dynamic-ack.shadow.sat-visible-clauses`;
+- `:euf.dynamic-ack.shadow.satisfied`;
+- `:euf.dynamic-ack.shadow.unit`;
+- `:euf.dynamic-ack.shadow.conflicting`;
+- `:euf.dynamic-ack.shadow.result-diseq-assigned`;
+- `:euf.dynamic-ack.shadow.all-args-eq-assigned`;
+- `:euf.dynamic-ack.shadow.width-total`;
+- `:euf.dynamic-ack.shadow.max-width`;
+- `:euf.dynamic-ack.shadow.width-le-3`;
+- `:euf.dynamic-ack.shadow.width-gt-3`.
+
+Use `scripts/summarize_qfuf_dynamic_ackermann_shadow.py` on benchmark CSVs
+produced with `--solver-arg=--stats
+--solver-arg=--euf-dynamic-ackermann-shadow`. A real dynamic-Ackermann
+implementation should not be attempted unless the shadow run shows unit or
+conflicting clauses concentrated in low-width SAT-visible candidates. High
+`result-pairs` with high `arg-atoms-missing`, or many satisfied clauses with few
+unit/conflicting hits, means real clause addition would likely duplicate EUF
+explanations or recreate Ackermann blowup.
+
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:
