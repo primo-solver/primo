@@ -73,8 +73,14 @@ mpz_class to_mpz(i128 value) {
 }  // namespace
 
 Rational::Rational(std::int64_t value) {
-  // INT64_MIN is the one input that doesn't fit the small form (see kSmallMax).
-  if (value >= -kSmallMax) {
+  // Both bounds have to be checked, not just the lower one: at the default
+  // kSmallMax == INT64_MAX only INT64_MIN is out of range, so an upper check
+  // looks vacuous -- but kSmallMax is deliberately a knob (see the class
+  // comment's note on the small form's width), and narrowing it to INT32_MAX
+  // makes plenty of ordinary std::int64_t inputs out of range. Checking one
+  // side only let those into the small form and broke the canonical-form
+  // invariant; the 32-bit ablation build caught it immediately.
+  if (value >= -kSmallMax && value <= kSmallMax) {
     num_ = value;
     den_ = 1;
   } else {
