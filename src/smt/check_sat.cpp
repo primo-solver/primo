@@ -4001,9 +4001,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
 };
 #endif  // PRIMO_HAVE_IPASIR
 
-CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
-                             const std::vector<core::TermId>& assertions,
-                             const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
+                                  const std::vector<core::TermId>& assertions,
+                                  const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
@@ -4265,6 +4265,33 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     backend.add_clause(conflict_clause.value());
     publish_sat_stats(backend.statistics(), statistics);
   }
+}
+
+// Reports util::Rational's two-tier-representation counters (see that class's
+// comment and docs/qf-lra-heuristics.md's H2) as :rational.promotions and
+// :rational.big-operations. They are process-wide running totals, so this
+// records the delta across one solve. Wrapping rather than publishing inline
+// because solve_qf_lra_impl returns from a dozen places and CheckSatOutcome
+// carries a *copy* of the statistics taken at the return statement -- an RAII
+// guard would update the original after that copy was already made.
+//
+// Diagnostic only, but not optional: without them, "is the machine-word fast
+// path actually being taken on this benchmark, and would a different small-form
+// width take it more often" is a guess rather than a measurement.
+CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
+                             const std::vector<core::TermId>& assertions,
+                             const CheckSatOptions& options, util::Statistics& statistics) {
+  const std::uint64_t promotions_before = util::Rational::promotion_count();
+  const std::uint64_t big_operations_before = util::Rational::big_operation_count();
+  CheckSatOutcome outcome = solve_qf_lra_impl(terms, assertions, options, statistics);
+  const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
+  const std::uint64_t big_operations =
+      util::Rational::big_operation_count() - big_operations_before;
+  statistics.increment(util::StatKey::RationalPromotions, promotions);
+  statistics.increment(util::StatKey::RationalBigOperations, big_operations);
+  outcome.statistics.increment(util::StatKey::RationalPromotions, promotions);
+  outcome.statistics.increment(util::StatKey::RationalBigOperations, big_operations);
+  return outcome;
 }
 
 }  // namespace

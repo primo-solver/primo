@@ -200,6 +200,19 @@ H3/H2 are the whole story.
 
 ### H2 -- Small-rational fast path in `util::Rational`
 
+**Status: implemented, unconditional, 2026-07-28.** See
+[](arithmetic.md)'s "Two-tier rational representation" for the shipped design
+and `docs/run-log.json` for the verification trail. Paired local A/B on the
+profiled instances: **2.6x-4.5x faster**, with every search counter
+bit-identical (a pure representation change). Two design points below were
+revised during implementation and are corrected in place: the small form is
+64-bit rather than 32-bit (an ablation, not a settled question), and demotion
+is **required**, not forbidden -- see the canonical-form paragraph.
+
+**Prior art**: this is Monniaux's own implementation choice (CAV 2009,
+Section 4), found only after the profiling above independently reached the same
+diagnosis -- see [](papers/lra-related-work.md).
+
 **Targets:** everything. **The single largest measured lever (54%).**
 
 **Problem.** `util::Rational` wraps `mpq_class`; every value is two
@@ -211,32 +224,54 @@ arithmetic.
 fully encapsulating) public API:
 
 - Fast path: `std::int64_t num, den` with `den > 0` and `gcd(num,den) = 1`,
-  stored inline. Add/sub/mul/div computed in `__int128` with overflow
-  checks (`__builtin_mul_overflow` / `__builtin_add_overflow`); GCD by the
-  binary algorithm on machine words.
-- Slow path: promote to a heap `mpq_class` on any overflow, and stay
-  promoted (no demotion -- demotion is a correctness footgun for hashing
-  and equality unless canonical).
-- `sign()`, `is_zero()`, comparison, and negation become branch-light and
-  allocation-free on the fast path. `RationalHash` must hash the *value*,
-  not the representation, so a small and a promoted value that are
-  numerically equal hash equal (needed because `Rational` is a
-  hash-consing key component).
+  stored inline. Knuth's two-gcd addition and cross-reduced multiplication
+  (TAOCP Vol. 2, Sec. 4.5.1) in `__int128`; binary GCD on machine words.
+  *As shipped*, no overflow checks on the intermediates are needed at all:
+  canonical operands bound every product by `2^126` and every sum by
+  `2^127`, so only the reduced result needs a range test.
+- Slow path: promote to a heap `mpq_class` when the reduced result doesn't
+  fit -- and **demote again as soon as a result does fit**. The original
+  version of this note had that backwards ("stay promoted -- demotion is a
+  correctness footgun"); it is the opposite. Demotion is what makes the
+  representation a function of the *value*, which is precisely what
+  `RationalHash` needs: without it the same number could be stored two ways
+  and hash two ways, and `PolynomialKey` hash-consing would silently stop
+  matching. Implemented as a canonical-form invariant (big form iff the
+  value does not fit small) established at exactly two private factories and
+  asserted by a debug/ASAN-only `check_invariant()`.
+- `sign()`, `is_zero()`, comparison, and negation are branch-light and
+  allocation-free on the fast path. With the invariant in place,
+  `RationalHash` can hash the small pair directly and `operator==` can
+  reject a form mismatch outright.
 - No call-site changes: `mpq_class` already appears only inside
   `rational.hpp/.cpp`, exactly as that file's own comment intends.
+- Width: 64-bit rather than Monniaux's 32-bit, behind the single `kSmallMax`
+  knob so the two can be compared empirically. Deferred ablation.
 
 **Risk: moderate, concentrated and testable.** It is the numeric core, so a
-bug is a wrong answer rather than a slowdown. Mitigation: randomized
-differential unit tests against `mpq_class` for `+ - * /`, all comparisons,
-`sign`, `is_zero`, `to_string`, and `parse`, with adversarial magnitudes
-straddling the `int64`/`__int128` overflow boundary; ASAN/UBSan suite; and
-the full campaign-tier fuzz gate on both pivoting paths (this is
-unconditional core code, so it is a campaign-gate change by the standing
-precedent).
+bug is a wrong answer rather than a slowdown. Mitigation as planned:
+randomized differential unit tests against `mpq_class` for `+ - * /`, all
+comparisons, `sign`, `is_zero`, `to_string`, and `parse`, with adversarial
+magnitudes straddling the overflow boundary; ASAN/UBSan suite; and the full
+campaign-tier fuzz gate on both pivoting paths (unconditional core code, so a
+campaign-gate change by the standing precedent).
+
+*This paid off during implementation*: the ASAN run caught a real disagreement
+between `from_mpq`'s "fits small" test (`mpz_fits_slong_p`, which admits
+`INT64_MIN`) and the small form's own range (which excludes `INT64_MIN` so
+negation can never overflow) -- the two differed by exactly that one value.
+Fixed by giving both a single shared predicate. A separate deliberate-mutation
+check (dropping demotion) confirmed the unit tests fail loudly when the
+invariant is broken, which matters because that particular bug is otherwise
+silent.
 
 **Expected:** removal of most of the ~54%; realistically 1.5-2x
 solver-wide on QF_LRA, and it compounds with every other item here since
 they all reduce *counts* of the same operations.
+
+**Measured: 2.6x-4.5x** on the profiled instances -- better than expected,
+because the allocator cost was compounding across `DeltaRational` (two
+`Rational`s per bound and per assignment) rather than being paid once.
 
 ### H3 -- Fill-in-aware (Markowitz-style) entering-variable selection
 

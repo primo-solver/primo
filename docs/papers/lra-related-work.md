@@ -19,6 +19,8 @@ otherwise so it doesn't get mistaken for near-term reading.
 Checked by actually fetching each URL, not just search-result snippets.
 
 Freely accessible (fetched and read the actual PDF):
+- Monniaux, "On using floating-point computations to help an exact linear
+  arithmetic decision procedure" (CAV 2009, arXiv:0904.3525)
 - King/Barrett/Dutertre, "Simplex with Sum of Infeasibilities for SMT" (FMCAD 2013)
 - King/Barrett/Tinelli, "Leveraging Linear and Mixed Integer Programming for SMT" (FMCAD 2014)
 - Nalbach et al., "FMplex" (arXiv 2310.00995)
@@ -48,6 +50,55 @@ fetch a copy:
   yet located/fetched.
 
 ## Direct extensions of Simplex-for-DPLL(T)
+
+**David Monniaux. "On using floating-point computations to help an exact
+linear arithmetic decision procedure." CAV 2009 (arXiv:0904.3525).**
+The paper's headline contribution is a floating-point preprocessing phase
+(run GLPK's dual simplex, then "force-pivot" the exact rational tableau to
+the basis it found) that is sound and complete because the numerical result
+is only ever used to pick a starting configuration. **That contribution is
+not implemented in Primo and is not currently planned** -- it needs an
+incremental floating-point LP engine alongside the exact tableau.
+
+What Primo does take from this paper are three implementation points it
+states as ordinary practice rather than as contributions. They are cited
+here (and at the corresponding code) because they are the *source* of the
+design, even though they are not what the paper is about:
+
+- **Section 4, two-tier rational representation.** "Rational numbers are
+  implemented as quotients of two 32-bit numbers; in case of overflow,
+  extended precision rationals from the GMP library are used. The reason
+  behind a two-tier system is that GMP rationals inherently involve some
+  inefficiencies, including dynamic memory allocation, even for small
+  numerator and denominator. In many examples arising from verification
+  problems, one never needs to call GMP." **Implemented 2026-07-28** in
+  `util::Rational` (competitiveness-roadmap H2) -- see `docs/arithmetic.md`
+  and `docs/qf-lra-heuristics.md`. *Deviation:* Primo's small form is 64-bit
+  rather than 32-bit, using `__int128` intermediates, which is an empirical
+  question the H2 width ablation is meant to settle rather than a claim.
+  *Independently corroborated:* profiling Primo before implementing it put
+  ~42% of runtime in the allocator and ~12% in GMP copy/init against ~5% in
+  real bignum arithmetic -- the same diagnosis the paper gives.
+- **Section 2.1, atom canonicalization.** Inequalities are scaled to coprime
+  integer coefficients and optionally negated so the leading coefficient is
+  positive, "so that two inequalities constraining the same direction in
+  space appear with the exact same left-hand side"; and "for each left hand
+  side that is *not a variable*, a new variable is introduced". The second
+  half is the source for roadmap item H1 (Primo currently introduces a slack
+  for *every* distinct polynomial, including bare variables), the first half
+  for the long-deferred scale-invariant polynomial matching (item 3).
+  **Not yet implemented.**
+- **Page 8, sparsity-ordered pivoting.** "We sort the variables ... according
+  to the number of nonzero coefficients in the corresponding equation ... the
+  pivoting steps are faster when the equation defining the basic variable to
+  be pivoted has few nonzero coefficients", and likewise pre-sorting by
+  "number of occurrences in equations". Stated there for the forced-pivoting
+  phase, but the cost argument is the same one behind roadmap item H3's
+  fill-in-aware entering-variable selection. **Not yet implemented.**
+
+Clean-room note: implemented from this paper's prose (plus Knuth TAOCP Vol. 2
+Sec. 4.5.1 for the rational arithmetic itself), not from any solver's source.
+https://arxiv.org/abs/0904.3525
 
 **Tim King, Clark Barrett, Bruno Dutertre. "Simplex with Sum of
 Infeasibilities for SMT." FMCAD 2013.**

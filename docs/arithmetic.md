@@ -32,8 +32,11 @@ alternatives considered before/while implementing it.
   multiplication -- see the TermKind comment for why (a coefficient has to
   attach to some node; repeated addition can't represent non-integer
   coefficients).
-- **Exact rationals** (`src/util/rational.{hpp,cpp}`): GMP-backed
-  (vendored via `contrib/install_gmp.py`, `make contrib-gmp`).
+- **Exact rationals** (`src/util/rational.{hpp,cpp}`): a two-tier
+  representation -- numerator/denominator held inline as `std::int64_t` when
+  they fit, falling back to a heap `mpq_class` (GMP, vendored via
+  `contrib/install_gmp.py`, `make contrib-gmp`) when they don't. See
+  "Two-tier rational representation" below.
 - **Normalization** (`src/theory/arithmetic/linear_polynomial.{hpp,cpp}`,
   `lra_atom.{hpp,cpp}`): `LinearPolynomial` (sum of coeff*var + constant,
   Section 2's normal form), `LraAtom` (canonical "t ~ c" form, Section 2).
@@ -185,6 +188,55 @@ alternatives considered before/while implementing it.
     instances specifically, not average-case speed on typical ones. Not
     campaign-tier confirmed and not currently planned for default-on
     promotion given this; see `docs/run-log.json`.
+- **Two-tier rational representation** (heuristics-note item H2, 2026-07-28,
+  `src/util/rational.{hpp,cpp}`, **unconditional**): `util::Rational` stores
+  small values inline as `std::int64_t` numerator/denominator and only falls
+  back to a heap `mpq_class` when a value genuinely needs more than 64 bits.
+  Following Monniaux (CAV 2009, Section 4 -- see
+  [](papers/lra-related-work.md)), whose stated reason is exactly the one
+  profiling found here: "GMP rationals inherently involve some inefficiencies,
+  including dynamic memory allocation, even for small numerator and
+  denominator".
+  - **Canonical-form invariant**: a `Rational` is in big form *if and only if*
+    its value does not fit the small form. The representation is a function of
+    the value, never of how the value was reached -- which is what lets
+    `operator==` reject a form mismatch outright and lets `RationalHash` hash
+    the small pair directly. Without it, a value reachable both directly and
+    through an overflowing intermediate would have two representations and
+    hash two ways, silently breaking `PolynomialKey` hash-consing (atoms that
+    should share a slack quietly wouldn't) rather than producing a visibly
+    wrong answer. Exactly two private factories (`from_int128_reduced`,
+    `from_mpq`) establish it; nothing else assigns the representation fields.
+    A debug/ASAN-only `check_invariant()` asserts it at both.
+  - **Arithmetic**: Knuth (TAOCP Vol. 2, Sec. 4.5.1) two-gcd rational
+    addition and cross-reduced multiplication, entirely in machine words with
+    `__int128` intermediates. Both operands being canonical with
+    magnitudes `<= INT64_MAX` bounds every product by `2^126` and every sum by
+    `2^127`, so no intermediate can overflow `__int128` and the only range
+    check needed is on the reduced result. Comparisons cross-multiply in
+    `__int128` and never allocate or change representation.
+  - **Deviation from the paper**: the small form is 64-bit, not Monniaux's
+    32-bit. `kSmallMax` is the single knob, so the two widths can be compared
+    empirically (a planned ablation) rather than argued about; `__int128` is
+    a GCC/Clang extension, introduced under `__extension__` because the build
+    is `-Wpedantic -Werror`.
+  - **Observability**: `:rational.promotions` and `:rational.big-operations`
+    report how often the fast path was left. Measured: **zero** on
+    `TM/p5-zenonumeric_s5`, `sc-21.induction3`, `uart-18.induction` and
+    `miplib/pp08a-12000` (the fast path is taken 100% of the time), but 1.22M
+    promotions / 1.27M big operations on
+    `clock_synchro/clocksynchro_2clocks.main_invar.induct`, whose coefficients
+    genuinely blow up through pivoting -- which is itself the explanation for
+    that instance's ~1.5 ms/pivot cost.
+  - **Effect** (paired local A/B, alternating before/after binaries on one
+    idle host, `:sat.decisions`/`:sat.conflicts`/`:lra.pivots`/
+    `:lra.online-check-calls`/`:lra.theory-propagations` **bit-identical**
+    throughout, confirming a pure representation change): TM/p5-zenonumeric_s5
+    4.48s -> 0.99s (~4.5x), sc-21.induction3 31.3s -> 8.7s (~3.6x),
+    uart-18.induction 8.2s -> 1.9s (~4.4x), clocksynchro_2clocks 13.0s -> 5.1s
+    (~2.6x). `latendresse/ecoliFBAyicesTest-500` still times out -- it is a
+    single `check()` call over one large LP, which is H1/H3 territory, not
+    H2's.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already
