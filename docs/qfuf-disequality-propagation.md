@@ -309,6 +309,17 @@ conflicting clauses concentrated in low-width SAT-visible candidates. High
 unit/conflicting hits, means real clause addition would likely duplicate EUF
 explanations or recreate Ackermann blowup.
 
+The local weak-manifest shadow run at commit `b74acfe` solved the same 20 of 21
+files, timed out on `NEQ016_size8`, and reported no wrong answers. It recorded
+2,591,128 SAT-visible result pairs across 2,600 shadow invocations. Of those,
+913,175 candidates had all argument atoms already SAT-visible, all with width at
+most three. The useful firing signal was much smaller: 1,246 unit clauses and
+zero conflicting clauses. The timeout row had 467,456 SAT-visible width-three
+candidates, 90 unit hits, zero conflicting hits, and no missing argument atoms.
+This is enough signal to justify a real default-off, capped dynamic-clause
+experiment, but it also confirms that the selector must be far tighter than
+"all SAT-visible local Ackermann clauses."
+
 ### H1: existing-atom unary propagation
 
 Only propagate when all of these hold:
