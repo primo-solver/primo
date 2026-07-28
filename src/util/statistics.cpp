@@ -168,6 +168,9 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.theory-decisions"sv,
     ":rational.promotions"sv,
     ":rational.big-operations"sv,
+    ":lra.tableau-vars"sv,
+    ":lra.rows"sv,
+    ":lra.row-nonzeros"sv,
 };
 
 }  // namespace

@@ -136,8 +136,7 @@ void rejects_general_term_division() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("/ is only supported between rational literals") !=
-        std::string::npos);
+  assert(result.message.find("/ is only supported between rational literals") != std::string::npos);
 }
 
 void rejects_combined_equality_and_arithmetic() {
@@ -435,7 +434,7 @@ void theory_decisions_drive_boolean_structure() {
   assert(decided.result == CheckSatResult::Sat);
   assert(decided.statistics.get(StatKey::LraTheoryDecisions) > 0);
   assert(decided.statistics.get(StatKey::LraTheoryDecisions) ==
-        decided.statistics.get(StatKey::SatDecisions));
+         decided.statistics.get(StatKey::SatDecisions));
 
   CheckSatOptions without_theory_decisions;
   const auto undecided = check_sat_smtlib(formula, without_theory_decisions);
@@ -446,21 +445,29 @@ void theory_decisions_drive_boolean_structure() {
 void theory_decisions_can_reach_a_conflict() {
   // Competitiveness-roadmap item 8: cb_decide always tries an atom's TRUE
   // polarity first (its round-robin order has no notion of which polarity
-  // is "right") -- (x<=0 or x>=10) together with 3<=x<=7 rules out BOTH
-  // disjuncts, so whichever of the two atoms cb_decide reaches first gets
-  // tried TRUE, conflicts immediately against the already-asserted [3,7]
-  // bound, and must be flipped via ordinary conflict-driven backtracking
-  // before the other disjunct is tried and also conflicts, closing the
-  // whole formula UNSAT. Confirms the naive "always guess TRUE first"
-  // order doesn't compromise correctness, only decision *order* -- the
-  // same pure-performance-lever invariant every other item in this
-  // roadmap upholds.
+  // is "right"), so a formula whose every disjunct is theory-false makes it
+  // try one, conflict, backtrack, try the other, conflict again, and close
+  // the formula UNSAT. Confirms the naive "always guess TRUE first" order
+  // doesn't compromise correctness, only decision *order* -- the same
+  // pure-performance-lever invariant every other item in this roadmap
+  // upholds.
+  //
+  // The disjuncts are deliberately *compound* polynomials. This test used to
+  // use `(or (<= x 0) (>= x 10))` with `3 <= x <= 7`, but item H1 (direct
+  // bounds for single-variable atoms) put all four of those atoms on `x`
+  // itself, so same-variable propagation now closes that formula with zero
+  // decisions -- correct, and a real strengthening, but it stopped exercising
+  // cb_decide at all. Compound disjuncts get their own slack variables, whose
+  // bounds nothing has asserted until a decision does, so a decision is
+  // genuinely required. Both are false for x, y >= 3 (x+y >= 6 and x+2y >= 9),
+  // and they are not proportional, so they keep separate slacks.
   const std::string formula = R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)
-    (assert (or (<= x 0) (>= x 10)))
+    (declare-fun y () Real)
+    (assert (or (<= (+ x y) 0) (<= (+ x (* 2 y)) 0)))
     (assert (<= 3 x))
-    (assert (<= x 7))
+    (assert (<= 3 y))
     (check-sat)
   )";
 
@@ -536,8 +543,8 @@ void deferred_check_runs_once_per_quiescence_point_not_per_literal() {
   // (one before the first decision, then one more per decision/conflict)
   // -- not once per arithmetic-atom assignment, however many of those a
   // single quiescence point's propagation ends up delivering.
-  const auto quiescence_points =
-      result.statistics.get(StatKey::SatDecisions) + result.statistics.get(StatKey::SatConflicts) + 1;
+  const auto quiescence_points = result.statistics.get(StatKey::SatDecisions) +
+                                 result.statistics.get(StatKey::SatConflicts) + 1;
   assert(result.statistics.get(StatKey::LraOnlineCheckCalls) <= quiescence_points);
 }
 
@@ -827,10 +834,124 @@ void gaussian_elimination_detects_contradictory_system() {
 // ASAN, where larger stack frames made even fuzzer-typical nesting depths
 // unsafe); this synthetic depth is far beyond anything a native recursive
 // implementation could tolerate even in a Release build.
+// -- Item H1: direct bounds for single-variable atoms --
+//
+// A single-variable atom `c*x ~ rhs` is asserted as a bound on `x` itself, with
+// the coefficient divided out and the relation flipped when `c` is negative,
+// instead of getting its own slack variable and row. The flip is the
+// correctness-critical part (bound_assertion() in check_sat.cpp), so each of
+// its four rows gets pinned below in both truth directions.
+
+void single_variable_atoms_share_one_bound_variable() {
+  // Both a lower and an upper bound on the same bare variable. These used to
+  // normalize to *different* polynomials (coefficient -1 and +1) and so landed
+  // on two different slacks, which is exactly what H1 removes: the tableau
+  // could not see that x was bounded on both sides without pivoting.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= 0 x))
+    (assert (<= x 10))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Sat);
+
+  // Contradictory bounds on one variable must now be a *direct* conflict.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= 5 x))
+    (assert (<= x 3))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Unsat);
+}
+
+void single_variable_atom_coefficients_are_divided_out() {
+  // Positive coefficient: 2x <= 4 means x <= 2, so x >= 3 contradicts it...
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* 2 x) 4))
+    (assert (<= 3 x))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Unsat);
+  // ...while x >= 1 does not.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* 2 x) 4))
+    (assert (<= 1 x))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Sat);
+
+  // Negative coefficient: -2x <= 4 means x >= -2 (the relation flips), so
+  // x <= -3 contradicts it and x <= -1 does not. Getting the flip wrong would
+  // silently reverse which models are accepted, which is why both directions
+  // are checked rather than only the unsat one.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* (- 2) x) 4))
+    (assert (<= x (- 3)))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Unsat);
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* (- 2) x) 4))
+    (assert (<= x (- 1)))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Sat);
+}
+
+void single_variable_atom_strictness_survives_the_flip() {
+  // bound_assertion()'s four rows, each in both truth directions. `x ~ c` is
+  // written directly for the unflipped rows and as `(* (- 1) x) ~ -c` for the
+  // flipped ones, so the flip path is what is under test rather than the
+  // frontend's own `>=` handling.
+  const auto sat_of = [](const std::string& body) {
+    return check_sat_smtlib("(set-logic QF_LRA)(declare-fun x () Real)" + body + "(check-sat)")
+        .result;
+  };
+
+  // x <= 5 TRUE -> upper 5: x = 5 fits, x = 6 does not.
+  assert(sat_of("(assert (<= x 5))(assert (<= 5 x))") == CheckSatResult::Sat);
+  assert(sat_of("(assert (<= x 5))(assert (<= 6 x))") == CheckSatResult::Unsat);
+  // x < 5 TRUE -> upper 5-delta: x = 5 no longer fits.
+  assert(sat_of("(assert (< x 5))(assert (<= 5 x))") == CheckSatResult::Unsat);
+  assert(sat_of("(assert (< x 5))(assert (< 4 x))") == CheckSatResult::Sat);
+
+  // -x <= -5, i.e. x >= 5 (flipped) TRUE -> lower 5: x = 5 fits, x = 4 does not.
+  assert(sat_of("(assert (<= (* (- 1) x) (- 5)))(assert (<= x 5))") == CheckSatResult::Sat);
+  assert(sat_of("(assert (<= (* (- 1) x) (- 5)))(assert (<= x 4))") == CheckSatResult::Unsat);
+  // -x < -5, i.e. x > 5 (flipped, strict) TRUE -> lower 5+delta: x = 5 is out.
+  assert(sat_of("(assert (< (* (- 1) x) (- 5)))(assert (<= x 5))") == CheckSatResult::Unsat);
+  assert(sat_of("(assert (< (* (- 1) x) (- 5)))(assert (<= x 6))") == CheckSatResult::Sat);
+
+  // The FALSE direction of each, driven through a negation so the solver has
+  // to assert the opposite bound rather than the atom's own.
+  // NOT(x <= 5) is x > 5 -> lower 5+delta.
+  assert(sat_of("(assert (not (<= x 5)))(assert (<= x 5))") == CheckSatResult::Unsat);
+  assert(sat_of("(assert (not (<= x 5)))(assert (<= x 6))") == CheckSatResult::Sat);
+  // NOT(x < 5) is x >= 5 -> lower 5.
+  assert(sat_of("(assert (not (< x 5)))(assert (<= x 5))") == CheckSatResult::Sat);
+  assert(sat_of("(assert (not (< x 5)))(assert (< x 5))") == CheckSatResult::Unsat);
+  // NOT(-x <= -5), i.e. NOT(x >= 5), is x < 5 -> upper 5-delta.
+  assert(sat_of("(assert (not (<= (* (- 1) x) (- 5))))(assert (<= 5 x))") == CheckSatResult::Unsat);
+  assert(sat_of("(assert (not (<= (* (- 1) x) (- 5))))(assert (<= 4 x))") == CheckSatResult::Sat);
+  // NOT(-x < -5), i.e. NOT(x > 5), is x <= 5 -> upper 5.
+  assert(sat_of("(assert (not (< (* (- 1) x) (- 5))))(assert (<= 5 x))") == CheckSatResult::Sat);
+  assert(sat_of("(assert (not (< (* (- 1) x) (- 5))))(assert (< 5 x))") == CheckSatResult::Unsat);
+}
+
 void handles_pathologically_deep_arithmetic_nesting() {
   constexpr int kDepth = 50000;
-  std::string formula =
-      "(set-logic QF_LRA)\n(declare-fun x () Real)\n(assert (<= x ";
+  std::string formula = "(set-logic QF_LRA)\n(declare-fun x () Real)\n(assert (<= x ";
   for (int i = 0; i < kDepth; ++i) {
     formula += "(+ 1 ";
   }
@@ -878,6 +999,9 @@ int main() {
   gaussian_elimination_solves_joint_system_by_default();
   gaussian_elimination_can_be_disabled();
   gaussian_elimination_detects_contradictory_system();
+  single_variable_atoms_share_one_bound_variable();
+  single_variable_atom_coefficients_are_divided_out();
+  single_variable_atom_strictness_survives_the_flip();
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
   return 0;

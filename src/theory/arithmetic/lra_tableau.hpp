@@ -24,7 +24,9 @@ struct DeltaRational {
   util::Rational rational{0};
   util::Rational infinitesimal{0};
 
-  static DeltaRational from_rational(util::Rational value) { return DeltaRational{std::move(value), util::Rational(0)}; }
+  static DeltaRational from_rational(util::Rational value) {
+    return DeltaRational{std::move(value), util::Rational(0)};
+  }
 
   DeltaRational operator+(const DeltaRational& other) const {
     return DeltaRational{rational + other.rational, infinitesimal + other.infinitesimal};
@@ -142,9 +144,9 @@ class LraTableau {
   // returns nullopt. A bound weaker than the existing one is a silent
   // no-op.
   std::optional<std::vector<sat::Lit>> assert_upper(LraVarId var, DeltaRational value,
-                                                     sat::Lit reason);
+                                                    sat::Lit reason);
   std::optional<std::vector<sat::Lit>> assert_lower(LraVarId var, DeltaRational value,
-                                                     sat::Lit reason);
+                                                    sat::Lit reason);
 
   // Section 3.1's Check. Repeatedly pivots to repair out-of-bounds basic
   // variables until either every basic variable is within its bounds
@@ -201,6 +203,15 @@ class LraTableau {
   // minimization (minimize_soi_conflict()). Always 0 under Bland/Dantzig.
   std::size_t soi_multi_row_conflict_count() const { return soi_multi_row_conflict_count_; }
   std::size_t soi_quickxplain_call_count() const { return soi_quickxplain_call_count_; }
+
+  // Total number of tableau variables (problem variables plus slacks, plus
+  // f_var_ under PivotingRule::Soi). Only grows during initial construction
+  // -- see the class comment -- so this is a structural size, not search
+  // state. Used to publish the :lra.tableau-vars / :lra.rows /
+  // :lra.row-nonzeros statistics, which are what make the tableau's shape
+  // (and so the effect of anything that changes how many rows a formula
+  // needs) measurable instead of a matter of inference.
+  std::size_t variable_count() const { return vars_.size(); }
 
   // Whether `var` is currently a basic (row-defining) variable -- pivots
   // can change this over time, so this reflects the current pivot state,

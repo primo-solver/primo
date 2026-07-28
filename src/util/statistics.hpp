@@ -166,6 +166,9 @@ enum class StatKey : std::size_t {
   LraTheoryDecisions,
   RationalPromotions,
   RationalBigOperations,
+  LraTableauVars,
+  LraRows,
+  LraRowNonzeros,
   Count,
 };
 

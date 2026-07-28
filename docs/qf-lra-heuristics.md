@@ -135,6 +135,19 @@ Priority = (measured share of the bottleneck) × (breadth of families hit) ÷
 
 ### H1 -- Direct bounds for single-variable atoms (+ scale-canonical polynomials)
 
+**Status: H1a implemented, unconditional, 2026-07-28; H1b (scale-canonical
+keys for *compound* polynomials) still open.** See [](arithmetic.md)'s
+"Direct bounds for single-variable atoms". The predicted row reductions were
+confirmed exactly, family by family, via a new `:lra.rows` statistic --
+ecoliFBA -69%, TM/p6 -95%, pp08a -66%, sc-17 -39%, uart-17 -36%, tta_startup
+-14%, clock_synchro -2%, DTP-Scheduling unchanged -- each matching Section
+1.3's measured single-variable share for that instance. Paired local A/B on
+top of H2: TM/p5 5.3x, sc-21 3.2x, uart-18 1.3x, miplib/pp08a 1.2x,
+clock_synchro and DTP flat (as their row counts predict).
+
+**Prior art**: Monniaux (CAV 2009) Section 2.1 states this as ordinary
+practice -- see [](papers/lra-related-work.md).
+
 **Targets:** latendresse, TM, miplib, sc, uart (36-95% of rows removed);
 neutral elsewhere. **Class A and B, plus the whole TM/sc/uart cluster.**
 
@@ -197,6 +210,15 @@ part is the rhs rescaling and relation flip (`c·x ≤ k` is `x ≤ k/c` for
 **Falsifier:** if row counts drop as predicted but wall time does not
 improve on latendresse/TM/miplib, then row *count* was never the cost and
 H3/H2 are the whole story.
+
+**Falsifier outcome: partially triggered, and informative.** Row counts fell
+exactly as predicted everywhere. Wall time followed on TM (5.3x), sc (3.2x),
+uart and miplib -- but **not on latendresse**, which lost 69% of its rows and
+did not move at all. So for the Class A pure-LP instance the falsifier fired:
+row count was never its cost. What remains there is a 1,394-row LP with a
+691-term dense row and no Boolean structure whatsoever, which is precisely
+H3's fill-in problem. That sharpens H3 from "helps Class B" to "is the only
+remaining lever for Class A", and it is the concrete reason to do H3 next.
 
 ### H2 -- Small-rational fast path in `util::Rational`
 

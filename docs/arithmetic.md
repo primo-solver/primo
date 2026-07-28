@@ -53,10 +53,13 @@ alternatives considered before/while implementing it.
   search depth" framing doesn't mean "don't undo them").
 - **DPLL(T) wiring** (`check_sat.cpp`): `PreparedLraTheory` precomputes the
   tableau's structural part exactly once, mirroring `PreparedFlatTheory` --
-  one row per *distinct polynomial*, not per atom: atoms that normalize to
-  the exact same `LinearPolynomial` share a slack variable (`PolynomialKey`/
-  `PolynomialKeyHash`, exact-content matching only, not scale-invariant),
-  with an `atoms_by_slack` index recording which atoms share which slack.
+  one row per *distinct compound polynomial*, not per atom: atoms that
+  normalize to the exact same `LinearPolynomial` share a slack variable
+  (`PolynomialKey`/`PolynomialKeyHash`, exact-content matching only, not
+  scale-invariant). A **single-variable** atom gets no slack and no row at
+  all -- it is a bound on that variable itself (see "Direct bounds for
+  single-variable atoms" below). The `atoms_by_bound_var` index records
+  which atoms bound which tableau variable, slack or not.
   `OnlineLraPropagator` (Milestone 3a) is a trail-synced
   `CaDiCaL::ExternalPropagator`, owning one `LraTableau` (copied once from
   the prepared base) kept in sync via `notify_new_decision_level`/
@@ -66,14 +69,15 @@ alternatives considered before/while implementing it.
   (`#if PRIMO_HAVE_IPASIR`); `find_incremental_lra_theory_conflict` (copy
   the base tableau and reassert every round, no push/pop reuse) survives
   only as the fallback when it isn't.
-- **Same-slack bound propagation** (Milestone 3b, `check_sat.cpp`): after
-  each successful bound assertion, `OnlineLraPropagator` scans the other
-  atoms sharing that slack (via `atoms_by_slack`) and eagerly propagates
-  any now entailed true/false, using `LraTableau::upper_bound()`/
-  `lower_bound()` (new read accessors) compared against `true_threshold`/
-  `false_threshold` (the same `DeltaRational` values `assert_lra_atom_bound`
-  itself would assert) -- Dutertre & de Moura Section 4.2's "deriving
-  satisfied atoms". Each propagation's reason is exactly the one bound's
+- **Same-variable bound propagation** (Milestone 3b, `check_sat.cpp`; called
+  same-*slack* propagation before item H1a, when a slack was the only thing a
+  bound could live on): after each successful bound assertion,
+  `OnlineLraPropagator` scans the other atoms bounding that same tableau
+  variable (via `atoms_by_bound_var`) and eagerly propagates any now entailed
+  true/false, using `LraTableau::upper_bound()`/`lower_bound()` (new read
+  accessors) compared against the `DeltaRational` `bound_assertion()` says
+  that atom's own TRUE/FALSE case would assert -- Dutertre & de Moura Section
+  4.2's "deriving satisfied atoms". Each propagation's reason is exactly the one bound's
   own asserting literal (a 2-literal Horn clause), computed eagerly at scan
   time rather than lazily re-derived, since the check is exact and cheap
   (no candidate/budget/backoff machinery like EUF's propagation needs).
@@ -86,20 +90,15 @@ alternatives considered before/while implementing it.
   maximum/minimum contribution (`var_j`'s upper bound if `coeff_j` is
   positive, lower if negative, for the implied-upper case; symmetric for
   implied-lower) into an implied interval for `basic_var`, then checks it
-  against `atoms_by_slack[basic_var]` exactly like same-slack propagation
-  does. Triggered from the same `notify_assignment_lit` hook, right after
-  the same-slack scan, on whatever slack was just tightened.
-  **Bounds in this tableau design only ever live on slacks** (every atom,
-  even a bare single-variable one like `(<= x 2)`, gets its own dedicated
-  slack/row -- structural variables like `x` never receive a bound
-  directly), so a row's *term* variables need an extra indirection to find
-  their current bound at all: `PreparedLraTheory::single_variable_slack`
-  (built once at construction, alongside the existing `atoms_by_slack`)
-  maps a raw variable to the slack that wraps it alone (coefficient
-  exactly 1 -- a deliberate first-cut scope limit, not a fundamental one),
-  when such an atom exists in the formula; `variable_for_single_slack` is
-  its reverse, used on the trigger side to decide whether a just-changed
-  slack is even relevant to rescan. Reasons are genuinely multi-literal
+  against `atoms_by_bound_var[basic_var]` exactly like same-variable
+  propagation does. Triggered from the same `notify_assignment_lit` hook,
+  right after the same-variable scan, on whatever variable was just
+  tightened. *(Originally, bounds could only ever live on slacks, so a
+  row's term variables needed an extra `single_variable_slack` indirection
+  to find their current bound at all, and the trigger only fired for slacks
+  wrapping exactly one coefficient-1 variable. Item H1 removed both: a row
+  term's bound is now read directly, which is simpler and strictly more
+  reaching.)* Reasons are genuinely multi-literal
   (one antecedent per row term used, unlike same-slack propagation's
   single-literal reason) -- `OnlineLraPropagator`'s `pending_`/`reasons_`/
   `cb_add_reason_clause_lit` were widened from a single `sat::Lit` to
@@ -261,6 +260,52 @@ alternatives considered before/while implementing it.
     seeds -- 0 crashes, 0 wrong answers throughout. Incidentally, the gates'
     own timeout rates fell sharply (Bland campaign 118-143 -> 28, SOI campaign
     965-976 -> 324), the same speedup showing up in the fuzz corpus.
+- **Direct bounds for single-variable atoms** (heuristics-note item H1a,
+  2026-07-28, `check_sat.cpp`, **unconditional**): an atom whose normalized
+  polynomial is a single term `c*x` is a bound on `x` itself. The
+  coefficient is divided out (`rhs' = rhs / c`) and no slack variable and no
+  row are created at all. Dividing by a negative `c` reverses the relation,
+  recorded as `PreparedAtom::asserts_lower_when_true` and interpreted in
+  exactly one place, `bound_assertion()`, whose comment tabulates all four
+  relation/orientation rows and which is what the new
+  `single_variable_atom_*` tests pin.
+  - Monniaux (CAV 2009, Section 2.1) states this as ordinary practice --
+    "for each left hand side that is *not a variable*, a new variable is
+    introduced" -- and Dutertre & de Moura's Section 2 does the same. Primo
+    previously introduced a slack for *every* distinct polynomial.
+  - **Two things follow beyond the row saving.** A variable's lower and
+    upper bound now share a tableau variable: `(<= 0 x)` normalizes to
+    coefficient -1 and `(<= x 10)` to +1, so under exact-content polynomial
+    keys they used to land on two *different* slacks and the tableau could
+    not see that `x` was bounded on both sides without pivoting. And
+    row-based propagation reads a row term's bound directly instead of via
+    `single_variable_slack`, which both simplifies it and removes the quirk
+    item 7 had to work around (that index only ever registered a bare
+    variable's positive-coefficient form, so `>=` atoms never got an entry).
+  - **Row counts, measured via the new `:lra.rows` stat, against the
+    pre-H1 shape measurements in [](qf-lra-heuristics.md) Section 1.3 --
+    every one matches that section's predicted single-variable share
+    exactly:** `latendresse/ecoliFBAyicesTest-500` 4,555 -> 1,394 (-69%),
+    `TM/p6-zenonumeric_s5` 1,378 -> 67 (-95%), `miplib/pp08a-12000` 400 ->
+    138 (-66%), `sc-17.induction3` 1,185 -> 723 (-39%), `uart-17.induction`
+    1,446 -> 920 (-36%), `tta_startup/simple_startup_4nodes` 584 -> 500
+    (-14%), `clock_synchro/clocksynchro_2clocks` 264 -> 259 (-2%),
+    `DTP-Scheduling/constraints-tempo-width-30` 3,932 -> 3,932 (unchanged --
+    it is 100% difference constraints, so it has no single-variable atoms
+    to remove).
+  - **Effect** (paired local A/B against the H2-only build, two alternating
+    rounds): `TM/p5-zenonumeric_s5` 0.63s -> 0.12s (5.3x; decisions 13,230
+    -> 1,435, pivots 18,097 -> 230), `sc-21.induction3` 6.33s -> 1.98s
+    (3.2x; decisions -47%, pivots -58%), `uart-18.induction` 1.18s -> 0.94s
+    (1.3x; pivots -63%), `miplib/pp08a-12000` 1.97s -> 1.72s (1.2x),
+    `clock_synchro` and `DTP-Scheduling` flat within noise (their counters
+    are unchanged or nearly so, as their row counts predict).
+    `latendresse/ecoliFBAyicesTest-500` still times out despite losing 69%
+    of its rows -- its cost is the remaining 1,394-row LP with a 691-term
+    dense row, i.e. H3's fill-in problem rather than H1's row-count one.
+    Unlike H2 this is *not* a pure representation change: it renumbers
+    tableau variables and strengthens propagation, so search counters
+    legitimately move.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already
@@ -298,11 +343,12 @@ alternatives considered before/while implementing it.
   unimplemented -- Dantzig alone already closes most of the practical gap
   per the cited comparative benchmark (fastest per-instance wall time),
   and adding either of the other two is a bigger, separate undertaking.
-- **Polynomial dedup is exact-match only, not scale-invariant**: `x<=5` and
-  `2x<=10` still get separate slacks (and so can't propagate against each
-  other), even though they constrain the same line. A documented,
-  deliberate scope cut for Milestone 3b, not an oversight -- see the
-  `PolynomialKey` comment in `check_sat.cpp`.
+- ~~**Polynomial dedup is exact-match only, not scale-invariant**: `x<=5`
+  and `2x<=10` still get separate slacks~~ -- **fixed for single-variable
+  atoms 2026-07-28** (item H1a: both are now bounds on `x` itself, so they
+  propagate against each other). Still exact-match for *compound*
+  polynomials: `x+y<=5` and `2x+2y<=10` continue to get separate slacks.
+  See the `PolynomialKey` comment in `check_sat.cpp`.
 - **Propagation only relates atoms sharing the exact same slack**, not
   Dutertre & de Moura's stronger row-based/interval bound propagation
   across *different* variables via a basic row's children. Also
@@ -635,7 +681,9 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
   *positive*-coefficient normalized form, so `>=` atoms (which normalize
   to a negated, coefficient-(-1) polynomial) never get an entry --
   asserting both `<=` and `>=` on the same variable splits its bound
-  across two slacks with only one direction visible on each.
+  across two slacks with only one direction visible on each. **Item H1a
+  (2026-07-28) removed this quirk at the root**: `single_variable_slack` is
+  gone entirely, and both directions now land on the variable itself.
 
   **Empirical result on the 9 dramatic-gap files: genuinely mixed, not a
   clear win.** Item 2 alone (already-shipped) turned out to help far

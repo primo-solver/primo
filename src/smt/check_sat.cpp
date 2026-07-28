@@ -3127,29 +3127,72 @@ bool is_real_equality_term(const core::TermManager& terms, const core::Term& ter
          terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
 }
 
-// The DeltaRational value an atom's TRUE case bounds its slack's upper
-// bound by, and its FALSE case bounds its slack's lower bound by (Section
-// 3.1's infinitesimal-delta trick for strict inequalities). Shared between
-// assert_lra_atom_bound (which applies these as actual Assert-Bound calls)
-// and OnlineLraPropagator's propagation scan (which only compares against
-// them, via LraTableau::upper_bound/lower_bound, to check whether some
-// *other* atom on the same slack is already entailed). LraRelation::Eq
-// isn't handled here -- it's unreachable via the frontend (Real equality
-// is lowered to a pair of Le atoms by the lower_real_equalities
-// preprocessing pass, which always runs before theory dispatch) and
-// doesn't fit the single-threshold shape these two cases share.
-theory::arithmetic::DeltaRational true_threshold(theory::arithmetic::LraRelation relation,
-                                                 const util::Rational& rhs) {
-  return relation == theory::arithmetic::LraRelation::Lt
-             ? theory::arithmetic::DeltaRational{rhs, util::Rational(-1)}
-             : theory::arithmetic::DeltaRational::from_rational(rhs);
+// Which bound on a prepared atom's tableau variable, and at what value, one
+// truth assignment of that atom imposes (Section 3.1's infinitesimal-delta
+// trick for strict inequalities).
+struct BoundAssertion {
+  bool is_upper;
+  theory::arithmetic::DeltaRational value;
+};
+
+// `relation`/`rhs` describe the atom as `t ~ rhs`; `asserts_lower_when_true`
+// says the atom was stored in the flipped orientation, i.e. it really means
+// `t >= rhs` (or `t > rhs`), which arises when a single-variable atom's
+// coefficient was negative and got divided out -- see PreparedLraTheory.
+//
+// All eight combinations, worked through explicitly because this is the one
+// place a sign or strictness slip would silently change what the solver
+// proves:
+//
+//   t <= c  TRUE -> upper = c        FALSE -> lower = c + delta
+//   t <  c  TRUE -> upper = c - d    FALSE -> lower = c
+//   t >= c  TRUE -> lower = c        FALSE -> upper = c - delta
+//   t >  c  TRUE -> lower = c + d    FALSE -> upper = c
+//
+// which collapses to: negating an atom flips both its direction and its
+// strictness, and the flipped orientation flips the direction once more.
+//
+// Shared between assert_lra_atom_bound (which applies this as an actual
+// Assert-Bound call) and OnlineLraPropagator's propagation scan (which only
+// compares against it, via LraTableau::upper_bound/lower_bound, to check
+// whether some *other* atom on the same variable is already entailed).
+// LraRelation::Eq isn't handled here -- it's unreachable via the frontend
+// (Real equality is lowered to a pair of Le atoms by the
+// lower_real_equalities preprocessing pass, which always runs before theory
+// dispatch) and doesn't fit the single-bound shape these cases share.
+BoundAssertion bound_assertion(theory::arithmetic::LraRelation relation, const util::Rational& rhs,
+                               bool asserts_lower_when_true, bool atom_value) {
+  const bool strict = relation == theory::arithmetic::LraRelation::Lt;
+  const bool is_upper = asserts_lower_when_true ? !atom_value : atom_value;
+  const bool is_strict = atom_value ? strict : !strict;
+  if (!is_strict) {
+    return BoundAssertion{is_upper, theory::arithmetic::DeltaRational::from_rational(rhs)};
+  }
+  // A strict upper bound is `t <= rhs - delta`; a strict lower one is
+  // `t >= rhs + delta`.
+  return BoundAssertion{is_upper,
+                        theory::arithmetic::DeltaRational{rhs, util::Rational(is_upper ? -1 : 1)}};
 }
 
-theory::arithmetic::DeltaRational false_threshold(theory::arithmetic::LraRelation relation,
-                                                  const util::Rational& rhs) {
-  return relation == theory::arithmetic::LraRelation::Lt
-             ? theory::arithmetic::DeltaRational::from_rational(rhs)
-             : theory::arithmetic::DeltaRational{rhs, util::Rational(1)};
+// Whether `var`'s current bound in the direction `assertion` constrains is
+// already at least as tight as `assertion` -- i.e. whether the atom that
+// assertion came from is already entailed. Returns the entailing bound's
+// reason literal alongside, for use as the propagation's antecedent.
+std::optional<sat::Lit> bound_entails(const theory::arithmetic::LraTableau& tableau,
+                                      theory::arithmetic::LraVarId var,
+                                      const BoundAssertion& assertion) {
+  if (assertion.is_upper) {
+    const auto upper = tableau.upper_bound(var);
+    if (upper.has_value() && upper->value <= assertion.value) {
+      return upper->reason;
+    }
+    return std::nullopt;
+  }
+  const auto lower = tableau.lower_bound(var);
+  if (lower.has_value() && lower->value >= assertion.value) {
+    return lower->reason;
+  }
+  return std::nullopt;
 }
 
 // Defensive bounds on row-based/interval bound propagation's O(row size)
@@ -3177,28 +3220,32 @@ constexpr std::size_t kBidirectionalRowPropagationMaxFanout = 32;
 // between the fully-lazy per-round-normalize path (not currently used by
 // solve_qf_lra, kept for reference/tests) and the incremental
 // prepared-atom path below.
-std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(theory::arithmetic::LraTableau& tableau,
-                                                           theory::arithmetic::LraVarId slack,
-                                                           theory::arithmetic::LraRelation relation,
-                                                           const util::Rational& rhs,
-                                                           bool atom_value, sat::Lit reason) {
+std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(
+    theory::arithmetic::LraTableau& tableau, theory::arithmetic::LraVarId bound_var,
+    theory::arithmetic::LraRelation relation, const util::Rational& rhs, bool atom_value,
+    bool asserts_lower_when_true, sat::Lit reason) {
   switch (relation) {
     case theory::arithmetic::LraRelation::Eq: {
       if (!atom_value) {
         throw UnsupportedInput("QF_LRA disequality (a negated Real equality) is not yet supported");
       }
+      // Equality is symmetric, so the flipped orientation makes no difference
+      // here: both bounds land on the same value either way.
       auto conflict = tableau.assert_upper(
-          slack, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
+          bound_var, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
       if (conflict.has_value()) {
         return conflict;
       }
-      return tableau.assert_lower(slack, theory::arithmetic::DeltaRational::from_rational(rhs),
+      return tableau.assert_lower(bound_var, theory::arithmetic::DeltaRational::from_rational(rhs),
                                   reason);
     }
     case theory::arithmetic::LraRelation::Le:
-    case theory::arithmetic::LraRelation::Lt:
-      return atom_value ? tableau.assert_upper(slack, true_threshold(relation, rhs), reason)
-                        : tableau.assert_lower(slack, false_threshold(relation, rhs), reason);
+    case theory::arithmetic::LraRelation::Lt: {
+      const BoundAssertion assertion =
+          bound_assertion(relation, rhs, asserts_lower_when_true, atom_value);
+      return assertion.is_upper ? tableau.assert_upper(bound_var, assertion.value, reason)
+                                : tableau.assert_lower(bound_var, assertion.value, reason);
+    }
   }
   throw std::logic_error("unreachable: LraRelation switch is exhaustive");
 }
@@ -3257,42 +3304,26 @@ struct PreparedLraTheory {
 
   struct PreparedAtom {
     bool is_arithmetic = false;
-    theory::arithmetic::LraVarId slack = 0;
+    // The tableau variable this atom bounds: a slack for a compound
+    // polynomial, or the problem variable itself for a single-variable atom
+    // (see the constructor).
+    theory::arithmetic::LraVarId bound_var = 0;
     theory::arithmetic::LraRelation relation = theory::arithmetic::LraRelation::Le;
     util::Rational rhs;
+    // Set when dividing out a negative coefficient flipped the relation, so
+    // the atom really means `bound_var >= rhs` rather than `<= rhs`. See
+    // bound_assertion(), which is the single place this is interpreted.
+    bool asserts_lower_when_true = false;
   };
 
   theory::arithmetic::LraTableau base_tableau;
   std::vector<PreparedAtom> atoms;  // parallel to theory_atoms
-  // Indices (into `atoms`) of every arithmetic atom sharing a given slack
+  // Indices (into `atoms`) of every arithmetic atom bounding a given tableau
   // variable -- built once here so OnlineLraPropagator's propagation scan
-  // doesn't have to search linearly. Only populated for real slacks
-  // (PreparedAtom::is_arithmetic); non-arithmetic atoms' default slack (0)
-  // is a sentinel, not a real tableau variable, and must not be mixed in.
-  std::unordered_map<theory::arithmetic::LraVarId, std::vector<std::size_t>> atoms_by_slack;
-  // Raw problem variable -> the slack that wraps it ALONE (row = {var: 1},
-  // e.g. what a bare `(<= x c)`-style atom's polynomial normalizes to),
-  // when such an atom exists in the formula. Every atom (even a
-  // single-variable one) gets its own dedicated slack in this tableau
-  // design -- bounds are only ever asserted on slacks, never directly on
-  // the raw structural variables a row's terms reference -- so row-based
-  // propagation (OnlineLraPropagator::compute_implied_bound) needs this
-  // indirection to find a row TERM's current bound at all. Coefficient-1
-  // only for now (a deliberate first-cut scope cut, see the
-  // competitiveness-roadmap plan); a term whose only directly-bounded
-  // source atom has a different coefficient (e.g. only `(<= (* 2 x) 4)`
-  // exists, never a bare `x`) simply isn't found here and contributes
-  // nothing to an implied bound.
-  std::unordered_map<theory::arithmetic::LraVarId, theory::arithmetic::LraVarId>
-      single_variable_slack;
-  // The reverse of single_variable_slack (slack -> the one variable it
-  // wraps), used on the trigger side: when a slack's bound changes,
-  // row-based propagation only needs to rescan anything if that slack is
-  // itself some variable's single-variable wrapper (otherwise no other
-  // row's compute_implied_bound could ever be reading this slack's bound
-  // at all, via the indirection above).
-  std::unordered_map<theory::arithmetic::LraVarId, theory::arithmetic::LraVarId>
-      variable_for_single_slack;
+  // doesn't have to search linearly. Only populated for real tableau
+  // variables (PreparedAtom::is_arithmetic); non-arithmetic atoms' default
+  // bound_var (0) is a sentinel and must not be mixed in.
+  std::unordered_map<theory::arithmetic::LraVarId, std::vector<std::size_t>> atoms_by_bound_var;
 };
 
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
@@ -3325,6 +3356,33 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     const theory::arithmetic::LraAtom normalized =
         theory::arithmetic::normalize_atom(terms, atom.term);
     const PolynomialKey key = polynomial_key(normalized.polynomial);
+
+    // A single-variable atom `c*x ~ rhs` is a bound on `x` itself: divide the
+    // coefficient out and assert it directly, introducing no slack and no row
+    // at all. Monniaux (CAV 2009, Section 2.1) states this as ordinary
+    // practice -- "for each left hand side that is not a variable, a new
+    // variable is introduced" -- and Dutertre & de Moura's Section 2 does the
+    // same; Primo previously introduced a slack for *every* distinct
+    // polynomial, which on the lagging families meant 36-95% of all tableau
+    // rows were trivial `s = c*x` rows (measurements in
+    // docs/qf-lra-heuristics.md, item H1). Dividing by a negative coefficient
+    // reverses the relation, which is what asserts_lower_when_true records.
+    //
+    // This also makes one variable's lower and upper bound share a tableau
+    // variable: `(<= 0 x)` normalizes to a coefficient of -1 and `(<= x 10)`
+    // to +1, so under the old exact-content polynomial key they landed on two
+    // *different* slacks and the tableau could not see that `x` was bounded
+    // on both sides without pivoting.
+    if (key.sorted_terms.size() == 1) {
+      const auto& [var_term, coefficient] = key.sorted_terms[0];
+      const theory::arithmetic::LraVarId bound_var = get_var(var_term);
+      const std::size_t atom_index = atoms.size();
+      atoms.push_back(PreparedAtom{true, bound_var, normalized.relation,
+                                   normalized.rhs / coefficient, coefficient.sign() < 0});
+      atoms_by_bound_var[bound_var].push_back(atom_index);
+      continue;
+    }
+
     const auto existing_slack = slack_by_polynomial.find(key);
     theory::arithmetic::LraVarId slack;
     if (existing_slack != slack_by_polynomial.end()) {
@@ -3339,14 +3397,9 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
       base_tableau.add_row(slack, row);
       slack_by_polynomial.emplace(key, slack);
     }
-    if (key.sorted_terms.size() == 1 && key.sorted_terms[0].second == util::Rational(1)) {
-      const theory::arithmetic::LraVarId wrapped_var = get_var(key.sorted_terms[0].first);
-      single_variable_slack.emplace(wrapped_var, slack);
-      variable_for_single_slack.emplace(slack, wrapped_var);
-    }
     const std::size_t atom_index = atoms.size();
-    atoms.push_back(PreparedAtom{true, slack, normalized.relation, normalized.rhs});
-    atoms_by_slack[slack].push_back(atom_index);
+    atoms.push_back(PreparedAtom{true, slack, normalized.relation, normalized.rhs, false});
+    atoms_by_bound_var[slack].push_back(atom_index);
   }
 }
 
@@ -3373,9 +3426,9 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
     if (!prepared_atom.is_arithmetic || atom.filtered) {
       continue;
     }
-    const auto conflict =
-        assert_lra_atom_bound(tableau, prepared_atom.slack, prepared_atom.relation,
-                              prepared_atom.rhs, atom.value, blocking_lit(atom));
+    const auto conflict = assert_lra_atom_bound(
+        tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
+        prepared_atom.asserts_lower_when_true, blocking_lit(atom));
     if (conflict.has_value()) {
       return conflict.value();
     }
@@ -3393,21 +3446,20 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 // so basic_var's maximum is the sum of each term's own maximum contribution
 // (var_j's upper bound if coeff_j is positive, since a bigger var_j means a
 // bigger term then; var_j's lower bound if coeff_j is negative), and
-// symmetrically for the minimum/lower case. Bounds in this tableau design
-// only ever live on slacks, never on the raw structural variables a row's
-// terms reference directly -- so each term is looked up via
-// prepared.single_variable_slack (the slack, if any, that wraps that
-// variable alone), not tableau.upper_bound/lower_bound(var) directly.
-// Returns nullopt if the row exceeds the size cap, a term has no such
-// wrapping slack, or that slack lacks the needed-direction bound (an
-// unbounded term makes the whole sum unbounded in that direction, not just
-// weaker). The returned reasons are one asserting literal per row term
-// actually used -- a genuine multi-literal antecedent, unlike same-slack
-// propagation's single-literal one.
+// symmetrically for the minimum/lower case. Since item H1 asserts a
+// single-variable atom's bound directly on the variable (rather than wrapping
+// it in a slack), each term's bound is simply tableau.upper_bound/
+// lower_bound(var) -- no indirection, and strictly more reaching than the
+// previous single_variable_slack lookup, which could only see a term whose
+// formula happened to contain a bare coefficient-1 atom over it.
+// Returns nullopt if the row exceeds the size cap or a term lacks the
+// needed-direction bound (an unbounded term makes the whole sum unbounded in
+// that direction, not just weaker). The returned reasons are one asserting
+// literal per row term actually used -- a genuine multi-literal antecedent,
+// unlike same-variable propagation's single-literal one.
 std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
 compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
-                      const PreparedLraTheory& prepared, theory::arithmetic::LraVarId basic_var,
-                      bool want_upper) {
+                      theory::arithmetic::LraVarId basic_var, bool want_upper) {
   const auto& row = tableau.row(basic_var);
   if (row.size() > kRowBasedPropagationMaxRowSize) {
     return std::nullopt;
@@ -3417,13 +3469,8 @@ compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
   std::vector<sat::Lit> reasons;
   reasons.reserve(row.size());
   for (const auto& [var, coeff] : row) {
-    const auto slack_found = prepared.single_variable_slack.find(var);
-    if (slack_found == prepared.single_variable_slack.end()) {
-      return std::nullopt;
-    }
     const bool need_upper_of_var = want_upper == (coeff.sign() > 0);
-    const auto bound = need_upper_of_var ? tableau.upper_bound(slack_found->second)
-                                         : tableau.lower_bound(slack_found->second);
+    const auto bound = need_upper_of_var ? tableau.upper_bound(var) : tableau.lower_bound(var);
     if (!bound.has_value()) {
       return std::nullopt;
     }
@@ -3445,12 +3492,11 @@ compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
 // compute_implied_bound's own existing sign convention:
 //   want_upper_of_basic = want_upper_of_target == (target_coeff.sign() > 0)
 //   need_upper_of_var_j = want_upper_of_basic != (coeff_j.sign() > 0)
-// Missing any needed bound (basic_var's own, any other term's, or a term
-// lacking a single_variable_slack entry) makes this nullopt for this
-// round, same all-or-nothing behavior as compute_implied_bound.
+// Missing any needed bound (basic_var's own or any other term's) makes this
+// nullopt for this round, same all-or-nothing behavior as
+// compute_implied_bound.
 std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
 compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
-                            const PreparedLraTheory& prepared,
                             theory::arithmetic::LraVarId basic_var,
                             theory::arithmetic::LraVarId target_var,
                             const util::Rational& target_coeff, bool want_upper_of_target) {
@@ -3472,13 +3518,8 @@ compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
     if (var == target_var) {
       continue;
     }
-    const auto slack_found = prepared.single_variable_slack.find(var);
-    if (slack_found == prepared.single_variable_slack.end()) {
-      return std::nullopt;
-    }
     const bool need_upper_of_var = want_upper_of_basic != (coeff.sign() > 0);
-    const auto bound = need_upper_of_var ? tableau.upper_bound(slack_found->second)
-                                         : tableau.lower_bound(slack_found->second);
+    const auto bound = need_upper_of_var ? tableau.upper_bound(var) : tableau.lower_bound(var);
     if (!bound.has_value()) {
       return std::nullopt;
     }
@@ -3487,6 +3528,33 @@ compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
   }
   const util::Rational inv = util::Rational(1) / target_coeff;
   return std::make_pair(total.scaled(inv), std::move(reasons));
+}
+
+// Publishes the prepared tableau's structural shape: how many variables it
+// has, how many of them define a row, and how many nonzero coefficients those
+// rows hold in total. Structural, not search state -- rows are all added
+// before the first push() (see LraTableau's class comment), so this is a
+// property of the formula and of how the frontend chose to encode it.
+//
+// These exist because the tableau's shape was previously invisible: item H1's
+// finding that 36-95% of rows on the lagging families were trivial `s = c*x`
+// slack rows had to be produced with throwaway instrumentation, and the
+// fill-in growth it also measured went unnoticed through eight roadmap items
+// for want of exactly this. See docs/qf-lra-heuristics.md.
+void publish_lra_tableau_shape_stats(const theory::arithmetic::LraTableau& tableau,
+                                     util::Statistics& statistics) {
+  std::size_t rows = 0;
+  std::size_t nonzeros = 0;
+  for (theory::arithmetic::LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (!tableau.is_basic(var)) {
+      continue;
+    }
+    ++rows;
+    nonzeros += tableau.row(var).size();
+  }
+  statistics.set(util::StatKey::LraTableauVars, tableau.variable_count());
+  statistics.set(util::StatKey::LraRows, rows);
+  statistics.set(util::StatKey::LraRowNonzeros, nonzeros);
 }
 
 // Trail-synced CaDiCaL external propagator for QF_LRA (Milestone 3a of the
@@ -3770,9 +3838,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     const bool atom_value = atom.lit.value > 0 ? lit > 0 : lit < 0;
     const AssignedTheoryAtom assigned =
         assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value);
-    const auto direct_conflict =
-        assert_lra_atom_bound(tableau_, prepared_atom.slack, prepared_atom.relation,
-                              prepared_atom.rhs, atom_value, blocking_lit(assigned));
+    const auto direct_conflict = assert_lra_atom_bound(
+        tableau_, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom_value,
+        prepared_atom.asserts_lower_when_true, blocking_lit(assigned));
     if (direct_conflict.has_value()) {
       conflict_ = direct_conflict;
       // needs_check_ may already be true from an earlier, non-conflicting
@@ -3785,9 +3853,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       return;
     }
     if (propagation_enabled_) {
-      scan_for_propagations(atom_index, prepared_atom.slack);
+      scan_for_propagations(atom_index, prepared_atom.bound_var);
       if (row_propagation_enabled_) {
-        scan_row_based_propagations(prepared_atom.slack);
+        scan_row_based_propagations(prepared_atom.bound_var);
       }
     }
     // Defer the expensive Check/Pivot repair rather than running it
@@ -3851,9 +3919,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   // only touch assignments/row structure), so no other slack's bounds
   // could have changed as a side effect of this assertion.
   void scan_for_propagations(std::size_t triggering_atom_index,
-                             theory::arithmetic::LraVarId slack) {
-    const auto found = prepared_.atoms_by_slack.find(slack);
-    if (found == prepared_.atoms_by_slack.end()) {
+                             theory::arithmetic::LraVarId bound_var) {
+    const auto found = prepared_.atoms_by_bound_var.find(bound_var);
+    if (found == prepared_.atoms_by_bound_var.end()) {
       return;
     }
     for (const std::size_t atom_index : found->second) {
@@ -3866,46 +3934,64 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
         continue;
       }
       const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
-      const auto upper = tableau_.upper_bound(prepared_atom.slack);
-      if (upper.has_value() &&
-          upper->value <= true_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-        pending_.push_back(PendingPropagation{atom.lit.value, {upper->reason}, false});
+      const auto entails_true = bound_entails(
+          tableau_, prepared_atom.bound_var,
+          bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                          prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+      if (entails_true.has_value()) {
+        pending_.push_back(PendingPropagation{atom.lit.value, {*entails_true}, false});
         continue;
       }
-      const auto lower = tableau_.lower_bound(prepared_atom.slack);
-      if (lower.has_value() &&
-          lower->value >= false_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-        pending_.push_back(PendingPropagation{-atom.lit.value, {lower->reason}, false});
+      const auto entails_false = bound_entails(
+          tableau_, prepared_atom.bound_var,
+          bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                          prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+      if (entails_false.has_value()) {
+        pending_.push_back(PendingPropagation{-atom.lit.value, {*entails_false}, false});
       }
     }
   }
 
+  // Whether the implied bound `implied` on `basic_var` is tight enough to
+  // entail the atom whose truth assignment would impose `assertion`. Shares
+  // bound_assertion()'s direction convention, so a flipped atom's TRUE case
+  // is checked against an implied *lower* bound and vice versa.
+  std::optional<std::vector<sat::Lit>> implied_bound_entails(theory::arithmetic::LraVarId basic_var,
+                                                             const BoundAssertion& assertion) {
+    auto implied = compute_implied_bound(tableau_, basic_var, assertion.is_upper);
+    if (!implied.has_value()) {
+      return std::nullopt;
+    }
+    const bool tight =
+        assertion.is_upper ? implied->first <= assertion.value : implied->first >= assertion.value;
+    if (!tight) {
+      return std::nullopt;
+    }
+    return std::move(implied->second);
+  }
+
   // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
   // generalizing scan_for_propagations to a *derived* rather than
-  // directly-asserted bound): `changed_slack`'s bound was just tightened.
-  // Bounds in this tableau design only ever live on slacks, so this only
-  // matters for row-based propagation if `changed_slack` is itself some
-  // variable's single-variable wrapper (prepared_.variable_for_single_slack)
-  // -- if so, any row currently mentioning that raw variable
-  // (tableau_.occurs_in) could now have a tighter implied bound. For each
-  // such row (its basic variable is itself a slack, so the same
-  // atoms_by_slack lookup and true_threshold/false_threshold comparison
-  // scan_for_propagations uses applies unchanged), compute the implied
-  // upper/lower via compute_implied_bound and check entailment for atoms
-  // sharing that row's own slack.
-  void scan_row_based_propagations(theory::arithmetic::LraVarId changed_slack) {
-    const auto wrapped_var = prepared_.variable_for_single_slack.find(changed_slack);
-    if (wrapped_var == prepared_.variable_for_single_slack.end()) {
-      return;
-    }
+  // directly-asserted bound): `changed_var`'s bound was just tightened, so
+  // any row currently mentioning it (tableau_.occurs_in) could now have a
+  // tighter implied bound. For each such row, compute the implied
+  // upper/lower via compute_implied_bound and check entailment for the atoms
+  // bounding that row's own basic variable.
+  //
+  // Before item H1 this could only trigger when `changed_var` happened to be
+  // a slack wrapping exactly one coefficient-1 variable, since bounds only
+  // ever lived on slacks; now that single-variable atoms bound their variable
+  // directly, any bound change is a candidate and the fanout cap below is
+  // what keeps the cost bounded.
+  void scan_row_based_propagations(theory::arithmetic::LraVarId changed_var) {
     const std::vector<theory::arithmetic::LraVarId>& affected_rows =
-        tableau_.occurs_in(wrapped_var->second);
-    if (affected_rows.size() > kRowBasedPropagationMaxFanout) {
+        tableau_.occurs_in(changed_var);
+    if (affected_rows.empty() || affected_rows.size() > kRowBasedPropagationMaxFanout) {
       return;
     }
     for (const theory::arithmetic::LraVarId basic_var : affected_rows) {
-      const auto found = prepared_.atoms_by_slack.find(basic_var);
-      if (found == prepared_.atoms_by_slack.end()) {
+      const auto found = prepared_.atoms_by_bound_var.find(basic_var);
+      if (found == prepared_.atoms_by_bound_var.end()) {
         continue;
       }
       for (const std::size_t atom_index : found->second) {
@@ -3915,23 +4001,24 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
           continue;
         }
         const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
-        const auto implied_upper =
-            compute_implied_bound(tableau_, prepared_, basic_var, /*want_upper=*/true);
-        if (implied_upper.has_value() &&
-            implied_upper->first <= true_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-          pending_.push_back(PendingPropagation{atom.lit.value, implied_upper->second, true});
+        auto reasons = implied_bound_entails(
+            basic_var, bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                                       prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+        if (reasons.has_value()) {
+          pending_.push_back(PendingPropagation{atom.lit.value, std::move(*reasons), true});
           continue;
         }
-        const auto implied_lower =
-            compute_implied_bound(tableau_, prepared_, basic_var, /*want_upper=*/false);
-        if (implied_lower.has_value() &&
-            implied_lower->first >= false_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-          pending_.push_back(PendingPropagation{-atom.lit.value, implied_lower->second, true});
+        reasons = implied_bound_entails(
+            basic_var,
+            bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                            prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+        if (reasons.has_value()) {
+          pending_.push_back(PendingPropagation{-atom.lit.value, std::move(*reasons), true});
         }
       }
       if (bidirectional_row_propagation_enabled_ &&
           affected_rows.size() <= kBidirectionalRowPropagationMaxFanout) {
-        scan_row_child_propagations(basic_var, wrapped_var->second);
+        scan_row_child_propagations(basic_var, changed_var);
       }
     }
   }
@@ -3952,12 +4039,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       if (target_var == exclude_var) {
         continue;
       }
-      const auto wrapping_slack = prepared_.single_variable_slack.find(target_var);
-      if (wrapping_slack == prepared_.single_variable_slack.end()) {
-        continue;
-      }
-      const auto found = prepared_.atoms_by_slack.find(wrapping_slack->second);
-      if (found == prepared_.atoms_by_slack.end()) {
+      const auto found = prepared_.atoms_by_bound_var.find(target_var);
+      if (found == prepared_.atoms_by_bound_var.end()) {
         continue;
       }
       for (const std::size_t atom_index : found->second) {
@@ -3967,24 +4050,41 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
           continue;
         }
         const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
-        const auto implied_upper =
-            compute_implied_child_bound(tableau_, prepared_, basic_var, target_var, target_coeff,
-                                        /*want_upper_of_target=*/true);
-        if (implied_upper.has_value() &&
-            implied_upper->first <= true_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-          pending_.push_back(PendingPropagation{atom.lit.value, implied_upper->second, true, true});
+        auto reasons = implied_child_bound_entails(
+            basic_var, target_var, target_coeff,
+            bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                            prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+        if (reasons.has_value()) {
+          pending_.push_back(PendingPropagation{atom.lit.value, std::move(*reasons), true, true});
           continue;
         }
-        const auto implied_lower =
-            compute_implied_child_bound(tableau_, prepared_, basic_var, target_var, target_coeff,
-                                        /*want_upper_of_target=*/false);
-        if (implied_lower.has_value() &&
-            implied_lower->first >= false_threshold(prepared_atom.relation, prepared_atom.rhs)) {
-          pending_.push_back(
-              PendingPropagation{-atom.lit.value, implied_lower->second, true, true});
+        reasons = implied_child_bound_entails(
+            basic_var, target_var, target_coeff,
+            bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                            prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+        if (reasons.has_value()) {
+          pending_.push_back(PendingPropagation{-atom.lit.value, std::move(*reasons), true, true});
         }
       }
     }
+  }
+
+  // implied_bound_entails' counterpart for the reverse (child-tightening)
+  // direction -- same convention, same all-or-nothing behaviour.
+  std::optional<std::vector<sat::Lit>> implied_child_bound_entails(
+      theory::arithmetic::LraVarId basic_var, theory::arithmetic::LraVarId target_var,
+      const util::Rational& target_coeff, const BoundAssertion& assertion) {
+    auto implied = compute_implied_child_bound(tableau_, basic_var, target_var, target_coeff,
+                                               assertion.is_upper);
+    if (!implied.has_value()) {
+      return std::nullopt;
+    }
+    const bool tight =
+        assertion.is_upper ? implied->first <= assertion.value : implied->first >= assertion.value;
+    if (!tight) {
+      return std::nullopt;
+    }
+    return std::move(implied->second);
   }
 
   // A queued propagation candidate: the CaDiCaL literal to propagate, its
@@ -4049,6 +4149,7 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
 
   const PreparedLraTheory prepared_theory(
       terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule));
+  publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR
   // The trail-synced online propagator (Milestone 3a) is always preferred
