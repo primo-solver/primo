@@ -214,6 +214,27 @@ void differential_against_gmp() {
         check_matches(left.value / right.value, mpq_class(left.reference / right.reference), "div");
       }
 
+      // Compound assignment must agree with the binary form. They delegate
+      // today, but that is an implementation detail worth pinning: += is on
+      // pivot()'s hot combine path, and *= and /= had no coverage at all
+      // before this.
+      {
+        Rational accumulated = left.value;
+        accumulated += right.value;
+        check_matches(accumulated, mpq_class(left.reference + right.reference), "add-assign");
+        accumulated = left.value;
+        accumulated -= right.value;
+        check_matches(accumulated, mpq_class(left.reference - right.reference), "sub-assign");
+        accumulated = left.value;
+        accumulated *= right.value;
+        check_matches(accumulated, mpq_class(left.reference * right.reference), "mul-assign");
+        if (sgn(right.reference) != 0) {
+          accumulated = left.value;
+          accumulated /= right.value;
+          check_matches(accumulated, mpq_class(left.reference / right.reference), "div-assign");
+        }
+      }
+
       assert((left.value < right.value) == (left.reference < right.reference));
       assert((left.value <= right.value) == (left.reference <= right.reference));
       assert((left.value > right.value) == (left.reference > right.reference));
@@ -346,6 +367,150 @@ void division_by_zero_throws() {
   assert(threw);
 }
 
+// The small/big switch is the most sensitive thing in this type, so assert
+// *which representation path* each operator takes for each combination of
+// operand forms -- not only that the value is right. The differential sweep
+// above checks values across every operand pairing, and the ASAN build's
+// check_invariant() validates the representation of every value it
+// constructs; what neither does is pin the transition itself, so a change
+// that quietly stopped promoting (or stopped demoting) on one operator would
+// still have to be caught by its downstream effects.
+//
+// Path is observed through the public counters rather than by exposing
+// internals: big_operation_count() increments exactly when an operation runs
+// on the GMP path (either operand already big), promotion_count() exactly
+// when a machine-word computation overflows into the big form.
+void representation_paths_are_exercised_for_every_operator() {
+  const auto big_a = Rational::parse("123456789012345678901234567890");
+  const auto big_b = Rational::parse("987654321098765432109876543210");
+  assert(big_a.has_value() && big_b.has_value());
+  const Rational small_a(3, 4);
+  const Rational small_b(5, 7);
+
+  struct Counters {
+    std::uint64_t promotions;
+    std::uint64_t big_operations;
+  };
+  const auto snapshot = []() {
+    return Counters{Rational::promotion_count(), Rational::big_operation_count()};
+  };
+  // `expect_big_path`/`expect_promotion` are tri-state: -1 means "don't care".
+  const auto check_path = [&](const Counters& before, int expect_big_path, int expect_promotion) {
+    const Counters after = snapshot();
+    if (expect_big_path >= 0) {
+      assert((after.big_operations > before.big_operations) == (expect_big_path == 1));
+    }
+    if (expect_promotion >= 0) {
+      assert((after.promotions > before.promotions) == (expect_promotion == 1));
+    }
+  };
+
+  // -- small OP small, staying small: neither counter moves --
+  for (int op = 0; op < 4; ++op) {
+    const Counters before = snapshot();
+    Rational result;
+    switch (op) {
+      case 0:
+        result = small_a + small_b;
+        break;
+      case 1:
+        result = small_a - small_b;
+        break;
+      case 2:
+        result = small_a * small_b;
+        break;
+      default:
+        result = small_a / small_b;
+        break;
+    }
+    assert(!result.to_string().empty());
+    check_path(before, /*expect_big_path=*/0, /*expect_promotion=*/0);
+  }
+
+  // -- small OP small that overflows: promotes, without taking the GMP
+  //    operand path (both operands were small) --
+  {
+    const Rational max_value(INT64_MAX);
+    const Counters before = snapshot();
+    const Rational product = max_value * max_value;
+    check_path(before, /*expect_big_path=*/0, /*expect_promotion=*/1);
+    assert(product > max_value);
+
+    // Addition overflows through the denominator rather than the numerator.
+    const Counters before_sum = snapshot();
+    const Rational sum = Rational(1, INT64_MAX) + Rational(1, INT64_MAX - 2);
+    check_path(before_sum, /*expect_big_path=*/0, /*expect_promotion=*/1);
+    assert(sum.sign() == 1);
+  }
+
+  // -- mixed and big OP big: the GMP path, in both operand orders --
+  for (int op = 0; op < 4; ++op) {
+    for (int pairing = 0; pairing < 3; ++pairing) {
+      const Rational& left = pairing == 0 ? small_a : *big_a;
+      const Rational& right = pairing == 1 ? small_b : *big_b;
+      const Counters before = snapshot();
+      Rational result;
+      switch (op) {
+        case 0:
+          result = left + right;
+          break;
+        case 1:
+          result = left - right;
+          break;
+        case 2:
+          result = left * right;
+          break;
+        default:
+          result = left / right;
+          break;
+      }
+      assert(!result.to_string().empty());
+      check_path(before, /*expect_big_path=*/1, /*expect_promotion=*/-1);
+    }
+  }
+
+  // -- big OP big collapsing back to small: the demotion path, per operator --
+  {
+    const Rational difference = *big_a - *big_a;
+    assert(difference.is_zero());
+    assert(difference == Rational(0));
+    assert(RationalHash{}(difference) == RationalHash{}(Rational(0)));
+
+    const Rational quotient = *big_a / *big_a;
+    assert(quotient == Rational(1));
+    assert(RationalHash{}(quotient) == RationalHash{}(Rational(1)));
+
+    const Rational scaled_back = (*big_a * Rational(2)) / (*big_a * Rational(4));
+    assert(scaled_back == Rational(1, 2));
+    assert(RationalHash{}(scaled_back) == RationalHash{}(Rational(1, 2)));
+
+    // Addition reaching a small result: big + (-big + small).
+    const Rational sum = *big_a + (Rational(0) - *big_a + Rational(7, 3));
+    assert(sum == Rational(7, 3));
+    assert(RationalHash{}(sum) == RationalHash{}(Rational(7, 3)));
+  }
+
+  // -- comparisons across forms must never allocate or change anything --
+  {
+    const Counters before = snapshot();
+    assert(small_a < *big_a);
+    assert(*big_a > small_a);
+    assert(*big_a != small_a);
+    assert(*big_a == *big_a);
+    assert(!(*big_a < *big_a));
+    assert(small_a <= small_a);
+    // Comparison takes neither the promotion nor the big-operation path.
+    check_path(before, /*expect_big_path=*/0, /*expect_promotion=*/0);
+  }
+
+  // -- unary negation, both forms --
+  {
+    assert((-small_a) == Rational(-3, 4));
+    assert((-(-*big_a)) == *big_a);
+    assert((-*big_a).sign() == -1);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -362,5 +527,6 @@ int main() {
   canonical_form_is_path_independent();
   promotion_counter_reports_the_fast_path();
   division_by_zero_throws();
+  representation_paths_are_exercised_for_every_operator();
   return 0;
 }
