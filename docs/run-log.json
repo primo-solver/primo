@@ -10362,6 +10362,61 @@
       },
       "evidence_status": "current_local",
       "notes": "The mechanism is working but the earlier propagated/delivered wording overstated direct SAT-level delivery. On this instance most Ackermann literals are produced while processing an assignment batch and then cleared before CaDiCaL asks for another cb_propagate result. The actually returned literals still alter search counters, but the effect is small enough that elapsed time can flip between repeats."
+    },
+    {
+      "id": "2026-07-29-main-qfuf-diseq-ackermann-fuzzsmt-cbe280f-1000",
+      "date": "2026-07-29",
+      "kind": "fuzz",
+      "scope": "Fresh QF_UF FuzzSMT merge gate for the main squash commit with the default-off disequality Ackermann mode enabled.",
+      "commit": "cbe280f",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo --quiet --euf-diseq-ackermann",
+        "binary_version": "primo 0.1.0; git cbe280f; build Release; CaDiCaL cadical-3.0.0-7b99c07"
+      },
+      "command": {
+        "build": "make build",
+        "run": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --euf-diseq-ackermann' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 280411 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-diseq-ack-cbe280f-1000-z3"
+      },
+      "fuzzer": {
+        "generator": "fuzzsmt",
+        "reference_solver": "z3",
+        "logic": "QF_UF",
+        "count": 1000,
+        "seed": 280411,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary_csv": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-cbe280f-1000-z3/summary.csv",
+        "generated_dir": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-cbe280f-1000-z3/generated",
+        "bugs_dir": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-cbe280f-1000-z3/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "unknown_output": 0,
+        "reference_disagreement": 0,
+        "bug_files": 0
+      },
+      "verification": {
+        "passed": [
+          "make build rebuilt Primo at cbe280f before fuzzing",
+          "1000 generated QF_UF cases all reported PASS against z3",
+          "fuzz-results/qf_uf-fuzzsmt-diseq-ack-cbe280f-1000-z3/bugs contained zero files"
+        ],
+        "limitations": [
+          "Local merge gate only; not a full SLURM campaign",
+          "The option remains default-off and this run is not evidence for default promotion or a performance claim"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This records the fresh correctness gate for the exact main commit that received the curated QF_UF disequality Ackermann merge."
     }
   ]
 }
