@@ -10007,6 +10007,179 @@
       },
       "evidence_status": "current_local",
       "notes": "This satisfies the local merge-gate fuzz requirement for the new default-off solver option. It does not replace SLURM campaign evidence before any default or headline performance promotion."
+    },
+    {
+      "id": "2026-07-29-slurm-qfuf-drop-diseq-ackermann-117301",
+      "date": "2026-07-29",
+      "kind": "benchmark",
+      "scope": "SLURM default versus --euf-diseq-ackermann comparison on the 124-row interesting.txt QF_UF drop manifest",
+      "commit": "546738e",
+      "environment": {
+        "type": "slurm",
+        "host": "<slurm-cluster>",
+        "slurm_job_id": "117301",
+        "binary": "<remote-workdir>/build-slurm-rel/primo --quiet --stats",
+        "binary_version": "primo 0.1.0; git: 546738e-dirty; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "The dirty suffix is caused by the SLURM preparation workflow excluding tracked artifact directories and rebuilding the vendored CaDiCaL checkout; solver source and benchmark manifest were synced from commit 546738e."
+      },
+      "command": {
+        "manifest_source": "user-supplied interesting.txt drop manifest, stored only as tracked relative paths",
+        "manifest": "benchmarks/interesting-drop-2026-07-29.txt",
+        "validate_sbatch": "python3 scripts/slurm_validate_sbatch.py /tmp/primo-qfuf-drop-diseq-ack-compare.sbatch",
+        "bash_n": "bash -n /tmp/primo-qfuf-drop-diseq-ack-compare.sbatch",
+        "workspace_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --ssh-config <ssh-config> --remote <slurm-alias> --remote-dir <remote-workdir> --local-dir . --target primo --jobs 4",
+        "submit": "sbatch /tmp/primo-qfuf-drop-diseq-ack-compare.sbatch with PRIMO_WORKDIR=<remote-workdir>, 2 variants x 4 shards, timeout 30s",
+        "default": "python3 scripts/bench_qf_uf_full.py --repo <remote-workdir> --root tmp --solver <remote-workdir>/build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 30 --manifest benchmarks/interesting-drop-2026-07-29.txt --shards 4 --shard-index <0..3>",
+        "heuristic": "same command with --solver-arg=--euf-diseq-ackermann",
+        "render": "standard-library local aggregation over collected shard CSVs into results/qfuf-drop-diseqack-117301/report.html"
+      },
+      "solver": {
+        "name": "Primo",
+        "variants": {
+          "default": "./build-slurm-rel/primo --quiet --stats",
+          "diseq_ack": "./build-slurm-rel/primo --quiet --stats --euf-diseq-ackermann"
+        }
+      },
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 124,
+        "timeout_seconds": 30,
+        "manifest": "benchmarks/interesting-drop-2026-07-29.txt",
+        "families": {
+          "Goel": 4,
+          "NEQ": 17,
+          "PEQ": 23,
+          "QG": 74,
+          "SEQ": 6
+        }
+      },
+      "artifacts": {
+        "summary_json": "results/qfuf-drop-diseqack-117301/summary.json",
+        "summary_csv": "results/qfuf-drop-diseqack-117301/summary.csv",
+        "comparison_csv": "results/qfuf-drop-diseqack-117301/comparison.csv",
+        "default_csv": "results/qfuf-drop-diseqack-117301/default-merged.csv",
+        "heuristic_csv": "results/qfuf-drop-diseqack-117301/diseq_ack-merged.csv",
+        "html": "results/qfuf-drop-diseqack-117301/report.html",
+        "logs": "results/qfuf-drop-diseqack-117301/slurm-logs"
+      },
+      "summary": {
+        "default": {
+          "total": 124,
+          "solved": 113,
+          "timeouts": 11,
+          "errors": 0,
+          "unsupported": 0,
+          "wrong": 0,
+          "par2": 1316.963966,
+          "seconds_sum": 987.37247
+        },
+        "diseq_ack": {
+          "total": 124,
+          "solved": 115,
+          "timeouts": 9,
+          "errors": 0,
+          "unsupported": 0,
+          "wrong": 0,
+          "par2": 1229.483639,
+          "seconds_sum": 959.808992
+        },
+        "delta": {
+          "diseq_ack_minus_default_par2": -87.480327,
+          "diseq_ack_minus_default_seconds": -27.563478,
+          "answer_or_status_mismatches": 2,
+          "wrong_rows_total": 0,
+          "heuristic_faster_by_at_least_1s": 11,
+          "heuristic_slower_by_at_least_1s": 3
+        },
+        "families": {
+          "Goel": {
+            "default_solved": 4,
+            "diseq_ack_solved": 4,
+            "default_timeouts": 0,
+            "diseq_ack_timeouts": 0,
+            "delta_par2": -0.656913
+          },
+          "NEQ": {
+            "default_solved": 16,
+            "diseq_ack_solved": 16,
+            "default_timeouts": 1,
+            "diseq_ack_timeouts": 1,
+            "delta_par2": -10.031986
+          },
+          "PEQ": {
+            "default_solved": 16,
+            "diseq_ack_solved": 18,
+            "default_timeouts": 7,
+            "diseq_ack_timeouts": 5,
+            "delta_par2": -74.393422
+          },
+          "QG": {
+            "default_solved": 72,
+            "diseq_ack_solved": 72,
+            "default_timeouts": 2,
+            "diseq_ack_timeouts": 2,
+            "delta_par2": -2.178046
+          },
+          "SEQ": {
+            "default_solved": 5,
+            "diseq_ack_solved": 5,
+            "default_timeouts": 1,
+            "diseq_ack_timeouts": 1,
+            "delta_par2": -0.21996
+          }
+        },
+        "status_changes": [
+          {
+            "file": "tmp/QF_UF/PEQ/PEQ003_size10.smt2",
+            "default": "timeout unknown",
+            "diseq_ack": "ok unsat",
+            "default_seconds": 30.037461,
+            "diseq_ack_seconds": 28.163454,
+            "diseq_ack_propagated": 0
+          },
+          {
+            "file": "tmp/QF_UF/PEQ/PEQ014_size10.smt2",
+            "default": "timeout unknown",
+            "diseq_ack": "ok unsat",
+            "default_seconds": 30.037316,
+            "diseq_ack_seconds": 27.030698,
+            "diseq_ack_propagated": 0
+          }
+        ],
+        "diseq_ack_stats": {
+          ":euf.diseq-ack.candidates": 4922,
+          ":euf.diseq-ack.queue-pushes": 15204418,
+          ":euf.diseq-ack.queue-pops": 8160494,
+          ":euf.diseq-ack.unit": 231570,
+          ":euf.diseq-ack.conflict": 5,
+          ":euf.diseq-ack.propagated": 231570,
+          ":euf.diseq-ack.reason-lits": 361457,
+          ":euf.diseq-ack.satisfied-skips": 434222,
+          ":euf.diseq-ack.missing-arg-atom": 40448,
+          ":euf.diseq-ack.width-skips": 0,
+          ":euf.diseq-ack.queue-budget-cutoffs": 0,
+          ":euf.diseq-ack.per-symbol-cutoffs": 17457,
+          "active_candidate_rows": 81
+        }
+      },
+      "verification": {
+        "passed": [
+          "Manifest contained 124 benchmark-relative QF_UF rows and every row resolved under tmp/QF_UF locally before submission.",
+          "Validated local sbatch wrapper with scripts/slurm_validate_sbatch.py and bash -n.",
+          "Immediately before sbatch, check-only preflight confirmed the remote binary reported git 546738e and CaDiCaL cadical-3.0.0-7b99c07.",
+          "SLURM job 117301 tasks 0-7 completed with exit code 0:0.",
+          "Default and heuristic variants had zero wrong answers; the two answer/status mismatches are default timeout versus heuristic unsat."
+        ],
+        "limitations": [
+          "The run used a 30s timeout on the 124-row interesting drop only; it is not a full QF_UF campaign or default-promotion result.",
+          "The benchmark harness family field is coarse in this run because the manifest rows include QF_UF/ prefixes and the command used --root tmp; family summaries were derived from the file paths during HTML/report aggregation.",
+          "The two favorable PEQ status changes had zero delivered diseq-Ackermann propagations in their per-file stats, so they should not be claimed as direct Ackermann-propagation wins without repeat/noise analysis."
+        ]
+      },
+      "evidence_status": "current_slurm",
+      "notes": "The watched disequality-Ackermann option is correctness-clean on this focused SLURM comparison and improves solved count by 2 at 30s, all from PEQ rows. It remains default-off: the direct Ackermann watcher was active mainly on QG rows, QG only improved slightly in aggregate, and the PEQ status changes did not show delivered Ackermann propagations."
     }
   ]
 }
