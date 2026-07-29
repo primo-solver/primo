@@ -440,6 +440,73 @@ The lesson is the one item 8 taught, applied correctly: take the broad
 sample's verdict, and neither tune a losing heuristic nor discard one on a
 single instance.
 
+### H7 -- Fixed-variable elimination (equality slacks)
+
+**Status: designed 2026-07-29 from the scrambled-competition evaluation, not
+implemented.** This is the first item in this note whose evidence comes from a
+set Primo was never tuned against.
+
+**Where it comes from.** On the 595-file scrambled QF_LRA competition set at a
+60s timeout, Primo solves 373 against z3's 429 and cvc5's 351 -- ahead of cvc5,
+behind z3, with zero cross-solver disagreements. The whole deficit sits in one
+size band:
+
+| file size | n | primo | z3 | cvc5 |
+|---|---|---|---|---|
+| 0-50 KB | 182 | 180 | 181 | 181 |
+| 50-500 KB | 191 | **142** | 134 | 122 |
+| 500 KB - 5 MB | 173 | **43** | **100** | 43 |
+| > 5 MB | 49 | 8 | 14 | 5 |
+
+Primo leads *both* references below 500 KB and collapses above it, landing on
+exactly cvc5's number in the 500 KB-5 MB band while z3 more than doubles them.
+
+**It is not a preprocessing size problem.** That was the first hypothesis and
+it is wrong: on four profiled gap instances Primo's prepared tableau matches
+z3's reported dimensions within ~5% every time (9,315x11,633 against z3's
+9,000x11,330; 8,960x10,479 against 8,892x10,415; and so on). Primo also already
+folds the scrambler's `(* 1.0 t)` / `(+ t 0.0)` obfuscation -- checked
+directly, term size and solve-eqs counts are identical with and without it.
+Both solvers build the same problem.
+
+**The difference is what happens to equalities.** These instances are dominated
+by them -- 8,226 to 40,820 lowered Real equalities per file, against 4,822 to
+24,976 tableau rows, so most rows exist because of an equality. Primo lowers
+`t1 = t2` to `t1 <= t2` and `t2 <= t1`; since item H1b those two normalize onto
+one shared slack, which then receives an upper *and* a lower bound at the same
+value. **That slack is fixed, and Primo does nothing with the fact** -- it stays
+a live, pivotable row for the rest of the search.
+
+z3 does something with it, and reports how much: `:arith-fixed-eqs` 168-52,364
+and `:arith-offset-eqs` 855-68,937 per instance. Its search then barely runs --
+on `scrambled126657` it needs **9 decisions and 4 conflicts** where Primo makes
+141,124 decisions and 321M pivot term-operations. Profiling Primo there puts
+86% of runtime in `LraTableau::pivot`, averaging 431 rows rewritten per pivot.
+
+**Design.**
+
+- **Fixed-variable elimination.** When `assert_upper`/`assert_lower` make a
+  variable's bounds equal, that variable is a constant for the rest of the
+  current search level. Substitute it out of the rows that mention it, and drop
+  its row if it is basic, restoring on `pop()` through the existing trail. This
+  directly attacks the 431-rows-per-pivot figure, because the eliminated rows
+  are the ones fill-in keeps re-touching.
+- **Offset equalities (`x - y = c`) as a follow-on**, matching z3's
+  `arith-offset-eqs`: merge the two columns rather than carrying both. Bigger
+  and better attempted only once fixed-variable elimination is measured, since
+  the two overlap.
+
+**Risk.** Higher than H1-H3: unlike those, this changes what is *in* the
+tableau during search, so it interacts with the trail, with conflict
+explanation (an eliminated variable's bound reason must still reach the Farkas
+certificate), and with propagation. It is the first item here that could
+produce a wrong answer rather than a slow one, and needs its invariants tested
+accordingly.
+
+**Falsifier.** If eliminating fixed variables does not reduce
+`:lra.pivot-row-updates` proportionally to the share of rows eliminated, then
+the fill-in is not concentrated in those rows and the diagnosis above is wrong.
+
 ### H4 -- Batched bound assertion (deferred `update()`)
 
 **Targets:** Class C (DTP-Scheduling, tta_startup, TM/sc/uart).

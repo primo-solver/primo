@@ -10695,6 +10695,50 @@
       },
       "evidence_status": "current",
       "followups": "If a whole-shard timeout recurs, treat it as an environment signal first -- but check the seed pattern. One seed failing across configurations AND reproducing on a quiet cluster would be the real thing, and that is the test this entry exists to make cheap."
+    },
+    {
+      "id": "2026-07-29-qf-lra-scrambled-competition-evaluation",
+      "started_at": "2026-07-29",
+      "recorded_at": "2026-07-29",
+      "kind": "benchmark",
+      "scope": "First evaluation of Primo on a benchmark set it was never tuned against: 595 scrambled QF_LRA benchmarks from last year's competition (sandbox/QF_LRA), against z3 and cvc5 at a 60s timeout. Scrambling permutes symbol names and assertion order, so nothing here can be recognised from the families the 2026-07-27 heuristics round worked on. Includes the profiling pass that located the remaining gap.",
+      "commit": "ae14e0e",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo --quiet, contrib/local/bin/{z3,cvc5}",
+        "notes": "12G per task and 20-way manifest sharding: this set's files are far larger than the stratified sample's (median 129KB, p95 9.3MB, max 62.5MB), and Primo peaks at ~2.4GB RSS on the 62MB instance."
+      },
+      "command": {
+        "run": "sbatch scripts/slurm_qf_lra_scrambled_compare.sbatch (new; 3 solvers x 20 shards = 60 tasks, --timeout 60)",
+        "analysis": "python3 scripts/compare_solver_answers.py results/qf-lra-scrambled --timeout 60",
+        "profiling": "perf record -g on the sharpest gap instances; ./build/primo --quiet --stats and z3 -st on the same files"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-competition.txt (595 files, scrambled competition set)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 60
+      },
+      "job_id": "117337 (main run, all 60 tasks COMPLETED), 117414 (76-file gap subset re-run at 600s, pending)",
+      "artifacts": {
+        "results": "results/qf-lra-scrambled (60 shard CSVs, fetched)",
+        "manifests": "benchmarks/qf-lra-scrambled-competition.txt, benchmarks/qf-lra-scrambled-gap-vs-z3.txt"
+      },
+      "summary": {
+        "headline": "Solved of 595: z3 429 (72.1%), primo 373 (62.7%), cvc5 351 (59.0%). PAR2: z3 23138s, primo 29215s, cvc5 31766s. Primo beats cvc5 by 22 files and trails z3 by 56. ZERO cross-solver disagreements, zero crashes, zero errors, zero unsupported across all 595 files in all three solvers.",
+        "correction_to_earlier_claims": "On the 237-file stratified sample Primo had edged z3 168-167. That does NOT hold on an unseen set. The stratified sample -- assembled during this roadmap and used as its promotion bar -- was optimistic, which is exactly why the scrambled set was worth running.",
+        "soundness_caveat": "Scrambled benchmarks carry no (set-info :status), so bench_qf_uf_full.py's own wrong-answer column is inert here: it derives `expected` from :status and reports wrong=false for every row regardless of the answer. The zero-disagreement result above comes from scripts/compare_solver_answers.py comparing the three solvers against each other, which is the only soundness signal this set supports.",
+        "gap_is_one_size_band": "Solved by file size (primo / z3 / cvc5): 0-50KB 180/181/181 of 182; 50-500KB 142/134/122 of 191; 500KB-5MB 43/100/43 of 173; >5MB 8/14/5 of 49. Primo LEADS both references below 500KB and collapses above it, landing on exactly cvc5's number in the 500KB-5MB band. 18 files are solved only by Primo, 60 only by z3, 0 only by cvc5; 146 by nobody.",
+        "not_a_preprocessing_size_problem": "First hypothesis, and refuted by measurement. On four profiled gap instances Primo's prepared tableau matches z3's reported dimensions within ~5%: 9,315x11,633 vs 9,000x11,330; 8,960x10,479 vs 8,892x10,415; 4,822x5,405 vs 4,342x4,929; 24,976x27,016 vs 22,792x26,486. Primo also already folds the scrambler's (* 1.0 t)/(+ t 0.0) obfuscation -- verified directly, term size and solve-eqs counts identical with and without it. Both solvers build the same problem.",
+        "diagnosis": "The instances are dominated by Real equalities (8,226-40,820 lowered per file against 4,822-24,976 rows). Primo lowers t1=t2 to a pair of inequalities that item H1b puts on one shared slack, which then holds an upper and a lower bound at the same value -- a FIXED variable that Primo never exploits, leaving it a live pivotable row. z3 does exploit it: :arith-fixed-eqs 168-52,364 and :arith-offset-eqs 855-68,937 per instance, after which its search barely runs. On scrambled126657 z3 needs 9 decisions and 4 conflicts where Primo makes 141,124 decisions and 321M pivot term-operations. perf puts 86% of Primo's runtime in LraTableau::pivot, averaging 431 rows rewritten per pivot.",
+        "timeout_caveat": "z3's median time on the 76 files it wins and Primo loses is 25s of the 60s budget (max 57.9s), so it is near the boundary too. At 60s a 2x slower solver loses many files a longer budget would recover, and the competition's own timeout is 1200s -- this run may overstate the gap under competition conditions. Job 117414 re-runs exactly those 76 files at 600s to separate 'cannot' from 'needs more budget'."
+      },
+      "verification": {
+        "completeness": "All 60 array tasks COMPLETED; all 60 shard CSVs present. Checked explicitly, after the 117248-117251 episode where truncated shards read as clean.",
+        "analysis_tooling": "scripts/compare_solver_answers.py validated against results/qf-lra-solver-compare-h3, where it reproduces the published H3 numbers exactly (144/148/154/168 vs z3 167, cvc5 150) and independently confirms 0 disagreements there."
+      },
+      "evidence_status": "current",
+      "followups": "Recorded as item H7 in docs/qf-lra-heuristics.md: fixed-variable elimination, with offset equalities as a follow-on. Higher risk than H1-H3 because it changes what is in the tableau during search, so it touches the trail, conflict explanation and propagation -- the first item in that note that could produce a wrong answer rather than a slow one. Its falsifier is stated there. The 600s gap re-run (117414) should land before it is prioritised."
     }
   ]
 }
