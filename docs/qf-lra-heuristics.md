@@ -157,12 +157,15 @@ Priority = (measured share of the bottleneck) × (breadth of families hit) ÷
 
 ### H1 -- Direct bounds for single-variable atoms (+ scale-canonical polynomials)
 
-**Status: H1a implemented, unconditional and promoted (237-file bar: 124 ->
-136 solved, PAR2 -9.7%, zero regressions); H1b implemented 2026-07-28 but
-*pending its own evaluation* -- its local evidence is mixed
-(clock_synchro 3.1x faster, uart-18 1.5x, but DTP-Scheduling 0.74x slower
-despite 8.6x fewer decisions), so the 237-file run decides whether it
-stays.** See [](arithmetic.md)'s
+**Status: both halves implemented, unconditional and promoted.** H1a: 124 ->
+136 solved on the 237-file bar, PAR2 -9.7%, zero regressions. H1b: 136 -> 144,
+PAR2 -8.7% (+10 solved, -2 regressed), measured as the `bland` column of item
+H3's four-way run rather than a run of its own. H1b's local evidence had been
+genuinely mixed -- clock_synchro 3.1x faster and uart-18 1.5x, but
+DTP-Scheduling 0.74x *slower* despite 8.6x fewer decisions -- and that
+regression did not generalize: on the broad sample DTP-Scheduling went 11 ->
+12. A reminder of why the broad sample is the bar and a single instance is
+not.** See [](arithmetic.md)'s
 "Direct bounds for single-variable atoms". The predicted row reductions were
 confirmed exactly, family by family, via a new `:lra.rows` statistic --
 ecoliFBA -69%, TM/p6 -95%, pp08a -66%, sc-17 -39%, uart-17 -36%, tta_startup
@@ -633,8 +636,26 @@ explosion went unnoticed through eight roadmap items.
 
 ## 5. Evidence trail
 
-All measurements in this note are local (workstation, Release build,
-commit `35878c4`) and are recorded in `docs/run-log.json` under
-`2026-07-27-qf-lra-heuristics-design-profiling`. They are **local profiling
-evidence for a design decision**, not benchmark claims -- any performance
-result from implementing these items must come from Slurm per AGENTS.md.
+The **design** measurements in Sections 1.1-1.3 are local (workstation,
+Release build, commit `35878c4`), recorded in `docs/run-log.json` under
+`2026-07-27-qf-lra-heuristics-design-profiling`. They were profiling evidence
+for a design decision, not benchmark claims.
+
+Every **result** claimed for an implemented item comes from Slurm, per
+AGENTS.md, and has its own run-log entry:
+
+| item | implementation | gates | promotion-bar run |
+|---|---|---|---|
+| H2 | `02e2d47` | 114896-114899 | job 114900 |
+| H1a | `077beec` | 115168-115171 | job 115172 |
+| H1b | `1e6554d` | 116545-116548 | job 117222 (`bland` column) |
+| H3 | `cf491ce`, promoted `dd60655` | 117219-117221, 117227-117228 | job 117222 |
+
+Plus a milestone-wide campaign sweep (jobs 117248-117252) over every other
+reachable configuration -- `bland`, `dantzig`, `--no-lra-sparse-leaving`,
+`--no-lra-propagation`, and row/bidirectional propagation -- so that no
+supported option combination is left un-fuzzed at campaign tier.
+
+Local-only evidence that remains local, and is labelled as such where it
+appears: the paired A/B timings, the tableau-shape row counts, and the
+32-bit-vs-64-bit width ablation.
