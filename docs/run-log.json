@@ -9936,6 +9936,77 @@
       },
       "evidence_status": "needs_revalidation",
       "notes": "Local warning only. The scan-based selector added 990 unit clauses and no conflicts, but repeatedly rescanned 546.8M candidates, producing two additional local timeouts and much worse local PAR2 on the weak manifest. A same-binary SLURM A/B comparison of f83828f default versus --euf-dynamic-ackermann is still required for an apples-to-apples decision."
+    },
+    {
+      "id": "2026-07-29-qfuf-diseq-ackermann-fuzzsmt-480b41d-1000",
+      "date": "2026-07-29",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate for default-off watched disequality Ackermann propagation",
+      "commit": "480b41d",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet --euf-diseq-ackermann",
+        "binary_version": "primo 0.1.0; git: 480b41d; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "Local merge-gate fuzzing only. This is correctness evidence for the default-off option, not headline performance evidence."
+      },
+      "command": {
+        "install_reference": "make contrib-z3",
+        "run": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --euf-diseq-ackermann' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 480411 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-z3"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --euf-diseq-ackermann"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 480411,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-z3/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-z3/generated",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-z3/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_errors": 0,
+        "timeouts": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "ours": {
+          "sat": 893,
+          "unsat": 107
+        },
+        "refs": {
+          "sat": 893,
+          "unsat": 107
+        }
+      },
+      "verification": {
+        "passed": [
+          "make contrib-z3 installed the local z3 reference wrapper",
+          "1000 generated QF_UF FuzzSMT cases all matched z3 with --euf-diseq-ackermann enabled"
+        ],
+        "invalidated": [
+          "Earlier local attempts in fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000 and fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-rerun are not evidence because the first lacked FuzzSMT and the second lacked a z3 reference command."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This satisfies the local merge-gate fuzz requirement for the new default-off solver option. It does not replace SLURM campaign evidence before any default or headline performance promotion."
     }
   ]
 }
