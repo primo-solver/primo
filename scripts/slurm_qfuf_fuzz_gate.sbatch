@@ -3,10 +3,21 @@
 #SBATCH --array=0-8
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
-#SBATCH --time=00:45:00
+#SBATCH --time=02:00:00
 #SBATCH --output=logs/%x-%A-%a.out
 #SBATCH --error=logs/%x-%A-%a.err
 
+# Wall limit: a FuzzSMT shard is FUZZSMT_COUNT cases, each costing up to
+# FUZZSMT_TIMEOUT for our solver plus the same again for the reference, so the
+# worst case is roughly COUNT * 2 * TIMEOUT -- 500 * 2 * 5s = 83 minutes at
+# the defaults. The previous 45-minute limit was under that by construction,
+# and a shard that hits the wall is killed *before* fuzz_external.py writes
+# its summary.csv, so the run silently reports fewer cases rather than
+# failing: jobs 117248-117251 each lost exactly one shard that way (2500 of
+# 3000 cases) and looked clean. If you raise FUZZSMT_COUNT or
+# FUZZSMT_TIMEOUT, raise this to match, and always check that the number of
+# summary.csv files equals the shard count before believing a gate result.
+#
 # Combined QF_UF fuzz gate: FuzzSMT (generator) + opfuzz + YinYang typefuzz
 # (mutation), one array job. This is the campaign previously reconstructed
 # by hand each time from docs/run-log.json notes (e.g. 2026-07-18 entries
