@@ -10616,6 +10616,53 @@
       },
       "evidence_status": "current",
       "followups": "This item is correctness-verified but its performance verdict is still open. Its standalone 237-file comparison (job 116549) was cancelled as redundant: item H3's four-way promotion run (job 117222) evaluates bland/dantzig/sparse/sparse+leaving on a binary that already contains H1b, so that run's `bland` column measures exactly H1b's effect on the default against H1a's 136/237 -- H3 leaves the Bland path bit-identical, verified by counter comparison. If that column regresses, H1b is reverted per the roadmap's standing rule for rejected experiments."
+    },
+    {
+      "id": "2026-07-29-qf-lra-sparse-pivoting-promotion",
+      "started_at": "2026-07-28",
+      "recorded_at": "2026-07-29",
+      "kind": "benchmark",
+      "scope": "docs/qf-lra-heuristics.md item H3: fill-in-aware entering-variable selection (PivotingRule::Sparse, commit cf491ce) and its promotion to the default together with the leaving-side half (commit dd60655). Includes the four-way 237-file promotion run that also settles item H1b, and the merge/campaign fuzz gates. pivot() rewrites every row in occurs_in_[entering] merging in a row of length |row(leaving)|, so a pivot's cost and the fill-in it creates are the Markowitz product of those two factors -- which none of Bland, Dantzig or SOI prices. Source: Monniaux (CAV 2009) p.8; only that sparsity criterion is taken from the paper.",
+      "commit": "cf491ce (rule), dd60655 (promotion)",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (node-head, via /tmp/llm2smt_slurm_ssh_config)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-pivoting-rule {bland,dantzig,sparse}] [--lra-sparse-leaving] (remote Release)"
+      },
+      "command": {
+        "merge_gates": "sbatch --array=0-0 --job-name=primo-lra-h3-merge-{bland,sparse,sparseleav} ... PRIMO_FUZZ_FUZZSMT_COUNT=500, PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA",
+        "campaign_gates": "sbatch --job-name=primo-lra-h3-camp-{default,soi} ... default 9-task layout (6 fuzzsmt shards x 500 + opfuzz + 2 yinyang) over benchmarks/seeds/qf_lra_real",
+        "promotion_bar": "sbatch --array=0-3 --job-name=primo-lra-h3-compare --export=ALL,'PRIMO_COMPARE_SOLVERS=bland=...;dantzig=... --lra-pivoting-rule dantzig;sparse=... --lra-pivoting-rule sparse;sparseleav=... --lra-pivoting-rule sparse --lra-sparse-leaving' scripts/slurm_qf_lra_solver_compare.sbatch"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-stratified-sample.txt (237 files, 17 families) at a 10s timeout, four Primo configurations, diffed against the unchanged z3.csv/cvc5.csv from job 114200. Fuzz gates as above.",
+        "logic": "QF_LRA",
+        "timeout_seconds": 10
+      },
+      "job_id": "117219 (merge sparse), 117220 (merge sparse+leaving), 117221 (merge bland), 117222 (four-way comparison), 117227 (campaign, promoted default), 117228 (campaign, SOI)",
+      "artifacts": {
+        "comparison": "results/qf-lra-solver-compare-h3 (fetched; compare.html rendered over all six columns)",
+        "gates": "remote fuzz-results/lra-h3-{merge-*,camp-*}",
+        "baseline_reference": "results/qf-lra-solver-compare-114200 (z3/cvc5 reused unchanged), results/qf-lra-solver-compare-h1a (the 136/237 pre-H1b/H3 Primo run)"
+      },
+      "summary": {
+        "promotion_bar": "Job 117222, all four configurations on one binary. Solved of 237: bland 144, dantzig 148, sparse 154, sparse+leaving 168; z3 167, cvc5 150. PAR2: 1962.4 / 1931.3 / 1798.9 / 1538.9 against z3 1531.6 and cvc5 1887.1. Zero wrong answers in every configuration. Against the previous default (bland), sparse+leaving is +24 files with ZERO regressions; against the pre-H1b/H3 run (136) it is +32, also zero regressions.",
+        "per_family": "sparse+leaving vs bland: latendresse 0 -> 6 (matching z3; cvc5 solves 0), uart 10 -> 13, clock_synchro 7 -> 12 (z3 9, cvc5 10), 2019-ezsmt 7 -> 12 (z3 10), sc 11 -> 13, LassoRanker 1 -> 3 (z3 2), DTP-Scheduling 12 -> 13, tta_startup 13. Unchanged and already maxed: TM, keymaera, meti-tarski, sal, spider_benchmarks, check. Unmoved by anything so far: tropical-matrix 0/10 (all three solvers), miplib 4 (z3 6).",
+        "leaving_side_finding": "The latendresse gain is ENTIRELY the leaving-side half. That knob was planned as a lower-priority follow-up and gated separately precisely because it is not progress-neutral -- it changes which infeasibility gets repaired. That objection holds for the Boolean-heavy families but does not apply to a pure-LP instance, which is a single check() call with no Boolean structure and therefore no search trajectory to steer wrong. Entering-side alone reaches 154; adding the leaving side reaches 168. Had only the planned scope shipped, the family that had been 0/15 since the beginning would have stayed there.",
+        "dantzig_finding": "Dantzig had never been run on this sample in three roadmap cycles. It scores 148, beating the Bland default by 4, and it solves latendresse locally where Bland does not (~19.5s vs timeout). Including it is what makes the sparse win attributable rather than confounded with the leaving-rule change it shares with Dantzig.",
+        "h1b_verdict": "The bland column IS item H1b's 237-file verdict, which is why its standalone job (116549) was cancelled as redundant: 136 -> 144 (+10 solved, -2 regressed), PAR2 2149.8 -> 1962.4 (-8.7%). H1b stays. Its local DTP-Scheduling regression did not generalize -- that family went 11 -> 12.",
+        "merge_gates": "Job 117221 (bland): 500/500 -- 499 PASS, 1 TIMEOUT, 0 CRASH, 0 WRONG. Job 117219 (sparse): 499/1. Job 117220 (sparse+leaving): 496 PASS, 4 TIMEOUT. The bland gate specifically confirms the shared selection-loop refactor did not disturb the then-default path.",
+        "campaign_gates": "Job 117227 (the promoted default): fuzzsmt 3000/3000 -- 2990 PASS, 10 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz 14/14 seeds valid, 0 bug triggers; yinyang 2 shards, 14/14 valid each, 0 bug triggers each. Job 117228 (SOI): fuzzsmt 3000/3000 -- 2908 PASS, 92 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz and yinyang likewise clean.",
+        "local_cost_counters": "The new :lra.pivot-row-updates / :lra.pivot-term-ops counters explain the win rather than merely recording it. Term-ops on the profiled instances, bland -> promoted default: sc-21 20.4M -> 2.8M, clock_synchro 11.2M -> 1.2M, DTP-Scheduling 54.6M -> 11.0M, TM/p5 22.0K -> 5.6K. On latendresse/ecoliFBAyicesTest-500 the default finishes in 0.58s with 8.7M term-ops where Dantzig needs 130.9M and ~19.5s and Bland does not finish at all. The |coefficient|=1 tie-break also shows up directly: clock_synchro's :rational.promotions falls from 358,801 to 1,994."
+      },
+      "verification": {
+        "default_path_invariance": "Before promotion, with --lra-pivoting-rule bland the refactored selection loop produced bit-identical :sat.decisions / :sat.conflicts / :lra.pivots to the pre-change build on all six profiled instances -- the check that the shared-loop refactor was behaviour-preserving for the then-default path.",
+        "correctness": "Zero wrong answers and zero crashes across 1,500 merge-gate and 6,000 campaign-gate fuzzsmt cases, two opfuzz runs and four yinyang typefuzz shards, plus all four 237-file configurations.",
+        "local": "Release ctest 12/12 and ASAN/UBSan ctest 12/12, including four new white-box selection tests (sparsest-column choice, unit-coefficient tie-break, bounded-pricing soundness, bland agreement) and an end-to-end agreement test. clang-tidy clean on lra_tableau.cpp. Both ablation flags (--lra-pivoting-rule bland, --no-lra-sparse-leaving) verified to change behaviour on latendresse.",
+        "reference_solvers": "z3.csv/cvc5.csv reused unchanged from job 114200."
+      },
+      "evidence_status": "current",
+      "followups": "Primo now solves 168/237 against z3's 167 with PAR2 essentially tied (1538.9 vs 1531.6), and the two are complementary rather than one dominating: 6 files z3 solves and Primo does not (DTP-Scheduling 2, miplib 2, LassoRanker 1, tta_startup 1), 7 the other way (clock_synchro 3, 2019-ezsmt 2, LassoRanker 2). Remaining known-open targets: miplib (4/15 vs z3's 6) and tropical-matrix (0/10 for all three solvers). Items H4/H5/H6 of the design note are unimplemented; H4's premise in particular needs re-measuring, since it rested on a per-decision cost that these items have changed."
     }
   ]
 }

@@ -1,8 +1,8 @@
 # QF_LRA Speedup Heuristics: Design Note
 
-Written 2026-07-27 as a design note; **H2 and H1a are now implemented and
-promoted, H1b is implemented pending its own evaluation, and H3/H4/H5/H6
-remain designs** (each item below carries its own status). It picks up where
+Written 2026-07-27 as a design note; **H2, H1a, H1b and H3 are now
+implemented and promoted to default; H4, H5 and H6 remain designs** (each
+item below carries its own status). It picks up where
 the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s Milestone
 roadmap) left off, and is grounded in a fresh local
 profiling/instrumentation pass run at commit `35878c4` -- not in the older
@@ -15,11 +15,18 @@ cvc5 150 unchanged throughout):
 |---|---|---|---|
 | before this note (job 114200) | 108 (45.6%) | 2675.6s | 59 files |
 | + H2 (job 114900) | 124 (52.3%) | 2380.9s | 43 files |
-| + H1a (job 115172) | **136 (57.4%)** | **2149.8s** | **31 files** |
+| + H1a (job 115172) | 136 (57.4%) | 2149.8s | 31 files |
+| + H1b (job 117222, `bland`) | 144 (60.8%) | 1962.4s | 23 files |
+| + H3 (job 117222, new default) | **168 (70.9%)** | **1538.9s** | **z3 is 167** |
 
-Zero wrong answers and **zero regressed files** at either step. Sections 1.1
-and 1.2 below describe the state *before* those two items; Section 2's
-per-item status blocks describe what changed.
+Zero wrong answers throughout, and zero regressed files at every step. **Primo
+now solves one file more than z3 (168 vs 167) with PAR2 essentially tied
+(1538.9s vs 1531.6s)**, and the two are complementary rather than one
+dominating: 6 files z3 solves and Primo does not, 7 the other way round.
+cvc5 is at 150.
+
+Sections 1.1 and 1.2 below describe the state *before* any of this; Section
+2's per-item status blocks describe what changed.
 
 The roadmap's own closing lesson is taken as binding here: **the 9-file
 "dramatic-gap" sample is for *finding* techniques, the 237-file stratified
@@ -330,8 +337,11 @@ width ablation could still move.
 
 ### H3 -- Fill-in-aware (Markowitz-style) entering-variable selection
 
-**Status: implemented 2026-07-28 as `--lra-pivoting-rule sparse`, opt-in,
-pending its 237-file run.** See [](arithmetic.md)'s "Fill-in-aware pivot
+**Status: implemented 2026-07-28, promoted to default 2026-07-29
+(`LraPivotingRule::Sparse` with the leaving-side half on).** On the 237-file
+bar: **168/237 against the former default's 144, PAR2 1538.9s vs 1962.4s,
++24 files with zero regressions**, campaign-gated on both pivoting paths.
+See [](arithmetic.md) and `docs/run-log.json`. See [](arithmetic.md)'s "Fill-in-aware pivot
 selection" for the shipped design. First local numbers, and one result that
 was not anticipated:
 
@@ -417,6 +427,15 @@ alongside wall time in the evaluation, and why it lands opt-in.
 clock_synchro/miplib, the rule is net-negative and should be rejected
 outright rather than tuned -- item 8's cost-ranking episode is the
 cautionary precedent for tuning a heuristic that was steering search wrong.
+
+**Falsifier outcome: fired on `miplib/pp08a` for the entering-side rule
+alone** (pivots +43%, term-ops +19%, 1.63s -> 1.82s) -- and that was the
+right signal to keep measuring rather than to tune. Adding the leaving-side
+half turned the same instance into 1.36s, better than Bland, and the broad
+sample settled the question decisively at +24 files with no regressions.
+The lesson is the one item 8 taught, applied correctly: take the broad
+sample's verdict, and neither tune a losing heuristic nor discard one on a
+single instance.
 
 ### H4 -- Batched bound assertion (deferred `update()`)
 

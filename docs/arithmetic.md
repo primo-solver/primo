@@ -399,14 +399,48 @@ alternatives considered before/while implementing it.
   - New `:lra.pivot-row-updates` / `:lra.pivot-term-ops` count what the pivots
     cost, not just how many there were; trading fewer-but-costlier pivots for
     more-but-cheaper ones is this rule's whole risk, so both are reported.
-  - **First local result**: sparse beats bland on `sc-21` (1.56s -> 0.72s),
-    `clock_synchro` (1.17 -> 0.22) and `DTP-Scheduling` (7.41 -> 1.93), and
-    loses on `miplib/pp08a` (1.63 -> 1.82, pivots +43%). **And
-    `sparse --lra-sparse-leaving` solves every `latendresse` file in ~0.65s** --
-    a family Primo has never solved at all, where Dantzig takes ~19.5s and
-    Bland times out. Promotion pending a four-way 237-file run
-    (bland/dantzig/sparse/sparse+leaving); Dantzig is included because it has
-    never been run on that bar and it, too, solves `latendresse`.
+  - **Promoted to default 2026-07-29**, together with the leaving-side half.
+    The four-way 237-file run (job 117222), all four configurations on one
+    binary against the unchanged z3/cvc5 of job 114200:
+
+    | config | solved / 237 | PAR2 | wrong |
+    |---|---|---|---|
+    | pre-H1b/H3 | 136 | 2149.8s | 0 |
+    | bland (former default) | 144 | 1962.4s | 0 |
+    | dantzig | 148 | 1931.3s | 0 |
+    | sparse | 154 | 1798.9s | 0 |
+    | **sparse + leaving (new default)** | **168** | **1538.9s** | 0 |
+    | z3 | 167 | 1531.6s | -- |
+    | cvc5 | 150 | 1887.1s | -- |
+
+    **+24 files over the former default with zero regressions** (+32 over the
+    pre-H1b/H3 run, also zero). Per family: latendresse 0 -> 6 (matching z3;
+    cvc5 solves 0), uart 10 -> 13, clock_synchro 7 -> 12 (z3 9), 2019-ezsmt
+    7 -> 12 (z3 10), sc 11 -> 13, LassoRanker 1 -> 3 (z3 2).
+  - **The latendresse gain is entirely the leaving-side half**, the knob that
+    was gated separately *because* it is not progress-neutral. That objection
+    is right for the Boolean-heavy families and simply does not apply to a
+    pure-LP instance: one `check()` call with no Boolean structure has no
+    search trajectory to steer wrong. Entering-side alone reaches 154.
+  - **Dantzig, finally measured on this bar** after three roadmap cycles of
+    only 17-file quick-evals: 148, four ahead of the Bland default it never
+    replaced. Including it is what makes the sparse win attributable rather
+    than confounded with the leaving-rule change the two share.
+  - Cost counters explain the win rather than just recording it. Term-ops,
+    bland -> new default: sc-21 20.4M -> 2.8M, clock_synchro 11.2M -> 1.2M,
+    DTP-Scheduling 54.6M -> 11.0M. On `latendresse/ecoliFBAyicesTest-500` the
+    default finishes in 0.58s with 8.7M term-ops, where Dantzig needs 130.9M
+    and ~19.5s and Bland does not finish. `clock_synchro`'s
+    `:rational.promotions` falls 358,801 -> 1,994, the `|coefficient| = 1`
+    tie-break keeping values inside H2's machine-word fast path.
+  - Ablation: `--lra-pivoting-rule bland` and `--no-lra-sparse-leaving`, both
+    verified to change behaviour.
+  - **Gated at both tiers on both pivoting paths.** Merge: 117221 (bland,
+    499/500 PASS -- confirming the shared-loop refactor left the then-default
+    alone), 117219 (sparse, 499/1), 117220 (sparse+leaving, 496/4). Campaign:
+    117227 (new default, fuzzsmt 3000: 2990 PASS/10 TIMEOUT) and 117228 (SOI,
+    3000: 2908/92), each with opfuzz 14/14 seeds valid and two yinyang shards,
+    0 bug triggers throughout. No crashes, no wrong answers anywhere.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already

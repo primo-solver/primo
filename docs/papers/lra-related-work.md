@@ -93,8 +93,14 @@ design, even though they are not what the paper is about:
   pivoting steps are faster when the equation defining the basic variable to
   be pivoted has few nonzero coefficients", and likewise pre-sorting by
   "number of occurrences in equations". Stated there for the forced-pivoting
-  phase, but the cost argument is the same one behind roadmap item H3's
-  fill-in-aware entering-variable selection. **Not yet implemented.**
+  phase, but the cost argument is the same one behind heuristics-note item
+  H3. **Implemented 2026-07-29 and promoted to default** as
+  `LraTableau::PivotingRule::Sparse` -- both criteria: the occurrence count
+  prices the entering variable, the row length prices the leaving one. On the
+  237-file stratified sample this takes Primo from 144 to 168 solved with zero
+  regressions. *Deviation:* applied to the main Check/Pivot loop rather than
+  to a forced-pivoting phase, which Primo does not have. See
+  `docs/arithmetic.md`'s "Fill-in-aware pivot selection".
 
 Clean-room note: implemented from this paper's prose (plus Knuth TAOCP Vol. 2
 Sec. 4.5.1 for the rational arithmetic itself), not from any solver's source.
