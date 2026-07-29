@@ -1333,10 +1333,33 @@ void publish_theory_atom_purity_stats(const core::TermManager& terms,
                                       const std::vector<BooleanClausifier::TheoryAtom>& atoms,
                                       util::Statistics& statistics);
 
-CheckSatOutcome solve_boolean_conjunction(core::TermManager& terms,
-                                          const std::vector<core::TermId>& assertions,
-                                          const CheckSatOptions& options,
-                                          util::Statistics& statistics) {
+void append_model_assignments(std::vector<TheoryModelAssignment>& target,
+                              const std::vector<TheoryModelAssignment>& source) {
+  target.insert(target.end(), source.begin(), source.end());
+}
+
+void append_boolean_model_assignments(
+    std::vector<TheoryModelAssignment>& target,
+    const std::vector<std::pair<core::TermId, bool>>& assignments) {
+  target.reserve(target.size() + assignments.size());
+  for (const auto& [term, value] : assignments) {
+    target.push_back(TheoryModelAssignment{term, value, false});
+  }
+}
+
+void append_equality_model_assignments(
+    core::TermManager& terms, std::vector<TheoryModelAssignment>& target,
+    const std::vector<std::pair<core::TermId, core::TermId>>& equalities) {
+  target.reserve(target.size() + equalities.size());
+  for (const auto& [lhs, rhs] : equalities) {
+    target.push_back(TheoryModelAssignment{terms.mk_eq(lhs, rhs), true, false});
+  }
+}
+
+CheckSatOutcome solve_boolean_conjunction(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   statistics.increment(kStatSolverBoolean);
   sat::CadicalBackend backend(options.cadical_options);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
@@ -1355,7 +1378,9 @@ CheckSatOutcome solve_boolean_conjunction(core::TermManager& terms,
   }
 
   std::vector<TheoryModelAssignment> model_assignments;
-  model_assignments.reserve(clausifier.theory_atoms().size());
+  model_assignments.reserve(preprocessing_model_assignments.size() +
+                            clausifier.theory_atoms().size());
+  append_model_assignments(model_assignments, preprocessing_model_assignments);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
     const std::optional<bool> assignment = backend.value(var);
@@ -3419,8 +3444,10 @@ void record_disequality_propagation_opportunities(const core::TermManager& terms
   }
 }
 
-CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
-                            const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_uf(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend(options.cadical_options);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
@@ -3599,7 +3626,8 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
         return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
       }
       std::vector<TheoryModelAssignment> model_assignments;
-      model_assignments.reserve(assigned_atoms.size());
+      model_assignments.reserve(preprocessing_model_assignments.size() + assigned_atoms.size());
+      append_model_assignments(model_assignments, preprocessing_model_assignments);
       for (const AssignedTheoryAtom& atom : assigned_atoms) {
         model_assignments.push_back(TheoryModelAssignment{atom.term, atom.value, atom.filtered});
       }
@@ -3941,6 +3969,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatPreprocessingTermSizeInitial,
                    reachable_term_count(frontend.terms(), assertions));
     const std::vector<core::TermId> symmetry_source_assertions = assertions;
+    std::vector<TheoryModelAssignment> preprocessing_model_assignments;
     std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
     std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
     if (use_finite_domain_amo) {
@@ -3950,11 +3979,14 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
       statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
     }
-    if (auto_large_assertion_skip && options.solved_constant_substitution &&
-        !options.produce_model) {
+    if (auto_large_assertion_skip && options.solved_constant_substitution) {
       SolvedConstantSubstitutionResult solved_constants =
           substitute_solved_constants(frontend.terms(), assertions);
       assertions = std::move(solved_constants.assertions);
+      if (options.produce_model) {
+        append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
+                                          solved_constants.substitutions);
+      }
       statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
       statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
       statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
@@ -3996,11 +4028,18 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       BooleanUnitPropagationResult boolean_units =
           propagate_boolean_units(frontend.terms(), assertions);
       assertions = std::move(boolean_units.assertions);
+      if (options.produce_model) {
+        append_boolean_model_assignments(preprocessing_model_assignments,
+                                         boolean_units.assignments);
+      }
       statistics.increment(kStatBooleanUnitFacts, boolean_units.units);
       statistics.increment(kStatBooleanUnitRewrites, boolean_units.rewrites);
       ForcedAtomPropagationResult forced_atoms =
           propagate_forced_atoms(frontend.terms(), assertions);
       assertions = std::move(forced_atoms.assertions);
+      if (options.produce_model) {
+        append_boolean_model_assignments(preprocessing_model_assignments, forced_atoms.assignments);
+      }
       statistics.increment(kStatForcedAtomFacts, forced_atoms.units);
       statistics.increment(kStatForcedAtomDisequalities, forced_atoms.disequalities);
       statistics.increment(kStatForcedAtomRewrites, forced_atoms.rewrites);
@@ -4009,10 +4048,14 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       forced_disequalities.insert(forced_disequalities.end(),
                                   forced_atoms.disequality_pairs.begin(),
                                   forced_atoms.disequality_pairs.end());
-      if (options.solved_constant_substitution && !options.produce_model) {
+      if (options.solved_constant_substitution) {
         SolvedConstantSubstitutionResult solved_constants =
             substitute_solved_constants(frontend.terms(), assertions);
         assertions = std::move(solved_constants.assertions);
+        if (options.produce_model) {
+          append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
+                                            solved_constants.substitutions);
+        }
         statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
         statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
         statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
@@ -4028,6 +4071,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                                ground_substitution, frontend.terms());
         if (accept_substitution) {
           assertions = std::move(ground_substitution.assertions);
+          if (options.produce_model) {
+            append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
+                                              ground_substitution.substitutions);
+          }
           statistics.increment(kStatUnitEqualitySubstitutionUnits, ground_substitution.units);
           statistics.increment(kStatUnitEqualitySubstitutions, ground_substitution.rewrites);
           statistics.increment(kStatUnitEqualitySubstitutionAccepted);
@@ -4146,7 +4193,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
       CheckSatOutcome outcome = finish(CheckSatResult::Sat);
       if (options.produce_model) {
-        outcome.model = build_qf_uf_model(frontend.terms(), {});
+        outcome.model = build_qf_uf_model(frontend.terms(), preprocessing_model_assignments);
       }
       return outcome;
     }
@@ -4188,17 +4235,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     };
     if (has_equality) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics),
+      return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics,
+                                      preprocessing_model_assignments),
                           solve_start);
     }
     try {
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(
-          solve_boolean_conjunction(frontend.terms(), assertions, solve_options, statistics),
-          solve_start);
+      return finish_solve(solve_boolean_conjunction(frontend.terms(), assertions, solve_options,
+                                                    statistics, preprocessing_model_assignments),
+                          solve_start);
     } catch (const UnsupportedInput&) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics),
+      return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics,
+                                      preprocessing_model_assignments),
                           solve_start);
     }
   } catch (const UnsupportedInput& error) {

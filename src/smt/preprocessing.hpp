@@ -32,6 +32,7 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
 
 struct GroundEqualitySubstitutionResult {
   std::vector<core::TermId> assertions;
+  std::vector<std::pair<core::TermId, core::TermId>> substitutions;
   std::size_t units = 0;
   std::size_t rewrites = 0;
 };
@@ -41,6 +42,7 @@ GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
 
 struct SolvedConstantSubstitutionResult {
   std::vector<core::TermId> assertions;
+  std::vector<std::pair<core::TermId, core::TermId>> substitutions;
   std::size_t candidates = 0;
   std::size_t accepted = 0;
   std::size_t rewrites = 0;
@@ -53,6 +55,7 @@ SolvedConstantSubstitutionResult substitute_solved_constants(
 
 struct BooleanUnitPropagationResult {
   std::vector<core::TermId> assertions;
+  std::vector<std::pair<core::TermId, bool>> assignments;
   std::size_t units = 0;
   std::size_t rewrites = 0;
 };
@@ -62,6 +65,7 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
 
 struct ForcedAtomPropagationResult {
   std::vector<core::TermId> assertions;
+  std::vector<std::pair<core::TermId, bool>> assignments;
   std::vector<std::pair<core::TermId, core::TermId>> equality_pairs;
   std::vector<std::pair<core::TermId, core::TermId>> disequality_pairs;
   std::size_t units = 0;

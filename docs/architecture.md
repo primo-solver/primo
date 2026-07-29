@@ -168,8 +168,9 @@ Implemented now:
 - Conservative QF_UF SMT-LIB model printing for `check-sat` followed by
   `get-model` when `:produce-models true` is set. `smt::ModelBuilder` rebuilds
   a ground EUF closure over `core::TermId` values, prints definitions for
-  user-declared constants, functions, and predicates, and omits Primo-generated
-  auxiliary symbols from the response.
+  user-declared constants, functions, and predicates, consumes preprocessing
+  reconstruction assignments for unit facts and substitutions, and omits
+  Primo-generated auxiliary symbols from the response.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -178,7 +179,8 @@ Not implemented yet:
 - push/pop assertion stacks.
 - proof production.
 - model construction for non-QF_UF fragments, model values for arithmetic, and
-  reconstruction through every future satisfiability-preserving rewrite.
+  reconstruction through future satisfiability-preserving rewrites outside the
+  current QF_UF preprocessing subset.
 - explanation-producing congruence closure with proof forests.
 - arithmetic theory solving.
 

@@ -27,8 +27,10 @@ functions, and predicates from a ground EUF closure over the accepted SAT
 assignment. This is still narrower than the model object needed for
 model-guided Nelson-Oppen combination. `core::Model` remains a placeholder, the
 model builder is QF_UF-specific, and satisfiability-preserving preprocessing
-without reconstruction state, such as solved-constant substitution, is disabled
-for model-producing runs rather than reconstructed.
+must emit explicit reconstruction assignments when it removes user-visible
+facts. The current QF_UF path reconstructs Boolean/forced unit facts,
+solved-constant substitutions, and ground-unit substitutions before printing the
+model.
 
 This conservative model printer is a prerequisite for model-guided combination:
 without a concrete model object, "model equality" can easily degrade into an
@@ -101,8 +103,8 @@ prerequisite for any model-guided closure claim:
    combination experiments.
 3. Add model validation tests against the asserted formulas, including formulas
    affected by preprocessing passes.
-4. Add reconstruction state for satisfiability-preserving rewrites, starting
-   with solved-constant substitution.
+4. Continue expanding reconstruction state for satisfiability-preserving
+   rewrites beyond the current QF_UF unit and substitution subset.
 
 Track B is the first closure scaffold, default-off and deliberately narrower
 than the full paper:

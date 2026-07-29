@@ -1977,6 +1977,12 @@ GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
     result.assertions = assertions;
     return result;
   }
+  result.substitutions.reserve(replacements.size());
+  for (const auto& [term, representative] : replacements) {
+    if (term != representative) {
+      result.substitutions.emplace_back(term, representative);
+    }
+  }
 
   result.assertions.reserve(assertions.size() + unit_equalities.size());
   std::unordered_set<core::TermId> emitted;
@@ -2065,6 +2071,10 @@ SolvedConstantSubstitutionResult substitute_solved_constants(
   }
 
   result.accepted = replacements.size();
+  result.substitutions.reserve(replacements.size());
+  for (const auto& [variable, definition] : replacements) {
+    result.substitutions.emplace_back(variable, definition);
+  }
   result.assertions.clear();
   result.assertions.reserve(assertions.size());
   std::unordered_map<core::TermId, core::TermId> memo;
@@ -2080,6 +2090,10 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
   BooleanUnitPropagationResult result;
   const BooleanUnitAssignments assignments = collect_boolean_units(terms, assertions);
   result.units = assignments.values.size();
+  result.assignments.reserve(assignments.values.size());
+  for (const auto& [term, value] : assignments.values) {
+    result.assignments.emplace_back(term, value);
+  }
   result.assertions.reserve(assertions.size());
   std::unordered_set<core::TermId> emitted;
   for (const auto& [term, value] : assignments.values) {
@@ -2113,6 +2127,7 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
   const ForcedAtomAssignments assignments = collect_forced_atoms(terms, assertions);
   result.units = assignments.units.size();
   result.disequalities = assignments.disequalities.size();
+  result.assignments = assignments.units;
   result.equality_pairs = assignments.equalities;
   result.disequality_pairs = assignments.disequalities;
   if (assignments.values.empty() && assignments.equalities.empty() &&

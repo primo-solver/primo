@@ -303,9 +303,11 @@ Current limitations:
 
 - only `QF_UF` and pure Boolean model values are printed;
 - unsupported, unknown, and unsat results do not print a model;
-- solved-constant substitution is disabled while producing a model;
-- no model reconstruction is implemented for future arithmetic, arrays, or
-  Nelson-Oppen combination fragments.
+- QF_UF preprocessing reconstruction is limited to Boolean/forced unit facts,
+  solved-constant substitutions, and ground-unit substitutions;
+- no model reconstruction is implemented for future arithmetic, arrays,
+  Nelson-Oppen combination fragments, or future preprocessing rewrites that do
+  not emit reconstruction assignments.
 
 ## Fuzzing and Reduction
 
