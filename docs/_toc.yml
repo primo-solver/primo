@@ -21,4 +21,5 @@ chapters:
   - file: papers/finite-model-finding-sorts
   - file: papers/fast-linear-arithmetic-dpllt
   - file: papers/difference-constraint-propagation
+  - file: papers/nelson-oppen-closure-methods
   - file: reference/llm2smt-retrospective

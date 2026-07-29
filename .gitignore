@@ -79,6 +79,7 @@ slurm_logs/
 tmp/
 sandbox/
 QF_UF.tar.zst
+docs/papers/model-guided-no.pdf
 
 # local optional dependencies
 contrib/local/
