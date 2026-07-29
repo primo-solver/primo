@@ -112,6 +112,32 @@ report based on this archive must include the SLURM job id, timeout, commit,
 merged CSV path, family summary, unsupported count, wrong-answer count, and
 comparison against the previous full-archive Primo run.
 
+Use `scripts/render_benchmark_matrix_html.py` to turn one or more merged
+benchmark CSVs into the compact detailed-results table used for solver/config
+comparisons:
+
+```bash
+python3 scripts/render_benchmark_matrix_html.py \
+  --title "QF_UF default vs disequality Ackermann" \
+  --timeout 30 \
+  --metadata commit=546738e \
+  --metadata slurm_job=117301 \
+  --variant default=results/qfuf-drop-diseqack-117301/default-merged.csv \
+  --variant diseq_ack=results/qfuf-drop-diseqack-117301/diseq_ack-merged.csv \
+  --strip-prefix tmp/QF_UF/ \
+  --strip-suffix .smt2 \
+  --out results/qfuf-drop-diseqack-117301/matrix.html \
+  --summary-json results/qfuf-drop-diseqack-117301/matrix-summary.json
+```
+
+The renderer accepts any benchmark CSV with `file`, `status`, `answer`,
+`seconds`, and `exit_code` columns. It computes solved, timeout/error, wrong,
+win, unique, suboptimal, not-run, elapsed-time, and PAR2 summaries when
+`--timeout` is provided. For Primo `--stats` CSVs, it also prints selected SAT
+and EUF counters in each detailed cell and totals them below the table. Add
+extra counters with repeated `--stat :counter.name` arguments when an experiment
+needs a narrower mechanism-specific view.
+
 Generated SLURM scripts are part of the benchmark scaffold. Write them to a
 local file, validate them, then copy and submit:
 

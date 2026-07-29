@@ -48,6 +48,23 @@ void pure_boolean_sat() {
   assert(result.statistics.get(":sat.solve-calls") == 1);
 }
 
+void phase_timing_stats_are_reported() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (assert p)
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.contains(":time.parse-us"));
+  assert(result.statistics.contains(":time.frontend-us"));
+  assert(result.statistics.contains(":time.preprocessing-us"));
+  assert(result.statistics.contains(":time.solve-us"));
+  assert(result.statistics.contains(":time.total-us"));
+  assert(result.statistics.get(":time.total-us") >= result.statistics.get(":time.parse-us"));
+  assert(result.statistics.get(":time.total-us") >= result.statistics.get(":time.solve-us"));
+}
+
 void top_level_conjunction_does_not_allocate_auxiliary() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -1555,6 +1572,332 @@ void strong_preprocessing_enables_ground_congruence_clauses() {
   assert(result.statistics.get(":preprocessing.ground-congruence-clauses") >= 1);
 }
 
+void disequality_propagation_diagnostic_counts_syntactic_unary_opportunity() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
+  options.euf_diseq_propagation_diagnostics = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (not (= (f a) (f b))))
+    (assert (not (= a b)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-prop.assigned-app-disequalities") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-candidates") == 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-existing-arg-atom") == 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-arg-atom-false") == 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-candidates") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-existing-arg-atom") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-arg-atom-false") >= 1);
+}
+
+void disequality_propagation_diagnostic_counts_flat_curried_opportunity() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
+  options.euf_diseq_propagation_diagnostics = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (declare-fun f (A A) A)
+    (assert (not (= (f a x) (f a y))))
+    (assert (not (= x y)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-prop.assigned-app-disequalities") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-candidates") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-existing-arg-atom") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-arg-atom-false") >= 1);
+}
+
+void disequality_propagation_diagnostic_rejects_unguarded_nary_pairwise_claim() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
+  options.euf_diseq_propagation_diagnostics = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (declare-fun f (A A) A)
+    (assert (not (= (f a x) (f b y))))
+    (assert (not (= a b)))
+    (assert (not (= x y)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-prop.assigned-app-disequalities") >= 1);
+  assert(result.statistics.get(":euf.diseq-prop.source-unary-candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-prop.flat-same-function-candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-prop.guarded-function-guard-candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-prop.guarded-argument-guard-candidates") == 0);
+}
+
+void ackermann_diagnostic_counts_symbol_pair_costs() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_ackermann_diagnostics = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun f (A) A)
+    (declare-fun g (A A) A)
+    (assert (= (f a) (f b)))
+    (assert (= (f b) (f c)))
+    (assert (= (g a b) (g b c)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.ackermann.applications") == 5);
+  assert(result.statistics.get(":euf.ackermann.function-symbols") == 2);
+  assert(result.statistics.get(":euf.ackermann.eligible-symbols") == 2);
+  assert(result.statistics.get(":euf.ackermann.unary-symbols") == 1);
+  assert(result.statistics.get(":euf.ackermann.nary-symbols") == 1);
+  assert(result.statistics.get(":euf.ackermann.estimated-constraints") == 4);
+  assert(result.statistics.get(":euf.ackermann.estimated-equalities") == 9);
+  assert(result.statistics.get(":euf.ackermann.estimated-clause-lits") == 9);
+  assert(result.statistics.get(":euf.ackermann.max-symbol-applications") == 3);
+  assert(result.statistics.get(":euf.ackermann.max-symbol-arity") == 2);
+  assert(result.statistics.get(":euf.ackermann.symbols-cost-le-100") == 2);
+  assert(result.statistics.get(":euf.ackermann.symbols-cost-le-1000") == 2);
+  assert(result.statistics.get(":euf.ackermann.symbols-cost-le-10000") == 2);
+}
+
+void ackermann_diagnostic_is_zero_without_flag() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= (f a) (f b)))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.ackermann.applications") == 0);
+  assert(result.statistics.get(":euf.ackermann.estimated-equalities") == 0);
+  assert(result.statistics.get(":euf.ackermann.symbols-cost-le-100") == 0);
+}
+
+void dynamic_ackermann_shadow_counts_full_assignment_conflict_shape() {
+  primo::smt::CheckSatOptions options;
+  options.euf_dynamic_ackermann_shadow = true;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (not (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.invocations") >= 1);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.result-pairs") >= 1);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.sat-visible-clauses") >= 1);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.conflicting") >= 1);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.result-diseq-assigned") >= 1);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.all-args-eq-assigned") >= 1);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.max-width") == 2);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.width-le-3") >= 1);
+}
+
+void dynamic_ackermann_shadow_counts_online_unit_shape() {
+  primo::smt::CheckSatOptions options;
+  options.euf_dynamic_ackermann_shadow = true;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.euf_propagation_interval = 1;
+  options.euf_propagation_assign_threshold = 1.0;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (not (= (f a) (f b))))
+    (assert (or (= a b) (not (= a b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.invocations") >= 1);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.sat-visible-clauses") >= 1);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.unit") >= 1);
+}
+
+void dynamic_ackermann_shadow_is_zero_without_flag() {
+  primo::smt::CheckSatOptions options;
+  options.euf_propagation = primo::smt::EufPropagationMode::Off;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (not (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.invocations") == 0);
+  assert(result.statistics.get(":euf.dynamic-ack.shadow.conflicting") == 0);
+}
+
+void diseq_ackermann_propagates_unary_argument_disequality() {
+  primo::smt::CheckSatOptions options = propagation_test_options();
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  options.euf_diseq_ackermann = true;
+  options.euf_propagation_delivery.kind = primo::smt::AutoBudget::Kind::Unlimited;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (not (= (f a) (f b))))
+    (assert (or (= a b) (not (= a b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-ack.candidates") >= 1);
+  assert(result.statistics.get(":euf.diseq-ack.unit") >= 1);
+  assert(result.statistics.get(":euf.diseq-ack.propagated") >= 1);
+  assert(result.statistics.get(":euf.diseq-ack.returned") >= 1);
+  assert(result.statistics.get(":euf.diseq-ack.reason-lits") >= 1);
+}
+
+void diseq_ackermann_reports_lazy_conflict() {
+  primo::smt::CheckSatOptions options = propagation_test_options();
+  options.euf_engine = primo::smt::EufEngine::Lazy;
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  options.euf_diseq_ackermann = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (= a b))
+    (assert (not (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":euf.diseq-ack.conflict") >= 1);
+}
+
+void diseq_ackermann_requires_existing_argument_atom() {
+  primo::smt::CheckSatOptions options = propagation_test_options();
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  options.euf_diseq_ackermann = true;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (not (= (f a) (f b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-ack.candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-ack.missing-arg-atom") >= 1);
+  assert(result.statistics.get(":euf.diseq-ack.propagated") == 0);
+}
+
+void diseq_ackermann_uses_nary_disjunction_not_pairwise_claim() {
+  primo::smt::CheckSatOptions options = propagation_test_options();
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  options.euf_diseq_ackermann = true;
+  options.euf_propagation_delivery.kind = primo::smt::AutoBudget::Kind::Unlimited;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun x () A)
+    (declare-fun y () A)
+    (declare-fun f (A A) A)
+    (assert (not (= (f a x) (f b y))))
+    (assert (= a b))
+    (assert (or (= x y) (not (= x y))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-ack.candidates") >= 1);
+  assert(result.statistics.get(":euf.diseq-ack.unit") >= 1);
+  assert(result.statistics.get(":euf.diseq-ack.propagated") >= 1);
+}
+
+void diseq_ackermann_is_zero_without_flag() {
+  primo::smt::CheckSatOptions options = propagation_test_options();
+  options.euf_propagation = primo::smt::EufPropagationMode::Online;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (assert (not (= (f a) (f b))))
+    (assert (or (= a b) (not (= a b))))
+    (check-sat)
+  )",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.diseq-ack.candidates") == 0);
+  assert(result.statistics.get(":euf.diseq-ack.propagated") == 0);
+}
+
 void model_euf_propagation_learns_congruence_lemma() {
   primo::smt::CheckSatOptions options = propagation_test_options();
   options.euf_propagation = primo::smt::EufPropagationMode::Model;
@@ -2002,6 +2345,7 @@ void boolean_unit_simplification_handles_nested_rewrites() {
 
 int main() {
   pure_boolean_sat();
+  phase_timing_stats_are_reported();
   top_level_conjunction_does_not_allocate_auxiliary();
   top_level_or_can_use_tseitin_support_clauses();
   auto_top_level_or_tseitin_selects_sparse_negated_finite_domain_shape();
@@ -2070,6 +2414,19 @@ int main() {
   theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape();
   theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape();
   strong_preprocessing_enables_ground_congruence_clauses();
+  disequality_propagation_diagnostic_counts_syntactic_unary_opportunity();
+  disequality_propagation_diagnostic_counts_flat_curried_opportunity();
+  disequality_propagation_diagnostic_rejects_unguarded_nary_pairwise_claim();
+  ackermann_diagnostic_counts_symbol_pair_costs();
+  ackermann_diagnostic_is_zero_without_flag();
+  dynamic_ackermann_shadow_counts_full_assignment_conflict_shape();
+  dynamic_ackermann_shadow_counts_online_unit_shape();
+  dynamic_ackermann_shadow_is_zero_without_flag();
+  diseq_ackermann_propagates_unary_argument_disequality();
+  diseq_ackermann_reports_lazy_conflict();
+  diseq_ackermann_requires_existing_argument_atom();
+  diseq_ackermann_uses_nary_disjunction_not_pairwise_claim();
+  diseq_ackermann_is_zero_without_flag();
   model_euf_propagation_learns_congruence_lemma();
   incremental_model_euf_propagation_uses_flat_lookup();
   model_euf_propagation_handles_predicate_congruence();

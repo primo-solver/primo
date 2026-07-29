@@ -96,6 +96,18 @@ For compatibility with the predecessor benchmark command, Primo also accepts
 and `--prop-assign-threshold X` are accepted for online propagation experiments.
 Their defaults are `32` and `0.25` respectively.
 
+`--euf-diseq-ackermann` enables a default-off watched QF_UF propagation
+experiment for SAT-visible contraposed Ackermann clauses. For a result equality
+atom `R = (= f(a1, ..., an) f(b1, ..., bn))` and existing argument equality
+atoms `Ai = (= ai bi)`, the watched clause is `R or not A1 or ... or not An`.
+The callback propagates only when `R` is assigned false and all but one argument
+equality is assigned true; it reports an external conflict when all argument
+equalities are assigned true. It does not create missing equality atoms and it
+does not add permanent clauses. The selector is driven only by SAT assignment
+watchers, bounded by `--euf-diseq-ackermann-queue-budget`, filtered by
+`--euf-diseq-ackermann-max-width`, and capped per UF symbol by
+`--euf-diseq-ackermann-per-symbol`.
+
 `--theory-phase=negative|positive|none|polarity|auto` controls the initial
 CaDiCaL phase set for theory atoms before solving. The default is `negative`,
 which tries disequality assignments first and preserves the current validated
@@ -221,6 +233,11 @@ When `--euf-prop=auto` selects the online path, zero-delivery propagation rounds
 adaptively increase the callback discovery interval up to 1024 rounds. Explicit
 `--euf-prop=online` keeps the configured `--prop-interval` cadence for
 experiments.
+The watched disequality-Ackermann option deliberately does not use this full
+atom fallback: if no watched Ackermann candidate was touched by a SAT
+assignment, it does no work in that round. This is a guard against the prior
+local dynamic-Ackermann experiment, where broad candidate scans dominated the
+run without a benchmark win.
 A July 20, 2026 local experiment tried the predecessor-style policy of backing
 off after every auto propagation scan, including productive scans. It reduced
 candidate scans on the 51-row local NEQ/PEQ/QG/SEQ micro-manifest, but PAR2

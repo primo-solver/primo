@@ -78,6 +78,7 @@ yinyang_scratch/
 slurm_logs/
 tmp/
 sandbox/
+QF_UF.tar.zst
 
 # local optional dependencies
 contrib/local/

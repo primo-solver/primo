@@ -90,6 +90,10 @@ struct CheckSatOptions {
   TheoryPhaseMode theory_phase = TheoryPhaseMode::Negative;
   EufExplainSearchMode euf_explain_search = EufExplainSearchMode::OneSidedBfs;
   bool euf_proof_forest_diagnostics = false;
+  bool euf_diseq_propagation_diagnostics = false;
+  bool euf_ackermann_diagnostics = false;
+  bool euf_dynamic_ackermann_shadow = false;
+  bool euf_diseq_ackermann = false;
   AutoBudget euf_propagation_budget;
   AutoBudget euf_propagation_delivery{AutoBudget::Kind::Fixed, 1000};
   bool uf_symmetry_breaking = true;
@@ -112,6 +116,9 @@ struct CheckSatOptions {
   bool preprocess_only = false;
   std::size_t euf_propagation_interval = 32;
   double euf_propagation_assign_threshold = 0.25;
+  std::size_t euf_diseq_ackermann_max_width = 3;
+  std::size_t euf_diseq_ackermann_queue_budget = 4096;
+  std::size_t euf_diseq_ackermann_per_symbol = 64;
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;

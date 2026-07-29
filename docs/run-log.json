@@ -9384,6 +9384,984 @@
       },
       "evidence_status": "current_slurm",
       "notes": "Fresh main fuzz evidence after the QF_UF branch fast-forward merge. The only setup issue was the known revision-stamp fragility caused by syncing a git checkout while excluding tracked artifact directories; syncing those directories restored a clean c81319e stamp before the submitted job."
+    },
+    {
+      "id": "2026-07-27-local-qfuf-diseq-diagnostics-smoke-2960394",
+      "recorded_at": "2026-07-27T00:00:00+02:00",
+      "kind": "benchmark",
+      "scope": "Local smoke run for opt-in QF_UF disequality-propagation diagnostic counters",
+      "commit": "2960394",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: 2960394; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "No private host or absolute home-directory details are recorded."
+      },
+      "command": {
+        "build": "cmake --build build --target primo",
+        "manifest": "find benchmarks/seeds/qf_uf benchmarks/smoke/qf_uf benchmarks/regression/qf_uf -type f -name '*.smt2' -print | sort | sed 's#^benchmarks/##' > results/qfuf-diseq-diagnostics-2960394-local/manifest.txt",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root benchmarks --manifest results/qfuf-diseq-diagnostics-2960394-local/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-diseq-prop-diagnostics --timeout 5 --out results/qfuf-diseq-diagnostics-2960394-local/results.csv --summary results/qfuf-diseq-diagnostics-2960394-local/summary.csv --log-dir results/qfuf-diseq-diagnostics-2960394-local/logs",
+        "summarize": "python3 scripts/summarize_qfuf_diseq_diagnostics.py results/qfuf-diseq-diagnostics-2960394-local/results.csv --out results/qfuf-diseq-diagnostics-2960394-local/diseq-summary.csv --top 10"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-diseq-prop-diagnostics"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 9,
+        "timeout_seconds": 5,
+        "manifest": "results/qfuf-diseq-diagnostics-2960394-local/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-diseq-diagnostics-2960394-local/summary.csv",
+        "results": "results/qfuf-diseq-diagnostics-2960394-local/results.csv",
+        "diagnostic_summary": "results/qfuf-diseq-diagnostics-2960394-local/diseq-summary.csv",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "total": 9,
+        "solved": 9,
+        "wrong": 0,
+        "timeouts": 0,
+        "par2": 0.048436,
+        "diagnostic_totals": {
+          ":euf.diseq-prop.assigned-app-disequalities": 100,
+          ":euf.diseq-prop.source-unary-candidates": 0,
+          ":euf.diseq-prop.source-unary-existing-arg-atom": 0,
+          ":euf.diseq-prop.flat-same-function-candidates": 50,
+          ":euf.diseq-prop.flat-same-function-existing-arg-atom": 50,
+          ":euf.diseq-prop.guarded-function-guard-candidates": 0,
+          ":euf.diseq-prop.guarded-argument-guard-candidates": 0
+        },
+        "active_files": {
+          ":euf.diseq-prop.assigned-app-disequalities": 1,
+          ":euf.diseq-prop.flat-same-function-candidates": 1,
+          ":euf.diseq-prop.flat-same-function-existing-arg-atom": 1
+        },
+        "top_file": "benchmarks/regression/qf_uf/online_reason_cache.smt2"
+      },
+      "verification": {
+        "passed": [
+          "python3 -m py_compile scripts/summarize_qfuf_diseq_diagnostics.py",
+          "The diagnostic run solved all 9 local QF_UF inputs with 0 wrong answers and 0 timeouts",
+          "The summarizer produced aggregate totals and top-file output"
+        ],
+        "pending": [
+          "Run the same diagnostic flag on the weak QF_UF manifests under tmp/QF_UF on SLURM; the local tmp/QF_UF corpus and SLURM SSH config were unavailable in this workspace."
+        ]
+      },
+      "evidence_status": "current_local_smoke",
+      "notes": "This validates the diagnostic evidence pipeline only. It is not sufficient evidence to accept or reject H1 for weak QF_UF benchmark families."
+    },
+    {
+      "id": "2026-07-27-local-qfuf-diseq-diagnostics-weak-4ada99d",
+      "recorded_at": "2026-07-27T00:00:00+02:00",
+      "kind": "benchmark",
+      "scope": "Local QF_UF disequality-propagation diagnostic run on weak NEQ/PEQ/SEQ manifests",
+      "commit": "4ada99d",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: 4ada99d; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "The external QF_UF.tar.zst archive was inspected for relative paths, extracted into ignored tmp/QF_UF, and added to .gitignore so the corpus tarball is not accidentally staged."
+      },
+      "command": {
+        "archive_list": "tar --zstd -tf QF_UF.tar.zst",
+        "archive_path_scan": "tar --zstd -tf QF_UF.tar.zst | rg -n <private-path-and-host-patterns>",
+        "extract": "mkdir -p tmp/QF_UF && tar --zstd -xf QF_UF.tar.zst -C tmp/QF_UF --strip-components=2",
+        "build": "cmake --build build --target primo",
+        "manifest": "Create results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/manifest.txt from the de-duplicated union of qfuf-smac-neq-validate, qfuf-smac-gap-train, and qfuf-smac-gap-validate with tmp/QF_UF/ stripped.",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-diseq-prop-diagnostics --timeout 60 --out results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/results.csv --summary results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/summary.csv --log-dir results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/logs",
+        "summarize": "python3 scripts/summarize_qfuf_diseq_diagnostics.py results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/results.csv --out results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/diseq-summary.csv --top 21"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-diseq-prop-diagnostics"
+      },
+      "references": [],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 21,
+        "timeout_seconds": 60,
+        "manifest": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/summary.csv",
+        "results": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/results.csv",
+        "diagnostic_summary": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/diseq-summary.csv",
+        "logs": "results/qfuf-diseq-diagnostics-4ada99d-weak-local-rerun/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 21,
+        "solved": 20,
+        "wrong": 0,
+        "timeouts": 1,
+        "timed_out_with_stats": 1,
+        "par2": 230.868646,
+        "families": {
+          "NEQ": {
+            "total": 10,
+            "solved": 9,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "PEQ": {
+            "total": 8,
+            "solved": 8,
+            "timeouts": 0,
+            "wrong": 0
+          },
+          "SEQ": {
+            "total": 3,
+            "solved": 3,
+            "timeouts": 0,
+            "wrong": 0
+          }
+        },
+        "diagnostic_totals": {
+          ":euf.diseq-assignments": 15017654,
+          ":euf.diseq-prop.assigned-app-disequalities": 1,
+          ":euf.diseq-prop.source-unary-candidates": 0,
+          ":euf.diseq-prop.source-unary-existing-arg-atom": 0,
+          ":euf.diseq-prop.flat-same-function-candidates": 0,
+          ":euf.diseq-prop.flat-same-function-existing-arg-atom": 0,
+          ":euf.diseq-prop.guarded-function-guard-candidates": 0,
+          ":euf.diseq-prop.guarded-argument-guard-candidates": 0
+        },
+        "active_files": {
+          ":euf.diseq-prop.assigned-app-disequalities": 1
+        },
+        "timeout_files": [
+          "tmp/QF_UF/NEQ/NEQ016_size8.smt2"
+        ],
+        "top_diagnostic_file": "tmp/QF_UF/SEQ/SEQ035_size6.smt2"
+      },
+      "verification": {
+        "passed": [
+          "QF_UF.tar.zst listed 7503 relative SMT-LIB paths under non-incremental/QF_UF",
+          "Archive path scan found no absolute paths, parent traversal entries, IP-like strings, or private-looking identifiers",
+          "The three weak manifests resolved with 0 missing files after extraction",
+          "build/primo --version reported git 4ada99d",
+          "The diagnostic run completed with 20 solved, 1 timeout, and 0 wrong answers",
+          "The diagnostic summary found zero source-unary, flat same-function, or guarded target opportunities"
+        ],
+        "pending": [
+          "A full 7503-file diagnostic campaign was not run locally because the weak-manifest result already rejects H1/H2 for the targeted NEQ/PEQ/SEQ weak set and a full run is better suited to SLURM."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This is negative evidence for implementing f(a) != f(b) -> a != b propagation as the next performance technique on the targeted weak manifests. The weak files contain many assigned disequality literals, but almost none are app-result disequalities with SAT-visible target atoms."
+    },
+    {
+      "id": "2026-07-27-local-qfuf-ackermann-diagnostics-weak-451feb2",
+      "recorded_at": "2026-07-27T00:00:00+02:00",
+      "kind": "benchmark",
+      "scope": "Local QF_UF Ackermann cost diagnostic run on weak NEQ/PEQ/SEQ manifests",
+      "commit": "451feb2",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: 451feb2; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "The external QF_UF.tar.zst archive remained ignored and extracted under ignored tmp/QF_UF. No archive contents or private path metadata were added."
+      },
+      "command": {
+        "build": "cmake --build build --target primo -j2",
+        "manifest": "Create results/qfuf-ackermann-diagnostics-451feb2-weak-local/manifest.txt from the de-duplicated union of qfuf-smac-neq-validate, qfuf-smac-gap-train, and qfuf-smac-gap-validate with tmp/QF_UF/ stripped.",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest results/qfuf-ackermann-diagnostics-451feb2-weak-local/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-ackermann-diagnostics --solver-arg=--euf-diseq-prop-diagnostics --timeout 60 --out results/qfuf-ackermann-diagnostics-451feb2-weak-local/results.csv --summary results/qfuf-ackermann-diagnostics-451feb2-weak-local/summary.csv --log-dir results/qfuf-ackermann-diagnostics-451feb2-weak-local/logs",
+        "summarize_ackermann": "python3 scripts/summarize_qfuf_ackermann_diagnostics.py results/qfuf-ackermann-diagnostics-451feb2-weak-local/results.csv --out results/qfuf-ackermann-diagnostics-451feb2-weak-local/ackermann-summary.csv --top 21",
+        "summarize_diseq": "python3 scripts/summarize_qfuf_diseq_diagnostics.py results/qfuf-ackermann-diagnostics-451feb2-weak-local/results.csv --out results/qfuf-ackermann-diagnostics-451feb2-weak-local/diseq-summary.csv --top 21"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-ackermann-diagnostics --euf-diseq-prop-diagnostics"
+      },
+      "references": [
+        {
+          "kind": "paper",
+          "citation": "Roberto Bruttomesso, Alessandro Cimatti, Anders Franzen, Alberto Griggio, Alessandro Santuari, and Roberto Sebastiani, To Ackermann-ize or not to Ackermann-ize? On Efficiently Handling Uninterpreted Function Symbols in SMT(EUF union T), LPAR 2006.",
+          "use": "Cost-model motivation only; no Ackermann rewriting or clause generation was implemented."
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 21,
+        "timeout_seconds": 60,
+        "manifest": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/summary.csv",
+        "results": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/results.csv",
+        "ackermann_summary": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/ackermann-summary.csv",
+        "diseq_summary": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/diseq-summary.csv",
+        "logs": "results/qfuf-ackermann-diagnostics-451feb2-weak-local/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 21,
+        "solved": 20,
+        "wrong": 0,
+        "timeouts": 1,
+        "timed_out_with_stats": 1,
+        "par2": 212.654533,
+        "families": {
+          "NEQ": {
+            "total": 10,
+            "solved": 9,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "PEQ": {
+            "total": 8,
+            "solved": 8,
+            "timeouts": 0,
+            "wrong": 0
+          },
+          "SEQ": {
+            "total": 3,
+            "solved": 3,
+            "timeouts": 0,
+            "wrong": 0
+          }
+        },
+        "ackermann_totals": {
+          ":euf.ackermann.applications": 88539,
+          ":euf.ackermann.function-symbols": 218,
+          ":euf.ackermann.eligible-symbols": 218,
+          ":euf.ackermann.unary-symbols": 107,
+          ":euf.ackermann.nary-symbols": 111,
+          ":euf.ackermann.estimated-constraints": 133942973,
+          ":euf.ackermann.estimated-equalities": 404721026,
+          ":euf.ackermann.estimated-clause-lits": 404721026,
+          ":euf.ackermann.max-symbol-applications": 51762,
+          ":euf.ackermann.max-symbol-arity": 50,
+          ":euf.ackermann.symbols-cost-le-100": 65,
+          ":euf.ackermann.symbols-cost-le-1000": 102,
+          ":euf.ackermann.symbols-cost-le-10000": 150
+        },
+        "timeout_file": {
+          "file": "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "applications": 1307,
+          "function_symbols": 4,
+          "eligible_symbols": 4,
+          "unary_symbols": 3,
+          "nary_symbols": 1,
+          "estimated_constraints": 599212,
+          "estimated_equalities": 1789752,
+          "max_symbol_applications": 1088,
+          "max_symbol_arity": 2,
+          "symbols_cost_le_100": 0,
+          "symbols_cost_le_1000": 0,
+          "symbols_cost_le_10000": 3,
+          "euf_assignments": 8868487,
+          "diseq_assignments": 5762805,
+          "incremental_conflicts": 335002,
+          "explain_bfs_searches": 20343911,
+          "explain_bfs_visited": 228643107
+        },
+        "diseq_diagnostic_totals": {
+          ":euf.diseq-assignments": 15663172,
+          ":euf.diseq-prop.assigned-app-disequalities": 1,
+          ":euf.diseq-prop.source-unary-candidates": 0,
+          ":euf.diseq-prop.flat-same-function-candidates": 0,
+          ":euf.diseq-prop.guarded-function-guard-candidates": 0,
+          ":euf.diseq-prop.guarded-argument-guard-candidates": 0
+        },
+        "top_full_ackermann_cost_file": "tmp/QF_UF/NEQ/NEQ015_size6.smt2"
+      },
+      "verification": {
+        "passed": [
+          "build/primo --version reported git 451feb2",
+          "The diagnostic run completed with 20 solved, 1 timeout, and 0 wrong answers",
+          "The Ackermann summary estimated 404,721,026 full equality/clause literals across the weak manifest",
+          "The timeout row had zero eligible symbols at pair-cost <= 100 or <= 1000 and three at pair-cost <= 10000",
+          "The paired disequality diagnostic again found zero source-unary, flat same-function, or guarded target opportunities"
+        ],
+        "pending": [
+          "A full 7503-file Ackermann diagnostic campaign was not run locally; use SLURM before promoting any partial-Ackermannization experiment.",
+          "No Ackermann rewriting or clause generation was implemented, so this run is negative design evidence rather than a behavior-change fuzz gate."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This rejects full Ackermannization as the next QF_UF weak-set technique. The paper remains relevant as a cost model and for future bounded PARTIAL-style preprocessing, but the measured weak rows have too many repeated applications for eager full Ackermann constraints."
+    },
+    {
+      "id": "2026-07-28-local-qfuf-dynamic-ackermann-shadow-weak-b74acfe",
+      "recorded_at": "2026-07-28T00:00:00+02:00",
+      "kind": "benchmark",
+      "scope": "Local QF_UF dynamic Ackermann shadow diagnostic run on weak NEQ/PEQ/SEQ manifests",
+      "commit": "b74acfe",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: b74acfe; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "The diagnostic is default-off and shadow-only: no dynamic Ackermann clauses were added and no missing SAT atoms were created."
+      },
+      "command": {
+        "build": "cmake --build build --target primo -j2",
+        "manifest": "Create results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/manifest.txt from the de-duplicated union of qfuf-smac-neq-validate, qfuf-smac-gap-train, and qfuf-smac-gap-validate with tmp/QF_UF/ stripped.",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-dynamic-ackermann-shadow --timeout 60 --out results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/results.csv --summary results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/summary.csv --log-dir results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/logs",
+        "summarize": "python3 scripts/summarize_qfuf_dynamic_ackermann_shadow.py results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/results.csv --out results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/dynamic-ack-shadow-summary.csv --top 21"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-dynamic-ackermann-shadow"
+      },
+      "references": [
+        {
+          "kind": "design_note",
+          "path": "docs/qfuf-disequality-propagation.md",
+          "use": "Local dynamic-Ackermann shadow diagnostic design and acceptance criteria."
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 21,
+        "timeout_seconds": 60,
+        "manifest": "results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/summary.csv",
+        "results": "results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/results.csv",
+        "dynamic_ackermann_shadow_summary": "results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/dynamic-ack-shadow-summary.csv",
+        "logs": "results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 21,
+        "solved": 20,
+        "wrong": 0,
+        "timeouts": 1,
+        "timed_out_with_stats": 1,
+        "par2": 260.742822,
+        "families": {
+          "NEQ": {
+            "total": 10,
+            "solved": 9,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "PEQ": {
+            "total": 8,
+            "solved": 8,
+            "timeouts": 0,
+            "wrong": 0
+          },
+          "SEQ": {
+            "total": 3,
+            "solved": 3,
+            "timeouts": 0,
+            "wrong": 0
+          }
+        },
+        "dynamic_ackermann_shadow_totals": {
+          ":euf.dynamic-ack.shadow.invocations": 2600,
+          ":euf.dynamic-ack.shadow.result-pairs": 2591128,
+          ":euf.dynamic-ack.shadow.arg-atoms-missing": 1815988,
+          ":euf.dynamic-ack.shadow.sat-visible-clauses": 913175,
+          ":euf.dynamic-ack.shadow.satisfied": 177398,
+          ":euf.dynamic-ack.shadow.unit": 1246,
+          ":euf.dynamic-ack.shadow.conflicting": 0,
+          ":euf.dynamic-ack.shadow.result-diseq-assigned": 2443,
+          ":euf.dynamic-ack.shadow.all-args-eq-assigned": 1270,
+          ":euf.dynamic-ack.shadow.width-total": 2735598,
+          ":euf.dynamic-ack.shadow.max-width": 28,
+          ":euf.dynamic-ack.shadow.width-le-3": 913175,
+          ":euf.dynamic-ack.shadow.width-gt-3": 0
+        },
+        "timeout_file": {
+          "file": "tmp/QF_UF/NEQ/NEQ016_size8.smt2",
+          "invocations": 913,
+          "result_pairs": 467456,
+          "arg_atoms_missing": 0,
+          "sat_visible_clauses": 467456,
+          "unit": 90,
+          "conflicting": 0,
+          "satisfied": 98951,
+          "result_diseq_assigned": 0,
+          "all_args_eq_assigned": 98,
+          "width_total": 1402368,
+          "max_width": 3,
+          "width_le_3": 467456,
+          "width_gt_3": 0,
+          "explain_bfs_searches": 16292208,
+          "explain_bfs_visited": 181221389
+        },
+        "top_unit_file": "tmp/QF_UF/NEQ/NEQ015_size6.smt2"
+      },
+      "verification": {
+        "passed": [
+          "build/primo --version reported git b74acfe",
+          "The diagnostic run completed with 20 solved, 1 timeout, and 0 wrong answers",
+          "The shadow summary found 1,246 unit candidate clauses and zero conflicting candidate clauses",
+          "Every SAT-visible candidate in the run had width <= 3",
+          "The timeout row had 90 unit hits over 467,456 SAT-visible candidates"
+        ],
+        "pending": [
+          "No real dynamic Ackermann clause addition was implemented yet.",
+          "The shadow pass adds measurable diagnostic overhead and is not evidence for default behavior.",
+          "A capped real-clause experiment still needs a selector, focused tests, fuzzing, and SLURM comparison before any merge/default claim."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "The result supports trying a bounded, default-off real dynamic Ackermann clause experiment, because low-width unit opportunities exist on the weak rows. It rejects an unbounded SAT-visible clause generator: useful unit hits are sparse compared with 2.59M inspected result pairs and 913k SAT-visible candidates."
+    },
+    {
+      "id": "2026-07-28-qfuf-dynamic-ackermann-real-f83828f-weak-local",
+      "date": "2026-07-28",
+      "kind": "benchmark",
+      "scope": "QF_UF weak NEQ/PEQ/SEQ manifest, local real dynamic Ackermann clause experiment requiring SLURM revalidation",
+      "commit": "f83828f",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet",
+        "binary_version": "primo 0.1.0; git: f83828f; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "This local run is not headline apples-to-apples evidence. Same-binary SLURM A/B revalidation is required before treating the experiment as accepted or rejected."
+      },
+      "command": {
+        "build": "cmake --build build --target primo",
+        "manifest": "cp results/qfuf-dynamic-ack-shadow-b74acfe-weak-local/manifest.txt results/qfuf-dynamic-ack-f83828f-weak-local/manifest.txt",
+        "run": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest results/qfuf-dynamic-ack-f83828f-weak-local/manifest.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--euf-dynamic-ackermann --timeout 60 --out results/qfuf-dynamic-ack-f83828f-weak-local/results.csv --summary results/qfuf-dynamic-ack-f83828f-weak-local/summary.csv --log-dir results/qfuf-dynamic-ack-f83828f-weak-local/logs",
+        "summarize": "python3 scripts/summarize_qfuf_dynamic_ackermann.py results/qfuf-dynamic-ack-f83828f-weak-local/results.csv --out results/qfuf-dynamic-ack-f83828f-weak-local/dynamic-ack-summary.csv"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --stats --euf-dynamic-ackermann"
+      },
+      "references": [
+        {
+          "kind": "design_note",
+          "path": "docs/qfuf-disequality-propagation.md",
+          "use": "Local warning for scan-based dynamic Ackermann clause experiment."
+        },
+        {
+          "kind": "previous_local_baseline",
+          "id": "2026-07-28-qfuf-dynamic-ackermann-shadow-b74acfe-weak-local",
+          "use": "Same 21-file weak manifest and timeout; shadow baseline solved 20/21 with PAR2 260.742822."
+        }
+      ],
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 21,
+        "timeout_seconds": 60,
+        "manifest": "results/qfuf-dynamic-ack-f83828f-weak-local/manifest.txt"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-dynamic-ack-f83828f-weak-local/summary.csv",
+        "results": "results/qfuf-dynamic-ack-f83828f-weak-local/results.csv",
+        "dynamic_ackermann_summary": "results/qfuf-dynamic-ack-f83828f-weak-local/dynamic-ack-summary.csv",
+        "logs": "results/qfuf-dynamic-ack-f83828f-weak-local/logs",
+        "bugs": null
+      },
+      "summary": {
+        "total": 21,
+        "solved": 18,
+        "wrong": 0,
+        "timeouts": 3,
+        "timed_out_with_stats": 3,
+        "par2": 506.863169,
+        "families": {
+          "NEQ": {
+            "total": 10,
+            "solved": 9,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "PEQ": {
+            "total": 8,
+            "solved": 7,
+            "timeouts": 1,
+            "wrong": 0
+          },
+          "SEQ": {
+            "total": 3,
+            "solved": 2,
+            "timeouts": 1,
+            "wrong": 0
+          }
+        },
+        "dynamic_ackermann_totals": {
+          ":euf.dynamic-ack.candidates": 5020,
+          ":euf.dynamic-ack.candidates-inspected": 546770890,
+          ":euf.dynamic-ack.clauses-added": 990,
+          ":euf.dynamic-ack.unit-clauses": 990,
+          ":euf.dynamic-ack.conflict-clauses": 0,
+          ":euf.dynamic-ack.duplicate-skips": 98010161,
+          ":euf.dynamic-ack.nonunit-skips": 397947543,
+          ":euf.dynamic-ack.satisfied-skips": 50812193,
+          ":euf.dynamic-ack.width-skips": 0,
+          ":euf.dynamic-ack.cap-hits": 0
+        },
+        "regressed_timeout_files": [
+          "tmp/QF_UF/PEQ/PEQ013_size8.smt2",
+          "tmp/QF_UF/SEQ/SEQ026_size7.smt2"
+        ]
+      },
+      "verification": {
+        "passed": [
+          "make check passed before the f83828f implementation commit",
+          "make docs passed before the f83828f implementation commit",
+          "make asan-test passed before the f83828f implementation commit",
+          "make tidy passed before the f83828f implementation commit",
+          "make include-cleaner completed as an advisory whole-tree scan with existing warnings",
+          "The focused run completed with 0 wrong answers"
+        ],
+        "pending": [
+          "No fuzz gate was run for f83828f because the focused benchmark rejected the implementation before correctness promotion.",
+          "No SLURM headline benchmark was run because the local focused gate regressed solved count and PAR2."
+        ]
+      },
+      "evidence_status": "needs_revalidation",
+      "notes": "Local warning only. The scan-based selector added 990 unit clauses and no conflicts, but repeatedly rescanned 546.8M candidates, producing two additional local timeouts and much worse local PAR2 on the weak manifest. A same-binary SLURM A/B comparison of f83828f default versus --euf-dynamic-ackermann is still required for an apples-to-apples decision."
+    },
+    {
+      "id": "2026-07-29-qfuf-diseq-ackermann-fuzzsmt-480b41d-1000",
+      "date": "2026-07-29",
+      "kind": "fuzz",
+      "scope": "QF_UF FuzzSMT merge gate for default-off watched disequality Ackermann propagation",
+      "commit": "480b41d",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null,
+        "binary": "build/primo --quiet --euf-diseq-ackermann",
+        "binary_version": "primo 0.1.0; git: 480b41d; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "Local merge-gate fuzzing only. This is correctness evidence for the default-off option, not headline performance evidence."
+      },
+      "command": {
+        "install_reference": "make contrib-z3",
+        "run": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --euf-diseq-ackermann' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 480411 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-z3"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --euf-diseq-ackermann"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 480411,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-z3/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-z3/generated",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-z3/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_errors": 0,
+        "timeouts": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "ours": {
+          "sat": 893,
+          "unsat": 107
+        },
+        "refs": {
+          "sat": 893,
+          "unsat": 107
+        }
+      },
+      "verification": {
+        "passed": [
+          "make contrib-z3 installed the local z3 reference wrapper",
+          "1000 generated QF_UF FuzzSMT cases all matched z3 with --euf-diseq-ackermann enabled"
+        ],
+        "invalidated": [
+          "Earlier local attempts in fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000 and fuzz-results/qf_uf-fuzzsmt-diseq-ack-480b41d-1000-rerun are not evidence because the first lacked FuzzSMT and the second lacked a z3 reference command."
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "This satisfies the local merge-gate fuzz requirement for the new default-off solver option. It does not replace SLURM campaign evidence before any default or headline performance promotion."
+    },
+    {
+      "id": "2026-07-29-slurm-qfuf-drop-diseq-ackermann-117301",
+      "date": "2026-07-29",
+      "kind": "benchmark",
+      "scope": "SLURM default versus --euf-diseq-ackermann comparison on the 124-row interesting.txt QF_UF drop manifest",
+      "commit": "546738e",
+      "environment": {
+        "type": "slurm",
+        "host": "<slurm-cluster>",
+        "slurm_job_id": "117301",
+        "binary": "<remote-workdir>/build-slurm-rel/primo --quiet --stats",
+        "binary_version": "primo 0.1.0; git: 546738e-dirty; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "notes": "The dirty suffix is caused by the SLURM preparation workflow excluding tracked artifact directories and rebuilding the vendored CaDiCaL checkout; solver source and benchmark manifest were synced from commit 546738e."
+      },
+      "command": {
+        "manifest_source": "user-supplied interesting.txt drop manifest, stored only as tracked relative paths",
+        "manifest": "benchmarks/interesting-drop-2026-07-29.txt",
+        "validate_sbatch": "python3 scripts/slurm_validate_sbatch.py /tmp/primo-qfuf-drop-diseq-ack-compare.sbatch",
+        "bash_n": "bash -n /tmp/primo-qfuf-drop-diseq-ack-compare.sbatch",
+        "workspace_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --ssh-config <ssh-config> --remote <slurm-alias> --remote-dir <remote-workdir> --local-dir . --target primo --jobs 4",
+        "submit": "sbatch /tmp/primo-qfuf-drop-diseq-ack-compare.sbatch with PRIMO_WORKDIR=<remote-workdir>, 2 variants x 4 shards, timeout 30s",
+        "default": "python3 scripts/bench_qf_uf_full.py --repo <remote-workdir> --root tmp --solver <remote-workdir>/build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 30 --manifest benchmarks/interesting-drop-2026-07-29.txt --shards 4 --shard-index <0..3>",
+        "heuristic": "same command with --solver-arg=--euf-diseq-ackermann",
+        "render": "standard-library local aggregation over collected shard CSVs into results/qfuf-drop-diseqack-117301/report.html"
+      },
+      "solver": {
+        "name": "Primo",
+        "variants": {
+          "default": "./build-slurm-rel/primo --quiet --stats",
+          "diseq_ack": "./build-slurm-rel/primo --quiet --stats --euf-diseq-ackermann"
+        }
+      },
+      "inputs": {
+        "generator": null,
+        "logic": "QF_UF",
+        "seed": null,
+        "count": 124,
+        "timeout_seconds": 30,
+        "manifest": "benchmarks/interesting-drop-2026-07-29.txt",
+        "families": {
+          "Goel": 4,
+          "NEQ": 17,
+          "PEQ": 23,
+          "QG": 74,
+          "SEQ": 6
+        }
+      },
+      "artifacts": {
+        "summary_json": "results/qfuf-drop-diseqack-117301/summary.json",
+        "summary_csv": "results/qfuf-drop-diseqack-117301/summary.csv",
+        "comparison_csv": "results/qfuf-drop-diseqack-117301/comparison.csv",
+        "default_csv": "results/qfuf-drop-diseqack-117301/default-merged.csv",
+        "heuristic_csv": "results/qfuf-drop-diseqack-117301/diseq_ack-merged.csv",
+        "html": "results/qfuf-drop-diseqack-117301/report.html",
+        "logs": "results/qfuf-drop-diseqack-117301/slurm-logs"
+      },
+      "summary": {
+        "default": {
+          "total": 124,
+          "solved": 113,
+          "timeouts": 11,
+          "errors": 0,
+          "unsupported": 0,
+          "wrong": 0,
+          "par2": 1316.963966,
+          "seconds_sum": 987.37247
+        },
+        "diseq_ack": {
+          "total": 124,
+          "solved": 115,
+          "timeouts": 9,
+          "errors": 0,
+          "unsupported": 0,
+          "wrong": 0,
+          "par2": 1229.483639,
+          "seconds_sum": 959.808992
+        },
+        "delta": {
+          "diseq_ack_minus_default_par2": -87.480327,
+          "diseq_ack_minus_default_seconds": -27.563478,
+          "answer_or_status_mismatches": 2,
+          "wrong_rows_total": 0,
+          "heuristic_faster_by_at_least_1s": 11,
+          "heuristic_slower_by_at_least_1s": 3
+        },
+        "families": {
+          "Goel": {
+            "default_solved": 4,
+            "diseq_ack_solved": 4,
+            "default_timeouts": 0,
+            "diseq_ack_timeouts": 0,
+            "delta_par2": -0.656913
+          },
+          "NEQ": {
+            "default_solved": 16,
+            "diseq_ack_solved": 16,
+            "default_timeouts": 1,
+            "diseq_ack_timeouts": 1,
+            "delta_par2": -10.031986
+          },
+          "PEQ": {
+            "default_solved": 16,
+            "diseq_ack_solved": 18,
+            "default_timeouts": 7,
+            "diseq_ack_timeouts": 5,
+            "delta_par2": -74.393422
+          },
+          "QG": {
+            "default_solved": 72,
+            "diseq_ack_solved": 72,
+            "default_timeouts": 2,
+            "diseq_ack_timeouts": 2,
+            "delta_par2": -2.178046
+          },
+          "SEQ": {
+            "default_solved": 5,
+            "diseq_ack_solved": 5,
+            "default_timeouts": 1,
+            "diseq_ack_timeouts": 1,
+            "delta_par2": -0.21996
+          }
+        },
+        "status_changes": [
+          {
+            "file": "tmp/QF_UF/PEQ/PEQ003_size10.smt2",
+            "default": "timeout unknown",
+            "diseq_ack": "ok unsat",
+            "default_seconds": 30.037461,
+            "diseq_ack_seconds": 28.163454,
+            "diseq_ack_propagated": 0
+          },
+          {
+            "file": "tmp/QF_UF/PEQ/PEQ014_size10.smt2",
+            "default": "timeout unknown",
+            "diseq_ack": "ok unsat",
+            "default_seconds": 30.037316,
+            "diseq_ack_seconds": 27.030698,
+            "diseq_ack_propagated": 0
+          }
+        ],
+        "diseq_ack_stats": {
+          ":euf.diseq-ack.candidates": 4922,
+          ":euf.diseq-ack.queue-pushes": 15204418,
+          ":euf.diseq-ack.queue-pops": 8160494,
+          ":euf.diseq-ack.unit": 231570,
+          ":euf.diseq-ack.conflict": 5,
+          ":euf.diseq-ack.propagated": 231570,
+          ":euf.diseq-ack.reason-lits": 361457,
+          ":euf.diseq-ack.satisfied-skips": 434222,
+          ":euf.diseq-ack.missing-arg-atom": 40448,
+          ":euf.diseq-ack.width-skips": 0,
+          ":euf.diseq-ack.queue-budget-cutoffs": 0,
+          ":euf.diseq-ack.per-symbol-cutoffs": 17457,
+          "active_candidate_rows": 81
+        }
+      },
+      "verification": {
+        "passed": [
+          "Manifest contained 124 benchmark-relative QF_UF rows and every row resolved under tmp/QF_UF locally before submission.",
+          "Validated local sbatch wrapper with scripts/slurm_validate_sbatch.py and bash -n.",
+          "Immediately before sbatch, check-only preflight confirmed the remote binary reported git 546738e and CaDiCaL cadical-3.0.0-7b99c07.",
+          "SLURM job 117301 tasks 0-7 completed with exit code 0:0.",
+          "Default and heuristic variants had zero wrong answers; the two answer/status mismatches are default timeout versus heuristic unsat."
+        ],
+        "limitations": [
+          "The run used a 30s timeout on the 124-row interesting drop only; it is not a full QF_UF campaign or default-promotion result.",
+          "The benchmark harness family field is coarse in this run because the manifest rows include QF_UF/ prefixes and the command used --root tmp; family summaries were derived from the file paths during HTML/report aggregation.",
+          "The two favorable PEQ status changes had zero delivered diseq-Ackermann propagations in their per-file stats, so they should not be claimed as direct Ackermann-propagation wins without repeat/noise analysis."
+        ]
+      },
+      "evidence_status": "current_slurm",
+      "notes": "The watched disequality-Ackermann option is correctness-clean on this focused SLURM comparison and improves solved count by 2 at 30s, all from PEQ rows. It remains default-off: the direct Ackermann watcher was active mainly on QG rows, QG only improved slightly in aggregate, and the PEQ status changes did not show delivered Ackermann propagations."
+    },
+    {
+      "id": "2026-07-29-local-qg-iso-icl-repgen013-phase-timing-f0e35e7",
+      "date": "2026-07-29",
+      "kind": "profile",
+      "scope": "Focused local phase-timing sanity check for QG-classification/qg6/iso_icl_repgen013 comparing default and --euf-diseq-ackermann",
+      "commit": "f0e35e7",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo --quiet --stats",
+        "binary_version": "primo 0.1.0; git f0e35e7"
+      },
+      "command": {
+        "manifest": "/tmp/primo-qg-iso-icl-repgen013.txt containing QG-classification/qg6/iso_icl_repgen013.smt2",
+        "default": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest /tmp/primo-qg-iso-icl-repgen013.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 30 --out results/qg-iso-icl-repgen013-phase-f0e35e7/default.csv --summary results/qg-iso-icl-repgen013-phase-f0e35e7/default-summary.csv",
+        "heuristic": "same command with --solver-arg=--euf-diseq-ackermann and diseq_ack output paths",
+        "render": "python3 scripts/render_benchmark_matrix_html.py --title 'QG iso_icl_repgen013 phase timing' --timeout 30 --metadata commit=f0e35e7 --variant default=results/qg-iso-icl-repgen013-phase-f0e35e7/default.csv --variant diseq_ack=results/qg-iso-icl-repgen013-phase-f0e35e7/diseq_ack.csv --strip-prefix tmp/QF_UF/ --strip-suffix .smt2 --out results/qg-iso-icl-repgen013-phase-f0e35e7/matrix.html --summary-json results/qg-iso-icl-repgen013-phase-f0e35e7/matrix-summary.json"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1,
+        "timeout_seconds": 30,
+        "files": [
+          "tmp/QF_UF/QG-classification/qg6/iso_icl_repgen013.smt2"
+        ]
+      },
+      "artifacts": {
+        "default_csv": "results/qg-iso-icl-repgen013-phase-f0e35e7/default.csv",
+        "heuristic_csv": "results/qg-iso-icl-repgen013-phase-f0e35e7/diseq_ack.csv",
+        "html": "results/qg-iso-icl-repgen013-phase-f0e35e7/matrix.html",
+        "summary_json": "results/qg-iso-icl-repgen013-phase-f0e35e7/matrix-summary.json"
+      },
+      "summary": {
+        "default": {
+          "status": "ok",
+          "answer": "unsat",
+          "harness_seconds": 4.926206,
+          "time_parse_us": 1599,
+          "time_frontend_us": 653,
+          "time_preprocessing_us": 5399,
+          "time_solve_us": 4913906,
+          "time_total_us": 4921592,
+          "diseq_ack_propagated": 0,
+          "diseq_ack_queue_pops": 0,
+          "euf_theory_conflicts": 102337,
+          "sat_conflicts": 64947,
+          "sat_decisions": 249644
+        },
+        "diseq_ack": {
+          "status": "ok",
+          "answer": "unsat",
+          "harness_seconds": 5.161605,
+          "time_parse_us": 1332,
+          "time_frontend_us": 807,
+          "time_preprocessing_us": 5977,
+          "time_solve_us": 5149851,
+          "time_total_us": 5157991,
+          "diseq_ack_candidates": 64,
+          "diseq_ack_propagated": 19299,
+          "diseq_ack_queue_pops": 225061,
+          "euf_theory_conflicts": 103129,
+          "sat_conflicts": 59045,
+          "sat_decisions": 246124
+        }
+      },
+      "verification": {
+        "passed": [
+          "make build rebuilt Primo at f0e35e7 before the focused run",
+          "Both variants returned ok unsat with zero wrong-answer indication in the harness CSVs",
+          "The generated matrix HTML includes :time.*-us counters by default"
+        ],
+        "limitations": [
+          "Single local run only; timing deltas are not performance evidence beyond diagnosing phase dominance",
+          "CLI file I/O and process startup are excluded from :time.total-us but included in harness seconds"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "The suspicious near-equal times are not caused by parsing or preprocessing: parse, frontend, and preprocessing are below 10 ms on both variants. The work difference is in solving: --euf-diseq-ackermann produced 19299 pending Ackermann propagations and performed 225061 queue pops, while this single repeat was slower by about 0.24s. Later callback-delivery instrumentation at a6a1907 showed that pending propagation counts can substantially overstate literals actually returned through CaDiCaL, so this entry is phase-dominance evidence, not direct delivery evidence or a proven heuristic win."
+    },
+    {
+      "id": "2026-07-29-local-qg-iso-icl-repgen013-ack-callback-delivery-a6a1907",
+      "date": "2026-07-29",
+      "kind": "diagnostic",
+      "scope": "Focused local check of whether --euf-diseq-ackermann propagations are actually returned to CaDiCaL on QG-classification/qg6/iso_icl_repgen013",
+      "commit": "a6a1907",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo --quiet --stats",
+        "binary_version": "primo 0.1.0; git a6a1907; Release; CaDiCaL cadical-3.0.0-7b99c07"
+      },
+      "command": {
+        "manifest": "/tmp/primo-qg-iso-icl-repgen013.txt containing QG-classification/qg6/iso_icl_repgen013.smt2",
+        "default": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UF --manifest /tmp/primo-qg-iso-icl-repgen013.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 30 --out results/qg-iso-icl-repgen013-ack-returned-a6a1907/default.csv --summary results/qg-iso-icl-repgen013-ack-returned-a6a1907/default-summary.json",
+        "heuristic": "same command with --solver-arg=--euf-diseq-ackermann and diseq_ack output paths",
+        "render": "python3 scripts/render_benchmark_matrix_html.py --variant default=results/qg-iso-icl-repgen013-ack-returned-a6a1907/default.csv --variant diseq_ack=results/qg-iso-icl-repgen013-ack-returned-a6a1907/diseq_ack.csv --timeout 30 --title \"QG iso_icl_repgen013 Ackermann delivery check\" --out results/qg-iso-icl-repgen013-ack-returned-a6a1907/matrix.html --summary-json results/qg-iso-icl-repgen013-ack-returned-a6a1907/matrix-summary.json"
+      },
+      "inputs": {
+        "logic": "QF_UF",
+        "count": 1,
+        "timeout_seconds": 30,
+        "files": [
+          "tmp/QF_UF/QG-classification/qg6/iso_icl_repgen013.smt2"
+        ]
+      },
+      "artifacts": {
+        "default_csv": "results/qg-iso-icl-repgen013-ack-returned-a6a1907/default.csv",
+        "heuristic_csv": "results/qg-iso-icl-repgen013-ack-returned-a6a1907/diseq_ack.csv",
+        "html": "results/qg-iso-icl-repgen013-ack-returned-a6a1907/matrix.html",
+        "summary_json": "results/qg-iso-icl-repgen013-ack-returned-a6a1907/matrix-summary.json"
+      },
+      "summary": {
+        "default": {
+          "status": "ok",
+          "answer": "unsat",
+          "harness_seconds": 5.082254,
+          "time_parse_us": 2038,
+          "time_frontend_us": 1041,
+          "time_preprocessing_us": 8757,
+          "time_solve_us": 5064670,
+          "time_total_us": 5076555,
+          "diseq_ack_candidates": 0,
+          "diseq_ack_propagated_pending": 0,
+          "diseq_ack_returned_to_cadical": 0,
+          "diseq_ack_pending_cleared": 0,
+          "diseq_ack_queue_pops": 0,
+          "diseq_ack_reason_lits": 0,
+          "stored_euf_propagations_legacy_counter": 44,
+          "sat_conflicts": 64947,
+          "sat_decisions": 249644,
+          "sat_propagations": 6296216,
+          "incremental_explain_calls": 3478598,
+          "incremental_explain_bfs_searches": 2027954,
+          "incremental_merges": 2801685,
+          "incremental_disequality_checks": 1376759
+        },
+        "diseq_ack": {
+          "status": "ok",
+          "answer": "unsat",
+          "harness_seconds": 4.856749,
+          "time_parse_us": 1330,
+          "time_frontend_us": 660,
+          "time_preprocessing_us": 5632,
+          "time_solve_us": 4845008,
+          "time_total_us": 4852656,
+          "diseq_ack_candidates": 64,
+          "diseq_ack_propagated_pending": 19299,
+          "diseq_ack_returned_to_cadical": 817,
+          "diseq_ack_pending_cleared": 18482,
+          "diseq_ack_queue_pops": 225061,
+          "diseq_ack_reason_lits": 38068,
+          "stored_euf_propagations_legacy_counter": 19339,
+          "sat_conflicts": 59045,
+          "sat_decisions": 246124,
+          "sat_propagations": 5890154,
+          "incremental_explain_calls": 3541291,
+          "incremental_explain_bfs_searches": 2052397,
+          "incremental_merges": 2705813,
+          "incremental_disequality_checks": 1297436
+        },
+        "interpretation": {
+          "pending_to_return_ratio": "19299 pending Ackermann propagations, 817 actually returned through cb_propagate, 18482 cleared before callback return",
+          "search_delta": "Ackermann mode reduced SAT conflicts from 64947 to 59045, decisions from 249644 to 246124, and SAT propagations from 6296216 to 5890154, while increasing explain calls from 3478598 to 3541291.",
+          "phase_delta": "Parse, frontend, and preprocessing stayed below 13 ms combined; the run is solve dominated in both variants."
+        }
+      },
+      "verification": {
+        "passed": [
+          "make build rebuilt Primo at a6a1907 before the focused run",
+          "Both variants returned ok unsat with zero wrong-answer indication in the harness CSVs",
+          "matrix-summary.json validates as JSON and the generated HTML includes the new ack-ret and ack-clear counters",
+          "make check, make lint, and make docs passed before committing the instrumentation change"
+        ],
+        "limitations": [
+          "Single local repeat only; elapsed-time delta is not reliable performance evidence",
+          "This run diagnoses callback delivery accounting and phase timing only; it is not a SLURM benchmark or fuzz gate",
+          "The legacy :euf.propagation.delivered counter counts stored propagations, not necessarily callback-returned literals"
+        ]
+      },
+      "evidence_status": "current_local",
+      "notes": "The mechanism is working but the earlier propagated/delivered wording overstated direct SAT-level delivery. On this instance most Ackermann literals are produced while processing an assignment batch and then cleared before CaDiCaL asks for another cb_propagate result. The actually returned literals still alter search counters, but the effect is small enough that elapsed time can flip between repeats."
     }
   ]
 }
