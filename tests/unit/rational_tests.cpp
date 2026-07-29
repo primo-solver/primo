@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <random>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -307,6 +308,44 @@ void promotion_counter_reports_the_fast_path() {
   assert(Rational::promotion_count() > before);
 }
 
+// Division by zero and a zero denominator must fail loudly. mpq_class used to
+// do that for free (GMP raises); the small form would instead produce a
+// canonical-looking value with den_ == 0 and propagate it silently through
+// every later operation, which is a far worse failure mode in the numeric
+// core. Not reachable from the tableau today -- rows never hold a zero
+// coefficient -- but not a thing to leave resting on that.
+void division_by_zero_throws() {
+  bool threw = false;
+  try {
+    const Rational quotient = Rational(3) / Rational(0);
+    (void)quotient;
+  } catch (const std::domain_error&) {
+    threw = true;
+  }
+  assert(threw);
+
+  threw = false;
+  try {
+    const Rational bad(1, 0);
+    (void)bad;
+  } catch (const std::domain_error&) {
+    threw = true;
+  }
+  assert(threw);
+
+  // The big path must agree with the small one.
+  const auto huge = Rational::parse("123456789012345678901234567890");
+  assert(huge.has_value());
+  threw = false;
+  try {
+    const Rational quotient = *huge / Rational(0);
+    (void)quotient;
+  } catch (const std::domain_error&) {
+    threw = true;
+  }
+  assert(threw);
+}
+
 }  // namespace
 
 int main() {
@@ -322,5 +361,6 @@ int main() {
   representation_transitions();
   canonical_form_is_path_independent();
   promotion_counter_reports_the_fast_path();
+  division_by_zero_throws();
   return 0;
 }

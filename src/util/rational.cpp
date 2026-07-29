@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cctype>
 #include <functional>
+#include <stdexcept>
 #include <utility>
 
 namespace primo::util {
@@ -184,7 +185,15 @@ Rational Rational::from_int128_reduced(i128 numerator, i128 denominator) {
 // not a hot path, and 128-bit shifts/trailing-zero counts would need their own
 // helper for no gain.
 Rational Rational::from_int128(i128 numerator, i128 denominator) {
-  assert(denominator != 0 && "Rational denominator must be non-zero");
+  // Checked in release too, for the same reason operator/ is: this is the
+  // path the two-argument constructor takes, so a caller-supplied zero
+  // denominator would otherwise build a canonical-looking value with
+  // den_ == 0. from_int128_reduced below keeps only the assert, because its
+  // callers are the arithmetic operators, whose denominators are products of
+  // positive denominators by construction -- and it is the hot path.
+  if (denominator == 0) {
+    throw std::domain_error("Rational denominator must be non-zero");
+  }
   u128 a = magnitude128(numerator);
   u128 b = magnitude128(denominator);
   while (b != 0) {
@@ -314,12 +323,25 @@ Rational Rational::operator*(const Rational& other) const {
 }
 
 Rational Rational::operator/(const Rational& other) const {
+  // Checked in release too, not just asserted. mpq_class used to fail loudly
+  // here (GMP raises on a zero denominator); the small form would instead
+  // sail through and produce a canonical-looking value with den_ == 0, which
+  // every later operation would happily propagate. A silently corrupt value
+  // in the numeric core is a much worse failure mode than a thrown
+  // exception, and check_sat.cpp's top-level handler already turns
+  // std::exception into an Unsupported result rather than a crash. Not
+  // reachable from the tableau today -- rows never store a zero coefficient
+  // (add_row drops them and pivot()'s combine step skips is_zero() sums) --
+  // but "unreachable" is exactly the assumption worth not betting the
+  // numeric core on.
+  if (other.is_zero()) {
+    throw std::domain_error("Rational division by zero");
+  }
   if (!is_small() || !other.is_small()) {
     ++g_big_operations;
     return from_mpq(as_mpq() / other.as_mpq());
   }
 
-  assert(other.num_ != 0 && "Rational division by zero");
   const std::int64_t left =
       static_cast<std::int64_t>(gcd_u64(magnitude(num_), magnitude(other.num_)));
   const std::int64_t right = static_cast<std::int64_t>(
