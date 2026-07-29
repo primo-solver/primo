@@ -137,10 +137,18 @@ struct CheckSatOptions {
   // Milestone 4: default stays Bland (today's already-fuzz-tested
   // behavior) until Dantzig has its own campaign-tier confirmation --
   // see docs/papers/lra-related-work.md's pivoting-rule survey.
-  LraPivotingRule lra_pivoting_rule = LraPivotingRule::Bland;
+  // Default since 2026-07-29 (heuristics-note item H3). On the 237-file
+  // stratified sample this solves 168 against Bland's 144, PAR2 1538.9s
+  // against 1962.4s, with zero regressions and zero wrong answers -- see
+  // docs/arithmetic.md. Bland remains reachable via --lra-pivoting-rule
+  // bland, and check() still falls back to Bland selection past a per-call
+  // pivot threshold for termination.
+  LraPivotingRule lra_pivoting_rule = LraPivotingRule::Sparse;
   // Only meaningful with LraPivotingRule::Sparse -- see
-  // LraTableau::set_sparse_leaving.
-  bool lra_sparse_leaving = false;
+  // LraTableau::set_sparse_leaving. Default-on with it: the entering-side
+  // rule alone reaches 154/237, this takes it to 168, and it is the whole of
+  // the latendresse result (0/15 -> 6/15, matching z3).
+  bool lra_sparse_leaving = true;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;
