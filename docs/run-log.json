@@ -10520,6 +10520,113 @@
       },
       "evidence_status": "current",
       "notes": "Dolmen was installed in a temporary OPAM root under /tmp for local validation; no Dolmen files are vendored or committed. Dolmen rejected the initial bare abstract-value form, which led to typed abstract values of the form (as @uc_<sort>_<n> Sort); this entry records the passing rerun on commit bcb482d."
+    },
+    {
+      "id": "2026-07-29-qfuf-model-preprocessing-fuzzsmt-6a6336c",
+      "started_at": "2026-07-29T19:05:00+02:00",
+      "recorded_at": "2026-07-29",
+      "kind": "fuzz",
+      "scope": "QF_UF model-preprocessing reconstruction answer comparison over FuzzSMT generated cases",
+      "commit": "6a6336c",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "slurm_job_id": null
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 633611 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-model-prepro-6a6336c-1000-z3 > fuzz-results/qf_uf-fuzzsmt-model-prepro-6a6336c-1000-z3.log",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet",
+        "reported_version": "primo 0.1.0, git 6a6336c, Release, CaDiCaL cadical-3.0.0-7b99c07"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 633611,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2",
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-model-prepro-6a6336c-1000-z3/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-model-prepro-6a6336c-1000-z3/generated",
+        "logs": "fuzz-results/qf_uf-fuzzsmt-model-prepro-6a6336c-1000-z3.log",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-model-prepro-6a6336c-1000-z3/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 893,
+        "unsat": 107,
+        "bug_files": 0
+      },
+      "evidence_status": "current_local",
+      "notes": "Fresh local merge-gate answer comparison after enabling solved-constant substitution under get-model via preprocessing model reconstruction assignments. Generated bugs directory is empty. This is correctness evidence for the local branch, not SLURM performance evidence."
+    },
+    {
+      "id": "2026-07-29-qfuf-model-preprocessing-dolmen-6a6336c",
+      "started_at": "2026-07-29T19:06:00+02:00",
+      "recorded_at": "2026-07-29",
+      "kind": "model-validation",
+      "scope": "Dolmen validation of Primo QF_UF get-model responses over the model-preprocessing FuzzSMT corpus",
+      "commit": "6a6336c",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/tmp/primo-opam-root/primo-system/bin:$PATH python3 scripts/validate_qfuf_models_with_dolmen.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --out results/qfuf-dolmen-fuzzsmt-model-prepro-6a6336c fuzz-results/qf_uf-fuzzsmt-model-prepro-6a6336c-1000-z3/generated/*.smt2 > results/qfuf-dolmen-fuzzsmt-model-prepro-6a6336c.log",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet with :produce-models true and appended get-model",
+        "reported_version": "primo 0.1.0, git 6a6336c, Release, CaDiCaL cadical-3.0.0-7b99c07"
+      },
+      "references": [
+        {
+          "name": "Dolmen",
+          "argv": "dolmen 0.10 --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 633611,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": "fuzz-results/qf_uf-fuzzsmt-model-prepro-6a6336c-1000-z3/generated/*.smt2"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-dolmen-fuzzsmt-model-prepro-6a6336c/summary.csv",
+        "results": "results/qfuf-dolmen-fuzzsmt-model-prepro-6a6336c",
+        "logs": "results/qfuf-dolmen-fuzzsmt-model-prepro-6a6336c.log",
+        "bugs": null
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 893,
+        "not_sat": 107,
+        "model_error": 0,
+        "solver_error": 0,
+        "solver_timeout": 0,
+        "dolmen_timeout": 0,
+        "crash": 0,
+        "unsupported": 0
+      },
+      "evidence_status": "current_local",
+      "notes": "Dolmen was installed in a temporary OPAM root under /tmp for local validation; no Dolmen files are vendored or committed. This validates the printed models against the original SMT-LIB problems after preprocessing reconstruction."
     }
   ]
 }
