@@ -3339,8 +3339,8 @@ struct PreparedLraTheory {
   // copies from -- both OnlineLraPropagator and the non-IPASIR fallback.
   PreparedLraTheory(const core::TermManager& terms,
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-                    theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
-                    bool sparse_leaving);
+                    theory::arithmetic::LraTableau::PivotingRule pivoting_rule, bool sparse_leaving,
+                    bool fixed_elimination);
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -3369,7 +3369,7 @@ struct PreparedLraTheory {
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                      theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
-                                     bool sparse_leaving)
+                                     bool sparse_leaving, bool fixed_elimination)
     : base_tableau(pivoting_rule) {
   base_tableau.set_sparse_leaving(sparse_leaving);
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
@@ -3447,6 +3447,17 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped});
     atoms_by_bound_var[slack].push_back(atom_index);
   }
+
+  // Item H7's caller-side contract (LraTableau::mark_boundable): the tableau
+  // may only freeze a row whose variable can never be bounded, and this map
+  // is the complete list of variables any solving path will ever bound --
+  // every assert_lra_atom_bound() call target comes from a PreparedAtom.
+  // Done here, on the base tableau, so every copy inherits it.
+  for (const auto& [bound_var, atom_indices] : atoms_by_bound_var) {
+    (void)atom_indices;
+    base_tableau.mark_boundable(bound_var);
+  }
+  base_tableau.set_fixed_elimination(fixed_elimination);
 }
 
 // Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
@@ -3861,6 +3872,12 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
            assigned_[static_cast<std::size_t>(var)] != 0;
   }
 
+  void publish_elimination_stats() {
+    statistics_.set(util::StatKey::LraFixedVariables, tableau_.fixed_variable_count());
+    statistics_.set(util::StatKey::LraEliminatedRows, tableau_.eliminated_row_count());
+    statistics_.set(util::StatKey::LraEliminationPivots, tableau_.elimination_pivot_count());
+  }
+
   void notify_assignment_lit(int lit) {
     if (conflict_.has_value()) {
       // Already found a conflict this round; CaDiCaL hasn't pulled it via
@@ -3887,6 +3904,12 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     const auto direct_conflict = assert_lra_atom_bound(
         tableau_, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom_value,
         prepared_atom.asserts_lower_when_true, blocking_lit(assigned));
+    // Item H7's counters move inside assert_upper/assert_lower, not inside
+    // check(), so they are published here rather than alongside the pivot
+    // counters in run_deferred_check_if_needed(). They are cumulative
+    // totals, so set() (not increment()) is what stays correct across the
+    // repeated calls -- and this is the only place they can change.
+    publish_elimination_stats();
     if (direct_conflict.has_value()) {
       conflict_ = direct_conflict;
       // needs_check_ may already be true from an earlier, non-conflicting
@@ -4198,9 +4221,9 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
-  const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms(),
-                                          lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-                                          options.lra_sparse_leaving);
+  const PreparedLraTheory prepared_theory(
+      terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination);
   publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR

@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <string>
+#include <utility>
 
 #include "smt/check_sat.hpp"
 #include "util/statistics.hpp"
@@ -1119,6 +1120,57 @@ void handles_pathologically_deep_arithmetic_nesting() {
   assert(result.result == CheckSatResult::Sat);
 }
 
+// Item H7 end to end. The equalities have to sit under a disjunction:
+// top-level ones are solved away by Gaussian elimination in preprocessing
+// and never reach the tableau at all, so the shape that actually stresses
+// H7 is an equality asserted *during* search.
+constexpr const char* kFixedEliminationSat = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or (= (+ x y) 4) (= (+ x y) 7)))
+    (assert (or (= (- y z) 1) (= (- y z) 5)))
+    (assert (>= x 3))
+    (assert (<= z 0))
+    (check-sat)
+  )";
+
+// Same shape forced unsat: z is pinned at 0, so y is 1 or 5 and x is 3 or 6
+// (or -1 or 2), none of which reaches 7.
+constexpr const char* kFixedEliminationUnsat = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or (= (+ x y) 4) (= (+ x y) 7)))
+    (assert (or (= (- y z) 1) (= (- y z) 5)))
+    (assert (<= z 0))
+    (assert (>= z 0))
+    (assert (>= x 7))
+    (check-sat)
+  )";
+
+void fixed_variable_elimination_fires_and_preserves_the_verdict() {
+  for (const auto& [formula, expected] :
+       {std::pair<const char*, CheckSatResult>{kFixedEliminationSat, CheckSatResult::Sat},
+        std::pair<const char*, CheckSatResult>{kFixedEliminationUnsat, CheckSatResult::Unsat}}) {
+    CheckSatOptions enabled;
+    const auto with_elimination = check_sat_smtlib(formula, enabled);
+    assert(with_elimination.result == expected);
+    assert(with_elimination.statistics.get(StatKey::LraFixedVariables) > 0);
+    assert(with_elimination.statistics.get(StatKey::LraEliminatedRows) > 0);
+    assert(with_elimination.statistics.get(StatKey::LraEliminationPivots) > 0);
+
+    CheckSatOptions disabled;
+    disabled.lra_fixed_elimination = false;
+    const auto without_elimination = check_sat_smtlib(formula, disabled);
+    assert(without_elimination.result == expected);
+    assert(without_elimination.statistics.get(StatKey::LraFixedVariables) == 0);
+    assert(without_elimination.statistics.get(StatKey::LraEliminatedRows) == 0);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -1163,5 +1215,6 @@ int main() {
   tableau_shape_and_rational_statistics_are_published();
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
+  fixed_variable_elimination_fires_and_preserves_the_verdict();
   return 0;
 }

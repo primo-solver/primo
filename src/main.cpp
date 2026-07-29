@@ -151,6 +151,7 @@ int main(int argc, char** argv) {
   std::string euf_explain_search = "one-sided";
   std::string lra_pivoting_rule = "sparse";
   bool no_lra_sparse_leaving = false;
+  bool no_lra_fixed_elimination = false;
   bool euf_proof_forest_diagnostics = false;
   std::string pure_theory_filter = "auto";
   std::string theory_phase = "negative";
@@ -218,6 +219,10 @@ int main(int argc, char** argv) {
                "Disable the default-on leaving-side half of --lra-pivoting-rule sparse "
                "(prefer repairing a violated variable whose row is short, using "
                "violation magnitude only as a tie-break), for ablation");
+  app.add_flag("--no-lra-fixed-elimination", no_lra_fixed_elimination,
+               "Disable the default-on elimination of fixed LRA variables (pivot a basic "
+               "variable out of the basis as soon as its bounds coincide, and freeze the "
+               "resulting row when it constrains nothing), for ablation");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_flag("--ground-unit-substitution", solver_options.ground_unit_substitution,
@@ -470,6 +475,9 @@ int main(int argc, char** argv) {
   solver_options.euf_proof_forest_diagnostics = euf_proof_forest_diagnostics;
   if (no_lra_sparse_leaving) {
     solver_options.lra_sparse_leaving = false;
+  }
+  if (no_lra_fixed_elimination) {
+    solver_options.lra_fixed_elimination = false;
   }
   if (lra_pivoting_rule == "dantzig") {
     solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Dantzig;

@@ -757,6 +757,228 @@ void soi_quickxplain_minimizes_independent_conflicts() {
   assert((has_r1 ? 1 : 0) + (has_r2 ? 1 : 0) + (has_r3 ? 1 : 0) == 1);
 }
 
+// -- Fixed-variable elimination (item H7) --
+
+// s = x + y with s bounded on both sides at the same value. This is the
+// shape every lowered Real equality produces (item H1b puts both halves on
+// one shared slack), which is what makes it the case H7 exists for.
+struct FixedSlackTableau {
+  LraTableau tableau;
+  LraVarId x = 0;
+  LraVarId y = 0;
+  LraVarId s = 0;
+
+  explicit FixedSlackTableau(bool elimination, bool mark_terms_boundable = false) {
+    tableau.set_fixed_elimination(elimination);
+    x = tableau.add_variable();
+    y = tableau.add_variable();
+    s = tableau.add_variable();
+    tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+    tableau.mark_boundable(s);
+    if (mark_terms_boundable) {
+      tableau.mark_boundable(x);
+      tableau.mark_boundable(y);
+    }
+  }
+
+  void fix_s_at(long value) {
+    assert(!tableau.assert_upper(s, rat(value), Lit{1}).has_value());
+    assert(!tableau.assert_lower(s, rat(value), Lit{2}).has_value());
+  }
+};
+
+void fixed_basic_variable_is_pivoted_out_and_its_row_frozen() {
+  FixedSlackTableau fixture(/*elimination=*/true);
+  fixture.fix_s_at(4);
+
+  assert(fixture.tableau.fixed_variable_count() == 1);
+  assert(fixture.tableau.elimination_pivot_count() == 1);
+  assert(fixture.tableau.eliminated_row_count() == 1);
+  // s left the basis and is pinned at its fixed value, which is what makes
+  // it inert: can_enter() rejects a variable sitting on both its bounds.
+  assert(!fixture.tableau.is_basic(fixture.s));
+  assert(fixture.tableau.assignment(fixture.s) == rat(4));
+  // Exactly one of x/y took its place, and that row is out of the working
+  // set. The other stayed non-basic.
+  const bool x_basic = fixture.tableau.is_basic(fixture.x);
+  const bool y_basic = fixture.tableau.is_basic(fixture.y);
+  assert(x_basic != y_basic);
+  const LraVarId entered = x_basic ? fixture.x : fixture.y;
+  assert(!fixture.tableau.is_row_active(entered));
+  assert(fixture.tableau.occurs_in(fixture.s).empty());
+
+  assert(!fixture.tableau.check().has_value());
+  assert(fixture.tableau.assignment(fixture.x) + fixture.tableau.assignment(fixture.y) == rat(4));
+}
+
+void elimination_is_off_unless_enabled() {
+  FixedSlackTableau fixture(/*elimination=*/false);
+  fixture.fix_s_at(4);
+
+  assert(fixture.tableau.fixed_variable_count() == 0);
+  assert(fixture.tableau.eliminated_row_count() == 0);
+  assert(fixture.tableau.is_basic(fixture.s));
+  assert(!fixture.tableau.check().has_value());
+}
+
+void deactivation_is_refused_when_every_candidate_could_be_bounded() {
+  // The soundness condition: a row may only be frozen when its basic
+  // variable constrains nothing *and never will*. Here both candidates are
+  // declared boundable, so the pivot still happens (that part is always
+  // sound and still removes the fixed row from the violated set) but the
+  // resulting row stays in the working set.
+  FixedSlackTableau fixture(/*elimination=*/true, /*mark_terms_boundable=*/true);
+  fixture.fix_s_at(4);
+
+  assert(fixture.tableau.fixed_variable_count() == 1);
+  assert(fixture.tableau.elimination_pivot_count() == 1);
+  assert(fixture.tableau.eliminated_row_count() == 0);
+  assert(!fixture.tableau.is_basic(fixture.s));
+  const LraVarId entered = fixture.tableau.is_basic(fixture.x) ? fixture.x : fixture.y;
+  assert(fixture.tableau.is_row_active(entered));
+  assert(!fixture.tableau.check().has_value());
+  assert(fixture.tableau.assignment(fixture.x) + fixture.tableau.assignment(fixture.y) == rat(4));
+}
+
+void deactivation_is_refused_when_the_candidate_already_has_a_bound() {
+  // The other half of the same condition: bounds that already exist, rather
+  // than bounds that might be asserted later.
+  FixedSlackTableau fixture(/*elimination=*/true);
+  fixture.tableau.mark_boundable(fixture.x);
+  fixture.tableau.mark_boundable(fixture.y);
+  assert(!fixture.tableau.assert_lower(fixture.x, rat(0), Lit{10}).has_value());
+  assert(!fixture.tableau.assert_lower(fixture.y, rat(0), Lit{11}).has_value());
+  fixture.fix_s_at(4);
+
+  assert(fixture.tableau.fixed_variable_count() == 1);
+  assert(fixture.tableau.eliminated_row_count() == 0);
+  assert(!fixture.tableau.check().has_value());
+}
+
+void conflict_is_still_found_through_an_eliminated_row() {
+  // s1 = x + y fixed at 0 forces y = -x and eliminates x's row. s2 = x - y
+  // is then rewritten in terms of what is left, and s3 = y keeps a second
+  // constraint on it. s2 >= 10 and s3 >= 0 are jointly unsatisfiable
+  // (s2 >= 10 means y <= -5), and the conflict has to survive the fact that
+  // one row is no longer in the working set at all.
+  LraTableau tableau;
+  tableau.set_fixed_elimination(true);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  const LraVarId s3 = tableau.add_variable();
+  tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(-1)}});
+  tableau.add_row(s3, {{y, Rational(1)}});
+  tableau.mark_boundable(s1);
+  tableau.mark_boundable(s2);
+  tableau.mark_boundable(s3);
+
+  const Lit s1_upper{1};
+  const Lit s1_lower{2};
+  const Lit s2_lower{3};
+  const Lit s3_lower{4};
+  assert(!tableau.assert_upper(s1, rat(0), s1_upper).has_value());
+  assert(!tableau.assert_lower(s1, rat(0), s1_lower).has_value());
+  assert(tableau.eliminated_row_count() == 1);
+
+  assert(!tableau.assert_lower(s2, rat(10), s2_lower).has_value());
+  assert(!tableau.assert_lower(s3, rat(0), s3_lower).has_value());
+
+  const auto conflict = tableau.check();
+  assert(conflict.has_value());
+  assert(has_reason(*conflict, s2_lower));
+  assert(has_reason(*conflict, s3_lower));
+  // Every literal in the certificate must be one actually asserted -- a
+  // Farkas certificate naming an unasserted bound would be unsound.
+  for (const Lit reason : *conflict) {
+    assert(reason.value == s1_upper.value || reason.value == s1_lower.value ||
+           reason.value == s2_lower.value || reason.value == s3_lower.value);
+  }
+  (void)x;
+}
+
+void push_pop_restores_an_eliminated_row() {
+  FixedSlackTableau fixture(/*elimination=*/true);
+  LraTableau& tableau = fixture.tableau;
+
+  const std::size_t checkpoint = tableau.push();
+  fixture.fix_s_at(4);
+  assert(tableau.eliminated_row_count() == 1);
+  const LraVarId entered = tableau.is_basic(fixture.x) ? fixture.x : fixture.y;
+  assert(!tableau.is_row_active(entered));
+
+  tableau.pop(checkpoint);
+  assert(tableau.is_basic(fixture.s));
+  assert(tableau.is_row_active(entered));
+  assert(!tableau.is_basic(entered));
+  assert(tableau.assignment(fixture.s) == rat(0));
+  assert(tableau.assignment(entered) == rat(0));
+
+  // The row is genuinely back in the working set, not merely flagged
+  // active: a bound on a non-basic term must propagate into s again, and s
+  // must be able to go out of bounds and be repaired.
+  assert(!tableau.assert_lower(fixture.x, rat(3), Lit{5}).has_value());
+  assert(tableau.assignment(fixture.s) == rat(3));
+  assert(!tableau.assert_upper(fixture.s, rat(1), Lit{6}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(fixture.s) <= rat(1));
+  assert(tableau.assignment(fixture.x) + tableau.assignment(fixture.y) ==
+         tableau.assignment(fixture.s));
+}
+
+void elimination_agrees_with_the_ablation_on_multi_pivot_scenarios() {
+  // Same scenarios sparse_matches_bland_on_multi_pivot_scenarios covers,
+  // re-run with an equality fixing the shared slack so elimination fires,
+  // under both pivoting rules the solver ships.
+  for (const LraTableau::PivotingRule rule :
+       {LraTableau::PivotingRule::Bland, LraTableau::PivotingRule::Sparse}) {
+    for (const long fixed_value : {-6L, 0L, 3L, 12L}) {
+      bool verdicts[2] = {false, false};
+      for (int variant = 0; variant < 2; ++variant) {
+        LraTableau tableau(rule);
+        tableau.set_fixed_elimination(variant == 0);
+        const LraVarId x = tableau.add_variable();
+        const LraVarId y = tableau.add_variable();
+        const LraVarId z = tableau.add_variable();
+        const LraVarId s1 = tableau.add_variable();
+        const LraVarId s2 = tableau.add_variable();
+        const LraVarId s3 = tableau.add_variable();
+        tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(2)}, {z, Rational(-1)}});
+        tableau.add_row(s2, {{x, Rational(3)}, {z, Rational(1)}});
+        tableau.add_row(s3, {{y, Rational(1)}, {z, Rational(4)}});
+        tableau.mark_boundable(s1);
+        tableau.mark_boundable(s2);
+        tableau.mark_boundable(s3);
+
+        assert(!tableau.assert_upper(s1, rat(fixed_value), Lit{1}).has_value());
+        assert(!tableau.assert_lower(s1, rat(fixed_value), Lit{2}).has_value());
+        assert(!tableau.assert_lower(s2, rat(4), Lit{3}).has_value());
+        assert(!tableau.assert_upper(s2, rat(9), Lit{4}).has_value());
+        assert(!tableau.assert_lower(s3, rat(2), Lit{5}).has_value());
+        const auto conflict = tableau.check();
+        verdicts[variant] = conflict.has_value();
+        if (!conflict.has_value()) {
+          // Every row equation must still hold for the final assignment --
+          // the check that a frozen row did not quietly drift.
+          for (LraVarId var : {s1, s2, s3}) {
+            if (!tableau.is_basic(var)) {
+              continue;
+            }
+            DeltaRational sum = rat(0);
+            for (const auto& [term_var, coeff] : tableau.row(var)) {
+              sum = sum + tableau.assignment(term_var).scaled(coeff);
+            }
+            assert(sum == tableau.assignment(var));
+          }
+        }
+      }
+      assert(verdicts[0] == verdicts[1]);
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -786,5 +1008,12 @@ int main() {
   soi_push_pop_restores_state_across_a_pivot();
   soi_multi_row_conflict_includes_every_violated_row();
   soi_quickxplain_minimizes_independent_conflicts();
+  fixed_basic_variable_is_pivoted_out_and_its_row_frozen();
+  elimination_is_off_unless_enabled();
+  deactivation_is_refused_when_every_candidate_could_be_bounded();
+  deactivation_is_refused_when_the_candidate_already_has_a_bound();
+  conflict_is_still_found_through_an_eliminated_row();
+  push_pop_restores_an_eliminated_row();
+  elimination_agrees_with_the_ablation_on_multi_pivot_scenarios();
   return 0;
 }

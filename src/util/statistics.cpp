@@ -173,6 +173,9 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.row-nonzeros"sv,
     ":lra.pivot-row-updates"sv,
     ":lra.pivot-term-ops"sv,
+    ":lra.fixed-variables"sv,
+    ":lra.eliminated-rows"sv,
+    ":lra.elimination-pivots"sv,
 };
 
 }  // namespace

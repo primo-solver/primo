@@ -1,6 +1,8 @@
 #include "theory/arithmetic/lra_tableau.hpp"
 
 #include <algorithm>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <utility>
 
@@ -12,6 +14,8 @@ LraVarId LraTableau::add_variable() {
   rows_.emplace_back();
   occurs_in_.emplace_back();
   soi_directions_.push_back(0);
+  boundable_.push_back(false);
+  inactive_row_.push_back(false);
   return id;
 }
 
@@ -33,8 +37,23 @@ void LraTableau::add_row(LraVarId basic_var,
   rows_[basic_var] = std::move(row);
 }
 
+namespace {
+// mark_boundable()'s contract, enforced rather than assumed: a deactivated
+// row's assignment is deliberately no longer maintained, so testing a bound
+// against it would silently read a stale value. Reaching this means the
+// caller bounded a variable it never marked.
+void reject_bound_on_inactive_row(LraVarId var) {
+  throw std::logic_error("LraTableau: bound asserted on variable " + std::to_string(var) +
+                         ", whose row was deactivated by fixed-variable elimination; every "
+                         "variable that can be bounded must be passed to mark_boundable()");
+}
+}  // namespace
+
 std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, DeltaRational value,
                                                               sat::Lit reason) {
+  if (inactive_row_[var]) {
+    reject_bound_on_inactive_row(var);
+  }
   VarState& state = vars_.at(var);
   if (state.upper.has_value() && value >= state.upper->value) {
     return std::nullopt;
@@ -53,12 +72,16 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, Delt
     if (rule_ == PivotingRule::Soi) {
       set_soi_direction(var, soi_direction(var), rows_.at(var));
     }
+    try_eliminate_fixed_basic(var);
   }
   return std::nullopt;
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, DeltaRational value,
                                                               sat::Lit reason) {
+  if (inactive_row_[var]) {
+    reject_bound_on_inactive_row(var);
+  }
   VarState& state = vars_.at(var);
   if (state.lower.has_value() && value <= state.lower->value) {
     return std::nullopt;
@@ -77,6 +100,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, Delt
     if (rule_ == PivotingRule::Soi) {
       set_soi_direction(var, soi_direction(var), rows_.at(var));
     }
+    try_eliminate_fixed_basic(var);
   }
   return std::nullopt;
 }
@@ -246,6 +270,104 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   rows_[entering_var] = std::move(new_entering_row);
 
   trail_.push_back(std::move(trail_entry));
+}
+
+bool LraTableau::can_deactivate_row_of(LraVarId var) const {
+  if (f_var_.has_value() && var == *f_var_) {
+    return false;
+  }
+  const VarState& state = vars_[var];
+  return !boundable_[var] && !state.lower.has_value() && !state.upper.has_value();
+}
+
+LraVarId LraTableau::select_elimination_entering_variable(const Row& row) const {
+  LraVarId best = vars_.size();
+  bool best_deactivatable = false;
+  std::size_t best_occurrences = 0;
+  bool best_unit = false;
+
+  for (const auto& [var, coeff] : row) {
+    const bool deactivatable = can_deactivate_row_of(var);
+    const std::size_t occurrences = occurs_in_[var].size();
+    // Same reason select_sparse_entering_variable() prefers it: pivoting on
+    // +/-1 keeps 1/coeff integral, so the rewrite introduces no new
+    // denominators and coefficients stay on util::Rational's machine-word
+    // fast path.
+    const bool unit = coeff == util::Rational(1) || coeff == util::Rational(-1);
+    bool better = best == vars_.size();
+    if (!better) {
+      if (deactivatable != best_deactivatable) {
+        better = deactivatable;
+      } else if (occurrences != best_occurrences) {
+        better = occurrences < best_occurrences;
+      } else if (unit != best_unit) {
+        better = unit;
+      } else {
+        better = var < best;
+      }
+    }
+    if (better) {
+      best = var;
+      best_deactivatable = deactivatable;
+      best_occurrences = occurrences;
+      best_unit = unit;
+    }
+  }
+  return best;
+}
+
+void LraTableau::deactivate_row(LraVarId basic_var) {
+  for (const auto& [var, coeff] : rows_[basic_var]) {
+    (void)coeff;
+    auto& occurrences = occurs_in_[var];
+    occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), basic_var),
+                      occurrences.end());
+  }
+  inactive_row_[basic_var] = true;
+  trail_.push_back(RowDeactivationTrailEntry{basic_var});
+  ++eliminated_row_count_;
+}
+
+// Item H7 -- see set_fixed_elimination() for the rationale and the soundness
+// argument. Called from assert_upper/assert_lower's basic-variable branch.
+bool LraTableau::try_eliminate_fixed_basic(LraVarId var) {
+  if (!fixed_elimination_) {
+    return false;
+  }
+  const VarState& state = vars_[var];
+  if (!state.is_basic || !state.lower.has_value() || !state.upper.has_value() ||
+      state.lower->value != state.upper->value) {
+    return false;
+  }
+  ++fixed_variable_count_;
+  // An empty row is the constant 0 (reachable -- see add_row()). There is
+  // nothing to pivot on, and if the fixed value is non-zero this is a genuine
+  // conflict, which check() reports through its usual no-entering-candidate
+  // path. Leaving it alone is what keeps that path reachable.
+  if (rows_[var].empty()) {
+    return false;
+  }
+  const LraVarId entering = select_elimination_entering_variable(rows_[var]);
+  if (entering == vars_.size()) {
+    return false;
+  }
+  // Copy before pivot(), which moves out of rows_[var].
+  const DeltaRational target = state.lower->value;
+
+  ++elimination_pivot_count_;
+  pivot(var, entering);
+  // Non-basic variables must always sit within their own bounds, so pinning
+  // `var` at its fixed value is not optional -- and it is exactly what makes
+  // it inert, since can_enter() then rejects it on every branch. This also
+  // propagates the resulting change into every dependent row, `entering`'s
+  // included, so `entering`'s assignment is correct at the point it may be
+  // frozen below.
+  update(var, target);
+
+  if (can_deactivate_row_of(entering)) {
+    deactivate_row(entering);
+  }
+  return true;
 }
 
 std::vector<sat::Lit> LraTableau::build_conflict(LraVarId violated, bool too_low) const {
@@ -890,7 +1012,8 @@ void LraTableau::pop(std::size_t checkpoint) {
   while (trail_.size() > checkpoint) {
     const TrailEntry& entry = trail_.back();
     if (std::holds_alternative<PivotTrailEntry>(entry) ||
-        std::holds_alternative<FRowTrailEntry>(entry)) {
+        std::holds_alternative<FRowTrailEntry>(entry) ||
+        std::holds_alternative<RowDeactivationTrailEntry>(entry)) {
       occurs_in_index_stale = true;
     }
     undo(entry);
@@ -936,6 +1059,17 @@ void LraTableau::undo(const TrailEntry& entry) {
     }
     return;
   }
+  // Item H7: put a deactivated row back into the working set. Only the flag
+  // needs restoring -- deactivation never altered the row itself, and
+  // pop()'s end-of-loop rebuild_occurs_in_index() (which is what this entry
+  // marks stale) re-adds its occurrences. Trail order does the rest: this
+  // entry was pushed after the elimination pivot, so by the time it is
+  // undone every later pivot has already been undone and the row is back in
+  // "basic = non-basic terms" normal form.
+  if (const auto* deactivation = std::get_if<RowDeactivationTrailEntry>(&entry)) {
+    inactive_row_[deactivation->var] = false;
+    return;
+  }
   // PivotingRule::Soi only: undo one set_soi_direction() call's effect,
   // restoring both f_var_'s row and the affected variable's tracked
   // direction atomically (see FRowTrailEntry's comment). Same deferred-
@@ -954,7 +1088,10 @@ void LraTableau::rebuild_occurs_in_index() {
     entry.clear();
   }
   for (LraVarId basic_var = 0; basic_var < vars_.size(); ++basic_var) {
-    if (!vars_[basic_var].is_basic) {
+    // Item H7: a deactivated row is deliberately absent from occurs_in_ --
+    // that absence is what keeps update() and pivot() from ever touching it
+    // again -- so a rebuild must not put it back.
+    if (!vars_[basic_var].is_basic || inactive_row_[basic_var]) {
       continue;
     }
     for (const auto& [var, coefficient] : rows_[basic_var]) {

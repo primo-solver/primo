@@ -146,6 +146,12 @@ struct CheckSatOptions {
   // rule alone reaches 154/237, this takes it to 168, and it is the whole of
   // the latendresse result (0/15 -> 6/15, matching z3).
   bool lra_sparse_leaving = true;
+  // Heuristics-note item H7 -- see LraTableau::set_fixed_elimination. Pivots
+  // a basic variable out of the basis as soon as its bounds coincide, and
+  // freezes the resulting row when it constrains nothing. Independent of the
+  // pivoting rule. Off via --no-lra-fixed-elimination, which is also the
+  // ablation switch the H7 measurements are stated against.
+  bool lra_fixed_elimination = true;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;
