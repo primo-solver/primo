@@ -333,16 +333,34 @@ same-binary SLURM A/B comparison of `f83828f` with `default=` versus
 while awaiting that comparison so the branch does not carry a locally regressing
 option.
 
-### H1: existing-atom unary propagation
+### H1: watched existing-atom propagation
+
+This branch implements H1 as the default-off option `--euf-diseq-ackermann`.
+It is an online propagation heuristic, not a preprocessing rewrite and not full
+Ackermannization. It reuses the same SAT-visible candidate shape as the shadow
+diagnostic:
+
+```text
+R or not A1 or ... or not An
+```
+
+where `R` is the result equality atom `(= f(a1, ..., an) f(b1, ..., bn))` and
+each `Ai` is an already-existing argument equality atom `(= ai bi)`. The option
+does not create missing equality atoms. Duplicate argument literals are removed
+when the candidate is built, so `f(a,a) != f(b,b)` produces the binary clause
+`R or not (= a b)` rather than a duplicate-literal ternary clause.
 
 Only propagate when all of these hold:
 
-- there is an assigned disequality literal for two flat application results;
-- both applications have the same current function representative, or the same
-  original unary function symbol in the uncurried frontend term;
-- the candidate argument equality atom already exists as a SAT theory atom;
-- the candidate argument equality is unassigned;
-- a reason clause can be produced and passes
+- the result equality atom `R` is assigned false;
+- every argument equality atom exists in the SAT abstraction;
+- every argument equality except one is assigned true;
+- the remaining argument equality is unassigned and not already queued as a
+  pending propagation;
+- the candidate width is at most `--euf-diseq-ackermann-max-width`;
+- the per-symbol candidate cap `--euf-diseq-ackermann-per-symbol` has not
+  rejected the candidate;
+- the reason clause can be stored and passes
   `reason_is_valid_for_current_assignment`.
 
 For a theory atom `E_fx = (f(a) = f(b))` assigned false and candidate
@@ -358,7 +376,33 @@ SAT abstraction.
 
 In CaDiCaL reason-clause form, the propagated literal appears first, followed by
 the negated antecedent literals as required by the existing external propagation
-adapter.
+adapter. The implementation stores the Ackermann clause itself as the reason;
+it does not ask the congruence-closure explanation engine to reconstruct the
+same consequence.
+
+The selector is watched and queue-only. During construction, each accepted
+candidate is indexed by every SAT variable in its clause. `notify_assignment`
+enqueues only candidates touched by the assigned variable, with a duplicate mark
+to avoid repeated queue entries. `notify_backtrack` clears the queue and marks,
+matching the existing propagation queue policy. A propagation round pops at most
+`--euf-diseq-ackermann-queue-budget` candidates and never falls back to scanning
+all candidates. This is the main implementation difference from the reverted
+`f83828f` experiment.
+
+The option records:
+
+- `:euf.diseq-ack.candidates`;
+- `:euf.diseq-ack.queue-pushes`;
+- `:euf.diseq-ack.queue-pops`;
+- `:euf.diseq-ack.width-skips`;
+- `:euf.diseq-ack.missing-arg-atom`;
+- `:euf.diseq-ack.satisfied-skips`;
+- `:euf.diseq-ack.unit`;
+- `:euf.diseq-ack.conflict`;
+- `:euf.diseq-ack.propagated`;
+- `:euf.diseq-ack.reason-lits`;
+- `:euf.diseq-ack.queue-budget-cutoffs`;
+- `:euf.diseq-ack.per-symbol-cutoffs`.
 
 ### H2: guarded curried-child propagation
 
@@ -370,9 +414,13 @@ only when the sibling side is known equal:
 (apply p x) != (apply q y), x = y  =>  p != q
 ```
 
-This can be useful for curried multi-argument UF terms, but it is also the first
-place reason size can grow. Keep it default-off until it has pure-class and
-mixed-suite evidence.
+The implemented H1 clause covers the equivalent uncurried n-ary disjunction
+when the original SMT-LIB equality atoms are SAT-visible: for
+`f(a1, ..., an) != f(b1, ..., bn)`, it may propagate one argument disequality
+only after every other argument equality is assigned true. It does not implement
+a separate flat-definition candidate builder that creates reasons over internal
+partial-application equalities. That remains future work because Primo does not
+create new SAT atoms for internal flat definitions in this experiment.
 
 ### H3: clause-generation experiment
 
@@ -384,27 +432,28 @@ E_fx or not E_ab
 E_app or not E_func or not E_arg
 ```
 
-This is the Ackermannization-facing variant of the experiment: it moves selected
-functional-consistency consequences from the online propagator to SAT
-preprocessing. It must be bounded by predicted clause count and compared
-against online delivery because QF_UF instances with many repeated applications
-may produce too many clauses.
+This remains future work. The current implementation deliberately does not add
+permanent clauses. If watched propagation produces a strong hit rate on SLURM,
+the next experiment may promote repeated hot candidates to permanent clauses,
+but it must be evaluated separately because QF_UF instances with many repeated
+applications may produce too many clauses.
 
 ## Required tests
 
-Add focused tests before accepting any implementation:
+The implementation has focused unit coverage for:
 
 - Unary soundness: `f(a) != f(b)` propagates `a != b` only when the argument
   equality atom exists.
-- Guarded curried soundness: `(apply p x) != (apply q y)` does not propagate
-  `x != y` unless `p = q` is assigned, and does not propagate `p != q` unless
-  `x = y` is assigned.
+- Ackermann-clause conflict delivery when `f(a) != f(b)` and `a = b` are both
+  assigned.
 - Negative test: `f(a, b) != f(c, d)` must not imply both `a != c` and
   `b != d`; only the disjunction is valid.
-- Backtracking: a propagated argument disequality disappears after the
-  application disequality or sibling equality assignment is popped.
+- Missing-atom behavior: no propagation occurs when an argument equality atom is
+  not SAT-visible.
 - Reason validation: every delivered propagation clause contains exactly the
   propagated literal and only currently false antecedent literals.
+- Disabled-option behavior: all `:euf.diseq-ack.*` counters remain zero unless
+  the option is enabled.
 
 ## Evaluation plan
 

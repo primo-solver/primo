@@ -159,6 +159,25 @@ add clauses or create missing atoms:
 - `:euf.dynamic-ack.shadow.width-le-3`;
 - `:euf.dynamic-ack.shadow.width-gt-3`;
 
+The watched disequality-Ackermann counters below are populated by the
+default-off `--euf-diseq-ackermann` online propagation experiment. They describe
+candidate construction and queue-local firing for contraposed Ackermann clauses
+over existing theory atoms. The option never creates missing equality atoms and
+does not scan all candidates when the watched queue is empty:
+
+- `:euf.diseq-ack.candidates`;
+- `:euf.diseq-ack.queue-pushes`;
+- `:euf.diseq-ack.queue-pops`;
+- `:euf.diseq-ack.width-skips`;
+- `:euf.diseq-ack.missing-arg-atom`;
+- `:euf.diseq-ack.satisfied-skips`;
+- `:euf.diseq-ack.unit`;
+- `:euf.diseq-ack.conflict`;
+- `:euf.diseq-ack.propagated`;
+- `:euf.diseq-ack.reason-lits`;
+- `:euf.diseq-ack.queue-budget-cutoffs`;
+- `:euf.diseq-ack.per-symbol-cutoffs`;
+
 The incremental closure counters include:
 
 - `:euf.incremental.terms`;

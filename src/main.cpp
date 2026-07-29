@@ -145,6 +145,7 @@ int main(int argc, char** argv) {
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
   bool euf_dynamic_ackermann_shadow = false;
+  bool euf_diseq_ackermann = false;
   std::string pure_theory_filter = "auto";
   std::string theory_phase = "negative";
   std::string euf_prop_budget = "auto";
@@ -242,6 +243,18 @@ int main(int argc, char** argv) {
                "Record diagnostic-only QF_UF Ackermannization cost counters");
   app.add_flag("--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
                "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them");
+  app.add_flag("--euf-diseq-ackermann", euf_diseq_ackermann,
+               "Enable watched QF_UF disequality Ackermann propagation");
+  app.add_option("--euf-diseq-ackermann-max-width", solver_options.euf_diseq_ackermann_max_width,
+                 "Maximum width of watched disequality Ackermann clauses")
+      ->check(CLI::Range(2, 1000));
+  app.add_option(
+         "--euf-diseq-ackermann-queue-budget", solver_options.euf_diseq_ackermann_queue_budget,
+         "Maximum watched disequality Ackermann candidates to inspect per propagation round")
+      ->check(CLI::Range(0, 1000000000));
+  app.add_option("--euf-diseq-ackermann-per-symbol", solver_options.euf_diseq_ackermann_per_symbol,
+                 "Maximum watched disequality Ackermann candidates per function symbol")
+      ->check(CLI::Range(0, 1000000000));
   app.add_option("--pure-theory-filter", pure_theory_filter,
                  "T-pure theory literal filtering mode: auto, on, or off")
       ->check(CLI::IsMember({"auto", "on", "off"}));
@@ -423,6 +436,7 @@ int main(int argc, char** argv) {
   solver_options.euf_diseq_propagation_diagnostics = euf_diseq_propagation_diagnostics;
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.euf_dynamic_ackermann_shadow = euf_dynamic_ackermann_shadow;
+  solver_options.euf_diseq_ackermann = euf_diseq_ackermann;
   if (pure_theory_filter == "off") {
     solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
   } else if (pure_theory_filter == "on") {
