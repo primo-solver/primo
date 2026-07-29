@@ -511,6 +511,65 @@ void representation_paths_are_exercised_for_every_operator() {
   }
 }
 
+// parse() and to_string() are the two places a value crosses the boundary
+// between text and the two-form representation, and parse() in particular is
+// how every coefficient in every benchmark file enters the solver. The
+// differential sweep checks to_string() on all its sample values, but nothing
+// pinned the round trip per form, or a decimal literal landing in the big
+// form -- which is the shape SMT-LIB files actually contain.
+void parse_and_to_string_round_trip_across_forms() {
+  const char* const cases[] = {
+      "0",
+      "7",
+      "1.5",
+      "0.000000000000000000001",              // small numerator, big denominator
+      "9223372036854775807",                  // exactly INT64_MAX: still small
+      "9223372036854775808",                  // one past: must be big
+      "123456789012345678901234567890",       // comfortably big
+      "12345678901234567890.12345678901234",  // big through a decimal literal
+  };
+  for (const char* text : cases) {
+    const auto parsed = Rational::parse(text);
+    assert(parsed.has_value());
+
+    // Value must match an independently built GMP reference.
+    const std::string digits(text);
+    const std::size_t dot = digits.find('.');
+    mpq_class reference;
+    if (dot == std::string::npos) {
+      reference = mpq_class(mpz_class(digits, 10));
+    } else {
+      mpz_class numerator(digits.substr(0, dot) + digits.substr(dot + 1), 10);
+      mpz_class denominator(1);
+      for (std::size_t i = dot + 1; i < digits.size(); ++i) {
+        denominator *= 10;
+      }
+      reference = mpq_class(numerator, denominator);
+      reference.canonicalize();
+    }
+    assert(parsed->to_string() == reference.get_str());
+
+    // Round trip: to_string() of an integral value must parse back to the
+    // same value, in the same form (equality plus hash equality is what
+    // "same form" means under the canonical-form invariant).
+    if (reference.get_den() == 1) {
+      const auto reparsed = Rational::parse(parsed->to_string());
+      assert(reparsed.has_value());
+      assert(*reparsed == *parsed);
+      assert(RationalHash{}(*reparsed) == RationalHash{}(*parsed));
+    }
+  }
+
+  // A value that fits the small form must parse into it however it is
+  // written, so the leading zeros do not smuggle it onto the big path.
+  const auto plain = Rational::parse("42");
+  const auto padded = Rational::parse("0000000000000000000000000042");
+  assert(plain.has_value() && padded.has_value());
+  assert(*plain == *padded);
+  assert(RationalHash{}(*plain) == RationalHash{}(*padded));
+  assert(padded->to_string() == "42");
+}
+
 }  // namespace
 
 int main() {
@@ -528,5 +587,6 @@ int main() {
   promotion_counter_reports_the_fast_path();
   division_by_zero_throws();
   representation_paths_are_exercised_for_every_operator();
+  parse_and_to_string_round_trip_across_forms();
   return 0;
 }
