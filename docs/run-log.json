@@ -10663,6 +10663,38 @@
       },
       "evidence_status": "current",
       "followups": "Primo now solves 168/237 against z3's 167 with PAR2 essentially tied (1538.9 vs 1531.6), and the two are complementary rather than one dominating: 6 files z3 solves and Primo does not (DTP-Scheduling 2, miplib 2, LassoRanker 1, tta_startup 1), 7 the other way (clock_synchro 3, 2019-ezsmt 2, LassoRanker 2). Remaining known-open targets: miplib (4/15 vs z3's 6) and tropical-matrix (0/10 for all three solvers). Items H4/H5/H6 of the design note are unimplemented; H4's premise in particular needs re-measuring, since it rested on a per-decision cost that these items have changed."
+    },
+    {
+      "id": "2026-07-29-qf-lra-fuzz-shard-timeout-investigation",
+      "started_at": "2026-07-29",
+      "recorded_at": "2026-07-29",
+      "kind": "fuzz",
+      "scope": "Investigation of four truncated fuzz-gate shards during the milestone-wide campaign sweep (jobs 117248-117251), and the correction of a wrong first diagnosis. Recorded because the failure pattern looked exactly like a solver termination bug and was not one -- the next person to see a whole-shard timeout should not have to re-derive this.",
+      "commit": "f3d2ed2 (gate runs), 2b6e197 and later (script fix)",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm; compute partition 9/9 allocated with 460+ jobs queued from other users during the failures",
+        "binary": "build-slurm-rel/primo --quiet [various pivoting/propagation flags]"
+      },
+      "command": {
+        "original": "scripts/slurm_qfuf_fuzz_gate.sbatch, 6 fuzzsmt shards x 500 cases per configuration, --time=00:45:00",
+        "reruns": "same shards resubmitted with --time=03:00:00 (jobs 117309-117312) and again at --time=02:00:00 (117333-117336)",
+        "isolation": "srun on a compute node running fuzz_external.py directly with python3 -u, once writing to node-local /tmp and once to the same NFS fuzz-results tree the gate uses; plus the generator alone, and per-case timing/peak-RSS sweeps locally and remotely"
+      },
+      "summary": {
+        "symptom": "Four of the five sweep configurations reported 2500 of 3000 fuzzsmt cases, all otherwise clean (0 crashes, 0 wrong answers). One shard per job had hit the Slurm wall clock and been killed before fuzz_external.py writes summary.csv, so the shard vanished from the results rather than failing -- a truncated gate is indistinguishable from a clean one unless the summary count is checked.",
+        "what_made_it_look_like_a_solver_bug": "All four lost shards were the same FuzzSMT seed, 217251, across four DIFFERENT solver configurations (bland, dantzig, --no-lra-sparse-leaving, --no-lra-propagation), while the fifth job (row propagation), whose seed range skips 217251, completed every shard. It reproduced on a second run at a 3x longer wall limit, which produced zero case lines in three hours.",
+        "why_it_is_not": "The same seed completes 500/500 everywhere it was retried: locally in ~40s; on a compute node writing to node-local /tmp; and on a compute node writing to the same NFS fuzz-results tree the gate uses, in 126 seconds. Generation of its 500 files takes 0.33s locally and 0.61s remotely. Peak RSS across its cases is ~95MB for Primo and ~153MB for z3, against the 2G cgroup. Both the solver and the reference calls are already timeout-bounded at 5s inside fuzz_external.py, so a shard cannot exceed roughly COUNT * 2 * TIMEOUT = 83 minutes of solving -- the failures ran 180.",
+        "conclusion": "No solver hang. An environment/scheduling anomaly during a period when the cluster was saturated by other users' work; it did not reproduce once the queue drained. The cluster nodes are also 3-5x slower per case than the workstation (5 of the seed's cases exceed 8s remotely where only 1 hits the 5s cap locally), which narrows the margin but does not come close to explaining 180 minutes.",
+        "corrected_diagnosis": "An earlier commit (2b6e197) asserted the 45-minute limit was under the worst case 'by construction' and implied that was the cause. The arithmetic is right and the raise to two hours is kept as defence in depth, but it was NOT the cause here -- 83 minutes does not explain a 180-minute failure, and the shard actually completes in about two. The script comment has been corrected rather than left confidently wrong."
+      },
+      "verification": {
+        "reruns": "Jobs 117333-117336 re-run the four missing shards to bring the sweep to its stated 3000 cases per configuration.",
+        "earlier_gates_unaffected": "All eight campaign gates behind the H2/H1a/H1b/H3 results (114898/114899, 115170/115171, 116547/116548, 117227/117228) completed every task, so their 3000-case claims stand.",
+        "tooling": "scripts/slurm_qfuf_fuzz_gate.sbatch wall limit raised to two hours with both the bound and this investigation documented; scripts/summarize_fuzz_results.py checked in, and it prints the summary.csv count next to the case count precisely because that discrepancy is the only visible symptom."
+      },
+      "evidence_status": "current",
+      "followups": "If a whole-shard timeout recurs, treat it as an environment signal first -- but check the seed pattern. One seed failing across configurations AND reproducing on a quiet cluster would be the real thing, and that is the test this entry exists to make cheap."
     }
   ]
 }
