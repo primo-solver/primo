@@ -54,6 +54,10 @@ const Symbol& SymbolTable::get_symbol(SymbolId id) const {
   return symbols_[id];
 }
 
+const std::vector<Sort>& SymbolTable::sorts() const { return sorts_; }
+
+const std::vector<Symbol>& SymbolTable::symbols() const { return symbols_; }
+
 SortId SymbolTable::add_sort(std::string name, SortKind kind) {
   if (name.empty()) {
     throw std::invalid_argument("sort name must not be empty");

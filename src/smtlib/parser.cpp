@@ -97,9 +97,20 @@ Command Parser::parse_command(const SExpr& expr) const {
   }
   const std::string head = require_atom(expr.list[0], "command head");
 
-  if (head == "set-info" || head == "set-option" || head == "exit") {
+  if (head == "set-info" || head == "exit") {
     Command command;
     command.kind = CommandKind::Ignored;
+    return command;
+  }
+
+  if (head == "set-option") {
+    if (expr.list.size() != 3) {
+      throw ParseError("set-option expects a keyword and a value", 0);
+    }
+    Command command;
+    command.kind = CommandKind::SetOption;
+    command.option = require_atom(expr.list[1], "option keyword");
+    command.value = require_atom(expr.list[2], "option value");
     return command;
   }
 
@@ -183,6 +194,15 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::CheckSat;
+    return command;
+  }
+
+  if (head == "get-model") {
+    if (expr.list.size() != 1) {
+      throw ParseError("get-model expects no arguments", 0);
+    }
+    Command command;
+    command.kind = CommandKind::GetModel;
     return command;
   }
 

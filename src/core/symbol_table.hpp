@@ -38,6 +38,8 @@ class SymbolTable {
   SymbolId declare_predicate(std::string name, std::vector<SortId> arg_sorts);
   std::optional<SymbolId> lookup_symbol(const std::string& name) const;
   const Symbol& get_symbol(SymbolId id) const;
+  const std::vector<Sort>& sorts() const;
+  const std::vector<Symbol>& symbols() const;
 
  private:
   SortId add_sort(std::string name, SortKind kind);

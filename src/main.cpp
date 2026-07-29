@@ -61,6 +61,9 @@ void print_startup_banner() {
 
 void print_outcome(const primo::smt::CheckSatOutcome& outcome, bool print_stats) {
   std::cout << primo::smt::to_string(outcome.result) << "\n";
+  if (!outcome.model.empty()) {
+    std::cout << outcome.model << "\n";
+  }
   if (print_stats) {
     primo::util::print_statistics(std::cerr, outcome.statistics);
   }

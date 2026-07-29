@@ -20,11 +20,17 @@ There is no documented general Nelson-Oppen combination layer in `docs/`, and a
 repository search for "Nelson" or "Oppen" only finds retrospective or
 literature references, not a current implementation note.
 
-Primo also lacks explicit model construction and SMT-LIB model printing.
-`core::Model` and `smt::ModelBuilder` are placeholders, `check-sat` currently
-returns only a status and statistics, and preprocessing such as solved-constant
-substitution is documented as satisfiability-preserving rather than
-model-preserving. This is a real prerequisite for model-guided combination:
+Primo now has a conservative QF_UF SMT-LIB `get-model` path for scripts that
+set `:produce-models true`: `check-sat` can return a model string, and
+`smt::ModelBuilder` prints definitions for user-declared UF constants,
+functions, and predicates from a ground EUF closure over the accepted SAT
+assignment. This is still narrower than the model object needed for
+model-guided Nelson-Oppen combination. `core::Model` remains a placeholder, the
+model builder is QF_UF-specific, and satisfiability-preserving preprocessing
+without reconstruction state, such as solved-constant substitution, is disabled
+for model-producing runs rather than reconstructed.
+
+This conservative model printer is a prerequisite for model-guided combination:
 without a concrete model object, "model equality" can easily degrade into an
 unexplained heuristic over the SAT assignment instead of the paper's operation
 over candidate theory models.
@@ -90,10 +96,9 @@ For Primo this is relevant because:
 The first implementable subset should be split into two tracks. Track A is a
 prerequisite for any model-guided closure claim:
 
-1. Implement explicit model construction for the current supported `sat`
-   fragments.
-2. Print a conservative SMT-LIB `get-model` response when `:produce-models`
-   has been requested.
+1. Keep expanding explicit model construction beyond the current QF_UF subset.
+2. Validate SMT-LIB `get-model` responses with Dolmen before relying on them in
+   combination experiments.
 3. Add model validation tests against the asserted formulas, including formulas
    affected by preprocessing passes.
 4. Add reconstruction state for satisfiability-preserving rewrites, starting
@@ -112,13 +117,13 @@ than the full paper:
 5. Keep atom creation for missing interface equalities as a separate milestone,
    because it changes the Boolean abstraction contract.
 
-Track B can begin before full user-facing model printing if it is limited to
+Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or
-advertise model-equality generation until Track A has produced a model object
-that theories can inspect and tests can validate. Even then, the subset is not a
-complete implementation of the model-based theory combination paper; it is the
-smallest scaffold that can be fuzzed and benchmarked without claiming default
-readiness.
+advertise model-equality generation until Track A has produced a theory-facing
+model object that theories can inspect, mutate, and validate. Even then, the
+subset is not a complete implementation of the model-based theory combination
+paper; it is the smallest scaffold that can be fuzzed and benchmarked without
+claiming default readiness.
 
 ## Core Nelson-Oppen Sources
 
