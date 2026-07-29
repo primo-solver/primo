@@ -10417,6 +10417,109 @@
       },
       "evidence_status": "current_local",
       "notes": "This records the fresh correctness gate for the exact main commit that received the curated QF_UF disequality Ackermann merge."
+    },
+    {
+      "id": "2026-07-29-qfuf-get-model-fuzzsmt-bcb482d",
+      "started_at": "2026-07-29T18:43:00+02:00",
+      "recorded_at": "2026-07-29",
+      "kind": "fuzz",
+      "scope": "QF_UF get-model implementation answer comparison over FuzzSMT generated cases",
+      "commit": "bcb482d",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt-model-bcb482d > fuzz-results/qf_uf-fuzzsmt-model-bcb482d.log",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 0,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt-model-bcb482d/summary.csv",
+        "results": "fuzz-results/qf_uf-fuzzsmt-model-bcb482d/generated",
+        "logs": "fuzz-results/qf_uf-fuzzsmt-model-bcb482d.log",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt-model-bcb482d/bugs"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 897,
+        "unsat": 103
+      },
+      "evidence_status": "current",
+      "notes": "Fresh local merge-gate answer comparison for the QF_UF model-printing change. Generated bugs directory is empty. This does not validate model syntax by itself; see the paired Dolmen entry for get-model validation over the same generated files."
+    },
+    {
+      "id": "2026-07-29-qfuf-get-model-dolmen-bcb482d",
+      "started_at": "2026-07-29T18:44:00+02:00",
+      "recorded_at": "2026-07-29",
+      "kind": "model-validation",
+      "scope": "Dolmen validation of Primo QF_UF get-model responses over the FuzzSMT generated corpus",
+      "commit": "bcb482d",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "slurm_job_id": null
+      },
+      "command": "PATH=/tmp/primo-opam-root/primo-system/bin:$PATH python3 scripts/validate_qfuf_models_with_dolmen.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --out results/qfuf-dolmen-fuzzsmt-bcb482d fuzz-results/qf_uf-fuzzsmt-model-bcb482d/generated/*.smt2 > results/qfuf-dolmen-fuzzsmt-bcb482d.log",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet with :produce-models true and appended get-model"
+      },
+      "references": [
+        {
+          "name": "Dolmen",
+          "argv": "dolmen 0.10 --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "generator": "fuzzsmt",
+        "logic": "QF_UF",
+        "seed": 0,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": "fuzz-results/qf_uf-fuzzsmt-model-bcb482d/generated/*.smt2"
+      },
+      "artifacts": {
+        "summary": "results/qfuf-dolmen-fuzzsmt-bcb482d/summary.csv",
+        "results": "results/qfuf-dolmen-fuzzsmt-bcb482d",
+        "logs": "results/qfuf-dolmen-fuzzsmt-bcb482d.log",
+        "bugs": null
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 897,
+        "not_sat": 103,
+        "model_error": 0,
+        "solver_error": 0,
+        "solver_timeout": 0,
+        "dolmen_timeout": 0,
+        "crash": 0,
+        "unsupported": 0
+      },
+      "evidence_status": "current",
+      "notes": "Dolmen was installed in a temporary OPAM root under /tmp for local validation; no Dolmen files are vendored or committed. Dolmen rejected the initial bare abstract-value form, which led to typed abstract values of the form (as @uc_<sort>_<n> Sort); this entry records the passing rerun on commit bcb482d."
     }
   ]
 }
