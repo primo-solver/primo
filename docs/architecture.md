@@ -186,6 +186,11 @@ Implemented now:
 - Boolean clausification for assertions.
 - Lazy QF_UF checking over equality atoms and Boolean predicate applications.
 - Non-incremental congruence closure for the current SAT assignment.
+- Conservative QF_UF SMT-LIB model printing for `check-sat` followed by
+  `get-model` when `:produce-models true` is set. `smt::ModelBuilder` rebuilds
+  a ground EUF closure over `core::TermId` values, prints definitions for
+  user-declared constants, functions, and predicates, and omits Primo-generated
+  auxiliary symbols from the response.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -193,7 +198,8 @@ Not implemented yet:
 
 - push/pop assertion stacks.
 - proof production.
-- model construction.
+- model construction for non-QF_UF fragments, model values for arithmetic, and
+  reconstruction through every future satisfiability-preserving rewrite.
 - explanation-producing congruence closure with proof forests.
 - arithmetic theory solving.
 
@@ -216,5 +222,9 @@ make contrib-z3
 make contrib-cvc5
 make contrib-cadical
 ```
+
+Dolmen is used as an optional external validator for SMT-LIB model response
+files. It is not vendored under `contrib/`; install it separately and run
+`scripts/validate_qfuf_models_with_dolmen.py`.
 
 Downloaded archives and build trees under `contrib/downloads`, `contrib/src`, and `contrib/local` are not committed.

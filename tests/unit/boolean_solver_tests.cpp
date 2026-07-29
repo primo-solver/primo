@@ -48,6 +48,68 @@ void pure_boolean_sat() {
   assert(result.statistics.get(":sat.solve-calls") == 1);
 }
 
+void get_model_requires_produce_models() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find(":produce-models") != std::string::npos);
+  assert(result.model.empty());
+}
+
+void get_model_requires_prior_check_sat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UF)
+    (get-model)
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("before check-sat") != std::string::npos);
+  assert(result.model.empty());
+}
+
+void get_model_prints_qf_uf_model_for_declared_symbols() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun f (A) A)
+    (declare-fun p (A) Bool)
+    (assert (= (f a) b))
+    (assert (p a))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(model") != std::string::npos);
+  assert(result.model.find("(define-fun a () A (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun b () A (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun f ((x0 A)) A ") != std::string::npos);
+  assert(result.model.find("(define-fun p ((x0 A)) Bool ") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void unsat_get_model_has_no_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (assert (= a b))
+    (assert (not (= a b)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.model.empty());
+}
+
 void phase_timing_stats_are_reported() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -2345,6 +2407,10 @@ void boolean_unit_simplification_handles_nested_rewrites() {
 
 int main() {
   pure_boolean_sat();
+  get_model_requires_produce_models();
+  get_model_requires_prior_check_sat();
+  get_model_prints_qf_uf_model_for_declared_symbols();
+  unsat_get_model_has_no_model();
   phase_timing_stats_are_reported();
   top_level_conjunction_does_not_allocate_auxiliary();
   top_level_or_can_use_tseitin_support_clauses();

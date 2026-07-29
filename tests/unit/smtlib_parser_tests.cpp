@@ -93,7 +93,9 @@ void parses_benchmark_metadata_and_quoted_symbols() {
   assert(commands[0].kind == CommandKind::Ignored);
   assert(commands[1].kind == CommandKind::Ignored);
   assert(commands[2].kind == CommandKind::Ignored);
-  assert(commands[3].kind == CommandKind::Ignored);
+  assert(commands[3].kind == CommandKind::SetOption);
+  assert(commands[3].option == ":print-success");
+  assert(commands[3].value == "false");
   assert(commands[6].kind == CommandKind::DeclareFun);
   assert(commands[6].name == "|+i|");
   assert(commands[8].kind == CommandKind::Assert);
@@ -153,8 +155,22 @@ void parses_and_copies_pathologically_deep_nesting() {
   // deep trees.
 }
 
+void parses_model_commands() {
+  Parser parser(R"(
+    (set-option :produce-models true)
+    (get-model)
+  )");
+  const auto commands = parser.parse_commands();
+  assert(commands.size() == 2);
+  assert(commands[0].kind == CommandKind::SetOption);
+  assert(commands[0].option == ":produce-models");
+  assert(commands[0].value == "true");
+  assert(commands[1].kind == CommandKind::GetModel);
+}
+
 void rejects_malformed_or_unsupported_input() {
   expect_parse_error([] { Parser("(check-sat extra)").parse_commands(); });
+  expect_parse_error([] { Parser("(get-model extra)").parse_commands(); });
   expect_parse_error([] { Parser("(declare-sort A 1)").parse_commands(); });
   expect_parse_error([] { Parser("(define-fun f (x A) Bool true)").parse_commands(); });
   expect_parse_error([] { Parser("(push 1)").parse_commands(); });
@@ -171,6 +187,7 @@ int main() {
   parses_benchmark_metadata_and_quoted_symbols();
   parses_define_fun_macros();
   parses_and_copies_pathologically_deep_nesting();
+  parses_model_commands();
   rejects_malformed_or_unsupported_input();
   return 0;
 }

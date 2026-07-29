@@ -358,8 +358,9 @@ bounded:
   sort checks.
 
 The pass preserves satisfiability, not a user-facing model for the eliminated
-constant. Primo currently does not expose model reconstruction, so this is
-acceptable for `check-sat`; model support would need a substitution trail.
+constant. Primo disables this pass when `get-model` is requested, because the
+current QF_UF model printer does not yet keep a substitution trail that can
+reconstruct eliminated user constants.
 
 The pass is reported by:
 

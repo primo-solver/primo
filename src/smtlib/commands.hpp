@@ -15,6 +15,8 @@ enum class CommandKind {
   DefineFun,
   Assert,
   CheckSat,
+  GetModel,
+  SetOption,
 };
 
 struct SortedVar {
@@ -26,6 +28,8 @@ struct Command {
   CommandKind kind = CommandKind::CheckSat;
   std::string name;
   std::string logic;
+  std::string option;
+  std::string value;
   std::vector<std::string> arg_sorts;
   std::vector<SortedVar> parameters;
   std::string result_sort;

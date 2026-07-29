@@ -266,6 +266,8 @@ const SymbolTable& TermManager::symbols() const { return symbols_; }
 
 std::size_t TermManager::size() const { return terms_.size(); }
 
+const std::vector<Term>& TermManager::terms() const { return terms_; }
+
 std::size_t TermManager::KeyHash::operator()(const Key& key) const {
   std::size_t seed = 0;
   hash_combine(seed, static_cast<std::size_t>(key.kind));

@@ -24,6 +24,7 @@
 #include "sat/clause.hpp"
 #include "sat/ipasir_up.hpp"
 #include "sat/lit.hpp"
+#include "smt/model_builder.hpp"
 #include "smt/preprocessing.hpp"
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
@@ -685,6 +686,17 @@ class Frontend {
     switch (command.kind) {
       case smtlib::CommandKind::Ignored:
         return;
+      case smtlib::CommandKind::SetOption:
+        if (command.option == ":produce-models") {
+          if (command.value == "true") {
+            produce_models_ = true;
+          } else if (command.value == "false") {
+            produce_models_ = false;
+          } else {
+            throw UnsupportedInput(":produce-models expects true or false");
+          }
+        }
+        return;
       case smtlib::CommandKind::SetLogic:
         if (command.logic != "QF_UF" && command.logic != "QF_LRA") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
@@ -711,10 +723,18 @@ class Frontend {
       case smtlib::CommandKind::CheckSat:
         saw_check_sat_ = true;
         return;
+      case smtlib::CommandKind::GetModel:
+        if (!saw_check_sat_) {
+          throw UnsupportedInput("get-model before check-sat is unsupported");
+        }
+        requested_model_ = true;
+        return;
     }
   }
 
   bool saw_check_sat() const { return saw_check_sat_; }
+  bool requested_model() const { return requested_model_; }
+  bool produce_models() const { return produce_models_; }
   const core::SymbolTable& symbols() const { return symbols_; }
   const core::TermManager& terms() const { return terms_; }
   core::TermManager& terms() { return terms_; }
@@ -852,6 +872,8 @@ class Frontend {
   std::size_t boolean_ites_ = 0;
   std::size_t auxiliary_ites_ = 0;
   bool saw_check_sat_ = false;
+  bool requested_model_ = false;
+  bool produce_models_ = false;
 };
 
 core::TermId TermBuilder::run(const smtlib::SExpr& root) {
@@ -1821,7 +1843,7 @@ void publish_theory_atom_purity_stats(const core::TermManager& terms,
                                       const std::vector<BooleanClausifier::TheoryAtom>& atoms,
                                       util::Statistics& statistics);
 
-CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
+CheckSatOutcome solve_boolean_conjunction(core::TermManager& terms,
                                           const std::vector<core::TermId>& assertions,
                                           const CheckSatOptions& options,
                                           util::Statistics& statistics) {
@@ -1839,7 +1861,23 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
   statistics.increment(kStatSatSolveCalls);
   const CheckSatResult result = map_sat_result(backend.solve());
   publish_sat_stats(backend.statistics(), statistics);
-  return CheckSatOutcome{result, "", statistics};
+  if (result != CheckSatResult::Sat || !options.produce_model) {
+    return CheckSatOutcome{result, "", statistics, ""};
+  }
+
+  std::vector<TheoryModelAssignment> model_assignments;
+  model_assignments.reserve(clausifier.theory_atoms().size());
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+    const std::optional<bool> assignment = backend.value(var);
+    if (!assignment.has_value()) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
+                             statistics, ""};
+    }
+    const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
+    model_assignments.push_back(TheoryModelAssignment{atom.term, atom_value, false});
+  }
+  return CheckSatOutcome{result, "", statistics, build_qf_uf_model(terms, model_assignments)};
 }
 
 struct AssignedTheoryAtom {
@@ -5131,7 +5169,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       euf_propagation == EufPropagationMode::Conflict) {
     return CheckSatOutcome{CheckSatResult::Unsupported,
                            "online EUF conflict/propagation requires CaDiCaL external propagators",
-                           statistics};
+                           statistics, ""};
   }
 #endif
 
@@ -5145,10 +5183,11 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     if ((conflict_terminator.has_value() && conflict_terminator->reached()) ||
         (options.max_theory_conflicts.has_value() &&
          statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value())) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics};
+      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
+                             ""};
     }
     if (sat_result != sat::SatResult::Sat) {
-      return CheckSatOutcome{map_sat_result(sat_result), "", statistics};
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
     statistics.increment(kStatTheoryChecks);
 
@@ -5158,7 +5197,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       const std::optional<bool> assignment = backend.value(var);
       if (!assignment.has_value()) {
         return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
-                               statistics};
+                               statistics, ""};
       }
       const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
       AssignedTheoryAtom assigned =
@@ -5215,17 +5254,27 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     }
     if (!conflict_clause.has_value()) {
       publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
+      if (!options.produce_model) {
+        return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
+      }
+      std::vector<TheoryModelAssignment> model_assignments;
+      model_assignments.reserve(assigned_atoms.size());
+      for (const AssignedTheoryAtom& atom : assigned_atoms) {
+        model_assignments.push_back(TheoryModelAssignment{atom.term, atom.value, atom.filtered});
+      }
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
+                             build_qf_uf_model(terms, model_assignments)};
     }
     statistics.increment(kStatTheoryConflicts);
     if (options.max_theory_conflicts.has_value() &&
         statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value()) {
       publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics};
+      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
+                             ""};
     }
     if (conflict_clause->empty()) {
       publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics};
+      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
     }
     backend.add_clause(conflict_clause.value());
     publish_sat_stats(backend.statistics(), statistics);
@@ -5469,7 +5518,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
 
   const auto finish = [&](CheckSatResult result, std::string message = "") {
     statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
-    return CheckSatOutcome{result, std::move(message), statistics};
+    return CheckSatOutcome{result, std::move(message), statistics, ""};
   };
 
   try {
@@ -5490,6 +5539,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatFrontendAuxiliaryItes, frontend.auxiliary_ites());
     if (!frontend.saw_check_sat()) {
       return finish(CheckSatResult::Unsupported, "missing check-sat command");
+    }
+    if (frontend.requested_model()) {
+      if (!frontend.produce_models()) {
+        return finish(CheckSatResult::Unsupported, "get-model requires :produce-models true");
+      }
+      options.produce_model = true;
     }
 
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
@@ -5590,7 +5645,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
       statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
     }
-    if (auto_large_assertion_skip && options.solved_constant_substitution) {
+    if (auto_large_assertion_skip && options.solved_constant_substitution &&
+        !options.produce_model) {
       SolvedConstantSubstitutionResult solved_constants =
           substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
       assertions = std::move(solved_constants.assertions);
@@ -5650,7 +5706,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       forced_disequalities.insert(forced_disequalities.end(),
                                   forced_atoms.disequality_pairs.begin(),
                                   forced_atoms.disequality_pairs.end());
-      if (options.solved_constant_substitution) {
+      if (options.solved_constant_substitution && !options.produce_model) {
         SolvedConstantSubstitutionResult solved_constants =
             substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
         assertions = std::move(solved_constants.assertions);
@@ -5800,7 +5856,11 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     if (assertions.empty() && !options.preprocess_only) {
       statistics.set(kStatTimePreprocessingUs,
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
-      return finish(CheckSatResult::Sat);
+      CheckSatOutcome outcome = finish(CheckSatResult::Sat);
+      if (options.produce_model) {
+        outcome.model = build_qf_uf_model(frontend.terms(), {});
+      }
+      return outcome;
     }
     if (options.preprocess_only) {
       statistics.set(kStatTimePreprocessingUs,

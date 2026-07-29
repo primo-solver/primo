@@ -117,6 +117,7 @@ struct CheckSatOutcome {
   CheckSatResult result = CheckSatResult::Unknown;
   std::string message;
   util::Statistics statistics;
+  std::string model;
 };
 
 struct CheckSatOptions {
@@ -218,6 +219,7 @@ struct CheckSatOptions {
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;
   util::Statistics* live_statistics = nullptr;
+  bool produce_model = false;
 };
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options = {});
