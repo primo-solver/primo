@@ -20,6 +20,15 @@ There is no documented general Nelson-Oppen combination layer in `docs/`, and a
 repository search for "Nelson" or "Oppen" only finds retrospective or
 literature references, not a current implementation note.
 
+Primo also lacks explicit model construction and SMT-LIB model printing.
+`core::Model` and `smt::ModelBuilder` are placeholders, `check-sat` currently
+returns only a status and statistics, and preprocessing such as solved-constant
+substitution is documented as satisfiability-preserving rather than
+model-preserving. This is a real prerequisite for model-guided combination:
+without a concrete model object, "model equality" can easily degrade into an
+unexplained heuristic over the SAT assignment instead of the paper's operation
+over candidate theory models.
+
 The initial closure-method work therefore should not be framed as replacing an
 existing general Nelson-Oppen module. It should introduce the minimum common
 interfaces needed for future multi-theory cooperation while preserving the
@@ -66,6 +75,8 @@ For Primo this is relevant because:
 - Which equalities must become SAT-visible atoms before they can be propagated?
 - Can a theory solver request creation of a missing equality atom, or must
   closure initially be restricted to already-visible equality atoms?
+- What model object is produced after `sat`, how does it reconstruct eliminated
+  constants and preprocessing auxiliaries, and how is it printed as SMT-LIB?
 - What is the explanation for a model-equality propagation: a theory-implied
   reason, a model-choice lemma, or a branch-causing guess that must be
   represented differently?
@@ -76,7 +87,19 @@ For Primo this is relevant because:
 
 ### Likely First Subset
 
-The first implementable subset should be default-off and deliberately narrower
+The first implementable subset should be split into two tracks. Track A is a
+prerequisite for any model-guided closure claim:
+
+1. Implement explicit model construction for the current supported `sat`
+   fragments.
+2. Print a conservative SMT-LIB `get-model` response when `:produce-models`
+   has been requested.
+3. Add model validation tests against the asserted formulas, including formulas
+   affected by preprocessing passes.
+4. Add reconstruction state for satisfiability-preserving rewrites, starting
+   with solved-constant substitution.
+
+Track B is the first closure scaffold, default-off and deliberately narrower
 than the full paper:
 
 1. Add a documented combination-interface skeleton that can list shared terms by
@@ -89,9 +112,13 @@ than the full paper:
 5. Keep atom creation for missing interface equalities as a separate milestone,
    because it changes the Boolean abstraction contract.
 
-This subset is not a complete implementation of the model-based theory
-combination paper. It is the smallest scaffold that can be fuzzed and benchmarked
-without claiming default readiness.
+Track B can begin before full user-facing model printing if it is limited to
+entailed equalities and interface bookkeeping. Track B must not implement or
+advertise model-equality generation until Track A has produced a model object
+that theories can inspect and tests can validate. Even then, the subset is not a
+complete implementation of the model-based theory combination paper; it is the
+smallest scaffold that can be fuzzed and benchmarked without claiming default
+readiness.
 
 ## Core Nelson-Oppen Sources
 
@@ -235,6 +262,8 @@ targets polite or finite-model combination.
 
 The first design should be conservative:
 
+- Handle explicit model construction and model printing before implementing
+  model-equality guesses from de Moura/Bjorner.
 - Do not add eager all-pairs equality atoms as the default.
 - Build a theory-combination coordinator in `smt/` that knows shared terms,
   equality atoms, and theory ownership, but delegates theory reasoning to
