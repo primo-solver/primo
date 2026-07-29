@@ -367,10 +367,12 @@ void gaussian_elimination_solves_joint_linear_system() {
       fixture.rational(5));
   const primo::core::TermId eq2 = fixture.terms.mk_eq(
       fixture.terms.mk_plus({x, fixture.terms.mk_times(-1, y)}), fixture.rational(1));
-  const primo::core::TermId formula = fixture.terms.mk_le(fixture.terms.mk_plus({x, y}), fixture.rational(10));
+  const primo::core::TermId formula =
+      fixture.terms.mk_le(fixture.terms.mk_plus({x, y}), fixture.rational(10));
 
-  const primo::smt::SolvedConstantSubstitutionResult result = primo::smt::substitute_solved_constants(
-      fixture.terms, {eq1, eq2, formula}, /*enable_gaussian_elimination=*/true);
+  const primo::smt::SolvedConstantSubstitutionResult result =
+      primo::smt::substitute_solved_constants(fixture.terms, {eq1, eq2, formula},
+                                              /*enable_gaussian_elimination=*/true);
 
   check(result.gaussian_candidates == 2);
   check(result.accepted == 2);
@@ -389,11 +391,13 @@ void gaussian_elimination_solves_single_equation_with_coefficient() {
   // degenerate 1x1 system.
   RealFixture fixture;
   const primo::core::TermId x = fixture.constant(fixture.x);
-  const primo::core::TermId eq = fixture.terms.mk_eq(fixture.terms.mk_times(2, x), fixture.rational(5));
+  const primo::core::TermId eq =
+      fixture.terms.mk_eq(fixture.terms.mk_times(2, x), fixture.rational(5));
   const primo::core::TermId formula = fixture.terms.mk_le(x, fixture.rational(100));
 
-  const primo::smt::SolvedConstantSubstitutionResult result = primo::smt::substitute_solved_constants(
-      fixture.terms, {eq, formula}, /*enable_gaussian_elimination=*/true);
+  const primo::smt::SolvedConstantSubstitutionResult result =
+      primo::smt::substitute_solved_constants(fixture.terms, {eq, formula},
+                                              /*enable_gaussian_elimination=*/true);
 
   check(result.gaussian_candidates == 1);
   check(result.accepted == 1);
@@ -424,7 +428,8 @@ void gaussian_elimination_bails_out_above_equation_cap() {
   }
 
   const primo::smt::SolvedConstantSubstitutionResult result =
-      primo::smt::substitute_solved_constants(terms, equalities, /*enable_gaussian_elimination=*/true);
+      primo::smt::substitute_solved_constants(terms, equalities,
+                                              /*enable_gaussian_elimination=*/true);
 
   check(result.gaussian_candidates == 0);
 }

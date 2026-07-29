@@ -4,11 +4,21 @@ QF_LRA (quantifier-free linear real arithmetic) is implemented through
 Milestone 4 of the plan described below: a full SMT-LIB QF_LRA frontend
 plus a bounded-variable Simplex theory solver integrated into DPLL(T) via a
 trail-synced CaDiCaL external propagator, with both conflict detection and
-same-slack bound propagation, following Dutertre & de Moura's "A Fast
+same-variable bound propagation, following Dutertre & de Moura's "A Fast
 Linear-Arithmetic Solver for DPLL(T)". **Supported**, not just
 experimental, as of the 2026-07-24 campaign-tier fuzz gate (3000 fuzzsmt
 cases plus opfuzz/yinyang mutation seeded from real benchmarks, all clean
 -- see `docs/run-log.json`'s Milestone 4b entries and Milestone 4b below).
+
+**Current state (2026-07-29).** On the 237-file stratified sample
+(`benchmarks/qf-lra-stratified-sample.txt`, 10s timeout) Primo solves
+**168/237 with PAR2 1538.9s**, against z3's 167/1531.6s and cvc5's
+150/1887.1s -- up from 108 at the start of the 2026-07-27 heuristics round.
+The four items that got it there are H2 (two-tier rationals), H1a (direct
+bounds for single-variable atoms), H1b (scale-canonical polynomial keys) and
+H3 (fill-in-aware pivot selection, now the default rule); each is described
+in its own section below, and [](qf-lra-heuristics.md) has the design
+rationale and the per-step progression.
 Difference logic (QF_IDL/QF_RDL) remains unimplemented; `difference_logic.hpp`
 is an empty placeholder reserved for that, separate future work.
 
@@ -127,8 +137,9 @@ alternatives considered before/while implementing it.
   A finite Dantzig prefix followed by a Bland's-rule suffix still
   terminates (the paper's termination argument applies to the suffix on
   its own). Opt-in via `CheckSatOptions::lra_pivoting_rule`
-  (`--lra-pivoting-rule {bland,dantzig,soi}`) -- **default stays Bland**, the
-  already campaign-fuzzed behavior; `kStatLraBlandFallbacks` reports how
+  (`--lra-pivoting-rule {bland,dantzig,soi,sparse}`) -- **default was Bland
+  at the time**, the already campaign-fuzzed behavior (superseded 2026-07-29:
+  the default is now `sparse`, see "Fill-in-aware pivot selection" above); `kStatLraBlandFallbacks` reports how
   often the fallback engages.
 - **SOI-Simplex pivoting** (competitiveness-roadmap item 4, 2026-07-25,
   King/Barrett/Dutertre FMCAD 2013 "Simplex with Sum of Infeasibilities
@@ -473,7 +484,9 @@ alternatives considered before/while implementing it.
   variable -- harmless (still linear) and simpler to implement than
   enforcing the stricter grammar.
 - ~~No pivoting-rule choice yet~~ -- **added 2026-07-24** (Milestone 4a):
-  `LraTableau::PivotingRule::Dantzig`, opt-in, default stays Bland. Devex
+  `LraTableau::PivotingRule::Dantzig`, opt-in, default stayed Bland at the
+  time (superseded 2026-07-29 by `sparse`; Dantzig itself was finally measured
+  on the 237-file bar in job 117222, scoring 148 against Bland's 144). Devex
   and Steepest-Edge (`docs/papers/lra-related-work.md`'s survey) remain
   unimplemented -- Dantzig alone already closes most of the practical gap
   per the cited comparative benchmark (fastest per-instance wall time),

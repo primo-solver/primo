@@ -56,10 +56,11 @@ struct DeltaRational {
 
 // A bounded-variable Simplex tableau for QF_LRA, implementing Section 3 of
 // Dutertre & de Moura ("A Fast Linear-Arithmetic Solver for DPLL(T)"):
-// Assert-Bound, Check/Pivot with Bland's-rule variable selection (for
-// termination, not performance -- see docs/papers/lra-related-work.md for
-// faster pivoting rules a later milestone could adopt), and Farkas-
-// certificate-style conflict explanation.
+// Assert-Bound, Check/Pivot, and Farkas-certificate-style conflict
+// explanation. Bland's-rule variable selection is the paper's own choice and
+// is what the termination argument rests on; three faster rules have since
+// been added alongside it (see PivotingRule), each falling back to Bland
+// selection past a per-call pivot threshold so termination still holds.
 //
 // Incremental via push()/pop(checkpoint), genuinely trail-based (mirroring
 // FlatCongruenceClosure's discipline, not full state snapshotting): every
@@ -117,6 +118,12 @@ class LraTableau {
   // procedure" (CAV 2009), p.8, which sorts by "number of occurrences in
   // equations" for the same reason -- only that sparsity criterion is taken
   // from the paper, not its floating-point preprocessing contribution.
+  //
+  // NOTE: Sparse (with set_sparse_leaving) is the *solver's* default since
+  // 2026-07-29; this class still constructs Bland by default, because Bland
+  // is the conservative choice for a directly-constructed tableau and the
+  // white-box tests rely on it. CheckSatOptions::lra_pivoting_rule is what
+  // sets the solver's.
   enum class PivotingRule { Bland, Dantzig, Soi, Sparse };
 
   explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {
@@ -213,7 +220,9 @@ class LraTableau {
   // progress-neutral -- it changes which infeasibility gets repaired -- so it
   // is a separate opt-in knob, measured on its own rather than confounded
   // with the entering-side rule. Off by default; no effect under any other
-  // pivoting rule.
+  // pivoting rule. Intended to be set before solving starts (like add_row);
+  // it is not trailed, so flipping it mid-search would change selection
+  // without any record of having done so.
   void set_sparse_leaving(bool enabled) { sparse_leaving_ = enabled; }
 
   // Cost accounting for the Check/Pivot loop, in the two quantities item H3

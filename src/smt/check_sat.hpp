@@ -134,9 +134,6 @@ struct CheckSatOptions {
   // so it has its own flag rather than depending on either -- see
   // docs/arithmetic.md's Milestone roadmap.
   bool lra_theory_decisions = false;
-  // Milestone 4: default stays Bland (today's already-fuzz-tested
-  // behavior) until Dantzig has its own campaign-tier confirmation --
-  // see docs/papers/lra-related-work.md's pivoting-rule survey.
   // Default since 2026-07-29 (heuristics-note item H3). On the 237-file
   // stratified sample this solves 168 against Bland's 144, PAR2 1538.9s
   // against 1962.4s, with zero regressions and zero wrong answers -- see

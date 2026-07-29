@@ -118,7 +118,7 @@ void ProofForest::materialize(FlatTermId node) {
 }
 
 void ProofForest::coalesce_into_structural_class(FlatTermId member, FlatTermId canonical,
-                                                  ProofForestLabel label) {
+                                                 ProofForestLabel label) {
   ensure_node_count(std::max(member, canonical) + 1);
   if (resolve(member) == resolve(canonical)) {
     return;

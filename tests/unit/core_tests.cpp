@@ -197,18 +197,18 @@ void arithmetic_terms_are_simplified() {
 
   // Constant folding.
   assert(terms.mk_plus({terms.mk_rational(Rational(2)), terms.mk_rational(Rational(3))}) ==
-        terms.mk_rational(Rational(5)));
+         terms.mk_rational(Rational(5)));
   assert(terms.mk_times(Rational(-1), terms.mk_rational(Rational(3))) ==
-        terms.mk_rational(Rational(-3)));
+         terms.mk_rational(Rational(-3)));
   assert(terms.mk_le(terms.mk_rational(Rational(2)), terms.mk_rational(Rational(3))) ==
-        terms.mk_bool(true));
+         terms.mk_bool(true));
   assert(terms.mk_lt(terms.mk_rational(Rational(3)), terms.mk_rational(Rational(2))) ==
-        terms.mk_bool(false));
+         terms.mk_bool(false));
 
   // Coefficient folding: nested Times multiplies coefficients; 0 elides to
   // the zero constant; 1 is the identity; nested Rational folds directly.
   assert(terms.mk_times(Rational(3), terms.mk_times(Rational(2), x)) ==
-        terms.mk_times(Rational(6), x));
+         terms.mk_times(Rational(6), x));
   assert(terms.mk_times(Rational(0), x) == terms.mk_rational(Rational(0)));
   assert(terms.mk_times(Rational(1), x) == x);
   assert(terms.mk_plus({x, terms.mk_rational(Rational(0))}) == x);

@@ -320,7 +320,7 @@ core::TermId polynomial_to_term(core::TermManager& terms,
   for (const core::TermId variable : variables) {
     const util::Rational& coefficient = polynomial.terms().at(variable);
     summands.push_back(coefficient == util::Rational(1) ? variable
-                                                         : terms.mk_times(coefficient, variable));
+                                                        : terms.mk_times(coefficient, variable));
   }
   if (!polynomial.constant().is_zero() || summands.empty()) {
     summands.push_back(terms.mk_rational(polynomial.constant()));
@@ -449,7 +449,8 @@ std::vector<SolvedConstantCandidate> collect_gaussian_elimination_candidates(
       definition_polynomial.add_term(other_variable, -coefficient);
     }
     const core::TermId definition = polynomial_to_term(terms, definition_polynomial);
-    result.push_back(SolvedConstantCandidate{variable, definition, tree_term_size(terms, definition)});
+    result.push_back(
+        SolvedConstantCandidate{variable, definition, tree_term_size(terms, definition)});
   }
   return result;
 }
@@ -1651,15 +1652,15 @@ core::TermId rewrite_with_ground_unit_equalities(
     }
     case core::TermKind::Le:
       rewritten = terms.mk_le(rewrite_with_ground_unit_equalities(terms, node_children.at(0),
-                                                                   replacements, memo, rewrites),
+                                                                  replacements, memo, rewrites),
                               rewrite_with_ground_unit_equalities(terms, node_children.at(1),
-                                                                   replacements, memo, rewrites));
+                                                                  replacements, memo, rewrites));
       break;
     case core::TermKind::Lt:
       rewritten = terms.mk_lt(rewrite_with_ground_unit_equalities(terms, node_children.at(0),
-                                                                   replacements, memo, rewrites),
+                                                                  replacements, memo, rewrites),
                               rewrite_with_ground_unit_equalities(terms, node_children.at(1),
-                                                                   replacements, memo, rewrites));
+                                                                  replacements, memo, rewrites));
       break;
     case core::TermKind::Application: {
       std::vector<core::TermId> children;
@@ -1902,9 +1903,9 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
       break;
     }
     case core::TermKind::Implies:
-      rewritten = terms.mk_implies(
-          lower_real_equalities_rewrite(terms, children.at(0), memo, lowered),
-          lower_real_equalities_rewrite(terms, children.at(1), memo, lowered));
+      rewritten =
+          terms.mk_implies(lower_real_equalities_rewrite(terms, children.at(0), memo, lowered),
+                           lower_real_equalities_rewrite(terms, children.at(1), memo, lowered));
       break;
   }
   memo.emplace(term_id, rewritten);

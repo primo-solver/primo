@@ -16,8 +16,8 @@ void hash_combine(std::size_t& seed, std::size_t value) {
 TermManager::TermManager(const SymbolTable& symbols) : symbols_(symbols) {}
 
 TermId TermManager::mk_bool(bool value) {
-  return intern(
-      Key{TermKind::BoolValue, symbols_.bool_sort(), kInvalidSymbolId, {}, value, util::Rational(0)});
+  return intern(Key{
+      TermKind::BoolValue, symbols_.bool_sort(), kInvalidSymbolId, {}, value, util::Rational(0)});
 }
 
 TermId TermManager::mk_constant(SymbolId symbol_id) {
@@ -43,7 +43,7 @@ TermId TermManager::mk_app(SymbolId symbol_id, std::vector<TermId> args) {
     }
   }
   return intern(Key{TermKind::Application, symbol.result_sort, symbol_id, std::move(args), false,
-                     util::Rational(0)});
+                    util::Rational(0)});
 }
 
 TermId TermManager::mk_eq(TermId lhs, TermId rhs) {
@@ -55,8 +55,12 @@ TermId TermManager::mk_eq(TermId lhs, TermId rhs) {
   if (lhs == rhs) {
     return mk_bool(true);
   }
-  return intern(Key{TermKind::Equality, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false,
-                     util::Rational(0)});
+  return intern(Key{TermKind::Equality,
+                    symbols_.bool_sort(),
+                    kInvalidSymbolId,
+                    {lhs, rhs},
+                    false,
+                    util::Rational(0)});
 }
 
 TermId TermManager::mk_not(TermId child) {
@@ -70,8 +74,8 @@ TermId TermManager::mk_not(TermId child) {
   if (child_term.kind == TermKind::Not) {
     return child_term.children.at(0);
   }
-  return intern(
-      Key{TermKind::Not, symbols_.bool_sort(), kInvalidSymbolId, {child}, false, util::Rational(0)});
+  return intern(Key{
+      TermKind::Not, symbols_.bool_sort(), kInvalidSymbolId, {child}, false, util::Rational(0)});
 }
 
 TermId TermManager::mk_and(std::vector<TermId> children) {
@@ -101,7 +105,7 @@ TermId TermManager::mk_and(std::vector<TermId> children) {
     return simplified.front();
   }
   return intern(Key{TermKind::And, symbols_.bool_sort(), kInvalidSymbolId, std::move(simplified),
-                     false, util::Rational(0)});
+                    false, util::Rational(0)});
 }
 
 TermId TermManager::mk_or(std::vector<TermId> children) {
@@ -131,7 +135,7 @@ TermId TermManager::mk_or(std::vector<TermId> children) {
     return simplified.front();
   }
   return intern(Key{TermKind::Or, symbols_.bool_sort(), kInvalidSymbolId, std::move(simplified),
-                     false, util::Rational(0)});
+                    false, util::Rational(0)});
 }
 
 TermId TermManager::mk_implies(TermId lhs, TermId rhs) {
@@ -149,13 +153,17 @@ TermId TermManager::mk_implies(TermId lhs, TermId rhs) {
   if (rhs_term.kind == TermKind::BoolValue) {
     return rhs_term.bool_value ? mk_bool(true) : mk_not(lhs);
   }
-  return intern(Key{TermKind::Implies, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false,
-                     util::Rational(0)});
+  return intern(Key{TermKind::Implies,
+                    symbols_.bool_sort(),
+                    kInvalidSymbolId,
+                    {lhs, rhs},
+                    false,
+                    util::Rational(0)});
 }
 
 TermId TermManager::mk_rational(util::Rational value) {
-  return intern(Key{TermKind::Rational, symbols_.real_sort(), kInvalidSymbolId, {}, false,
-                     std::move(value)});
+  return intern(
+      Key{TermKind::Rational, symbols_.real_sort(), kInvalidSymbolId, {}, false, std::move(value)});
 }
 
 TermId TermManager::mk_plus(std::vector<TermId> children) {
@@ -192,7 +200,7 @@ TermId TermManager::mk_plus(std::vector<TermId> children) {
     return flattened.front();
   }
   return intern(Key{TermKind::Plus, symbols_.real_sort(), kInvalidSymbolId, std::move(flattened),
-                     false, util::Rational(0)});
+                    false, util::Rational(0)});
 }
 
 TermId TermManager::mk_times(util::Rational coefficient, TermId child) {
@@ -212,8 +220,12 @@ TermId TermManager::mk_times(util::Rational coefficient, TermId child) {
   if (coefficient == util::Rational(1)) {
     return child;
   }
-  return intern(Key{TermKind::Times, symbols_.real_sort(), kInvalidSymbolId, {child}, false,
-                     std::move(coefficient)});
+  return intern(Key{TermKind::Times,
+                    symbols_.real_sort(),
+                    kInvalidSymbolId,
+                    {child},
+                    false,
+                    std::move(coefficient)});
 }
 
 TermId TermManager::mk_le(TermId lhs, TermId rhs) {
@@ -228,8 +240,8 @@ TermId TermManager::mk_le(TermId lhs, TermId rhs) {
   if (lhs_term.kind == TermKind::Rational && rhs_term.kind == TermKind::Rational) {
     return mk_bool(lhs_term.rational_value <= rhs_term.rational_value);
   }
-  return intern(
-      Key{TermKind::Le, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false, util::Rational(0)});
+  return intern(Key{
+      TermKind::Le, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false, util::Rational(0)});
 }
 
 TermId TermManager::mk_lt(TermId lhs, TermId rhs) {
@@ -244,8 +256,8 @@ TermId TermManager::mk_lt(TermId lhs, TermId rhs) {
   if (lhs_term.kind == TermKind::Rational && rhs_term.kind == TermKind::Rational) {
     return mk_bool(lhs_term.rational_value < rhs_term.rational_value);
   }
-  return intern(
-      Key{TermKind::Lt, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false, util::Rational(0)});
+  return intern(Key{
+      TermKind::Lt, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false, util::Rational(0)});
 }
 
 const Term& TermManager::get(TermId id) const { return require_term(id); }
