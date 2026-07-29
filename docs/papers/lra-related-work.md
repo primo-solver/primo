@@ -74,8 +74,11 @@ design, even though they are not what the paper is about:
   problems, one never needs to call GMP." **Implemented 2026-07-28** in
   `util::Rational` (competitiveness-roadmap H2) -- see `docs/arithmetic.md`
   and `docs/qf-lra-heuristics.md`. *Deviation:* Primo's small form is 64-bit
-  rather than 32-bit, using `__int128` intermediates, which is an empirical
-  question the H2 width ablation is meant to settle rather than a claim.
+  rather than 32-bit, using `__int128` intermediates. That width was settled
+  empirically rather than argued: building the same commit at both widths,
+  32-bit is equal or up to ~13% faster wherever coefficients never leave 32
+  bits, but 64-bit is 2.2x faster on the one instance that does overflow
+  (12-fold fewer big-form operations), so 64-bit is kept.
   *Independently corroborated:* profiling Primo before implementing it put
   ~42% of runtime in the allocator and ~12% in GMP copy/init against ~5% in
   real bignum arithmetic -- the same diagnosis the paper gives.
@@ -84,10 +87,14 @@ design, even though they are not what the paper is about:
   positive, "so that two inequalities constraining the same direction in
   space appear with the exact same left-hand side"; and "for each left hand
   side that is *not a variable*, a new variable is introduced". The second
-  half is the source for roadmap item H1 (Primo currently introduces a slack
-  for *every* distinct polynomial, including bare variables), the first half
-  for the long-deferred scale-invariant polynomial matching (item 3).
-  **Not yet implemented.**
+  half is the source for item H1a, the first half for item H1b (the
+  long-deferred scale-invariant polynomial matching, roadmap item 3).
+  **Both implemented 2026-07-28, unconditional.** H1a removed 36-95% of
+  tableau rows on the lagging families -- Primo used to introduce a slack for
+  *every* distinct polynomial, including bare variables -- and H1b collapsed
+  proportional polynomials onto one slack. *Deviation:* our canonical form
+  scales to a leading coefficient of 1 rather than to coprime integers, which
+  is the same equivalence class.
 - **Page 8, sparsity-ordered pivoting.** "We sort the variables ... according
   to the number of nonzero coefficients in the corresponding equation ... the
   pivoting steps are faster when the equation defining the basic variable to
