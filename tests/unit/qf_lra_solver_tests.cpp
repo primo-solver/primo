@@ -1059,6 +1059,52 @@ void proportional_polynomials_share_one_slack() {
              .result == CheckSatResult::Unsat);  // x+y <= 5 and x+y >= 6
 }
 
+void tableau_shape_and_rational_statistics_are_published() {
+  // These counters are what the whole H1/H2/H3 evaluation rested on -- row
+  // counts confirmed H1's mechanism instance by instance, and
+  // :rational.big-operations is what settled the small form's width. A
+  // counter that silently stopped being published, or drifted from what it
+  // claims to count, would invalidate the next measurement without failing
+  // anything, so pin them against hand-computable values.
+  //
+  // Two compound rows (x+y and x+2y) over two problem variables: 4 tableau
+  // variables (x, y and one slack each), 2 rows, 4 nonzero coefficients. The
+  // bare bounds on x and y add no rows at all -- that is item H1a.
+  const auto shaped = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 5))
+    (assert (<= (+ x (* 2 y)) 10))
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (check-sat)
+  )");
+  assert(shaped.result == CheckSatResult::Sat);
+  assert(shaped.statistics.get(StatKey::LraTableauVars) == 4);
+  assert(shaped.statistics.get(StatKey::LraRows) == 2);
+  assert(shaped.statistics.get(StatKey::LraRowNonzeros) == 4);
+  // Coefficients this small never leave util::Rational's machine-word form.
+  assert(shaped.statistics.get(StatKey::RationalPromotions) == 0);
+  assert(shaped.statistics.get(StatKey::RationalBigOperations) == 0);
+
+  // Coefficients well past 64 bits must drive the big-form path, so that a
+  // zero here would mean the counter had stopped counting rather than that
+  // the fast path was universal.
+  const auto big = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ (* 123456789012345678901234567890 x) y) 5))
+    (assert (<= (+ x (* 987654321098765432109876543210 y)) 10))
+    (assert (<= 1 x))
+    (assert (<= 1 y))
+    (check-sat)
+  )");
+  assert(big.result == CheckSatResult::Unsat);
+  assert(big.statistics.get(StatKey::RationalBigOperations) > 0);
+}
+
 void handles_pathologically_deep_arithmetic_nesting() {
   constexpr int kDepth = 50000;
   std::string formula = "(set-logic QF_LRA)\n(declare-fun x () Real)\n(assert (<= x ";
@@ -1114,6 +1160,7 @@ int main() {
   single_variable_atom_coefficients_are_divided_out();
   single_variable_atom_strictness_survives_the_flip();
   proportional_polynomials_share_one_slack();
+  tableau_shape_and_rational_statistics_are_published();
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
   return 0;
