@@ -339,6 +339,30 @@ alternatives considered before/while implementing it.
     fuzzsmt cases, two opfuzz runs and four yinyang typefuzz shards over real
     QF_LRA seeds -- 0 crashes, 0 wrong answers throughout, with the Bland
     merge gate coming back 500/500 PASS with no timeouts at all.
+- **Scale-canonical polynomial keys** (heuristics-note item H1b, the
+  long-deferred competitiveness-roadmap item 3, 2026-07-28, `check_sat.cpp`,
+  **unconditional**): `PolynomialKey` divides every coefficient by the
+  coefficient of the lowest-indexed variable, so proportional polynomials
+  collapse to one key -- `x + y <= 5`, `2x + 2y <= 10` and `-x - y <= -5` all
+  key to `{x: 1, y: 1}` and share a slack, where before they got three
+  separate ones and could not see each other's bounds. The factor is divided
+  out of the atom's right-hand side and a negative factor reverses the
+  relation, reusing H1a's `asserts_lower_when_true` flag and its single
+  interpretation point. Monniaux (CAV 2009, Section 2.1) describes the same
+  normalization; his form scales to coprime integers, ours to a leading
+  coefficient of 1, which is the same equivalence class.
+  - Row counts fall further on top of H1a: ecoliFBA 1,394 -> 695, TM/p6
+    67 -> 38, sc-17 723 -> 433, uart-17 920 -> 511, clock_synchro 259 -> 179,
+    tta_startup 500 -> 284, and DTP-Scheduling 3,932 -> 2,882 -- the first
+    time that family moves at all, since `x-y` and `y-x` are proportional.
+  - **Correctness-verified, performance verdict deferred.** Merge and
+    campaign gates on both pivoting paths (jobs 116545-116548): 7,000 fuzzsmt
+    cases, 0 crashes, 0 wrong answers, plus clean opfuzz and yinyang runs.
+    Local wall-clock is genuinely mixed (clock_synchro 3.1x faster, uart-18
+    1.5x, but DTP-Scheduling 0.74x *slower* despite 8.6x fewer decisions --
+    merging proportional rows concentrates fill-in into fewer, denser rows),
+    so its 237-file verdict comes from item H3's four-way run, whose `bland`
+    column measures exactly this item's effect on the default.
 - **Fill-in-aware pivot selection** (heuristics-note item H3, 2026-07-28,
   `lra_tableau.{hpp,cpp}`, **opt-in**): `PivotingRule::Sparse`, via
   `--lra-pivoting-rule sparse`. `pivot()` rewrites every row in

@@ -10578,6 +10578,44 @@
       },
       "evidence_status": "current",
       "followups": "None for the width itself. If a future benchmark family turns out to promote heavily (clock_synchro is the only one found so far), :rational.promotions is the counter that would show it."
+    },
+    {
+      "id": "2026-07-29-qf-lra-scale-canonical-polynomial-keys-fuzz-gate",
+      "started_at": "2026-07-28",
+      "recorded_at": "2026-07-29",
+      "kind": "fuzz",
+      "scope": "Merge-gate and campaign-gate fuzz verification for docs/qf-lra-heuristics.md item H1b (commit 1e6554d), the long-deferred competitiveness-roadmap item 3: polynomial keys are scale-canonical, so proportional polynomials (x+y<=5, 2x+2y<=10, -x-y<=-5) share one slack instead of getting one each. Unconditional core change, so gated on both pivoting paths at both tiers, matching the precedent set by H2 and H1a. Its 237-file promotion-bar verdict is deliberately NOT part of this entry -- see followups.",
+      "commit": "1e6554d",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (node-head, via /tmp/llm2smt_slurm_ssh_config)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-pivoting-rule soi] (remote Release)",
+        "notes": "Jobs sat in the queue for an extended period behind ~470 pending jobs from other users; the compute partition was 9/9 allocated. Queue wait, not runtime -- the gates themselves completed in 34s to 3m17s per task."
+      },
+      "command": {
+        "gates": "Same sbatch invocations as the H2/H1a entries, with job names primo-lra-h1b-{merge,camp}-{bland,soi} and PRIMO_FUZZ_OUT_ROOT=fuzz-results/lra-h1b-*"
+      },
+      "benchmark": {
+        "suite": "Merge gate: fuzzsmt QF_LRA 500 cases vs z3 per pivoting rule. Campaign gate: fuzzsmt 6x500=3000 + opfuzz + 2 yinyang typefuzz shards over benchmarks/seeds/qf_lra_real, per pivoting rule.",
+        "logic": "QF_LRA",
+        "timeout_seconds": 5
+      },
+      "job_id": "116545 (merge Bland), 116546 (merge SOI), 116547 (campaign Bland), 116548 (campaign SOI). 116549, a standalone 237-file comparison for this item, was cancelled as redundant -- see followups.",
+      "artifacts": {
+        "gates": "remote fuzz-results/lra-h1b-{merge,camp}-{bland,soi}"
+      },
+      "summary": {
+        "merge_gate": "Job 116545 (Bland): 500/500 -- 499 PASS, 1 TIMEOUT, 0 CRASH, 0 WRONG. Job 116546 (SOI): 500/500 -- 485 PASS, 15 TIMEOUT, 0 CRASH, 0 WRONG.",
+        "campaign_gate": "Job 116547 (Bland): fuzzsmt 3000/3000 -- 2991 PASS, 9 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz 14/14 seeds valid, 0 bug triggers; yinyang 2 shards, 14/14 valid each, 0 bug triggers each. Job 116548 (SOI): fuzzsmt 3000/3000 -- 2917 PASS, 83 TIMEOUT, 0 CRASH, 0 WRONG; opfuzz and yinyang likewise clean.",
+        "timeout_rates": "Timeouts continue to fall as the stack of items lands: the Bland campaign gate has gone 118-143 (pre-H2) -> 28 (H2) -> 7 (H1a) -> 9 (H1b), and the SOI campaign 965-976 -> 324 -> 182 -> 83. Not a correctness signal, but consistent with the measured speedups.",
+        "local_evidence_recap": "Row counts fall substantially on top of H1a (via :lra.rows): ecoliFBA 1,394 -> 695, TM/p6 67 -> 38, sc-17 723 -> 433, uart-17 920 -> 511, clock_synchro 259 -> 179, tta_startup 500 -> 284, DTP-Scheduling 3,932 -> 2,882 (the first time that family moves, since x-y and y-x are proportional). Wall-clock is mixed: clock_synchro 4.01s -> 1.28s (3.1x) and uart-18 0.92 -> 0.61 (1.5x), but DTP-Scheduling 6.01 -> 8.16 (0.74x) despite decisions dropping 8.6-fold and pivots to 4,248 -- merging proportional rows concentrates fill-in into fewer, denser rows."
+      },
+      "verification": {
+        "correctness": "Zero wrong answers and zero crashes across 7,000 fuzzsmt cases on both pivoting paths, plus two opfuzz runs and four yinyang typefuzz shards over real QF_LRA seeds.",
+        "local": "Release ctest 12/12 and ASAN/UBSan ctest 12/12; local QF_LRA fuzz smoke 200 cases, 198 PASS / 2 TIMEOUT / 0 CRASH / 0 WRONG."
+      },
+      "evidence_status": "current",
+      "followups": "This item is correctness-verified but its performance verdict is still open. Its standalone 237-file comparison (job 116549) was cancelled as redundant: item H3's four-way promotion run (job 117222) evaluates bland/dantzig/sparse/sparse+leaving on a binary that already contains H1b, so that run's `bland` column measures exactly H1b's effect on the default against H1a's 136/237 -- H3 leaves the Bland path bit-identical, verified by counter comparison. If that column regresses, H1b is reverted per the roadmap's standing rule for rejected experiments."
     }
   ]
 }
