@@ -390,7 +390,8 @@ void qf_uf_lra_shares_purified_real_argument_equalities_with_euf() {
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
-  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
 }
 
 void qf_uf_lra_prints_model_with_purified_real_predicate_argument() {
@@ -448,7 +449,8 @@ void qf_uf_lra_shares_lra_implied_real_equalities_with_euf() {
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
-  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
 }
 
 void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
@@ -506,13 +508,15 @@ void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
   assert(result.statistics.get(":no.purification.definitions") == 2);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
   assert(result.statistics.get(":no.interface.equalities-propagated") >= 1);
-  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
 
   CheckSatOptions lazy_options = no_preprocessing_or_substitution();
   lazy_options.euf_engine = EufEngine::Lazy;
   const auto lazy_result = check_sat_smtlib(input, lazy_options);
   assert(lazy_result.result == CheckSatResult::Unsat);
   assert(lazy_result.statistics.get(":no.interface.equalities-propagated") >= 1);
+  assert(lazy_result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
 }
 
 void real_equality_is_not_misclassified_as_euf() {

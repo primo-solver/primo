@@ -85,15 +85,19 @@ a definition equality between the proxy and the UF application. That definition
 is handled by EUF; the purified arithmetic atom is handled by LRA. The same
 purification pass also handles non-constant Real arguments in EUF atoms: EUF
 receives an internal Real proxy in place of the arithmetic argument, and LRA
-receives the two defining bounds `proxy <= term` and `term <= proxy`. For the
-current SAT assignment, EUF-implied equalities between Real proxies visible to
-LRA are asserted into an augmented LRA check. In the other direction, EUF
-predicate atoms may mention shared Real constants or purified Real-argument
-proxies; after the LRA assignment is consistent, the coordinator checks whether
-LRA entails equality for each shared Real-constant pair by proving both strict
-orders inconsistent. Entailed equalities are asserted into an augmented EUF
-check. If either augmented check conflicts, the solver learns a broad clause
-blocking the current theory assignment and continues.
+receives the two defining bounds `proxy <= term` and `term <= proxy`.
+
+For every unordered pair of shared Real interface terms, the coordinator creates
+a positive SAT-visible equality atom when the pair is first discovered. A false
+assignment to this generated atom is not treated as an LRA disequality, because
+the current LRA atom path only supports positive equality propagation across the
+interface. During the final mixed check, EUF-implied equalities between shared
+Real proxies and LRA-implied equalities between shared Real constants are mapped
+to those generated literals. If an implied equality literal is not already true
+in the accepted SAT assignment, the coordinator adds a unit clause for that
+literal and restarts the SAT loop. Once a receiving theory sees the forced
+equality, any inconsistency is explained through the ordinary EUF or LRA
+conflict path using the generated equality atom.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
@@ -114,6 +118,9 @@ coordinator publishes:
 - `:no.purification.reused-applications`
 - `:no.purification.reused-real-terms`
 - `:no.interface.shared-real-terms`
+- `:no.interface.sat-equality-atoms`
+- `:no.interface.sat-equalities-true`
+- `:no.interface.sat-equalities-forced`
 - `:no.interface.equalities-propagated`
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
@@ -288,18 +295,25 @@ treating one theory's atoms as Boolean noise.
   `term <= proxy`, instead of a Real equality, because the global
   `lower_real_equalities` pass has already run and because Real-valued UF
   application definitions must remain EUF-owned.
-- **Interface equality check:** for each SAT assignment, the EUF closure is
-  inspected for implied equalities between Real proxy constants that also occur
-  in LRA atoms. Those equalities are asserted into an augmented LRA check. The
-  reverse direction checks each shared Real-constant pair by adding `x < y` and
-  `y < x` to the current LRA assignment; if both conflict, `x = y` is asserted
-  into an augmented EUF check. A cross-theory conflict learns a broad
-  assignment-blocking clause over the current EUF and LRA theory literals.
+- **Interface equality check:** for each shared Real-constant/proxy pair, the
+  coordinator creates a positive SAT-visible equality atom. When the generated
+  equality literal is true in the current SAT assignment, the equality is
+  asserted into both EUF and LRA checks. A false generated equality literal is
+  not interpreted as an LRA disequality. After both theory checks accept the
+  current assignment, the EUF closure is inspected for implied equalities between
+  Real proxy constants that also occur in LRA atoms. The reverse direction checks
+  each shared Real-constant pair by adding `x < y` and `y < x` to the current LRA
+  assignment; if both conflict, LRA entails `x = y`. Either direction learns the
+  corresponding generated equality literal as a unit clause, and the next SAT
+  iteration lets the receiving theory produce any ordinary conflict with that
+  equality literal in its reason.
 - **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
-  EUF assignment and the LRA assignment. Add the first per-theory conflict
-  clause found and continue. If both individual checks pass, run the augmented
-  LRA check with EUF-implied proxy equalities. Return `sat` only when all three
-  checks accept the same Boolean assignment.
+  EUF assignment and the LRA assignment, augmented by currently true generated
+  interface equalities. Add the first per-theory conflict clause found and
+  continue. If both individual checks pass, force any newly implied generated
+  interface equality and continue. Return `sat` only when both theory checks
+  accept the same Boolean assignment and neither theory forces a new shared
+  equality.
 - **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
   QF_LRA definitions. For Real constants used as UF arguments, reconstruction
   first adds EUF-implied Real-constant equalities to the LRA model tableau, then
@@ -319,22 +333,23 @@ treating one theory's atoms as Boolean noise.
   `get-model`, shared-Real predicate `get-model` with a separating LRA repair,
   shared-Real predicate `get-model` when LRA forces equality, Real-valued UF
   application models, bounded shared-Real model-separation search over multiple
-  candidates, purification of non-constant Real arguments to EUF predicates with
-  proxy reuse and model printing, purification of Real-valued UF applications in
-  arithmetic atoms, an EUF-implied proxy equality that makes the LRA side
-  inconsistent, and an LRA-implied shared Real-constant equality that makes the
-  EUF side inconsistent.
+  candidates, positive SAT-visible interface equality forcing in both LRA-to-EUF
+  and EUF-to-LRA directions, purification of non-constant Real arguments to EUF
+  predicates with proxy reuse and model printing, purification of Real-valued UF
+  applications in arithmetic atoms, an EUF-implied proxy equality that makes the
+  LRA side inconsistent, and an LRA-implied shared Real-constant equality that
+  makes the EUF side inconsistent.
 
 Limitations:
 
 - purification is limited to Real-valued UF applications in arithmetic atoms
   and non-constant Real arguments in EUF atoms;
-- shared-variable equality propagation is final-check only and uses broad
-  assignment blocking rather than SAT-visible equality atoms or minimal
-  Nelson-Oppen explanations;
-- cross-theory conflicts use broad current-assignment blocking clauses, not
-  minimal Nelson-Oppen explanations;
-- no missing equality atom creation;
+- shared-variable equality propagation is final-check only;
+- generated interface equalities are positive-only: false generated equality
+  literals are not asserted as LRA disequalities;
+- cross-theory equality propagation uses generated unit equality literals, but
+  still lacks the minimal explanation machinery of a full Nelson-Oppen
+  implementation;
 - no model-equality guesses from de Moura/Bjorner;
 - Real-argument model reconstruction backtracks only up to a fixed candidate
   cap, currently 18 pairs, then records

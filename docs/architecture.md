@@ -207,18 +207,19 @@ Implemented now:
   definition equality. EUF atoms may also contain non-constant Real arguments:
   the same purification slice replaces each such arithmetic term with an
   internal Real proxy and adds the two LRA bounds that define the proxy as equal
-  to the arithmetic term. For the current SAT assignment, EUF-implied equalities
-  between Real proxies shared with LRA are asserted into a conservative
-  augmented LRA check. Conversely, when EUF atoms mention Real constants or
-  purified Real-argument proxies, LRA is queried for entailed equalities over
-  those shared constants by checking both strict disequality directions, and the
-  resulting equalities are asserted into an augmented EUF check. A cross-theory
-  conflict learns a broad clause blocking the current theory assignment. This is
-  intentionally not full Nelson-Oppen: fine-grained interface explanations,
-  SAT-visible missing equality creation, model-equality guesses, and unbounded
-  arrangement enumeration remain unsupported. Mixed model reconstruction uses a
-  bounded search over strict shared-Real separation orientations, with a greedy
-  fallback when the candidate set exceeds the current model-reconstruction cap.
+  to the arithmetic term. The coordinator creates positive SAT-visible equality
+  atoms for shared Real-constant/proxy pairs. For the current SAT assignment,
+  generated equality atoms that are true are asserted to both EUF and LRA;
+  equality atoms that are false are not treated as Real disequalities. EUF- or
+  LRA-implied shared equalities are learned as unit clauses over those generated
+  equality literals, after which the receiving theory reports any ordinary
+  conflict using that literal as part of its reason. This is intentionally not
+  full Nelson-Oppen: fine-grained minimal cross-theory explanations,
+  model-equality guesses, false-disequality arrangement enumeration, and
+  unbounded arrangement enumeration remain unsupported. Mixed model
+  reconstruction uses a bounded search over strict shared-Real separation
+  orientations, with a greedy fallback when the candidate set exceeds the
+  current model-reconstruction cap.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

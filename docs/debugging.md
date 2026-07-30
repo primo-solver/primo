@@ -294,6 +294,9 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.purification.reused-applications`
 - `:no.purification.reused-real-terms`
 - `:no.interface.shared-real-terms`
+- `:no.interface.sat-equality-atoms`
+- `:no.interface.sat-equalities-true`
+- `:no.interface.sat-equalities-forced`
 - `:no.interface.equalities-propagated`
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
@@ -308,13 +311,16 @@ These count internal proxy definitions in total, the split between Real-valued
 UF applications in arithmetic atoms and non-constant Real terms in EUF atoms,
 repeated uses of already-created application or Real-term proxies, Real proxy
 terms visible to both EUF and LRA, equality checks in each interface direction,
-current-assignment interface conflicts, and strict shared-Real separations added
-only while reconstructing mixed models. The model-separation search counters
-record the number of strict-order candidate pairs, whether the bounded
-backtracking cap was exceeded, and the LRA-consistency branches/backtracks tried
-inside that reconstruction step. `:no.interface.conflicts` currently learns a
-broad blocking clause over the assigned theory atoms, not a minimal
-Nelson-Oppen explanation.
+positive SAT-visible shared-Real equality atoms, how many of those generated
+atoms are true in the last checked SAT assignment, how many were forced by
+EUF/LRA equality propagation, and strict shared-Real separations added only
+while reconstructing mixed models. The model-separation search counters record
+the number of strict-order candidate pairs, whether the bounded backtracking cap
+was exceeded, and the LRA-consistency branches/backtracks tried inside that
+reconstruction step. `:no.interface.conflicts` is retained as the legacy broad
+blocking counter; the current positive-equality path should instead show
+activity in `:no.interface.sat-equalities-forced` and then ordinary EUF/LRA
+theory-conflict counters if the forced equality is inconsistent.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are
