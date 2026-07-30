@@ -550,9 +550,44 @@ alternatives considered before/while implementing it.
 
 ## Milestone roadmap
 
-See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
 Milestones 1-4 (above) are all done, plus disequality support and the
 recursion-removal pass -- QF_LRA is **supported**, not experimental.
+
+### Where QF_LRA work stands, and what is open (2026-07-30)
+
+**The whole remaining gap against z3 is one band.** On the 595-file scrambled
+competition set at 60s, Primo solves 373 to z3's 429 and cvc5's 351. The
+500KB-5MB band accounts for **all 56** of that deficit (Primo 45, z3 101 of
+174), and cvc5 solves only 9 of the 59 gap files there -- so it is a
+z3-specific capability, not general difficulty.
+
+**It is a constant factor, and a small one.** Re-run at 600s (job 117631),
+Primo solves 45 of those 59, median 167s. Against a 60s budget that is a
+median 2.8x. The payoff is near-linear, with no threshold to clear:
+
+| speedup | files recovered at 60s (of 59) |
+|---|---|
+| 2x | 15 |
+| 3x | 24 |
+| 5x | 37 |
+| 10x | 45 |
+
+**The cost is fill-in.** Rows holding 4.1-5.8 nonzeros when prepared merge
+21.7-91.1 terms during search, while entering columns reach up to 521 rows, so
+a single pivot can cost ~47,000 rational operations.
+
+**The open list is [](qf-lra-heuristics.md)'s section 6.5**, ranked by value
+per unit of work: D1 evaluate the row-based bound propagation Primo already
+has on this band (a benchmark run, nothing to implement); D2 floating-point
+guided basis selection; D3 dynamic offset-equality detection; D4 revised
+simplex with an LU-factored basis. Periodic refactorization was considered and
+**rejected** -- for an explicit tableau the density is a property of the basis
+reached, so there is nothing for it to discard.
+
+Ruled out already, so as not to be re-proposed: the sparse-pricing candidate
+cap (flat across a 60,000x range), fixed-equality slacks (item H7, ships
+opt-in, nets zero on this band), and preprocessing size (tableau dimensions
+match z3's within ~5%).
 
 - **Milestone 3b's real-benchmark impact**: a 500-case fuzz merge-gate
   re-run found zero wrong-answer disagreements against z3 (a real bug --
