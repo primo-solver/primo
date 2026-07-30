@@ -387,9 +387,11 @@ Current limitations:
   solved-constant substitutions, and ground-unit substitutions;
 - QF_LRA preprocessing reconstruction is limited to Real equalities recorded by
   solve-eqs/Gaussian elimination;
-- no array, Nelson-Oppen model-equality guess, or future preprocessing rewrite
-  is model-reconstructed unless it emits explicit reconstruction assignments and
-  the active model builder consumes them.
+- no array theory or future preprocessing rewrite is model-reconstructed unless
+  it emits explicit reconstruction assignments and the active model builder
+  consumes them. The optional QF_UFLRA model-equality branch is reconstructed
+  only as an ordinary true interface equality in the documented mixed model
+  subset, not as a full Nelson-Oppen arrangement object.
 
 ## Fuzzing and Reduction
 
