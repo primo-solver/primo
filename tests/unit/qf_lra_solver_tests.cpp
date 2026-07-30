@@ -533,6 +533,9 @@ void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
   assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 1);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 0);
 }
 
 void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
@@ -557,6 +560,31 @@ void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
   assert(result.statistics.get(":no.interface.model-equality-conflicts") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
   assert(result.statistics.get(":no.interface.sat-equalities-false") >= 1);
+}
+
+void qf_uf_lra_reports_syntactic_euf_care_pair_diagnostics() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 3);
+  assert(result.statistics.get(":no.interface.euf-care-checks") >= 1);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 3);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 2);
 }
 
 void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {
@@ -1736,6 +1764,7 @@ int main() {
   qf_uf_lra_guards_interface_equality_propagation_by_assignment();
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
+  qf_uf_lra_reports_syntactic_euf_care_pair_diagnostics();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();

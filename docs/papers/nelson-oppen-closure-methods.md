@@ -156,6 +156,10 @@ coordinator publishes:
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
+- `:no.interface.euf-care-checks`
+- `:no.interface.euf-care-full-pairs`
+- `:no.interface.euf-care-pairs`
+- `:no.interface.euf-care-pruned-pairs`
 - `:no.interface.model-separations`
 
 ## Primary Base Paper
@@ -396,6 +400,7 @@ treating one theory's atoms as Boolean noise.
   EUF-implied proxy equality combined with a lowered input Real disequality,
   LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
   source-split interface conflict counters for those receiving-theory conflicts,
+  diagnostic-only syntactic EUF care-pair counters over shared Real arguments,
   final arrangement validation before a non-model `sat` result,
   and a regression where default preprocessing solves away a UF equality before
   the remaining arithmetic formula dispatches to the LRA solver. It also covers
@@ -410,6 +415,10 @@ Limitations:
 - generated interface equalities are lazy: unentailed shared pairs do not create
   SAT atoms, and false generated equality literals are asserted only to EUF, not
   as native false-`Eq` LRA atoms;
+- EUF care-pair tracking is currently only a syntactic diagnostic over flat EUF
+  definitions. It is not used to prune equality propagation, does not add
+  clauses, and is not an implementation of the Jovanovic-Barrett care-set
+  algorithms;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;
@@ -545,6 +554,12 @@ distinguished from delivered, useful work.
   argument equality changes.
 - Track care-pair pruning counters and compare them with full cross-product
   delayed-combination counters.
+
+Primo currently implements only the last checklist item as a diagnostic: the
+mixed coordinator counts the full shared-Real cross product and the subset of
+pairs that appear as arguments below the same flat EUF function prefix. This is
+useful for measuring whether a future consumer could reduce work, but it is not
+yet used by the solver.
 
 ## Broader Combination-Property Context
 

@@ -238,6 +238,9 @@ Implemented now:
   separation check is also run before returning a non-model QF_UFLRA `sat`
   result, so the reported assignment has at least a checked Real-argument
   arrangement for the documented purification subset.
+  The mixed coordinator also reports diagnostic EUF care-pair counters for
+  shared Real arguments under the same flat EUF function prefix. These counters
+  are not consumed by search and do not implement care-set pruning.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
