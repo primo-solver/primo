@@ -287,11 +287,23 @@ class LraTableau {
   // over this tableau's lifetime, snapshot for a per-round delta):
   //
   // fixed_variable_count: basic variables observed to become fixed.
-  // elimination_pivot_count: pivots spent eliminating them -- separable from
-  //   the repair pivots that also land in pivot_count().
-  // eliminated_row_count: rows actually deactivated, i.e. the ones that left
-  //   the working set. The gap between this and fixed_variable_count is how
-  //   often no unbounded entering candidate was available.
+  // elimination_pivot_count: pivots spent eliminating them. The shortfall
+  //   against fixed_variable_count is the eliminations that did not happen at
+  //   all -- an empty row, or every candidate already fixed itself.
+  // eliminated_row_count: rows actually frozen out of the working set. The
+  //   shortfall against elimination_pivot_count is pivots whose resulting row
+  //   could not be frozen (its variable was bounded, or boundable), and it is
+  //   0 by construction when set_freeze_eliminated_rows(false) is in effect.
+  //
+  // These all count into pivot_count() as well, since they are real pivots.
+  // The published :lra.pivots statistic is a different matter and is NOT
+  // comparable across an H7 ablation on its own: check_sat.cpp samples it as
+  // a delta around check(), while elimination pivots happen inside
+  // assert_upper/assert_lower, so they fall outside that window entirely.
+  // :lra.pivots dropping with H7 on therefore does not by itself mean less
+  // pivoting -- add :lra.elimination-pivots, or compare
+  // :lra.pivot-row-updates / :lra.pivot-term-ops, which count every pivot's
+  // actual work regardless of where it was triggered.
   std::size_t fixed_variable_count() const { return fixed_variable_count_; }
   std::size_t eliminated_row_count() const { return eliminated_row_count_; }
   std::size_t elimination_pivot_count() const { return elimination_pivot_count_; }
