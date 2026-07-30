@@ -17,6 +17,12 @@ using primo::util::StatKey;
 
 namespace {
 
+CheckSatOptions no_preprocessing() {
+  CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  return options;
+}
+
 void accepts_set_logic_and_real_declarations() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -140,22 +146,125 @@ void rejects_general_term_division() {
   assert(result.message.find("/ is only supported between rational literals") != std::string::npos);
 }
 
-void rejects_combined_equality_and_arithmetic() {
-  // Uses an uninterpreted-sort equality alongside a Real comparison -- a
-  // genuine EUF+LRA mix. (= x y) between two *Real* terms is itself a pure
-  // QF_LRA atom (see real_equality_is_not_misclassified_as_euf below), not
-  // a case of this rejection.
+void accepts_separable_qf_uf_lra_mix() {
   const auto result = check_sat_smtlib(R"(
-    (set-logic QF_LRA)
+    (set-logic QF_UFLRA)
     (declare-sort U 0)
     (declare-fun a () U)
     (declare-fun b () U)
     (declare-fun x () Real)
-    (assert (or (= a b) (<= x 5)))
+    (assert (not (= a b)))
+    (assert (< 0 x))
+    (assert (< x 1))
     (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.mixed.euf-atoms") > 0);
+  assert(result.statistics.get(":no.mixed.lra-atoms") > 0);
+}
+
+void qf_uf_lra_mix_learns_euf_conflicts() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) U)
+    (declare-fun x () Real)
+    (assert (= a b))
+    (assert (not (= (f a) (f b))))
+    (assert (< 0 x))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(StatKey::TheoryConflicts) > 0);
+}
+
+void qf_uf_lra_mix_learns_lra_conflicts() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (assert (= a b))
+    (assert (< x 0))
+    (assert (< 1 x))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(StatKey::LraTheoryConflicts) > 0);
+}
+
+void qf_uf_lra_get_model_is_not_supported_yet() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (assert (= a b))
+    (assert (< 0 x))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("get-model for mixed QF_UFLRA") != std::string::npos);
+}
+
+void qf_uf_lra_get_model_rejects_original_mix_after_preprocessing() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (assert (= a b))
+    (assert (< 0 x))
+    (check-sat)
+    (get-model)
   )");
   assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("QF_UFLRA") != std::string::npos);
+  assert(result.message.find("get-model for mixed QF_UFLRA") != std::string::npos);
+}
+
+void qf_uf_lra_real_predicate_arguments_need_equality_sharing() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (p x))
+    (assert (< 0 x))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("EUF atoms over Real terms") != std::string::npos);
+}
+
+void qf_uf_lra_real_valued_applications_need_purification() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) Real)
+    (assert (= a b))
+    (assert (< (f a) 1))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("Real-valued uninterpreted applications") != std::string::npos);
 }
 
 void real_equality_is_not_misclassified_as_euf() {
@@ -1240,7 +1349,13 @@ int main() {
   rejects_two_variable_multiplication();
   rejects_three_operand_multiplication();
   rejects_general_term_division();
-  rejects_combined_equality_and_arithmetic();
+  accepts_separable_qf_uf_lra_mix();
+  qf_uf_lra_mix_learns_euf_conflicts();
+  qf_uf_lra_mix_learns_lra_conflicts();
+  qf_uf_lra_get_model_is_not_supported_yet();
+  qf_uf_lra_get_model_rejects_original_mix_after_preprocessing();
+  qf_uf_lra_real_predicate_arguments_need_equality_sharing();
+  qf_uf_lra_real_valued_applications_need_purification();
   real_equality_is_not_misclassified_as_euf();
   detects_direct_bound_conflict();
   detects_conflict_requiring_an_actual_pivot();

@@ -7,8 +7,11 @@ Primo is organized as layered components with explicit data ownership. This page
 - `smtlib/` parses SMT-LIB commands into lightweight syntax objects.
 - `core/` owns sorts, symbols, and hash-consed terms.
 - `sat/` owns propositional variables, literals, clauses, assumptions, and the CaDiCaL/IPASIR backend adapter.
-- `smt/` owns SMT-LIB command processing, QF_UF preprocessing, Boolean abstraction, clausification, and the current lazy QF_UF loop.
-- `theory/` owns equality reasoning and congruence closure.
+- `smt/` owns SMT-LIB command processing, preprocessing, Boolean abstraction,
+  clausification, QF_UF/QF_LRA solver orchestration, and the current separable
+  mixed QF_UFLRA coordinator.
+- `theory/` owns equality reasoning, congruence closure, and arithmetic
+  tableau solving.
 
 ## Boundaries
 
@@ -165,6 +168,9 @@ Implemented now:
 - Boolean clausification for assertions.
 - Lazy QF_UF checking over equality atoms and Boolean predicate applications.
 - Non-incremental congruence closure for the current SAT assignment.
+- QF_LRA solving for linear Real arithmetic through a Simplex tableau with
+  CaDiCaL/IPASIR-UP integration, same-variable bound propagation, and default
+  sparse pivot heuristics.
 - Conservative QF_UF SMT-LIB model printing for `check-sat` followed by
   `get-model` when `:produce-models true` is set. `smt::ModelBuilder` rebuilds
   a ground EUF closure over `core::TermId` values, prints definitions for
@@ -184,6 +190,12 @@ Implemented now:
   as `Visible` or `Missing`. This is bookkeeping only; it does not create
   equality atoms, propagate interface equalities, combine theories, or inspect
   theory-local models.
+- Separable mixed QF_UFLRA final checks in `smt::solve_qf_uf_lra`. The SMT
+  layer accepts one SAT assignment, partitions visible theory atoms into EUF
+  and LRA atoms, checks both theories independently, and learns the first
+  ordinary theory conflict clause it finds. This is intentionally not full
+  Nelson-Oppen: formulas needing purification, Real terms inside EUF atoms, and
+  mixed `get-model` are reported as unsupported.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -194,10 +206,10 @@ Not implemented yet:
 - model construction for mixed-theory fragments, arithmetic functions beyond
   nullary `Real` constants, and reconstruction through future
   satisfiability-preserving rewrites outside the current preprocessing trail.
-- Nelson-Oppen theory combination, model-equality propagation, care sets, and
-  SAT atom creation for missing interface equalities.
+- Nelson-Oppen theory combination with purification, shared-variable equality
+  propagation, model-equality propagation, care sets, and SAT atom creation for
+  missing interface equalities.
 - explanation-producing congruence closure with proof forests.
-- arithmetic theory solving.
 
 ## Paper Traceability
 

@@ -3,9 +3,10 @@
 ## Status
 
 This is a literature and design-intake note for the
-`nelson-oppen-closure-methods` branch. It now also records the first
-implemented scaffold: read-only interface bookkeeping. It does not claim that
-Primo implements Nelson-Oppen combination yet.
+`nelson-oppen-closure-methods` branch. It now also records the implemented
+scaffolds: read-only interface bookkeeping and a deliberately separable mixed
+QF_UFLRA final-check coordinator. It does not claim that Primo implements
+Nelson-Oppen equality sharing yet.
 
 The intended project is to add theory-combination closure mechanisms based on
 Nelson-Oppen-style equality sharing, with de Moura and Bjorner's
@@ -16,22 +17,19 @@ C++ types, invariants, tests, and counters.
 
 ## Current Primo Baseline
 
-Primo currently has a QF_UF-focused DPLL(T) path and EUF congruence closure.
-There is no documented general Nelson-Oppen combination layer in `docs/`, and a
-repository search for "Nelson" or "Oppen" only finds retrospective or
-literature references, not a current implementation note.
+Primo currently has QF_UF and QF_LRA DPLL(T) paths, EUF congruence closure, and
+an LRA Simplex tableau. There is no general Nelson-Oppen combination layer yet.
+The current branch adds a small mixed-theory coordinator only for formulas that
+remain separable after preprocessing.
 
-Primo now has a conservative QF_UF SMT-LIB `get-model` path for scripts that
-set `:produce-models true`: `check-sat` can return a model string, and
-`smt::ModelBuilder` prints definitions for user-declared UF constants,
-functions, and predicates from a ground EUF closure over the accepted SAT
-assignment. This is still narrower than the model object needed for
-model-guided Nelson-Oppen combination. `core::Model` remains a placeholder, the
-model builder is QF_UF-specific, and satisfiability-preserving preprocessing
-must emit explicit reconstruction assignments when it removes user-visible
-facts. The current QF_UF path reconstructs Boolean/forced unit facts,
-solved-constant substitutions, and ground-unit substitutions before printing the
-model.
+Primo now has conservative pure-theory SMT-LIB `get-model` paths: QF_UF prints
+definitions for user-declared UF constants, functions, and predicates from a
+ground EUF closure, and QF_LRA prints user-declared nullary Real constants from
+the final tableau assignment. These are still narrower than the model object
+needed for model-guided Nelson-Oppen combination. `core::Model` remains a
+placeholder, mixed QF_UFLRA model printing is unsupported, and
+satisfiability-preserving preprocessing must emit explicit reconstruction
+assignments when it removes user-visible facts.
 
 This conservative model printer is a prerequisite for model-guided combination:
 without a concrete model object, "model equality" can easily degrade into an
@@ -64,11 +62,30 @@ constants, and reports the same information through `check_sat` statistics:
 - `:no.interface.missing-visible-equalities`
 
 This deliberately does not implement equality propagation, model-equality
-guessing, care sets, purification, mixed-theory solving, or missing equality
-atom creation. It is a measurement and API-shaping step while LRA remains on a
-separate development branch. The scan is guarded by the explicit
+guessing, care sets, purification, or missing equality atom creation. It is a
+measurement and API-shaping step. The scan is guarded by the explicit
 `--nelson-oppen-diagnostics` CLI flag so ordinary benchmark runs do not pay for
 extra interface traversal.
+
+The mixed QF_UFLRA support in `src/smt/check_sat.cpp` is separate from that
+diagnostic analyzer. `solve_qf_uf_lra` builds one SAT abstraction, partitions
+the visible theory atoms into EUF and LRA atoms, and then performs independent
+final checks against the accepted SAT assignment. An EUF conflict learns the
+ordinary EUF explanation clause; an LRA conflict learns the ordinary LRA
+Farkas/bound explanation clause. If both theory checks accept the assignment,
+the formula is reported `sat`.
+
+This is sound only for the implemented separable subset. It rejects
+Real-valued uninterpreted applications inside arithmetic atoms because those
+need purification, and it rejects EUF atoms that mention Real-sorted terms
+because those need Nelson-Oppen equality sharing. It also rejects
+`:produce-models true` on mixed QF_UFLRA, because Primo currently has only
+pure-theory model printers. The coordinator publishes:
+
+- `:solver.qf-uflra`
+- `:no.mixed.euf-atoms`
+- `:no.mixed.lra-atoms`
+- `:no.interface.conflicts`
 
 ## Primary Base Paper
 
@@ -194,8 +211,42 @@ Limitations:
 - no theory ownership labels beyond sort partitioning;
 - no care-pair API;
 - no explanations or learned clauses;
-- no arithmetic model fragments, because LRA is intentionally not part of this
-  branch yet.
+- no mixed-theory model object.
+
+### Implemented Subset: Separable Mixed QF_UFLRA Final Checks
+
+This subset is a conservative bridge, not a Nelson-Oppen algorithm. It exists so
+the branch can execute simple QF_UFLRA scripts without silently treating one
+theory's atoms as Boolean noise.
+
+- **Data structures:** no new cross-theory ownership type is introduced. The
+  coordinator reuses `BooleanClausifier::TheoryAtom`, `PreparedFlatTheory`,
+  `PreparedLraTheory`, `AssignedTheoryAtom`, and ordinary SAT clauses.
+- **Owner:** `smt/check_sat.cpp`, because it owns the Boolean abstraction and
+  solver dispatch.
+- **Accepted shape:** EUF atoms over uninterpreted or Boolean terms, plus LRA
+  atoms over linear Real terms, as long as no atom crosses the theory boundary.
+- **Rejected shape:** arithmetic atoms containing uninterpreted applications,
+  and EUF predicate/equality atoms containing Real-sorted subterms.
+- **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
+  EUF assignment and the LRA assignment independently. Add the first conflict
+  clause found and continue; return `sat` only when both checks accept the same
+  Boolean assignment.
+- **Model status:** mixed `get-model` is `Unsupported`. The pure QF_UF and pure
+  QF_LRA model printers are not composed.
+- **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
+  mix, EUF-conflict learning, LRA-conflict learning, unsupported mixed
+  `get-model`, rejection of Real arguments to EUF predicates, and rejection of
+  Real-valued UF applications in arithmetic atoms.
+
+Limitations:
+
+- no purification;
+- no shared-variable equality propagation;
+- no missing equality atom creation;
+- no model-equality guesses from de Moura/Bjorner;
+- no arrangement enumeration for non-convex combinations;
+- no mixed-theory model reconstruction.
 
 ## Core Nelson-Oppen Sources
 

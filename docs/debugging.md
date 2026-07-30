@@ -285,11 +285,12 @@ documented; add a new key instead of changing the meaning of an old one.
 
 ## Model Validation
 
-Primo supports a conservative QF_UF `get-model` response for scripts that set
-`:produce-models true` and call `get-model` after `check-sat`. The printed
-model is intended to be validated as an SMT-LIB response file: stdout starts
-with `sat`, followed by a parenthesized `model` containing `define-fun`
-definitions for user-declared constants, functions, and predicates.
+Primo supports conservative pure-theory `get-model` responses for scripts that
+set `:produce-models true` and call `get-model` after `check-sat`. QF_UF
+prints definitions for user-declared constants, functions, and predicates;
+QF_LRA prints user-declared nullary `Real` constants. The printed model is
+intended to be validated as an SMT-LIB response file: stdout starts with `sat`,
+followed by a parenthesized `model`.
 
 Use [Dolmen](https://ceur-ws.org/Vol-3429/short9.pdf) as the independent
 model-format and assertion validator. Dolmen's model-validation interface uses a
@@ -312,13 +313,16 @@ repository.
 
 Current limitations:
 
-- only `QF_UF` and pure Boolean model values are printed;
+- only pure `QF_UF`, pure Boolean, and pure nullary-Real `QF_LRA` model values
+  are printed;
 - unsupported, unknown, and unsat results do not print a model;
 - QF_UF preprocessing reconstruction is limited to Boolean/forced unit facts,
   solved-constant substitutions, and ground-unit substitutions;
-- no model reconstruction is implemented for future arithmetic, arrays,
-  Nelson-Oppen combination fragments, or future preprocessing rewrites that do
-  not emit reconstruction assignments.
+- QF_LRA preprocessing reconstruction is limited to Real equalities recorded by
+  solve-eqs/Gaussian elimination;
+- no mixed QF_UFLRA, array, Nelson-Oppen combination, or future preprocessing
+  rewrite is model-reconstructed unless it emits explicit reconstruction
+  assignments and the active pure-theory model builder consumes them.
 
 ## Fuzzing and Reduction
 

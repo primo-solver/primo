@@ -702,7 +702,7 @@ class Frontend {
         }
         return;
       case smtlib::CommandKind::SetLogic:
-        if (command.logic != "QF_UF" && command.logic != "QF_LRA") {
+        if (command.logic != "QF_UF" && command.logic != "QF_LRA" && command.logic != "QF_UFLRA") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
         }
         return;
@@ -1765,6 +1765,20 @@ bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   }
   for (const core::TermId child : term.children) {
     if (contains_equality(terms, child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool contains_euf_predicate_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if ((term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
+      term.sort == terms.symbols().bool_sort()) {
+    return true;
+  }
+  for (const core::TermId child : term.children) {
+    if (contains_euf_predicate_atom(terms, child)) {
       return true;
     }
   }
@@ -4413,6 +4427,86 @@ std::vector<AssignedTheoryAtom> assigned_atoms_from_backend(
   return assigned_atoms;
 }
 
+std::vector<AssignedTheoryAtom> assigned_atoms_from_backend(
+    const sat::IpasirUpBackend& backend,
+    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms, PureTheoryFilterMode mode) {
+  std::vector<AssignedTheoryAtom> assigned_atoms;
+  assigned_atoms.reserve(theory_atoms.size());
+  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
+    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+    const std::optional<bool> assignment = backend.value(var);
+    if (!assignment.has_value()) {
+      throw UnsupportedInput("SAT backend did not assign theory atom");
+    }
+    const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
+    assigned_atoms.push_back(assigned_theory_atom(mode, atom, atom_value));
+  }
+  return assigned_atoms;
+}
+
+bool is_lra_theory_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+    return true;
+  }
+  return term.kind == core::TermKind::Equality &&
+         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+}
+
+bool is_euf_theory_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Equality) {
+    return terms.get(term.children.at(0)).sort != terms.symbols().real_sort();
+  }
+  return (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
+         term.sort == terms.symbols().bool_sort();
+}
+
+bool contains_real_sorted_term(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.sort == terms.symbols().real_sort()) {
+    return true;
+  }
+  for (const core::TermId child : term.children) {
+    if (contains_real_sorted_term(terms, child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool contains_application_term(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Application) {
+    return true;
+  }
+  for (const core::TermId child : term.children) {
+    if (contains_application_term(terms, child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void require_supported_mixed_theory_atom(const core::TermManager& terms,
+                                         const BooleanClausifier::TheoryAtom& atom) {
+  if (is_euf_theory_atom(terms, atom.term)) {
+    if (contains_real_sorted_term(terms, atom.term)) {
+      throw UnsupportedInput(
+          "QF_UFLRA with EUF atoms over Real terms needs Nelson-Oppen equality sharing");
+    }
+    return;
+  }
+  if (is_lra_theory_atom(terms, atom.term)) {
+    if (contains_application_term(terms, atom.term)) {
+      throw UnsupportedInput(
+          "QF_UFLRA with Real-valued uninterpreted applications needs purification");
+    }
+    return;
+  }
+  throw UnsupportedInput("unsupported mixed-theory atom");
+}
+
 // Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
 // the precomputed base tableau (cheap relative to re-normalizing every
 // atom from its term representation, which the copy skips entirely) and
@@ -4422,7 +4516,6 @@ std::vector<AssignedTheoryAtom> assigned_atoms_from_backend(
 // when it is, OnlineLraPropagator (below) is strictly better (real
 // incremental reuse via LraTableau::push/pop) and is always preferred, so
 // this would otherwise be dead code.
-#if !PRIMO_HAVE_IPASIR
 std::optional<sat::Clause> find_incremental_lra_theory_conflict(
     const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& atoms) {
   if (atoms.size() != prepared.atoms.size()) {
@@ -4446,7 +4539,6 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 
   return tableau.check();
 }
-#endif  // !PRIMO_HAVE_IPASIR
 
 #if PRIMO_HAVE_IPASIR
 // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
@@ -5599,6 +5691,127 @@ CheckSatOutcome solve_qf_lra(
   return outcome;
 }
 
+CheckSatOutcome solve_qf_uf_lra(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<TheoryModelAssignment>& /*preprocessing_model_assignments*/) {
+  if (options.produce_model) {
+    return CheckSatOutcome{CheckSatResult::Unsupported,
+                           "get-model for mixed QF_UFLRA is not supported", statistics, ""};
+  }
+
+  statistics.increment(":solver.qf-uflra");
+  sat::CadicalBackend backend(options.cadical_options);
+  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
+  for (const core::TermId assertion : assertions) {
+    clausifier.assert_formula(assertion);
+  }
+
+  std::vector<BooleanClausifier::TheoryAtom> euf_atoms;
+  std::vector<BooleanClausifier::TheoryAtom> lra_atoms;
+  euf_atoms.reserve(clausifier.theory_atoms().size());
+  lra_atoms.reserve(clausifier.theory_atoms().size());
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    require_supported_mixed_theory_atom(terms, atom);
+    if (is_lra_theory_atom(terms, atom.term)) {
+      lra_atoms.push_back(atom);
+    } else {
+      euf_atoms.push_back(atom);
+    }
+  }
+
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
+  statistics.set(":no.mixed.lra-atoms", lra_atoms.size());
+  statistics.set(":no.interface.conflicts", 0);
+  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
+  publish_sat_stats(backend.statistics(), statistics);
+
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    if (options.theory_phase == TheoryPhaseMode::Negative ||
+        options.theory_phase == TheoryPhaseMode::Auto) {
+      backend.phase(sat::Lit{-atom.lit.value});
+      statistics.increment(kStatSatTheoryNegativePhase);
+    } else if (options.theory_phase == TheoryPhaseMode::Positive) {
+      backend.phase(atom.lit);
+    } else if (options.theory_phase == TheoryPhaseMode::Polarity) {
+      if (atom.occurs_negative && !atom.occurs_positive) {
+        backend.phase(sat::Lit{-atom.lit.value});
+        statistics.increment(kStatSatTheoryNegativePhase);
+      } else if (atom.occurs_positive && !atom.occurs_negative) {
+        backend.phase(atom.lit);
+      }
+    }
+  }
+
+  const core::TermId true_term = terms.mk_bool(true);
+  const core::TermId false_term = terms.mk_bool(false);
+  std::optional<PreparedFlatTheory> prepared_flat_theory;
+  if (!euf_atoms.empty() && options.euf_engine == EufEngine::Incremental) {
+    prepared_flat_theory.emplace(terms, euf_atoms, true_term, false_term,
+                                 options.euf_explain_search, options.euf_proof_forest_diagnostics);
+  }
+  const PreparedLraTheory prepared_lra_theory(
+      terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination, false);
+  publish_lra_tableau_shape_stats(prepared_lra_theory.base_tableau, statistics);
+
+  while (true) {
+    statistics.increment(kStatSatSolveCalls);
+    const sat::SatResult sat_result = backend.solve();
+    publish_sat_stats(backend.statistics(), statistics);
+    if (sat_result != sat::SatResult::Sat) {
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
+    }
+
+    std::optional<sat::Clause> euf_conflict;
+    if (!euf_atoms.empty()) {
+      statistics.increment(kStatTheoryChecks);
+      const std::vector<AssignedTheoryAtom> euf_assignments =
+          assigned_atoms_from_backend(backend, euf_atoms, options.pure_theory_filter);
+      for (const AssignedTheoryAtom& atom : euf_assignments) {
+        count_filtered_assignment(atom, statistics);
+      }
+      if (prepared_flat_theory.has_value()) {
+        euf_conflict = find_incremental_theory_conflict(prepared_flat_theory.value(),
+                                                        euf_assignments, statistics);
+      } else {
+        euf_conflict = find_theory_conflict(terms, euf_assignments, true_term, false_term);
+      }
+    }
+    if (euf_conflict.has_value()) {
+      statistics.increment(kStatTheoryConflicts);
+      if (euf_conflict->empty()) {
+        publish_sat_stats(backend.statistics(), statistics);
+        return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+      }
+      backend.add_clause(euf_conflict.value());
+      publish_sat_stats(backend.statistics(), statistics);
+      continue;
+    }
+
+    statistics.increment(kStatLraTheoryChecks);
+    const std::vector<AssignedTheoryAtom> lra_assignments =
+        assigned_atoms_from_backend(backend, lra_atoms);
+    std::optional<sat::Clause> lra_conflict =
+        find_incremental_lra_theory_conflict(prepared_lra_theory, lra_assignments);
+    if (lra_conflict.has_value()) {
+      statistics.increment(kStatLraTheoryConflicts);
+      if (lra_conflict->empty()) {
+        publish_sat_stats(backend.statistics(), statistics);
+        return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+      }
+      backend.add_clause(lra_conflict.value());
+      publish_sat_stats(backend.statistics(), statistics);
+      continue;
+    }
+
+    publish_sat_stats(backend.statistics(), statistics);
+    return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
+  }
+}
+
 }  // namespace
 
 void refresh_active_solve_stats() {
@@ -5836,6 +6049,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         return finish(CheckSatResult::Unsupported, "get-model requires :produce-models true");
       }
       options.produce_model = true;
+    }
+    if (options.produce_model) {
+      bool original_has_euf = false;
+      bool original_has_arithmetic = false;
+      for (const core::TermId assertion : assertions) {
+        original_has_euf = original_has_euf || contains_equality(frontend.terms(), assertion) ||
+                           contains_euf_predicate_atom(frontend.terms(), assertion);
+        original_has_arithmetic =
+            original_has_arithmetic || contains_arithmetic_atom(frontend.terms(), assertion);
+      }
+      if (original_has_euf && original_has_arithmetic) {
+        return finish(CheckSatResult::Unsupported, "get-model for mixed QF_UFLRA is not supported");
+      }
     }
 
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
@@ -6232,11 +6458,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       }
       return false;
     }();
-    if (has_equality && has_arithmetic) {
-      // QF_UF + QF_LRA combination (QF_UFLRA) would need real Nelson-Oppen
-      // style theory combination -- out of scope; reject rather than
-      // silently mishandle one theory's atoms.
-      throw UnsupportedInput("combined equality and arithmetic (QF_UFLRA) is not supported");
+    const bool has_euf_predicate = [&] {
+      for (const core::TermId assertion : assertions) {
+        if (contains_euf_predicate_atom(frontend.terms(), assertion)) {
+          return true;
+        }
+      }
+      return false;
+    }();
+    if ((has_equality || has_euf_predicate) && has_arithmetic) {
+      const PhaseClock::time_point solve_start = PhaseClock::now();
+      return finish_solve(solve_qf_uf_lra(frontend.terms(), assertions, solve_options, statistics,
+                                          preprocessing_model_assignments),
+                          solve_start);
     }
     if (has_arithmetic) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
