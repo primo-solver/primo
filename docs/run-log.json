@@ -12561,6 +12561,78 @@
       },
       "evidence_status": "current",
       "followups": "This is still final-check-only equality sharing with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, non-constant Real-term purification in EUF atoms, shared-Real model reconstruction, and SLURM-scale mixed fuzzing remain future work."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-real-argument-models-d8005a6",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local merge-gate answer fuzz plus Dolmen model validation for mixed QF_UFLRA get-model support where UF symbols take Real constants as arguments. This covers the model repair that adds EUF-implied Real-constant equalities and strict separations for EUF-distinct Real constants before printing UF tables.",
+      "commit": "d8005a6 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: d8005a6; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260733 --timeout 5 --shape shared-real --out fuzz-results/qf_uflra-shared-real-model-d8005a6",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uf-preprocess=off --solver-arg=--no-solved-constant-substitution --timeout 5 --dolmen-timeout 10 --limit 200 --out results/qf_uflra-shared-real-model-validation-d8005a6-self fuzz-results/qf_uflra-shared-real-model-d8005a6/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape shared-real",
+        "logic": "QF_UFLRA",
+        "seed": 20260733,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "model_validation_limit": 200,
+        "manifest": "generated under fuzz-results/qf_uflra-shared-real-model-d8005a6/cases/"
+      },
+      "artifacts": {
+        "answer_summary": "fuzz-results/qf_uflra-shared-real-model-d8005a6/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uflra-shared-real-model-d8005a6/cases/",
+        "model_validation_summary": "results/qf_uflra-shared-real-model-validation-d8005a6-self/summary.csv",
+        "model_validation_artifacts": "results/qf_uflra-shared-real-model-validation-d8005a6-self/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 677,
+        "answer_fuzz_unsat": 323,
+        "model_validation_total": 200,
+        "model_validation_pass": 138,
+        "model_validation_not_sat": 62,
+        "model_validation_model_error": 0,
+        "model_validation_solver_error": 0,
+        "model_validation_timeout": 0
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers shared Real predicate get-model with a separating LRA repair, shared Real predicate get-model when LRA forces equality, continued rejection of Real-valued UF result models, and continued rejection of non-constant Real arguments in EUF atoms.",
+        "local_gates": "make check, make docs, make lint, make asan-test, clang-tidy -p build src/smt/check_sat.cpp src/smt/model_builder.cpp tests/unit/qf_lra_solver_tests.cpp, git diff --check, solver_efficiency_snapshot.py, and Primo document-critic stale-claim scan all passed before this entry. A pre-commit Dolmen run found 17 model errors in 200 generated cases; the committed fix reran the same class with 0 model errors."
+      },
+      "evidence_status": "current",
+      "followups": "This remains a model-reconstruction milestone, not full Nelson-Oppen. Equality sharing is still final-check-only with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, non-constant Real-term purification in EUF atoms, Real-valued UF result models, backtracking arrangement search for model separations, model-guided equality guesses from de Moura/Bjorner, and SLURM-scale mixed fuzzing remain future work."
     }
   ]
 }
