@@ -98,7 +98,13 @@ if (( TASK_ID >= total_tasks )); then
   exit 0
 fi
 
-"$SOLVER_BIN" --version || true
+# PRIMO_FUZZ_SOLVER may carry flags (e.g. "path/primo --lra-fixed-elimination"),
+# since every --solver use below interpolates it into a string that
+# fuzz_external.py shlex-splits. The provenance banner has to take just the
+# binary, or it degrades into a "command not found" that `|| true` hides --
+# and that banner is the only record of which build a gate actually ran.
+IFS=' ' read -r -a solver_words <<< "$SOLVER_BIN"
+"${solver_words[0]}" --version || true
 
 if (( TASK_ID < opfuzz_start )); then
   shard=$TASK_ID
