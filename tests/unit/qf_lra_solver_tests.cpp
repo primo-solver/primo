@@ -248,18 +248,55 @@ void qf_uf_lra_get_model_rejects_real_valued_uf_applications() {
   assert(result.message.find("Real-sorted UF symbols") != std::string::npos);
 }
 
-void qf_uf_lra_real_predicate_arguments_need_equality_sharing() {
+void qf_uf_lra_nonconstant_real_predicate_arguments_need_purification() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
     (declare-fun p (Real) Bool)
-    (assert (p x))
+    (assert (p (+ x 1)))
     (assert (< 0 x))
     (check-sat)
   )",
                                        no_preprocessing());
   assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("EUF atoms over Real terms") != std::string::npos);
+  assert(result.message.find("non-constant Real terms") != std::string::npos);
+}
+
+void qf_uf_lra_shares_lra_implied_real_equalities_with_euf() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+}
+
+void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
 }
 
 void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {
@@ -1396,7 +1433,9 @@ int main() {
   qf_uf_lra_mix_learns_lra_conflicts();
   qf_uf_lra_prints_separable_mixed_model();
   qf_uf_lra_get_model_rejects_real_valued_uf_applications();
-  qf_uf_lra_real_predicate_arguments_need_equality_sharing();
+  qf_uf_lra_nonconstant_real_predicate_arguments_need_purification();
+  qf_uf_lra_shares_lra_implied_real_equalities_with_euf();
+  qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   real_equality_is_not_misclassified_as_euf();

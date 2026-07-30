@@ -204,10 +204,14 @@ Implemented now:
   replaces each such application with an internal Real proxy and adds an EUF
   definition equality. For the current SAT assignment, EUF-implied equalities
   between Real proxies shared with LRA are asserted into a conservative
-  augmented LRA check; a conflict learns a broad clause blocking the current
-  theory assignment. This is intentionally not full Nelson-Oppen: Real terms in
-  EUF predicates/non-definition atoms, fine-grained interface explanations, and
-  mixed models for shared-Real terms remain unsupported.
+  augmented LRA check. Conversely, when EUF atoms mention Real constants, LRA is
+  queried for entailed equalities over those shared constants by checking both
+  strict disequality directions, and the resulting equalities are asserted into
+  an augmented EUF check. A cross-theory conflict learns a broad clause blocking
+  the current theory assignment. This is intentionally not full Nelson-Oppen:
+  non-constant Real terms in EUF atoms, fine-grained interface explanations,
+  SAT-visible missing equality creation, and mixed models for shared-Real terms
+  remain unsupported.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

@@ -5,9 +5,9 @@
 This is a literature and design-intake note for the
 `nelson-oppen-closure-methods` branch. It now also records the implemented
 scaffolds: read-only interface bookkeeping and a partial mixed QF_UFLRA
-coordinator with Real-valued UF-application purification and one-way
-EUF-to-LRA proxy equality checks. It does not claim that Primo implements the
-full Nelson-Oppen procedure yet.
+coordinator with Real-valued UF-application purification, EUF-to-LRA proxy
+equality checks, and LRA-to-EUF equality checks over shared Real constants. It
+does not claim that Primo implements the full Nelson-Oppen procedure yet.
 
 The intended project is to add theory-combination closure mechanisms based on
 Nelson-Oppen-style equality sharing, with de Moura and Bjorner's
@@ -83,16 +83,19 @@ layer replaces each such application with a fresh internal Real proxy and adds
 a definition equality between the proxy and the UF application. That definition
 is handled by EUF; the purified arithmetic atom is handled by LRA. For the
 current SAT assignment, EUF-implied equalities between Real proxies visible to
-LRA are asserted into an augmented LRA check. If that augmented check conflicts,
-the solver learns a broad clause blocking the current theory assignment and
-continues.
+LRA are asserted into an augmented LRA check. In the other direction, EUF
+predicate atoms may mention shared Real constants; after the LRA assignment is
+consistent, the coordinator checks whether LRA entails equality for each shared
+Real-constant pair by proving both strict orders inconsistent. Entailed
+equalities are asserted into an augmented EUF check. If either augmented check
+conflicts, the solver learns a broad clause blocking the current theory
+assignment and continues.
 
-This is sound only for the implemented partial subset. It rejects EUF predicates
-and non-definition EUF atoms that mention Real-sorted terms because those need
-bidirectional Nelson-Oppen equality sharing. It also rejects mixed
-`:produce-models true` when the UF signature or EUF atoms mention `Real`,
-because those models need shared-Real reconstruction rather than a pure-theory
-composition. The coordinator publishes:
+This is sound only for the implemented partial subset. It rejects EUF atoms that
+mention non-constant Real-sorted terms because those still need purification. It
+also rejects mixed `:produce-models true` when the UF signature or EUF atoms
+mention `Real`, because those models need shared-Real reconstruction rather
+than a pure-theory composition. The coordinator publishes:
 
 - `:solver.qf-uflra`
 - `:no.mixed.euf-atoms`
@@ -101,6 +104,8 @@ composition. The coordinator publishes:
 - `:no.purification.reused-applications`
 - `:no.interface.shared-real-terms`
 - `:no.interface.equalities-propagated`
+- `:no.interface.euf-to-lra-equalities`
+- `:no.interface.lra-to-euf-equalities`
 - `:no.interface.conflicts`
 
 ## Primary Base Paper
@@ -256,9 +261,10 @@ treating one theory's atoms as Boolean noise.
   application `TermId` to internal proxy `TermId`.
 - **Owner:** `smt/check_sat.cpp`, because it owns the Boolean abstraction and
   solver dispatch.
-- **Accepted shape:** EUF atoms over uninterpreted or Boolean terms, LRA atoms
-  over linear Real terms, and arithmetic atoms containing Real-valued UF
-  applications after purification.
+- **Accepted shape:** EUF atoms over uninterpreted or Boolean terms, EUF
+  predicate atoms whose Real arguments are shared Real constants, LRA atoms over
+  linear Real terms, and arithmetic atoms containing Real-valued UF applications
+  after purification.
 - **Purification:** after Real equality lowering, each Real-valued UF
   application in an arithmetic term is replaced by a fresh `$primo_no_proxy_*`
   Real constant. The pass appends a Real equality between that proxy and the
@@ -266,11 +272,13 @@ treating one theory's atoms as Boolean noise.
   because it contains the UF application.
 - **Interface equality check:** for each SAT assignment, the EUF closure is
   inspected for implied equalities between Real proxy constants that also occur
-  in LRA atoms. Those equalities are asserted into an augmented LRA check. A
-  conflict learns a broad assignment-blocking clause over the current EUF and
-  LRA theory literals.
-- **Rejected shape:** EUF predicate atoms and non-definition equality atoms
-  containing Real-sorted subterms.
+  in LRA atoms. Those equalities are asserted into an augmented LRA check. The
+  reverse direction checks each shared Real-constant pair by adding `x < y` and
+  `y < x` to the current LRA assignment; if both conflict, `x = y` is asserted
+  into an augmented EUF check. A cross-theory conflict learns a broad
+  assignment-blocking clause over the current EUF and LRA theory literals.
+- **Rejected shape:** EUF atoms containing non-constant Real-sorted subterms,
+  such as predicates over arithmetic expressions.
 - **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
   EUF assignment and the LRA assignment. Add the first per-theory conflict
   clause found and continue. If both individual checks pass, run the augmented
@@ -284,15 +292,17 @@ treating one theory's atoms as Boolean noise.
 - **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
   mix, EUF-conflict learning, LRA-conflict learning, separable mixed
   `get-model`, rejection of mixed models for Real-valued UF applications,
-  rejection of Real arguments to EUF predicates, purification of Real-valued UF
-  applications in arithmetic atoms, and an EUF-implied proxy equality that makes
-  the LRA side inconsistent.
+  rejection of non-constant Real arguments to EUF predicates, purification of
+  Real-valued UF applications in arithmetic atoms, an EUF-implied proxy equality
+  that makes the LRA side inconsistent, and an LRA-implied shared Real-constant
+  equality that makes the EUF side inconsistent.
 
 Limitations:
 
 - purification is limited to Real-valued UF applications in arithmetic atoms;
-- shared-variable equality propagation is one-way, from EUF proxy equalities
-  into an augmented LRA final check;
+- shared-variable equality propagation is final-check only and uses broad
+  assignment blocking rather than SAT-visible equality atoms or minimal
+  Nelson-Oppen explanations;
 - cross-theory conflicts use broad current-assignment blocking clauses, not
   minimal Nelson-Oppen explanations;
 - no missing equality atom creation;

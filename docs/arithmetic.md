@@ -523,10 +523,12 @@ alternatives considered before/while implementing it.
   Real-valued UF applications. The SMT layer purifies each such application to
   an internal Real proxy, sends the proxy definition to EUF, sends the purified
   arithmetic atom to LRA, and checks EUF-implied proxy equalities against LRA
-  under the current SAT assignment. This is not full Nelson-Oppen combination:
-  EUF predicates/non-definition equalities over Real terms and `get-model` for
-  formulas with shared-Real EUF terms are still explicitly reported as
-  `Unsupported`.
+  under the current SAT assignment. The reverse direction is also checked for
+  Real constants: if LRA makes both `x < y` and `y < x` inconsistent under the
+  current assignment, the coordinator asserts `x = y` into an augmented EUF
+  check. This is not full Nelson-Oppen combination: non-constant Real terms in
+  EUF atoms and `get-model` for formulas with shared-Real EUF terms are still
+  explicitly reported as `Unsupported`.
 - ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
   above. Was the dominant cause of `UnsupportedInput` in every fuzz
   campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in
