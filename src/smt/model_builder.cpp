@@ -15,6 +15,7 @@
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
 #include "theory/equality/incremental_congruence_closure.hpp"
+#include "util/rational.hpp"
 
 namespace primo::smt {
 
@@ -249,6 +250,9 @@ class QfUfModelBuilder {
     std::vector<TableEntry> entries;
     for (const core::Term& term : terms_.terms()) {
       if (term.kind != core::TermKind::Application || term.symbol != symbol.id) {
+        continue;
+      }
+      if (symbol.result_sort == terms_.symbols().bool_sort() && !bool_value(term.id)) {
         continue;
       }
       VectorKey key;

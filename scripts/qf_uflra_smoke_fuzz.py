@@ -82,6 +82,27 @@ SHARED_REAL_LRA_ATOMS = [
 ]
 
 
+NONCONSTANT_REAL_EUF_ATOMS = [
+    "(p (+ x 1))",
+    "(p (+ y 1))",
+    "(p (* 2 x))",
+    "(p 0)",
+    "(q (+ x 1) y)",
+    "(q (+ x y) z)",
+    "(q (* 3 z) (+ x 2))",
+]
+
+NONCONSTANT_REAL_LRA_ATOMS = [
+    "(<= (+ x 1) y)",
+    "(<= y (+ x 1))",
+    "(< (+ x y) 5)",
+    "(< 0 x)",
+    "(< y 4)",
+    "(< z 3)",
+    "(<= (+ (* 2 x) y) 7)",
+]
+
+
 def generate_separable_case(rng: random.Random, index: int) -> str:
     euf_count = 1 + rng.randrange(4)
     lra_count = 1 + rng.randrange(4)
@@ -170,6 +191,34 @@ def generate_shared_real_case(rng: random.Random, index: int) -> str:
 """
 
 
+def generate_nonconstant_real_case(rng: random.Random, index: int) -> str:
+    euf_count = 1 + rng.randrange(4)
+    lra_count = 1 + rng.randrange(4)
+    euf_atoms = rng.sample(NONCONSTANT_REAL_EUF_ATOMS, euf_count)
+    lra_atoms = rng.sample(NONCONSTANT_REAL_LRA_ATOMS, lra_count)
+
+    assertions = [atom_with_polarity(rng, atom) for atom in euf_atoms]
+    assertions.extend(atom_with_polarity(rng, atom) for atom in lra_atoms)
+
+    if index % 8 == 0:
+        assertions.extend(["(<= (+ x 1) y)", "(<= y (+ x 1))", "(p (+ x 1))", "(not (p y))"])
+    if index % 13 == 0:
+        assertions.extend(["(< x y)", "(p (+ x 1))", "(not (p (+ y 1)))"])
+    if index % 17 == 0:
+        assertions.extend(["(q (+ x y) z)", "(not (q (+ x y) z))"])
+
+    body = "\n".join(f"  (assert {assertion})" for assertion in assertions)
+    return f"""(set-logic QF_UFLRA)
+(declare-fun x () Real)
+(declare-fun y () Real)
+(declare-fun z () Real)
+(declare-fun p (Real) Bool)
+(declare-fun q (Real Real) Bool)
+{body}
+(check-sat)
+"""
+
+
 def generate_case(rng: random.Random, index: int, shape: str) -> str:
     if shape == "separable":
         return generate_separable_case(rng, index)
@@ -177,12 +226,16 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
         return generate_purified_case(rng, index)
     if shape == "shared-real":
         return generate_shared_real_case(rng, index)
-    choice = rng.randrange(3)
+    if shape == "nonconstant-real":
+        return generate_nonconstant_real_case(rng, index)
+    choice = rng.randrange(4)
     if choice == 0:
         return generate_separable_case(rng, index)
     if choice == 1:
         return generate_purified_case(rng, index)
-    return generate_shared_real_case(rng, index)
+    if choice == 2:
+        return generate_shared_real_case(rng, index)
+    return generate_nonconstant_real_case(rng, index)
 
 
 def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
@@ -240,7 +293,9 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--out", type=Path, default=Path("fuzz-results/qf_uflra-smoke"))
     parser.add_argument(
-        "--shape", choices=["separable", "purified", "shared-real", "mixed"], default="separable"
+        "--shape",
+        choices=["separable", "purified", "shared-real", "nonconstant-real", "mixed"],
+        default="separable",
     )
     parser.add_argument("--solver-arg", action="append", default=[])
     args = parser.parse_args()

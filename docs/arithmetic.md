@@ -523,15 +523,18 @@ alternatives considered before/while implementing it.
   Real-valued UF applications. The SMT layer purifies each such application to
   an internal Real proxy, sends the proxy definition to EUF, sends the purified
   arithmetic atom to LRA, and checks EUF-implied proxy equalities against LRA
-  under the current SAT assignment. The reverse direction is also checked for
-  Real constants: if LRA makes both `x < y` and `y < x` inconsistent under the
-  current assignment, the coordinator asserts `x = y` into an augmented EUF
-  check. Real-argument `get-model` is supported only for UF symbols whose Real
-  occurrences are arguments: reconstruction augments the LRA model with
-  EUF-implied equalities and strict separations for EUF-distinct Real constants
-  before printing concrete Real values in UF table guards. This is not full
-  Nelson-Oppen combination: non-constant Real terms in EUF atoms and Real-valued
-  UF result models are still explicitly reported as `Unsupported`.
+  under the current SAT assignment. EUF atoms with non-constant Real arguments
+  are purified in the other direction: the EUF atom receives an internal Real
+  proxy, while LRA receives the two defining bounds `proxy <= term` and
+  `term <= proxy`. The reverse interface direction is checked for shared Real
+  constants, including those internal Real-argument proxies: if LRA makes both
+  `x < y` and `y < x` inconsistent under the current assignment, the coordinator
+  asserts `x = y` into an augmented EUF check. Real-argument `get-model` is
+  supported only for UF symbols whose Real occurrences are arguments:
+  reconstruction augments the LRA model with EUF-implied equalities and strict
+  separations for EUF-distinct Real constants before printing concrete Real
+  values in UF table guards. This is not full Nelson-Oppen combination:
+  Real-valued UF result models are still explicitly reported as `Unsupported`.
 - ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
   above. Was the dominant cause of `UnsupportedInput` in every fuzz
   campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in

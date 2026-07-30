@@ -12633,6 +12633,83 @@
       },
       "evidence_status": "current",
       "followups": "This remains a model-reconstruction milestone, not full Nelson-Oppen. Equality sharing is still final-check-only with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, non-constant Real-term purification in EUF atoms, Real-valued UF result models, backtracking arrangement search for model separations, model-guided equality guesses from de Moura/Bjorner, and SLURM-scale mixed fuzzing remain future work."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-nonconstant-real-argument-purification",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local merge-gate answer fuzz plus Dolmen model validation for the Nelson-Oppen branch's QF_UFLRA purification of non-constant Real arguments in EUF atoms. The implementation replaces each such argument with an internal Real proxy, emits the defining LRA bounds, and keeps Real-valued UF application definitions EUF-owned. It also fixes Boolean UF model-table shadowing where an unassigned original application over the same concrete Real argument could hide an assigned purified application.",
+      "commit": "pre-commit worktree based on f8a2d40 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: f8a2d40-dirty; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "rejected_draft_answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260734 --timeout 5 --shape nonconstant-real --out fuzz-results/qf_uflra-nonconstant-real-draft",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260734 --timeout 5 --shape nonconstant-real --out fuzz-results/qf_uflra-nonconstant-real-final",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uf-preprocess=off --solver-arg=--no-solved-constant-substitution --timeout 5 --dolmen-timeout 10 --limit 200 --out results/qf_uflra-nonconstant-real-model-validation-final fuzz-results/qf_uflra-nonconstant-real-final/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape nonconstant-real",
+        "logic": "QF_UFLRA",
+        "seed": 20260734,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "model_validation_limit": 200,
+        "manifest": "generated under fuzz-results/qf_uflra-nonconstant-real-final/cases/"
+      },
+      "artifacts": {
+        "rejected_draft_summary": "fuzz-results/qf_uflra-nonconstant-real-draft/summary.csv",
+        "answer_summary": "fuzz-results/qf_uflra-nonconstant-real-final/summary.csv",
+        "answer_log": "fuzz-results/qf_uflra-nonconstant-real-final.log",
+        "generated_inputs": "fuzz-results/qf_uflra-nonconstant-real-final/cases/",
+        "model_validation_summary": "results/qf_uflra-nonconstant-real-model-validation-final/summary.csv",
+        "model_validation_artifacts": "results/qf_uflra-nonconstant-real-model-validation-final/",
+        "bugs": null
+      },
+      "summary": {
+        "rejected_draft_total": 1000,
+        "rejected_draft_pass": 981,
+        "rejected_draft_crash": 6,
+        "rejected_draft_unsupported": 13,
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "model_validation_total": 200,
+        "model_validation_pass": 142,
+        "model_validation_not_sat": 58,
+        "model_validation_model_error": 0,
+        "model_validation_solver_error": 0,
+        "model_validation_timeout": 0
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers acceptance of predicates over arithmetic Real arguments, proxy reuse, LRA-implied equality from a purified Real argument causing an EUF conflict, model printing with a purified Real argument, and the Boolean UF model-table regression for a true Real literal argument.",
+        "local_gates": "make check, make docs, make lint, make asan-test, python3 -m json.tool docs/run-log.json, git diff --check, whole-tree clang-tidy over 63 tracked non-generated .cpp files with -p build, and solver_efficiency_snapshot.py all passed before commit."
+      },
+      "evidence_status": "current",
+      "followups": "This is still final-check-only Nelson-Oppen-style equality sharing with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, Real-valued UF result models, model-guided equality guesses from de Moura/Bjorner, backtracking arrangement search for model separations, and SLURM-scale mixed fuzzing remain future work."
     }
   ]
 }

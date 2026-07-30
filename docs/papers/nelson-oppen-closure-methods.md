@@ -82,30 +82,37 @@ The current runnable subset also purifies Real-valued uninterpreted
 applications inside arithmetic atoms. After Real equality lowering, the SMT
 layer replaces each such application with a fresh internal Real proxy and adds
 a definition equality between the proxy and the UF application. That definition
-is handled by EUF; the purified arithmetic atom is handled by LRA. For the
+is handled by EUF; the purified arithmetic atom is handled by LRA. The same
+purification pass also handles non-constant Real arguments in EUF atoms: EUF
+receives an internal Real proxy in place of the arithmetic argument, and LRA
+receives the two defining bounds `proxy <= term` and `term <= proxy`. For the
 current SAT assignment, EUF-implied equalities between Real proxies visible to
 LRA are asserted into an augmented LRA check. In the other direction, EUF
-predicate atoms may mention shared Real constants; after the LRA assignment is
-consistent, the coordinator checks whether LRA entails equality for each shared
-Real-constant pair by proving both strict orders inconsistent. Entailed
-equalities are asserted into an augmented EUF check. If either augmented check
-conflicts, the solver learns a broad clause blocking the current theory
-assignment and continues.
+predicate atoms may mention shared Real constants or purified Real-argument
+proxies; after the LRA assignment is consistent, the coordinator checks whether
+LRA entails equality for each shared Real-constant pair by proving both strict
+orders inconsistent. Entailed equalities are asserted into an augmented EUF
+check. If either augmented check conflicts, the solver learns a broad clause
+blocking the current theory assignment and continues.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
-mention non-constant Real-sorted terms because those still need purification.
-Mixed `:produce-models true` supports UF symbols with Real constants as
-arguments, but still rejects UF symbols whose result sort is `Real`. The model
-path augments the LRA reconstruction with EUF-implied Real-constant equalities
-and strict disequalities separating EUF-distinct Real constants, including
-Real constants that occur only as UF arguments, then gives those concrete Real
-values to the UF model table printer. The coordinator publishes:
+would require unsupported theories or Real-valued UF result models. Mixed
+`:produce-models true` supports UF symbols with Real arguments, including
+non-constant arithmetic arguments after purification, but still rejects UF
+symbols whose result sort is `Real`. The model path augments the LRA
+reconstruction with EUF-implied Real-constant equalities and strict
+disequalities separating EUF-distinct Real constants, including Real constants
+that occur only as UF arguments, then gives those concrete Real values to the UF
+model table printer. The coordinator publishes:
 
 - `:solver.qf-uflra`
 - `:no.mixed.euf-atoms`
 - `:no.mixed.lra-atoms`
 - `:no.purification.definitions`
+- `:no.purification.arithmetic-uf-definitions`
+- `:no.purification.euf-real-term-definitions`
 - `:no.purification.reused-applications`
+- `:no.purification.reused-real-terms`
 - `:no.interface.shared-real-terms`
 - `:no.interface.equalities-propagated`
 - `:no.interface.euf-to-lra-equalities`
@@ -274,7 +281,13 @@ treating one theory's atoms as Boolean noise.
   application in an arithmetic term is replaced by a fresh `$primo_no_proxy_*`
   Real constant. The pass appends a Real equality between that proxy and the
   original UF application. Mixed dispatch treats that equality as EUF-owned
-  because it contains the UF application.
+  because it contains the UF application. Each non-constant Real argument in an
+  EUF atom is replaced by a fresh `$primo_no_real_arg_*` Real constant after
+  recursively purifying any Real-valued UF applications inside that arithmetic
+  argument. The pass appends two LRA-owned bounds, `proxy <= term` and
+  `term <= proxy`, instead of a Real equality, because the global
+  `lower_real_equalities` pass has already run and because Real-valued UF
+  application definitions must remain EUF-owned.
 - **Interface equality check:** for each SAT assignment, the EUF closure is
   inspected for implied equalities between Real proxy constants that also occur
   in LRA atoms. Those equalities are asserted into an augmented LRA check. The
@@ -282,8 +295,6 @@ treating one theory's atoms as Boolean noise.
   `y < x` to the current LRA assignment; if both conflict, `x = y` is asserted
   into an augmented EUF check. A cross-theory conflict learns a broad
   assignment-blocking clause over the current EUF and LRA theory literals.
-- **Rejected shape:** EUF atoms containing non-constant Real-sorted subterms,
-  such as predicates over arithmetic expressions.
 - **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
   EUF assignment and the LRA assignment. Add the first per-theory conflict
   clause found and continue. If both individual checks pass, run the augmented
@@ -295,21 +306,21 @@ treating one theory's atoms as Boolean noise.
   greedily adds strict order atoms to separate Real constants that are distinct
   in the EUF arrangement and not forced equal by LRA. The resulting concrete
   Real values are used when printing UF tables for symbols with Real arguments.
-  UF symbols returning `Real` and EUF atoms over non-constant Real terms still
-  return `Unsupported`.
+  UF symbols returning `Real` still return `Unsupported`.
 - **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
   mix, EUF-conflict learning, LRA-conflict learning, separable mixed
   `get-model`, shared-Real predicate `get-model` with a separating LRA repair,
   shared-Real predicate `get-model` when LRA forces equality, rejection of mixed
-  models for Real-valued UF applications, rejection of non-constant Real
-  arguments to EUF predicates, purification of Real-valued UF applications in
-  arithmetic atoms, an EUF-implied proxy equality that makes the LRA side
-  inconsistent, and an LRA-implied shared Real-constant equality that makes the
-  EUF side inconsistent.
+  models for Real-valued UF applications, purification of non-constant Real
+  arguments to EUF predicates with proxy reuse and model printing, purification
+  of Real-valued UF applications in arithmetic atoms, an EUF-implied proxy
+  equality that makes the LRA side inconsistent, and an LRA-implied shared
+  Real-constant equality that makes the EUF side inconsistent.
 
 Limitations:
 
-- purification is limited to Real-valued UF applications in arithmetic atoms;
+- purification is limited to Real-valued UF applications in arithmetic atoms
+  and non-constant Real arguments in EUF atoms;
 - shared-variable equality propagation is final-check only and uses broad
   assignment blocking rather than SAT-visible equality atoms or minimal
   Nelson-Oppen explanations;

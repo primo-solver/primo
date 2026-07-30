@@ -204,14 +204,17 @@ Implemented now:
   the first ordinary per-theory conflict clause it finds. Arithmetic atoms may
   contain Real-valued UF applications: a post-lowering SMT preprocessing slice
   replaces each such application with an internal Real proxy and adds an EUF
-  definition equality. For the current SAT assignment, EUF-implied equalities
+  definition equality. EUF atoms may also contain non-constant Real arguments:
+  the same purification slice replaces each such arithmetic term with an
+  internal Real proxy and adds the two LRA bounds that define the proxy as equal
+  to the arithmetic term. For the current SAT assignment, EUF-implied equalities
   between Real proxies shared with LRA are asserted into a conservative
-  augmented LRA check. Conversely, when EUF atoms mention Real constants, LRA is
-  queried for entailed equalities over those shared constants by checking both
-  strict disequality directions, and the resulting equalities are asserted into
-  an augmented EUF check. A cross-theory conflict learns a broad clause blocking
-  the current theory assignment. This is intentionally not full Nelson-Oppen:
-  non-constant Real terms in EUF atoms, fine-grained interface explanations,
+  augmented LRA check. Conversely, when EUF atoms mention Real constants or
+  purified Real-argument proxies, LRA is queried for entailed equalities over
+  those shared constants by checking both strict disequality directions, and the
+  resulting equalities are asserted into an augmented EUF check. A cross-theory
+  conflict learns a broad clause blocking the current theory assignment. This is
+  intentionally not full Nelson-Oppen: fine-grained interface explanations,
   SAT-visible missing equality creation, Real-valued UF result models, and
   backtracking search for model-separation orientations remain unsupported.
 - Default-on finite-domain UF symmetry breaking, with

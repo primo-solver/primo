@@ -289,7 +289,10 @@ inside arithmetic atoms.
 The default QF_UFLRA path has its own runnable partial-combination counters:
 
 - `:no.purification.definitions`
+- `:no.purification.arithmetic-uf-definitions`
+- `:no.purification.euf-real-term-definitions`
 - `:no.purification.reused-applications`
+- `:no.purification.reused-real-terms`
 - `:no.interface.shared-real-terms`
 - `:no.interface.equalities-propagated`
 - `:no.interface.euf-to-lra-equalities`
@@ -297,9 +300,10 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.conflicts`
 - `:no.interface.model-separations`
 
-These count internal proxy definitions for Real-valued UF applications in
-arithmetic atoms, repeated uses of an already-created proxy, Real proxy terms
-visible to both EUF and LRA, equality checks in each interface direction,
+These count internal proxy definitions in total, the split between Real-valued
+UF applications in arithmetic atoms and non-constant Real terms in EUF atoms,
+repeated uses of already-created application or Real-term proxies, Real proxy
+terms visible to both EUF and LRA, equality checks in each interface direction,
 current-assignment interface conflicts, and strict shared-Real separations added
 only while reconstructing mixed models. `:no.interface.conflicts` currently
 learns a broad blocking clause over the assigned theory atoms, not a minimal
@@ -320,12 +324,11 @@ followed by a parenthesized `model`.
 
 The mixed QF_UFLRA path additionally supports a narrow Real-argument model subset:
 Primo composes the QF_UF model body with the nullary-Real QF_LRA definitions,
-and UF symbols may take Real constants as arguments. Before printing, the model
-path augments LRA with EUF-implied Real-constant equalities and strict
-separations for Real constants that are distinct in the EUF arrangement; the
-resulting concrete Real values are used in UF function-table guards.
-Real-valued UF results and non-constant Real arguments in EUF atoms remain
-unsupported.
+and UF symbols may take Real constants or purified non-constant Real terms as
+arguments. Before printing, the model path augments LRA with EUF-implied
+Real-constant equalities and strict separations for Real constants that are
+distinct in the EUF arrangement; the resulting concrete Real values are used in
+UF function-table guards. Real-valued UF results remain unsupported.
 
 Use [Dolmen](https://ceur-ws.org/Vol-3429/short9.pdf) as the independent
 model-format and assertion validator. Dolmen's model-validation interface uses a
@@ -355,10 +358,9 @@ Current limitations:
   solved-constant substitutions, and ground-unit substitutions;
 - QF_LRA preprocessing reconstruction is limited to Real equalities recorded by
   solve-eqs/Gaussian elimination;
-- no array, Real-valued UF result, non-constant shared-Real EUF argument,
-  Nelson-Oppen model-equality guess, or future preprocessing rewrite is
-  model-reconstructed unless it emits explicit reconstruction assignments and
-  the active model builder consumes them.
+- no array, Real-valued UF result, Nelson-Oppen model-equality guess, or future
+  preprocessing rewrite is model-reconstructed unless it emits explicit
+  reconstruction assignments and the active model builder consumes them.
 
 ## Fuzzing and Reduction
 

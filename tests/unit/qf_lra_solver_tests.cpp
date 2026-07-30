@@ -292,7 +292,7 @@ void qf_uf_lra_prints_shared_real_equal_predicate_model() {
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
-void qf_uf_lra_nonconstant_real_predicate_arguments_need_purification() {
+void qf_uf_lra_purifies_nonconstant_real_predicate_arguments() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -302,8 +302,84 @@ void qf_uf_lra_nonconstant_real_predicate_arguments_need_purification() {
     (check-sat)
   )",
                                        no_preprocessing());
-  assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("non-constant Real terms") != std::string::npos);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.definitions") == 1);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+  assert(result.statistics.get(":no.mixed.euf-atoms") > 0);
+  assert(result.statistics.get(":no.mixed.lra-atoms") > 0);
+}
+
+void qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun q (Real Real) Bool)
+    (assert (q (+ x 1) (+ x 1)))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+  assert(result.statistics.get(":no.purification.reused-real-terms") >= 1);
+}
+
+void qf_uf_lra_shares_purified_real_argument_equalities_with_euf() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= (+ x 1) y))
+    (assert (<= y (+ x 1)))
+    (assert (p (+ x 1)))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+}
+
+void qf_uf_lra_prints_model_with_purified_real_predicate_argument() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (p (+ x 1)))
+    (assert (not (p x)))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun p ((x0 Real)) Bool ") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+}
+
+void qf_uf_lra_model_keeps_true_purified_real_literal_argument_entry() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (p 0))
+    (assert (not (p (+ x 1))))
+    (assert (< 0 x))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(ite (= x0 0) true false)") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
 }
 
 void qf_uf_lra_shares_lra_implied_real_equalities_with_euf() {
@@ -1479,7 +1555,11 @@ int main() {
   qf_uf_lra_get_model_rejects_real_valued_uf_applications();
   qf_uf_lra_prints_shared_real_predicate_model();
   qf_uf_lra_prints_shared_real_equal_predicate_model();
-  qf_uf_lra_nonconstant_real_predicate_arguments_need_purification();
+  qf_uf_lra_purifies_nonconstant_real_predicate_arguments();
+  qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies();
+  qf_uf_lra_shares_purified_real_argument_equalities_with_euf();
+  qf_uf_lra_prints_model_with_purified_real_predicate_argument();
+  qf_uf_lra_model_keeps_true_purified_real_literal_argument_entry();
   qf_uf_lra_shares_lra_implied_real_equalities_with_euf();
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();

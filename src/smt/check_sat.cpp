@@ -4894,118 +4894,219 @@ std::optional<LraModelState> build_lra_model_state(
 
 struct MixedTheoryPurificationResult {
   std::vector<core::TermId> assertions;
-  std::size_t definitions = 0;
-  std::size_t reused = 0;
+  std::size_t arithmetic_uf_definitions = 0;
+  std::size_t euf_real_term_definitions = 0;
+  std::size_t reused_applications = 0;
+  std::size_t reused_real_terms = 0;
 };
 
-core::TermId purify_arithmetic_applications_in_formula(
+core::TermId purify_mixed_formula(
     Frontend& frontend, core::TermId term_id,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_application,
-    std::vector<core::TermId>& definitions, std::size_t& reused);
+    std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
+    std::vector<core::TermId>& app_definitions, std::size_t& reused_applications,
+    std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
+    std::vector<core::TermId>& lra_definition_atoms, std::size_t& reused_real_terms);
 
 core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
                                     std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
-                                    std::vector<core::TermId>& definitions, std::size_t& reused) {
+                                    std::vector<core::TermId>& app_definitions,
+                                    std::size_t& reused_applications) {
   core::TermManager& terms = frontend.terms();
   const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Application && term.sort == terms.symbols().real_sort()) {
+  const core::TermKind kind = term.kind;
+  const core::SortId sort = term.sort;
+  const std::vector<core::TermId> children = term.children;
+  const util::Rational rational_value = term.rational_value;
+  if (kind == core::TermKind::Application && sort == terms.symbols().real_sort()) {
     const auto found = proxy_by_app.find(term_id);
     if (found != proxy_by_app.end()) {
-      ++reused;
+      ++reused_applications;
       return found->second;
     }
-    const core::TermId proxy = frontend.fresh_internal_constant(term.sort, "no_proxy");
+    const core::TermId proxy = frontend.fresh_internal_constant(sort, "no_proxy");
     proxy_by_app.emplace(term_id, proxy);
-    definitions.push_back(terms.mk_eq(proxy, term_id));
+    app_definitions.push_back(terms.mk_eq(proxy, term_id));
     return proxy;
   }
 
-  switch (term.kind) {
+  switch (kind) {
     case core::TermKind::Plus: {
-      std::vector<core::TermId> children;
-      children.reserve(term.children.size());
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
       bool changed = false;
-      for (const core::TermId child : term.children) {
-        const core::TermId rewritten =
-            purify_arithmetic_term(frontend, child, proxy_by_app, definitions, reused);
+      for (const core::TermId child : children) {
+        const core::TermId rewritten = purify_arithmetic_term(frontend, child, proxy_by_app,
+                                                              app_definitions, reused_applications);
         changed = changed || rewritten != child;
-        children.push_back(rewritten);
+        rewritten_children.push_back(rewritten);
       }
-      return changed ? terms.mk_plus(std::move(children)) : term_id;
+      return changed ? terms.mk_plus(std::move(rewritten_children)) : term_id;
     }
     case core::TermKind::Times: {
-      const core::TermId child =
-          purify_arithmetic_term(frontend, term.children.at(0), proxy_by_app, definitions, reused);
-      return child == term.children.at(0) ? term_id : terms.mk_times(term.rational_value, child);
+      const core::TermId child = purify_arithmetic_term(frontend, children.at(0), proxy_by_app,
+                                                        app_definitions, reused_applications);
+      return child == children.at(0) ? term_id : terms.mk_times(rational_value, child);
     }
     default:
       return term_id;
   }
 }
 
-core::TermId purify_arithmetic_applications_in_formula(
+core::TermId purify_euf_real_argument(
     Frontend& frontend, core::TermId term_id,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_application,
-    std::vector<core::TermId>& definitions, std::size_t& reused) {
+    std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
+    std::vector<core::TermId>& app_definitions, std::size_t& reused_applications,
+    std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
+    std::vector<core::TermId>& lra_definition_atoms, std::size_t& reused_real_terms) {
   core::TermManager& terms = frontend.terms();
   const core::Term& term = terms.get(term_id);
-  switch (term.kind) {
+  if (term.sort != terms.symbols().real_sort()) {
+    return term_id;
+  }
+
+  const core::TermId arithmetic_term =
+      purify_arithmetic_term(frontend, term_id, proxy_by_app, app_definitions, reused_applications);
+  const core::Term& rewritten = terms.get(arithmetic_term);
+  if (rewritten.kind == core::TermKind::Constant) {
+    return arithmetic_term;
+  }
+
+  const auto found = proxy_by_real_term.find(arithmetic_term);
+  if (found != proxy_by_real_term.end()) {
+    ++reused_real_terms;
+    return found->second;
+  }
+  const core::TermId proxy = frontend.fresh_internal_constant(rewritten.sort, "no_real_arg");
+  proxy_by_real_term.emplace(arithmetic_term, proxy);
+  lra_definition_atoms.push_back(terms.mk_le(proxy, arithmetic_term));
+  lra_definition_atoms.push_back(terms.mk_le(arithmetic_term, proxy));
+  return proxy;
+}
+
+core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
+                             std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
+                             std::vector<core::TermId>& app_definitions,
+                             std::size_t& reused_applications,
+                             std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
+                             std::vector<core::TermId>& lra_definition_atoms,
+                             std::size_t& reused_real_terms) {
+  core::TermManager& terms = frontend.terms();
+  const core::Term& term = terms.get(term_id);
+  const core::TermKind kind = term.kind;
+  const core::SortId sort = term.sort;
+  const core::SymbolId symbol = term.symbol;
+  const std::vector<core::TermId> term_children = term.children;
+  if (sort == terms.symbols().real_sort()) {
+    return purify_euf_real_argument(frontend, term_id, proxy_by_app, app_definitions,
+                                    reused_applications, proxy_by_real_term, lra_definition_atoms,
+                                    reused_real_terms);
+  }
+
+  if (kind != core::TermKind::Application) {
+    return term_id;
+  }
+
+  std::vector<core::TermId> children;
+  children.reserve(term_children.size());
+  bool changed = false;
+  for (const core::TermId child : term_children) {
+    const core::TermId rewritten =
+        purify_euf_term(frontend, child, proxy_by_app, app_definitions, reused_applications,
+                        proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+    changed = changed || rewritten != child;
+    children.push_back(rewritten);
+  }
+  return changed ? terms.mk_app(symbol, std::move(children)) : term_id;
+}
+
+core::TermId purify_mixed_formula(
+    Frontend& frontend, core::TermId term_id,
+    std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
+    std::vector<core::TermId>& app_definitions, std::size_t& reused_applications,
+    std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
+    std::vector<core::TermId>& lra_definition_atoms, std::size_t& reused_real_terms) {
+  core::TermManager& terms = frontend.terms();
+  const core::Term& term = terms.get(term_id);
+  const core::TermKind kind = term.kind;
+  const core::SortId sort = term.sort;
+  const std::vector<core::TermId> term_children = term.children;
+  switch (kind) {
     case core::TermKind::Le: {
-      const core::TermId lhs = purify_arithmetic_term(frontend, term.children.at(0),
-                                                      proxy_by_application, definitions, reused);
-      const core::TermId rhs = purify_arithmetic_term(frontend, term.children.at(1),
-                                                      proxy_by_application, definitions, reused);
-      return lhs == term.children.at(0) && rhs == term.children.at(1) ? term_id
+      const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), proxy_by_app,
+                                                      app_definitions, reused_applications);
+      const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), proxy_by_app,
+                                                      app_definitions, reused_applications);
+      return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
                                                                       : terms.mk_le(lhs, rhs);
     }
     case core::TermKind::Lt: {
-      const core::TermId lhs = purify_arithmetic_term(frontend, term.children.at(0),
-                                                      proxy_by_application, definitions, reused);
-      const core::TermId rhs = purify_arithmetic_term(frontend, term.children.at(1),
-                                                      proxy_by_application, definitions, reused);
-      return lhs == term.children.at(0) && rhs == term.children.at(1) ? term_id
+      const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), proxy_by_app,
+                                                      app_definitions, reused_applications);
+      const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), proxy_by_app,
+                                                      app_definitions, reused_applications);
+      return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
                                                                       : terms.mk_lt(lhs, rhs);
     }
     case core::TermKind::Equality:
-      if (terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
-        const core::TermId lhs = purify_arithmetic_term(frontend, term.children.at(0),
-                                                        proxy_by_application, definitions, reused);
-        const core::TermId rhs = purify_arithmetic_term(frontend, term.children.at(1),
-                                                        proxy_by_application, definitions, reused);
-        return lhs == term.children.at(0) && rhs == term.children.at(1) ? term_id
+      if (terms.get(term_children.at(0)).sort == terms.symbols().real_sort()) {
+        const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), proxy_by_app,
+                                                        app_definitions, reused_applications);
+        const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), proxy_by_app,
+                                                        app_definitions, reused_applications);
+        return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
                                                                         : terms.mk_eq(lhs, rhs);
       }
-      return term_id;
+      {
+        const core::TermId lhs = purify_euf_term(
+            frontend, term_children.at(0), proxy_by_app, app_definitions, reused_applications,
+            proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+        const core::TermId rhs = purify_euf_term(
+            frontend, term_children.at(1), proxy_by_app, app_definitions, reused_applications,
+            proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+        return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
+                                                                        : terms.mk_eq(lhs, rhs);
+      }
     case core::TermKind::Not: {
-      const core::TermId child = purify_arithmetic_applications_in_formula(
-          frontend, term.children.at(0), proxy_by_application, definitions, reused);
-      return child == term.children.at(0) ? term_id : terms.mk_not(child);
+      const core::TermId child = purify_mixed_formula(
+          frontend, term_children.at(0), proxy_by_app, app_definitions, reused_applications,
+          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+      return child == term_children.at(0) ? term_id : terms.mk_not(child);
     }
     case core::TermKind::And:
     case core::TermKind::Or: {
       std::vector<core::TermId> children;
-      children.reserve(term.children.size());
+      children.reserve(term_children.size());
       bool changed = false;
-      for (const core::TermId child : term.children) {
-        const core::TermId rewritten = purify_arithmetic_applications_in_formula(
-            frontend, child, proxy_by_application, definitions, reused);
+      for (const core::TermId child : term_children) {
+        const core::TermId rewritten = purify_mixed_formula(
+            frontend, child, proxy_by_app, app_definitions, reused_applications, proxy_by_real_term,
+            lra_definition_atoms, reused_real_terms);
         changed = changed || rewritten != child;
         children.push_back(rewritten);
       }
       if (!changed) {
         return term_id;
       }
-      return term.kind == core::TermKind::And ? terms.mk_and(std::move(children))
-                                              : terms.mk_or(std::move(children));
+      return kind == core::TermKind::And ? terms.mk_and(std::move(children))
+                                         : terms.mk_or(std::move(children));
     }
     case core::TermKind::Implies: {
-      const core::TermId lhs = purify_arithmetic_applications_in_formula(
-          frontend, term.children.at(0), proxy_by_application, definitions, reused);
-      const core::TermId rhs = purify_arithmetic_applications_in_formula(
-          frontend, term.children.at(1), proxy_by_application, definitions, reused);
-      return lhs == term.children.at(0) && rhs == term.children.at(1) ? term_id
+      const core::TermId lhs = purify_mixed_formula(
+          frontend, term_children.at(0), proxy_by_app, app_definitions, reused_applications,
+          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+      const core::TermId rhs = purify_mixed_formula(
+          frontend, term_children.at(1), proxy_by_app, app_definitions, reused_applications,
+          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+      return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
                                                                       : terms.mk_implies(lhs, rhs);
     }
+    case core::TermKind::Application:
+      if (sort == terms.symbols().bool_sort()) {
+        return purify_euf_term(frontend, term_id, proxy_by_app, app_definitions,
+                               reused_applications, proxy_by_real_term, lra_definition_atoms,
+                               reused_real_terms);
+      }
+      return term_id;
     default:
       return term_id;
   }
@@ -5014,17 +5115,27 @@ core::TermId purify_arithmetic_applications_in_formula(
 MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
     Frontend& frontend, const std::vector<core::TermId>& assertions) {
   std::unordered_map<core::TermId, core::TermId> proxy_by_application;
+  std::unordered_map<core::TermId, core::TermId> proxy_by_real_term;
   std::vector<core::TermId> rewritten_assertions;
-  std::vector<core::TermId> definitions;
-  std::size_t reused = 0;
+  std::vector<core::TermId> app_definitions;
+  std::vector<core::TermId> lra_definition_atoms;
+  std::size_t reused_applications = 0;
+  std::size_t reused_real_terms = 0;
   rewritten_assertions.reserve(assertions.size());
-  definitions.reserve(assertions.size());
+  app_definitions.reserve(assertions.size());
+  lra_definition_atoms.reserve(assertions.size() * 2);
   for (const core::TermId assertion : assertions) {
-    rewritten_assertions.push_back(purify_arithmetic_applications_in_formula(
-        frontend, assertion, proxy_by_application, definitions, reused));
+    rewritten_assertions.push_back(purify_mixed_formula(
+        frontend, assertion, proxy_by_application, app_definitions, reused_applications,
+        proxy_by_real_term, lra_definition_atoms, reused_real_terms));
   }
-  rewritten_assertions.insert(rewritten_assertions.end(), definitions.begin(), definitions.end());
-  return MixedTheoryPurificationResult{std::move(rewritten_assertions), definitions.size(), reused};
+  rewritten_assertions.insert(rewritten_assertions.end(), app_definitions.begin(),
+                              app_definitions.end());
+  rewritten_assertions.insert(rewritten_assertions.end(), lra_definition_atoms.begin(),
+                              lra_definition_atoms.end());
+  return MixedTheoryPurificationResult{std::move(rewritten_assertions), app_definitions.size(),
+                                       proxy_by_real_term.size(), reused_applications,
+                                       reused_real_terms};
 }
 
 // Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
@@ -7022,8 +7133,14 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       MixedTheoryPurificationResult purification =
           purify_mixed_arithmetic_applications(frontend, assertions);
       assertions = std::move(purification.assertions);
-      statistics.set(":no.purification.definitions", purification.definitions);
-      statistics.set(":no.purification.reused-applications", purification.reused);
+      statistics.set(":no.purification.definitions", purification.arithmetic_uf_definitions +
+                                                         purification.euf_real_term_definitions);
+      statistics.set(":no.purification.arithmetic-uf-definitions",
+                     purification.arithmetic_uf_definitions);
+      statistics.set(":no.purification.euf-real-term-definitions",
+                     purification.euf_real_term_definitions);
+      statistics.set(":no.purification.reused-applications", purification.reused_applications);
+      statistics.set(":no.purification.reused-real-terms", purification.reused_real_terms);
     }
     statistics.set(kStatAssertionsFinal, assertions.size());
     statistics.set(kStatPreprocessingTermSizeFinal,
