@@ -1,10 +1,12 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "core/term_manager.hpp"
+#include "util/rational.hpp"
 
 namespace primo::smt {
 
@@ -17,6 +19,7 @@ struct TheoryModelAssignment {
 struct QfUfModelBuildOptions {
   bool include_model_wrapper = true;
   bool skip_real_symbols = false;
+  const std::unordered_map<core::TermId, util::Rational>* real_values = nullptr;
 };
 
 std::string build_qf_uf_model(core::TermManager& terms,

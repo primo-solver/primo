@@ -4587,20 +4587,12 @@ bool contains_nonconstant_real_sorted_term(const core::TermManager& terms, core:
   return false;
 }
 
-bool symbol_touches_real_sort(const core::TermManager& terms, const core::Symbol& symbol) {
-  if (symbol.result_sort == terms.symbols().real_sort()) {
-    return true;
-  }
-  return std::any_of(symbol.arg_sorts.begin(), symbol.arg_sorts.end(),
-                     [&](core::SortId sort) { return sort == terms.symbols().real_sort(); });
-}
-
 bool mixed_model_supported_by_uf_signature(const core::TermManager& terms) {
   for (const core::Symbol& symbol : terms.symbols().symbols()) {
     if (symbol.name.starts_with("$primo_") || symbol.kind == core::SymbolKind::Constant) {
       continue;
     }
-    if (symbol_touches_real_sort(terms, symbol)) {
+    if (symbol.result_sort == terms.symbols().real_sort()) {
       return false;
     }
   }
@@ -4660,6 +4652,17 @@ std::vector<core::TermId> shared_real_constants(
   }
   std::sort(shared.begin(), shared.end());
   return shared;
+}
+
+std::vector<core::TermId> real_constants_in_atoms(
+    const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& atoms) {
+  std::unordered_set<core::TermId> real_terms;
+  for (const BooleanClausifier::TheoryAtom& atom : atoms) {
+    collect_real_constants_in_term(terms, atom.term, real_terms);
+  }
+  std::vector<core::TermId> result(real_terms.begin(), real_terms.end());
+  std::sort(result.begin(), result.end());
+  return result;
 }
 
 std::vector<core::TermId> euf_implied_real_equalities(
@@ -4730,6 +4733,91 @@ std::vector<core::TermId> lra_implied_real_equalities(
   return equalities;
 }
 
+bool lra_assignment_conflicts_with_extra_atoms(
+    const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const std::vector<core::TermId>& extra_atoms, const CheckSatOptions& options) {
+  std::vector<BooleanClausifier::TheoryAtom> augmented_lra_atoms = lra_atoms;
+  augmented_lra_atoms.reserve(lra_atoms.size() + extra_atoms.size());
+  std::vector<AssignedTheoryAtom> augmented_lra_assignments = lra_assignments;
+  augmented_lra_assignments.reserve(lra_assignments.size() + extra_atoms.size());
+  for (const core::TermId extra_atom : extra_atoms) {
+    augmented_lra_atoms.push_back(BooleanClausifier::TheoryAtom{sat::Lit{0}, extra_atom});
+    augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, extra_atom, false});
+  }
+  const PreparedLraTheory augmented_lra_theory(
+      terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination, false);
+  return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments)
+      .has_value();
+}
+
+bool flat_closure_equal_on_terms(const PreparedFlatTheory& prepared,
+                                 theory::equality::FlatCongruenceClosure& closure, core::TermId lhs,
+                                 core::TermId rhs) {
+  const std::optional<theory::equality::FlatTermId> lhs_flat =
+      prepared.flat.existing_flat_term(lhs);
+  const std::optional<theory::equality::FlatTermId> rhs_flat =
+      prepared.flat.existing_flat_term(rhs);
+  return lhs_flat.has_value() && rhs_flat.has_value() &&
+         closure.are_equal(lhs_flat.value(), rhs_flat.value());
+}
+
+bool equality_list_contains_pair(const core::TermManager& terms,
+                                 const std::vector<core::TermId>& equalities, core::TermId lhs,
+                                 core::TermId rhs) {
+  for (const core::TermId equality_id : equalities) {
+    const core::Term& equality = terms.get(equality_id);
+    if (equality.kind != core::TermKind::Equality || equality.children.size() != 2) {
+      continue;
+    }
+    const core::TermId current_lhs = equality.children.at(0);
+    const core::TermId current_rhs = equality.children.at(1);
+    if ((current_lhs == lhs && current_rhs == rhs) || (current_lhs == rhs && current_rhs == lhs)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::optional<std::vector<core::TermId>> shared_real_model_separation_atoms(
+    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments, const PreparedFlatTheory& prepared_euf,
+    theory::equality::FlatCongruenceClosure& closure, const std::vector<core::TermId>& shared_terms,
+    const std::vector<core::TermId>& forced_equalities, const CheckSatOptions& options) {
+  std::vector<core::TermId> accumulated = forced_equalities;
+  std::vector<core::TermId> separations;
+  for (std::size_t i = 0; i < shared_terms.size(); ++i) {
+    for (std::size_t j = i + 1; j < shared_terms.size(); ++j) {
+      const core::TermId lhs = shared_terms[i];
+      const core::TermId rhs = shared_terms[j];
+      if (flat_closure_equal_on_terms(prepared_euf, closure, lhs, rhs) ||
+          equality_list_contains_pair(terms, forced_equalities, lhs, rhs)) {
+        continue;
+      }
+
+      const core::TermId lhs_lt_rhs = terms.mk_lt(lhs, rhs);
+      accumulated.push_back(lhs_lt_rhs);
+      if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
+                                                     options)) {
+        separations.push_back(lhs_lt_rhs);
+        continue;
+      }
+      accumulated.pop_back();
+
+      const core::TermId rhs_lt_lhs = terms.mk_lt(rhs, lhs);
+      accumulated.push_back(rhs_lt_lhs);
+      if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
+                                                     options)) {
+        separations.push_back(rhs_lt_lhs);
+        continue;
+      }
+      return std::nullopt;
+    }
+  }
+  return separations;
+}
+
 std::optional<sat::Clause> euf_conflict_with_extra_equalities(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& euf_atoms,
     const std::vector<AssignedTheoryAtom>& euf_assignments,
@@ -4759,6 +4847,49 @@ void append_supported_uf_model_assignments(const core::TermManager& terms,
       target.push_back(assignment);
     }
   }
+}
+
+struct LraModelState {
+  PreparedLraTheory prepared;
+  theory::arithmetic::LraTableau tableau;
+  std::vector<AssignedTheoryAtom> assignments;
+};
+
+std::optional<LraModelState> build_lra_model_state(
+    const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const std::vector<core::TermId>& extra_true_atoms, const CheckSatOptions& options) {
+  std::vector<BooleanClausifier::TheoryAtom> augmented_lra_atoms = lra_atoms;
+  augmented_lra_atoms.reserve(lra_atoms.size() + extra_true_atoms.size());
+  std::vector<AssignedTheoryAtom> augmented_lra_assignments = lra_assignments;
+  augmented_lra_assignments.reserve(lra_assignments.size() + extra_true_atoms.size());
+  for (const core::TermId atom : extra_true_atoms) {
+    augmented_lra_atoms.push_back(BooleanClausifier::TheoryAtom{sat::Lit{0}, atom});
+    augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, atom, false});
+  }
+
+  PreparedLraTheory prepared(terms, augmented_lra_atoms,
+                             lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+                             options.lra_sparse_leaving, options.lra_fixed_elimination, true);
+  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
+  for (std::size_t i = 0; i < augmented_lra_assignments.size(); ++i) {
+    const AssignedTheoryAtom& atom = augmented_lra_assignments[i];
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
+    if (!prepared_atom.is_arithmetic || atom.filtered) {
+      continue;
+    }
+    const std::optional<sat::Clause> conflict = assert_lra_atom_bound(
+        tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
+        prepared_atom.asserts_lower_when_true, blocking_lit(atom));
+    if (conflict.has_value()) {
+      return std::nullopt;
+    }
+  }
+  if (tableau.check().has_value()) {
+    return std::nullopt;
+  }
+  return LraModelState{std::move(prepared), std::move(tableau),
+                       std::move(augmented_lra_assignments)};
 }
 
 struct MixedTheoryPurificationResult {
@@ -6116,14 +6247,6 @@ CheckSatOutcome solve_qf_uf_lra(
           "get-model for mixed QF_UFLRA with Real-sorted UF symbols is not supported", statistics,
           ""};
     }
-    for (const BooleanClausifier::TheoryAtom& atom : euf_atoms) {
-      if (contains_real_sorted_term(terms, atom.term)) {
-        return CheckSatOutcome{
-            CheckSatResult::Unsupported,
-            "get-model for mixed QF_UFLRA with shared Real EUF terms is not supported", statistics,
-            ""};
-      }
-    }
   }
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
@@ -6276,42 +6399,68 @@ CheckSatOutcome solve_qf_uf_lra(
 
     publish_sat_stats(backend.statistics(), statistics);
     if (options.produce_model) {
-      theory::arithmetic::LraTableau model_tableau = prepared_lra_theory.base_tableau;
-      for (std::size_t i = 0; i < lra_assignments.size(); ++i) {
-        const AssignedTheoryAtom& atom = lra_assignments[i];
-        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_lra_theory.atoms[i];
-        if (!prepared_atom.is_arithmetic || atom.filtered) {
-          continue;
+      std::vector<core::TermId> euf_implied_equalities;
+      std::vector<core::TermId> lra_implied_equalities_for_euf;
+      std::vector<core::TermId> extra_lra_model_atoms;
+      const std::vector<core::TermId> euf_model_real_terms =
+          euf_check.has_value() ? real_constants_in_atoms(terms, euf_atoms)
+                                : std::vector<core::TermId>{};
+      if (euf_check.has_value() && !euf_model_real_terms.empty()) {
+        euf_implied_equalities = euf_implied_real_equalities(
+            terms, prepared_flat_theory.value(), euf_check->closure, euf_model_real_terms);
+        if (!shared_real_terms.empty()) {
+          lra_implied_equalities_for_euf = lra_implied_real_equalities(
+              terms, lra_atoms, lra_assignments, shared_real_terms, options);
         }
-        const std::optional<sat::Clause> conflict = assert_lra_atom_bound(
-            model_tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs,
-            atom.value, prepared_atom.asserts_lower_when_true, blocking_lit(atom));
-        if (conflict.has_value()) {
-          return CheckSatOutcome{CheckSatResult::Unknown,
-                                 "mixed QF_UFLRA model reconstruction found a bound conflict",
-                                 statistics, ""};
+        extra_lra_model_atoms = euf_implied_equalities;
+        std::vector<core::TermId> forced_model_equalities = euf_implied_equalities;
+        forced_model_equalities.insert(forced_model_equalities.end(),
+                                       lra_implied_equalities_for_euf.begin(),
+                                       lra_implied_equalities_for_euf.end());
+        const std::optional<std::vector<core::TermId>> separation_atoms =
+            shared_real_model_separation_atoms(
+                terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
+                euf_model_real_terms, forced_model_equalities, options);
+        if (!separation_atoms.has_value()) {
+          return CheckSatOutcome{
+              CheckSatResult::Unknown,
+              "mixed QF_UFLRA model reconstruction could not separate Real argument constants",
+              statistics, ""};
         }
+        extra_lra_model_atoms.insert(extra_lra_model_atoms.end(), separation_atoms->begin(),
+                                     separation_atoms->end());
+        statistics.set(":no.interface.model-separations", separation_atoms->size());
+      } else {
+        statistics.set(":no.interface.model-separations", 0);
       }
-      if (model_tableau.check().has_value()) {
+
+      std::optional<LraModelState> lra_model =
+          build_lra_model_state(terms, lra_atoms, lra_assignments, extra_lra_model_atoms, options);
+      if (!lra_model.has_value()) {
         return CheckSatOutcome{CheckSatResult::Unknown,
-                               "mixed QF_UFLRA model reconstruction found a tableau conflict",
+                               "mixed QF_UFLRA model reconstruction found an LRA conflict",
                                statistics, ""};
       }
-      const RealModelValues real_values =
-          real_model_values_from_lra(terms, model_terms, preprocessing_model_assignments,
-                                     prepared_lra_theory, model_tableau, lra_assignments);
+      const RealModelValues real_values = real_model_values_from_lra(
+          terms, model_terms, preprocessing_model_assignments, lra_model->prepared,
+          lra_model->tableau, lra_model->assignments);
       std::vector<TheoryModelAssignment> uf_model_assignments;
       append_supported_uf_model_assignments(terms, uf_model_assignments,
                                             preprocessing_model_assignments);
-      uf_model_assignments.reserve(uf_model_assignments.size() + euf_assignments.size());
+      uf_model_assignments.reserve(uf_model_assignments.size() + euf_assignments.size() +
+                                   lra_implied_equalities_for_euf.size());
       for (const AssignedTheoryAtom& atom : euf_assignments) {
         uf_model_assignments.push_back(TheoryModelAssignment{atom.term, atom.value, atom.filtered});
       }
+      for (const core::TermId equality : lra_implied_equalities_for_euf) {
+        uf_model_assignments.push_back(TheoryModelAssignment{equality, true, false});
+      }
       std::ostringstream model;
       model << "(model\n";
-      model << build_qf_uf_model(
-          terms, uf_model_assignments,
-          QfUfModelBuildOptions{.include_model_wrapper = false, .skip_real_symbols = true});
+      model << build_qf_uf_model(terms, uf_model_assignments,
+                                 QfUfModelBuildOptions{.include_model_wrapper = false,
+                                                       .skip_real_symbols = true,
+                                                       .real_values = &real_values});
       append_real_constant_model_definitions(model, terms, model_terms, real_values);
       model << ")";
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics, model.str()};

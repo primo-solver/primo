@@ -87,10 +87,10 @@ alternatives considered before/while implementing it.
   strict bounds. The model builder also replays preprocessing reconstruction
   equalities from solve-eqs/Gaussian elimination, so a constant eliminated
   before theory solving is assigned from the final values of the terms it was
-  rewritten to. The mixed QF_UFLRA path can compose this nullary-Real model
-  body with a QF_UF model only for separable formulas whose EUF side does not
-  mention `Real`; Real functions, arrays, nonlinear arithmetic, and
-  shared-Real Nelson-Oppen combination models remain unsupported.
+  rewritten to. The mixed QF_UFLRA path composes this nullary-Real model body
+  with a QF_UF model for separable formulas and for UF symbols with Real
+  constants as arguments. Real-valued UF result models, arrays, nonlinear
+  arithmetic, and full Nelson-Oppen model-guided combination remain unsupported.
 - **Same-variable bound propagation** (Milestone 3b, `check_sat.cpp`; called
   same-*slack* propagation before item H1a, when a slack was the only thing a
   bound could live on): after each successful bound assertion,
@@ -526,9 +526,12 @@ alternatives considered before/while implementing it.
   under the current SAT assignment. The reverse direction is also checked for
   Real constants: if LRA makes both `x < y` and `y < x` inconsistent under the
   current assignment, the coordinator asserts `x = y` into an augmented EUF
-  check. This is not full Nelson-Oppen combination: non-constant Real terms in
-  EUF atoms and `get-model` for formulas with shared-Real EUF terms are still
-  explicitly reported as `Unsupported`.
+  check. Real-argument `get-model` is supported only for UF symbols whose Real
+  occurrences are arguments: reconstruction augments the LRA model with
+  EUF-implied equalities and strict separations for EUF-distinct Real constants
+  before printing concrete Real values in UF table guards. This is not full
+  Nelson-Oppen combination: non-constant Real terms in EUF atoms and Real-valued
+  UF result models are still explicitly reported as `Unsupported`.
 - ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
   above. Was the dominant cause of `UnsupportedInput` in every fuzz
   campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in

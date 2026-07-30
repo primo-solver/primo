@@ -248,6 +248,50 @@ void qf_uf_lra_get_model_rejects_real_valued_uf_applications() {
   assert(result.message.find("Real-sorted UF symbols") != std::string::npos);
 }
 
+void qf_uf_lra_prints_shared_real_predicate_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun p ((x0 Real)) Bool ") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real ") != std::string::npos);
+  assert(result.statistics.get(":no.interface.model-separations") >= 1);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void qf_uf_lra_prints_shared_real_equal_predicate_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (p y))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun p ((x0 Real)) Bool ") != std::string::npos);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.model-separations") == 0);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
 void qf_uf_lra_nonconstant_real_predicate_arguments_need_purification() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1433,6 +1477,8 @@ int main() {
   qf_uf_lra_mix_learns_lra_conflicts();
   qf_uf_lra_prints_separable_mixed_model();
   qf_uf_lra_get_model_rejects_real_valued_uf_applications();
+  qf_uf_lra_prints_shared_real_predicate_model();
+  qf_uf_lra_prints_shared_real_equal_predicate_model();
   qf_uf_lra_nonconstant_real_predicate_arguments_need_purification();
   qf_uf_lra_shares_lra_implied_real_equalities_with_euf();
   qf_uf_lra_does_not_share_unentailed_lra_equalities();

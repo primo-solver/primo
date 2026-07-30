@@ -6,8 +6,9 @@ This is a literature and design-intake note for the
 `nelson-oppen-closure-methods` branch. It now also records the implemented
 scaffolds: read-only interface bookkeeping and a partial mixed QF_UFLRA
 coordinator with Real-valued UF-application purification, EUF-to-LRA proxy
-equality checks, and LRA-to-EUF equality checks over shared Real constants. It
-does not claim that Primo implements the full Nelson-Oppen procedure yet.
+equality checks, LRA-to-EUF equality checks over shared Real constants, and
+model reconstruction for the supported Real-argument subset. It does not
+claim that Primo implements the full Nelson-Oppen procedure yet.
 
 The intended project is to add theory-combination closure mechanisms based on
 Nelson-Oppen-style equality sharing, with de Moura and Bjorner's
@@ -29,10 +30,10 @@ definitions for user-declared UF constants, functions, and predicates from a
 ground EUF closure, and QF_LRA prints user-declared nullary Real constants from
 the final tableau assignment. These are still narrower than the model object
 needed for model-guided Nelson-Oppen combination. `core::Model` remains a
-placeholder, separable mixed QF_UFLRA model printing is only a composed
-QF_UF-plus-nullary-Real subset, and satisfiability-preserving preprocessing
-must emit explicit reconstruction assignments when it removes user-visible
-facts.
+placeholder, mixed QF_UFLRA model printing is still a narrow composition of a
+ground UF table and nullary-Real LRA definitions, and
+satisfiability-preserving preprocessing must emit explicit reconstruction
+assignments when it removes user-visible facts.
 
 This conservative model printer is a prerequisite for model-guided combination:
 without a concrete model object, "model equality" can easily degrade into an
@@ -92,10 +93,13 @@ conflicts, the solver learns a broad clause blocking the current theory
 assignment and continues.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
-mention non-constant Real-sorted terms because those still need purification. It
-also rejects mixed `:produce-models true` when the UF signature or EUF atoms
-mention `Real`, because those models need shared-Real reconstruction rather
-than a pure-theory composition. The coordinator publishes:
+mention non-constant Real-sorted terms because those still need purification.
+Mixed `:produce-models true` supports UF symbols with Real constants as
+arguments, but still rejects UF symbols whose result sort is `Real`. The model
+path augments the LRA reconstruction with EUF-implied Real-constant equalities
+and strict disequalities separating EUF-distinct Real constants, including
+Real constants that occur only as UF arguments, then gives those concrete Real
+values to the UF model table printer. The coordinator publishes:
 
 - `:solver.qf-uflra`
 - `:no.mixed.euf-atoms`
@@ -107,6 +111,7 @@ than a pure-theory composition. The coordinator publishes:
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
 - `:no.interface.conflicts`
+- `:no.interface.model-separations`
 
 ## Primary Base Paper
 
@@ -284,18 +289,23 @@ treating one theory's atoms as Boolean noise.
   clause found and continue. If both individual checks pass, run the augmented
   LRA check with EUF-implied proxy equalities. Return `sat` only when all three
   checks accept the same Boolean assignment.
-- **Model status:** separable mixed `get-model` is supported only when the EUF
-  side does not mention `Real` and no UF symbol has a `Real` argument or result.
-  The model is composed from the QF_UF body and nullary-Real QF_LRA definitions.
-  Shared-Real EUF terms and Real-valued UF applications still return
-  `Unsupported`.
+- **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
+  QF_LRA definitions. For Real constants used as UF arguments, reconstruction
+  first adds EUF-implied Real-constant equalities to the LRA model tableau, then
+  greedily adds strict order atoms to separate Real constants that are distinct
+  in the EUF arrangement and not forced equal by LRA. The resulting concrete
+  Real values are used when printing UF tables for symbols with Real arguments.
+  UF symbols returning `Real` and EUF atoms over non-constant Real terms still
+  return `Unsupported`.
 - **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
   mix, EUF-conflict learning, LRA-conflict learning, separable mixed
-  `get-model`, rejection of mixed models for Real-valued UF applications,
-  rejection of non-constant Real arguments to EUF predicates, purification of
-  Real-valued UF applications in arithmetic atoms, an EUF-implied proxy equality
-  that makes the LRA side inconsistent, and an LRA-implied shared Real-constant
-  equality that makes the EUF side inconsistent.
+  `get-model`, shared-Real predicate `get-model` with a separating LRA repair,
+  shared-Real predicate `get-model` when LRA forces equality, rejection of mixed
+  models for Real-valued UF applications, rejection of non-constant Real
+  arguments to EUF predicates, purification of Real-valued UF applications in
+  arithmetic atoms, an EUF-implied proxy equality that makes the LRA side
+  inconsistent, and an LRA-implied shared Real-constant equality that makes the
+  EUF side inconsistent.
 
 Limitations:
 
@@ -307,6 +317,9 @@ Limitations:
   minimal Nelson-Oppen explanations;
 - no missing equality atom creation;
 - no model-equality guesses from de Moura/Bjorner;
+- Real-argument model reconstruction greedily orients strict separations and may
+  return `unknown` if that local orientation process fails, rather than
+  backtracking over arrangements;
 - no arrangement enumeration for non-convex combinations;
 - no mixed-theory model reconstruction.
 

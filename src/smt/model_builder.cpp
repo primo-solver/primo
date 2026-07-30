@@ -47,6 +47,22 @@ std::string abstract_value_name(core::SortId sort, std::size_t index) {
   return "@uc_" + std::to_string(sort) + "_" + std::to_string(index);
 }
 
+std::string smtlib_rational(const util::Rational& value) {
+  const std::string text = value.to_string();
+  const std::size_t slash = text.find('/');
+  if (slash == std::string::npos) {
+    if (text.starts_with('-')) {
+      return "(- " + text.substr(1) + ")";
+    }
+    return text;
+  }
+  const bool negative = text.starts_with('-');
+  const std::string numerator = negative ? text.substr(1, slash - 1) : text.substr(0, slash);
+  const std::string denominator = text.substr(slash + 1);
+  const std::string fraction = "(/ " + numerator + " " + denominator + ")";
+  return negative ? "(- " + fraction + ")" : fraction;
+}
+
 class QfUfModelBuilder {
  public:
   QfUfModelBuilder(core::TermManager& terms, const std::vector<TheoryModelAssignment>& assignments,
@@ -101,17 +117,9 @@ class QfUfModelBuilder {
   }
 
  private:
-  bool symbol_touches_real(const core::Symbol& symbol) const {
-    if (symbol.result_sort == terms_.symbols().real_sort()) {
-      return true;
-    }
-    return std::any_of(symbol.arg_sorts.begin(), symbol.arg_sorts.end(),
-                       [&](core::SortId sort) { return sort == terms_.symbols().real_sort(); });
-  }
-
   bool skip_symbol(const core::Symbol& symbol) const {
     return is_internal_symbol(symbol) ||
-           (options_.skip_real_symbols && symbol_touches_real(symbol));
+           (options_.skip_real_symbols && symbol.result_sort == terms_.symbols().real_sort());
   }
 
   void add_all_relevant_terms() {
@@ -222,6 +230,11 @@ class QfUfModelBuilder {
     const core::Term& node = terms_.get(term);
     if (node.sort == terms_.symbols().bool_sort()) {
       return bool_value(term) ? "true" : "false";
+    }
+    if (node.sort == terms_.symbols().real_sort() && options_.real_values != nullptr) {
+      const auto found = options_.real_values->find(term);
+      return smtlib_rational(found == options_.real_values->end() ? util::Rational(0)
+                                                                  : found->second);
     }
     return value_name(closure_.class_representative(term));
   }
