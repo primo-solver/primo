@@ -1,8 +1,9 @@
 # QF_LRA Speedup Heuristics: Design Note
 
-Written 2026-07-27 as a design note; **H2, H1a, H1b and H3 are now
-implemented and promoted to default; H4, H5 and H6 remain designs** (each
-item below carries its own status). It picks up where
+Written 2026-07-27 as a design note; **H2, H1a, H1b and H3 are implemented
+and promoted to default; H7 is implemented but NOT promoted (opt-in, see its
+falsifier outcome); H4, H5 and H6 remain designs** (each item below carries
+its own status). It picks up where
 the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s Milestone
 roadmap) left off, and is grounded in a fresh local
 profiling/instrumentation pass run at commit `35878c4` -- not in the older
@@ -442,10 +443,12 @@ single instance.
 
 ### H7 -- Fixed-variable elimination (equality slacks)
 
-**Status: designed 2026-07-29 from the scrambled-competition evaluation,
-implemented 2026-07-30 (`eed259c`, `8668ada`); promotion pending the 595-file
-scrambled run.** This is the first item in this note whose evidence comes from
-a set Primo was never tuned against.
+**Status: designed 2026-07-29, implemented 2026-07-30, and NOT promoted --
+it ships opt-in behind `--lra-fixed-elimination` (`eed259c` .. `ebd2533`).**
+It did not clear the 595-file scrambled bar, and its row-freezing half was
+deleted outright. See the falsifier outcome at the end of this item; that is
+the part worth reading. This is also the first item in this note whose
+evidence comes from a set Primo was never tuned against.
 
 **Where it comes from.** On the 595-file scrambled QF_LRA competition set at a
 60s timeout, Primo solves 373 against z3's 429 and cvc5's 351 -- ahead of cvc5,
@@ -503,15 +506,15 @@ variable's bounds coincide:
    the new basic variable's dependence on the now-inert fixed variable *is* the
    constant term.
 2. **Prefer an entering candidate with no bounds**, then the Markowitz
-   occurrence count, then a `+/-1` coefficient. An unbounded basic variable's
-   row can never be violated, so it never demands another repair pivot.
-3. **Freeze that row** when its variable is unbounded: drop it from
-   `occurs_in_`, which is what removes it from `update()`'s and `check()`'s
-   scans. Trailed, so `pop()` restores it.
+   occurrence count, then a `+/-1` coefficient -- and never one that is
+   *itself* already fixed, which the other criteria actively steer into
+   (a fixed slack tends to occur in few rows and to carry a unit
+   coefficient). An unbounded basic variable's row can never be violated, so
+   it never demands another repair pivot.
 
-Step 3 is where all the risk is, and it is separately ablatable
-(`--no-lra-freeze-eliminated-rows`) for exactly that reason -- see the
-falsifier outcome below.
+A third step -- **freezing** the resulting row out of the working set
+entirely when its variable was provably unconstrainable -- was implemented,
+measured, and removed. What it cost, and why it went, is below.
 
 **Offset equalities (`x - y = c`) remain a follow-on**, matching z3's
 `arith-offset-eqs`: merge the two columns rather than carrying both. Better
@@ -525,57 +528,96 @@ takes each row term's bound reason, so a fixed variable appearing in a row
 contributes the asserting literal of the equality that fixed it, which is
 exactly the right Farkas antecedent.
 
-Freezing is different, and its soundness reduces to a single condition: **only
-freeze a row whose basic variable has no bounds and can never acquire any.**
-"Unbounded right now" is not sufficient. A frozen row is deliberately dropped
-out of the machinery that maintains it, so its own assignment stops tracking
-its terms and its terms are no longer kept non-basic; a bound asserted against
-it later would be tested against a stale value. Only the caller knows which
-variables can ever be bounded -- it owns the atom-to-tableau-variable map -- so
-`LraTableau::mark_boundable()` makes it say so, and `check_sat.cpp` marks every
-`PreparedAtom::bound_var`. An assert against a frozen row throws rather than
-answering from a stale assignment.
+Freezing was different, and that asymmetry is the whole reason the two halves
+were built with separate switches. Its soundness reduced to a single
+condition: **only freeze a row whose basic variable has no bounds and can
+never acquire any.** "Unbounded right now" was not sufficient. A frozen row is
+deliberately dropped out of the machinery that maintains it, so its own
+assignment stops tracking its terms and its terms are no longer kept
+non-basic; a bound asserted against it later would be tested against a stale
+value. Only the caller knows which variables can ever be bounded -- it owns
+the atom-to-tableau-variable map -- so `LraTableau::mark_boundable()` made it
+say so, and an assert against a frozen row threw rather than answering from a
+stale assignment.
 
-**Both halves of that guard were mutation-checked**, because a guard that
-cannot be shown to fire is not a guard:
+None of that machinery survives (`ebd2533`), so **the retained mechanism has
+no wrong-answer mode at all**: a pivot is what `check()` already does on every
+repair. The guard is recorded here because its mutation check is the evidence
+that removing it was the right call rather than a lucky one -- it was
+genuinely load-bearing, so keeping the feature would have meant keeping the
+risk:
 
 - Dropping it entirely (freeze any row): caught by its dedicated unit test,
   *and* it makes an existing end-to-end test return the wrong verdict
   (`gaussian_elimination_can_be_disabled` goes from sat to not-sat). So the
   condition is genuinely load-bearing for soundness, not just for tidiness.
-- Dropping only the `mark_boundable` half, keeping "unbounded right now":
-  caught by the unit test, and on real benchmarks the throw fires immediately
-  -- variable 1133 on `scrambled335326`, 1584 on
-  `latendresse/ecoliFBAyicesTest-500`. That is the case that would otherwise
-  have been a silent stale-value read, and it confirms both that the static
-  half is necessary and that the enforcement works rather than merely
-  existing.
+- Dropping only the `mark_boundable` half, keeping "unbounded right now" --
+  the plausible-looking weaker guard: caught by the unit test, and on real
+  benchmarks the throw fired immediately (variable 1133 on `scrambled335326`,
+  1584 on `latendresse/ecoliFBAyicesTest-500`). That is the case that would
+  otherwise have been a silent stale-value read.
 
 **Falsifier.** If eliminating fixed variables does not reduce
 `:lra.pivot-row-updates` proportionally to the share of rows eliminated, then
 the fill-in is not concentrated in those rows and the diagnosis above is wrong.
 
-**Falsifier outcome: did not fire for the elimination, fired for the
-freezing** -- and the two have to be judged separately, which is why they got
-separate switches. Local paired A/B (workstation, 120s cap, `--stats`):
+**Falsifier outcome: the mechanism works and the item still loses.** This is
+the interesting part of H7, and the reason it is written up at length despite
+not shipping on by default.
 
-| instance | H7 off | H7 on | term-ops off -> on | rows frozen |
-|---|---|---|---|---|
-| `latendresse/ecoliFBAyicesTest-500` | 0.8s | **0.1s** | 8.66M -> 0.68M | **0** |
-| `scrambled335326` | 51.0s | **19.4s** | 195M -> 21M | 716 |
-| `scrambled126657` | timeout | timeout | 492M -> 40M in the same 120s | 3,950 |
-| `scrambled412738` | timeout | timeout | 238M -> 140M | 1,011 |
-| `scrambled102007` | timeout | timeout | 184M -> 153M | 1,158 |
+The *local* evidence was strong. Paired A/B on the profiled instances
+(workstation, 120s cap):
 
-The elimination is emphatically not falsified: an 8x and a 2.6x, and an order
-of magnitude less pivot work on the instances that still time out. But note
-the first row -- **8x with zero rows frozen.** Freezing fires on 0.5-3% of
-fixed variables, and ablating it alone on `scrambled335326` leaves
-`:lra.pivot-term-ops` at 21.9M against 21.2M, a 3% difference that is inside
-this workstation's own wall-clock spread (19.5-25.7s across repeats of an
-identical binary). The win is the pivot; the freezing is close to free-floating
-while carrying the entire soundness burden, so it is being decided on the
-595-file scrambled set rather than on workstation timings of its own order.
+| instance | H7 off | H7 on | `:lra.pivot-term-ops` off -> on |
+|---|---|---|---|
+| `latendresse/ecoliFBAyicesTest-500` | 0.8s | **0.1s** | 8.66M -> 0.13M |
+| `scrambled335326` | 51.0s | **14.9s** | 195M -> 27M |
+| `scrambled126657` | timeout | timeout | 492M -> 40M in the same 120s |
+| `scrambled412738` | timeout | timeout | 238M -> 140M |
+
+An 8x, a 3.4x, and an order of magnitude less pivot work on instances that
+still time out. The diagnosis was right: these tableaus really are dominated
+by fixed equality slacks, and eliminating them really does remove most of the
+pivoting.
+
+**It does not convert.** On the 595-file scrambled set at 60s (job 117487, 3
+Primo configurations x 20 shards, z3/cvc5 reused unchanged):
+
+| config | solved | PAR2 | 0-50KB | 50-500KB | 500KB-5MB | >5MB |
+|---|---|---|---|---|---|---|
+| H7 off | 373 | 29204 | 177 | **144** | 45 | 7 |
+| H7 on | 374 | 29237 | 179 | 140 | 41 | **14** |
+| H7 on, freezing off | 375 | 29195 | 179 | 138 | 45 | 13 |
+| z3 | 429 | 23138 | 178 | 136 | **101** | 14 |
+
+**+1 file on 595.** PAR2 flat. The churn underneath is +19/-18 -- symmetric --
+and over the 139 files both configurations solve in more than a second the
+**median speedup is 0.94x**, a slight net *slowdown*. Big wins (4.88x, 3.31x,
+3.26x) are matched by big losses (0.18x, 0.19x, 0.23x). On the 237-file
+stratified sample the same picture: 167 -> 168, PAR2 1559 -> 1532. Zero
+cross-solver disagreements on either set.
+
+There is one real signal: **the >5MB band doubles, 7 -> 14 of 50, exactly
+matching z3's own 14** -- the band most dominated by equalities, which is
+where the diagnosis said the effect would be. It is paid for in the 50-500KB
+band (144 -> 140), and the trade nets out.
+
+So H7 ships opt-in. **No size or row-length threshold was added** to keep the
+>5MB win while dodging the mid-range cost: that is tuning a heuristic that
+lost its own bar, which is exactly item 8's mistake.
+
+**The freezing half was deleted, not left behind a flag.** It is strictly
+negative in the table above -- four files lost in the 500KB-5MB band (41
+against 45) for one gained elsewhere -- while carrying every bit of H7's
+wrong-answer risk. 352 lines removed against 106 added.
+
+**What this says about the remaining gap.** The 56-file deficit against z3 is
+*not* mostly the fixed-equality effect, even though that effect is real and
+large per-instance. Two candidates remain, and the honest position is that
+neither has been tested: offset equalities (`x - y = c` as a column merge,
+z3's other counter, 855-68,937 per instance) and the possibility that the
+mid-range cost here is the elimination pivots' own price on tableaus where
+fixed rows were never the bottleneck. Recorded rather than chased.
 
 ### H4 -- Batched bound assertion (deferred `update()`)
 
