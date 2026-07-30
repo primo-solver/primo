@@ -536,6 +536,21 @@ variables can ever be bounded -- it owns the atom-to-tableau-variable map -- so
 `PreparedAtom::bound_var`. An assert against a frozen row throws rather than
 answering from a stale assignment.
 
+**Both halves of that guard were mutation-checked**, because a guard that
+cannot be shown to fire is not a guard:
+
+- Dropping it entirely (freeze any row): caught by its dedicated unit test,
+  *and* it makes an existing end-to-end test return the wrong verdict
+  (`gaussian_elimination_can_be_disabled` goes from sat to not-sat). So the
+  condition is genuinely load-bearing for soundness, not just for tidiness.
+- Dropping only the `mark_boundable` half, keeping "unbounded right now":
+  caught by the unit test, and on real benchmarks the throw fires immediately
+  -- variable 1133 on `scrambled335326`, 1584 on
+  `latendresse/ecoliFBAyicesTest-500`. That is the case that would otherwise
+  have been a silent stale-value read, and it confirms both that the static
+  half is necessary and that the enforcement works rather than merely
+  existing.
+
 **Falsifier.** If eliminating fixed variables does not reduce
 `:lra.pivot-row-updates` proportionally to the share of rows eliminated, then
 the fill-in is not concentrated in those rows and the diagnosis above is wrong.
