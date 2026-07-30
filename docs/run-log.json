@@ -13433,6 +13433,73 @@
       },
       "evidence_status": "current",
       "followups": "This is a simple runnable arrangement step, not full Nelson-Oppen. Remaining work includes native LRA disequality case-splitting or a care-set arrangement loop, minimal cross-theory explanations, and promotion/evaluation beyond local merge-gate fuzzing."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-interface-conflict-source-counters",
+      "date": "2026-07-30",
+      "kind": "fuzz-and-diagnostic-validation",
+      "scope": "Local validation for source-split QF_UFLRA interface conflict counters. The solver behavior and learned clauses are unchanged; the mixed coordinator now increments :no.interface.conflicts only when an ordinary EUF/LRA conflict clause mentions a generated interface equality literal, split by :no.interface.euf-conflicts and :no.interface.lra-conflicts.",
+      "commit": "2df8b8a on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 2df8b8a; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "commands": {
+        "focused_tests": "clang-format -i src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp && cmake --build build --target primo_qf_lra_solver_tests primo -j2 && ./build/primo_qf_lra_solver_tests",
+        "cli_probe": "./build/primo --quiet --stats --no-solved-constant-substitution --qf-uf-preprocess=off no-euf-lra-conflict.smt2",
+        "make_check": "make check",
+        "make_docs": "make docs",
+        "make_lint": "make lint",
+        "make_asan_test": "make asan-test",
+        "clang_tidy_diff": "clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_include_cleaner": "clang-tidy -p build -checks='-*,misc-include-cleaner' src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_owned_cpp": "git ls-files '*.cpp' | rg -v '(^|/)generated/|^src/smtlib/antlr/' | xargs clang-tidy -p build",
+        "efficiency_snapshot": "python3 <solver-efficiency-skill>/scripts/solver_efficiency_snapshot.py --repo .",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260748 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-interface-conflict-counters-answer-1000-2df8b8a",
+        "private_endpoint_leak_scan": "git diff -U0 | rg -n <private-endpoint-patterns> || true"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "answer_seed": 20260748,
+        "answer_fuzz_count": 1000,
+        "answer_fuzz_timeout_seconds": 5
+      },
+      "artifacts": {
+        "answer_fuzz": "fuzz-results/qf_uflra-interface-conflict-counters-answer-1000-2df8b8a/summary.csv",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 696,
+        "answer_fuzz_unsat": 304
+      },
+      "verification": {
+        "focused_regressions": "qf_uf_lra_shares_lra_implied_real_equalities_with_euf now checks :no.interface.conflicts and :no.interface.euf-conflicts; qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra now checks :no.interface.conflicts and :no.interface.lra-conflicts.",
+        "cli_probe": "The LRA-implies-shared-equality/EUF-rejects probe returned unsat with :no.interface.sat-equality-atoms 1, :no.interface.sat-equalities-forced 1, :no.interface.lra-to-euf-equalities 1, :no.interface.conflicts 1, :no.interface.euf-conflicts 1, and :no.interface.lra-conflicts 0.",
+        "efficiency_review": "solver_efficiency_snapshot.py reported no added hot-path patterns. The new conflict-source scan only runs after an already-built theory conflict clause and scans that clause against the generated interface equality registry.",
+        "document_critic_review": "docs/debugging.md and docs/papers/nelson-oppen-closure-methods.md document the new counters and keep the limitation that this is partial QF_UFLRA combination, not full Nelson-Oppen."
+      },
+      "evidence_status": "current",
+      "followups": "This improves observability for the runnable partial NO loop. It does not add native LRA disequality handling, care-set arrangement enumeration, minimal cross-theory explanations, or model-equality propagation beyond the existing default-off scaffold."
     }
   ]
 }
