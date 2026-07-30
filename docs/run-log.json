@@ -13964,6 +13964,63 @@
       },
       "evidence_status": "current",
       "followups": "Replace the quadratic scan with an indexed care-set representation when mixed QF_UFLRA benchmarks show this scan on a hot path. Keep the feature as part of the partial mixed coordinator, not a claim of full Nelson-Oppen care-set implementation."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-current-model-validation",
+      "date": "2026-07-31",
+      "kind": "model-validation",
+      "scope": "Current mixed QF_UFLRA get-model validation over the same 1000 generated cases used for the closure-aware care-pair answer fuzz gate. The run validates that the current runnable mixed coordinator still prints Dolmen-accepted models for every sat case in that corpus.",
+      "commit": "0e25853 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 0e25853; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "model_validator": "dolmen from local temporary OPAM root",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "commands": {
+        "build": "cmake --build build --target primo -j2 && ./build/primo --version",
+        "model_validation": "PATH=\"<local-opam-dolmen>:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --out results/qf_uflra-current-model-validation-1000-0e25853 fuzz-results/qf_uflra-closure-aware-care-answer-1000-dd399fc/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet with :produce-models true and appended get-model"
+      },
+      "references": [
+        {
+          "name": "dolmen",
+          "argv": "dolmen --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "source_corpus": "fuzz-results/qf_uflra-closure-aware-care-answer-1000-dd399fc/cases/*.smt2",
+        "logic": "QF_UFLRA",
+        "count": 1000,
+        "solver_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10
+      },
+      "artifacts": {
+        "summary": "results/qf_uflra-current-model-validation-1000-0e25853/summary.csv",
+        "validation_artifacts": "results/qf_uflra-current-model-validation-1000-0e25853/",
+        "source_cases": "fuzz-results/qf_uflra-closure-aware-care-answer-1000-dd399fc/cases/"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 728,
+        "not_sat": 272,
+        "solver_timeout": 0,
+        "solver_error": 0,
+        "model_error": 0,
+        "dolmen_timeout": 0,
+        "validation_unavailable": 0
+      },
+      "verification": {
+        "relationship_to_answer_fuzz": "This uses the same generated cases as the 1000-case answer fuzz gate recorded for dd399fc. It adds model-response validation for the 728 sat cases after the documentation-only run-log commit 0e25853.",
+        "correctness_boundary": "The validation covers the documented mixed QF_UFLRA model subset exercised by the generator. It is not a proof of full Nelson-Oppen model-guided combination, non-convex arrangement enumeration, or future theories.",
+        "result": "scripts/validate_model.py reported pass=728 and not-sat=272 with zero model errors, timeouts, solver errors, or unavailable validations."
+      },
+      "evidence_status": "current",
+      "followups": "Keep running model validation after future mixed coordinator changes that alter equality propagation, arrangement separation, purification, or model reconstruction."
     }
   ]
 }
