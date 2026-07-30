@@ -13341,6 +13341,98 @@
       },
       "evidence_status": "current",
       "followups": "Next NO work should add the smallest useful arrangement loop or care-set-driven model-equality loop. Current guarded clauses are intentionally non-minimal and may be performance-noisy, but they preserve branch soundness and give a working base."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-false-interface-equality-euf-disequality",
+      "date": "2026-07-30",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local validation for interpreting false generated QF_UFLRA interface equality atoms as EUF disequalities. The mixed coordinator now augments EUF checks with both true and false generated shared-Real equality atoms, while LRA still receives only true generated equalities. LRA rejects a false generated equality indirectly by entailing the corresponding equality; native LRA disequality case-splitting remains unsupported.",
+      "commit": "f6d52c9 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: f6d52c9; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "focused_tests": "cmake --build build --target primo_qf_lra_solver_tests primo -j2 && ./build/primo_qf_lra_solver_tests",
+        "make_check": "make check",
+        "make_docs": "make docs",
+        "make_lint": "make lint",
+        "make_asan_test": "make asan-test",
+        "clang_tidy_diff": "clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_include_cleaner": "clang-tidy -p build -checks='-*,misc-include-cleaner' src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_owned_cpp": "git ls-files '*.cpp' | rg -v '(^|/)generated/|^src/smtlib/antlr/' | xargs clang-tidy -p build",
+        "efficiency_snapshot": "python3 <solver-efficiency-skill>/scripts/solver_efficiency_snapshot.py --repo .",
+        "cli_probe": "./build/primo --quiet --stats --no-solved-constant-substitution --qf-uf-preprocess=off --model-equality-branching < qf_uflra_model_equality_bad_guess_probe.smt2",
+        "default_answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260746 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-false-interface-euf-diseq-answer-1000-f6d52c9",
+        "model_branch_answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--model-equality-branching --ref z3 --count 1000 --seed 20260747 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-false-interface-euf-diseq-model-branch-answer-1000-f6d52c9",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --limit 300 --out results/qf_uflra-false-interface-euf-diseq-model-validation-300-f6d52c9 fuzz-results/qf_uflra-default-preprocess-model-probe/cases/*.smt2",
+        "private_endpoint_leak_scan": "git diff -U0 -- docs/run-log.json | rg -n <private-endpoint-patterns> || true"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "default_answer_seed": 20260746,
+        "model_branch_answer_seed": 20260747,
+        "answer_fuzz_count_per_configuration": 1000,
+        "answer_fuzz_timeout_seconds": 5,
+        "model_validation_count": 300,
+        "model_validation_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10
+      },
+      "artifacts": {
+        "default_answer_fuzz": "fuzz-results/qf_uflra-false-interface-euf-diseq-answer-1000-f6d52c9/summary.csv",
+        "model_branch_answer_fuzz": "fuzz-results/qf_uflra-false-interface-euf-diseq-model-branch-answer-1000-f6d52c9/summary.csv",
+        "model_validation": "results/qf_uflra-false-interface-euf-diseq-model-validation-300-f6d52c9/summary.csv",
+        "bugs": null
+      },
+      "summary": {
+        "default_answer_fuzz_total": 1000,
+        "default_answer_fuzz_pass": 1000,
+        "default_answer_fuzz_wrong": 0,
+        "default_answer_fuzz_crash": 0,
+        "default_answer_fuzz_timeout": 0,
+        "default_answer_fuzz_unsupported": 0,
+        "default_answer_fuzz_reference_disagreement": 0,
+        "default_answer_fuzz_sat": 704,
+        "default_answer_fuzz_unsat": 296,
+        "model_branch_answer_fuzz_total": 1000,
+        "model_branch_answer_fuzz_pass": 1000,
+        "model_branch_answer_fuzz_wrong": 0,
+        "model_branch_answer_fuzz_crash": 0,
+        "model_branch_answer_fuzz_timeout": 0,
+        "model_branch_answer_fuzz_unsupported": 0,
+        "model_branch_answer_fuzz_reference_disagreement": 0,
+        "model_branch_answer_fuzz_sat": 683,
+        "model_branch_answer_fuzz_unsat": 317,
+        "model_validation_total": 300,
+        "model_validation_pass": 212,
+        "model_validation_not_sat": 88,
+        "model_validation_model_error": 0
+      },
+      "verification": {
+        "focused_regression": "qf_uf_lra_model_equality_branching_backs_off_from_bad_guess now also checks :no.interface.sat-equalities-false >= 1.",
+        "cli_probe": "The model-equality bad-guess CLI probe returned sat with :no.interface.sat-equalities-false 1 and :no.interface.model-equality-conflicts 1.",
+        "efficiency_review": "solver_efficiency_snapshot.py flagged one fresh vector allocation for false generated interface equalities. It is in the lazy mixed final-check loop, not a SAT callback, and is proportional to generated interface atoms."
+      },
+      "evidence_status": "current",
+      "followups": "This is a simple runnable arrangement step, not full Nelson-Oppen. Remaining work includes native LRA disequality case-splitting or a care-set arrangement loop, minimal cross-theory explanations, and promotion/evaluation beyond local merge-gate fuzzing."
     }
   ]
 }
