@@ -13015,8 +13015,77 @@
         "document_critic": "Stale-claim scan over architecture, debugging, this design note, and run-log found the current docs synchronized with lazy positive-only equality atoms. Historical eager-atom entries are marked superseded.",
         "notes": "The first lazy draft crashed because it created a new CaDiCaL variable and then queried backend.value in the same satisfied state. The accepted implementation first queries existing generated equality literals, then creates all missing literals, then adds unit clauses."
       },
-      "evidence_status": "current",
+      "evidence_status": "superseded-by-2026-07-30-qf-uflra-lazy-sat-interface-equalities-slurm",
       "followups": "This remains final-check-only positive equality sharing. LRA still checks all shared Real pairs for entailed equality, false generated equality literals are not LRA disequalities, and there is still no model-guided equality guessing, non-convex arrangement enumeration, or minimal Nelson-Oppen explanation minimization. SLURM-scale mixed fuzzing remains future work."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-lazy-sat-interface-equalities-slurm",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "slurm-fuzz-gate",
+      "scope": "SLURM-backed 3000-case mixed QF_UFLRA answer fuzz campaign for lazy positive SAT-visible shared-Real interface equality atoms at commit b95cceb. Four array tasks each generated 750 mixed QF_UFLRA cases and compared Primo against Z3.",
+      "commit": "b95cceb",
+      "environment": {
+        "type": "slurm",
+        "host": "configured SLURM cluster via temporary SSH config",
+        "job_id": "117700",
+        "binary": "primo 0.1.0; git: b95cceb-dirty; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "z3 5.0.0 from remote contrib/local/bin"
+      },
+      "commands": {
+        "prepare_workspace": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir primo-no-closure --target primo --jobs 2 --allow-active-jobs",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir primo-no-closure --target primo --check-only",
+        "submit": "sbatch primo-qf-uflra-lazy-fuzz.sbatch",
+        "reusable_template": "scripts/slurm_qf_uflra_fuzz_gate.sbatch"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build-slurm-rel/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "seed_base": 202607390,
+        "array_tasks": 4,
+        "count_per_task": 750,
+        "count": 3000,
+        "timeout_seconds": 5,
+        "slurm_time_limit": "00:20:00"
+      },
+      "artifacts": {
+        "remote_results": "primo-no-closure/slurm-results/qf_uflra-lazy-sat-interface-equalities/task-*/summary.csv",
+        "local_results_copy": "results/slurm-qf-uflra-lazy-117700/task-*/summary.csv",
+        "local_log_copy": "slurm_logs/qf-uflra-lazy-117700/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 3000,
+        "answer_fuzz_pass": 3000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 2130,
+        "answer_fuzz_unsat": 870,
+        "task_0_pass": 750,
+        "task_1_pass": 750,
+        "task_2_pass": 750,
+        "task_3_pass": 750
+      },
+      "verification": {
+        "slurm_status": "sacct reported all four array tasks COMPLETED with ExitCode 0:0 and elapsed 00:00:16 per task.",
+        "batch_validation": "python3 scripts/slurm_validate_sbatch.py /tmp/primo-qf-uflra-lazy-fuzz.sbatch and bash -n /tmp/primo-qf-uflra-lazy-fuzz.sbatch passed before submission. The committed reusable template scripts/slurm_qf_uflra_fuzz_gate.sbatch also passes both validators.",
+        "pre_submit_check": "The required check-only workspace validation immediately before sbatch confirmed the remote binary reported git b95cceb-dirty and cadical cadical-3.0.0-7b99c07."
+      },
+      "evidence_status": "current",
+      "followups": "This clears the 3000-case SLURM answer-fuzz gate for the current lazy positive-equality QF_UFLRA slice. Remaining NO work is algorithmic: final-check-only propagation, no false-disequality arrangement enumeration, no model-guided equality guessing, and no minimal Nelson-Oppen explanation minimization."
     }
   ]
 }
