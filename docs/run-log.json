@@ -12451,6 +12451,60 @@
       },
       "evidence_status": "current",
       "followups": "This is a local merge gate for the implemented partial subset, not a campaign-tier validation for full Nelson-Oppen. Remaining work: Real terms in EUF predicates/non-definition atoms, fine-grained cross-theory explanations, bidirectional sharing, mixed model reconstruction, and SLURM-scale mixed-theory fuzzing."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-separable-mixed-model-smoke-5bb2262",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "model-validation",
+      "scope": "Local smoke validation for separable mixed QF_UFLRA get-model: EUF atoms over an uninterpreted sort plus nullary Real LRA atoms, with preprocessing and solved-constant substitution disabled so the mixed model composer is exercised.",
+      "commit": "5bb2262 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 5bb2262; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "validator": "Dolmen-compatible validation through scripts/validate_model.py; summary rows report dolmen_exit=0"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uf-preprocess=off --solver-arg=--no-solved-constant-substitution --timeout 5 --dolmen-timeout 10 --out results/qf_uflra-mixed-model-smoke-5bb2262 /tmp/primo-mixed-model-smoke/case-*.smt2",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --qf-uf-preprocess=off --no-solved-constant-substitution"
+      },
+      "references": [
+        {
+          "name": "Dolmen",
+          "argv": "via scripts/validate_model.py"
+        }
+      ],
+      "inputs": {
+        "generator": "temporary shell-generated SMT-LIB cases under /tmp/primo-mixed-model-smoke/case-*.smt2",
+        "logic": "QF_UFLRA",
+        "seed": null,
+        "count": 100,
+        "timeout_seconds": 5,
+        "manifest": "temporary local files; each case declares U constants a,b,c, Real constants x,y, predicate p: U -> Bool, asserts (= a b), (p a), (< n x), and (<= x y), then requests get-model"
+      },
+      "artifacts": {
+        "summary": "results/qf_uflra-mixed-model-smoke-5bb2262/summary.csv",
+        "responses": "results/qf_uflra-mixed-model-smoke-5bb2262/*.rsmt2",
+        "bugs": null
+      },
+      "summary": {
+        "total": 100,
+        "pass": 100,
+        "model_error": 0,
+        "solver_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "sat": 100,
+        "unsat": 0
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers separable mixed get-model output, rejection of get-model for Real-valued UF applications, and the existing mixed QF_UFLRA SAT/UNSAT cases.",
+        "local_gates": "make check, make docs, make lint, make asan-test, clang-tidy -p build src/smt/check_sat.cpp src/smt/model_builder.cpp tests/unit/qf_lra_solver_tests.cpp, git diff --check, and python3 -m json.tool docs/run-log.json all passed before recording this entry."
+      },
+      "evidence_status": "current",
+      "followups": "This validates only the separable mixed model subset. Real-valued UF applications, shared-Real EUF terms, and full Nelson-Oppen model reconstruction remain unsupported."
     }
   ]
 }
