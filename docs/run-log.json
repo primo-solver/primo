@@ -13896,6 +13896,74 @@
       },
       "evidence_status": "current",
       "followups": "Use these branch-specific counters in the next local or SLURM mixed-QF_UFLRA evaluation to separate useful model-equality candidates from pairs pruned before model inspection."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-closure-aware-care-pairs",
+      "date": "2026-07-31",
+      "kind": "fuzz-and-regression-validation",
+      "scope": "Local validation for closure-aware EUF care pairs in the mixed QF_UFLRA coordinator. The implementation computes care pairs after the current EUF closure check and pairs shared Real arguments whose flat function prefixes are equal in that closure, so curried non-unary applications can expose later argument pairs after earlier interface equalities are asserted.",
+      "commit": "dd399fc on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: dd399fc; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "commands": {
+        "make_check": "make check",
+        "make_docs": "make docs",
+        "make_lint": "make lint",
+        "make_asan_test": "make asan-test",
+        "efficiency_snapshot": "python3 <solver-efficiency-skill>/scripts/solver_efficiency_snapshot.py --repo .",
+        "clang_tidy_touched": "clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_include_cleaner": "clang-tidy -p build -checks='-*,clang-diagnostic-*,misc-include-cleaner' src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_owned_cpp": "git ls-files '*.cpp' | rg -v '(^|/)generated/|^src/smtlib/antlr/' | xargs clang-tidy -p build",
+        "focused_solver_probe": "printf <binary-predicate-qf-uflra-case> | ./build/primo --qf-uf-preprocess off --stats",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260755 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-closure-aware-care-answer-1000-dd399fc",
+        "private_endpoint_leak_scan": "git diff -- src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp docs/architecture.md docs/debugging.md docs/papers/nelson-oppen-closure-methods.md | rg -n <private-endpoint-patterns> || true"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "answer_seed": 20260755,
+        "answer_fuzz_count": 1000,
+        "answer_fuzz_timeout_seconds": 5
+      },
+      "artifacts": {
+        "answer_fuzz": "fuzz-results/qf_uflra-closure-aware-care-answer-1000-dd399fc/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uflra-closure-aware-care-answer-1000-dd399fc/cases/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 728,
+        "answer_fuzz_unsat": 272
+      },
+      "verification": {
+        "focused_regression": "qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications checks the binary predicate case q(x,z) and not q(y,w) with LRA-implied x=y and z=w. Before this change the care scan saw only x/y and the formula could be reported sat; after this change the solver reports unsat, publishes at least two care pairs, forces at least two SAT-visible equality atoms, and records an EUF interface conflict.",
+        "correctness_boundary": "The change only broadens the already documented care subset used for LRA-to-EUF equality propagation and default-off model-equality branching. It still does not add care-pair clauses, does not filter EUF-to-LRA propagation, and does not replace final arrangement validation or model reconstruction.",
+        "efficiency_review": "solver_efficiency_snapshot.py reported one added vector allocation in the care scan. The docs record the current quadratic scan over shared-argument flat definitions as a limitation; this is accepted for the partial coordinator and is not a default-promotion/performance claim.",
+        "documentation_review": "docs/architecture.md, docs/debugging.md, and docs/papers/nelson-oppen-closure-methods.md were updated to say closure-aware flat-prefix care pairs, include the non-unary regression shape, and keep the Jovanovic-Barrett care-set algorithms as not implemented.",
+        "local_gates": "make check, make docs, make lint, make asan-test, git diff --check, touched-file clang-tidy/include-cleaner, whole-tree non-generated clang-tidy, IP/private-endpoint leak scan, and 1000-case QF_UFLRA answer fuzz passed. make lint skipped ruff because it is not installed."
+      },
+      "evidence_status": "current",
+      "followups": "Replace the quadratic scan with an indexed care-set representation when mixed QF_UFLRA benchmarks show this scan on a hot path. Keep the feature as part of the partial mixed coordinator, not a claim of full Nelson-Oppen care-set implementation."
     }
   ]
 }
