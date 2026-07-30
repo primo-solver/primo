@@ -13567,6 +13567,70 @@
       },
       "evidence_status": "current",
       "followups": "This makes the non-model sat path check the same Real-argument separability condition model reconstruction relies on. Remaining NO work still includes native LRA disequality handling if needed for future non-convex theories, care-set arrangement search, and minimal cross-theory explanations."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-lowered-real-disequality",
+      "date": "2026-07-30",
+      "kind": "fuzz-and-documentation-validation",
+      "scope": "Local validation that ordinary SMT-LIB Real disequality remains supported in mixed QF_UFLRA through Real-equality lowering and Boolean-level case splitting, even though generated false interface equalities are not asserted to LRA as native false-Eq prepared atoms.",
+      "commit": "1c37ba3 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 1c37ba3; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "commands": {
+        "make_check": "make check",
+        "make_docs": "make docs",
+        "make_lint": "make lint",
+        "make_asan_test": "make asan-test",
+        "clang_tidy_touched": "clang-tidy -p build tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_include_cleaner": "clang-tidy -p build -checks='-*,clang-diagnostic-*,misc-include-cleaner' tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_owned_cpp": "git ls-files '*.cpp' | rg -v '(^|/)generated/|^src/smtlib/antlr/' | xargs clang-tidy -p build",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260750 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-lowered-real-diseq-answer-1000-1c37ba3",
+        "private_endpoint_leak_scan": "git diff -- tests/unit/qf_lra_solver_tests.cpp docs/architecture.md docs/debugging.md docs/papers/nelson-oppen-closure-methods.md | rg -n <private-endpoint-patterns> || true"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "answer_seed": 20260750,
+        "answer_fuzz_count": 1000,
+        "answer_fuzz_timeout_seconds": 5
+      },
+      "artifacts": {
+        "answer_fuzz": "fuzz-results/qf_uflra-lowered-real-diseq-answer-1000-1c37ba3/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uflra-lowered-real-diseq-answer-1000-1c37ba3/cases/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 703,
+        "answer_fuzz_unsat": 297
+      },
+      "verification": {
+        "focused_regression": "qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality covers a=b, Real-valued f(a)/f(b) proxies x/y, and (not (= x y)); it expects unsat via EUF-to-LRA equality propagation plus lowered Real disequality.",
+        "documentation_review": "docs/architecture.md, docs/debugging.md, and docs/papers/nelson-oppen-closure-methods.md now distinguish ordinary input-level Real disequality support from the internal limitation on native false-Eq LRA prepared atoms.",
+        "local_gates": "make check, make docs, make lint, make asan-test, git diff --check, touched-file clang-tidy/include-cleaner, and whole-tree non-generated clang-tidy passed. make lint skipped ruff because it is not installed."
+      },
+      "evidence_status": "current",
+      "followups": "This is a small documentation and regression milestone, not a new Nelson-Oppen mechanism. Remaining NO work is still the simple runnable combination path: care-pair diagnostics or pruning, better arrangement search, and minimal cross-theory explanations when we are ready to add machinery."
     }
   ]
 }
