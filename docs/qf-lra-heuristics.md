@@ -859,6 +859,47 @@ Two things sharpen that:
   likely recover a large share of them for Primo -- which is worth
   remembering before treating this as an algorithmic wall.
 
+### 6.1a It is a constant factor, not a wall -- and the factor is small
+
+Job 117631 re-ran exactly those 59 files at a 600s budget (two Primo
+configurations x 20 shards; z3 was deliberately not re-run, since it solves
+all 59 by construction).
+
+**Primo solves 45 of the 59.** Only 8 resist both configurations. So this
+band is overwhelmingly a constant-factor problem, and the constant is far
+smaller than the 60s cliff suggested:
+
+| | time on the 45 it solves |
+|---|---|
+| min / p25 / median / p75 / max | 64s / 114s / **167s** / 275s / 563s |
+
+Against a 60s budget that is a **median 2.8x, p75 4.6x, worst 9.4x**. The
+payoff is therefore close to linear in the speedup achieved, not
+all-or-nothing:
+
+| speedup | files recovered at 60s (of 59) |
+|---|---|
+| 2x | 15 |
+| 3x | 24 |
+| 5x | 37 |
+| 10x | 45 |
+
+This is the single most useful number in this section: **a 3x is worth 24
+files and a 5x is worth 37**, so incremental progress on per-pivot cost pays
+proportionally and there is no threshold effect to clear first. Against z3's
+own 60s times on the same files Primo is a median 6.6x slower (p90 31.6x),
+which is consistent.
+
+The 14 files that do not solve even at 600s are the genuine capability
+residue -- about a quarter of the band -- and should not be conflated with
+the rest when judging any future mechanism.
+
+**H7 does not convert at a longer budget either**: 41 solved against the
+default's 45, +6/-10 churn. Its per-instance wins are real but land on
+instances that were not the binding ones, which is the same conclusion the
+60s run reached and independent confirmation that shipping it opt-in was
+right.
+
 ### 6.2 The cost is fill-in, and both Markowitz factors blow up
 
 Profiled on four instances chosen by *z3-time quartile* across the band (p10,

@@ -12117,6 +12117,46 @@
       },
       "evidence_status": "current",
       "followups": "Three candidate directions recorded in docs/qf-lra-heuristics.md section 6.5, unranked and untested: (1) attack fill-in directly via periodic refactorization from the original rows -- the measured 5-17x densification is the headroom; (2) dynamic offset-equality detection matching z3's dominant counter; (3) evaluate the existing opt-in row-based bound propagation on this band, which has never been tried there. A falsifier for the whole diagnosis is stated in the note."
+    },
+    {
+      "id": "2026-07-30-qf-lra-midband-gap-600s",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "benchmark",
+      "scope": "Separates 'Primo cannot solve the mid-band gap files' from 'Primo is a constant factor too slow' by re-running exactly the 59 files of benchmarks/qf-lra-scrambled-midband-gap.txt at 600s instead of 60s. That band holds the entire 56-file deficit against z3 (docs/qf-lra-heuristics.md section 6).",
+      "commit": "01d0a93",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo --quiet [--lra-fixed-elimination] (remote Release)"
+      },
+      "command": {
+        "run": "sbatch --array=0-39 --job-name=primo-lra-midband-600 --export=ALL,'PRIMO_COMPARE_SOLVERS=primo=...;primoh7=... --lra-fixed-elimination',PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-scrambled-midband-gap.txt,PRIMO_COMPARE_TIMEOUT=600 scripts/slurm_qf_lra_scrambled_compare.sbatch",
+        "analysis": "python3 scripts/compare_solver_answers.py results/qf-lra-midband-600s --timeout 600"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-midband-gap.txt (59 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 600
+      },
+      "job_id": "117631 (all 40 tasks COMPLETED, 40 shard CSVs present)",
+      "artifacts": {
+        "results": "results/qf-lra-midband-600s (fetched)"
+      },
+      "summary": {
+        "headline": "Primo solves 45 of 59 at 600s, against 0 of 59 at 60s by construction. The band is a constant-factor problem, not a capability wall; only 8 files resist both configurations.",
+        "the_factor_is_small": "Time on the 45 solved: min 64s, p25 114s, median 167s, p75 275s, max 563s. Against a 60s budget that is a median 2.8x, p75 4.6x, worst 9.4x. Files recovered at 60s per speedup achieved: 2x -> 15, 3x -> 24, 5x -> 37, 10x -> 45. The payoff is close to linear, with no threshold to clear first -- this is the number future work on this band should be calibrated against.",
+        "vs_z3": "Over the 45 both solve, primo(600s)/z3(60s) time ratio is median 6.6x, p90 31.6x, max 100x.",
+        "residue": "14 files do not solve even at 600s -- about a quarter of the band -- and are the genuine capability part. They should not be conflated with the rest when judging a mechanism.",
+        "h7_at_longer_budget": "H7 solves 41 against the default's 45 (+6/-10 churn), so it does not convert at a longer budget either. Independent confirmation that shipping it opt-in was correct, from a run where the 60s cliff cannot be the explanation.",
+        "soundness": "Zero cross-solver disagreements between the two configurations."
+      },
+      "verification": {
+        "completeness": "sacct reports 80 COMPLETED for job 117631 and all 40 shard CSVs are present; checked before analysis, per the truncated-shard precedent.",
+        "reference_not_rerun": "z3 was deliberately not re-run: it solves all 59 by construction of the gap set."
+      },
+      "evidence_status": "current",
+      "followups": "Calibrates docs/qf-lra-heuristics.md section 6.5's candidate directions: a 3x is worth 24 files and a 5x is worth 37, so periodic refactorization (measured 5-17x densification headroom) is worth attempting on its own merits without needing to reach z3 parity."
     }
   ]
 }
