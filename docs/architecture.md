@@ -171,6 +171,11 @@ Implemented now:
   user-declared constants, functions, and predicates, consumes preprocessing
   reconstruction assignments for unit facts and substitutions, and omits
   Primo-generated auxiliary symbols from the response.
+- Minimal QF_LRA SMT-LIB model printing for user-declared nullary `Real`
+  constants. The SMT layer records declared Real constants, the LRA path reads
+  their values from the final `LraTableau` assignment, and model reconstruction
+  replays Real equalities recorded by preprocessing so solved-away constants
+  are printed for the original problem.
 - Read-only Nelson-Oppen interface diagnostics in
   `smt::analyze_nelson_oppen_interface`: the SMT layer counts user-visible,
   non-Boolean constants by sort and already-visible equality atoms over those
@@ -186,9 +191,9 @@ Not implemented yet:
 
 - push/pop assertion stacks.
 - proof production.
-- model construction for non-QF_UF fragments, model values for arithmetic, and
-  reconstruction through future satisfiability-preserving rewrites outside the
-  current QF_UF preprocessing subset.
+- model construction for mixed-theory fragments, arithmetic functions beyond
+  nullary `Real` constants, and reconstruction through future
+  satisfiability-preserving rewrites outside the current preprocessing trail.
 - Nelson-Oppen theory combination, model-equality propagation, care sets, and
   SAT atom creation for missing interface equalities.
 - explanation-producing congruence closure with proof forests.
@@ -216,6 +221,6 @@ make contrib-cadical
 
 Dolmen is used as an optional external validator for SMT-LIB model response
 files. It is not vendored under `contrib/`; install it separately and run
-`scripts/validate_qfuf_models_with_dolmen.py`.
+`scripts/validate_model.py`.
 
 Downloaded archives and build trees under `contrib/downloads`, `contrib/src`, and `contrib/local` are not committed.

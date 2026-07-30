@@ -27,6 +27,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--dolmen", default="dolmen", help="Dolmen executable")
     parser.add_argument(
+        "--z3",
+        default=str(Path("contrib/local/bin/z3"))
+        if Path("contrib/local/bin/z3").exists()
+        else "z3",
+        help="Z3 executable used as a limited QF_LRA Real-constant fallback",
+    )
+    parser.add_argument(
         "--dolmen-arg",
         action="append",
         default=[],
@@ -81,7 +88,7 @@ def solver_problem_text(text: str) -> str:
 def first_answer(stdout: str) -> str:
     for line in stdout.splitlines():
         stripped = line.strip()
-        if stripped:
+        if stripped in {"sat", "unsat", "unknown"}:
             return stripped
     return ""
 
@@ -91,13 +98,49 @@ def safe_stem(index: int, path: Path) -> str:
     return f"{index:05d}-{stem}"
 
 
-def run_command(command: list[str], timeout: float) -> tuple[str, int | None, str, str, float]:
+def extract_real_assignments(model_text: str) -> list[tuple[str, str]]:
+    assignments: list[tuple[str, str]] = []
+    for line in model_text.splitlines():
+        stripped = line.strip()
+        prefix = "(define-fun "
+        signature = " () Real "
+        if not stripped.startswith(prefix) or signature not in stripped or not stripped.endswith(")"):
+            continue
+        symbol_and_value = stripped[len(prefix) : -1]
+        symbol, value = symbol_and_value.split(signature, 1)
+        assignments.append((symbol, value.strip()))
+    return assignments
+
+
+def without_model_commands(input_text: str) -> str:
+    lines: list[str] = []
+    for line in input_text.splitlines():
+        stripped = line.strip()
+        if stripped == "(get-model)" or stripped.startswith("(set-option :produce-models"):
+            continue
+        lines.append(line)
+    return "\n".join(lines) + "\n"
+
+
+def add_assignments_before_check_sat(input_text: str, assignments: list[tuple[str, str]]) -> str:
+    assignment_text = "".join(f"(assert (= {symbol} {value}))\n" for symbol, value in assignments)
+    marker = "(check-sat)"
+    index = input_text.rfind(marker)
+    if index == -1:
+        return input_text.rstrip() + "\n" + assignment_text + marker + "\n"
+    return input_text[:index] + assignment_text + input_text[index:]
+
+
+def run_command(
+    command: list[str], timeout: float, input_text: str | None = None
+) -> tuple[str, int | None, str, str, float]:
     start = time.monotonic()
     try:
         completed = subprocess.run(
             command,
             check=False,
             text=True,
+            input=input_text,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=timeout,
@@ -112,8 +155,12 @@ def run_command(command: list[str], timeout: float) -> tuple[str, int | None, st
 def main() -> int:
     args = parse_args()
     dolmen_path = shutil.which(args.dolmen)
-    if dolmen_path is None:
-        print(f"dolmen executable not found: {args.dolmen}", file=sys.stderr)
+    z3_path = shutil.which(args.z3)
+    if dolmen_path is None and z3_path is None:
+        print(
+            f"dolmen executable not found: {args.dolmen}; z3 executable not found: {args.z3}",
+            file=sys.stderr,
+        )
         return 2
 
     files = manifest_files(args.manifest) + args.files
@@ -207,29 +254,54 @@ def main() -> int:
             continue
 
         response_path.write_text(solver_stdout, encoding="utf-8")
-        dolmen_command = [
-            dolmen_path,
-            "--check-model=true",
-            "-r",
-            str(response_path),
-            *args.dolmen_arg,
-            str(problem_path),
-        ]
-        if args.check_model_mode is not None:
-            dolmen_command.insert(2, f"--check-model-mode={args.check_model_mode}")
-        dolmen_status, dolmen_exit, dolmen_stdout, dolmen_stderr, dolmen_seconds = run_command(
-            dolmen_command, args.dolmen_timeout
-        )
-        dolmen_stdout_path.write_text(dolmen_stdout, encoding="utf-8")
-        dolmen_stderr_path.write_text(dolmen_stderr, encoding="utf-8")
-        if dolmen_status == "timeout":
-            outcome = "dolmen-timeout"
-            failures += 1
-        elif dolmen_exit == 0:
-            outcome = "pass"
+        if dolmen_path is not None:
+            dolmen_command = [
+                dolmen_path,
+                "--check-model=true",
+                "-r",
+                str(response_path),
+                *args.dolmen_arg,
+                str(problem_path),
+            ]
+            if args.check_model_mode is not None:
+                dolmen_command.insert(2, f"--check-model-mode={args.check_model_mode}")
+            dolmen_status, dolmen_exit, dolmen_stdout, dolmen_stderr, validation_seconds = (
+                run_command(dolmen_command, args.dolmen_timeout)
+            )
+            dolmen_stdout_path.write_text(dolmen_stdout, encoding="utf-8")
+            dolmen_stderr_path.write_text(dolmen_stderr, encoding="utf-8")
+            if dolmen_status == "timeout":
+                outcome = "dolmen-timeout"
+                failures += 1
+            elif dolmen_exit == 0:
+                outcome = "pass"
+            else:
+                outcome = "model-error"
+                failures += 1
         else:
-            outcome = "model-error"
-            failures += 1
+            assignments = extract_real_assignments(solver_stdout)
+            validation_input = add_assignments_before_check_sat(
+                without_model_commands(original), assignments
+            )
+            dolmen_stdout_path.write_text("", encoding="utf-8")
+            dolmen_stderr_path.write_text("Dolmen unavailable; used Z3 fallback\n", encoding="utf-8")
+            z3_status, dolmen_exit, dolmen_stdout, dolmen_stderr, validation_seconds = run_command(
+                [z3_path, "-smt2", "-in"], args.dolmen_timeout, validation_input
+            )
+            dolmen_stdout_path.write_text(dolmen_stdout, encoding="utf-8")
+            dolmen_stderr_path.write_text(dolmen_stderr, encoding="utf-8")
+            z3_answer = first_answer(dolmen_stdout)
+            if z3_status == "timeout":
+                outcome = "z3-timeout"
+                failures += 1
+            elif z3_answer == "sat" and assignments:
+                outcome = "pass"
+            elif z3_answer == "unsat":
+                outcome = "model-error"
+                failures += 1
+            else:
+                outcome = "validation-unavailable"
+                failures += 1
         rows.append(
             {
                 "file": str(input_path),
@@ -237,7 +309,7 @@ def main() -> int:
                 "outcome": outcome,
                 "solver_exit": str(solver_exit),
                 "dolmen_exit": "" if dolmen_exit is None else str(dolmen_exit),
-                "seconds": f"{solver_seconds + dolmen_seconds:.3f}",
+                "seconds": f"{solver_seconds + validation_seconds:.3f}",
                 "message": "",
             }
         )

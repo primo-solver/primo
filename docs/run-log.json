@@ -12291,6 +12291,54 @@
       },
       "evidence_status": "current",
       "followups": "H7 stays opt-in. The next QF_LRA gap investigation should profile the median 500KB-5MB instance rather than the most equality-dense one, and offset equalities are the remaining untested hypothesis from the 2026-07-29 diagnosis. The remote ASAN fuzz binary needs its toolchain problem resolved before any future campaign-tier gate can match previous rounds."
+    },
+    {
+      "id": "2026-07-30-qf-lra-model-printing-local-gate",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz+model-validation",
+      "scope": "Local gate for integrating QF_LRA get-model printing into the Nelson-Oppen branch before combination work. Covers verdict stability on generated QF_LRA inputs and the printed Real-constant model path, including preprocessing reconstruction through solve-eqs/Gaussian equalities.",
+      "commit": "08aaa37-dirty working tree on nelson-oppen-closure-methods; source/docs/tests/scripts committed adjacent to this run-log entry",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo --quiet (Release, CaDiCaL cadical-3.0.0-7b99c07)",
+        "reference": "/workspace/contrib/local/bin/z3 for verdict comparison and limited Real-constant model-validation fallback",
+        "notes": "Dolmen was not installed locally, so scripts/validate_model.py used the Z3 fallback added in this change. The fallback asserts printed nullary Real assignments back into the original QF_LRA problem; it is not a complete validator for QF_UF or future mixed-theory models."
+      },
+      "command": {
+        "verdict_fuzz": "PATH='/workspace/contrib/local/bin:$PATH' python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs /workspace/contrib/local/bin/z3 --logic QF_LRA --count 100 --timeout 5 --seed 730001 --out fuzz-results/qf_lra-model-fuzz-smoke",
+        "model_validation": "python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 20 --dolmen-timeout 20 --out results/qf_lra-model-validation-fuzz-smoke fuzz-results/qf_lra-model-fuzz-smoke/generated/*.smt2"
+      },
+      "benchmark": {
+        "suite": "100 fuzzsmt-generated QF_LRA cases, seed 730001",
+        "logic": "QF_LRA",
+        "timeout_seconds": "5 for verdict comparison; 20 for model-producing validation run"
+      },
+      "artifacts": {
+        "fuzz_summary": "fuzz-results/qf_lra-model-fuzz-smoke/summary.csv",
+        "model_validation_summary": "results/qf_lra-model-validation-fuzz-smoke/summary.csv",
+        "generated_inputs": "fuzz-results/qf_lra-model-fuzz-smoke/generated/*.smt2",
+        "model_validation_artifacts": "results/qf_lra-model-validation-fuzz-smoke/"
+      },
+      "summary": {
+        "verdict_fuzz": {
+          "PASS": 99,
+          "TIMEOUT": 1
+        },
+        "model_validation": {
+          "not-sat": 12,
+          "pass": 87,
+          "solver-timeout": 1
+        },
+        "headline": "No wrong answers, crashes, or model errors. Verdict fuzzing: 99 PASS, 1 solver TIMEOUT. Model validation over the same generated inputs: 87 PASS, 12 not-sat/no-model cases, 1 solver-timeout. The timeout-only cases are not correctness failures."
+      },
+      "verification": {
+        "unit_tests": "New qf_lra_solver_tests cover get-model gating, strict-bound concrete model output, and reconstruction of preprocessed solved Real constants.",
+        "tooling": "python3 -m py_compile scripts/validate_model.py scripts/validate_qfuf_models_with_dolmen.py; targeted include-cleaner on src/smt/check_sat.cpp clean; whole-tree clang-tidy clean; whole-tree include-cleaner has existing baseline advisory warnings outside this change."
+      },
+      "evidence_status": "current",
+      "followups": "Install Dolmen locally or on SLURM for full SMT-LIB response validation. The Z3 fallback is intentionally limited to the current nullary-Real QF_LRA model subset."
     }
   ]
 }

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Validate produced models where possible.
 
-This compatibility entry point currently delegates to the QF_UF Dolmen model
-validator. Add a dispatcher here when Primo supports model validation for
-multiple logics.
+This compatibility entry point delegates to the Dolmen-backed model validator.
+The implementation file still carries its original QF_UF name, but the Dolmen
+check also covers the currently printed QF_LRA Real-constant model subset.
 """
 
 from __future__ import annotations
