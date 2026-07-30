@@ -1,0 +1,1218 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
+#include <cassert>
+#include <string>
+#include <utility>
+
+#include "smt/check_sat.hpp"
+#include "util/statistics.hpp"
+
+using primo::smt::check_sat_smtlib;
+using primo::smt::CheckSatOptions;
+using primo::smt::CheckSatResult;
+using primo::smt::LraPivotingRule;
+using primo::util::StatKey;
+
+namespace {
+
+void accepts_set_logic_and_real_declarations() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x (* 2 y)) 5))
+    (assert (< 0 x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void accepts_chained_comparisons_and_decimal_literals() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (<= x y z))
+    (assert (= x 1.5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void accepts_nary_minus_and_ratio_literal_coefficient() {
+  // x - 1 - 2 > 1/2  <=>  x > 3.5
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (> (- x 1 2) (/ 1 2)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void accepts_negative_literal_coefficient_via_unary_minus() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* (- 1.5) x) 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void accepts_coefficient_times_compound_linear_term() {
+  // Stricter than the SMT-LIB QF_LRA grammar (which only allows a bare
+  // variable as the non-literal `*` operand), but harmless and still
+  // linear -- see the term-kind design note in the plan.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (* 2 (+ x y)) 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void recognizes_let_bound_literal_coefficients() {
+  // Regression test for a real bug found via the fuzz gate: build_times/
+  // build_divide used to pattern-match the raw S-expression for a literal
+  // operand *before* calling build_term, so a let-bound alias of a literal
+  // (e.g. `(let ((c 3)) (* c x))`) wasn't recognized as a coefficient at
+  // all -- even though it resolves to one after build_term's own
+  // let-binding lookup. fuzzsmt let-binds nearly every literal in its
+  // QF_LRA output, so this silently rejected almost all fuzzer-generated
+  // input as UnsupportedInput before the fix (build via build_term first,
+  // then check the *resulting* term's kind).
+  const auto multiplication = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (let ((c 3)) (<= (* c x) 9)))
+    (assert (>= x 4))
+    (check-sat)
+  )");
+  assert(multiplication.result == CheckSatResult::Unsat);  // 3*4=12 > 9
+
+  const auto division = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (let ((n 6) (d 2)) (<= (* (/ n d) x) 9)))
+    (assert (>= x 4))
+    (check-sat)
+  )");
+  assert(division.result == CheckSatResult::Unsat);  // n/d=3, same as above
+}
+
+void rejects_two_variable_multiplication() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (* x y) 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("literal rational coefficient") != std::string::npos);
+}
+
+void rejects_three_operand_multiplication() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* 2 3 x) 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("* has wrong arity") != std::string::npos);
+}
+
+void rejects_general_term_division() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (/ x 2) 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("/ is only supported between rational literals") != std::string::npos);
+}
+
+void rejects_combined_equality_and_arithmetic() {
+  // Uses an uninterpreted-sort equality alongside a Real comparison -- a
+  // genuine EUF+LRA mix. (= x y) between two *Real* terms is itself a pure
+  // QF_LRA atom (see real_equality_is_not_misclassified_as_euf below), not
+  // a case of this rejection.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (assert (or (= a b) (<= x 5)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("QF_UFLRA") != std::string::npos);
+}
+
+void real_equality_is_not_misclassified_as_euf() {
+  // Regression test for a real bug hit while implementing this milestone:
+  // mk_eq is sort-agnostic, so (= x y) on two Real terms builds the same
+  // TermKind::Equality node EUF equality uses. Without checking operand
+  // sort, contains_equality/has_equality misclassified this as EUF,
+  // spuriously tripping the QF_UFLRA rejection above for pure QF_LRA input.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= x y))
+    (assert (<= x 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void detects_direct_bound_conflict() {
+  // Regression test for a real bug hit while implementing this milestone:
+  // before the has_arithmetic dispatch guard existed, this formula fell
+  // through to solve_boolean_conjunction, which treated the two Le atoms as
+  // independent Booleans and returned an unsound "sat" (x <= 0 and x >= 1
+  // are jointly unsatisfiable over the reals, but satisfiable as
+  // independent Booleans).
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= x 0))
+    (assert (>= x 1))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void detects_conflict_requiring_an_actual_pivot() {
+  // Exercises LraTableau::check end to end through the SMT-LIB frontend, not
+  // just LraTableau's own white-box tests: x+y <= 1 with x, y >= 0 forces
+  // x+2y <= 2, contradicting x+2y >= 3, and the two compound polynomials are
+  // not proportional so they genuinely occupy separate rows.
+  //
+  // This used to use x+y <= 1 against x+y >= 3, which item H1b's
+  // scale-canonical keys now collapse onto a single shared slack -- making it
+  // a direct bound conflict with zero pivots, so it silently stopped covering
+  // the pivot path. The :lra.pivots assertion below is there so that can't
+  // happen again unnoticed.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 1))
+    (assert (>= (+ x (* 2 y)) 3))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::LraRows) == 2);
+  assert(result.statistics.get(StatKey::LraPivots) > 0);
+}
+
+void atoms_sharing_identical_polynomial_solve_correctly() {
+  // x<=5 and x<=3 both normalize to the same polynomial ("x"), so
+  // PreparedLraTheory maps them onto the same tableau variable -- since item
+  // H1a that is `x` itself rather than a shared slack, but the guard is the
+  // same either way: both atoms' truth values must still be respected
+  // together, not merged/dropped.
+  const auto satisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= x 5))
+    (assert (<= x 3))
+    (assert (>= x 1))
+    (check-sat)
+  )");
+  assert(satisfiable.result == CheckSatResult::Sat);
+
+  const auto unsatisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= x 2))
+    (assert (not (<= x 5)))
+    (check-sat)
+  )");
+  assert(unsatisfiable.result == CheckSatResult::Unsat);
+}
+
+void same_slack_propagation_drives_boolean_structure() {
+  // (<= x 3) is never asserted directly -- only (<= x 1) is, which tightens
+  // the shared "x" slack's upper bound to 1, entailing (<= x 3) TRUE via
+  // Milestone 3b's same-slack propagation without ever deciding y. With
+  // propagation off, the same formula must still be solved correctly (via
+  // a decision instead), so both modes must agree on sat/unsat; only the
+  // stats should differ.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= x 5))
+    (assert (or (<= x 3) (>= y 1000)))
+    (assert (<= x 1))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_propagation;
+  with_propagation.lra_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_propagation);
+  assert(propagated.result == CheckSatResult::Sat);
+  assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
+
+  CheckSatOptions without_propagation;
+  without_propagation.lra_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, without_propagation);
+  assert(not_propagated.result == CheckSatResult::Sat);
+  assert(not_propagated.statistics.get(StatKey::LraTheoryPropagations) == 0);
+}
+
+void same_slack_propagation_can_reach_a_conflict() {
+  // (not (<= x 10)) is never asserted directly -- (<= x 1) entails it FALSE
+  // (x<=1 implies x<=10), which together with (>= y 1000) being ruled out
+  // by (< y 1000) makes the top-level or unsatisfiable via propagation
+  // alone, no decisions needed.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= x 5))
+    (assert (or (not (<= x 10)) (>= y 1000)))
+    (assert (<= x 1))
+    (assert (< y 1000))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_propagation;
+  with_propagation.lra_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_propagation);
+  assert(propagated.result == CheckSatResult::Unsat);
+  assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
+
+  CheckSatOptions without_propagation;
+  without_propagation.lra_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, without_propagation);
+  assert(not_propagated.result == CheckSatResult::Unsat);
+}
+
+void row_based_propagation_drives_boolean_structure() {
+  // x's and y's bounds are each directly asserted, but (+ x y) itself
+  // never is -- same-slack propagation alone can't entail
+  // (<= (+ x y) 10) since no atom directly bounds that polynomial's own
+  // slack. Row-based propagation derives (+ x y)'s implied upper bound
+  // (2+3=5 <= 10) from x's and y's current bounds, entailing the atom
+  // TRUE without ever deciding w/the disjunction.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (<= x 2))
+    (assert (<= y 3))
+    (assert (or (<= (+ x y) 10) (>= w 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_row_propagation;
+  with_row_propagation.lra_propagation = true;
+  with_row_propagation.lra_row_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_row_propagation);
+  assert(propagated.result == CheckSatResult::Sat);
+  assert(propagated.statistics.get(StatKey::LraRowPropagations) > 0);
+  assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
+
+  CheckSatOptions without_row_propagation;
+  without_row_propagation.lra_propagation = true;
+  without_row_propagation.lra_row_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, without_row_propagation);
+  assert(not_propagated.result == CheckSatResult::Sat);
+  assert(not_propagated.statistics.get(StatKey::LraRowPropagations) == 0);
+}
+
+void bidirectional_row_propagation_drives_boolean_structure() {
+  // s := (+ x y) has a directly-asserted lower bound (>= s 5) and x has a
+  // directly-asserted upper bound (<= x 2), so x+y>=5 and x<=2 together
+  // force y>=3 -- but y's own bound is never directly asserted anywhere.
+  // Plain (forward) row-based propagation can't help here -- s's own
+  // bound is already directly given, there's nothing to derive about s
+  // itself. Only the *reverse* direction (rearranging s's row using s's
+  // own bound plus x's bound to derive a bound on y) can entail (<= y 2)
+  // FALSE (since y is forced >=3, contradicting y<=2), forcing the
+  // disjunction's other branch without ever deciding (<= y 2) directly.
+  //
+  // The specific atom shapes here aren't arbitrary: single_variable_slack
+  // only registers a bare variable's *positive*-coefficient normalized
+  // form (`>=` normalizes to a negated/coefficient-(-1) polynomial and
+  // never gets an entry at all -- a pre-existing quirk this test must
+  // respect, not something item 7 changes), and the specific bound
+  // *direction* combination used here (s's lower bound + x's upper
+  // bound, deriving y's lower bound) is the one that's actually available
+  // given that same quirk -- asserting *both* (<= x 2) and (>= x 2)
+  // would split x's bound across two different slacks with only one
+  // direction visible on each, making the other combination unreachable.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (>= (+ x y) 5))
+    (assert (<= x 2))
+    (assert (or (<= y 2) (>= w 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_bidirectional;
+  with_bidirectional.lra_propagation = true;
+  with_bidirectional.lra_row_propagation = true;
+  with_bidirectional.lra_bidirectional_row_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_bidirectional);
+  assert(propagated.result == CheckSatResult::Sat);
+  assert(propagated.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
+  assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
+
+  CheckSatOptions forward_only;
+  forward_only.lra_propagation = true;
+  forward_only.lra_row_propagation = true;
+  forward_only.lra_bidirectional_row_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, forward_only);
+  assert(not_propagated.result == CheckSatResult::Sat);
+  assert(not_propagated.statistics.get(StatKey::LraBidirectionalRowPropagations) == 0);
+}
+
+void bidirectional_row_propagation_can_reach_a_conflict() {
+  // Same setup (x+y>=5, x<=2, so y is forced >=3), but now the
+  // disjunction's other branch is also directly ruled out -- resolves
+  // the whole formula UNSAT via bidirectional propagation deriving
+  // (<= y 2) FALSE plus a direct contradiction, no decisions.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (>= (+ x y) 5))
+    (assert (<= x 2))
+    (assert (or (<= y 2) (>= w 1000)))
+    (assert (< w 1000))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_bidirectional;
+  with_bidirectional.lra_propagation = true;
+  with_bidirectional.lra_row_propagation = true;
+  with_bidirectional.lra_bidirectional_row_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_bidirectional);
+  assert(propagated.result == CheckSatResult::Unsat);
+  assert(propagated.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
+
+  CheckSatOptions forward_only;
+  forward_only.lra_propagation = true;
+  forward_only.lra_row_propagation = true;
+  forward_only.lra_bidirectional_row_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, forward_only);
+  assert(not_propagated.result == CheckSatResult::Unsat);
+}
+
+void theory_decisions_drive_boolean_structure() {
+  // Competitiveness-roadmap item 8: x's and y's bounds are directly
+  // asserted but (+ x y) itself never is, and row-based propagation is
+  // off by default -- so the disjunction genuinely needs a decision.
+  // Every atom in this formula is arithmetic, so cb_decide should supply
+  // every decision itself (:lra.theory-decisions == :sat.decisions) with
+  // the flag on, and be entirely inert (0) with it off.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (<= x 2))
+    (assert (<= y 3))
+    (assert (or (<= (+ x y) 10) (>= w 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_theory_decisions;
+  with_theory_decisions.lra_theory_decisions = true;
+  const auto decided = check_sat_smtlib(formula, with_theory_decisions);
+  assert(decided.result == CheckSatResult::Sat);
+  assert(decided.statistics.get(StatKey::LraTheoryDecisions) > 0);
+  assert(decided.statistics.get(StatKey::LraTheoryDecisions) ==
+         decided.statistics.get(StatKey::SatDecisions));
+
+  CheckSatOptions without_theory_decisions;
+  const auto undecided = check_sat_smtlib(formula, without_theory_decisions);
+  assert(undecided.result == CheckSatResult::Sat);
+  assert(undecided.statistics.get(StatKey::LraTheoryDecisions) == 0);
+}
+
+void theory_decisions_can_reach_a_conflict() {
+  // Competitiveness-roadmap item 8: cb_decide always tries an atom's TRUE
+  // polarity first (its round-robin order has no notion of which polarity
+  // is "right"), so a formula whose every disjunct is theory-false makes it
+  // try one, conflict, backtrack, try the other, conflict again, and close
+  // the formula UNSAT. Confirms the naive "always guess TRUE first" order
+  // doesn't compromise correctness, only decision *order* -- the same
+  // pure-performance-lever invariant every other item in this roadmap
+  // upholds.
+  //
+  // The disjuncts are deliberately *compound* polynomials. This test used to
+  // use `(or (<= x 0) (>= x 10))` with `3 <= x <= 7`, but item H1 (direct
+  // bounds for single-variable atoms) put all four of those atoms on `x`
+  // itself, so same-variable propagation now closes that formula with zero
+  // decisions -- correct, and a real strengthening, but it stopped exercising
+  // cb_decide at all. Compound disjuncts get their own slack variables, whose
+  // bounds nothing has asserted until a decision does, so a decision is
+  // genuinely required. Both are false for x, y >= 3 (x+y >= 6 and x+2y >= 9),
+  // and they are not proportional, so they keep separate slacks.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (or (<= (+ x y) 0) (<= (+ x (* 2 y)) 0)))
+    (assert (<= 3 x))
+    (assert (<= 3 y))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_theory_decisions;
+  with_theory_decisions.lra_theory_decisions = true;
+  const auto decided = check_sat_smtlib(formula, with_theory_decisions);
+  assert(decided.result == CheckSatResult::Unsat);
+  assert(decided.statistics.get(StatKey::LraTheoryDecisions) > 0);
+
+  CheckSatOptions without_theory_decisions;
+  const auto undecided = check_sat_smtlib(formula, without_theory_decisions);
+  assert(undecided.result == CheckSatResult::Unsat);
+  assert(undecided.statistics.get(StatKey::LraTheoryDecisions) == 0);
+}
+
+void row_based_propagation_can_reach_a_conflict() {
+  // Same row (+ x y) as above, but the disjunction's other branch is also
+  // ruled out (< w 1000), and the shared-polynomial atom is negated --
+  // x<=2, y<=3 imply (+ x y)<=5, so NOT(<= (+ x y) 10) is FALSE, closing
+  // the whole formula UNSAT via row-based propagation alone, no decisions.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (<= x 2))
+    (assert (<= y 3))
+    (assert (or (not (<= (+ x y) 10)) (>= w 1000)))
+    (assert (< w 1000))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_row_propagation;
+  with_row_propagation.lra_propagation = true;
+  with_row_propagation.lra_row_propagation = true;
+  const auto propagated = check_sat_smtlib(formula, with_row_propagation);
+  assert(propagated.result == CheckSatResult::Unsat);
+  assert(propagated.statistics.get(StatKey::LraRowPropagations) > 0);
+
+  CheckSatOptions without_row_propagation;
+  without_row_propagation.lra_propagation = true;
+  without_row_propagation.lra_row_propagation = false;
+  const auto not_propagated = check_sat_smtlib(formula, without_row_propagation);
+  assert(not_propagated.result == CheckSatResult::Unsat);
+}
+
+void deferred_check_runs_once_per_quiescence_point_not_per_literal() {
+  // Roadmap item 6: OnlineLraPropagator::notify_assignment_lit used to
+  // call tableau_.check() eagerly after every single assigned literal
+  // (decisions *and* propagated ones). It now defers to
+  // cb_has_external_clause, which CaDiCaL only asks once per quiescence
+  // point (once per decision plus once per conflict). Same-slack
+  // propagation on x's shared slack means asserting (<= x 1) entails
+  // (<= x 2), (<= x 3), and (<= x 4) directly TRUE, satisfying each `or`
+  // clause's left disjunct without ever needing y1/y2/y3's own values --
+  // three extra arithmetic-atom assignments (LraTheoryPropagations) that
+  // must NOT each trigger their own check() call.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y1 () Real)
+    (declare-fun y2 () Real)
+    (declare-fun y3 () Real)
+    (assert (<= x 1))
+    (assert (or (<= x 2) (>= y1 1000)))
+    (assert (or (<= x 3) (>= y2 1000)))
+    (assert (or (<= x 4) (>= y3 1000)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::LraTheoryPropagations) > 0);
+  // The actual point: check() runs at most once per quiescence point
+  // (one before the first decision, then one more per decision/conflict)
+  // -- not once per arithmetic-atom assignment, however many of those a
+  // single quiescence point's propagation ends up delivering.
+  const auto quiescence_points = result.statistics.get(StatKey::SatDecisions) +
+                                 result.statistics.get(StatKey::SatConflicts) + 1;
+  assert(result.statistics.get(StatKey::LraOnlineCheckCalls) <= quiescence_points);
+}
+
+void strict_boundary_is_unsat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (< x 5))
+    (assert (>= x 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void boolean_structure_over_arithmetic_atoms_can_require_branching() {
+  // (x<=0 or x>=10) together with 3<=x<=7 rules out both disjuncts.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (<= 3 x))
+    (assert (<= x 7))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+
+  const auto satisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (= x 10))
+    (check-sat)
+  )");
+  assert(satisfiable.result == CheckSatResult::Sat);
+}
+
+// Milestone 4: the Dantzig pivoting rule (opt-in via CheckSatOptions, not
+// the default) must reach the same sat/unsat answers as Bland's rule on
+// scenarios that actually require pivots -- re-uses
+// detects_conflict_requiring_an_actual_pivot's and
+// boolean_structure_over_arithmetic_atoms_can_require_branching's exact
+// formulas above.
+void dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
+  CheckSatOptions dantzig;
+  dantzig.lra_pivoting_rule = LraPivotingRule::Dantzig;
+
+  const auto unsat_pivot = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 1))
+    (assert (>= (+ x y) 3))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )",
+                                            dantzig);
+  assert(unsat_pivot.result == CheckSatResult::Unsat);
+
+  const auto unsat_branching = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (<= 3 x))
+    (assert (<= x 7))
+    (check-sat)
+  )",
+                                                dantzig);
+  assert(unsat_branching.result == CheckSatResult::Unsat);
+
+  const auto sat_branching = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (= x 10))
+    (check-sat)
+  )",
+                                              dantzig);
+  assert(sat_branching.result == CheckSatResult::Sat);
+}
+
+void sparse_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
+  // Mirrors the dantzig/soi variants above, under PivotingRule::Sparse
+  // (heuristics-note item H3). The rule prices what a pivot costs; every
+  // entering candidate it chooses between repairs the same violation by the
+  // same amount, so verdicts must be identical to Bland's -- and the
+  // leaving-side knob, which is *not* progress-neutral, must not change them
+  // either.
+  for (const bool sparse_leaving : {false, true}) {
+    CheckSatOptions sparse;
+    sparse.lra_pivoting_rule = LraPivotingRule::Sparse;
+    sparse.lra_sparse_leaving = sparse_leaving;
+
+    const auto unsat_pivot = check_sat_smtlib(R"(
+      (set-logic QF_LRA)
+      (declare-fun x () Real)
+      (declare-fun y () Real)
+      (assert (<= (+ x y) 1))
+      (assert (>= (+ x (* 2 y)) 3))
+      (assert (>= x 0))
+      (assert (>= y 0))
+      (check-sat)
+    )",
+                                              sparse);
+    assert(unsat_pivot.result == CheckSatResult::Unsat);
+    assert(unsat_pivot.statistics.get(StatKey::LraPivots) > 0);
+    // The cost counters must actually move when pivots happen -- they are
+    // what any promotion decision for this rule rests on.
+    assert(unsat_pivot.statistics.get(StatKey::LraPivotRowUpdates) > 0);
+    assert(unsat_pivot.statistics.get(StatKey::LraPivotTermOps) > 0);
+
+    const auto unsat_branching = check_sat_smtlib(R"(
+      (set-logic QF_LRA)
+      (declare-fun x () Real)
+      (assert (or (<= x 0) (>= x 10)))
+      (assert (<= 3 x))
+      (assert (<= x 7))
+      (check-sat)
+    )",
+                                                  sparse);
+    assert(unsat_branching.result == CheckSatResult::Unsat);
+
+    const auto sat_branching = check_sat_smtlib(R"(
+      (set-logic QF_LRA)
+      (declare-fun x () Real)
+      (assert (or (<= x 0) (>= x 10)))
+      (assert (= x 10))
+      (check-sat)
+    )",
+                                                sparse);
+    assert(sat_branching.result == CheckSatResult::Sat);
+  }
+}
+
+void soi_pivoting_rule_matches_bland_on_multi_pivot_scenarios() {
+  // Mirrors dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios
+  // exactly, under PivotingRule::Soi (competitiveness-roadmap item 4).
+  CheckSatOptions soi;
+  soi.lra_pivoting_rule = LraPivotingRule::Soi;
+
+  const auto unsat_pivot = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 1))
+    (assert (>= (+ x y) 3))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )",
+                                            soi);
+  assert(unsat_pivot.result == CheckSatResult::Unsat);
+
+  const auto unsat_branching = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (<= 3 x))
+    (assert (<= x 7))
+    (check-sat)
+  )",
+                                                soi);
+  assert(unsat_branching.result == CheckSatResult::Unsat);
+
+  const auto sat_branching = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (or (<= x 0) (>= x 10)))
+    (assert (= x 10))
+    (check-sat)
+  )",
+                                              soi);
+  assert(sat_branching.result == CheckSatResult::Sat);
+}
+
+void soi_multi_row_conflict_fires_end_to_end() {
+  // x+y<=10 and y+z<=10 both violated simultaneously (x>=8,y>=5,z>=8),
+  // sharing y -- exercises the multi-row conflict + QuickXplain path
+  // through the full solver stack, not just LraTableau directly.
+  CheckSatOptions soi;
+  soi.lra_pivoting_rule = LraPivotingRule::Soi;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (<= (+ x y) 10))
+    (assert (<= (+ y z) 10))
+    (assert (>= x 8))
+    (assert (>= z 8))
+    (assert (>= y 5))
+    (check-sat)
+  )",
+                                       soi);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::LraSoiMultiRowConflicts) > 0);
+}
+
+void handles_disequality_via_boolean_level_case_splitting() {
+  // Real is a total order, so t1 = t2 <=> t1 <= t2 AND t2 <= t1 -- Frontend
+  // desugars Real equality to that conjunction at parse time (mk_theory_equality),
+  // so NOT(t1=t2) is just NOT(AND(Le,Le)), handled by BooleanClausifier's
+  // ordinary Tseitin/CNF machinery. No case-split/lemma code exists in
+  // LraTableau or OnlineLraPropagator; CDCL branching over the two
+  // underlying Le atoms does the case-splitting for free. This used to be
+  // explicitly rejected ("QF_LRA disequality ... is not yet supported");
+  // now supported without any tableau-level changes at all.
+  const auto satisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (not (= x 3)))
+    (check-sat)
+  )");
+  assert(satisfiable.result == CheckSatResult::Sat);
+
+  const auto satisfiable_with_bounds = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (not (= x 3)))
+    (assert (<= 2 x))
+    (assert (<= x 4))
+    (check-sat)
+  )");
+  assert(satisfiable_with_bounds.result == CheckSatResult::Sat);
+
+  const auto unsatisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (not (= x 3)))
+    (assert (<= 3 x))
+    (assert (<= x 3))
+    (check-sat)
+  )");
+  assert(unsatisfiable.result == CheckSatResult::Unsat);
+}
+
+void distinct_on_reals_works() {
+  const auto satisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (distinct x y z))
+    (assert (<= 0 x)) (assert (<= x 1))
+    (assert (<= 0 y)) (assert (<= y 1))
+    (assert (<= 0 z)) (assert (<= z 1))
+    (check-sat)
+  )");
+  assert(satisfiable.result == CheckSatResult::Sat);
+
+  const auto unsatisfiable = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (distinct x y))
+    (assert (= x 1))
+    (assert (= y 1))
+    (check-sat)
+  )");
+  assert(unsatisfiable.result == CheckSatResult::Unsat);
+}
+
+void solve_eqs_fires_for_real_definitional_equality() {
+  // Regression test for the redesign that moved Real-equality desugaring
+  // from parse time to a late lower_real_equalities preprocessing pass:
+  // solve-eqs now sees a genuine TermKind::Equality node for `(= x 5)`
+  // (previously this was a complete no-op for QF_LRA, silently, since the
+  // Real equality had already become And(Le,Le) before this pass ran).
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= x 5))
+    (assert (<= (+ x y) 10))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::SolvedConstantAccepted) > 0);
+  assert(result.statistics.get(StatKey::SolvedConstantRewrites) > 0);
+}
+
+void gaussian_elimination_solves_joint_system_by_default() {
+  // 2x+3y=5 and x-y=1 jointly solve for x=8/5, y=3/5; neither equation
+  // alone is a bare-variable definition, so this only fires via Gaussian
+  // elimination, not the ordinary solve-eqs recognizer. Default-on since
+  // 2026-07-25's campaign-tier Slurm confirmation (job 113407: 3000/3000
+  // fuzzsmt cases + opfuzz/yinyang mutation shards, 0 crashes/wrong
+  // answers/bug triggers).
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (+ (* 2 x) (* 3 y)) 5))
+    (assert (= (- x y) 1))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::SolvedConstantGaussianCandidates) > 0);
+}
+
+void gaussian_elimination_can_be_disabled() {
+  CheckSatOptions without_gaussian;
+  without_gaussian.gaussian_elimination = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (+ (* 2 x) (* 3 y)) 5))
+    (assert (= (- x y) 1))
+    (check-sat)
+  )",
+                                       without_gaussian);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::SolvedConstantGaussianCandidates) == 0);
+}
+
+void gaussian_elimination_detects_contradictory_system() {
+  // Same left-hand polynomial, different right-hand constants -- neither
+  // equation alone is bare-variable-shaped, so this contradiction is only
+  // ever caught by the ordinary LRA tableau, not by solve-eqs itself
+  // (the Gaussian pass has no special contradiction detection -- see the
+  // roadmap design note). This confirms end-to-end soundness either way.
+  CheckSatOptions with_gaussian;
+  with_gaussian.gaussian_elimination = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (+ (* 2 x) (* 3 y)) 5))
+    (assert (= (+ (* 2 x) (* 3 y)) 6))
+    (check-sat)
+  )",
+                                       with_gaussian);
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+// Frontend::build_term (TermBuilder in check_sat.cpp) is iterative, not
+// recursive descent -- see the TermBuilder class comment. A deeply nested
+// `+` chain like this used to stack-overflow (found via fuzzing under
+// ASAN, where larger stack frames made even fuzzer-typical nesting depths
+// unsafe); this synthetic depth is far beyond anything a native recursive
+// implementation could tolerate even in a Release build.
+// -- Item H1: direct bounds for single-variable atoms --
+//
+// A single-variable atom `c*x ~ rhs` is asserted as a bound on `x` itself, with
+// the coefficient divided out and the relation flipped when `c` is negative,
+// instead of getting its own slack variable and row. The flip is the
+// correctness-critical part (bound_assertion() in check_sat.cpp), so each of
+// its four rows gets pinned below in both truth directions.
+
+void single_variable_atoms_share_one_bound_variable() {
+  // Both a lower and an upper bound on the same bare variable. These used to
+  // normalize to *different* polynomials (coefficient -1 and +1) and so landed
+  // on two different slacks, which is exactly what H1 removes: the tableau
+  // could not see that x was bounded on both sides without pivoting.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= 0 x))
+    (assert (<= x 10))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Sat);
+
+  // Contradictory bounds on one variable must now be a *direct* conflict.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= 5 x))
+    (assert (<= x 3))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Unsat);
+}
+
+void single_variable_atom_coefficients_are_divided_out() {
+  // Positive coefficient: 2x <= 4 means x <= 2, so x >= 3 contradicts it...
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* 2 x) 4))
+    (assert (<= 3 x))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Unsat);
+  // ...while x >= 1 does not.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* 2 x) 4))
+    (assert (<= 1 x))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Sat);
+
+  // Negative coefficient: -2x <= 4 means x >= -2 (the relation flips), so
+  // x <= -3 contradicts it and x <= -1 does not. Getting the flip wrong would
+  // silently reverse which models are accepted, which is why both directions
+  // are checked rather than only the unsat one.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* (- 2) x) 4))
+    (assert (<= x (- 3)))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Unsat);
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* (- 2) x) 4))
+    (assert (<= x (- 1)))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Sat);
+}
+
+void single_variable_atom_strictness_survives_the_flip() {
+  // bound_assertion()'s four rows, each in both truth directions. `x ~ c` is
+  // written directly for the unflipped rows and as `(* (- 1) x) ~ -c` for the
+  // flipped ones, so the flip path is what is under test rather than the
+  // frontend's own `>=` handling.
+  const auto sat_of = [](const std::string& body) {
+    return check_sat_smtlib("(set-logic QF_LRA)(declare-fun x () Real)" + body + "(check-sat)")
+        .result;
+  };
+
+  // x <= 5 TRUE -> upper 5: x = 5 fits, x = 6 does not.
+  assert(sat_of("(assert (<= x 5))(assert (<= 5 x))") == CheckSatResult::Sat);
+  assert(sat_of("(assert (<= x 5))(assert (<= 6 x))") == CheckSatResult::Unsat);
+  // x < 5 TRUE -> upper 5-delta: x = 5 no longer fits.
+  assert(sat_of("(assert (< x 5))(assert (<= 5 x))") == CheckSatResult::Unsat);
+  assert(sat_of("(assert (< x 5))(assert (< 4 x))") == CheckSatResult::Sat);
+
+  // -x <= -5, i.e. x >= 5 (flipped) TRUE -> lower 5: x = 5 fits, x = 4 does not.
+  assert(sat_of("(assert (<= (* (- 1) x) (- 5)))(assert (<= x 5))") == CheckSatResult::Sat);
+  assert(sat_of("(assert (<= (* (- 1) x) (- 5)))(assert (<= x 4))") == CheckSatResult::Unsat);
+  // -x < -5, i.e. x > 5 (flipped, strict) TRUE -> lower 5+delta: x = 5 is out.
+  assert(sat_of("(assert (< (* (- 1) x) (- 5)))(assert (<= x 5))") == CheckSatResult::Unsat);
+  assert(sat_of("(assert (< (* (- 1) x) (- 5)))(assert (<= x 6))") == CheckSatResult::Sat);
+
+  // The FALSE direction of each, driven through a negation so the solver has
+  // to assert the opposite bound rather than the atom's own.
+  // NOT(x <= 5) is x > 5 -> lower 5+delta.
+  assert(sat_of("(assert (not (<= x 5)))(assert (<= x 5))") == CheckSatResult::Unsat);
+  assert(sat_of("(assert (not (<= x 5)))(assert (<= x 6))") == CheckSatResult::Sat);
+  // NOT(x < 5) is x >= 5 -> lower 5.
+  assert(sat_of("(assert (not (< x 5)))(assert (<= x 5))") == CheckSatResult::Sat);
+  assert(sat_of("(assert (not (< x 5)))(assert (< x 5))") == CheckSatResult::Unsat);
+  // NOT(-x <= -5), i.e. NOT(x >= 5), is x < 5 -> upper 5-delta.
+  assert(sat_of("(assert (not (<= (* (- 1) x) (- 5))))(assert (<= 5 x))") == CheckSatResult::Unsat);
+  assert(sat_of("(assert (not (<= (* (- 1) x) (- 5))))(assert (<= 4 x))") == CheckSatResult::Sat);
+  // NOT(-x < -5), i.e. NOT(x > 5), is x <= 5 -> upper 5.
+  assert(sat_of("(assert (not (< (* (- 1) x) (- 5))))(assert (<= 5 x))") == CheckSatResult::Sat);
+  assert(sat_of("(assert (not (< (* (- 1) x) (- 5))))(assert (< 5 x))") == CheckSatResult::Unsat);
+}
+
+void proportional_polynomials_share_one_slack() {
+  // Item H1b (the long-deferred roadmap item 3): polynomial keys are
+  // scale-canonical, so proportional compound polynomials collapse to one
+  // slack instead of getting one each. `x+y <= 5`, `2x+2y <= 10` and
+  // `-x-y <= -5` are the same constraint written three ways.
+  //
+  // Checked structurally via :lra.rows rather than only by answer, because
+  // the answer would be the same either way -- what H1b changes is how many
+  // rows the tableau needs and whether these atoms can see each other's
+  // bounds at all.
+  const std::string proportional = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 5))
+    (assert (<= (+ (* 2 x) (* 2 y)) 10))
+    (assert (<= (+ (* (- 1) x) (* (- 1) y)) (- 5)))
+    (check-sat)
+  )";
+  const auto shared = check_sat_smtlib(proportional);
+  assert(shared.result == CheckSatResult::Sat);
+  assert(shared.statistics.get(StatKey::LraRows) == 1);
+
+  // Non-proportional compounds must still get their own rows -- the
+  // canonicalization must not over-merge.
+  const auto separate = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 5))
+    (assert (<= (+ x (* 2 y)) 10))
+    (check-sat)
+  )");
+  assert(separate.result == CheckSatResult::Sat);
+  assert(separate.statistics.get(StatKey::LraRows) == 2);
+
+  // Sharing a slack must not lose a constraint: scaled forms of *conflicting*
+  // bounds still have to conflict.
+  assert(check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 5))
+    (assert (<= (+ (* (- 2) x) (* (- 2) y)) (- 12)))
+    (check-sat)
+  )")
+             .result == CheckSatResult::Unsat);  // x+y <= 5 and x+y >= 6
+}
+
+void tableau_shape_and_rational_statistics_are_published() {
+  // These counters are what the whole H1/H2/H3 evaluation rested on -- row
+  // counts confirmed H1's mechanism instance by instance, and
+  // :rational.big-operations is what settled the small form's width. A
+  // counter that silently stopped being published, or drifted from what it
+  // claims to count, would invalidate the next measurement without failing
+  // anything, so pin them against hand-computable values.
+  //
+  // Two compound rows (x+y and x+2y) over two problem variables: 4 tableau
+  // variables (x, y and one slack each), 2 rows, 4 nonzero coefficients. The
+  // bare bounds on x and y add no rows at all -- that is item H1a.
+  const auto shaped = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ x y) 5))
+    (assert (<= (+ x (* 2 y)) 10))
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (check-sat)
+  )");
+  assert(shaped.result == CheckSatResult::Sat);
+  assert(shaped.statistics.get(StatKey::LraTableauVars) == 4);
+  assert(shaped.statistics.get(StatKey::LraRows) == 2);
+  assert(shaped.statistics.get(StatKey::LraRowNonzeros) == 4);
+  // Coefficients this small never leave util::Rational's machine-word form.
+  assert(shaped.statistics.get(StatKey::RationalPromotions) == 0);
+  assert(shaped.statistics.get(StatKey::RationalBigOperations) == 0);
+
+  // Coefficients well past 64 bits must drive the big-form path, so that a
+  // zero here would mean the counter had stopped counting rather than that
+  // the fast path was universal.
+  const auto big = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= (+ (* 123456789012345678901234567890 x) y) 5))
+    (assert (<= (+ x (* 987654321098765432109876543210 y)) 10))
+    (assert (<= 1 x))
+    (assert (<= 1 y))
+    (check-sat)
+  )");
+  assert(big.result == CheckSatResult::Unsat);
+  assert(big.statistics.get(StatKey::RationalBigOperations) > 0);
+}
+
+void handles_pathologically_deep_arithmetic_nesting() {
+  constexpr int kDepth = 50000;
+  std::string formula = "(set-logic QF_LRA)\n(declare-fun x () Real)\n(assert (<= x ";
+  for (int i = 0; i < kDepth; ++i) {
+    formula += "(+ 1 ";
+  }
+  formula += "0";
+  formula.append(kDepth, ')');
+  formula += "))\n(check-sat)\n";
+
+  const auto result = check_sat_smtlib(formula);
+  assert(result.result == CheckSatResult::Sat);
+}
+
+// Item H7 end to end. The equalities have to sit under a disjunction:
+// top-level ones are solved away by Gaussian elimination in preprocessing
+// and never reach the tableau at all, so the shape that actually stresses
+// H7 is an equality asserted *during* search.
+constexpr const char* kFixedEliminationSat = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or (= (+ x y) 4) (= (+ x y) 7)))
+    (assert (or (= (- y z) 1) (= (- y z) 5)))
+    (assert (>= x 3))
+    (assert (<= z 0))
+    (check-sat)
+  )";
+
+// Same shape forced unsat: z is pinned at 0, so y is 1 or 5 and x is 3 or 6
+// (or -1 or 2), none of which reaches 7.
+constexpr const char* kFixedEliminationUnsat = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or (= (+ x y) 4) (= (+ x y) 7)))
+    (assert (or (= (- y z) 1) (= (- y z) 5)))
+    (assert (<= z 0))
+    (assert (>= z 0))
+    (assert (>= x 7))
+    (check-sat)
+  )";
+
+void fixed_variable_elimination_fires_and_preserves_the_verdict() {
+  for (const auto& [formula, expected] :
+       {std::pair<const char*, CheckSatResult>{kFixedEliminationSat, CheckSatResult::Sat},
+        std::pair<const char*, CheckSatResult>{kFixedEliminationUnsat, CheckSatResult::Unsat}}) {
+    CheckSatOptions enabled;
+    enabled.lra_fixed_elimination = true;
+    const auto with_elimination = check_sat_smtlib(formula, enabled);
+    assert(with_elimination.result == expected);
+    assert(with_elimination.statistics.get(StatKey::LraFixedVariables) > 0);
+    assert(with_elimination.statistics.get(StatKey::LraEliminationPivots) > 0);
+
+    CheckSatOptions disabled;  // off by default -- see CheckSatOptions
+    const auto without_elimination = check_sat_smtlib(formula, disabled);
+    assert(without_elimination.result == expected);
+    assert(without_elimination.statistics.get(StatKey::LraFixedVariables) == 0);
+  }
+}
+
+}  // namespace
+
+int main() {
+  accepts_set_logic_and_real_declarations();
+  accepts_chained_comparisons_and_decimal_literals();
+  accepts_nary_minus_and_ratio_literal_coefficient();
+  accepts_negative_literal_coefficient_via_unary_minus();
+  accepts_coefficient_times_compound_linear_term();
+  recognizes_let_bound_literal_coefficients();
+  rejects_two_variable_multiplication();
+  rejects_three_operand_multiplication();
+  rejects_general_term_division();
+  rejects_combined_equality_and_arithmetic();
+  real_equality_is_not_misclassified_as_euf();
+  detects_direct_bound_conflict();
+  detects_conflict_requiring_an_actual_pivot();
+  atoms_sharing_identical_polynomial_solve_correctly();
+  same_slack_propagation_drives_boolean_structure();
+  same_slack_propagation_can_reach_a_conflict();
+  row_based_propagation_drives_boolean_structure();
+  row_based_propagation_can_reach_a_conflict();
+  bidirectional_row_propagation_drives_boolean_structure();
+  bidirectional_row_propagation_can_reach_a_conflict();
+  theory_decisions_drive_boolean_structure();
+  theory_decisions_can_reach_a_conflict();
+  deferred_check_runs_once_per_quiescence_point_not_per_literal();
+  strict_boundary_is_unsat();
+  boolean_structure_over_arithmetic_atoms_can_require_branching();
+  dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
+  sparse_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
+  soi_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
+  soi_multi_row_conflict_fires_end_to_end();
+  handles_disequality_via_boolean_level_case_splitting();
+  solve_eqs_fires_for_real_definitional_equality();
+  gaussian_elimination_solves_joint_system_by_default();
+  gaussian_elimination_can_be_disabled();
+  gaussian_elimination_detects_contradictory_system();
+  single_variable_atoms_share_one_bound_variable();
+  single_variable_atom_coefficients_are_divided_out();
+  single_variable_atom_strictness_survives_the_flip();
+  proportional_polynomials_share_one_slack();
+  tableau_shape_and_rational_statistics_are_published();
+  handles_pathologically_deep_arithmetic_nesting();
+  distinct_on_reals_works();
+  fixed_variable_elimination_fires_and_preserves_the_verdict();
+  return 0;
+}

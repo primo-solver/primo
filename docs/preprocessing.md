@@ -391,6 +391,81 @@ including Boolean constants, equalities hidden under disjunction, and
 context-safe conditional definitions from lowered ITE chains, remains future
 work and needs a separate design note before implementation.
 
+This pass now also fires for QF_LRA: Real equality (`x = t`) is a genuine
+`Equality` node throughout the entire preprocessing pipeline (the frontend
+builds it via the same sort-agnostic `mk_eq` used for uninterpreted sorts),
+so `x = 5` is eliminated the same way an EUF definitional equality would be,
+with the rewrite propagating through arithmetic subterms (`Plus`/`Times`/
+`Le`/`Lt`) as well. See "Real-Equality Lowering" below for the pass that
+converts Real equality to `Le`/`Lt` form, which runs *after* this one so
+solve-eqs (and eq-bridging, forced-atom/unit-equality propagation) see the
+Real case at all.
+
+### Gaussian Elimination
+
+The plain solve-eqs recognizer above only catches the shape `x = t` with a
+bare, non-Boolean constant on one side -- it misses (a) a single equation
+with a nonzero coefficient but no bare-variable side, e.g. `2x = 5`, and
+(b) a genuine system where no single equation alone defines a variable but
+several row-reduced together do, e.g. `2x+3y=5` and `x-y=1`. Standard LP
+presolve ("doubleton/multi-row equality substitution", see Bixby's survey
+referenced from `docs/papers/lra-related-work.md`) covers both.
+
+`--gaussian-elimination` row-reduces (Gauss-Jordan, exact `util::Rational`
+arithmetic, no floating point) the system of all Real-sorted equalities
+collected from the same top-level-assertion/top-level-conjunct scope as
+plain solve-eqs. Each variable that ends up with a pivot row after full
+reduction becomes an ordinary `SolvedConstantCandidate`, merged into the
+same candidate list the plain recognizer produces and run through the
+exact same cycle-rejection/occurrence-counting/blowup-rejection/rewrite
+pipeline -- no separate accept/reject logic. Pivot order is deterministic
+(variables sorted by `TermId`) for fuzz-test reproducibility. Bounded by
+two defensive caps (number of equations, number of eligible variables) to
+keep the O(equations^2 x variables) elimination cost from blowing up on
+adversarial input; exceeding either cap makes the pass bail out cleanly
+(contributes zero candidates, no crash/hang). Reported by
+`:preprocessing.solve-eqs.gaussian-candidates`, alongside the existing
+solve-eqs stats (which already aggregate across both candidate sources).
+
+A genuinely contradictory system (e.g. `2x+3y=5` and `2x+3y=6`) is not
+specially detected by this pass -- the contradictory row simply never
+becomes anyone's pivot and is silently dropped; the contradiction is still
+caught soundly by the ordinary LRA tableau once the (possibly still
+partially-substituted) assertions reach it. No unsoundness, just no early
+detection.
+
+**Default on** (`CheckSatOptions::gaussian_elimination = true`,
+`--no-gaussian-elimination` for ablation). Landed opt-in (2026-07-25) since
+this is materially new algorithmic machinery (row reduction), not just a
+recognizer extension; promoted to default-on the same day after a
+campaign-tier Slurm fuzz gate (3000 fuzzsmt cases plus opfuzz/yinyang
+mutation shards, 0 crashes/wrong-answers/bug triggers) -- see
+`docs/arithmetic.md`'s Milestone roadmap and `docs/run-log.json`.
+
+## Real-Equality Lowering
+
+Real is a total order, so `t1 = t2 <=> t1 <= t2 AND t2 <= t1`. Rather than
+adding disequality case-split machinery to `LraTableau`/`OnlineLraPropagator`
+for negated Real equality, Primo lowers every Real-sorted `Equality` node to
+`And(Le(t1,t2), Le(t2,t1))` -- so `NOT(t1=t2)` reduces to ordinary Boolean
+structure (`NOT(AND(Le,Le))`) that `BooleanClausifier`'s existing Tseitin/CNF
+machinery already handles, and CDCL branching over the two `Le` atoms
+explores `t1<t2` vs `t1>t2` for free, with no bespoke case-split code
+anywhere.
+
+This lowering runs once, as the very last step of the preprocessing
+pipeline, immediately before the `has_equality`/`has_arithmetic` theory
+dispatch. Running it *last* (rather than at parse time, where it used to
+happen) means every other preprocessing pass -- solve-eqs, equality
+bridging, forced-atom propagation, unit-equality congruence closure -- gets
+to see and reason about genuine Real `Equality` nodes, instead of a second,
+parallel `And(Le,Le)` representation those passes would otherwise need to
+special-case. It must still run before `BooleanClausifier`/theory dispatch,
+or QF_LRA disequality would regress to needing the case-split machinery this
+design avoids. Reported by `:preprocessing.real-equality-lowering.lowered`.
+Not optional (no CLI flag) -- it is load-bearing for correctness, not a
+heuristic.
+
 ## ITE Lowering
 
 The SMT-LIB frontend eliminates ITEs before Boolean clausification because the

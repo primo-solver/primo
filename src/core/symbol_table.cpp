@@ -5,9 +5,14 @@
 
 namespace primo::core {
 
-SymbolTable::SymbolTable() { add_sort("Bool", SortKind::Bool); }
+SymbolTable::SymbolTable() {
+  add_sort("Bool", SortKind::Bool);
+  add_sort("Real", SortKind::Real);
+}
 
 SortId SymbolTable::bool_sort() const { return 0; }
+
+SortId SymbolTable::real_sort() const { return 1; }
 
 SortId SymbolTable::declare_sort(std::string name) {
   return add_sort(std::move(name), SortKind::Uninterpreted);

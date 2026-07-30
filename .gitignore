@@ -71,6 +71,9 @@ Testing/
 __pycache__/
 .venv/
 .venv-docs/
+.venv-smac/
+docs/oliveras-euf.pdf
+docs/Bland-or77.pdf
 results/
 fuzz-results/
 yinyang_bugs/

@@ -40,6 +40,24 @@ struct GroundEqualitySubstitutionResult {
 GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
     core::TermManager& terms, const std::vector<core::TermId>& assertions);
 
+struct RealEqualityLoweringResult {
+  std::vector<core::TermId> assertions;
+  std::size_t lowered = 0;
+};
+
+// Rewrites every Equality node whose operands are Real-sorted into
+// `And(Le(a,b), Le(b,a))` (valid since Real is a total order). Must run
+// after every other preprocessing pass that reasons about genuine
+// Equality nodes (solve-eqs, eq-bridging, forced-atom/unit-equality
+// propagation) but before Boolean clausification/theory dispatch, so
+// NOT(a=b) still reduces to ordinary Boolean structure
+// (NOT(AND(Le,Le))) that BooleanClausifier already handles -- this is
+// what lets QF_LRA disequality avoid needing case-split machinery in
+// LraTableau/OnlineLraPropagator. Non-Real equalities are left
+// untouched.
+RealEqualityLoweringResult lower_real_equalities(core::TermManager& terms,
+                                                 const std::vector<core::TermId>& assertions);
+
 struct SolvedConstantSubstitutionResult {
   std::vector<core::TermId> assertions;
   std::vector<std::pair<core::TermId, core::TermId>> substitutions;
@@ -48,10 +66,19 @@ struct SolvedConstantSubstitutionResult {
   std::size_t rewrites = 0;
   std::size_t rejected_cycles = 0;
   std::size_t rejected_blowups = 0;
+  std::size_t gaussian_candidates = 0;
 };
 
+// enable_gaussian_elimination additionally row-reduces (Gauss-Jordan,
+// exact rationals) the system of asserted Real-sorted linear equalities
+// before the ordinary bare-variable-equality candidate scan, catching
+// definitions the latter can't (e.g. `2x = 5`, or a variable only solvable
+// jointly from several equations). Opt-in (default false in
+// CheckSatOptions) since it's materially new algorithmic machinery, not
+// yet campaign-fuzzed.
 SolvedConstantSubstitutionResult substitute_solved_constants(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions);
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    bool enable_gaussian_elimination = false);
 
 struct BooleanUnitPropagationResult {
   std::vector<core::TermId> assertions;

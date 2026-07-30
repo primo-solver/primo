@@ -15,7 +15,10 @@
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
+#include "theory/arithmetic/linear_polynomial.hpp"
+#include "theory/arithmetic/lra_atom.hpp"
 #include "theory/equality/incremental_congruence_closure.hpp"
+#include "util/rational.hpp"
 
 namespace primo::smt {
 
@@ -278,6 +281,180 @@ void collect_solved_constant_candidates(const core::TermManager& terms, core::Te
   }
 }
 
+// Same top-level/top-level-conjunct scope as collect_solved_constant_
+// candidates, but collects every Real-sorted Equality node found (not
+// just the bare-variable-shaped ones solved_constant_candidate_from_
+// equality recognizes) -- feeds the Gaussian-elimination candidate scan
+// below, which can solve equations solved_constant_candidate_from_
+// equality can't (no bare-variable side, or only solvable jointly with
+// other equations).
+void collect_real_equalities(const core::TermManager& terms, core::TermId assertion,
+                             std::vector<core::TermId>& equalities) {
+  const core::Term& term = terms.get(assertion);
+  if (term.kind == core::TermKind::And) {
+    for (const core::TermId child : term.children) {
+      collect_real_equalities(terms, child, equalities);
+    }
+    return;
+  }
+  if (term.kind == core::TermKind::Equality &&
+      terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
+    equalities.push_back(assertion);
+  }
+}
+
+// Rebuilds a LinearPolynomial as a core::TermId (the direction
+// LinearPolynomial itself doesn't provide) -- variables sorted by TermId
+// for determinism.
+core::TermId polynomial_to_term(core::TermManager& terms,
+                                const theory::arithmetic::LinearPolynomial& polynomial) {
+  std::vector<core::TermId> variables;
+  variables.reserve(polynomial.terms().size());
+  for (const auto& [variable, coefficient] : polynomial.terms()) {
+    variables.push_back(variable);
+  }
+  std::sort(variables.begin(), variables.end());
+
+  std::vector<core::TermId> summands;
+  summands.reserve(variables.size() + 1);
+  for (const core::TermId variable : variables) {
+    const util::Rational& coefficient = polynomial.terms().at(variable);
+    summands.push_back(coefficient == util::Rational(1) ? variable
+                                                        : terms.mk_times(coefficient, variable));
+  }
+  if (!polynomial.constant().is_zero() || summands.empty()) {
+    summands.push_back(terms.mk_rational(polynomial.constant()));
+  }
+  return summands.size() == 1 ? summands.front() : terms.mk_plus(std::move(summands));
+}
+
+struct GaussianEliminationRow {
+  std::unordered_map<core::TermId, util::Rational> coefficients;
+  util::Rational rhs;
+};
+
+// Defensive bounds on the O(equations^2 * variables) elimination cost
+// below -- generous enough to matter for real formulas, small enough to
+// bound worst-case CPU/memory on an adversarial/fuzzed input. Not
+// precisely derived; tunable against real evidence later.
+constexpr std::size_t kGaussianEliminationMaxEquations = 128;
+constexpr std::size_t kGaussianEliminationMaxVariables = 256;
+
+// Row-reduces (Gauss-Jordan, exact rationals) the system of Real-sorted
+// equalities in `assertions` and returns one SolvedConstantCandidate per
+// variable that ends up with a pivot row. Full (not just forward)
+// elimination: eliminating a variable removes it from every other row,
+// including already-pivoted ones, the moment it's chosen as a pivot --
+// so no back-substitution step is needed, and (structurally, not just as
+// an invariant checked afterward) no candidate this function returns can
+// reference another candidate this function returns, since a pivot
+// variable is scrubbed from every row but its own before the next pivot
+// is chosen.
+std::vector<SolvedConstantCandidate> collect_gaussian_elimination_candidates(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  std::vector<SolvedConstantCandidate> result;
+
+  std::vector<core::TermId> equalities;
+  for (const core::TermId assertion : assertions) {
+    collect_real_equalities(terms, assertion, equalities);
+  }
+  if (equalities.empty() || equalities.size() > kGaussianEliminationMaxEquations) {
+    return result;
+  }
+
+  std::vector<GaussianEliminationRow> rows;
+  rows.reserve(equalities.size());
+  std::unordered_set<core::TermId> all_variables;
+  for (const core::TermId equality : equalities) {
+    const theory::arithmetic::LraAtom atom = theory::arithmetic::normalize_atom(terms, equality);
+    GaussianEliminationRow row;
+    row.rhs = atom.rhs;
+    row.coefficients.insert(atom.polynomial.terms().begin(), atom.polynomial.terms().end());
+    for (const auto& [variable, coefficient] : row.coefficients) {
+      all_variables.insert(variable);
+    }
+    rows.push_back(std::move(row));
+  }
+
+  std::vector<core::TermId> eligible_variables;
+  for (const core::TermId variable : all_variables) {
+    if (is_non_bool_constant(terms, variable)) {
+      eligible_variables.push_back(variable);
+    }
+  }
+  if (eligible_variables.size() > kGaussianEliminationMaxVariables) {
+    return result;
+  }
+  std::sort(eligible_variables.begin(), eligible_variables.end());
+
+  std::vector<bool> row_used(rows.size(), false);
+  std::unordered_map<core::TermId, std::size_t> pivot_row_of_variable;
+  for (const core::TermId variable : eligible_variables) {
+    std::optional<std::size_t> pivot_index;
+    for (std::size_t i = 0; i < rows.size(); ++i) {
+      if (row_used[i]) {
+        continue;
+      }
+      const auto found = rows[i].coefficients.find(variable);
+      if (found != rows[i].coefficients.end() && !found->second.is_zero()) {
+        pivot_index = i;
+        break;
+      }
+    }
+    if (!pivot_index.has_value()) {
+      continue;
+    }
+    row_used[*pivot_index] = true;
+    GaussianEliminationRow& pivot_row = rows[*pivot_index];
+    const util::Rational pivot_coefficient = pivot_row.coefficients.at(variable);
+    for (auto& [pivot_variable, coefficient] : pivot_row.coefficients) {
+      coefficient = coefficient / pivot_coefficient;
+    }
+    pivot_row.rhs = pivot_row.rhs / pivot_coefficient;
+
+    for (std::size_t i = 0; i < rows.size(); ++i) {
+      if (i == *pivot_index) {
+        continue;
+      }
+      const auto found = rows[i].coefficients.find(variable);
+      if (found == rows[i].coefficients.end() || found->second.is_zero()) {
+        continue;
+      }
+      const util::Rational factor = found->second;
+      for (const auto& [pivot_variable, coefficient] : pivot_row.coefficients) {
+        if (pivot_variable == variable) {
+          continue;
+        }
+        util::Rational updated = rows[i].coefficients[pivot_variable] - factor * coefficient;
+        if (updated.is_zero()) {
+          rows[i].coefficients.erase(pivot_variable);
+        } else {
+          rows[i].coefficients[pivot_variable] = updated;
+        }
+      }
+      rows[i].rhs = rows[i].rhs - factor * pivot_row.rhs;
+      rows[i].coefficients.erase(variable);
+    }
+
+    pivot_row_of_variable.emplace(variable, *pivot_index);
+  }
+
+  for (const auto& [variable, row_index] : pivot_row_of_variable) {
+    const GaussianEliminationRow& row = rows[row_index];
+    theory::arithmetic::LinearPolynomial definition_polynomial(row.rhs);
+    for (const auto& [other_variable, coefficient] : row.coefficients) {
+      if (other_variable == variable) {
+        continue;
+      }
+      definition_polynomial.add_term(other_variable, -coefficient);
+    }
+    const core::TermId definition = polynomial_to_term(terms, definition_polynomial);
+    result.push_back(
+        SolvedConstantCandidate{variable, definition, tree_term_size(terms, definition)});
+  }
+  return result;
+}
+
 bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.sort != terms.symbols().bool_sort()) {
@@ -290,11 +467,18 @@ bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) 
     }
     case core::TermKind::Application:
     case core::TermKind::Equality:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
     case core::TermKind::BoolValue:
     case core::TermKind::Not:
     case core::TermKind::And:
     case core::TermKind::Or:
     case core::TermKind::Implies:
+      return false;
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+      // Real-sorted; unreachable past the bool_sort() guard above.
       return false;
   }
   return false;
@@ -312,12 +496,19 @@ bool is_forced_atom(const core::TermManager& terms, core::TermId term_id) {
     }
     case core::TermKind::Application:
     case core::TermKind::Equality:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       return true;
     case core::TermKind::BoolValue:
     case core::TermKind::Not:
     case core::TermKind::And:
     case core::TermKind::Or:
     case core::TermKind::Implies:
+      return false;
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+      // Real-sorted; unreachable past the bool_sort() guard above.
       return false;
   }
   return false;
@@ -448,6 +639,14 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
+    // QF_LRA and QF_UF are mutually exclusive at dispatch (check_sat.cpp),
+    // so this pass never actually sees arithmetic/Le/Lt terms; treated as
+    // opaque leaves for switch exhaustiveness.
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       return term_id;
     case core::TermKind::Equality: {
       const core::TermId lhs =
@@ -535,6 +734,11 @@ core::TermId simplify_with_forced_atoms(core::TermManager& terms, core::TermId t
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       rewritten = term_id;
       break;
     case core::TermKind::Equality: {
@@ -768,6 +972,11 @@ core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId ter
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       return term;
     case core::TermKind::Equality:
       return closure.are_equal(node_children.at(0), node_children.at(1)) ? terms.mk_bool(true)
@@ -1416,6 +1625,42 @@ core::TermId rewrite_with_ground_unit_equalities(
   switch (node.kind) {
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
+    case core::TermKind::Rational:
+      break;
+    case core::TermKind::Plus: {
+      std::vector<core::TermId> children;
+      children.reserve(node_children.size());
+      bool changed = false;
+      for (const core::TermId child : node_children) {
+        const core::TermId rewritten_child =
+            rewrite_with_ground_unit_equalities(terms, child, replacements, memo, rewrites);
+        changed = changed || rewritten_child != child;
+        children.push_back(rewritten_child);
+      }
+      if (changed) {
+        rewritten = terms.mk_plus(std::move(children));
+      }
+      break;
+    }
+    case core::TermKind::Times: {
+      const core::TermId rewritten_child = rewrite_with_ground_unit_equalities(
+          terms, node_children.at(0), replacements, memo, rewrites);
+      if (rewritten_child != node_children.at(0)) {
+        rewritten = terms.mk_times(node.rational_value, rewritten_child);
+      }
+      break;
+    }
+    case core::TermKind::Le:
+      rewritten = terms.mk_le(rewrite_with_ground_unit_equalities(terms, node_children.at(0),
+                                                                  replacements, memo, rewrites),
+                              rewrite_with_ground_unit_equalities(terms, node_children.at(1),
+                                                                  replacements, memo, rewrites));
+      break;
+    case core::TermKind::Lt:
+      rewritten = terms.mk_lt(rewrite_with_ground_unit_equalities(terms, node_children.at(0),
+                                                                  replacements, memo, rewrites),
+                              rewrite_with_ground_unit_equalities(terms, node_children.at(1),
+                                                                  replacements, memo, rewrites));
       break;
     case core::TermKind::Application: {
       std::vector<core::TermId> children;
@@ -1499,6 +1744,40 @@ core::TermId rewrite_with_solved_constants(
   switch (term.kind) {
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
+    case core::TermKind::Rational:
+      break;
+    case core::TermKind::Plus: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      bool changed = false;
+      for (const core::TermId child : children) {
+        const core::TermId rewritten_child =
+            rewrite_with_solved_constants(terms, child, replacements, memo, rewrites);
+        changed = changed || rewritten_child != child;
+        rewritten_children.push_back(rewritten_child);
+      }
+      if (changed) {
+        rewritten = terms.mk_plus(std::move(rewritten_children));
+      }
+      break;
+    }
+    case core::TermKind::Times: {
+      const core::TermId rewritten_child =
+          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites);
+      if (rewritten_child != children.at(0)) {
+        rewritten = terms.mk_times(term.rational_value, rewritten_child);
+      }
+      break;
+    }
+    case core::TermKind::Le:
+      rewritten = terms.mk_le(
+          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites),
+          rewrite_with_solved_constants(terms, children.at(1), replacements, memo, rewrites));
+      break;
+    case core::TermKind::Lt:
+      rewritten = terms.mk_lt(
+          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites),
+          rewrite_with_solved_constants(terms, children.at(1), replacements, memo, rewrites));
       break;
     case core::TermKind::Application: {
       std::vector<core::TermId> rewritten_children;
@@ -1552,6 +1831,82 @@ core::TermId rewrite_with_solved_constants(
   }
   if (rewritten != term_id) {
     ++rewrites;
+  }
+  memo.emplace(term_id, rewritten);
+  return rewritten;
+}
+
+core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermId term_id,
+                                           std::unordered_map<core::TermId, core::TermId>& memo,
+                                           std::size_t& lowered) {
+  if (const auto found = memo.find(term_id); found != memo.end()) {
+    return found->second;
+  }
+
+  const core::Term& term = terms.get(term_id);
+  const std::vector<core::TermId> children = term.children;
+  core::TermId rewritten = term_id;
+  switch (term.kind) {
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
+      break;
+    case core::TermKind::Application: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      bool changed = false;
+      for (const core::TermId child : children) {
+        const core::TermId rewritten_child =
+            lower_real_equalities_rewrite(terms, child, memo, lowered);
+        changed = changed || rewritten_child != child;
+        rewritten_children.push_back(rewritten_child);
+      }
+      if (changed) {
+        rewritten = terms.mk_app(term.symbol, std::move(rewritten_children));
+      }
+      break;
+    }
+    case core::TermKind::Equality: {
+      const core::TermId lhs = lower_real_equalities_rewrite(terms, children.at(0), memo, lowered);
+      const core::TermId rhs = lower_real_equalities_rewrite(terms, children.at(1), memo, lowered);
+      if (terms.get(lhs).sort == terms.symbols().real_sort()) {
+        rewritten = terms.mk_and({terms.mk_le(lhs, rhs), terms.mk_le(rhs, lhs)});
+        ++lowered;
+      } else {
+        rewritten = terms.mk_eq(lhs, rhs);
+      }
+      break;
+    }
+    case core::TermKind::Not:
+      rewritten = terms.mk_not(lower_real_equalities_rewrite(terms, children.at(0), memo, lowered));
+      break;
+    case core::TermKind::And: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      for (const core::TermId child : children) {
+        rewritten_children.push_back(lower_real_equalities_rewrite(terms, child, memo, lowered));
+      }
+      rewritten = terms.mk_and(std::move(rewritten_children));
+      break;
+    }
+    case core::TermKind::Or: {
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      for (const core::TermId child : children) {
+        rewritten_children.push_back(lower_real_equalities_rewrite(terms, child, memo, lowered));
+      }
+      rewritten = terms.mk_or(std::move(rewritten_children));
+      break;
+    }
+    case core::TermKind::Implies:
+      rewritten =
+          terms.mk_implies(lower_real_equalities_rewrite(terms, children.at(0), memo, lowered),
+                           lower_real_equalities_rewrite(terms, children.at(1), memo, lowered));
+      break;
   }
   memo.emplace(term_id, rewritten);
   return rewritten;
@@ -1765,6 +2120,11 @@ core::TermId simplify_with_finite_domain_evaluation(core::TermManager& terms, co
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Application:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
       return term;
     case core::TermKind::Equality: {
       bool cutoff = false;
@@ -1960,6 +2320,18 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   return simplified;
 }
 
+RealEqualityLoweringResult lower_real_equalities(core::TermManager& terms,
+                                                 const std::vector<core::TermId>& assertions) {
+  RealEqualityLoweringResult result;
+  result.assertions.reserve(assertions.size());
+  std::unordered_map<core::TermId, core::TermId> memo;
+  for (const core::TermId assertion : assertions) {
+    result.assertions.push_back(
+        lower_real_equalities_rewrite(terms, assertion, memo, result.lowered));
+  }
+  return result;
+}
+
 GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
     core::TermManager& terms, const std::vector<core::TermId>& assertions) {
   // CVC4's nonclausal simplification architecture motivates this bounded
@@ -2008,7 +2380,8 @@ GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
 }
 
 SolvedConstantSubstitutionResult substitute_solved_constants(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    bool enable_gaussian_elimination) {
   // This is satisfiability-preserving definitional elimination for free
   // uninterpreted constants: a unit equality x = t may replace x when x does
   // not occur in t. It is deliberately smaller than a full solve-eqs tactic.
@@ -2018,6 +2391,12 @@ SolvedConstantSubstitutionResult substitute_solved_constants(
   std::vector<SolvedConstantCandidate> candidates;
   for (const core::TermId assertion : assertions) {
     collect_solved_constant_candidates(terms, assertion, candidates);
+  }
+  if (enable_gaussian_elimination) {
+    std::vector<SolvedConstantCandidate> gaussian_candidates =
+        collect_gaussian_elimination_candidates(terms, assertions);
+    result.gaussian_candidates = gaussian_candidates.size();
+    candidates.insert(candidates.end(), gaussian_candidates.begin(), gaussian_candidates.end());
   }
 
   std::vector<std::size_t> occurrences(terms.size());

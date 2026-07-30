@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <deque>
 #include <exception>
+#include <functional>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -28,10 +30,13 @@
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/arithmetic/lra_atom.hpp"
+#include "theory/arithmetic/lra_tableau.hpp"
 #include "theory/equality/congruence_stats.hpp"
 #include "theory/equality/explained_congruence_closure.hpp"
 #include "theory/equality/flat_congruence_closure.hpp"
 #include "theory/equality/flat_terms.hpp"
+#include "util/rational.hpp"
 #include "util/statistics.hpp"
 
 #if PRIMO_HAVE_IPASIR
@@ -75,6 +80,9 @@ constexpr util::StatKey kStatSolvedConstantRejectedCycles =
     util::StatKey::SolvedConstantRejectedCycles;
 constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
+constexpr util::StatKey kStatRealEqualityLowered = util::StatKey::RealEqualityLowered;
+constexpr util::StatKey kStatSolvedConstantGaussianCandidates =
+    util::StatKey::SolvedConstantGaussianCandidates;
 constexpr util::StatKey kStatFiniteDomainDomains = util::StatKey::FiniteDomainDomains;
 constexpr util::StatKey kStatFiniteDomainAmoClauses = util::StatKey::FiniteDomainAmoClauses;
 constexpr util::StatKey kStatFiniteDomainRawChoices = util::StatKey::FiniteDomainRawChoices;
@@ -131,6 +139,30 @@ constexpr util::StatKey kStatSatDecisions = util::StatKey::SatDecisions;
 constexpr util::StatKey kStatSatPropagations = util::StatKey::SatPropagations;
 constexpr util::StatKey kStatSolverBoolean = util::StatKey::SolverBoolean;
 constexpr util::StatKey kStatSolverQfUf = util::StatKey::SolverQfUf;
+constexpr util::StatKey kStatSolverQfLra = util::StatKey::SolverQfLra;
+constexpr util::StatKey kStatLraTheoryChecks = util::StatKey::LraTheoryChecks;
+constexpr util::StatKey kStatLraTheoryConflicts = util::StatKey::LraTheoryConflicts;
+constexpr util::StatKey kStatLraTheoryPropagations = util::StatKey::LraTheoryPropagations;
+constexpr util::StatKey kStatLraBlandFallbacks = util::StatKey::LraBlandFallbacks;
+constexpr util::StatKey kStatLraSoiMultiRowConflicts = util::StatKey::LraSoiMultiRowConflicts;
+constexpr util::StatKey kStatLraSoiQuickxplainCalls = util::StatKey::LraSoiQuickxplainCalls;
+constexpr util::StatKey kStatLraPivots = util::StatKey::LraPivots;
+// Item H3's cost accounting: what the pivots actually cost, not just how
+// many there were -- a sparsity rule's whole risk is trading one for the
+// other, so both have to be visible.
+constexpr util::StatKey kStatLraPivotRowUpdates = util::StatKey::LraPivotRowUpdates;
+constexpr util::StatKey kStatLraPivotTermOps = util::StatKey::LraPivotTermOps;
+// Distinct from kStatLraTheoryChecks: that one counts iterations of
+// solve_qf_lra's outer backend.solve() loop (always 1 under the IPASIR
+// online-propagator path, since the whole search happens inside a single
+// solve() call) -- not useful for measuring how often the eager
+// per-literal tableau_.check() in notify_assignment_lit actually runs.
+// This one counts exactly that.
+constexpr util::StatKey kStatLraOnlineCheckCalls = util::StatKey::LraOnlineCheckCalls;
+constexpr util::StatKey kStatLraRowPropagations = util::StatKey::LraRowPropagations;
+constexpr util::StatKey kStatLraBidirectionalRowPropagations =
+    util::StatKey::LraBidirectionalRowPropagations;
+constexpr util::StatKey kStatLraTheoryDecisions = util::StatKey::LraTheoryDecisions;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -340,6 +372,20 @@ theory::equality::FlatExplanationSearchMode flat_explanation_search_mode(
   return theory::equality::FlatExplanationSearchMode::OneSidedBfs;
 }
 
+theory::arithmetic::LraTableau::PivotingRule lra_pivoting_rule_from_options(LraPivotingRule rule) {
+  switch (rule) {
+    case LraPivotingRule::Dantzig:
+      return theory::arithmetic::LraTableau::PivotingRule::Dantzig;
+    case LraPivotingRule::Bland:
+      return theory::arithmetic::LraTableau::PivotingRule::Bland;
+    case LraPivotingRule::Soi:
+      return theory::arithmetic::LraTableau::PivotingRule::Soi;
+    case LraPivotingRule::Sparse:
+      return theory::arithmetic::LraTableau::PivotingRule::Sparse;
+  }
+  return theory::arithmetic::LraTableau::PivotingRule::Bland;
+}
+
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
 constexpr std::size_t kAutoBasicMultiTermLimit = 20000;
 constexpr std::size_t kAutoBasicSingleTermLimit = 15000;
@@ -467,6 +513,32 @@ void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics
   statistics.set(kStatSatPropagations, sat_stats.propagations);
 }
 
+// See check_sat.hpp's refresh_active_solve_stats() comment for why this
+// exists: CaDiCaL's own counters are live at any time, but check_sat only
+// copies them into the caller-visible Statistics synchronously around each
+// blocking solve() call, so a signal handler firing mid-solve otherwise
+// sees stale (often zero) values. `backend`/`statistics` here point at the
+// call's own locals for the duration of the enclosing solve function only;
+// the guard's destructor clears them on every exit path (normal return or
+// stack unwinding), so there is never a dangling pointer for the handler to
+// read from outside that scope.
+const sat::IpasirUpBackend* g_active_backend = nullptr;
+util::Statistics* g_active_backend_statistics = nullptr;
+
+class ActiveSolveStatsGuard {
+ public:
+  ActiveSolveStatsGuard(const sat::IpasirUpBackend& backend, util::Statistics& statistics) {
+    g_active_backend = &backend;
+    g_active_backend_statistics = &statistics;
+  }
+  ~ActiveSolveStatsGuard() {
+    g_active_backend = nullptr;
+    g_active_backend_statistics = nullptr;
+  }
+  ActiveSolveStatsGuard(const ActiveSolveStatsGuard&) = delete;
+  ActiveSolveStatsGuard& operator=(const ActiveSolveStatsGuard&) = delete;
+};
+
 EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,
                                                 std::size_t theory_atom_count,
                                                 util::Statistics& statistics) {
@@ -514,106 +586,101 @@ class UnsupportedInput : public std::runtime_error {
   explicit UnsupportedInput(const std::string& message) : std::runtime_error(message) {}
 };
 
+class Frontend;
+
+// Builds a core::TermId tree for one top-level Frontend::build_term(root)
+// call, iteratively -- deliberately not via recursive descent, since
+// fuzzer-generated input can nest arbitrarily deep (long `let`/arithmetic
+// chains in particular) and a native-recursive version can stack-overflow
+// (found via fuzzing under ASAN, see docs/run-log.json). Every place the
+// term-building logic used to call build_term(child) and use its result
+// becomes: schedule(child, continuation) -- the continuation is a plain
+// heap-allocated closure capturing whatever local state that call site
+// needed to resume with, pushed onto `pending_` instead of onto the
+// native call stack. run()'s driver loop repeatedly pops and invokes one
+// pending closure until the root's result is available; no C++ call
+// recursion happens regardless of input nesting depth. A fresh
+// TermBuilder is constructed per build_term(root) call (see
+// Frontend::build_term below) -- it holds no state that needs to survive
+// across separate assertions.
+//
+// A Frontend::Definition's body may itself invoke another definition (or,
+// guarded by expanding_definitions_, itself), so definition instantiation
+// is folded into this same driver rather than calling Frontend::build_term
+// again -- a second, nested synchronous build_term call from within a
+// continuation would just reintroduce native recursion one level higher
+// up (a chain of nested definition *calls* in the source, not just nested
+// definition *bodies*).
+class TermBuilder {
+ public:
+  explicit TermBuilder(Frontend& frontend) : frontend_(frontend) {}
+
+  core::TermId run(const smtlib::SExpr& root);
+
+ private:
+  using Continuation = std::function<void(core::TermId)>;
+
+  // Arranges for `expr` to be evaluated and `k` invoked with the result,
+  // without recursing (pushes a closure onto `pending_`; the driver loop
+  // in run() calls it later).
+  void schedule(const smtlib::SExpr& expr, Continuation k);
+
+  // Invokes continuation `k` with `value` -- via `pending_`, never
+  // directly. This is the other half of making the whole builder
+  // non-recursive: `schedule` alone only defers *descending* into a
+  // child's evaluation, but a continuation's body routinely calls
+  // *another* continuation synchronously once it has a combined result
+  // (e.g. dispatch_plus's "all children ready" callback calling k with
+  // mk_plus(...)) -- chained deeply enough (e.g. a long `+`/`let` chain),
+  // those direct calls alone reconstruct exactly the same native
+  // recursion this class exists to avoid. Routing every delivery through
+  // `pending_` here keeps each individual call O(1) stack depth
+  // regardless of how many levels of nesting ultimately resolve.
+  void resume(Continuation k, core::TermId value);
+
+  // Evaluates every expression in `exprs`, in order, then invokes
+  // `done` with all their TermIds (same order) -- the iterative
+  // replacement for `for (child : children) results.push_back(build_term(child));`.
+  void schedule_all(std::shared_ptr<std::vector<const smtlib::SExpr*>> exprs,
+                    std::function<void(std::vector<core::TermId>)> done);
+  void schedule_all_from(std::shared_ptr<std::vector<const smtlib::SExpr*>> exprs,
+                         std::size_t index, std::vector<core::TermId> results,
+                         std::function<void(std::vector<core::TermId>)> done);
+
+  static std::shared_ptr<std::vector<const smtlib::SExpr*>> collect(const smtlib::SExpr& expr,
+                                                                    std::size_t start);
+
+  void dispatch(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_let(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_ite(const smtlib::SExpr& expr, Continuation k);
+  void finish_ite(core::TermId condition, core::TermId then_term, core::TermId else_term,
+                  Continuation k);
+  void dispatch_implies(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_xor(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_equality(const smtlib::SExpr& expr, Continuation k);
+  core::TermId finish_pairwise_equality_to_ite(core::TermId term, core::TermId condition,
+                                               core::TermId then_term, core::TermId else_term);
+  void dispatch_distinct(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_plus(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_minus(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_times(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_divide(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_comparison(const smtlib::SExpr& expr, const std::string& head, Continuation k);
+  void dispatch_instantiate_definition(const std::string& name, std::vector<core::TermId> args,
+                                       Continuation k);
+
+  Frontend& frontend_;
+  std::vector<std::function<void()>> pending_;
+  std::optional<core::TermId> result_;
+};
+
 class Frontend {
  public:
+  friend class TermBuilder;
+
   core::TermId build_term(const smtlib::SExpr& expr) {
-    if (expr.kind == smtlib::SExpr::Kind::Atom) {
-      if (expr.atom == "true") {
-        return terms_.mk_bool(true);
-      }
-      if (expr.atom == "false") {
-        return terms_.mk_bool(false);
-      }
-      const auto bound = lookup_bound_term(expr.atom);
-      if (bound.has_value()) {
-        return bound.value();
-      }
-      if (!definitions_.empty()) {
-        const auto defined = definitions_.find(expr.atom);
-        if (defined != definitions_.end() && defined->second.parameters.empty()) {
-          return instantiate_definition(expr.atom, {});
-        }
-      }
-      const auto symbol = symbols_.lookup_symbol(expr.atom);
-      if (!symbol.has_value()) {
-        throw UnsupportedInput("unknown symbol: " + expr.atom);
-      }
-      return terms_.mk_constant(symbol.value());
-    }
-
-    if (expr.list.empty() || expr.list[0].kind != smtlib::SExpr::Kind::Atom) {
-      throw UnsupportedInput("unsupported expression shape");
-    }
-
-    const std::string& head = expr.list[0].atom;
-    if (head == "not") {
-      require_arity(expr, 2, "not");
-      return terms_.mk_not(build_term(expr.list[1]));
-    }
-    if (head == "and") {
-      std::vector<core::TermId> children;
-      children.reserve(expr.list.size() - 1);
-      for (std::size_t i = 1; i < expr.list.size(); ++i) {
-        children.push_back(build_term(expr.list[i]));
-      }
-      return terms_.mk_and(std::move(children));
-    }
-    if (head == "or") {
-      std::vector<core::TermId> children;
-      children.reserve(expr.list.size() - 1);
-      for (std::size_t i = 1; i < expr.list.size(); ++i) {
-        children.push_back(build_term(expr.list[i]));
-      }
-      return terms_.mk_or(std::move(children));
-    }
-    if (head == "=>") {
-      return build_implies(expr);
-    }
-    if (head == "xor") {
-      return build_xor(expr);
-    }
-    if (head == "!") {
-      if (expr.list.size() < 2) {
-        throw UnsupportedInput("annotated term has no body");
-      }
-      return build_term(expr.list[1]);
-    }
-    if (head == "ite") {
-      return build_ite(expr);
-    }
-    if (head == "let") {
-      return build_let(expr);
-    }
-    if (head == "=") {
-      return build_equality(expr);
-    }
-    if (head == "distinct") {
-      return build_distinct(expr);
-    }
-
-    if (!definitions_.empty()) {
-      const auto defined = definitions_.find(head);
-      if (defined != definitions_.end()) {
-        std::vector<core::TermId> args;
-        args.reserve(expr.list.size() - 1);
-        for (std::size_t i = 1; i < expr.list.size(); ++i) {
-          args.push_back(build_term(expr.list[i]));
-        }
-        return instantiate_definition(head, std::move(args));
-      }
-    }
-
-    const auto symbol = symbols_.lookup_symbol(head);
-    if (!symbol.has_value()) {
-      throw UnsupportedInput("unknown function symbol: " + head);
-    }
-    std::vector<core::TermId> args;
-    args.reserve(expr.list.size() - 1);
-    for (std::size_t i = 1; i < expr.list.size(); ++i) {
-      args.push_back(bind_bool_argument_if_needed(build_term(expr.list[i])));
-    }
-    const core::TermId term = terms_.mk_app(symbol.value(), std::move(args));
-    return term;
+    TermBuilder builder(*this);
+    return builder.run(expr);
   }
 
   void process_command(const smtlib::Command& command, std::vector<core::TermId>& assertions) {
@@ -632,7 +699,7 @@ class Frontend {
         }
         return;
       case smtlib::CommandKind::SetLogic:
-        if (command.logic != "QF_UF") {
+        if (command.logic != "QF_UF" && command.logic != "QF_LRA") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
         }
         return;
@@ -702,154 +769,6 @@ class Frontend {
   static bool has_head(const smtlib::SExpr& expr, std::string_view head) {
     return expr.kind == smtlib::SExpr::Kind::List && !expr.list.empty() &&
            expr.list[0].kind == smtlib::SExpr::Kind::Atom && expr.list[0].atom == head;
-  }
-
-  core::TermId build_let(const smtlib::SExpr& expr) {
-    require_arity(expr, 3, "let");
-    if (expr.list[1].kind != smtlib::SExpr::Kind::List) {
-      throw UnsupportedInput("let bindings must be a list");
-    }
-
-    std::unordered_map<std::string, core::TermId> scope;
-    for (const smtlib::SExpr& binding : expr.list[1].list) {
-      if (binding.kind != smtlib::SExpr::Kind::List || binding.list.size() != 2 ||
-          binding.list[0].kind != smtlib::SExpr::Kind::Atom) {
-        throw UnsupportedInput("malformed let binding");
-      }
-      const std::string& name = binding.list[0].atom;
-      if (!scope.emplace(name, build_term(binding.list[1])).second) {
-        throw UnsupportedInput("duplicate let binding: " + name);
-      }
-    }
-
-    let_scopes_.push_back(std::move(scope));
-    const core::TermId body = build_term(expr.list[2]);
-    let_scopes_.pop_back();
-    return body;
-  }
-
-  core::TermId build_ite(const smtlib::SExpr& expr) {
-    require_arity(expr, 4, "ite");
-    const core::TermId condition = build_term(expr.list[1]);
-    if (terms_.get(condition).sort != symbols_.bool_sort()) {
-      throw UnsupportedInput("ite condition is not Boolean");
-    }
-    const core::TermId then_term = build_term(expr.list[2]);
-    const core::TermId else_term = build_term(expr.list[3]);
-    const core::SortId result_sort = terms_.get(then_term).sort;
-    if (result_sort != terms_.get(else_term).sort) {
-      throw UnsupportedInput("ite branch sort mismatch");
-    }
-    if (result_sort == symbols_.bool_sort()) {
-      ++boolean_ites_;
-      return terms_.mk_or({terms_.mk_and({condition, then_term}),
-                           terms_.mk_and({terms_.mk_not(condition), else_term})});
-    }
-
-    const core::TermId auxiliary = fresh_auxiliary_constant(result_sort, "ite");
-    ++auxiliary_ites_;
-    side_assertions_.push_back(terms_.mk_implies(condition, terms_.mk_eq(auxiliary, then_term)));
-    side_assertions_.push_back(
-        terms_.mk_implies(terms_.mk_not(condition), terms_.mk_eq(auxiliary, else_term)));
-    return auxiliary;
-  }
-
-  core::TermId build_implies(const smtlib::SExpr& expr) {
-    if (expr.list.size() < 3) {
-      throw UnsupportedInput("=> has wrong arity");
-    }
-    core::TermId result = build_term(expr.list.back());
-    for (std::size_t i = expr.list.size() - 2; i >= 1; --i) {
-      result = terms_.mk_implies(build_term(expr.list[i]), result);
-      if (i == 1) {
-        break;
-      }
-    }
-    return result;
-  }
-
-  core::TermId build_xor(const smtlib::SExpr& expr) {
-    if (expr.list.size() < 3) {
-      throw UnsupportedInput("xor has wrong arity");
-    }
-    core::TermId result = build_term(expr.list[1]);
-    for (std::size_t i = 2; i < expr.list.size(); ++i) {
-      const core::TermId rhs = build_term(expr.list[i]);
-      result = terms_.mk_or({terms_.mk_and({result, terms_.mk_not(rhs)}),
-                             terms_.mk_and({terms_.mk_not(result), rhs})});
-    }
-    return result;
-  }
-
-  core::TermId build_equality(const smtlib::SExpr& expr) {
-    if (expr.list.size() < 3) {
-      throw UnsupportedInput("= has wrong arity");
-    }
-    std::vector<core::TermId> equalities;
-    const smtlib::SExpr* previous_expr = &expr.list[1];
-    std::optional<core::TermId> previous_term;
-    for (std::size_t i = 2; i < expr.list.size(); ++i) {
-      const smtlib::SExpr& current_expr = expr.list[i];
-      if (has_head(current_expr, "ite")) {
-        const core::TermId lhs =
-            previous_term.has_value() ? previous_term.value() : build_term(*previous_expr);
-        equalities.push_back(build_pairwise_equality_to_ite(lhs, current_expr));
-        previous_expr = &current_expr;
-        previous_term.reset();
-        continue;
-      }
-      const core::TermId current = build_term(current_expr);
-      if (has_head(*previous_expr, "ite")) {
-        equalities.push_back(build_pairwise_equality_to_ite(current, *previous_expr));
-      } else {
-        const core::TermId previous =
-            previous_term.has_value() ? previous_term.value() : build_term(*previous_expr);
-        equalities.push_back(build_pairwise_equality(previous, current));
-      }
-      previous_expr = &current_expr;
-      previous_term = current;
-    }
-    return terms_.mk_and(std::move(equalities));
-  }
-
-  core::TermId build_pairwise_equality_to_ite(core::TermId term, const smtlib::SExpr& ite_expr) {
-    require_arity(ite_expr, 4, "ite");
-    const core::TermId condition = build_term(ite_expr.list[1]);
-    if (terms_.get(condition).sort != symbols_.bool_sort()) {
-      throw UnsupportedInput("ite condition is not Boolean");
-    }
-    const core::TermId then_term = build_term(ite_expr.list[2]);
-    const core::TermId else_term = build_term(ite_expr.list[3]);
-    const core::SortId result_sort = terms_.get(then_term).sort;
-    if (result_sort != terms_.get(else_term).sort) {
-      throw UnsupportedInput("ite branch sort mismatch");
-    }
-    if (terms_.get(term).sort != result_sort) {
-      throw UnsupportedInput("equality sort mismatch");
-    }
-    return terms_.mk_and(
-        {terms_.mk_implies(condition, build_pairwise_equality(term, then_term)),
-         terms_.mk_implies(terms_.mk_not(condition), build_pairwise_equality(term, else_term))});
-  }
-
-  core::TermId build_distinct(const smtlib::SExpr& expr) {
-    std::vector<core::TermId> terms;
-    for (std::size_t i = 1; i < expr.list.size(); ++i) {
-      terms.push_back(build_term(expr.list[i]));
-    }
-    std::vector<core::TermId> disequalities;
-    for (std::size_t i = 0; i < terms.size(); ++i) {
-      for (std::size_t j = i + 1; j < terms.size(); ++j) {
-        disequalities.push_back(build_pairwise_disequality(terms[i], terms[j]));
-      }
-    }
-    if (disequalities.empty()) {
-      return terms_.mk_bool(true);
-    }
-    if (disequalities.size() == 1) {
-      return disequalities.front();
-    }
-    return terms_.mk_and(std::move(disequalities));
   }
 
   core::TermId build_pairwise_equality(core::TermId lhs, core::TermId rhs) {
@@ -926,39 +845,12 @@ class Frontend {
     definitions_.emplace(command.name, std::move(definition));
   }
 
-  core::TermId instantiate_definition(const std::string& name, std::vector<core::TermId> args) {
-    const auto found = definitions_.find(name);
-    if (found == definitions_.end()) {
-      throw UnsupportedInput("unknown definition: " + name);
-    }
-    if (expanding_definitions_.contains(name)) {
-      throw UnsupportedInput("recursive define-fun is unsupported: " + name);
-    }
-    const Definition& definition = found->second;
-    if (args.size() != definition.parameters.size()) {
-      throw UnsupportedInput("define-fun application has wrong arity: " + name);
-    }
-
-    std::unordered_map<std::string, core::TermId> scope;
-    for (std::size_t i = 0; i < args.size(); ++i) {
-      if (terms_.get(args[i]).sort != definition.parameter_sorts[i]) {
-        throw UnsupportedInput("define-fun argument sort mismatch: " + name);
-      }
-      if (!scope.emplace(definition.parameters[i], args[i]).second) {
-        throw UnsupportedInput("duplicate define-fun parameter: " + definition.parameters[i]);
-      }
-    }
-
-    expanding_definitions_.insert(name);
-    let_scopes_.push_back(std::move(scope));
-    const core::TermId body = build_term(definition.body);
-    let_scopes_.pop_back();
-    expanding_definitions_.erase(name);
-    if (terms_.get(body).sort != definition.result_sort) {
-      throw UnsupportedInput("define-fun result sort mismatch: " + name);
-    }
-    return body;
-  }
+  // Definition instantiation's actual body-building (which used to be
+  // here, calling build_term(definition.body) recursively) now lives in
+  // TermBuilder::dispatch_instantiate_definition, folded into the same
+  // iterative driver as everything else -- see the TermBuilder class
+  // comment above Frontend for why a second nested build_term call
+  // wouldn't have actually fixed the recursion.
 
   core::TermId fresh_auxiliary_constant(core::SortId sort, std::string_view prefix) {
     while (true) {
@@ -984,6 +876,583 @@ class Frontend {
   bool requested_model_ = false;
   bool produce_models_ = false;
 };
+
+core::TermId TermBuilder::run(const smtlib::SExpr& root) {
+  schedule(root, [this](core::TermId id) { result_ = id; });
+  while (!result_.has_value()) {
+    std::function<void()> job = std::move(pending_.back());
+    pending_.pop_back();
+    job();
+  }
+  return result_.value();
+}
+
+void TermBuilder::schedule(const smtlib::SExpr& expr, Continuation k) {
+  pending_.push_back([this, &expr, k = std::move(k)]() mutable { dispatch(expr, std::move(k)); });
+}
+
+void TermBuilder::resume(Continuation k, core::TermId value) {
+  pending_.push_back([k = std::move(k), value]() { k(value); });
+}
+
+void TermBuilder::schedule_all(std::shared_ptr<std::vector<const smtlib::SExpr*>> exprs,
+                               std::function<void(std::vector<core::TermId>)> done) {
+  schedule_all_from(std::move(exprs), 0, {}, std::move(done));
+}
+
+void TermBuilder::schedule_all_from(std::shared_ptr<std::vector<const smtlib::SExpr*>> exprs,
+                                    std::size_t index, std::vector<core::TermId> results,
+                                    std::function<void(std::vector<core::TermId>)> done) {
+  if (index == exprs->size()) {
+    done(std::move(results));
+    return;
+  }
+  schedule(*(*exprs)[index], [this, exprs, index, results = std::move(results),
+                              done = std::move(done)](core::TermId r) mutable {
+    results.push_back(r);
+    schedule_all_from(std::move(exprs), index + 1, std::move(results), std::move(done));
+  });
+}
+
+std::shared_ptr<std::vector<const smtlib::SExpr*>> TermBuilder::collect(const smtlib::SExpr& expr,
+                                                                        std::size_t start) {
+  auto exprs = std::make_shared<std::vector<const smtlib::SExpr*>>();
+  exprs->reserve(expr.list.size() - start);
+  for (std::size_t i = start; i < expr.list.size(); ++i) {
+    exprs->push_back(&expr.list[i]);
+  }
+  return exprs;
+}
+
+void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
+  if (expr.kind == smtlib::SExpr::Kind::Atom) {
+    if (expr.atom == "true") {
+      resume(std::move(k), frontend_.terms_.mk_bool(true));
+      return;
+    }
+    if (expr.atom == "false") {
+      resume(std::move(k), frontend_.terms_.mk_bool(false));
+      return;
+    }
+    if (const auto literal = util::Rational::parse(expr.atom); literal.has_value()) {
+      resume(std::move(k), frontend_.terms_.mk_rational(literal.value()));
+      return;
+    }
+    const auto bound = frontend_.lookup_bound_term(expr.atom);
+    if (bound.has_value()) {
+      resume(std::move(k), bound.value());
+      return;
+    }
+    if (!frontend_.definitions_.empty()) {
+      const auto defined = frontend_.definitions_.find(expr.atom);
+      if (defined != frontend_.definitions_.end() && defined->second.parameters.empty()) {
+        dispatch_instantiate_definition(expr.atom, {}, std::move(k));
+        return;
+      }
+    }
+    const auto symbol = frontend_.symbols_.lookup_symbol(expr.atom);
+    if (!symbol.has_value()) {
+      throw UnsupportedInput("unknown symbol: " + expr.atom);
+    }
+    resume(std::move(k), frontend_.terms_.mk_constant(symbol.value()));
+    return;
+  }
+
+  if (expr.list.empty() || expr.list[0].kind != smtlib::SExpr::Kind::Atom) {
+    throw UnsupportedInput("unsupported expression shape");
+  }
+
+  const std::string& head = expr.list[0].atom;
+  if (head == "not") {
+    Frontend::require_arity(expr, 2, "not");
+    schedule(expr.list[1], [this, k = std::move(k)](core::TermId x) mutable {
+      resume(std::move(k), frontend_.terms_.mk_not(x));
+    });
+    return;
+  }
+  if (head == "and") {
+    schedule_all(collect(expr, 1),
+                 [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
+                   resume(std::move(k), frontend_.terms_.mk_and(std::move(children)));
+                 });
+    return;
+  }
+  if (head == "or") {
+    schedule_all(collect(expr, 1),
+                 [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
+                   resume(std::move(k), frontend_.terms_.mk_or(std::move(children)));
+                 });
+    return;
+  }
+  if (head == "=>") {
+    dispatch_implies(expr, std::move(k));
+    return;
+  }
+  if (head == "xor") {
+    dispatch_xor(expr, std::move(k));
+    return;
+  }
+  if (head == "!") {
+    if (expr.list.size() < 2) {
+      throw UnsupportedInput("annotated term has no body");
+    }
+    schedule(expr.list[1], std::move(k));
+    return;
+  }
+  if (head == "ite") {
+    dispatch_ite(expr, std::move(k));
+    return;
+  }
+  if (head == "let") {
+    dispatch_let(expr, std::move(k));
+    return;
+  }
+  if (head == "=") {
+    dispatch_equality(expr, std::move(k));
+    return;
+  }
+  if (head == "distinct") {
+    dispatch_distinct(expr, std::move(k));
+    return;
+  }
+  if (head == "+") {
+    dispatch_plus(expr, std::move(k));
+    return;
+  }
+  if (head == "-") {
+    dispatch_minus(expr, std::move(k));
+    return;
+  }
+  if (head == "*") {
+    dispatch_times(expr, std::move(k));
+    return;
+  }
+  if (head == "/") {
+    dispatch_divide(expr, std::move(k));
+    return;
+  }
+  if (head == "<=" || head == "<" || head == ">=" || head == ">") {
+    dispatch_comparison(expr, head, std::move(k));
+    return;
+  }
+
+  if (!frontend_.definitions_.empty()) {
+    const auto defined = frontend_.definitions_.find(head);
+    if (defined != frontend_.definitions_.end()) {
+      schedule_all(collect(expr, 1),
+                   [this, k = std::move(k), head](std::vector<core::TermId> args) mutable {
+                     dispatch_instantiate_definition(head, std::move(args), k);
+                   });
+      return;
+    }
+  }
+
+  const auto symbol = frontend_.symbols_.lookup_symbol(head);
+  if (!symbol.has_value()) {
+    throw UnsupportedInput("unknown function symbol: " + head);
+  }
+  schedule_all(collect(expr, 1), [this, k = std::move(k), symbol = symbol.value()](
+                                     std::vector<core::TermId> raw_args) mutable {
+    std::vector<core::TermId> args;
+    args.reserve(raw_args.size());
+    for (const core::TermId a : raw_args) {
+      args.push_back(frontend_.bind_bool_argument_if_needed(a));
+    }
+    resume(std::move(k), frontend_.terms_.mk_app(symbol, std::move(args)));
+  });
+}
+
+void TermBuilder::dispatch_let(const smtlib::SExpr& expr, Continuation k) {
+  Frontend::require_arity(expr, 3, "let");
+  if (expr.list[1].kind != smtlib::SExpr::Kind::List) {
+    throw UnsupportedInput("let bindings must be a list");
+  }
+  const smtlib::SExpr& bindings_expr = expr.list[1];
+  for (const smtlib::SExpr& binding : bindings_expr.list) {
+    if (binding.kind != smtlib::SExpr::Kind::List || binding.list.size() != 2 ||
+        binding.list[0].kind != smtlib::SExpr::Kind::Atom) {
+      throw UnsupportedInput("malformed let binding");
+    }
+  }
+  auto binding_value_exprs = std::make_shared<std::vector<const smtlib::SExpr*>>();
+  binding_value_exprs->reserve(bindings_expr.list.size());
+  for (const smtlib::SExpr& binding : bindings_expr.list) {
+    binding_value_exprs->push_back(&binding.list[1]);
+  }
+  schedule_all(binding_value_exprs, [this, &expr, &bindings_expr,
+                                     k = std::move(k)](std::vector<core::TermId> values) mutable {
+    std::unordered_map<std::string, core::TermId> scope;
+    for (std::size_t i = 0; i < bindings_expr.list.size(); ++i) {
+      const std::string& name = bindings_expr.list[i].list[0].atom;
+      if (!scope.emplace(name, values[i]).second) {
+        throw UnsupportedInput("duplicate let binding: " + name);
+      }
+    }
+    frontend_.let_scopes_.push_back(std::move(scope));
+    schedule(expr.list[2], [this, k = std::move(k)](core::TermId body) mutable {
+      frontend_.let_scopes_.pop_back();
+      resume(std::move(k), body);
+    });
+  });
+}
+
+void TermBuilder::dispatch_ite(const smtlib::SExpr& expr, Continuation k) {
+  Frontend::require_arity(expr, 4, "ite");
+  schedule(expr.list[1], [this, &expr, k = std::move(k)](core::TermId condition) mutable {
+    if (frontend_.terms_.get(condition).sort != frontend_.symbols_.bool_sort()) {
+      throw UnsupportedInput("ite condition is not Boolean");
+    }
+    auto branches = std::make_shared<std::vector<const smtlib::SExpr*>>(
+        std::vector<const smtlib::SExpr*>{&expr.list[2], &expr.list[3]});
+    schedule_all(branches, [this, condition,
+                            k = std::move(k)](std::vector<core::TermId> branch_terms) mutable {
+      finish_ite(condition, branch_terms[0], branch_terms[1], std::move(k));
+    });
+  });
+}
+
+void TermBuilder::finish_ite(core::TermId condition, core::TermId then_term, core::TermId else_term,
+                             Continuation k) {
+  const core::SortId result_sort = frontend_.terms_.get(then_term).sort;
+  if (result_sort != frontend_.terms_.get(else_term).sort) {
+    throw UnsupportedInput("ite branch sort mismatch");
+  }
+  if (result_sort == frontend_.symbols_.bool_sort()) {
+    ++frontend_.boolean_ites_;
+    resume(std::move(k),
+           frontend_.terms_.mk_or(
+               {frontend_.terms_.mk_and({condition, then_term}),
+                frontend_.terms_.mk_and({frontend_.terms_.mk_not(condition), else_term})}));
+    return;
+  }
+  const core::TermId auxiliary = frontend_.fresh_auxiliary_constant(result_sort, "ite");
+  ++frontend_.auxiliary_ites_;
+  frontend_.side_assertions_.push_back(
+      frontend_.terms_.mk_implies(condition, frontend_.terms_.mk_eq(auxiliary, then_term)));
+  frontend_.side_assertions_.push_back(frontend_.terms_.mk_implies(
+      frontend_.terms_.mk_not(condition), frontend_.terms_.mk_eq(auxiliary, else_term)));
+  resume(std::move(k), auxiliary);
+}
+
+void TermBuilder::dispatch_implies(const smtlib::SExpr& expr, Continuation k) {
+  if (expr.list.size() < 3) {
+    throw UnsupportedInput("=> has wrong arity");
+  }
+  // Matches the original right-fold's evaluation order: last operand
+  // first, then descending down to the first.
+  auto exprs = std::make_shared<std::vector<const smtlib::SExpr*>>();
+  for (std::size_t idx = expr.list.size() - 1; idx >= 1; --idx) {
+    exprs->push_back(&expr.list[idx]);
+    if (idx == 1) {
+      break;
+    }
+  }
+  schedule_all(exprs, [this, k = std::move(k)](std::vector<core::TermId> reversed_results) mutable {
+    core::TermId result = reversed_results[0];
+    for (std::size_t j = 1; j < reversed_results.size(); ++j) {
+      result = frontend_.terms_.mk_implies(reversed_results[j], result);
+    }
+    resume(std::move(k), result);
+  });
+}
+
+void TermBuilder::dispatch_xor(const smtlib::SExpr& expr, Continuation k) {
+  if (expr.list.size() < 3) {
+    throw UnsupportedInput("xor has wrong arity");
+  }
+  schedule_all(collect(expr, 1), [this,
+                                  k = std::move(k)](std::vector<core::TermId> operands) mutable {
+    core::TermId result = operands[0];
+    for (std::size_t i = 1; i < operands.size(); ++i) {
+      const core::TermId rhs = operands[i];
+      result =
+          frontend_.terms_.mk_or({frontend_.terms_.mk_and({result, frontend_.terms_.mk_not(rhs)}),
+                                  frontend_.terms_.mk_and({frontend_.terms_.mk_not(result), rhs})});
+    }
+    resume(std::move(k), result);
+  });
+}
+
+void TermBuilder::dispatch_equality(const smtlib::SExpr& expr, Continuation k) {
+  if (expr.list.size() < 3) {
+    throw UnsupportedInput("= has wrong arity");
+  }
+
+  // Mirrors build_equality's original sequential loop exactly, but
+  // instead of calling build_term/build_pairwise_equality_to_ite directly
+  // (which would recurse), it walks the SAME control flow purely
+  // symbolically -- the branching depends only on has_head() checks on
+  // the already-fully-parsed SExpr shape, never on any evaluated term, so
+  // it's safe to precompute the whole plan upfront -- recording which
+  // atomic sub-expressions need evaluating (as indices into one flat job
+  // list) and a parallel step plan to replay, non-recursively, once every
+  // job's TermId is available.
+  struct Step {
+    bool current_is_ite = false;
+    bool reuse_previous = false;
+    std::size_t lhs_index = 0;
+    std::size_t ite_cond_index = 0, ite_then_index = 0, ite_else_index = 0;
+    std::size_t current_index = 0;
+    bool previous_is_ite = false;
+    std::size_t prev_ite_cond_index = 0, prev_ite_then_index = 0, prev_ite_else_index = 0;
+  };
+
+  auto flat_exprs = std::make_shared<std::vector<const smtlib::SExpr*>>();
+  auto push_expr = [&flat_exprs](const smtlib::SExpr& e) {
+    flat_exprs->push_back(&e);
+    return flat_exprs->size() - 1;
+  };
+  auto steps = std::make_shared<std::vector<Step>>();
+
+  const smtlib::SExpr* previous_expr = &expr.list[1];
+  bool previous_term_valid = false;
+
+  for (std::size_t i = 2; i < expr.list.size(); ++i) {
+    const smtlib::SExpr& current_expr = expr.list[i];
+    Step step;
+    if (Frontend::has_head(current_expr, "ite")) {
+      Frontend::require_arity(current_expr, 4, "ite");
+      step.current_is_ite = true;
+      step.reuse_previous = previous_term_valid;
+      if (!previous_term_valid) {
+        step.lhs_index = push_expr(*previous_expr);
+      }
+      step.ite_cond_index = push_expr(current_expr.list[1]);
+      step.ite_then_index = push_expr(current_expr.list[2]);
+      step.ite_else_index = push_expr(current_expr.list[3]);
+      steps->push_back(step);
+      previous_expr = &current_expr;
+      previous_term_valid = false;
+      continue;
+    }
+    step.current_is_ite = false;
+    step.current_index = push_expr(current_expr);
+    if (Frontend::has_head(*previous_expr, "ite")) {
+      step.previous_is_ite = true;
+      Frontend::require_arity(*previous_expr, 4, "ite");
+      step.prev_ite_cond_index = push_expr(previous_expr->list[1]);
+      step.prev_ite_then_index = push_expr(previous_expr->list[2]);
+      step.prev_ite_else_index = push_expr(previous_expr->list[3]);
+    } else {
+      step.previous_is_ite = false;
+      step.reuse_previous = previous_term_valid;
+      if (!previous_term_valid) {
+        step.lhs_index = push_expr(*previous_expr);
+      }
+    }
+    steps->push_back(step);
+    previous_expr = &current_expr;
+    previous_term_valid = true;
+  }
+
+  schedule_all(
+      flat_exprs, [this, k = std::move(k), steps](std::vector<core::TermId> results) mutable {
+        std::vector<core::TermId> equalities;
+        equalities.reserve(steps->size());
+        std::optional<core::TermId> previous_term;
+        for (const Step& step : *steps) {
+          if (step.current_is_ite) {
+            const core::TermId lhs =
+                step.reuse_previous ? previous_term.value() : results[step.lhs_index];
+            equalities.push_back(finish_pairwise_equality_to_ite(lhs, results[step.ite_cond_index],
+                                                                 results[step.ite_then_index],
+                                                                 results[step.ite_else_index]));
+            previous_term.reset();
+            continue;
+          }
+          const core::TermId current = results[step.current_index];
+          if (step.previous_is_ite) {
+            equalities.push_back(finish_pairwise_equality_to_ite(
+                current, results[step.prev_ite_cond_index], results[step.prev_ite_then_index],
+                results[step.prev_ite_else_index]));
+          } else {
+            const core::TermId lhs =
+                step.reuse_previous ? previous_term.value() : results[step.lhs_index];
+            equalities.push_back(frontend_.build_pairwise_equality(lhs, current));
+          }
+          previous_term = current;
+        }
+        resume(std::move(k), frontend_.terms_.mk_and(std::move(equalities)));
+      });
+}
+
+core::TermId TermBuilder::finish_pairwise_equality_to_ite(core::TermId term, core::TermId condition,
+                                                          core::TermId then_term,
+                                                          core::TermId else_term) {
+  if (frontend_.terms_.get(condition).sort != frontend_.symbols_.bool_sort()) {
+    throw UnsupportedInput("ite condition is not Boolean");
+  }
+  const core::SortId result_sort = frontend_.terms_.get(then_term).sort;
+  if (result_sort != frontend_.terms_.get(else_term).sort) {
+    throw UnsupportedInput("ite branch sort mismatch");
+  }
+  if (frontend_.terms_.get(term).sort != result_sort) {
+    throw UnsupportedInput("equality sort mismatch");
+  }
+  return frontend_.terms_.mk_and(
+      {frontend_.terms_.mk_implies(condition, frontend_.build_pairwise_equality(term, then_term)),
+       frontend_.terms_.mk_implies(frontend_.terms_.mk_not(condition),
+                                   frontend_.build_pairwise_equality(term, else_term))});
+}
+
+void TermBuilder::dispatch_distinct(const smtlib::SExpr& expr, Continuation k) {
+  schedule_all(collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> terms) mutable {
+    std::vector<core::TermId> disequalities;
+    for (std::size_t i = 0; i < terms.size(); ++i) {
+      for (std::size_t j = i + 1; j < terms.size(); ++j) {
+        disequalities.push_back(frontend_.build_pairwise_disequality(terms[i], terms[j]));
+      }
+    }
+    if (disequalities.empty()) {
+      resume(std::move(k), frontend_.terms_.mk_bool(true));
+      return;
+    }
+    if (disequalities.size() == 1) {
+      resume(std::move(k), disequalities.front());
+      return;
+    }
+    resume(std::move(k), frontend_.terms_.mk_and(std::move(disequalities)));
+  });
+}
+
+void TermBuilder::dispatch_plus(const smtlib::SExpr& expr, Continuation k) {
+  if (expr.list.size() < 2) {
+    throw UnsupportedInput("+ has wrong arity");
+  }
+  schedule_all(collect(expr, 1),
+               [this, k = std::move(k)](std::vector<core::TermId> children) mutable {
+                 resume(std::move(k), frontend_.terms_.mk_plus(std::move(children)));
+               });
+}
+
+void TermBuilder::dispatch_minus(const smtlib::SExpr& expr, Continuation k) {
+  if (expr.list.size() == 2) {
+    schedule(expr.list[1], [this, k = std::move(k)](core::TermId x) mutable {
+      resume(std::move(k), frontend_.terms_.mk_times(util::Rational(-1), x));
+    });
+    return;
+  }
+  if (expr.list.size() < 3) {
+    throw UnsupportedInput("- has wrong arity");
+  }
+  schedule_all(collect(expr, 1),
+               [this, k = std::move(k)](std::vector<core::TermId> operands) mutable {
+                 std::vector<core::TermId> children;
+                 children.reserve(operands.size());
+                 children.push_back(operands[0]);
+                 for (std::size_t i = 1; i < operands.size(); ++i) {
+                   children.push_back(frontend_.terms_.mk_times(util::Rational(-1), operands[i]));
+                 }
+                 resume(std::move(k), frontend_.terms_.mk_plus(std::move(children)));
+               });
+}
+
+void TermBuilder::dispatch_times(const smtlib::SExpr& expr, Continuation k) {
+  Frontend::require_arity(expr, 3, "*");
+  schedule_all(collect(expr, 1), [this,
+                                  k = std::move(k)](std::vector<core::TermId> operands) mutable {
+    const core::TermId lhs = operands[0];
+    const core::TermId rhs = operands[1];
+    const bool lhs_is_literal = frontend_.terms_.get(lhs).kind == core::TermKind::Rational;
+    const bool rhs_is_literal = frontend_.terms_.get(rhs).kind == core::TermKind::Rational;
+    if (lhs_is_literal && rhs_is_literal) {
+      resume(std::move(k), frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value *
+                                                        frontend_.terms_.get(rhs).rational_value));
+      return;
+    }
+    if (lhs_is_literal) {
+      resume(std::move(k),
+             frontend_.terms_.mk_times(frontend_.terms_.get(lhs).rational_value, rhs));
+      return;
+    }
+    if (rhs_is_literal) {
+      resume(std::move(k),
+             frontend_.terms_.mk_times(frontend_.terms_.get(rhs).rational_value, lhs));
+      return;
+    }
+    throw UnsupportedInput("* requires a literal rational coefficient operand (QF_LRA)");
+  });
+}
+
+void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
+  Frontend::require_arity(expr, 3, "/");
+  schedule_all(collect(expr, 1), [this,
+                                  k = std::move(k)](std::vector<core::TermId> operands) mutable {
+    const core::TermId lhs = operands[0];
+    const core::TermId rhs = operands[1];
+    if (frontend_.terms_.get(lhs).kind != core::TermKind::Rational ||
+        frontend_.terms_.get(rhs).kind != core::TermKind::Rational) {
+      throw UnsupportedInput("/ is only supported between rational literals in QF_LRA");
+    }
+    const util::Rational& denominator = frontend_.terms_.get(rhs).rational_value;
+    if (denominator.is_zero()) {
+      throw UnsupportedInput("division by zero is not a valid QF_LRA literal");
+    }
+    resume(std::move(k),
+           frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value / denominator));
+  });
+}
+
+void TermBuilder::dispatch_comparison(const smtlib::SExpr& expr, const std::string& head,
+                                      Continuation k) {
+  if (expr.list.size() < 3) {
+    throw UnsupportedInput(head + " has wrong arity");
+  }
+  const bool strict = head == "<" || head == ">";
+  const bool flipped = head == ">=" || head == ">";
+  schedule_all(collect(expr, 1), [this, k = std::move(k), strict,
+                                  flipped](std::vector<core::TermId> operands) mutable {
+    std::vector<core::TermId> atoms;
+    atoms.reserve(operands.size() - 1);
+    for (std::size_t i = 0; i + 1 < operands.size(); ++i) {
+      const core::TermId lhs = flipped ? operands[i + 1] : operands[i];
+      const core::TermId rhs = flipped ? operands[i] : operands[i + 1];
+      atoms.push_back(strict ? frontend_.terms_.mk_lt(lhs, rhs) : frontend_.terms_.mk_le(lhs, rhs));
+    }
+    if (atoms.size() == 1) {
+      resume(std::move(k), atoms.front());
+      return;
+    }
+    resume(std::move(k), frontend_.terms_.mk_and(std::move(atoms)));
+  });
+}
+
+void TermBuilder::dispatch_instantiate_definition(const std::string& name,
+                                                  std::vector<core::TermId> args, Continuation k) {
+  const auto found = frontend_.definitions_.find(name);
+  if (found == frontend_.definitions_.end()) {
+    throw UnsupportedInput("unknown definition: " + name);
+  }
+  if (frontend_.expanding_definitions_.contains(name)) {
+    throw UnsupportedInput("recursive define-fun is unsupported: " + name);
+  }
+  const auto& definition = found->second;
+  if (args.size() != definition.parameters.size()) {
+    throw UnsupportedInput("define-fun application has wrong arity: " + name);
+  }
+
+  std::unordered_map<std::string, core::TermId> scope;
+  for (std::size_t i = 0; i < args.size(); ++i) {
+    if (frontend_.terms_.get(args[i]).sort != definition.parameter_sorts[i]) {
+      throw UnsupportedInput("define-fun argument sort mismatch: " + name);
+    }
+    if (!scope.emplace(definition.parameters[i], args[i]).second) {
+      throw UnsupportedInput("duplicate define-fun parameter: " + definition.parameters[i]);
+    }
+  }
+
+  frontend_.expanding_definitions_.insert(name);
+  frontend_.let_scopes_.push_back(std::move(scope));
+  const core::SortId result_sort = definition.result_sort;
+  schedule(definition.body, [this, k = std::move(k), name, result_sort](core::TermId body) mutable {
+    frontend_.let_scopes_.pop_back();
+    frontend_.expanding_definitions_.erase(name);
+    if (frontend_.terms_.get(body).sort != result_sort) {
+      throw UnsupportedInput("define-fun result sort mismatch: " + name);
+    }
+    resume(std::move(k), body);
+  });
+}
 
 class BooleanClausifier {
  public:
@@ -1042,8 +1511,14 @@ class BooleanClausifier {
         }
         return;
       case core::TermKind::Equality:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
         record_theory_atom_polarity(term_id, positive);
         return;
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Times:
+        throw UnsupportedInput("Real-sorted term used in a Boolean context");
     }
   }
 
@@ -1109,8 +1584,14 @@ class BooleanClausifier {
       case core::TermKind::Constant:
       case core::TermKind::Application:
       case core::TermKind::Equality:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
         backend_.add_clause(sat::Clause{encode(term_id)});
         return;
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Times:
+        break;
     }
     throw UnsupportedInput("unsupported Boolean assertion");
   }
@@ -1155,10 +1636,15 @@ class BooleanClausifier {
         }
         return theory_atom_for_term(term_id).lit;
       case core::TermKind::Equality:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
         return theory_atom_for_term(term_id).lit;
       case core::TermKind::BoolValue:
       case core::TermKind::Constant:
       case core::TermKind::Not:
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Times:
         break;
     }
     throw UnsupportedInput("unsupported Boolean term");
@@ -1255,13 +1741,37 @@ CheckSatResult map_sat_result(sat::SatResult result) {
   return CheckSatResult::Unknown;
 }
 
+// `(= a b)` is built by the sort-agnostic mk_eq for any sort, including
+// Real, so a Real-sorted equality must NOT count as an "EUF equality" for
+// theory dispatch purposes -- it's a QF_LRA atom (see contains_arithmetic_atom
+// below), and misclassifying it would make plain QF_LRA input requiring
+// `=` between two Real terms spuriously trip the has_equality &&
+// has_arithmetic "QF_UFLRA unsupported" guard.
 bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Equality) {
+  if (term.kind == core::TermKind::Equality &&
+      terms.get(term.children.at(0)).sort != terms.symbols().real_sort()) {
     return true;
   }
   for (const core::TermId child : term.children) {
     if (contains_equality(terms, child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool contains_arithmetic_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+    return true;
+  }
+  if (term.kind == core::TermKind::Equality &&
+      terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
+    return true;
+  }
+  for (const core::TermId child : term.children) {
+    if (contains_arithmetic_atom(terms, child)) {
       return true;
     }
   }
@@ -1363,6 +1873,7 @@ CheckSatOutcome solve_boolean_conjunction(
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   statistics.increment(kStatSolverBoolean);
   sat::CadicalBackend backend(options.cadical_options);
+  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -3351,6 +3862,1160 @@ std::optional<sat::Clause> find_incremental_theory_conflict(
   return std::nullopt;
 }
 
+bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
+  return term.kind == core::TermKind::Equality &&
+         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+}
+
+// Which bound on a prepared atom's tableau variable, and at what value, one
+// truth assignment of that atom imposes (Section 3.1's infinitesimal-delta
+// trick for strict inequalities).
+struct BoundAssertion {
+  bool is_upper;
+  theory::arithmetic::DeltaRational value;
+};
+
+// `relation`/`rhs` describe the atom as `t ~ rhs`; `asserts_lower_when_true`
+// says the atom was stored in the flipped orientation, i.e. it really means
+// `t >= rhs` (or `t > rhs`), which arises when a single-variable atom's
+// coefficient was negative and got divided out -- see PreparedLraTheory.
+//
+// All eight combinations, worked through explicitly because this is the one
+// place a sign or strictness slip would silently change what the solver
+// proves:
+//
+//   t <= c  TRUE -> upper = c        FALSE -> lower = c + delta
+//   t <  c  TRUE -> upper = c - d    FALSE -> lower = c
+//   t >= c  TRUE -> lower = c        FALSE -> upper = c - delta
+//   t >  c  TRUE -> lower = c + d    FALSE -> upper = c
+//
+// which collapses to: negating an atom flips both its direction and its
+// strictness, and the flipped orientation flips the direction once more.
+//
+// Shared between assert_lra_atom_bound (which applies this as an actual
+// Assert-Bound call) and OnlineLraPropagator's propagation scan (which only
+// compares against it, via LraTableau::upper_bound/lower_bound, to check
+// whether some *other* atom on the same variable is already entailed).
+// LraRelation::Eq isn't handled here -- it's unreachable via the frontend
+// (Real equality is lowered to a pair of Le atoms by the
+// lower_real_equalities preprocessing pass, which always runs before theory
+// dispatch) and doesn't fit the single-bound shape these cases share.
+BoundAssertion bound_assertion(theory::arithmetic::LraRelation relation, const util::Rational& rhs,
+                               bool asserts_lower_when_true, bool atom_value) {
+  const bool strict = relation == theory::arithmetic::LraRelation::Lt;
+  const bool is_upper = asserts_lower_when_true ? !atom_value : atom_value;
+  const bool is_strict = atom_value ? strict : !strict;
+  if (!is_strict) {
+    return BoundAssertion{is_upper, theory::arithmetic::DeltaRational::from_rational(rhs)};
+  }
+  // A strict upper bound is `t <= rhs - delta`; a strict lower one is
+  // `t >= rhs + delta`.
+  return BoundAssertion{is_upper,
+                        theory::arithmetic::DeltaRational{rhs, util::Rational(is_upper ? -1 : 1)}};
+}
+
+// Whether `var`'s current bound in the direction `assertion` constrains is
+// already at least as tight as `assertion` -- i.e. whether the atom that
+// assertion came from is already entailed. Returns the entailing bound's
+// reason literal alongside, for use as the propagation's antecedent.
+std::optional<sat::Lit> bound_entails(const theory::arithmetic::LraTableau& tableau,
+                                      theory::arithmetic::LraVarId var,
+                                      const BoundAssertion& assertion) {
+  if (assertion.is_upper) {
+    const auto upper = tableau.upper_bound(var);
+    if (upper.has_value() && upper->value <= assertion.value) {
+      return upper->reason;
+    }
+    return std::nullopt;
+  }
+  const auto lower = tableau.lower_bound(var);
+  if (lower.has_value() && lower->value >= assertion.value) {
+    return lower->reason;
+  }
+  return std::nullopt;
+}
+
+// Defensive bounds on row-based/interval bound propagation's O(row size)
+// per-affected-row cost -- unlike same-slack propagation (O(atoms sharing
+// a slack), typically small), this is triggered by *any* bound change on
+// a variable that occurs in potentially many rows. Not precisely derived;
+// generous enough to matter for real formulas, small enough to bound
+// worst-case cost on an adversarial/fuzzed input, tunable later against
+// real evidence (mirrors the Gaussian-elimination caps' own precedent).
+constexpr std::size_t kRowBasedPropagationMaxRowSize = 64;
+constexpr std::size_t kRowBasedPropagationMaxFanout = 64;
+
+// Competitiveness-roadmap item 7 (bidirectional row-based propagation):
+// separate, smaller caps for the reverse (child-tightening) direction,
+// since it does an O(row size) compute_implied_child_bound call for
+// *each* other term of an affected row, not just once per row --
+// multiplicatively pricier than item 2's own forward-only caps above.
+// Not precisely derived either; deliberately smaller pending real
+// evidence from this item's own quick-eval.
+constexpr std::size_t kBidirectionalRowPropagationMaxRowSize = 32;
+constexpr std::size_t kBidirectionalRowPropagationMaxFanout = 32;
+
+// Applies one assigned LRA atom's relation+truth-value+strictness to
+// `tableau` as a single Assert-Bound call (Eq asserts both bounds). Shared
+// between the fully-lazy per-round-normalize path (not currently used by
+// solve_qf_lra, kept for reference/tests) and the incremental
+// prepared-atom path below.
+std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(
+    theory::arithmetic::LraTableau& tableau, theory::arithmetic::LraVarId bound_var,
+    theory::arithmetic::LraRelation relation, const util::Rational& rhs, bool atom_value,
+    bool asserts_lower_when_true, sat::Lit reason) {
+  switch (relation) {
+    case theory::arithmetic::LraRelation::Eq: {
+      if (!atom_value) {
+        throw UnsupportedInput("QF_LRA disequality (a negated Real equality) is not yet supported");
+      }
+      // Equality is symmetric, so the flipped orientation makes no difference
+      // here: both bounds land on the same value either way.
+      auto conflict = tableau.assert_upper(
+          bound_var, theory::arithmetic::DeltaRational::from_rational(rhs), reason);
+      if (conflict.has_value()) {
+        return conflict;
+      }
+      return tableau.assert_lower(bound_var, theory::arithmetic::DeltaRational::from_rational(rhs),
+                                  reason);
+    }
+    case theory::arithmetic::LraRelation::Le:
+    case theory::arithmetic::LraRelation::Lt: {
+      const BoundAssertion assertion =
+          bound_assertion(relation, rhs, asserts_lower_when_true, atom_value);
+      return assertion.is_upper ? tableau.assert_upper(bound_var, assertion.value, reason)
+                                : tableau.assert_lower(bound_var, assertion.value, reason);
+    }
+  }
+  throw std::logic_error("unreachable: LraRelation switch is exhaustive");
+}
+
+// Canonical, order-independent identity for a LinearPolynomial's variable
+// content (not its constant, which normalize_atom already moved to the
+// atom's rhs): a sorted-by-TermId vector of (var, coefficient) pairs, used
+// to let atoms that normalize to the same polynomial share a tableau slack
+// variable/row (see PreparedLraTheory below).
+//
+// Scale-canonical (heuristics-note item H1b, the long-deferred roadmap item
+// 3): every coefficient is divided by the coefficient of the lowest-indexed
+// variable, so proportional polynomials collapse to one key -- `x + y <= 5`,
+// `2x + 2y <= 10` and `-x - y <= -5` all key to `{x: 1, y: 1}` and share a
+// slack, where before they got three separate ones and could not propagate
+// against each other or see each other's bounds. Monniaux (CAV 2009,
+// Section 2.1) describes the same normalization, "so that two inequalities
+// constraining the same direction in space appear with the exact same
+// left-hand side"; his form scales to coprime *integers*, ours to a leading
+// coefficient of 1, which is the same equivalence class.
+struct PolynomialKey {
+  std::vector<std::pair<core::TermId, util::Rational>> sorted_terms;
+
+  bool operator==(const PolynomialKey& other) const { return sorted_terms == other.sorted_terms; }
+};
+
+struct PolynomialKeyHash {
+  std::size_t operator()(const PolynomialKey& key) const {
+    std::size_t seed = key.sorted_terms.size();
+    const util::RationalHash rational_hash;
+    for (const auto& [var, coefficient] : key.sorted_terms) {
+      seed ^= std::hash<core::TermId>{}(var) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      seed ^= rational_hash(coefficient) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
+
+// A polynomial's scale-canonical key together with the factor divided out.
+// The caller needs the factor because dividing the polynomial has to be
+// matched by dividing the atom's right-hand side, and a negative factor
+// reverses the relation (which PreparedAtom::asserts_lower_when_true
+// records).
+struct CanonicalPolynomial {
+  PolynomialKey key;
+  util::Rational scale{1};
+};
+
+CanonicalPolynomial canonical_polynomial(const theory::arithmetic::LinearPolynomial& polynomial) {
+  CanonicalPolynomial canonical;
+  canonical.key.sorted_terms.assign(polynomial.terms().begin(), polynomial.terms().end());
+  std::sort(canonical.key.sorted_terms.begin(), canonical.key.sorted_terms.end(),
+            [](const auto& a, const auto& b) { return a.first < b.first; });
+  if (canonical.key.sorted_terms.empty()) {
+    return canonical;  // A constant polynomial has nothing to scale by.
+  }
+  canonical.scale = canonical.key.sorted_terms.front().second;
+  if (canonical.scale == util::Rational(1)) {
+    return canonical;  // Already canonical; skip the divisions entirely.
+  }
+  for (auto& [var, coefficient] : canonical.key.sorted_terms) {
+    coefficient = coefficient / canonical.scale;
+  }
+  return canonical;
+}
+
+// Precomputes the QF_LRA tableau's structural part -- one row per distinct
+// arithmetic-atom polynomial, shared problem variables -- exactly once,
+// independent of any SAT assignment (Dutertre & de Moura Section 4).
+// Mirrors PreparedFlatTheory's role for EUF: the per-round work becomes
+// "copy this base and assert bounds", not "re-normalize and re-add rows
+// from scratch every round" (what the fully-lazy path above still does).
+//
+// Atoms that normalize to the exact same LinearPolynomial (e.g. two `x<=...`
+// atoms on the same variable, or the same compound term appearing in two
+// different assertions) share a single slack variable/row rather than each
+// getting its own -- this is what makes same-slack bound propagation
+// (OnlineLraPropagator, below) find anything to propagate: propagation
+// needs multiple atoms to share a tableau variable, and without this dedup
+// they essentially never would.
+struct PreparedLraTheory {
+  // `sparse_leaving` is a search option rather than a structural one, but it
+  // is configured here because the base tableau is what every solving path
+  // copies from -- both OnlineLraPropagator and the non-IPASIR fallback.
+  PreparedLraTheory(const core::TermManager& terms,
+                    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                    theory::arithmetic::LraTableau::PivotingRule pivoting_rule, bool sparse_leaving,
+                    bool fixed_elimination);
+
+  struct PreparedAtom {
+    bool is_arithmetic = false;
+    // The tableau variable this atom bounds: a slack for a compound
+    // polynomial, or the problem variable itself for a single-variable atom
+    // (see the constructor).
+    theory::arithmetic::LraVarId bound_var = 0;
+    theory::arithmetic::LraRelation relation = theory::arithmetic::LraRelation::Le;
+    util::Rational rhs;
+    // Set when dividing out a negative coefficient flipped the relation, so
+    // the atom really means `bound_var >= rhs` rather than `<= rhs`. See
+    // bound_assertion(), which is the single place this is interpreted.
+    bool asserts_lower_when_true = false;
+  };
+
+  theory::arithmetic::LraTableau base_tableau;
+  std::vector<PreparedAtom> atoms;  // parallel to theory_atoms
+  // Indices (into `atoms`) of every arithmetic atom bounding a given tableau
+  // variable -- built once here so OnlineLraPropagator's propagation scan
+  // doesn't have to search linearly. Only populated for real tableau
+  // variables (PreparedAtom::is_arithmetic); non-arithmetic atoms' default
+  // bound_var (0) is a sentinel and must not be mixed in.
+  std::unordered_map<theory::arithmetic::LraVarId, std::vector<std::size_t>> atoms_by_bound_var;
+};
+
+PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
+                                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
+                                     bool sparse_leaving, bool fixed_elimination)
+    : base_tableau(pivoting_rule) {
+  base_tableau.set_sparse_leaving(sparse_leaving);
+  std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
+  auto get_var = [&](core::TermId term_id) {
+    const auto found = var_ids.find(term_id);
+    if (found != var_ids.end()) {
+      return found->second;
+    }
+    const theory::arithmetic::LraVarId id = base_tableau.add_variable();
+    var_ids.emplace(term_id, id);
+    return id;
+  };
+
+  std::unordered_map<PolynomialKey, theory::arithmetic::LraVarId, PolynomialKeyHash>
+      slack_by_polynomial;
+
+  atoms.reserve(theory_atoms.size());
+  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
+    const core::Term& term = terms.get(atom.term);
+    const bool is_comparison = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
+    if (!is_comparison && !is_real_equality_term(terms, term)) {
+      atoms.push_back(PreparedAtom{});
+      continue;
+    }
+
+    const theory::arithmetic::LraAtom normalized =
+        theory::arithmetic::normalize_atom(terms, atom.term);
+    // Scale-canonicalize first (item H1b), then divide the atom's right-hand
+    // side by the same factor. A negative factor reverses the relation, which
+    // is what asserts_lower_when_true records -- interpreted in exactly one
+    // place, bound_assertion().
+    const CanonicalPolynomial canonical = canonical_polynomial(normalized.polynomial);
+    const util::Rational rhs =
+        canonical.scale == util::Rational(1) ? normalized.rhs : normalized.rhs / canonical.scale;
+    const bool flipped = canonical.scale.sign() < 0;
+
+    // A single-variable atom is a bound on that variable itself: no slack and
+    // no row at all (item H1a). Monniaux (CAV 2009, Section 2.1) states this
+    // as ordinary practice -- "for each left hand side that is not a variable,
+    // a new variable is introduced" -- and Dutertre & de Moura's Section 2
+    // does the same; Primo previously introduced a slack for *every* distinct
+    // polynomial, which on the lagging families meant 36-95% of all tableau
+    // rows were trivial `s = c*x` rows (measurements in
+    // docs/qf-lra-heuristics.md, item H1). After canonicalization the single
+    // remaining coefficient is exactly 1, so the variable is the polynomial.
+    //
+    // Together with canonicalization this puts one variable's lower and upper
+    // bound on the same tableau variable: `(<= 0 x)` normalizes to a
+    // coefficient of -1 and `(<= x 10)` to +1, so under the old exact-content
+    // key they landed on two *different* slacks and the tableau could not see
+    // that `x` was bounded on both sides without pivoting.
+    if (canonical.key.sorted_terms.size() == 1) {
+      const theory::arithmetic::LraVarId bound_var = get_var(canonical.key.sorted_terms[0].first);
+      const std::size_t atom_index = atoms.size();
+      atoms.push_back(PreparedAtom{true, bound_var, normalized.relation, rhs, flipped});
+      atoms_by_bound_var[bound_var].push_back(atom_index);
+      continue;
+    }
+
+    const auto existing_slack = slack_by_polynomial.find(canonical.key);
+    theory::arithmetic::LraVarId slack;
+    if (existing_slack != slack_by_polynomial.end()) {
+      slack = existing_slack->second;
+    } else {
+      std::vector<std::pair<theory::arithmetic::LraVarId, util::Rational>> row;
+      row.reserve(canonical.key.sorted_terms.size());
+      for (const auto& [var_term, coefficient] : canonical.key.sorted_terms) {
+        row.emplace_back(get_var(var_term), coefficient);
+      }
+      slack = base_tableau.add_variable();
+      base_tableau.add_row(slack, row);
+      slack_by_polynomial.emplace(canonical.key, slack);
+    }
+    const std::size_t atom_index = atoms.size();
+    atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped});
+    atoms_by_bound_var[slack].push_back(atom_index);
+  }
+
+  base_tableau.set_fixed_elimination(fixed_elimination);
+}
+
+// Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
+// the precomputed base tableau (cheap relative to re-normalizing every
+// atom from its term representation, which the copy skips entirely) and
+// asserts bounds for the round's assigned atoms into the copy.
+//
+// Only compiled when CaDiCaL's external-propagator API isn't available --
+// when it is, OnlineLraPropagator (below) is strictly better (real
+// incremental reuse via LraTableau::push/pop) and is always preferred, so
+// this would otherwise be dead code.
+#if !PRIMO_HAVE_IPASIR
+std::optional<sat::Clause> find_incremental_lra_theory_conflict(
+    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& atoms) {
+  if (atoms.size() != prepared.atoms.size()) {
+    throw UnsupportedInput("internal theory atom mapping mismatch");
+  }
+
+  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
+  for (std::size_t i = 0; i < atoms.size(); ++i) {
+    const AssignedTheoryAtom& atom = atoms[i];
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
+    if (!prepared_atom.is_arithmetic || atom.filtered) {
+      continue;
+    }
+    const auto conflict = assert_lra_atom_bound(
+        tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
+        prepared_atom.asserts_lower_when_true, blocking_lit(atom));
+    if (conflict.has_value()) {
+      return conflict.value();
+    }
+  }
+
+  return tableau.check();
+}
+#endif  // !PRIMO_HAVE_IPASIR
+
+#if PRIMO_HAVE_IPASIR
+// Row-based/interval bound propagation (Dutertre & de Moura Section 4,
+// generalized beyond scan_for_propagations' same-slack case): the implied
+// upper (want_upper=true) or lower (want_upper=false) bound on `basic_var`
+// from its row's terms' CURRENT bounds -- basic_var = sum(coeff_j * var_j),
+// so basic_var's maximum is the sum of each term's own maximum contribution
+// (var_j's upper bound if coeff_j is positive, since a bigger var_j means a
+// bigger term then; var_j's lower bound if coeff_j is negative), and
+// symmetrically for the minimum/lower case. Since item H1 asserts a
+// single-variable atom's bound directly on the variable (rather than wrapping
+// it in a slack), each term's bound is simply tableau.upper_bound/
+// lower_bound(var) -- no indirection, and strictly more reaching than the
+// previous single_variable_slack lookup, which could only see a term whose
+// formula happened to contain a bare coefficient-1 atom over it.
+// Returns nullopt if the row exceeds the size cap or a term lacks the
+// needed-direction bound (an unbounded term makes the whole sum unbounded in
+// that direction, not just weaker). The returned reasons are one asserting
+// literal per row term actually used -- a genuine multi-literal antecedent,
+// unlike same-variable propagation's single-literal one.
+std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
+compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
+                      theory::arithmetic::LraVarId basic_var, bool want_upper) {
+  const auto& row = tableau.row(basic_var);
+  if (row.size() > kRowBasedPropagationMaxRowSize) {
+    return std::nullopt;
+  }
+  theory::arithmetic::DeltaRational total =
+      theory::arithmetic::DeltaRational::from_rational(util::Rational(0));
+  std::vector<sat::Lit> reasons;
+  reasons.reserve(row.size());
+  for (const auto& [var, coeff] : row) {
+    const bool need_upper_of_var = want_upper == (coeff.sign() > 0);
+    const auto bound = need_upper_of_var ? tableau.upper_bound(var) : tableau.lower_bound(var);
+    if (!bound.has_value()) {
+      return std::nullopt;
+    }
+    total = total + bound->value.scaled(coeff);
+    reasons.push_back(bound->reason);
+  }
+  return std::make_pair(total, std::move(reasons));
+}
+
+// Competitiveness-roadmap item 7's reverse direction: derive an implied
+// bound on one *other* term of basic_var's row (target_var, with
+// coefficient target_coeff in that row) from basic_var's own current
+// bound plus the row's remaining terms' bounds -- the rearrangement
+// `basic_var = target_coeff*target_var + Σ_other coeff_j*var_j`.
+//
+// Sign rule (verified algebraically, not guessed): treating basic_var as
+// a term of coefficient +1 and each *other* row term as a term of
+// coefficient -coeff_j (moving them to the other side) maps this onto
+// compute_implied_bound's own existing sign convention:
+//   want_upper_of_basic = want_upper_of_target == (target_coeff.sign() > 0)
+//   need_upper_of_var_j = want_upper_of_basic != (coeff_j.sign() > 0)
+// Missing any needed bound (basic_var's own or any other term's) makes this
+// nullopt for this round, same all-or-nothing behavior as
+// compute_implied_bound.
+std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
+compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
+                            theory::arithmetic::LraVarId basic_var,
+                            theory::arithmetic::LraVarId target_var,
+                            const util::Rational& target_coeff, bool want_upper_of_target) {
+  const auto& row = tableau.row(basic_var);
+  if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
+    return std::nullopt;
+  }
+  const bool want_upper_of_basic = want_upper_of_target == (target_coeff.sign() > 0);
+  const auto basic_bound =
+      want_upper_of_basic ? tableau.upper_bound(basic_var) : tableau.lower_bound(basic_var);
+  if (!basic_bound.has_value()) {
+    return std::nullopt;
+  }
+  theory::arithmetic::DeltaRational total = basic_bound->value;
+  std::vector<sat::Lit> reasons;
+  reasons.reserve(row.size());
+  reasons.push_back(basic_bound->reason);
+  for (const auto& [var, coeff] : row) {
+    if (var == target_var) {
+      continue;
+    }
+    const bool need_upper_of_var = want_upper_of_basic != (coeff.sign() > 0);
+    const auto bound = need_upper_of_var ? tableau.upper_bound(var) : tableau.lower_bound(var);
+    if (!bound.has_value()) {
+      return std::nullopt;
+    }
+    total = total - bound->value.scaled(coeff);
+    reasons.push_back(bound->reason);
+  }
+  const util::Rational inv = util::Rational(1) / target_coeff;
+  return std::make_pair(total.scaled(inv), std::move(reasons));
+}
+
+// Publishes the prepared tableau's structural shape: how many variables it
+// has, how many of them define a row, and how many nonzero coefficients those
+// rows hold in total. Structural, not search state -- rows are all added
+// before the first push() (see LraTableau's class comment), so this is a
+// property of the formula and of how the frontend chose to encode it.
+//
+// These exist because the tableau's shape was previously invisible: item H1's
+// finding that 36-95% of rows on the lagging families were trivial `s = c*x`
+// slack rows had to be produced with throwaway instrumentation, and the
+// fill-in growth it also measured went unnoticed through eight roadmap items
+// for want of exactly this. See docs/qf-lra-heuristics.md.
+void publish_lra_tableau_shape_stats(const theory::arithmetic::LraTableau& tableau,
+                                     util::Statistics& statistics) {
+  std::size_t rows = 0;
+  std::size_t nonzeros = 0;
+  for (theory::arithmetic::LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (!tableau.is_basic(var)) {
+      continue;
+    }
+    ++rows;
+    nonzeros += tableau.row(var).size();
+  }
+  statistics.set(util::StatKey::LraTableauVars, tableau.variable_count());
+  statistics.set(util::StatKey::LraRows, rows);
+  statistics.set(util::StatKey::LraRowNonzeros, nonzeros);
+}
+
+// Trail-synced CaDiCaL external propagator for QF_LRA (Milestone 3a of the
+// QF_LRA plan): mirrors OnlineEufPropagator structurally. cb_propagate()
+// delivers same-slack propagations (Milestone 3b, scan_for_propagations)
+// and, opt-in, row-based/interval propagations (competitiveness-roadmap
+// item 2, scan_row_based_propagations) -- both gated behind
+// propagation_enabled_/row_propagation_enabled_ respectively, off entirely
+// falls back to conflict-detection-only, mirroring EUF's own
+// EufPropagationMode::Conflict line.
+//
+// Owns its own LraTableau (copied once from PreparedLraTheory's base, not
+// per SAT round), kept in sync with the CaDiCaL trail via
+// notify_new_decision_level/notify_backtrack calling LraTableau::push()/
+// pop() -- this is what actually exercises push/pop for cross-round reuse,
+// unlike solve_qf_lra's other path (find_incremental_lra_theory_conflict),
+// which copies the base tableau fresh every round.
+class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
+ public:
+  OnlineLraPropagator(const PreparedLraTheory& prepared,
+                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                      bool propagation_enabled, bool row_propagation_enabled,
+                      bool bidirectional_row_propagation_enabled, bool theory_decisions_enabled,
+                      util::Statistics& statistics)
+      : theory_atoms_(theory_atoms),
+        prepared_(prepared),
+        tableau_(prepared.base_tableau),
+        propagation_enabled_(propagation_enabled),
+        row_propagation_enabled_(row_propagation_enabled),
+        bidirectional_row_propagation_enabled_(bidirectional_row_propagation_enabled),
+        theory_decisions_enabled_(theory_decisions_enabled),
+        statistics_(statistics) {
+    int max_theory_var = 0;
+    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+      max_theory_var =
+          std::max(max_theory_var, atom.lit.value > 0 ? atom.lit.value : -atom.lit.value);
+    }
+    observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    assigned_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, theory_atoms_.size());
+    for (std::size_t i = 0; i < theory_atoms_.size(); ++i) {
+      const BooleanClausifier::TheoryAtom& atom = theory_atoms_[i];
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      observed_vars_[static_cast<std::size_t>(var)] = 1;
+      atom_index_by_var_[static_cast<std::size_t>(var)] = i;
+    }
+  }
+
+#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
+  void notify_assignment(const std::vector<int>& lits) override {
+    for (const int lit : lits) {
+      notify_assignment_lit(lit);
+    }
+  }
+#else
+  void notify_assignment(int lit, bool /*is_fixed*/) override { notify_assignment_lit(lit); }
+#endif
+
+  void notify_new_decision_level() override {
+    checkpoints_.push_back(tableau_.push());
+    level_starts_.push_back(var_trail_.size());
+  }
+
+  void notify_backtrack(size_t new_level) override {
+    if (new_level < checkpoints_.size()) {
+      tableau_.pop(checkpoints_[new_level]);
+      checkpoints_.resize(new_level);
+    }
+    if (new_level < level_starts_.size()) {
+      const std::size_t keep = level_starts_[new_level];
+      while (var_trail_.size() > keep) {
+        const int var = var_trail_.back();
+        var_trail_.pop_back();
+        assigned_[static_cast<std::size_t>(var)] = 0;
+        // Only erase reasons_ entries for literals actually unassigned by
+        // this backtrack -- CaDiCaL can still legitimately ask (e.g. during
+        // conflict analysis of a *later* conflict) for the reason of an
+        // earlier propagation that remains on the trail after backtracking
+        // to new_level, and clearing it unconditionally here would answer
+        // that with an empty (invalid) reason clause.
+        reasons_.erase(var);
+        reasons_.erase(-var);
+      }
+      level_starts_.resize(new_level);
+    }
+    conflict_.reset();
+    // Sound to drop unconditionally per notify_assignment_lit's own
+    // verified invariant: a new decision level can never open while a
+    // deferred check is still outstanding (cb_has_external_clause -- and
+    // thus run_deferred_check_if_needed() -- is always consulted first),
+    // so needs_check_ can never be true across a backtrack in a way that
+    // would lose an actually-outstanding repair.
+    needs_check_ = false;
+    external_clause_.clear();
+    external_clause_index_ = 0;
+    // pending_ entries are just candidates, not delivered propagations --
+    // safe to drop unconditionally (unlike reasons_ above): at worst a
+    // still-valid candidate gets rediscovered next time its slack changes.
+    pending_.clear();
+    reason_stream_active_lit_ = 0;
+    reason_stream_index_ = 0;
+  }
+
+  bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
+
+  // Competitiveness-roadmap item 8: called by CaDiCaL right before it would
+  // otherwise make a generic VSIDS decision (Internal::ask_decision(),
+  // contrib/src/cadical/src/external_propagate.cpp) -- supplies the next
+  // not-yet-decided arithmetic atom's TRUE literal, advancing a persistent
+  // rotating cursor across calls. A fixed, deterministic decision ORDER
+  // over arithmetic atoms, not a per-candidate cost analysis.
+  //
+  // An earlier version of this (see git history around commit 17f8faf)
+  // ranked candidates by a cheap per-atom infeasibility-cost estimate
+  // instead of just taking the next one -- re-measured against this much
+  // simpler alternative on the same 9 real-benchmark files (docs/
+  // arithmetic.md's Milestone roadmap has the full trail), the cost-ranked
+  // version was *worse* than plain VSIDS on 3 of them (solved regressed to
+  // timed-out at the same budget) and worse than this round-robin version
+  // on 8/9 -- sometimes dramatically (a 96% wall-clock regression on one
+  // file). The ranking wasn't just expensive overhead; it was actively
+  // steering search into worse territory. This version -- "the theory
+  // decides, in a stable order, no per-candidate arithmetic at all" -- is
+  // strictly better on this evidence, and the only one of the three that
+  // solves the campaign's hardest file (sc-27) at all within a shared
+  // budget. Returning 0 defers to VSIDS -- only happens once every
+  // arithmetic atom is already decided.
+  int cb_decide() override {
+    if (!theory_decisions_enabled_ || theory_atoms_.empty()) {
+      return 0;
+    }
+    const std::size_t atom_count = theory_atoms_.size();
+    for (std::size_t scanned = 0; scanned < atom_count; ++scanned) {
+      const std::size_t atom_index = decide_cursor_;
+      decide_cursor_ = (decide_cursor_ + 1) % atom_count;
+      const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+      if (!prepared_atom.is_arithmetic) {
+        continue;
+      }
+      const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      if (is_assigned_var(var)) {
+        continue;
+      }
+      statistics_.increment(kStatLraTheoryDecisions);
+      return atom.lit.value;
+    }
+    return 0;
+  }
+
+  // Same-slack "deriving satisfied atoms" propagation (Dutertre & de
+  // Moura, Section 4.2): pops literals queued by notify_assignment_lit's
+  // propagation scan. Never propagates once a conflict is pending this
+  // round (mirrors notify_assignment_lit's own early-return), and lazily
+  // skips any queued entry whose var got assigned some other way in the
+  // meantime (a decision, a different propagation) rather than proactively
+  // pruning pending_ on every assignment.
+  int cb_propagate() override {
+    if (conflict_.has_value()) {
+      return 0;
+    }
+    while (!pending_.empty()) {
+      PendingPropagation candidate = std::move(pending_.front());
+      pending_.pop_front();
+      const int var = candidate.lit > 0 ? candidate.lit : -candidate.lit;
+      if (is_assigned_var(var)) {
+        continue;
+      }
+      const int lit = candidate.lit;
+      const bool row_based = candidate.row_based;
+      const bool bidirectional = candidate.bidirectional;
+      reasons_[lit] = std::move(candidate.reasons);
+      statistics_.increment(kStatLraTheoryPropagations);
+      if (row_based) {
+        statistics_.increment(kStatLraRowPropagations);
+      }
+      if (bidirectional) {
+        statistics_.increment(kStatLraBidirectionalRowPropagations);
+      }
+      return lit;
+    }
+    return 0;
+  }
+
+  int cb_add_reason_clause_lit(int propagated_lit) override {
+    const auto found = reasons_.find(propagated_lit);
+    if (found == reasons_.end()) {
+      return 0;
+    }
+    if (reason_stream_active_lit_ != propagated_lit) {
+      reason_stream_active_lit_ = propagated_lit;
+      reason_stream_index_ = 0;
+    }
+    if (reason_stream_index_ == 0) {
+      ++reason_stream_index_;
+      return propagated_lit;
+    }
+    const std::size_t antecedent_index = static_cast<std::size_t>(reason_stream_index_ - 1);
+    if (antecedent_index < found->second.size()) {
+      ++reason_stream_index_;
+      return found->second[antecedent_index].value;
+    }
+    reason_stream_active_lit_ = 0;
+    reason_stream_index_ = 0;
+    return 0;
+  }
+
+  // Authoritative once backend.solve() returns SAT, for the same reason
+  // OnlineEufPropagator::incremental_conflict() is: cb_has_external_clause()
+  // (which runs the deferred Check/Pivot repair -- see
+  // run_deferred_check_if_needed()) is always asked, and any resulting
+  // conflict resolved, before CaDiCaL's own main loop can reach a
+  // decision or declare a model satisfied (see notify_assignment_lit's
+  // comment for the verified invariant), so there is nothing left to
+  // recompute once solve() actually returns SAT.
+  std::optional<sat::Clause> conflict() const { return conflict_; }
+
+#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
+  bool cb_has_external_clause(bool& is_forgettable) override {
+    run_deferred_check_if_needed();
+    if (!conflict_.has_value()) {
+      return false;
+    }
+    external_clause_ = conflict_.value();
+    external_clause_index_ = 0;
+    is_forgettable = false;
+    return true;
+  }
+#else
+  bool cb_has_external_clause() override {
+    run_deferred_check_if_needed();
+    if (!conflict_.has_value()) {
+      return false;
+    }
+    external_clause_ = conflict_.value();
+    external_clause_index_ = 0;
+    return true;
+  }
+#endif
+
+  int cb_add_external_clause_lit() override {
+    if (external_clause_index_ >= external_clause_.size()) {
+      external_clause_.clear();
+      external_clause_index_ = 0;
+      return 0;
+    }
+    return external_clause_[external_clause_index_++].value;
+  }
+
+ private:
+  bool is_observed_var(int var) const {
+    return var >= 0 && static_cast<std::size_t>(var) < observed_vars_.size() &&
+           observed_vars_[static_cast<std::size_t>(var)] != 0;
+  }
+
+  bool is_assigned_var(int var) const {
+    return var >= 0 && static_cast<std::size_t>(var) < assigned_.size() &&
+           assigned_[static_cast<std::size_t>(var)] != 0;
+  }
+
+  void publish_elimination_stats() {
+    statistics_.set(util::StatKey::LraFixedVariables, tableau_.fixed_variable_count());
+    statistics_.set(util::StatKey::LraEliminationPivots, tableau_.elimination_pivot_count());
+  }
+
+  void notify_assignment_lit(int lit) {
+    if (conflict_.has_value()) {
+      // Already found a conflict this round; CaDiCaL hasn't pulled it via
+      // cb_has_external_clause yet, so further asserts would just be
+      // wasted (and potentially confusing, since assert_lra_atom_bound
+      // isn't meant to be called against an already-inconsistent tableau).
+      return;
+    }
+    const int var = lit > 0 ? lit : -lit;
+    if (!is_observed_var(var)) {
+      return;
+    }
+    assigned_[static_cast<std::size_t>(var)] = 1;
+    var_trail_.push_back(var);
+    const std::size_t atom_index = atom_index_by_var_[static_cast<std::size_t>(var)];
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+    if (!prepared_atom.is_arithmetic) {
+      return;
+    }
+    const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+    const bool atom_value = atom.lit.value > 0 ? lit > 0 : lit < 0;
+    const AssignedTheoryAtom assigned =
+        assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value);
+    const auto direct_conflict = assert_lra_atom_bound(
+        tableau_, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom_value,
+        prepared_atom.asserts_lower_when_true, blocking_lit(assigned));
+    // Item H7's counters move inside assert_upper/assert_lower, not inside
+    // check(), so they are published here rather than alongside the pivot
+    // counters in run_deferred_check_if_needed(). They are cumulative
+    // totals, so set() (not increment()) is what stays correct across the
+    // repeated calls -- and this is the only place they can change.
+    publish_elimination_stats();
+    if (direct_conflict.has_value()) {
+      conflict_ = direct_conflict;
+      // needs_check_ may already be true from an earlier, non-conflicting
+      // literal in this same batch -- clear it, or run_deferred_check_if_
+      // needed() would later overwrite this genuine direct conflict with
+      // a stale tableau_.check() result. (The offending bound itself was
+      // never actually stored by assert_upper/assert_lower's own direct-
+      // conflict branch, so check() alone wouldn't even rediscover it.)
+      needs_check_ = false;
+      return;
+    }
+    if (propagation_enabled_) {
+      scan_for_propagations(atom_index, prepared_atom.bound_var);
+      if (row_propagation_enabled_) {
+        scan_row_based_propagations(prepared_atom.bound_var);
+      }
+    }
+    // Defer the expensive Check/Pivot repair rather than running it
+    // eagerly after every single assignment (decisions *and* propagated
+    // literals both land here): notify_assignment_lit can be called
+    // tens of thousands of times more often than CaDiCaL actually needs
+    // a verdict from us. Verified against CaDiCaL's own source
+    // (contrib/src/cadical/src/{internal,external_propagate}.cpp): with
+    // this propagator in eager mode (is_lazy left at its default
+    // `false`), cb_has_external_clause() is asked exactly once per
+    // quiescence point (once per decision plus once per conflict/
+    // backjump, not once per literal), and cb_propagate() is always
+    // fully drained *before* it's asked -- so same-slack/row-based
+    // propagation above (which reads only bound state, never the
+    // current assignment) is completely unaffected by deferring this.
+    // See run_deferred_check_if_needed(), called from both
+    // cb_has_external_clause() overloads.
+    needs_check_ = true;
+  }
+
+  // The actual Check/Pivot repair, run lazily right before CaDiCaL is
+  // told whether there's a conflict clause to add -- see
+  // notify_assignment_lit's own comment for why this specific hook
+  // point is both correct (propagation doesn't depend on it) and the
+  // right frequency (once per quiescence point, not once per literal).
+  void run_deferred_check_if_needed() {
+    if (!needs_check_) {
+      return;
+    }
+    needs_check_ = false;
+    // Belt-and-suspenders: notify_assignment_lit's direct-conflict branch
+    // already clears needs_check_ itself (see its own comment), but never
+    // overwrite an already-discovered conflict with a fresh
+    // tableau_.check() result regardless -- tableau_.check() only sees
+    // whatever bounds actually made it into the tableau, and a rejected
+    // direct-conflict bound never does.
+    if (conflict_.has_value()) {
+      return;
+    }
+    const std::size_t fallbacks_before = tableau_.bland_fallback_count();
+    const std::size_t multi_row_conflicts_before = tableau_.soi_multi_row_conflict_count();
+    const std::size_t quickxplain_calls_before = tableau_.soi_quickxplain_call_count();
+    const std::size_t pivots_before = tableau_.pivot_count();
+    const std::size_t row_updates_before = tableau_.row_update_count();
+    const std::size_t term_ops_before = tableau_.row_term_op_count();
+    statistics_.increment(kStatLraOnlineCheckCalls);
+    conflict_ = tableau_.check();
+    statistics_.increment(kStatLraBlandFallbacks,
+                          tableau_.bland_fallback_count() - fallbacks_before);
+    statistics_.increment(kStatLraSoiMultiRowConflicts,
+                          tableau_.soi_multi_row_conflict_count() - multi_row_conflicts_before);
+    statistics_.increment(kStatLraSoiQuickxplainCalls,
+                          tableau_.soi_quickxplain_call_count() - quickxplain_calls_before);
+    statistics_.increment(kStatLraPivots, tableau_.pivot_count() - pivots_before);
+    statistics_.increment(kStatLraPivotRowUpdates,
+                          tableau_.row_update_count() - row_updates_before);
+    statistics_.increment(kStatLraPivotTermOps, tableau_.row_term_op_count() - term_ops_before);
+  }
+
+  // Scans the other atoms sharing `slack` with the atom that was just
+  // asserted (index `triggering_atom_index`, already applied to `tableau_`
+  // with no direct conflict) for ones now entailed true/false by the
+  // slack's current upper/lower bound (Dutertre & de Moura Section 4.2).
+  // Only needs to look at this one slack: bounds only ever change via
+  // explicit assert_upper/assert_lower (never via check()'s pivots, which
+  // only touch assignments/row structure), so no other slack's bounds
+  // could have changed as a side effect of this assertion.
+  void scan_for_propagations(std::size_t triggering_atom_index,
+                             theory::arithmetic::LraVarId bound_var) {
+    const auto found = prepared_.atoms_by_bound_var.find(bound_var);
+    if (found == prepared_.atoms_by_bound_var.end()) {
+      return;
+    }
+    for (const std::size_t atom_index : found->second) {
+      if (atom_index == triggering_atom_index) {
+        continue;
+      }
+      const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      if (is_assigned_var(var)) {
+        continue;
+      }
+      const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+      const auto entails_true = bound_entails(
+          tableau_, prepared_atom.bound_var,
+          bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                          prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+      if (entails_true.has_value()) {
+        pending_.push_back(PendingPropagation{atom.lit.value, {*entails_true}, false});
+        continue;
+      }
+      const auto entails_false = bound_entails(
+          tableau_, prepared_atom.bound_var,
+          bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                          prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+      if (entails_false.has_value()) {
+        pending_.push_back(PendingPropagation{-atom.lit.value, {*entails_false}, false});
+      }
+    }
+  }
+
+  // Whether the implied bound `implied` on `basic_var` is tight enough to
+  // entail the atom whose truth assignment would impose `assertion`. Shares
+  // bound_assertion()'s direction convention, so a flipped atom's TRUE case
+  // is checked against an implied *lower* bound and vice versa.
+  std::optional<std::vector<sat::Lit>> implied_bound_entails(theory::arithmetic::LraVarId basic_var,
+                                                             const BoundAssertion& assertion) {
+    auto implied = compute_implied_bound(tableau_, basic_var, assertion.is_upper);
+    if (!implied.has_value()) {
+      return std::nullopt;
+    }
+    const bool tight =
+        assertion.is_upper ? implied->first <= assertion.value : implied->first >= assertion.value;
+    if (!tight) {
+      return std::nullopt;
+    }
+    return std::move(implied->second);
+  }
+
+  // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
+  // generalizing scan_for_propagations to a *derived* rather than
+  // directly-asserted bound): `changed_var`'s bound was just tightened, so
+  // any row currently mentioning it (tableau_.occurs_in) could now have a
+  // tighter implied bound. For each such row, compute the implied
+  // upper/lower via compute_implied_bound and check entailment for the atoms
+  // bounding that row's own basic variable.
+  //
+  // Before item H1 this could only trigger when `changed_var` happened to be
+  // a slack wrapping exactly one coefficient-1 variable, since bounds only
+  // ever lived on slacks; now that single-variable atoms bound their variable
+  // directly, any bound change is a candidate and the fanout cap below is
+  // what keeps the cost bounded.
+  void scan_row_based_propagations(theory::arithmetic::LraVarId changed_var) {
+    const std::vector<theory::arithmetic::LraVarId>& affected_rows =
+        tableau_.occurs_in(changed_var);
+    if (affected_rows.empty() || affected_rows.size() > kRowBasedPropagationMaxFanout) {
+      return;
+    }
+    for (const theory::arithmetic::LraVarId basic_var : affected_rows) {
+      const auto found = prepared_.atoms_by_bound_var.find(basic_var);
+      if (found == prepared_.atoms_by_bound_var.end()) {
+        continue;
+      }
+      for (const std::size_t atom_index : found->second) {
+        const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+        const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+        if (is_assigned_var(var)) {
+          continue;
+        }
+        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+        auto reasons = implied_bound_entails(
+            basic_var, bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                                       prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+        if (reasons.has_value()) {
+          pending_.push_back(PendingPropagation{atom.lit.value, std::move(*reasons), true});
+          continue;
+        }
+        reasons = implied_bound_entails(
+            basic_var,
+            bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                            prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+        if (reasons.has_value()) {
+          pending_.push_back(PendingPropagation{-atom.lit.value, std::move(*reasons), true});
+        }
+      }
+      if (bidirectional_row_propagation_enabled_ &&
+          affected_rows.size() <= kBidirectionalRowPropagationMaxFanout) {
+        scan_row_child_propagations(basic_var, changed_var);
+      }
+    }
+  }
+
+  // Competitiveness-roadmap item 7 (the reverse direction of
+  // scan_row_based_propagations): for each *other* term of basic_var's
+  // row (skipping exclude_var, whose own bound is what just triggered
+  // this scan -- nothing new to derive about it from itself), check
+  // whether compute_implied_child_bound now entails one of that term's
+  // own atoms. Gated by its own (smaller) size caps -- see their comment.
+  void scan_row_child_propagations(theory::arithmetic::LraVarId basic_var,
+                                   theory::arithmetic::LraVarId exclude_var) {
+    const auto& row = tableau_.row(basic_var);
+    if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
+      return;
+    }
+    for (const auto& [target_var, target_coeff] : row) {
+      if (target_var == exclude_var) {
+        continue;
+      }
+      const auto found = prepared_.atoms_by_bound_var.find(target_var);
+      if (found == prepared_.atoms_by_bound_var.end()) {
+        continue;
+      }
+      for (const std::size_t atom_index : found->second) {
+        const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+        const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+        if (is_assigned_var(var)) {
+          continue;
+        }
+        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+        auto reasons = implied_child_bound_entails(
+            basic_var, target_var, target_coeff,
+            bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                            prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+        if (reasons.has_value()) {
+          pending_.push_back(PendingPropagation{atom.lit.value, std::move(*reasons), true, true});
+          continue;
+        }
+        reasons = implied_child_bound_entails(
+            basic_var, target_var, target_coeff,
+            bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                            prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+        if (reasons.has_value()) {
+          pending_.push_back(PendingPropagation{-atom.lit.value, std::move(*reasons), true, true});
+        }
+      }
+    }
+  }
+
+  // implied_bound_entails' counterpart for the reverse (child-tightening)
+  // direction -- same convention, same all-or-nothing behaviour.
+  std::optional<std::vector<sat::Lit>> implied_child_bound_entails(
+      theory::arithmetic::LraVarId basic_var, theory::arithmetic::LraVarId target_var,
+      const util::Rational& target_coeff, const BoundAssertion& assertion) {
+    auto implied = compute_implied_child_bound(tableau_, basic_var, target_var, target_coeff,
+                                               assertion.is_upper);
+    if (!implied.has_value()) {
+      return std::nullopt;
+    }
+    const bool tight =
+        assertion.is_upper ? implied->first <= assertion.value : implied->first >= assertion.value;
+    if (!tight) {
+      return std::nullopt;
+    }
+    return std::move(implied->second);
+  }
+
+  // A queued propagation candidate: the CaDiCaL literal to propagate, its
+  // antecedent reason literals (one for same-slack propagation; up to a
+  // row's term count for row-based propagation), and whether it came from
+  // the row-based scan (for the LraRowPropagations breakdown stat).
+  struct PendingPropagation {
+    int lit;
+    std::vector<sat::Lit> reasons;
+    bool row_based;
+    bool bidirectional = false;  // competitiveness-roadmap item 7
+  };
+
+  const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
+  const PreparedLraTheory& prepared_;
+  theory::arithmetic::LraTableau tableau_;
+  bool propagation_enabled_;
+  bool row_propagation_enabled_;
+  bool bidirectional_row_propagation_enabled_;
+  bool theory_decisions_enabled_;
+  util::Statistics& statistics_;
+  std::vector<char> observed_vars_;
+  std::vector<char> assigned_;
+  std::vector<int> var_trail_;
+  std::vector<std::size_t> atom_index_by_var_;
+  std::vector<std::size_t> checkpoints_;
+  std::vector<std::size_t> level_starts_;
+  std::deque<PendingPropagation> pending_;
+  std::unordered_map<int, std::vector<sat::Lit>> reasons_;
+  int reason_stream_active_lit_ = 0;
+  int reason_stream_index_ = 0;
+  std::optional<sat::Clause> conflict_;
+  sat::Clause external_clause_;
+  std::size_t external_clause_index_ = 0;
+  // See notify_assignment_lit's comment: set instead of running
+  // tableau_.check() eagerly per literal, resolved lazily by
+  // run_deferred_check_if_needed() (called from cb_has_external_clause()).
+  bool needs_check_ = false;
+  // cb_decide()'s rotating position (competitiveness-roadmap item 8):
+  // gives cb_decide() a stable, persistent round-robin order over
+  // arithmetic atoms across calls, rather than always restarting from
+  // index 0. Not reset on backtrack -- it's just a decision-order cursor,
+  // not trail state; a stale position after backtracking is harmless
+  // (worst case, this decision's order is less well-chosen than usual).
+  std::size_t decide_cursor_ = 0;
+};
+#endif  // PRIMO_HAVE_IPASIR
+
+CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
+                                  const std::vector<core::TermId>& assertions,
+                                  const CheckSatOptions& options, util::Statistics& statistics) {
+  statistics.increment(kStatSolverQfLra);
+  sat::CadicalBackend backend(options.cadical_options);
+  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
+  for (const core::TermId assertion : assertions) {
+    clausifier.assert_formula(assertion);
+  }
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
+  publish_sat_stats(backend.statistics(), statistics);
+
+  const PreparedLraTheory prepared_theory(
+      terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination);
+  publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
+
+#if PRIMO_HAVE_IPASIR
+  // The trail-synced online propagator (Milestone 3a) is always preferred
+  // when CaDiCaL's external-propagator API is available: it's strictly
+  // better than the copy-per-round fallback below (real incremental reuse
+  // via LraTableau::push/pop instead of reasserting everything from
+  // scratch every SAT round), and correctness has already been verified
+  // against it via the fuzz gate (see docs/run-log.json).
+  OnlineLraPropagator online_propagator(prepared_theory, clausifier.theory_atoms(),
+                                        options.lra_propagation, options.lra_row_propagation,
+                                        options.lra_bidirectional_row_propagation,
+                                        options.lra_theory_decisions, statistics);
+  backend.connect_external_propagator(&online_propagator);
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+    backend.add_observed_var(var);
+  }
+#endif
+
+  while (true) {
+    statistics.increment(kStatSatSolveCalls);
+    const sat::SatResult sat_result = backend.solve();
+    publish_sat_stats(backend.statistics(), statistics);
+    if (sat_result != sat::SatResult::Sat) {
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
+    }
+    statistics.increment(kStatLraTheoryChecks);
+
+#if PRIMO_HAVE_IPASIR
+    // Authoritative already -- see OnlineLraPropagator::conflict()'s
+    // comment. Always nullopt in practice at this point (a real conflict
+    // would have blocked CaDiCaL from ever returning SAT), but re-checking
+    // costs nothing and mirrors solve_qf_uf's own belt-and-suspenders style.
+    const std::optional<sat::Clause> conflict_clause = online_propagator.conflict();
+#else
+    std::vector<AssignedTheoryAtom> assigned_atoms;
+    for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      const std::optional<bool> assignment = backend.value(var);
+      if (!assignment.has_value()) {
+        return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
+                               statistics, ""};
+      }
+      const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
+      // Deliberately not reusing options.pure_theory_filter here: that
+      // optimization's soundness was established for EUF specifically, and
+      // hasn't been independently verified for LRA's bound-based
+      // reasoning. Always process every assigned atom until it has.
+      assigned_atoms.push_back(assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value));
+    }
+
+    const std::optional<sat::Clause> conflict_clause =
+        find_incremental_lra_theory_conflict(prepared_theory, assigned_atoms);
+#endif
+    if (!conflict_clause.has_value()) {
+      publish_sat_stats(backend.statistics(), statistics);
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
+    }
+    statistics.increment(kStatLraTheoryConflicts);
+    if (conflict_clause->empty()) {
+      publish_sat_stats(backend.statistics(), statistics);
+      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+    }
+    backend.add_clause(conflict_clause.value());
+    publish_sat_stats(backend.statistics(), statistics);
+  }
+}
+
 void record_disequality_propagation_opportunities(const core::TermManager& terms,
                                                   const PreparedFlatTheory& prepared,
                                                   const std::vector<AssignedTheoryAtom>& atoms,
@@ -3451,6 +5116,7 @@ CheckSatOutcome solve_qf_uf(
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend(options.cadical_options);
+  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -3651,7 +5317,40 @@ CheckSatOutcome solve_qf_uf(
   }
 }
 
+// Reports util::Rational's two-tier-representation counters (see that class's
+// comment and docs/qf-lra-heuristics.md's H2) as :rational.promotions and
+// :rational.big-operations. They are process-wide running totals, so this
+// records the delta across one solve. Wrapping rather than publishing inline
+// because solve_qf_lra_impl returns from a dozen places and CheckSatOutcome
+// carries a *copy* of the statistics taken at the return statement -- an RAII
+// guard would update the original after that copy was already made.
+//
+// Diagnostic only, but not optional: without them, "is the machine-word fast
+// path actually being taken on this benchmark, and would a different small-form
+// width take it more often" is a guess rather than a measurement.
+CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
+                             const std::vector<core::TermId>& assertions,
+                             const CheckSatOptions& options, util::Statistics& statistics) {
+  const std::uint64_t promotions_before = util::Rational::promotion_count();
+  const std::uint64_t big_operations_before = util::Rational::big_operation_count();
+  CheckSatOutcome outcome = solve_qf_lra_impl(terms, assertions, options, statistics);
+  const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
+  const std::uint64_t big_operations =
+      util::Rational::big_operation_count() - big_operations_before;
+  statistics.increment(util::StatKey::RationalPromotions, promotions);
+  statistics.increment(util::StatKey::RationalBigOperations, big_operations);
+  outcome.statistics.increment(util::StatKey::RationalPromotions, promotions);
+  outcome.statistics.increment(util::StatKey::RationalBigOperations, big_operations);
+  return outcome;
+}
+
 }  // namespace
+
+void refresh_active_solve_stats() {
+  if (g_active_backend != nullptr && g_active_backend_statistics != nullptr) {
+    publish_sat_stats(g_active_backend->statistics(), *g_active_backend_statistics);
+  }
+}
 
 CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions options) {
   const PhaseClock::time_point total_start = PhaseClock::now();
@@ -3690,6 +5389,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatSolvedConstantRewrites, 0);
   statistics.set(kStatSolvedConstantRejectedCycles, 0);
   statistics.set(kStatSolvedConstantRejectedBlowups, 0);
+  statistics.set(kStatRealEqualityLowered, 0);
+  statistics.set(kStatSolvedConstantGaussianCandidates, 0);
   statistics.set(kStatFiniteDomainDomains, 0);
   statistics.set(kStatFiniteDomainAmoClauses, 0);
   statistics.set(kStatFiniteDomainRawChoices, 0);
@@ -3729,6 +5430,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatSatBinaryClauses, 0);
   statistics.set(kStatSolverBoolean, 0);
   statistics.set(kStatSolverQfUf, 0);
+  statistics.set(kStatSolverQfLra, 0);
   statistics.set(kStatSatSolveCalls, 0);
   statistics.set(kStatTheoryAtoms, 0);
   statistics.set(kStatEufPredicateAtoms, 0);
@@ -3982,7 +5684,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     }
     if (auto_large_assertion_skip && options.solved_constant_substitution) {
       SolvedConstantSubstitutionResult solved_constants =
-          substitute_solved_constants(frontend.terms(), assertions);
+          substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
       assertions = std::move(solved_constants.assertions);
       if (options.produce_model) {
         append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
@@ -3993,6 +5695,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
       statistics.increment(kStatSolvedConstantRejectedCycles, solved_constants.rejected_cycles);
       statistics.increment(kStatSolvedConstantRejectedBlowups, solved_constants.rejected_blowups);
+      statistics.increment(kStatSolvedConstantGaussianCandidates,
+                           solved_constants.gaussian_candidates);
     }
     for (std::size_t pass = 0; preprocessing_enabled && pass < preprocessing_pass_limit; ++pass) {
       const std::vector<core::TermId> before = assertions;
@@ -4051,7 +5755,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                   forced_atoms.disequality_pairs.end());
       if (options.solved_constant_substitution) {
         SolvedConstantSubstitutionResult solved_constants =
-            substitute_solved_constants(frontend.terms(), assertions);
+            substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
         assertions = std::move(solved_constants.assertions);
         if (options.produce_model) {
           append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
@@ -4062,6 +5766,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
         statistics.increment(kStatSolvedConstantRejectedCycles, solved_constants.rejected_cycles);
         statistics.increment(kStatSolvedConstantRejectedBlowups, solved_constants.rejected_blowups);
+        statistics.increment(kStatSolvedConstantGaussianCandidates,
+                             solved_constants.gaussian_candidates);
       }
       if (use_ground_unit_substitution || use_guarded_ground_unit_substitution) {
         GroundEqualitySubstitutionResult ground_substitution =
@@ -4101,6 +5807,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         ++preprocessing_pass_limit;
         statistics.increment(kStatPreprocessingAdaptivePasses);
       }
+    }
+    {
+      // Runs once, after every pass above that reasons about genuine
+      // Equality nodes (solve-eqs, eq-bridging, forced-atom/unit-equality
+      // propagation), so Real equalities are visible to all of them. Must
+      // still land before symmetry breaking/finite-domain clause
+      // generation below and the has_equality/has_arithmetic dispatch, so
+      // downstream passes/the tableau see the same Le/Lt-pair shape they
+      // always have.
+      RealEqualityLoweringResult lowered_equalities =
+          lower_real_equalities(frontend.terms(), assertions);
+      assertions = std::move(lowered_equalities.assertions);
+      statistics.increment(kStatRealEqualityLowered, lowered_equalities.lowered);
     }
     if (use_symmetry_breaking) {
       if (!symmetry_result.has_value()) {
@@ -4244,6 +5963,25 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       outcome.statistics = statistics;
       return outcome;
     };
+    const bool has_arithmetic = [&] {
+      for (const core::TermId assertion : assertions) {
+        if (contains_arithmetic_atom(frontend.terms(), assertion)) {
+          return true;
+        }
+      }
+      return false;
+    }();
+    if (has_equality && has_arithmetic) {
+      // QF_UF + QF_LRA combination (QF_UFLRA) would need real Nelson-Oppen
+      // style theory combination -- out of scope; reject rather than
+      // silently mishandle one theory's atoms.
+      throw UnsupportedInput("combined equality and arithmetic (QF_UFLRA) is not supported");
+    }
+    if (has_arithmetic) {
+      const PhaseClock::time_point solve_start = PhaseClock::now();
+      return finish_solve(solve_qf_lra(frontend.terms(), assertions, solve_options, statistics),
+                          solve_start);
+    }
     if (has_equality) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics,

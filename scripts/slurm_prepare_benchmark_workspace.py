@@ -53,6 +53,18 @@ def rsync_repo(config: Path, local: Path, remote: str, remote_dir: str) -> None:
         "vendor",
         "yinyang_bugs",
         "yinyang_scratch",
+        # Vendored native deps (GMP/CaDiCaL/ANTLR4/fuzzsmt/z3/...) built by
+        # `make contrib-*` -- excluded for the same reason build/build-* are:
+        # they contain host-specific absolute paths (e.g. fuzzsmt's wrapper
+        # script embeds contrib/local/share/fuzzsmt/fuzzsmt.jar's *local*
+        # resolved path). Syncing a local contrib/local over a remote one
+        # silently clobbers it with paths that don't exist on the remote --
+        # found 2026-07-24 when a QF_LRA campaign's fuzzsmt shards failed
+        # with "Unable to access jarfile /workspace/..." after a second
+        # prepare_benchmark_workspace.py sync. Each side provisions its own
+        # copy via `make contrib-*`, never syncs it from the other.
+        "contrib/local",
+        "contrib/src",
     ]
     command = ["rsync", "-az", "--delete"]
     for pattern in excludes:

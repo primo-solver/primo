@@ -163,6 +163,28 @@ else()
   message(STATUS "IPASIR-UP/CaDiCaL not found; SAT backend remains a scaffold")
 endif()
 
+find_path(GMP_INCLUDE_DIR
+  NAMES gmp.h
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include"
+)
+find_path(GMPXX_INCLUDE_DIR
+  NAMES gmpxx.h
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include"
+)
+find_library(GMPXX_LIBRARY
+  NAMES gmpxx
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib"
+)
+find_library(GMP_LIBRARY
+  NAMES gmp
+  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib"
+)
+if(GMP_INCLUDE_DIR AND GMPXX_INCLUDE_DIR AND GMP_LIBRARY AND GMPXX_LIBRARY)
+  message(STATUS "Found GMP: ${GMP_LIBRARY}")
+else()
+  message(FATAL_ERROR "GMP (with C++ wrapper) not found. Run `make contrib-gmp` or install GMP so gmp.h/gmpxx.h are available.")
+endif()
+
 file(GLOB_RECURSE PRIMO_LIBRARY_SOURCES CONFIGURE_DEPENDS
   src/cli/*.cpp
   src/core/*.cpp
@@ -190,6 +212,8 @@ target_include_directories(primo_core PUBLIC src)
 target_include_directories(primo_core SYSTEM PUBLIC "${ANTLR4_RUNTIME_INCLUDE_DIR}")
 target_compile_definitions(primo_core PUBLIC ANTLR4CPP_STATIC=1)
 target_link_libraries(primo_core PUBLIC "${ANTLR4_RUNTIME_LIBRARY}")
+target_include_directories(primo_core SYSTEM PUBLIC "${GMP_INCLUDE_DIR}" "${GMPXX_INCLUDE_DIR}")
+target_link_libraries(primo_core PUBLIC "${GMPXX_LIBRARY}" "${GMP_LIBRARY}")
 if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=1)
   target_compile_definitions(primo_core PUBLIC
@@ -274,3 +298,33 @@ primo_enable_warnings(primo_theory_combination_tests)
 primo_enable_sanitizers(primo_theory_combination_tests)
 target_link_libraries(primo_theory_combination_tests PRIVATE primo_core)
 add_test(NAME primo_theory_combination_tests COMMAND primo_theory_combination_tests)
+
+add_executable(primo_rational_tests tests/unit/rational_tests.cpp)
+primo_enable_warnings(primo_rational_tests)
+primo_enable_sanitizers(primo_rational_tests)
+target_link_libraries(primo_rational_tests PRIVATE primo_core)
+add_test(NAME primo_rational_tests COMMAND primo_rational_tests)
+
+add_executable(primo_qf_lra_solver_tests tests/unit/qf_lra_solver_tests.cpp)
+primo_enable_warnings(primo_qf_lra_solver_tests)
+primo_enable_sanitizers(primo_qf_lra_solver_tests)
+target_link_libraries(primo_qf_lra_solver_tests PRIVATE primo_core)
+add_test(NAME primo_qf_lra_solver_tests COMMAND primo_qf_lra_solver_tests)
+
+add_executable(primo_linear_polynomial_tests tests/unit/linear_polynomial_tests.cpp)
+primo_enable_warnings(primo_linear_polynomial_tests)
+primo_enable_sanitizers(primo_linear_polynomial_tests)
+target_link_libraries(primo_linear_polynomial_tests PRIVATE primo_core)
+add_test(NAME primo_linear_polynomial_tests COMMAND primo_linear_polynomial_tests)
+
+add_executable(primo_lra_atom_tests tests/unit/lra_atom_tests.cpp)
+primo_enable_warnings(primo_lra_atom_tests)
+primo_enable_sanitizers(primo_lra_atom_tests)
+target_link_libraries(primo_lra_atom_tests PRIVATE primo_core)
+add_test(NAME primo_lra_atom_tests COMMAND primo_lra_atom_tests)
+
+add_executable(primo_lra_tableau_tests tests/unit/lra_tableau_tests.cpp)
+primo_enable_warnings(primo_lra_tableau_tests)
+primo_enable_sanitizers(primo_lra_tableau_tests)
+target_link_libraries(primo_lra_tableau_tests PRIVATE primo_core)
+add_test(NAME primo_lra_tableau_tests COMMAND primo_lra_tableau_tests)

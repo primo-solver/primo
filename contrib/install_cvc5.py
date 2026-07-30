@@ -42,6 +42,17 @@ def choose_asset(release: dict) -> dict:
         if "cvc5" not in name:
             continue
         score = sum(1 for keyword in keywords if keyword in name)
+        # Prefer statically-linked assets: this script only copies the
+        # `cvc5` binary itself (see the unpack loop below), never the
+        # accompanying lib/*.so files a "shared"/"libcxx-shared" build
+        # needs at runtime -- installing one of those without also
+        # installing its shared libraries produces a binary that fails to
+        # even start ("error while loading shared libraries"), found the
+        # hard way (missing libc++abi.so.1 et al.) while trying to use a
+        # previously-installed libcxx-shared cvc5 for a benchmark
+        # comparison. A "static" asset has no such runtime dependency.
+        if score and "static" in name and "gpl" not in name:
+            score += 1
         if score:
             candidates.append((score, asset))
     if not candidates:

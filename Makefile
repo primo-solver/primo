@@ -1,4 +1,4 @@
-.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -13,6 +13,7 @@ CPP_TIDY_FILES := $$(git ls-files | rg '^(src|tests)/.*\.cpp$$' | rg -v '^src/sm
 CLI11_STAMP := $(CONTRIB_PREFIX)/.cli11.stamp
 ANTLR4_STAMP := $(CONTRIB_PREFIX)/.antlr4.stamp
 CADICAL_STAMP := $(CONTRIB_PREFIX)/.cadical.stamp
+GMP_STAMP := $(CONTRIB_PREFIX)/.gmp.stamp
 
 build: contrib-required
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_PREFIX_PATH=$(CURDIR)/$(CONTRIB_PREFIX)
@@ -112,7 +113,7 @@ fuzzsmt: build contrib-fuzzsmt contrib-z3
 
 contrib: contrib-required contrib-z3 contrib-cvc5 contrib-fuzzsmt contrib-ddsmt
 
-contrib-required: contrib-antlr4 contrib-cli11 contrib-cadical
+contrib-required: contrib-antlr4 contrib-cli11 contrib-cadical contrib-gmp
 
 contrib-antlr4: $(ANTLR4_STAMP)
 
@@ -137,6 +138,12 @@ contrib-cadical: $(CADICAL_STAMP)
 $(CADICAL_STAMP): contrib/install_cadical.py
 	$(PYTHON) contrib/install_cadical.py --prefix $(CONTRIB_PREFIX) --tag $(CADICAL_TAG) --clean-build
 	touch $(CADICAL_STAMP)
+
+contrib-gmp: $(GMP_STAMP)
+
+$(GMP_STAMP): contrib/install_gmp.py
+	$(PYTHON) contrib/install_gmp.py --prefix $(CONTRIB_PREFIX)
+	touch $(GMP_STAMP)
 
 contrib-fuzzsmt:
 	$(PYTHON) contrib/install_fuzzsmt.py --prefix $(CONTRIB_PREFIX)

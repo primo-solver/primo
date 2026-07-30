@@ -27,6 +27,12 @@ bool g_print_timeout_statistics = false;
 void handle_sigterm(int) {
   [[maybe_unused]] const ssize_t written = write(STDOUT_FILENO, "unknown\n", 8);
   if (g_print_timeout_statistics) {
+    // Without this, sat.decisions/sat.conflicts/sat.propagations read
+    // whatever was captured before the in-flight solve() call started
+    // (often all zero) -- solve() is blocking, so check_sat's own copy
+    // into g_live_statistics only happens synchronously around each call,
+    // not while one is running. See check_sat.hpp's comment.
+    primo::smt::refresh_active_solve_stats();
     primo::util::print_statistics(std::cerr, g_live_statistics);
   }
   std::exit(0);
@@ -129,7 +135,9 @@ int main(int argc, char** argv) {
   bool no_finite_domain_equality_definitions = false;
   bool no_finite_domain_post_amo = false;
   bool no_eq_bridge = false;
+  bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
+  bool no_gaussian_elimination = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
   bool no_auto_top_level_or_tseitin = false;
@@ -144,6 +152,8 @@ int main(int argc, char** argv) {
   std::string euf_engine = "incremental";
   std::string euf_prop = "auto";
   std::string euf_explain_search = "one-sided";
+  std::string lra_pivoting_rule = "sparse";
+  bool no_lra_sparse_leaving = false;
   bool euf_proof_forest_diagnostics = false;
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
@@ -181,6 +191,46 @@ int main(int argc, char** argv) {
                "Add equalities implied by every branch of selected QF_UF disjunctions");
   app.add_flag("--no-eq-bridge", no_eq_bridge,
                "Disable equality bridging unless required by the preprocessing preset");
+  app.add_flag("--lra-propagation", solver_options.lra_propagation,
+               "Enable QF_LRA same-slack bound propagation (Milestone 3b)");
+  app.add_flag("--no-lra-propagation", no_lra_propagation,
+               "Disable QF_LRA bound propagation (conflict detection only)");
+  app.add_flag("--lra-row-propagation", solver_options.lra_row_propagation,
+               "Enable experimental QF_LRA row-based/interval bound propagation across "
+               "different variables (only takes effect if --lra-propagation is also on)")
+      ->default_val(false);
+  app.add_flag("--lra-bidirectional-row-propagation",
+               solver_options.lra_bidirectional_row_propagation,
+               "Enable the reverse direction of --lra-row-propagation: tighten a row's "
+               "other terms from its own bound, not just derive the row's own implied "
+               "bound (only takes effect if --lra-row-propagation is also on)")
+      ->default_val(false);
+  app.add_flag("--lra-theory-decisions", solver_options.lra_theory_decisions,
+               "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
+               "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
+               "literal itself instead of leaving every decision to generic VSIDS")
+      ->default_val(false);
+  app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
+                 "QF_LRA Check/Pivot variable-selection rule: sparse (default -- prices "
+                 "what a pivot costs: among the entering candidates that all repair the "
+                 "violation equally, take the one occurring in the fewest rows, since "
+                 "those are exactly the rows the pivot rewrites), bland "
+                 "(anti-cycling-proven, the former default), dantzig "
+                 "(largest-violation/largest-coefficient), or soi "
+                 "(Sum-of-Infeasibilities Simplex, King/Barrett/Dutertre FMCAD 2013 -- a "
+                 "global Check/Pivot objective across every violated row at once). All "
+                 "but bland fall back to bland selection after enough pivots within one "
+                 "check(), which is what keeps termination proven")
+      ->check(CLI::IsMember({"bland", "dantzig", "soi", "sparse"}));
+  app.add_flag("--no-lra-sparse-leaving", no_lra_sparse_leaving,
+               "Disable the default-on leaving-side half of --lra-pivoting-rule sparse "
+               "(prefer repairing a violated variable whose row is short, using "
+               "violation magnitude only as a tie-break), for ablation");
+  app.add_flag("--lra-fixed-elimination", solver_options.lra_fixed_elimination,
+               "Pivot a basic LRA variable out of the basis as soon as its bounds coincide "
+               "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
+               "competition set, but doubles the >5MB band, so it is worth enabling on "
+               "equality-dominated input");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_flag("--ground-unit-substitution", solver_options.ground_unit_substitution,
@@ -190,6 +240,12 @@ int main(int argc, char** argv) {
                "Enable guarded ground substitution only when preprocessing metrics predict a win");
   app.add_flag("--no-solved-constant-substitution", no_solved_constant_substitution,
                "Disable default QF_UF solved-constant substitution")
+      ->default_val(false);
+  app.add_flag("--gaussian-elimination", solver_options.gaussian_elimination,
+               "Enable default-on QF_LRA Gauss-Jordan elimination over asserted linear "
+               "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25)");
+  app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
+               "Disable QF_LRA Gauss-Jordan equality-system elimination")
       ->default_val(false);
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Encode top-level disjunctions with Tseitin support clauses")
@@ -380,8 +436,14 @@ int main(int argc, char** argv) {
   if (no_eq_bridge) {
     solver_options.eq_bridge = false;
   }
+  if (no_lra_propagation) {
+    solver_options.lra_propagation = false;
+  }
   if (no_solved_constant_substitution) {
     solver_options.solved_constant_substitution = false;
+  }
+  if (no_gaussian_elimination) {
+    solver_options.gaussian_elimination = false;
   }
   if (top_level_or_tseitin) {
     solver_options.top_level_or_tseitin = true;
@@ -439,6 +501,18 @@ int main(int argc, char** argv) {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::OneSidedBfs;
   }
   solver_options.euf_proof_forest_diagnostics = euf_proof_forest_diagnostics;
+  if (no_lra_sparse_leaving) {
+    solver_options.lra_sparse_leaving = false;
+  }
+  if (lra_pivoting_rule == "dantzig") {
+    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Dantzig;
+  } else if (lra_pivoting_rule == "soi") {
+    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Soi;
+  } else if (lra_pivoting_rule == "sparse") {
+    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Sparse;
+  } else {
+    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Bland;
+  }
   solver_options.euf_diseq_propagation_diagnostics = euf_diseq_propagation_diagnostics;
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;

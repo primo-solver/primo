@@ -47,6 +47,12 @@ FlatTermId FlatTermIndex::flatten(core::TermId term) {
     case core::TermKind::Or:
     case core::TermKind::Implies:
       throw std::invalid_argument("Boolean formula nodes are not EUF flat terms");
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
+      throw std::invalid_argument("QF_LRA arithmetic nodes are not EUF flat terms");
   }
   flattened_terms_.emplace(term, flat);
   return flat;
