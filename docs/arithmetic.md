@@ -517,13 +517,14 @@ alternatives considered before/while implementing it.
 
 ### Implemented subset vs. deviations vs. limitations
 
-- **Real-only arithmetic.** No `Int` sort and no QF_LIA. A separable QF_UFLRA
-  coordinator exists for formulas whose EUF and LRA atoms do not share
-  Real-sorted terms after preprocessing: it checks both theories independently
-  against the same SAT assignment. This is not full Nelson-Oppen combination.
-  Real-valued UF applications in arithmetic atoms, EUF predicates/equalities
-  over Real terms, and mixed `get-model` are explicitly reported as
-  `Unsupported` until purification, equality sharing, and mixed models exist.
+- **Real-only arithmetic.** No `Int` sort and no QF_LIA. A partial QF_UFLRA
+  coordinator exists for separable formulas and for arithmetic atoms containing
+  Real-valued UF applications. The SMT layer purifies each such application to
+  an internal Real proxy, sends the proxy definition to EUF, sends the purified
+  arithmetic atom to LRA, and checks EUF-implied proxy equalities against LRA
+  under the current SAT assignment. This is not full Nelson-Oppen combination:
+  EUF predicates/non-definition equalities over Real terms and mixed
+  `get-model` are still explicitly reported as `Unsupported`.
 - ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
   above. Was the dominant cause of `UnsupportedInput` in every fuzz
   campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in

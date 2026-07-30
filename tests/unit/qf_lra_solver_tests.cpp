@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "smt/check_sat.hpp"
@@ -12,6 +13,7 @@
 using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
+using primo::smt::EufEngine;
 using primo::smt::LraPivotingRule;
 using primo::util::StatKey;
 
@@ -20,6 +22,12 @@ namespace {
 CheckSatOptions no_preprocessing() {
   CheckSatOptions options;
   options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  return options;
+}
+
+CheckSatOptions no_preprocessing_or_substitution() {
+  CheckSatOptions options = no_preprocessing();
+  options.solved_constant_substitution = false;
   return options;
 }
 
@@ -251,7 +259,7 @@ void qf_uf_lra_real_predicate_arguments_need_equality_sharing() {
   assert(result.message.find("EUF atoms over Real terms") != std::string::npos);
 }
 
-void qf_uf_lra_real_valued_applications_need_purification() {
+void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-sort U 0)
@@ -263,8 +271,39 @@ void qf_uf_lra_real_valued_applications_need_purification() {
     (check-sat)
   )",
                                        no_preprocessing());
-  assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("Real-valued uninterpreted applications") != std::string::npos);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.definitions") == 1);
+  assert(result.statistics.get(":no.mixed.euf-atoms") > 0);
+  assert(result.statistics.get(":no.mixed.lra-atoms") > 0);
+}
+
+void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) Real)
+    (assert (= a b))
+    (assert (< (f a) 0))
+    (assert (< 1 (f b)))
+    (check-sat)
+  )";
+
+  const auto result = check_sat_smtlib(input, no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.definitions") == 2);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.equalities-propagated") >= 1);
+  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+
+  CheckSatOptions lazy_options = no_preprocessing_or_substitution();
+  lazy_options.euf_engine = EufEngine::Lazy;
+  const auto lazy_result = check_sat_smtlib(input, lazy_options);
+  assert(lazy_result.result == CheckSatResult::Unsat);
+  assert(lazy_result.statistics.get(":no.interface.equalities-propagated") >= 1);
 }
 
 void real_equality_is_not_misclassified_as_euf() {
@@ -1355,7 +1394,8 @@ int main() {
   qf_uf_lra_get_model_is_not_supported_yet();
   qf_uf_lra_get_model_rejects_original_mix_after_preprocessing();
   qf_uf_lra_real_predicate_arguments_need_equality_sharing();
-  qf_uf_lra_real_valued_applications_need_purification();
+  qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
+  qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   real_equality_is_not_misclassified_as_euf();
   detects_direct_bound_conflict();
   detects_conflict_requiring_an_actual_pivot();

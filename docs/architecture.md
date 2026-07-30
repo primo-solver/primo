@@ -191,12 +191,18 @@ Implemented now:
   EUF atoms and uninterpreted applications in arithmetic atoms. This is
   bookkeeping only; it does not create proxy terms or equality atoms, propagate
   interface equalities, combine theories, or inspect theory-local models.
-- Separable mixed QF_UFLRA final checks in `smt::solve_qf_uf_lra`. The SMT
-  layer accepts one SAT assignment, partitions visible theory atoms into EUF
-  and LRA atoms, checks both theories independently, and learns the first
-  ordinary theory conflict clause it finds. This is intentionally not full
-  Nelson-Oppen: formulas needing purification, Real terms inside EUF atoms, and
-  mixed `get-model` are reported as unsupported.
+- Partial Nelson-Oppen-style mixed QF_UFLRA final checks in
+  `smt::solve_qf_uf_lra`. The SMT layer accepts one SAT assignment, partitions
+  visible theory atoms into EUF and LRA atoms, checks both theories, and learns
+  the first ordinary per-theory conflict clause it finds. Arithmetic atoms may
+  contain Real-valued UF applications: a post-lowering SMT preprocessing slice
+  replaces each such application with an internal Real proxy and adds an EUF
+  definition equality. For the current SAT assignment, EUF-implied equalities
+  between Real proxies shared with LRA are asserted into a conservative
+  augmented LRA check; a conflict learns a broad clause blocking the current
+  theory assignment. This is intentionally not full Nelson-Oppen: Real terms in
+  EUF predicates/non-definition atoms, fine-grained interface explanations, and
+  mixed `get-model` remain unsupported.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -207,9 +213,10 @@ Not implemented yet:
 - model construction for mixed-theory fragments, arithmetic functions beyond
   nullary `Real` constants, and reconstruction through future
   satisfiability-preserving rewrites outside the current preprocessing trail.
-- Nelson-Oppen theory combination with purification, shared-variable equality
-  propagation, model-equality propagation, care sets, and SAT atom creation for
-  missing interface equalities.
+- Full Nelson-Oppen theory combination with bidirectional shared-variable
+  equality propagation, model-equality propagation, care sets, fine-grained
+  cross-theory explanations, and SAT atom creation for missing interface
+  equalities.
 - explanation-producing congruence closure with proof forests.
 
 ## Paper Traceability

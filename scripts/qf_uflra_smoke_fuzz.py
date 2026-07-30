@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate separable QF_UFLRA smoke cases and compare Primo with Z3."""
+"""Generate QF_UFLRA smoke cases and compare Primo with Z3."""
 
 from __future__ import annotations
 
@@ -43,7 +43,26 @@ def atom_with_polarity(rng: random.Random, atom: str) -> str:
     return f"(not {atom})"
 
 
-def generate_case(rng: random.Random, index: int) -> str:
+PURIFIED_EUF_ATOMS = [
+    "(= a b)",
+    "(= b c)",
+    "(= (h a) (h b))",
+    "(p a)",
+    "(p (h b))",
+]
+
+PURIFIED_LRA_ATOMS = [
+    "(< (r a) 3)",
+    "(< 0 (r b))",
+    "(< (+ (r a) x) 5)",
+    "(<= (- (s (h a)) y) 2)",
+    "(< (+ (r a) (r b)) 4)",
+    "(< (s c) (r a))",
+    "(< x (r c))",
+]
+
+
+def generate_separable_case(rng: random.Random, index: int) -> str:
     euf_count = 1 + rng.randrange(4)
     lra_count = 1 + rng.randrange(4)
     euf_atoms = rng.sample(EUF_ATOMS, euf_count)
@@ -70,6 +89,47 @@ def generate_case(rng: random.Random, index: int) -> str:
 {body}
 (check-sat)
 """
+
+
+def generate_purified_case(rng: random.Random, index: int) -> str:
+    euf_count = 1 + rng.randrange(4)
+    lra_count = 1 + rng.randrange(4)
+    euf_atoms = rng.sample(PURIFIED_EUF_ATOMS, euf_count)
+    lra_atoms = rng.sample(PURIFIED_LRA_ATOMS, lra_count)
+
+    assertions = [atom_with_polarity(rng, atom) for atom in euf_atoms]
+    assertions.extend(atom_with_polarity(rng, atom) for atom in lra_atoms)
+
+    if index % 9 == 0:
+        assertions.extend(["(= a b)", "(< (r a) 0)", "(< 1 (r b))"])
+    if index % 13 == 0:
+        assertions.extend(["(not (= a b))", "(= (h a) (h b))"])
+
+    body = "\n".join(f"  (assert {assertion})" for assertion in assertions)
+    return f"""(set-logic QF_UFLRA)
+(declare-sort U 0)
+(declare-fun a () U)
+(declare-fun b () U)
+(declare-fun c () U)
+(declare-fun h (U) U)
+(declare-fun p (U) Bool)
+(declare-fun r (U) Real)
+(declare-fun s (U) Real)
+(declare-fun x () Real)
+(declare-fun y () Real)
+{body}
+(check-sat)
+"""
+
+
+def generate_case(rng: random.Random, index: int, shape: str) -> str:
+    if shape == "separable":
+        return generate_separable_case(rng, index)
+    if shape == "purified":
+        return generate_purified_case(rng, index)
+    if rng.randrange(2) == 0:
+        return generate_separable_case(rng, index)
+    return generate_purified_case(rng, index)
 
 
 def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
@@ -126,6 +186,8 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=20260730)
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--out", type=Path, default=Path("fuzz-results/qf_uflra-smoke"))
+    parser.add_argument("--shape", choices=["separable", "purified", "mixed"], default="separable")
+    parser.add_argument("--solver-arg", action="append", default=[])
     args = parser.parse_args()
 
     ref = shutil.which(args.ref) or args.ref
@@ -137,8 +199,8 @@ def main() -> int:
 
     for index in range(args.count):
         case_path = cases_dir / f"case-{index:04d}.smt2"
-        case_path.write_text(generate_case(rng, index), encoding="utf-8")
-        ours, ours_code = run_solver([args.solver, str(case_path)], args.timeout)
+        case_path.write_text(generate_case(rng, index, args.shape), encoding="utf-8")
+        ours, ours_code = run_solver([args.solver, *args.solver_arg, str(case_path)], args.timeout)
         reference, ref_code = run_solver([ref, str(case_path)], args.timeout)
         outcome = classify(ours, reference)
         counts[outcome] = counts.get(outcome, 0) + 1

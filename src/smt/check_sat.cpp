@@ -747,6 +747,9 @@ class Frontend {
   core::TermManager& terms() { return terms_; }
   std::size_t boolean_ites() const { return boolean_ites_; }
   std::size_t auxiliary_ites() const { return auxiliary_ites_; }
+  core::TermId fresh_internal_constant(core::SortId sort, std::string_view prefix) {
+    return fresh_auxiliary_constant(sort, prefix);
+  }
 
  private:
   struct Definition {
@@ -1751,17 +1754,32 @@ CheckSatResult map_sat_result(sat::SatResult result) {
   return CheckSatResult::Unknown;
 }
 
-// `(= a b)` is built by the sort-agnostic mk_eq for any sort, including
-// Real, so a Real-sorted equality must NOT count as an "EUF equality" for
-// theory dispatch purposes -- it's a QF_LRA atom (see contains_arithmetic_atom
-// below), and misclassifying it would make plain QF_LRA input requiring
-// `=` between two Real terms spuriously trip the has_equality &&
-// has_arithmetic "QF_UFLRA unsupported" guard.
+bool contains_application_term(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Application) {
+    return true;
+  }
+  for (const core::TermId child : term.children) {
+    if (contains_application_term(terms, child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// `(= a b)` is built by the sort-agnostic mk_eq for any sort, including Real.
+// A plain Real equality is an LRA atom, but a Real equality containing a UF
+// application is a purification definition and must dispatch to the mixed
+// EUF/LRA path so EUF can own the application.
 bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Equality &&
-      terms.get(term.children.at(0)).sort != terms.symbols().real_sort()) {
-    return true;
+  if (term.kind == core::TermKind::Equality) {
+    if (terms.get(term.children.at(0)).sort != terms.symbols().real_sort()) {
+      return true;
+    }
+    if (contains_application_term(terms, term_id)) {
+      return true;
+    }
   }
   for (const core::TermId child : term.children) {
     if (contains_equality(terms, child)) {
@@ -3886,6 +3904,60 @@ std::optional<sat::Clause> find_incremental_theory_conflict(
   return std::nullopt;
 }
 
+struct EufClosureCheckResult {
+  std::optional<sat::Clause> conflict;
+  theory::equality::FlatCongruenceClosure closure;
+};
+
+EufClosureCheckResult check_incremental_euf_closure(const PreparedFlatTheory& prepared,
+                                                    const std::vector<AssignedTheoryAtom>& atoms,
+                                                    util::Statistics& statistics) {
+  if (atoms.size() != prepared.flat_atoms.size()) {
+    throw UnsupportedInput("internal theory atom mapping mismatch");
+  }
+
+  theory::equality::FlatCongruenceClosure closure = prepared.base_closure;
+  for (std::size_t i = 0; i < prepared.flat_atoms.size(); ++i) {
+    FlatAssignedTheoryAtom atom = prepared.flat_atoms[i];
+    atom.source.value = atoms[i].value;
+    atom.source.filtered = atoms[i].filtered;
+    if (atom.source.filtered) {
+      continue;
+    }
+    assert_flat_assigned_atom(closure, atom, prepared.true_flat, prepared.false_flat);
+    if (closure.conflict().has_value()) {
+      break;
+    }
+  }
+
+  add_incremental_stats(statistics, closure.stats());
+  return EufClosureCheckResult{closure.conflict(), std::move(closure)};
+}
+
+sat::Clause block_current_theory_assignment(const std::vector<AssignedTheoryAtom>& lhs,
+                                            const std::vector<AssignedTheoryAtom>& rhs) {
+  sat::Clause clause;
+  clause.reserve(lhs.size() + rhs.size());
+  std::unordered_set<int> seen;
+  seen.reserve(lhs.size() + rhs.size());
+  const auto append = [&](const AssignedTheoryAtom& atom) {
+    if (atom.filtered || atom.lit == 0) {
+      return;
+    }
+    const sat::Lit lit = blocking_lit(atom);
+    if (seen.insert(lit.value).second) {
+      clause.push_back(lit);
+    }
+  };
+  for (const AssignedTheoryAtom& atom : lhs) {
+    append(atom);
+  }
+  for (const AssignedTheoryAtom& atom : rhs) {
+    append(atom);
+  }
+  return clause;
+}
+
 bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
   return term.kind == core::TermKind::Equality &&
          terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
@@ -4453,9 +4525,19 @@ bool is_lra_theory_atom(const core::TermManager& terms, core::TermId term_id) {
          terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
 }
 
+bool is_real_euf_definition_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  return term.kind == core::TermKind::Equality &&
+         terms.get(term.children.at(0)).sort == terms.symbols().real_sort() &&
+         contains_application_term(terms, term_id);
+}
+
 bool is_euf_theory_atom(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.kind == core::TermKind::Equality) {
+    if (terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
+      return contains_application_term(terms, term_id);
+    }
     return terms.get(term.children.at(0)).sort != terms.symbols().real_sort();
   }
   return (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
@@ -4475,23 +4557,11 @@ bool contains_real_sorted_term(const core::TermManager& terms, core::TermId term
   return false;
 }
 
-bool contains_application_term(const core::TermManager& terms, core::TermId term_id) {
-  const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Application) {
-    return true;
-  }
-  for (const core::TermId child : term.children) {
-    if (contains_application_term(terms, child)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void require_supported_mixed_theory_atom(const core::TermManager& terms,
                                          const BooleanClausifier::TheoryAtom& atom) {
   if (is_euf_theory_atom(terms, atom.term)) {
-    if (contains_real_sorted_term(terms, atom.term)) {
+    if (contains_real_sorted_term(terms, atom.term) &&
+        !is_real_euf_definition_atom(terms, atom.term)) {
       throw UnsupportedInput(
           "QF_UFLRA with EUF atoms over Real terms needs Nelson-Oppen equality sharing");
     }
@@ -4500,11 +4570,206 @@ void require_supported_mixed_theory_atom(const core::TermManager& terms,
   if (is_lra_theory_atom(terms, atom.term)) {
     if (contains_application_term(terms, atom.term)) {
       throw UnsupportedInput(
-          "QF_UFLRA with Real-valued uninterpreted applications needs purification");
+          "QF_UFLRA arithmetic atom escaped Real-valued UF-application purification");
     }
     return;
   }
   throw UnsupportedInput("unsupported mixed-theory atom");
+}
+
+void collect_real_constants_in_term(const core::TermManager& terms, core::TermId term_id,
+                                    std::unordered_set<core::TermId>& out) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Constant && term.sort == terms.symbols().real_sort()) {
+    out.insert(term_id);
+  }
+  for (const core::TermId child : term.children) {
+    collect_real_constants_in_term(terms, child, out);
+  }
+}
+
+std::vector<core::TermId> shared_real_constants(
+    const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& euf_atoms,
+    const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms) {
+  std::unordered_set<core::TermId> euf_terms;
+  std::unordered_set<core::TermId> lra_terms;
+  for (const BooleanClausifier::TheoryAtom& atom : euf_atoms) {
+    collect_real_constants_in_term(terms, atom.term, euf_terms);
+  }
+  for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
+    collect_real_constants_in_term(terms, atom.term, lra_terms);
+  }
+
+  std::vector<core::TermId> shared;
+  shared.reserve(std::min(euf_terms.size(), lra_terms.size()));
+  for (const core::TermId term : euf_terms) {
+    if (lra_terms.contains(term)) {
+      shared.push_back(term);
+    }
+  }
+  std::sort(shared.begin(), shared.end());
+  return shared;
+}
+
+std::vector<core::TermId> euf_implied_real_equalities(
+    core::TermManager& terms, const PreparedFlatTheory& prepared,
+    theory::equality::FlatCongruenceClosure& closure,
+    const std::vector<core::TermId>& shared_terms) {
+  std::vector<core::TermId> equalities;
+  for (std::size_t i = 0; i < shared_terms.size(); ++i) {
+    const std::optional<theory::equality::FlatTermId> lhs =
+        prepared.flat.existing_flat_term(shared_terms[i]);
+    if (!lhs.has_value()) {
+      continue;
+    }
+    for (std::size_t j = i + 1; j < shared_terms.size(); ++j) {
+      const std::optional<theory::equality::FlatTermId> rhs =
+          prepared.flat.existing_flat_term(shared_terms[j]);
+      if (!rhs.has_value() || !closure.are_equal(lhs.value(), rhs.value())) {
+        continue;
+      }
+      const core::TermId equality = terms.mk_eq(shared_terms[i], shared_terms[j]);
+      if (terms.get(equality).kind == core::TermKind::Equality) {
+        equalities.push_back(equality);
+      }
+    }
+  }
+  return equalities;
+}
+
+struct MixedTheoryPurificationResult {
+  std::vector<core::TermId> assertions;
+  std::size_t definitions = 0;
+  std::size_t reused = 0;
+};
+
+core::TermId purify_arithmetic_applications_in_formula(
+    Frontend& frontend, core::TermId term_id,
+    std::unordered_map<core::TermId, core::TermId>& proxy_by_application,
+    std::vector<core::TermId>& definitions, std::size_t& reused);
+
+core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
+                                    std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
+                                    std::vector<core::TermId>& definitions, std::size_t& reused) {
+  core::TermManager& terms = frontend.terms();
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Application && term.sort == terms.symbols().real_sort()) {
+    const auto found = proxy_by_app.find(term_id);
+    if (found != proxy_by_app.end()) {
+      ++reused;
+      return found->second;
+    }
+    const core::TermId proxy = frontend.fresh_internal_constant(term.sort, "no_proxy");
+    proxy_by_app.emplace(term_id, proxy);
+    definitions.push_back(terms.mk_eq(proxy, term_id));
+    return proxy;
+  }
+
+  switch (term.kind) {
+    case core::TermKind::Plus: {
+      std::vector<core::TermId> children;
+      children.reserve(term.children.size());
+      bool changed = false;
+      for (const core::TermId child : term.children) {
+        const core::TermId rewritten =
+            purify_arithmetic_term(frontend, child, proxy_by_app, definitions, reused);
+        changed = changed || rewritten != child;
+        children.push_back(rewritten);
+      }
+      return changed ? terms.mk_plus(std::move(children)) : term_id;
+    }
+    case core::TermKind::Times: {
+      const core::TermId child =
+          purify_arithmetic_term(frontend, term.children.at(0), proxy_by_app, definitions, reused);
+      return child == term.children.at(0) ? term_id : terms.mk_times(term.rational_value, child);
+    }
+    default:
+      return term_id;
+  }
+}
+
+core::TermId purify_arithmetic_applications_in_formula(
+    Frontend& frontend, core::TermId term_id,
+    std::unordered_map<core::TermId, core::TermId>& proxy_by_application,
+    std::vector<core::TermId>& definitions, std::size_t& reused) {
+  core::TermManager& terms = frontend.terms();
+  const core::Term& term = terms.get(term_id);
+  switch (term.kind) {
+    case core::TermKind::Le: {
+      const core::TermId lhs = purify_arithmetic_term(frontend, term.children.at(0),
+                                                      proxy_by_application, definitions, reused);
+      const core::TermId rhs = purify_arithmetic_term(frontend, term.children.at(1),
+                                                      proxy_by_application, definitions, reused);
+      return lhs == term.children.at(0) && rhs == term.children.at(1) ? term_id
+                                                                      : terms.mk_le(lhs, rhs);
+    }
+    case core::TermKind::Lt: {
+      const core::TermId lhs = purify_arithmetic_term(frontend, term.children.at(0),
+                                                      proxy_by_application, definitions, reused);
+      const core::TermId rhs = purify_arithmetic_term(frontend, term.children.at(1),
+                                                      proxy_by_application, definitions, reused);
+      return lhs == term.children.at(0) && rhs == term.children.at(1) ? term_id
+                                                                      : terms.mk_lt(lhs, rhs);
+    }
+    case core::TermKind::Equality:
+      if (terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
+        const core::TermId lhs = purify_arithmetic_term(frontend, term.children.at(0),
+                                                        proxy_by_application, definitions, reused);
+        const core::TermId rhs = purify_arithmetic_term(frontend, term.children.at(1),
+                                                        proxy_by_application, definitions, reused);
+        return lhs == term.children.at(0) && rhs == term.children.at(1) ? term_id
+                                                                        : terms.mk_eq(lhs, rhs);
+      }
+      return term_id;
+    case core::TermKind::Not: {
+      const core::TermId child = purify_arithmetic_applications_in_formula(
+          frontend, term.children.at(0), proxy_by_application, definitions, reused);
+      return child == term.children.at(0) ? term_id : terms.mk_not(child);
+    }
+    case core::TermKind::And:
+    case core::TermKind::Or: {
+      std::vector<core::TermId> children;
+      children.reserve(term.children.size());
+      bool changed = false;
+      for (const core::TermId child : term.children) {
+        const core::TermId rewritten = purify_arithmetic_applications_in_formula(
+            frontend, child, proxy_by_application, definitions, reused);
+        changed = changed || rewritten != child;
+        children.push_back(rewritten);
+      }
+      if (!changed) {
+        return term_id;
+      }
+      return term.kind == core::TermKind::And ? terms.mk_and(std::move(children))
+                                              : terms.mk_or(std::move(children));
+    }
+    case core::TermKind::Implies: {
+      const core::TermId lhs = purify_arithmetic_applications_in_formula(
+          frontend, term.children.at(0), proxy_by_application, definitions, reused);
+      const core::TermId rhs = purify_arithmetic_applications_in_formula(
+          frontend, term.children.at(1), proxy_by_application, definitions, reused);
+      return lhs == term.children.at(0) && rhs == term.children.at(1) ? term_id
+                                                                      : terms.mk_implies(lhs, rhs);
+    }
+    default:
+      return term_id;
+  }
+}
+
+MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
+    Frontend& frontend, const std::vector<core::TermId>& assertions) {
+  std::unordered_map<core::TermId, core::TermId> proxy_by_application;
+  std::vector<core::TermId> rewritten_assertions;
+  std::vector<core::TermId> definitions;
+  std::size_t reused = 0;
+  rewritten_assertions.reserve(assertions.size());
+  definitions.reserve(assertions.size());
+  for (const core::TermId assertion : assertions) {
+    rewritten_assertions.push_back(purify_arithmetic_applications_in_formula(
+        frontend, assertion, proxy_by_application, definitions, reused));
+  }
+  rewritten_assertions.insert(rewritten_assertions.end(), definitions.begin(), definitions.end());
+  return MixedTheoryPurificationResult{std::move(rewritten_assertions), definitions.size(), reused};
 }
 
 // Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
@@ -5714,16 +5979,22 @@ CheckSatOutcome solve_qf_uf_lra(
   lra_atoms.reserve(clausifier.theory_atoms().size());
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     require_supported_mixed_theory_atom(terms, atom);
-    if (is_lra_theory_atom(terms, atom.term)) {
+    if (is_euf_theory_atom(terms, atom.term)) {
+      euf_atoms.push_back(atom);
+    } else if (is_lra_theory_atom(terms, atom.term)) {
       lra_atoms.push_back(atom);
     } else {
-      euf_atoms.push_back(atom);
+      throw UnsupportedInput("unsupported mixed-theory atom");
     }
   }
+  const std::vector<core::TermId> shared_real_terms =
+      shared_real_constants(terms, euf_atoms, lra_atoms);
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
   statistics.set(":no.mixed.lra-atoms", lra_atoms.size());
+  statistics.set(":no.interface.shared-real-terms", shared_real_terms.size());
+  statistics.set(":no.interface.equalities-propagated", 0);
   statistics.set(":no.interface.conflicts", 0);
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
@@ -5748,7 +6019,7 @@ CheckSatOutcome solve_qf_uf_lra(
   const core::TermId true_term = terms.mk_bool(true);
   const core::TermId false_term = terms.mk_bool(false);
   std::optional<PreparedFlatTheory> prepared_flat_theory;
-  if (!euf_atoms.empty() && options.euf_engine == EufEngine::Incremental) {
+  if (!euf_atoms.empty()) {
     prepared_flat_theory.emplace(terms, euf_atoms, true_term, false_term,
                                  options.euf_explain_search, options.euf_proof_forest_diagnostics);
   }
@@ -5766,6 +6037,7 @@ CheckSatOutcome solve_qf_uf_lra(
     }
 
     std::optional<sat::Clause> euf_conflict;
+    std::optional<EufClosureCheckResult> euf_check;
     if (!euf_atoms.empty()) {
       statistics.increment(kStatTheoryChecks);
       const std::vector<AssignedTheoryAtom> euf_assignments =
@@ -5773,12 +6045,9 @@ CheckSatOutcome solve_qf_uf_lra(
       for (const AssignedTheoryAtom& atom : euf_assignments) {
         count_filtered_assignment(atom, statistics);
       }
-      if (prepared_flat_theory.has_value()) {
-        euf_conflict = find_incremental_theory_conflict(prepared_flat_theory.value(),
-                                                        euf_assignments, statistics);
-      } else {
-        euf_conflict = find_theory_conflict(terms, euf_assignments, true_term, false_term);
-      }
+      euf_check =
+          check_incremental_euf_closure(prepared_flat_theory.value(), euf_assignments, statistics);
+      euf_conflict = euf_check->conflict;
     }
     if (euf_conflict.has_value()) {
       statistics.increment(kStatTheoryConflicts);
@@ -5792,7 +6061,7 @@ CheckSatOutcome solve_qf_uf_lra(
     }
 
     statistics.increment(kStatLraTheoryChecks);
-    const std::vector<AssignedTheoryAtom> lra_assignments =
+    std::vector<AssignedTheoryAtom> lra_assignments =
         assigned_atoms_from_backend(backend, lra_atoms);
     std::optional<sat::Clause> lra_conflict =
         find_incremental_lra_theory_conflict(prepared_lra_theory, lra_assignments);
@@ -5805,6 +6074,42 @@ CheckSatOutcome solve_qf_uf_lra(
       backend.add_clause(lra_conflict.value());
       publish_sat_stats(backend.statistics(), statistics);
       continue;
+    }
+
+    if (euf_check.has_value() && !shared_real_terms.empty()) {
+      const std::vector<core::TermId> implied_equalities = euf_implied_real_equalities(
+          terms, prepared_flat_theory.value(), euf_check->closure, shared_real_terms);
+      statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
+      if (!implied_equalities.empty()) {
+        std::vector<BooleanClausifier::TheoryAtom> augmented_lra_atoms = lra_atoms;
+        augmented_lra_atoms.reserve(lra_atoms.size() + implied_equalities.size());
+        std::vector<AssignedTheoryAtom> augmented_lra_assignments = lra_assignments;
+        augmented_lra_assignments.reserve(lra_assignments.size() + implied_equalities.size());
+        for (const core::TermId equality : implied_equalities) {
+          augmented_lra_atoms.push_back(BooleanClausifier::TheoryAtom{sat::Lit{0}, equality});
+          augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, equality, false});
+        }
+        const PreparedLraTheory augmented_lra_theory(
+            terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+            options.lra_sparse_leaving, options.lra_fixed_elimination, false);
+        const std::optional<sat::Clause> no_conflict =
+            find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments);
+        if (no_conflict.has_value()) {
+          statistics.increment(":no.interface.conflicts");
+          statistics.increment(kStatLraTheoryConflicts);
+          const std::vector<AssignedTheoryAtom> euf_assignments =
+              assigned_atoms_from_backend(backend, euf_atoms, options.pure_theory_filter);
+          sat::Clause blocking_clause =
+              block_current_theory_assignment(euf_assignments, lra_assignments);
+          if (blocking_clause.empty()) {
+            publish_sat_stats(backend.statistics(), statistics);
+            return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+          }
+          backend.add_clause(blocking_clause);
+          publish_sat_stats(backend.statistics(), statistics);
+          continue;
+        }
+      }
     }
 
     publish_sat_stats(backend.statistics(), statistics);
@@ -6374,6 +6679,13 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                            equality_definition_result.rejected_domain_size);
       statistics.increment(kStatEqualityDefinitionRejectedClauseLimit,
                            equality_definition_result.rejected_clause_limit);
+    }
+    {
+      MixedTheoryPurificationResult purification =
+          purify_mixed_arithmetic_applications(frontend, assertions);
+      assertions = std::move(purification.assertions);
+      statistics.set(":no.purification.definitions", purification.definitions);
+      statistics.set(":no.purification.reused-applications", purification.reused);
     }
     statistics.set(kStatAssertionsFinal, assertions.size());
     statistics.set(kStatPreprocessingTermSizeFinal,

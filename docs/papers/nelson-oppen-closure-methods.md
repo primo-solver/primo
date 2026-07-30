@@ -4,9 +4,10 @@
 
 This is a literature and design-intake note for the
 `nelson-oppen-closure-methods` branch. It now also records the implemented
-scaffolds: read-only interface bookkeeping and a deliberately separable mixed
-QF_UFLRA final-check coordinator. It does not claim that Primo implements
-Nelson-Oppen equality sharing yet.
+scaffolds: read-only interface bookkeeping and a partial mixed QF_UFLRA
+coordinator with Real-valued UF-application purification and one-way
+EUF-to-LRA proxy equality checks. It does not claim that Primo implements the
+full Nelson-Oppen procedure yet.
 
 The intended project is to add theory-combination closure mechanisms based on
 Nelson-Oppen-style equality sharing, with de Moura and Bjorner's
@@ -19,8 +20,9 @@ C++ types, invariants, tests, and counters.
 
 Primo currently has QF_UF and QF_LRA DPLL(T) paths, EUF congruence closure, and
 an LRA Simplex tableau. There is no general Nelson-Oppen combination layer yet.
-The current branch adds a small mixed-theory coordinator only for formulas that
-remain separable after preprocessing.
+The current branch adds a small mixed-theory coordinator for formulas that
+remain separable after preprocessing, plus a first purified subset where
+Real-valued UF applications occur inside arithmetic atoms.
 
 Primo now has conservative pure-theory SMT-LIB `get-model` paths: QF_UF prints
 definitions for user-declared UF constants, functions, and predicates from a
@@ -69,22 +71,34 @@ extra interface traversal.
 
 The mixed QF_UFLRA support in `src/smt/check_sat.cpp` is separate from that
 diagnostic analyzer. `solve_qf_uf_lra` builds one SAT abstraction, partitions
-the visible theory atoms into EUF and LRA atoms, and then performs independent
-final checks against the accepted SAT assignment. An EUF conflict learns the
-ordinary EUF explanation clause; an LRA conflict learns the ordinary LRA
-Farkas/bound explanation clause. If both theory checks accept the assignment,
-the formula is reported `sat`.
+the visible theory atoms into EUF and LRA atoms, and then performs final checks
+against the accepted SAT assignment. An EUF conflict learns the ordinary EUF
+explanation clause; an LRA conflict learns the ordinary LRA Farkas/bound
+explanation clause.
 
-This is sound only for the implemented separable subset. It rejects
-Real-valued uninterpreted applications inside arithmetic atoms because those
-need purification, and it rejects EUF atoms that mention Real-sorted terms
-because those need Nelson-Oppen equality sharing. It also rejects
-`:produce-models true` on mixed QF_UFLRA, because Primo currently has only
-pure-theory model printers. The coordinator publishes:
+The current runnable subset also purifies Real-valued uninterpreted
+applications inside arithmetic atoms. After Real equality lowering, the SMT
+layer replaces each such application with a fresh internal Real proxy and adds
+a definition equality between the proxy and the UF application. That definition
+is handled by EUF; the purified arithmetic atom is handled by LRA. For the
+current SAT assignment, EUF-implied equalities between Real proxies visible to
+LRA are asserted into an augmented LRA check. If that augmented check conflicts,
+the solver learns a broad clause blocking the current theory assignment and
+continues.
+
+This is sound only for the implemented partial subset. It rejects EUF predicates
+and non-definition EUF atoms that mention Real-sorted terms because those need
+bidirectional Nelson-Oppen equality sharing. It also rejects `:produce-models
+true` on mixed QF_UFLRA, because Primo currently has only pure-theory model
+printers. The coordinator publishes:
 
 - `:solver.qf-uflra`
 - `:no.mixed.euf-atoms`
 - `:no.mixed.lra-atoms`
+- `:no.purification.definitions`
+- `:no.purification.reused-applications`
+- `:no.interface.shared-real-terms`
+- `:no.interface.equalities-propagated`
 - `:no.interface.conflicts`
 
 ## Primary Base Paper
@@ -144,8 +158,11 @@ prerequisite for any model-guided closure claim:
 4. Continue expanding reconstruction state for satisfiability-preserving
    rewrites beyond the current QF_UF unit and substitution subset.
 
-Track B is the first closure scaffold, default-off and deliberately narrower
-than the full paper:
+Track B is the first closure scaffold, deliberately narrower than the full
+paper. Experimental model-equality generation should remain default-off; the
+implemented proxy-purification subset below is part of the default QF_UFLRA
+path because rejecting those arithmetic atoms was the previous user-visible
+gap:
 
 1. Add a documented combination-interface skeleton that can list shared terms by
    sort and identify equality atoms over those terms.
@@ -224,36 +241,54 @@ Limitations:
 - no explanations or learned clauses;
 - no mixed-theory model object.
 
-### Implemented Subset: Separable Mixed QF_UFLRA Final Checks
+### Implemented Subset: Partial Mixed QF_UFLRA Final Checks
 
-This subset is a conservative bridge, not a Nelson-Oppen algorithm. It exists so
-the branch can execute simple QF_UFLRA scripts without silently treating one
-theory's atoms as Boolean noise.
+This subset is a conservative bridge, not the full Nelson-Oppen algorithm. It
+exists so the branch can execute simple QF_UFLRA scripts without silently
+treating one theory's atoms as Boolean noise.
 
 - **Data structures:** no new cross-theory ownership type is introduced. The
   coordinator reuses `BooleanClausifier::TheoryAtom`, `PreparedFlatTheory`,
-  `PreparedLraTheory`, `AssignedTheoryAtom`, and ordinary SAT clauses.
+  `PreparedLraTheory`, `AssignedTheoryAtom`, and ordinary SAT clauses. The
+  purification pass uses an SMT-local map from original Real-valued UF
+  application `TermId` to internal proxy `TermId`.
 - **Owner:** `smt/check_sat.cpp`, because it owns the Boolean abstraction and
   solver dispatch.
-- **Accepted shape:** EUF atoms over uninterpreted or Boolean terms, plus LRA
-  atoms over linear Real terms, as long as no atom crosses the theory boundary.
-- **Rejected shape:** arithmetic atoms containing uninterpreted applications,
-  and EUF predicate/equality atoms containing Real-sorted subterms.
+- **Accepted shape:** EUF atoms over uninterpreted or Boolean terms, LRA atoms
+  over linear Real terms, and arithmetic atoms containing Real-valued UF
+  applications after purification.
+- **Purification:** after Real equality lowering, each Real-valued UF
+  application in an arithmetic term is replaced by a fresh `$primo_no_proxy_*`
+  Real constant. The pass appends a Real equality between that proxy and the
+  original UF application. Mixed dispatch treats that equality as EUF-owned
+  because it contains the UF application.
+- **Interface equality check:** for each SAT assignment, the EUF closure is
+  inspected for implied equalities between Real proxy constants that also occur
+  in LRA atoms. Those equalities are asserted into an augmented LRA check. A
+  conflict learns a broad assignment-blocking clause over the current EUF and
+  LRA theory literals.
+- **Rejected shape:** EUF predicate atoms and non-definition equality atoms
+  containing Real-sorted subterms.
 - **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
-  EUF assignment and the LRA assignment independently. Add the first conflict
-  clause found and continue; return `sat` only when both checks accept the same
-  Boolean assignment.
+  EUF assignment and the LRA assignment. Add the first per-theory conflict
+  clause found and continue. If both individual checks pass, run the augmented
+  LRA check with EUF-implied proxy equalities. Return `sat` only when all three
+  checks accept the same Boolean assignment.
 - **Model status:** mixed `get-model` is `Unsupported`. The pure QF_UF and pure
   QF_LRA model printers are not composed.
 - **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
   mix, EUF-conflict learning, LRA-conflict learning, unsupported mixed
-  `get-model`, rejection of Real arguments to EUF predicates, and rejection of
-  Real-valued UF applications in arithmetic atoms.
+  `get-model`, rejection of Real arguments to EUF predicates, purification of
+  Real-valued UF applications in arithmetic atoms, and an EUF-implied proxy
+  equality that makes the LRA side inconsistent.
 
 Limitations:
 
-- no purification;
-- no shared-variable equality propagation;
+- purification is limited to Real-valued UF applications in arithmetic atoms;
+- shared-variable equality propagation is one-way, from EUF proxy equalities
+  into an augmented LRA final check;
+- cross-theory conflicts use broad current-assignment blocking clauses, not
+  minimal Nelson-Oppen explanations;
 - no missing equality atom creation;
 - no model-equality guesses from de Moura/Bjorner;
 - no arrangement enumeration for non-convex combinations;

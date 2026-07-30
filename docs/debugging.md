@@ -282,11 +282,24 @@ post-preprocessing assertions, not evidence that combination is enabled:
 - `:no.purification.euf-real-terms`
 - `:no.purification.arithmetic-uf-apps`
 
-The purification counters identify mixed-atom blockers for future
-Nelson-Oppen work: Real-sorted subterms inside EUF atoms and uninterpreted
-applications inside arithmetic atoms. They do not mean that Primo purified the
-formula, created proxy constants, shared equalities, or enabled mixed-theory
-model construction.
+The diagnostic-only purification-site counters above identify mixed-atom
+blockers: Real-sorted subterms inside EUF atoms and uninterpreted applications
+inside arithmetic atoms.
+
+The default QF_UFLRA path has its own runnable partial-combination counters:
+
+- `:no.purification.definitions`
+- `:no.purification.reused-applications`
+- `:no.interface.shared-real-terms`
+- `:no.interface.equalities-propagated`
+- `:no.interface.conflicts`
+
+These count internal proxy definitions for Real-valued UF applications in
+arithmetic atoms, repeated uses of an already-created proxy, Real proxy terms
+visible to both EUF and LRA, EUF-implied proxy equalities checked by LRA, and
+current-assignment interface conflicts. `:no.interface.conflicts` currently
+learns a broad blocking clause over the assigned theory atoms, not a minimal
+Nelson-Oppen explanation.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are

@@ -12395,6 +12395,62 @@
       },
       "evidence_status": "current",
       "followups": "This is a smoke gate for the separable bridge only. Full Nelson-Oppen work still needs purification, shared equality atom creation/propagation, mixed model reconstruction, and a stronger mixed-theory fuzz/mutation campaign once those mechanisms exist."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-purified-smoke-2f44727-dirty",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz",
+      "scope": "Local merge-gate fuzz for the first runnable Nelson-Oppen-style QF_UFLRA subset: Real-valued UF applications in arithmetic atoms are purified to internal Real proxies, EUF owns the proxy definitions, and EUF-implied proxy equalities are checked by LRA under the current SAT assignment.",
+      "commit": "2f44727-dirty working tree on nelson-oppen-closure-methods; source/docs/tests/scripts committed adjacent to this run-log entry",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo (Release, CaDiCaL cadical-3.0.0-7b99c07)",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260731 --timeout 5 --shape purified --out fuzz-results/qf_uflra-purified-2f44727-dirty",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape purified",
+        "logic": "QF_UFLRA",
+        "seed": 20260731,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": "generated under fuzz-results/qf_uflra-purified-2f44727-dirty/cases/"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uflra-purified-2f44727-dirty/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uflra-purified-2f44727-dirty/cases/",
+        "bugs": null
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 787,
+        "unsat": 213
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers purification of Real-valued UF applications, EUF-implied proxy equality conflicts against LRA, and the same conflict under --euf-engine=lazy so proxy equality sharing is not skipped by an option.",
+        "sanity": "20-case purified-shape sanity run with seed 20260730 also passed before the 1000-case gate."
+      },
+      "evidence_status": "current",
+      "followups": "This is a local merge gate for the implemented partial subset, not a campaign-tier validation for full Nelson-Oppen. Remaining work: Real terms in EUF predicates/non-definition atoms, fine-grained cross-theory explanations, bidirectional sharing, mixed model reconstruction, and SLURM-scale mixed-theory fuzzing."
     }
   ]
 }
