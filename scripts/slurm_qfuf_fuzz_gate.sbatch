@@ -89,6 +89,27 @@ MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
 cd "$WORKDIR"
 mkdir -p logs "$OUT_ROOT"
 
+# The provisioned tooling (fuzzsmt, z3, cvc5) lives here. Put it on PATH
+# inside the job rather than relying on --export=ALL to carry it in: that
+# inherits the *submitting* shell's PATH, so a gate submitted over
+# `ssh host bash -s` silently found no fuzzer while the same job submitted
+# from an interactive shell ran fine. Job 117585 reported COMPLETED with
+# SKIPPED_MISSING_FUZZER as its only summary row -- a green gate that tested
+# nothing.
+PATH="$WORKDIR/contrib/local/bin:$PATH"
+export PATH
+
+# And fail loudly rather than skipping: fuzz_external.py treats a missing
+# fuzzer as "skip this stage" and exits 0, which is the right behaviour for a
+# local smoke run and exactly the wrong one for a gate whose entire purpose
+# is to have run.
+for required in fuzzsmt z3; do
+  if ! command -v "$required" >/dev/null 2>&1; then
+    echo "required tool '$required' not found on PATH; refusing to report a gate that ran nothing" >&2
+    exit 2
+  fi
+done
+
 opfuzz_start=$FUZZSMT_SHARDS
 yinyang_start=$((opfuzz_start + OPFUZZ_TASKS))
 total_tasks=$((yinyang_start + YINYANG_SHARDS))
