@@ -945,6 +945,64 @@ void push_pop_restores_an_eliminated_row() {
          tableau.assignment(fixture.s));
 }
 
+void push_pop_restores_a_frozen_row_whose_term_later_became_basic() {
+  // The subtlest state a frozen row can reach. s = x + y is fixed, so x is
+  // pivoted in and its row (x = s - y) is frozen. A *later*, ordinary repair
+  // pivot then makes y basic -- and because x is out of occurs_in_, its row
+  // is not rewritten, so it now mentions a basic variable and is no longer in
+  // "basic = non-basic terms" normal form.
+  //
+  // That is fine while frozen (nothing reads the row), and pop() puts it
+  // right in the only order it can: the deactivation entry was pushed after
+  // the elimination pivot and before the repair pivot, so by the time it is
+  // undone the repair pivot already has been, and normal form is back.
+  LraTableau tableau;
+  tableau.set_fixed_elimination(true);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  const LraVarId t = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(t, {{y, Rational(1)}, {z, Rational(1)}});
+  tableau.mark_boundable(s);
+  tableau.mark_boundable(t);
+  tableau.mark_boundable(z);
+
+  const std::size_t checkpoint = tableau.push();
+  assert(!tableau.assert_upper(s, rat(0), Lit{1}).has_value());
+  assert(!tableau.assert_lower(s, rat(0), Lit{2}).has_value());
+  // x occurs in one row against y's two, so the Markowitz tie-break picks it.
+  assert(tableau.eliminated_row_count() == 1);
+  assert(tableau.is_basic(x));
+  assert(!tableau.is_row_active(x));
+
+  // An ordinary repair that has to bring y into the basis.
+  assert(!tableau.assert_upper(z, rat(0), Lit{3}).has_value());
+  assert(!tableau.assert_lower(t, rat(10), Lit{4}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.is_basic(y));
+  assert(tableau.assignment(y) + tableau.assignment(z) == tableau.assignment(t));
+
+  tableau.pop(checkpoint);
+  assert(tableau.is_basic(s));
+  assert(tableau.is_basic(t));
+  assert(!tableau.is_basic(x));
+  assert(!tableau.is_basic(y));
+  assert(tableau.is_row_active(x));
+  for (const LraVarId var : {x, y, z, s, t}) {
+    assert(tableau.assignment(var) == rat(0));
+  }
+  // The restored tableau is not merely flag-correct, it works: both rows
+  // propagate again, and the same sequence reaches the same verdict.
+  assert(!tableau.assert_upper(s, rat(0), Lit{1}).has_value());
+  assert(!tableau.assert_lower(s, rat(0), Lit{2}).has_value());
+  assert(!tableau.assert_upper(z, rat(0), Lit{3}).has_value());
+  assert(!tableau.assert_lower(t, rat(10), Lit{4}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(y) + tableau.assignment(z) == tableau.assignment(t));
+}
+
 void elimination_agrees_with_the_ablation_on_multi_pivot_scenarios() {
   // Same scenarios sparse_matches_bland_on_multi_pivot_scenarios covers,
   // re-run with an equality fixing the shared slack so elimination fires,
@@ -1032,6 +1090,7 @@ int main() {
   freezing_can_be_ablated_without_disabling_the_elimination_pivot();
   conflict_is_still_found_through_an_eliminated_row();
   push_pop_restores_an_eliminated_row();
+  push_pop_restores_a_frozen_row_whose_term_later_became_basic();
   elimination_agrees_with_the_ablation_on_multi_pivot_scenarios();
   return 0;
 }

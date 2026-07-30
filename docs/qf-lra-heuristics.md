@@ -442,9 +442,10 @@ single instance.
 
 ### H7 -- Fixed-variable elimination (equality slacks)
 
-**Status: designed 2026-07-29 from the scrambled-competition evaluation, not
-implemented.** This is the first item in this note whose evidence comes from a
-set Primo was never tuned against.
+**Status: designed 2026-07-29 from the scrambled-competition evaluation,
+implemented 2026-07-30 (`eed259c`, `8668ada`); promotion pending the 595-file
+scrambled run.** This is the first item in this note whose evidence comes from
+a set Primo was never tuned against.
 
 **Where it comes from.** On the 595-file scrambled QF_LRA competition set at a
 60s timeout, Primo solves 373 against z3's 429 and cvc5's 351 -- ahead of cvc5,
@@ -483,29 +484,83 @@ on `scrambled126657` it needs **9 decisions and 4 conflicts** where Primo makes
 141,124 decisions and 321M pivot term-operations. Profiling Primo there puts
 86% of runtime in `LraTableau::pivot`, averaging 431 rows rewritten per pivot.
 
-**Design.**
+**Design, as implemented (commit `eed259c`).** The mechanism turned out to be
+much smaller than the design sketch above suggested, because of one property
+the tableau already had: **`can_enter()` already rejects a fixed variable.**
+With `lower == upper == assignment`, every branch of its `assignment < upper` /
+`assignment > lower` test is false. A fixed *non-basic* variable is therefore
+already completely inert -- it is never selected to enter, so its column never
+moves. Only fixed *basic* variables churn, and the fix is to stop them being
+basic.
 
-- **Fixed-variable elimination.** When `assert_upper`/`assert_lower` make a
-  variable's bounds equal, that variable is a constant for the rest of the
-  current search level. Substitute it out of the rows that mention it, and drop
-  its row if it is basic, restoring on `pop()` through the existing trail. This
-  directly attacks the 431-rows-per-pivot figure, because the eliminated rows
-  are the ones fill-in keeps re-touching.
-- **Offset equalities (`x - y = c`) as a follow-on**, matching z3's
-  `arith-offset-eqs`: merge the two columns rather than carrying both. Bigger
-  and better attempted only once fixed-variable elimination is measured, since
-  the two overlap.
+So `assert_upper`/`assert_lower` now do exactly this when they make a basic
+variable's bounds coincide:
 
-**Risk.** Higher than H1-H3: unlike those, this changes what is *in* the
-tableau during search, so it interacts with the trail, with conflict
-explanation (an eliminated variable's bound reason must still reach the Farkas
-certificate), and with propagation. It is the first item here that could
-produce a wrong answer rather than a slow one, and needs its invariants tested
-accordingly.
+1. **Pivot it out**, choosing an entering variable from its row, then
+   `update()` it to its fixed value -- which is mandatory anyway, since
+   non-basic variables must always sit within their bounds, and is precisely
+   what makes it inert. No substitution pass and no constant column are needed:
+   the new basic variable's dependence on the now-inert fixed variable *is* the
+   constant term.
+2. **Prefer an entering candidate with no bounds**, then the Markowitz
+   occurrence count, then a `+/-1` coefficient. An unbounded basic variable's
+   row can never be violated, so it never demands another repair pivot.
+3. **Freeze that row** when its variable is unbounded: drop it from
+   `occurs_in_`, which is what removes it from `update()`'s and `check()`'s
+   scans. Trailed, so `pop()` restores it.
+
+Step 3 is where all the risk is, and it is separately ablatable
+(`--no-lra-freeze-eliminated-rows`) for exactly that reason -- see the
+falsifier outcome below.
+
+**Offset equalities (`x - y = c`) remain a follow-on**, matching z3's
+`arith-offset-eqs`: merge the two columns rather than carrying both. Better
+attempted only once fixed-variable elimination is measured, since the two
+overlap.
+
+**Risk, and where it actually lives.** The elimination pivot is a pure change
+of representation -- the same thing `check()` does on every repair -- so it
+cannot produce a wrong answer. `build_conflict` needs no change either: it
+takes each row term's bound reason, so a fixed variable appearing in a row
+contributes the asserting literal of the equality that fixed it, which is
+exactly the right Farkas antecedent.
+
+Freezing is different, and its soundness reduces to a single condition: **only
+freeze a row whose basic variable has no bounds and can never acquire any.**
+"Unbounded right now" is not sufficient. A frozen row is deliberately dropped
+out of the machinery that maintains it, so its own assignment stops tracking
+its terms and its terms are no longer kept non-basic; a bound asserted against
+it later would be tested against a stale value. Only the caller knows which
+variables can ever be bounded -- it owns the atom-to-tableau-variable map -- so
+`LraTableau::mark_boundable()` makes it say so, and `check_sat.cpp` marks every
+`PreparedAtom::bound_var`. An assert against a frozen row throws rather than
+answering from a stale assignment.
 
 **Falsifier.** If eliminating fixed variables does not reduce
 `:lra.pivot-row-updates` proportionally to the share of rows eliminated, then
 the fill-in is not concentrated in those rows and the diagnosis above is wrong.
+
+**Falsifier outcome: did not fire for the elimination, fired for the
+freezing** -- and the two have to be judged separately, which is why they got
+separate switches. Local paired A/B (workstation, 120s cap, `--stats`):
+
+| instance | H7 off | H7 on | term-ops off -> on | rows frozen |
+|---|---|---|---|---|
+| `latendresse/ecoliFBAyicesTest-500` | 0.8s | **0.1s** | 8.66M -> 0.68M | **0** |
+| `scrambled335326` | 51.0s | **19.4s** | 195M -> 21M | 716 |
+| `scrambled126657` | timeout | timeout | 492M -> 40M in the same 120s | 3,950 |
+| `scrambled412738` | timeout | timeout | 238M -> 140M | 1,011 |
+| `scrambled102007` | timeout | timeout | 184M -> 153M | 1,158 |
+
+The elimination is emphatically not falsified: an 8x and a 2.6x, and an order
+of magnitude less pivot work on the instances that still time out. But note
+the first row -- **8x with zero rows frozen.** Freezing fires on 0.5-3% of
+fixed variables, and ablating it alone on `scrambled335326` leaves
+`:lra.pivot-term-ops` at 21.9M against 21.2M, a 3% difference that is inside
+this workstation's own wall-clock spread (19.5-25.7s across repeats of an
+identical binary). The win is the pivot; the freezing is close to free-floating
+while carrying the entire soundness burden, so it is being decided on the
+595-file scrambled set rather than on workstation timings of its own order.
 
 ### H4 -- Batched bound assertion (deferred `update()`)
 
