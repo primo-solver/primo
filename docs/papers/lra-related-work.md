@@ -216,6 +216,25 @@ single algorithm choice. Istvan Maros, "Computational Techniques of the
 Simplex Method" (Springer, 2003) is the standard book-length reference for
 the same territory if a deeper dive is ever warranted.
 
+**Exact-arithmetic factorization and coefficient growth.** The reason a
+factored basis is not obviously a win in exact arithmetic: LU factors suffer
+coefficient growth, so entries become large rationals and a sparser
+representation can still lose to a denser one. Integer-preserving
+(Bareiss-style) factorization exists to address exactly this. Relevant if D4
+in [](../qf-lra-heuristics.md) section 6.5 is ever pursued:
+
+- "Expediting exact linear programming solvers via integer preserving
+  factorization", Operations Research Letters (2025) --
+  <https://www.sciencedirect.com/science/article/abs/pii/S0167637725001646>.
+  Reports SoPlex with faster exact integer factorizations at 3.33x (average)
+  and 1.60x (geometric mean) over baseline. Not read in full; found while
+  checking whether refactorization transfers.
+- Applegate, Cook, Dash, Espinoza, "Exact solutions to linear programming
+  problems" -- <https://www.math.uwaterloo.ca/~bico/papers/exact_simplex.pdf>.
+  The QSopt_ex approach: use floating point for speed and confine exact
+  rational work to what is needed for correctness. Same philosophy as
+  Monniaux's CAV 2009 contribution, from the LP side.
+
 **Why LU refactorization does not transfer to Primo's representation.** In the
 *revised* simplex method the basis is held as an LU factorization that is
 updated per pivot (Forrest-Tomlin, Bartels-Golub); those updates accumulate

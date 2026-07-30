@@ -1017,13 +1017,44 @@ what it costs on instances where it finds nothing, before any estimate of the
 win is worth anything.
 
 **D4. Revised simplex with an LU-factored basis.** The representation change
-that the rejected entry below turned out to require. It is what every serious
-LP code does, and what makes refactorization and Markowitz-ordered
-factorization meaningful at all. King's thesis records that no
-Simplex-for-DPLL(T) implementation does it -- which is either a real
-opportunity or a sign that exact arithmetic makes it unattractive, and this
-note does not know which. Resolving *that* question is the cheap first step,
-not building it.
+the rejected entry below turned out to require, and the hardest item here.
+King's thesis records that no Simplex-for-DPLL(T) implementation does it.
+
+*Scope.* Not a feature but a change of the data structure the class is built
+on. `LraTableau` is ~1,680 lines with 18 internal uses of `rows_` and 29 of
+`occurs_in_`; in revised simplex **neither concept exists**. A row is
+materialised on demand as `e_i^T B^-1 N` (BTRAN plus a pass over N), a column
+as `B^-1 A_j` (FTRAN). Consequences, which differ per subsystem:
+
+- `update()` *improves* -- walking `occurs_in_` to update dependent basic
+  variables is exactly an FTRAN.
+- `build_conflict` is fine: one BTRAN per conflict to materialise the violated
+  row for the Farkas certificate.
+- **Row-based bound propagation breaks entirely** -- it iterates
+  `occurs_in(var)` and then reads rows, and neither survives. Note this
+  collides with D1.
+- **SOI breaks** -- its objective row is explicit and incrementally maintained.
+- **push/pop is the crux.** The trail snapshots `old_basic_row` and
+  `old_other_rows` per pivot; there is no un-applying an LU update, so a pop
+  means refactorizing. LP solves one problem to optimality, DPLL(T) pops
+  thousands of times. One mercy: asserting a bound does not change `B` (bounds
+  are on variables, not rows), so the basis matrix is stable across most of
+  the search.
+
+*The likely killer is arithmetic, not architecture.* In floating point LU
+entries stay bounded; in **exact rational** arithmetic LU factors suffer
+coefficient growth, so a sparser factored representation can still lose to a
+denser explicit tableau because every entry costs more. That this is real and
+studied is evidenced by integer-preserving (Bareiss-style) factorization and
+SPEX existing at all -- see "Expediting exact linear programming solvers via
+integer preserving factorization" (Operations Research Letters, 2025). This,
+rather than oversight, is the plausible reason nobody in SMT does it.
+
+*Cheap first step, which is not building it.* Take a prepared tableau from one
+of the four profiled instances, compute an exact LU with a Markowitz ordering
+offline (sympy, or SPEX), and compare `nnz x entry bit-size` against the
+explicit tableau's. About a day, touches no solver code, and either kills D4
+or makes it credible enough to justify the rewrite.
 
 **Rejected: periodic refactorization to discard accumulated fill-in**
 (2026-07-30, before implementation). In *revised* simplex the basis is an LU
