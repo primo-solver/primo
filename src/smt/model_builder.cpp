@@ -81,6 +81,7 @@ class QfUfModelBuilder {
       add_assignment(assignment);
     }
     closure_.saturate();
+    index_real_values();
   }
 
   std::string build() {
@@ -120,7 +121,9 @@ class QfUfModelBuilder {
  private:
   bool skip_symbol(const core::Symbol& symbol) const {
     return is_internal_symbol(symbol) ||
-           (options_.skip_real_symbols && symbol.result_sort == terms_.symbols().real_sort());
+           (options_.skip_real_symbols && symbol.result_sort == terms_.symbols().real_sort()) ||
+           (options_.skip_real_constants && symbol.kind == core::SymbolKind::Constant &&
+            symbol.result_sort == terms_.symbols().real_sort());
   }
 
   void add_all_relevant_terms() {
@@ -165,7 +168,7 @@ class QfUfModelBuilder {
         continue;
       }
       if ((term.kind == core::TermKind::Constant || term.kind == core::TermKind::Application) &&
-          term.sort != terms_.symbols().bool_sort()) {
+          term.sort != terms_.symbols().real_sort() && term.sort != terms_.symbols().bool_sort()) {
         (void)value_name(closure_.class_representative(term.id));
       }
     }
@@ -227,6 +230,18 @@ class QfUfModelBuilder {
     return false;
   }
 
+  void index_real_values() {
+    if (options_.real_values == nullptr) {
+      return;
+    }
+    for (const auto& [term, value] : *options_.real_values) {
+      if (terms_.get(term).sort != terms_.symbols().real_sort()) {
+        continue;
+      }
+      real_values_by_representative_.emplace(closure_.class_representative(term), value);
+    }
+  }
+
   std::string term_value(core::TermId term) {
     const core::Term& node = terms_.get(term);
     if (node.sort == terms_.symbols().bool_sort()) {
@@ -234,8 +249,14 @@ class QfUfModelBuilder {
     }
     if (node.sort == terms_.symbols().real_sort() && options_.real_values != nullptr) {
       const auto found = options_.real_values->find(term);
-      return smtlib_rational(found == options_.real_values->end() ? util::Rational(0)
-                                                                  : found->second);
+      if (found != options_.real_values->end()) {
+        return smtlib_rational(found->second);
+      }
+      const auto representative_found =
+          real_values_by_representative_.find(closure_.class_representative(term));
+      return smtlib_rational(representative_found == real_values_by_representative_.end()
+                                 ? util::Rational(0)
+                                 : representative_found->second);
     }
     return value_name(closure_.class_representative(term));
   }
@@ -290,6 +311,9 @@ class QfUfModelBuilder {
     if (symbol.result_sort == terms_.symbols().bool_sort()) {
       return "false";
     }
+    if (symbol.result_sort == terms_.symbols().real_sort()) {
+      return "0";
+    }
     return default_value(symbol.result_sort);
   }
 
@@ -313,6 +337,7 @@ class QfUfModelBuilder {
   std::unordered_map<core::SortId, std::unordered_map<core::TermId, std::string>> values_by_sort_;
   std::unordered_map<core::SortId, std::string> default_value_by_sort_;
   std::unordered_map<core::SortId, std::size_t> next_value_index_by_sort_;
+  std::unordered_map<core::TermId, util::Rational> real_values_by_representative_;
 };
 
 }  // namespace

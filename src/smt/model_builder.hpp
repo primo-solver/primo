@@ -19,6 +19,7 @@ struct TheoryModelAssignment {
 struct QfUfModelBuildOptions {
   bool include_model_wrapper = true;
   bool skip_real_symbols = false;
+  bool skip_real_constants = false;
   const std::unordered_map<core::TermId, util::Rational>* real_values = nullptr;
 };
 

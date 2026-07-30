@@ -96,14 +96,14 @@ check. If either augmented check conflicts, the solver learns a broad clause
 blocking the current theory assignment and continues.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
-would require unsupported theories or Real-valued UF result models. Mixed
-`:produce-models true` supports UF symbols with Real arguments, including
-non-constant arithmetic arguments after purification, but still rejects UF
-symbols whose result sort is `Real`. The model path augments the LRA
-reconstruction with EUF-implied Real-constant equalities and strict
-disequalities separating EUF-distinct Real constants, including Real constants
-that occur only as UF arguments, then gives those concrete Real values to the UF
-model table printer. The coordinator publishes:
+would require unsupported theories. Mixed `:produce-models true` supports UF
+symbols with Real arguments, including non-constant arithmetic arguments after
+purification, and UF symbols whose result sort is `Real`. The model path
+augments the LRA reconstruction with EUF-implied Real-constant equalities and
+strict disequalities separating EUF-distinct Real constants, including Real
+constants that occur only as UF arguments, then gives those concrete Real values
+to the UF model table printer for both guards and Real-valued results. The
+coordinator publishes:
 
 - `:solver.qf-uflra`
 - `:no.mixed.euf-atoms`
@@ -305,17 +305,19 @@ treating one theory's atoms as Boolean noise.
   first adds EUF-implied Real-constant equalities to the LRA model tableau, then
   greedily adds strict order atoms to separate Real constants that are distinct
   in the EUF arrangement and not forced equal by LRA. The resulting concrete
-  Real values are used when printing UF tables for symbols with Real arguments.
-  UF symbols returning `Real` still return `Unsupported`.
+  Real values are used when printing UF tables for symbols with Real arguments
+  and for Real-valued UF application results. Real-valued function tables use
+  `0` as their default result and add entries for concrete applications whose
+  LRA proxy value differs from that default.
 - **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
   mix, EUF-conflict learning, LRA-conflict learning, separable mixed
   `get-model`, shared-Real predicate `get-model` with a separating LRA repair,
-  shared-Real predicate `get-model` when LRA forces equality, rejection of mixed
-  models for Real-valued UF applications, purification of non-constant Real
-  arguments to EUF predicates with proxy reuse and model printing, purification
-  of Real-valued UF applications in arithmetic atoms, an EUF-implied proxy
-  equality that makes the LRA side inconsistent, and an LRA-implied shared
-  Real-constant equality that makes the EUF side inconsistent.
+  shared-Real predicate `get-model` when LRA forces equality, Real-valued UF
+  application models, purification of non-constant Real arguments to EUF
+  predicates with proxy reuse and model printing, purification of Real-valued UF
+  applications in arithmetic atoms, an EUF-implied proxy equality that makes the
+  LRA side inconsistent, and an LRA-implied shared Real-constant equality that
+  makes the EUF side inconsistent.
 
 Limitations:
 

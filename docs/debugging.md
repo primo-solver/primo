@@ -325,10 +325,10 @@ followed by a parenthesized `model`.
 The mixed QF_UFLRA path additionally supports a narrow Real-argument model subset:
 Primo composes the QF_UF model body with the nullary-Real QF_LRA definitions,
 and UF symbols may take Real constants or purified non-constant Real terms as
-arguments. Before printing, the model path augments LRA with EUF-implied
-Real-constant equalities and strict separations for Real constants that are
-distinct in the EUF arrangement; the resulting concrete Real values are used in
-UF function-table guards. Real-valued UF results remain unsupported.
+arguments or return `Real` values. Before printing, the model path augments LRA
+with EUF-implied Real-constant equalities and strict separations for Real
+constants that are distinct in the EUF arrangement; the resulting concrete Real
+values are used in UF function-table guards and Real-valued UF results.
 
 Use [Dolmen](https://ceur-ws.org/Vol-3429/short9.pdf) as the independent
 model-format and assertion validator. Dolmen's model-validation interface uses a
@@ -352,15 +352,16 @@ repository.
 Current limitations:
 
 - only pure `QF_UF`, pure Boolean, pure nullary-Real `QF_LRA`, separable
-  QF_UFLRA, and Real-argument QF_UFLRA model values are printed;
+  QF_UFLRA, Real-argument QF_UFLRA values, and Real-valued QF_UFLRA UF
+  application results are printed;
 - unsupported, unknown, and unsat results do not print a model;
 - QF_UF preprocessing reconstruction is limited to Boolean/forced unit facts,
   solved-constant substitutions, and ground-unit substitutions;
 - QF_LRA preprocessing reconstruction is limited to Real equalities recorded by
   solve-eqs/Gaussian elimination;
-- no array, Real-valued UF result, Nelson-Oppen model-equality guess, or future
-  preprocessing rewrite is model-reconstructed unless it emits explicit
-  reconstruction assignments and the active model builder consumes them.
+- no array, Nelson-Oppen model-equality guess, or future preprocessing rewrite
+  is model-reconstructed unless it emits explicit reconstruction assignments and
+  the active model builder consumes them.
 
 ## Fuzzing and Reduction
 

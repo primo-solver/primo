@@ -12556,11 +12556,11 @@
         "unsat": 308
       },
       "verification": {
-        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers LRA-implied Real equality causing an EUF conflict, an unentailed equality remaining SAT, non-constant Real predicate arguments still rejected, and the existing EUF-to-LRA proxy case.",
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers LRA-implied Real equality causing an EUF conflict, an unentailed equality remaining SAT, the then-current unsupported non-constant Real predicate-argument case, and the existing EUF-to-LRA proxy case.",
         "local_gates": "make check, make docs, make lint, make asan-test, clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp, git diff --check, and 50-case shared-real sanity fuzz with seed 20260730 all passed before this entry."
       },
-      "evidence_status": "current",
-      "followups": "This is still final-check-only equality sharing with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, non-constant Real-term purification in EUF atoms, shared-Real model reconstruction, and SLURM-scale mixed fuzzing remain future work."
+      "evidence_status": "superseded-by-2026-07-30-qf-uflra-real-valued-uf-result-models",
+      "followups": "This is still final-check-only equality sharing with broad assignment-blocking clauses. Later 2026-07-30 entries add non-constant Real-term purification, shared-Real model reconstruction, and Real-valued UF result models. Missing equality atom creation, fine-grained Nelson-Oppen explanations, and SLURM-scale mixed fuzzing remain open."
     },
     {
       "id": "2026-07-30-qf-uflra-real-argument-models-d8005a6",
@@ -12628,11 +12628,11 @@
         "model_validation_timeout": 0
       },
       "verification": {
-        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers shared Real predicate get-model with a separating LRA repair, shared Real predicate get-model when LRA forces equality, continued rejection of Real-valued UF result models, and continued rejection of non-constant Real arguments in EUF atoms.",
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers shared Real predicate get-model with a separating LRA repair, shared Real predicate get-model when LRA forces equality, and the then-current unsupported Real-valued UF result and non-constant Real argument cases.",
         "local_gates": "make check, make docs, make lint, make asan-test, clang-tidy -p build src/smt/check_sat.cpp src/smt/model_builder.cpp tests/unit/qf_lra_solver_tests.cpp, git diff --check, solver_efficiency_snapshot.py, and Primo document-critic stale-claim scan all passed before this entry. A pre-commit Dolmen run found 17 model errors in 200 generated cases; the committed fix reran the same class with 0 model errors."
       },
-      "evidence_status": "current",
-      "followups": "This remains a model-reconstruction milestone, not full Nelson-Oppen. Equality sharing is still final-check-only with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, non-constant Real-term purification in EUF atoms, Real-valued UF result models, backtracking arrangement search for model separations, model-guided equality guesses from de Moura/Bjorner, and SLURM-scale mixed fuzzing remain future work."
+      "evidence_status": "superseded-by-2026-07-30-qf-uflra-real-valued-uf-result-models",
+      "followups": "This remains a model-reconstruction milestone, not full Nelson-Oppen. Later 2026-07-30 entries add non-constant Real-term purification and Real-valued UF result models. Equality sharing is still final-check-only with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, backtracking arrangement search for model separations, model-guided equality guesses from de Moura/Bjorner, and SLURM-scale mixed fuzzing remain open."
     },
     {
       "id": "2026-07-30-qf-uflra-nonconstant-real-argument-purification",
@@ -12708,8 +12708,81 @@
         "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers acceptance of predicates over arithmetic Real arguments, proxy reuse, LRA-implied equality from a purified Real argument causing an EUF conflict, model printing with a purified Real argument, and the Boolean UF model-table regression for a true Real literal argument.",
         "local_gates": "make check, make docs, make lint, make asan-test, python3 -m json.tool docs/run-log.json, git diff --check, whole-tree clang-tidy over 63 tracked non-generated .cpp files with -p build, and solver_efficiency_snapshot.py all passed before commit."
       },
+      "evidence_status": "superseded-by-2026-07-30-qf-uflra-real-valued-uf-result-models",
+      "followups": "This is still final-check-only Nelson-Oppen-style equality sharing with broad assignment-blocking clauses. The next 2026-07-30 entry adds Real-valued UF result models. Missing equality atom creation, fine-grained Nelson-Oppen explanations, model-guided equality guesses from de Moura/Bjorner, backtracking arrangement search for model separations, and SLURM-scale mixed fuzzing remain open."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-real-valued-uf-result-models",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local merge-gate answer fuzz plus Dolmen model validation for mixed QF_UFLRA get-model support where UF symbols return Real. The model builder now prints Real-valued UF function tables from LRA proxy values indexed through the EUF closure representative, while nullary Real constants remain owned by the LRA model fragment.",
+      "commit": "pre-commit worktree based on f3c07a5 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: f3c07a5-dirty; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260735 --timeout 5 --shape purified --out fuzz-results/qf_uflra-real-result-model-final",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uf-preprocess=off --solver-arg=--no-solved-constant-substitution --timeout 5 --dolmen-timeout 10 --limit 200 --out results/qf_uflra-real-result-model-validation-final fuzz-results/qf_uflra-real-result-model-final/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape purified",
+        "logic": "QF_UFLRA",
+        "seed": 20260735,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "model_validation_limit": 200,
+        "manifest": "generated under fuzz-results/qf_uflra-real-result-model-final/cases/"
+      },
+      "artifacts": {
+        "answer_summary": "fuzz-results/qf_uflra-real-result-model-final/summary.csv",
+        "answer_log": "fuzz-results/qf_uflra-real-result-model-final.log",
+        "generated_inputs": "fuzz-results/qf_uflra-real-result-model-final/cases/",
+        "model_validation_summary": "results/qf_uflra-real-result-model-validation-final/summary.csv",
+        "model_validation_artifacts": "results/qf_uflra-real-result-model-validation-final/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 780,
+        "answer_fuzz_unsat": 220,
+        "model_validation_total": 200,
+        "model_validation_pass": 150,
+        "model_validation_not_sat": 50,
+        "model_validation_model_error": 0,
+        "model_validation_solver_error": 0,
+        "model_validation_timeout": 0
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers Real-valued UF application model printing and a Real-valued UF equality whose LRA proxy values must be reflected in the printed table.",
+        "local_gates": "make check, make docs, make lint, make asan-test, python3 -m json.tool docs/run-log.json, git diff --check, clang-tidy -p build src/smt/check_sat.cpp src/smt/model_builder.cpp tests/unit/qf_lra_solver_tests.cpp, clang-tidy -p build -checks='-*,misc-include-cleaner' on the same touched C++ files, whole-tree clang-tidy over 63 tracked non-generated .cpp files with -p build, and solver_efficiency_snapshot.py all passed before commit."
+      },
       "evidence_status": "current",
-      "followups": "This is still final-check-only Nelson-Oppen-style equality sharing with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, Real-valued UF result models, model-guided equality guesses from de Moura/Bjorner, backtracking arrangement search for model separations, and SLURM-scale mixed fuzzing remain future work."
+      "followups": "This remains final-check-only Nelson-Oppen-style equality sharing with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, model-guided equality guesses from de Moura/Bjorner, backtracking arrangement search for model separations, and SLURM-scale mixed fuzzing remain future work."
     }
   ]
 }

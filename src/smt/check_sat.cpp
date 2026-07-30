@@ -4587,18 +4587,6 @@ bool contains_nonconstant_real_sorted_term(const core::TermManager& terms, core:
   return false;
 }
 
-bool mixed_model_supported_by_uf_signature(const core::TermManager& terms) {
-  for (const core::Symbol& symbol : terms.symbols().symbols()) {
-    if (symbol.name.starts_with("$primo_") || symbol.kind == core::SymbolKind::Constant) {
-      continue;
-    }
-    if (symbol.result_sort == terms.symbols().real_sort()) {
-      return false;
-    }
-  }
-  return true;
-}
-
 void require_supported_mixed_theory_atom(const core::TermManager& terms,
                                          const BooleanClausifier::TheoryAtom& atom) {
   if (is_euf_theory_atom(terms, atom.term)) {
@@ -6351,14 +6339,6 @@ CheckSatOutcome solve_qf_uf_lra(
   }
   const std::vector<core::TermId> shared_real_terms =
       shared_real_constants(terms, euf_atoms, lra_atoms);
-  if (options.produce_model) {
-    if (!mixed_model_supported_by_uf_signature(terms)) {
-      return CheckSatOutcome{
-          CheckSatResult::Unsupported,
-          "get-model for mixed QF_UFLRA with Real-sorted UF symbols is not supported", statistics,
-          ""};
-    }
-  }
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
@@ -6570,7 +6550,8 @@ CheckSatOutcome solve_qf_uf_lra(
       model << "(model\n";
       model << build_qf_uf_model(terms, uf_model_assignments,
                                  QfUfModelBuildOptions{.include_model_wrapper = false,
-                                                       .skip_real_symbols = true,
+                                                       .skip_real_symbols = false,
+                                                       .skip_real_constants = true,
                                                        .real_values = &real_values});
       append_real_constant_model_definitions(model, terms, model_terms, real_values);
       model << ")";

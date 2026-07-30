@@ -88,9 +88,9 @@ alternatives considered before/while implementing it.
   equalities from solve-eqs/Gaussian elimination, so a constant eliminated
   before theory solving is assigned from the final values of the terms it was
   rewritten to. The mixed QF_UFLRA path composes this nullary-Real model body
-  with a QF_UF model for separable formulas and for UF symbols with Real
-  constants as arguments. Real-valued UF result models, arrays, nonlinear
-  arithmetic, and full Nelson-Oppen model-guided combination remain unsupported.
+  with a QF_UF model for separable formulas, UF symbols with Real arguments, and
+  Real-valued UF applications after purification. Arrays, nonlinear arithmetic,
+  and full Nelson-Oppen model-guided combination remain unsupported.
 - **Same-variable bound propagation** (Milestone 3b, `check_sat.cpp`; called
   same-*slack* propagation before item H1a, when a slack was the only thing a
   bound could live on): after each successful bound assertion,
@@ -529,12 +529,13 @@ alternatives considered before/while implementing it.
   `term <= proxy`. The reverse interface direction is checked for shared Real
   constants, including those internal Real-argument proxies: if LRA makes both
   `x < y` and `y < x` inconsistent under the current assignment, the coordinator
-  asserts `x = y` into an augmented EUF check. Real-argument `get-model` is
-  supported only for UF symbols whose Real occurrences are arguments:
-  reconstruction augments the LRA model with EUF-implied equalities and strict
-  separations for EUF-distinct Real constants before printing concrete Real
-  values in UF table guards. This is not full Nelson-Oppen combination:
-  Real-valued UF result models are still explicitly reported as `Unsupported`.
+  asserts `x = y` into an augmented EUF check. Mixed `get-model` reconstructs
+  concrete Real values for both Real arguments and Real-valued UF application
+  results: reconstruction augments the LRA model with EUF-implied equalities and
+  strict separations for EUF-distinct Real constants before printing concrete
+  Real values in UF table guards and results. This is not full Nelson-Oppen
+  combination; model-equality guesses and SAT-visible missing equality creation
+  are still not implemented.
 - ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
   above. Was the dominant cause of `UnsupportedInput` in every fuzz
   campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in
