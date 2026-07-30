@@ -154,6 +154,9 @@ coordinator publishes:
 - `:no.interface.model-equality-assumptions`
 - `:no.interface.model-equality-failed-assumptions`
 - `:no.interface.model-equality-conflicts`
+- `:no.interface.model-equality-full-pairs`
+- `:no.interface.model-equality-care-pairs`
+- `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
@@ -562,11 +565,12 @@ distinguished from delivered, useful work.
 - Track care-pair pruning counters and compare them with full cross-product
   delayed-combination counters.
 
-Primo currently implements the last checklist item and one narrow consumer: the
-mixed coordinator counts the full shared-Real cross product and the subset of
-pairs that appear as arguments below the same flat EUF function prefix, then
-uses that subset to limit LRA-to-EUF equality checks. The final arrangement and
-model paths intentionally still consider the full set of shared Real constants.
+Primo currently implements the last checklist item and two narrow consumers:
+the mixed coordinator counts the full shared-Real cross product and the subset
+of pairs that appear as arguments below the same flat EUF function prefix, then
+uses that subset to limit LRA-to-EUF equality checks and default-off
+LRA-model-equality branch candidates. The final arrangement and model paths
+intentionally still consider the full set of shared Real constants.
 
 ## Broader Combination-Property Context
 

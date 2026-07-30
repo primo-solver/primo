@@ -583,6 +583,9 @@ void qf_uf_lra_model_equality_branching_uses_euf_care_pairs() {
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 1);
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
   assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-full-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 1);
   assert(result.statistics.get(":no.interface.model-equality-candidates") == 0);
   assert(result.statistics.get(":no.interface.model-equality-created") == 0);
   assert(result.statistics.get(":no.interface.model-equality-assumptions") == 0);

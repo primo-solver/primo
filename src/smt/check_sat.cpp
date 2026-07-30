@@ -4213,6 +4213,20 @@ void publish_euf_care_pair_diagnostics(const EufCarePairDiagnostics& diagnostics
                      : 0);
 }
 
+void publish_model_equality_care_pair_stats(const EufCarePairDiagnostics& diagnostics,
+                                            const CheckSatOptions& options,
+                                            util::Statistics& statistics) {
+  if (!options.nelson_oppen_model_equality_branching) {
+    return;
+  }
+  statistics.set(":no.interface.model-equality-full-pairs", diagnostics.full_pairs);
+  statistics.set(":no.interface.model-equality-care-pairs", diagnostics.term_pairs.size());
+  statistics.set(":no.interface.model-equality-care-pruned-pairs",
+                 diagnostics.full_pairs > diagnostics.term_pairs.size()
+                     ? diagnostics.full_pairs - diagnostics.term_pairs.size()
+                     : 0);
+}
+
 bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
   return term.kind == core::TermKind::Equality &&
          terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
@@ -6789,6 +6803,9 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.model-equality-assumptions", 0);
   statistics.set(":no.interface.model-equality-failed-assumptions", 0);
   statistics.set(":no.interface.model-equality-conflicts", 0);
+  statistics.set(":no.interface.model-equality-full-pairs", 0);
+  statistics.set(":no.interface.model-equality-care-pairs", 0);
+  statistics.set(":no.interface.model-equality-care-pruned-pairs", 0);
   statistics.set(":no.interface.arrangement-checks", 0);
   statistics.set(":no.interface.arrangement-failures", 0);
   statistics.set(":no.interface.arrangement-separations", 0);
@@ -6877,6 +6894,7 @@ CheckSatOutcome solve_qf_uf_lra(
                                    options.euf_proof_forest_diagnostics);
       euf_care = euf_care_pair_diagnostics(prepared_flat_theory.value(), shared_real_terms);
       publish_euf_care_pair_diagnostics(euf_care, statistics);
+      publish_model_equality_care_pair_stats(euf_care, options, statistics);
       euf_check = check_incremental_euf_closure(prepared_flat_theory.value(),
                                                 euf_assignments_for_check, statistics);
       euf_conflict = euf_check->conflict;

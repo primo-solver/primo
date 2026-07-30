@@ -309,6 +309,9 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-assumptions`
 - `:no.interface.model-equality-failed-assumptions`
 - `:no.interface.model-equality-conflicts`
+- `:no.interface.model-equality-full-pairs`
+- `:no.interface.model-equality-care-pairs`
+- `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
@@ -340,7 +343,10 @@ prepared EUF view. The mixed coordinator uses that subset only for LRA-to-EUF
 equality propagation checks and default-off LRA-model equality branching
 candidates. It does not add clauses for care pairs, does not filter EUF-to-LRA
 equalities, and does not use care pairs for model reconstruction or final
-arrangement validation.
+arrangement validation. The model-equality care counters mirror the same full,
+care, and pruned counts for the default-off branch candidate scan, so a run can
+distinguish "the branch found no equal-valued care pair" from "the branch was
+pruned before looking at model values".
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use
