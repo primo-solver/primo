@@ -245,43 +245,26 @@ class LraTableau {
   // This is the standard "eliminate fixed variables" step; see
   // docs/qf-lra-heuristics.md item H7 for the measurements motivating it.
   //
-  // The pivot's entering variable becomes basic with a row that, by pivot()'s
-  // own construction, no other row references. If that variable additionally
-  // has no bounds and can never acquire any (see mark_boundable), its row
-  // constrains nothing -- it only *defines* a value -- so the row is
-  // deactivated: dropped from occurs_in_, hence skipped by update() and never
-  // a member of violated_vars_. That is the step that actually removes a row
-  // from the working set. Both the pivot and the deactivation are trailed and
-  // undone by pop().
+  // The pivot's entering variable is preferred unbounded where possible,
+  // since an unbounded basic variable's row can never be violated and so
+  // never demands another repair. The pivot is trailed by pivot() and undone
+  // by pop() like any other.
   //
-  // Off by default here, on via CheckSatOptions::lra_fixed_elimination, the
-  // same split set_sparse_leaving() uses: a directly-constructed tableau (and
-  // the white-box tests) get the conservative behaviour.
+  // Off by default, everywhere, including in the solver. The 595-file
+  // scrambled competition set is where this was decided: 374 solved against
+  // 373 with it off, PAR2 29237 against 29204, and a *median 0.94x* speedup
+  // over the files both configurations solve in more than a second -- +19/-18
+  // file churn that nets to nothing. The one real effect is confined to the
+  // largest instances, where it doubles the >5MB band (7 -> 14 of 50, matching
+  // z3), and it is paid for in the 50-500KB band (144 -> 140). Enable with
+  // --lra-fixed-elimination when the input is dominated by equalities; see
+  // docs/qf-lra-heuristics.md item H7 for the full falsifier outcome.
+  //
+  // An earlier version also *froze* a qualifying row out of the working set
+  // entirely. That half was strictly negative on the same run (it cost four
+  // files in the 500KB-5MB band and gained one elsewhere) while carrying all
+  // of this item's wrong-answer risk, so it was removed rather than tuned.
   void set_fixed_elimination(bool enabled) { fixed_elimination_ = enabled; }
-
-  // The row-freezing half of the above, separately switchable because it is
-  // where all of H7's soundness risk lives: the pivot alone is a pure change
-  // of representation (the same thing check() does), while freezing takes a
-  // row out of the machinery that maintains it. Off leaves the elimination
-  // pivot and its entering-variable preference exactly as they are, so an
-  // A/B against it isolates the freezing and nothing else.
-  void set_freeze_eliminated_rows(bool enabled) { freeze_eliminated_rows_ = enabled; }
-
-  // Declares that `var` may receive a bound via assert_upper/assert_lower at
-  // some point. Row deactivation (above) needs a *static* guarantee that a
-  // variable will never be bounded, not merely that it is unbounded right
-  // now: a deactivated row is frozen out of the basis-maintenance machinery,
-  // so its own assignment stops tracking its terms and its terms are no
-  // longer kept non-basic, and asserting a bound against it later would test
-  // that bound on a stale value. Only the caller knows -- it owns the
-  // atom-to-tableau-variable map -- so it has to say so. check_sat.cpp marks
-  // every PreparedAtom::bound_var.
-  //
-  // Unmarked variables are assumed never-bounded, so an assert_upper/
-  // assert_lower on a deactivated row's variable is a caller contract
-  // violation and throws std::logic_error rather than silently answering
-  // from a stale assignment. Call before the first push(), like add_row().
-  void mark_boundable(LraVarId var) { boundable_[var] = true; }
 
   // Item H7 observability, same convention as row_update_count() (cumulative
   // over this tableau's lifetime, snapshot for a per-round delta):
@@ -290,10 +273,6 @@ class LraTableau {
   // elimination_pivot_count: pivots spent eliminating them. The shortfall
   //   against fixed_variable_count is the eliminations that did not happen at
   //   all -- an empty row, or every candidate already fixed itself.
-  // eliminated_row_count: rows actually frozen out of the working set. The
-  //   shortfall against elimination_pivot_count is pivots whose resulting row
-  //   could not be frozen (its variable was bounded, or boundable), and it is
-  //   0 by construction when set_freeze_eliminated_rows(false) is in effect.
   //
   // These all count into pivot_count() as well, since they are real pivots.
   // The published :lra.pivots statistic is a different matter and is NOT
@@ -305,13 +284,7 @@ class LraTableau {
   // :lra.pivot-row-updates / :lra.pivot-term-ops, which count every pivot's
   // actual work regardless of where it was triggered.
   std::size_t fixed_variable_count() const { return fixed_variable_count_; }
-  std::size_t eliminated_row_count() const { return eliminated_row_count_; }
   std::size_t elimination_pivot_count() const { return elimination_pivot_count_; }
-
-  // Whether `var`'s row is still part of the working set -- false only for a
-  // row deactivated by fixed-variable elimination (see set_fixed_elimination).
-  // Always true for a non-basic variable, which has no row to deactivate.
-  bool is_row_active(LraVarId var) const { return !inactive_row_[var]; }
 
   // Cost accounting for the Check/Pivot loop, in the two quantities item H3
   // actually minimizes -- pivot *count* alone cannot distinguish "fewer
@@ -411,16 +384,8 @@ class LraTableau {
     LraVarId var;
     int previous_direction;
   };
-  // Item H7: one row deactivation. Only ever needs to record the variable --
-  // deactivation is one-way within a level (a row is never reactivated while
-  // it stays deactivated, since its variable can never be bounded), and the
-  // row content itself is untouched by deactivation, so undoing it is just
-  // clearing the flag plus pop()'s occurs_in_ rebuild.
-  struct RowDeactivationTrailEntry {
-    LraVarId var;
-  };
-  using TrailEntry = std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry,
-                                  FRowTrailEntry, RowDeactivationTrailEntry>;
+  using TrailEntry =
+      std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry, FRowTrailEntry>;
 
   void update(LraVarId nonbasic_var, const DeltaRational& new_value);
   void pivot(LraVarId basic_var, LraVarId entering_var);
@@ -440,18 +405,18 @@ class LraTableau {
   // Entering choice for an elimination pivot. Unlike check()'s, every term of
   // the row is eligible (the point is to leave the basis, not to repair a
   // violation in a particular direction), so this ranks rather than filters:
-  // a candidate whose row can then be deactivated first, then the Markowitz
-  // occurrence count, then a +/-1 coefficient, then index.
+  // an unbounded candidate first, then the Markowitz occurrence count, then a
+  // +/-1 coefficient, then index. Already-fixed candidates are skipped
+  // outright -- pivoting one of those *into* the basis is the state this
+  // whole mechanism exists to get out of.
   LraVarId select_elimination_entering_variable(const Row& row) const;
-  // Whether `var`, once basic, would head a row that constrains nothing: no
-  // bounds now and none possible later (see mark_boundable). f_var_ is
-  // excluded explicitly -- it is unbounded by design, and SOI's objective row
-  // must stay in the working set.
-  bool can_deactivate_row_of(LraVarId var) const;
   // Whether `var`'s lower and upper bounds coincide, i.e. it is a constant
   // for the remainder of the current search level.
   bool is_fixed(LraVarId var) const;
-  void deactivate_row(LraVarId basic_var);
+  // Whether `var` currently has no bound on either side. An unbounded basic
+  // variable's row can never be violated, so it never demands a repair pivot
+  // -- which is why the elimination pivot prefers such a candidate.
+  bool is_unbounded(LraVarId var) const;
 
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
   void undo(const TrailEntry& entry);
@@ -550,7 +515,6 @@ class LraTableau {
   PivotingRule rule_;
   bool sparse_leaving_ = false;
   bool fixed_elimination_ = false;
-  bool freeze_eliminated_rows_ = true;
   // Rotating start offset for Sparse's bounded candidate scan. pivot()
   // rebuilds rows in sorted-by-variable-id order, so always starting at the
   // front would bias the bounded scan toward low-numbered variables; rotating
@@ -564,7 +528,6 @@ class LraTableau {
   std::size_t soi_multi_row_conflict_count_ = 0;
   std::size_t soi_quickxplain_call_count_ = 0;
   std::size_t fixed_variable_count_ = 0;
-  std::size_t eliminated_row_count_ = 0;
   std::size_t elimination_pivot_count_ = 0;
   std::optional<LraVarId> f_var_;
   // soi_directions_/rows_/occurs_in_ are all dense, indexed directly by
@@ -586,15 +549,6 @@ class LraTableau {
   std::vector<VarState> vars_;
   std::vector<Row> rows_;
   std::vector<std::vector<LraVarId>> occurs_in_;
-  // Item H7, both sized in lockstep with vars_ like the vectors above.
-  // boundable_: declared by the caller via mark_boundable(); never changes
-  // during search. inactive_row_: set when a row is deactivated, cleared by
-  // pop() undoing the RowDeactivationTrailEntry. An inactive row's basic
-  // variable is still is_basic (its row is still the definition of its
-  // value), it is simply absent from occurs_in_ and so from every scan that
-  // walks the working set.
-  std::vector<bool> boundable_;
-  std::vector<bool> inactive_row_;
   // Currently-violated basic variable ids (assignment outside its own
   // bound), kept incrementally in sync -- see update_violation_status()'s
   // comment. A sorted set gives Bland's smallest-index selection for

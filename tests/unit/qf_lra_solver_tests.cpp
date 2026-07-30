@@ -1156,18 +1156,16 @@ void fixed_variable_elimination_fires_and_preserves_the_verdict() {
        {std::pair<const char*, CheckSatResult>{kFixedEliminationSat, CheckSatResult::Sat},
         std::pair<const char*, CheckSatResult>{kFixedEliminationUnsat, CheckSatResult::Unsat}}) {
     CheckSatOptions enabled;
+    enabled.lra_fixed_elimination = true;
     const auto with_elimination = check_sat_smtlib(formula, enabled);
     assert(with_elimination.result == expected);
     assert(with_elimination.statistics.get(StatKey::LraFixedVariables) > 0);
-    assert(with_elimination.statistics.get(StatKey::LraEliminatedRows) > 0);
     assert(with_elimination.statistics.get(StatKey::LraEliminationPivots) > 0);
 
-    CheckSatOptions disabled;
-    disabled.lra_fixed_elimination = false;
+    CheckSatOptions disabled;  // off by default -- see CheckSatOptions
     const auto without_elimination = check_sat_smtlib(formula, disabled);
     assert(without_elimination.result == expected);
     assert(without_elimination.statistics.get(StatKey::LraFixedVariables) == 0);
-    assert(without_elimination.statistics.get(StatKey::LraEliminatedRows) == 0);
   }
 }
 

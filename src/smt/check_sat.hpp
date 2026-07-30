@@ -146,18 +146,13 @@ struct CheckSatOptions {
   // rule alone reaches 154/237, this takes it to 168, and it is the whole of
   // the latendresse result (0/15 -> 6/15, matching z3).
   bool lra_sparse_leaving = true;
-  // Heuristics-note item H7 -- see LraTableau::set_fixed_elimination. Pivots
-  // a basic variable out of the basis as soon as its bounds coincide, and
-  // freezes the resulting row when it constrains nothing. Independent of the
-  // pivoting rule. Off via --no-lra-fixed-elimination, which is also the
-  // ablation switch the H7 measurements are stated against.
-  bool lra_fixed_elimination = true;
-  // The freezing half of item H7 -- see LraTableau::set_freeze_eliminated_rows.
-  // Separate from lra_fixed_elimination because the elimination pivot is a
-  // pure representation change while freezing is the part that can be
-  // unsound, so it gets its own ablation switch
-  // (--no-lra-freeze-eliminated-rows).
-  bool lra_freeze_eliminated_rows = true;
+  // Heuristics-note item H7 -- see LraTableau::set_fixed_elimination.
+  // Opt-in (--lra-fixed-elimination): on the 595-file scrambled competition
+  // set it solves 374 against 373 with it off, a median 0.94x speedup over
+  // commonly-solved files, and +19/-18 churn that nets to nothing. Its one
+  // real effect is on the largest instances (>5MB: 7 -> 14 of 50), paid for
+  // in the 50-500KB band. Worth enabling on equality-dominated input.
+  bool lra_fixed_elimination = false;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;

@@ -3340,7 +3340,7 @@ struct PreparedLraTheory {
   PreparedLraTheory(const core::TermManager& terms,
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule, bool sparse_leaving,
-                    bool fixed_elimination, bool freeze_eliminated_rows);
+                    bool fixed_elimination);
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -3369,8 +3369,7 @@ struct PreparedLraTheory {
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                      theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
-                                     bool sparse_leaving, bool fixed_elimination,
-                                     bool freeze_eliminated_rows)
+                                     bool sparse_leaving, bool fixed_elimination)
     : base_tableau(pivoting_rule) {
   base_tableau.set_sparse_leaving(sparse_leaving);
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
@@ -3449,17 +3448,7 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     atoms_by_bound_var[slack].push_back(atom_index);
   }
 
-  // Item H7's caller-side contract (LraTableau::mark_boundable): the tableau
-  // may only freeze a row whose variable can never be bounded, and this map
-  // is the complete list of variables any solving path will ever bound --
-  // every assert_lra_atom_bound() call target comes from a PreparedAtom.
-  // Done here, on the base tableau, so every copy inherits it.
-  for (const auto& [bound_var, atom_indices] : atoms_by_bound_var) {
-    (void)atom_indices;
-    base_tableau.mark_boundable(bound_var);
-  }
   base_tableau.set_fixed_elimination(fixed_elimination);
-  base_tableau.set_freeze_eliminated_rows(freeze_eliminated_rows);
 }
 
 // Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
@@ -3876,7 +3865,6 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
 
   void publish_elimination_stats() {
     statistics_.set(util::StatKey::LraFixedVariables, tableau_.fixed_variable_count());
-    statistics_.set(util::StatKey::LraEliminatedRows, tableau_.eliminated_row_count());
     statistics_.set(util::StatKey::LraEliminationPivots, tableau_.elimination_pivot_count());
   }
 
@@ -4223,10 +4211,9 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
-  const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms(),
-                                          lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-                                          options.lra_sparse_leaving, options.lra_fixed_elimination,
-                                          options.lra_freeze_eliminated_rows);
+  const PreparedLraTheory prepared_theory(
+      terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination);
   publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR
