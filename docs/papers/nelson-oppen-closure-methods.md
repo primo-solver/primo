@@ -153,6 +153,9 @@ coordinator publishes:
 - `:no.interface.model-equality-assumptions`
 - `:no.interface.model-equality-failed-assumptions`
 - `:no.interface.model-equality-conflicts`
+- `:no.interface.arrangement-checks`
+- `:no.interface.arrangement-failures`
+- `:no.interface.arrangement-separations`
 - `:no.interface.model-separations`
 
 ## Primary Base Paper
@@ -342,9 +345,12 @@ treating one theory's atoms as Boolean noise.
   false generated interface equalities; LRA is augmented by true generated
   equalities only. Add the first per-theory conflict clause found and continue.
   If both individual checks pass, learn guarded propagation clauses for any
-  newly implied generated interface equality and continue. Return `sat` only
-  when both theory checks accept the same Boolean assignment and neither theory
-  contributes a new shared equality clause.
+  newly implied generated interface equality and continue. Before returning a
+  non-model `sat`, validate that the final EUF arrangement over Real argument
+  constants can be separated consistently by the LRA side using the same bounded
+  strict-order search used for model reconstruction. Return `sat` only when both
+  theory checks accept the same Boolean assignment, neither theory contributes a
+  new shared equality clause, and this final arrangement validation succeeds.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
   model and scans shared Real pairs whose concrete LRA values are equal. For a
@@ -387,6 +393,7 @@ treating one theory's atoms as Boolean noise.
   EUF-implied proxy equality that makes the LRA side inconsistent, an
   LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
   source-split interface conflict counters for those receiving-theory conflicts,
+  final arrangement validation before a non-model `sat` result,
   and a regression where default preprocessing solves away a UF equality before
   the remaining arithmetic formula dispatches to the LRA solver. It also covers
   opt-in model-equality branching over an LRA-model equal pair that EUF rejects,
@@ -408,7 +415,8 @@ Limitations:
 - Real-argument model reconstruction backtracks only up to a fixed candidate
   cap, currently 18 pairs, then records
   `:no.interface.model-separation-search-capped` and falls back to greedy
-  orientation;
+  orientation; final arrangement validation reuses the same bounded search and
+  greedy fallback;
 - no arrangement enumeration for non-convex combinations;
 - mixed-theory model reconstruction is limited to the documented QF_UFLRA
   purification subset.

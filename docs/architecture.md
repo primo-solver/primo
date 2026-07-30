@@ -232,7 +232,10 @@ Implemented now:
   native LRA disequality case-splitting, and unbounded arrangement
   enumeration remain unsupported. Mixed model reconstruction uses a bounded
   search over strict shared-Real separation orientations, with a greedy fallback
-  when the candidate set exceeds the current model-reconstruction cap.
+  when the candidate set exceeds the current cap. The same bounded separation
+  check is also run before returning a non-model QF_UFLRA `sat` result, so the
+  reported assignment has at least a checked Real-argument arrangement for the
+  documented purification subset.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

@@ -309,6 +309,9 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-assumptions`
 - `:no.interface.model-equality-failed-assumptions`
 - `:no.interface.model-equality-conflicts`
+- `:no.interface.arrangement-checks`
+- `:no.interface.arrangement-failures`
+- `:no.interface.arrangement-separations`
 - `:no.interface.model-separations`
 - `:no.interface.model-separation-candidates`
 - `:no.interface.model-separation-search-capped`
@@ -322,17 +325,22 @@ terms visible to both EUF and LRA, equality checks in each interface direction,
 positive SAT-visible shared-Real equality atoms created lazily so far, how many
 of those generated atoms are true or false in the last checked SAT assignment,
 how many were forced by EUF/LRA equality propagation, and strict shared-Real
-separations added only while reconstructing mixed models. A false generated
-interface equality is asserted to EUF as a disequality; it is not asserted to
-LRA as a native Real disequality. `:no.interface.conflicts` counts ordinary
-EUF/LRA conflict clauses whose reason mentions a generated interface equality
-literal, split by `:no.interface.euf-conflicts` and
+separations found while validating a final `sat` arrangement or reconstructing
+mixed models. A false generated interface equality is asserted to EUF as a
+disequality; it is not asserted to LRA as a native Real disequality.
+`:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
+mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use
 the generated interface atom are not included there. The model-separation search
 counters record the number of strict-order candidate pairs, whether the bounded
 backtracking cap was exceeded, and the LRA-consistency branches/backtracks tried
-inside that reconstruction step. When `--model-equality-branching` is enabled,
-the model-equality counters record LRA-model-equal shared Real pairs considered,
+inside final arrangement validation or model reconstruction.
+`:no.interface.arrangement-checks` counts non-model `sat` results where the
+coordinator validated that the EUF arrangement over Real arguments can be
+separated consistently by LRA, with failures and accepted strict separations
+split into the corresponding arrangement counters. When
+`--model-equality-branching` is enabled, the model-equality counters record
+LRA-model-equal shared Real pairs considered,
 optional SAT equality atoms created for those pairs, assumptions made on those
 atoms, assumptions rejected at the SAT level, and ordinary theory conflicts
 reached while a guessed equality was active. The current positive-equality path

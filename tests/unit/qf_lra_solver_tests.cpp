@@ -317,6 +317,24 @@ void qf_uf_lra_prints_shared_real_predicate_model() {
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
+void qf_uf_lra_validates_final_arrangement_without_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.arrangement-checks") >= 1);
+  assert(result.statistics.get(":no.interface.arrangement-failures") == 0);
+  assert(result.statistics.get(":no.interface.arrangement-separations") >= 1);
+}
+
 void qf_uf_lra_prints_shared_real_equal_predicate_model() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -1682,6 +1700,7 @@ int main() {
   qf_uf_lra_prints_real_valued_uf_application_model();
   qf_uf_lra_model_reflects_real_valued_uf_equalities();
   qf_uf_lra_prints_shared_real_predicate_model();
+  qf_uf_lra_validates_final_arrangement_without_model();
   qf_uf_lra_prints_shared_real_equal_predicate_model();
   qf_uf_lra_searches_multiple_shared_real_model_separations();
   qf_uf_lra_purifies_nonconstant_real_predicate_arguments();
