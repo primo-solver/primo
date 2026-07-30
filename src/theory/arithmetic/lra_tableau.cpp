@@ -272,6 +272,12 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   trail_.push_back(std::move(trail_entry));
 }
 
+bool LraTableau::is_fixed(LraVarId var) const {
+  const VarState& state = vars_[var];
+  return state.lower.has_value() && state.upper.has_value() &&
+         state.lower->value == state.upper->value;
+}
+
 bool LraTableau::can_deactivate_row_of(LraVarId var) const {
   if (f_var_.has_value() && var == *f_var_) {
     return false;
@@ -287,6 +293,17 @@ LraVarId LraTableau::select_elimination_entering_variable(const Row& row) const 
   bool best_unit = false;
 
   for (const auto& [var, coeff] : row) {
+    // Never pivot a fixed variable *into* the basis -- that is precisely the
+    // state this whole mechanism exists to get out of, and it would trade one
+    // permanently-repair-demanding row for another. check()'s own can_enter()
+    // rejects fixed variables for the same reason; this is the elimination
+    // path's equivalent. If every candidate is fixed then every term of the
+    // row is pinned, so the row can never move and never demands a repair --
+    // leaving it basic costs nothing, and if its own fixed value disagrees
+    // with its terms that is a real conflict for check() to report.
+    if (is_fixed(var)) {
+      continue;
+    }
     const bool deactivatable = can_deactivate_row_of(var);
     const std::size_t occurrences = occurs_in_[var].size();
     // Same reason select_sparse_entering_variable() prefers it: pivoting on
@@ -335,8 +352,7 @@ bool LraTableau::try_eliminate_fixed_basic(LraVarId var) {
     return false;
   }
   const VarState& state = vars_[var];
-  if (!state.is_basic || !state.lower.has_value() || !state.upper.has_value() ||
-      state.lower->value != state.upper->value) {
+  if (!state.is_basic || !is_fixed(var)) {
     return false;
   }
   ++fixed_variable_count_;

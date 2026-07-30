@@ -872,6 +872,42 @@ void freezing_can_be_ablated_without_disabling_the_elimination_pivot() {
   assert(fixture.tableau.assignment(fixture.x) + fixture.tableau.assignment(fixture.y) == rat(4));
 }
 
+void elimination_never_pivots_an_already_fixed_variable_into_the_basis() {
+  // s = 3x + y with y already fixed. Every other ranking criterion favours y
+  // -- it occurs in one row against x's two, and its coefficient is the unit
+  // one -- so without the explicit guard it is exactly what gets picked, and
+  // the elimination would hand back a fixed *basic* variable: the same
+  // permanently-repair-demanding state it was called to get out of.
+  LraTableau tableau;
+  tableau.set_fixed_elimination(true);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  const LraVarId t = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(3)}, {y, Rational(1)}});
+  tableau.add_row(t, {{x, Rational(1)}, {z, Rational(1)}});
+  tableau.mark_boundable(s);
+  tableau.mark_boundable(t);
+  tableau.mark_boundable(x);
+  tableau.mark_boundable(y);
+
+  // x is bounded but not fixed, so neither candidate can have its row frozen
+  // and the choice comes down purely to the ranking.
+  assert(!tableau.assert_lower(x, rat(-100), Lit{1}).has_value());
+  assert(!tableau.assert_upper(y, rat(0), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(0), Lit{3}).has_value());
+
+  assert(!tableau.assert_upper(s, rat(6), Lit{4}).has_value());
+  assert(!tableau.assert_lower(s, rat(6), Lit{5}).has_value());
+  assert(tableau.elimination_pivot_count() == 1);
+  assert(tableau.is_basic(x));
+  assert(!tableau.is_basic(y));
+  assert(!tableau.is_basic(s));
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x).scaled(Rational(3)) + tableau.assignment(y) == rat(6));
+}
+
 void conflict_is_still_found_through_an_eliminated_row() {
   // s1 = x + y fixed at 0 forces y = -x and eliminates x's row. s2 = x - y
   // is then rewritten in terms of what is left, and s3 = y keeps a second
@@ -1088,6 +1124,7 @@ int main() {
   deactivation_is_refused_when_every_candidate_could_be_bounded();
   deactivation_is_refused_when_the_candidate_already_has_a_bound();
   freezing_can_be_ablated_without_disabling_the_elimination_pivot();
+  elimination_never_pivots_an_already_fixed_variable_into_the_basis();
   conflict_is_still_found_through_an_eliminated_row();
   push_pop_restores_an_eliminated_row();
   push_pop_restores_a_frozen_row_whose_term_later_became_basic();

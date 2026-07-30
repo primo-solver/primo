@@ -436,6 +436,9 @@ class LraTableau {
   // excluded explicitly -- it is unbounded by design, and SOI's objective row
   // must stay in the working set.
   bool can_deactivate_row_of(LraVarId var) const;
+  // Whether `var`'s lower and upper bounds coincide, i.e. it is a constant
+  // for the remainder of the current search level.
+  bool is_fixed(LraVarId var) const;
   void deactivate_row(LraVarId basic_var);
 
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
