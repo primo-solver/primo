@@ -146,6 +146,8 @@ coordinator publishes:
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
 - `:no.interface.conflicts`
+- `:no.interface.euf-conflicts`
+- `:no.interface.lra-conflicts`
 - `:no.interface.model-equality-candidates`
 - `:no.interface.model-equality-created`
 - `:no.interface.model-equality-assumptions`
@@ -384,6 +386,7 @@ treating one theory's atoms as Boolean noise.
   printing, purification of Real-valued UF applications in arithmetic atoms, an
   EUF-implied proxy equality that makes the LRA side inconsistent, an
   LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
+  source-split interface conflict counters for those receiving-theory conflicts,
   and a regression where default preprocessing solves away a UF equality before
   the remaining arithmetic formula dispatches to the LRA solver. It also covers
   opt-in model-equality branching over an LRA-model equal pair that EUF rejects,

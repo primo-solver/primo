@@ -4111,6 +4111,31 @@ bool force_implied_interface_equalities(const core::TermManager& terms,
   return !clauses_to_learn.empty();
 }
 
+bool clause_mentions_interface_equality(const sat::Clause& clause,
+                                        const std::vector<InterfaceEqualityAtom>& atoms) {
+  for (const sat::Lit lit : clause) {
+    const int var = lit.value > 0 ? lit.value : -lit.value;
+    for (const InterfaceEqualityAtom& atom : atoms) {
+      const int atom_var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      if (var == atom_var) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void record_interface_conflict(const std::optional<sat::Clause>& conflict,
+                               const std::vector<InterfaceEqualityAtom>& interface_equalities,
+                               std::string_view source_key, util::Statistics& statistics) {
+  if (!conflict.has_value() ||
+      !clause_mentions_interface_equality(conflict.value(), interface_equalities)) {
+    return;
+  }
+  statistics.increment(":no.interface.conflicts");
+  statistics.increment(source_key);
+}
+
 bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
   return term.kind == core::TermKind::Equality &&
          terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
@@ -6652,6 +6677,8 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.euf-to-lra-equalities", 0);
   statistics.set(":no.interface.lra-to-euf-equalities", 0);
   statistics.set(":no.interface.conflicts", 0);
+  statistics.set(":no.interface.euf-conflicts", 0);
+  statistics.set(":no.interface.lra-conflicts", 0);
   statistics.set(":no.interface.model-equality-candidates", 0);
   statistics.set(":no.interface.model-equality-created", 0);
   statistics.set(":no.interface.model-equality-assumptions", 0);
@@ -6741,6 +6768,8 @@ CheckSatOutcome solve_qf_uf_lra(
     }
     if (euf_conflict.has_value()) {
       statistics.increment(kStatTheoryConflicts);
+      record_interface_conflict(euf_conflict, interface_equalities, ":no.interface.euf-conflicts",
+                                statistics);
       if (active_model_equality_branch.has_value()) {
         statistics.increment(":no.interface.model-equality-conflicts");
       }
@@ -6767,6 +6796,8 @@ CheckSatOutcome solve_qf_uf_lra(
         prepared_lra_theory_for_check, lra_assignments_for_check);
     if (lra_conflict.has_value()) {
       statistics.increment(kStatLraTheoryConflicts);
+      record_interface_conflict(lra_conflict, interface_equalities, ":no.interface.lra-conflicts",
+                                statistics);
       if (active_model_equality_branch.has_value()) {
         statistics.increment(":no.interface.model-equality-conflicts");
       }

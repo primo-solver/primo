@@ -475,6 +475,8 @@ void qf_uf_lra_shares_lra_implied_real_equalities_with_euf() {
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
   assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
 }
 
 void qf_uf_lra_guards_interface_equality_propagation_by_assignment() {
@@ -579,6 +581,8 @@ void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
   assert(result.statistics.get(":no.interface.equalities-propagated") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
   assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
 
   CheckSatOptions lazy_options = no_preprocessing_or_substitution();
   lazy_options.euf_engine = EufEngine::Lazy;

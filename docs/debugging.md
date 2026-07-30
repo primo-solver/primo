@@ -302,6 +302,8 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
 - `:no.interface.conflicts`
+- `:no.interface.euf-conflicts`
+- `:no.interface.lra-conflicts`
 - `:no.interface.model-equality-candidates`
 - `:no.interface.model-equality-created`
 - `:no.interface.model-equality-assumptions`
@@ -322,17 +324,20 @@ of those generated atoms are true or false in the last checked SAT assignment,
 how many were forced by EUF/LRA equality propagation, and strict shared-Real
 separations added only while reconstructing mixed models. A false generated
 interface equality is asserted to EUF as a disequality; it is not asserted to
-LRA as a native Real disequality. The model-separation search counters record
-the number of strict-order candidate pairs, whether the bounded backtracking cap
-was exceeded, and the LRA-consistency branches/backtracks tried inside that
-reconstruction step. When `--model-equality-branching` is enabled, the
-model-equality counters record LRA-model-equal shared Real pairs considered,
+LRA as a native Real disequality. `:no.interface.conflicts` counts ordinary
+EUF/LRA conflict clauses whose reason mentions a generated interface equality
+literal, split by `:no.interface.euf-conflicts` and
+`:no.interface.lra-conflicts`; direct single-theory conflicts that do not use
+the generated interface atom are not included there. The model-separation search
+counters record the number of strict-order candidate pairs, whether the bounded
+backtracking cap was exceeded, and the LRA-consistency branches/backtracks tried
+inside that reconstruction step. When `--model-equality-branching` is enabled,
+the model-equality counters record LRA-model-equal shared Real pairs considered,
 optional SAT equality atoms created for those pairs, assumptions made on those
 atoms, assumptions rejected at the SAT level, and ordinary theory conflicts
-reached while a guessed equality was active. `:no.interface.conflicts` is
-retained as the legacy broad blocking counter; the current positive-equality
-path should instead show activity in `:no.interface.sat-equalities-forced`,
-which counts guarded propagation clauses from the current theory assignment to
+reached while a guessed equality was active. The current positive-equality path
+should also show activity in `:no.interface.sat-equalities-forced`, which
+counts guarded propagation clauses from the current theory assignment to
 a generated interface equality literal, and then ordinary EUF/LRA
 theory-conflict counters if the forced equality is inconsistent.
 
