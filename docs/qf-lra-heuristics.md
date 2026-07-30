@@ -838,3 +838,120 @@ supported option combination is left un-fuzzed at campaign tier.
 Local-only evidence that remains local, and is labelled as such where it
 appears: the paired A/B timings, the tableau-shape row counts, and the
 32-bit-vs-64-bit width ablation.
+
+## 6. Where the gap is after H7 (2026-07-30)
+
+Written immediately after the H7 result, while the measurements are fresh.
+**Nothing here is implemented**; it is the diagnosis the next item should be
+designed against, and it deliberately records what has been *ruled out* as
+well as what is suspected.
+
+### 6.1 The gap is one band, and it is z3-specific
+
+Of the 76 files z3 solves and Primo does not (595-file scrambled set, 60s),
+**59 are in the 500KB-5MB band** -- 8 in 50-500KB, 7 above 5MB, 2 below 50KB.
+Two things sharpen that:
+
+- **cvc5 solves only 9 of those 59.** This is not "hard for everyone"; it is
+  something z3 does that neither other solver does.
+- **z3 is not comfortable there either.** Its median time on the 59 is 25.0s
+  of a 60s budget (min 1.7s, max 56.2s). A longer competition timeout would
+  likely recover a large share of them for Primo -- which is worth
+  remembering before treating this as an algorithmic wall.
+
+### 6.2 The cost is fill-in, and both Markowitz factors blow up
+
+Profiled on four instances chosen by *z3-time quartile* across the band (p10,
+p25, p50, p75) rather than by how dramatic they look -- the H7 write-up
+records why that distinction matters.
+
+`:lra.pivot-row-updates` counts rows rewritten (the sum of
+`|occurs_in(entering)|`), and `:lra.pivot-term-ops` counts terms merged while
+rewriting them, so their ratio decomposes a pivot's cost into its two
+Markowitz factors exactly:
+
+| instance | rows rewritten per pivot | terms merged per rewrite | nonzeros/row when prepared |
+|---|---|---|---|
+| `scrambled228965` | 359 | 31.2 | 5.80 |
+| `scrambled15659` | 26 | 21.7 | 4.10 |
+| `scrambled312090` | **521** | **91.1** | 5.25 |
+| `scrambled180721` | 35 | 44.4 | 4.53 |
+
+Read the last two columns together: rows that hold **4.1-5.8 nonzeros in the
+prepared tableau** are merging **21.7-91.1 terms** by the time they are being
+rewritten during search. That is a 5-17x densification, and it is happening
+*on top of* an entering column that occurs in up to 521 rows. One pivot on
+`scrambled312090` therefore costs on the order of **47,000 rational
+operations**, and the instance spends its entire 60s budget on 3,904 of them.
+
+This is what "fill-in" means concretely, and why it compounds: every pivot
+substitutes the entering variable's row into every row mentioning it, so each
+one makes the *next* one more expensive. It is a positive feedback loop, not a
+constant overhead.
+
+Note also `scrambled312090`'s search shape: **0 conflicts, 7,555 decisions**.
+The SAT solver is not thrashing and learns nothing; essentially all of the
+time is inside the tableau.
+
+### 6.3 What this rules out
+
+- **It is not the sparse-pricing cap.** `kSparsePricingCandidateLimit` is 16
+  and undocumented as a derived value, so raising it was the obvious cheap
+  fix. Measured on `scrambled312090` at limits 16 / 64 / 256 / 1,000,000, the
+  per-pivot cost is essentially flat -- 51,738 / 52,428 / 46,833 / 47,312
+  term-ops per pivot across a 60,000x range. Scoring more candidates does not
+  find cheaper ones, because there are none: when every eligible candidate
+  occurs in hundreds of rows, a better choice among them does not exist. H3
+  prices the pivot correctly; the problem is that the cheapest available pivot
+  is already expensive.
+- **It is not fixed-equality slacks.** That was H7, and it nets zero on this
+  band (+8/-8, median 0.64x). See its falsifier outcome above.
+- **It is not preprocessing size.** Established on 2026-07-29: prepared
+  tableau dimensions match z3's within ~5%.
+
+### 6.4 What z3 appears to be doing
+
+z3's `-st` output on the same instances, with Primo's comparable counters:
+
+| counter | `scrambled228965` | `scrambled15659` | `scrambled312090` |
+|---|---|---|---|
+| z3 `:arith-offset-eqs` | 139,942 | 259,413 | **1,100,682** |
+| z3 `:arith-fixed-eqs` | 45,068 | 158,312 | 373,175 |
+| z3 `:arith-bound-propagations-lp` | 302,614 | 498,156 | 1,206,041 |
+| z3 `:decisions` | 21,656 | 158,793 | 36,778 |
+| Primo `:sat.decisions` | 135,366 | 1,009,955 | 7,555 |
+| Primo `:lra.pivot-term-ops` | 130.5M | 201.4M | 185.4M |
+
+**Offset equalities dominate**, and by a wide margin on the largest instance.
+But a row-shape census of the *prepared* tableau shows only 175 / 2,267 /
+1,844 rows of literal `x - y = c` shape (3.4% / 15% / 7.6% of rows), against
+z3's counts in the hundreds of thousands to millions. **So z3 is deriving
+these dynamically during search, not recognising them syntactically up
+front.** Any Primo version of this is therefore a search-time mechanism, not
+a preprocessing pass -- which makes it materially bigger than H7 was, and
+that should be priced in before committing to it.
+
+### 6.5 Candidate directions, unranked and untested
+
+Recorded so the next round starts from evidence rather than from scratch.
+
+1. **Attack fill-in directly rather than pricing it.** H3 chooses the
+   cheapest available pivot; nothing currently *prevents* densification. The
+   standard answers from sparse LU are periodic refactorization (rebuild the
+   basis representation from the original rows, discarding accumulated
+   fill-in) and Markowitz thresholding. Section 6.2 says the accumulated
+   representation is 5-17x denser than the original one, so rebuilding from
+   the original rows has a large, directly measured headroom.
+2. **Dynamic offset-equality detection**, matching z3's dominant counter.
+   Biggest expected win and the biggest piece of work; needs a design that
+   says where the detection hooks in and what it costs when it finds nothing.
+3. **Bound propagation on the LP** (`arith-bound-propagations-lp`, 300k-1.2M
+   per instance). Primo's row-based propagation exists but is opt-in and
+   off by default; it has never been evaluated on this band.
+
+**A falsifier for the whole diagnosis, stated in advance:** if a mechanism
+reduces `:lra.pivot-term-ops` per pivot substantially on these four instances
+and the band's solved count does not move, then per-pivot cost is not what
+separates Primo from z3 here, and the remaining explanation is search *order*
+(z3 needs 36,778 decisions where Primo needs 7,555 but never finishes -- the
+shapes are not comparable, which is itself a hint worth chasing).

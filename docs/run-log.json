@@ -12081,6 +12081,42 @@
       },
       "evidence_status": "current",
       "followups": "H7 stays opt-in. The next QF_LRA gap investigation should profile the median 500KB-5MB instance rather than the most equality-dense one, and offset equalities are the remaining untested hypothesis from the 2026-07-29 diagnosis. The remote ASAN fuzz binary needs its toolchain problem resolved before any future campaign-tier gate can match previous rounds."
+    },
+    {
+      "id": "2026-07-30-qf-lra-post-h7-gap-profiling",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "profiling",
+      "scope": "Local profiling pass locating the remaining QF_LRA gap against z3 after H7 shipped opt-in. Recorded in docs/qf-lra-heuristics.md section 6. Profiling evidence for a design decision, not a benchmark claim.",
+      "commit": "53eb45e",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build/primo --quiet --stats (Release); contrib/local/bin/z3 -st",
+        "notes": "Wall-clock on this workstation was unreliable during this session (an unmodified binary timed 1.63s / 2.45s / 4.48s on the same input; load average 7.46 on 14 cores from outside the sandbox). Only counters are cited, never times."
+      },
+      "command": {
+        "census": "throwaway instrumentation in publish_lra_tableau_shape_stats printing a row-length histogram and a count of literal x-y=c rows; measured, then reverted, not committed",
+        "pricing_sweep": "throwaway env override of kSparsePricingCandidateLimit, values 16/64/256/1000000 on scrambled312090; reverted",
+        "comparison": "z3 -st and primo --quiet --stats on the p10/p25/p50/p75 instances of the band by z3 solve time"
+      },
+      "benchmark": {
+        "suite": "4 instances sampled by z3-time quartile from the 59 gap files in the 500KB-5MB band",
+        "logic": "QF_LRA",
+        "timeout_seconds": 60
+      },
+      "summary": {
+        "gap_localisation": "76 gap files: 59 in 500KB-5MB, 8 in 50-500KB, 7 above 5MB, 2 below 50KB. cvc5 solves only 9 of the 59, so this is a z3-specific strength rather than general difficulty. z3's median time on them is 25.0s of 60s (min 1.7, max 56.2), so a longer competition timeout would likely recover many of them.",
+        "fill_in_decomposition": "lra.pivot-row-updates / lra.pivot-term-ops decompose a pivot into its two Markowitz factors. Rows rewritten per pivot and terms merged per rewrite, against nonzeros/row in the prepared tableau: scrambled228965 359 / 31.2 vs 5.80; scrambled15659 26 / 21.7 vs 4.10; scrambled312090 521 / 91.1 vs 5.25; scrambled180721 35 / 44.4 vs 4.53. Rows densify 5-17x during search while entering columns reach hundreds of rows, so one pivot on scrambled312090 costs ~47,000 rational operations and the instance spends 60s on 3,904 of them. scrambled312090 has 0 conflicts and 7,555 decisions -- the SAT search is not thrashing, the time is all in the tableau.",
+        "ruled_out_pricing_cap": "kSparsePricingCandidateLimit is not the bottleneck. Per-pivot term-ops on scrambled312090 at limits 16/64/256/1000000: 51,738 / 52,428 / 46,833 / 47,312 -- flat across a 60,000x range. When every eligible candidate occurs in hundreds of rows there is no cheaper choice to find; H3 prices the pivot correctly, the cheapest available pivot is simply expensive.",
+        "z3_counters": "arith-offset-eqs dominates: 139,942 / 259,413 / 1,100,682 on the three profiled instances, against arith-fixed-eqs 45,068 / 158,312 / 373,175. But a row-shape census of the prepared tableau finds only 175 / 2,267 / 1,844 rows of literal x-y=c shape (3.4% / 15% / 7.6%), so z3 derives these DYNAMICALLY during search rather than syntactically up front. Any Primo equivalent is a search-time mechanism, materially bigger than H7."
+      },
+      "verification": {
+        "instrumentation_reverted": "Both throwaway patches (shape census, pricing-limit override) were reverted; git status clean and the tree builds with 0 errors afterwards.",
+        "sampling_method": "Instances chosen by z3-time quartile across the band, explicitly to avoid the instance-selection bias recorded in the H7 entry."
+      },
+      "evidence_status": "current",
+      "followups": "Three candidate directions recorded in docs/qf-lra-heuristics.md section 6.5, unranked and untested: (1) attack fill-in directly via periodic refactorization from the original rows -- the measured 5-17x densification is the headroom; (2) dynamic offset-equality detection matching z3's dominant counter; (3) evaluate the existing opt-in row-based bound propagation on this band, which has never been tried there. A falsifier for the whole diagnosis is stated in the note."
     }
   ]
 }
