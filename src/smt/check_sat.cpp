@@ -4028,16 +4028,36 @@ std::vector<InterfaceEqualityAtom> collect_true_interface_equalities(
   return true_atoms;
 }
 
-void append_true_interface_equalities(
-    const std::vector<InterfaceEqualityAtom>& interface_equalities,
-    std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
-    std::vector<AssignedTheoryAtom>& assignments) {
+std::vector<InterfaceEqualityAtom> collect_false_interface_equalities(
+    const sat::IpasirUpBackend& backend, const std::vector<InterfaceEqualityAtom>& atoms) {
+  std::vector<InterfaceEqualityAtom> false_atoms;
+  false_atoms.reserve(atoms.size());
+  for (const InterfaceEqualityAtom& atom : atoms) {
+    const std::optional<bool> value = lit_value_in_backend(backend, atom.lit);
+    if (value.has_value() && !value.value()) {
+      false_atoms.push_back(atom);
+    }
+  }
+  return false_atoms;
+}
+
+void append_interface_equalities(const std::vector<InterfaceEqualityAtom>& interface_equalities,
+                                 bool value,
+                                 std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+                                 std::vector<AssignedTheoryAtom>& assignments) {
   theory_atoms.reserve(theory_atoms.size() + interface_equalities.size());
   assignments.reserve(assignments.size() + interface_equalities.size());
   for (const InterfaceEqualityAtom& atom : interface_equalities) {
     theory_atoms.push_back(BooleanClausifier::TheoryAtom{atom.lit, atom.equality, false, false});
-    assignments.push_back(AssignedTheoryAtom{atom.lit.value, true, atom.equality, false});
+    assignments.push_back(AssignedTheoryAtom{atom.lit.value, value, atom.equality, false});
   }
+}
+
+void append_true_interface_equalities(
+    const std::vector<InterfaceEqualityAtom>& interface_equalities,
+    std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
+    std::vector<AssignedTheoryAtom>& assignments) {
+  append_interface_equalities(interface_equalities, true, theory_atoms, assignments);
 }
 
 bool force_implied_interface_equalities(const core::TermManager& terms,
@@ -6626,6 +6646,7 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.shared-real-terms", shared_real_terms.size());
   statistics.set(":no.interface.sat-equality-atoms", interface_equalities.size());
   statistics.set(":no.interface.sat-equalities-true", 0);
+  statistics.set(":no.interface.sat-equalities-false", 0);
   statistics.set(":no.interface.sat-equalities-forced", 0);
   statistics.set(":no.interface.equalities-propagated", 0);
   statistics.set(":no.interface.euf-to-lra-equalities", 0);
@@ -6689,7 +6710,10 @@ CheckSatOutcome solve_qf_uf_lra(
 
     const std::vector<InterfaceEqualityAtom> true_interface_equalities =
         collect_true_interface_equalities(backend, interface_equalities);
+    const std::vector<InterfaceEqualityAtom> false_interface_equalities =
+        collect_false_interface_equalities(backend, interface_equalities);
     statistics.set(":no.interface.sat-equalities-true", true_interface_equalities.size());
+    statistics.set(":no.interface.sat-equalities-false", false_interface_equalities.size());
 
     std::optional<sat::Clause> euf_conflict;
     std::optional<EufClosureCheckResult> euf_check;
@@ -6706,6 +6730,8 @@ CheckSatOutcome solve_qf_uf_lra(
       euf_assignments_for_check = euf_assignments;
       append_true_interface_equalities(true_interface_equalities, euf_atoms_for_check,
                                        euf_assignments_for_check);
+      append_interface_equalities(false_interface_equalities, false, euf_atoms_for_check,
+                                  euf_assignments_for_check);
       prepared_flat_theory.emplace(terms, euf_atoms_for_check, true_term, false_term,
                                    options.euf_explain_search,
                                    options.euf_proof_forest_diagnostics);

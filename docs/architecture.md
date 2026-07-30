@@ -216,7 +216,9 @@ Implemented now:
   atoms lazily for shared Real-constant/proxy pairs when one theory first
   implies that equality. For the current SAT assignment, generated equality
   atoms that are true are asserted to both EUF and LRA; equality atoms that are
-  false are not treated as Real disequalities. EUF- or LRA-implied shared
+  false are asserted to EUF as disequalities, while LRA disequality is still
+  handled indirectly by rejecting false atoms when LRA later entails equality
+  and by model-reconstruction separation. EUF- or LRA-implied shared
   equalities are learned as guarded clauses over those generated equality
   literals; the guards are the blocking literals for the current theory
   assignment, so an equality learned in one Boolean branch does not leak into
@@ -227,7 +229,7 @@ Implemented now:
   pairs; those guessed equality atoms are optional branches, not permanent unit
   clauses. This is intentionally not full Nelson-Oppen: fine-grained minimal
   cross-theory explanations, full model-equality propagation,
-  false-disequality arrangement enumeration, and unbounded arrangement
+  native LRA disequality case-splitting, and unbounded arrangement
   enumeration remain unsupported. Mixed model reconstruction uses a bounded
   search over strict shared-Real separation orientations, with a greedy fallback
   when the candidate set exceeds the current model-reconstruction cap.

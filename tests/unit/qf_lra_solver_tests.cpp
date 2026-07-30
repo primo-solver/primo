@@ -536,6 +536,7 @@ void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
   assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-conflicts") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-false") >= 1);
 }
 
 void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {

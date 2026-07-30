@@ -90,21 +90,22 @@ receives an internal Real proxy in place of the arithmetic argument, and LRA
 receives the two defining bounds `proxy <= term` and `term <= proxy`.
 
 When a theory first implies equality for a shared Real interface pair, the
-coordinator creates a positive SAT-visible equality atom for that pair. A false
-assignment to this generated atom is not treated as an LRA disequality, because
-the current LRA atom path only supports positive equality propagation across the
-interface. During the final mixed check, EUF-implied equalities between shared
-Real proxies and LRA-implied equalities between shared Real constants are mapped
-to those generated literals, creating the literal lazily if needed. If an
-implied equality literal is not already true in the accepted SAT assignment, the
+coordinator creates a positive SAT-visible equality atom for that pair. During
+the final mixed check, EUF-implied equalities between shared Real proxies and
+LRA-implied equalities between shared Real constants are mapped to those
+generated literals, creating the literal lazily if needed. If an implied
+equality literal is not already true in the accepted SAT assignment, the
 coordinator learns a guarded propagation clause and restarts the SAT loop. The
 clause contains the generated equality literal plus the blocking literals for
 the current assignment of the theory that implied it. This is intentionally less
 minimal than a theory-local explanation, but it is sound for lazy final checks:
 an equality discovered in one Boolean branch cannot become an unconditional
-fact in another branch. Once a receiving theory sees the forced equality, any
-inconsistency is explained through the ordinary EUF or LRA conflict path using
-the generated equality atom.
+fact in another branch. Generated equality literals that are true are asserted
+to both EUF and LRA. Generated equality literals that are false are asserted to
+EUF as disequalities. They are not asserted to LRA as native Real disequalities;
+instead, LRA can still reject such a false assignment by later entailing the
+corresponding equality, and mixed model reconstruction separately adds strict
+Real separation atoms for EUF-distinct Real arguments.
 
 With `--model-equality-branching`, the coordinator may also ask the LRA model
 for shared Real pairs that currently have the same concrete value. This is a
@@ -113,11 +114,10 @@ created as an optional SAT-visible atom, then tried as a one-shot SAT assumption
 If the receiving theory rejects the equality, the ordinary theory conflict
 learned under that assumption blocks the bad branch; if the SAT core rejects the
 assumption directly, Primo permanently sets that optional atom false. A false
-optional equality still means "do not assert this equality" in the current
-subset, not an LRA disequality. While an optional model-equality assumption is
-active, the coordinator does not export further EUF- or LRA-implied interface
-equalities as unconditional unit clauses; those consequences would depend on the
-guess and need explanation minimization that this scaffold does not implement.
+optional equality is visible to EUF as a disequality but is still not an LRA
+disequality. While an optional model-equality assumption is active, any further
+EUF- or LRA-implied interface equalities are learned through guarded assignment
+clauses, not as unconditional unit clauses.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
@@ -140,6 +140,7 @@ coordinator publishes:
 - `:no.interface.shared-real-terms`
 - `:no.interface.sat-equality-atoms`
 - `:no.interface.sat-equalities-true`
+- `:no.interface.sat-equalities-false`
 - `:no.interface.sat-equalities-forced`
 - `:no.interface.equalities-propagated`
 - `:no.interface.euf-to-lra-equalities`
@@ -323,34 +324,36 @@ treating one theory's atoms as Boolean noise.
 - **Interface equality check:** generated equality atoms are created lazily,
   only when EUF or LRA implies equality for a shared Real-constant/proxy pair.
   When such a generated equality literal is true in the current SAT assignment,
-  the equality is asserted into both EUF and LRA checks. A false generated
-  equality literal is not interpreted as an LRA disequality. After both theory
-  checks accept the current assignment, the EUF closure is inspected for implied
-  equalities between Real proxy constants that also occur in LRA atoms. The
-  reverse direction checks each shared Real-constant pair by adding `x < y` and
-  `y < x` to the current LRA assignment; if both conflict, LRA entails `x = y`.
-  Either direction learns a guarded clause from the current theory assignment to
-  the corresponding generated equality literal, and the next SAT iteration lets
-  the receiving theory produce any ordinary conflict with that equality literal
-  in its reason.
+  the equality is asserted into both EUF and LRA checks. When it is false, the
+  disequality is asserted into EUF only; LRA disequality is still represented
+  indirectly by the fact that LRA will force the equality if both strict
+  orientations conflict. After both theory checks accept the current assignment,
+  the EUF closure is inspected for implied equalities between Real proxy
+  constants that also occur in LRA atoms. The reverse direction checks each
+  shared Real-constant pair by adding `x < y` and `y < x` to the current LRA
+  assignment; if both conflict, LRA entails `x = y`. Either direction learns a
+  guarded clause from the current theory assignment to the corresponding
+  generated equality literal, and the next SAT iteration lets the receiving
+  theory produce any ordinary conflict with that equality literal in its reason.
 - **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
-  EUF assignment and the LRA assignment, augmented by currently true generated
-  interface equalities. Add the first per-theory conflict clause found and
-  continue. If both individual checks pass, learn guarded propagation clauses
-  for any newly implied generated interface equality and continue. Return `sat`
-  only when both theory checks accept the same Boolean assignment and neither
-  theory contributes a new shared equality clause.
+  EUF assignment and the LRA assignment. EUF is augmented by currently true and
+  false generated interface equalities; LRA is augmented by true generated
+  equalities only. Add the first per-theory conflict clause found and continue.
+  If both individual checks pass, learn guarded propagation clauses for any
+  newly implied generated interface equality and continue. Return `sat` only
+  when both theory checks accept the same Boolean assignment and neither theory
+  contributes a new shared equality clause.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
   model and scans shared Real pairs whose concrete LRA values are equal. For a
   missing, user-invisible equality atom, it creates a SAT-visible optional atom
   and retries the SAT loop with that atom as a one-shot assumption. The equality
-  is asserted to EUF/LRA only when SAT assigns the atom true. A failed assumption
-  is blocked by setting the optional atom false; this remains sound because
-  false optional atoms are interpreted as "no added equality" in this subset,
-  not as disequalities. The branch does not force additional interface
-  equalities as permanent units while the optional equality is active. The
-  branch budget is controlled by `--model-equality-branch-budget`.
+  is asserted to EUF/LRA when SAT assigns the atom true. A failed assumption is
+  blocked by setting the optional atom false, which is then asserted to EUF as a
+  disequality but still not to LRA as a native Real disequality. The branch does
+  not force additional interface equalities as permanent units while the
+  optional equality is active. The branch budget is controlled by
+  `--model-equality-branch-budget`.
 - **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
   QF_LRA definitions. For Real constants used as UF arguments, reconstruction
   first adds EUF-implied Real-constant equalities to the LRA model tableau, then
@@ -391,9 +394,9 @@ Limitations:
 - purification is limited to Real-valued UF applications in arithmetic atoms
   and non-constant Real arguments in EUF atoms;
 - shared-variable equality propagation is final-check only;
-- generated interface equalities are lazy and positive-only: unentailed shared
-  pairs do not create SAT atoms, and false generated equality literals are not
-  asserted as LRA disequalities;
+- generated interface equalities are lazy: unentailed shared pairs do not create
+  SAT atoms, and false generated equality literals are asserted only to EUF, not
+  as native LRA disequalities;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;
