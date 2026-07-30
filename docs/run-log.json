@@ -13695,6 +13695,73 @@
       },
       "evidence_status": "current",
       "followups": "This gives a measurement hook for future care-pair work without changing solver behavior. The next step should use these counters on real mixed benchmarks before adding pruning or clause-generation policy."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-care-lra-sharing",
+      "date": "2026-07-30",
+      "kind": "fuzz-and-care-pair-validation",
+      "scope": "Local validation for using syntactic EUF care pairs to limit LRA-to-EUF equality propagation checks in the mixed QF_UFLRA coordinator. EUF-to-LRA propagation, model reconstruction, and final arrangement validation still use the full shared-Real set.",
+      "commit": "730c887 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 730c887; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "commands": {
+        "make_check": "make check",
+        "make_docs": "make docs",
+        "make_lint": "make lint",
+        "make_asan_test": "make asan-test",
+        "efficiency_snapshot": "python3 <solver-efficiency-skill>/scripts/solver_efficiency_snapshot.py --repo .",
+        "clang_tidy_touched": "clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_include_cleaner": "clang-tidy -p build -checks='-*,clang-diagnostic-*,misc-include-cleaner' src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_owned_cpp": "git ls-files '*.cpp' | rg -v '(^|/)generated/|^src/smtlib/antlr/' | xargs clang-tidy -p build",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260752 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-care-lra-sharing-answer-1000-730c887",
+        "private_endpoint_leak_scan": "git diff -- src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp docs/architecture.md docs/debugging.md docs/papers/nelson-oppen-closure-methods.md | rg -n <private-endpoint-patterns> || true"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "answer_seed": 20260752,
+        "answer_fuzz_count": 1000,
+        "answer_fuzz_timeout_seconds": 5
+      },
+      "artifacts": {
+        "answer_fuzz": "fuzz-results/qf_uflra-care-lra-sharing-answer-1000-730c887/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uflra-care-lra-sharing-answer-1000-730c887/cases/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 730,
+        "answer_fuzz_unsat": 270
+      },
+      "verification": {
+        "focused_regression": "qf_uf_lra_uses_euf_care_pairs_for_lra_to_euf_propagation checks that an LRA-implied x=y pair under unrelated predicates p(x) and q(y) reports one full pair, zero care pairs, one pruned pair, and zero LRA-to-EUF propagated equalities.",
+        "correctness_boundary": "Only the main-loop LRA-to-EUF equality scan is filtered. EUF-to-LRA propagation, final arrangement validation, and model reconstruction still consider the full shared Real set.",
+        "efficiency_review": "solver_efficiency_snapshot.py reported the expected per-SAT-round care-pair map/vector allocations. They are built alongside the already rebuilt PreparedFlatTheory; the focused regression proves the intended skipped LRA equality check.",
+        "documentation_review": "docs/architecture.md, docs/debugging.md, and docs/papers/nelson-oppen-closure-methods.md document the narrow consumer and explicitly avoid claiming implementation of Jovanovic-Barrett care-set algorithms.",
+        "local_gates": "make check, make docs, make lint, make asan-test, git diff --check, touched-file clang-tidy/include-cleaner, whole-tree non-generated clang-tidy, and 1000-case QF_UFLRA answer fuzz passed. make lint skipped ruff because it is not installed."
+      },
+      "evidence_status": "current",
+      "followups": "This is a low-risk care-pair consumer, not a complete care-set algorithm. Benchmark next on mixed QF_UFLRA examples to decide whether stronger care-pair pruning or a theory-facing API is worth adding."
     }
   ]
 }
