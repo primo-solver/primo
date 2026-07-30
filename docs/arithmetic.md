@@ -87,9 +87,10 @@ alternatives considered before/while implementing it.
   strict bounds. The model builder also replays preprocessing reconstruction
   equalities from solve-eqs/Gaussian elimination, so a constant eliminated
   before theory solving is assigned from the final values of the terms it was
-  rewritten to. This is a supported minimal LRA model subset, not a mixed
-  QF_UFLRA model: Real functions, arrays, nonlinear arithmetic, and
-  Nelson-Oppen combination models remain unsupported.
+  rewritten to. The mixed QF_UFLRA path can compose this nullary-Real model
+  body with a QF_UF model only for separable formulas whose EUF side does not
+  mention `Real`; Real functions, arrays, nonlinear arithmetic, and
+  shared-Real Nelson-Oppen combination models remain unsupported.
 - **Same-variable bound propagation** (Milestone 3b, `check_sat.cpp`; called
   same-*slack* propagation before item H1a, when a slack was the only thing a
   bound could live on): after each successful bound assertion,
@@ -523,8 +524,9 @@ alternatives considered before/while implementing it.
   an internal Real proxy, sends the proxy definition to EUF, sends the purified
   arithmetic atom to LRA, and checks EUF-implied proxy equalities against LRA
   under the current SAT assignment. This is not full Nelson-Oppen combination:
-  EUF predicates/non-definition equalities over Real terms and mixed
-  `get-model` are still explicitly reported as `Unsupported`.
+  EUF predicates/non-definition equalities over Real terms and `get-model` for
+  formulas with shared-Real EUF terms are still explicitly reported as
+  `Unsupported`.
 - ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
   above. Was the dominant cause of `UnsupportedInput` in every fuzz
   campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in

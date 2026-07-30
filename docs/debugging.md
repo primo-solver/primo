@@ -314,6 +314,13 @@ QF_LRA prints user-declared nullary `Real` constants. The printed model is
 intended to be validated as an SMT-LIB response file: stdout starts with `sat`,
 followed by a parenthesized `model`.
 
+The mixed QF_UFLRA path additionally supports a narrow separable model subset:
+if the EUF side does not mention `Real`-sorted terms and no UF symbol has a
+`Real` argument or result, Primo composes the QF_UF model body with the
+nullary-Real QF_LRA definitions. Real-valued UF applications, shared-Real EUF
+terms, and model reconstruction for Nelson-Oppen interface equalities remain
+unsupported.
+
 Use [Dolmen](https://ceur-ws.org/Vol-3429/short9.pdf) as the independent
 model-format and assertion validator. Dolmen's model-validation interface uses a
 solver response file, conventionally with an `.rsmt2` extension:
@@ -335,16 +342,16 @@ repository.
 
 Current limitations:
 
-- only pure `QF_UF`, pure Boolean, and pure nullary-Real `QF_LRA` model values
-  are printed;
+- only pure `QF_UF`, pure Boolean, pure nullary-Real `QF_LRA`, and separable
+  QF_UFLRA-without-Real-on-the-EUF-side model values are printed;
 - unsupported, unknown, and unsat results do not print a model;
 - QF_UF preprocessing reconstruction is limited to Boolean/forced unit facts,
   solved-constant substitutions, and ground-unit substitutions;
 - QF_LRA preprocessing reconstruction is limited to Real equalities recorded by
   solve-eqs/Gaussian elimination;
-- no mixed QF_UFLRA, array, Nelson-Oppen combination, or future preprocessing
-  rewrite is model-reconstructed unless it emits explicit reconstruction
-  assignments and the active pure-theory model builder consumes them.
+- no shared-Real QF_UFLRA, array, Nelson-Oppen interface-equality model, or
+  future preprocessing rewrite is model-reconstructed unless it emits explicit
+  reconstruction assignments and the active model builder consumes them.
 
 ## Fuzzing and Reduction
 

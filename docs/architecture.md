@@ -182,6 +182,11 @@ Implemented now:
   their values from the final `LraTableau` assignment, and model reconstruction
   replays Real equalities recorded by preprocessing so solved-away constants
   are printed for the original problem.
+- Minimal separable QF_UFLRA model printing. For mixed formulas whose EUF side
+  does not mention `Real`-sorted terms or `Real`-sorted UF signatures,
+  `solve_qf_uf_lra` composes the QF_UF model body with the nullary-Real QF_LRA
+  definitions. Real-valued UF applications and shared-Real EUF terms still
+  reject `get-model`.
 - Read-only Nelson-Oppen interface diagnostics in
   `smt::analyze_nelson_oppen_interface`: the SMT layer counts user-visible,
   non-Boolean constants by sort and already-visible equality atoms over those
@@ -202,7 +207,7 @@ Implemented now:
   augmented LRA check; a conflict learns a broad clause blocking the current
   theory assignment. This is intentionally not full Nelson-Oppen: Real terms in
   EUF predicates/non-definition atoms, fine-grained interface explanations, and
-  mixed `get-model` remain unsupported.
+  mixed models for shared-Real terms remain unsupported.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

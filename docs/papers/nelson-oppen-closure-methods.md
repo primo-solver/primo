@@ -29,9 +29,10 @@ definitions for user-declared UF constants, functions, and predicates from a
 ground EUF closure, and QF_LRA prints user-declared nullary Real constants from
 the final tableau assignment. These are still narrower than the model object
 needed for model-guided Nelson-Oppen combination. `core::Model` remains a
-placeholder, mixed QF_UFLRA model printing is unsupported, and
-satisfiability-preserving preprocessing must emit explicit reconstruction
-assignments when it removes user-visible facts.
+placeholder, separable mixed QF_UFLRA model printing is only a composed
+QF_UF-plus-nullary-Real subset, and satisfiability-preserving preprocessing
+must emit explicit reconstruction assignments when it removes user-visible
+facts.
 
 This conservative model printer is a prerequisite for model-guided combination:
 without a concrete model object, "model equality" can easily degrade into an
@@ -88,9 +89,10 @@ continues.
 
 This is sound only for the implemented partial subset. It rejects EUF predicates
 and non-definition EUF atoms that mention Real-sorted terms because those need
-bidirectional Nelson-Oppen equality sharing. It also rejects `:produce-models
-true` on mixed QF_UFLRA, because Primo currently has only pure-theory model
-printers. The coordinator publishes:
+bidirectional Nelson-Oppen equality sharing. It also rejects mixed
+`:produce-models true` when the UF signature or EUF atoms mention `Real`,
+because those models need shared-Real reconstruction rather than a pure-theory
+composition. The coordinator publishes:
 
 - `:solver.qf-uflra`
 - `:no.mixed.euf-atoms`
@@ -274,13 +276,17 @@ treating one theory's atoms as Boolean noise.
   clause found and continue. If both individual checks pass, run the augmented
   LRA check with EUF-implied proxy equalities. Return `sat` only when all three
   checks accept the same Boolean assignment.
-- **Model status:** mixed `get-model` is `Unsupported`. The pure QF_UF and pure
-  QF_LRA model printers are not composed.
+- **Model status:** separable mixed `get-model` is supported only when the EUF
+  side does not mention `Real` and no UF symbol has a `Real` argument or result.
+  The model is composed from the QF_UF body and nullary-Real QF_LRA definitions.
+  Shared-Real EUF terms and Real-valued UF applications still return
+  `Unsupported`.
 - **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
-  mix, EUF-conflict learning, LRA-conflict learning, unsupported mixed
-  `get-model`, rejection of Real arguments to EUF predicates, purification of
-  Real-valued UF applications in arithmetic atoms, and an EUF-implied proxy
-  equality that makes the LRA side inconsistent.
+  mix, EUF-conflict learning, LRA-conflict learning, separable mixed
+  `get-model`, rejection of mixed models for Real-valued UF applications,
+  rejection of Real arguments to EUF predicates, purification of Real-valued UF
+  applications in arithmetic atoms, and an EUF-implied proxy equality that makes
+  the LRA side inconsistent.
 
 Limitations:
 

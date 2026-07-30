@@ -49,8 +49,9 @@ std::string abstract_value_name(core::SortId sort, std::size_t index) {
 
 class QfUfModelBuilder {
  public:
-  QfUfModelBuilder(core::TermManager& terms, const std::vector<TheoryModelAssignment>& assignments)
-      : terms_(terms), closure_(terms) {
+  QfUfModelBuilder(core::TermManager& terms, const std::vector<TheoryModelAssignment>& assignments,
+                   QfUfModelBuildOptions options)
+      : terms_(terms), options_(options), closure_(terms) {
     true_term_ = terms_.mk_bool(true);
     false_term_ = terms_.mk_bool(false);
     closure_.add_term(true_term_);
@@ -68,9 +69,11 @@ class QfUfModelBuilder {
   std::string build() {
     seed_defaults();
     std::ostringstream out;
-    out << "(model\n";
+    if (options_.include_model_wrapper) {
+      out << "(model\n";
+    }
     for (const core::Symbol& symbol : terms_.symbols().symbols()) {
-      if (is_internal_symbol(symbol)) {
+      if (skip_symbol(symbol)) {
         continue;
       }
       if (symbol.kind == core::SymbolKind::Constant) {
@@ -79,7 +82,7 @@ class QfUfModelBuilder {
       }
     }
     for (const core::Symbol& symbol : terms_.symbols().symbols()) {
-      if (is_internal_symbol(symbol) || symbol.kind == core::SymbolKind::Constant) {
+      if (skip_symbol(symbol) || symbol.kind == core::SymbolKind::Constant) {
         continue;
       }
       out << "  (define-fun " << symbol.name << " (";
@@ -91,11 +94,26 @@ class QfUfModelBuilder {
       }
       out << ") " << sort_name(symbol.result_sort) << " " << function_body(symbol) << ")\n";
     }
-    out << ")";
+    if (options_.include_model_wrapper) {
+      out << ")";
+    }
     return out.str();
   }
 
  private:
+  bool symbol_touches_real(const core::Symbol& symbol) const {
+    if (symbol.result_sort == terms_.symbols().real_sort()) {
+      return true;
+    }
+    return std::any_of(symbol.arg_sorts.begin(), symbol.arg_sorts.end(),
+                       [&](core::SortId sort) { return sort == terms_.symbols().real_sort(); });
+  }
+
+  bool skip_symbol(const core::Symbol& symbol) const {
+    return is_internal_symbol(symbol) ||
+           (options_.skip_real_symbols && symbol_touches_real(symbol));
+  }
+
   void add_all_relevant_terms() {
     for (const core::Term& term : terms_.terms()) {
       if (term.kind == core::TermKind::Constant || term.kind == core::TermKind::Application) {
@@ -120,12 +138,23 @@ class QfUfModelBuilder {
 
   void seed_defaults() {
     for (const core::Symbol& symbol : terms_.symbols().symbols()) {
+      if (skip_symbol(symbol)) {
+        continue;
+      }
       if (symbol.kind == core::SymbolKind::Constant &&
           symbol.result_sort != terms_.symbols().bool_sort()) {
-        (void)value_name(closure_.class_representative(terms_.mk_constant(symbol.id)));
+        (void)value_name(closure_.class_representative(model_constant_term(symbol.id)));
       }
     }
     for (const core::Term& term : terms_.terms()) {
+      if (term.kind == core::TermKind::Application &&
+          skip_symbol(terms_.symbols().get_symbol(term.symbol))) {
+        continue;
+      }
+      if (term.kind == core::TermKind::Constant &&
+          skip_symbol(terms_.symbols().get_symbol(term.symbol))) {
+        continue;
+      }
       if ((term.kind == core::TermKind::Constant || term.kind == core::TermKind::Application) &&
           term.sort != terms_.symbols().bool_sort()) {
         (void)value_name(closure_.class_representative(term.id));
@@ -172,6 +201,12 @@ class QfUfModelBuilder {
     return index;
   }
 
+  core::TermId model_constant_term(core::SymbolId symbol) {
+    const core::TermId term = terms_.mk_constant(symbol);
+    closure_.add_term(term);
+    return term;
+  }
+
   bool bool_value(core::TermId term) {
     const core::Term& node = terms_.get(term);
     if (node.kind == core::TermKind::BoolValue) {
@@ -192,7 +227,7 @@ class QfUfModelBuilder {
   }
 
   std::string constant_value(const core::Symbol& symbol) {
-    const core::TermId term = terms_.mk_constant(symbol.id);
+    const core::TermId term = model_constant_term(symbol.id);
     return term_value(term);
   }
 
@@ -254,6 +289,7 @@ class QfUfModelBuilder {
   }
 
   core::TermManager& terms_;
+  QfUfModelBuildOptions options_;
   theory::equality::IncrementalCongruenceClosure closure_;
   core::TermId true_term_ = core::kInvalidTermId;
   core::TermId false_term_ = core::kInvalidTermId;
@@ -265,8 +301,9 @@ class QfUfModelBuilder {
 }  // namespace
 
 std::string build_qf_uf_model(core::TermManager& terms,
-                              const std::vector<TheoryModelAssignment>& theory_assignments) {
-  QfUfModelBuilder builder(terms, theory_assignments);
+                              const std::vector<TheoryModelAssignment>& theory_assignments,
+                              QfUfModelBuildOptions options) {
+  QfUfModelBuilder builder(terms, theory_assignments, options);
   return builder.build();
 }
 

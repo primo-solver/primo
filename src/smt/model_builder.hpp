@@ -14,7 +14,13 @@ struct TheoryModelAssignment {
   bool filtered = false;
 };
 
+struct QfUfModelBuildOptions {
+  bool include_model_wrapper = true;
+  bool skip_real_symbols = false;
+};
+
 std::string build_qf_uf_model(core::TermManager& terms,
-                              const std::vector<TheoryModelAssignment>& theory_assignments);
+                              const std::vector<TheoryModelAssignment>& theory_assignments,
+                              QfUfModelBuildOptions options = {});
 
 }  // namespace primo::smt

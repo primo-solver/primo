@@ -4438,11 +4438,10 @@ std::string smtlib_rational(const util::Rational& value) {
   return negative ? "(- " + fraction + ")" : fraction;
 }
 
-std::string build_real_constant_model(const core::TermManager& terms,
-                                      const std::vector<core::TermId>& model_terms,
-                                      const RealModelValues& values) {
-  std::ostringstream model;
-  model << "(model\n";
+void append_real_constant_model_definitions(std::ostringstream& model,
+                                            const core::TermManager& terms,
+                                            const std::vector<core::TermId>& model_terms,
+                                            const RealModelValues& values) {
   for (const core::TermId term_id : model_terms) {
     const core::Term& term = terms.get(term_id);
     if (term.kind != core::TermKind::Constant || term.sort != terms.symbols().real_sort()) {
@@ -4453,11 +4452,19 @@ std::string build_real_constant_model(const core::TermManager& terms,
     const util::Rational value = found == values.end() ? util::Rational(0) : found->second;
     model << "  (define-fun " << symbol.name << " () Real " << smtlib_rational(value) << ")\n";
   }
+}
+
+std::string build_real_constant_model(const core::TermManager& terms,
+                                      const std::vector<core::TermId>& model_terms,
+                                      const RealModelValues& values) {
+  std::ostringstream model;
+  model << "(model\n";
+  append_real_constant_model_definitions(model, terms, model_terms, values);
   model << ")";
   return model.str();
 }
 
-std::string build_qf_lra_model(
+RealModelValues real_model_values_from_lra(
     const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
@@ -4470,6 +4477,16 @@ std::string build_qf_lra_model(
                    concretize_delta_rational(tableau.assignment(variable), concrete_delta));
   }
   apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
+  return values;
+}
+
+std::string build_qf_lra_model(
+    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
+    const std::vector<AssignedTheoryAtom>& assigned_atoms) {
+  const RealModelValues values = real_model_values_from_lra(
+      terms, model_terms, preprocessing_model_assignments, prepared, tableau, assigned_atoms);
   return build_real_constant_model(terms, model_terms, values);
 }
 
@@ -4557,6 +4574,26 @@ bool contains_real_sorted_term(const core::TermManager& terms, core::TermId term
   return false;
 }
 
+bool symbol_touches_real_sort(const core::TermManager& terms, const core::Symbol& symbol) {
+  if (symbol.result_sort == terms.symbols().real_sort()) {
+    return true;
+  }
+  return std::any_of(symbol.arg_sorts.begin(), symbol.arg_sorts.end(),
+                     [&](core::SortId sort) { return sort == terms.symbols().real_sort(); });
+}
+
+bool mixed_model_supported_by_uf_signature(const core::TermManager& terms) {
+  for (const core::Symbol& symbol : terms.symbols().symbols()) {
+    if (symbol.name.starts_with("$primo_") || symbol.kind == core::SymbolKind::Constant) {
+      continue;
+    }
+    if (symbol_touches_real_sort(terms, symbol)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void require_supported_mixed_theory_atom(const core::TermManager& terms,
                                          const BooleanClausifier::TheoryAtom& atom) {
   if (is_euf_theory_atom(terms, atom.term)) {
@@ -4635,6 +4672,17 @@ std::vector<core::TermId> euf_implied_real_equalities(
     }
   }
   return equalities;
+}
+
+void append_supported_uf_model_assignments(const core::TermManager& terms,
+                                           std::vector<TheoryModelAssignment>& target,
+                                           const std::vector<TheoryModelAssignment>& assignments) {
+  target.reserve(target.size() + assignments.size());
+  for (const TheoryModelAssignment& assignment : assignments) {
+    if (!contains_real_sorted_term(terms, assignment.term)) {
+      target.push_back(assignment);
+    }
+  }
 }
 
 struct MixedTheoryPurificationResult {
@@ -5958,13 +6006,9 @@ CheckSatOutcome solve_qf_lra(
 
 CheckSatOutcome solve_qf_uf_lra(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const CheckSatOptions& options, util::Statistics& statistics,
-    const std::vector<TheoryModelAssignment>& /*preprocessing_model_assignments*/) {
-  if (options.produce_model) {
-    return CheckSatOutcome{CheckSatResult::Unsupported,
-                           "get-model for mixed QF_UFLRA is not supported", statistics, ""};
-  }
-
+    const std::vector<core::TermId>& model_terms,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
+    const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(":solver.qf-uflra");
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
@@ -5989,6 +6033,22 @@ CheckSatOutcome solve_qf_uf_lra(
   }
   const std::vector<core::TermId> shared_real_terms =
       shared_real_constants(terms, euf_atoms, lra_atoms);
+  if (options.produce_model) {
+    if (!mixed_model_supported_by_uf_signature(terms)) {
+      return CheckSatOutcome{
+          CheckSatResult::Unsupported,
+          "get-model for mixed QF_UFLRA with Real-sorted UF symbols is not supported", statistics,
+          ""};
+    }
+    for (const BooleanClausifier::TheoryAtom& atom : euf_atoms) {
+      if (contains_real_sorted_term(terms, atom.term)) {
+        return CheckSatOutcome{
+            CheckSatResult::Unsupported,
+            "get-model for mixed QF_UFLRA with shared Real EUF terms is not supported", statistics,
+            ""};
+      }
+    }
+  }
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
@@ -6025,7 +6085,7 @@ CheckSatOutcome solve_qf_uf_lra(
   }
   const PreparedLraTheory prepared_lra_theory(
       terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, false);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
   publish_lra_tableau_shape_stats(prepared_lra_theory.base_tableau, statistics);
 
   while (true) {
@@ -6038,10 +6098,10 @@ CheckSatOutcome solve_qf_uf_lra(
 
     std::optional<sat::Clause> euf_conflict;
     std::optional<EufClosureCheckResult> euf_check;
+    std::vector<AssignedTheoryAtom> euf_assignments;
     if (!euf_atoms.empty()) {
       statistics.increment(kStatTheoryChecks);
-      const std::vector<AssignedTheoryAtom> euf_assignments =
-          assigned_atoms_from_backend(backend, euf_atoms, options.pure_theory_filter);
+      euf_assignments = assigned_atoms_from_backend(backend, euf_atoms, options.pure_theory_filter);
       for (const AssignedTheoryAtom& atom : euf_assignments) {
         count_filtered_assignment(atom, statistics);
       }
@@ -6097,8 +6157,6 @@ CheckSatOutcome solve_qf_uf_lra(
         if (no_conflict.has_value()) {
           statistics.increment(":no.interface.conflicts");
           statistics.increment(kStatLraTheoryConflicts);
-          const std::vector<AssignedTheoryAtom> euf_assignments =
-              assigned_atoms_from_backend(backend, euf_atoms, options.pure_theory_filter);
           sat::Clause blocking_clause =
               block_current_theory_assignment(euf_assignments, lra_assignments);
           if (blocking_clause.empty()) {
@@ -6113,6 +6171,47 @@ CheckSatOutcome solve_qf_uf_lra(
     }
 
     publish_sat_stats(backend.statistics(), statistics);
+    if (options.produce_model) {
+      theory::arithmetic::LraTableau model_tableau = prepared_lra_theory.base_tableau;
+      for (std::size_t i = 0; i < lra_assignments.size(); ++i) {
+        const AssignedTheoryAtom& atom = lra_assignments[i];
+        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_lra_theory.atoms[i];
+        if (!prepared_atom.is_arithmetic || atom.filtered) {
+          continue;
+        }
+        const std::optional<sat::Clause> conflict = assert_lra_atom_bound(
+            model_tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs,
+            atom.value, prepared_atom.asserts_lower_when_true, blocking_lit(atom));
+        if (conflict.has_value()) {
+          return CheckSatOutcome{CheckSatResult::Unknown,
+                                 "mixed QF_UFLRA model reconstruction found a bound conflict",
+                                 statistics, ""};
+        }
+      }
+      if (model_tableau.check().has_value()) {
+        return CheckSatOutcome{CheckSatResult::Unknown,
+                               "mixed QF_UFLRA model reconstruction found a tableau conflict",
+                               statistics, ""};
+      }
+      const RealModelValues real_values =
+          real_model_values_from_lra(terms, model_terms, preprocessing_model_assignments,
+                                     prepared_lra_theory, model_tableau, lra_assignments);
+      std::vector<TheoryModelAssignment> uf_model_assignments;
+      append_supported_uf_model_assignments(terms, uf_model_assignments,
+                                            preprocessing_model_assignments);
+      uf_model_assignments.reserve(uf_model_assignments.size() + euf_assignments.size());
+      for (const AssignedTheoryAtom& atom : euf_assignments) {
+        uf_model_assignments.push_back(TheoryModelAssignment{atom.term, atom.value, atom.filtered});
+      }
+      std::ostringstream model;
+      model << "(model\n";
+      model << build_qf_uf_model(
+          terms, uf_model_assignments,
+          QfUfModelBuildOptions{.include_model_wrapper = false, .skip_real_symbols = true});
+      append_real_constant_model_definitions(model, terms, model_terms, real_values);
+      model << ")";
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics, model.str()};
+    }
     return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
   }
 }
@@ -6355,20 +6454,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       }
       options.produce_model = true;
     }
-    if (options.produce_model) {
-      bool original_has_euf = false;
-      bool original_has_arithmetic = false;
-      for (const core::TermId assertion : assertions) {
-        original_has_euf = original_has_euf || contains_equality(frontend.terms(), assertion) ||
-                           contains_euf_predicate_atom(frontend.terms(), assertion);
-        original_has_arithmetic =
-            original_has_arithmetic || contains_arithmetic_atom(frontend.terms(), assertion);
-      }
-      if (original_has_euf && original_has_arithmetic) {
-        return finish(CheckSatResult::Unsupported, "get-model for mixed QF_UFLRA is not supported");
-      }
-    }
-
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
     const std::size_t initial_reachable_terms =
         options.qf_uf_preprocess == QfUfPreprocessMode::Auto
@@ -6784,9 +6869,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     }();
     if ((has_equality || has_euf_predicate) && has_arithmetic) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_uf_lra(frontend.terms(), assertions, solve_options, statistics,
-                                          preprocessing_model_assignments),
-                          solve_start);
+      return finish_solve(
+          solve_qf_uf_lra(frontend.terms(), assertions, frontend.declared_real_constants(),
+                          preprocessing_model_assignments, solve_options, statistics),
+          solve_start);
     }
     if (has_arithmetic) {
       const PhaseClock::time_point solve_start = PhaseClock::now();

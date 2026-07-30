@@ -39,7 +39,8 @@ void accepts_set_logic_and_real_declarations() {
     (assert (<= (+ x (* 2 y)) 5))
     (assert (< 0 x))
     (check-sat)
-  )");
+  )",
+                                       no_preprocessing());
   assert(result.result == CheckSatResult::Sat);
 }
 
@@ -210,7 +211,7 @@ void qf_uf_lra_mix_learns_lra_conflicts() {
   assert(result.statistics.get(StatKey::LraTheoryConflicts) > 0);
 }
 
-void qf_uf_lra_get_model_is_not_supported_yet() {
+void qf_uf_lra_prints_separable_mixed_model() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
     (set-logic QF_UFLRA)
@@ -223,26 +224,28 @@ void qf_uf_lra_get_model_is_not_supported_yet() {
     (check-sat)
     (get-model)
   )",
-                                       no_preprocessing());
-  assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("get-model for mixed QF_UFLRA") != std::string::npos);
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(model") != std::string::npos);
+  assert(result.model.find("(define-fun a () U (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun b () U (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
 }
 
-void qf_uf_lra_get_model_rejects_original_mix_after_preprocessing() {
+void qf_uf_lra_get_model_rejects_real_valued_uf_applications() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
     (set-logic QF_UFLRA)
     (declare-sort U 0)
     (declare-fun a () U)
-    (declare-fun b () U)
-    (declare-fun x () Real)
-    (assert (= a b))
-    (assert (< 0 x))
+    (declare-fun f (U) Real)
+    (assert (< 0 (f a)))
     (check-sat)
     (get-model)
   )");
   assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("get-model for mixed QF_UFLRA") != std::string::npos);
+  assert(result.message.find("Real-sorted UF symbols") != std::string::npos);
 }
 
 void qf_uf_lra_real_predicate_arguments_need_equality_sharing() {
@@ -1391,8 +1394,8 @@ int main() {
   accepts_separable_qf_uf_lra_mix();
   qf_uf_lra_mix_learns_euf_conflicts();
   qf_uf_lra_mix_learns_lra_conflicts();
-  qf_uf_lra_get_model_is_not_supported_yet();
-  qf_uf_lra_get_model_rejects_original_mix_after_preprocessing();
+  qf_uf_lra_prints_separable_mixed_model();
+  qf_uf_lra_get_model_rejects_real_valued_uf_applications();
   qf_uf_lra_real_predicate_arguments_need_equality_sharing();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
