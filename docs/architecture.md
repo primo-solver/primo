@@ -217,9 +217,12 @@ Implemented now:
   implies that equality. For the current SAT assignment, generated equality
   atoms that are true are asserted to both EUF and LRA; equality atoms that are
   false are not treated as Real disequalities. EUF- or LRA-implied shared
-  equalities are learned as unit clauses over those generated equality literals,
-  after which the receiving theory reports any ordinary conflict using that
-  literal as part of its reason. The optional `--model-equality-branching` mode
+  equalities are learned as guarded clauses over those generated equality
+  literals; the guards are the blocking literals for the current theory
+  assignment, so an equality learned in one Boolean branch does not leak into
+  another. After the receiving theory sees a forced equality, it reports any
+  ordinary conflict using that literal as part of its reason. The optional
+  `--model-equality-branching` mode
   adds a default-off SAT-assumption scaffold for LRA-model-equal shared Real
   pairs; those guessed equality atoms are optional branches, not permanent unit
   clauses. This is intentionally not full Nelson-Oppen: fine-grained minimal

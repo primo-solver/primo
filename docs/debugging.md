@@ -328,8 +328,10 @@ optional SAT equality atoms created for those pairs, assumptions made on those
 atoms, assumptions rejected at the SAT level, and ordinary theory conflicts
 reached while a guessed equality was active. `:no.interface.conflicts` is retained as the
 legacy broad blocking counter; the current positive-equality path should instead
-show activity in `:no.interface.sat-equalities-forced` and then ordinary EUF/LRA
-theory-conflict counters if the forced equality is inconsistent.
+show activity in `:no.interface.sat-equalities-forced`, which counts guarded
+propagation clauses from the current theory assignment to a generated interface
+equality literal, and then ordinary EUF/LRA theory-conflict counters if the
+forced equality is inconsistent.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are

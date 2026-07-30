@@ -97,9 +97,14 @@ interface. During the final mixed check, EUF-implied equalities between shared
 Real proxies and LRA-implied equalities between shared Real constants are mapped
 to those generated literals, creating the literal lazily if needed. If an
 implied equality literal is not already true in the accepted SAT assignment, the
-coordinator adds a unit clause for that literal and restarts the SAT loop. Once
-a receiving theory sees the forced equality, any inconsistency is explained
-through the ordinary EUF or LRA conflict path using the generated equality atom.
+coordinator learns a guarded propagation clause and restarts the SAT loop. The
+clause contains the generated equality literal plus the blocking literals for
+the current assignment of the theory that implied it. This is intentionally less
+minimal than a theory-local explanation, but it is sound for lazy final checks:
+an equality discovered in one Boolean branch cannot become an unconditional
+fact in another branch. Once a receiving theory sees the forced equality, any
+inconsistency is explained through the ordinary EUF or LRA conflict path using
+the generated equality atom.
 
 With `--model-equality-branching`, the coordinator may also ask the LRA model
 for shared Real pairs that currently have the same concrete value. This is a
@@ -324,16 +329,17 @@ treating one theory's atoms as Boolean noise.
   equalities between Real proxy constants that also occur in LRA atoms. The
   reverse direction checks each shared Real-constant pair by adding `x < y` and
   `y < x` to the current LRA assignment; if both conflict, LRA entails `x = y`.
-  Either direction learns the corresponding generated equality literal as a unit
-  clause, and the next SAT iteration lets the receiving theory produce any
-  ordinary conflict with that equality literal in its reason.
+  Either direction learns a guarded clause from the current theory assignment to
+  the corresponding generated equality literal, and the next SAT iteration lets
+  the receiving theory produce any ordinary conflict with that equality literal
+  in its reason.
 - **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
   EUF assignment and the LRA assignment, augmented by currently true generated
   interface equalities. Add the first per-theory conflict clause found and
-  continue. If both individual checks pass, force any newly implied generated
-  interface equality and continue. Return `sat` only when both theory checks
-  accept the same Boolean assignment and neither theory forces a new shared
-  equality.
+  continue. If both individual checks pass, learn guarded propagation clauses
+  for any newly implied generated interface equality and continue. Return `sat`
+  only when both theory checks accept the same Boolean assignment and neither
+  theory contributes a new shared equality clause.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
   model and scans shared Real pairs whose concrete LRA values are equal. For a
@@ -369,15 +375,16 @@ treating one theory's atoms as Boolean noise.
   shared-Real predicate `get-model` when LRA forces equality, Real-valued UF
   application models, bounded shared-Real model-separation search over multiple
   candidates, positive SAT-visible interface equality forcing in both LRA-to-EUF
-  and EUF-to-LRA directions, purification of non-constant Real arguments to EUF
-  predicates with proxy reuse and model printing, purification of Real-valued UF
-  applications in arithmetic atoms, an EUF-implied proxy equality that makes the
-  LRA side inconsistent, an LRA-implied shared Real-constant equality that makes
-  the EUF side inconsistent, and a regression where default preprocessing solves
-  away a UF equality before the remaining arithmetic formula dispatches to the
-  LRA solver. It also covers opt-in model-equality branching over an LRA-model
-  equal pair that EUF rejects, forcing the solver to back off and still return
-  `sat`.
+  and EUF-to-LRA directions, guarded interface-equality propagation that must not
+  leak an equality from one Boolean branch into another, purification of
+  non-constant Real arguments to EUF predicates with proxy reuse and model
+  printing, purification of Real-valued UF applications in arithmetic atoms, an
+  EUF-implied proxy equality that makes the LRA side inconsistent, an
+  LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
+  and a regression where default preprocessing solves away a UF equality before
+  the remaining arithmetic formula dispatches to the LRA solver. It also covers
+  opt-in model-equality branching over an LRA-model equal pair that EUF rejects,
+  forcing the solver to back off and still return `sat`.
 
 Limitations:
 
@@ -387,9 +394,9 @@ Limitations:
 - generated interface equalities are lazy and positive-only: unentailed shared
   pairs do not create SAT atoms, and false generated equality literals are not
   asserted as LRA disequalities;
-- cross-theory equality propagation uses generated unit equality literals, but
-  still lacks the minimal explanation machinery of a full Nelson-Oppen
-  implementation;
+- cross-theory equality propagation uses guarded clauses over generated equality
+  literals, but still lacks the minimal explanation machinery of a full
+  Nelson-Oppen implementation;
 - opt-in model-equality branching is a scaffold over LRA-model-equal shared
   Real pairs only, not the full de Moura/Bjorner algorithm;
 - Real-argument model reconstruction backtracks only up to a fixed candidate
