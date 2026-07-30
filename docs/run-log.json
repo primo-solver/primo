@@ -12505,6 +12505,62 @@
       },
       "evidence_status": "current",
       "followups": "This validates only the separable mixed model subset. Real-valued UF applications, shared-Real EUF terms, and full Nelson-Oppen model reconstruction remain unsupported."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-shared-real-smoke-e2e0124",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz",
+      "scope": "Local merge-gate fuzz for LRA-to-EUF shared Real-constant equality checks in the partial Nelson-Oppen QF_UFLRA coordinator. Cases contain EUF predicates over Real constants plus LRA constraints that may or may not force those constants equal.",
+      "commit": "e2e0124 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: e2e0124; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260731 --timeout 5 --shape shared-real --out fuzz-results/qf_uflra-shared-real-e2e0124",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape shared-real",
+        "logic": "QF_UFLRA",
+        "seed": 20260731,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": "generated under fuzz-results/qf_uflra-shared-real-e2e0124/cases/"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uflra-shared-real-e2e0124/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uflra-shared-real-e2e0124/cases/",
+        "bugs": null
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 692,
+        "unsat": 308
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers LRA-implied Real equality causing an EUF conflict, an unentailed equality remaining SAT, non-constant Real predicate arguments still rejected, and the existing EUF-to-LRA proxy case.",
+        "local_gates": "make check, make docs, make lint, make asan-test, clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp, git diff --check, and 50-case shared-real sanity fuzz with seed 20260730 all passed before this entry."
+      },
+      "evidence_status": "current",
+      "followups": "This is still final-check-only equality sharing with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, non-constant Real-term purification in EUF atoms, shared-Real model reconstruction, and SLURM-scale mixed fuzzing remain future work."
     }
   ]
 }
