@@ -7,165 +7,143 @@ A Fast Linear-Arithmetic Solver for DPLL(T).
 
 ## Role in Primo
 
-This paper is the base algorithm for Primo's QF_LRA support. See
-`docs/arithmetic.md` for the current implementation status and
-`/home/user/.claude/plans/piped-wondering-fairy.md` for the full milestone plan.
+This paper is the base algorithm for Primo's QF_LRA support: the
+bounded-variable simplex tableau, its Assert-Bound/Check/Pivot loop, the
+infinitesimal-delta encoding of strict inequalities, Farkas-style conflict
+explanation, and the backtracking and propagation that make it a DPLL(T)
+theory solver.
 
-## Implemented (Milestones 1-4a)
+**What this file is.** A map from the paper's sections to the code that
+implements them, plus the deviations and the extensions that go beyond it.
+Nothing here is a progression, a measurement, or a milestone list.
 
-- **Section 2** (normalized linear terms/atoms): `LinearPolynomial`
-  (`src/theory/arithmetic/linear_polynomial.{hpp,cpp}`) and the canonical
-  "t ~ c" atom form (`lra_atom.{hpp,cpp}`).
-- **Section 3** (Assert-Bound, Check, Pivot) and **3.2** (conflict
-  explanation via the row coefficients and stuck variables' binding
-  bounds -- a Farkas-certificate-style argument): `LraTableau`
-  (`src/theory/arithmetic/lra_tableau.{hpp,cpp}`). `PivotingRule::Bland`
-  (default) selects both violated-variable and entering-variable by
-  smallest index, for the paper's termination guarantee. `PivotingRule::
-  Dantzig` (Milestone 4a, 2026-07-24, opt-in) instead picks the
-  most-violated basic variable and the largest-`|coefficient|` entering
-  candidate -- cheaper per pivot and faster per-instance per
-  `docs/papers/lra-related-work.md`'s survey, at the cost of no inherent
-  anti-cycling guarantee, so `check()` reverts to Bland's-rule selection
-  once a heuristic pivot-count threshold is crossed *within that call* (a
-  finite Dantzig prefix followed by a Bland's-rule suffix still
-  terminates, since the paper's own argument covers the suffix on its
-  own). Devex/Steepest-Edge (also surveyed there) remain unimplemented.
-- **Section 3.1's infinitesimal-delta trick** for exact strict-inequality
-  handling: `DeltaRational` (q + k*delta, lexicographically ordered), no
-  floating point anywhere.
-- **Section 4 (backtracking)**: `LraTableau::push()`/`pop(checkpoint)`,
-  genuinely trail-based (a `TrailEntry` per bound/assignment/pivot change,
-  replayed backwards on pop) -- not full state snapshotting. Pivots are
-  undone on pop, since a row's equation and the assignment it was derived
-  under are coupled; see the class comment in `lra_tableau.hpp` for why
-  this doesn't contradict the paper's point that pivot choice itself isn't
-  tied to search depth.
-- **DPLL(T) integration** (`check_sat.cpp`): `PreparedLraTheory` precomputes
-  the tableau structure once (mirroring `PreparedFlatTheory`).
-  `OnlineLraPropagator` (Milestone 3a) is a trail-synced
-  `CaDiCaL::ExternalPropagator`: one `LraTableau` per solve, kept in sync
-  via `notify_new_decision_level`/`notify_backtrack` calling
-  `LraTableau::push()`/`pop()` -- real cross-round trail reuse, not a
-  fresh copy every round. `solve_qf_lra` always prefers this when
-  available; `find_incremental_lra_theory_conflict` (copy the base tableau,
-  reassert every round, mirroring EUF's `find_incremental_theory_conflict`'s
-  own `base_closure`-copying style) is now only compiled as the fallback
-  for builds without CaDiCaL's external-propagator API
-  (`#if !PRIMO_HAVE_IPASIR`).
-- **Section 4's propagation half ("deriving satisfied atoms"), Milestone
-  3b (2026-07-24, done).** `PreparedLraTheory` was first changed to
-  deduplicate slack variables by *exact* polynomial content (a
-  `PolynomialKey`/`PolynomialKeyHash` lookup, `check_sat.cpp`) -- a
-  prerequisite, since propagation needs multiple atoms to actually share a
-  tableau variable, which essentially never happened under the old
-  one-slack-per-atom scheme. `OnlineLraPropagator::notify_assignment_lit`
-  then scans the other atoms on the just-asserted atom's slack (via a new
-  `atoms_by_slack` index) after each successful Assert-Bound, and eagerly
-  queues any now-entailed atom for `cb_propagate()` to deliver, using two
-  new `LraTableau::upper_bound()`/`lower_bound()` read accessors compared
-  against `true_threshold`/`false_threshold` (the same values
-  `assert_lra_atom_bound` itself asserts). Each reason is exactly the
-  entailing bound's own asserting literal (a 2-literal Horn clause) --
-  simpler than EUF's propagation machinery throughout, since the
-  entailment check is exact and O(atoms sharing a slack), not a heuristic
-  candidate needing verification, so none of EUF's budget/backoff/
-  candidate-queue apparatus was needed. Gated behind
-  `CheckSatOptions::lra_propagation` (default on, `--lra-propagation`/
-  `--no-lra-propagation`) purely as an A/B performance switch, unlike
-  EUF's multi-mode `EufPropagationMode`.
+**What this file is not.** It is deliberately *not* a second copy of the
+roadmap. Read it alongside:
 
-**Disequality (2026-07-24, done; lowering moved from parse time to
-late-pipeline preprocessing 2026-07-25)**: rather than adding a case-split
-mechanism to `LraTableau`/`OnlineLraPropagator` for negated equality atoms
-(what the earlier planning discussion assumed would be needed), `Real`
-equality is lowered to `(t1 <= t2) AND (t2 <= t1)` -- valid because Real
-is a total order. `NOT(t1=t2)` then reduces to ordinary Boolean structure
-(`NOT(AND(Le,Le))`) that `BooleanClausifier` already clausifies correctly,
-and CDCL branching over the two `Le` atoms does the case-split for free.
-No paper section covers this directly (its theory-atom framing assumes
-DPLL(T) delivers each atom's truth value directly, sidestepping the
-question of how a compound relation like `=` decomposes at the Boolean
-level) -- this is a frontend/encoding decision, not a deviation from the
-tableau algorithm itself.
+- [](../arithmetic.md) -- current implementation status, options, and the
+  measured effect of each change.
+- [](../qf-lra-heuristics.md) -- the 2026-07-27 heuristics round (items H1-H7):
+  design rationale, evidence, and falsifiers.
+- [](lra-related-work.md) -- everything Primo implements that is *not* from
+  this paper (pivoting-rule survey, SOI-Simplex, Monniaux's sparsity
+  criterion).
+- `docs/run-log.json` -- the artifacts behind every benchmark claim.
 
-Originally this lowering happened at parse time
-(`Frontend::mk_theory_equality`), before any preprocessing ran -- which
-meant no genuine `Equality` node for a Real term ever existed for
-solve-eqs (or any other Equality-aware preprocessing pass) to see,
-silently making solve-eqs a no-op for QF_LRA. The lowering now happens
-once, as the final step of the preprocessing pipeline
-(`lower_real_equalities` in `preprocessing.cpp`/`check_sat.cpp`),
-immediately before the `has_equality`/`has_arithmetic` theory dispatch --
-so solve-eqs, equality bridging, forced-atom propagation, and
-unit-equality congruence closure all get to reason about genuine Real
-`Equality` nodes first, while `BooleanClausifier`/`LraTableau`/
-`OnlineLraPropagator` still only ever see the same `Le`/`Lt`-pair shape
-they always have. See `docs/preprocessing.md`'s "Real-Equality Lowering"
-section for the full design and `/home/user/.claude/plans/piped-wondering-fairy.md`
-item 1 for the rationale.
+This file previously restated the milestone history as well, and drifted:
+by 2026-07-30 it still named `PivotingRule::Bland` as the default, described
+slack dedup as scale-sensitive, and referred to identifiers
+(`atoms_by_slack`, `true_threshold`/`false_threshold`) that no longer
+existed. Keeping the progression in exactly one place is what stops that
+recurring.
 
-## Implemented subset vs. deviations vs. limitations
+## Section-by-section map
 
-- No Devex/Steepest-Edge pricing -- Dantzig (Milestone 4a) covers the
-  cheapest/fastest-per-instance option from the survey, not those. A
-  sum-of-infeasibilities-style global objective (King/Barrett/Dutertre's
-  SOI-Simplex, see `docs/papers/lra-related-work.md`'s entry) **is**
-  implemented (competitiveness-roadmap item 4, 2026-07-25,
-  `PivotingRule::Soi`, opt-in via `--lra-pivoting-rule soi`) -- see
-  `docs/arithmetic.md`'s "SOI-Simplex pivoting" section.
-- Dantzig's anti-cycling fallback threshold (`4 * vars_.size() + 64` in
-  `check()`) is a heuristic, not a formally derived bound -- generous but
-  untuned.
-- Slack variables are deduplicated by *exact* polynomial content only, not
-  scale-invariant (`x<=5` and `2x<=10` still get separate slacks, so
-  propagation can't relate them) -- a deliberate scope cut for Milestone
-  3b, not an oversight.
-- Propagation only relates atoms sharing the exact same slack -- the
-  paper's stronger row-based/interval bound propagation across *different*
-  variables via a basic row's children is a materially bigger technique,
-  out of scope here.
-- `LraTableau`'s pivot-undo rebuilds the `occurs_in_` reverse index from
-  scratch on every pop (O(tableau size)), rather than incrementally
-  diffing it -- simplicity over speed for this milestone.
+| Paper | Implemented as | Where |
+|---|---|---|
+| Section 2 -- normalized linear terms and `t ~ c` atoms | `LinearPolynomial`, atom normalization | `theory/arithmetic/linear_polynomial.{hpp,cpp}`, `lra_atom.{hpp,cpp}` |
+| Section 3 -- Assert-Bound, Check, Pivot | `LraTableau::assert_upper/assert_lower`, `check()`, `pivot()` | `theory/arithmetic/lra_tableau.{hpp,cpp}` |
+| Section 3.1 -- infinitesimal delta for strict inequalities | `DeltaRational` (`q + k*delta`, lexicographically ordered); no floating point anywhere | `lra_tableau.hpp` |
+| Section 3.2 -- conflict explanation from row coefficients and the stuck variables' binding bounds | `LraTableau::build_conflict` | `lra_tableau.cpp` |
+| Section 4 -- backtracking | `push()` / `pop(checkpoint)`, trail-based (one `TrailEntry` per bound, assignment, pivot, SOI f-row and row-freeze change, replayed backwards) | `lra_tableau.{hpp,cpp}` |
+| Section 4 -- precomputing the tableau once per problem | `PreparedLraTheory` (mirrors `PreparedFlatTheory` for EUF) | `smt/check_sat.cpp` |
+| Section 4.2 -- "deriving satisfied atoms" | `OnlineLraPropagator::scan_for_propagations`, over the atoms sharing a bound variable | `smt/check_sat.cpp` |
 
-## Milestones
+**DPLL(T) integration.** `OnlineLraPropagator` is a trail-synced
+`CaDiCaL::ExternalPropagator`: one `LraTableau` per solve, kept in sync with
+the SAT trail by `notify_new_decision_level` / `notify_backtrack` calling
+`push()` / `pop()`. That is real cross-round trail reuse rather than a fresh
+tableau copy each round. `find_incremental_lra_theory_conflict` (copy the
+base tableau, re-assert every round) survives only as the fallback for builds
+without the external-propagator API, under `#if !PRIMO_HAVE_IPASIR`.
 
-- ~~LRA0: linear polynomial representation~~ -- done.
-- ~~LRA1: normalization of arithmetic atoms~~ -- done.
-- ~~LRA2: tableau scaffold~~ -- done.
-- ~~LRA3: feasibility checking~~ -- done (Check/Pivot).
-- ~~LRA4: conflict explanations~~ -- done (Farkas-certificate style).
-- ~~LRA5: backtracking~~ -- done (`push`/`pop`, trail-based, and now
-  actually exercised via `OnlineLraPropagator`'s trail sync, not just
-  tested in isolation).
-- ~~LRA6: mid-search theory propagation~~ -- **done (2026-07-24)**, see
-  above. Prioritized over Milestone 4 per real-benchmark evidence (a
-  moderate-size real formula made genuine but very slow progress with zero
-  theory propagations before this milestone). A 500-case fuzz merge-gate
-  found and fixed a real bug (`OnlineLraPropagator` clearing valid
-  propagation reasons for still-assigned literals on backtrack, causing a
-  CaDiCaL "reason clause must contain the propagated literal" abort) before
-  landing clean. A quick 82-file diverse real-benchmark re-run showed no
-  material aggregate change on that sample (same-slack propagation didn't
-  move the previously-hardest families) -- see `docs/run-log.json` for the
-  full picture; the mechanism's correctness is independently confirmed at
-  the unit-test level (propagation measurably avoids decisions on hand-
-  built cases).
-- ~~LRA7: Milestone 4a, opt-in Dantzig pivoting rule~~ -- **done
-  (2026-07-24)**, see above. Local verification (full suite Release +
-  ASAN/UBSan, hand-built multi-pivot cases under both rules, a 500-case
-  fuzz merge-gate with `--lra-pivoting-rule dantzig`) found zero
-  wrong-answer disagreements against z3; see `docs/run-log.json`.
-- ~~LRA8: Milestone 4b, campaign-tier fuzz gate~~ -- **done (2026-07-24)**.
-  Ran on the `llm2smt-slurm` cluster after fixing two remote-infrastructure
-  gaps (missing fuzzsmt/z3/yinyang tooling; a workspace-sync rsync
-  clobbering provisioned tooling with host-specific local paths -- see
-  `docs/run-log.json` and the `feedback_fuzzing_on_slurm` memory). Result:
-  3000/3000 fuzzsmt cases (0 crash, 0 wrong, 149 timeout) plus opfuzz and
-  two yinyang typefuzz mutation shards (14/14 real seeds each, 0 bug
-  triggers) -- fully clean, clearing AGENTS.md's campaign-tier bar
-  (>=3000 cases plus a seed-mutation campaign). **QF_LRA is now
-  supported/default, not experimental.** Covered the default (Bland)
-  pivoting rule at campaign scale; Dantzig has only merge-gate-tier
-  (500-case) local confirmation so far.
+The Check/Pivot repair is deferred to `cb_has_external_clause` rather than run
+after every assigned literal -- verified against CaDiCaL's own source that
+this hook fires once per quiescence point, and that `cb_propagate` is drained
+before it, so Section 4.2 propagation is unaffected. See
+`notify_assignment_lit`'s comment.
+
+## Deviations from the paper
+
+- **Bland's rule is not the default.** The paper selects both the violated
+  and the entering variable by smallest index, which is what its termination
+  argument rests on. Primo defaults to `PivotingRule::Sparse` (heuristics item
+  H3) and also offers `Dantzig` and `Soi`. Termination is preserved by
+  falling back to Bland selection past a per-call pivot threshold: a finite
+  non-Bland prefix followed by a Bland suffix is still covered by the paper's
+  own argument. The threshold (`4 * vars_.size() + 64`) is a heuristic, not a
+  derived bound. `--lra-pivoting-rule bland` restores the paper's choice.
+- **Pivots are undone on `pop()`.** The paper notes that which basic/non-basic
+  partition is current is an internal representation choice, not something
+  tied to search depth. Primo still has to undo a pivot's row rewrite,
+  because leaving it in place while reverting the bounds and assignments it
+  was performed under would break the invariant that every basic variable's
+  row equation holds for the current assignment. See `LraTableau`'s class
+  comment.
+- **Real equality is lowered, not handled in the tableau.** `t1 = t2` becomes
+  `(t1 <= t2) AND (t2 <= t1)` -- sound because Real is a total order -- so
+  `NOT(t1 = t2)` reduces to ordinary Boolean structure that
+  `BooleanClausifier` already clausifies, and CDCL branching over the two
+  `Le` atoms performs the case split for free. No case-split mechanism was
+  added to `LraTableau`. The paper does not cover this: its theory-atom
+  framing assumes DPLL(T) hands the solver each atom's truth value, which
+  sidesteps how a compound relation decomposes at the Boolean level. This is
+  a frontend/encoding decision, not a departure from the tableau algorithm.
+  The lowering runs as the final preprocessing step (`lower_real_equalities`),
+  not at parse time, so solve-eqs and the other `Equality`-aware passes still
+  see genuine Real equalities. See [](../preprocessing.md).
+- **`pop()` rebuilds the `occurs_in_` reverse index** rather than diffing it
+  incrementally -- once per `pop()` call, not once per pivot undone.
+
+## Extensions beyond the paper
+
+Each of these is measured in [](../qf-lra-heuristics.md); its own source, where
+it has one outside this paper, is in [](lra-related-work.md).
+
+- **Scale-canonical slack keys** (item H1b). Slack variables are deduplicated
+  by a scale-invariant key, so `x <= 5` and `2x <= 10` share one tableau
+  variable and one row. Section 4.2 propagation only relates atoms sharing a
+  variable, so this is what gives it anything to relate.
+- **Direct bounds for single-variable atoms** (item H1a). An atom over one
+  variable bounds that variable directly instead of allocating a slack and a
+  row for it. `bound_assertion()` is the single place the four
+  relation/polarity combinations are interpreted.
+- **Two-tier rationals** (item H2). `util::Rational` keeps a machine-word
+  numerator/denominator with `__int128` intermediates and promotes to GMP only
+  on overflow, maintaining the invariant that the big form is used exactly
+  when the value does not fit the small one.
+- **Fill-in-aware pivot selection** (item H3, `PivotingRule::Sparse`, the
+  default). Prices what a pivot *costs* -- the Markowitz product of
+  `|occurs_in(entering)|` and `|row(leaving)|` -- rather than what it
+  achieves. Source: Monniaux (CAV 2009) p.8.
+- **Sum-of-infeasibilities pivoting** (`PivotingRule::Soi`, opt-in). A global
+  objective across every out-of-bound basic variable, with QuickXplain-style
+  minimization of the resulting multi-row conflicts. Source: King, Barrett,
+  Dutertre (FMCAD 2013).
+- **Row-based and bidirectional bound propagation** (opt-in). Derives a row's
+  implied bound from its terms' bounds, and the reverse direction: tightening
+  one term from the row's own bound plus the remaining terms. This is the
+  generalization of Section 4.2 across *different* variables.
+- **Theory-guided decisions** (opt-in, `cb_decide`). The theory supplies the
+  decision literal instead of leaving every decision to VSIDS.
+- **Fixed-variable elimination** (item H7). A basic variable whose bounds
+  coincide is pivoted out of the basis immediately, because a fixed *non-basic*
+  variable is already inert -- `can_enter()` rejects it on every branch -- while
+  a fixed *basic* one demands a repair pivot every time any term in its row
+  moves. Where the resulting row provably constrains nothing it is also frozen
+  out of the working set, under a guard (`mark_boundable`) that is what keeps
+  that half sound. Nothing in the paper covers fixed variables; the
+  quantities being exploited are its own (`:lra.fixed-variables`,
+  `:lra.eliminated-rows`, `:lra.elimination-pivots`).
+
+## Not implemented
+
+- **Devex and steepest-edge pricing.** Surveyed in [](lra-related-work.md);
+  `Dantzig` covers the cheap end of that survey and `Sparse` optimizes a
+  different quantity entirely.
+- **Offset equalities (`x - y = c`) as a column merge.** Designed as the
+  follow-on to item H7 in [](../qf-lra-heuristics.md); not attempted yet.
+- **Explicit Farkas coefficients.** `build_conflict` produces the *literals*
+  of a Farkas-style certificate, not the numeric multipliers, so nothing here
+  emits a checkable arithmetic proof.
+- **Difference logic (QF_IDL/QF_RDL).** `difference_logic.hpp` is an empty
+  placeholder; item H6 sketches a fast path for it.
