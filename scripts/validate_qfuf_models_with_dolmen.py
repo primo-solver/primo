@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Primo QF_UF get-model output with Dolmen."""
+"""Validate Primo SMT-LIB get-model output with Dolmen where supported."""
 
 from __future__ import annotations
 
@@ -14,7 +14,10 @@ from pathlib import Path
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run Primo with get-model enabled and validate sat models with Dolmen."
+        description=(
+            "Run Primo with get-model enabled and validate sat QF_UF, QF_LRA, "
+            "and supported mixed QF_UFLRA models with Dolmen."
+        )
     )
     parser.add_argument("files", nargs="*", type=Path, help="SMT-LIB files to validate")
     parser.add_argument("--manifest", type=Path, help="Newline-separated SMT-LIB file list")
