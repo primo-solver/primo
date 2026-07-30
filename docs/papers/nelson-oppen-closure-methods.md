@@ -59,6 +59,7 @@ constants, and reports the same information through `check_sat` statistics:
 - `:no.interface.terms`
 - `:no.interface.sorts`
 - `:no.interface.candidate-pairs`
+- `:no.interface.registry-entries`
 - `:no.interface.visible-equalities`
 - `:no.interface.missing-visible-equalities`
 
@@ -154,29 +155,38 @@ papers above. It is not de Moura/Bjorner model-based combination and not classic
 Nelson-Oppen equality propagation. It provides the common data extraction needed
 to make those future mechanisms measurable:
 
-- **Data structures:** `InterfaceTerm`, `InterfaceEquality`, and
-  `NelsonOppenInterfaceSummary` in `src/smt/theory_combination.hpp`.
+- **Data structures:** `InterfaceTerm`, `InterfaceEquality`,
+  `InterfaceEqualityRegistryEntry`, and `NelsonOppenInterfaceSummary` in
+  `src/smt/theory_combination.hpp`.
 - **Owner:** `smt/`, because this layer owns post-preprocessing assertions and
   the Boolean/theory atom boundary.
 - **Terms included:** user-visible constants of non-Boolean sorts that are
   reachable from the current assertions. Primo-generated `$primo_` auxiliaries
   and Boolean constants are excluded.
 - **Equality atoms included:** existing equality terms whose two sides are
-  included interface constants of the same sort. Reversed duplicate pairs are
-  canonicalized for counting. Polarity is intentionally ignored at this layer:
-  an asserted disequality still makes the corresponding interface equality
-  SAT-visible.
-- **Complexity:** one traversal over reachable assertion terms plus per-sort
-  sorting of discovered constants; candidate-pair counting is computed from
-  per-sort cardinalities and does not materialize the full cross-product.
+  distinct included interface constants of the same sort. Reversed duplicate
+  pairs are canonicalized for counting. Polarity is intentionally ignored at
+  this layer: an asserted disequality still makes the corresponding interface
+  equality SAT-visible.
+- **Registry entries:** every distinct same-sort interface-constant pair is
+  represented as either `Visible` with the existing equality `TermId`, or
+  `Missing` with an invalid atom id. Later theory-combination code can inspect
+  this registry without guessing whether an equality atom already exists.
+- **Complexity:** when diagnostics are enabled, one traversal over reachable
+  assertion terms plus per-sort sorting of discovered constants, followed by
+  materializing the same-sort interface-pair registry. This remains opt-in
+  because the pair registry is quadratic in the number of interface constants
+  per sort.
 - **Invariant:** no term or SAT atom creation occurs here, so the analyzer is
   behavior-preserving and cannot change solver search.
 - **Runtime status:** the analyzer is opt-in through
   `CheckSatOptions::nelson_oppen_diagnostics` and
   `--nelson-oppen-diagnostics`.
 - **Tests:** `tests/unit/theory_combination_tests.cpp` checks sort isolation,
-  visible equality detection, internal-symbol exclusion, Boolean exclusion, and
-  reversed-pair deduplication.
+  visible equality detection, internal-symbol exclusion, Boolean exclusion,
+  self-equality exclusion, reversed-pair deduplication, and a mock theory
+  consumer that distinguishes visible equality atoms from missing pairs without
+  creating atoms.
 
 Limitations:
 

@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/ids.hpp"
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
@@ -57,7 +58,7 @@ NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
   std::vector<core::TermId> pending = assertions;
   std::unordered_set<core::TermId> visited;
   std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
-  std::unordered_set<TermPair, TermPairHash> visible_pairs;
+  std::unordered_map<TermPair, core::TermId, TermPairHash> visible_pairs;
 
   while (!pending.empty()) {
     const core::TermId term_id = pending.back();
@@ -70,14 +71,14 @@ NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
     if (is_interface_constant(terms, term_id)) {
       terms_by_sort[term.sort].push_back(term_id);
     }
-    if (term.kind == core::TermKind::Equality &&
+    if (term.kind == core::TermKind::Equality && term.children.at(0) != term.children.at(1) &&
         is_interface_constant(terms, term.children.at(0)) &&
         is_interface_constant(terms, term.children.at(1))) {
       const core::Term& lhs = terms.get(term.children.at(0));
       const core::Term& rhs = terms.get(term.children.at(1));
       if (lhs.sort == rhs.sort) {
         const TermPair pair = canonical_pair(term.children.at(0), term.children.at(1));
-        if (visible_pairs.insert(pair).second) {
+        if (visible_pairs.emplace(pair, term_id).second) {
           summary.visible_equalities.push_back(
               InterfaceEquality{term_id, pair.lhs, pair.rhs, lhs.sort});
         }
@@ -95,6 +96,20 @@ NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
     for (const core::TermId term_id : sort_terms) {
       summary.terms.push_back(InterfaceTerm{term_id, sort});
     }
+    for (std::size_t i = 0; i < sort_terms.size(); ++i) {
+      for (std::size_t j = i + 1; j < sort_terms.size(); ++j) {
+        const TermPair pair = canonical_pair(sort_terms[i], sort_terms[j]);
+        const auto visible = visible_pairs.find(pair);
+        if (visible == visible_pairs.end()) {
+          summary.equality_registry.push_back(InterfaceEqualityRegistryEntry{
+              core::kInvalidTermId, pair.lhs, pair.rhs, sort, InterfaceEqualityStatus::Missing});
+          ++summary.missing_equalities;
+          continue;
+        }
+        summary.equality_registry.push_back(InterfaceEqualityRegistryEntry{
+            visible->second, pair.lhs, pair.rhs, sort, InterfaceEqualityStatus::Visible});
+      }
+    }
   }
   std::sort(summary.terms.begin(), summary.terms.end(),
             [](const InterfaceTerm& lhs, const InterfaceTerm& rhs) {
@@ -104,6 +119,11 @@ NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
             [](const InterfaceEquality& lhs, const InterfaceEquality& rhs) {
               return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
             });
+  std::sort(
+      summary.equality_registry.begin(), summary.equality_registry.end(),
+      [](const InterfaceEqualityRegistryEntry& lhs, const InterfaceEqualityRegistryEntry& rhs) {
+        return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
+      });
 
   return summary;
 }

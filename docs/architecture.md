@@ -175,8 +175,10 @@ Implemented now:
   `smt::analyze_nelson_oppen_interface`: the SMT layer counts user-visible,
   non-Boolean constants by sort and already-visible equality atoms over those
   constants after preprocessing when `--nelson-oppen-diagnostics` is enabled.
-  This is bookkeeping only; it does not create equality atoms, propagate
-  interface equalities, combine theories, or inspect theory-local models.
+  It also materializes an opt-in registry of same-sort interface pairs marked
+  as `Visible` or `Missing`. This is bookkeeping only; it does not create
+  equality atoms, propagate interface equalities, combine theories, or inspect
+  theory-local models.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

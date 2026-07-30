@@ -23,11 +23,26 @@ struct InterfaceEquality {
   core::SortId sort = core::kInvalidSortId;
 };
 
+enum class InterfaceEqualityStatus {
+  Missing,
+  Visible,
+};
+
+struct InterfaceEqualityRegistryEntry {
+  core::TermId atom = core::kInvalidTermId;
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+  core::SortId sort = core::kInvalidSortId;
+  InterfaceEqualityStatus status = InterfaceEqualityStatus::Missing;
+};
+
 struct NelsonOppenInterfaceSummary {
   std::vector<InterfaceTerm> terms;
   std::vector<InterfaceEquality> visible_equalities;
+  std::vector<InterfaceEqualityRegistryEntry> equality_registry;
   std::size_t sort_count = 0;
   std::size_t candidate_pairs = 0;
+  std::size_t missing_equalities = 0;
 };
 
 // Conservative Track-B scaffold for Nelson-Oppen bookkeeping. It only reports

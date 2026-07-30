@@ -275,6 +275,7 @@ post-preprocessing assertions, not evidence that combination is enabled:
 - `:no.interface.terms`
 - `:no.interface.sorts`
 - `:no.interface.candidate-pairs`
+- `:no.interface.registry-entries`
 - `:no.interface.visible-equalities`
 - `:no.interface.missing-visible-equalities`
 
