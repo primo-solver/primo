@@ -13500,6 +13500,73 @@
       },
       "evidence_status": "current",
       "followups": "This improves observability for the runnable partial NO loop. It does not add native LRA disequality handling, care-set arrangement enumeration, minimal cross-theory explanations, or model-equality propagation beyond the existing default-off scaffold."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-final-arrangement-validation",
+      "date": "2026-07-30",
+      "kind": "fuzz-and-arrangement-validation",
+      "scope": "Local validation for checking the final QF_UFLRA EUF Real-argument arrangement before returning a non-model sat result. The mixed coordinator now reuses the bounded strict-order separation search from model reconstruction on the non-model sat path, returning unknown instead of sat if the supported purification subset cannot be separated consistently by LRA.",
+      "commit": "42b52b8 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 42b52b8; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "commands": {
+        "focused_tests": "clang-format -i src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp && cmake --build build --target primo_qf_lra_solver_tests primo -j2 && ./build/primo_qf_lra_solver_tests",
+        "cli_probe": "./build/primo --quiet --stats --no-solved-constant-substitution --qf-uf-preprocess=off no-arrangement-check.smt2",
+        "make_check": "make check",
+        "make_docs": "make docs",
+        "make_lint": "make lint",
+        "make_asan_test": "make asan-test",
+        "clang_tidy_diff": "clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_include_cleaner": "clang-tidy -p build -checks='-*,misc-include-cleaner' src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_owned_cpp": "git ls-files '*.cpp' | rg -v '(^|/)generated/|^src/smtlib/antlr/' | xargs clang-tidy -p build",
+        "efficiency_snapshot": "python3 <solver-efficiency-skill>/scripts/solver_efficiency_snapshot.py --repo .",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260749 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-final-arrangement-validation-answer-1000-42b52b8",
+        "private_endpoint_leak_scan": "git diff -U0 | rg -n <private-endpoint-patterns> || true"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "answer_seed": 20260749,
+        "answer_fuzz_count": 1000,
+        "answer_fuzz_timeout_seconds": 5
+      },
+      "artifacts": {
+        "answer_fuzz": "fuzz-results/qf_uflra-final-arrangement-validation-answer-1000-42b52b8/summary.csv",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 711,
+        "answer_fuzz_unsat": 289
+      },
+      "verification": {
+        "focused_regression": "qf_uf_lra_validates_final_arrangement_without_model checks that a satisfiable p(x) and not p(y) mixed case runs :no.interface.arrangement-checks, reports no arrangement failures, and accepts at least one strict separation without requesting get-model.",
+        "cli_probe": "The non-model arrangement probe returned sat with :no.interface.arrangement-checks 1, :no.interface.arrangement-failures 0, :no.interface.arrangement-separations 1, and one model-separation candidate/branch.",
+        "efficiency_review": "solver_efficiency_snapshot.py reported no added hot-path patterns. The final arrangement validation runs only after both theories accept the current assignment and no further shared equality clause is learned; it reuses existing bounded LRA consistency checks.",
+        "document_critic_review": "docs/architecture.md, docs/debugging.md, and docs/papers/nelson-oppen-closure-methods.md document that final arrangement validation is bounded and still not full unbounded Nelson-Oppen arrangement enumeration."
+      },
+      "evidence_status": "current",
+      "followups": "This makes the non-model sat path check the same Real-argument separability condition model reconstruction relies on. Remaining NO work still includes native LRA disequality handling if needed for future non-convex theories, care-set arrangement search, and minimal cross-theory explanations."
     }
   ]
 }
