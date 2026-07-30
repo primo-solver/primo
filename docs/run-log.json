@@ -13829,6 +13829,73 @@
       },
       "evidence_status": "current",
       "followups": "This is still a conservative model-equality branching scaffold, not full de Moura/Bjorner model-based theory combination. Benchmark mixed QF_UFLRA cases before considering any default change."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-care-model-branch-stats",
+      "date": "2026-07-31",
+      "kind": "fuzz-and-stats-validation",
+      "scope": "Local validation for branch-specific care-pruning counters on the default-off LRA-model equality branching path in the mixed QF_UFLRA coordinator. The change exposes measurement only; it does not change the candidate filter introduced at 74ca967.",
+      "commit": "8588f0d on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 8588f0d; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "commands": {
+        "make_check": "make check",
+        "make_docs": "make docs",
+        "make_lint": "make lint",
+        "make_asan_test": "make asan-test",
+        "efficiency_snapshot": "python3 <solver-efficiency-skill>/scripts/solver_efficiency_snapshot.py --repo .",
+        "clang_tidy_touched": "clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_include_cleaner": "clang-tidy -p build -checks='-*,clang-diagnostic-*,misc-include-cleaner' src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_owned_cpp": "git ls-files '*.cpp' | rg -v '(^|/)generated/|^src/smtlib/antlr/' | xargs clang-tidy -p build",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260754 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-care-model-branch-stats-answer-1000-8588f0d",
+        "private_endpoint_leak_scan": "git diff -- src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp docs/debugging.md docs/papers/nelson-oppen-closure-methods.md | rg -n <private-endpoint-patterns> || true"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "answer_seed": 20260754,
+        "answer_fuzz_count": 1000,
+        "answer_fuzz_timeout_seconds": 5
+      },
+      "artifacts": {
+        "answer_fuzz": "fuzz-results/qf_uflra-care-model-branch-stats-answer-1000-8588f0d/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uflra-care-model-branch-stats-answer-1000-8588f0d/cases/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 723,
+        "answer_fuzz_unsat": 277
+      },
+      "verification": {
+        "focused_regression": "qf_uf_lra_model_equality_branching_uses_euf_care_pairs now also checks :no.interface.model-equality-full-pairs, :no.interface.model-equality-care-pairs, and :no.interface.model-equality-care-pruned-pairs on a fully pruned p(x)/q(y) branch candidate shape.",
+        "correctness_boundary": "The new counters are published only when --model-equality-branching is enabled and reuse the already computed EufCarePairDiagnostics. They do not alter LRA-to-EUF propagation, EUF-to-LRA propagation, final arrangement validation, or model reconstruction.",
+        "efficiency_review": "solver_efficiency_snapshot.py reported no added hot-path patterns. The stats reuse the existing care diagnostics object and do not allocate new collections.",
+        "documentation_review": "docs/debugging.md and docs/papers/nelson-oppen-closure-methods.md list the new counters and update the care-set summary from one narrow consumer to two narrow consumers.",
+        "local_gates": "make check, make docs, make lint, make asan-test, git diff --check, touched-file clang-tidy/include-cleaner, whole-tree non-generated clang-tidy, and 1000-case QF_UFLRA answer fuzz passed. make lint skipped ruff because it is not installed."
+      },
+      "evidence_status": "current",
+      "followups": "Use these branch-specific counters in the next local or SLURM mixed-QF_UFLRA evaluation to separate useful model-equality candidates from pairs pruned before model inspection."
     }
   ]
 }
