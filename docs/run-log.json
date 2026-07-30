@@ -13168,6 +13168,88 @@
       },
       "evidence_status": "current",
       "followups": "This is a model-printing fix, not a new Nelson-Oppen propagation mechanism. Remaining NO work is unchanged: final-check-only equality sharing, no false-disequality arrangement enumeration, no model-guided equality guessing, and no minimal explanation minimization."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-model-equality-branching",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local validation for the default-off QF_UFLRA model-equality branching scaffold. The implementation creates optional SAT-visible equality atoms for LRA-model-equal shared Real pairs and tries them as one-shot assumptions. The first draft was rejected because it exported equality consequences learned while an optional assumption was active as unconditional unit clauses, causing two OUR_UNSAT_REF_SAT wrong answers. The accepted fix disables interface-equality unit propagation while a model-equality assumption is active, allowing only ordinary theory conflicts under the guess.",
+      "commit": "99b93e3 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 99b93e3; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "focused_tests": "cmake --build build --target primo_qf_lra_solver_tests primo -j2 && ./build/primo_qf_lra_solver_tests",
+        "cli_smoke": "./build/primo --quiet --stats --model-equality-branching < qf_uflra_model_equality_smoke.smt2",
+        "rejected_answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--model-equality-branching --ref z3 --count 1000 --seed 20260743 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-equality-branching-answer-1000",
+        "fixed_answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--model-equality-branching --ref z3 --count 1000 --seed 20260743 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-equality-branching-answer-1000-99b93e3",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --timeout 5 --dolmen-timeout 10 --limit 300 --out results/qf_uflra-model-equality-branching-model-validation-300-99b93e3 fuzz-results/qf_uflra-default-preprocess-model-probe/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --model-equality-branching"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "seed": 20260743,
+        "answer_fuzz_count": 1000,
+        "answer_fuzz_timeout_seconds": 5,
+        "model_validation_count": 300,
+        "model_validation_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10
+      },
+      "artifacts": {
+        "rejected_answer_fuzz": "fuzz-results/qf_uflra-model-equality-branching-answer-1000/summary.csv",
+        "fixed_answer_fuzz": "fuzz-results/qf_uflra-model-equality-branching-answer-1000-99b93e3/summary.csv",
+        "model_validation": "results/qf_uflra-model-equality-branching-model-validation-300-99b93e3/summary.csv",
+        "rejected_wrong_cases": [
+          "fuzz-results/qf_uflra-model-equality-branching-answer-1000/cases/case-0429.smt2",
+          "fuzz-results/qf_uflra-model-equality-branching-answer-1000/cases/case-0463.smt2"
+        ],
+        "bugs": null
+      },
+      "summary": {
+        "rejected_answer_fuzz_total": 1000,
+        "rejected_answer_fuzz_pass": 998,
+        "rejected_answer_fuzz_wrong": 2,
+        "rejected_answer_fuzz_our_unsat_ref_sat": 2,
+        "fixed_answer_fuzz_total": 1000,
+        "fixed_answer_fuzz_pass": 1000,
+        "fixed_answer_fuzz_wrong": 0,
+        "fixed_answer_fuzz_crash": 0,
+        "fixed_answer_fuzz_timeout": 0,
+        "fixed_answer_fuzz_unsupported": 0,
+        "fixed_answer_fuzz_reference_disagreement": 0,
+        "fixed_answer_fuzz_sat": 711,
+        "fixed_answer_fuzz_unsat": 289,
+        "model_validation_total": 300,
+        "model_validation_pass": 212,
+        "model_validation_not_sat": 88,
+        "model_validation_model_error": 0
+      },
+      "verification": {
+        "wrong_case_rerun": "After the guard was added, case-0429.smt2 and case-0463.smt2 both returned sat with --model-equality-branching.",
+        "focused_tests": "Focused qf_lra_solver_tests passed and include qf_uf_lra_model_equality_branching_backs_off_from_bad_guess.",
+        "soundness_guard": "The accepted solver loop skips permanent EUF/LRA implied-interface-equality unit propagation whenever an optional model-equality assumption is active."
+      },
+      "evidence_status": "current",
+      "followups": "This is still a default-off scaffold. It does not implement full de Moura/Bjorner model-equality propagation, does not minimize cross-theory explanations for guessed-equality consequences, and does not interpret false equality atoms as LRA disequalities."
     }
   ]
 }
