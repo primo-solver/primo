@@ -14,6 +14,14 @@ compare runs mechanically. Hot solver paths use an internal `StatKey` enum for
 registered counters; the printed names below are the compatibility boundary for
 scripts and result artifacts. Current counters include:
 
+- `:time.parse-us`: SMT-LIB parser elapsed time in microseconds;
+- `:time.frontend-us`: command validation, declarations, macro expansion, and
+  core term construction time in microseconds;
+- `:time.preprocessing-us`: QF_UF preprocessing and pre-solve preparation time
+  in microseconds;
+- `:time.solve-us`: SAT/EUF solving time in microseconds;
+- `:time.total-us`: total `check_sat_smtlib` time in microseconds, excluding
+  CLI file I/O and benchmark-harness process overhead;
 - `:input.assertions`;
 - `:frontend.ite.boolean`;
 - `:frontend.ite.auxiliaries`;
@@ -92,7 +100,8 @@ scripts and result artifacts. Current counters include:
 - `:euf.theory-conflicts`;
 - `:euf.propagation.rounds`;
 - `:euf.propagation.candidates`;
-- `:euf.propagation.delivered`;
+- `:euf.propagation.delivered`, which counts accepted propagations stored for
+  the external propagator callback;
 - `:euf.propagation.reason-lits`;
 - `:euf.propagation.budget`;
 - `:euf.propagation.delivery-budget`;
@@ -101,6 +110,89 @@ scripts and result artifacts. Current counters include:
 - `:euf.propagation.auto-online`;
 - `:euf.propagation.auto-conflict`;
 - `:euf.propagation.auto-off`;
+
+The diagnostic-only disequality-propagation opportunity counters below are
+populated when `--euf-diseq-prop-diagnostics` is enabled. They are zero in
+ordinary runs:
+
+- `:euf.diseq-prop.assigned-app-disequalities`;
+- `:euf.diseq-prop.source-unary-candidates`;
+- `:euf.diseq-prop.source-unary-existing-arg-atom`;
+- `:euf.diseq-prop.source-unary-arg-atom-true`;
+- `:euf.diseq-prop.source-unary-arg-atom-false`;
+- `:euf.diseq-prop.flat-same-function-candidates`;
+- `:euf.diseq-prop.flat-same-function-existing-arg-atom`;
+- `:euf.diseq-prop.flat-same-function-arg-atom-true`;
+- `:euf.diseq-prop.flat-same-function-arg-atom-false`;
+- `:euf.diseq-prop.guarded-function-guard-candidates`;
+- `:euf.diseq-prop.guarded-argument-guard-candidates`;
+
+The diagnostic-only Ackermannization cost counters below are populated when
+`--euf-ackermann-diagnostics` is enabled. They count distinct reachable
+post-preprocessing UF applications and estimate the SAT-level functional
+consistency constraints from Bruttomesso et al.'s LPAR 2006 cost model. They are
+zero in ordinary runs:
+
+- `:euf.ackermann.applications`;
+- `:euf.ackermann.function-symbols`;
+- `:euf.ackermann.eligible-symbols`;
+- `:euf.ackermann.unary-symbols`;
+- `:euf.ackermann.nary-symbols`;
+- `:euf.ackermann.estimated-constraints`;
+- `:euf.ackermann.estimated-equalities`;
+- `:euf.ackermann.estimated-clause-lits`;
+- `:euf.ackermann.max-symbol-applications`;
+- `:euf.ackermann.max-symbol-arity`;
+- `:euf.ackermann.symbols-cost-le-100`;
+- `:euf.ackermann.symbols-cost-le-1000`;
+- `:euf.ackermann.symbols-cost-le-10000`;
+
+The dynamic Ackermann shadow counters below are populated when
+`--euf-dynamic-ackermann-shadow` is enabled. They inspect only candidate
+functional-consistency clauses whose result equality is already a SAT-visible
+theory atom, and they classify a candidate as SAT-visible only when every
+argument equality is also already a SAT-visible theory atom. The pass does not
+add clauses or create missing atoms:
+
+- `:euf.dynamic-ack.shadow.invocations`;
+- `:euf.dynamic-ack.shadow.result-pairs`;
+- `:euf.dynamic-ack.shadow.arg-atoms-missing`;
+- `:euf.dynamic-ack.shadow.sat-visible-clauses`;
+- `:euf.dynamic-ack.shadow.satisfied`;
+- `:euf.dynamic-ack.shadow.unit`;
+- `:euf.dynamic-ack.shadow.conflicting`;
+- `:euf.dynamic-ack.shadow.result-diseq-assigned`;
+- `:euf.dynamic-ack.shadow.all-args-eq-assigned`;
+- `:euf.dynamic-ack.shadow.width-total`;
+- `:euf.dynamic-ack.shadow.max-width`;
+- `:euf.dynamic-ack.shadow.width-le-3`;
+- `:euf.dynamic-ack.shadow.width-gt-3`;
+
+The watched disequality-Ackermann counters below are populated by the
+default-off `--euf-diseq-ackermann` online propagation experiment. They describe
+candidate construction and queue-local firing for contraposed Ackermann clauses
+over existing theory atoms. The option never creates missing equality atoms and
+does not scan all candidates when the watched queue is empty:
+
+- `:euf.diseq-ack.candidates`;
+- `:euf.diseq-ack.queue-pushes`;
+- `:euf.diseq-ack.queue-pops`;
+- `:euf.diseq-ack.width-skips`;
+- `:euf.diseq-ack.missing-arg-atom`;
+- `:euf.diseq-ack.satisfied-skips`;
+- `:euf.diseq-ack.unit`;
+- `:euf.diseq-ack.conflict`;
+- `:euf.diseq-ack.propagated`: pending propagations produced by the watcher;
+- `:euf.diseq-ack.returned`: pending propagations actually returned from the
+  CaDiCaL `cb_propagate` callback;
+- `:euf.diseq-ack.pending-cleared`: pending Ackermann propagations discarded
+  after assignment notification or backtracking before being returned;
+- `:euf.diseq-ack.reason-lits`;
+- `:euf.diseq-ack.queue-budget-cutoffs`;
+- `:euf.diseq-ack.per-symbol-cutoffs`;
+
+The incremental closure counters include:
+
 - `:euf.incremental.terms`;
 - `:euf.incremental.flat-definitions`;
 - `:euf.incremental.merges`;

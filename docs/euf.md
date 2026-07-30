@@ -26,8 +26,10 @@ loop:
 ```
 
 The current conflict clause is justified by the explained congruence closure.
-Reasons are sound but not guaranteed minimum; the optimized proof-forest
-structure from the fast congruence-closure literature is still deferred.
+Reasons are sound but not guaranteed minimum. Primo has default-off
+proof-forest explanation modes based on the fast congruence-closure
+literature, but the BFS explanation search remains the default because the
+opt-in proof-forest modes are not yet a net performance win.
 
 Before invoking EUF checks, Primo applies T-pure-literal filtering in the sense
 of Sebastiani's lazy SMT survey, §6.10. Polarity is collected for original
@@ -93,6 +95,18 @@ For compatibility with the predecessor benchmark command, Primo also accepts
 `--prop-delivery-budget N`; `0` means unlimited delivery. `--prop-interval N`
 and `--prop-assign-threshold X` are accepted for online propagation experiments.
 Their defaults are `32` and `0.25` respectively.
+
+`--euf-diseq-ackermann` enables a default-off watched QF_UF propagation
+experiment for SAT-visible contraposed Ackermann clauses. For a result equality
+atom `R = (= f(a1, ..., an) f(b1, ..., bn))` and existing argument equality
+atoms `Ai = (= ai bi)`, the watched clause is `R or not A1 or ... or not An`.
+The callback propagates only when `R` is assigned false and all but one argument
+equality is assigned true; it reports an external conflict when all argument
+equalities are assigned true. It does not create missing equality atoms and it
+does not add permanent clauses. The selector is driven only by SAT assignment
+watchers, bounded by `--euf-diseq-ackermann-queue-budget`, filtered by
+`--euf-diseq-ackermann-max-width`, and capped per UF symbol by
+`--euf-diseq-ackermann-per-symbol`.
 
 `--theory-phase=negative|positive|none|polarity|auto` controls the initial
 CaDiCaL phase set for theory atoms before solving. The default is `negative`,
@@ -219,6 +233,11 @@ When `--euf-prop=auto` selects the online path, zero-delivery propagation rounds
 adaptively increase the callback discovery interval up to 1024 rounds. Explicit
 `--euf-prop=online` keeps the configured `--prop-interval` cadence for
 experiments.
+The watched disequality-Ackermann option deliberately does not use this full
+atom fallback: if no watched Ackermann candidate was touched by a SAT
+assignment, it does no work in that round. This is a guard against the prior
+local dynamic-Ackermann experiment, where broad candidate scans dominated the
+run without a benchmark win.
 A July 20, 2026 local experiment tried the predecessor-style policy of backing
 off after every auto propagation scan, including productive scans. It reduced
 candidate scans on the 51-row local NEQ/PEQ/QG/SEQ micro-manifest, but PAR2
@@ -348,9 +367,9 @@ The explanation-shape counters
 `:euf.incremental.explain-repeated-pair-queries`, and
 `:euf.incremental.explain-max-recursion-depth`, together with
 `:euf.incremental.explain-cache-bound-misses`, are diagnostic only: they measure
-the current BFS explanation path and do not implement or select a proof-forest
+the selected explanation path and do not themselves select a proof-forest
 reason engine.
-`--euf-explain-search=one-sided|bidirectional|proof-forest|reoriented-proof-forest`
+`--euf-explain-search=one-sided|bidirectional|proof-forest|reoriented-proof-forest|structural-proof-forest`
 selects how the
 incremental flat closure builds explanations. The default `one-sided` mode
 preserves the validated reason shape by searching the current causal
@@ -518,7 +537,7 @@ Implemented:
 
 Deferred:
 
-- optimized explanation-producing proof forests;
+- default-ready proof-forest explanation policy with broad benchmark wins;
 - richer online conflict-clause injection;
 - minimal theory-propagation reasons;
 - proof output for preprocessing-generated lemmas;
@@ -539,7 +558,12 @@ that persistent closure's already-verified conflict state instead of rebuilding
 a flat closure from the complete assignment. Model-time propagation
 (`--euf-prop=model`) and the final conflict check under `off`/`model`
 propagation still rebuild flat closures from complete assignments.
-Primo does not yet implement the Section 4-5 proof-producing union-find.
+Primo implements Section 4/5.2-style reoriented proof forests and Section 5.5
+structural-class nodes as default-off explanation modes. These are not promoted
+to the default QF_UF path because current evidence is mixed: they are correct on
+the recorded tests and fuzzing, but they do not yet beat the default
+explanation policy across the standard QF_UF benchmark subset. Primo still does
+not implement proof output for these proof-forest explanations.
 
 Deharbe et al., *Exploiting symmetry in SMT problems*, and Reger and Suda,
 *Using SAT and SMT Solvers for Finite Model Finding with Sorts*, motivate the

@@ -11,11 +11,14 @@ This paper is the target reference for Primo's fast QF_UF theory solver. The
 default engine selected with `--euf-engine=incremental` implements the Section 3
 use-list and signature-lookup shape over Primo's own flat term representation.
 The older lazy scaffold remains available with `--euf-engine=lazy` for
-diagnostics. A default-off `--euf-explain-search=proof-forest` mode implements
-a Section 5.2-shaped experimental explainer over Primo's current
-representative-oriented proof-parent forest. The full Section 4/5 optimized
-proof-producing union-find machinery, including the paper's reorientation
-policy, is not implemented.
+diagnostics. Default-off `--euf-explain-search=proof-forest`,
+`reoriented-proof-forest`, and `structural-proof-forest` modes implement
+increasingly closer subsets of the paper's Section 5 explanation machinery.
+The reoriented mode implements Section 4/5.2-style raw-endpoint proof forest
+reorientation, and the structural mode adds the Section 5.5 structural-class
+node refinement. They are not default-ready: current evidence shows correctness
+but mixed benchmark effects, and Primo still does not implement proof output or
+the paper's timestamped lookup-table backtracking policy.
 
 ## Implemented Subsets
 
@@ -136,7 +139,9 @@ forest, not a prerequisite for correctness.
   records the pre-mutation `(node, parent, label)` triple for every node on
   the reversed path in one trail batch, so popping restores the exact prior
   state in one step, undoing both the reversal and the link.
-- Section 5.5's structural-class nodes are still not implemented.
+- `structural-proof-forest` adds Section 5.5-style structural-class nodes as an
+  opt-in mode; it is correct on the recorded tests and fuzzing, but not promoted
+  because the benchmark evidence remains mixed.
 
 Verified with hand-derived tests in `tests/unit/euf_solver_tests.cpp`
 (`proof_forest_*`) that specifically exercise: reversal when `e` is *not*
@@ -387,7 +392,8 @@ promotion decision. See `docs/run-log.json` for the run record.
 Before claiming that Primo implements the full Nieuwenhuis-Oliveras fast
 congruence closure, the code must add and document:
 
-- the full Section 4/5 proof-forest reorientation and explanation policy;
+- a default-ready Section 4/5 proof-forest explanation policy with broad
+  benchmark evidence, not only opt-in modes;
 - the paper's timestamped lookup-table backtracking policy;
 - pure-class performance probes showing the Section 3 machinery improves the
   intended QF_UF families;
@@ -397,7 +403,7 @@ congruence closure, the code must add and document:
 ## Deferred
 
 - optimized incremental backtracking
-- optimized proof-forest explanation machinery
+- default-ready optimized proof-forest explanation machinery
 - proof production
 
 ## Data structures
@@ -445,5 +451,6 @@ Incremental subset invariants:
 - nested congruence
 - lookup-table congruence discovery without scanning all term pairs
 - backtrack rediscovery
-- future tests must include proof-forest explanation paths after that mechanism
-  is implemented.
+- proof-forest explanation paths, including reorientation, recursive
+  congruence-obligation resolution, backtracking, and structural-class
+  coalescing.

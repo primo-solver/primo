@@ -23,7 +23,7 @@
 
 set -euo pipefail
 
-WORKDIR=${PRIMO_WORKDIR:-/home/janotmik/primo-cadical-profile}
+WORKDIR=${PRIMO_WORKDIR:-$HOME/primo-cadical-profile}
 CMAKE=${PRIMO_CMAKE:-.venv-build/bin/cmake}
 BUILD_DIR=${PRIMO_FUZZ_BUILD_DIR:-build-slurm-fuzz}
 JOBS=${PRIMO_BUILD_JOBS:-8}

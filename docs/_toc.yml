@@ -5,6 +5,7 @@ chapters:
   - file: sat-ipasir-up
   - file: dpllt
   - file: euf
+  - file: qfuf-disequality-propagation
   - file: preprocessing
   - file: arithmetic
   - file: qf-lra-heuristics

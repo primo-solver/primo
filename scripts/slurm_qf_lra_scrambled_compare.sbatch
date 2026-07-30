@@ -38,7 +38,7 @@
 
 set -euo pipefail
 
-WORKDIR=${PRIMO_WORKDIR:-/home/janotmik/primo-cadical-profile}
+WORKDIR=${PRIMO_WORKDIR:-$HOME/primo-cadical-profile}
 ROOT=${PRIMO_COMPARE_ROOT:-sandbox/QF_LRA}
 MANIFEST=${PRIMO_COMPARE_MANIFEST:-benchmarks/qf-lra-scrambled-competition.txt}
 TIMEOUT=${PRIMO_COMPARE_TIMEOUT:-60}

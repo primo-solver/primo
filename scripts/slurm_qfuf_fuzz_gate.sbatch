@@ -60,7 +60,7 @@
 
 set -euo pipefail
 
-WORKDIR=${PRIMO_WORKDIR:-/home/janotmik/primo-cadical-profile}
+WORKDIR=${PRIMO_WORKDIR:-$PWD}
 SOLVER_BIN=${PRIMO_FUZZ_SOLVER:-"$WORKDIR/build-slurm-fuzz/primo"}
 OUT_ROOT=${PRIMO_FUZZ_OUT_ROOT:-"$WORKDIR/fuzz-results/qfuf-gate-${SLURM_ARRAY_JOB_ID:-manual}"}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}

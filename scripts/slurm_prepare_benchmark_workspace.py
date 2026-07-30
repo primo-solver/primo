@@ -139,7 +139,7 @@ def main() -> int:
         "--ssh-config", type=Path, default=Path("/tmp/llm2smt_slurm_ssh_config")
     )
     parser.add_argument("--remote", default="llm2smt-slurm")
-    parser.add_argument("--remote-dir", default="/home/janotmik/primo-cadical-profile")
+    parser.add_argument("--remote-dir", default="primo-cadical-profile")
     parser.add_argument("--local-dir", type=Path, default=Path("."))
     parser.add_argument("--cmake", default=".venv-build/bin/cmake")
     parser.add_argument("--target", default="primo")

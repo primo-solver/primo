@@ -5,8 +5,11 @@
 Robert Nieuwenhuis and Albert Oliveras, "Fast Congruence Closure and
 Extensions", *Information and Computation* 205, 2007.
 
-Implemented material: Sections 3.1 through 3.5. Sections 4 and 5, which add the
-optimized proof-producing union-find machinery, are not implemented.
+Implemented material: Sections 3.1 through 3.5 in the default incremental EUF
+engine. Default-off explanation modes implement Section 4/5.2-style reoriented
+proof forests and the Section 5.5 structural-class refinement, but these remain
+experimental because the benchmark evidence is mixed and Primo does not emit
+proof output.
 
 ## Paper Operations To Primo Types
 
@@ -208,7 +211,9 @@ flat-definition, lookup-hit, and congruence-merge counters.
   timestamped backtracking structure, and are not default on the hard Goel
   regressions.
 - Explanations are intentionally non-minimal.
-- Proof output and the Section 4-5 proof-producing union-find are deferred.
+- Proof output is deferred. Section 4/5-style proof-forest explanation modes are
+  implemented only as opt-in modes and are not the default QF_UF explanation
+  policy.
 
 ## 2026-07-19 Audit Notes
 
