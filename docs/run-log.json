@@ -13250,6 +13250,97 @@
       },
       "evidence_status": "current",
       "followups": "This is still a default-off scaffold. It does not implement full de Moura/Bjorner model-equality propagation, does not minimize cross-theory explanations for guessed-equality consequences, and does not interpret false equality atoms as LRA disequalities."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-guarded-interface-equality-propagation",
+      "date": "2026-07-30",
+      "kind": "fuzz-and-regression-validation",
+      "scope": "Local validation for guarded QF_UFLRA interface-equality propagation. EUF/LRA-implied equalities over shared Real terms are now learned as clauses guarded by blockers for the current relevant SAT assignment instead of as unconditional unit clauses. This fixes a satisfiable disjunction where LRA implied x = y in one Boolean branch, the solver leaked that equality globally, and EUF then reported an unsound conflict.",
+      "commit": "54382f8 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 54382f8; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "format": "clang-format -i src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "focused_tests": "cmake --build build --target primo_qf_lra_solver_tests primo -j2 && ./build/primo_qf_lra_solver_tests",
+        "make_check": "make check",
+        "make_docs": "make docs",
+        "make_lint": "make lint",
+        "make_asan_test": "make asan-test",
+        "clang_tidy_diff": "clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_include_cleaner": "clang-tidy -p build -checks='-*,misc-include-cleaner' src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp",
+        "clang_tidy_owned_cpp": "git ls-files '*.cpp' | rg -v '(^|/)generated/|^src/smtlib/antlr/' | xargs clang-tidy -p build",
+        "default_answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260744 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-guarded-interface-equality-answer-1000-54382f8",
+        "model_branch_answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--model-equality-branching --ref z3 --count 1000 --seed 20260745 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-guarded-interface-equality-model-branch-answer-1000-54382f8",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --limit 300 --out results/qf_uflra-guarded-interface-equality-model-validation-300-54382f8 fuzz-results/qf_uflra-default-preprocess-model-probe/cases/*.smt2",
+        "private_endpoint_leak_scan": "git diff -U0 -- docs/run-log.json | rg -n <private-endpoint-patterns> || true"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "default_answer_seed": 20260744,
+        "model_branch_answer_seed": 20260745,
+        "answer_fuzz_count_per_configuration": 1000,
+        "answer_fuzz_timeout_seconds": 5,
+        "model_validation_count": 300,
+        "model_validation_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10
+      },
+      "artifacts": {
+        "default_answer_fuzz": "fuzz-results/qf_uflra-guarded-interface-equality-answer-1000-54382f8/summary.csv",
+        "model_branch_answer_fuzz": "fuzz-results/qf_uflra-guarded-interface-equality-model-branch-answer-1000-54382f8/summary.csv",
+        "model_validation": "results/qf_uflra-guarded-interface-equality-model-validation-300-54382f8/summary.csv",
+        "bugs": null
+      },
+      "summary": {
+        "default_answer_fuzz_total": 1000,
+        "default_answer_fuzz_pass": 1000,
+        "default_answer_fuzz_wrong": 0,
+        "default_answer_fuzz_crash": 0,
+        "default_answer_fuzz_timeout": 0,
+        "default_answer_fuzz_unsupported": 0,
+        "default_answer_fuzz_reference_disagreement": 0,
+        "default_answer_fuzz_sat": 699,
+        "default_answer_fuzz_unsat": 301,
+        "model_branch_answer_fuzz_total": 1000,
+        "model_branch_answer_fuzz_pass": 1000,
+        "model_branch_answer_fuzz_wrong": 0,
+        "model_branch_answer_fuzz_crash": 0,
+        "model_branch_answer_fuzz_timeout": 0,
+        "model_branch_answer_fuzz_unsupported": 0,
+        "model_branch_answer_fuzz_reference_disagreement": 0,
+        "model_branch_answer_fuzz_sat": 707,
+        "model_branch_answer_fuzz_unsat": 293,
+        "model_validation_total": 300,
+        "model_validation_pass": 212,
+        "model_validation_not_sat": 88,
+        "model_validation_model_error": 0
+      },
+      "verification": {
+        "focused_regression": "qf_uf_lra_guards_interface_equality_propagation_by_assignment returns sat and observes at least one guarded interface-equality propagation clause.",
+        "reproducer": "The branch-sensitive formula with (or a (and (<= x y) (<= y x))), (p x), and (not (p y)) returned unsat before the fix and sat after guarded clauses.",
+        "implementation_scope": "The implementation uses broad current-assignment blockers. It is a conservative lazy final-check mechanism, not a full Nelson-Oppen closure or minimal explanation procedure."
+      },
+      "evidence_status": "current",
+      "followups": "Next NO work should add the smallest useful arrangement loop or care-set-driven model-equality loop. Current guarded clauses are intentionally non-minimal and may be performance-noisy, but they preserve branch soundness and give a working base."
     }
   ]
 }
