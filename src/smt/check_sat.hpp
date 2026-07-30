@@ -152,6 +152,12 @@ struct CheckSatOptions {
   // pivoting rule. Off via --no-lra-fixed-elimination, which is also the
   // ablation switch the H7 measurements are stated against.
   bool lra_fixed_elimination = true;
+  // The freezing half of item H7 -- see LraTableau::set_freeze_eliminated_rows.
+  // Separate from lra_fixed_elimination because the elimination pivot is a
+  // pure representation change while freezing is the part that can be
+  // unsound, so it gets its own ablation switch
+  // (--no-lra-freeze-eliminated-rows).
+  bool lra_freeze_eliminated_rows = true;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;

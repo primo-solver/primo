@@ -259,6 +259,14 @@ class LraTableau {
   // the white-box tests) get the conservative behaviour.
   void set_fixed_elimination(bool enabled) { fixed_elimination_ = enabled; }
 
+  // The row-freezing half of the above, separately switchable because it is
+  // where all of H7's soundness risk lives: the pivot alone is a pure change
+  // of representation (the same thing check() does), while freezing takes a
+  // row out of the machinery that maintains it. Off leaves the elimination
+  // pivot and its entering-variable preference exactly as they are, so an
+  // A/B against it isolates the freezing and nothing else.
+  void set_freeze_eliminated_rows(bool enabled) { freeze_eliminated_rows_ = enabled; }
+
   // Declares that `var` may receive a bound via assert_upper/assert_lower at
   // some point. Row deactivation (above) needs a *static* guarantee that a
   // variable will never be bounded, not merely that it is unbounded right
@@ -527,6 +535,7 @@ class LraTableau {
   PivotingRule rule_;
   bool sparse_leaving_ = false;
   bool fixed_elimination_ = false;
+  bool freeze_eliminated_rows_ = true;
   // Rotating start offset for Sparse's bounded candidate scan. pivot()
   // rebuilds rows in sorted-by-variable-id order, so always starting at the
   // front would bias the bounded scan toward low-numbered variables; rotating

@@ -364,7 +364,10 @@ bool LraTableau::try_eliminate_fixed_basic(LraVarId var) {
   // frozen below.
   update(var, target);
 
-  if (can_deactivate_row_of(entering)) {
+  // The entering choice above already preferred a candidate whose row could
+  // be frozen, whether or not freezing is on -- so switching freezing off
+  // ablates the freezing and nothing else.
+  if (freeze_eliminated_rows_ && can_deactivate_row_of(entering)) {
     deactivate_row(entering);
   }
   return true;

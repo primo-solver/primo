@@ -855,6 +855,23 @@ void deactivation_is_refused_when_the_candidate_already_has_a_bound() {
   assert(!fixture.tableau.check().has_value());
 }
 
+void freezing_can_be_ablated_without_disabling_the_elimination_pivot() {
+  FixedSlackTableau fixture(/*elimination=*/true);
+  fixture.tableau.set_freeze_eliminated_rows(false);
+  fixture.fix_s_at(4);
+
+  // The pivot -- the half that is a pure change of representation -- still
+  // happens; only the freezing is gone.
+  assert(fixture.tableau.fixed_variable_count() == 1);
+  assert(fixture.tableau.elimination_pivot_count() == 1);
+  assert(fixture.tableau.eliminated_row_count() == 0);
+  assert(!fixture.tableau.is_basic(fixture.s));
+  const LraVarId entered = fixture.tableau.is_basic(fixture.x) ? fixture.x : fixture.y;
+  assert(fixture.tableau.is_row_active(entered));
+  assert(!fixture.tableau.check().has_value());
+  assert(fixture.tableau.assignment(fixture.x) + fixture.tableau.assignment(fixture.y) == rat(4));
+}
+
 void conflict_is_still_found_through_an_eliminated_row() {
   // s1 = x + y fixed at 0 forces y = -x and eliminates x's row. s2 = x - y
   // is then rewritten in terms of what is left, and s3 = y keeps a second
@@ -1012,6 +1029,7 @@ int main() {
   elimination_is_off_unless_enabled();
   deactivation_is_refused_when_every_candidate_could_be_bounded();
   deactivation_is_refused_when_the_candidate_already_has_a_bound();
+  freezing_can_be_ablated_without_disabling_the_elimination_pivot();
   conflict_is_still_found_through_an_eliminated_row();
   push_pop_restores_an_eliminated_row();
   elimination_agrees_with_the_ablation_on_multi_pivot_scenarios();

@@ -152,6 +152,7 @@ int main(int argc, char** argv) {
   std::string lra_pivoting_rule = "sparse";
   bool no_lra_sparse_leaving = false;
   bool no_lra_fixed_elimination = false;
+  bool no_lra_freeze_eliminated_rows = false;
   bool euf_proof_forest_diagnostics = false;
   std::string pure_theory_filter = "auto";
   std::string theory_phase = "negative";
@@ -223,6 +224,10 @@ int main(int argc, char** argv) {
                "Disable the default-on elimination of fixed LRA variables (pivot a basic "
                "variable out of the basis as soon as its bounds coincide, and freeze the "
                "resulting row when it constrains nothing), for ablation");
+  app.add_flag("--no-lra-freeze-eliminated-rows", no_lra_freeze_eliminated_rows,
+               "Keep the row produced by a fixed-variable elimination pivot in the working "
+               "set instead of freezing it, isolating the freezing half of that "
+               "optimization (the elimination pivot itself still happens)");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses");
   app.add_flag("--ground-unit-substitution", solver_options.ground_unit_substitution,
@@ -478,6 +483,9 @@ int main(int argc, char** argv) {
   }
   if (no_lra_fixed_elimination) {
     solver_options.lra_fixed_elimination = false;
+  }
+  if (no_lra_freeze_eliminated_rows) {
+    solver_options.lra_freeze_eliminated_rows = false;
   }
   if (lra_pivoting_rule == "dantzig") {
     solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Dantzig;

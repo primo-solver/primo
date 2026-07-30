@@ -3340,7 +3340,7 @@ struct PreparedLraTheory {
   PreparedLraTheory(const core::TermManager& terms,
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule, bool sparse_leaving,
-                    bool fixed_elimination);
+                    bool fixed_elimination, bool freeze_eliminated_rows);
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -3369,7 +3369,8 @@ struct PreparedLraTheory {
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                      theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
-                                     bool sparse_leaving, bool fixed_elimination)
+                                     bool sparse_leaving, bool fixed_elimination,
+                                     bool freeze_eliminated_rows)
     : base_tableau(pivoting_rule) {
   base_tableau.set_sparse_leaving(sparse_leaving);
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
@@ -3458,6 +3459,7 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     base_tableau.mark_boundable(bound_var);
   }
   base_tableau.set_fixed_elimination(fixed_elimination);
+  base_tableau.set_freeze_eliminated_rows(freeze_eliminated_rows);
 }
 
 // Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
@@ -4221,9 +4223,10 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
-  const PreparedLraTheory prepared_theory(
-      terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination);
+  const PreparedLraTheory prepared_theory(terms, clausifier.theory_atoms(),
+                                          lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+                                          options.lra_sparse_leaving, options.lra_fixed_elimination,
+                                          options.lra_freeze_eliminated_rows);
   publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR
