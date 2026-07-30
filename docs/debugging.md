@@ -278,6 +278,15 @@ post-preprocessing assertions, not evidence that combination is enabled:
 - `:no.interface.registry-entries`
 - `:no.interface.visible-equalities`
 - `:no.interface.missing-visible-equalities`
+- `:no.purification.sites`
+- `:no.purification.euf-real-terms`
+- `:no.purification.arithmetic-uf-apps`
+
+The purification counters identify mixed-atom blockers for future
+Nelson-Oppen work: Real-sorted subterms inside EUF atoms and uninterpreted
+applications inside arithmetic atoms. They do not mean that Primo purified the
+formula, created proxy constants, shared equalities, or enabled mixed-theory
+model construction.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are

@@ -187,9 +187,10 @@ Implemented now:
   non-Boolean constants by sort and already-visible equality atoms over those
   constants after preprocessing when `--nelson-oppen-diagnostics` is enabled.
   It also materializes an opt-in registry of same-sort interface pairs marked
-  as `Visible` or `Missing`. This is bookkeeping only; it does not create
-  equality atoms, propagate interface equalities, combine theories, or inspect
-  theory-local models.
+  as `Visible` or `Missing`, and reports purification sites for Real terms in
+  EUF atoms and uninterpreted applications in arithmetic atoms. This is
+  bookkeeping only; it does not create proxy terms or equality atoms, propagate
+  interface equalities, combine theories, or inspect theory-local models.
 - Separable mixed QF_UFLRA final checks in `smt::solve_qf_uf_lra`. The SMT
   layer accepts one SAT assignment, partitions visible theory atoms into EUF
   and LRA atoms, checks both theories independently, and learns the first

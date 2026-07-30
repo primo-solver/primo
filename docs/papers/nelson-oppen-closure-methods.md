@@ -173,8 +173,8 @@ Nelson-Oppen equality propagation. It provides the common data extraction needed
 to make those future mechanisms measurable:
 
 - **Data structures:** `InterfaceTerm`, `InterfaceEquality`,
-  `InterfaceEqualityRegistryEntry`, and `NelsonOppenInterfaceSummary` in
-  `src/smt/theory_combination.hpp`.
+  `InterfaceEqualityRegistryEntry`, `PurificationSite`, and
+  `NelsonOppenInterfaceSummary` in `src/smt/theory_combination.hpp`.
 - **Owner:** `smt/`, because this layer owns post-preprocessing assertions and
   the Boolean/theory atom boundary.
 - **Terms included:** user-visible constants of non-Boolean sorts that are
@@ -189,25 +189,36 @@ to make those future mechanisms measurable:
   represented as either `Visible` with the existing equality `TermId`, or
   `Missing` with an invalid atom id. Later theory-combination code can inspect
   this registry without guessing whether an equality atom already exists.
+- **Purification sites:** the analyzer records Real-sorted subterms that occur
+  inside EUF atoms, and uninterpreted applications that occur inside arithmetic
+  atoms. These sites are the places where a future purification pass would need
+  to introduce owned proxy constants and equality-sharing obligations before the
+  mixed atom can be delegated to one theory. The analyzer only reports the term,
+  containing atom, site kind, and sort; it does not create those proxies.
 - **Complexity:** when diagnostics are enabled, one traversal over reachable
   assertion terms plus per-sort sorting of discovered constants, followed by
   materializing the same-sort interface-pair registry. This remains opt-in
   because the pair registry is quadratic in the number of interface constants
-  per sort.
+  per sort. Purification-site collection is linear in the total visited
+  subterms, modulo de-duplication of repeated `(kind, atom, term)` sites.
 - **Invariant:** no term or SAT atom creation occurs here, so the analyzer is
   behavior-preserving and cannot change solver search.
 - **Runtime status:** the analyzer is opt-in through
   `CheckSatOptions::nelson_oppen_diagnostics` and
   `--nelson-oppen-diagnostics`.
+- **Statistics:** in addition to the interface-pair counters, the diagnostics
+  publish `:no.purification.sites`, `:no.purification.euf-real-terms`, and
+  `:no.purification.arithmetic-uf-apps`.
 - **Tests:** `tests/unit/theory_combination_tests.cpp` checks sort isolation,
   visible equality detection, internal-symbol exclusion, Boolean exclusion,
   self-equality exclusion, reversed-pair deduplication, and a mock theory
   consumer that distinguishes visible equality atoms from missing pairs without
-  creating atoms.
+  creating atoms. It also checks Real terms inside EUF atoms and uninterpreted
+  applications inside arithmetic atoms are reported as purification sites.
 
 Limitations:
 
-- no purification ownership yet;
+- no purification ownership or proxy-term creation yet;
 - no theory ownership labels beyond sort partitioning;
 - no care-pair API;
 - no explanations or learned clauses;

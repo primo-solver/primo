@@ -6387,6 +6387,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.set(":no.interface.registry-entries", no_interface.equality_registry.size());
       statistics.set(":no.interface.visible-equalities", no_interface.visible_equalities.size());
       statistics.set(":no.interface.missing-visible-equalities", no_interface.missing_equalities);
+      statistics.set(":no.purification.sites", no_interface.purification_sites.size());
+      statistics.set(":no.purification.euf-real-terms", no_interface.euf_real_terms);
+      statistics.set(":no.purification.arithmetic-uf-apps",
+                     no_interface.arithmetic_uninterpreted_applications);
     }
     if (options.euf_ackermann_diagnostics) {
       record_ackermann_cost_diagnostics(frontend.terms(), assertions, statistics);

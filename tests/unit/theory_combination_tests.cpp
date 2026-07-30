@@ -10,11 +10,13 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/theory_combination.hpp"
+#include "util/rational.hpp"
 
 using primo::core::SymbolTable;
 using primo::core::TermManager;
 using primo::smt::analyze_nelson_oppen_interface;
 using primo::smt::InterfaceEqualityStatus;
+using primo::smt::PurificationSiteKind;
 
 namespace {
 
@@ -166,6 +168,57 @@ void registry_supports_mock_theory_dispatch_without_creating_atoms() {
   assert(mock.visible_atoms == expected_visible_atoms);
 }
 
+void reports_real_terms_inside_euf_atoms_as_purification_sites() {
+  SymbolTable symbols;
+  const auto real_sort = symbols.real_sort();
+  const auto x_symbol = symbols.declare_constant("x", real_sort);
+  const auto y_symbol = symbols.declare_constant("y", real_sort);
+  const auto p_symbol = symbols.declare_predicate("p", {real_sort});
+
+  TermManager terms(symbols);
+  const auto x = terms.mk_constant(x_symbol);
+  const auto y = terms.mk_constant(y_symbol);
+  const auto p_x = terms.mk_app(p_symbol, {x});
+  const auto p_y = terms.mk_app(p_symbol, {y});
+  const auto formula = terms.mk_and({p_x, terms.mk_not(p_y)});
+
+  const auto summary = analyze_nelson_oppen_interface(terms, {formula});
+
+  assert(summary.euf_real_terms == 2);
+  assert(summary.arithmetic_uninterpreted_applications == 0);
+  assert(summary.purification_sites.size() == 2);
+  assert(summary.purification_sites[0].kind == PurificationSiteKind::RealTermInEufAtom);
+  assert(summary.purification_sites[0].term == x);
+  assert(summary.purification_sites[0].atom == p_x);
+  assert(summary.purification_sites[1].kind == PurificationSiteKind::RealTermInEufAtom);
+  assert(summary.purification_sites[1].term == y);
+  assert(summary.purification_sites[1].atom == p_y);
+}
+
+void reports_uninterpreted_applications_inside_arithmetic_atoms() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto real_sort = symbols.real_sort();
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto f_symbol = symbols.declare_function("f", {sort_a}, real_sort);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto f_a = terms.mk_app(f_symbol, {a});
+  const auto one = terms.mk_rational(primo::util::Rational(1));
+  const auto atom = terms.mk_lt(f_a, one);
+
+  const auto summary = analyze_nelson_oppen_interface(terms, {atom});
+
+  assert(summary.euf_real_terms == 0);
+  assert(summary.arithmetic_uninterpreted_applications == 1);
+  assert(summary.purification_sites.size() == 1);
+  assert(summary.purification_sites[0].kind ==
+         PurificationSiteKind::UninterpretedApplicationInArithmeticAtom);
+  assert(summary.purification_sites[0].term == f_a);
+  assert(summary.purification_sites[0].atom == atom);
+}
+
 }  // namespace
 
 int main() {
@@ -174,5 +227,7 @@ int main() {
   deduplicates_reversed_visible_equality_atoms();
   ignores_trivial_self_equalities_as_interface_pairs();
   registry_supports_mock_theory_dispatch_without_creating_atoms();
+  reports_real_terms_inside_euf_atoms_as_purification_sites();
+  reports_uninterpreted_applications_inside_arithmetic_atoms();
   return 0;
 }

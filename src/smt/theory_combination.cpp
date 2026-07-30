@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -17,6 +18,8 @@ namespace primo::smt {
 
 namespace {
 
+constexpr std::size_t kHashMix = static_cast<std::size_t>(0x9e3779b97f4a7c15ULL);
+
 struct TermPair {
   core::TermId lhs = core::kInvalidTermId;
   core::TermId rhs = core::kInvalidTermId;
@@ -27,8 +30,24 @@ struct TermPair {
 struct TermPairHash {
   std::size_t operator()(const TermPair& pair) const {
     std::size_t seed = static_cast<std::size_t>(pair.lhs);
-    seed ^=
-        static_cast<std::size_t>(pair.rhs) + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+    seed ^= static_cast<std::size_t>(pair.rhs) + kHashMix + (seed << 6U) + (seed >> 2U);
+    return seed;
+  }
+};
+
+struct PurificationSiteKey {
+  PurificationSiteKind kind = PurificationSiteKind::RealTermInEufAtom;
+  core::TermId term = core::kInvalidTermId;
+  core::TermId atom = core::kInvalidTermId;
+
+  bool operator==(const PurificationSiteKey& other) const = default;
+};
+
+struct PurificationSiteKeyHash {
+  std::size_t operator()(const PurificationSiteKey& key) const {
+    std::size_t seed = static_cast<std::size_t>(key.term);
+    seed ^= static_cast<std::size_t>(key.atom) + kHashMix + (seed << 6U) + (seed >> 2U);
+    seed ^= static_cast<std::size_t>(key.kind) + kHashMix + (seed << 6U) + (seed >> 2U);
     return seed;
   }
 };
@@ -50,6 +69,66 @@ TermPair canonical_pair(core::TermId lhs, core::TermId rhs) {
   return TermPair{lhs, rhs};
 }
 
+bool is_lra_atom(const core::TermManager& terms, const core::Term& term) {
+  if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+    return true;
+  }
+  return term.kind == core::TermKind::Equality &&
+         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+}
+
+bool is_euf_atom(const core::TermManager& terms, const core::Term& term) {
+  if (term.kind == core::TermKind::Equality) {
+    return terms.get(term.children.at(0)).sort != terms.symbols().real_sort();
+  }
+  return (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
+         term.sort == terms.symbols().bool_sort();
+}
+
+void append_purification_site(
+    NelsonOppenInterfaceSummary& summary,
+    std::unordered_set<PurificationSiteKey, PurificationSiteKeyHash>& seen,
+    PurificationSiteKind kind, core::TermId term_id, core::TermId atom_id, core::SortId sort) {
+  if (!seen.insert(PurificationSiteKey{kind, term_id, atom_id}).second) {
+    return;
+  }
+  summary.purification_sites.push_back(PurificationSite{term_id, atom_id, sort, kind});
+  if (kind == PurificationSiteKind::RealTermInEufAtom) {
+    ++summary.euf_real_terms;
+  } else {
+    ++summary.arithmetic_uninterpreted_applications;
+  }
+}
+
+void collect_real_terms_in_euf_atom(
+    const core::TermManager& terms, core::TermId term_id, core::TermId atom_id,
+    NelsonOppenInterfaceSummary& summary,
+    std::unordered_set<PurificationSiteKey, PurificationSiteKeyHash>& seen) {
+  const core::Term& term = terms.get(term_id);
+  if (term.sort == terms.symbols().real_sort()) {
+    append_purification_site(summary, seen, PurificationSiteKind::RealTermInEufAtom, term_id,
+                             atom_id, term.sort);
+  }
+  for (const core::TermId child : term.children) {
+    collect_real_terms_in_euf_atom(terms, child, atom_id, summary, seen);
+  }
+}
+
+void collect_uninterpreted_applications_in_arithmetic_atom(
+    const core::TermManager& terms, core::TermId term_id, core::TermId atom_id,
+    NelsonOppenInterfaceSummary& summary,
+    std::unordered_set<PurificationSiteKey, PurificationSiteKeyHash>& seen) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Application) {
+    append_purification_site(summary, seen,
+                             PurificationSiteKind::UninterpretedApplicationInArithmeticAtom,
+                             term_id, atom_id, term.sort);
+  }
+  for (const core::TermId child : term.children) {
+    collect_uninterpreted_applications_in_arithmetic_atom(terms, child, atom_id, summary, seen);
+  }
+}
+
 }  // namespace
 
 NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
@@ -59,6 +138,7 @@ NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
   std::unordered_set<core::TermId> visited;
   std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
   std::unordered_map<TermPair, core::TermId, TermPairHash> visible_pairs;
+  std::unordered_set<PurificationSiteKey, PurificationSiteKeyHash> purification_sites;
 
   while (!pending.empty()) {
     const core::TermId term_id = pending.back();
@@ -83,6 +163,12 @@ NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
               InterfaceEquality{term_id, pair.lhs, pair.rhs, lhs.sort});
         }
       }
+    }
+    if (is_euf_atom(terms, term)) {
+      collect_real_terms_in_euf_atom(terms, term_id, term_id, summary, purification_sites);
+    } else if (is_lra_atom(terms, term)) {
+      collect_uninterpreted_applications_in_arithmetic_atom(terms, term_id, term_id, summary,
+                                                            purification_sites);
     }
 
     pending.insert(pending.end(), term.children.begin(), term.children.end());
@@ -124,6 +210,11 @@ NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
       [](const InterfaceEqualityRegistryEntry& lhs, const InterfaceEqualityRegistryEntry& rhs) {
         return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
       });
+  std::sort(summary.purification_sites.begin(), summary.purification_sites.end(),
+            [](const PurificationSite& lhs, const PurificationSite& rhs) {
+              return std::tuple{lhs.kind, lhs.atom, lhs.term} <
+                     std::tuple{rhs.kind, rhs.atom, rhs.term};
+            });
 
   return summary;
 }
