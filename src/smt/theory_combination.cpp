@@ -1,0 +1,111 @@
+#include "smt/theory_combination.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
+#include "core/symbol_table.hpp"
+#include "core/term.hpp"
+#include "core/term_manager.hpp"
+
+namespace primo::smt {
+
+namespace {
+
+struct TermPair {
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+
+  bool operator==(const TermPair& other) const = default;
+};
+
+struct TermPairHash {
+  std::size_t operator()(const TermPair& pair) const {
+    std::size_t seed = static_cast<std::size_t>(pair.lhs);
+    seed ^=
+        static_cast<std::size_t>(pair.rhs) + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+    return seed;
+  }
+};
+
+bool is_internal_symbol_name(const std::string& name) { return name.starts_with("$primo_"); }
+
+bool is_interface_constant(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind != core::TermKind::Constant || term.sort == terms.symbols().bool_sort()) {
+    return false;
+  }
+  return !is_internal_symbol_name(terms.symbols().get_symbol(term.symbol).name);
+}
+
+TermPair canonical_pair(core::TermId lhs, core::TermId rhs) {
+  if (rhs < lhs) {
+    std::swap(lhs, rhs);
+  }
+  return TermPair{lhs, rhs};
+}
+
+}  // namespace
+
+NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  NelsonOppenInterfaceSummary summary;
+  std::vector<core::TermId> pending = assertions;
+  std::unordered_set<core::TermId> visited;
+  std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
+  std::unordered_set<TermPair, TermPairHash> visible_pairs;
+
+  while (!pending.empty()) {
+    const core::TermId term_id = pending.back();
+    pending.pop_back();
+    if (!visited.insert(term_id).second) {
+      continue;
+    }
+
+    const core::Term& term = terms.get(term_id);
+    if (is_interface_constant(terms, term_id)) {
+      terms_by_sort[term.sort].push_back(term_id);
+    }
+    if (term.kind == core::TermKind::Equality &&
+        is_interface_constant(terms, term.children.at(0)) &&
+        is_interface_constant(terms, term.children.at(1))) {
+      const core::Term& lhs = terms.get(term.children.at(0));
+      const core::Term& rhs = terms.get(term.children.at(1));
+      if (lhs.sort == rhs.sort) {
+        const TermPair pair = canonical_pair(term.children.at(0), term.children.at(1));
+        if (visible_pairs.insert(pair).second) {
+          summary.visible_equalities.push_back(
+              InterfaceEquality{term_id, pair.lhs, pair.rhs, lhs.sort});
+        }
+      }
+    }
+
+    pending.insert(pending.end(), term.children.begin(), term.children.end());
+  }
+
+  summary.sort_count = terms_by_sort.size();
+  for (auto& [sort, sort_terms] : terms_by_sort) {
+    std::sort(sort_terms.begin(), sort_terms.end());
+    sort_terms.erase(std::unique(sort_terms.begin(), sort_terms.end()), sort_terms.end());
+    summary.candidate_pairs += sort_terms.size() * (sort_terms.size() - 1U) / 2U;
+    for (const core::TermId term_id : sort_terms) {
+      summary.terms.push_back(InterfaceTerm{term_id, sort});
+    }
+  }
+  std::sort(summary.terms.begin(), summary.terms.end(),
+            [](const InterfaceTerm& lhs, const InterfaceTerm& rhs) {
+              return std::pair{lhs.sort, lhs.term} < std::pair{rhs.sort, rhs.term};
+            });
+  std::sort(summary.visible_equalities.begin(), summary.visible_equalities.end(),
+            [](const InterfaceEquality& lhs, const InterfaceEquality& rhs) {
+              return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
+            });
+
+  return summary;
+}
+
+}  // namespace primo::smt

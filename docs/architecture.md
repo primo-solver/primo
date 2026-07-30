@@ -171,6 +171,12 @@ Implemented now:
   user-declared constants, functions, and predicates, consumes preprocessing
   reconstruction assignments for unit facts and substitutions, and omits
   Primo-generated auxiliary symbols from the response.
+- Read-only Nelson-Oppen interface diagnostics in
+  `smt::analyze_nelson_oppen_interface`: the SMT layer counts user-visible,
+  non-Boolean constants by sort and already-visible equality atoms over those
+  constants after preprocessing when `--nelson-oppen-diagnostics` is enabled.
+  This is bookkeeping only; it does not create equality atoms, propagate
+  interface equalities, combine theories, or inspect theory-local models.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -181,6 +187,8 @@ Not implemented yet:
 - model construction for non-QF_UF fragments, model values for arithmetic, and
   reconstruction through future satisfiability-preserving rewrites outside the
   current QF_UF preprocessing subset.
+- Nelson-Oppen theory combination, model-equality propagation, care sets, and
+  SAT atom creation for missing interface equalities.
 - explanation-producing congruence closure with proof forests.
 - arithmetic theory solving.
 

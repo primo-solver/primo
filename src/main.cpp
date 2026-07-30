@@ -147,6 +147,7 @@ int main(int argc, char** argv) {
   bool euf_proof_forest_diagnostics = false;
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
+  bool nelson_oppen_diagnostics = false;
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   std::string pure_theory_filter = "auto";
@@ -244,6 +245,8 @@ int main(int argc, char** argv) {
                "Record diagnostic-only QF_UF app-disequality propagation opportunity counters");
   app.add_flag("--euf-ackermann-diagnostics", euf_ackermann_diagnostics,
                "Record diagnostic-only QF_UF Ackermannization cost counters");
+  app.add_flag("--nelson-oppen-diagnostics", nelson_oppen_diagnostics,
+               "Record diagnostic-only Nelson-Oppen interface counters");
   app.add_flag("--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
                "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them");
   app.add_flag("--euf-diseq-ackermann", euf_diseq_ackermann,
@@ -438,6 +441,7 @@ int main(int argc, char** argv) {
   solver_options.euf_proof_forest_diagnostics = euf_proof_forest_diagnostics;
   solver_options.euf_diseq_propagation_diagnostics = euf_diseq_propagation_diagnostics;
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
+  solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
   solver_options.euf_dynamic_ackermann_shadow = euf_dynamic_ackermann_shadow;
   solver_options.euf_diseq_ackermann = euf_diseq_ackermann;
   if (pure_theory_filter == "off") {

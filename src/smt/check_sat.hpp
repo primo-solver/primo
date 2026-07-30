@@ -93,6 +93,7 @@ struct CheckSatOptions {
   bool euf_proof_forest_diagnostics = false;
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
+  bool nelson_oppen_diagnostics = false;
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   AutoBudget euf_propagation_budget;

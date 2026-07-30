@@ -24,6 +24,7 @@
 #include "sat/lit.hpp"
 #include "smt/model_builder.hpp"
 #include "smt/preprocessing.hpp"
+#include "smt/theory_combination.hpp"
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
@@ -4177,6 +4178,18 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatAssertionsFinal, assertions.size());
     statistics.set(kStatPreprocessingTermSizeFinal,
                    reachable_term_count(frontend.terms(), assertions));
+    if (options.nelson_oppen_diagnostics) {
+      const NelsonOppenInterfaceSummary no_interface =
+          analyze_nelson_oppen_interface(frontend.terms(), assertions);
+      statistics.set(":no.interface.terms", no_interface.terms.size());
+      statistics.set(":no.interface.sorts", no_interface.sort_count);
+      statistics.set(":no.interface.candidate-pairs", no_interface.candidate_pairs);
+      statistics.set(":no.interface.visible-equalities", no_interface.visible_equalities.size());
+      statistics.set(":no.interface.missing-visible-equalities",
+                     no_interface.candidate_pairs >= no_interface.visible_equalities.size()
+                         ? no_interface.candidate_pairs - no_interface.visible_equalities.size()
+                         : 0);
+    }
     if (options.euf_ackermann_diagnostics) {
       record_ackermann_cost_diagnostics(frontend.terms(), assertions, statistics);
     }

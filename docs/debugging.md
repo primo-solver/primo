@@ -268,6 +268,16 @@ rows can still contain diagnostic counters.
 The auto counters record which concrete path `--euf-prop=auto` selected for the
 current abstraction.
 
+Nelson-Oppen interface diagnostics are emitted in stats output when
+`--nelson-oppen-diagnostics` is enabled. They are read-only counters from the
+post-preprocessing assertions, not evidence that combination is enabled:
+
+- `:no.interface.terms`
+- `:no.interface.sorts`
+- `:no.interface.candidate-pairs`
+- `:no.interface.visible-equalities`
+- `:no.interface.missing-visible-equalities`
+
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are
 documented; add a new key instead of changing the meaning of an old one.
