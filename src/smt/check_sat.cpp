@@ -4143,20 +4143,23 @@ std::size_t unordered_pair_count(std::size_t size) {
   return (size * (size - 1U)) / 2U;
 }
 
-void record_euf_care_pair_diagnostics(const PreparedFlatTheory& prepared,
-                                      const std::vector<core::TermId>& shared_real_terms,
-                                      util::Statistics& statistics) {
-  statistics.increment(":no.interface.euf-care-checks");
-  const std::size_t full_pairs = unordered_pair_count(shared_real_terms.size());
-  statistics.set(":no.interface.euf-care-full-pairs", full_pairs);
+struct EufCarePairDiagnostics {
+  std::size_t full_pairs = 0;
+  std::vector<TermPairKey> term_pairs;
+};
 
-  std::unordered_set<theory::equality::FlatTermId> shared_flat_terms;
-  shared_flat_terms.reserve(shared_real_terms.size());
+EufCarePairDiagnostics euf_care_pair_diagnostics(
+    const PreparedFlatTheory& prepared, const std::vector<core::TermId>& shared_real_terms) {
+  EufCarePairDiagnostics diagnostics;
+  diagnostics.full_pairs = unordered_pair_count(shared_real_terms.size());
+
+  std::unordered_map<theory::equality::FlatTermId, core::TermId> shared_term_by_flat;
+  shared_term_by_flat.reserve(shared_real_terms.size());
   for (const core::TermId term : shared_real_terms) {
     if (const std::optional<theory::equality::FlatTermId> flat =
             prepared.flat.existing_flat_term(term);
         flat.has_value()) {
-      shared_flat_terms.insert(flat.value());
+      shared_term_by_flat.emplace(flat.value(), term);
     }
   }
 
@@ -4164,7 +4167,7 @@ void record_euf_care_pair_diagnostics(const PreparedFlatTheory& prepared,
       arguments_by_function;
   arguments_by_function.reserve(prepared.flat.definitions().size());
   for (const theory::equality::FlatDefinition& definition : prepared.flat.definitions()) {
-    if (shared_flat_terms.contains(definition.argument)) {
+    if (shared_term_by_flat.contains(definition.argument)) {
       arguments_by_function[definition.function].push_back(definition.argument);
     }
   }
@@ -4181,9 +4184,33 @@ void record_euf_care_pair_diagnostics(const PreparedFlatTheory& prepared,
     }
   }
 
-  statistics.set(":no.interface.euf-care-pairs", candidate_pairs.size());
+  diagnostics.term_pairs.reserve(candidate_pairs.size());
+  for (const FlatPairKey& pair : candidate_pairs) {
+    const auto lhs = shared_term_by_flat.find(pair.lhs);
+    const auto rhs = shared_term_by_flat.find(pair.rhs);
+    if (lhs != shared_term_by_flat.end() && rhs != shared_term_by_flat.end()) {
+      diagnostics.term_pairs.push_back(canonical_term_pair(lhs->second, rhs->second));
+    }
+  }
+  std::sort(diagnostics.term_pairs.begin(), diagnostics.term_pairs.end(),
+            [](const TermPairKey& lhs, const TermPairKey& rhs) {
+              return lhs.lhs == rhs.lhs ? lhs.rhs < rhs.rhs : lhs.lhs < rhs.lhs;
+            });
+  diagnostics.term_pairs.erase(
+      std::unique(diagnostics.term_pairs.begin(), diagnostics.term_pairs.end()),
+      diagnostics.term_pairs.end());
+  return diagnostics;
+}
+
+void publish_euf_care_pair_diagnostics(const EufCarePairDiagnostics& diagnostics,
+                                       util::Statistics& statistics) {
+  statistics.increment(":no.interface.euf-care-checks");
+  statistics.set(":no.interface.euf-care-full-pairs", diagnostics.full_pairs);
+  statistics.set(":no.interface.euf-care-pairs", diagnostics.term_pairs.size());
   statistics.set(":no.interface.euf-care-pruned-pairs",
-                 full_pairs > candidate_pairs.size() ? full_pairs - candidate_pairs.size() : 0);
+                 diagnostics.full_pairs > diagnostics.term_pairs.size()
+                     ? diagnostics.full_pairs - diagnostics.term_pairs.size()
+                     : 0);
 }
 
 bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
@@ -4958,6 +4985,29 @@ std::vector<core::TermId> lra_implied_real_equalities(
       if (rhs_lt_lhs_conflicts) {
         equalities.push_back(terms.mk_eq(lhs, rhs));
       }
+    }
+  }
+  return equalities;
+}
+
+std::vector<core::TermId> lra_implied_real_equalities_for_pairs(
+    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments, const std::vector<TermPairKey>& pairs,
+    const CheckSatOptions& options) {
+  std::vector<core::TermId> equalities;
+  equalities.reserve(pairs.size());
+  for (const TermPairKey& pair : pairs) {
+    const core::TermId lhs = pair.lhs;
+    const core::TermId rhs = pair.rhs;
+    const bool lhs_lt_rhs_conflicts = lra_assignment_conflicts_with_extra_atom(
+        terms, lra_atoms, lra_assignments, terms.mk_lt(lhs, rhs), options);
+    if (!lhs_lt_rhs_conflicts) {
+      continue;
+    }
+    const bool rhs_lt_lhs_conflicts = lra_assignment_conflicts_with_extra_atom(
+        terms, lra_atoms, lra_assignments, terms.mk_lt(rhs, lhs), options);
+    if (rhs_lt_lhs_conflicts) {
+      equalities.push_back(terms.mk_eq(lhs, rhs));
     }
   }
   return equalities;
@@ -6805,6 +6855,7 @@ CheckSatOutcome solve_qf_uf_lra(
     std::vector<BooleanClausifier::TheoryAtom> euf_atoms_for_check = euf_atoms;
     std::vector<AssignedTheoryAtom> euf_assignments_for_check;
     std::optional<PreparedFlatTheory> prepared_flat_theory;
+    EufCarePairDiagnostics euf_care;
     if (!euf_atoms.empty()) {
       statistics.increment(kStatTheoryChecks);
       euf_assignments = assigned_atoms_from_backend(backend, euf_atoms, options.pure_theory_filter);
@@ -6819,7 +6870,8 @@ CheckSatOutcome solve_qf_uf_lra(
       prepared_flat_theory.emplace(terms, euf_atoms_for_check, true_term, false_term,
                                    options.euf_explain_search,
                                    options.euf_proof_forest_diagnostics);
-      record_euf_care_pair_diagnostics(prepared_flat_theory.value(), shared_real_terms, statistics);
+      euf_care = euf_care_pair_diagnostics(prepared_flat_theory.value(), shared_real_terms);
+      publish_euf_care_pair_diagnostics(euf_care, statistics);
       euf_check = check_incremental_euf_closure(prepared_flat_theory.value(),
                                                 euf_assignments_for_check, statistics);
       euf_conflict = euf_check->conflict;
@@ -6882,8 +6934,8 @@ CheckSatOutcome solve_qf_uf_lra(
     }
 
     if (euf_check.has_value() && !shared_real_terms.empty()) {
-      const std::vector<core::TermId> implied_equalities = lra_implied_real_equalities(
-          terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
+      const std::vector<core::TermId> implied_equalities = lra_implied_real_equalities_for_pairs(
+          terms, lra_atoms_for_check, lra_assignments_for_check, euf_care.term_pairs, options);
       statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
       statistics.increment(":no.interface.lra-to-euf-equalities", implied_equalities.size());
       if (force_implied_interface_equalities(terms, clausifier, backend, interface_equalities,

@@ -240,7 +240,9 @@ Implemented now:
   arrangement for the documented purification subset.
   The mixed coordinator also reports diagnostic EUF care-pair counters for
   shared Real arguments under the same flat EUF function prefix. These counters
-  are not consumed by search and do not implement care-set pruning.
+  are used only to skip LRA-to-EUF equality propagation checks for pairs EUF
+  cannot syntactically use in the current flat view; they do not affect
+  EUF-to-LRA propagation, model reconstruction, or final arrangement validation.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

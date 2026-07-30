@@ -334,10 +334,12 @@ mixed models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
-The EUF care counters are diagnostic only: they compare the full shared-Real
-cross product with pairs that occur as arguments under the same flat EUF
-function prefix in the current prepared EUF view. They do not prune propagation,
-add clauses, or implement the care-set algorithms from the literature notes.
+The EUF care counters compare the full shared-Real cross product with pairs that
+occur as arguments under the same flat EUF function prefix in the current
+prepared EUF view. The mixed coordinator uses that subset only for LRA-to-EUF
+equality propagation checks. It does not add clauses for care pairs, does not
+filter EUF-to-LRA equalities, and does not use care pairs for model
+reconstruction or final arrangement validation.
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use

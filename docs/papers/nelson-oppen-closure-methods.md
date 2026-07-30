@@ -400,7 +400,9 @@ treating one theory's atoms as Boolean noise.
   EUF-implied proxy equality combined with a lowered input Real disequality,
   LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
   source-split interface conflict counters for those receiving-theory conflicts,
-  diagnostic-only syntactic EUF care-pair counters over shared Real arguments,
+  syntactic EUF care-pair counters over shared Real arguments, use of that
+  care-pair subset to skip LRA-to-EUF equality propagation checks that EUF
+  cannot syntactically consume,
   final arrangement validation before a non-model `sat` result,
   and a regression where default preprocessing solves away a UF equality before
   the remaining arithmetic formula dispatches to the LRA solver. It also covers
@@ -415,10 +417,10 @@ Limitations:
 - generated interface equalities are lazy: unentailed shared pairs do not create
   SAT atoms, and false generated equality literals are asserted only to EUF, not
   as native false-`Eq` LRA atoms;
-- EUF care-pair tracking is currently only a syntactic diagnostic over flat EUF
-  definitions. It is not used to prune equality propagation, does not add
-  clauses, and is not an implementation of the Jovanovic-Barrett care-set
-  algorithms;
+- EUF care-pair tracking is currently syntactic over flat EUF definitions. It
+  only filters LRA-to-EUF equality propagation checks in the main mixed loop; it
+  does not add clauses, does not filter EUF-to-LRA equality propagation, and is
+  not an implementation of the Jovanovic-Barrett care-set algorithms;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;
@@ -555,11 +557,11 @@ distinguished from delivered, useful work.
 - Track care-pair pruning counters and compare them with full cross-product
   delayed-combination counters.
 
-Primo currently implements only the last checklist item as a diagnostic: the
+Primo currently implements the last checklist item and one narrow consumer: the
 mixed coordinator counts the full shared-Real cross product and the subset of
-pairs that appear as arguments below the same flat EUF function prefix. This is
-useful for measuring whether a future consumer could reduce work, but it is not
-yet used by the solver.
+pairs that appear as arguments below the same flat EUF function prefix, then
+uses that subset to limit LRA-to-EUF equality checks. The final arrangement and
+model paths intentionally still consider the full set of shared Real constants.
 
 ## Broader Combination-Property Context
 
