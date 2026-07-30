@@ -219,13 +219,15 @@ Implemented now:
   false are not treated as Real disequalities. EUF- or LRA-implied shared
   equalities are learned as unit clauses over those generated equality literals,
   after which the receiving theory reports any ordinary conflict using that
-  literal as part of its reason. This is intentionally not full Nelson-Oppen:
-  fine-grained minimal cross-theory explanations,
-  model-equality guesses, false-disequality arrangement enumeration, and
-  unbounded arrangement enumeration remain unsupported. Mixed model
-  reconstruction uses a bounded search over strict shared-Real separation
-  orientations, with a greedy fallback when the candidate set exceeds the
-  current model-reconstruction cap.
+  literal as part of its reason. The optional `--model-equality-branching` mode
+  adds a default-off SAT-assumption scaffold for LRA-model-equal shared Real
+  pairs; those guessed equality atoms are optional branches, not permanent unit
+  clauses. This is intentionally not full Nelson-Oppen: fine-grained minimal
+  cross-theory explanations, full model-equality propagation,
+  false-disequality arrangement enumeration, and unbounded arrangement
+  enumeration remain unsupported. Mixed model reconstruction uses a bounded
+  search over strict shared-Real separation orientations, with a greedy fallback
+  when the candidate set exceeds the current model-reconstruction cap.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -233,8 +235,9 @@ Not implemented yet:
 
 - push/pop assertion stacks.
 - proof production.
-- model construction for mixed-theory fragments, arithmetic functions beyond
-  nullary `Real` constants, and reconstruction through future
+- full model construction for mixed-theory fragments beyond the documented
+  QF_UFLRA subset, arithmetic functions beyond nullary `Real` constants and
+  Real-valued UF tables, and reconstruction through future
   satisfiability-preserving rewrites outside the current preprocessing trail.
 - Full Nelson-Oppen theory combination with bidirectional shared-variable
   equality propagation, model-equality propagation, care sets, fine-grained

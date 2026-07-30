@@ -158,6 +158,7 @@ int main(int argc, char** argv) {
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
   bool nelson_oppen_diagnostics = false;
+  bool nelson_oppen_model_equality_branching = false;
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   std::string pure_theory_filter = "auto";
@@ -303,6 +304,13 @@ int main(int argc, char** argv) {
                "Record diagnostic-only QF_UF Ackermannization cost counters");
   app.add_flag("--nelson-oppen-diagnostics", nelson_oppen_diagnostics,
                "Record diagnostic-only Nelson-Oppen interface counters");
+  app.add_flag("--model-equality-branching", nelson_oppen_model_equality_branching,
+               "Enable experimental QF_UFLRA model-equality branching over shared Real terms; "
+               "default off and not a full Nelson-Oppen model-equality implementation");
+  app.add_option("--model-equality-branch-budget",
+                 solver_options.nelson_oppen_model_equality_branch_budget,
+                 "Maximum QF_UFLRA model-equality branch assumptions per check-sat")
+      ->check(CLI::Range(0, 1000000));
   app.add_flag("--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
                "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them");
   app.add_flag("--euf-diseq-ackermann", euf_diseq_ackermann,
@@ -516,6 +524,7 @@ int main(int argc, char** argv) {
   solver_options.euf_diseq_propagation_diagnostics = euf_diseq_propagation_diagnostics;
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
+  solver_options.nelson_oppen_model_equality_branching = nelson_oppen_model_equality_branching;
   solver_options.euf_dynamic_ackermann_shadow = euf_dynamic_ackermann_shadow;
   solver_options.euf_diseq_ackermann = euf_diseq_ackermann;
   if (pure_theory_filter == "off") {

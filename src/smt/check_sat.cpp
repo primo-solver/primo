@@ -3969,6 +3969,15 @@ std::optional<sat::Lit> interface_equality_lit(const core::TermManager& terms,
   return std::nullopt;
 }
 
+bool theory_atom_occurs_in_formula(const BooleanClausifier& clausifier, core::TermId term) {
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    if (atom.term == term && (atom.occurs_positive || atom.occurs_negative)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::optional<sat::Lit> create_interface_equality_lit(const core::TermManager& terms,
                                                       BooleanClausifier& clausifier,
                                                       std::vector<InterfaceEqualityAtom>& atoms,
@@ -3988,13 +3997,17 @@ std::optional<sat::Lit> create_interface_equality_lit(const core::TermManager& t
   return theory_atom.lit;
 }
 
-bool is_lit_true_in_backend(const sat::IpasirUpBackend& backend, sat::Lit lit) {
+std::optional<bool> lit_value_in_backend(const sat::IpasirUpBackend& backend, sat::Lit lit) {
   const int var = lit.value > 0 ? lit.value : -lit.value;
   const std::optional<bool> assignment = backend.value(var);
   if (!assignment.has_value()) {
-    return false;
+    return std::nullopt;
   }
   return lit.value > 0 ? assignment.value() : !assignment.value();
+}
+
+bool is_lit_true_in_backend(const sat::IpasirUpBackend& backend, sat::Lit lit) {
+  return lit_value_in_backend(backend, lit).value_or(false);
 }
 
 std::vector<InterfaceEqualityAtom> collect_true_interface_equalities(
@@ -5066,6 +5079,74 @@ std::optional<LraModelState> build_lra_model_state(
   }
   return LraModelState{std::move(prepared), std::move(tableau),
                        std::move(augmented_lra_assignments)};
+}
+
+std::optional<sat::Lit> choose_lra_model_equality_branch(
+    core::TermManager& terms, BooleanClausifier& clausifier, sat::CadicalBackend& backend,
+    std::vector<InterfaceEqualityAtom>& interface_equalities,
+    const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const std::vector<core::TermId>& shared_real_terms, const CheckSatOptions& options,
+    std::unordered_set<int>& tried_model_equality_vars, util::Statistics& statistics) {
+  if (!options.nelson_oppen_model_equality_branching || shared_real_terms.size() < 2 ||
+      tried_model_equality_vars.size() >= options.nelson_oppen_model_equality_branch_budget) {
+    return std::nullopt;
+  }
+
+  std::optional<LraModelState> model_state =
+      build_lra_model_state(terms, lra_atoms, lra_assignments, {}, options);
+  if (!model_state.has_value()) {
+    return std::nullopt;
+  }
+  const RealModelValues real_values =
+      real_model_values_from_lra(terms, shared_real_terms, {}, model_state->prepared,
+                                 model_state->tableau, model_state->assignments);
+  const auto value_of = [&](core::TermId term) {
+    const auto found = real_values.find(term);
+    return found == real_values.end() ? util::Rational(0) : found->second;
+  };
+
+  for (std::size_t i = 0; i < shared_real_terms.size(); ++i) {
+    for (std::size_t j = i + 1; j < shared_real_terms.size(); ++j) {
+      const core::TermId lhs = shared_real_terms[i];
+      const core::TermId rhs = shared_real_terms[j];
+      if (value_of(lhs) != value_of(rhs)) {
+        continue;
+      }
+      statistics.increment(":no.interface.model-equality-candidates");
+      const core::TermId equality = terms.mk_eq(lhs, rhs);
+      if (theory_atom_occurs_in_formula(clausifier, equality)) {
+        continue;
+      }
+
+      std::optional<sat::Lit> lit = interface_equality_lit(terms, interface_equalities, equality);
+      bool created = false;
+      if (!lit.has_value()) {
+        lit = create_interface_equality_lit(terms, clausifier, interface_equalities, equality);
+        created = lit.has_value();
+      }
+      if (!lit.has_value()) {
+        continue;
+      }
+      const int var = lit->value > 0 ? lit->value : -lit->value;
+      if (tried_model_equality_vars.contains(var)) {
+        continue;
+      }
+      if (!created) {
+        const std::optional<bool> value = lit_value_in_backend(backend, lit.value());
+        if (value.has_value()) {
+          continue;
+        }
+      }
+      tried_model_equality_vars.insert(var);
+      backend.phase(lit.value());
+      statistics.increment(":no.interface.model-equality-created", created ? 1 : 0);
+      statistics.set(":no.interface.sat-equality-atoms", interface_equalities.size());
+      statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+      return lit;
+    }
+  }
+  return std::nullopt;
 }
 
 struct MixedTheoryPurificationResult {
@@ -6528,6 +6609,8 @@ CheckSatOutcome solve_qf_uf_lra(
   const std::vector<core::TermId> shared_real_terms =
       shared_real_constants(terms, euf_atoms, lra_atoms);
   std::vector<InterfaceEqualityAtom> interface_equalities;
+  std::optional<sat::Lit> pending_model_equality_branch;
+  std::unordered_set<int> tried_model_equality_vars;
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
@@ -6540,6 +6623,11 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.euf-to-lra-equalities", 0);
   statistics.set(":no.interface.lra-to-euf-equalities", 0);
   statistics.set(":no.interface.conflicts", 0);
+  statistics.set(":no.interface.model-equality-candidates", 0);
+  statistics.set(":no.interface.model-equality-created", 0);
+  statistics.set(":no.interface.model-equality-assumptions", 0);
+  statistics.set(":no.interface.model-equality-failed-assumptions", 0);
+  statistics.set(":no.interface.model-equality-conflicts", 0);
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
@@ -6571,8 +6659,22 @@ CheckSatOutcome solve_qf_uf_lra(
 
   while (true) {
     statistics.increment(kStatSatSolveCalls);
+    std::optional<sat::Lit> active_model_equality_branch;
+    if (pending_model_equality_branch.has_value()) {
+      active_model_equality_branch = pending_model_equality_branch;
+      pending_model_equality_branch.reset();
+      backend.assume(active_model_equality_branch.value());
+      statistics.increment(":no.interface.model-equality-assumptions");
+    }
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
+    if (sat_result == sat::SatResult::Unsat && active_model_equality_branch.has_value() &&
+        backend.failed(active_model_equality_branch.value())) {
+      backend.add_clause(sat::Clause{sat::Lit{-active_model_equality_branch->value}});
+      statistics.increment(":no.interface.model-equality-failed-assumptions");
+      publish_sat_stats(backend.statistics(), statistics);
+      continue;
+    }
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
@@ -6605,6 +6707,9 @@ CheckSatOutcome solve_qf_uf_lra(
     }
     if (euf_conflict.has_value()) {
       statistics.increment(kStatTheoryConflicts);
+      if (active_model_equality_branch.has_value()) {
+        statistics.increment(":no.interface.model-equality-conflicts");
+      }
       if (euf_conflict->empty()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
@@ -6628,6 +6733,9 @@ CheckSatOutcome solve_qf_uf_lra(
         prepared_lra_theory_for_check, lra_assignments_for_check);
     if (lra_conflict.has_value()) {
       statistics.increment(kStatLraTheoryConflicts);
+      if (active_model_equality_branch.has_value()) {
+        statistics.increment(":no.interface.model-equality-conflicts");
+      }
       if (lra_conflict->empty()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
@@ -6637,7 +6745,8 @@ CheckSatOutcome solve_qf_uf_lra(
       continue;
     }
 
-    if (euf_check.has_value() && !shared_real_terms.empty()) {
+    if (!active_model_equality_branch.has_value() && euf_check.has_value() &&
+        !shared_real_terms.empty()) {
       const std::vector<core::TermId> implied_equalities = euf_implied_real_equalities(
           terms, prepared_flat_theory.value(), euf_check->closure, shared_real_terms);
       statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
@@ -6649,7 +6758,8 @@ CheckSatOutcome solve_qf_uf_lra(
       }
     }
 
-    if (euf_check.has_value() && !shared_real_terms.empty()) {
+    if (!active_model_equality_branch.has_value() && euf_check.has_value() &&
+        !shared_real_terms.empty()) {
       const std::vector<core::TermId> implied_equalities = lra_implied_real_equalities(
           terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
       statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
@@ -6659,6 +6769,15 @@ CheckSatOutcome solve_qf_uf_lra(
         publish_sat_stats(backend.statistics(), statistics);
         continue;
       }
+    }
+
+    pending_model_equality_branch = choose_lra_model_equality_branch(
+        terms, clausifier, backend, interface_equalities, lra_atoms_for_check,
+        lra_assignments_for_check, shared_real_terms, options, tried_model_equality_vars,
+        statistics);
+    if (pending_model_equality_branch.has_value()) {
+      publish_sat_stats(backend.statistics(), statistics);
+      continue;
     }
 
     publish_sat_stats(backend.statistics(), statistics);

@@ -301,6 +301,11 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
 - `:no.interface.conflicts`
+- `:no.interface.model-equality-candidates`
+- `:no.interface.model-equality-created`
+- `:no.interface.model-equality-assumptions`
+- `:no.interface.model-equality-failed-assumptions`
+- `:no.interface.model-equality-conflicts`
 - `:no.interface.model-separations`
 - `:no.interface.model-separation-candidates`
 - `:no.interface.model-separation-search-capped`
@@ -317,7 +322,11 @@ were forced by EUF/LRA equality propagation, and strict shared-Real separations
 added only while reconstructing mixed models. The model-separation search
 counters record the number of strict-order candidate pairs, whether the bounded
 backtracking cap was exceeded, and the LRA-consistency branches/backtracks tried
-inside that reconstruction step. `:no.interface.conflicts` is retained as the
+inside that reconstruction step. When `--model-equality-branching` is enabled,
+the model-equality counters record LRA-model-equal shared Real pairs considered,
+optional SAT equality atoms created for those pairs, assumptions made on those
+atoms, assumptions rejected at the SAT level, and ordinary theory conflicts
+reached while a guessed equality was active. `:no.interface.conflicts` is retained as the
 legacy broad blocking counter; the current positive-equality path should instead
 show activity in `:no.interface.sat-equalities-forced` and then ordinary EUF/LRA
 theory-conflict counters if the forced equality is inconsistent.

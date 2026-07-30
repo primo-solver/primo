@@ -101,6 +101,19 @@ coordinator adds a unit clause for that literal and restarts the SAT loop. Once
 a receiving theory sees the forced equality, any inconsistency is explained
 through the ordinary EUF or LRA conflict path using the generated equality atom.
 
+With `--model-equality-branching`, the coordinator may also ask the LRA model
+for shared Real pairs that currently have the same concrete value. This is a
+default-off branching scaffold, not a unit propagation rule: the equality atom is
+created as an optional SAT-visible atom, then tried as a one-shot SAT assumption.
+If the receiving theory rejects the equality, the ordinary theory conflict
+learned under that assumption blocks the bad branch; if the SAT core rejects the
+assumption directly, Primo permanently sets that optional atom false. A false
+optional equality still means "do not assert this equality" in the current
+subset, not an LRA disequality. While an optional model-equality assumption is
+active, the coordinator does not export further EUF- or LRA-implied interface
+equalities as unconditional unit clauses; those consequences would depend on the
+guess and need explanation minimization that this scaffold does not implement.
+
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
 symbols with Real arguments, including non-constant arithmetic arguments after
@@ -127,6 +140,11 @@ coordinator publishes:
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
 - `:no.interface.conflicts`
+- `:no.interface.model-equality-candidates`
+- `:no.interface.model-equality-created`
+- `:no.interface.model-equality-assumptions`
+- `:no.interface.model-equality-failed-assumptions`
+- `:no.interface.model-equality-conflicts`
 - `:no.interface.model-separations`
 
 ## Primary Base Paper
@@ -316,6 +334,17 @@ treating one theory's atoms as Boolean noise.
   interface equality and continue. Return `sat` only when both theory checks
   accept the same Boolean assignment and neither theory forces a new shared
   equality.
+- **Model-equality branching:** if `--model-equality-branching` is enabled and
+  neither theory forces an equality, the coordinator builds the current LRA
+  model and scans shared Real pairs whose concrete LRA values are equal. For a
+  missing, user-invisible equality atom, it creates a SAT-visible optional atom
+  and retries the SAT loop with that atom as a one-shot assumption. The equality
+  is asserted to EUF/LRA only when SAT assigns the atom true. A failed assumption
+  is blocked by setting the optional atom false; this remains sound because
+  false optional atoms are interpreted as "no added equality" in this subset,
+  not as disequalities. The branch does not force additional interface
+  equalities as permanent units while the optional equality is active. The
+  branch budget is controlled by `--model-equality-branch-budget`.
 - **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
   QF_LRA definitions. For Real constants used as UF arguments, reconstruction
   first adds EUF-implied Real-constant equalities to the LRA model tableau, then
@@ -346,7 +375,9 @@ treating one theory's atoms as Boolean noise.
   LRA side inconsistent, an LRA-implied shared Real-constant equality that makes
   the EUF side inconsistent, and a regression where default preprocessing solves
   away a UF equality before the remaining arithmetic formula dispatches to the
-  LRA solver.
+  LRA solver. It also covers opt-in model-equality branching over an LRA-model
+  equal pair that EUF rejects, forcing the solver to back off and still return
+  `sat`.
 
 Limitations:
 
@@ -359,7 +390,8 @@ Limitations:
 - cross-theory equality propagation uses generated unit equality literals, but
   still lacks the minimal explanation machinery of a full Nelson-Oppen
   implementation;
-- no model-equality guesses from de Moura/Bjorner;
+- opt-in model-equality branching is a scaffold over LRA-model-equal shared
+  Real pairs only, not the full de Moura/Bjorner algorithm;
 - Real-argument model reconstruction backtracks only up to a fixed candidate
   cap, currently 18 pairs, then records
   `:no.interface.model-separation-search-capped` and falls back to greedy

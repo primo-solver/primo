@@ -496,6 +496,29 @@ void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
   assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
 }
 
+void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-created") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+}
+
 void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1644,6 +1667,7 @@ int main() {
   qf_uf_lra_model_keeps_true_purified_real_literal_argument_entry();
   qf_uf_lra_shares_lra_implied_real_equalities_with_euf();
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
+  qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   real_equality_is_not_misclassified_as_euf();

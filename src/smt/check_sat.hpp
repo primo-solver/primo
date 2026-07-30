@@ -107,6 +107,7 @@ struct CheckSatOptions {
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
   bool nelson_oppen_diagnostics = false;
+  bool nelson_oppen_model_equality_branching = false;
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   AutoBudget euf_propagation_budget;
@@ -183,6 +184,7 @@ struct CheckSatOptions {
   std::size_t euf_diseq_ackermann_max_width = 3;
   std::size_t euf_diseq_ackermann_queue_budget = 4096;
   std::size_t euf_diseq_ackermann_per_symbol = 64;
+  std::size_t nelson_oppen_model_equality_branch_budget = 16;
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;
