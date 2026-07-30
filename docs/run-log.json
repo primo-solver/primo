@@ -12222,6 +12222,43 @@
       },
       "evidence_status": "current",
       "followups": "D3 stays on the list at medium rather than largest cost, with the redirected design. D1 (evaluate Primo's existing row-based bound propagation on this band) is now doubly interesting, since it is the same machinery the redirected D3 would extend."
+    },
+    {
+      "id": "2026-07-30-qf-lra-row-propagation-cap-finding",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "profiling",
+      "scope": "First local look at direction D1 (evaluate Primo's existing row-based bound propagation on the mid-band gap), plus the QF_LRA code/docs/CLI audit that followed.",
+      "commit": "4a0aba4",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build/primo --quiet --stats with a throwaway env override of the propagation caps (reverted, not committed)",
+        "notes": "Absolute wall times on this workstation were unreliable this session; the cap comparison is same-binary A/B/C minutes apart, so relative effects are meaningful, but n=2 and the 58.5s figure sits at a 60s boundary."
+      },
+      "command": {
+        "smoke": "./build/primo --quiet --stats [--lra-row-propagation [--lra-bidirectional-row-propagation]] on two profiled gap instances",
+        "cap_sweep": "same, with PRIMO_RP_ROW/PRIMO_RP_FAN/PRIMO_BP_ROW/PRIMO_BP_FAN overriding the four hardcoded caps at 32, 256 and effectively unlimited"
+      },
+      "benchmark": {
+        "suite": "scrambled228965, scrambled312090",
+        "logic": "QF_LRA",
+        "timeout_seconds": 90
+      },
+      "summary": {
+        "d1_and_d3_are_the_same_code": "compute_implied_child_bound derives a bound on one row term from the basic variable's bound plus the remaining terms. For s = x - y with s fixed and x bounded that yields a bound on y -- exactly the cheap offset-equality mechanism D3 was redirected to. D1 and the useful part of D3 are the same implementation.",
+        "the_feature_is_gated_off_where_it_is_needed": "kBidirectionalRowPropagationMaxRowSize/MaxFanout are 32/32 and kRowBasedPropagation's are 64/64, all documented in-source as 'not precisely derived'. On these instances occurs_in reaches 521 and rows reach 91 terms, so bidirectional propagation fires only 11-68 times where the D3 census finds 7,000-190,000 binary rows.",
+        "raising_the_caps_helps_and_is_non_monotone": "scrambled228965: 9.6s (68 props) at 32/32, 6.5s (2,072) at 256/256, 32.8s (2,181) unlimited. scrambled312090: 61.6s (22), 58.5s (7,959), 64.3s (8,593). Unlimited is worse than 256 on both, so the caps do real work and are simply set an order of magnitude below what these instances need.",
+        "headline": "scrambled312090 is a gap file that times out at 60s in the default configuration and solves in ~58s with row propagation enabled at raised caps. That is the first direct evidence any of the section 6.5 directions moves a gap file.",
+        "audit": "Every --lra-* CLI option maps to a CheckSatOptions field and appears in the docs; no orphans in either direction. Three statistics (:lra.theory-checks, :lra.theory-conflicts, :lra.theory-decisions) were emitted but documented nowhere. docs/arithmetic.md now carries a full option table with defaults and a statistics table, including the :lra.pivots-is-not-comparable-across-an-H7-ablation caveat, and documents the four un-exposed propagation caps.",
+        "citation_gap_closed": "Item H7's header claimed it implemented 'the standard eliminate fixed variables step' with NO citation -- precisely the unsupported claim the paper-grounded rule exists to catch. Now cited to Andersen & Andersen, 'Presolving in linear programming', Mathematical Programming 71 (1995) 221-245, with the setting difference stated: presolve removes fixed variables once, before solving, from a problem whose bounds are all known, whereas H7 fires during search and must restore on backtracking. That difference is the likely reason H7 did not pay."
+      },
+      "verification": {
+        "instrumentation_reverted": "The cap-override patch was reverted; git status clean, make check green.",
+        "caveat": "n=2, and 58.5s against a 60s budget is at this workstation's noise boundary. This justifies the cluster cap sweep, not a conclusion."
+      },
+      "evidence_status": "current",
+      "followups": "Run the cap sweep on the 59-file mid-band manifest on Slurm. That needs the four caps exposed as options first, since they are currently compile-time constants -- a small change, and the natural way to make the sweep reproducible."
     }
   ]
 }

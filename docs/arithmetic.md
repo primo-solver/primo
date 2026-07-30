@@ -553,6 +553,56 @@ alternatives considered before/while implementing it.
 Milestones 1-4 (above) are all done, plus disequality support and the
 recursion-removal pass -- QF_LRA is **supported**, not experimental.
 
+### QF_LRA options and statistics reference
+
+Every `--lra-*` option, its default, and where its evidence lives. Verified
+against `CheckSatOptions` and `--help` on 2026-07-30.
+
+| option | default | what it does |
+|---|---|---|
+| `--lra-pivoting-rule {bland,dantzig,soi,sparse}` | `sparse` | Check/Pivot variable selection. `sparse` is item H3. |
+| `--no-lra-sparse-leaving` | leaving rule **on** | Ablates the leaving-side half of `sparse`. |
+| `--no-lra-propagation` | propagation **on** | Ablates same-slack propagation (Dutertre & de Moura 4.2). |
+| `--lra-row-propagation` | **off** | Row/interval implied bounds (roadmap item 2). |
+| `--lra-bidirectional-row-propagation` | **off** | Reverse direction: tighten a row term from the row's own bound (item 7). Requires `--lra-row-propagation`. |
+| `--lra-theory-decisions` | **off** | Theory-supplied decision literals via `cb_decide` (item 8). |
+| `--lra-fixed-elimination` | **off** | Item H7. Opt-in; see its falsifier outcome. |
+
+**Un-exposed constants that gate the propagation options**, in
+`check_sat.cpp` and documented in the source as "not precisely derived":
+`kRowBasedPropagationMaxRowSize`/`MaxFanout` (64/64) and
+`kBidirectionalRowPropagationMaxRowSize`/`MaxFanout` (32/32). These matter
+more than their obscurity suggests -- on the mid-band gap instances
+`occurs_in` reaches 521 and rows reach 91 terms, so the bidirectional path is
+gated off almost entirely there (it fires 11-68 times). See
+[](qf-lra-heuristics.md)'s D1.
+
+**Statistics.** All are cumulative per solve.
+
+| statistic | meaning |
+|---|---|
+| `:lra.theory-checks` | full theory checks run (non-incremental path) |
+| `:lra.theory-conflicts` | theory conflicts reported to the SAT solver |
+| `:lra.theory-propagations` | literals propagated by the theory |
+| `:lra.theory-decisions` | decisions supplied via `cb_decide` |
+| `:lra.online-check-calls` | `LraTableau::check()` calls from the online propagator |
+| `:lra.pivots` | **repair** pivots inside `check()` only -- see the caveat below |
+| `:lra.pivot-row-updates` | rows rewritten by pivots (Markowitz column factor) |
+| `:lra.pivot-term-ops` | terms merged while rewriting them (row factor) |
+| `:lra.bland-fallbacks` | `check()` calls that hit the anti-cycling fallback |
+| `:lra.rows` / `:lra.tableau-vars` / `:lra.row-nonzeros` | prepared tableau shape |
+| `:lra.row-propagations` / `:lra.bidirectional-row-propagations` | propagations by direction |
+| `:lra.soi-multi-row-conflicts` / `:lra.soi-quickxplain-calls` | SOI-only |
+| `:lra.fixed-variables` / `:lra.elimination-pivots` | item H7 |
+| `:rational.promotions` / `:rational.big-operations` | item H2's small-to-GMP transitions |
+
+**Caveat on `:lra.pivots`:** it is sampled as a delta around `check()`, so
+item H7's elimination pivots -- which happen inside
+`assert_upper`/`assert_lower` -- are **not** counted in it. Comparing
+`:lra.pivots` across an H7 ablation is therefore misleading; use
+`:lra.pivot-row-updates` / `:lra.pivot-term-ops`, which count every pivot's
+work wherever it was triggered.
+
 ### Where QF_LRA work stands, and what is open (2026-07-30)
 
 **The whole remaining gap against z3 is one band.** On the 595-file scrambled

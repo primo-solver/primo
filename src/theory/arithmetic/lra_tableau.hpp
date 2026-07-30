@@ -251,8 +251,14 @@ class LraTableau {
   // can_enter() rejects a fixed variable on every branch (lower == upper ==
   // assignment makes each of its `assignment < upper` / `assignment > lower`
   // tests false), so it is never chosen again and its column never moves.
-  // This is the standard "eliminate fixed variables" step; see
-  // docs/qf-lra-heuristics.md item H7 for the measurements motivating it.
+  // The prior art is LP presolve's fixed-variable removal (Andersen &
+  // Andersen, "Presolving in linear programming", Mathematical Programming
+  // 71, 1995) -- but note the setting differs in the way that matters:
+  // presolve removes fixed variables once, before solving, from a problem
+  // whose bounds are all known, whereas here a variable becomes fixed
+  // *during* search and must be restored on backtracking. See
+  // docs/qf-lra-heuristics.md item H7 for the measurements, and for why that
+  // difference is the likely reason it did not pay.
   //
   // The pivot's entering variable is preferred unbounded where possible,
   // since an unbounded basic variable's row can never be violated and so

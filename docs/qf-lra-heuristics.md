@@ -984,13 +984,14 @@ whole one.
 
 | # | direction | expected size | cost | status |
 |---|---|---|---|---|
-| D1 | Evaluate existing row-based bound propagation on this band | unknown | **one benchmark run** | untried |
+| D1 | Row-based bound propagation: raise caps, evaluate on this band | **promising** | **cap sweep** | first local evidence positive |
 | D2 | Floating-point-guided basis selection (Monniaux) | large | medium | **applicability unverified** |
 | D3 | Offset-equality detection + bound propagation | **2.2-3.2x in z3** | medium | **investigated; design redirected** |
 | D4 | Revised simplex with an LU-factored basis | unknown | largest | open question; conflicts with D1 |
 | -- | ~~Periodic refactorization~~ | -- | -- | **rejected 2026-07-30** |
 
-**D1. Evaluate the row-based bound propagation Primo already has.** z3 reports
+**D1. Evaluate the row-based bound propagation Primo already has.**
+**Partially done 2026-07-30, and it is the strongest lead on the list.** z3 reports
 `:arith-bound-propagations-lp` of 302k-1.2M on the profiled instances, so
 propagation is doing heavy lifting there. Primo has both row-based and
 bidirectional row propagation implemented (`--lra-row-propagation`,
@@ -998,6 +999,42 @@ bidirectional row propagation implemented (`--lra-row-propagation`,
 and **have never been evaluated on this band at all**. This is the only entry
 that costs a benchmark run rather than an implementation, which is why it is
 first regardless of expected size.
+
+*Two findings from a first local look, neither of which was expected.*
+
+**(a) D3's redirected design already exists here.** `compute_implied_child_bound`
+derives a bound on one row term from the basic variable's bound plus the
+remaining terms -- so for `s = x - y` with `s` fixed and `x` bounded it derives
+a bound on `y`, which is exactly the cheap offset-equality mechanism D3 was
+redirected to. D1 and the useful part of D3 are the same code.
+
+**(b) It is switched off by its own caps on precisely these instances.**
+
+| gate | value | measured reality (section 6.2) |
+|---|---|---|
+| `kBidirectionalRowPropagationMaxFanout` | 32 | `occurs_in` reaches **521** |
+| `kBidirectionalRowPropagationMaxRowSize` | 32 | rows reach **91** terms |
+| `kRowBasedPropagationMaxFanout` | 64 | (same 521) |
+
+Both are documented in the source as "not precisely derived". The result is
+that bidirectional propagation fires **11-68 times** on instances where the
+census in D3 finds 7,000-190,000 binary rows. Raising the caps to 256 raises
+it by 30-360x, and the effect on time is real and non-monotone:
+
+| instance | caps 32/32 | 256/256 | unlimited |
+|---|---|---|---|
+| `scrambled228965` | 9.6s (68 props) | **6.5s** (2,072) | 32.8s (2,181) |
+| `scrambled312090` | 61.6s (22) | **58.5s** (7,959) | 64.3s (8,593) |
+
+Note `scrambled312090`: it is a **gap file that times out at 60s in the
+default configuration and solves in ~58s here**. Note also that unlimited is
+*worse* than 256 on both -- the caps are doing real work, they are simply set
+an order of magnitude below what these instances need. This is a
+one-constant-sweep experiment, not an implementation.
+
+*Caveat:* 58.5s against a 60s budget is at the noise boundary on this
+workstation (see the run-log's environment note), and n=2. What this justifies
+is the cluster sweep, not a conclusion.
 
 **D2. Floating-point-guided basis selection** (Monniaux, CAV 2009): run a
 floating-point LP, then force-pivot the exact tableau to the basis it found.

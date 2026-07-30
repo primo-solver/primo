@@ -206,6 +206,19 @@ the reference that settles two questions for us.
   So the fill-in problem measured in [](../qf-lra-heuristics.md)'s section 6 is
   not one this literature offers a ready answer to.
 
+**Erling D. Andersen, Knud D. Andersen. "Presolving in linear programming."
+Mathematical Programming 71 (1995), 221-245.**
+<https://link.springer.com/article/10.1007/BF01586000>
+The canonical reference for LP presolve, including removal of fixed
+variables -- the prior art for heuristics-note item H7, whose header
+previously called it "the standard eliminate-fixed-variables step" with no
+citation at all. Note the difference in setting, which is the whole reason H7
+did not pay: presolve removes fixed variables **once, before solving**, from a
+problem whose bounds are all known. In DPLL(T) a variable becomes fixed
+*during* search, when two bounds asserted at some decision level happen to
+coincide, and must be restored on backtracking. Paper not read in full; cited
+for the technique's provenance, not for a result.
+
 **General engineering (presolve, scaling, degeneracy, refactorization).**
 Robert Bixby, "Solving Real-World Linear Programs: A Decade and More of
 Progress" (Operations Research 50(1), 2002) — a implementor's-eye survey of
