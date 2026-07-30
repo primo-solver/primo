@@ -359,11 +359,12 @@ bounded:
 
 The pass also records each accepted `x -> t` replacement as a model
 reconstruction equality `x = t`. When `get-model` is requested, `check_sat`
-passes those equalities to `smt::ModelBuilder` together with the SAT/theory
-assignment, so the printed model is checked against the original SMT-LIB
-assertions rather than only the rewritten assertion set. This is still a
-QF_UF-specific reconstruction trail, not a general model object for future
-theory combinations.
+passes those equalities to the active model builder together with the SAT or
+theory assignment, so the printed model is checked against the original SMT-LIB
+assertions rather than only the rewritten assertion set. The current consumers
+are the QF_UF model builder and the minimal QF_LRA Real-constant model
+printer; this trail is still not a general model object for future
+Nelson-Oppen theory combinations.
 
 The reconstruction trail is owned by the preprocessing result objects in
 `src/smt/preprocessing.hpp`: `BooleanUnitPropagationResult::assignments`,

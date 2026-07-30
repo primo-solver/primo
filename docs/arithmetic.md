@@ -79,6 +79,17 @@ alternatives considered before/while implementing it.
   (`#if PRIMO_HAVE_IPASIR`); `find_incremental_lra_theory_conflict` (copy
   the base tableau and reassert every round, no push/pop reuse) survives
   only as the fallback when it isn't.
+- **QF_LRA model printing** (`check_sat.cpp`): when `:produce-models true`
+  and `get-model` are present, the QF_LRA path prints definitions for
+  user-declared nullary `Real` constants. Values are read from the final
+  `LraTableau` assignment and strict `DeltaRational` values are concretized
+  by choosing a positive rational delta small enough to preserve the asserted
+  strict bounds. The model builder also replays preprocessing reconstruction
+  equalities from solve-eqs/Gaussian elimination, so a constant eliminated
+  before theory solving is assigned from the final values of the terms it was
+  rewritten to. This is a supported minimal LRA model subset, not a mixed
+  QF_UFLRA model: Real functions, arrays, nonlinear arithmetic, and
+  Nelson-Oppen combination models remain unsupported.
 - **Same-variable bound propagation** (Milestone 3b, `check_sat.cpp`; called
   same-*slack* propagation before item H1a, when a slack was the only thing a
   bound could live on): after each successful bound assertion,
