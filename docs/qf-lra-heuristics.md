@@ -341,6 +341,8 @@ width ablation could still move.
 
 ### H3 -- Fill-in-aware (Markowitz-style) entering-variable selection
 
+**Prior art, checked 2026-07-30 (after implementation).** This rule is the field's standard rather than a technique transferred from one paper. King's thesis (NYU 2014) Section 2.2.12 records minimum-column-length entering selection with a Bland fallback past a finite cap as what MathSAT, OpenSMT, Yices, Yices 2, z3 and CVC4 all do -- i.e. H3 and its anti-cycling story exactly. The Monniaux citation below remains an accurate source for the sparsity criterion, but H3 should not be read as novel. The *leaving*-side knob is the part with no counterpart there: King records Griggio's most-violated rule (CVC4, MathSAT5), which is our Dantzig choice, not our shortest-row one. See [](papers/lra-related-work.md).
+
 **Status: implemented 2026-07-28, promoted to default 2026-07-29
 (`LraPivotingRule::Sparse` with the leaving-side half on).** On the 237-file
 bar: **168/237 against the former default's 144, PAR2 1538.9s vs 1962.4s,
@@ -976,19 +978,47 @@ that should be priced in before committing to it.
 
 Recorded so the next round starts from evidence rather than from scratch.
 
-1. **Attack fill-in directly rather than pricing it.** H3 chooses the
-   cheapest available pivot; nothing currently *prevents* densification. The
-   standard answers from sparse LU are periodic refactorization (rebuild the
-   basis representation from the original rows, discarding accumulated
-   fill-in) and Markowitz thresholding. Section 6.2 says the accumulated
-   representation is 5-17x denser than the original one, so rebuilding from
-   the original rows has a large, directly measured headroom.
+1. ~~**Periodic refactorization to discard accumulated fill-in.**~~
+   **Retracted before implementation -- it is mathematically void here**, and
+   the literature check that killed it is worth recording. In the *revised*
+   simplex method the basis is an LU factorization updated per pivot
+   (Forrest-Tomlin, Bartels-Golub); those updates accumulate fill-in and
+   numerical error beyond a fresh factorization, and periodic refactorization
+   discards exactly that surplus. Primo stores the **explicit tableau**, which
+   for a given basic/non-basic partition is `B^-1 N` -- *uniquely determined*.
+   Recomputing it from the original rows returns the identical matrix with
+   identical density. The 5-17x densification in section 6.2 is a property of
+   the **basis reached**, not recoverable garbage from the path taken to it,
+   so there is nothing to discard. Reducing that density means either reaching
+   sparser bases or switching representation to revised simplex -- and only
+   the latter makes refactorization meaningful at all. See
+   [](papers/lra-related-work.md)'s refactorization note.
+
+   The lesson generalises: "measured headroom" is only headroom if some
+   mechanism can actually recover it. 5-17x looked like an opportunity and was
+   a description of the problem.
 2. **Dynamic offset-equality detection**, matching z3's dominant counter.
    Biggest expected win and the biggest piece of work; needs a design that
    says where the detection hooks in and what it costs when it finds nothing.
 3. **Bound propagation on the LP** (`arith-bound-propagations-lp`, 300k-1.2M
    per instance). Primo's row-based propagation exists but is opt-in and
-   off by default; it has never been evaluated on this band.
+   off by default; it has never been evaluated on this band. Cheapest of the
+   three by a wide margin -- the mechanism is already written, so this is a
+   benchmark run, not an implementation.
+4. **Revised simplex with an LU-factored basis**, the representation change
+   item 1 turned out to require. This is what every serious LP code does and
+   what makes refactorization and Markowitz-ordered factorization meaningful;
+   King's thesis records that no Simplex-for-DPLL(T) implementation does it.
+   That is either a real opportunity or a sign that the exact-arithmetic
+   setting makes it unattractive, and the note does not currently know which.
+5. **Floating-point-guided basis selection** (Monniaux, CAV 2009): run a
+   floating-point LP, then force-pivot the exact tableau to the basis it
+   found. Sound because the numeric result only chooses a starting
+   configuration. Already surveyed in [](papers/lra-related-work.md) and
+   recorded there as not planned -- it needs an incremental floating-point LP
+   engine alongside the exact tableau. Worth re-examining given that section
+   6.2 says the *basis* is what determines density, which is precisely what
+   this technique chooses.
 
 **A falsifier for the whole diagnosis, stated in advance:** if a mechanism
 reduces `:lra.pivot-term-ops` per pivot substantially on these four instances

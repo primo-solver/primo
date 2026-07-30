@@ -12157,6 +12157,34 @@
       },
       "evidence_status": "current",
       "followups": "Calibrates docs/qf-lra-heuristics.md section 6.5's candidate directions: a 3x is worth 24 files and a 5x is worth 37, so periodic refactorization (measured 5-17x densification headroom) is worth attempting on its own merits without needing to reach z3 parity."
+    },
+    {
+      "id": "2026-07-30-qf-lra-refactorization-literature-check",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "literature",
+      "scope": "Literature check on the top candidate direction from docs/qf-lra-heuristics.md section 6.5 (periodic refactorization to discard accumulated tableau fill-in) before any implementation. Result: the proposal is retracted as mathematically void for Primo's representation, and a separate correction to item H3's prior-art framing was found along the way.",
+      "commit": "f04806e",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "n/a -- reading only"
+      },
+      "command": {
+        "sources": "Tim King, 'Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic', PhD thesis, New York University, September 2014, https://cs.nyu.edu/media/publications/king_tim.pdf (sections 2.2.7 and 2.2.12); Bixby, 'Solving Real-World Linear Programs' (OR 2002) and Maros, 'Computational Techniques of the Simplex Method' (Springer 2003), both already in the survey; Wikipedia's revised simplex article for the Forrest-Tomlin / Bartels-Golub refactorization rationale.",
+        "note": "The King PDF was read outside the repository and not committed, per the no-copyrighted-material-in-repo rule."
+      },
+      "summary": {
+        "retraction": "Periodic refactorization does not transfer. In REVISED simplex the basis is an LU factorization updated per pivot, and those updates accumulate fill-in and numerical error beyond a fresh factorization -- that surplus is what refactorization discards. Primo stores the EXPLICIT tableau, which for a given basic/non-basic partition is B^-1 N and is uniquely determined: recomputing it from the original rows returns an identical matrix with identical density. The 5-17x densification measured in section 6.2 is a property of the basis reached, not recoverable garbage from the path taken to it. There is nothing to discard.",
+        "lesson": "'Measured headroom' is only headroom if some mechanism can recover it. The 5-17x figure looked like an opportunity and was in fact a description of the problem. Retracted before any implementation effort, on a literature check that cost one session.",
+        "h3_prior_art_correction": "King section 2.2.12 records minimum-column-length entering selection, with a switch to Bland's rule past a finite cap, as the heuristic 'commonly used in implementations of SimplexForSMT', attributing it to MathSAT, OpenSMT, Yices, Yices 2, z3 and CVC4. That is item H3 and its anti-cycling fallback exactly. Our Monniaux (CAV 2009) citation remains accurate as a source but H3 must not be read as novel; the note and the LraTableau header now say so. The opt-in shortest-row LEAVING rule is the part with no counterpart described there -- King records Griggio's most-violated rule (CVC4, MathSAT5), which is our Dantzig choice.",
+        "fill_in_not_addressed_in_smt_literature": "King section 2.2.7 describes the explicit sparse tableau (entries linked into both a row list and a column list). Searching the thesis for fill-in, density, Markowitz and refactorization finds only that description -- no mechanism for controlling densification during search. The section 6.2 problem is not one this literature offers a ready answer to."
+      },
+      "verification": {
+        "claim_basis": "The uniqueness of B^-1 N for a fixed basis is a property of the formulation, not an empirical finding; Primo's rows are maintained in exactly the basic = sum(coeff * nonbasic) form that makes it so."
+      },
+      "evidence_status": "current",
+      "followups": "Section 6.5 reordered: the cheapest remaining direction is evaluating the EXISTING opt-in row-based bound propagation on this band (a benchmark run, not an implementation). Revised simplex with an LU-factored basis is now listed explicitly as the representation change refactorization would require, with the observation that King records no Simplex-for-DPLL(T) implementation doing it. Monniaux's floating-point-guided basis selection is promoted for re-examination, since section 6.2 says the BASIS determines density and that is precisely what it chooses."
     }
   ]
 }

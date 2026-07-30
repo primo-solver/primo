@@ -175,6 +175,37 @@ but Steepest Edge fewest iterations, with Bland notably *not* the most
 robust choice outside its anti-cycling guarantee — a useful sanity check
 before assuming any one rule dominates.
 
+**Tim King. "Effective Algorithms for the Satisfiability of Quantifier-Free
+Formulas Over Linear Real and Integer Arithmetic." PhD thesis, New York
+University, September 2014.**
+<https://cs.nyu.edu/media/publications/king_tim.pdf>
+The most complete implementor's account of Simplex-for-DPLL(T) available, and
+the reference that settles two questions for us.
+
+- **The column-length entering rule is the field's standard, not a novelty.**
+  Section 2.2.12: "The heuristic commonly used in implementations of
+  SimplexForSMT for selecting the entering variable is to select the `x_j`
+  with minimum column length `|(T^|)_j|` with ties broken by [the variable
+  order]. This heuristic works quite well in practice but is not guaranteed to
+  terminate. A simple means of ensuring termination is to count the number of
+  heuristic selections and switch to Bland's rule once this passes a finite
+  cap." That is precisely item H3 *and* its anti-cycling fallback, and King
+  attributes the family to MathSAT, OpenSMT, Yices, Yices 2, z3 and CVC4. Our
+  own citation of Monniaux (CAV 2009) for the sparsity criterion remains
+  accurate as a source, but H3 should not be read as a technique transferred
+  from one paper -- it is what everyone in this space already does. King also
+  records Griggio's most-violated leaving-variable rule (used by CVC4 and
+  MathSAT5), which is our Dantzig-style leaving choice; our opt-in
+  *shortest-row* leaving rule (`--lra-sparse-leaving`) is the part with no
+  counterpart described here.
+- **The tableau is stored explicitly, and fill-in growth is not addressed.**
+  Section 2.2.7 describes a sparse matrix with each nonzero entry linked into
+  both a row list and a column list. Searching the thesis for fill-in, density,
+  Markowitz or refactorization finds only the description of the sparse format
+  itself -- there is no mechanism for controlling densification during search.
+  So the fill-in problem measured in [](../qf-lra-heuristics.md)'s section 6 is
+  not one this literature offers a ready answer to.
+
 **General engineering (presolve, scaling, degeneracy, refactorization).**
 Robert Bixby, "Solving Real-World Linear Programs: A Decade and More of
 Progress" (Operations Research 50(1), 2002) — a implementor's-eye survey of
@@ -184,6 +215,22 @@ degeneracy handling), useful as an engineering checklist independent of any
 single algorithm choice. Istvan Maros, "Computational Techniques of the
 Simplex Method" (Springer, 2003) is the standard book-length reference for
 the same territory if a deeper dive is ever warranted.
+
+**Why LU refactorization does not transfer to Primo's representation.** In the
+*revised* simplex method the basis is held as an LU factorization that is
+updated per pivot (Forrest-Tomlin, Bartels-Golub); those updates accumulate
+both fill-in and floating-point error beyond what a fresh factorization would
+need, which is exactly what periodic refactorization discards. Primo, like
+every Simplex-for-DPLL(T) implementation King describes, stores the **explicit
+tableau** instead. For a given basic/non-basic partition that tableau is
+`B^-1 N`, which is *uniquely determined*: recomputing it from the original rows
+yields the identical matrix, with identical density. There is no
+representational slack to reclaim, so "refactor periodically to discard
+accumulated fill-in" is void here -- the density measured in
+[](../qf-lra-heuristics.md) section 6.2 is a property of the basis reached, not
+of the pivot path taken to it. Reducing it therefore means either reaching
+sparser bases or changing representation to revised simplex, and only the
+latter makes refactorization meaningful.
 
 ## Alternative (non-Simplex) decision procedures
 

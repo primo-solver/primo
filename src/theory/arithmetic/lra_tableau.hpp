@@ -119,6 +119,15 @@ class LraTableau {
   // equations" for the same reason -- only that sparsity criterion is taken
   // from the paper, not its floating-point preprocessing contribution.
   //
+  // Note this rule is the field's standard, not a technique transferred from
+  // one paper: King's thesis ("Effective Algorithms for the Satisfiability of
+  // Quantifier-Free Formulas Over Linear Real and Integer Arithmetic", NYU
+  // 2014) Section 2.2.12 records minimum-column-length entering selection,
+  // with a switch to Bland's rule past a finite cap, as what MathSAT,
+  // OpenSMT, Yices, Yices 2, z3 and CVC4 all do. The leaving-side knob
+  // (set_sparse_leaving) is the part with no counterpart described there --
+  // King records Griggio's most-violated rule, which is our Dantzig choice.
+  //
   // NOTE: Sparse (with set_sparse_leaving) is the *solver's* default since
   // 2026-07-29; this class still constructs Bland by default, because Bland
   // is the conservative choice for a directly-constructed tableau and the
