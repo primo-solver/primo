@@ -468,6 +468,8 @@ void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
 }
 
 void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {

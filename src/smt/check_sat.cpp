@@ -3948,24 +3948,6 @@ struct InterfaceEqualityAtom {
   sat::Lit lit;
 };
 
-std::vector<InterfaceEqualityAtom> make_interface_equality_atoms(
-    core::TermManager& terms, BooleanClausifier& clausifier,
-    const std::vector<core::TermId>& shared_terms) {
-  std::vector<InterfaceEqualityAtom> atoms;
-  atoms.reserve(shared_terms.size() * (shared_terms.size() - 1U) / 2U);
-  for (std::size_t i = 0; i < shared_terms.size(); ++i) {
-    for (std::size_t j = i + 1; j < shared_terms.size(); ++j) {
-      const core::TermId equality = terms.mk_eq(shared_terms[i], shared_terms[j]);
-      if (terms.get(equality).kind != core::TermKind::Equality) {
-        continue;
-      }
-      const BooleanClausifier::TheoryAtom& atom = clausifier.ensure_theory_atom(equality);
-      atoms.push_back(InterfaceEqualityAtom{shared_terms[i], shared_terms[j], equality, atom.lit});
-    }
-  }
-  return atoms;
-}
-
 bool same_unordered_pair(const InterfaceEqualityAtom& atom, core::TermId lhs, core::TermId rhs) {
   return (atom.lhs == lhs && atom.rhs == rhs) || (atom.lhs == rhs && atom.rhs == lhs);
 }
@@ -3985,6 +3967,25 @@ std::optional<sat::Lit> interface_equality_lit(const core::TermManager& terms,
     }
   }
   return std::nullopt;
+}
+
+std::optional<sat::Lit> create_interface_equality_lit(const core::TermManager& terms,
+                                                      BooleanClausifier& clausifier,
+                                                      std::vector<InterfaceEqualityAtom>& atoms,
+                                                      core::TermId equality) {
+  const core::Term& term = terms.get(equality);
+  if (term.kind != core::TermKind::Equality || term.children.size() != 2) {
+    return std::nullopt;
+  }
+  const core::TermId lhs = term.children.at(0);
+  const core::TermId rhs = term.children.at(1);
+  if (const std::optional<sat::Lit> existing = interface_equality_lit(terms, atoms, equality);
+      existing.has_value()) {
+    return existing;
+  }
+  const BooleanClausifier::TheoryAtom& theory_atom = clausifier.ensure_theory_atom(equality);
+  atoms.push_back(InterfaceEqualityAtom{lhs, rhs, equality, theory_atom.lit});
+  return theory_atom.lit;
 }
 
 bool is_lit_true_in_backend(const sat::IpasirUpBackend& backend, sat::Lit lit) {
@@ -4020,23 +4021,51 @@ void append_true_interface_equalities(
   }
 }
 
-bool force_implied_interface_equalities(
-    const core::TermManager& terms, sat::IpasirUpBackend& backend,
-    const std::vector<InterfaceEqualityAtom>& interface_equalities,
-    const std::vector<core::TermId>& implied_equalities, util::Statistics& statistics) {
+bool force_implied_interface_equalities(const core::TermManager& terms,
+                                        BooleanClausifier& clausifier,
+                                        sat::IpasirUpBackend& backend,
+                                        std::vector<InterfaceEqualityAtom>& interface_equalities,
+                                        const std::vector<core::TermId>& implied_equalities,
+                                        util::Statistics& statistics) {
   std::vector<sat::Lit> lits_to_force;
   lits_to_force.reserve(implied_equalities.size());
+  std::vector<core::TermId> equalities_to_create;
+  equalities_to_create.reserve(implied_equalities.size());
   for (const core::TermId equality : implied_equalities) {
     const std::optional<sat::Lit> lit =
         interface_equality_lit(terms, interface_equalities, equality);
-    if (!lit.has_value() || is_lit_true_in_backend(backend, lit.value())) {
+    if (!lit.has_value()) {
+      equalities_to_create.push_back(equality);
       continue;
     }
-    lits_to_force.push_back(lit.value());
+    if (is_lit_true_in_backend(backend, lit.value())) {
+      continue;
+    }
+    const auto already_forced =
+        std::find_if(lits_to_force.begin(), lits_to_force.end(),
+                     [&](sat::Lit existing) { return existing.value == lit->value; });
+    if (already_forced == lits_to_force.end()) {
+      lits_to_force.push_back(lit.value());
+    }
+  }
+  for (const core::TermId equality : equalities_to_create) {
+    const std::optional<sat::Lit> lit =
+        create_interface_equality_lit(terms, clausifier, interface_equalities, equality);
+    if (!lit.has_value()) {
+      continue;
+    }
+    const auto already_forced =
+        std::find_if(lits_to_force.begin(), lits_to_force.end(),
+                     [&](sat::Lit existing) { return existing.value == lit->value; });
+    if (already_forced == lits_to_force.end()) {
+      lits_to_force.push_back(lit.value());
+    }
   }
   for (const sat::Lit lit : lits_to_force) {
     backend.add_clause(sat::Clause{lit});
   }
+  statistics.set(":no.interface.sat-equality-atoms", interface_equalities.size());
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.increment(":no.interface.sat-equalities-forced", lits_to_force.size());
   return !lits_to_force.empty();
 }
@@ -6484,8 +6513,7 @@ CheckSatOutcome solve_qf_uf_lra(
   }
   const std::vector<core::TermId> shared_real_terms =
       shared_real_constants(terms, euf_atoms, lra_atoms);
-  const std::vector<InterfaceEqualityAtom> interface_equalities =
-      make_interface_equality_atoms(terms, clausifier, shared_real_terms);
+  std::vector<InterfaceEqualityAtom> interface_equalities;
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
@@ -6600,7 +6628,7 @@ CheckSatOutcome solve_qf_uf_lra(
           terms, prepared_flat_theory.value(), euf_check->closure, shared_real_terms);
       statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
       statistics.increment(":no.interface.euf-to-lra-equalities", implied_equalities.size());
-      if (force_implied_interface_equalities(terms, backend, interface_equalities,
+      if (force_implied_interface_equalities(terms, clausifier, backend, interface_equalities,
                                              implied_equalities, statistics)) {
         publish_sat_stats(backend.statistics(), statistics);
         continue;
@@ -6612,7 +6640,7 @@ CheckSatOutcome solve_qf_uf_lra(
           terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
       statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
       statistics.increment(":no.interface.lra-to-euf-equalities", implied_equalities.size());
-      if (force_implied_interface_equalities(terms, backend, interface_equalities,
+      if (force_implied_interface_equalities(terms, clausifier, backend, interface_equalities,
                                              implied_equalities, statistics)) {
         publish_sat_stats(backend.statistics(), statistics);
         continue;

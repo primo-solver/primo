@@ -87,17 +87,17 @@ purification pass also handles non-constant Real arguments in EUF atoms: EUF
 receives an internal Real proxy in place of the arithmetic argument, and LRA
 receives the two defining bounds `proxy <= term` and `term <= proxy`.
 
-For every unordered pair of shared Real interface terms, the coordinator creates
-a positive SAT-visible equality atom when the pair is first discovered. A false
+When a theory first implies equality for a shared Real interface pair, the
+coordinator creates a positive SAT-visible equality atom for that pair. A false
 assignment to this generated atom is not treated as an LRA disequality, because
 the current LRA atom path only supports positive equality propagation across the
 interface. During the final mixed check, EUF-implied equalities between shared
 Real proxies and LRA-implied equalities between shared Real constants are mapped
-to those generated literals. If an implied equality literal is not already true
-in the accepted SAT assignment, the coordinator adds a unit clause for that
-literal and restarts the SAT loop. Once a receiving theory sees the forced
-equality, any inconsistency is explained through the ordinary EUF or LRA
-conflict path using the generated equality atom.
+to those generated literals, creating the literal lazily if needed. If an
+implied equality literal is not already true in the accepted SAT assignment, the
+coordinator adds a unit clause for that literal and restarts the SAT loop. Once
+a receiving theory sees the forced equality, any inconsistency is explained
+through the ordinary EUF or LRA conflict path using the generated equality atom.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
@@ -295,18 +295,18 @@ treating one theory's atoms as Boolean noise.
   `term <= proxy`, instead of a Real equality, because the global
   `lower_real_equalities` pass has already run and because Real-valued UF
   application definitions must remain EUF-owned.
-- **Interface equality check:** for each shared Real-constant/proxy pair, the
-  coordinator creates a positive SAT-visible equality atom. When the generated
-  equality literal is true in the current SAT assignment, the equality is
-  asserted into both EUF and LRA checks. A false generated equality literal is
-  not interpreted as an LRA disequality. After both theory checks accept the
-  current assignment, the EUF closure is inspected for implied equalities between
-  Real proxy constants that also occur in LRA atoms. The reverse direction checks
-  each shared Real-constant pair by adding `x < y` and `y < x` to the current LRA
-  assignment; if both conflict, LRA entails `x = y`. Either direction learns the
-  corresponding generated equality literal as a unit clause, and the next SAT
-  iteration lets the receiving theory produce any ordinary conflict with that
-  equality literal in its reason.
+- **Interface equality check:** generated equality atoms are created lazily,
+  only when EUF or LRA implies equality for a shared Real-constant/proxy pair.
+  When such a generated equality literal is true in the current SAT assignment,
+  the equality is asserted into both EUF and LRA checks. A false generated
+  equality literal is not interpreted as an LRA disequality. After both theory
+  checks accept the current assignment, the EUF closure is inspected for implied
+  equalities between Real proxy constants that also occur in LRA atoms. The
+  reverse direction checks each shared Real-constant pair by adding `x < y` and
+  `y < x` to the current LRA assignment; if both conflict, LRA entails `x = y`.
+  Either direction learns the corresponding generated equality literal as a unit
+  clause, and the next SAT iteration lets the receiving theory produce any
+  ordinary conflict with that equality literal in its reason.
 - **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
   EUF assignment and the LRA assignment, augmented by currently true generated
   interface equalities. Add the first per-theory conflict clause found and
@@ -345,8 +345,9 @@ Limitations:
 - purification is limited to Real-valued UF applications in arithmetic atoms
   and non-constant Real arguments in EUF atoms;
 - shared-variable equality propagation is final-check only;
-- generated interface equalities are positive-only: false generated equality
-  literals are not asserted as LRA disequalities;
+- generated interface equalities are lazy and positive-only: unentailed shared
+  pairs do not create SAT atoms, and false generated equality literals are not
+  asserted as LRA disequalities;
 - cross-theory equality propagation uses generated unit equality literals, but
   still lacks the minimal explanation machinery of a full Nelson-Oppen
   implementation;
@@ -356,7 +357,8 @@ Limitations:
   `:no.interface.model-separation-search-capped` and falls back to greedy
   orientation;
 - no arrangement enumeration for non-convex combinations;
-- no mixed-theory model reconstruction.
+- mixed-theory model reconstruction is limited to the documented QF_UFLRA
+  purification subset.
 
 ## Core Nelson-Oppen Sources
 
@@ -441,7 +443,9 @@ These papers are implementation-relevant because Primo already has a SAT-backed
 theory atom abstraction. The risk is that adding all shared-pair equalities
 eagerly may dominate parsing, clausification, and SAT preprocessing, exactly the
 kind of overhead seen in earlier QF_UF experiments when a mechanism was active
-but had little delivered propagation.
+but had little delivered propagation. The current QF_UFLRA subset follows the
+first checklist item below by checking candidate equalities separately from
+lazy SAT atom creation.
 
 ### Primo Checklist Items
 

@@ -208,13 +208,14 @@ Implemented now:
   the same purification slice replaces each such arithmetic term with an
   internal Real proxy and adds the two LRA bounds that define the proxy as equal
   to the arithmetic term. The coordinator creates positive SAT-visible equality
-  atoms for shared Real-constant/proxy pairs. For the current SAT assignment,
-  generated equality atoms that are true are asserted to both EUF and LRA;
-  equality atoms that are false are not treated as Real disequalities. EUF- or
-  LRA-implied shared equalities are learned as unit clauses over those generated
-  equality literals, after which the receiving theory reports any ordinary
-  conflict using that literal as part of its reason. This is intentionally not
-  full Nelson-Oppen: fine-grained minimal cross-theory explanations,
+  atoms lazily for shared Real-constant/proxy pairs when one theory first
+  implies that equality. For the current SAT assignment, generated equality
+  atoms that are true are asserted to both EUF and LRA; equality atoms that are
+  false are not treated as Real disequalities. EUF- or LRA-implied shared
+  equalities are learned as unit clauses over those generated equality literals,
+  after which the receiving theory reports any ordinary conflict using that
+  literal as part of its reason. This is intentionally not full Nelson-Oppen:
+  fine-grained minimal cross-theory explanations,
   model-equality guesses, false-disequality arrangement enumeration, and
   unbounded arrangement enumeration remain unsupported. Mixed model
   reconstruction uses a bounded search over strict shared-Real separation

@@ -311,15 +311,15 @@ These count internal proxy definitions in total, the split between Real-valued
 UF applications in arithmetic atoms and non-constant Real terms in EUF atoms,
 repeated uses of already-created application or Real-term proxies, Real proxy
 terms visible to both EUF and LRA, equality checks in each interface direction,
-positive SAT-visible shared-Real equality atoms, how many of those generated
-atoms are true in the last checked SAT assignment, how many were forced by
-EUF/LRA equality propagation, and strict shared-Real separations added only
-while reconstructing mixed models. The model-separation search counters record
-the number of strict-order candidate pairs, whether the bounded backtracking cap
-was exceeded, and the LRA-consistency branches/backtracks tried inside that
-reconstruction step. `:no.interface.conflicts` is retained as the legacy broad
-blocking counter; the current positive-equality path should instead show
-activity in `:no.interface.sat-equalities-forced` and then ordinary EUF/LRA
+positive SAT-visible shared-Real equality atoms created lazily so far, how many
+of those generated atoms are true in the last checked SAT assignment, how many
+were forced by EUF/LRA equality propagation, and strict shared-Real separations
+added only while reconstructing mixed models. The model-separation search
+counters record the number of strict-order candidate pairs, whether the bounded
+backtracking cap was exceeded, and the LRA-consistency branches/backtracks tried
+inside that reconstruction step. `:no.interface.conflicts` is retained as the
+legacy broad blocking counter; the current positive-equality path should instead
+show activity in `:no.interface.sat-equalities-forced` and then ordinary EUF/LRA
 theory-conflict counters if the forced equality is inconsistent.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated

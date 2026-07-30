@@ -12933,9 +12933,90 @@
         "local_gates": "make check, make docs, make lint, make asan-test, python3 -m json.tool docs/run-log.json, git diff --check, clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp, clang-tidy -p build -checks='-*,misc-include-cleaner' on the same touched C++ files, whole-tree clang-tidy over 63 tracked non-generated .cpp files with -p build, and solver_efficiency_snapshot.py all passed before commit.",
         "efficiency_review": "Snapshot flags fresh vectors and unit clause emission in solve_qf_uf_lra final-check logic. These are outside SAT callbacks and guarded by the mixed QF_UFLRA path; the accepted slice is correctness-oriented and exposes sat-equality counters for future cost triage."
       },
-      "evidence_status": "current",
+      "evidence_status": "superseded-by-2026-07-30-qf-uflra-lazy-sat-interface-equalities",
       "notes": "A pre-final draft crashed on cases case-0272.smt2 and case-0416.smt2 because it queried CaDiCaL model values after adding the first forced unit clause, which invalidates the satisfied state. The final implementation collects all literals to force before adding any clause; both formerly crashing cases now return unsat and the rerun final summary is 1000 PASS.",
       "followups": "This remains final-check-only positive equality sharing. False generated equality literals are not LRA disequalities, and there is still no model-guided equality guessing, non-convex arrangement enumeration, or minimal Nelson-Oppen explanation minimization. SLURM-scale mixed fuzzing remains future work."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-lazy-sat-interface-equalities",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local merge-gate answer fuzz plus Dolmen model validation for lazy positive SAT-visible shared-Real interface equality atoms in the mixed QF_UFLRA coordinator. The coordinator no longer allocates all shared-pair equality atoms eagerly; it creates a generated equality literal only when EUF or LRA implies that shared equality and then learns the literal as a unit clause.",
+      "commit": "pre-commit worktree based on a1519ef on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: a1519ef-dirty; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260738 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-lazy-sat-interface-equalities-final",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uf-preprocess=off --solver-arg=--no-solved-constant-substitution --timeout 5 --dolmen-timeout 10 --limit 200 --out results/qf_uflra-lazy-sat-interface-equalities-validation-final fuzz-results/qf_uflra-lazy-sat-interface-equalities-final/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "seed": 20260738,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "model_validation_limit": 200,
+        "manifest": "generated under fuzz-results/qf_uflra-lazy-sat-interface-equalities-final/cases/"
+      },
+      "artifacts": {
+        "answer_summary": "fuzz-results/qf_uflra-lazy-sat-interface-equalities-final/summary.csv",
+        "answer_log": "fuzz-results/qf_uflra-lazy-sat-interface-equalities-final.log",
+        "generated_inputs": "fuzz-results/qf_uflra-lazy-sat-interface-equalities-final/cases/",
+        "model_validation_summary": "results/qf_uflra-lazy-sat-interface-equalities-validation-final/summary.csv",
+        "model_validation_artifacts": "results/qf_uflra-lazy-sat-interface-equalities-validation-final/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 697,
+        "answer_fuzz_unsat": 303,
+        "model_validation_total": 200,
+        "model_validation_pass": 144,
+        "model_validation_not_sat": 56,
+        "model_validation_model_error": 0,
+        "model_validation_solver_error": 0,
+        "model_validation_timeout": 0,
+        "focused_entailed_probe_sat_equality_atoms": 1,
+        "focused_entailed_probe_sat_equalities_forced": 1,
+        "focused_unentailed_probe_sat_equality_atoms": 0,
+        "focused_unentailed_probe_sat_equalities_forced": 0
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp checks that entailed LRA-to-EUF and EUF-to-LRA interface equalities still create/force a generated equality atom, while an unentailed shared Real pair creates zero generated equality atoms.",
+        "focused_tests": "cmake --build build --target primo_qf_lra_solver_tests primo -j2 && ./build/primo_qf_lra_solver_tests passed before the fuzz and model-validation runs.",
+        "local_gates": "make check, make docs, make lint, make asan-test, python3 -m json.tool docs/run-log.json, git diff --check, clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp, clang-tidy -p build -checks='-*,misc-include-cleaner' on the same touched C++ files, and whole-tree clang-tidy over 63 tracked non-generated .cpp files with -p build all passed before commit. Ruff is not installed and was skipped by make lint.",
+        "efficiency_review": "Manual solver-efficiency review found the accepted lazy path removes eager O(shared^2) SAT atom allocation. It still rebuilds mixed theory-check vectors and scans shared Real pairs for LRA entailment in the final-check loop; that cost is guarded by the QF_UFLRA mixed path and documented as remaining work. The previously referenced solver_efficiency_snapshot.py helper is not tracked in this checkout.",
+        "document_critic": "Stale-claim scan over architecture, debugging, this design note, and run-log found the current docs synchronized with lazy positive-only equality atoms. Historical eager-atom entries are marked superseded.",
+        "notes": "The first lazy draft crashed because it created a new CaDiCaL variable and then queried backend.value in the same satisfied state. The accepted implementation first queries existing generated equality literals, then creates all missing literals, then adds unit clauses."
+      },
+      "evidence_status": "current",
+      "followups": "This remains final-check-only positive equality sharing. LRA still checks all shared Real pairs for entailed equality, false generated equality literals are not LRA disequalities, and there is still no model-guided equality guessing, non-convex arrangement enumeration, or minimal Nelson-Oppen explanation minimization. SLURM-scale mixed fuzzing remains future work."
     }
   ]
 }
