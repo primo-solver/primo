@@ -330,10 +330,13 @@ documented; add a new key instead of changing the meaning of an old one.
 
 Primo supports conservative pure-theory `get-model` responses for scripts that
 set `:produce-models true` and call `get-model` after `check-sat`. QF_UF
-prints definitions for user-declared constants, functions, and predicates;
-QF_LRA prints user-declared nullary `Real` constants. The printed model is
-intended to be validated as an SMT-LIB response file: stdout starts with `sat`,
-followed by a parenthesized `model`.
+prints definitions for user-declared constants, functions, and predicates.
+QF_LRA prints user-declared nullary `Real` constants from the final tableau and
+also composes in the QF_UF model body for non-Real preprocessing facts, so a
+QF_UFLRA formula whose UF equality atoms are solved away before LRA dispatch
+still defines the original uninterpreted constants needed to validate the input
+assertions. The printed model is intended to be validated as an SMT-LIB response
+file: stdout starts with `sat`, followed by a parenthesized `model`.
 
 The mixed QF_UFLRA path additionally supports a narrow Real-argument model subset:
 Primo composes the QF_UF model body with the nullary-Real QF_LRA definitions,

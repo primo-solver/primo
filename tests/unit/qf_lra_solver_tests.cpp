@@ -233,6 +233,30 @@ void qf_uf_lra_prints_separable_mixed_model() {
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
+void qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= a b))
+    (assert (not (< (+ x y) 5)))
+    (assert (< 2 x))
+    (assert (not (< y 3)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun a () U (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun b () U (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real ") != std::string::npos);
+  assert(result.statistics.get(":solver.qf-lra") == 1);
+}
+
 void qf_uf_lra_prints_real_valued_uf_application_model() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -1607,6 +1631,7 @@ int main() {
   qf_uf_lra_mix_learns_euf_conflicts();
   qf_uf_lra_mix_learns_lra_conflicts();
   qf_uf_lra_prints_separable_mixed_model();
+  qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities();
   qf_uf_lra_prints_real_valued_uf_application_model();
   qf_uf_lra_model_reflects_real_valued_uf_equalities();
   qf_uf_lra_prints_shared_real_predicate_model();

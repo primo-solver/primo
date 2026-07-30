@@ -28,10 +28,12 @@ Real-valued UF applications occur inside arithmetic atoms.
 Primo now has conservative pure-theory SMT-LIB `get-model` paths: QF_UF prints
 definitions for user-declared UF constants, functions, and predicates from a
 ground EUF closure, and QF_LRA prints user-declared nullary Real constants from
-the final tableau assignment. These are still narrower than the model object
-needed for model-guided Nelson-Oppen combination. `core::Model` remains a
-placeholder, mixed QF_UFLRA model printing is still a narrow composition of a
-ground UF table and nullary-Real LRA definitions, and
+the final tableau assignment while composing in UF preprocessing reconstruction
+facts when preprocessing has removed non-Real equalities. These are still
+narrower than the model object needed for model-guided Nelson-Oppen
+combination. `core::Model` remains a placeholder, mixed QF_UFLRA model printing
+is still a narrow composition of a ground UF table and nullary-Real LRA
+definitions, and
 satisfiability-preserving preprocessing must emit explicit reconstruction
 assignments when it removes user-visible facts.
 
@@ -327,7 +329,11 @@ treating one theory's atoms as Boolean noise.
   The resulting concrete Real values are used when printing UF tables for
   symbols with Real arguments and for Real-valued UF application results.
   Real-valued function tables use `0` as their default result and add entries for
-  concrete applications whose LRA proxy value differs from that default.
+  concrete applications whose LRA proxy value differs from that default. The
+  same composed model builder is used for QF_UFLRA inputs that preprocess down
+  to a pure LRA solve, so UF constants and UF equalities recorded as
+  preprocessing reconstruction facts are still present in the printed model for
+  the original assertions.
 - **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
   mix, EUF-conflict learning, LRA-conflict learning, separable mixed
   `get-model`, shared-Real predicate `get-model` with a separating LRA repair,
@@ -337,8 +343,10 @@ treating one theory's atoms as Boolean noise.
   and EUF-to-LRA directions, purification of non-constant Real arguments to EUF
   predicates with proxy reuse and model printing, purification of Real-valued UF
   applications in arithmetic atoms, an EUF-implied proxy equality that makes the
-  LRA side inconsistent, and an LRA-implied shared Real-constant equality that
-  makes the EUF side inconsistent.
+  LRA side inconsistent, an LRA-implied shared Real-constant equality that makes
+  the EUF side inconsistent, and a regression where default preprocessing solves
+  away a UF equality before the remaining arithmetic formula dispatches to the
+  LRA solver.
 
 Limitations:
 

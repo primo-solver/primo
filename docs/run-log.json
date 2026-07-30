@@ -13086,6 +13086,88 @@
       },
       "evidence_status": "current",
       "followups": "This clears the 3000-case SLURM answer-fuzz gate for the current lazy positive-equality QF_UFLRA slice. Remaining NO work is algorithmic: final-check-only propagation, no false-disequality arrangement enumeration, no model-guided equality guessing, and no minimal Nelson-Oppen explanation minimization."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-lra-routed-preprocessing-model-fix",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local regression investigation and validation for QF_UFLRA get-model output when default preprocessing solves away UF equalities and the remaining assertions dispatch to the QF_LRA solver. The failing pre-fix probe printed only Real constants, leaving original uninterpreted constants undefined for Dolmen model validation. The accepted fix composes saved UF preprocessing facts into LRA-routed models.",
+      "commit": "pre-commit worktree based on ddfa848 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: ddfa848-dirty; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "failing_model_probe": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --limit 200 --out results/qf_uflra-default-preprocess-model-validation-probe fuzz-results/qf_uflra-default-preprocess-model-probe/cases/*.smt2",
+        "focused_tests": "cmake --build build --target primo_qf_lra_solver_tests primo -j2 && ./build/primo_qf_lra_solver_tests",
+        "fixed_model_rerun": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --limit 200 --out results/qf_uflra-default-preprocess-model-validation-fixed fuzz-results/qf_uflra-default-preprocess-model-probe/cases/*.smt2",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260742 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-default-preprocess-model-fix-answer-1000",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --limit 300 --out results/qf_uflra-default-preprocess-model-fix-validation-300 fuzz-results/qf_uflra-default-preprocess-model-probe/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "logic": "QF_UFLRA",
+        "seed": 20260742,
+        "answer_fuzz_count": 1000,
+        "answer_fuzz_timeout_seconds": 5,
+        "model_validation_count": 300,
+        "model_validation_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10
+      },
+      "artifacts": {
+        "failing_probe": "results/qf_uflra-default-preprocess-model-validation-probe/summary.csv",
+        "fixed_probe": "results/qf_uflra-default-preprocess-model-validation-fixed/summary.csv",
+        "answer_fuzz": "fuzz-results/qf_uflra-default-preprocess-model-fix-answer-1000/summary.csv",
+        "model_validation": "results/qf_uflra-default-preprocess-model-fix-validation-300/summary.csv",
+        "bugs": null
+      },
+      "summary": {
+        "pre_fix_model_validation_total": 200,
+        "pre_fix_model_validation_pass": 133,
+        "pre_fix_model_validation_not_sat": 63,
+        "pre_fix_model_validation_model_error": 4,
+        "fixed_probe_total": 200,
+        "fixed_probe_pass": 137,
+        "fixed_probe_not_sat": 63,
+        "fixed_probe_model_error": 0,
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 719,
+        "answer_fuzz_unsat": 281,
+        "model_validation_total": 300,
+        "model_validation_pass": 212,
+        "model_validation_not_sat": 88,
+        "model_validation_model_error": 0
+      },
+      "verification": {
+        "focused_tests": "Focused qf_lra_solver_tests passed and include qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities.",
+        "model_validation": "The exact failing 200-case corpus rerun changed from 4 model-error outcomes to 0, and the broader 300-case Dolmen validation had 212 pass and 88 not-sat outcomes with no model errors."
+      },
+      "evidence_status": "current",
+      "followups": "This is a model-printing fix, not a new Nelson-Oppen propagation mechanism. Remaining NO work is unchanged: final-check-only equality sharing, no false-disequality arrangement enumeration, no model-guided equality guessing, and no minimal explanation minimization."
     }
   ]
 }

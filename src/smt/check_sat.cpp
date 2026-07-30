@@ -4566,11 +4566,25 @@ void append_real_constant_model_definitions(std::ostringstream& model,
   }
 }
 
-std::string build_real_constant_model(const core::TermManager& terms,
-                                      const std::vector<core::TermId>& model_terms,
-                                      const RealModelValues& values) {
+void append_supported_uf_model_assignments(const core::TermManager& terms,
+                                           std::vector<TheoryModelAssignment>& target,
+                                           const std::vector<TheoryModelAssignment>& assignments);
+
+std::string build_composed_uf_lra_model(
+    core::TermManager& terms, const std::vector<core::TermId>& model_terms,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
+    const RealModelValues& values) {
+  std::vector<TheoryModelAssignment> uf_model_assignments;
+  append_supported_uf_model_assignments(terms, uf_model_assignments,
+                                        preprocessing_model_assignments);
+
   std::ostringstream model;
   model << "(model\n";
+  model << build_qf_uf_model(terms, uf_model_assignments,
+                             QfUfModelBuildOptions{.include_model_wrapper = false,
+                                                   .skip_real_symbols = false,
+                                                   .skip_real_constants = true,
+                                                   .real_values = &values});
   append_real_constant_model_definitions(model, terms, model_terms, values);
   model << ")";
   return model.str();
@@ -4593,22 +4607,22 @@ RealModelValues real_model_values_from_lra(
 }
 
 std::string build_qf_lra_model(
-    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
+    core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
     const std::vector<AssignedTheoryAtom>& assigned_atoms) {
   const RealModelValues values = real_model_values_from_lra(
       terms, model_terms, preprocessing_model_assignments, prepared, tableau, assigned_atoms);
-  return build_real_constant_model(terms, model_terms, values);
+  return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
 }
 
 std::string build_qf_lra_preprocessing_only_model(
-    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
+    core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   RealModelValues values;
   values.reserve(model_terms.size());
   apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
-  return build_real_constant_model(terms, model_terms, values);
+  return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
 }
 
 std::vector<AssignedTheoryAtom> assigned_atoms_from_backend(
@@ -6046,7 +6060,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
 #endif  // PRIMO_HAVE_IPASIR
 
 CheckSatOutcome solve_qf_lra_impl(
-    const core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const CheckSatOptions& options, util::Statistics& statistics) {
@@ -6466,7 +6480,7 @@ CheckSatOutcome solve_qf_uf(
 // path actually being taken on this benchmark, and would a different small-form
 // width take it more often" is a guess rather than a measurement.
 CheckSatOutcome solve_qf_lra(
-    const core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const CheckSatOptions& options, util::Statistics& statistics) {

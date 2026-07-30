@@ -178,17 +178,22 @@ Implemented now:
   reconstruction assignments for unit facts and substitutions, and omits
   Primo-generated auxiliary symbols from the response.
 - Minimal QF_LRA SMT-LIB model printing for user-declared nullary `Real`
-  constants. The SMT layer records declared Real constants, the LRA path reads
-  their values from the final `LraTableau` assignment, and model reconstruction
-  replays Real equalities recorded by preprocessing so solved-away constants
-  are printed for the original problem.
+  constants, with shared support from the QF_UF model builder for non-Real
+  declarations that survive only as preprocessing reconstruction facts. The SMT
+  layer records declared Real constants, the LRA path reads their values from
+  the final `LraTableau` assignment, and model reconstruction replays
+  preprocessing equalities through the appropriate Real-value or UF-closure
+  fragment so solved-away constants are printed for the original problem.
 - Minimal QF_UFLRA model printing. For separable mixed formulas,
   `solve_qf_uf_lra` composes the QF_UF model body with the nullary-Real QF_LRA
   definitions. UF symbols may take Real arguments or return `Real` values:
   model reconstruction augments the LRA side with EUF-implied Real-constant
   equalities and strict separations for EUF-distinct Real constants before
   printing concrete Real argument values and Real-valued UF application results
-  in the UF function tables.
+  in the UF function tables. If QF_UFLRA preprocessing removes all remaining
+  EUF atoms and dispatches the simplified problem to the QF_LRA solver, the same
+  composed model builder is used so original UF constants and solved UF
+  equalities remain defined in `get-model` output.
 - Read-only Nelson-Oppen interface diagnostics in
   `smt::analyze_nelson_oppen_interface`: the SMT layer counts user-visible,
   non-Boolean constants by sort and already-visible equality atoms over those
