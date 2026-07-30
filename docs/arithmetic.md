@@ -452,6 +452,40 @@ alternatives considered before/while implementing it.
     117227 (new default, fuzzsmt 3000: 2990 PASS/10 TIMEOUT) and 117228 (SOI,
     3000: 2908/92), each with opfuzz 14/14 seeds valid and two yinyang shards,
     0 bug triggers throughout. No crashes, no wrong answers anywhere.
+- **Fixed-variable elimination** (heuristics-note item H7, 2026-07-30,
+  `lra_tableau.{hpp,cpp}`, **opt-in**, `--lra-fixed-elimination`): a basic
+  variable whose lower and upper bounds coincide is pivoted out of the basis
+  as soon as it becomes fixed. `can_enter()` already rejects a fixed variable
+  on every branch, so a fixed *non-basic* variable is completely inert; only a
+  fixed *basic* one churns, demanding a repair pivot whenever any term in its
+  row moves. The entering candidate is preferred unbounded (an unbounded basic
+  variable's row can never be violated), then by Markowitz occurrence count,
+  then by a unit coefficient -- and never one that is itself already fixed,
+  which the other criteria actively steer into.
+  - **Not promoted, and the reason is worth reading.** Per-instance the
+    mechanism is decisive: `latendresse/ecoliFBAyicesTest-500` 0.8s -> 0.1s
+    with `:lra.pivot-term-ops` 8.66M -> 0.13M, `scrambled335326` 51.0s ->
+    14.9s. On the 595-file scrambled bar it is +1 file (373 -> 374), PAR2
+    flat, median 0.94x over commonly-solved files.
+  - **It is bimodal.** The entire 56-file deficit against z3 is the 500KB-5MB
+    band (45 against 101), and H7 nets exactly zero there: +8/-8, with a
+    *median 0.64x* over the 32 files both configurations solve -- the typical
+    gap instance gets 1.6x slower. The one real gain is >5MB, 7 -> 13 of 50
+    (+8/-2), closing that band's deficit against z3's 14 to one file.
+  - No size threshold was added to keep the large-instance win and dodge the
+    mid-range cost: that is tuning a heuristic that lost its own bar.
+  - An earlier version also *froze* qualifying rows out of `occurs_in_`. That
+    half was strictly negative and carried all of the item's wrong-answer
+    risk, so it was deleted rather than kept behind a flag. What remains has
+    no wrong-answer mode -- it is a pivot, which is what `check()` already
+    does on every repair.
+  - New `:lra.fixed-variables` / `:lra.elimination-pivots`. Note that
+    `:lra.pivots` is NOT comparable across this ablation: it is sampled as a
+    delta around `check()`, while elimination pivots happen inside
+    `assert_upper`/`assert_lower`. Use `:lra.pivot-row-updates` /
+    `:lra.pivot-term-ops`.
+  - Ablation: default off; `--lra-fixed-elimination` verified to change
+    behaviour, and the default build reproduces pre-H7 counters exactly.
 - **Disequality**: `Real`-sorted `=` is lowered to `(t1 <= t2) AND (t2 <= t1)`
   (since Real is a total order), not handled as a special relation in the
   tableau at all. `NOT(t1=t2)` is then just `NOT(AND(Le,Le))`, already

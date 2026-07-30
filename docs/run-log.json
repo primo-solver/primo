@@ -10739,6 +10739,56 @@
       },
       "evidence_status": "current",
       "followups": "Recorded as item H7 in docs/qf-lra-heuristics.md: fixed-variable elimination, with offset equalities as a follow-on. Higher risk than H1-H3 because it changes what is in the tableau during search, so it touches the trail, conflict explanation and propagation -- the first item in that note that could produce a wrong answer rather than a slow one. Its falsifier is stated there. The 600s gap re-run (117414) should land before it is prioritised."
+    },
+    {
+      "id": "2026-07-30-qf-lra-fixed-variable-elimination-h7",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "benchmark",
+      "scope": "docs/qf-lra-heuristics.md item H7: fixed-variable elimination. A basic variable whose bounds coincide is pivoted out of the basis, since can_enter() already makes a fixed NON-basic variable inert while a fixed basic one demands a repair pivot whenever any term in its row moves. Designed from the 2026-07-29 scrambled-competition profiling, which found these instances dominated by lowered Real equalities that item H1b puts on one shared slack. NOT PROMOTED: it did not clear the 595-file bar and ships opt-in behind --lra-fixed-elimination. Its row-freezing half was deleted outright.",
+      "commit": "eed259c (implementation), a786fb3 (fixed-candidate guard), ebd2533 (freezing removed, demoted to opt-in)",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (via /tmp/llm2smt_slurm_ssh_config)",
+        "binary": "build-slurm-rel/primo --quiet [--lra-fixed-elimination | --no-lra-freeze-eliminated-rows] (remote Release); local build-asan-ws/primo for the ASAN work",
+        "notes": "The remote Debug+ASAN binary (build-slurm-fuzz) could NOT be rebuilt this round: the head node has no libasan.so.6.0.0 and compute nodes lack the C++ standard headers, so it fails to link in one place and to compile in the other. ASAN coverage came from the workstation instead; this is a real reduction against previous rounds' gates and is not claimed as equivalent."
+      },
+      "command": {
+        "promotion_bar": "sbatch --array=0-59 --job-name=primo-lra-h7-scrambled --export=ALL,'PRIMO_COMPARE_SOLVERS=h7=...;h7nofreeze=... --no-lra-freeze-eliminated-rows;base=... --no-lra-fixed-elimination' scripts/slurm_qf_lra_scrambled_compare.sbatch",
+        "regression": "sbatch --array=0-2 --job-name=primo-lra-h7-strat ... scripts/slurm_qf_lra_solver_compare.sbatch",
+        "analysis": "python3 scripts/compare_solver_answers.py <dir> --timeout {60,10}",
+        "local_ab": "./build/primo --quiet --stats [--no-lra-fixed-elimination] on the four profiled scrambled instances plus latendresse/ecoliFBAyicesTest-500"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-competition.txt (595 files, 60s) as the promotion bar; benchmarks/qf-lra-stratified-sample.txt (237 files, 10s) as the regression check. z3/cvc5 reused unchanged from the 2026-07-29 run and job 114200 respectively.",
+        "logic": "QF_LRA",
+        "timeout_seconds": 60
+      },
+      "job_id": "117487 (scrambled, all 60 tasks COMPLETED), 117488 (stratified), 117585 (merge gate -- INVALID, see verification), 117589 (merge gate, resubmitted after the fix)",
+      "artifacts": {
+        "results": "results/qf-lra-scrambled-h7 (60 shard CSVs), results/qf-lra-solver-compare-h7",
+        "baseline_reference": "results/qf-lra-scrambled (z3/cvc5 unchanged), results/qf-lra-solver-compare-114200"
+      },
+      "summary": {
+        "headline": "H7 does not clear its bar. Scrambled 595 at 60s: 373 solved with it off, 374 on, 375 with the freezing half disabled. PAR2 29204 / 29237 / 29195. Net +1 file on 595 with +19/-18 symmetric churn. Stratified 237 at 10s: 167 -> 168, PAR2 1559.1 -> 1531.7. Zero cross-solver disagreements on either set.",
+        "the_mechanism_does_work": "Local paired A/B is unambiguous per-instance: latendresse/ecoliFBAyicesTest-500 0.8s -> 0.1s (:lra.pivot-term-ops 8.66M -> 0.13M), scrambled335326 51.0s -> 14.9s (195M -> 27M), and roughly an order of magnitude less pivot work on instances that still time out. The diagnosis that these tableaus are dominated by fixed equality slacks is correct.",
+        "but_it_is_bimodal": "It does not generalize, and the band breakdown is what shows it. Solved by file size (H7-off / H7-on-without-freezing / z3): 0-50KB 177/179/178 of 179; 50-500KB 144/138/136 of 192; 500KB-5MB 45/45/101 of 174; >5MB 7/13/14 of 50. Per-band gain/loss for H7: 0-50KB +2/-0, 50-500KB +2/-8, 500KB-5MB +8/-8, >5MB +8/-2.",
+        "where_the_gap_actually_is": "The ENTIRE remaining 56-file deficit against z3 is the 500KB-5MB band (45 vs 101). H7 nets exactly zero there. Over the 32 files in that band both configurations solve in more than a second the MEDIAN is 0.64x -- the typical gap instance is 1.6x SLOWER -- with 17 files >20% slower against 8 files >25% faster. Overall median across all commonly-solved files is 0.94x.",
+        "real_win_where_it_is_not_needed": "The >5MB band is the one genuine gain: 7 -> 13 of 50, +8 gained against -2 lost, closing a 7-file deficit against z3's 14 down to 1. Among the 5 files both configurations solve there the median is 0.98x, so the gains are files crossing the 60s line rather than a broad speedup.",
+        "methodological_correction": "The four instances profiled to design H7 were all in the 500KB-5MB band, so the band choice was right -- but they were the winning tail of it, not a representative sample, and three of the four still timed out with H7 enabled. Presenting their 3.4x/8x as evidence the mechanism 'works' over-generalized from an instance selection biased toward the hypothesis under test. The band-level median (0.64x) is what caught it. Future gap work should profile the MEDIAN instance of the target band.",
+        "freezing_deleted": "The row-freezing half (drop a qualifying row from occurs_in_ so update()/check() skip it) was strictly negative: four files lost in the 500KB-5MB band against one gained elsewhere. It also carried all of H7's wrong-answer risk -- mark_boundable's caller contract, the throw enforcing it, the stale-assignment argument, the frozen-row-whose-term-later-became-basic case, RowDeactivationTrailEntry. Removed outright rather than left behind a flag: 352 lines deleted against 106 added (ebd2533). What remains has no wrong-answer mode; it is a pivot, which is what check() does on every repair.",
+        "no_threshold_added": "Deliberately did NOT add a size or row-length threshold to keep the >5MB win while dodging the mid-range cost. That is tuning a heuristic that lost its own bar -- item 8's recorded mistake.",
+        "what_this_says_about_the_gap": "The fixed-equality hypothesis is now tested and largely refuted for the band that holds the deficit. That is worth more than the +1 file: it removes the most plausible remaining explanation. Offset equalities (z3's :arith-offset-eqs, 855-68,937 per instance) remain untested."
+      },
+      "verification": {
+        "ablation_invariance": "With H7 off, :sat.decisions and :lra.pivots are byte-identical to the pre-H7 build on the six-instance counter probe -- checked at eed259c and again after the demotion, so the shipped default is exactly pre-H7 behaviour.",
+        "tests": "Release and ASAN ctest green throughout. Unit tests pin: the elimination fires; the unbounded-candidate preference; that an already-fixed candidate is never pivoted INTO the basis (that guard was a real bug -- the other ranking criteria actively steer into picking one, and the test fails without it); conflict still found through an eliminated variable with every certificate literal genuinely asserted; push/pop across an elimination; verdict agreement with the ablation under both pivoting rules.",
+        "mutation_checks": "Before its removal, the freezing guard was mutation-checked both ways. Dropping it entirely made an existing end-to-end test return the wrong verdict (gaussian_elimination_can_be_disabled). Dropping only the mark_boundable half fired the throw immediately on real benchmarks (variable 1133 on scrambled335326, 1584 on ecoliFBAyicesTest-500). Both confirm the guard was load-bearing, which is why removing the feature it guarded was preferable to keeping both.",
+        "fuzzing": "2100 fuzzsmt cases against z3 under ASAN with H7 enabled (300+300+1500, zero mismatches, timeouts only), plus an ASAN differential against the ablation over all 237 stratified files and the 60 smallest scrambled files: 0 sanitizer hits, 0 verdict mismatches. A further 1500-case ASAN campaign covers the shipped opt-in path specifically, since the earlier 2100 ran when H7 was default-on WITH freezing.",
+        "invalid_gate": "Job 117585 reported COMPLETED and had run ZERO cases: its only summary row was SKIPPED_MISSING_FUZZER. The gate script never put contrib/local/bin on PATH, relying on --export=ALL to inherit it from the submitting shell -- which works from an interactive shell but not from `ssh host bash -s` -- and fuzz_external.py treats a missing fuzzer as a skip with exit 0. Both fixed in 0524733 (PATH set inside the job; missing fuzzsmt/z3 now exits 2). Resubmitted as 117589. Recorded because a green job that tested nothing is the same class of error as the truncated shards of 117248-117251."
+      },
+      "evidence_status": "current",
+      "followups": "H7 stays opt-in. The next QF_LRA gap investigation should profile the median 500KB-5MB instance rather than the most equality-dense one, and offset equalities are the remaining untested hypothesis from the 2026-07-29 diagnosis. The remote ASAN fuzz binary needs its toolchain problem resolved before any future campaign-tier gate can match previous rounds."
     }
   ]
 }
