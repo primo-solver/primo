@@ -358,9 +358,11 @@ treating one theory's atoms as Boolean noise.
   and retries the SAT loop with that atom as a one-shot assumption. The equality
   is asserted to EUF/LRA when SAT assigns the atom true. A failed assumption is
   blocked by setting the optional atom false, which is then asserted to EUF as a
-  disequality but still not to LRA as a native Real disequality. The branch does
-  not force additional interface equalities as permanent units while the
-  optional equality is active. The branch budget is controlled by
+  disequality but still not to LRA as a native false-`Eq` prepared atom. Ordinary
+  input-level Real disequalities are supported by the Real-equality lowering
+  pass and Boolean-level case splitting. The branch does not force additional
+  interface equalities as permanent units while the optional equality is active.
+  The branch budget is controlled by
   `--model-equality-branch-budget`.
 - **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
   QF_LRA definitions. For Real constants used as UF arguments, reconstruction
@@ -391,6 +393,7 @@ treating one theory's atoms as Boolean noise.
   non-constant Real arguments to EUF predicates with proxy reuse and model
   printing, purification of Real-valued UF applications in arithmetic atoms, an
   EUF-implied proxy equality that makes the LRA side inconsistent, an
+  EUF-implied proxy equality combined with a lowered input Real disequality,
   LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
   source-split interface conflict counters for those receiving-theory conflicts,
   final arrangement validation before a non-model `sat` result,
@@ -406,7 +409,7 @@ Limitations:
 - shared-variable equality propagation is final-check only;
 - generated interface equalities are lazy: unentailed shared pairs do not create
   SAT atoms, and false generated equality literals are asserted only to EUF, not
-  as native LRA disequalities;
+  as native false-`Eq` LRA atoms;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;

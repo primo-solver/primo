@@ -327,7 +327,9 @@ of those generated atoms are true or false in the last checked SAT assignment,
 how many were forced by EUF/LRA equality propagation, and strict shared-Real
 separations found while validating a final `sat` arrangement or reconstructing
 mixed models. A false generated interface equality is asserted to EUF as a
-disequality; it is not asserted to LRA as a native Real disequality.
+disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
+SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
+lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use

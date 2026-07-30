@@ -610,6 +610,30 @@ void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
   assert(lazy_result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
 }
 
+void qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= a b))
+    (assert (= (f a) x))
+    (assert (= (f b) y))
+    (assert (not (= x y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 1);
+  assert(result.statistics.get(":no.purification.definitions") >= 2);
+  assert(result.statistics.get(":no.interface.equalities-propagated") >= 1);
+  assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
+}
+
 void real_equality_is_not_misclassified_as_euf() {
   // Regression test for a real bug hit while implementing this milestone:
   // mk_eq is sort-agnostic, so (= x y) on two Real terms builds the same
@@ -1714,6 +1738,7 @@ int main() {
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
+  qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();
   real_equality_is_not_misclassified_as_euf();
   detects_direct_bound_conflict();
   detects_conflict_requiring_an_actual_pivot();
