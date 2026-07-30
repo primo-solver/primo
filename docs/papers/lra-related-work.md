@@ -19,6 +19,8 @@ otherwise so it doesn't get mistaken for near-term reading.
 Checked by actually fetching each URL, not just search-result snippets.
 
 Freely accessible (fetched and read the actual PDF):
+- Monniaux, "On using floating-point computations to help an exact linear
+  arithmetic decision procedure" (CAV 2009, arXiv:0904.3525)
 - King/Barrett/Dutertre, "Simplex with Sum of Infeasibilities for SMT" (FMCAD 2013)
 - King/Barrett/Tinelli, "Leveraging Linear and Mixed Integer Programming for SMT" (FMCAD 2014)
 - Nalbach et al., "FMplex" (arXiv 2310.00995)
@@ -49,6 +51,68 @@ fetch a copy:
 
 ## Direct extensions of Simplex-for-DPLL(T)
 
+**David Monniaux. "On using floating-point computations to help an exact
+linear arithmetic decision procedure." CAV 2009 (arXiv:0904.3525).**
+The paper's headline contribution is a floating-point preprocessing phase
+(run GLPK's dual simplex, then "force-pivot" the exact rational tableau to
+the basis it found) that is sound and complete because the numerical result
+is only ever used to pick a starting configuration. **That contribution is
+not implemented in Primo and is not currently planned** -- it needs an
+incremental floating-point LP engine alongside the exact tableau.
+
+What Primo does take from this paper are three implementation points it
+states as ordinary practice rather than as contributions. They are cited
+here (and at the corresponding code) because they are the *source* of the
+design, even though they are not what the paper is about:
+
+- **Section 4, two-tier rational representation.** "Rational numbers are
+  implemented as quotients of two 32-bit numbers; in case of overflow,
+  extended precision rationals from the GMP library are used. The reason
+  behind a two-tier system is that GMP rationals inherently involve some
+  inefficiencies, including dynamic memory allocation, even for small
+  numerator and denominator. In many examples arising from verification
+  problems, one never needs to call GMP." **Implemented 2026-07-28** in
+  `util::Rational` (competitiveness-roadmap H2) -- see `docs/arithmetic.md`
+  and `docs/qf-lra-heuristics.md`. *Deviation:* Primo's small form is 64-bit
+  rather than 32-bit, using `__int128` intermediates. That width was settled
+  empirically rather than argued: building the same commit at both widths,
+  32-bit is equal or up to ~13% faster wherever coefficients never leave 32
+  bits, but 64-bit is 2.2x faster on the one instance that does overflow
+  (12-fold fewer big-form operations), so 64-bit is kept.
+  *Independently corroborated:* profiling Primo before implementing it put
+  ~42% of runtime in the allocator and ~12% in GMP copy/init against ~5% in
+  real bignum arithmetic -- the same diagnosis the paper gives.
+- **Section 2.1, atom canonicalization.** Inequalities are scaled to coprime
+  integer coefficients and optionally negated so the leading coefficient is
+  positive, "so that two inequalities constraining the same direction in
+  space appear with the exact same left-hand side"; and "for each left hand
+  side that is *not a variable*, a new variable is introduced". The second
+  half is the source for item H1a, the first half for item H1b (the
+  long-deferred scale-invariant polynomial matching, roadmap item 3).
+  **Both implemented 2026-07-28, unconditional.** H1a removed 36-95% of
+  tableau rows on the lagging families -- Primo used to introduce a slack for
+  *every* distinct polynomial, including bare variables -- and H1b collapsed
+  proportional polynomials onto one slack. *Deviation:* our canonical form
+  scales to a leading coefficient of 1 rather than to coprime integers, which
+  is the same equivalence class.
+- **Page 8, sparsity-ordered pivoting.** "We sort the variables ... according
+  to the number of nonzero coefficients in the corresponding equation ... the
+  pivoting steps are faster when the equation defining the basic variable to
+  be pivoted has few nonzero coefficients", and likewise pre-sorting by
+  "number of occurrences in equations". Stated there for the forced-pivoting
+  phase, but the cost argument is the same one behind heuristics-note item
+  H3. **Implemented 2026-07-29 and promoted to default** as
+  `LraTableau::PivotingRule::Sparse` -- both criteria: the occurrence count
+  prices the entering variable, the row length prices the leaving one. On the
+  237-file stratified sample this takes Primo from 144 to 168 solved with zero
+  regressions. *Deviation:* applied to the main Check/Pivot loop rather than
+  to a forced-pivoting phase, which Primo does not have. See
+  `docs/arithmetic.md`'s "Fill-in-aware pivot selection".
+
+Clean-room note: implemented from this paper's prose (plus Knuth TAOCP Vol. 2
+Sec. 4.5.1 for the rational arithmetic itself), not from any solver's source.
+https://arxiv.org/abs/0904.3525
+
 **Tim King, Clark Barrett, Bruno Dutertre. "Simplex with Sum of
 Infeasibilities for SMT." FMCAD 2013.**
 Addresses Dutertre-de Moura's weakest point: its Bland's-rule pivoting has no
@@ -59,6 +123,23 @@ cost of extra per-pivot analysis. Reported more robust on large/hard
 examples. Directly relevant if Primo's tableau implementation later hits the
 same slow-convergence pathology Dutertre-de Moura is known for.
 https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf
+
+**Implemented (2026-07-25, `PivotingRule::Soi`, opt-in via
+`--lra-pivoting-rule soi`).** The full algorithm, not a scoped-down
+version: the incremental f-row/direction tracking, the breakpoint-sorted
+`ΔVio(j,δ)` walk (Section V-A), and the multi-row conflict +
+QuickXplain minimization (Section V-B) for when several rows are stuck
+simultaneously. Directly verified against the paper's own Fig 6 worked
+example (a white-box unit test reproduces the exact `(entering=x2, δ=1,
+leaving=x1)` pivot the paper hand-traces). See `docs/arithmetic.md`'s
+"SOI-Simplex pivoting" section for the full design, including the one
+genuinely new piece beyond the paper (trail/incremental integration with
+`push()`/`pop()`, which the paper's single non-incremental `Check` call
+doesn't address) and a real heap-use-after-free found there during manual
+testing, since fixed. A quick 17-file real-benchmark comparison found
+identical results to Bland (7/17 solved, same files) -- didn't move that
+particular narrow sample, matching this session's items 1-2 (solve-eqs,
+row-based propagation) each individually failing to close the same gap.
 
 **Tim King, Clark Barrett, Cesare Tinelli. "Leveraging Linear and Mixed
 Integer Programming for SMT." FMCAD 2014.**

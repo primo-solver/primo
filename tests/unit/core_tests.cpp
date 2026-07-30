@@ -8,12 +8,14 @@
 
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
+#include "util/rational.hpp"
 
 using primo::core::SortKind;
 using primo::core::SymbolKind;
 using primo::core::SymbolTable;
 using primo::core::TermKind;
 using primo::core::TermManager;
+using primo::util::Rational;
 
 namespace {
 
@@ -32,6 +34,11 @@ void symbol_table_tracks_sorts_and_symbols() {
   const auto bool_sort = symbols.bool_sort();
   assert(symbols.get_sort(bool_sort).name == "Bool");
   assert(symbols.get_sort(bool_sort).kind == SortKind::Bool);
+
+  const auto real_sort = symbols.real_sort();
+  assert(symbols.get_sort(real_sort).name == "Real");
+  assert(symbols.get_sort(real_sort).kind == SortKind::Real);
+  assert(symbols.lookup_sort("Real") == real_sort);
 
   const auto sort_a = symbols.declare_sort("A");
   assert(symbols.lookup_sort("A") == sort_a);
@@ -133,6 +140,91 @@ void trivial_boolean_terms_are_simplified() {
   assert(terms.mk_implies(p, p) == t);
 }
 
+void arithmetic_terms_are_hash_consed_and_checked() {
+  SymbolTable symbols;
+  const auto x_symbol = symbols.declare_constant("x", symbols.real_sort());
+  const auto y_symbol = symbols.declare_constant("y", symbols.real_sort());
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  TermManager terms(symbols);
+
+  const auto x = terms.mk_constant(x_symbol);
+  const auto y = terms.mk_constant(y_symbol);
+  const auto a = terms.mk_constant(a_symbol);
+
+  const auto three0 = terms.mk_rational(Rational(3));
+  const auto three1 = terms.mk_rational(Rational(3));
+  assert(three0 == three1);
+  assert(terms.get(three0).kind == TermKind::Rational);
+  assert(terms.get(three0).sort == symbols.real_sort());
+  assert(terms.get(three0).rational_value == Rational(3));
+
+  const auto sum0 = terms.mk_plus({x, y, three0});
+  const auto sum1 = terms.mk_plus({x, y, three1});
+  assert(sum0 == sum1);
+  assert(terms.get(sum0).kind == TermKind::Plus);
+  assert(terms.get(sum0).sort == symbols.real_sort());
+
+  const auto scaled_x0 = terms.mk_times(Rational(2), x);
+  const auto scaled_x1 = terms.mk_times(Rational(2), x);
+  assert(scaled_x0 == scaled_x1);
+  assert(terms.get(scaled_x0).kind == TermKind::Times);
+  assert(terms.get(scaled_x0).rational_value == Rational(2));
+  assert(terms.get(scaled_x0).children == std::vector{x});
+
+  const auto le0 = terms.mk_le(x, y);
+  const auto le1 = terms.mk_le(x, y);
+  assert(le0 == le1);
+  assert(terms.get(le0).kind == TermKind::Le);
+  assert(terms.get(le0).sort == symbols.bool_sort());
+
+  const auto lt0 = terms.mk_lt(x, y);
+  assert(terms.get(lt0).kind == TermKind::Lt);
+  assert(terms.get(lt0).sort == symbols.bool_sort());
+  assert(lt0 != le0);
+
+  expect_invalid_argument([&] { terms.mk_plus({x, a}); });
+  expect_invalid_argument([&] { terms.mk_times(Rational(2), a); });
+  expect_invalid_argument([&] { terms.mk_le(x, a); });
+  expect_invalid_argument([&] { terms.mk_plus({}); });
+}
+
+void arithmetic_terms_are_simplified() {
+  SymbolTable symbols;
+  const auto x_symbol = symbols.declare_constant("x", symbols.real_sort());
+  TermManager terms(symbols);
+  const auto x = terms.mk_constant(x_symbol);
+
+  // Constant folding.
+  assert(terms.mk_plus({terms.mk_rational(Rational(2)), terms.mk_rational(Rational(3))}) ==
+         terms.mk_rational(Rational(5)));
+  assert(terms.mk_times(Rational(-1), terms.mk_rational(Rational(3))) ==
+         terms.mk_rational(Rational(-3)));
+  assert(terms.mk_le(terms.mk_rational(Rational(2)), terms.mk_rational(Rational(3))) ==
+         terms.mk_bool(true));
+  assert(terms.mk_lt(terms.mk_rational(Rational(3)), terms.mk_rational(Rational(2))) ==
+         terms.mk_bool(false));
+
+  // Coefficient folding: nested Times multiplies coefficients; 0 elides to
+  // the zero constant; 1 is the identity; nested Rational folds directly.
+  assert(terms.mk_times(Rational(3), terms.mk_times(Rational(2), x)) ==
+         terms.mk_times(Rational(6), x));
+  assert(terms.mk_times(Rational(0), x) == terms.mk_rational(Rational(0)));
+  assert(terms.mk_times(Rational(1), x) == x);
+  assert(terms.mk_plus({x, terms.mk_rational(Rational(0))}) == x);
+
+  // Nested Plus flattens.
+  const auto y_symbol = symbols.declare_constant("y", symbols.real_sort());
+  const auto y = terms.mk_constant(y_symbol);
+  const auto inner = terms.mk_plus({x, y});
+  const auto outer = terms.mk_plus({inner, terms.mk_rational(Rational(1))});
+  assert(terms.get(outer).children.size() == 3);
+
+  // Same-term Le/Lt fold like mk_eq's lhs==rhs shortcut.
+  assert(terms.mk_le(x, x) == terms.mk_bool(true));
+  assert(terms.mk_lt(x, x) == terms.mk_bool(false));
+}
+
 }  // namespace
 
 int main() {
@@ -140,5 +232,7 @@ int main() {
   term_manager_hash_conses_and_checks_sorts();
   Boolean_terms_are_hash_consed();
   trivial_boolean_terms_are_simplified();
+  arithmetic_terms_are_hash_consed_and_checked();
+  arithmetic_terms_are_simplified();
   return 0;
 }
