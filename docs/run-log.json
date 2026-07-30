@@ -12781,8 +12781,84 @@
         "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers Real-valued UF application model printing and a Real-valued UF equality whose LRA proxy values must be reflected in the printed table.",
         "local_gates": "make check, make docs, make lint, make asan-test, python3 -m json.tool docs/run-log.json, git diff --check, clang-tidy -p build src/smt/check_sat.cpp src/smt/model_builder.cpp tests/unit/qf_lra_solver_tests.cpp, clang-tidy -p build -checks='-*,misc-include-cleaner' on the same touched C++ files, whole-tree clang-tidy over 63 tracked non-generated .cpp files with -p build, and solver_efficiency_snapshot.py all passed before commit."
       },
+      "evidence_status": "superseded-by-2026-07-30-qf-uflra-model-separation-search",
+      "followups": "This remains final-check-only Nelson-Oppen-style equality sharing with broad assignment-blocking clauses. The next 2026-07-30 entry adds bounded shared-Real model-separation search. Missing equality atom creation, fine-grained Nelson-Oppen explanations, model-guided equality guesses from de Moura/Bjorner, and SLURM-scale mixed fuzzing remain future work."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-model-separation-search",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local merge-gate answer fuzz plus Dolmen model validation for the mixed QF_UFLRA shared-Real model-reconstruction path. The model path now collects EUF-distinct shared Real argument pairs, searches strict LRA orientation atoms with bounded DFS, records search counters, and falls back to greedy orientation when the reconstruction candidate cap is exceeded.",
+      "commit": "pre-commit worktree based on 97ba90b on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 97ba90b-dirty; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "/tmp/primo-opam-root/primo-system/bin/dolmen"
+      },
+      "commands": {
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260736 --timeout 5 --shape shared-real --out fuzz-results/qf_uflra-model-separation-search-final",
+        "model_validation": "PATH=\"/tmp/primo-opam-root/primo-system/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uf-preprocess=off --solver-arg=--no-solved-constant-substitution --timeout 5 --dolmen-timeout 10 --limit 200 --out results/qf_uflra-model-separation-search-validation-final fuzz-results/qf_uflra-model-separation-search-final/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape shared-real",
+        "logic": "QF_UFLRA",
+        "seed": 20260736,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "model_validation_limit": 200,
+        "manifest": "generated under fuzz-results/qf_uflra-model-separation-search-final/cases/"
+      },
+      "artifacts": {
+        "answer_summary": "fuzz-results/qf_uflra-model-separation-search-final/summary.csv",
+        "answer_log": "fuzz-results/qf_uflra-model-separation-search-final.log",
+        "generated_inputs": "fuzz-results/qf_uflra-model-separation-search-final/cases/",
+        "model_validation_summary": "results/qf_uflra-model-separation-search-validation-final/summary.csv",
+        "model_validation_artifacts": "results/qf_uflra-model-separation-search-validation-final/",
+        "bugs": null
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_wrong": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "answer_fuzz_reference_disagreement": 0,
+        "answer_fuzz_sat": 678,
+        "answer_fuzz_unsat": 322,
+        "model_validation_total": 200,
+        "model_validation_pass": 133,
+        "model_validation_not_sat": 67,
+        "model_validation_model_error": 0,
+        "model_validation_solver_error": 0,
+        "model_validation_timeout": 0,
+        "focused_probe_model_separation_candidates": 3,
+        "focused_probe_model_separation_branches": 3,
+        "focused_probe_model_separations": 3
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers bounded shared-Real model-separation search over three EUF-distinct Real arguments and checks the candidate, branch, cap, and separation counters.",
+        "local_gates": "make check, make docs, make lint, make asan-test, python3 -m json.tool docs/run-log.json, git diff --check, clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp, clang-tidy -p build -checks='-*,misc-include-cleaner' on the same touched C++ files, whole-tree clang-tidy over 63 tracked non-generated .cpp files with -p build, and solver_efficiency_snapshot.py all passed before commit."
+      },
       "evidence_status": "current",
-      "followups": "This remains final-check-only Nelson-Oppen-style equality sharing with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, model-guided equality guesses from de Moura/Bjorner, backtracking arrangement search for model separations, and SLURM-scale mixed fuzzing remain future work."
+      "followups": "This remains final-check-only Nelson-Oppen-style equality sharing with broad assignment-blocking clauses. Missing equality atom creation, fine-grained Nelson-Oppen explanations, model-guided equality guesses from de Moura/Bjorner, and SLURM-scale mixed fuzzing remain future work. Model-separation search is bounded and falls back to greedy orientation above the cap rather than implementing unbounded arrangement enumeration."
     }
   ]
 }

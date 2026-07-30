@@ -299,14 +299,21 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-to-euf-equalities`
 - `:no.interface.conflicts`
 - `:no.interface.model-separations`
+- `:no.interface.model-separation-candidates`
+- `:no.interface.model-separation-search-capped`
+- `:no.interface.model-separation-search-branches`
+- `:no.interface.model-separation-search-backtracks`
 
 These count internal proxy definitions in total, the split between Real-valued
 UF applications in arithmetic atoms and non-constant Real terms in EUF atoms,
 repeated uses of already-created application or Real-term proxies, Real proxy
 terms visible to both EUF and LRA, equality checks in each interface direction,
 current-assignment interface conflicts, and strict shared-Real separations added
-only while reconstructing mixed models. `:no.interface.conflicts` currently
-learns a broad blocking clause over the assigned theory atoms, not a minimal
+only while reconstructing mixed models. The model-separation search counters
+record the number of strict-order candidate pairs, whether the bounded
+backtracking cap was exceeded, and the LRA-consistency branches/backtracks tried
+inside that reconstruction step. `:no.interface.conflicts` currently learns a
+broad blocking clause over the assigned theory atoms, not a minimal
 Nelson-Oppen explanation.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
@@ -328,7 +335,10 @@ and UF symbols may take Real constants or purified non-constant Real terms as
 arguments or return `Real` values. Before printing, the model path augments LRA
 with EUF-implied Real-constant equalities and strict separations for Real
 constants that are distinct in the EUF arrangement; the resulting concrete Real
-values are used in UF function-table guards and Real-valued UF results.
+values are used in UF function-table guards and Real-valued UF results. The
+strict separations are chosen by bounded backtracking over candidate orientations
+and fall back to the former greedy order when the candidate set is too large for
+the reconstruction cap, currently 18 candidate pairs.
 
 Use [Dolmen](https://ceur-ws.org/Vol-3429/short9.pdf) as the independent
 model-format and assertion validator. Dolmen's model-validation interface uses a

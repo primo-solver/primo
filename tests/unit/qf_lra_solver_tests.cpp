@@ -315,6 +315,32 @@ void qf_uf_lra_prints_shared_real_equal_predicate_model() {
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
+void qf_uf_lra_searches_multiple_shared_real_model_separations() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun h (Real) U)
+    (assert (<= 0 x))
+    (assert (not (= (h x) (h y))))
+    (assert (not (= (h x) (h z))))
+    (assert (not (= (h y) (h z))))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun h ((x0 Real)) U ") != std::string::npos);
+  assert(result.statistics.get(":no.interface.model-separation-candidates") == 3);
+  assert(result.statistics.get(":no.interface.model-separations") == 3);
+  assert(result.statistics.get(":no.interface.model-separation-search-capped") == 0);
+  assert(result.statistics.get(":no.interface.model-separation-search-branches") >= 3);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
 void qf_uf_lra_purifies_nonconstant_real_predicate_arguments() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1579,6 +1605,7 @@ int main() {
   qf_uf_lra_model_reflects_real_valued_uf_equalities();
   qf_uf_lra_prints_shared_real_predicate_model();
   qf_uf_lra_prints_shared_real_equal_predicate_model();
+  qf_uf_lra_searches_multiple_shared_real_model_separations();
   qf_uf_lra_purifies_nonconstant_real_predicate_arguments();
   qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies();
   qf_uf_lra_shares_purified_real_argument_equalities_with_euf();

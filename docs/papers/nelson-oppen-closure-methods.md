@@ -303,21 +303,27 @@ treating one theory's atoms as Boolean noise.
 - **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
   QF_LRA definitions. For Real constants used as UF arguments, reconstruction
   first adds EUF-implied Real-constant equalities to the LRA model tableau, then
-  greedily adds strict order atoms to separate Real constants that are distinct
-  in the EUF arrangement and not forced equal by LRA. The resulting concrete
-  Real values are used when printing UF tables for symbols with Real arguments
-  and for Real-valued UF application results. Real-valued function tables use
-  `0` as their default result and add entries for concrete applications whose
-  LRA proxy value differs from that default.
+  performs a bounded depth-first search over strict order atoms to separate Real
+  constants that are distinct in the EUF arrangement and not forced equal by
+  LRA. Each candidate orientation is accepted only if the augmented LRA
+  assignment remains consistent. When the candidate set exceeds the current
+  reconstruction cap, currently 18 candidate pairs, Primo records that fact and
+  falls back to the former greedy orientation order instead of attempting
+  unbounded arrangement search.
+  The resulting concrete Real values are used when printing UF tables for
+  symbols with Real arguments and for Real-valued UF application results.
+  Real-valued function tables use `0` as their default result and add entries for
+  concrete applications whose LRA proxy value differs from that default.
 - **Tests:** `tests/unit/qf_lra_solver_tests.cpp` covers a separable satisfiable
   mix, EUF-conflict learning, LRA-conflict learning, separable mixed
   `get-model`, shared-Real predicate `get-model` with a separating LRA repair,
   shared-Real predicate `get-model` when LRA forces equality, Real-valued UF
-  application models, purification of non-constant Real arguments to EUF
-  predicates with proxy reuse and model printing, purification of Real-valued UF
-  applications in arithmetic atoms, an EUF-implied proxy equality that makes the
-  LRA side inconsistent, and an LRA-implied shared Real-constant equality that
-  makes the EUF side inconsistent.
+  application models, bounded shared-Real model-separation search over multiple
+  candidates, purification of non-constant Real arguments to EUF predicates with
+  proxy reuse and model printing, purification of Real-valued UF applications in
+  arithmetic atoms, an EUF-implied proxy equality that makes the LRA side
+  inconsistent, and an LRA-implied shared Real-constant equality that makes the
+  EUF side inconsistent.
 
 Limitations:
 
@@ -330,9 +336,10 @@ Limitations:
   minimal Nelson-Oppen explanations;
 - no missing equality atom creation;
 - no model-equality guesses from de Moura/Bjorner;
-- Real-argument model reconstruction greedily orients strict separations and may
-  return `unknown` if that local orientation process fails, rather than
-  backtracking over arrangements;
+- Real-argument model reconstruction backtracks only up to a fixed candidate
+  cap, currently 18 pairs, then records
+  `:no.interface.model-separation-search-capped` and falls back to greedy
+  orientation;
 - no arrangement enumeration for non-convex combinations;
 - no mixed-theory model reconstruction.
 

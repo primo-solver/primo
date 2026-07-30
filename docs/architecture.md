@@ -215,8 +215,10 @@ Implemented now:
   resulting equalities are asserted into an augmented EUF check. A cross-theory
   conflict learns a broad clause blocking the current theory assignment. This is
   intentionally not full Nelson-Oppen: fine-grained interface explanations,
-  SAT-visible missing equality creation, model-equality guesses, and backtracking
-  search for model-separation orientations remain unsupported.
+  SAT-visible missing equality creation, model-equality guesses, and unbounded
+  arrangement enumeration remain unsupported. Mixed model reconstruction uses a
+  bounded search over strict shared-Real separation orientations, with a greedy
+  fallback when the candidate set exceeds the current model-reconstruction cap.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

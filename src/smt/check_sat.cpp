@@ -4768,13 +4768,89 @@ bool equality_list_contains_pair(const core::TermManager& terms,
   return false;
 }
 
+struct RealSeparationCandidate {
+  core::TermId lhs;
+  core::TermId rhs;
+};
+
+constexpr std::size_t kNoModelSeparationBacktrackingCandidateLimit = 18;
+
+bool search_shared_real_model_separations(
+    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const std::vector<RealSeparationCandidate>& candidates, std::size_t next_candidate,
+    std::vector<core::TermId>& accumulated, std::vector<core::TermId>& separations,
+    const CheckSatOptions& options, std::uint64_t& branches, std::uint64_t& backtracks) {
+  if (next_candidate == candidates.size()) {
+    return true;
+  }
+
+  const RealSeparationCandidate& candidate = candidates[next_candidate];
+  const core::TermId lhs_lt_rhs = terms.mk_lt(candidate.lhs, candidate.rhs);
+  const core::TermId rhs_lt_lhs = terms.mk_lt(candidate.rhs, candidate.lhs);
+
+  const auto try_orientation = [&](core::TermId atom) {
+    ++branches;
+    accumulated.push_back(atom);
+    if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
+                                                   options)) {
+      separations.push_back(atom);
+      if (search_shared_real_model_separations(terms, lra_atoms, lra_assignments, candidates,
+                                               next_candidate + 1, accumulated, separations,
+                                               options, branches, backtracks)) {
+        return true;
+      }
+      separations.pop_back();
+    }
+    accumulated.pop_back();
+    return false;
+  };
+
+  if (try_orientation(lhs_lt_rhs) || try_orientation(rhs_lt_lhs)) {
+    return true;
+  }
+
+  ++backtracks;
+  return false;
+}
+
+std::optional<std::vector<core::TermId>> greedy_shared_real_model_separation_atoms(
+    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const std::vector<RealSeparationCandidate>& candidates,
+    const std::vector<core::TermId>& forced_equalities, const CheckSatOptions& options) {
+  std::vector<core::TermId> accumulated = forced_equalities;
+  std::vector<core::TermId> separations;
+  for (const RealSeparationCandidate& candidate : candidates) {
+    const core::TermId lhs_lt_rhs = terms.mk_lt(candidate.lhs, candidate.rhs);
+    accumulated.push_back(lhs_lt_rhs);
+    if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
+                                                   options)) {
+      separations.push_back(lhs_lt_rhs);
+      continue;
+    }
+    accumulated.pop_back();
+
+    const core::TermId rhs_lt_lhs = terms.mk_lt(candidate.rhs, candidate.lhs);
+    accumulated.push_back(rhs_lt_lhs);
+    if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
+                                                   options)) {
+      separations.push_back(rhs_lt_lhs);
+      continue;
+    }
+    return std::nullopt;
+  }
+  return separations;
+}
+
 std::optional<std::vector<core::TermId>> shared_real_model_separation_atoms(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments, const PreparedFlatTheory& prepared_euf,
     theory::equality::FlatCongruenceClosure& closure, const std::vector<core::TermId>& shared_terms,
-    const std::vector<core::TermId>& forced_equalities, const CheckSatOptions& options) {
+    const std::vector<core::TermId>& forced_equalities, const CheckSatOptions& options,
+    util::Statistics& statistics) {
+  std::vector<RealSeparationCandidate> candidates;
   std::vector<core::TermId> accumulated = forced_equalities;
-  std::vector<core::TermId> separations;
   for (std::size_t i = 0; i < shared_terms.size(); ++i) {
     for (std::size_t j = i + 1; j < shared_terms.size(); ++j) {
       const core::TermId lhs = shared_terms[i];
@@ -4783,26 +4859,32 @@ std::optional<std::vector<core::TermId>> shared_real_model_separation_atoms(
           equality_list_contains_pair(terms, forced_equalities, lhs, rhs)) {
         continue;
       }
-
-      const core::TermId lhs_lt_rhs = terms.mk_lt(lhs, rhs);
-      accumulated.push_back(lhs_lt_rhs);
-      if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
-                                                     options)) {
-        separations.push_back(lhs_lt_rhs);
-        continue;
-      }
-      accumulated.pop_back();
-
-      const core::TermId rhs_lt_lhs = terms.mk_lt(rhs, lhs);
-      accumulated.push_back(rhs_lt_lhs);
-      if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
-                                                     options)) {
-        separations.push_back(rhs_lt_lhs);
-        continue;
-      }
-      return std::nullopt;
+      candidates.push_back(RealSeparationCandidate{lhs, rhs});
     }
   }
+
+  statistics.set(":no.interface.model-separation-candidates", candidates.size());
+  statistics.set(":no.interface.model-separation-search-capped", 0);
+  statistics.set(":no.interface.model-separation-search-branches", 0);
+  statistics.set(":no.interface.model-separation-search-backtracks", 0);
+  if (candidates.size() > kNoModelSeparationBacktrackingCandidateLimit) {
+    statistics.set(":no.interface.model-separation-search-capped", 1);
+    return greedy_shared_real_model_separation_atoms(terms, lra_atoms, lra_assignments, candidates,
+                                                     forced_equalities, options);
+  }
+
+  std::vector<core::TermId> separations;
+  std::uint64_t branches = 0;
+  std::uint64_t backtracks = 0;
+  if (!search_shared_real_model_separations(terms, lra_atoms, lra_assignments, candidates, 0,
+                                            accumulated, separations, options, branches,
+                                            backtracks)) {
+    statistics.set(":no.interface.model-separation-search-branches", branches);
+    statistics.set(":no.interface.model-separation-search-backtracks", backtracks);
+    return std::nullopt;
+  }
+  statistics.set(":no.interface.model-separation-search-branches", branches);
+  statistics.set(":no.interface.model-separation-search-backtracks", backtracks);
   return separations;
 }
 
@@ -6511,7 +6593,7 @@ CheckSatOutcome solve_qf_uf_lra(
         const std::optional<std::vector<core::TermId>> separation_atoms =
             shared_real_model_separation_atoms(
                 terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
-                euf_model_real_terms, forced_model_equalities, options);
+                euf_model_real_terms, forced_model_equalities, options, statistics);
         if (!separation_atoms.has_value()) {
           return CheckSatOutcome{
               CheckSatResult::Unknown,
@@ -6523,6 +6605,10 @@ CheckSatOutcome solve_qf_uf_lra(
         statistics.set(":no.interface.model-separations", separation_atoms->size());
       } else {
         statistics.set(":no.interface.model-separations", 0);
+        statistics.set(":no.interface.model-separation-candidates", 0);
+        statistics.set(":no.interface.model-separation-search-capped", 0);
+        statistics.set(":no.interface.model-separation-search-branches", 0);
+        statistics.set(":no.interface.model-separation-search-backtracks", 0);
       }
 
       std::optional<LraModelState> lra_model =
