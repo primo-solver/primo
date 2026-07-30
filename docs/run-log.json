@@ -12185,6 +12185,43 @@
       },
       "evidence_status": "current",
       "followups": "Section 6.5 reordered: the cheapest remaining direction is evaluating the EXISTING opt-in row-based bound propagation on this band (a benchmark run, not an implementation). Revised simplex with an LU-factored basis is now listed explicitly as the representation change refactorization would require, with the observation that King records no Simplex-for-DPLL(T) implementation doing it. Monniaux's floating-point-guided basis selection is promoted for re-examination, since section 6.2 says the BASIS determines density and that is precisely what it chooses."
+    },
+    {
+      "id": "2026-07-30-qf-lra-offset-equality-investigation",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "profiling",
+      "scope": "Two-step investigation of direction D3 (dynamic offset-equality detection) in docs/qf-lra-heuristics.md section 6.5, deliberately before any implementation, after item H7 showed that a large z3 counter plus large per-instance wins is not evidence a mechanism pays.",
+      "commit": "b24d8e5",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build/primo --quiet --stats (Release); contrib/local/bin/z3 -st",
+        "notes": "Wall times here are z3-vs-z3 on the same machine minutes apart, so the on/off ratio is meaningful even though this workstation's absolute timings were unreliable this session."
+      },
+      "command": {
+        "step1": "contrib/local/bin/z3 -st [smt.arith.propagate_eqs=false] on the four profiled 500KB-5MB gap instances",
+        "step2": "throwaway instrumentation on LraTableau's existing fixed-variable hook, classifying each fixed basic variable's row (size, coefficient shape, distinct pairs, distinct eliminable columns); measured, then reverted, not committed"
+      },
+      "benchmark": {
+        "suite": "scrambled228965, scrambled15659, scrambled312090, scrambled180721 -- the z3-time quartile sample of the 59-file mid-band gap",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "step1_mechanism_is_real": "Ablating smt.arith.propagate_eqs in z3: 3.1->6.9s (2.2x), 8.0->25.9s (3.2x), 19.7->62.8s (3.2x), and 26.1->21.1s (0.81x, i.e. HARMFUL) on the fourth. :arith-offset-eqs drops to zero when disabled, confirming the counter tracks this mechanism.",
+        "step1_not_theory_combination": "These are pure QF_LRA with no second theory, so the mechanism is not Nelson-Oppen equality propagation -- the usual purpose of implied equalities in SMT, and the outcome that would have made D3 worthless here. This was the specific risk the step was designed to test.",
+        "step1_ceiling": "Even with the mechanism disabled z3 solves all four in under 63s where Primo needs ~600s, so offset equalities are worth a few x of a 10-30x gap. D3 done perfectly would be valuable and would not close the band.",
+        "step2_detection_is_free": "Primo can detect these on H7's existing fixed-variable hook: a fixed basic variable whose row has two terms is a relation between two variables. Measured distinct pairs per instance: 591 / 3,224 / 1,519 / 4,721.",
+        "step2_kills_the_expensive_design": "Distinct eliminable columns are 369/5,694 (6.5%), 2,524/23,571 (10.7%), 778/26,041 (3.0%) and 4,032/17,286 (23.3%). Against z3's measured speedups the correlation is INVERTED: the instance with the most eliminable columns (23.3%) is the one where z3's mechanism hurts, and the one with the fewest (3.0%) gets the largest win. If the payoff came from shrinking the tableau it would track the eliminable share; it anti-correlates. So column merging is not the mechanism.",
+        "design_redirected": "The expensive interpretation (merge columns, eliminate a variable) needs a constant term in Row -- 17 internal term loops, 4 external consumers of row(), and the constant would participate in assignments and in Farkas certificates, so pivot(), update() and build_conflict() all change. That expense is not justified. The cheap interpretation fits the evidence: detect the relation and propagate bounds across it (x - y = c and x >= l gives y >= l - c), which needs no constant column and reuses both H7's detection hook and Primo's existing theory-propagation path. Scaled binary rows (a*x + b*y = c, a != -b) outnumber literal offset rows on two of four instances and are equally usable, so the opportunity is the binary-row count, not the narrower offset one."
+      },
+      "verification": {
+        "instrumentation_reverted": "The census patch was reverted; git status clean and the tree rebuilds with 0 errors.",
+        "caveat": "The anti-correlation is n=4 and suggestive rather than conclusive. It is enough to say the expensive design should not be built first, not enough to prove bound propagation is the whole mechanism."
+      },
+      "evidence_status": "current",
+      "followups": "D3 stays on the list at medium rather than largest cost, with the redirected design. D1 (evaluate Primo's existing row-based bound propagation on this band) is now doubly interesting, since it is the same machinery the redirected D3 would extend."
     }
   ]
 }

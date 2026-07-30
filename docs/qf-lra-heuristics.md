@@ -986,7 +986,7 @@ whole one.
 |---|---|---|---|---|
 | D1 | Evaluate existing row-based bound propagation on this band | unknown | **one benchmark run** | untried |
 | D2 | Floating-point-guided basis selection (Monniaux) | large | medium | **applicability unverified** |
-| D3 | Dynamic offset-equality detection | largest | largest | designed nowhere |
+| D3 | Offset-equality detection + bound propagation | **2.2-3.2x in z3** | medium | **investigated; design redirected** |
 | D4 | Revised simplex with an LU-factored basis | unknown | largest | open question; conflicts with D1 |
 | -- | ~~Periodic refactorization~~ | -- | -- | **rejected 2026-07-30** |
 
@@ -1047,13 +1047,70 @@ instance's bounds are asserted at decision level 0. If it is small, D2 cannot
 see the problem and should drop down the list; if it is large, the force-pivot
 cost in Risk A becomes the thing to measure next.
 
-**D3. Dynamic offset-equality detection**, matching z3's dominant counter
-(`:arith-offset-eqs`, up to 1.1M). Section 6.4 established it is derived
-*during search*, not recognised syntactically -- only 3.4-15% of prepared rows
-have literal `x - y = c` shape. So this is a search-time mechanism, materially
-bigger than H7 was. Needs a design that states where detection hooks in and
-what it costs on instances where it finds nothing, before any estimate of the
-win is worth anything.
+**D3. Dynamic offset-equality detection.** Investigated 2026-07-30 in two
+steps, both before writing any implementation. The result is that the
+mechanism is **real and worth having**, but the obvious design for it is
+**wrong**.
+
+*Step 1 -- is it load-bearing for z3, on these instances?* Yes, and this is
+measured rather than inferred. z3 exposes `smt.arith.propagate_eqs`, so it can
+be ablated directly on the profiled instances:
+
+| instance | `propagate_eqs=on` | `off` | speedup from the mechanism |
+|---|---|---|---|
+| `scrambled228965` | 3.1s | 6.9s | **2.2x** |
+| `scrambled15659` | 8.0s | 25.9s | **3.2x** |
+| `scrambled312090` | 19.7s | 62.8s | **3.2x** |
+| `scrambled180721` | 26.1s | 21.1s | 0.81x -- *harmful* |
+
+`:arith-offset-eqs` drops to zero when disabled, confirming the counter tracks
+this mechanism. And since these are pure QF_LRA with no second theory,
+**it is not Nelson-Oppen theory combination** -- the usual purpose of implied
+equalities in SMT, and the outcome that would have made D3 worthless here.
+2.2-3.2x is squarely in the range section 6.1a says is worth 15-24 files.
+
+But note the ceiling: even with the mechanism *off*, z3 solves all four in
+under 63s, where Primo needs ~600s. So offset equalities are worth a few x of
+a 10-30x gap. Implementing D3 perfectly would be valuable and would not close
+this band.
+
+*Step 2 -- can Primo see them, and what would exploiting them buy?* Detection
+is nearly free: item H7 already hooks the moment a basic variable becomes
+fixed, and a fixed variable whose row has two terms *is* a relation between
+two variables. Throwaway instrumentation on that hook (measured, reverted):
+
+| instance | tableau vars | distinct eliminable columns | share | z3's speedup |
+|---|---|---|---|---|
+| `scrambled312090` | 26,041 | 778 | **3.0%** | **3.2x** |
+| `scrambled228965` | 5,694 | 369 | 6.5% | 2.2x |
+| `scrambled15659` | 23,571 | 2,524 | 10.7% | 3.2x |
+| `scrambled180721` | 17,286 | 4,032 | **23.3%** | **0.81x** |
+
+**The correlation is inverted.** The instance with the most eliminable columns
+is the one where z3's mechanism *hurts*; the one with the fewest gets the
+largest win. If the payoff came from shrinking the tableau, it would track the
+eliminable share. It anti-correlates.
+
+*What that implies for the design.* The expensive interpretation -- merge the
+columns, eliminate a variable outright -- requires a **constant term in `Row`**
+(17 internal term loops plus 4 external consumers of `row()`, and the constant
+would participate in assignments *and* in Farkas certificates, so `pivot()`,
+`update()` and `build_conflict()` all change). H7 explicitly dodged that as "a
+much larger change". Step 2 says that expense is **not justified**: 3-23% of
+columns cannot produce 3x, and the sign is wrong anyway.
+
+The cheap interpretation fits the evidence better: **detect the relation and
+propagate bounds across it.** If `x - y = c` and `x >= l`, then `y >= l - c`.
+No constant column, no column merge, no structural change -- detection reuses
+H7's existing hook and propagation reuses the theory-propagation path Primo
+already has. Note also that *scaled* binary rows (`a*x + b*y = c` with
+`a != -b`) outnumber literal offset rows on two of four instances and are
+equally usable this way, so the opportunity is the `binary_rows` count, not
+the narrower `offset` one.
+
+*Status:* worth doing, at a fraction of the originally estimated cost. The
+anti-correlation is n=4 and suggestive rather than conclusive -- but it is
+enough to say the expensive design should not be built first.
 
 **D4. Revised simplex with an LU-factored basis.** The representation change
 the rejected entry below turned out to require, and the hardest item here.
