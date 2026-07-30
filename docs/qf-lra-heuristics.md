@@ -985,9 +985,9 @@ whole one.
 | # | direction | expected size | cost | status |
 |---|---|---|---|---|
 | D1 | Evaluate existing row-based bound propagation on this band | unknown | **one benchmark run** | untried |
-| D2 | Floating-point-guided basis selection (Monniaux) | large | large | surveyed, not planned |
+| D2 | Floating-point-guided basis selection (Monniaux) | large | medium | **applicability unverified** |
 | D3 | Dynamic offset-equality detection | largest | largest | designed nowhere |
-| D4 | Revised simplex with an LU-factored basis | unknown | largest | open question |
+| D4 | Revised simplex with an LU-factored basis | unknown | largest | open question; conflicts with D1 |
 | -- | ~~Periodic refactorization~~ | -- | -- | **rejected 2026-07-30** |
 
 **D1. Evaluate the row-based bound propagation Primo already has.** z3 reports
@@ -1002,11 +1002,50 @@ first regardless of expected size.
 **D2. Floating-point-guided basis selection** (Monniaux, CAV 2009): run a
 floating-point LP, then force-pivot the exact tableau to the basis it found.
 Sound, because the numeric result only chooses a starting configuration and is
-never trusted. Surveyed in [](papers/lra-related-work.md) and recorded there as
-not planned, since it needs an incremental floating-point LP engine alongside
-the exact tableau. **Promoted by section 6.2's finding**: density is a property
-of the *basis*, and this is the one technique here that chooses the basis
-directly rather than walking to it.
+never trusted -- a bad guess costs exact pivots, not correctness. **Promoted by
+section 6.2's finding**: density is a property of the *basis*, and this is the
+only technique here that chooses a basis directly instead of walking to one.
+
+*Scope: smaller than D4, with a clean hook point.* Three sub-problems.
+
+1. **An FP LP engine.** GLPK (what the paper used) is GPL and this project is
+   MIT, so linking it is not an option; other LP libraries would need their
+   licences checked. But note the result is only a *hint* -- soundness does not
+   depend on it -- so a modest in-house floating-point simplex is acceptable
+   and sidesteps the question entirely. It does not need to be competitive,
+   only to land near a decent basis.
+2. **A force-pivot-to-basis operation** on `LraTableau`. `pivot()` already
+   exists and is correct; this is a public entry point that drives it to a
+   target basic set.
+3. **Deciding what to feed it** -- the real design question, see below.
+
+*Risk A: force-pivoting costs the very thing we are short of.* Reaching an
+arbitrary target basis can take on the order of `rows` pivots -- 24,140 on
+`scrambled312090` -- and at that instance's measured ~47,000 term-ops per pivot
+that is ~1.1e9 operations, against the 1.85e8 it currently performs in its
+entire 60s budget. That estimate is pessimistic (pivots from the initial sparse
+all-slack basis are far cheaper than pivots from the dense mid-search one), but
+it is the number the technique has to beat, and it is directly measurable
+before anything is built.
+
+*Risk B: applicability, and this is the sharper one.* Monniaux's is a
+**preprocessing** phase, so it needs the constraint system including its
+bounds. Primo knows the row structure at `PreparedLraTheory` construction --
+the natural hook, and already the place where everything must happen "before
+the first `push()`" -- but **bounds are asserted during search, not there**. So
+the technique sees the whole problem only when the formula is essentially
+conjunctive, or when most bounds are implied at decision level 0.
+
+That is class A of section 1.1 (pure LP, one `check()` call, zero decisions:
+`latendresse`) far more than it is this band -- and note H3 already took
+`latendresse` from 0/15 to 6/15, so D2's most natural target has been partly
+addressed by something cheaper. Whether it can see the gap band at all is
+**unverified**.
+
+*Cheap first step, again not building it.* Measure what fraction of each gap
+instance's bounds are asserted at decision level 0. If it is small, D2 cannot
+see the problem and should drop down the list; if it is large, the force-pivot
+cost in Risk A becomes the thing to measure next.
 
 **D3. Dynamic offset-equality detection**, matching z3's dominant counter
 (`:arith-offset-eqs`, up to 1.1M). Section 6.4 established it is derived
