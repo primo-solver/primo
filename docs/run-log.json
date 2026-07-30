@@ -12339,6 +12339,62 @@
       },
       "evidence_status": "current",
       "followups": "Install Dolmen locally or on SLURM for full SMT-LIB response validation. The Z3 fallback is intentionally limited to the current nullary-Real QF_LRA model subset."
+    },
+    {
+      "id": "2026-07-30-qf-uflra-separable-smoke-ffaf9eb",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "fuzz",
+      "scope": "Local smoke fuzz for the separable mixed QF_UFLRA final-check coordinator added on the Nelson-Oppen branch. The generated corpus intentionally avoids Real-sorted terms in EUF atoms and uninterpreted applications in arithmetic atoms, so it targets the implemented separable subset rather than full Nelson-Oppen equality sharing.",
+      "commit": "ffaf9eb",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo --quiet (Release, CaDiCaL cadical-3.0.0-7b99c07)",
+        "reference": "/workspace/contrib/local/bin/z3"
+      },
+      "command": "PATH='/workspace/contrib/local/bin:$PATH' python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 200 --seed 20260730 --timeout 5 --out fuzz-results/qf_uflra-smoke-ffaf9eb",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "seed": 20260730,
+        "count": 200,
+        "timeout_seconds": 5,
+        "manifest": "generated under fuzz-results/qf_uflra-smoke-ffaf9eb/cases/"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uflra-smoke-ffaf9eb/summary.csv",
+        "generated_inputs": "fuzz-results/qf_uflra-smoke-ffaf9eb/cases/",
+        "bugs": null
+      },
+      "summary": {
+        "total": 200,
+        "pass": 200,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 118,
+        "unsat": 82
+      },
+      "verification": {
+        "unit_tests": "tests/unit/qf_lra_solver_tests.cpp covers separable sat, EUF conflict learning, LRA conflict learning, mixed get-model rejection before and after preprocessing, Real arguments to EUF predicates rejected, and Real-valued UF applications in arithmetic atoms rejected.",
+        "local_gates": "make check, make docs, make asan-test, clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp, git diff --check, and python3 -m py_compile scripts/*.py contrib/*.py all passed before this run-log entry."
+      },
+      "evidence_status": "current",
+      "followups": "This is a smoke gate for the separable bridge only. Full Nelson-Oppen work still needs purification, shared equality atom creation/propagation, mixed model reconstruction, and a stronger mixed-theory fuzz/mutation campaign once those mechanisms exist."
     }
   ]
 }
