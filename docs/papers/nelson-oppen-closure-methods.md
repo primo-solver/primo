@@ -108,17 +108,19 @@ corresponding equality, and mixed model reconstruction separately adds strict
 Real separation atoms for EUF-distinct Real arguments.
 
 With `--model-equality-branching`, the coordinator may also ask the LRA model
-for syntactic EUF care pairs that currently have the same concrete value in the
-LRA model. This is a default-off branching scaffold, not a unit propagation
-rule: the equality atom is created as an optional SAT-visible atom, then tried
-as a one-shot SAT assumption. If the receiving theory rejects the equality, the
-ordinary theory conflict learned under that assumption blocks the bad branch; if
-the SAT core rejects the assumption directly, Primo permanently sets that
-optional atom false. A false optional equality is visible to EUF as a
-disequality but is still not an LRA disequality. While an optional
-model-equality assumption is active, any further EUF- or LRA-implied interface
-equalities are learned through guarded assignment clauses, not as unconditional
-unit clauses.
+for EUF care pairs that currently have the same concrete value in the LRA model.
+The care set is derived from flat EUF definitions after the current EUF closure
+check: two shared Real arguments are a care pair when they occur below function
+prefixes that are equal in the current EUF closure. This is a default-off
+branching scaffold, not a unit propagation rule: the equality atom is created as
+an optional SAT-visible atom, then tried as a one-shot SAT assumption. If the
+receiving theory rejects the equality, the ordinary theory conflict learned
+under that assumption blocks the bad branch; if the SAT core rejects the
+assumption directly, Primo permanently sets that optional atom false. A false
+optional equality is visible to EUF as a disequality but is still not an LRA
+disequality. While an optional model-equality assumption is active, any further
+EUF- or LRA-implied interface equalities are learned through guarded assignment
+clauses, not as unconditional unit clauses.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
@@ -361,18 +363,21 @@ treating one theory's atoms as Boolean noise.
   new shared equality clause, and this final arrangement validation succeeds.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
-  model and scans only syntactic EUF care pairs whose concrete LRA values are
+  model and scans only current EUF care pairs whose concrete LRA values are
   equal. Pairs outside that care subset are skipped because EUF has no current
-  flat application or predicate context that can consume such a guess. For a
+  flat application or predicate context that can consume such a guess. The care
+  scan is closure-aware over curried flat applications: for a binary predicate
+  `q x z` and `q y w`, once EUF knows `x = y`, the prefixes `q x` and `q y`
+  are equal and the scan may expose the second-argument pair `z, w`. For a
   missing, user-invisible equality atom, it creates a SAT-visible optional atom
   and retries the SAT loop with that atom as a one-shot assumption. The equality
   is asserted to EUF/LRA when SAT assigns the atom true. A failed assumption is
   blocked by setting the optional atom false, which is then asserted to EUF as a
-  disequality but still not to LRA as a native false-`Eq` prepared atom. Ordinary
-  input-level Real disequalities are supported by the Real-equality lowering
-  pass and Boolean-level case splitting. The branch does not force additional
-  interface equalities as permanent units while the optional equality is active.
-  The branch budget is controlled by
+  disequality but still not to LRA as a native false-`Eq` prepared atom.
+  Ordinary input-level Real disequalities are supported by the Real-equality
+  lowering pass and Boolean-level case splitting. The branch does not force
+  additional interface equalities as permanent units while the optional equality
+  is active. The branch budget is controlled by
   `--model-equality-branch-budget`.
 - **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
   QF_LRA definitions. For Real constants used as UF arguments, reconstruction
@@ -406,10 +411,12 @@ treating one theory's atoms as Boolean noise.
   EUF-implied proxy equality combined with a lowered input Real disequality,
   LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
   source-split interface conflict counters for those receiving-theory conflicts,
-  syntactic EUF care-pair counters over shared Real arguments, use of that
+  closure-aware EUF care-pair counters over shared Real arguments, use of that
   care-pair subset to skip LRA-to-EUF equality propagation checks that EUF
-  cannot syntactically consume, use of the same care-pair subset to avoid
-  default-off model-equality guesses that EUF cannot consume,
+  cannot currently consume, use of the same care-pair subset to avoid
+  default-off model-equality guesses that EUF cannot consume, a non-unary
+  regression where equality of the first binary-predicate argument exposes the
+  second-argument care pair needed for an EUF conflict,
   final arrangement validation before a non-model `sat` result,
   and a regression where default preprocessing solves away a UF equality before
   the remaining arithmetic formula dispatches to the LRA solver. It also covers
@@ -424,11 +431,16 @@ Limitations:
 - generated interface equalities are lazy: unentailed shared pairs do not create
   SAT atoms, and false generated equality literals are asserted only to EUF, not
   as native false-`Eq` LRA atoms;
-- EUF care-pair tracking is currently syntactic over flat EUF definitions. It
-  filters LRA-to-EUF equality propagation checks in the main mixed loop and the
-  default-off LRA-model equality branching candidate set; it does not add
-  clauses, does not filter EUF-to-LRA equality propagation, and is not an
-  implementation of the Jovanovic-Barrett care-set algorithms;
+- EUF care-pair tracking is closure-aware over flat EUF definitions. It pairs
+  shared Real arguments whose immediate flat function prefixes are equal in the
+  current EUF closure, which covers curried non-unary applications after earlier
+  argument equalities have been asserted. It filters LRA-to-EUF equality
+  propagation checks in the main mixed loop and the default-off LRA-model
+  equality branching candidate set; it does not add clauses, does not filter
+  EUF-to-LRA equality propagation, and is not an implementation of the
+  Jovanovic-Barrett care-set algorithms. The current scan is quadratic in the
+  number of shared-argument flat definitions, which is intentionally simple but
+  not the intended final care-set representation;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;
@@ -567,10 +579,10 @@ distinguished from delivered, useful work.
 
 Primo currently implements the last checklist item and two narrow consumers:
 the mixed coordinator counts the full shared-Real cross product and the subset
-of pairs that appear as arguments below the same flat EUF function prefix, then
-uses that subset to limit LRA-to-EUF equality checks and default-off
-LRA-model-equality branch candidates. The final arrangement and model paths
-intentionally still consider the full set of shared Real constants.
+of pairs that appear as arguments below flat EUF function prefixes equal in the
+current EUF closure, then uses that subset to limit LRA-to-EUF equality checks
+and default-off LRA-model-equality branch candidates. The final arrangement and
+model paths intentionally still consider the full set of shared Real constants.
 
 ## Broader Combination-Property Context
 

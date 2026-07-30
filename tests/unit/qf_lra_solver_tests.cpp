@@ -592,7 +592,7 @@ void qf_uf_lra_model_equality_branching_uses_euf_care_pairs() {
   assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
 }
 
-void qf_uf_lra_reports_syntactic_euf_care_pair_diagnostics() {
+void qf_uf_lra_reports_euf_care_pair_diagnostics() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -615,6 +615,33 @@ void qf_uf_lra_reports_syntactic_euf_care_pair_diagnostics() {
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 3);
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
   assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 2);
+}
+
+void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun w () Real)
+    (declare-fun q (Real Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (<= z w))
+    (assert (<= w z))
+    (assert (q x z))
+    (assert (not (q y w)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 4);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 6);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") >= 2);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 2);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 2);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 2);
+  assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
 }
 
 void qf_uf_lra_uses_euf_care_pairs_for_lra_to_euf_propagation() {
@@ -1817,7 +1844,8 @@ int main() {
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
   qf_uf_lra_model_equality_branching_uses_euf_care_pairs();
-  qf_uf_lra_reports_syntactic_euf_care_pair_diagnostics();
+  qf_uf_lra_reports_euf_care_pair_diagnostics();
+  qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
   qf_uf_lra_uses_euf_care_pairs_for_lra_to_euf_propagation();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();

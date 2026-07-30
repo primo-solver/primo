@@ -239,11 +239,11 @@ Implemented now:
   result, so the reported assignment has at least a checked Real-argument
   arrangement for the documented purification subset.
   The mixed coordinator also reports diagnostic EUF care-pair counters for
-  shared Real arguments under the same flat EUF function prefix. These counters
-  are used only to skip LRA-to-EUF equality propagation checks and default-off
-  LRA-model equality guesses for pairs EUF cannot syntactically use in the
-  current flat view; they do not affect EUF-to-LRA propagation, model
-  reconstruction, or final arrangement validation.
+  shared Real arguments under flat EUF function prefixes that are equal in the
+  current EUF closure. These counters are used only to skip LRA-to-EUF equality
+  propagation checks and default-off LRA-model equality guesses for pairs EUF
+  cannot currently use in the flat view; they do not affect EUF-to-LRA
+  propagation, model reconstruction, or final arrangement validation.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

@@ -338,13 +338,13 @@ disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
 The EUF care counters compare the full shared-Real cross product with pairs that
-occur as arguments under the same flat EUF function prefix in the current
-prepared EUF view. The mixed coordinator uses that subset only for LRA-to-EUF
-equality propagation checks and default-off LRA-model equality branching
-candidates. It does not add clauses for care pairs, does not filter EUF-to-LRA
-equalities, and does not use care pairs for model reconstruction or final
-arrangement validation. The model-equality care counters mirror the same full,
-care, and pruned counts for the default-off branch candidate scan, so a run can
+occur as arguments under flat EUF function prefixes equal in the current EUF
+closure. The mixed coordinator uses that subset only for LRA-to-EUF equality
+propagation checks and default-off LRA-model equality branching candidates. It
+does not add clauses for care pairs, does not filter EUF-to-LRA equalities, and
+does not use care pairs for model reconstruction or final arrangement
+validation. The model-equality care counters mirror the same full, care, and
+pruned counts for the default-off branch candidate scan, so a run can
 distinguish "the branch found no equal-valued care pair" from "the branch was
 pruned before looking at model values".
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason

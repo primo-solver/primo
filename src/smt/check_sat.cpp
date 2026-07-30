@@ -4149,7 +4149,8 @@ struct EufCarePairDiagnostics {
 };
 
 EufCarePairDiagnostics euf_care_pair_diagnostics(
-    const PreparedFlatTheory& prepared, const std::vector<core::TermId>& shared_real_terms) {
+    const PreparedFlatTheory& prepared, theory::equality::FlatCongruenceClosure& closure,
+    const std::vector<core::TermId>& shared_real_terms) {
   EufCarePairDiagnostics diagnostics;
   diagnostics.full_pairs = unordered_pair_count(shared_real_terms.size());
 
@@ -4163,24 +4164,29 @@ EufCarePairDiagnostics euf_care_pair_diagnostics(
     }
   }
 
-  std::unordered_map<theory::equality::FlatTermId, std::vector<theory::equality::FlatTermId>>
-      arguments_by_function;
-  arguments_by_function.reserve(prepared.flat.definitions().size());
+  struct SharedArgumentDefinition {
+    theory::equality::FlatTermId function = theory::equality::kInvalidFlatTermId;
+    theory::equality::FlatTermId argument = theory::equality::kInvalidFlatTermId;
+  };
+
+  std::vector<SharedArgumentDefinition> shared_argument_definitions;
+  shared_argument_definitions.reserve(prepared.flat.definitions().size());
   for (const theory::equality::FlatDefinition& definition : prepared.flat.definitions()) {
     if (shared_term_by_flat.contains(definition.argument)) {
-      arguments_by_function[definition.function].push_back(definition.argument);
+      shared_argument_definitions.push_back(
+          SharedArgumentDefinition{definition.function, definition.argument});
     }
   }
 
   std::unordered_set<FlatPairKey, FlatPairKeyHash> candidate_pairs;
-  for (const auto& [function, arguments] : arguments_by_function) {
-    (void)function;
-    for (std::size_t i = 0; i < arguments.size(); ++i) {
-      for (std::size_t j = i + 1; j < arguments.size(); ++j) {
-        if (arguments[i] != arguments[j]) {
-          candidate_pairs.insert(canonical_flat_pair(arguments[i], arguments[j]));
-        }
+  for (std::size_t i = 0; i < shared_argument_definitions.size(); ++i) {
+    const SharedArgumentDefinition& lhs = shared_argument_definitions[i];
+    for (std::size_t j = i + 1; j < shared_argument_definitions.size(); ++j) {
+      const SharedArgumentDefinition& rhs = shared_argument_definitions[j];
+      if (lhs.argument == rhs.argument || !closure.are_equal(lhs.function, rhs.function)) {
+        continue;
       }
+      candidate_pairs.insert(canonical_flat_pair(lhs.argument, rhs.argument));
     }
   }
 
@@ -6892,11 +6898,12 @@ CheckSatOutcome solve_qf_uf_lra(
       prepared_flat_theory.emplace(terms, euf_atoms_for_check, true_term, false_term,
                                    options.euf_explain_search,
                                    options.euf_proof_forest_diagnostics);
-      euf_care = euf_care_pair_diagnostics(prepared_flat_theory.value(), shared_real_terms);
-      publish_euf_care_pair_diagnostics(euf_care, statistics);
-      publish_model_equality_care_pair_stats(euf_care, options, statistics);
       euf_check = check_incremental_euf_closure(prepared_flat_theory.value(),
                                                 euf_assignments_for_check, statistics);
+      euf_care = euf_care_pair_diagnostics(prepared_flat_theory.value(), euf_check->closure,
+                                           shared_real_terms);
+      publish_euf_care_pair_diagnostics(euf_care, statistics);
+      publish_model_equality_care_pair_stats(euf_care, options, statistics);
       euf_conflict = euf_check->conflict;
     }
     if (euf_conflict.has_value()) {
