@@ -14200,6 +14200,75 @@
       },
       "evidence_status": "current",
       "followups": "The local model-validation blocker for this full-shared-pair milestone is closed. The remaining pre-merge hardening item is optional SLURM-backed QF_UFLRA fuzz if we want cluster evidence in addition to the local merge gate."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-archive-ingestion",
+      "date": "2026-07-31",
+      "kind": "benchmark-ingestion-smoke",
+      "scope": "Local ingestion of the user-provided QF_UFLRA benchmark archive placed under the ignored sandbox directory. This records archive inventory, privacy/path audit, extraction location, and a small stratified Primo smoke run. It is not full benchmark or merge-gate evidence.",
+      "commit": "718cdd4 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 718cdd4; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07"
+      },
+      "commands": {
+        "inventory": "tar --use-compress-program=unzstd -tf sandbox/QF_UFLRA.tar.zst | wc -l",
+        "archive_path_audit": "tar --use-compress-program=unzstd -tf sandbox/QF_UFLRA.tar.zst | rg -n '<absolute-path, traversal, private-ip, local-user-or-host, ssh-artifact patterns>'",
+        "extract": "mkdir -p tmp/QF_UFLRA && tar --use-compress-program=unzstd -xf sandbox/QF_UFLRA.tar.zst -C tmp/QF_UFLRA --strip-components=2",
+        "content_privacy_audit": "rg -n -I -l '<absolute-path, private-ip, local-user-or-host, ssh-artifact patterns>' tmp/QF_UFLRA",
+        "content_email_audit": "rg -n -I -l '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}' tmp/QF_UFLRA",
+        "smoke": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UFLRA --manifest tmp/qf_uflra_archive_smoke_20.txt --solver ./build/primo --solver-arg=--quiet --timeout 5 --out results/qf_uflra-archive-smoke-25-primo.csv --summary results/qf_uflra-archive-smoke-25-primo-summary.csv --log-dir results/qf_uflra-archive-smoke-25-primo-logs"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "inputs": {
+        "archive": "sandbox/QF_UFLRA.tar.zst",
+        "archive_status": "ignored local artifact; not committed",
+        "extracted_root": "tmp/QF_UFLRA",
+        "extracted_status": "ignored local artifact; not committed",
+        "logic": "QF_UFLRA",
+        "archive_members": 1284,
+        "smt2_files": 1284,
+        "families": {
+          "FFT": 10,
+          "cpachecker-bmc-svcomp14": 15,
+          "cpachecker-induction-svcomp14": 359,
+          "mathsat/RandomCoupled": 400,
+          "mathsat/RandomDecoupled": 500
+        },
+        "smoke_manifest": "tmp/qf_uflra_archive_smoke_20.txt",
+        "smoke_manifest_files": 25,
+        "solver_timeout_seconds": 5
+      },
+      "artifacts": {
+        "smoke_csv": "results/qf_uflra-archive-smoke-25-primo.csv",
+        "smoke_summary": "results/qf_uflra-archive-smoke-25-primo-summary.csv",
+        "smoke_logs": "results/qf_uflra-archive-smoke-25-primo-logs/"
+      },
+      "summary": {
+        "archive_path_audit_hits": 0,
+        "content_private_path_ip_ssh_hits": 0,
+        "content_email_hits": 0,
+        "set_logic_qf_uflra": 1284,
+        "smoke_total": 25,
+        "smoke_solved": 9,
+        "smoke_sat": 6,
+        "smoke_unsat": 3,
+        "smoke_timeout": 7,
+        "smoke_unsupported": 9,
+        "smoke_wrong": 0,
+        "smoke_par2": 163.267999
+      },
+      "verification": {
+        "privacy_boundary": "The audit checked tar member names and extracted SMT-LIB contents for absolute paths, parent traversal, home/tmp path fragments, private IPv4 ranges, configured host/user strings, SSH artifacts, and email-address-shaped strings. The archive and extracted files remain ignored local artifacts.",
+        "solver_boundary": "The 25-case smoke run checks local parser/solver compatibility only. Unsupported cases reported the current QF_UFLRA limitation: QF_LRA arithmetic nodes are not EUF flat terms. Timeout cases are smoke-timeout triage candidates, not correctness failures.",
+        "result": "The archive was safely extracted to tmp/QF_UFLRA. The smoke run solved 9/25, reported 9 unsupported, timed out on 7 at 5 seconds, and found 0 answers contradicting SMT-LIB :status metadata."
+      },
+      "evidence_status": "current",
+      "followups": "Use this extracted root as the input for a future SLURM-backed QF_UFLRA benchmark once the next Nelson-Oppen implementation step is ready. Do not commit the archive or extracted benchmark files."
     }
   ]
 }
