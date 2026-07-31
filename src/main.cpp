@@ -159,6 +159,7 @@ int main(int argc, char** argv) {
   bool euf_ackermann_diagnostics = false;
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
+  std::string model_equality_branch_policy = "first";
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   std::string pure_theory_filter = "auto";
@@ -311,6 +312,9 @@ int main(int argc, char** argv) {
                  solver_options.nelson_oppen_model_equality_branch_budget,
                  "Maximum QF_UFLRA model-equality branch assumptions per check-sat")
       ->check(CLI::Range(0, 1000000));
+  app.add_option("--model-equality-branch-policy", model_equality_branch_policy,
+                 "QF_UFLRA model-equality branch policy: first, ranked, or adaptive")
+      ->check(CLI::IsMember({"first", "ranked", "adaptive"}));
   app.add_flag("--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
                "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them");
   app.add_flag("--euf-diseq-ackermann", euf_diseq_ackermann,
@@ -525,6 +529,16 @@ int main(int argc, char** argv) {
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
   solver_options.nelson_oppen_model_equality_branching = nelson_oppen_model_equality_branching;
+  if (model_equality_branch_policy == "adaptive") {
+    solver_options.nelson_oppen_model_equality_branch_policy =
+        primo::smt::ModelEqualityBranchPolicy::Adaptive;
+  } else if (model_equality_branch_policy == "ranked") {
+    solver_options.nelson_oppen_model_equality_branch_policy =
+        primo::smt::ModelEqualityBranchPolicy::Ranked;
+  } else {
+    solver_options.nelson_oppen_model_equality_branch_policy =
+        primo::smt::ModelEqualityBranchPolicy::First;
+  }
   solver_options.euf_dynamic_ackermann_shadow = euf_dynamic_ackermann_shadow;
   solver_options.euf_diseq_ackermann = euf_diseq_ackermann;
   if (pure_theory_filter == "off") {

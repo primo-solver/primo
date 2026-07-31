@@ -58,6 +58,12 @@ enum class QfUfPortfolioMode {
   BasicPolarity,
 };
 
+enum class ModelEqualityBranchPolicy {
+  First,
+  Ranked,
+  Adaptive,
+};
+
 // Mirrors theory::arithmetic::LraTableau::PivotingRule -- kept as a
 // separate check_sat.hpp-local enum (translated at the wiring point, see
 // lra_pivoting_rule_from_options in check_sat.cpp) rather than reused
@@ -108,6 +114,8 @@ struct CheckSatOptions {
   bool euf_ackermann_diagnostics = false;
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
+  ModelEqualityBranchPolicy nelson_oppen_model_equality_branch_policy =
+      ModelEqualityBranchPolicy::First;
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   AutoBudget euf_propagation_budget;

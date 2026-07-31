@@ -126,7 +126,12 @@ optional atom false. A false optional equality is visible to EUF as a
 disequality but is still not an LRA disequality. While an optional
 model-equality assumption is active, any further EUF- or LRA-implied interface
 equalities are learned through guarded assignment clauses, not as unconditional
-unit clauses.
+unit clauses. `--model-equality-branch-policy=first` preserves the original
+full-pair scan order. `ranked` prefers LRA-model-equal pairs that also appear in
+the EUF care diagnostic, then pairs whose terms both occur as EUF arguments,
+then the remaining full-pair fallback. `adaptive` uses the same ranking but
+stops adding model-equality assumptions after repeated failed assumptions or
+theory conflicts that did not produce interface equality propagation.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
@@ -165,6 +170,13 @@ coordinator publishes:
 - `:no.interface.model-equality-full-pairs`
 - `:no.interface.model-equality-care-pairs`
 - `:no.interface.model-equality-care-pruned-pairs`
+- `:no.interface.model-equality-scanned`
+- `:no.interface.model-equality-lra-equal`
+- `:no.interface.model-equality-selected-care`
+- `:no.interface.model-equality-selected-full`
+- `:no.interface.model-equality-skipped-assigned`
+- `:no.interface.model-equality-skipped-tried`
+- `:no.interface.model-equality-adaptive-stops`
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
@@ -397,17 +409,22 @@ treating one theory's atoms as Boolean noise.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
   model and scans the full same-sort shared Real pair set for pairs whose
-  concrete LRA values are equal. For a missing, user-invisible equality atom, it
-  creates a SAT-visible optional atom and retries the SAT loop with that atom as
-  a one-shot assumption. The equality is asserted to EUF/LRA when SAT assigns
-  the atom true. A failed assumption is blocked by setting the optional atom
-  false, which is then asserted to EUF as a disequality but still not to LRA as
-  a native false-`Eq` prepared atom.
+  concrete LRA values are equal. The default `first` policy keeps the historical
+  full-pair order. The `ranked` policy keeps the full candidate set but tries
+  care-diagnostic and EUF-argument pairs first. The `adaptive` policy uses the
+  ranked order and stops issuing guesses after repeated unproductive rejected
+  assumptions or theory conflicts. For a missing, user-invisible equality atom,
+  the branch creates a SAT-visible optional atom and retries the SAT loop with
+  that atom as a one-shot assumption. The equality is asserted to EUF/LRA when
+  SAT assigns the atom true. A failed assumption is blocked by setting the
+  optional atom false, which is then asserted to EUF as a disequality but still
+  not to LRA as a native false-`Eq` prepared atom.
   Ordinary input-level Real disequalities are supported by the Real-equality
   lowering pass and Boolean-level case splitting. The branch does not force
   additional interface equalities as permanent units while the optional equality
   is active. The branch budget is controlled by
-  `--model-equality-branch-budget`.
+  `--model-equality-branch-budget`, and the selection policy by
+  `--model-equality-branch-policy`.
 - **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
   QF_LRA definitions. For Real constants used as UF arguments, reconstruction
   first adds EUF-implied Real-constant equalities to the LRA model tableau, then
@@ -442,10 +459,11 @@ treating one theory's atoms as Boolean noise.
   source-split interface conflict counters for those receiving-theory conflicts,
   closure-aware EUF care-pair counters over shared Real arguments, use of the
   full shared Real pair set for LRA-to-EUF equality propagation even when the
-  EUF care diagnostic reports a pair as pruned, use of the full shared Real pair
-  set for default-off model-equality guesses, a non-unary regression where
-  equality of both binary-predicate arguments is needed for an EUF conflict,
-  final arrangement validation before a non-model `sat` result,
+  EUF care diagnostic reports a pair as pruned, default-off model-equality
+  guessing with both the historical full-pair order and the ranked care-first
+  policy, adaptive model-equality backoff, a non-unary regression where equality
+  of both binary-predicate arguments is needed for an EUF conflict, final
+  arrangement validation before a non-model `sat` result,
   and a regression where default preprocessing solves away a UF equality before
   the remaining arithmetic formula dispatches to the LRA solver. It also covers
   opt-in model-equality branching over an LRA-model equal pair that EUF rejects,
@@ -459,15 +477,17 @@ Limitations:
 - generated interface equalities are lazy: unentailed shared pairs do not create
   SAT atoms, and false generated equality literals are asserted only to EUF, not
   as native false-`Eq` LRA atoms;
-- EUF care-pair tracking is diagnostic only. It is closure-aware over flat EUF
+- EUF care-pair tracking is closure-aware over flat EUF
   definitions and pairs shared Real arguments whose immediate flat function
   prefixes are equal in the current EUF closure, which covers curried non-unary
-  applications after earlier argument equalities have been asserted. It no
-  longer filters LRA-to-EUF equality propagation or model-equality branching,
-  does not add clauses, and is not an implementation of the Jovanovic-Barrett
-  care-set algorithms. The current scan is quadratic in the number of
-  shared-argument flat definitions, which is intentionally simple and may be
-  removed once the full-pair delayed path is the only diagnostic needed;
+  applications after earlier argument equalities have been asserted. It does
+  not filter LRA-to-EUF equality propagation, final arrangement validation, or
+  model reconstruction. It is used by the `ranked` and `adaptive`
+  model-equality branch policies only as an ordering hint with full-pair
+  fallback. It does not add clauses and is not an implementation of the
+  Jovanovic-Barrett care-set algorithms. The current scan is quadratic in the
+  number of shared-argument flat definitions, which is intentionally simple and
+  remains behind default-off model-equality branching for active consumers;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;

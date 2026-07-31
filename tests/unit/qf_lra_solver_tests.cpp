@@ -592,6 +592,106 @@ void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
 }
 
+void qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_branch_policy = primo::smt::ModelEqualityBranchPolicy::Ranked;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 2);
+  assert(result.statistics.get(":no.interface.model-equality-selected-care") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-conflicts") >= 1);
+}
+
+void qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_branch_policy = primo::smt::ModelEqualityBranchPolicy::Ranked;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-selected-care") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-selected-full") >= 1);
+}
+
+void qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_branch_policy =
+      primo::smt::ModelEqualityBranchPolicy::Adaptive;
+  options.nelson_oppen_model_equality_branch_budget = 16;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x0 () Real)
+    (declare-fun y0 () Real)
+    (declare-fun x1 () Real)
+    (declare-fun y1 () Real)
+    (declare-fun x2 () Real)
+    (declare-fun y2 () Real)
+    (declare-fun x3 () Real)
+    (declare-fun y3 () Real)
+    (declare-fun x4 () Real)
+    (declare-fun y4 () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x0))
+    (assert (<= 0 y0))
+    (assert (<= 0 x1))
+    (assert (<= 0 y1))
+    (assert (<= 0 x2))
+    (assert (<= 0 y2))
+    (assert (<= 0 x3))
+    (assert (<= 0 y3))
+    (assert (<= 0 x4))
+    (assert (<= 0 y4))
+    (assert (p x0))
+    (assert (not (p y0)))
+    (assert (p x1))
+    (assert (not (p y1)))
+    (assert (p x2))
+    (assert (not (p y2)))
+    (assert (p x3))
+    (assert (not (p y3)))
+    (assert (p x4))
+    (assert (not (p y4)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 4);
+  assert(result.statistics.get(":no.interface.model-equality-adaptive-stops") == 1);
+}
+
 void qf_uf_lra_reports_euf_care_pair_diagnostics() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1894,6 +1994,9 @@ int main() {
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
   qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
+  qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs();
+  qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs();
+  qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses();
   qf_uf_lra_reports_euf_care_pair_diagnostics();
   qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
   qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();

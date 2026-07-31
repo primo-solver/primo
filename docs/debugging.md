@@ -312,6 +312,13 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-full-pairs`
 - `:no.interface.model-equality-care-pairs`
 - `:no.interface.model-equality-care-pruned-pairs`
+- `:no.interface.model-equality-scanned`
+- `:no.interface.model-equality-lra-equal`
+- `:no.interface.model-equality-selected-care`
+- `:no.interface.model-equality-selected-full`
+- `:no.interface.model-equality-skipped-assigned`
+- `:no.interface.model-equality-skipped-tried`
+- `:no.interface.model-equality-adaptive-stops`
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
@@ -340,13 +347,13 @@ SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
 The EUF care counters compare the full shared-Real cross product with pairs that
 occur as arguments under flat EUF function prefixes equal in the current EUF
-closure. They are diagnostic only in the current coordinator. LRA-to-EUF
-equality propagation, EUF-to-LRA equality propagation, model reconstruction, and
-final arrangement validation use the full shared Real pair set. The
-model-equality branch currently uses the same full pair set when the
-default-off `--model-equality-branching` option is enabled; the legacy
-`:no.interface.model-equality-care-*` counter names are kept for continuity and
-report full pairs as the active candidate set with zero care pruning.
+closure. LRA-to-EUF equality propagation, EUF-to-LRA equality propagation, model
+reconstruction, and final arrangement validation use the full shared Real pair
+set. The default `--model-equality-branch-policy=first` path also uses the full
+pair order and reports the full pair count through
+`:no.interface.model-equality-care-pairs` for continuity. The `ranked` and
+`adaptive` policies use care-pair diagnostics only as a ranking signal; they
+fall back to the full pair set instead of pruning the search.
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use
@@ -359,10 +366,13 @@ coordinator validated that the EUF arrangement over Real arguments can be
 separated consistently by LRA, with failures and accepted strict separations
 split into the corresponding arrangement counters. When
 `--model-equality-branching` is enabled, the model-equality counters record
-LRA-model-equal full shared Real pairs considered, optional SAT equality atoms
-created for those pairs, assumptions made on those atoms, assumptions rejected
-at the SAT level, and ordinary theory conflicts reached while a guessed equality
-was active. The current positive-equality path should also show activity in
+full shared Real pairs scanned, how many were equal in the current LRA model,
+optional SAT equality atoms created for those pairs, assumptions made on those
+atoms, assumptions rejected at the SAT level, assigned or already-tried equality
+literals skipped, whether the selected guess came from the care-ranked prefix or
+the full-pair fallback, adaptive stops, and ordinary theory conflicts reached
+while a guessed equality was active. The current positive-equality path should
+also show activity in
 `:no.interface.sat-equalities-forced`, which counts guarded propagation clauses
 from the current theory assignment to a generated interface equality literal,
 and then ordinary EUF/LRA theory-conflict counters if the forced equality is

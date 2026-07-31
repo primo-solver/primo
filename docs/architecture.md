@@ -241,12 +241,12 @@ Implemented now:
   separation check is also run before returning a non-model QF_UFLRA `sat`
   result, so the reported assignment has at least a checked Real-argument
   arrangement for the documented purification subset.
-  The mixed coordinator also reports diagnostic EUF care-pair counters for
-  shared Real arguments under flat EUF function prefixes that are equal in the
-  current EUF closure. These counters do not currently prune propagation or
-  default-off model-equality guesses; the delayed mixed path uses the full
-  shared Real pair set and keeps care-pair information as a measurement hook for
-  future theory-facing pruning.
+  The mixed coordinator also reports EUF care-pair counters for shared Real
+  arguments under flat EUF function prefixes that are equal in the current EUF
+  closure. Equality propagation and final arrangement validation still use the
+  full shared Real pair set. The default `first` model-equality branch policy
+  also uses the full pair order; the opt-in `ranked` and `adaptive` policies use
+  care-pair diagnostics only to rank guesses, with full-pair fallback.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
