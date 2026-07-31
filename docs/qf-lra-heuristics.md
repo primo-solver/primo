@@ -1,9 +1,11 @@
 # QF_LRA Speedup Heuristics: Design Note
 
-Written 2026-07-27 as a design note; **H2, H1a, H1b and H3 are implemented
-and promoted to default; H7 is implemented but NOT promoted (opt-in, see its
-falsifier outcome); H4, H5 and H6 remain designs** (each item below carries
-its own status). It picks up where
+Written 2026-07-27 as a design note; **H2, H1a, H1b, H3 and H8 are
+implemented and promoted to default; H7 is implemented but NOT promoted
+(opt-in, see its falsifier outcome); H4, H5 and H6 remain designs** (each
+item below carries its own status). H8 came later than the rest and from a
+different route -- a flat profile rather than a design argument -- so it is
+written up in section 6.2b with the profile that found it. It picks up where
 the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s Milestone
 roadmap) left off, and is grounded in a fresh local
 profiling/instrumentation pass run at commit `35878c4` -- not in the older
@@ -1024,6 +1026,77 @@ default `Sparse` rule -- `soi_select()` is gated behind
 `pivot`, so the name is COMDAT folding of identically-generated template code,
 not evidence that SOI runs by default. Checked, because a hot SOI symbol in a
 non-SOI run would otherwise read as a real bug.
+
+### 6.2b Acting on the profile: H8, and one rejection (2026-07-31)
+
+Both leads 6.2a surfaced were built and measured. One is now the default; the
+other was measured and reverted, which is the more useful half of this
+subsection.
+
+#### H8 -- merge instead of sort in `pivot`'s affected-row loop (promoted)
+
+The loop concatenated the affected row's terms with the scaled entering row's
+terms into `combine_scratch_` and `std::sort`ed the result, once per affected
+row per pivot. Both halves are already ordered by var id, so this is a merge.
+
+Rows were only *incidentally* ordered, so the change makes it an **invariant**
+(declared on `Row`, checked by a test that fails if `add_row`'s sort is
+removed): `add_row` sorts, and `pivot` splices `basic_var` into
+`new_entering_row` at its ordered position instead of prepending it.
+Everything else already preserved order. Two smaller wins fall out: the
+zero check is needed only in the equal-var-id branch, since that is the only
+place a coefficient can cancel; and the affected row is now taken by
+reference and **moved** into the trail rather than copied twice, which at 55
+to 359 affected rows per pivot was the largest single source of the 465M
+`Rational` copy-constructions in the profile.
+
+Slurm, paired same-node against the parent commit:
+
+| | base | H8 | churn | median paired |
+|---|---|---|---|---|
+| mid-band gap (59 files, 300s) | 37 solved, PAR2 19475 | **38**, PAR2 **18309** | +1/-0 | **1.16x** (p25 1.13, p75 1.22) |
+| stratified sample (237, 60s) | 189 solved, PAR2 6473 | **192**, PAR2 **6067** | +3/-0 | **1.23x** (p25 1.10, p75 1.33) |
+
+Zero cross-configuration disagreements and zero wrong answers on both.
+**Zero regressions on either bar** -- the churn is one-directional, which no
+other item in this note has managed. The speedup distribution is tight
+(p25-p75 spans 1.10-1.33), so this is a uniform constant-factor win rather
+than a few instances carrying an average.
+
+#### Incremental `occurs_in_` maintenance (built, measured, rejected)
+
+`rebuild_occurs_in_index()` was 6.2a's other lead and the profile's clear #2
+at 8%. Instrumenting it split the cost exactly: the clear pass is **0.05s**
+and the fill is **1.65s**, over **138M scattered `push_back`s** into 57,658
+separate heap-allocated vectors -- cache-miss-bound, as the ~12ns per push
+implies.
+
+The apparent fix: a pop restores only about 384 rows of 47,148, so patching
+`occurs_in_` per restored row inside `undo()` looks like ~100x less work than
+rebuilding all of it. It was implemented that way (with a checker comparing
+the incremental index against a full rebuild after every pivot and pop, which
+did catch a deliberately incomplete patch).
+
+**It is 1.4-1.8x slower.** Paired A/B on four gap instances: 0.88x, 0.97x,
+0.55x, 0.61x, 0.70x, 0.71x, 0.62x, 0.60x. Reverted.
+
+The estimate was wrong in two compounding ways, both worth recording since
+the same reasoning will otherwise be reattempted. First, the cost does not
+scale with *pops* (522) but with *pivots undone* (3,706), each restoring ~55
+rows. Second, and decisively, removing a listing is not O(1) -- it is a
+`std::remove` scan of `occurs_in_[var]`, and the rows being restored are
+long (the pivot counters give ~1,048 terms per row update). So the
+incremental path trades 138M cheap sequential-ish pushes for ~100M expensive
+list scans. **A full rebuild of a cheap index beats a targeted patch of an
+expensive one**, which is exactly the tradeoff `rebuild_violated_vars()`'s
+own comment already claimed for the analogous case.
+
+The remaining 8% therefore stands, and the only fix that would actually
+address it is a different representation for `occurs_in_` (a CSR-style flat
+array, so the transpose writes into one contiguous block rather than 57k
+separate ones). That touches 29 call sites and is not worth it for 8% on its
+own -- but it is the same representation change direction D4 would force
+anyway, so it should be considered there rather than separately.
 
 ### 6.3 What this rules out
 

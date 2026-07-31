@@ -452,6 +452,25 @@ alternatives considered before/while implementing it.
     117227 (new default, fuzzsmt 3000: 2990 PASS/10 TIMEOUT) and 117228 (SOI,
     3000: 2908/92), each with opfuzz 14/14 seeds valid and two yinyang shards,
     0 bug triggers throughout. No crashes, no wrong answers anywhere.
+- **Merged row combination in `pivot`** (heuristics-note item H8, 2026-07-31,
+  `lra_tableau.{hpp,cpp}`, **unconditional**): `pivot`'s affected-row loop
+  combines the affected row with the scaled entering row by a linear two-way
+  merge instead of concatenating both into a scratch buffer and sorting it.
+  This rests on a new **`Row` invariant -- strictly ascending by var id, never
+  a zero coefficient** -- which `add_row` now establishes by sorting and
+  `pivot` preserves by splicing `basic_var` into `new_entering_row` at its
+  ordered position. The affected row is also taken by reference and *moved*
+  into the trail rather than copied twice.
+  - Found by a flat profile rather than by design argument: a gprof run put
+    11.6% of runtime on `scrambled339450` in that one `std::sort`, with 100M
+    inner comparisons. See [](qf-lra-heuristics.md) section 6.2a.
+  - **Promoted on both bars, with zero regressions on either.** Mid-band gap
+    (59 files, 300s): 37 -> 38 solved, PAR2 19475 -> 18309, median paired
+    1.16x, +1/-0. Stratified sample (237 files, 60s): 189 -> 192, PAR2 6473 ->
+    6067, median 1.23x, +3/-0. Both same-node paired against the parent
+    commit; 0 cross-configuration disagreements and 0 wrong answers.
+  - Gated: campaign-tier QF_LRA fuzz on the default path (3000 fuzzsmt cases,
+    0 wrong) plus merge-tier on the SOI path (1000, 0 wrong).
 - **Fixed-variable elimination** (heuristics-note item H7, 2026-07-30,
   `lra_tableau.{hpp,cpp}`, **opt-in**, `--lra-fixed-elimination`): a basic
   variable whose lower and upper bounds coincide is pivoted out of the basis

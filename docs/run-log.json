@@ -12367,6 +12367,38 @@
       "docs": "docs/qf-lra-heuristics.md new section 6.2a.",
       "evidence_status": "current",
       "followups": "Neither lead is implemented. Both are hot-path changes to LraTableau and would need a fuzz gate plus a Slurm A/B before being described as wins."
+    },
+    {
+      "id": "2026-07-31-qf-lra-h8-pivot-merge",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "benchmark",
+      "scope": "Item H8: pivot()'s affected-row loop merges two ordered rows instead of concatenating and sorting them. Found by the 6.2a flat profile. Includes the incremental occurs_in_ experiment that was built alongside it and rejected.",
+      "commit": "e6020ca",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo at e6020ca; baseline is a second worktree built at the parent commit 03c28da, so the A/B is same-node and same-time",
+        "notes": "Local paired A/Bs were run interleaved base/new per instance, two reps each, after an earlier round in this project produced sign-flipped timings from measuring while builds competed for CPU."
+      },
+      "command": {
+        "fuzz_campaign": "sbatch scripts/slurm_qfuf_fuzz_gate.sbatch with PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA and QF_LRA seeds -- job 117841 (fuzzsmt) plus job 117932 (re-run of the 3 mutation tasks with TYPEFUZZ set, output merged into 117841's directory)",
+        "fuzz_soi": "same, --lra-pivoting-rule soi, 2 shards x 500 -- job 117842",
+        "midband_ab": "sbatch --array=0-39 scripts/slurm_qf_lra_scrambled_compare.sbatch, manifest qf-lra-scrambled-midband-gap.txt, 300s, solvers base/merge -- job 117843",
+        "stratified_ab": "same on benchmarks/qf-lra-stratified-sample.txt over tmp/QF_LRA at 60s -- job 117844"
+      },
+      "summary": {
+        "change": "pivot()'s affected-row loop was O(m log m) per affected row: it concatenated the affected row's terms with the scaled entering row's terms into combine_scratch_ and std::sorted the result. Both halves are already ordered by var id, so it is a linear merge. Rows were only incidentally ordered, so this makes it an invariant on Row (add_row sorts; pivot splices basic_var into new_entering_row at its ordered position instead of prepending). Two smaller wins follow: the zero check is needed only in the equal-var-id branch, and the affected row is taken by reference and moved into the trail instead of copied twice.",
+        "midband_result": "base 37 solved / PAR2 19475, H8 38 solved / PAR2 18309. Median paired speedup 1.16x over the 37 files both solve in >1s (p25 1.13, p75 1.22). Churn +1/-0.",
+        "stratified_result": "base 189 solved / PAR2 6473, H8 192 solved / PAR2 6067. Median paired 1.23x over 67 files >1s (p25 1.10, p75 1.33). Churn +3/-0.",
+        "no_regressions": "Zero regressions on either bar -- churn is one-directional on both, which no other item in the heuristics note has managed. The p25-p75 span of 1.10-1.33 says this is a uniform constant-factor win, not a few instances carrying an average.",
+        "soundness": "Zero cross-configuration answer disagreements and zero wrong answers on both benchmark runs (the stratified sample carries :status, so its wrong-answer column is live, unlike the scrambled set's).",
+        "fuzz_gates": "Campaign tier on the default path: 3000 fuzzsmt QF_LRA cases, 6/6 shard summaries, 2980 PASS / 20 TIMEOUT, 0 wrong. Mutation tasks (job 117932): opfuzz 14/14 seeds valid with 5,448 solver calls, two yinyang typefuzz shards 14/14 valid with 2,748 and 2,744 calls, 0 bug triggers and 0 bug files across all three. Merge tier on the SOI path: 1000 fuzzsmt cases, 2/2 summaries, 943 PASS / 57 TIMEOUT, 0 wrong. Release build -- the remote ASAN toolchain is still broken, so none of this carries sanitizer coverage.",
+        "summarizer_caveat": "scripts/summarize_fuzz_results.py reports opfuzz/yinyang as summaries=0 cases=0 because those stages do not write a fuzz_external.py-style summary.csv. That is a summarizer limitation, not a gate that ran nothing -- verified from the task logs (seed counts, solver-call counts, 0 bug triggers) and by finding zero files under the bugs directories. Do not read that 0 as a failure, and do not read it as a pass without checking the logs.",
+        "rejected_incremental_occurs_in": "The profile's other lead, rebuild_occurs_in_index() at 8%, was also built and then reverted. Instrumentation split its cost exactly: clear pass 0.05s, fill 1.65s over 138M scattered push_backs into 57,658 separate heap vectors. Since a pop restores only ~384 rows of 47,148, patching occurs_in_ per restored row inside undo() looked like ~100x less work. Measured, it is 1.4-1.8x SLOWER (0.88, 0.97, 0.55, 0.61, 0.70, 0.71, 0.62, 0.60 across four instances, two reps). Two compounding errors in the estimate: the cost scales with pivots undone (3,706), not pops (522); and dropping a listing is a std::remove scan of occurs_in_[var], not O(1), over rows averaging ~1,048 terms per row update. A full rebuild of a cheap index beats a targeted patch of an expensive one. The only fix that would actually help is a CSR-style representation for occurs_in_, which touches 29 call sites and should be considered as part of D4 rather than on its own."
+      },
+      "docs": "docs/qf-lra-heuristics.md section 6.2b (H8 and the rejection); docs/arithmetic.md's Milestone roadmap H8 entry.",
+      "evidence_status": "current"
     }
   ]
 }
