@@ -14021,6 +14021,62 @@
       },
       "evidence_status": "current",
       "followups": "Keep running model validation after future mixed coordinator changes that alter equality propagation, arrangement separation, purification, or model reconstruction."
+    },
+    {
+      "id": "2026-07-31-theory-combination-manager-qfuf-smoke-fuzz",
+      "date": "2026-07-31",
+      "kind": "fuzz",
+      "scope": "Local QF_UF FuzzSMT smoke after introducing the SMT-owned TheoryCombinationManager scaffold. This is a smoke guard for the refactor and diagnostic path, not a merge-gate or campaign-gate fuzz claim for new solver behavior.",
+      "commit": "885898a on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 885898a; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3, installed by make fuzzsmt"
+      },
+      "commands": {
+        "fuzz": "make fuzzsmt",
+        "expanded": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./build/primo --refs z3 --logic QF_UF --count 20 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "FuzzSMT through scripts/fuzz_external.py",
+        "logic": "QF_UF",
+        "count": 20,
+        "timeout_seconds": 5,
+        "fuzzer_args": "-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uf-fuzzsmt/summary.csv",
+        "generated": "fuzz-results/qf_uf-fuzzsmt/generated/",
+        "bugs": "fuzz-results/qf_uf-fuzzsmt/bugs/"
+      },
+      "summary": {
+        "total": 20,
+        "pass": 20,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "sat": 17,
+        "unsat": 3
+      },
+      "verification": {
+        "relationship_to_change": "The new manager is used by the opt-in Nelson-Oppen diagnostics path and does not change default solving semantics. The focused unit tests cover manager lookup and arrangement state; this fuzz run is an extra local smoke check against reference answers.",
+        "local_gates": "make check, make docs, make lint, make asan-test, git diff --check, and make fuzzsmt passed. make lint skipped ruff because it is not installed."
+      },
+      "evidence_status": "current",
+      "followups": "Run a real QF_UFLRA merge gate when TheoryCombinationManager arrangement values are wired into SAT backtracking, equality propagation, or mixed final-check behavior."
     }
   ]
 }
