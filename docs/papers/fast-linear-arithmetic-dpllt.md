@@ -70,7 +70,7 @@ recurring.
 | TR Section 3.2.3 -- assertion procedures | `LraTableau::assert_upper` / `assert_lower` | `lra_tableau.cpp` |
 | Section 3.1 -- infinitesimal delta for strict inequalities | `DeltaRational` (`q + k*delta`, lexicographically ordered); no floating point anywhere | `lra_tableau.hpp` |
 | Section 3.2 -- conflict explanation from row coefficients and the stuck variables' binding bounds | `LraTableau::build_conflict` | `lra_tableau.cpp` |
-| Section 4 -- backtracking | `push()` / `pop(checkpoint)`, trail-based (one `TrailEntry` per bound, assignment, pivot and SOI f-row change, replayed backwards) | `lra_tableau.{hpp,cpp}` |
+| TR Section 3.2.4 -- backtracking | `push()` / `pop(checkpoint)`, trailing **bounds only** as the report specifies; `PivotingRule::Soi` additionally trails assignments, pivots and its f-row | `lra_tableau.{hpp,cpp}` |
 | Section 4 -- precomputing the tableau once per problem | `PreparedLraTheory` (mirrors `PreparedFlatTheory` for EUF) | `smt/check_sat.cpp` |
 | Section 4.2 -- "deriving satisfied atoms" | `OnlineLraPropagator::scan_for_propagations`, over the atoms sharing a bound variable | `smt/check_sat.cpp` |
 | Section 4.2 -- deriving *new* bounds from equations plus bounds (the slides' `x = y - z`, `y <= 2`, `z >= 3` gives `x <= -1`, explained by `y <= 2, z >= 3`) | `compute_implied_bound` / `compute_implied_child_bound`, **opt-in and off by default** -- `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | `smt/check_sat.cpp` |
@@ -109,47 +109,37 @@ before it, so Section 4.2 propagation is unaffected. See
   non-Bland prefix followed by a Bland suffix is still covered by the paper's
   own argument. The threshold (`4 * vars_.size() + 64`) is a heuristic, not a
   derived bound. `--lra-pivoting-rule bland` restores the paper's choice.
-- **Backtracking restores far more than the paper's does, and this is the
-  one deviation that looks like a mistake rather than a choice.** TR Section
-  3.2.4 is explicit: "We just need to save the value of `u_i` (`l_i`) on a
+- **Backtracking now follows the paper** (2026-07-31, commit `ec6244e`).
+  TR Section 3.2.4: "We just need to save the value of `u_i` (`l_i`) on a
   stack before it is updated... Backtracking does not require to save the
-  successive βs on a stack... **Since no pivoting or other expensive
-  operation is used, backtracking is very cheap.**" Primo instead trails and
-  undoes three things: bounds (`BoundTrailEntry`, matching the paper),
-  assignments (`AssignmentTrailEntry`) and every pivot's full row rewrite
-  (`PivotTrailEntry`, holding `old_basic_row` plus a snapshot of *every*
-  affected row).
+  successive betas on a stack... Since no pivoting or other expensive
+  operation is used, backtracking is very cheap." Primo used to trail and
+  undo bounds, assignments *and* every pivot's row rewrite, justified by an
+  argument that was circular -- reverting the assignments is what forced
+  reverting the pivots. It now trails bounds only. The soundness argument
+  lives on `LraTableau`'s class comment.
 
-  *The justification previously recorded here was circular.* It said pivots
-  must be undone because leaving a rewrite in place "while reverting the
-  bounds and assignments it was performed under" would break the row
-  equations -- but reverting the assignments is exactly what the paper does
-  not do, and it is what forces the pivot undo. The two choices prop each
-  other up.
+  **`PivotingRule::Soi` keeps the old scheme.** Its objective row is a sum
+  over the *currently violated* rows, not a linear combination of `A`, so
+  neither half of the argument covers it.
 
-  *Why the paper's design is sound without either.* β satisfies `Ax = 0`,
-  and every tableau row is a linear combination of `A`'s rows, so β keeps
-  satisfying the row equations across any change of basis. Backtracking only
-  ever *relaxes* bounds, so invariant (3.2) -- every non-basic variable
-  within its bounds -- also survives untouched. Neither β nor the basis
-  needs restoring. Note the two designs are each internally consistent and
-  it is *mixing* them that breaks: restoring β but not the basis would leave
-  a variable that was basic at snapshot time (and so unconstrained by (3.2))
-  now non-basic and possibly outside its bounds.
+  *Result, jobs 118043-118046:* on the 595-file scrambled competition set at
+  60s, **378 -> 399 solved** and PAR2 28691 -> 26661; on the 237-file
+  stratified sample, 192 -> 197. Zero disagreements, zero wrong answers.
+  The mechanism is that not undoing pivots lets the search keep the repair
+  work it already paid for: pivot counts fall 2.3-5.3x on the profiled
+  instances, and `rebuild_occurs_in_index` leaves the profile entirely
+  because nothing structural changes on a pop.
 
-  *What it costs us.* `PivotTrailEntry` snapshots 55-359 rows per pivot on
-  the mid-band gap instances, and `pop()` then rebuilds `occurs_in_` -- the
-  2026-07-31 profile put that rebuild alone at 8% of runtime over 138M
-  scattered pushes, and item H8 spent its effort making one of the two row
-  copies a move rather than removing the snapshot.
+  *It is not a free win, unlike item H8.* Churn is two-directional
+  (+32/-11 here, +7/-2 on the stratified sample), and among the 145
+  commonly-solved files over a second, **62 are more than 10% slower and 64
+  more than 10% faster** -- median 1.01x, p25 0.63, p75 1.30, tails from
+  0.10x to 24.9x. It nets +21 because the wins land on instances near the
+  timeout. That variance is inherent rather than a defect: keeping the basis
+  across a backtrack keeps one that suited the *previous* subproblem, which
+  is sometimes a warm start and sometimes worse than starting fresh.
 
-  *Before acting on this*, three things need their own argument, none of
-  which the paper covers: SOI maintains an explicit objective row that *is*
-  basis-dependent; H7 pivots from inside `assert_upper`/`assert_lower`; and
-  the single β the paper does keep ("the one corresponding to the last
-  successful `Check`") exists for reporting a model, which Primo does not do.
-  **Unverified as a win** -- this is a reading of the paper plus an argument,
-  not a measurement.
 - **Real equality is lowered, not handled in the tableau.** `t1 = t2` becomes
   `(t1 <= t2) AND (t2 <= t1)` -- sound because Real is a total order -- so
   `NOT(t1 = t2)` reduces to ordinary Boolean structure that

@@ -12490,6 +12490,39 @@
       },
       "docs": "docs/papers/fast-linear-arithmetic-dpllt.md, the 'Not implemented' entry for presimplification.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-lra-paper-backtracking",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "benchmark",
+      "scope": "Adopt the paper's own backtracking scheme (TR SRI-CSL-06-01 Section 3.2.4): trail only bounds, never the assignment or the basis. Found by re-reading the technical report line by line against the code.",
+      "commit": "ec6244e",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at 94f5c60 against a worktree built at 8621237",
+        "notes": "Run from a NEW remote tree ~/primo-qflra, provisioned specifically so QF_LRA work stops sharing primo-cadical-profile with the Nelson-Oppen stream. The sync succeeded while a Nelson-Oppen job was still running, which is the workdir-aware guard behaving correctly."
+      },
+      "command": {
+        "fuzz_default": "campaign-tier QF_LRA fuzz, job 118043 (6 shards x 500)",
+        "fuzz_soi": "merge-tier on the SOI path, job 118044 (4 x 500) -- SOI keeps the old trail scheme and so needs its own gate",
+        "scrambled595": "job 118045, base vs bt, 60s, 20 shards",
+        "stratified": "job 118046, base vs bt, 60s, 20 shards"
+      },
+      "summary": {
+        "headline": "595-file scrambled competition set at 60s: 378 -> 399 solved (+21), PAR2 28691 -> 26661 (-7%). Stratified 237: 192 -> 197, PAR2 6069 -> 5575. Zero cross-configuration disagreements and zero wrong answers on both.",
+        "mechanism": "Not undoing pivots means the search keeps the repair work it already paid for. Pivot counts drop 2.3-5.3x on the profiled instances (scrambled228965 11,647 -> 3,460; scrambled339450 3,706 -> 1,629; scrambled365036 122,026 -> 22,926), and gprof shows rebuild_occurs_in_index gone from the profile entirely since nothing structural changes on a pop.",
+        "THIS IS NOT A FREE WIN": "Unlike item H8, the churn is two-directional: +32/-11 on the 595 set and +7/-2 on the stratified sample. Among the 145 commonly-solved files taking more than a second, 62 are >10% SLOWER and 64 are >10% faster -- median paired speedup is 1.01x with p25 0.63 and p75 1.30. The tails are large in both directions (max 24.9x, min 0.10x; worst case scrambled31749 at 2.5s -> 24.0s). It nets +21 because the wins land on instances near the timeout while most of the losses do not.",
+        "regression_shape": "10 of the 11 lost files were already taking 24-60s against a 60s budget, so they were marginal before. The 32 gained files solve at a median of 27.9s.",
+        "why_the_variance": "Inherent to the design rather than a defect: keeping the basis across a backtrack keeps a basis that was good for the *previous* subproblem. Sometimes that is a warm start, sometimes it is a worse starting point than the initial all-slack basis would have been.",
+        "bearing_on_d2": "This is the first direct evidence on our own solver that the starting basis matters enormously -- 10x in either direction on the same instance, from nothing but which basis the search happens to inherit. That is the premise D2 (floating-point-guided basis selection) rests on, and it had not previously been measured here.",
+        "soi_excluded": "PivotingRule::Soi keeps the old scheme: its objective row is a sum over the currently violated rows, not a linear combination of A, so neither half of the soundness argument covers it.",
+        "correctness": "Campaign-tier fuzz on the default path: 3000 fuzzsmt QF_LRA cases, 6/6 shard summaries, 2975 PASS / 25 TIMEOUT, 0 wrong. SOI merge tier: 2000 cases, 4/4, 1848 PASS / 152 TIMEOUT, 0 wrong (SOI's timeout rate is 7.6% against the default path's 0.8%, in line with the 5.7% it showed on job 117842, so unchanged by this work). Locally: make check and make asan-test both 12/12, 70 ASAN runs across 5 configurations with 0 reports and 0 answer differences against the pre-change binary, 300 ASAN fuzz cases and 300 SOI fuzz cases against z3 with 0 wrong.",
+        "gate_gap": "The mutation tier (opfuzz + yinyang) initially failed in the new tree because .venv-yinyang is host-provisioned per tree and had not been created there. Provisioned and re-submitted as job 118144."
+      },
+      "docs": "docs/papers/fast-linear-arithmetic-dpllt.md's deviations section; LraTableau's class comment carries the soundness argument.",
+      "evidence_status": "current"
     }
   ]
 }
