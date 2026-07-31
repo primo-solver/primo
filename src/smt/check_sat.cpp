@@ -6998,6 +6998,8 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.euf-care-pruned-pairs", 0);
   statistics.set(":no.interface.lra-prepared-reused", 0);
   statistics.set(":no.interface.lra-prepared-augmented", 0);
+  statistics.set(":no.interface.lra-online-enabled", 0);
+  statistics.set(":no.interface.lra-online-final-checks", 0);
   statistics.set(":no.interface.lra-conflict-lits", 0);
   statistics.set(":no.interface.lra-conflict-duplicates", 0);
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
@@ -7026,6 +7028,20 @@ CheckSatOutcome solve_qf_uf_lra(
       terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
       options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
   publish_lra_tableau_shape_stats(base_prepared_lra_theory.base_tableau, statistics);
+#if PRIMO_HAVE_IPASIR
+  std::optional<OnlineLraPropagator> online_lra_propagator;
+  if (!lra_atoms.empty() && !options.nelson_oppen_model_equality_branching) {
+    online_lra_propagator.emplace(
+        base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
+        options.lra_bidirectional_row_propagation, options.lra_theory_decisions, statistics);
+    backend.connect_external_propagator(&online_lra_propagator.value());
+    for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      backend.add_observed_var(var);
+    }
+    statistics.set(":no.interface.lra-online-enabled", 1);
+  }
+#endif
 
   while (true) {
     statistics.increment(kStatSatSolveCalls);
@@ -7123,19 +7139,29 @@ CheckSatOutcome solve_qf_uf_lra(
     std::vector<AssignedTheoryAtom> lra_assignments_for_check = lra_assignments;
     append_true_interface_equalities(true_interface_equalities, lra_atoms_for_check,
                                      lra_assignments_for_check);
-    const PreparedLraTheory* prepared_lra_theory_for_check = &base_prepared_lra_theory;
-    std::optional<PreparedLraTheory> augmented_prepared_lra_theory;
-    if (true_interface_equalities.empty()) {
+    std::optional<sat::Clause> lra_conflict;
+#if PRIMO_HAVE_IPASIR
+    if (true_interface_equalities.empty() && online_lra_propagator.has_value()) {
       statistics.increment(":no.interface.lra-prepared-reused");
-    } else {
-      augmented_prepared_lra_theory.emplace(
-          terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-          options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
-      prepared_lra_theory_for_check = &augmented_prepared_lra_theory.value();
-      statistics.increment(":no.interface.lra-prepared-augmented");
+      statistics.increment(":no.interface.lra-online-final-checks");
+      lra_conflict = online_lra_propagator->conflict();
+    } else
+#endif
+    {
+      const PreparedLraTheory* prepared_lra_theory_for_check = &base_prepared_lra_theory;
+      std::optional<PreparedLraTheory> augmented_prepared_lra_theory;
+      if (true_interface_equalities.empty()) {
+        statistics.increment(":no.interface.lra-prepared-reused");
+      } else {
+        augmented_prepared_lra_theory.emplace(
+            terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+            options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+        prepared_lra_theory_for_check = &augmented_prepared_lra_theory.value();
+        statistics.increment(":no.interface.lra-prepared-augmented");
+      }
+      lra_conflict = find_incremental_lra_theory_conflict(*prepared_lra_theory_for_check,
+                                                          lra_assignments_for_check);
     }
-    std::optional<sat::Clause> lra_conflict = find_incremental_lra_theory_conflict(
-        *prepared_lra_theory_for_check, lra_assignments_for_check);
     if (lra_conflict.has_value()) {
       statistics.increment(kStatLraTheoryConflicts);
       statistics.increment(":no.interface.lra-conflict-lits", lra_conflict->size());

@@ -398,17 +398,25 @@ treating one theory's atoms as Boolean noise.
   guarded clause from the current theory assignment to the corresponding
   generated equality literal, and the next SAT iteration lets the receiving
   theory produce any ordinary conflict with that equality literal in its reason.
-- **Reasoning loop:** after each `sat` result from CaDiCaL, rebuild/check the
-  EUF assignment and the LRA assignment. EUF is augmented by currently true and
-  false generated interface equalities; LRA is augmented by true generated
-  equalities only. Add the first per-theory conflict clause found and continue.
-  If both individual checks pass, learn guarded propagation clauses for any
-  newly implied generated interface equality and continue. Before returning a
-  non-model `sat`, validate that the final EUF arrangement over Real argument
-  constants can be separated consistently by the LRA side using the same bounded
-  strict-order search used for model reconstruction. Return `sat` only when both
-  theory checks accept the same Boolean assignment, neither theory contributes a
-  new shared equality clause, and this final arrangement validation succeeds.
+- **Reasoning loop:** in the default path, the original LRA atoms are also
+  attached to CaDiCaL through Primo's existing trail-synced online LRA
+  propagator, based on Dutertre and de Moura's simplex-style DPLL(T)
+  propagation machinery documented in `docs/arithmetic.md`. This is not a new
+  Nelson-Oppen algorithm: it only avoids repeatedly rediscovering base LRA
+  conflicts after complete SAT assignments. After each `sat` result from
+  CaDiCaL, the coordinator rebuilds/checks the EUF assignment and then either
+  reuses the callback-owned base LRA result or rebuilds/checks an augmented LRA
+  theory when true generated interface equalities must be included. EUF is
+  augmented by currently true and false generated interface equalities; LRA is
+  augmented by true generated equalities only. Add the first per-theory conflict
+  clause found and continue. If both individual checks pass, learn guarded
+  propagation clauses for any newly implied generated interface equality and
+  continue. Before returning a non-model `sat`, validate that the final EUF
+  arrangement over Real argument constants can be separated consistently by the
+  LRA side using the same bounded strict-order search used for model
+  reconstruction. Return `sat` only when both theory checks accept the same
+  Boolean assignment, neither theory contributes a new shared equality clause,
+  and this final arrangement validation succeeds.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
   model and scans the full same-sort shared Real pair set for pairs whose

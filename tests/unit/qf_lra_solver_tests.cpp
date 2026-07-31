@@ -200,15 +200,22 @@ void qf_uf_lra_mix_learns_lra_conflicts() {
     (declare-fun a () U)
     (declare-fun b () U)
     (declare-fun x () Real)
+    (declare-fun y () Real)
     (assert (= a b))
-    (assert (< x 0))
-    (assert (< 1 x))
+    (assert (or (<= (+ x y) 0) (<= (+ x (* 2 y)) 0)))
+    (assert (<= 3 x))
+    (assert (<= 3 y))
     (check-sat)
   )",
                                        no_preprocessing());
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":solver.qf-uflra") == 1);
+#if PRIMO_HAVE_IPASIR
+  assert(result.statistics.get(":no.interface.lra-online-enabled") == 1);
+  assert(result.statistics.get(StatKey::LraOnlineCheckCalls) > 0);
+#else
   assert(result.statistics.get(StatKey::LraTheoryConflicts) > 0);
+#endif
 }
 
 void qf_uf_lra_prints_separable_mixed_model() {
@@ -555,15 +562,17 @@ void qf_uf_lra_guards_interface_equality_propagation_by_assignment() {
     (declare-fun p (Real) Bool)
     (declare-fun choose_separate () Bool)
     (assert (or choose_separate (and (<= x y) (<= y x))))
+    (assert choose_separate)
     (assert (p x))
     (assert (not (p y)))
     (check-sat)
-  )");
+  )",
+                                       no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":solver.qf-uflra") == 1);
-  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
-  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
-  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
 }
 
 void qf_uf_lra_does_not_share_unentailed_lra_equalities() {

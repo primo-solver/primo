@@ -376,9 +376,14 @@ in that model.
 the base prepared LRA theory because no SAT-visible interface equality is true
 in the current assignment. `:no.interface.lra-prepared-augmented` counts checks
 that rebuild an augmented prepared LRA theory to include true generated
-interface equality atoms. Mixed QF_UFLRA still does not use the pure-QF_LRA
-trail-synced online propagator; these counters measure the narrower base-theory
-reuse path.
+interface equality atoms. `:no.interface.lra-online-enabled` records whether the
+default mixed coordinator attached the pure-QF_LRA trail-synced online
+propagator for original arithmetic atoms, and
+`:no.interface.lra-online-final-checks` counts final SAT assignments whose base
+LRA consistency result came from that callback-owned state. This online path is
+disabled for the experimental `--model-equality-branching` mode; when generated
+interface equalities are true, the coordinator still rebuilds the augmented LRA
+theory and performs an ordinary final check.
 `:no.interface.arrangement-checks` counts non-model `sat` results where the
 coordinator validated that the EUF arrangement over Real arguments can be
 separated consistently by LRA, with failures and accepted strict separations

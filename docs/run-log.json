@@ -14785,6 +14785,85 @@
       },
       "interpretation": "Skipping unused care diagnostics is a correct default-path hygiene fix and removes an accidental quadratic diagnostic scan from default mixed solving, but it does not solve the CPAchecker induction timeout. The remaining local evidence points to the lazy mixed QF_UFLRA loop learning many short, distinct LRA conflict clauses one by one. Existing pure-QF_LRA online options do not affect this mixed path, so the next implementation target should be integrating useful LRA propagation or decisions into QF_UFLRA rather than tuning care-pair diagnostics.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-uflra-mixed-online-lra-local",
+      "date": "2026-07-31",
+      "kind": "implementation-validation-and-local-diagnostic",
+      "scope": "Default mixed QF_UFLRA now attaches the existing trail-synced online LRA propagator for original arithmetic atoms. Generated interface equalities still use the augmented final-check path, and the experimental model-equality branching mode keeps the previous final-check-only LRA path.",
+      "commit": "pre-commit working tree based on d0a4b56 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "local Release build of ./build/primo; CaDiCaL from contrib/local",
+        "reference": "Z3 through scripts/qf_uflra_smoke_fuzz.py"
+      },
+      "commands": {
+        "focused_tests": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
+        "project_check": "make check",
+        "docs": "make docs",
+        "lint": "make lint",
+        "asan": "make asan-test",
+        "tidy": "make tidy",
+        "answer_fuzz": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260760 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-mixed-online-lra-answer-1000",
+        "focused_cpa_probes": "timeout 20s ./build/primo --quiet --stats <cpachecker-induction-newtonkbd>; timeout 20s ./build/primo --quiet --stats <cpachecker-induction-magellan>; short local option matrix over row propagation, bidirectional row propagation, theory decisions, and SOI pivoting"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "fuzz_generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "fuzz_count": 1000,
+        "fuzz_seed": 20260760,
+        "fuzz_timeout_seconds": 5,
+        "focused_instances": [
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--input--keyboard--newtonkbd.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--input--joystick--magellan.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--edac--mce_amd_inj.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2"
+        ]
+      },
+      "artifacts": {
+        "answer_fuzz_summary": "fuzz-results/qf_uflra-mixed-online-lra-answer-1000/summary.csv",
+        "evidence_status": "local_ignored_outputs"
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_sat": 701,
+        "answer_fuzz_unsat": 299,
+        "answer_fuzz_wrong_answer": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "local_newtonkbd_20s_timeout": {
+          "sat_solve_calls": 1,
+          "sat_conflicts": 0,
+          "sat_decisions": 1112,
+          "sat_propagations": 3419,
+          "lra_online_check_calls": 750,
+          "lra_theory_propagations": 804,
+          "lra_theory_checks": 1,
+          "lra_conflicts": 0,
+          "lra_online_enabled": 1,
+          "lra_online_final_checks": 1
+        },
+        "local_magellan_20s_timeout": {
+          "sat_solve_calls": 1,
+          "sat_conflicts": 1,
+          "sat_decisions": 781,
+          "sat_propagations": 3654,
+          "lra_online_check_calls": 550,
+          "lra_theory_propagations": 630,
+          "lra_theory_checks": 1,
+          "lra_conflicts": 0,
+          "lra_online_enabled": 1,
+          "lra_online_final_checks": 1
+        },
+        "local_edac_guard": "sat in under 1s with one SAT solve call, 85 LRA online checks, and 90 LRA theory propagations",
+        "local_option_probe": {
+          "newtonkbd": "row propagation and theory decisions still timed out under the short cap; bidirectional row propagation reduced decisions/checks in the capped run but did not solve",
+          "magellan": "row propagation was mostly inert; theory decisions increased decisions/checks under the short cap; no option solved under the cap"
+        }
+      },
+      "interpretation": "The accepted local change removes the repeated outer lazy LRA-conflict loop from the default mixed path on the focused CPAchecker induction rows: both representative timeout rows now have one SAT solve call and hundreds of callback-owned LRA checks/propagations instead of hundreds of final-check conflicts. This is real solver work, but it is not enough by itself to solve the two large local rows at 20 seconds. Row propagation and theory decisions are not yet justified as defaults for this family. The next performance step should use SLURM family results to decide whether the online mixed path improves solved/PAR2 broadly, then profile the remaining single-SAT-call timeouts.",
+      "evidence_status": "current"
     }
   ]
 }
