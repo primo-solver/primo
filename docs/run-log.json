@@ -14629,6 +14629,103 @@
         "performance_boundary": "The focused timing evidence is local only. A SLURM rerun of benchmarks/qf_uflra-smtlib-sample-5-per-family.txt is required before citing a cluster-backed benchmark improvement."
       },
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-uflra-model-separation-fastpath-slurm-sample",
+      "date": "2026-07-31",
+      "kind": "slurm-benchmark",
+      "scope": "Cluster-backed rerun of the deterministic 20-file QF_UFLRA SMT-LIB sample after adding the shared-Real model-separation fast path and snapshot-based SLURM workspace preparation.",
+      "commit": "3d0c751",
+      "source_change_commit": "495c05d",
+      "environment": {
+        "type": "slurm",
+        "host": "<redacted-slurm-host>",
+        "job_id": "<redacted>",
+        "binary": "primo 0.1.0; git: 3d0c751; build: Release; cadical: cadical-3.0.0-7b99c07",
+        "reference": "z3 from the remote benchmark workspace"
+      },
+      "commands": {
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <redacted> --remote <redacted> --remote-dir <redacted> --target primo --jobs 2",
+        "pre_submit_check": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_sample_compare.sbatch; bash -n scripts/slurm_qf_uflra_sample_compare.sbatch; python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <redacted> --remote <redacted> --remote-dir <redacted> --target primo --check-only",
+        "slurm_submission": "PRIMO_WORKDIR=<remote-workdir> sbatch scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "render_html": "python3 scripts/render_benchmark_matrix_html.py --variant default=.../default.csv --variant first=.../first.csv --variant ranked=.../ranked.csv --variant adaptive=.../adaptive.csv --variant z3=.../z3.csv --out results/qf_uflra-smtlib-sample-5pf-slurm-3d0c751/compare.html --summary-json results/qf_uflra-smtlib-sample-5pf-slurm-3d0c751/compare-summary.json --timeout 10 --stat :time.parse-us --stat :time.preprocessing-us --stat :time.solve-us --stat :no.interface.model-separation-model-oriented",
+        "answer_compare": "python3 scripts/compare_solver_answers.py results/qf_uflra-smtlib-sample-5pf-slurm-3d0c751 --timeout 10"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "files": 20,
+        "timeout_seconds": 10,
+        "variants": [
+          "default=build-slurm-rel/primo --quiet --stats",
+          "first=build-slurm-rel/primo --quiet --stats --model-equality-branching",
+          "ranked=build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked",
+          "adaptive=build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy adaptive",
+          "z3=contrib/local/bin/z3"
+        ]
+      },
+      "artifacts": {
+        "local_directory": "results/qf_uflra-smtlib-sample-5pf-slurm-3d0c751/",
+        "html": "results/qf_uflra-smtlib-sample-5pf-slurm-3d0c751/compare.html",
+        "summary_json": "results/qf_uflra-smtlib-sample-5pf-slurm-3d0c751/compare-summary.json",
+        "evidence_status": "local_ignored_outputs"
+      },
+      "summary": {
+        "answer_disagreements": 0,
+        "default": {
+          "solved": 16,
+          "timeouts": 4,
+          "wrong": 0,
+          "par2": 85.265144,
+          "seconds": 45.323061,
+          "model_oriented_separations_total": 2161,
+          "model_oriented_separation_files": 8
+        },
+        "first": {
+          "solved": 16,
+          "timeouts": 4,
+          "wrong": 0,
+          "par2": 101.807512,
+          "model_oriented_separations_total": 2161
+        },
+        "ranked": {
+          "solved": 16,
+          "timeouts": 4,
+          "wrong": 0,
+          "par2": 101.889865,
+          "model_oriented_separations_total": 2161
+        },
+        "adaptive": {
+          "solved": 16,
+          "timeouts": 4,
+          "wrong": 0,
+          "par2": 101.877653,
+          "model_oriented_separations_total": 2161
+        },
+        "z3": {
+          "solved": 20,
+          "timeouts": 0,
+          "wrong": 0,
+          "par2": 3.905961
+        },
+        "previous_slurm_default_at_ed2aae1": {
+          "solved": 15,
+          "timeouts": 5,
+          "par2": 122.980205
+        },
+        "status_changes_vs_previous_default": [
+          {
+            "file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_13.smt2",
+            "previous": "timeout",
+            "current": "sat",
+            "current_seconds": 0.593189,
+            "model_oriented_separations": 349,
+            "model_separation_candidates": 378
+          }
+        ]
+      },
+      "interpretation": "The fast path is active on the intended mixed files and improves the default sample result from 15/20 to 16/20 solved at 10 seconds with no cross-solver answer disagreements. The model-equality branching variants now also solve 16/20 but remain slower than default on this sample, so they should stay default-off.",
+      "evidence_status": "current"
     }
   ]
 }
