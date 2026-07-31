@@ -241,11 +241,13 @@ Implemented now:
   separation check is also run before returning a non-model QF_UFLRA `sat`
   result, so the reported assignment has at least a checked Real-argument
   arrangement for the documented purification subset.
-  The mixed coordinator also reports EUF care-pair counters for shared Real
-  arguments under flat EUF function prefixes that are equal in the current EUF
-  closure. Equality propagation and final arrangement validation still use the
-  full shared Real pair set. The default `first` model-equality branch policy
-  also uses the full pair order; the opt-in `ranked` and `adaptive` policies use
+  When default-off model-equality branching is enabled, the mixed coordinator
+  also computes EUF care-pair counters for shared Real arguments under flat EUF
+  function prefixes that are equal in the current EUF closure. Default solving
+  skips this scan because there is no active consumer for the care-pair ranking.
+  Equality propagation and final arrangement validation still use the full
+  shared Real pair set. The default `first` model-equality branch policy also
+  uses the full pair order; the opt-in `ranked` and `adaptive` policies use
   care-pair diagnostics only to rank guesses, with full-pair fallback.
   Mixed QF_UFLRA LRA checks reuse the prepared base LRA theory while no
   generated interface equality is active, and rebuild an augmented prepared

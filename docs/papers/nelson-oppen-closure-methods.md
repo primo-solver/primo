@@ -485,12 +485,13 @@ Limitations:
   prefixes are equal in the current EUF closure, which covers curried non-unary
   applications after earlier argument equalities have been asserted. It does
   not filter LRA-to-EUF equality propagation, final arrangement validation, or
-  model reconstruction. It is used by the `ranked` and `adaptive`
-  model-equality branch policies only as an ordering hint with full-pair
-  fallback. It does not add clauses and is not an implementation of the
-  Jovanovic-Barrett care-set algorithms. The current scan is quadratic in the
-  number of shared-argument flat definitions, which is intentionally simple and
-  remains behind default-off model-equality branching for active consumers;
+  model reconstruction, and default solving skips the scan when no
+  model-equality branch consumer is enabled. It is used by the `ranked` and
+  `adaptive` model-equality branch policies only as an ordering hint with
+  full-pair fallback. It does not add clauses and is not an implementation of
+  the Jovanovic-Barrett care-set algorithms. The current scan is quadratic in
+  the number of shared-argument flat definitions, which is intentionally simple
+  and remains behind default-off model-equality branching for active consumers;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;

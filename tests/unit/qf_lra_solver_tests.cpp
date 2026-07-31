@@ -583,8 +583,8 @@ void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
   assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
-  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 1);
-  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 0);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
   assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 0);
 }
 
@@ -743,6 +743,8 @@ void qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses() {
 }
 
 void qf_uf_lra_reports_euf_care_pair_diagnostics() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -758,7 +760,7 @@ void qf_uf_lra_reports_euf_care_pair_diagnostics() {
     (assert (q z))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 3);
   assert(result.statistics.get(":no.interface.euf-care-checks") >= 1);
@@ -768,6 +770,8 @@ void qf_uf_lra_reports_euf_care_pair_diagnostics() {
 }
 
 void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -783,7 +787,7 @@ void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
     (assert (not (q y w)))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 4);
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 6);
@@ -810,9 +814,9 @@ void qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation() {
                                        no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
-  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 1);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 0);
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
-  assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 1);
+  assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 0);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
 }

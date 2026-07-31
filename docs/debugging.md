@@ -328,6 +328,8 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.euf-care-pruned-pairs`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
+- `:no.interface.lra-conflict-lits`
+- `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-separations`
 - `:no.interface.model-separation-candidates`
 - `:no.interface.model-separation-search-capped`
@@ -348,15 +350,17 @@ mixed models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
-The EUF care counters compare the full shared-Real cross product with pairs that
-occur as arguments under flat EUF function prefixes equal in the current EUF
-closure. LRA-to-EUF equality propagation, EUF-to-LRA equality propagation, model
-reconstruction, and final arrangement validation use the full shared Real pair
-set. The default `--model-equality-branch-policy=first` path also uses the full
-pair order and reports the full pair count through
-`:no.interface.model-equality-care-pairs` for continuity. The `ranked` and
-`adaptive` policies use care-pair diagnostics only as a ranking signal; they
-fall back to the full pair set instead of pruning the search.
+When default-off `--model-equality-branching` is enabled, the EUF care counters
+compare the full shared-Real cross product with pairs that occur as arguments
+under flat EUF function prefixes equal in the current EUF closure. Default
+solving leaves these counters at zero because LRA-to-EUF equality propagation,
+EUF-to-LRA equality propagation, model reconstruction, and final arrangement
+validation use the full shared Real pair set. The default
+`--model-equality-branch-policy=first` path also uses the full pair order and
+reports the full pair count through `:no.interface.model-equality-care-pairs`
+for continuity. The `ranked` and `adaptive` policies use care-pair diagnostics
+only as a ranking signal; they fall back to the full pair set instead of pruning
+the search.
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use

@@ -6957,6 +6957,7 @@ CheckSatOutcome solve_qf_uf_lra(
   no_manager.rebuild_from_interface_terms(shared_real_terms);
   std::optional<sat::Lit> pending_model_equality_branch;
   ModelEqualityBranchState model_equality_branch_state;
+  std::unordered_set<std::string> seen_lra_conflict_clauses;
 
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
@@ -6997,6 +6998,8 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.euf-care-pruned-pairs", 0);
   statistics.set(":no.interface.lra-prepared-reused", 0);
   statistics.set(":no.interface.lra-prepared-augmented", 0);
+  statistics.set(":no.interface.lra-conflict-lits", 0);
+  statistics.set(":no.interface.lra-conflict-duplicates", 0);
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
@@ -7084,9 +7087,11 @@ CheckSatOutcome solve_qf_uf_lra(
                                    options.euf_proof_forest_diagnostics);
       euf_check = check_incremental_euf_closure(prepared_flat_theory.value(),
                                                 euf_assignments_for_check, statistics);
-      euf_care = euf_care_pair_diagnostics(prepared_flat_theory.value(), euf_check->closure,
-                                           shared_real_terms);
-      publish_euf_care_pair_diagnostics(euf_care, statistics);
+      if (options.nelson_oppen_model_equality_branching) {
+        euf_care = euf_care_pair_diagnostics(prepared_flat_theory.value(), euf_check->closure,
+                                             shared_real_terms);
+        publish_euf_care_pair_diagnostics(euf_care, statistics);
+      }
       euf_conflict = euf_check->conflict;
     }
     if (euf_conflict.has_value()) {
@@ -7133,6 +7138,21 @@ CheckSatOutcome solve_qf_uf_lra(
         *prepared_lra_theory_for_check, lra_assignments_for_check);
     if (lra_conflict.has_value()) {
       statistics.increment(kStatLraTheoryConflicts);
+      statistics.increment(":no.interface.lra-conflict-lits", lra_conflict->size());
+      std::vector<int> conflict_key_lits;
+      conflict_key_lits.reserve(lra_conflict->size());
+      for (const sat::Lit lit : lra_conflict.value()) {
+        conflict_key_lits.push_back(lit.value);
+      }
+      std::sort(conflict_key_lits.begin(), conflict_key_lits.end());
+      std::string conflict_key;
+      for (const int lit : conflict_key_lits) {
+        conflict_key += std::to_string(lit);
+        conflict_key.push_back(',');
+      }
+      if (!seen_lra_conflict_clauses.insert(std::move(conflict_key)).second) {
+        statistics.increment(":no.interface.lra-conflict-duplicates");
+      }
       record_interface_conflict(lra_conflict, no_manager, ":no.interface.lra-conflicts",
                                 statistics);
       if (active_model_equality_branch.has_value()) {
