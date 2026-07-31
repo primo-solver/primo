@@ -188,14 +188,30 @@ it has one outside this paper, is in [](lra-related-work.md).
   significantly" and call the resulting speedup substantial. Primo does not
   do this. Note what it is *not*: `--gaussian-elimination` here solves
   asserted linear **equality systems** feeding solve-eqs, a different pass.
-  - *Probably already covered in effect, which is why it is not a lead.*
-    Item H1a removed the trivial `s = c*x` slack rows that were 36-95% of
-    the tableau on the lagging families, and the 2026-07-29 measurement has
-    Primo's prepared tableau dimensions matching z3's within ~5% on every
-    profiled gap instance. A pass that shrinks the matrix cannot be worth
-    much when the matrix is already the same size as the reference's. Worth
-    an hour to confirm by counting variables absent from all atoms before
-    anyone spends longer.
+  - **Measured 2026-07-31, and it is not a lead.** Throwaway instrumentation
+    (added, measured, reverted) counted prepared-tableau variables bounded by
+    no atom -- exactly the paper's criterion:
+
+    | instance | variables | free (in no atom) | share | rows holding >=1 free var |
+    |---|---|---|---|---|
+    | `scrambled339450` | 57,658 | 2,503 | 4.3% | 43,140 |
+    | `scrambled312090` | 26,041 | 119 | 0.46% | 17,812 |
+    | `scrambled228965` | 5,694 | 28 | 0.5% | 2,999 |
+
+    So the pass would remove **0.5-4.3%** of variables. Worse, those few are
+    spread across nearly every row -- 91% of rows on `scrambled339450` hold
+    at least one -- and the elimination is *Gaussian*, so substituting them
+    out rewrites those rows and generates fill-in. That is the mechanism
+    section 6.2 identifies as the bottleneck in the first place. A pass that
+    shrinks the matrix by 4% while densifying 91% of its rows is not a
+    trade this band can afford.
+  - Sanity check on the measurement: every free variable found was
+    *non-basic* (basic count zero on all three). That is the expected shape
+    -- a slack exists only because some polynomial had an atom, so slacks are
+    always bounded, and the free variables are exactly the structural ones
+    that never received a direct bound.
+  - The earlier inference from H1a and the ~5% dimension match against z3
+    pointed the same way; this replaces it with a direct count.
   - The paper's name for a variable with no bounds at all is a **free
     variable** (`l_j = -inf`, `u_j = +inf`); that predicate exists here as
     `LraTableau::is_unbounded`, used for H7's entering-candidate preference.

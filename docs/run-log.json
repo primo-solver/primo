@@ -12460,6 +12460,36 @@
       "docs": "Referenced from docs/arithmetic.md's H8 entry.",
       "evidence_status": "current",
       "followups": "Task 16 stands, but should be rescoped: the blocker is the *remote* toolchain (head node lacks libasan, compute nodes lack C++ headers), and local ASAN is a working substitute for anything below campaign tier."
+    },
+    {
+      "id": "2026-07-31-presimplification-census",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "profiling",
+      "scope": "Settle TR Section 3.1 presimplification -- the one technique from the base paper Primo does not implement -- by counting how much of the tableau it would actually remove, rather than continuing to infer it from H1a and the z3 dimension match.",
+      "commit": "8621237",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build/primo with throwaway instrumentation in solve_qf_lra, next to publish_lra_tableau_shape_stats; measured, reverted, not committed",
+        "notes": "Counts are structural properties of the prepared tableau, so no timing is involved and workstation load is irrelevant."
+      },
+      "command": {
+        "census": "count prepared-tableau variables that are the bound_var of no arithmetic PreparedAtom (the paper's 'does not occur in any elementary atom'), split by basic/non-basic, plus the number of rows holding at least one such variable"
+      },
+      "benchmark": {
+        "suite": "scrambled339450, scrambled312090, scrambled228965 from benchmarks/qf-lra-scrambled-midband-gap.txt",
+        "logic": "QF_LRA"
+      },
+      "summary": {
+        "result": "Free variables are 0.5-4.3% of the tableau: scrambled339450 2,503 of 57,658 (4.3%), scrambled312090 119 of 26,041 (0.46%), scrambled228965 28 of 5,694 (0.5%).",
+        "why_it_is_worse_than_the_share_suggests": "Those few variables are spread across nearly every row -- 43,140 of the rows on scrambled339450 (91%), 17,812 on scrambled312090, 2,999 on scrambled228965 hold at least one. The elimination is Gaussian, so substituting them out rewrites all those rows and generates fill-in, which section 6.2 identifies as the bottleneck. Shrinking the matrix by 4% while densifying 91% of its rows is not a trade this band can afford.",
+        "sanity_check": "Every free variable found was non-basic (basic count zero on all three instances), which is the expected shape: a slack exists only because some polynomial carried an atom, so slacks always have bounds, and the free variables are exactly the structural ones that never got a direct bound. A nonzero basic count would have meant the census was measuring the wrong thing.",
+        "supersedes_an_inference": "The prior reasoning -- H1a already removed the trivial slack rows, and prepared dimensions match z3's within ~5% -- pointed the same way but was an inference. This is a direct count.",
+        "conclusion": "TR Section 3.1 presimplification stays unimplemented, now on measured rather than inferred grounds. With it closed, no technique from the base paper remains unimplemented for QF_LRA."
+      },
+      "docs": "docs/papers/fast-linear-arithmetic-dpllt.md, the 'Not implemented' entry for presimplification.",
+      "evidence_status": "current"
     }
   ]
 }
