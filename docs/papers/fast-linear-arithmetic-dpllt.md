@@ -119,6 +119,14 @@ before it, so Section 4.2 propagation is unaffected. See
   reverting the pivots. It now trails bounds only. The soundness argument
   lives on `LraTableau`'s class comment.
 
+  *Why the report is so emphatic about this.* TR Sections 2.2-2.3 are an
+  argument against the incremental-Simplex solvers that preceded it --
+  including SRI's own ICS and Simplics, via Rueß & Shankar (SRI-CSL-04-01,
+  reference [15]) -- whose backtracking removes rows and "otherwise, a
+  pivoting operation is applied first". Primo did not add and remove rows,
+  but undoing pivots put it in the same family for the same reason. See
+  [](lra-related-work.md).
+
   **`PivotingRule::Soi` keeps the old scheme.** Its objective row is a sum
   over the *currently violated* rows, not a linear combination of `A`, so
   neither half of the argument covers it.

@@ -303,6 +303,62 @@ problem whose bounds are all known. In DPLL(T) a variable becomes fixed
 coincide, and must be restored on backtracking. Paper not read in full; cited
 for the technique's provenance, not for a result.
 
+**Harald Rueß, Natarajan Shankar. "Solving linear arithmetic constraints."
+Technical Report SRI-CSL-04-01, SRI International, 2004.**
+*The design Dutertre & de Moura's General Form exists to replace, and the
+one Primo had independently re-invented until 2026-07-31.* Read for that
+reason: it is reference [15] of the technical report, cited three times and
+never as something to adopt.
+
+Where and why they cite it:
+
+1. **The incremental-Simplex family generally** (TR Section 2.2): "A common
+   approach is to use incremental forms of Simplex similar to the algorithms
+   described in [15,9,12,1]. Tools based on this approach include our own
+   tools, Yices and Simplics." So this is the lineage of SRI's *previous*
+   solvers -- ICS and Simplics -- superseded by the paper Primo implements.
+2. **Zero variables for explanations**: the tableau carries variables
+   implicitly equal to 0, used to generate conflict explanations.
+3. **The zero-detection procedure for disequalities**: on asserting
+   `t != 0`, the solver must check whether the current tableau implies
+   `t = 0`.
+
+**Why this matters to Primo.** TR Section 2.2 spells out what backtracking
+costs in that design: "Backtracking removes rows from the tableau... If
+`s_k` is a basic variable in the current state then the corresponding
+equation is removed from the tableau. **Otherwise, a pivoting operation is
+applied first** to make `s_k` basic." Section 2.3 then prices it:
+"Assertions and backtracking have a significant cost in solvers based on
+incremental Simplex algorithms... there is also significant overhead in the
+frequent additions and removals of rows, creations and deletions of slack
+variables, and the associated bookkeeping."
+
+Primo's backtracking did not *add and remove rows*, but it did undo pivots,
+which put it in the same family for the same reason -- and the measured cost
+matched the complaint. Moving to bounds-only backtracking (see
+[](fast-linear-arithmetic-dpllt.md)'s deviations) took the 595-file
+scrambled set from 378 to 399 solved. Reading this reference is what makes
+Section 3.2.4's emphasis legible: it is not incidental advice, it is the
+paper's headline claim against its own predecessors.
+
+Two further lessons the same section states, both of which Primo already
+satisfies, though neither was adopted from here:
+
+- "**Minimal explanations are critical.** Dramatic improvements were
+  observed when comparing Simplics and Yices, which generate minimal
+  explanations, and their predecessor ICS, which does not." Primo's
+  `build_conflict` produces the paper's minimal `Gamma` exactly.
+- Fewer slack variables are needed under the General Form, since one slack
+  covers a two-sided constraint where incremental Simplex needs two --
+  which is item H1b's shared slack per polynomial, arrived at independently.
+
+*Not read in full; cited for provenance and for the three citation contexts
+above, which were read in the technical report rather than in this paper.*
+**Primo does not implement zero-detection**: real equalities are lowered to
+two inequalities, so a disequality becomes ordinary Boolean structure and
+the case split falls to CDCL. That is a deliberate divergence from this
+line, recorded in [](fast-linear-arithmetic-dpllt.md).
+
 **General engineering (presolve, scaling, degeneracy, refactorization).**
 Robert Bixby, "Solving Real-World Linear Programs: A Decade and More of
 Progress" (Operations Research 50(1), 2002) — a implementor's-eye survey of
