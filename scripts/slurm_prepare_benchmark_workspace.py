@@ -113,23 +113,41 @@ ldd build-slurm-rel/{shlex.quote(target)} >/dev/null
 """.strip()
 
 
-def active_primo_jobs_command() -> str:
+def active_primo_jobs_command(workdir: str) -> str:
+    """Active jobs whose *actual* working directory is the tree about to be synced.
+
+    Matching on the job name (anything starting with "primo") was both too
+    broad and too weak: it blocked a QF_LRA sync because an unrelated
+    Nelson-Oppen job was queued, while never checking whether either job used
+    this directory at all. scontrol reports each job's WorkDir, which is the
+    condition that actually matters -- a sync is destructive exactly when a
+    running job is reading the tree being overwritten.
+    """
+    quoted = shlex.quote(workdir)
     return r"""
 set -eu
-if command -v squeue >/dev/null 2>&1; then
-  squeue -h -u "$USER" -o '%i %j %T' |
-    awk '$3 ~ /^(RUNNING|PENDING|CONFIGURING|COMPLETING)$/ && $2 ~ /^primo/ {print}'
-fi
-""".strip()
+command -v squeue >/dev/null 2>&1 || exit 0
+command -v scontrol >/dev/null 2>&1 || exit 0
+target=$(cd TARGET_DIR 2>/dev/null && pwd -P) || exit 0
+for id in $(squeue -h -u "$USER" -t RUNNING,PENDING,CONFIGURING,COMPLETING -o '%i'); do
+  wd=$(scontrol show job "$id" 2>/dev/null | tr ' ' '\n' | sed -n 's/^WorkDir=//p' | head -1)
+  [ -n "$wd" ] || continue
+  wd=$(cd "$wd" 2>/dev/null && pwd -P) || continue
+  case "$wd" in
+    "$target"|"$target"/*) echo "$id $wd" ;;
+  esac
+done
+""".replace("TARGET_DIR", quoted).strip()
 
 
-def ensure_no_active_primo_jobs(config: Path, remote: str) -> None:
-    proc = ssh(config, remote, active_primo_jobs_command())
+def ensure_no_active_primo_jobs(config: Path, remote: str, workdir: str) -> None:
+    proc = ssh(config, remote, active_primo_jobs_command(workdir))
     if proc.stdout.strip():
         raise SystemExit(
-            "refusing destructive SLURM workspace preparation while active "
-            "Primo jobs exist; use --allow-active-jobs only when the remote "
-            "workdir is not used by those jobs"
+            f"refusing destructive SLURM workspace preparation: the jobs above "
+            f"are running out of {workdir} and this sync would overwrite the "
+            f"tree underneath them. Run a different work stream from a "
+            f"different --remote-dir, or wait. --allow-active-jobs overrides."
         )
 
 
@@ -167,7 +185,7 @@ def main() -> int:
         raise SystemExit("refusing to prepare SLURM workspace from a dirty tree")
 
     if not args.check_only and not args.allow_active_jobs:
-        ensure_no_active_primo_jobs(args.ssh_config, args.remote)
+        ensure_no_active_primo_jobs(args.ssh_config, args.remote, args.remote_dir)
 
     if not args.check_only and not args.no_sync:
         ssh(args.ssh_config, args.remote, f"mkdir -p {shlex.quote(args.remote_dir)}")
