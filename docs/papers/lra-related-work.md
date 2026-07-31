@@ -113,6 +113,90 @@ Clean-room note: implemented from this paper's prose (plus Knuth TAOCP Vol. 2
 Sec. 4.5.1 for the rational arithmetic itself), not from any solver's source.
 https://arxiv.org/abs/0904.3525
 
+### Floating-point-guided exact simplex: the rest of the line
+
+Monniaux's CAV 2009 force-pivot is not a one-off, and the follow-up work is
+what should calibrate direction D2 in [](../qf-lra-heuristics.md) section 6.5.
+Surveyed 2026-07-31; the two papers marked *read* were read for this note, the
+rest are cited from their descriptions in those two.
+
+**Tim King, Clark Barrett, Cesare Tinelli. "Leveraging Linear and Mixed
+Integer Programming for SMT." FMCAD 2014, 139-146.** *(read)*
+<https://theory.stanford.edu/~barrett/pubs/KBT14.pdf>
+**The most relevant paper to D2, and a second independent implementation of
+Monniaux's idea** -- in CVC4, using GLPK 4.52. Its `SeedExact` procedure takes
+the LP solver's final basic set `B̃` and pivots the exact tableau toward it,
+repeatedly finding a pair `x_i, x_j` where `x_j` should be basic and `x_i`
+should not and `T_i,j != 0`. The paper says so directly: "The SeedExact
+procedure can be seen as achieving a similar effect as ForcedPivot in [10]"
+-- where [10] is Monniaux CAV 2009.
+
+Three things here matter more to us than the basis transfer itself.
+
+1. **The control structure is a fallback, not a preprocessing phase.**
+   `BalancedSolve` runs the *exact* solver first under a pivot cap (k_EX =
+   200), and calls the LP solver only when that cap is exceeded. "We thus use
+   an exact solver optimized for fast incremental checks as the primary theory
+   solver. However, we also instrument this solver so that it can detect when
+   it is starting to have difficulty, and in these cases we have it call the
+   LP solver." This dissolves D2's Risk B (that a preprocessing phase cannot
+   see bounds asserted during search): called mid-search, the bounds are known.
+2. **`ImportAssignment`**: the LP solver's floating-point assignment is turned
+   back into rationals by Diophantine approximation (continued-fraction
+   expansion, denominators capped at D = 2^26), deliberately biased toward
+   values that are cheap to represent, "partly because the discarded portion
+   often corresponds exactly to a rounding error". D2 would need this and it
+   is not obvious.
+3. **The measured payoff on QF_LRA is small.** Table I: on 652 QF_LRA
+   benchmarks CVC4+MIP solves 645 against plain CVC4's 636 -- "**plus 9
+   additional problems** (solving more than any other solver), all from the
+   challenging `miplib` family", which after preprocessing is internally mixed
+   integer/real, so the gain runs through the *MIP* path rather than the LP
+   force-pivot path. The comparison set includes yices2 632, mathsat5 622, z3
+   615.
+
+And the sentence that should be read before anyone budgets D2 as a large win:
+"In each of these studies, experimental results on SMT-LIB benchmarks show
+that existing SMT solvers outperform the experimental solvers modified to use
+LP solvers, **even if the LP solver results are not checked for correctness**.
+The main reason for this is that for these benchmarks ... solving requires
+many related calls to the theory solver, each of which is relatively simple."
+KBT's contribution is precisely the balanced control structure that makes it
+pay at all.
+
+**Diego Caminha B. de Oliveira, David Monniaux. "Experiments on the
+feasibility of using a floating-point simplex in an SMT solver." PAAR 2012.**
+<https://easychair.org/publications/paper/NqS>
+The direct continuation of Monniaux CAV 2009, in OpenSMT: call the LP solver
+first and use the result to seed the exact search. Reported **14% faster
+overall** (4h44m45s against the exact simplex's 5h26m55s over 634 benchmarks),
+with **11 of 634 (1.7%)** having at least one check where the floating-point
+and exact simplexes disagreed -- rare, but the reason the exact solver must
+still verify. 14% is the number to weigh D2 against, not the 2-3x that other
+entries in section 6.5 offer.
+
+**Germain Faure, Robert Nieuwenhuis, Albert Oliveras, Enric
+Rodríguez-Carbonell. "SAT Modulo the Theory of Linear Arithmetic: Exact,
+Inexact and Commercial Solvers." SAT 2008, 77-90.**
+<https://www.cs.upc.edu/~oliveras/sat08.pdf>
+Several LP solvers integrated into Barcelogic, with an exact solver lazily
+checking their results for soundness. Analyses why sophisticated LP solvers
+are hard to use inside SMT at all -- disequalities, strict inequalities, and
+incorrect results from floating-point arithmetic -- and proposes result
+checking plus error recovery. The earliest of this line to take unsoundness
+seriously.
+
+**Y. Yu, S. Malik. "Lemma Learning in SMT on Linear Constraints." SAT 2006,
+142-155.** The earliest use of an LP solver as an SMT theory solver, and
+noted by KBT as *not* addressing the possibility of incorrect LP results.
+Cited for provenance only.
+
+**Practical note, measured 2026-07-31.** The cvc5 1.3.4 binary this project
+benchmarks against reports `glpk : no` in `--show-config`. CVC4's LP
+integration is therefore **not** present in the reference solver, and cvc5's
+results on the mid-band gap (9 of 59) are not evidence about this technique
+in either direction.
+
 **Tim King, Clark Barrett, Bruno Dutertre. "Simplex with Sum of
 Infeasibilities for SMT." FMCAD 2013.**
 Addresses Dutertre-de Moura's weakest point: its Bland's-rule pivoting has no

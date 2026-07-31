@@ -12309,6 +12309,30 @@
         "fuzz_gate": "llm2smt-slurm:<slurm-workdir>/fuzz-results/qfuf-gate-117767/"
       },
       "docs": "docs/qf-lra-heuristics.md section 6.5, D1's outcome subsection and the ranked table."
+    },
+    {
+      "id": "2026-07-31-d2-literature-survey",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "literature",
+      "scope": "Is there work other than Monniaux CAV 2009 on floating-point-guided basis selection for an exact simplex in SMT? Prompted by D2 being named the next direction after D1/D3 closed.",
+      "commit": "3b11347",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "notes": "Web search plus two papers read in full (KBT FMCAD 2014, and the PAAR 2012 abstract/results). PDFs read outside the repo and not committed, per the no-copyrighted-material rule."
+      },
+      "summary": {
+        "answer": "Yes -- the technique has been implemented at least twice more since Monniaux, both in SMT solvers, and both report far smaller gains than D2 was scoped for.",
+        "king_barrett_tinelli_2014": "FMCAD 2014, CVC4 + GLPK 4.52. Their SeedExact procedure pivots the exact tableau toward the LP solver's final basic set, and the paper explicitly equates it to Monniaux's ForcedPivot. Two design points we did not have: (1) BalancedSolve calls the exact solver FIRST under a 200-pivot cap and only falls back to the LP solver when that cap is exceeded, so it is a fallback for hard theory calls rather than a preprocessing phase -- this dissolves D2's Risk B, since bounds are known mid-search; (2) ImportAssignment converts the LP solver's float assignment back to rationals by Diophantine approximation with denominators capped at 2^26. Measured QF_LRA payoff: 645 of 652 against plain CVC4's 636, i.e. +9 files, all from the miplib family, which is internally mixed integer/real so the gain runs through the MIP path rather than the LP force-pivot path.",
+        "de_oliveira_monniaux_2012": "PAAR 2012, OpenSMT, the direct continuation of CAV 2009: LP called first, result seeds the exact search. 14% faster overall (4h44m45s against 5h26m55s over 634 benchmarks), with 11 of 634 (1.7%) showing at least one float/exact disagreement -- rare, but why the exact solver must verify.",
+        "earlier_work": "Faure, Nieuwenhuis, Oliveras & Rodriguez-Carbonell (SAT 2008) integrated several LP solvers into Barcelogic with lazy exact checking; Yu & Malik (SAT 2006) used an LP solver as a theory solver without addressing incorrect results.",
+        "the_sentence_that_recalibrates_d2": "KBT's own summary of all prior studies: existing SMT solvers outperform the LP-augmented versions on SMT-LIB benchmarks, EVEN IF the LP solver results are not checked for correctness, because solving requires many related but individually simple theory calls. Their balanced control structure is what makes the technique pay at all.",
+        "consequence_for_d2": "Section 6.1a says this band needs 2x for 15 files and 5x for 37. The literature offers ~14% overall and +9 files on a 652-file set. D2 is not a 10-30x technique and its entry has been rescoped accordingly -- still open, but no longer described as 'large'.",
+        "cvc5_has_no_glpk": "Measured: contrib/local/bin/cvc5 1.3.4 --show-config reports 'glpk : no'. The reference cvc5 therefore carries none of CVC4's LP integration, so its 9-of-59 on the mid-band gap is not evidence about this technique in either direction. Worth knowing before anyone reads cvc5's weakness there as a verdict on LP-guided simplex."
+      },
+      "docs": "docs/papers/lra-related-work.md (new 'Floating-point-guided exact simplex' subsection) and docs/qf-lra-heuristics.md section 6.5's D2 entry (Risk C, and the ranked table's expected-size column).",
+      "evidence_status": "current"
     }
   ]
 }

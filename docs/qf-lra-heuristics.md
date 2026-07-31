@@ -1002,8 +1002,8 @@ whole one.
 
 | # | direction | expected size | cost | status |
 |---|---|---|---|---|
-| D2 | Floating-point-guided basis selection (Monniaux) | large | medium | **applicability unverified** |
-| D4 | Revised simplex with an LU-factored basis | unknown | largest | **the only direction still open** |
+| D2 | Floating-point-guided basis selection (Monniaux) | **~14% in the literature** | medium | open, but **much smaller than first scoped** |
+| D4 | Revised simplex with an LU-factored basis | unknown | largest | open |
 | -- | ~~D1: row-based bound propagation, raised caps~~ | -- | -- | **rejected 2026-07-31** |
 | -- | ~~D3: offset-equality detection + bound propagation~~ | -- | -- | **closed 2026-07-31, by D1's sweep** |
 | -- | ~~Periodic refactorization~~ | -- | -- | **rejected 2026-07-30** |
@@ -1155,6 +1155,14 @@ never trusted -- a bad guess costs exact pivots, not correctness. **Promoted by
 section 6.2's finding**: density is a property of the *basis*, and this is the
 only technique here that chooses a basis directly instead of walking to one.
 
+*Prior art, surveyed 2026-07-31: this has been done twice more since Monniaux,
+and the results are sobering.* King, Barrett & Tinelli (FMCAD 2014) implement
+it in CVC4 over GLPK; de Oliveira & Monniaux (PAAR 2012) implement it in
+OpenSMT. Both are read into Risk C below, and both into
+[](papers/lra-related-work.md). The short version: the technique is real, is
+sound when the exact solver verifies, and is worth roughly 14% -- not the
+2-5x this band needs.
+
 *Scope: smaller than D4, with a clean hook point.* Three sub-problems.
 
 1. **An FP LP engine.** GLPK (what the paper used) is GPL and this project is
@@ -1177,24 +1185,47 @@ all-slack basis are far cheaper than pivots from the dense mid-search one), but
 it is the number the technique has to beat, and it is directly measurable
 before anything is built.
 
-*Risk B: applicability, and this is the sharper one.* Monniaux's is a
-**preprocessing** phase, so it needs the constraint system including its
-bounds. Primo knows the row structure at `PreparedLraTheory` construction --
-the natural hook, and already the place where everything must happen "before
-the first `push()`" -- but **bounds are asserted during search, not there**. So
-the technique sees the whole problem only when the formula is essentially
-conjunctive, or when most bounds are implied at decision level 0.
+*Risk B: applicability -- raised here, then dissolved by the literature.*
+Monniaux's is a **preprocessing** phase, so it needs the constraint system
+including its bounds. Primo knows the row structure at `PreparedLraTheory`
+construction -- the natural hook, and already the place where everything must
+happen "before the first `push()`" -- but **bounds are asserted during search,
+not there**. So as a preprocessing phase the technique sees the whole problem
+only when the formula is essentially conjunctive, which is class A of section
+1.1 (`latendresse`) far more than it is this band.
 
-That is class A of section 1.1 (pure LP, one `check()` call, zero decisions:
-`latendresse`) far more than it is this band -- and note H3 already took
-`latendresse` from 0/15 to 6/15, so D2's most natural target has been partly
-addressed by something cheaper. Whether it can see the gap band at all is
-**unverified**.
+**King, Barrett & Tinelli (FMCAD 2014) solve this, and their answer is the
+interesting part of the entry.** Their `BalancedSolve` runs the *exact* solver
+first under a pivot cap (200), and calls the LP solver only when that cap is
+exceeded -- a fallback for hard theory calls, not a preprocessing phase. Called
+mid-search, the bounds are known, so Risk B goes away. Their `SeedExact` is
+then Monniaux's force-pivot by another name; the paper says so.
 
-*Cheap first step, again not building it.* Measure what fraction of each gap
-instance's bounds are asserted at decision level 0. If it is small, D2 cannot
-see the problem and should drop down the list; if it is large, the force-pivot
-cost in Risk A becomes the thing to measure next.
+*Risk C, which replaces it: the literature says the payoff is small.* This is
+the part that should be settled before any of the above gets built.
+
+| study | setting | reported gain |
+|---|---|---|
+| de Oliveira & Monniaux, PAAR 2012 | OpenSMT, LP-first seeding, 634 benchmarks | **14%** overall (and 1.7% of files had a float/exact disagreement) |
+| King, Barrett & Tinelli, FMCAD 2014 | CVC4 + GLPK, 652 QF_LRA benchmarks | **+9 files**, all `miplib`, via the MIP path |
+
+And KBT's own summary of everything before them: existing SMT solvers
+*outperform* the LP-augmented versions on SMT-LIB, "even if the LP solver
+results are not checked for correctness". Their balanced control structure is
+what makes it pay at all.
+
+Section 6.1a says this band needs 2x for 15 files and 5x for 37. A 14% overall
+speedup and +9 files on a 652-file set are an order of magnitude off that.
+**D2 is not a 10-30x technique and should not be scoped as one** -- see
+[](papers/lra-related-work.md) for the full survey. Note also that the cvc5
+1.3.4 we benchmark reports `glpk : no`, so its 9-of-59 on this band is not
+evidence about the technique either way.
+
+*Cheap first steps, still not building it.* Two, in order. (1) Measure what
+fraction of each gap instance's bounds are asserted at decision level 0 --
+that decides preprocessing-phase versus KBT-style fallback, and it is a
+counter, not an implementation. (2) Before either, weigh Risk C: the honest
+reading is that the whole line is worth ~14% where this band needs 200-500%.
 
 **D3. Dynamic offset-equality detection.** Investigated 2026-07-30 in two
 steps, both before writing any implementation. The result is that the
