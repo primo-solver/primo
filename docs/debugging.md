@@ -40,6 +40,9 @@ scripts and result artifacts. Current counters include:
 - `:input.assertions`;
 - `:frontend.ite.boolean`;
 - `:frontend.ite.auxiliaries`;
+- `:frontend.define-fun.nullary-cache-hits`;
+- `:frontend.define-fun.nullary-cache-misses`;
+- `:frontend.define-fun.nullary-cache-entries`;
 - `:preprocessing.assertions`;
 - `:preprocessing.passes`;
 - `:preprocessing.changed-passes`;

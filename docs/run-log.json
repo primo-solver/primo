@@ -15001,6 +15001,102 @@
       },
       "interpretation": "The fast-Z3 CPAchecker gaps are not one issue. First, some small UNSAT test_locks rows expose frontend expansion of SMT-LIB define-fun DAGs: memoizing nullary definition expansion or storing typed definition results should be investigated before theory tuning. Second, many SAT rows are dominated by model-guided arrangement work: lra_implied_real_equalities and final model separation rebuild full LRA theories for large numbers of shared Real pairs. The next implementation targets should be definition-expansion memoization and an incremental or model-based LRA equality/separation check that avoids per-pair full PreparedLraTheory rebuilds.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-define-fun-nullary-memoization-profile-and-fuzz",
+      "date": "2026-07-31",
+      "kind": "implementation-verification",
+      "scope": "Nullary SMT-LIB define-fun expansion memoization in the SMT frontend, motivated by CPAchecker QF_UFLRA macro DAG instances where Primo was stuck in TermBuilder before producing frontend/preprocessing stats.",
+      "commit": "773121a-dirty on nelson-oppen-closure-methods; source/docs/tests/script committed adjacent to this run-log entry",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo Release build; ./build-gprof/primo RelWithDebInfo -pg profiling build with PRIMO_WARNINGS_AS_ERRORS=OFF",
+        "reference": "contrib/local/bin/z3 (Z3 version 5.0.0)"
+      },
+      "commands": {
+        "gprof_build": "cmake -S . -B build-gprof -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPRIMO_WARNINGS_AS_ERRORS=OFF -DCMAKE_PREFIX_PATH=/workspace/contrib/local -DCMAKE_CXX_FLAGS=\"-pg -fno-omit-frame-pointer\" -DCMAKE_EXE_LINKER_FLAGS=-pg && cmake --build build-gprof --target primo -j2",
+        "before_callgrind": "timeout 8s valgrind --tool=callgrind --callgrind-out-file=results/profiling/callgrind.test_locks_5.before.out ./build/primo --stats tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2",
+        "after_target_run": "timeout 20s ./build/primo --stats tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2 > results/profiling/test_locks_5.after.stdout 2> results/profiling/test_locks_5.after.stderr",
+        "after_gprof": "cd results/profiling/gprof-after-final && /workspace/build-gprof/primo --stats /workspace/tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2 && gprof /workspace/build-gprof/primo gmon.out > test_locks_5.gprof.txt",
+        "after_callgrind": "timeout 15s valgrind --tool=callgrind --callgrind-out-file=results/profiling/callgrind.test_locks_5.after-final.out ./build/primo --stats tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2",
+        "local_sample": "python3 scripts/bench_qf_uf_full.py --repo /workspace --root tmp/QF_UFLRA --manifest /tmp/cpachecker_gap_sample.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 20 --out results/local-cpachecker-gap-sample-current-primo-after-memo.csv --summary results/local-cpachecker-gap-sample-current-primo-after-memo-summary.csv --log-dir results/local-cpachecker-gap-sample-current-primo-after-memo-logs",
+        "fuzz": "python3 scripts/define_fun_macro_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 1000 --seed 20260731 --timeout 5 --out fuzz-results/define-fun-macro-memo-20260731-z3",
+        "verification": "make check; make docs; make asan-test; clang-tidy -p build src/smt/check_sat.cpp tests/unit/boolean_solver_tests.cpp; clang-tidy -p build -checks=\"-*,misc-include-cleaner\" src/smt/check_sat.cpp tests/unit/boolean_solver_tests.cpp; whole-tree clang-tidy -p build over 63 tracked non-generated .cpp files; make lint; git diff --check; python3 -m json.tool docs/run-log.json"
+      },
+      "inputs": {
+        "representative_instance": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2",
+        "local_sample_manifest": "/tmp/cpachecker_gap_sample.txt from the preceding triage entry",
+        "fuzz_generator": "scripts/define_fun_macro_fuzz.py",
+        "fuzz_seed": 20260731,
+        "fuzz_count": 1000,
+        "fuzz_timeout_seconds": 5
+      },
+      "artifacts": {
+        "profiling_dir": "results/profiling/",
+        "before_callgrind": "results/profiling/callgrind.test_locks_5.before.out",
+        "after_callgrind": "results/profiling/callgrind.test_locks_5.after-final.out",
+        "after_gprof": "results/profiling/gprof-after-final/test_locks_5.gprof.txt",
+        "after_target_stdout": "results/profiling/test_locks_5.after.stdout",
+        "after_target_stderr": "results/profiling/test_locks_5.after.stderr",
+        "local_sample_csv": "results/local-cpachecker-gap-sample-current-primo-after-memo.csv",
+        "local_sample_summary": "results/local-cpachecker-gap-sample-current-primo-after-memo-summary.csv",
+        "fuzz_summary": "fuzz-results/define-fun-macro-memo-20260731-z3/summary.csv",
+        "evidence_status": "local_ignored_outputs"
+      },
+      "summary": {
+        "implementation": {
+          "cache_scope": "Zero-argument define-fun bodies are memoized only when there is no active non-empty let or macro-parameter binding scope; parameterized macro applications are still rebuilt per application.",
+          "stats_added": [
+            ":frontend.define-fun.nullary-cache-hits",
+            ":frontend.define-fun.nullary-cache-misses",
+            ":frontend.define-fun.nullary-cache-entries"
+          ]
+        },
+        "profiling": {
+          "before_callgrind_timeout_seconds": 8,
+          "before_top_costs": "TermBuilder::dispatch 16.90%, dispatch_instantiate_definition 3.52%, schedule/resume/schedule_all continuation machinery, string/hash work, and Rational::parse 1.25% in the timeout sample.",
+          "profiling_build_note": "The first -pg RelWithDebInfo build with warnings-as-errors hit GCC inlined STL diagnostics in preprocessing.cpp. Rebuilding with PRIMO_WARNINGS_AS_ERRORS=OFF was used only for profiling.",
+          "after_target": "unsat in 4.257858s wall-clock via direct run; stats: parse 437us, frontend 391us, preprocessing 3797063us, solve 139955us, cache hits 143, misses 232, entries 232.",
+          "after_gprof_top": "TermManager::get, simplify_with_boolean_units, IncrementalCongruenceClosure::add_term, purify_mixed_formula, simplify_with_congruence; TermBuilder expansion no longer appears as a top self-time cost.",
+          "after_callgrind_top": "simplify_with_boolean_units 21.24%, vector copy 11.72%, mk_and 5.04%, TermManager hashing/get/intern; TermBuilder expansion no longer appears in the shown top costs."
+        },
+        "local_sample": {
+          "timeout_seconds": 20,
+          "before_from_previous_entry": {
+            "total": 6,
+            "solved": 1,
+            "timeout": 5,
+            "wrong": 0,
+            "par2": 206.060254
+          },
+          "after": {
+            "total": 6,
+            "solved": 2,
+            "sat": 1,
+            "unsat": 1,
+            "timeout": 4,
+            "wrong": 0,
+            "par2": 169.240034
+          },
+          "after_define_fun_cache_totals": {
+            "hits": 755,
+            "misses": 2123,
+            "entries": 2123
+          }
+        },
+        "fuzz": {
+          "total": 1000,
+          "pass": 1000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_unusable": 0
+        }
+      },
+      "interpretation": "The memoization addresses the specific frontend expansion pathology found in test_locks_5 and turns that row from timeout into a solved UNSAT case. It is deliberately not an aggressive inliner: cache size is bounded by nullary definitions, and active binding scopes disable reuse. The broader CPAchecker gap remains dominated by preprocessing and mixed-theory arrangement/model-separation costs, not by macro expansion.",
+      "evidence_status": "current"
     }
   ]
 }

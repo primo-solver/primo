@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -747,6 +748,9 @@ class Frontend {
   core::TermManager& terms() { return terms_; }
   std::size_t boolean_ites() const { return boolean_ites_; }
   std::size_t auxiliary_ites() const { return auxiliary_ites_; }
+  std::size_t nullary_definition_cache_hits() const { return nullary_definition_cache_hits_; }
+  std::size_t nullary_definition_cache_misses() const { return nullary_definition_cache_misses_; }
+  std::size_t nullary_definition_cache_entries() const { return nullary_definition_cache_.size(); }
   core::TermId fresh_internal_constant(core::SortId sort, std::string_view prefix) {
     return fresh_auxiliary_constant(sort, prefix);
   }
@@ -767,6 +771,10 @@ class Frontend {
       }
     }
     return std::nullopt;
+  }
+
+  bool has_active_bindings() const {
+    return std::ranges::any_of(let_scopes_, [](const auto& scope) { return !scope.empty(); });
   }
 
   static void require_arity(const smtlib::SExpr& expr, std::size_t arity, std::string_view op) {
@@ -880,11 +888,14 @@ class Frontend {
   std::vector<std::unordered_map<std::string, core::TermId>> let_scopes_;
   std::unordered_map<std::string, Definition> definitions_;
   std::unordered_set<std::string> expanding_definitions_;
+  std::unordered_map<std::string, core::TermId> nullary_definition_cache_;
   std::vector<core::TermId> side_assertions_;
   std::vector<core::TermId> declared_real_constants_;
   std::size_t auxiliary_counter_ = 0;
   std::size_t boolean_ites_ = 0;
   std::size_t auxiliary_ites_ = 0;
+  std::size_t nullary_definition_cache_hits_ = 0;
+  std::size_t nullary_definition_cache_misses_ = 0;
   bool saw_check_sat_ = false;
   bool requested_model_ = false;
   bool produce_models_ = false;
@@ -1443,6 +1454,16 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
   if (args.size() != definition.parameters.size()) {
     throw UnsupportedInput("define-fun application has wrong arity: " + name);
   }
+  const bool cache_nullary = args.empty() && !frontend_.has_active_bindings();
+  if (cache_nullary) {
+    if (const auto cached = frontend_.nullary_definition_cache_.find(name);
+        cached != frontend_.nullary_definition_cache_.end()) {
+      ++frontend_.nullary_definition_cache_hits_;
+      resume(std::move(k), cached->second);
+      return;
+    }
+    ++frontend_.nullary_definition_cache_misses_;
+  }
 
   std::unordered_map<std::string, core::TermId> scope;
   for (std::size_t i = 0; i < args.size(); ++i) {
@@ -1457,14 +1478,18 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
   frontend_.expanding_definitions_.insert(name);
   frontend_.let_scopes_.push_back(std::move(scope));
   const core::SortId result_sort = definition.result_sort;
-  schedule(definition.body, [this, k = std::move(k), name, result_sort](core::TermId body) mutable {
-    frontend_.let_scopes_.pop_back();
-    frontend_.expanding_definitions_.erase(name);
-    if (frontend_.terms_.get(body).sort != result_sort) {
-      throw UnsupportedInput("define-fun result sort mismatch: " + name);
-    }
-    resume(std::move(k), body);
-  });
+  schedule(definition.body,
+           [this, k = std::move(k), name, result_sort, cache_nullary](core::TermId body) mutable {
+             frontend_.let_scopes_.pop_back();
+             frontend_.expanding_definitions_.erase(name);
+             if (frontend_.terms_.get(body).sort != result_sort) {
+               throw UnsupportedInput("define-fun result sort mismatch: " + name);
+             }
+             if (cache_nullary) {
+               frontend_.nullary_definition_cache_.emplace(name, body);
+             }
+             resume(std::move(k), body);
+           });
 }
 
 class BooleanClausifier {
@@ -7575,6 +7600,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatAssertionsInitial, assertions.size());
     statistics.set(kStatFrontendBooleanItes, frontend.boolean_ites());
     statistics.set(kStatFrontendAuxiliaryItes, frontend.auxiliary_ites());
+    statistics.set(":frontend.define-fun.nullary-cache-hits",
+                   frontend.nullary_definition_cache_hits());
+    statistics.set(":frontend.define-fun.nullary-cache-misses",
+                   frontend.nullary_definition_cache_misses());
+    statistics.set(":frontend.define-fun.nullary-cache-entries",
+                   frontend.nullary_definition_cache_entries());
     if (!frontend.saw_check_sat()) {
       return finish(CheckSatResult::Unsupported, "missing check-sat command");
     }

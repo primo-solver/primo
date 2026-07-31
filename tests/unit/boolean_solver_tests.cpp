@@ -590,6 +590,24 @@ void define_fun_macros_are_expanded() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void nullary_define_fun_expansion_is_memoized() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (define-fun aa () A a)
+    (define-fun same ((x A) (y A)) Bool (= x y))
+    (assert (and (same aa b) (same aa b) (same aa b)))
+    (assert (not (= a b)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-cache-hits") >= 2);
+  assert(result.statistics.get(":frontend.define-fun.nullary-cache-misses") == 1);
+  assert(result.statistics.get(":frontend.define-fun.nullary-cache-entries") == 1);
+}
+
 void compound_bool_arguments_are_bound_before_euf_flattening() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -2460,6 +2478,7 @@ int main() {
   predicate_applications_respect_congruence();
   annotated_assertions_are_solved();
   define_fun_macros_are_expanded();
+  nullary_define_fun_expansion_is_memoized();
   compound_bool_arguments_are_bound_before_euf_flattening();
   recursive_define_fun_is_rejected();
   boolean_ite_is_eliminated();

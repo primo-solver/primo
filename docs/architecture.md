@@ -129,6 +129,15 @@ body through `TermManager`. The implementation checks argument and result sorts
 against the declared sorted variables, and deliberately rejects recursive
 definitions instead of treating them as uninterpreted functions.
 
+Zero-argument `define-fun` bodies are memoized after their first successful
+expansion when there is no active non-empty `let` or macro-parameter scope. The
+cache maps the definition name to the resulting `TermId`, after recursive-use
+detection and result-sort checking. This is a bounded cache: it contains at most
+one entry per nullary definition in the current SMT-LIB session, and it does not
+memoize parameterized macro applications. This keeps ordinary argument-dependent
+macro expansion simple while avoiding repeated reconstruction of
+CPAchecker-style definition DAGs.
+
 SMT-LIB `Bool` is a first-class sort, so QF_UF inputs may pass Boolean formulas
 as arguments to uninterpreted functions. The frontend normalizes compound
 Boolean arguments by introducing a fresh Boolean constant and a propositional
