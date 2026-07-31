@@ -94,7 +94,9 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, Delt
 void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
   VarState& state = vars_.at(nonbasic_var);
   const DeltaRational delta = new_value - state.assignment;
-  trail_.push_back(AssignmentTrailEntry{nonbasic_var, state.assignment});
+  if (trails_assignments_and_pivots()) {
+    trail_.push_back(AssignmentTrailEntry{nonbasic_var, state.assignment});
+  }
   state.assignment = new_value;
   // nonbasic_var is, by this function's own contract, never basic --
   // update_violation_status() therefore always erases it here (a no-op if
@@ -117,7 +119,9 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
     for (const auto& [var, coefficient] : rows_.at(basic_var)) {
       if (var == nonbasic_var) {
         VarState& basic_state = vars_.at(basic_var);
-        trail_.push_back(AssignmentTrailEntry{basic_var, basic_state.assignment});
+        if (trails_assignments_and_pivots()) {
+          trail_.push_back(AssignmentTrailEntry{basic_var, basic_state.assignment});
+        }
         basic_state.assignment = basic_state.assignment + delta.scaled(coefficient);
         // f_var_ is harmless to include here too: it has no bounds, so
         // update_violation_status() always computes "not violated" for it.
@@ -135,10 +139,16 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
 
 void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   ++pivot_count_;
+  // Bounds-only backtracking (see the class comment) means the trail needs
+  // nothing from this pivot at all on the default path; the snapshot below
+  // is built only for SOI, which does have to undo it.
+  const bool trail_this_pivot = trails_assignments_and_pivots();
   PivotTrailEntry trail_entry;
   trail_entry.basic_var = basic_var;
   trail_entry.entering_var = entering_var;
-  trail_entry.old_basic_row = rows_.at(basic_var);
+  if (trail_this_pivot) {
+    trail_entry.old_basic_row = rows_.at(basic_var);
+  }
 
   // No violated_vars_ update here for basic_var (about to become
   // nonbasic): both of this function's call sites in check() always
@@ -284,7 +294,9 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
         ++j;
       }
     }
-    trail_entry.old_other_rows.emplace_back(other_basic, std::move(other_row));
+    if (trail_this_pivot) {
+      trail_entry.old_other_rows.emplace_back(other_basic, std::move(other_row));
+    }
     rows_[other_basic] = std::move(rebuilt);
   }
 
@@ -293,7 +305,9 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   }
   rows_[entering_var] = std::move(new_entering_row);
 
-  trail_.push_back(std::move(trail_entry));
+  if (trail_this_pivot) {
+    trail_.push_back(std::move(trail_entry));
+  }
 }
 
 bool LraTableau::is_fixed(LraVarId var) const {

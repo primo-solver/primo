@@ -62,17 +62,39 @@ struct DeltaRational {
 // been added alongside it (see PivotingRule), each falling back to Bland
 // selection past a per-call pivot threshold so termination still holds.
 //
-// Incremental via push()/pop(checkpoint), genuinely trail-based (mirroring
-// FlatCongruenceClosure's discipline, not full state snapshotting): every
-// bound change, assignment change, and pivot's row rewrite pushes a
-// TrailEntry recording enough to undo it, and pop() replays entries
-// backwards. Per the paper's Section 4 design, pivots (which basic/
-// non-basic partition and row structure are current) are NOT semantically
-// tied to search depth -- they're just an internal representation choice
-// -- but they still have to be undone on pop here, because leaving a
-// pivot's row rewrite in place while reverting the bounds/assignments it
-// was performed under would violate the invariant that every basic
-// variable's row equation holds for the current assignment.
+// Incremental via push()/pop(checkpoint), trail-based (mirroring
+// FlatCongruenceClosure's discipline, not full state snapshotting).
+//
+// **Only bound changes are trailed**, which is the paper's own design
+// (technical report SRI-CSL-06-01 Section 3.2.4: "We just need to save the
+// value of u_i (l_i) on a stack before it is updated... Backtracking does
+// not require to save the successive betas on a stack... Since no pivoting
+// or other expensive operation is used, backtracking is very cheap.")
+// Neither the assignment nor the basis is restored, and the argument for
+// why that is sound has two halves:
+//
+//   * the assignment satisfies Ax = 0, and every tableau row is a linear
+//     combination of A's rows, so it keeps satisfying the row equations
+//     across any change of basis; and
+//   * pop() only ever *relaxes* bounds, so the invariant that every
+//     non-basic variable sits within its bounds (report equation 3.2)
+//     survives untouched.
+//
+// Note the two schemes are each self-consistent and it is *mixing* them
+// that breaks: restoring the assignment but not the basis would leave a
+// variable that was basic at snapshot time -- and so unconstrained by
+// (3.2) -- now non-basic and possibly outside its bounds. Primo used to
+// restore all three (bounds, assignments, pivots) for exactly that reason,
+// which was circular: reverting the assignments is what forced reverting
+// the pivots.
+//
+// **PivotingRule::Soi is the exception and still trails everything.** Its
+// objective row is explicitly maintained and genuinely basis-dependent --
+// it is a sum over the *currently* violated rows, not a linear combination
+// of A -- so neither half of the argument above covers it. SOI is an
+// extension beyond the paper (FMCAD 2013), so it keeps the pre-2026-07-31
+// behaviour rather than being made to fit an argument written for the
+// paper's algorithm.
 //
 // Rows must all be added via add_row() before the first push() in the
 // caller's intended usage (build the full tableau once, then push/assert/
@@ -443,6 +465,12 @@ class LraTableau {
   // variable's row can never be violated, so it never demands a repair pivot
   // -- which is why the elimination pivot prefers such a candidate.
   bool is_unbounded(LraVarId var) const;
+
+  // Whether assignment changes and pivots go on the trail at all. False for
+  // the paper's own scheme (bounds only, see the class comment); true only
+  // under PivotingRule::Soi, whose explicitly-maintained objective row is
+  // basis-dependent and so has to be restored.
+  bool trails_assignments_and_pivots() const { return rule_ == PivotingRule::Soi; }
 
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
   void undo(const TrailEntry& entry);

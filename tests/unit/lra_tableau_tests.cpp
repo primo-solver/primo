@@ -21,6 +21,29 @@ namespace {
 
 DeltaRational rat(long value) { return DeltaRational::from_rational(Rational(value)); }
 
+// The two invariants that make bounds-only backtracking sound (see
+// LraTableau's class comment, and SRI-CSL-06-01 Section 3.2.4): the
+// assignment still solves every row equation, and every non-basic variable
+// still sits within its own bounds. pop() is required to preserve these --
+// it is *not* required to restore the assignment or the basis, so tests
+// check these rather than field-by-field equality with the pre-push state.
+void assert_tableau_invariants(const LraTableau& tableau) {
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (tableau.is_basic(var)) {
+      DeltaRational sum = rat(0);
+      for (const auto& [term_var, coeff] : tableau.row(var)) {
+        sum = sum + tableau.assignment(term_var).scaled(coeff);
+      }
+      assert(sum == tableau.assignment(var));
+      continue;
+    }
+    const auto upper = tableau.upper_bound(var);
+    const auto lower = tableau.lower_bound(var);
+    assert(!upper.has_value() || tableau.assignment(var) <= upper->value);
+    assert(!lower.has_value() || tableau.assignment(var) >= lower->value);
+  }
+}
+
 bool has_reason(const std::vector<Lit>& reasons, Lit lit) {
   return std::find_if(reasons.begin(), reasons.end(),
                       [&](Lit r) { return r.value == lit.value; }) != reasons.end();
@@ -285,10 +308,16 @@ void push_pop_rebuilds_violated_vars_across_multiple_simultaneous_violations() {
   assert(same_reason_set(result_inside_push, result_after_pop_and_redo));
 }
 
-void push_pop_restores_propagated_basic_assignment() {
-  // s = x + y; asserting a lower bound on the *non-basic* x propagates
-  // into s's (basic) assignment via update()'s propagation loop -- verify
-  // that propagated change is undone on pop too, not just x's own bound.
+void pop_restores_bounds_and_keeps_the_assignment_consistent() {
+  // s = x + y; asserting a lower bound on the *non-basic* x propagates into
+  // s's (basic) assignment via update()'s propagation loop.
+  //
+  // pop() deliberately does NOT put either assignment back. Bounds-only
+  // backtracking is the paper's own scheme (SRI-CSL-06-01 Section 3.2.4),
+  // and this test pins the two invariants that make it sound, which are
+  // what actually matters -- not the stronger "every field is byte-identical
+  // to before the push", which this test used to assert and which the paper
+  // says is unnecessary work.
   LraTableau tableau;
   const LraVarId x = tableau.add_variable();
   const LraVarId y = tableau.add_variable();
@@ -302,8 +331,22 @@ void push_pop_restores_propagated_basic_assignment() {
   assert(tableau.assignment(s) == rat(5));  // propagated
 
   tableau.pop(checkpoint);
-  assert(tableau.assignment(x) == rat(0));
-  assert(tableau.assignment(s) == rat(0));
+
+  // (1) The bound itself is gone -- that is the whole job of pop(). An
+  // upper bound of 2 would have conflicted with x >= 5 before the pop.
+  assert(!tableau.assert_upper(x, rat(2), Lit{2}).has_value());
+
+  // (2) The assignment still satisfies every row equation, which is why it
+  // does not need restoring: it solved Ax = 0 before the pop and the rows
+  // did not change.
+  assert_tableau_invariants(tableau);
+  assert(tableau.assignment(s) == tableau.assignment(x) + tableau.assignment(y));
+
+  // (3) And the search can still make progress from here.
+  assert(!tableau.check().has_value());
+  assert_tableau_invariants(tableau);
+  assert(tableau.assignment(s) == tableau.assignment(x) + tableau.assignment(y));
+  assert(tableau.assignment(x) <= rat(2));
 }
 
 void nested_push_pop_levels() {
@@ -915,21 +958,23 @@ void push_pop_restores_state_across_an_elimination_pivot() {
   const std::size_t checkpoint = tableau.push();
   fixture.fix_s_at(4);
   assert(tableau.elimination_pivot_count() == 1);
-  const LraVarId entered = tableau.is_basic(fixture.x) ? fixture.x : fixture.y;
 
   tableau.pop(checkpoint);
-  assert(tableau.is_basic(fixture.s));
-  assert(!tableau.is_basic(entered));
-  assert(tableau.assignment(fixture.s) == rat(0));
-  assert(tableau.assignment(entered) == rat(0));
+  // The elimination pivot is deliberately *not* undone -- bounds-only
+  // backtracking leaves the basis wherever the search left it. What has to
+  // hold is the pair of invariants that makes that sound, plus the bounds
+  // actually being gone.
+  assert_tableau_invariants(tableau);
 
-  // Genuinely restored, not merely flag-correct: a bound on a non-basic term
-  // must propagate into s again, and s must be able to go out of bounds and
-  // be repaired.
-  assert(!tableau.assert_lower(fixture.x, rat(3), Lit{5}).has_value());
-  assert(tableau.assignment(fixture.s) == rat(3));
+  // s was fixed at 4 inside the level; after the pop that is gone, so a
+  // conflicting bound is now assertable where it would have clashed before.
   assert(!tableau.assert_upper(fixture.s, rat(1), Lit{6}).has_value());
+  assert(!tableau.assert_lower(fixture.x, rat(3), Lit{5}).has_value());
+
+  // And the tableau still solves: the row equation holds, s respects its
+  // new bound, and nothing is left violated.
   assert(!tableau.check().has_value());
+  assert_tableau_invariants(tableau);
   assert(tableau.assignment(fixture.s) <= rat(1));
   assert(tableau.assignment(fixture.x) + tableau.assignment(fixture.y) ==
          tableau.assignment(fixture.s));
@@ -1092,7 +1137,7 @@ int main() {
   push_pop_restores_a_bound();
   push_pop_restores_state_across_a_pivot();
   push_pop_rebuilds_violated_vars_across_multiple_simultaneous_violations();
-  push_pop_restores_propagated_basic_assignment();
+  pop_restores_bounds_and_keeps_the_assignment_consistent();
   nested_push_pop_levels();
   bound_accessors_report_nullopt_before_any_assertion();
   bound_accessors_report_value_and_reason();
