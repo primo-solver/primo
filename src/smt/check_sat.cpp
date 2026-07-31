@@ -7658,8 +7658,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatPreprocessingTermSizeFinal,
                    reachable_term_count(frontend.terms(), assertions));
     if (options.nelson_oppen_diagnostics) {
-      const NelsonOppenInterfaceSummary no_interface =
-          analyze_nelson_oppen_interface(frontend.terms(), assertions);
+      TheoryCombinationManager no_manager(frontend.terms());
+      no_manager.rebuild(assertions);
+      const NelsonOppenInterfaceSummary& no_interface = no_manager.summary();
       statistics.set(":no.interface.terms", no_interface.terms.size());
       statistics.set(":no.interface.sorts", no_interface.sort_count);
       statistics.set(":no.interface.candidate-pairs", no_interface.candidate_pairs);

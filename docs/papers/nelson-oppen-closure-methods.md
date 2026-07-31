@@ -4,11 +4,12 @@
 
 This is a literature and design-intake note for the
 `nelson-oppen-closure-methods` branch. It now also records the implemented
-scaffolds: read-only interface bookkeeping and a partial mixed QF_UFLRA
+scaffolds: an SMT-owned `TheoryCombinationManager` for interface equality
+bookkeeping, a compatibility read-only analyzer, and a partial mixed QF_UFLRA
 coordinator with Real-valued UF-application purification, EUF-to-LRA proxy
 equality checks, LRA-to-EUF equality checks over shared Real constants, and
-model reconstruction for the supported Real-argument subset. It does not
-claim that Primo implements the full Nelson-Oppen procedure yet.
+model reconstruction for the supported Real-argument subset. It does not claim
+that Primo implements the full Nelson-Oppen procedure yet.
 
 The intended project is to add theory-combination closure mechanisms based on
 Nelson-Oppen-style equality sharing, with de Moura and Bjorner's
@@ -55,10 +56,14 @@ existing ownership boundaries:
 - `core/` owns terms and sorts.
 
 As of the current branch, `src/smt/theory_combination.cpp` implements only the
-first bookkeeping slice. `analyze_nelson_oppen_interface` scans the current
+first bookkeeping slice. `TheoryCombinationManager` scans the current
 post-preprocessing assertions, records user-visible non-Boolean constants by
 sort, records already-visible equality atoms whose two sides are such
-constants, and reports the same information through `check_sat` statistics:
+constants, and builds a canonical same-sort interface equality registry. The
+registry can store the current combination-layer value of each registered pair:
+unknown, equal, or disequal. `analyze_nelson_oppen_interface` is a compatibility
+wrapper around this manager, and the diagnostic path reports the same
+information through `check_sat` statistics:
 
 - `:no.interface.terms`
 - `:no.interface.sorts`
@@ -68,8 +73,9 @@ constants, and reports the same information through `check_sat` statistics:
 - `:no.interface.missing-visible-equalities`
 
 This deliberately does not implement equality propagation, model-equality
-guessing, care sets, purification, or missing equality atom creation. It is a
-measurement and API-shaping step. The scan is guarded by the explicit
+guessing, care sets, purification, SAT backtracking of arrangement values, or
+missing equality atom creation. It is a measurement and API-shaping step. The
+scan is guarded by the explicit
 `--nelson-oppen-diagnostics` CLI flag so ordinary benchmark runs do not pay for
 extra interface traversal.
 
@@ -167,6 +173,10 @@ coordinator publishes:
 - `:no.interface.euf-care-pairs`
 - `:no.interface.euf-care-pruned-pairs`
 - `:no.interface.model-separations`
+- `:no.interface.model-separation-candidates`
+- `:no.interface.model-separation-search-capped`
+- `:no.interface.model-separation-search-branches`
+- `:no.interface.model-separation-search-backtracks`
 
 ## Primary Base Paper
 
@@ -214,6 +224,14 @@ For Primo this is relevant because:
 
 ### Likely First Subset
 
+Historical note: this was the original staging plan. The current branch has
+moved past part of it: the partial QF_UFLRA coordinator now runs in the default
+final check, creates interface equality atoms lazily, and has an opt-in
+model-equality branching mode. This is still not the de Moura/Bjorner
+model-based combination algorithm. Primo does not yet have a mutable model
+object shared by the theory solvers, complete non-convex arrangement
+enumeration, or minimal paper-style explanations.
+
 The first implementable subset should be split into two tracks. Track A is a
 prerequisite for any model-guided closure claim:
 
@@ -256,8 +274,9 @@ papers above. It is not de Moura/Bjorner model-based combination and not classic
 Nelson-Oppen equality propagation. It provides the common data extraction needed
 to make those future mechanisms measurable:
 
-- **Data structures:** `InterfaceTerm`, `InterfaceEquality`,
-  `InterfaceEqualityRegistryEntry`, `PurificationSite`, and
+- **Data structures:** `TheoryCombinationManager`, `InterfaceTerm`,
+  `InterfaceEquality`, `InterfaceEqualityRegistryEntry`,
+  `InterfaceEqualityValue`, `PurificationSite`, and
   `NelsonOppenInterfaceSummary` in `src/smt/theory_combination.hpp`.
 - **Owner:** `smt/`, because this layer owns post-preprocessing assertions and
   the Boolean/theory atom boundary.
@@ -273,6 +292,11 @@ to make those future mechanisms measurable:
   represented as either `Visible` with the existing equality `TermId`, or
   `Missing` with an invalid atom id. Later theory-combination code can inspect
   this registry without guessing whether an equality atom already exists.
+- **Arrangement values:** the manager stores `Unknown`, `Equal`, or `Disequal`
+  for registered pairs. This is the first explicit combination-layer equality
+  state. Current solver behavior only uses it in tests; future propagation code
+  must connect these values to SAT assignment, theory explanations, and
+  backtracking before relying on them for search.
 - **Purification sites:** the analyzer records Real-sorted subterms that occur
   inside EUF atoms, and uninterpreted applications that occur inside arithmetic
   atoms. These sites are the places where a future purification pass would need
@@ -281,10 +305,11 @@ to make those future mechanisms measurable:
   containing atom, site kind, and sort; it does not create those proxies.
 - **Complexity:** when diagnostics are enabled, one traversal over reachable
   assertion terms plus per-sort sorting of discovered constants, followed by
-  materializing the same-sort interface-pair registry. This remains opt-in
-  because the pair registry is quadratic in the number of interface constants
-  per sort. Purification-site collection is linear in the total visited
-  subterms, modulo de-duplication of repeated `(kind, atom, term)` sites.
+  materializing the same-sort interface-pair registry and a hash index for
+  canonical pair lookup. This remains opt-in because the pair registry is
+  quadratic in the number of interface constants per sort. Purification-site
+  collection is linear in the total visited subterms, modulo de-duplication of
+  repeated `(kind, atom, term)` sites.
 - **Invariant:** no term or SAT atom creation occurs here, so the analyzer is
   behavior-preserving and cannot change solver search.
 - **Runtime status:** the analyzer is opt-in through
@@ -297,14 +322,17 @@ to make those future mechanisms measurable:
   visible equality detection, internal-symbol exclusion, Boolean exclusion,
   self-equality exclusion, reversed-pair deduplication, and a mock theory
   consumer that distinguishes visible equality atoms from missing pairs without
-  creating atoms. It also checks Real terms inside EUF atoms and uninterpreted
-  applications inside arithmetic atoms are reported as purification sites.
+  creating atoms. It also checks canonical manager lookups, explicit
+  unknown/equal/disequal arrangement values, cross-sort rejection, rebuild
+  clearing, Real terms inside EUF atoms, and uninterpreted applications inside
+  arithmetic atoms as purification sites.
 
 Limitations:
 
 - no purification ownership or proxy-term creation yet;
 - no theory ownership labels beyond sort partitioning;
-- no care-pair API;
+- no manager-level care-pair API;
+- no SAT-backtracked arrangement trail;
 - no explanations or learned clauses;
 - no mixed-theory model object.
 
@@ -314,11 +342,12 @@ This subset is a conservative bridge, not the full Nelson-Oppen algorithm. It
 exists so the branch can execute simple QF_UFLRA scripts without silently
 treating one theory's atoms as Boolean noise.
 
-- **Data structures:** no new cross-theory ownership type is introduced. The
-  coordinator reuses `BooleanClausifier::TheoryAtom`, `PreparedFlatTheory`,
-  `PreparedLraTheory`, `AssignedTheoryAtom`, and ordinary SAT clauses. The
-  purification pass uses an SMT-local map from original Real-valued UF
-  application `TermId` to internal proxy `TermId`.
+- **Data structures:** the generic `TheoryCombinationManager` now exists for
+  interface equality bookkeeping, but this final-check loop is not fully
+  migrated to it yet. The loop still reuses `BooleanClausifier::TheoryAtom`,
+  `PreparedFlatTheory`, `PreparedLraTheory`, `AssignedTheoryAtom`, and ordinary
+  SAT clauses. The purification pass uses an SMT-local map from original
+  Real-valued UF application `TermId` to internal proxy `TermId`.
 - **Owner:** `smt/check_sat.cpp`, because it owns the Boolean abstraction and
   solver dispatch.
 - **Accepted shape:** EUF atoms over uninterpreted or Boolean terms, EUF
@@ -489,6 +518,74 @@ method must preserve.
   completeness unless disjunctions of interface equalities or an equivalent SAT
   search mechanism are implemented.
 
+## Solver Architecture Sources
+
+Clark W. Barrett, Christopher L. Conway, Morgan Deters, Liana Hadarean, Dejan
+Jovanovic, Tim King, Andrew Reynolds, and Cesare Tinelli. *CVC4.* CAV 2011.
+PDF: <https://smt-comp.github.io/2012/system-descriptions/cvc4.pdf>.
+
+Tim King. *Effective Algorithms for the Satisfiability of Quantifier-Free
+Formulas Over Linear Real and Integer Arithmetic.* PhD thesis, New York
+University, 2014. In particular, Section 1.5.5 describes the CVC4
+`THEORYENGINE` as the layer that dispatches literals to theory solvers and
+coordinates combination.
+PDF: <https://cs.nyu.edu/media/publications/king_tim.pdf>.
+
+Haniel Barbosa, Clark Barrett, Martin Brain, Gereon Kremer, Hanna Lachnitt,
+Makarios Mann, Abdalrhman Mohamed, Mudathir Mohamed, Aina Niemetz, Andres
+Nötzli, Alex Ozdemir, Mathias Preiner, Andrew Reynolds, Ying Sheng, Cesare
+Tinelli, and Yoni Zohar. *cvc5: A Versatile and Industrial-Strength SMT
+Solver.* TACAS 2022. PDF:
+<https://www-cs.stanford.edu/~preiner/publications/2022/BarbosaBBKLMMMN-TACAS22.pdf>.
+
+cvc5 option documentation for equality-engine mode:
+<https://cvc5.github.io/docs/cvc5-1.0.9/options.html>.
+
+Bruno Dutertre. *Yices 2.2.* CAV 2014. PDF:
+<https://yices.csl.sri.com/papers/cav2014.pdf>.
+
+### Relevance
+
+These sources support the architecture choice: the SMT engine owns the
+combination protocol, while individual theory solvers keep theory-local data
+structures and report conflicts, propagations, and model fragments through a
+controlled interface. cvc5 is especially useful because it explicitly separates
+the Combination Engine from theory solvers and supports both distributed and
+central equality-engine modes. Primo should start closer to the distributed
+mode: keep EUF congruence closure and LRA arithmetic state local, but let
+`TheoryCombinationManager` own shared/interface terms, interface equality atoms,
+and the combination-layer arrangement over those pairs.
+
+The central-equality-engine option in cvc5 is a useful future experiment, not
+the current target. Making every theory depend on one global congruence closure
+would couple theory internals before Primo has arrays, datatypes, bit-vectors,
+or strings. The conservative CVC-like target is therefore a manager in `smt/`
+that maintains the equality contract across theories without replacing
+theory-local equality machinery.
+
+Care graphs are not required merely because the manager exists. If Primo
+follows a Z3/de Moura-Bjorner-style model-based route, the first candidate pairs
+can come from delayed SAT-visible equality creation and model disagreement
+rather than from a full care-graph API. Care information remains important as a
+scalability filter: without some relevance test, all same-sort shared pairs can
+still become quadratic noise. The current EUF care-pair scan is a narrow
+consumer-driven filter, not the architectural foundation.
+
+### Primo Checklist Items
+
+- Keep `TheoryCombinationManager` in `smt/`; it may store SAT-visible equality
+  atoms and arrangement values, but it must not inspect theory-private tableau,
+  congruence-closure, array, datatype, or bit-vector internals.
+- Keep theory-local equality data structures in `theory/`; theories report
+  propagated equalities, conflicts, and model facts through explicit APIs.
+- Make any future central-equality-engine mode an option with separate tests and
+  counters, not an implicit dependency of every theory.
+- Treat care pairs as a pruning interface that a theory can provide when there
+  is a real consumer. Do not require full care graphs before implementing
+  model-based equality branching.
+- Before using manager arrangement values in search, add a SAT-level
+  backtracking trail and explanation path for each `Equal` or `Disequal` value.
+
 ## DPLL(T) Integration
 
 Sava Krstic and Amit Goel. *Architecting Solvers for SAT Modulo Theories:
@@ -609,11 +706,11 @@ The first design should be conservative:
 - Handle explicit model construction and model printing before implementing
   model-equality guesses from de Moura/Bjorner.
 - Do not add eager all-pairs equality atoms as the default.
-- Build a theory-combination coordinator in `smt/` that knows shared terms,
-  equality atoms, and theory ownership, but delegates theory reasoning to
-  `theory/`.
-- Start with already-visible equality atoms, then measure whether missing atom
-  creation is needed.
+- Keep growing `TheoryCombinationManager` as the SMT-owned coordinator for
+  shared terms, equality atoms, arrangement values, and theory ownership, while
+  delegating theory reasoning to `theory/`.
+- Start from already-visible equality atoms and lazy generated equality atoms,
+  then measure whether broader missing-atom creation is needed.
 - Add separate counters for `candidate`, `created`, `entailed`, `model`,
   `returned`, `conflict`, and `discarded` interface equalities.
 - Require focused tests for purification, sort isolation, backtracking,
@@ -623,6 +720,8 @@ The first design should be conservative:
 
 The most plausible competitive path is not "full Nelson-Oppen closure
 everywhere"; it is a staged combination layer that starts with precise
-interface-equality propagation, uses care sets to keep the candidate set small,
-and only then tries model-based equality guesses where a theory can cheaply
-produce and mutate candidate models.
+interface-equality propagation and lazy equality-atom creation, then tries
+model-based equality guesses where a theory can cheaply produce candidate
+models. Care pairs should be added where they have a concrete consumer and
+measured against the unfiltered candidate set; they are a scalability tool, not
+a requirement for every model-based combination experiment.

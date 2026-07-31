@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <unordered_map>
 #include <vector>
 
 #include "core/ids.hpp"
@@ -28,12 +31,19 @@ enum class InterfaceEqualityStatus {
   Visible,
 };
 
+enum class InterfaceEqualityValue {
+  Unknown,
+  Equal,
+  Disequal,
+};
+
 struct InterfaceEqualityRegistryEntry {
   core::TermId atom = core::kInvalidTermId;
   core::TermId lhs = core::kInvalidTermId;
   core::TermId rhs = core::kInvalidTermId;
   core::SortId sort = core::kInvalidSortId;
   InterfaceEqualityStatus status = InterfaceEqualityStatus::Missing;
+  InterfaceEqualityValue value = InterfaceEqualityValue::Unknown;
 };
 
 enum class PurificationSiteKind {
@@ -58,6 +68,30 @@ struct NelsonOppenInterfaceSummary {
   std::size_t missing_equalities = 0;
   std::size_t euf_real_terms = 0;
   std::size_t arithmetic_uninterpreted_applications = 0;
+};
+
+class TheoryCombinationManager {
+ public:
+  explicit TheoryCombinationManager(const core::TermManager& terms);
+
+  void rebuild(const std::vector<core::TermId>& assertions);
+
+  const NelsonOppenInterfaceSummary& summary() const { return summary_; }
+
+  std::optional<InterfaceEqualityRegistryEntry> interface_equality(core::TermId lhs,
+                                                                   core::TermId rhs) const;
+  InterfaceEqualityValue interface_equality_value(core::TermId lhs, core::TermId rhs) const;
+  bool set_interface_equality_value(core::TermId lhs, core::TermId rhs,
+                                    InterfaceEqualityValue value);
+  void clear_interface_equality_values();
+
+ private:
+  static std::uint64_t equality_key(core::TermId lhs, core::TermId rhs);
+  void rebuild_equality_index();
+
+  const core::TermManager& terms_;
+  NelsonOppenInterfaceSummary summary_;
+  std::unordered_map<std::uint64_t, std::size_t> equality_index_;
 };
 
 // Conservative Track-B scaffold for Nelson-Oppen bookkeeping. It only reports

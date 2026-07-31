@@ -133,7 +133,32 @@ void collect_uninterpreted_applications_in_arithmetic_atom(
 
 NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
     const core::TermManager& terms, const std::vector<core::TermId>& assertions) {
-  NelsonOppenInterfaceSummary summary;
+  TheoryCombinationManager manager(terms);
+  manager.rebuild(assertions);
+  return manager.summary();
+}
+
+TheoryCombinationManager::TheoryCombinationManager(const core::TermManager& terms)
+    : terms_(terms) {}
+
+std::uint64_t TheoryCombinationManager::equality_key(core::TermId lhs, core::TermId rhs) {
+  if (rhs < lhs) {
+    std::swap(lhs, rhs);
+  }
+  return (static_cast<std::uint64_t>(lhs) << 32U) | static_cast<std::uint64_t>(rhs);
+}
+
+void TheoryCombinationManager::rebuild_equality_index() {
+  equality_index_.clear();
+  equality_index_.reserve(summary_.equality_registry.size());
+  for (std::size_t i = 0; i < summary_.equality_registry.size(); ++i) {
+    const InterfaceEqualityRegistryEntry& entry = summary_.equality_registry[i];
+    equality_index_.emplace(equality_key(entry.lhs, entry.rhs), i);
+  }
+}
+
+void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertions) {
+  summary_ = NelsonOppenInterfaceSummary{};
   std::vector<core::TermId> pending = assertions;
   std::unordered_set<core::TermId> visited;
   std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
@@ -147,76 +172,109 @@ NelsonOppenInterfaceSummary analyze_nelson_oppen_interface(
       continue;
     }
 
-    const core::Term& term = terms.get(term_id);
-    if (is_interface_constant(terms, term_id)) {
+    const core::Term& term = terms_.get(term_id);
+    if (is_interface_constant(terms_, term_id)) {
       terms_by_sort[term.sort].push_back(term_id);
     }
     if (term.kind == core::TermKind::Equality && term.children.at(0) != term.children.at(1) &&
-        is_interface_constant(terms, term.children.at(0)) &&
-        is_interface_constant(terms, term.children.at(1))) {
-      const core::Term& lhs = terms.get(term.children.at(0));
-      const core::Term& rhs = terms.get(term.children.at(1));
+        is_interface_constant(terms_, term.children.at(0)) &&
+        is_interface_constant(terms_, term.children.at(1))) {
+      const core::Term& lhs = terms_.get(term.children.at(0));
+      const core::Term& rhs = terms_.get(term.children.at(1));
       if (lhs.sort == rhs.sort) {
         const TermPair pair = canonical_pair(term.children.at(0), term.children.at(1));
         if (visible_pairs.emplace(pair, term_id).second) {
-          summary.visible_equalities.push_back(
+          summary_.visible_equalities.push_back(
               InterfaceEquality{term_id, pair.lhs, pair.rhs, lhs.sort});
         }
       }
     }
-    if (is_euf_atom(terms, term)) {
-      collect_real_terms_in_euf_atom(terms, term_id, term_id, summary, purification_sites);
-    } else if (is_lra_atom(terms, term)) {
-      collect_uninterpreted_applications_in_arithmetic_atom(terms, term_id, term_id, summary,
+    if (is_euf_atom(terms_, term)) {
+      collect_real_terms_in_euf_atom(terms_, term_id, term_id, summary_, purification_sites);
+    } else if (is_lra_atom(terms_, term)) {
+      collect_uninterpreted_applications_in_arithmetic_atom(terms_, term_id, term_id, summary_,
                                                             purification_sites);
     }
 
     pending.insert(pending.end(), term.children.begin(), term.children.end());
   }
 
-  summary.sort_count = terms_by_sort.size();
+  summary_.sort_count = terms_by_sort.size();
   for (auto& [sort, sort_terms] : terms_by_sort) {
     std::sort(sort_terms.begin(), sort_terms.end());
     sort_terms.erase(std::unique(sort_terms.begin(), sort_terms.end()), sort_terms.end());
-    summary.candidate_pairs += sort_terms.size() * (sort_terms.size() - 1U) / 2U;
+    summary_.candidate_pairs += sort_terms.size() * (sort_terms.size() - 1U) / 2U;
     for (const core::TermId term_id : sort_terms) {
-      summary.terms.push_back(InterfaceTerm{term_id, sort});
+      summary_.terms.push_back(InterfaceTerm{term_id, sort});
     }
     for (std::size_t i = 0; i < sort_terms.size(); ++i) {
       for (std::size_t j = i + 1; j < sort_terms.size(); ++j) {
         const TermPair pair = canonical_pair(sort_terms[i], sort_terms[j]);
         const auto visible = visible_pairs.find(pair);
         if (visible == visible_pairs.end()) {
-          summary.equality_registry.push_back(InterfaceEqualityRegistryEntry{
+          summary_.equality_registry.push_back(InterfaceEqualityRegistryEntry{
               core::kInvalidTermId, pair.lhs, pair.rhs, sort, InterfaceEqualityStatus::Missing});
-          ++summary.missing_equalities;
+          ++summary_.missing_equalities;
           continue;
         }
-        summary.equality_registry.push_back(InterfaceEqualityRegistryEntry{
+        summary_.equality_registry.push_back(InterfaceEqualityRegistryEntry{
             visible->second, pair.lhs, pair.rhs, sort, InterfaceEqualityStatus::Visible});
       }
     }
   }
-  std::sort(summary.terms.begin(), summary.terms.end(),
+  std::sort(summary_.terms.begin(), summary_.terms.end(),
             [](const InterfaceTerm& lhs, const InterfaceTerm& rhs) {
               return std::pair{lhs.sort, lhs.term} < std::pair{rhs.sort, rhs.term};
             });
-  std::sort(summary.visible_equalities.begin(), summary.visible_equalities.end(),
+  std::sort(summary_.visible_equalities.begin(), summary_.visible_equalities.end(),
             [](const InterfaceEquality& lhs, const InterfaceEquality& rhs) {
               return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
             });
   std::sort(
-      summary.equality_registry.begin(), summary.equality_registry.end(),
+      summary_.equality_registry.begin(), summary_.equality_registry.end(),
       [](const InterfaceEqualityRegistryEntry& lhs, const InterfaceEqualityRegistryEntry& rhs) {
         return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
       });
-  std::sort(summary.purification_sites.begin(), summary.purification_sites.end(),
+  std::sort(summary_.purification_sites.begin(), summary_.purification_sites.end(),
             [](const PurificationSite& lhs, const PurificationSite& rhs) {
               return std::tuple{lhs.kind, lhs.atom, lhs.term} <
                      std::tuple{rhs.kind, rhs.atom, rhs.term};
             });
+  rebuild_equality_index();
+}
 
-  return summary;
+std::optional<InterfaceEqualityRegistryEntry> TheoryCombinationManager::interface_equality(
+    core::TermId lhs, core::TermId rhs) const {
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return std::nullopt;
+  }
+  return summary_.equality_registry[found->second];
+}
+
+InterfaceEqualityValue TheoryCombinationManager::interface_equality_value(core::TermId lhs,
+                                                                          core::TermId rhs) const {
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return InterfaceEqualityValue::Unknown;
+  }
+  return summary_.equality_registry[found->second].value;
+}
+
+bool TheoryCombinationManager::set_interface_equality_value(core::TermId lhs, core::TermId rhs,
+                                                            InterfaceEqualityValue value) {
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return false;
+  }
+  summary_.equality_registry[found->second].value = value;
+  return true;
+}
+
+void TheoryCombinationManager::clear_interface_equality_values() {
+  for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
+    entry.value = InterfaceEqualityValue::Unknown;
+  }
 }
 
 }  // namespace primo::smt
