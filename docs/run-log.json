@@ -14143,6 +14143,63 @@
       },
       "evidence_status": "current",
       "followups": "Run the same gate with Dolmen available before relying on this as full model-printing evidence. The full shared-pair scans are intentionally simple and may need an indexed care-pair or relevance API after mixed benchmark profiling shows them hot."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-full-shared-pairs-dolmen-validation",
+      "date": "2026-07-31",
+      "kind": "model-validation",
+      "scope": "Dolmen-backed model validation for the same 1000 generated mixed QF_UFLRA cases used by the full-shared-pair answer fuzz gate. This replaces the weaker Z3 Real-assignment fallback evidence recorded in 2026-07-31-qf-uflra-full-shared-pairs-fuzz for model-printing purposes.",
+      "commit": "2e06d66 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 2e06d66; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "model_validator": "/home/user/.opam/default/bin/dolmen 0.10",
+        "reference": "/workspace/contrib/local/bin/z3 for the source answer-fuzz corpus"
+      },
+      "commands": {
+        "build": "cmake --build build --target primo -j$(nproc) && ./build/primo --version && dolmen --version",
+        "model_validation": "PATH=\"/home/user/.opam/default/bin:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen dolmen --dolmen-timeout 10 --out results/qf_uflra-full-shared-pairs-dolmen-validation-1000-2e06d66 fuzz-results/qf_uflra-full-shared-pairs-1000-8e5ad4e/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet with :produce-models true and appended get-model"
+      },
+      "references": [
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "source_corpus": "fuzz-results/qf_uflra-full-shared-pairs-1000-8e5ad4e/cases/*.smt2",
+        "logic": "QF_UFLRA",
+        "count": 1000,
+        "solver_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10
+      },
+      "artifacts": {
+        "summary": "results/qf_uflra-full-shared-pairs-dolmen-validation-1000-2e06d66/summary.csv",
+        "validation_artifacts": "results/qf_uflra-full-shared-pairs-dolmen-validation-1000-2e06d66/",
+        "source_cases": "fuzz-results/qf_uflra-full-shared-pairs-1000-8e5ad4e/cases/"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 705,
+        "not_sat": 295,
+        "solver_timeout": 0,
+        "solver_error": 0,
+        "model_error": 0,
+        "dolmen_timeout": 0,
+        "validation_unavailable": 0
+      },
+      "verification": {
+        "relationship_to_answer_fuzz": "The source corpus is the 1000-case generated mixed QF_UFLRA corpus that had 1000/1000 answer agreement with Z3 at implementation commit 8e5ad4e. This run rebuilds after the run-log-only commit 2e06d66 and validates every sat model printed for that corpus with Dolmen.",
+        "correctness_boundary": "The validation covers the documented mixed QF_UFLRA model subset exercised by the generator. It is not evidence for full Nelson-Oppen arrangement enumeration, proofs, or future theory combinations.",
+        "result": "scripts/validate_model.py reported pass=705 and not-sat=295 with zero model errors, Dolmen timeouts, solver errors, solver timeouts, or unavailable validations."
+      },
+      "evidence_status": "current",
+      "followups": "The local model-validation blocker for this full-shared-pair milestone is closed. The remaining pre-merge hardening item is optional SLURM-backed QF_UFLRA fuzz if we want cluster evidence in addition to the local merge gate."
     }
   ]
 }
