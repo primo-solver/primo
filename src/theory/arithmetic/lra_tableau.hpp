@@ -149,7 +149,18 @@ class LraTableau {
   }
 
   // A basic variable's row: basic_var = sum(coefficient * var), one
-  // (var, coefficient) pair per term. Not sorted by var id.
+  // (var, coefficient) pair per term.
+  //
+  // **Invariant: strictly ascending by var id, and never a zero
+  // coefficient.** Held by every producer of a Row -- add_row() sorts,
+  // pivot() builds both of its outputs in order, set_soi_direction()
+  // sorts, and undo() restores rows that already satisfied it. Relied on
+  // by pivot()'s affected-row loop, which combines two rows with a linear
+  // merge; before 2026-07-31 that loop concatenated and re-sorted per
+  // affected row, which a gprof profile of the mid-band gap put at 11.6%
+  // of runtime on scrambled339450 (see docs/qf-lra-heuristics.md section
+  // 6.2a). Anything that constructs a Row must preserve it; the unit tests
+  // check it directly rather than trusting comments.
   using Row = std::vector<std::pair<LraVarId, util::Rational>>;
 
   // Allocates a fresh non-basic variable with assignment 0 and no bounds.

@@ -30,6 +30,12 @@ void LraTableau::add_row(LraVarId basic_var,
     occurs_in_[var].push_back(basic_var);
     assignment = assignment + vars_.at(var).assignment.scaled(coefficient);
   }
+  // Establishes the Row ordering invariant (see Row's declaration): callers
+  // pass terms in formula order, which is not var-id order. Sorting here is
+  // paid once per row at construction, and is what lets pivot()'s hot
+  // affected-row loop merge rather than sort.
+  std::sort(row.begin(), row.end(),
+            [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
   vars_.at(basic_var).is_basic = true;
   vars_.at(basic_var).assignment = assignment;
   rows_[basic_var] = std::move(row);
@@ -180,9 +186,21 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   const util::Rational inv = util::Rational(1) / entering_coeff;
   Row new_entering_row;
   new_entering_row.reserve(remainder.size() + 1);
-  new_entering_row.emplace_back(basic_var, inv);
+  // basic_var takes basic_var's old row's place, so it is a new term whose
+  // id has no relation to the remainder's -- splice it in at its ordered
+  // position rather than prepending, or the Row invariant breaks here and
+  // the affected-row merge below silently produces garbage. `remainder` is
+  // ordered already, being a filtered copy of an ordered row.
+  bool basic_var_placed = false;
   for (const auto& [var, coeff] : remainder) {
+    if (!basic_var_placed && basic_var < var) {
+      new_entering_row.emplace_back(basic_var, inv);
+      basic_var_placed = true;
+    }
     new_entering_row.emplace_back(var, -(coeff * inv));
+  }
+  if (!basic_var_placed) {
+    new_entering_row.emplace_back(basic_var, inv);
   }
 
   vars_.at(basic_var).is_basic = false;
@@ -198,49 +216,75 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   row_update_count_ += affected.size();
 
   for (const LraVarId other_basic : affected) {
-    Row other_row = rows_.at(other_basic);
+    // Deliberately a reference, not a copy: this row is needed only to read
+    // from and is then handed to the trail, so it can be *moved* there once
+    // the merge below has consumed it. Copying it here and again into the
+    // trail cost two full row copies per affected row per pivot -- with 359
+    // affected rows per pivot measured on scrambled228965, that was the
+    // single largest source of the 465M Rational copy-constructions in the
+    // 2026-07-31 profile. rows_ is never resized inside this loop, so the
+    // reference stays valid.
+    Row& other_row = rows_[other_basic];
     row_term_op_count_ += other_row.size() + new_entering_row.size();
-    trail_entry.old_other_rows.emplace_back(other_basic, other_row);
 
-    // Reused member (see combine_scratch_'s own comment): sort-merge
-    // instead of a hash-based combine, avoiding per-element heap
-    // allocation on every affected row of every pivot.
-    combine_scratch_.clear();
     util::Rational entering_in_other(0);
     for (const auto& [var, coeff] : other_row) {
       if (var == entering_var) {
         entering_in_other = coeff;
         continue;
       }
-      combine_scratch_.emplace_back(var, coeff);
       auto& occurrences = occurs_in_[var];
       occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
                         occurrences.end());
     }
-    for (const auto& [var, coeff] : new_entering_row) {
-      combine_scratch_.emplace_back(var, entering_in_other * coeff);
-    }
-    std::sort(combine_scratch_.begin(), combine_scratch_.end(),
-              [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
+    // Both inputs are ordered by var id (the Row invariant), so combining
+    // them is a linear two-way merge. This used to concatenate them into
+    // combine_scratch_ and std::sort the result -- O(m log m) per affected
+    // row, which a gprof profile put at 11.6% of runtime on
+    // scrambled339450 (100M inner comparisons) before this change.
     Row rebuilt;
-    rebuilt.reserve(combine_scratch_.size());
-    std::size_t combine_index = 0;
-    while (combine_index < combine_scratch_.size()) {
-      const LraVarId var = combine_scratch_[combine_index].first;
-      util::Rational sum = combine_scratch_[combine_index].second;
-      ++combine_index;
-      while (combine_index < combine_scratch_.size() &&
-             combine_scratch_[combine_index].first == var) {
-        sum += combine_scratch_[combine_index].second;
-        ++combine_index;
-      }
-      if (sum.is_zero()) {
+    rebuilt.reserve(other_row.size() + new_entering_row.size());
+    std::size_t i = 0;
+    std::size_t j = 0;
+    while (true) {
+      // entering_var leaves this row entirely: its contribution is the
+      // `entering_in_other` factor the new row is scaled by.
+      if (i < other_row.size() && other_row[i].first == entering_var) {
+        ++i;
         continue;
       }
-      rebuilt.emplace_back(var, sum);
-      occurs_in_[var].push_back(other_basic);
+      const bool have_other = i < other_row.size();
+      const bool have_entering = j < new_entering_row.size();
+      if (!have_other && !have_entering) {
+        break;
+      }
+      if (have_other && (!have_entering || other_row[i].first < new_entering_row[j].first)) {
+        // Carried over unchanged, and nonzero by the Row invariant.
+        rebuilt.emplace_back(other_row[i].first, other_row[i].second);
+        occurs_in_[other_row[i].first].push_back(other_basic);
+        ++i;
+      } else if (have_entering && (!have_other || new_entering_row[j].first < other_row[i].first)) {
+        // A product of two nonzero rationals, so it cannot be zero either.
+        rebuilt.emplace_back(new_entering_row[j].first,
+                             entering_in_other * new_entering_row[j].second);
+        occurs_in_[new_entering_row[j].first].push_back(other_basic);
+        ++j;
+      } else {
+        // The only place a coefficient can cancel to zero, so the only
+        // place that needs the check -- the invariant says a stored
+        // coefficient is never zero.
+        util::Rational sum = other_row[i].second + entering_in_other * new_entering_row[j].second;
+        if (!sum.is_zero()) {
+          const LraVarId var = other_row[i].first;
+          rebuilt.emplace_back(var, std::move(sum));
+          occurs_in_[var].push_back(other_basic);
+        }
+        ++i;
+        ++j;
+      }
     }
+    trail_entry.old_other_rows.emplace_back(other_basic, std::move(other_row));
     rows_[other_basic] = std::move(rebuilt);
   }
 

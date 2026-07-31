@@ -982,6 +982,103 @@ void elimination_agrees_with_the_ablation_on_multi_pivot_scenarios() {
   }
 }
 
+void rows_stay_ordered_and_nonzero_through_pivoting() {
+  // pivot()'s affected-row loop combines two rows with a linear merge, which
+  // is correct only if both inputs are ordered by var id and hold no zero
+  // coefficient -- the Row invariant (see its declaration). A violation
+  // would not throw; it would silently produce a wrong row and therefore a
+  // wrong verdict, so this checks the invariant directly on every basic row
+  // after every step rather than inferring it from a verdict.
+  //
+  // add_row() is deliberately given terms in *descending* var id here: the
+  // real frontend passes them in canonical-polynomial order, which has no
+  // relation to var-id order, so a producer that merely preserved caller
+  // order would pass a test that fed it sorted input.
+  const auto check_invariant = [](const LraTableau& tableau, const char* where) {
+    for (LraVarId var = 0; var < 3 + 3; ++var) {
+      if (!tableau.is_basic(var)) {
+        continue;
+      }
+      const auto& row = tableau.row(var);
+      for (std::size_t i = 0; i < row.size(); ++i) {
+        assert(!row[i].second.is_zero() && where != nullptr);
+        if (i > 0) {
+          assert(row[i - 1].first < row[i].first);
+        }
+      }
+    }
+  };
+
+  for (const LraTableau::PivotingRule rule :
+       {LraTableau::PivotingRule::Bland, LraTableau::PivotingRule::Sparse,
+        LraTableau::PivotingRule::Dantzig, LraTableau::PivotingRule::Soi}) {
+    LraTableau tableau(rule);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId z = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    const LraVarId s3 = tableau.add_variable();
+
+    tableau.add_row(s1, {{z, Rational(-1)}, {y, Rational(2)}, {x, Rational(1)}});
+    tableau.add_row(s2, {{z, Rational(1)}, {x, Rational(3)}});
+    tableau.add_row(s3, {{z, Rational(4)}, {y, Rational(1)}});
+    check_invariant(tableau, "after add_row");
+
+    assert(!tableau.assert_lower(s1, rat(5), Lit{1}).has_value());
+    assert(!tableau.assert_upper(s2, rat(2), Lit{2}).has_value());
+    assert(!tableau.assert_lower(s3, rat(1), Lit{3}).has_value());
+    tableau.check();
+    check_invariant(tableau, "after check");
+
+    // Push/pop restores rows wholesale from the trail, so the invariant has
+    // to survive a backtrack too.
+    const std::size_t checkpoint = tableau.push();
+    assert(!tableau.assert_upper(s1, rat(30), Lit{4}).has_value());
+    assert(!tableau.assert_lower(s2, rat(-30), Lit{5}).has_value());
+    tableau.check();
+    check_invariant(tableau, "after nested check");
+    tableau.pop(checkpoint);
+    check_invariant(tableau, "after pop");
+  }
+}
+
+void merge_and_sort_rebuilds_agree_on_a_cancelling_pivot() {
+  // The merge's one branch that can drop a term is the equal-var-id case,
+  // where the carried coefficient and the scaled entering coefficient cancel
+  // exactly. This builds rows whose pivot produces such a cancellation and
+  // pins that the resulting row omits the cancelled variable entirely
+  // (rather than storing a zero, which would break the invariant and leave a
+  // stale occurs_in_ entry behind).
+  LraTableau tableau(LraTableau::PivotingRule::Bland);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+
+  // s1 = x + y, s2 = x - y. Pivoting x into s1's row rewrites s2 as
+  // s2 = s1 - 2y, and pivoting y in turn cancels terms between them.
+  tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(-1)}});
+
+  assert(!tableau.assert_lower(s1, rat(4), Lit{1}).has_value());
+  assert(!tableau.assert_upper(s1, rat(4), Lit{2}).has_value());
+  assert(!tableau.assert_lower(s2, rat(0), Lit{3}).has_value());
+  assert(!tableau.check().has_value());
+
+  for (const LraVarId var : {x, y, s1, s2}) {
+    if (!tableau.is_basic(var)) {
+      continue;
+    }
+    DeltaRational sum = rat(0);
+    for (const auto& [term_var, coeff] : tableau.row(var)) {
+      assert(!coeff.is_zero());
+      sum = sum + tableau.assignment(term_var).scaled(coeff);
+    }
+    assert(sum == tableau.assignment(var));
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -1018,5 +1115,7 @@ int main() {
   conflict_is_still_found_through_an_eliminated_variable();
   push_pop_restores_state_across_an_elimination_pivot();
   elimination_agrees_with_the_ablation_on_multi_pivot_scenarios();
+  rows_stay_ordered_and_nonzero_through_pivoting();
+  merge_and_sort_rebuilds_agree_on_a_cancelling_pivot();
   return 0;
 }
