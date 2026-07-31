@@ -14441,6 +14441,120 @@
       },
       "evidence_status": "current",
       "followups": "Run a SLURM full-archive QF_UFLRA comparison for default, first, ranked, and adaptive before making any performance or default-promotion claim."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-smtlib-sample-5pf-slurm",
+      "date": "2026-07-31",
+      "kind": "slurm-benchmark",
+      "scope": "Small deterministic QF_UFLRA SMT-LIB sample with five files per available family from the extracted sandbox/QF_UFLRA archive. This run compares default Primo, model-equality branching with first/ranked/adaptive policies, and Z3 as an answer/performance reference. It is a tuning sample, not a default-promotion benchmark.",
+      "commit": "ed2aae1",
+      "environment": {
+        "type": "slurm",
+        "host": "redacted",
+        "job_id": "redacted",
+        "binary": "primo 0.1.0; git: ed2aae1-dirty on the remote workspace because historical tracked output files were not synced; build: Release; cadical: cadical-3.0.0-7b99c07",
+        "reference": "Z3 version 5.0.0 - 64 bit"
+      },
+      "commands": {
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_sample_compare.sbatch && bash -n scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "workspace_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --ssh-config <redacted> --remote <redacted> --remote-dir <redacted> --target primo --local-dir .",
+        "slurm_runner": "PRIMO_WORKDIR=<remote-workdir> sbatch scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "render_html": "python3 scripts/render_benchmark_matrix_html.py --variant default=<artifact>/default.csv --variant first=<artifact>/first.csv --variant ranked=<artifact>/ranked.csv --variant adaptive=<artifact>/adaptive.csv --variant z3=<artifact>/z3.csv --out <artifact>/compare.html --summary-json <artifact>/compare-summary.json --timeout 10 --strip-prefix tmp/QF_UFLRA/ --stat :time.parse-us --stat :time.preprocessing-us --stat :time.solve-us --stat :no.interface.euf-care-pairs --stat :no.interface.euf-care-pruned-pairs --stat :no.interface.model-equality-candidates --stat :no.interface.model-equality-scanned --stat :no.interface.model-equality-lra-equal --stat :no.interface.model-equality-assumptions --stat :no.interface.model-equality-conflicts --stat :no.interface.model-equality-selected-care --stat :no.interface.model-equality-selected-full --stat :no.interface.model-equality-adaptive-stops",
+        "answer_compare": "python3 scripts/compare_solver_answers.py <artifact> --timeout 10"
+      },
+      "solver_variants": {
+        "default": "build-slurm-rel/primo --quiet --stats",
+        "first": "build-slurm-rel/primo --quiet --stats --model-equality-branching",
+        "ranked": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked",
+        "adaptive": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy adaptive",
+        "z3": "contrib/local/bin/z3"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "families": {
+          "FFT": 5,
+          "cpachecker-bmc-svcomp14": 5,
+          "cpachecker-induction-svcomp14": 5,
+          "mathsat": 5
+        },
+        "total_files": 20,
+        "timeout_seconds": 10
+      },
+      "artifacts": {
+        "directory": "results/qf_uflra-smtlib-sample-5pf-slurm-ed2aae1/",
+        "html": "results/qf_uflra-smtlib-sample-5pf-slurm-ed2aae1/compare.html",
+        "summary_json": "results/qf_uflra-smtlib-sample-5pf-slurm-ed2aae1/compare-summary.json",
+        "evidence_status": "local_ignored_copy_of_slurm_outputs"
+      },
+      "summary": {
+        "default": {
+          "total": 20,
+          "solved": 15,
+          "sat": 12,
+          "unsat": 3,
+          "timeout": 5,
+          "error": 0,
+          "wrong": 0,
+          "par2": 122.980205
+        },
+        "first": {
+          "total": 20,
+          "solved": 14,
+          "sat": 11,
+          "unsat": 3,
+          "timeout": 6,
+          "error": 0,
+          "wrong": 0,
+          "par2": 143.300544
+        },
+        "ranked": {
+          "total": 20,
+          "solved": 14,
+          "sat": 11,
+          "unsat": 3,
+          "timeout": 6,
+          "error": 0,
+          "wrong": 0,
+          "par2": 143.200115
+        },
+        "adaptive": {
+          "total": 20,
+          "solved": 14,
+          "sat": 11,
+          "unsat": 3,
+          "timeout": 6,
+          "error": 0,
+          "wrong": 0,
+          "par2": 143.2184
+        },
+        "z3": {
+          "total": 20,
+          "solved": 20,
+          "sat": 17,
+          "unsat": 3,
+          "timeout": 0,
+          "error": 0,
+          "wrong": 0,
+          "par2": 3.925267
+        },
+        "cross_solver_disagreements": 0,
+        "z3_only_solved": 5
+      },
+      "stats": {
+        "first_model_equality_assumptions": 98,
+        "ranked_model_equality_assumptions": 98,
+        "adaptive_model_equality_assumptions": 98,
+        "ranked_selected_care": 28,
+        "ranked_selected_full": 70,
+        "adaptive_selected_care": 28,
+        "adaptive_selected_full": 70,
+        "adaptive_stops": 0,
+        "euf_care_pairs_all_primo_variants": 25641,
+        "euf_care_pruned_pairs_all_primo_variants": 150444
+      },
+      "interpretation": "The feature is active on this sample, but the enabled branch policies do not improve the small SMT-LIB sample: each loses one solved instance versus default at a 10 second timeout. Keep model-equality branching default-off and use this sample for focused tuning only.",
+      "evidence_status": "current"
     }
   ]
 }
