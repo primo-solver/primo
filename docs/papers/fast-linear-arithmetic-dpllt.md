@@ -109,13 +109,47 @@ before it, so Section 4.2 propagation is unaffected. See
   non-Bland prefix followed by a Bland suffix is still covered by the paper's
   own argument. The threshold (`4 * vars_.size() + 64`) is a heuristic, not a
   derived bound. `--lra-pivoting-rule bland` restores the paper's choice.
-- **Pivots are undone on `pop()`.** The paper notes that which basic/non-basic
-  partition is current is an internal representation choice, not something
-  tied to search depth. Primo still has to undo a pivot's row rewrite,
-  because leaving it in place while reverting the bounds and assignments it
-  was performed under would break the invariant that every basic variable's
-  row equation holds for the current assignment. See `LraTableau`'s class
-  comment.
+- **Backtracking restores far more than the paper's does, and this is the
+  one deviation that looks like a mistake rather than a choice.** TR Section
+  3.2.4 is explicit: "We just need to save the value of `u_i` (`l_i`) on a
+  stack before it is updated... Backtracking does not require to save the
+  successive βs on a stack... **Since no pivoting or other expensive
+  operation is used, backtracking is very cheap.**" Primo instead trails and
+  undoes three things: bounds (`BoundTrailEntry`, matching the paper),
+  assignments (`AssignmentTrailEntry`) and every pivot's full row rewrite
+  (`PivotTrailEntry`, holding `old_basic_row` plus a snapshot of *every*
+  affected row).
+
+  *The justification previously recorded here was circular.* It said pivots
+  must be undone because leaving a rewrite in place "while reverting the
+  bounds and assignments it was performed under" would break the row
+  equations -- but reverting the assignments is exactly what the paper does
+  not do, and it is what forces the pivot undo. The two choices prop each
+  other up.
+
+  *Why the paper's design is sound without either.* β satisfies `Ax = 0`,
+  and every tableau row is a linear combination of `A`'s rows, so β keeps
+  satisfying the row equations across any change of basis. Backtracking only
+  ever *relaxes* bounds, so invariant (3.2) -- every non-basic variable
+  within its bounds -- also survives untouched. Neither β nor the basis
+  needs restoring. Note the two designs are each internally consistent and
+  it is *mixing* them that breaks: restoring β but not the basis would leave
+  a variable that was basic at snapshot time (and so unconstrained by (3.2))
+  now non-basic and possibly outside its bounds.
+
+  *What it costs us.* `PivotTrailEntry` snapshots 55-359 rows per pivot on
+  the mid-band gap instances, and `pop()` then rebuilds `occurs_in_` -- the
+  2026-07-31 profile put that rebuild alone at 8% of runtime over 138M
+  scattered pushes, and item H8 spent its effort making one of the two row
+  copies a move rather than removing the snapshot.
+
+  *Before acting on this*, three things need their own argument, none of
+  which the paper covers: SOI maintains an explicit objective row that *is*
+  basis-dependent; H7 pivots from inside `assert_upper`/`assert_lower`; and
+  the single β the paper does keep ("the one corresponding to the last
+  successful `Check`") exists for reporting a model, which Primo does not do.
+  **Unverified as a win** -- this is a reading of the paper plus an argument,
+  not a measurement.
 - **Real equality is lowered, not handled in the tableau.** `t1 = t2` becomes
   `(t1 <= t2) AND (t2 <= t1)` -- sound because Real is a total order -- so
   `NOT(t1 = t2)` reduces to ordinary Boolean structure that
@@ -129,7 +163,18 @@ before it, so Section 4.2 propagation is unaffected. See
   not at parse time, so solve-eqs and the other `Equality`-aware passes still
   see genuine Real equalities. See [](../preprocessing.md).
 - **`pop()` rebuilds the `occurs_in_` reverse index** rather than diffing it
-  incrementally -- once per `pop()` call, not once per pivot undone.
+  incrementally -- once per `pop()` call, not once per pivot undone. An
+  incremental version was built and measured on 2026-07-31 and is *slower*
+  (1.4-1.8x); see [](../qf-lra-heuristics.md) section 6.2b. Note this index
+  exists only to serve the explicit tableau, so it would disappear entirely
+  under the paper's backtracking scheme above.
+- **No model extraction.** TR Section 3.3's second half converts a satisfying
+  β' over the delta-rationals into a concrete rational assignment, by
+  computing `delta_0 = min{(d_i - c_i)/(k_i - h_i) | c_i < d_i, k_i > h_i}`
+  and evaluating each variable at it. Primo implements none of this and
+  handles neither `get-model` nor `get-value`, so it answers sat/unsat
+  without ever producing the witness. Not a deviation in the algorithm, but
+  a missing capability that this paper does specify.
 
 ## Extensions beyond the paper
 
