@@ -648,13 +648,20 @@ item H7's elimination pivots -- which happen inside
 `:lra.pivot-row-updates` / `:lra.pivot-term-ops`, which count every pivot's
 work wherever it was triggered.
 
-### Where QF_LRA work stands, and what is open (2026-07-30)
+### Where QF_LRA work stands, and what is open (2026-07-31)
 
 **The whole remaining gap against z3 is one band.** On the 595-file scrambled
-competition set at 60s, Primo solves 373 to z3's 429 and cvc5's 351. The
-500KB-5MB band accounts for **all 56** of that deficit (Primo 45, z3 101 of
-174), and cvc5 solves only 9 of the 59 gap files there -- so it is a
+competition set at 60s, Primo solves **378** (job 117940, after item H8) to
+z3's 429 and cvc5's 351. The 500KB-5MB band accounts for essentially all of
+that deficit, and cvc5 solves only 9 of the 59 gap files there -- so it is a
 z3-specific capability, not general difficulty.
+
+*Read the deficit as approximate.* z3's 429 is from job 117487 and is not
+re-run (it is unchanged). Cross-job drift at a 60s timeout on a shared
+cluster is a few files in each direction -- job 117940's own pre-H8 baseline
+solved 369 where the 2026-07-30 run recorded 373 for a comparable
+configuration. **Within-job paired deltas are the trustworthy numbers here;
+absolute cross-job counts are good to about ±4 files.**
 
 **It is a constant factor, and a small one.** Re-run at 600s (job 117631),
 Primo solves 45 of those 59, median 167s. Against a 60s budget that is a

@@ -37,6 +37,34 @@ sample (`benchmarks/qf-lra-stratified-sample.txt`) is the promotion bar.**
 Every item below therefore states which families it targets, why, and what
 would falsify it.
 
+### Terminology and sources
+
+Defined once here so the rest of the note can use them freely; the sources
+are in [](papers/lra-related-work.md).
+
+| term | meaning | source |
+|---|---|---|
+| **General Form** | `Ax = 0` with `l_j <= x_j <= u_j`, as against Standard Form's `Ax = b, x >= 0`. The authors' own name for the representation, and what makes only *bounds* get asserted during search -- never new rows | Dutertre & de Moura, "A Fast Linear-Arithmetic Solver for DPLL(T)", CAV 2006, and their [CAV 2006 slides](https://yices.csl.sri.com/old/slides-cav06.pdf) |
+| **Assert-Bound / Check / Pivot** | the three operations of the General Form Simplex this solver implements. The authors describe the algorithm as "based on the Dual Simplex" | same, Section 3 |
+| **basic / non-basic variable** | a variable that does or does not have a row defining it. The authors' slides say **dependent** / **non-dependent** for the same distinction | same |
+| **Farkas certificate** | the conflict explanation: a subset of asserted bounds whose non-negative combination is contradictory, returned as a clause | same, Section 3 |
+| **`DeltaRational`** | a value `q + k·delta` for a symbolic infinitesimal `delta > 0`, representing strict bounds exactly without choosing a concrete delta | same, Section 3.1 |
+| **Bland's rule** | pick the smallest-index eligible leaving and entering variable; the only selection rule with a direct termination proof, and the fallback all others revert to past a per-call pivot cap | same |
+| **Dantzig's rule** | pick the largest violation and largest-magnitude coefficient -- prices *progress* | standard LP; in SMT, Griggio's most-violated rule (CVC4, MathSAT5) per King's thesis Section 2.2.12 |
+| **SOI** (Sum of Infeasibilities) | replaces the single-row objective with a global one -- minimise the summed bound violation across *every* out-of-bound basic variable at once, giving pivot selection a progress criterion Bland and Dantzig both lack | King, Barrett & Dutertre, "Simplex with Sum of Infeasibilities for SMT", FMCAD 2013. Implemented as `--lra-pivoting-rule soi` |
+| **Markowitz product** | `\|occurs_in(entering)\| × \|row(leaving)\|` -- what a pivot *costs*, since it rewrites that many rows by merging in a row of that length. Item H3 prices by it | standard sparse-LU practice; the sparsity criterion is Monniaux, CAV 2009, p.8 |
+| **fill-in** | the growth in nonzeros per row as pivoting proceeds. Rows here start at 4-6 nonzeros and reach 22-91 during search, and each pivot makes the next more expensive | section 6.2 measures it |
+| **PAR2** | the competition scoring convention: solve time for a solved instance, **twice the timeout** for an unsolved one. Lower is better; it rewards both solving more and solving faster | SAT/SMT competition standard |
+| **FTRAN / BTRAN** | in *revised* simplex, solving `Bx = a` (forward) and `Bᵀx = a` (backward) against a factored basis, which is how rows and columns are materialised on demand instead of stored | standard LP; relevant only to direction D4 |
+| **Forrest-Tomlin / Bartels-Golub** | the two standard schemes for updating an LU factorization after a pivot rather than refactorizing | standard LP; relevant only to D4 |
+
+Two naming notes worth stating once. **"Sparse" here is Primo's own name**
+for the `PivotingRule` that prices by the Markowitz product; the field calls
+the entering half minimum-column-length selection, and King's thesis records
+it as what MathSAT, OpenSMT, Yices, Yices 2, z3 and CVC4 all do -- so H3 is
+standard practice, not a novelty. And **`delta` is symbolic**, never a chosen
+small number; that is the point of the representation.
+
 ## 1. Where the remaining gap actually is
 
 From the last full 237-file comparison (Slurm job 114200, 10s timeout;
@@ -206,11 +234,12 @@ atoms over a single variable are asserted directly as bounds on it.
   do **not** allocate a slack or a row. Store
   `PreparedAtom{var = x, relation, rhs}` and assert the bound directly on
   the structural variable.
-- Rename/generalize `atoms_by_slack` to `atoms_by_var`: an index from
-  "tableau variable a bound was just asserted on" to "atoms that could now
-  be entailed". The existing same-slack propagation scan works unchanged
-  over it, and now also relates atoms that previously lived on different
-  slacks.
+- Rename/generalize `atoms_by_slack` to an index from "tableau variable a
+  bound was just asserted on" to "atoms that could now be entailed". The
+  existing same-slack propagation scan works unchanged over it, and now also
+  relates atoms that previously lived on different slacks. *(As built, this
+  is `PreparedLraTheory::atoms_by_bound_var`; the design text above said
+  `atoms_by_var`, which never existed under that name.)*
 - Delete `single_variable_slack` / `variable_for_single_slack` entirely.
   Row-based propagation (`compute_implied_bound`) can then read a row
   term's bound *directly* from `LraTableau::upper_bound`/`lower_bound`
@@ -1497,9 +1526,14 @@ King's thesis records that no Simplex-for-DPLL(T) implementation does it.
 
 *Scope.* Not a feature but a change of the data structure the class is built
 on. `LraTableau` is ~1,680 lines with 18 internal uses of `rows_` and 29 of
-`occurs_in_`; in revised simplex **neither concept exists**. A row is
-materialised on demand as `e_i^T B^-1 N` (BTRAN plus a pass over N), a column
-as `B^-1 A_j` (FTRAN). Consequences, which differ per subsystem:
+`occurs_in_`; in revised simplex **neither concept exists**. Instead of
+storing `B^-1 N` explicitly, it keeps the original constraint matrix (sparse,
+and never changing) plus an LU factorization of the basis matrix `B`, and
+materialises what it needs on demand: a row as `e_i^T B^-1 N` (a BTRAN solve
+plus a pass over N), a column as `B^-1 A_j` (an FTRAN solve) -- see the
+terminology table for both. A pivot then updates the LU factors rather than
+rewriting every affected row, which is the cost this whole section is about.
+Consequences, which differ per subsystem:
 
 - `update()` *improves* -- walking `occurs_in_` to update dependent basic
   variables is exactly an FTRAN.

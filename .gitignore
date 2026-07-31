@@ -72,8 +72,14 @@ __pycache__/
 .venv/
 .venv-docs/
 .venv-smac/
+# Reference papers are read locally and never committed -- they are
+# copyrighted third-party material. The two named files predate this rule;
+# the glob is what actually keeps the policy from depending on someone
+# remembering to add each new one, after docs/papers/qflra-sri-csl-06-01.pdf
+# sat untracked-but-unignored where a `git add -A docs` would have taken it.
 docs/oliveras-euf.pdf
 docs/Bland-or77.pdf
+*.pdf
 results/
 fuzz-results/
 yinyang_bugs/

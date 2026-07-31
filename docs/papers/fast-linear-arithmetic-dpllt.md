@@ -3,15 +3,40 @@
 ## Citation
 
 Bruno Dutertre, Leonardo de Moura:  
-A Fast Linear-Arithmetic Solver for DPLL(T).
+A Fast Linear-Arithmetic Solver for DPLL(T). CAV 2006.
+
+Two companion sources, both consulted for this map:
+
+- **The extended technical report**, Bruno Dutertre and Leonardo de Moura,
+  *Integrating Simplex with DPLL(T)*, CSL Technical Report SRI-CSL-06-01,
+  23 May 2006 (`docs/papers/qflra-sri-csl-06-01.pdf`, untracked -- reference
+  papers are read locally and never committed). It carries the material the
+  CAV version compresses: Section 3.1 Preprocessing, the `update` /
+  `pivotAndUpdate` / `Check` pseudocode, the termination proof, and Gomory
+  cuts. **Section references below are to the technical report** where the
+  two differ.
+- The authors' [CAV 2006 slides](https://yices.csl.sri.com/old/slides-cav06.pdf).
+
+Several names below are the authors' own rather than ours, and are noted as
+such.
 
 ## Role in Primo
 
 This paper is the base algorithm for Primo's QF_LRA support: the
-bounded-variable simplex tableau, its Assert-Bound/Check/Pivot loop, the
+simplex tableau, its Assert-Bound/Check/Pivot loop, the
 infinitesimal-delta encoding of strict inequalities, Farkas-style conflict
 explanation, and the backtracking and propagation that make it a DPLL(T)
 theory solver.
+
+**The authors' own framing, worth using rather than paraphrasing.** They
+distinguish *Standard Form* (`Ax = b`, `x >= 0`) from the **General Form**
+(`Ax = 0` with `l_j <= x_j <= u_j`) their algorithm uses, and describe the
+algorithm itself as "a new algorithm based on the **Dual Simplex**". Primo
+implements the General Form: `LraTableau` holds equations and per-variable
+bounds, and only bounds are asserted during search -- never new rows. Where
+this project says "bounded-variable simplex", the paper says General Form,
+and where these docs say *basic* / *non-basic*, the slides say **dependent**
+/ **non-dependent** variable. Same objects throughout.
 
 **What this file is.** A map from the paper's sections to the code that
 implements them, plus the deviations and the extensions that go beyond it.
@@ -41,12 +66,24 @@ recurring.
 | Paper | Implemented as | Where |
 |---|---|---|
 | Section 2 -- normalized linear terms and `t ~ c` atoms | `LinearPolynomial`, atom normalization | `theory/arithmetic/linear_polynomial.{hpp,cpp}`, `lra_atom.{hpp,cpp}` |
-| Section 3 -- Assert-Bound, Check, Pivot | `LraTableau::assert_upper/assert_lower`, `check()`, `pivot()` | `theory/arithmetic/lra_tableau.{hpp,cpp}` |
+| TR Section 3.2.1 -- `Check`, `update`, `pivotAndUpdate`, "based on the dual Simplex algorithm and relies on Bland's pivot-selection rule to ensure termination" | `LraTableau::check()`, `update()`, `pivot()` (Primo splits `pivotAndUpdate` into `pivot` + `update`, which is why `check()` always calls them as a pair) | `theory/arithmetic/lra_tableau.{hpp,cpp}` |
+| TR Section 3.2.3 -- assertion procedures | `LraTableau::assert_upper` / `assert_lower` | `lra_tableau.cpp` |
 | Section 3.1 -- infinitesimal delta for strict inequalities | `DeltaRational` (`q + k*delta`, lexicographically ordered); no floating point anywhere | `lra_tableau.hpp` |
 | Section 3.2 -- conflict explanation from row coefficients and the stuck variables' binding bounds | `LraTableau::build_conflict` | `lra_tableau.cpp` |
-| Section 4 -- backtracking | `push()` / `pop(checkpoint)`, trail-based (one `TrailEntry` per bound, assignment, pivot, SOI f-row and row-freeze change, replayed backwards) | `lra_tableau.{hpp,cpp}` |
+| Section 4 -- backtracking | `push()` / `pop(checkpoint)`, trail-based (one `TrailEntry` per bound, assignment, pivot and SOI f-row change, replayed backwards) | `lra_tableau.{hpp,cpp}` |
 | Section 4 -- precomputing the tableau once per problem | `PreparedLraTheory` (mirrors `PreparedFlatTheory` for EUF) | `smt/check_sat.cpp` |
 | Section 4.2 -- "deriving satisfied atoms" | `OnlineLraPropagator::scan_for_propagations`, over the atoms sharing a bound variable | `smt/check_sat.cpp` |
+| Section 4.2 -- deriving *new* bounds from equations plus bounds (the slides' `x = y - z`, `y <= 2`, `z >= 3` gives `x <= -1`, explained by `y <= 2, z >= 3`) | `compute_implied_bound` / `compute_implied_child_bound`, **opt-in and off by default** -- `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | `smt/check_sat.cpp` |
+
+**A note on that last row, since it is a paper feature we do not enable.**
+The slides list "Efficient Theory Propagation" as a headline contribution,
+and the bound-derivation rule above is what it means. Primo implements it and
+leaves it **off**, because a cluster sweep over the whole 500KB-5MB gap band
+on 2026-07-31 found no cap setting that beats the baseline's solved count --
+even with the mechanism firing 380x harder than at its default caps. See
+[](../qf-lra-heuristics.md) section 6.5's D1 outcome. This is a measured
+divergence from the paper on one benchmark family, not a claim that the
+technique is generally worthless.
 
 **DPLL(T) integration.** `OnlineLraPropagator` is a trail-synced
 `CaDiCaL::ExternalPropagator`: one `LraTableau` per solve, kept in sync with
@@ -129,14 +166,39 @@ it has one outside this paper, is in [](lra-related-work.md).
   coincide is pivoted out of the basis immediately, because a fixed *non-basic*
   variable is already inert -- `can_enter()` rejects it on every branch -- while
   a fixed *basic* one demands a repair pivot every time any term in its row
-  moves. Where the resulting row provably constrains nothing it is also frozen
-  out of the working set, under a guard (`mark_boundable`) that is what keeps
-  that half sound. Nothing in the paper covers fixed variables; the
-  quantities being exploited are its own (`:lra.fixed-variables`,
-  `:lra.eliminated-rows`, `:lra.elimination-pivots`).
+  moves. **The term is the authors' own** -- TR Section 3.1: "If `l_j = u_j`
+  then `x_j` is called a *fixed variable*" -- but they only define it; doing
+  anything with one during search is not in either version of the paper. The
+  quantities exploited are ours (`:lra.fixed-variables`,
+  `:lra.elimination-pivots`).
+  Prior art is LP presolve rather than this paper -- Andersen & Andersen,
+  *Presolving in linear programming* (1995); see [](lra-related-work.md).
+  **Ships opt-in** (`--lra-fixed-elimination`): it nets to nothing on the
+  595-file scrambled set. An earlier version also *froze* qualifying rows out
+  of the working set; that half was strictly negative and was deleted
+  outright, along with its `mark_boundable` guard and its
+  `:lra.eliminated-rows` counter.
 
 ## Not implemented
 
+- **Presimplification (TR Section 3.1).** Since every atom is known before
+  search, the constraints `Ax = 0` can be simplified by "removing any
+  variable `x_i` that does not occur in any elementary atom", by Gaussian
+  elimination; the authors report it "can reduce the matrix size
+  significantly" and call the resulting speedup substantial. Primo does not
+  do this. Note what it is *not*: `--gaussian-elimination` here solves
+  asserted linear **equality systems** feeding solve-eqs, a different pass.
+  - *Probably already covered in effect, which is why it is not a lead.*
+    Item H1a removed the trivial `s = c*x` slack rows that were 36-95% of
+    the tableau on the lagging families, and the 2026-07-29 measurement has
+    Primo's prepared tableau dimensions matching z3's within ~5% on every
+    profiled gap instance. A pass that shrinks the matrix cannot be worth
+    much when the matrix is already the same size as the reference's. Worth
+    an hour to confirm by counting variables absent from all atoms before
+    anyone spends longer.
+  - The paper's name for a variable with no bounds at all is a **free
+    variable** (`l_j = -inf`, `u_j = +inf`); that predicate exists here as
+    `LraTableau::is_unbounded`, used for H7's entering-candidate preference.
 - **Devex and steepest-edge pricing.** Surveyed in [](lra-related-work.md);
   `Dantzig` covers the cheap end of that survey and `Sparse` optimizes a
   different quantity entirely.
