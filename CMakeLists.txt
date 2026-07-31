@@ -25,6 +25,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(PRIMO_WARNINGS_AS_ERRORS "Treat Primo C++ compiler warnings as errors" ON)
 set(PRIMO_SANITIZERS "" CACHE STRING "Semicolon-separated sanitizer list for Primo targets, e.g. address;undefined")
 set(PRIMO_CADICAL_ROOT "" CACHE PATH "CaDiCaL installation prefix to prefer over contrib/local")
+set(PRIMO_GIT_REVISION_OVERRIDE "" CACHE STRING "Git revision banner for source snapshots without .git")
 
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/contrib/local")
 
@@ -242,6 +243,7 @@ add_custom_target(primo_git_revision_header ALL
   COMMAND "${CMAKE_COMMAND}"
     -DPRIMO_SOURCE_DIR=${CMAKE_SOURCE_DIR}
     -DPRIMO_GIT_REVISION_HEADER=${CMAKE_BINARY_DIR}/generated/primo_git_revision.hpp
+    -DPRIMO_GIT_REVISION_OVERRIDE=${PRIMO_GIT_REVISION_OVERRIDE}
     -P ${CMAKE_SOURCE_DIR}/scripts/write_git_revision.cmake
   BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/primo_git_revision.hpp"
   VERBATIM

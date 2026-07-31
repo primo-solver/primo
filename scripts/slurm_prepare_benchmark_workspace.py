@@ -80,7 +80,77 @@ def rsync_repo(config: Path, local: Path, remote: str, remote_dir: str) -> None:
     run(command)
 
 
-def build_command(workdir: str, cmake: str, target: str, jobs: int) -> str:
+def archive_repo(config: Path, local: Path, remote: str, remote_dir: str) -> None:
+    """Install a clean tracked-tree snapshot without copying local .git state."""
+
+    remote_script = f"""
+set -eu
+workdir={shlex.quote(remote_dir)}
+snapshot="$workdir/.primo-source-snapshot"
+rm -rf "$snapshot"
+mkdir -p "$snapshot"
+tar -xf - -C "$snapshot"
+mkdir -p "$workdir"
+rsync -a --delete \
+  --exclude .primo-source-snapshot \
+  --exclude .git \
+  --exclude .venv-build \
+  --exclude .venv-docs \
+  --exclude .venv-smac \
+  --exclude .venv-yinyang \
+  --exclude build \
+  --exclude 'build-*' \
+  --exclude contrib/local \
+  --exclude contrib/slurm-local \
+  --exclude contrib/src \
+  --exclude docs/_build \
+  --exclude fuzz-results \
+  --exclude logs \
+  --exclude results \
+  --exclude slurm_logs \
+  --exclude tmp \
+  --exclude vendor \
+  --exclude yinyang_bugs \
+  --exclude yinyang_scratch \
+  "$snapshot"/ "$workdir"/
+rm -rf "$snapshot"
+""".strip()
+    shell_syntax_check(remote_script)
+
+    archive_command = ["git", "-C", str(local), "archive", "--format=tar", "HEAD"]
+    ssh_command = ["ssh", "-F", str(config), remote, remote_script]
+    print(
+        "+",
+        " ".join(shlex.quote(part) for part in archive_command),
+        "|",
+        " ".join(shlex.quote(part) for part in ssh_command),
+        flush=True,
+    )
+    archive_proc = subprocess.Popen(archive_command, stdout=subprocess.PIPE)
+    try:
+        ssh_proc = subprocess.run(
+            ssh_command,
+            stdin=archive_proc.stdout,
+            text=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    finally:
+        if archive_proc.stdout is not None:
+            archive_proc.stdout.close()
+    archive_return = archive_proc.wait()
+    if archive_return != 0:
+        raise subprocess.CalledProcessError(archive_return, archive_command)
+    if ssh_proc.stdout:
+        print(ssh_proc.stdout.decode(errors="replace"), end="")
+    if ssh_proc.stderr:
+        print(ssh_proc.stderr.decode(errors="replace"), end="")
+    if ssh_proc.returncode != 0:
+        raise subprocess.CalledProcessError(ssh_proc.returncode, ssh_command)
+
+
+def build_command(workdir: str, cmake: str, target: str, jobs: int, git: str) -> str:
     return f"""
 set -eu
 cd {shlex.quote(workdir)}
@@ -93,7 +163,8 @@ rm -f contrib/local/.cadical.stamp contrib/local/lib/libcadical.a
 rm -rf contrib/src/cadical/build contrib/src/cadical/makefile \
   contrib/src/cadical/src/makefile build-slurm-rel
 make contrib-cadical
-{shlex.quote(cmake)} -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release
+{shlex.quote(cmake)} -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release \
+  -DPRIMO_GIT_REVISION_OVERRIDE={shlex.quote(git)}
 {shlex.quote(cmake)} --build build-slurm-rel --target {shlex.quote(target)} -j{jobs}
 build-slurm-rel/{shlex.quote(target)} --version
 """.strip()
@@ -147,6 +218,12 @@ def main() -> int:
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--no-sync", action="store_true")
     parser.add_argument(
+        "--sync-mode",
+        choices=("archive", "rsync"),
+        default="archive",
+        help="archive sends only tracked HEAD files; rsync preserves the legacy full-tree sync",
+    )
+    parser.add_argument(
         "--allow-active-jobs",
         action="store_true",
         help="Allow sync/rebuild even if active SLURM jobs with Primo job names exist",
@@ -171,13 +248,16 @@ def main() -> int:
 
     if not args.check_only and not args.no_sync:
         ssh(args.ssh_config, args.remote, f"mkdir -p {shlex.quote(args.remote_dir)}")
-        rsync_repo(args.ssh_config, args.local_dir, args.remote, args.remote_dir)
+        if args.sync_mode == "archive":
+            archive_repo(args.ssh_config, args.local_dir, args.remote, args.remote_dir)
+        else:
+            rsync_repo(args.ssh_config, args.local_dir, args.remote, args.remote_dir)
 
     if not args.check_only:
         ssh(
             args.ssh_config,
             args.remote,
-            build_command(args.remote_dir, args.cmake, args.target, args.jobs),
+            build_command(args.remote_dir, args.cmake, args.target, args.jobs, git),
         )
     ssh(args.ssh_config, args.remote, check_command(args.remote_dir, git, args.target))
     return 0

@@ -54,11 +54,18 @@ python3 scripts/slurm_prepare_benchmark_workspace.py \
   --remote-dir <remote-home>/primo-cadical-profile
 ```
 
-The script refuses a dirty local tree, syncs the committed source, rebuilds
-CaDiCaL on the cluster, rebuilds `build-slurm-rel/primo`, and checks that
-`primo --version` reports the local commit and a CaDiCaL version. The local
-CMake build refreshes a generated git-revision header on every `primo` build;
-uncommitted source changes are reported with a `-dirty` suffix. Use
+The script refuses a dirty local tree, installs a `git archive` snapshot of the
+committed source by default, rebuilds CaDiCaL on the cluster, rebuilds
+`build-slurm-rel/primo`, and checks that `primo --version` reports the local
+commit and a CaDiCaL version. The archive sync deliberately avoids copying the
+local `.git` directory, build trees, result trees, fuzz output, and
+machine-local dependency installations. The remote build receives the commit
+through `PRIMO_GIT_REVISION_OVERRIDE`, so stale generated outputs in a reused
+workspace cannot make benchmark binaries report a spurious `-dirty` suffix.
+Use `--sync-mode rsync` only for a deliberate legacy full-tree sync.
+
+The local CMake build refreshes a generated git-revision header on every `primo`
+build; uncommitted source changes are reported with a `-dirty` suffix. Use
 `--check-only` immediately before `sbatch` when the workspace was already
 prepared. Destructive sync/rebuild is refused while active SLURM jobs with Primo
 job names are present, because those jobs may be using the same `build-slurm-rel`
