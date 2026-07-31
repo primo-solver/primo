@@ -14077,6 +14077,72 @@
       },
       "evidence_status": "current",
       "followups": "Run a real QF_UFLRA merge gate when TheoryCombinationManager arrangement values are wired into SAT backtracking, equality propagation, or mixed final-check behavior."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-full-shared-pairs-fuzz",
+      "date": "2026-07-31",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local merge-gate validation after moving the mixed QF_UFLRA delayed-combination path back to the full shared Real pair set and making TheoryCombinationManager own the generated shared-equality SAT literals. EUF care-pair counters remain diagnostic only.",
+      "commit": "8e5ad4e on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 8e5ad4e; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "Dolmen unavailable locally; scripts/validate_model.py used its Z3 Real-assignment fallback"
+      },
+      "commands": {
+        "build": "cmake --build build --target primo -j$(nproc) && ./build/primo --version",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref /workspace/contrib/local/bin/z3 --count 1000 --seed 2026073108 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-full-shared-pairs-1000-8e5ad4e",
+        "model_validation": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --out results/qf_uflra-full-shared-pairs-model-validation-1000-8e5ad4e fuzz-results/qf_uflra-full-shared-pairs-1000-8e5ad4e/cases/*.smt2"
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "/workspace/contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "count": 1000,
+        "seed": 2026073108,
+        "timeout_seconds": 5
+      },
+      "artifacts": {
+        "answer_summary": "fuzz-results/qf_uflra-full-shared-pairs-1000-8e5ad4e/summary.csv",
+        "generated_cases": "fuzz-results/qf_uflra-full-shared-pairs-1000-8e5ad4e/cases/",
+        "model_summary": "results/qf_uflra-full-shared-pairs-model-validation-1000-8e5ad4e/summary.csv",
+        "model_artifacts": "results/qf_uflra-full-shared-pairs-model-validation-1000-8e5ad4e/"
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "sat": 705,
+        "unsat": 295,
+        "model_pass": 705,
+        "model_not_sat": 295,
+        "model_error": 0,
+        "model_timeout": 0,
+        "validation_unavailable": 0
+      },
+      "verification": {
+        "relationship_to_change": "The generated corpus exercises separable, purified, shared-Real, and nonconstant-Real QF_UFLRA shapes. It checks answer agreement after LRA-to-EUF propagation and default-off model-equality candidates were changed to use the full shared Real pair set, while EUF care-pair statistics remain diagnostic.",
+        "local_gates": "make check, make docs, make lint, make asan-test, git diff --check, solver_efficiency_snapshot.py --repo ., and whole-tree non-generated clang-tidy passed before this run. make lint skipped ruff because it is not installed.",
+        "model_validation_boundary": "Dolmen was not available on the local PATH or usual workspace/tmp locations, so model validation used the script's Z3 fallback. This validates printed Real assignments for the generated sat cases, but is weaker than a full Dolmen model check."
+      },
+      "evidence_status": "current",
+      "followups": "Run the same gate with Dolmen available before relying on this as full model-printing evidence. The full shared-pair scans are intentionally simple and may need an indexed care-pair or relevance API after mixed benchmark profiling shows them hot."
     }
   ]
 }
