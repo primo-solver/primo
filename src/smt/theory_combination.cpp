@@ -157,6 +157,49 @@ void TheoryCombinationManager::rebuild_equality_index() {
   }
 }
 
+void TheoryCombinationManager::rebuild_from_interface_terms(
+    const std::vector<core::TermId>& interface_terms) {
+  summary_ = NelsonOppenInterfaceSummary{};
+  equality_index_.clear();
+  std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
+  for (const core::TermId term_id : interface_terms) {
+    const core::Term& term = terms_.get(term_id);
+    if (term.sort == terms_.symbols().bool_sort()) {
+      continue;
+    }
+    terms_by_sort[term.sort].push_back(term_id);
+  }
+
+  summary_.sort_count = terms_by_sort.size();
+  for (auto& [sort, sort_terms] : terms_by_sort) {
+    std::sort(sort_terms.begin(), sort_terms.end());
+    sort_terms.erase(std::unique(sort_terms.begin(), sort_terms.end()), sort_terms.end());
+    summary_.candidate_pairs += sort_terms.size() * (sort_terms.size() - 1U) / 2U;
+    for (const core::TermId term_id : sort_terms) {
+      summary_.terms.push_back(InterfaceTerm{term_id, sort});
+    }
+    for (std::size_t i = 0; i < sort_terms.size(); ++i) {
+      for (std::size_t j = i + 1; j < sort_terms.size(); ++j) {
+        const TermPair pair = canonical_pair(sort_terms[i], sort_terms[j]);
+        summary_.equality_registry.push_back(
+            InterfaceEqualityRegistryEntry{core::kInvalidTermId, pair.lhs, pair.rhs, sort,
+                                           sat::Lit{0}, InterfaceEqualityStatus::Missing});
+        ++summary_.missing_equalities;
+      }
+    }
+  }
+  std::sort(summary_.terms.begin(), summary_.terms.end(),
+            [](const InterfaceTerm& lhs, const InterfaceTerm& rhs) {
+              return std::pair{lhs.sort, lhs.term} < std::pair{rhs.sort, rhs.term};
+            });
+  std::sort(
+      summary_.equality_registry.begin(), summary_.equality_registry.end(),
+      [](const InterfaceEqualityRegistryEntry& lhs, const InterfaceEqualityRegistryEntry& rhs) {
+        return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
+      });
+  rebuild_equality_index();
+}
+
 void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertions) {
   summary_ = NelsonOppenInterfaceSummary{};
   std::vector<core::TermId> pending = assertions;
@@ -212,13 +255,15 @@ void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertio
         const TermPair pair = canonical_pair(sort_terms[i], sort_terms[j]);
         const auto visible = visible_pairs.find(pair);
         if (visible == visible_pairs.end()) {
-          summary_.equality_registry.push_back(InterfaceEqualityRegistryEntry{
-              core::kInvalidTermId, pair.lhs, pair.rhs, sort, InterfaceEqualityStatus::Missing});
+          summary_.equality_registry.push_back(
+              InterfaceEqualityRegistryEntry{core::kInvalidTermId, pair.lhs, pair.rhs, sort,
+                                             sat::Lit{0}, InterfaceEqualityStatus::Missing});
           ++summary_.missing_equalities;
           continue;
         }
-        summary_.equality_registry.push_back(InterfaceEqualityRegistryEntry{
-            visible->second, pair.lhs, pair.rhs, sort, InterfaceEqualityStatus::Visible});
+        summary_.equality_registry.push_back(
+            InterfaceEqualityRegistryEntry{visible->second, pair.lhs, pair.rhs, sort, sat::Lit{0},
+                                           InterfaceEqualityStatus::Visible});
       }
     }
   }
@@ -250,6 +295,67 @@ std::optional<InterfaceEqualityRegistryEntry> TheoryCombinationManager::interfac
     return std::nullopt;
   }
   return summary_.equality_registry[found->second];
+}
+
+std::optional<InterfaceEqualityRegistryEntry> TheoryCombinationManager::interface_equality(
+    core::TermId equality) const {
+  const core::Term& term = terms_.get(equality);
+  if (term.kind != core::TermKind::Equality || term.children.size() != 2) {
+    return std::nullopt;
+  }
+  return interface_equality(term.children.at(0), term.children.at(1));
+}
+
+std::optional<sat::Lit> TheoryCombinationManager::interface_equality_lit(core::TermId lhs,
+                                                                         core::TermId rhs) const {
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return std::nullopt;
+  }
+  const sat::Lit lit = summary_.equality_registry[found->second].lit;
+  if (lit.value == 0) {
+    return std::nullopt;
+  }
+  return lit;
+}
+
+std::optional<sat::Lit> TheoryCombinationManager::interface_equality_lit(
+    core::TermId equality) const {
+  const core::Term& term = terms_.get(equality);
+  if (term.kind != core::TermKind::Equality || term.children.size() != 2) {
+    return std::nullopt;
+  }
+  return interface_equality_lit(term.children.at(0), term.children.at(1));
+}
+
+bool TheoryCombinationManager::register_interface_equality_atom(core::TermId equality,
+                                                                sat::Lit lit) {
+  const core::Term& term = terms_.get(equality);
+  if (lit.value == 0 || term.kind != core::TermKind::Equality || term.children.size() != 2) {
+    return false;
+  }
+  const core::TermId lhs = term.children.at(0);
+  const core::TermId rhs = term.children.at(1);
+  const core::Term& lhs_term = terms_.get(lhs);
+  const core::Term& rhs_term = terms_.get(rhs);
+  if (lhs_term.sort != rhs_term.sort) {
+    return false;
+  }
+
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return false;
+  }
+  InterfaceEqualityRegistryEntry& entry = summary_.equality_registry[found->second];
+  if (entry.atom == core::kInvalidTermId) {
+    entry.atom = equality;
+    if (entry.status == InterfaceEqualityStatus::Missing) {
+      --summary_.missing_equalities;
+    }
+  }
+  entry.lit = lit;
+  entry.status = InterfaceEqualityStatus::Visible;
+  return true;
 }
 
 InterfaceEqualityValue TheoryCombinationManager::interface_equality_value(core::TermId lhs,

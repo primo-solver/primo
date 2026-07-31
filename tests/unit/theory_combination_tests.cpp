@@ -193,6 +193,11 @@ void manager_tracks_canonical_interface_equality_values() {
   assert(visible->rhs == b);
   assert(visible->status == InterfaceEqualityStatus::Visible);
   assert(visible->value == InterfaceEqualityValue::Unknown);
+  assert(!manager.interface_equality_lit(a, b).has_value());
+  assert(manager.register_interface_equality_atom(eq_ab, primo::sat::Lit{17}));
+  assert(manager.interface_equality_lit(a, b).has_value());
+  assert(manager.interface_equality_lit(b, a)->value == 17);
+  assert(manager.interface_equality_lit(eq_ab)->value == 17);
 
   assert(manager.set_interface_equality_value(b, a, InterfaceEqualityValue::Equal));
   assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Equal);
@@ -204,6 +209,8 @@ void manager_tracks_canonical_interface_equality_values() {
   assert(missing->atom == primo::core::kInvalidTermId);
   assert(missing->status == InterfaceEqualityStatus::Missing);
   assert(missing->value == InterfaceEqualityValue::Disequal);
+  assert(manager.register_interface_equality_atom(terms.mk_eq(b, c), primo::sat::Lit{19}));
+  assert(manager.interface_equality_lit(c, b)->value == 19);
 
   manager.clear_interface_equality_values();
   assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Unknown);
@@ -253,6 +260,37 @@ void manager_rebuild_replaces_previous_arrangement() {
   assert(manager.summary().equality_registry.empty());
   assert(!manager.interface_equality(a, b).has_value());
   assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Unknown);
+}
+
+void manager_rebuilds_registry_from_explicit_interface_terms() {
+  SymbolTable symbols;
+  const auto real_sort = symbols.real_sort();
+  const auto flag_symbol = symbols.declare_constant("flag", symbols.bool_sort());
+  const auto x_symbol = symbols.declare_constant("x", real_sort);
+  const auto y_symbol = symbols.declare_constant("y", real_sort);
+  const auto z_symbol = symbols.declare_constant("z", real_sort);
+
+  TermManager terms(symbols);
+  const auto flag = terms.mk_constant(flag_symbol);
+  const auto x = terms.mk_constant(x_symbol);
+  const auto y = terms.mk_constant(y_symbol);
+  const auto z = terms.mk_constant(z_symbol);
+  const auto eq_xy = terms.mk_eq(x, y);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({x, y, y, flag, z});
+
+  assert(manager.summary().terms.size() == 3);
+  assert(manager.summary().sort_count == 1);
+  assert(manager.summary().candidate_pairs == 3);
+  assert(manager.summary().equality_registry.size() == 3);
+  assert(manager.summary().missing_equalities == 3);
+  assert(manager.interface_equality(y, x).has_value());
+  assert(!manager.interface_equality_lit(x, y).has_value());
+  assert(!manager.register_interface_equality_atom(eq_xy, primo::sat::Lit{0}));
+  assert(manager.register_interface_equality_atom(eq_xy, primo::sat::Lit{23}));
+  assert(manager.interface_equality_lit(y, x)->value == 23);
+  assert(manager.summary().missing_equalities == 2);
 }
 
 void reports_real_terms_inside_euf_atoms_as_purification_sites() {
@@ -317,6 +355,7 @@ int main() {
   manager_tracks_canonical_interface_equality_values();
   manager_rejects_unregistered_or_cross_sort_equality_values();
   manager_rebuild_replaces_previous_arrangement();
+  manager_rebuilds_registry_from_explicit_interface_terms();
   reports_real_terms_inside_euf_atoms_as_purification_sites();
   reports_uninterpreted_applications_inside_arithmetic_atoms();
   return 0;

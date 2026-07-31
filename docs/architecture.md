@@ -225,7 +225,7 @@ Implemented now:
   another. After the receiving theory sees a forced equality, it reports any
   ordinary conflict using that literal as part of its reason. The optional
   `--model-equality-branching` mode
-  adds a default-off SAT-assumption scaffold for LRA-model-equal EUF care
+  adds a default-off SAT-assumption scaffold for LRA-model-equal shared Real
   pairs; those guessed equality atoms are optional branches, not permanent unit
   clauses. This is intentionally not full Nelson-Oppen: fine-grained minimal
   cross-theory explanations, full model-equality propagation,
@@ -240,10 +240,10 @@ Implemented now:
   arrangement for the documented purification subset.
   The mixed coordinator also reports diagnostic EUF care-pair counters for
   shared Real arguments under flat EUF function prefixes that are equal in the
-  current EUF closure. These counters are used only to skip LRA-to-EUF equality
-  propagation checks and default-off LRA-model equality guesses for pairs EUF
-  cannot currently use in the flat view; they do not affect EUF-to-LRA
-  propagation, model reconstruction, or final arrangement validation.
+  current EUF closure. These counters do not currently prune propagation or
+  default-off model-equality guesses; the delayed mixed path uses the full
+  shared Real pair set and keeps care-pair information as a measurement hook for
+  future theory-facing pruning.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

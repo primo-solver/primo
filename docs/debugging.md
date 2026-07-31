@@ -339,14 +339,13 @@ SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
 The EUF care counters compare the full shared-Real cross product with pairs that
 occur as arguments under flat EUF function prefixes equal in the current EUF
-closure. The mixed coordinator uses that subset only for LRA-to-EUF equality
-propagation checks and default-off LRA-model equality branching candidates. It
-does not add clauses for care pairs, does not filter EUF-to-LRA equalities, and
-does not use care pairs for model reconstruction or final arrangement
-validation. The model-equality care counters mirror the same full, care, and
-pruned counts for the default-off branch candidate scan, so a run can
-distinguish "the branch found no equal-valued care pair" from "the branch was
-pruned before looking at model values".
+closure. They are diagnostic only in the current coordinator. LRA-to-EUF
+equality propagation, EUF-to-LRA equality propagation, model reconstruction, and
+final arrangement validation use the full shared Real pair set. The
+model-equality branch currently uses the same full pair set when the
+default-off `--model-equality-branching` option is enabled; the legacy
+`:no.interface.model-equality-care-*` counter names are kept for continuity and
+report full pairs as the active candidate set with zero care pruning.
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use
@@ -359,14 +358,14 @@ coordinator validated that the EUF arrangement over Real arguments can be
 separated consistently by LRA, with failures and accepted strict separations
 split into the corresponding arrangement counters. When
 `--model-equality-branching` is enabled, the model-equality counters record
-LRA-model-equal care pairs considered,
-optional SAT equality atoms created for those pairs, assumptions made on those
-atoms, assumptions rejected at the SAT level, and ordinary theory conflicts
-reached while a guessed equality was active. The current positive-equality path
-should also show activity in `:no.interface.sat-equalities-forced`, which
-counts guarded propagation clauses from the current theory assignment to
-a generated interface equality literal, and then ordinary EUF/LRA
-theory-conflict counters if the forced equality is inconsistent.
+LRA-model-equal full shared Real pairs considered, optional SAT equality atoms
+created for those pairs, assumptions made on those atoms, assumptions rejected
+at the SAT level, and ordinary theory conflicts reached while a guessed equality
+was active. The current positive-equality path should also show activity in
+`:no.interface.sat-equalities-forced`, which counts guarded propagation clauses
+from the current theory assignment to a generated interface equality literal,
+and then ordinary EUF/LRA theory-conflict counters if the forced equality is
+inconsistent.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are

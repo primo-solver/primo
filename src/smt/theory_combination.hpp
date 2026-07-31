@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "core/ids.hpp"
+#include "sat/lit.hpp"
 
 namespace primo::core {
 class TermManager;
@@ -42,6 +43,7 @@ struct InterfaceEqualityRegistryEntry {
   core::TermId lhs = core::kInvalidTermId;
   core::TermId rhs = core::kInvalidTermId;
   core::SortId sort = core::kInvalidSortId;
+  sat::Lit lit;
   InterfaceEqualityStatus status = InterfaceEqualityStatus::Missing;
   InterfaceEqualityValue value = InterfaceEqualityValue::Unknown;
 };
@@ -75,11 +77,16 @@ class TheoryCombinationManager {
   explicit TheoryCombinationManager(const core::TermManager& terms);
 
   void rebuild(const std::vector<core::TermId>& assertions);
+  void rebuild_from_interface_terms(const std::vector<core::TermId>& interface_terms);
 
   const NelsonOppenInterfaceSummary& summary() const { return summary_; }
 
   std::optional<InterfaceEqualityRegistryEntry> interface_equality(core::TermId lhs,
                                                                    core::TermId rhs) const;
+  std::optional<InterfaceEqualityRegistryEntry> interface_equality(core::TermId equality) const;
+  std::optional<sat::Lit> interface_equality_lit(core::TermId lhs, core::TermId rhs) const;
+  std::optional<sat::Lit> interface_equality_lit(core::TermId equality) const;
+  bool register_interface_equality_atom(core::TermId equality, sat::Lit lit);
   InterfaceEqualityValue interface_equality_value(core::TermId lhs, core::TermId rhs) const;
   bool set_interface_equality_value(core::TermId lhs, core::TermId rhs,
                                     InterfaceEqualityValue value);

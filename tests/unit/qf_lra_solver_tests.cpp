@@ -562,7 +562,7 @@ void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
   assert(result.statistics.get(":no.interface.sat-equalities-false") >= 1);
 }
 
-void qf_uf_lra_model_equality_branching_uses_euf_care_pairs() {
+void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   const auto result = check_sat_smtlib(R"(
@@ -584,12 +584,12 @@ void qf_uf_lra_model_equality_branching_uses_euf_care_pairs() {
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
   assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 1);
   assert(result.statistics.get(":no.interface.model-equality-full-pairs") == 1);
-  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 0);
-  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 1);
-  assert(result.statistics.get(":no.interface.model-equality-candidates") == 0);
-  assert(result.statistics.get(":no.interface.model-equality-created") == 0);
-  assert(result.statistics.get(":no.interface.model-equality-assumptions") == 0);
-  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-created") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
 }
 
 void qf_uf_lra_reports_euf_care_pair_diagnostics() {
@@ -644,7 +644,7 @@ void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
   assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
 }
 
-void qf_uf_lra_uses_euf_care_pairs_for_lra_to_euf_propagation() {
+void qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -663,7 +663,8 @@ void qf_uf_lra_uses_euf_care_pairs_for_lra_to_euf_propagation() {
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 1);
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
   assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 1);
-  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
 }
 
 void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {
@@ -1843,10 +1844,10 @@ int main() {
   qf_uf_lra_guards_interface_equality_propagation_by_assignment();
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
-  qf_uf_lra_model_equality_branching_uses_euf_care_pairs();
+  qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
   qf_uf_lra_reports_euf_care_pair_diagnostics();
   qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
-  qf_uf_lra_uses_euf_care_pairs_for_lra_to_euf_propagation();
+  qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();
