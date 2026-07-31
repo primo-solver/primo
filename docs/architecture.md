@@ -247,6 +247,11 @@ Implemented now:
   full shared Real pair set. The default `first` model-equality branch policy
   also uses the full pair order; the opt-in `ranked` and `adaptive` policies use
   care-pair diagnostics only to rank guesses, with full-pair fallback.
+  Mixed QF_UFLRA LRA checks reuse the prepared base LRA theory while no
+  generated interface equality is active, and rebuild an augmented prepared
+  theory only when true generated interface equalities must be included. The
+  pure-QF_LRA trail-synced online LRA propagator is still not integrated into
+  the mixed coordinator.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 

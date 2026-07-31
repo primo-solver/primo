@@ -326,11 +326,14 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
 - `:no.interface.euf-care-pruned-pairs`
+- `:no.interface.lra-prepared-reused`
+- `:no.interface.lra-prepared-augmented`
 - `:no.interface.model-separations`
 - `:no.interface.model-separation-candidates`
 - `:no.interface.model-separation-search-capped`
 - `:no.interface.model-separation-search-branches`
 - `:no.interface.model-separation-search-backtracks`
+- `:no.interface.model-separation-model-oriented`
 
 These count internal proxy definitions in total, the split between Real-valued
 UF applications in arithmetic atoms and non-constant Real terms in EUF atoms or
@@ -361,6 +364,17 @@ the generated interface atom are not included there. The model-separation search
 counters record the number of strict-order candidate pairs, whether the bounded
 backtracking cap was exceeded, and the LRA-consistency branches/backtracks tried
 inside final arrangement validation or model reconstruction.
+`:no.interface.model-separation-model-oriented` counts strict shared-Real
+separations oriented directly from one concrete LRA model in the greedy capped
+path, before falling back to per-candidate LRA consistency checks for pairs tied
+in that model.
+`:no.interface.lra-prepared-reused` counts mixed QF_UFLRA LRA checks that reuse
+the base prepared LRA theory because no SAT-visible interface equality is true
+in the current assignment. `:no.interface.lra-prepared-augmented` counts checks
+that rebuild an augmented prepared LRA theory to include true generated
+interface equality atoms. Mixed QF_UFLRA still does not use the pure-QF_LRA
+trail-synced online propagator; these counters measure the narrower base-theory
+reuse path.
 `:no.interface.arrangement-checks` counts non-model `sat` results where the
 coordinator validated that the EUF arrangement over Real arguments can be
 separated consistently by LRA, with failures and accepted strict separations

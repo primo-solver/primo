@@ -383,6 +383,56 @@ void qf_uf_lra_searches_multiple_shared_real_model_separations() {
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
+void qf_uf_lra_orients_capped_model_separations_from_lra_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun x0 () Real)
+    (declare-fun x1 () Real)
+    (declare-fun x2 () Real)
+    (declare-fun x3 () Real)
+    (declare-fun x4 () Real)
+    (declare-fun x5 () Real)
+    (declare-fun x6 () Real)
+    (declare-fun h (Real) U)
+    (assert (= x0 0))
+    (assert (= x1 1))
+    (assert (= x2 2))
+    (assert (= x3 3))
+    (assert (= x4 4))
+    (assert (= x5 5))
+    (assert (= x6 6))
+    (assert (not (= (h x0) (h x1))))
+    (assert (not (= (h x0) (h x2))))
+    (assert (not (= (h x0) (h x3))))
+    (assert (not (= (h x0) (h x4))))
+    (assert (not (= (h x0) (h x5))))
+    (assert (not (= (h x0) (h x6))))
+    (assert (not (= (h x1) (h x2))))
+    (assert (not (= (h x1) (h x3))))
+    (assert (not (= (h x1) (h x4))))
+    (assert (not (= (h x1) (h x5))))
+    (assert (not (= (h x1) (h x6))))
+    (assert (not (= (h x2) (h x3))))
+    (assert (not (= (h x2) (h x4))))
+    (assert (not (= (h x2) (h x5))))
+    (assert (not (= (h x2) (h x6))))
+    (assert (not (= (h x3) (h x4))))
+    (assert (not (= (h x3) (h x5))))
+    (assert (not (= (h x3) (h x6))))
+    (assert (not (= (h x4) (h x5))))
+    (assert (not (= (h x4) (h x6))))
+    (assert (not (= (h x5) (h x6))))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-separation-candidates") == 21);
+  assert(result.statistics.get(":no.interface.arrangement-separations") == 21);
+  assert(result.statistics.get(":no.interface.model-separation-search-capped") == 1);
+  assert(result.statistics.get(":no.interface.model-separation-model-oriented") == 21);
+}
+
 void qf_uf_lra_purifies_nonconstant_real_predicate_arguments() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1984,6 +2034,7 @@ int main() {
   qf_uf_lra_validates_final_arrangement_without_model();
   qf_uf_lra_prints_shared_real_equal_predicate_model();
   qf_uf_lra_searches_multiple_shared_real_model_separations();
+  qf_uf_lra_orients_capped_model_separations_from_lra_model();
   qf_uf_lra_purifies_nonconstant_real_predicate_arguments();
   qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies();
   qf_uf_lra_shares_purified_real_argument_equalities_with_euf();

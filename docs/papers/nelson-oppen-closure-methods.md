@@ -184,11 +184,14 @@ coordinator publishes:
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
 - `:no.interface.euf-care-pruned-pairs`
+- `:no.interface.lra-prepared-reused`
+- `:no.interface.lra-prepared-augmented`
 - `:no.interface.model-separations`
 - `:no.interface.model-separation-candidates`
 - `:no.interface.model-separation-search-capped`
 - `:no.interface.model-separation-search-branches`
 - `:no.interface.model-separation-search-backtracks`
+- `:no.interface.model-separation-model-oriented`
 
 ## Primary Base Paper
 

@@ -5097,11 +5097,77 @@ std::optional<std::vector<core::TermId>> greedy_shared_real_model_separation_ato
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments,
     const std::vector<RealSeparationCandidate>& candidates,
-    const std::vector<core::TermId>& forced_equalities, const CheckSatOptions& options) {
+    const std::vector<core::TermId>& forced_equalities, const CheckSatOptions& options,
+    util::Statistics& statistics) {
   std::vector<core::TermId> accumulated = forced_equalities;
   std::vector<core::TermId> separations;
+  std::optional<RealModelValues> model_values;
+  {
+    std::vector<core::TermId> care_terms;
+    care_terms.reserve(candidates.size() * 2U);
+    for (const RealSeparationCandidate& candidate : candidates) {
+      care_terms.push_back(candidate.lhs);
+      care_terms.push_back(candidate.rhs);
+    }
+    std::sort(care_terms.begin(), care_terms.end());
+    care_terms.erase(std::unique(care_terms.begin(), care_terms.end()), care_terms.end());
+
+    std::vector<BooleanClausifier::TheoryAtom> augmented_lra_atoms = lra_atoms;
+    augmented_lra_atoms.reserve(lra_atoms.size() + forced_equalities.size());
+    std::vector<AssignedTheoryAtom> augmented_lra_assignments = lra_assignments;
+    augmented_lra_assignments.reserve(lra_assignments.size() + forced_equalities.size());
+    for (const core::TermId forced_equality : forced_equalities) {
+      augmented_lra_atoms.push_back(BooleanClausifier::TheoryAtom{sat::Lit{0}, forced_equality});
+      augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, forced_equality, false});
+    }
+    const PreparedLraTheory prepared(
+        terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+        options.lra_sparse_leaving, options.lra_fixed_elimination, true);
+    theory::arithmetic::LraTableau tableau = prepared.base_tableau;
+    bool consistent = true;
+    for (std::size_t i = 0; i < augmented_lra_assignments.size(); ++i) {
+      const AssignedTheoryAtom& atom = augmented_lra_assignments[i];
+      const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
+      if (!prepared_atom.is_arithmetic || atom.filtered) {
+        continue;
+      }
+      const auto conflict = assert_lra_atom_bound(
+          tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
+          prepared_atom.asserts_lower_when_true, blocking_lit(atom));
+      if (conflict.has_value()) {
+        consistent = false;
+        break;
+      }
+    }
+    if (consistent && !tableau.check().has_value()) {
+      model_values = real_model_values_from_lra(terms, care_terms, {}, prepared, tableau,
+                                                augmented_lra_assignments);
+    }
+  }
+
   for (const RealSeparationCandidate& candidate : candidates) {
     const core::TermId lhs_lt_rhs = terms.mk_lt(candidate.lhs, candidate.rhs);
+    if (model_values.has_value()) {
+      const auto lhs_value = model_values->find(candidate.lhs);
+      const auto rhs_value = model_values->find(candidate.rhs);
+      if (lhs_value != model_values->end() && rhs_value != model_values->end()) {
+        if (lhs_value->second < rhs_value->second) {
+          accumulated.push_back(lhs_lt_rhs);
+          separations.push_back(lhs_lt_rhs);
+          statistics.increment(":no.interface.model-separation-model-oriented");
+          continue;
+        }
+        if (rhs_value->second < lhs_value->second) {
+          const core::TermId rhs_lt_lhs = terms.mk_lt(candidate.rhs, candidate.lhs);
+          accumulated.push_back(rhs_lt_lhs);
+          separations.push_back(rhs_lt_lhs);
+          statistics.increment(":no.interface.model-separation-model-oriented");
+          continue;
+        }
+      }
+    }
+
+    const core::TermId rhs_lt_lhs = terms.mk_lt(candidate.rhs, candidate.lhs);
     accumulated.push_back(lhs_lt_rhs);
     if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
                                                    options)) {
@@ -5110,7 +5176,6 @@ std::optional<std::vector<core::TermId>> greedy_shared_real_model_separation_ato
     }
     accumulated.pop_back();
 
-    const core::TermId rhs_lt_lhs = terms.mk_lt(candidate.rhs, candidate.lhs);
     accumulated.push_back(rhs_lt_lhs);
     if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
                                                    options)) {
@@ -5146,10 +5211,11 @@ std::optional<std::vector<core::TermId>> shared_real_model_separation_atoms(
   statistics.set(":no.interface.model-separation-search-capped", 0);
   statistics.set(":no.interface.model-separation-search-branches", 0);
   statistics.set(":no.interface.model-separation-search-backtracks", 0);
+  statistics.set(":no.interface.model-separation-model-oriented", 0);
   if (candidates.size() > kNoModelSeparationBacktrackingCandidateLimit) {
     statistics.set(":no.interface.model-separation-search-capped", 1);
     return greedy_shared_real_model_separation_atoms(terms, lra_atoms, lra_assignments, candidates,
-                                                     forced_equalities, options);
+                                                     forced_equalities, options, statistics);
   }
 
   std::vector<core::TermId> separations;
@@ -6929,6 +6995,8 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.euf-care-full-pairs", 0);
   statistics.set(":no.interface.euf-care-pairs", 0);
   statistics.set(":no.interface.euf-care-pruned-pairs", 0);
+  statistics.set(":no.interface.lra-prepared-reused", 0);
+  statistics.set(":no.interface.lra-prepared-augmented", 0);
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
 
@@ -6951,12 +7019,10 @@ CheckSatOutcome solve_qf_uf_lra(
 
   const core::TermId true_term = terms.mk_bool(true);
   const core::TermId false_term = terms.mk_bool(false);
-  {
-    const PreparedLraTheory prepared_lra_theory(
-        terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-        options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
-    publish_lra_tableau_shape_stats(prepared_lra_theory.base_tableau, statistics);
-  }
+  const PreparedLraTheory base_prepared_lra_theory(
+      terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+  publish_lra_tableau_shape_stats(base_prepared_lra_theory.base_tableau, statistics);
 
   while (true) {
     statistics.increment(kStatSatSolveCalls);
@@ -7052,11 +7118,19 @@ CheckSatOutcome solve_qf_uf_lra(
     std::vector<AssignedTheoryAtom> lra_assignments_for_check = lra_assignments;
     append_true_interface_equalities(true_interface_equalities, lra_atoms_for_check,
                                      lra_assignments_for_check);
-    const PreparedLraTheory prepared_lra_theory_for_check(
-        terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-        options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+    const PreparedLraTheory* prepared_lra_theory_for_check = &base_prepared_lra_theory;
+    std::optional<PreparedLraTheory> augmented_prepared_lra_theory;
+    if (true_interface_equalities.empty()) {
+      statistics.increment(":no.interface.lra-prepared-reused");
+    } else {
+      augmented_prepared_lra_theory.emplace(
+          terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+          options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+      prepared_lra_theory_for_check = &augmented_prepared_lra_theory.value();
+      statistics.increment(":no.interface.lra-prepared-augmented");
+    }
     std::optional<sat::Clause> lra_conflict = find_incremental_lra_theory_conflict(
-        prepared_lra_theory_for_check, lra_assignments_for_check);
+        *prepared_lra_theory_for_check, lra_assignments_for_check);
     if (lra_conflict.has_value()) {
       statistics.increment(kStatLraTheoryConflicts);
       record_interface_conflict(lra_conflict, no_manager, ":no.interface.lra-conflicts",
