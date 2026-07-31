@@ -952,6 +952,79 @@ Note also `scrambled312090`'s search shape: **0 conflicts, 7,555 decisions**.
 The SAT solver is not thrashing and learns nothing; essentially all of the
 time is inside the tableau.
 
+### 6.2a A flat profile of the band, at last (2026-07-31)
+
+Everything in 6.2 above is derived from **counters** (`:lra.pivot-row-updates`,
+`:lra.pivot-term-ops`), not from a profiler. The only real QF_LRA flat profile
+on record is the `perf` run in the 2026-07-27 design entry -- on
+`constraints-tempo-width-30`, a *stratified-sample* file, at a commit predating
+H1, H2, H3 and H7. So the band's actual time distribution had never been
+measured on the current code. It has now been, with `gprof`: `perf` is
+unusable in this sandbox (`perf_event_paranoid=4`, root-only), and `valgrind`
+is not installed, so compile-time instrumentation was the only option.
+
+Two mid-band gap files, `-pg` build, self-time:
+
+| | `scrambled339450` | `scrambled228965` |
+|---|---|---|
+| `LraTableau::pivot` | **61.0%** (3,706 calls) | **85.4%** (11,647 calls) |
+| `rebuild_occurs_in_index` | 7.5% (522) | 4.4% (3,870) |
+| sort + merge inside `pivot` | 11.6% | 1.6% |
+| `util::Rational` operators | ~7% | ~3.5% |
+| **allocator (measured separately)** | **6.0%** | **4.0%** |
+
+**The headline is what is no longer there.** The 2026-07-27 profile that
+motivated item H2 put **~42% of runtime in the allocator** and ~12% in GMP
+copy/init. On the gap band today it is **4-6%**, over 9.8M and 16.9M
+malloc/free pairs. H2 did what it was built to do, and **the allocator is
+retired as a target** -- an item that would otherwise still look like the
+obvious first move to anyone reading the older profile.
+
+*Method note:* the allocator share is the trustworthy number here, because it
+was measured on the **Release** build with an `LD_PRELOAD` malloc/free wrapper
+accumulating rdtsc cycles -- gprof only samples the executable's own text
+segment and cannot see libc at all. The gprof percentages come from a `-pg`
+build, which penalises call-heavy code (`Rational`'s copy constructor alone is
+called 465M times), so treat their *ranking* as sound and their absolute
+values as indicative.
+
+*What the profile confirms.* Section 6.2's counter-derived diagnosis was
+right: `pivot` is 61-85% of self time, at 1.96 ms per call on
+`scrambled228965`. There is no hidden hotspot elsewhere and no misplaced
+overhead left to reclaim. That matters for direction-setting -- it is positive
+evidence that the remaining gap needs an algorithmic change (fewer or cheaper
+pivots) rather than more tuning, which is the same conclusion D1's rejection
+reached from the other side.
+
+*Two ordinary-engineering items it does surface,* neither of them on the
+D-list, and worth noting because between them they are ~6-19% against D2's
+~14% literature ceiling:
+
+- **`rebuild_occurs_in_index()` is consistently second**, 4.4-7.5%. Its call
+  count is already fixed -- the 2026-07-27 item-0 follow-up cut it from
+  once-per-undone-pivot to once-per-`pop()`, a 97% reduction, and the counts
+  here (522 calls / 526 pops, 3,870 / 3,874) confirm that holds. What remains
+  is that *each* call is a full `O(vars_.size())` rebuild, and these instances
+  have ~26,000 variables: ~3.8ms a call. Making it incremental over the undone
+  trail entries is a different fix from the one already applied.
+- **The sort-merge inside `pivot`'s affected-row loop** is 11.6% on
+  `scrambled339450` (and only 1.6% on `scrambled228965`, so it is
+  instance-dependent). `combine_scratch_` is built by concatenating the
+  affected row's terms with the scaled entering row's terms and then
+  `std::sort`-ing the whole thing -- but both halves are already ordered by
+  variable id, so this is a merge, not a sort. Worth checking whether rows are
+  ordered on *every* path into that loop (`add_row`'s comment at the
+  candidate-selection site says a `Row` is not sorted by var id) before
+  assuming an `inplace_merge` is safe.
+
+*Caveat on symbol names.* gprof reports one hot symbol as
+`vector<SoiBreakPoint>::_M_realloc_insert`, which is impossible under the
+default `Sparse` rule -- `soi_select()` is gated behind
+`rule_ == PivotingRule::Soi`. Its call-graph parent is the introsort inside
+`pivot`, so the name is COMDAT folding of identically-generated template code,
+not evidence that SOI runs by default. Checked, because a hot SOI symbol in a
+non-SOI run would otherwise read as a real bug.
+
 ### 6.3 What this rules out
 
 - **It is not the sparse-pricing cap.** `kSparsePricingCandidateLimit` is 16

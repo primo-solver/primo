@@ -12333,6 +12333,40 @@
       },
       "docs": "docs/papers/lra-related-work.md (new 'Floating-point-guided exact simplex' subsection) and docs/qf-lra-heuristics.md section 6.5's D2 entry (Risk C, and the ranked table's expected-size column).",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-lra-midband-gprof-profile",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "profiling",
+      "scope": "First flat profile of the 500KB-5MB mid-band gap files at the current commit. Prompted by the question of whether gprof had ever been run on the lagging instances -- it had not: the only QF_LRA flat profile on record was perf on constraints-tempo-width-30 at 35878c4 (before H1/H2/H3/H7), and the 2026-07-30 'post-H7 gap profiling' entry used counters and throwaway instrumentation rather than a profiler.",
+      "commit": "02e7e50",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build-gprof/primo (RelWithDebInfo -pg -O2 -g) for gprof; build/primo (Release) for the allocator measurement",
+        "notes": "perf is unusable in this sandbox -- kernel.perf_event_paranoid=4 and sysctl is permission-denied -- and valgrind is not installed, so compile-time instrumentation was the only available profiler. -pg penalises call-heavy code, so gprof rankings are sound but absolute percentages are indicative."
+      },
+      "command": {
+        "gprof": "cmake -B build-gprof -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS='-pg -O2 -g -fno-omit-frame-pointer' -DCMAKE_EXE_LINKER_FLAGS=-pg; then build-gprof/primo --quiet <instance>; gprof -b -p / -q build-gprof/primo gmon.out",
+        "allocator": "LD_PRELOAD of a throwaway wrapper (scratchpad only, not committed) around malloc/free/realloc/calloc accumulating rdtsc cycles, run against the Release binary -- gprof samples only the executable's text segment and cannot see libc"
+      },
+      "benchmark": {
+        "suite": "scrambled339450 and scrambled228965 from benchmarks/qf-lra-scrambled-midband-gap.txt",
+        "logic": "QF_LRA"
+      },
+      "summary": {
+        "allocator_is_retired": "THE headline. The 2026-07-27 perf profile that motivated item H2 put ~42% of runtime in the allocator and ~12% in GMP copy/init. On the gap band at the current commit it is 6.0% and 4.0% (9.78M and 16.94M malloc/free pairs). H2 did what it was built for. Anyone reading the older profile would still rank the allocator first; it should not be.",
+        "pivot_dominates": "LraTableau::pivot is 61.0% self on scrambled339450 (3,706 calls) and 85.4% on scrambled228965 (11,647 calls, 1.96 ms/call). No hidden hotspot anywhere else.",
+        "confirms_section_6_2": "Section 6.2's fill-in diagnosis was derived entirely from counters (:lra.pivot-row-updates, :lra.pivot-term-ops) and had never been checked against a profiler. It holds.",
+        "direction_setting": "Positive evidence that no misplaced overhead remains to reclaim: after rebuild_occurs_in_index and the allocator, the rest is pivot doing real arithmetic. The remaining gap needs an algorithmic change (fewer or cheaper pivots), not tuning -- the same conclusion D1's rejection reached from the other side.",
+        "lead_1_rebuild_occurs_in_index": "Consistently second at 7.5% / 4.4%. Its CALL COUNT is already fixed (the 2026-07-27 item-0 follow-up cut it from once-per-undone-pivot to once-per-pop, -97%; counts here are 522/526 and 3,870/3,874, so that holds). What remains is that each call is a full O(vars_.size()) rebuild and these instances have ~26,000 variables -- about 3.8ms per call. Making it incremental over the undone trail entries is a different fix from the one already applied.",
+        "lead_2_sort_should_be_a_merge": "11.6% on scrambled339450 (but only 1.6% on scrambled228965, so instance-dependent) is the sort-merge in pivot's affected-row loop. combine_scratch_ concatenates the affected row's terms with the scaled entering row's terms and std::sorts the result, but both halves are already ordered by variable id -- this is a merge, not a sort. Must first check whether rows are ordered on every path into that loop; the candidate-selection site's comment says a Row is not sorted by var id.",
+        "symbol_name_caveat": "gprof reports a hot vector<SoiBreakPoint>::_M_realloc_insert, which is impossible under the default Sparse rule since soi_select() is gated behind rule_ == PivotingRule::Soi. Its call-graph parent is the introsort inside pivot, so this is COMDAT folding of identically-generated template code, not SOI running by default. Checked rather than assumed, because a hot SOI symbol in a non-SOI run would read as a real bug."
+      },
+      "docs": "docs/qf-lra-heuristics.md new section 6.2a.",
+      "evidence_status": "current",
+      "followups": "Neither lead is implemented. Both are hot-path changes to LraTableau and would need a fuzz gate plus a Slurm A/B before being described as wins."
     }
   ]
 }
