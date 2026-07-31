@@ -14353,6 +14353,94 @@
       },
       "evidence_status": "current",
       "followups": "Run a SLURM-backed QF_UFLRA archive benchmark when the cluster is available. The local archive smoke is useful coverage evidence, not a headline performance benchmark."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-model-equality-branch-policies",
+      "date": "2026-07-31",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Local validation for default-off QF_UFLRA model-equality branch policies. The change preserves the historical first full-pair scan order and adds ranked and adaptive policies that use EUF care diagnostics only as ordering hints with full-pair fallback.",
+      "commit": "74f55bb",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: a817558-dirty during pre-commit validation, source committed as 74f55bb; build: Release and ASAN Debug; cadical: cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3",
+        "model_validator": "dolmen 0.10 on PATH"
+      },
+      "commands": {
+        "focused_test": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
+        "project_gates": "make check && make docs && make lint && make asan-test",
+        "ranked_answer_fuzz": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --solver-arg=--model-equality-branch-policy --solver-arg=ranked --ref z3 --count 1000 --seed 20260756 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-ranked-model-branch-answer-1000",
+        "ranked_model_validation": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --solver-arg=--model-equality-branch-policy --solver-arg=ranked --timeout 5 --dolmen-timeout 10 --out results/qf_uflra-ranked-model-branch-model-validation-1000 fuzz-results/qf_uflra-ranked-model-branch-answer-1000/cases/*.smt2",
+        "adaptive_answer_fuzz": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --solver-arg=--model-equality-branch-policy --solver-arg=adaptive --ref z3 --count 1000 --seed 20260757 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-adaptive-model-branch-answer-1000",
+        "adaptive_model_validation": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --solver-arg=--model-equality-branch-policy --solver-arg=adaptive --timeout 5 --dolmen-timeout 10 --out results/qf_uflra-adaptive-model-branch-model-validation-1000 fuzz-results/qf_uflra-adaptive-model-branch-answer-1000/cases/*.smt2",
+        "static_review": "make tidy; make include-cleaner; python3 <codex-skill>/solver_efficiency_snapshot.py --repo ."
+      },
+      "solver": {
+        "name": "Primo",
+        "argv_ranked": "./build/primo --quiet --model-equality-branching --model-equality-branch-policy ranked",
+        "argv_adaptive": "./build/primo --quiet --model-equality-branching --model-equality-branch-policy adaptive"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen model validation through scripts/validate_model.py"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "fuzz_generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "ranked_fuzz_count": 1000,
+        "ranked_fuzz_seed": 20260756,
+        "adaptive_fuzz_count": 1000,
+        "adaptive_fuzz_seed": 20260757,
+        "fuzz_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10
+      },
+      "artifacts": {
+        "ranked_answer_fuzz_summary": "fuzz-results/qf_uflra-ranked-model-branch-answer-1000/summary.csv",
+        "ranked_answer_fuzz_cases": "fuzz-results/qf_uflra-ranked-model-branch-answer-1000/cases/",
+        "ranked_model_validation_summary": "results/qf_uflra-ranked-model-branch-model-validation-1000/summary.csv",
+        "adaptive_answer_fuzz_summary": "fuzz-results/qf_uflra-adaptive-model-branch-answer-1000/summary.csv",
+        "adaptive_answer_fuzz_cases": "fuzz-results/qf_uflra-adaptive-model-branch-answer-1000/cases/",
+        "adaptive_model_validation_summary": "results/qf_uflra-adaptive-model-branch-model-validation-1000/summary.csv"
+      },
+      "summary": {
+        "ranked_answer_fuzz_total": 1000,
+        "ranked_answer_fuzz_pass": 1000,
+        "ranked_answer_fuzz_sat": 700,
+        "ranked_answer_fuzz_unsat": 300,
+        "ranked_answer_fuzz_wrong_answer": 0,
+        "ranked_answer_fuzz_crash": 0,
+        "ranked_answer_fuzz_timeout": 0,
+        "ranked_answer_fuzz_unsupported": 0,
+        "ranked_model_validation_pass": 700,
+        "ranked_model_validation_not_sat": 300,
+        "ranked_model_validation_errors": 0,
+        "adaptive_answer_fuzz_total": 1000,
+        "adaptive_answer_fuzz_pass": 1000,
+        "adaptive_answer_fuzz_sat": 724,
+        "adaptive_answer_fuzz_unsat": 276,
+        "adaptive_answer_fuzz_wrong_answer": 0,
+        "adaptive_answer_fuzz_crash": 0,
+        "adaptive_answer_fuzz_timeout": 0,
+        "adaptive_answer_fuzz_unsupported": 0,
+        "adaptive_model_validation_pass": 724,
+        "adaptive_model_validation_not_sat": 276,
+        "adaptive_model_validation_errors": 0
+      },
+      "verification": {
+        "regression_tests": "tests/unit/qf_lra_solver_tests.cpp covers the historical first policy, ranked care-pair preference, ranked full-pair fallback, and adaptive backoff after repeated unproductive model-equality guesses.",
+        "efficiency_review": "solver_efficiency_snapshot.py reported expected fresh vectors for care argument terms and ranked candidates. They are built in the default-off model-equality branch path, not in default solving. make tidy passed. make include-cleaner completed with the repository's existing broad advisory baseline warnings.",
+        "correctness_boundary": "Model equalities remain SAT assumptions and phase preferences only. The change does not add theory explanation clauses from LRA model equality and does not prune the full shared Real pair fallback.",
+        "default_status": "The feature remains default-off; first remains the default policy when --model-equality-branching is enabled."
+      },
+      "evidence_status": "current",
+      "followups": "Run a SLURM full-archive QF_UFLRA comparison for default, first, ranked, and adaptive before making any performance or default-promotion claim."
     }
   ]
 }
