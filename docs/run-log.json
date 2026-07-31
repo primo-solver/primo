@@ -14933,6 +14933,74 @@
       },
       "interpretation": "At the pre-online-LRA mixed baseline, CPAchecker induction is dominated by repeated lazy mixed checks: the default solver performs over 46k SAT solve calls and LRA theory checks across the family and solves only 77/359 at 10 seconds, while Z3 solves 327/359. There are no answer disagreements. This supports focusing follow-up evaluation on the e96dc1b mixed-online-LRA change.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-uflra-cpachecker-fast-z3-local-triage",
+      "date": "2026-07-31",
+      "kind": "local-performance-triage",
+      "scope": "Local investigation of cpachecker-induction-svcomp14 instances where Z3 is very fast and Primo times out or remains much slower. The candidate list came from the collected SLURM baseline comparing default Primo at e0c5a62 with Z3 on the full family.",
+      "commit": "9e43e0e on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "local Release build of ./build/primo at current branch tip",
+        "reference": "contrib/local/bin/z3"
+      },
+      "commands": {
+        "rank_candidates": "Python csv scan over results/qf_uflra-cpachecker-induction-slurm-e0c5a62-r2/default.csv and z3.csv selecting rows where Z3 status=ok, Z3 seconds <= 1, and Primo status != ok",
+        "local_sample_primo": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UFLRA --manifest /tmp/cpachecker_gap_sample.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 20 --out results/local-cpachecker-gap-sample-current-primo.csv --summary results/local-cpachecker-gap-sample-current-primo-summary.csv --log-dir results/local-cpachecker-gap-sample-current-primo-logs",
+        "local_sample_z3": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UFLRA --manifest /tmp/cpachecker_gap_sample.txt --solver contrib/local/bin/z3 --timeout 20 --out results/local-cpachecker-gap-sample-z3.csv --summary results/local-cpachecker-gap-sample-z3-summary.csv --log-dir results/local-cpachecker-gap-sample-z3-logs",
+        "stack_samples": "timeout -s INT 6s gdb -q -batch -ex run -ex 'thread apply all bt' --args ./build/primo --quiet --stats <instance>",
+        "frontend_option_probe": "timeout 8s ./build/primo --quiet --stats --preprocess-only/--qf-uf-preprocess off/basic/strong <test_locks_5>"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "family": "cpachecker-induction-svcomp14",
+        "z3_fast_primo_not_ok_candidates": 191,
+        "sample_files": [
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_14_false-unreach-call.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.s3_srvr_6_false-unreach-call.cil.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.linear_search_false-unreach-call.i.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product18_false-unreach-call.cil.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.m0_false-unreach-call_drivers-staging-comedi-drivers-ni_660x-ko--107_1a--adbbc36-1.c.smt2"
+        ]
+      },
+      "artifacts": {
+        "primo_csv": "results/local-cpachecker-gap-sample-current-primo.csv",
+        "primo_summary": "results/local-cpachecker-gap-sample-current-primo-summary.csv",
+        "z3_csv": "results/local-cpachecker-gap-sample-z3.csv",
+        "z3_summary": "results/local-cpachecker-gap-sample-z3-summary.csv",
+        "evidence_status": "local_ignored_outputs"
+      },
+      "summary": {
+        "sample_timeout_seconds": 20,
+        "primo": {
+          "total": 6,
+          "solved": 1,
+          "sat": 1,
+          "timeout": 5,
+          "wrong": 0,
+          "par2": 206.060254
+        },
+        "z3": {
+          "total": 6,
+          "solved": 6,
+          "sat": 5,
+          "unsat": 1,
+          "timeout": 0,
+          "wrong": 0,
+          "par2": 0.073999
+        },
+        "representative_findings": {
+          "test_locks_5": "Z3 solves unsat in about 10ms locally. Primo times out before frontend/preprocessing stats are populated, including under --preprocess-only and with QF_UF preprocessing disabled. GDB interrupt samples are in TermBuilder::dispatch / schedule_all continuation machinery and Rational::parse/string comparisons. The input is a small CPAchecker define-fun DAG with 232 nullary definitions; current frontend expands nullary definitions at every use and has no memoized definition body result.",
+          "test_locks_14_s3_linear_email": "These reach mixed QF_UFLRA solving but time out in final arrangement/equality handling. Representative counters: one final arrangement check, model-separation-search-capped=1, and thousands to 20k model-separation candidates despite small parse/preprocess time.",
+          "email_spec3_product18": "GDB interrupt samples are in PreparedLraTheory construction called from lra_assignment_conflicts_with_extra_atom through lra_implied_real_equalities. With 204 shared Real terms, the current algorithm tests every pair by adding strict orientations and rebuilding LRA state, producing about 20k candidate pairs and potentially about 40k full LRA preparations.",
+          "m0_driver_case": "Current Primo solves sat in 6.06s locally while Z3 solves in about 9ms; it has the same final-arrangement pattern but only 968 separation candidates."
+        }
+      },
+      "interpretation": "The fast-Z3 CPAchecker gaps are not one issue. First, some small UNSAT test_locks rows expose frontend expansion of SMT-LIB define-fun DAGs: memoizing nullary definition expansion or storing typed definition results should be investigated before theory tuning. Second, many SAT rows are dominated by model-guided arrangement work: lra_implied_real_equalities and final model separation rebuild full LRA theories for large numbers of shared Real pairs. The next implementation targets should be definition-expansion memoization and an incremental or model-based LRA equality/separation check that avoids per-pair full PreparedLraTheory rebuilds.",
+      "evidence_status": "current"
     }
   ]
 }
