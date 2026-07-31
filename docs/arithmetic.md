@@ -452,6 +452,38 @@ alternatives considered before/while implementing it.
     117227 (new default, fuzzsmt 3000: 2990 PASS/10 TIMEOUT) and 117228 (SOI,
     3000: 2908/92), each with opfuzz 14/14 seeds valid and two yinyang shards,
     0 bug triggers throughout. No crashes, no wrong answers anywhere.
+- **Bounds-only backtracking** (2026-07-31, `lra_tableau.{hpp,cpp}`,
+  **unconditional except under SOI**): `pop()` restores bounds and nothing
+  else. It used to restore bounds, assignments *and* every pivot's row
+  rewrite. This is the paper's own scheme -- technical report SRI-CSL-06-01
+  Section 3.2.4, "since no pivoting or other expensive operation is used,
+  backtracking is very cheap" -- and Primo had diverged from it on a
+  justification that turned out circular: reverting the assignments is what
+  forced reverting the pivots. Sound because the assignment satisfies
+  `Ax = 0` independently of the basis, and `pop()` only ever *relaxes*
+  bounds. `PivotingRule::Soi` keeps the old scheme; its objective row is a
+  sum over the currently-violated rows, not a linear combination of `A`. The
+  argument is on `LraTableau`'s class comment; the line-by-line comparison
+  that found it is in [](papers/fast-linear-arithmetic-dpllt.md).
+  - **The largest single gain measured on this project.** Scrambled
+    competition set (595 files, 60s): **378 -> 399 solved**, PAR2 28691 ->
+    26661. Stratified sample (237, 60s): 192 -> 197, PAR2 6069 -> 5575. Zero
+    cross-configuration disagreements, zero wrong answers.
+  - The mechanism is that not undoing pivots lets the search keep the repair
+    work it already paid for: pivot counts fall 2.3-5.3x on the profiled
+    instances, and `rebuild_occurs_in_index` leaves the profile entirely
+    because nothing structural changes on a pop.
+  - **Unlike H8 it is not regression-free, and that is the part to read.**
+    Churn is +32/-11 on the 595 set and +7/-2 on the stratified sample, and
+    among the 145 commonly-solved files over a second, 62 are more than 10%
+    *slower* against 64 more than 10% faster -- median 1.01x, p25 0.63, p75
+    1.30, tails 0.10x to 24.9x. It nets +21 because the wins land near the
+    timeout: 10 of the 11 lost files already took 24-60s of a 60s budget.
+    The variance is inherent -- keeping the basis across a backtrack keeps
+    one that suited the *previous* subproblem.
+  - Gated campaign-tier on the default path (3000 fuzzsmt QF_LRA cases plus
+    opfuzz and two yinyang shards, 0 wrong) and merge-tier on SOI (2000, 0
+    wrong), plus local ASAN across five configurations.
 - **Merged row combination in `pivot`** (heuristics-note item H8, 2026-07-31,
   `lra_tableau.{hpp,cpp}`, **unconditional**): `pivot`'s affected-row loop
   combines the affected row with the scaled entering row by a linear two-way
@@ -660,8 +692,9 @@ work wherever it was triggered.
 ### Where QF_LRA work stands, and what is open (2026-07-31)
 
 **The whole remaining gap against z3 is one band.** On the 595-file scrambled
-competition set at 60s, Primo solves **378** (job 117940, after item H8) to
-z3's 429 and cvc5's 351. The 500KB-5MB band accounts for essentially all of
+competition set at 60s, Primo solves **399** (job 118045, after item H8 and
+bounds-only backtracking) to z3's 429 and cvc5's 351 -- up from 369 at the
+start of 2026-07-31. The 500KB-5MB band accounts for essentially all of
 that deficit, and cvc5 solves only 9 of the 59 gap files there -- so it is a
 z3-specific capability, not general difficulty.
 

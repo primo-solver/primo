@@ -1031,7 +1031,12 @@ reached from the other side.
 D-list, and worth noting because between them they are ~6-19% against D2's
 ~14% literature ceiling:
 
-- **`rebuild_occurs_in_index()` is consistently second**, 4.4-7.5%. Its call
+- **`rebuild_occurs_in_index()` is consistently second**, 4.4-7.5%.
+  *(Superseded 2026-07-31: this call no longer happens at all on the default
+  path. Bounds-only backtracking means nothing structural changes on a pop,
+  so there is no index to rebuild -- see [](arithmetic.md)'s roadmap entry.
+  The analysis below stands as the record of how the cost was characterised
+  and why the incremental fix was the wrong answer.)* Its call
   count is already fixed -- the 2026-07-27 item-0 follow-up cut it from
   once-per-undone-pivot to once-per-`pop()`, a 97% reduction, and the counts
   here (522 calls / 526 pops, 3,870 / 3,874) confirm that holds. What remains
@@ -1144,8 +1149,14 @@ list scans. **A full rebuild of a cheap index beats a targeted patch of an
 expensive one**, which is exactly the tradeoff `rebuild_violated_vars()`'s
 own comment already claimed for the analogous case.
 
-The remaining 8% therefore stands, and the only fix that would actually
-address it is a different representation for `occurs_in_` (a CSR-style flat
+**Postscript, 2026-07-31.** The remaining 8% did not stand for long, and
+neither fix above was the answer: adopting the paper's bounds-only
+backtracking removed the rebuild entirely, because a pop that changes no
+row structure has no index to repair. The right lesson is that both
+attempts here -- full rebuild and incremental patch -- were optimising a
+data structure that only needed maintaining because of a divergence from
+the paper elsewhere. Were it still needed, the only fix would be a
+different representation for `occurs_in_` (a CSR-style flat
 array, so the transpose writes into one contiguous block rather than 57k
 separate ones). That touches 29 call sites and is not worth it for 8% on its
 own -- but it is the same representation change direction D4 would force
