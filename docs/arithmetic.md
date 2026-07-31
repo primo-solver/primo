@@ -464,11 +464,17 @@ alternatives considered before/while implementing it.
   - Found by a flat profile rather than by design argument: a gprof run put
     11.6% of runtime on `scrambled339450` in that one `std::sort`, with 100M
     inner comparisons. See [](qf-lra-heuristics.md) section 6.2a.
-  - **Promoted on both bars, with zero regressions on either.** Mid-band gap
-    (59 files, 300s): 37 -> 38 solved, PAR2 19475 -> 18309, median paired
-    1.16x, +1/-0. Stratified sample (237 files, 60s): 189 -> 192, PAR2 6473 ->
-    6067, median 1.23x, +3/-0. Both same-node paired against the parent
-    commit; 0 cross-configuration disagreements and 0 wrong answers.
+  - **Promoted on every bar, with zero regressions on any of them.** Scrambled
+    competition set (595 files, 60s): **369 -> 378 solved**, PAR2 29561 ->
+    28654, median paired 1.19x, **+9/-0** -- five of the nine in the
+    500KB-5MB gap band. Mid-band gap (59 files, 300s): 37 -> 38, PAR2 19475
+    -> 18309, median 1.16x, +1/-0. Stratified sample (237 files, 60s): 189 ->
+    192, PAR2 6473 -> 6067, median 1.23x, +3/-0. All three same-node paired
+    against the parent commit; 0 cross-configuration disagreements and 0
+    wrong answers throughout.
+  - Calibration, so this is not over-read: the payoff curve in
+    [](qf-lra-heuristics.md) section 6.1a says the gap band needs 2x for 15
+    files. H8 is 1.19x and buys 5 there -- on the curve, not above it.
   - Gated: campaign-tier QF_LRA fuzz on the default path (3000 fuzzsmt cases,
     0 wrong) plus merge-tier on the SOI path (1000, 0 wrong).
 - **Fixed-variable elimination** (heuristics-note item H7, 2026-07-30,

@@ -1063,6 +1063,30 @@ other item in this note has managed. The speedup distribution is tight
 (p25-p75 spans 1.10-1.33), so this is a uniform constant-factor win rather
 than a few instances carrying an average.
 
+**And on the headline bar** -- all 595 scrambled competition files at 60s,
+same-node paired (job 117940):
+
+| | base | H8 |
+|---|---|---|
+| solved | 369 | **378** (+9, churn +9/-0) |
+| PAR2 | 29561 | **28654** |
+| median paired over 154 files >1s | -- | **1.19x** (p25 1.12, p75 1.25) |
+| 0-50 KB / 50-500 KB / 500 KB-5 MB / >5 MB | 177 / 144 / 41 / 7 | 177 / **148** / **46** / 7 |
+
+Zero disagreements over 595 files. Five of the nine gained files are in the
+500 KB-5 MB band, which is where the entire deficit against z3 sits.
+
+*Two honest qualifications.* z3 solved 429 of these in job 117487, so the
+deficit now reads 51 where it read 56 at H7 time -- but this job's own
+baseline solves 369 where the H7-era run recorded 373 for a comparable
+configuration, about 4 files of cross-job drift at a 60s timeout on a shared
+cluster. **The within-job +9/-0 is the trustworthy number; the cross-job
+deficit figure is not measured to better than a few files.** And section
+6.1a's payoff curve says the gap band needs 2x for 15 files and 5x for 37:
+H8 is 1.19x and buys 5 there, which matches the curve rather than beating it.
+A constant factor of this size is worth having and does not change the
+conclusion that closing the band needs an algorithmic change.
+
 #### Incremental `occurs_in_` maintenance (built, measured, rejected)
 
 `rebuild_occurs_in_index()` was 6.2a's other lead and the profile's clear #2

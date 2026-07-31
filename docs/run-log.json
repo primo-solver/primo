@@ -12399,6 +12399,37 @@
       },
       "docs": "docs/qf-lra-heuristics.md section 6.2b (H8 and the rejection); docs/arithmetic.md's Milestone roadmap H8 entry.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-lra-h8-scrambled-595",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "benchmark",
+      "scope": "H8 on the headline bar: all 595 scrambled QF_LRA competition files at 60s, paired same-node against the pre-H8 commit.",
+      "commit": "e6020ca",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo at e6020ca against a second worktree built at 03c28da",
+        "notes": "Primo only. z3 and cvc5 are unchanged, so their columns come from job 117487's CSVs rather than being re-run."
+      },
+      "command": {
+        "job": "sbatch --array=0-39 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_SOLVERS='base=<03c28da>/primo --quiet;h8=<e6020ca>/primo --quiet', 60s, 20 shards -- job 117940, 40/40 COMPLETED, 20/20 shard CSVs per configuration"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-competition.txt (595 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 60
+      },
+      "summary": {
+        "result": "base 369 solved / PAR2 29561, H8 378 / PAR2 28654. +9 files, churn +9/-0 -- zero regressions across the whole competition set. Median paired speedup 1.19x over the 154 files both solve in >1s (p25 1.12, p75 1.25).",
+        "by_band": "0-50KB 177 -> 177 (saturated), 50-500KB 144 -> 148, 500KB-5MB 41 -> 46, >5MB 7 -> 7. Five of the nine gained files are in the 500KB-5MB gap band, which is where the entire deficit against z3 sits.",
+        "soundness": "Zero cross-configuration answer disagreements over 595 files. That set carries no :status, so disagreement is the only soundness signal it can give.",
+        "z3_comparison_caveat": "z3 solved 429 of these at 60s in job 117487, so the deficit reads 51 where it was 56 at H7 time. Treat that as approximate rather than exact: this job's own baseline solves 369 where the H7-era run recorded 373 for a comparable configuration, i.e. about 4 files of cross-job drift at a 60s timeout on a shared cluster. The within-job +9/-0 is the trustworthy number; the cross-job deficit figure is not measured to better than a few files.",
+        "calibration": "Section 6.1a's payoff curve says the gap band needs 2x for 15 files and 5x for 37. H8 is 1.19x and buys 5 there, which is consistent with the curve rather than better than it. This does not change the conclusion that closing the band needs an algorithmic change, not a constant factor."
+      },
+      "docs": "docs/qf-lra-heuristics.md section 6.2b; docs/arithmetic.md's H8 entry.",
+      "evidence_status": "current"
     }
   ]
 }
