@@ -580,12 +580,17 @@ against `CheckSatOptions` and `--help` on 2026-07-30.
 
 **The four propagation caps** bound the per-bound-change cost of the two
 row-propagation directions. Their defaults are documented in the source as
-"not precisely derived", and they matter more than that obscurity suggests:
-on the mid-band gap instances `occurs_in` reaches 521 and rows reach 91
-terms, so the bidirectional path is gated off almost entirely there (it fires
-11-68 times against a 7k-190k opportunity count). They were compile-time
-constants until 2026-07-31 and are now options precisely so that the
-direction-D1 sweep can vary them per run rather than per build. See
+"not precisely derived", and on the mid-band gap instances they gate the
+bidirectional path off almost entirely: `occurs_in` reaches 521 and rows
+reach 91 terms there, so it fires 11-68 times against a 7k-190k opportunity
+count. They were compile-time constants until 2026-07-31 and became options
+so that direction D1's sweep could vary them per run rather than per build.
+
+**That sweep came back negative** (job 117726, 59 mid-band files at 300s):
+raising all four to 128, 256 or 1024 turns propagation on by two to three
+orders of magnitude and still does not beat the baseline's solved count, so
+the defaults stand. The options remain because they cost nothing to keep and
+are what made the question answerable. Full outcome in
 [](qf-lra-heuristics.md)'s D1.
 
 The reverse direction's two caps default smaller than the forward pair
@@ -642,17 +647,20 @@ median 2.8x. The payoff is near-linear, with no threshold to clear:
 a single pivot can cost ~47,000 rational operations.
 
 **The open list is [](qf-lra-heuristics.md)'s section 6.5**, ranked by value
-per unit of work: D1 evaluate the row-based bound propagation Primo already
-has on this band (a benchmark run, nothing to implement); D2 floating-point
-guided basis selection; D3 dynamic offset-equality detection; D4 revised
-simplex with an LU-factored basis. Periodic refactorization was considered and
-**rejected** -- for an explicit tableau the density is a property of the basis
-reached, so there is nothing for it to discard.
+per unit of work: D2 floating-point guided basis selection; D3 dynamic
+offset-equality detection; D4 revised simplex with an LU-factored basis.
+Periodic refactorization was considered and **rejected** -- for an explicit
+tableau the density is a property of the basis reached, so there is nothing
+for it to discard.
 
 Ruled out already, so as not to be re-proposed: the sparse-pricing candidate
 cap (flat across a 60,000x range), fixed-equality slacks (item H7, ships
-opt-in, nets zero on this band), and preprocessing size (tableau dimensions
-match z3's within ~5%).
+opt-in, nets zero on this band), preprocessing size (tableau dimensions
+match z3's within ~5%), and **D1, row-based bound propagation at raised caps**
+-- swept over the whole band on 2026-07-31 and rejected: no cap setting beats
+the baseline's solved count even with propagation firing 380x harder, and the
+single instance that motivated it turned out to be workstation noise at a
+timeout boundary.
 
 - **Milestone 3b's real-benchmark impact**: a 500-case fuzz merge-gate
   re-run found zero wrong-answer disagreements against z3 (a real bug --

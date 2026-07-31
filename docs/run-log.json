@@ -12257,8 +12257,56 @@
         "instrumentation_reverted": "The cap-override patch was reverted; git status clean, make check green.",
         "caveat": "n=2, and 58.5s against a 60s budget is at this workstation's noise boundary. This justifies the cluster cap sweep, not a conclusion."
       },
-      "evidence_status": "current",
-      "followups": "Run the cap sweep on the 59-file mid-band manifest on Slurm. That needs the four caps exposed as options first, since they are currently compile-time constants -- a small change, and the natural way to make the sweep reproducible."
+      "evidence_status": "superseded",
+      "followups": "Run the cap sweep on the 59-file mid-band manifest on Slurm. That needs the four caps exposed as options first, since they are currently compile-time constants -- a small change, and the natural way to make the sweep reproducible.",
+      "superseded_by": "2026-07-31-qf-lra-d1-cap-sweep. The cluster sweep contradicts this entry's headline number: scrambled312090 reads 61.6s -> 58.5s here but 143s -> 139s on the cluster, and no cap setting beats the baseline on the 59-file band. This entry's own caveat (n=2, at a 60s boundary, workstation timing unreliable that session) was correct. The cap *counts* it reports do reproduce -- raising the caps really does turn the mechanism on by 2-3 orders of magnitude -- so what is superseded is the timing conclusion, not the diagnosis that the feature is gated off where it would be needed."
+    },
+    {
+      "id": "2026-07-31-qf-lra-d1-cap-sweep",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "benchmark",
+      "scope": "Direction D1's cap sweep: does row-based/bidirectional bound propagation, run with caps large enough to actually fire, move the 500KB-5MB gap band? Plus the merge-tier fuzz gate for the raised-cap configuration.",
+      "commit": "50ad2dd",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo (Release, cadical-3.0.0-7b99c07), verified at git 50ad2dd by slurm_prepare_benchmark_workspace.py --check-only before submission",
+        "notes": "The four propagation caps became CheckSatOptions fields in commit 2e1eb55 specifically so this sweep could vary them per run rather than per build; the 2026-07-30 entry's numbers came from a rebuild per data point."
+      },
+      "command": {
+        "sweep": "sbatch scripts/slurm_qf_lra_row_propagation_sweep.sbatch -- job 117726, 5 configurations x 20 shards = 100 array tasks, all COMPLETED, 20/20 shard CSVs present per configuration",
+        "fuzz_gate": "sbatch --array=0-3 --export=...,PRIMO_FUZZ_SOLVER='build-slurm-rel/primo --lra-row-propagation --lra-bidirectional-row-propagation <all four caps>=1024',PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0 scripts/slurm_qfuf_fuzz_gate.sbatch -- job 117767"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-midband-gap.txt (59 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300,
+        "configurations": [
+          "base (propagation off)",
+          "rp-default (64/64, 32/32)",
+          "rp-128",
+          "rp-256",
+          "rp-1024"
+        ],
+        "timeout_rationale": "The manifest is defined as the files z3 solves at 60s and Primo does not, so at 60s the baseline solves 0 of 59 by construction and every configuration is scored against zero. At 300s a majority already solves (section 6.1a: 45/59 at 600s, median 167s), so the sweep compares per-file times."
+      },
+      "summary": {
+        "result": "REJECTED. Solved counts: base 37, rp-default 34, rp-128 37, rp-256 36, rp-1024 36 of 59. No cap setting beats the baseline; the best is a tie. PAR2 19465 / 19719 / 18155 / 19294 / 18591.",
+        "median_speedup_is_real_but_does_not_convert": "Median paired speedup over files both configurations solve in >1s rises with the caps: 1.01x, 1.20x, 1.14x, 1.30x (n=30-33). Every configuration nonetheless loses about as many files as it gains (+3/-6, +4/-4, +5/-6, +6/-7), and the gained and lost files are different files.",
+        "the_mechanism_definitely_ran": "Raising the caps turns propagation on by 2-3 orders of magnitude on this band. scrambled312090 bidirectional propagations 21 -> 7,959 (256) -> 8,419 (1024), row-based 213,354 -> 904,275 -> 955,787; scrambled228965 bidirectional 55 -> 2,072 -> 2,719. This is a mechanism firing 380x harder and still not moving the band, not a null result from code that never fired.",
+        "the_motivating_instance_does_not_reproduce": "scrambled312090 was the whole case for D1: locally 61.6s at default caps against 58.5s at 256, i.e. a gap file crossing a 60s budget. On the cluster it is 143s at baseline against 139s at 256 -- a 3% difference, with both figures more than double the local ones. The 2026-07-30 entry's own caveat (n=2, at a 60s boundary, workstation timing unreliable that session) was correct and is the explanation. scrambled228965 does reproduce (67s -> 13s at 256, a genuine 5x) but 1024 makes it worse than baseline (101s).",
+        "churn_signature": "scrambled178771 (222s at baseline) and scrambled21782 (148s) are lost by every configuration. scrambled11414 is gained by every configuration but lands anywhere from 48s to 244s depending on caps. That spread is churn at the timeout boundary, not a systematic effect.",
+        "not_ruled_out": "A per-instance or adaptive cap policy. The 5x on scrambled228965 and the 1.30x median are real; something that could identify those instances in advance would collect them. That is a materially larger item than the one closed here and is not pursued on this evidence -- the precedent is item H7, rejected rather than tuned after its own bar came back flat.",
+        "soundness": "Zero cross-configuration answer disagreements over the 59 files (the scrambled set carries no :status, so cross-configuration disagreement is the only soundness signal available from it) and zero wrong answers reported.",
+        "fuzz_gate": "Job 117767: 2,000 fuzzsmt QF_LRA cases against z3 on the 1024-cap configuration, 4/4 shard summaries present, 0 wrong answers, 1,976 PASS + 24 TIMEOUT at the 5s per-case budget. All 24 timeouts were re-checked individually against the default configuration: none is a soundness disagreement, 12 are unknown under both configurations even at a longer budget, and 3 differ only in whether one configuration finished within the budget.",
+        "gate_limitation": "The fuzz gate ran the Release build, not build-slurm-fuzz: the remote ASAN toolchain is still broken (head node lacks libasan, compute nodes lack C++ headers). This gate therefore carries no sanitizer coverage and must not be read as if it did."
+      },
+      "artifacts": {
+        "sweep": "llm2smt-slurm:<slurm-workdir>/results/qf-lra-rowprop-sweep-117726/ (100 shard CSVs + 100 shard summaries)",
+        "fuzz_gate": "llm2smt-slurm:<slurm-workdir>/fuzz-results/qfuf-gate-117767/"
+      },
+      "docs": "docs/qf-lra-heuristics.md section 6.5, D1's outcome subsection and the ranked table."
     }
   ]
 }

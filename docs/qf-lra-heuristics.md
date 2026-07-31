@@ -992,7 +992,9 @@ that should be priced in before committing to it.
 
 ### 6.5 Candidate directions -- ranked, with status
 
-The open list for this band. **Nothing here is implemented.** Ranked by
+The open list for this band. **Nothing still open here is implemented** --
+D1's mechanism was, which is why it was cheap to evaluate and is now closed.
+Ranked by
 expected value per unit of work, not by expected value alone, because section
 6.1a showed the payoff is close to linear: a 3x is worth 24 files and a 5x is
 worth 37, so a cheap partial win is genuinely worth more than an expensive
@@ -1000,14 +1002,21 @@ whole one.
 
 | # | direction | expected size | cost | status |
 |---|---|---|---|---|
-| D1 | Row-based bound propagation: raise caps, evaluate on this band | **promising** | **cap sweep** | first local evidence positive |
 | D2 | Floating-point-guided basis selection (Monniaux) | large | medium | **applicability unverified** |
 | D3 | Offset-equality detection + bound propagation | **2.2-3.2x in z3** | medium | **investigated; design redirected** |
-| D4 | Revised simplex with an LU-factored basis | unknown | largest | open question; conflicts with D1 |
+| D4 | Revised simplex with an LU-factored basis | unknown | largest | open question |
+| -- | ~~D1: row-based bound propagation, raised caps~~ | -- | -- | **rejected 2026-07-31** |
 | -- | ~~Periodic refactorization~~ | -- | -- | **rejected 2026-07-30** |
 
+D1 was the top entry until its sweep came back flat -- see its outcome below,
+kept in place rather than deleted because the negative is informative: it
+rules out the cheapest direction on the list and takes D4's "conflicts with
+D1" caveat with it.
+
 **D1. Evaluate the row-based bound propagation Primo already has.**
-**Partially done 2026-07-30, and it is the strongest lead on the list.** z3 reports
+**Evaluated and rejected 2026-07-31 -- the outcome subsection below is the
+conclusion; what precedes it is the case that justified running the sweep,
+kept so the reasoning can be checked against the result.** z3 reports
 `:arith-bound-propagations-lp` of 302k-1.2M on the profiled instances, so
 propagation is doing heavy lifting there. Primo has both row-based and
 bidirectional row propagation implemented (`--lra-row-propagation`,
@@ -1060,6 +1069,80 @@ table), so the sweep can vary them per run. The gates are pinned by
 checks each of the four against a propagation counter that is nonzero at the
 default and zero under the cap -- and was confirmed to fail when the gates
 are mutated to ignore the options.
+
+#### D1's outcome: rejected on the band (job 117726, 2026-07-31)
+
+Five configurations over all 59 mid-band files at a 300s timeout. The
+timeout is 300s and not 60s deliberately: the manifest *is* the files Primo
+fails at 60s, so at 60s the baseline solves 0 of 59 by construction and every
+configuration would be scored against zero.
+
+| configuration | solved / 59 | PAR2 | median paired speedup | churn |
+|---|---|---|---|---|
+| baseline (propagation off) | **37** | 19465 | -- | -- |
+| default caps (64/64, 32/32) | 34 | 19719 | 1.01x | +3/-6 |
+| all four at 128 | **37** | **18155** | 1.20x | +4/-4 |
+| all four at 256 | 36 | 19294 | 1.14x | +5/-6 |
+| all four at 1024 | 36 | 18591 | 1.30x | +6/-7 |
+
+Zero cross-configuration disagreements over the 59 files, and zero wrong
+answers.
+
+**No cap setting beats the baseline on solved count.** The best result is a
+tie. The median paired speedup is real and rises with the caps (1.01x ->
+1.20x -> 1.14x -> 1.30x over the ~31 files each pair both solves in more than
+a second), but it does not convert: every configuration loses roughly as many
+files as it gains, and the losses are not the same files as the gains.
+
+**The experiment is well-controlled -- the mechanism definitely ran.**
+Raising the caps turns the propagation on by two to three orders of magnitude
+on this band:
+
+| instance | direction | default caps | 256 | 1024 |
+|---|---|---|---|---|
+| `scrambled312090` | bidirectional | 21 | 7,959 | 8,419 |
+| `scrambled312090` | row-based | 213,354 | 904,275 | 955,787 |
+| `scrambled228965` | bidirectional | 55 | 2,072 | 2,719 |
+
+So this is not a null result from code that never fired. It is a mechanism
+firing 380x harder and still not moving the band.
+
+**The instance that motivated the sweep does not reproduce, and the caveat
+above is why.** `scrambled312090` was the whole case for D1: locally it read
+61.6s at default caps against 58.5s at 256, i.e. a gap file crossing a 60s
+budget. On the cluster it solves in **143s at baseline and 139s at caps 256**
+-- a 3% difference, and both figures more than double the local ones. The
+local reading was workstation noise at a budget boundary, exactly as the
+caveat said it might be. `scrambled228965` does reproduce (67s -> 13s at 256,
+a genuine 5x) but is one instance, and 1024 makes it *worse* than baseline
+(101s).
+
+**Two files regress under every configuration**: `scrambled178771` (222s at
+baseline) and `scrambled21782` (148s), both lost entirely at 300s. The single
+file gained by every configuration, `scrambled11414`, lands anywhere from 48s
+to 244s depending on caps. That spread is the signature of churn at the
+timeout boundary rather than of a systematic effect.
+
+**Conclusion.** D1 as stated -- "raise the caps and evaluate" -- is
+**rejected**. Row propagation is not the lever for this band, at any cap
+setting tested. The caps stay at their defaults and stay exposed as options,
+which cost nothing to keep and are what made this measurable. What is *not*
+ruled out is a per-instance or adaptive policy: the 5x on `scrambled228965`
+and the 1.30x median are real, and something that could tell those instances
+apart in advance would collect them. That is a different and much larger
+item than the one being closed here, and it does not get pursued on this
+evidence -- the precedent is item H7, rejected rather than tuned after its
+own bar came back flat.
+
+**Correctness.** Merge-tier QF_LRA fuzz gate on the 1024-cap configuration
+(the point where propagation fires hardest): job 117767, 4 shards x 500 =
+2,000 fuzzsmt cases against z3, all four shards' summaries present, **0 wrong
+answers**. The 24 recorded timeouts were checked individually against the
+default configuration: none is a soundness disagreement, 12 are unknown under
+both configurations at a longer budget, and 3 differ only in whether one
+configuration finished within the budget. This gate ran the **Release** build
+-- the remote ASAN toolchain is still broken, so it carries no sanitizer
+coverage.
 
 **D2. Floating-point-guided basis selection** (Monniaux, CAV 2009): run a
 floating-point LP, then force-pivot the exact tableau to the basis it found.
@@ -1189,8 +1272,9 @@ as `B^-1 A_j` (FTRAN). Consequences, which differ per subsystem:
 - `build_conflict` is fine: one BTRAN per conflict to materialise the violated
   row for the Farkas certificate.
 - **Row-based bound propagation breaks entirely** -- it iterates
-  `occurs_in(var)` and then reads rows, and neither survives. Note this
-  collides with D1.
+  `occurs_in(var)` and then reads rows, and neither survives. This used to be
+  a conflict with D1; D1's rejection removes it, so what would be lost is a
+  mechanism measured not to pay on this band anyway.
 - **SOI breaks** -- its objective row is explicit and incrementally maintained.
 - **push/pop is the crux.** The trail snapshots `old_basic_row` and
   `old_other_rows` per pivot; there is no un-applying an LU update, so a pop
