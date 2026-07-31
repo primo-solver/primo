@@ -114,7 +114,7 @@ alternatives considered before/while implementing it.
   `cb_add_reason_clause_lit` were widened from a single `sat::Lit` to
   `vector<sat::Lit>` to carry this (same-slack entries become singleton
   vectors, unchanged behavior). Two defensive, non-adaptive caps
-  (`kRowBasedPropagationMaxRowSize`, `kRowBasedPropagationMaxFanout`,
+  (`--lra-row-propagation-max-row-size`, `--lra-row-propagation-max-fanout`,
   both 64) bound the O(row size) per-affected-row cost this technique has
   that same-slack propagation's O(atoms sharing a slack) doesn't. Reported
   by `:lra.row-propagations`, alongside the existing aggregate
@@ -461,7 +461,13 @@ alternatives considered before/while implementing it.
   row moves. The entering candidate is preferred unbounded (an unbounded basic
   variable's row can never be violated), then by Markowitz occurrence count,
   then by a unit coefficient -- and never one that is itself already fixed,
-  which the other criteria actively steer into.
+  which the other criteria actively steer into. The prior art is LP presolve's
+  fixed-variable removal (Andersen & Andersen, *Presolving in linear
+  programming*, Mathematical Programming 71, 1995, 221-245), with one
+  difference that turns out to matter: presolve removes fixed variables once,
+  before solving, from a problem whose bounds are all known, whereas H7 fires
+  during search and must restore on backtracking. See
+  [](papers/lra-related-work.md) and item H7's write-up.
   - **Not promoted, and the reason is worth reading.** Per-instance the
     mechanism is decisive: `latendresse/ecoliFBAyicesTest-500` 0.8s -> 0.1s
     with `:lra.pivot-term-ops` 8.66M -> 0.13M, `scrambled335326` 51.0s ->
@@ -566,16 +572,25 @@ against `CheckSatOptions` and `--help` on 2026-07-30.
 | `--lra-row-propagation` | **off** | Row/interval implied bounds (roadmap item 2). |
 | `--lra-bidirectional-row-propagation` | **off** | Reverse direction: tighten a row term from the row's own bound (item 7). Requires `--lra-row-propagation`. |
 | `--lra-theory-decisions` | **off** | Theory-supplied decision literals via `cb_decide` (item 8). |
-| `--lra-fixed-elimination` | **off** | Item H7. Opt-in; see its falsifier outcome. |
+| `--lra-fixed-elimination` | **off** | Item H7 (LP presolve's fixed-variable removal, Andersen & Andersen 1995). Opt-in; see its falsifier outcome. |
+| `--lra-row-propagation-max-row-size` | 64 | Longest row row-propagation will derive a bound for. |
+| `--lra-row-propagation-max-fanout` | 64 | Most rows one bound change may scan. |
+| `--lra-bidirectional-row-propagation-max-row-size` | 32 | Reverse direction's row-length cap. |
+| `--lra-bidirectional-row-propagation-max-fanout` | 32 | Reverse direction's fanout cap. |
 
-**Un-exposed constants that gate the propagation options**, in
-`check_sat.cpp` and documented in the source as "not precisely derived":
-`kRowBasedPropagationMaxRowSize`/`MaxFanout` (64/64) and
-`kBidirectionalRowPropagationMaxRowSize`/`MaxFanout` (32/32). These matter
-more than their obscurity suggests -- on the mid-band gap instances
-`occurs_in` reaches 521 and rows reach 91 terms, so the bidirectional path is
-gated off almost entirely there (it fires 11-68 times). See
+**The four propagation caps** bound the per-bound-change cost of the two
+row-propagation directions. Their defaults are documented in the source as
+"not precisely derived", and they matter more than that obscurity suggests:
+on the mid-band gap instances `occurs_in` reaches 521 and rows reach 91
+terms, so the bidirectional path is gated off almost entirely there (it fires
+11-68 times against a 7k-190k opportunity count). They were compile-time
+constants until 2026-07-31 and are now options precisely so that the
+direction-D1 sweep can vary them per run rather than per build. See
 [](qf-lra-heuristics.md)'s D1.
+
+The reverse direction's two caps default smaller than the forward pair
+because it runs an O(row size) child-bound computation for *each* other term
+of each affected row, not once per row.
 
 **Statistics.** All are cumulative per solve.
 

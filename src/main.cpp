@@ -201,6 +201,28 @@ int main(int argc, char** argv) {
                "other terms from its own bound, not just derive the row's own implied "
                "bound (only takes effect if --lra-row-propagation is also on)")
       ->default_val(false);
+  app.add_option("--lra-row-propagation-max-row-size",
+                 solver_options.lra_row_propagation_limits.max_row_size,
+                 "Cap on the row length --lra-row-propagation will derive an implied bound "
+                 "for (default 64). Rows longer than this are skipped, not truncated")
+      ->check(CLI::PositiveNumber);
+  app.add_option("--lra-row-propagation-max-fanout",
+                 solver_options.lra_row_propagation_limits.max_fanout,
+                 "Cap on how many rows a single bound change may trigger a "
+                 "--lra-row-propagation scan over (default 64). A variable occurring in more "
+                 "rows than this propagates nothing that round")
+      ->check(CLI::PositiveNumber);
+  app.add_option("--lra-bidirectional-row-propagation-max-row-size",
+                 solver_options.lra_row_propagation_limits.bidirectional_max_row_size,
+                 "Row-length cap for the reverse direction "
+                 "(--lra-bidirectional-row-propagation, default 32). Smaller than the forward "
+                 "cap because that direction costs O(row size) per other term, not per row")
+      ->check(CLI::PositiveNumber);
+  app.add_option("--lra-bidirectional-row-propagation-max-fanout",
+                 solver_options.lra_row_propagation_limits.bidirectional_max_fanout,
+                 "Fanout cap for the reverse direction "
+                 "(--lra-bidirectional-row-propagation, default 32)")
+      ->check(CLI::PositiveNumber);
   app.add_flag("--lra-theory-decisions", solver_options.lra_theory_decisions,
                "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
                "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "

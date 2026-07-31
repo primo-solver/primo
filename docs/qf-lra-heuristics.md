@@ -489,6 +489,22 @@ on `scrambled126657` it needs **9 decisions and 4 conflicts** where Primo makes
 141,124 decisions and 321M pivot term-operations. Profiling Primo there puts
 86% of runtime in `LraTableau::pivot`, averaging 431 rows rewritten per pivot.
 
+**Prior art, and the setting difference that explains the result.** Removing
+fixed variables is standard LP *presolve*, and the canonical reference is
+Andersen & Andersen, "Presolving in linear programming", Mathematical
+Programming 71 (1995), 221-245
+(<https://link.springer.com/article/10.1007/BF01586000>; see
+[](papers/lra-related-work.md)). H7 is not that technique transferred intact,
+and the difference is exactly where the result comes from: presolve removes
+fixed variables **once, before solving**, from a problem whose bounds are all
+known, so the removal is paid for once and never undone. In DPLL(T) a variable
+becomes fixed *during* search, when two bounds asserted at some decision level
+happen to coincide, and every elimination must be trailed and restored on
+backtracking. The paper offers no guidance on that regime, and it is the most
+likely reason H7's per-instance wins do not survive aggregation -- see the
+falsifier outcome below. (Paper cited for provenance, not read in full; no
+result from it is claimed here.)
+
 **Design, as implemented (commit `eed259c`).** The mechanism turned out to be
 much smaller than the design sketch above suggested, because of one property
 the tableau already had: **`can_enter()` already rejects a fixed variable.**
@@ -1010,11 +1026,11 @@ redirected to. D1 and the useful part of D3 are the same code.
 
 **(b) It is switched off by its own caps on precisely these instances.**
 
-| gate | value | measured reality (section 6.2) |
+| gate | default | measured reality (section 6.2) |
 |---|---|---|
-| `kBidirectionalRowPropagationMaxFanout` | 32 | `occurs_in` reaches **521** |
-| `kBidirectionalRowPropagationMaxRowSize` | 32 | rows reach **91** terms |
-| `kRowBasedPropagationMaxFanout` | 64 | (same 521) |
+| `--lra-bidirectional-row-propagation-max-fanout` | 32 | `occurs_in` reaches **521** |
+| `--lra-bidirectional-row-propagation-max-row-size` | 32 | rows reach **91** terms |
+| `--lra-row-propagation-max-fanout` | 64 | (same 521) |
 
 Both are documented in the source as "not precisely derived". The result is
 that bidirectional propagation fires **11-68 times** on instances where the
@@ -1035,6 +1051,15 @@ one-constant-sweep experiment, not an implementation.
 *Caveat:* 58.5s against a 60s budget is at the noise boundary on this
 workstation (see the run-log's environment note), and n=2. What this justifies
 is the cluster sweep, not a conclusion.
+
+**Status, 2026-07-31.** The four caps were compile-time constants, which is
+why the numbers above came from a rebuild per data point. They are now
+`CheckSatOptions` fields with CLI options (see [](arithmetic.md)'s option
+table), so the sweep can vary them per run. The gates are pinned by
+`row_propagation_caps_are_options_not_constants` in the solver tests, which
+checks each of the four against a propagation counter that is nonzero at the
+default and zero under the cap -- and was confirmed to fail when the gates
+are mutated to ignore the options.
 
 **D2. Floating-point-guided basis selection** (Monniaux, CAV 2009): run a
 floating-point LP, then force-pivot the exact tableau to the basis it found.

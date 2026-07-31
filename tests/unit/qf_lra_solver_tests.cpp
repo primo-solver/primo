@@ -419,6 +419,99 @@ void bidirectional_row_propagation_can_reach_a_conflict() {
   assert(not_propagated.result == CheckSatResult::Unsat);
 }
 
+void row_propagation_caps_are_options_not_constants() {
+  // The four row-propagation cost caps were compile-time constants until
+  // 2026-07-31, which made the direction-D1 cap sweep need a rebuild per
+  // point (see docs/qf-lra-heuristics.md section 6.5). They are now
+  // CheckSatOptions fields, and this pins that they are actually read at
+  // the gates rather than being decorative: a cap below the row's own size
+  // must suppress the propagation, and the verdict must not depend on it,
+  // since propagation is an accelerator and never changes the answer.
+  //
+  // The forward row is (+ x1 x2 x3 x4 x5), so a max_row_size of 2 is
+  // comfortably under it and the default 64 comfortably over.
+  const std::string forward_formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x1 () Real)
+    (declare-fun x2 () Real)
+    (declare-fun x3 () Real)
+    (declare-fun x4 () Real)
+    (declare-fun x5 () Real)
+    (declare-fun w () Real)
+    (assert (<= x1 1))
+    (assert (<= x2 1))
+    (assert (<= x3 1))
+    (assert (<= x4 1))
+    (assert (<= x5 1))
+    (assert (or (<= (+ x1 x2 x3 x4 x5) 10) (>= w 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions default_caps;
+  default_caps.lra_propagation = true;
+  default_caps.lra_row_propagation = true;
+  const auto with_default_caps = check_sat_smtlib(forward_formula, default_caps);
+  assert(with_default_caps.result == CheckSatResult::Sat);
+  assert(with_default_caps.statistics.get(StatKey::LraRowPropagations) > 0);
+
+  CheckSatOptions tight_row_size = default_caps;
+  tight_row_size.lra_row_propagation_limits.max_row_size = 2;
+  const auto with_tight_row_size = check_sat_smtlib(forward_formula, tight_row_size);
+  assert(with_tight_row_size.result == CheckSatResult::Sat);
+  assert(with_tight_row_size.statistics.get(StatKey::LraRowPropagations) == 0);
+
+  // A fanout cap of 0 admits no affected-row list at all, so it gates the
+  // scan independently of any row's length.
+  CheckSatOptions tight_fanout = default_caps;
+  tight_fanout.lra_row_propagation_limits.max_fanout = 0;
+  const auto with_tight_fanout = check_sat_smtlib(forward_formula, tight_fanout);
+  assert(with_tight_fanout.result == CheckSatResult::Sat);
+  assert(with_tight_fanout.statistics.get(StatKey::LraRowPropagations) == 0);
+
+  // Same two gates for the reverse direction, on the formula
+  // bidirectional_row_propagation_drives_boolean_structure establishes it
+  // fires on -- its row is (+ x y), so a cap of 1 is under it.
+  const std::string reverse_formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun w () Real)
+    (assert (>= (+ x y) 5))
+    (assert (<= x 2))
+    (assert (or (<= y 2) (>= w 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions bidirectional = default_caps;
+  bidirectional.lra_bidirectional_row_propagation = true;
+  const auto reverse_default = check_sat_smtlib(reverse_formula, bidirectional);
+  assert(reverse_default.result == CheckSatResult::Sat);
+  assert(reverse_default.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
+
+  CheckSatOptions tight_reverse_row_size = bidirectional;
+  tight_reverse_row_size.lra_row_propagation_limits.bidirectional_max_row_size = 1;
+  const auto reverse_tight_row_size = check_sat_smtlib(reverse_formula, tight_reverse_row_size);
+  assert(reverse_tight_row_size.result == CheckSatResult::Sat);
+  assert(reverse_tight_row_size.statistics.get(StatKey::LraBidirectionalRowPropagations) == 0);
+
+  CheckSatOptions tight_reverse_fanout = bidirectional;
+  tight_reverse_fanout.lra_row_propagation_limits.bidirectional_max_fanout = 0;
+  const auto reverse_tight_fanout = check_sat_smtlib(reverse_formula, tight_reverse_fanout);
+  assert(reverse_tight_fanout.result == CheckSatResult::Sat);
+  assert(reverse_tight_fanout.statistics.get(StatKey::LraBidirectionalRowPropagations) == 0);
+
+  // Raising the caps well past the defaults must stay sound and must not
+  // lose the propagations the defaults already found -- the direction the
+  // D1 sweep actually explores.
+  CheckSatOptions raised = default_caps;
+  raised.lra_row_propagation_limits.max_row_size = 256;
+  raised.lra_row_propagation_limits.max_fanout = 256;
+  const auto with_raised_caps = check_sat_smtlib(forward_formula, raised);
+  assert(with_raised_caps.result == CheckSatResult::Sat);
+  assert(with_raised_caps.statistics.get(StatKey::LraRowPropagations) >=
+         with_default_caps.statistics.get(StatKey::LraRowPropagations));
+}
+
 void theory_decisions_drive_boolean_structure() {
   // Competitiveness-roadmap item 8: x's and y's bounds are directly
   // asserted but (+ x y) itself never is, and row-based propagation is
@@ -1192,6 +1285,7 @@ int main() {
   row_based_propagation_can_reach_a_conflict();
   bidirectional_row_propagation_drives_boolean_structure();
   bidirectional_row_propagation_can_reach_a_conflict();
+  row_propagation_caps_are_options_not_constants();
   theory_decisions_drive_boolean_structure();
   theory_decisions_can_reach_a_conflict();
   deferred_check_runs_once_per_quiescence_point_not_per_literal();

@@ -3871,25 +3871,11 @@ std::optional<sat::Lit> bound_entails(const theory::arithmetic::LraTableau& tabl
   return std::nullopt;
 }
 
-// Defensive bounds on row-based/interval bound propagation's O(row size)
-// per-affected-row cost -- unlike same-slack propagation (O(atoms sharing
-// a slack), typically small), this is triggered by *any* bound change on
-// a variable that occurs in potentially many rows. Not precisely derived;
-// generous enough to matter for real formulas, small enough to bound
-// worst-case cost on an adversarial/fuzzed input, tunable later against
-// real evidence (mirrors the Gaussian-elimination caps' own precedent).
-constexpr std::size_t kRowBasedPropagationMaxRowSize = 64;
-constexpr std::size_t kRowBasedPropagationMaxFanout = 64;
-
-// Competitiveness-roadmap item 7 (bidirectional row-based propagation):
-// separate, smaller caps for the reverse (child-tightening) direction,
-// since it does an O(row size) compute_implied_child_bound call for
-// *each* other term of an affected row, not just once per row --
-// multiplicatively pricier than item 2's own forward-only caps above.
-// Not precisely derived either; deliberately smaller pending real
-// evidence from this item's own quick-eval.
-constexpr std::size_t kBidirectionalRowPropagationMaxRowSize = 32;
-constexpr std::size_t kBidirectionalRowPropagationMaxFanout = 32;
+// The caps on row-based/interval bound propagation's per-bound-change cost
+// live in CheckSatOptions as LraRowPropagationLimits (see check_sat.hpp for
+// what they bound and why their defaults are what they are). They were
+// compile-time constants here until 2026-07-31, when the direction-D1
+// evidence made them a thing to sweep rather than a thing to assume.
 
 // Applies one assigned LRA atom's relation+truth-value+strictness to
 // `tableau` as a single Assert-Bound call (Eq asserts both bounds). Shared
@@ -4176,9 +4162,10 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 // unlike same-variable propagation's single-literal one.
 std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
 compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
-                      theory::arithmetic::LraVarId basic_var, bool want_upper) {
+                      theory::arithmetic::LraVarId basic_var, bool want_upper,
+                      std::size_t max_row_size) {
   const auto& row = tableau.row(basic_var);
-  if (row.size() > kRowBasedPropagationMaxRowSize) {
+  if (row.size() > max_row_size) {
     return std::nullopt;
   }
   theory::arithmetic::DeltaRational total =
@@ -4216,9 +4203,10 @@ std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>
 compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
                             theory::arithmetic::LraVarId basic_var,
                             theory::arithmetic::LraVarId target_var,
-                            const util::Rational& target_coeff, bool want_upper_of_target) {
+                            const util::Rational& target_coeff, bool want_upper_of_target,
+                            std::size_t max_row_size) {
   const auto& row = tableau.row(basic_var);
-  if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
+  if (row.size() > max_row_size) {
     return std::nullopt;
   }
   const bool want_upper_of_basic = want_upper_of_target == (target_coeff.sign() > 0);
@@ -4294,7 +4282,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   OnlineLraPropagator(const PreparedLraTheory& prepared,
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                       bool propagation_enabled, bool row_propagation_enabled,
-                      bool bidirectional_row_propagation_enabled, bool theory_decisions_enabled,
+                      bool bidirectional_row_propagation_enabled,
+                      const LraRowPropagationLimits& limits, bool theory_decisions_enabled,
                       util::Statistics& statistics)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
@@ -4302,6 +4291,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
         propagation_enabled_(propagation_enabled),
         row_propagation_enabled_(row_propagation_enabled),
         bidirectional_row_propagation_enabled_(bidirectional_row_propagation_enabled),
+        limits_(limits),
         theory_decisions_enabled_(theory_decisions_enabled),
         statistics_(statistics) {
     int max_theory_var = 0;
@@ -4691,7 +4681,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   // is checked against an implied *lower* bound and vice versa.
   std::optional<std::vector<sat::Lit>> implied_bound_entails(theory::arithmetic::LraVarId basic_var,
                                                              const BoundAssertion& assertion) {
-    auto implied = compute_implied_bound(tableau_, basic_var, assertion.is_upper);
+    auto implied =
+        compute_implied_bound(tableau_, basic_var, assertion.is_upper, limits_.max_row_size);
     if (!implied.has_value()) {
       return std::nullopt;
     }
@@ -4719,7 +4710,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   void scan_row_based_propagations(theory::arithmetic::LraVarId changed_var) {
     const std::vector<theory::arithmetic::LraVarId>& affected_rows =
         tableau_.occurs_in(changed_var);
-    if (affected_rows.empty() || affected_rows.size() > kRowBasedPropagationMaxFanout) {
+    if (affected_rows.empty() || affected_rows.size() > limits_.max_fanout) {
       return;
     }
     for (const theory::arithmetic::LraVarId basic_var : affected_rows) {
@@ -4750,7 +4741,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
         }
       }
       if (bidirectional_row_propagation_enabled_ &&
-          affected_rows.size() <= kBidirectionalRowPropagationMaxFanout) {
+          affected_rows.size() <= limits_.bidirectional_max_fanout) {
         scan_row_child_propagations(basic_var, changed_var);
       }
     }
@@ -4765,7 +4756,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   void scan_row_child_propagations(theory::arithmetic::LraVarId basic_var,
                                    theory::arithmetic::LraVarId exclude_var) {
     const auto& row = tableau_.row(basic_var);
-    if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
+    if (row.size() > limits_.bidirectional_max_row_size) {
       return;
     }
     for (const auto& [target_var, target_coeff] : row) {
@@ -4807,8 +4798,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   std::optional<std::vector<sat::Lit>> implied_child_bound_entails(
       theory::arithmetic::LraVarId basic_var, theory::arithmetic::LraVarId target_var,
       const util::Rational& target_coeff, const BoundAssertion& assertion) {
-    auto implied = compute_implied_child_bound(tableau_, basic_var, target_var, target_coeff,
-                                               assertion.is_upper);
+    auto implied =
+        compute_implied_child_bound(tableau_, basic_var, target_var, target_coeff,
+                                    assertion.is_upper, limits_.bidirectional_max_row_size);
     if (!implied.has_value()) {
       return std::nullopt;
     }
@@ -4837,6 +4829,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   bool propagation_enabled_;
   bool row_propagation_enabled_;
   bool bidirectional_row_propagation_enabled_;
+  LraRowPropagationLimits limits_;
   bool theory_decisions_enabled_;
   util::Statistics& statistics_;
   std::vector<char> observed_vars_;
@@ -4892,10 +4885,10 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
   // via LraTableau::push/pop instead of reasserting everything from
   // scratch every SAT round), and correctness has already been verified
   // against it via the fuzz gate (see docs/run-log.json).
-  OnlineLraPropagator online_propagator(prepared_theory, clausifier.theory_atoms(),
-                                        options.lra_propagation, options.lra_row_propagation,
-                                        options.lra_bidirectional_row_propagation,
-                                        options.lra_theory_decisions, statistics);
+  OnlineLraPropagator online_propagator(
+      prepared_theory, clausifier.theory_atoms(), options.lra_propagation,
+      options.lra_row_propagation, options.lra_bidirectional_row_propagation,
+      options.lra_row_propagation_limits, options.lra_theory_decisions, statistics);
   backend.connect_external_propagator(&online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
