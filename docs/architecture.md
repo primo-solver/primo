@@ -10,6 +10,27 @@ Primo is organized as layered components with explicit data ownership. This page
 - `smt/` owns SMT-LIB command processing, QF_UF preprocessing, Boolean abstraction, clausification, and the current lazy QF_UF loop.
 - `theory/` owns equality reasoning and congruence closure.
 
+## Command-line options
+
+`src/main.cpp` registers ~70 options, which `--help` prints in four
+sections mirroring the layers above:
+
+| section | what it tunes |
+|---|---|
+| Procedural options | the run rather than the reasoning: `--quiet`, `--stats`, `--preprocess-only`, `--version`, input files |
+| QF_UF / EUF theory options | the `--euf-*`, `--finite-domain-*`, `--ground-*`, `--qf-uf-*`, `--auto-basic-*` and `--preprocessing-*` families, plus symmetry breaking, equality bridging and the online-propagation knobs |
+| QF_LRA theory options | the `--lra-*` family and Gaussian elimination |
+| SAT and DPLL(T) options | `--cadical-option`, and the knobs on the theory/SAT boundary: `--theory-phase`, `--pure-theory-filter`, `--max-theory-conflicts`, top-level-OR Tseitin encoding |
+
+The assignment is one `group_for()` table near the end of `main()` rather
+than a `->group()` on each of the ~70 registrations, so there is a single
+place to read and a single place to change. **Adding an option means adding
+it to that table**: anything unmatched lands in an "Other options" heading
+*and* prints a warning to stderr naming the option, so the omission
+surfaces on the next run rather than being noticed in `--help` much later.
+Sections are printed in the order each group's first option is registered,
+not in the order the group constants are declared.
+
 ## Boundaries
 
 - SMT-LIB syntax objects are consumed by `smt::Frontend` and converted to `core::TermId` values before reaching SAT or theory code.
