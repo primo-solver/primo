@@ -12523,6 +12523,37 @@
       },
       "docs": "docs/papers/fast-linear-arithmetic-dpllt.md's deviations section; LraTableau's class comment carries the soundness argument.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-callgrind-after-backtracking",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "profiling",
+      "scope": "Re-profile after H8 and bounds-only backtracking, with callgrind rather than gprof so libc and GMP are visible. Merge-readiness check that turned into the largest single finding left.",
+      "commit": "282c20b",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build-callgrind/primo (RelWithDebInfo) under valgrind 3.22 --tool=callgrind; counts confirmed with throwaway instrumentation on the Release build",
+        "notes": "valgrind became available on this machine partway through the day; perf remains blocked (perf_event_paranoid=4)."
+      },
+      "command": {
+        "callgrind": "valgrind --tool=callgrind --cache-sim=no --branch-sim=no build-callgrind/primo --quiet <instance>; callgrind_annotate",
+        "counter_check": "temporary counters around the std::remove in pivot's affected-row loop, measured then reverted"
+      },
+      "benchmark": {
+        "suite": "scrambled228965, scrambled339450",
+        "logic": "QF_LRA"
+      },
+      "summary": {
+        "distribution": "On scrambled228965, 262.5 billion instructions total: 70.4% in stl_algobase.h attributed to LraTableau::pivot, 11.1% stl_iterator.h, 9.8% predefined_ops.h -- about 91% inside pivot, and almost none of it arithmetic (Rational::operator* is ~1%, libc _int_malloc 0.22%).",
+        "what_it_actually_is": "One linear-scan algorithm: the std::remove that drops other_basic from occurs_in_[var]. Counted directly rather than inferred from symbol names, because attribution has misled here before (6.2a's COMDAT folding). scrambled228965: 40.1M calls scanning 37.6 BILLION elements, average 938 per call. scrambled339450: 51.5M calls, 25.9 billion elements, average 504.",
+        "the_fix_that_follows": "Most of that work is immediately undone: the loop removes other_basic from every term's occurrence list and then re-adds it for every term of the rebuilt row, and after H8's merge most terms are in both. Both rows are ordered by var id (the Row invariant H8 established), so the true delta is one linear pass -- a term carried over unchanged needs no occurrence update at all, and only terms genuinely entering (from the entering row) or leaving (cancelled to zero, or entering_var itself) need one.",
+        "significance": "This is larger than anything left in section 6.5's direction list, and unlike D2 or D4 it is contained, additive, and rests on an invariant that already exists. Not attempted yet.",
+        "allocator_still_retired": "libc _int_malloc is 0.22% of instructions, confirming the 2026-07-31 finding that H2 retired the allocator as a target; it has not crept back."
+      },
+      "docs": "docs/qf-lra-heuristics.md section 6.2c.",
+      "evidence_status": "current"
     }
   ]
 }

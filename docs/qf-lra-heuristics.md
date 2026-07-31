@@ -1162,6 +1162,45 @@ separate ones). That touches 29 call sites and is not worth it for 8% on its
 own -- but it is the same representation change direction D4 would force
 anyway, so it should be considered there rather than separately.
 
+### 6.2c Where the time goes now (callgrind, 2026-07-31)
+
+After H8 and bounds-only backtracking, re-profiled with **callgrind** --
+which, unlike gprof, sees libc and GMP. On `scrambled228965`:
+
+| share of instructions | attributed to |
+|---|---|
+| 70.4% | `stl_algobase.h` : `LraTableau::pivot` |
+| 11.1% | `stl_iterator.h` : `LraTableau::pivot` |
+| 9.8% | `predefined_ops.h` : `LraTableau::pivot` |
+| ~1% each | `Rational::operator*`, `from_int128_reduced`, `operator+` |
+| 0.22% | libc `_int_malloc` |
+
+**~91% of all instructions are inside `pivot`, and almost none of it is
+arithmetic.** The signature -- an STL algorithm, its iterator, and a
+predicate wrapper -- is one linear-scan algorithm, and the only such call in
+that loop is the `std::remove` that drops `other_basic` from
+`occurs_in_[var]`. Counted directly rather than inferred, since symbol
+attribution has misled here before (see 6.2a's COMDAT-folding note):
+
+| instance | `std::remove` calls | elements scanned | average scan |
+|---|---|---|---|
+| `scrambled228965` | 40.1M | **37.6 billion** | 938 |
+| `scrambled339450` | 51.5M | **25.9 billion** | 504 |
+
+262.5 billion instructions total on `scrambled228965`, so those scans are
+essentially the whole program.
+
+**Most of that work is immediately undone.** The loop removes `other_basic`
+from every term's occurrence list, then re-adds it for every term of the
+rebuilt row -- and after H8's merge, most terms are in both. Since both rows
+are ordered by var id (the `Row` invariant), the true delta is computable in
+one linear pass: a term carried over unchanged needs *no* occurrence update
+at all, and only terms that genuinely enter the row (from the entering row)
+or leave it (cancelled to zero, or `entering_var` itself) need one.
+
+That is the clear next item, and it is larger than anything left in section
+6.5's direction list. Not attempted yet.
+
 ### 6.3 What this rules out
 
 - **It is not the sparse-pricing cap.** `kSparsePricingCandidateLimit` is 16
