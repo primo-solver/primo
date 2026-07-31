@@ -1103,6 +1103,27 @@ void LraTableau::undo(const TrailEntry& entry) {
   soi_directions_[f_row_entry.var] = f_row_entry.previous_direction;
 }
 
+bool LraTableau::occurs_in_index_matches_full_rebuild() const {
+  std::vector<std::vector<LraVarId>> expected(occurs_in_.size());
+  for (LraVarId basic_var = 0; basic_var < vars_.size(); ++basic_var) {
+    if (!vars_[basic_var].is_basic) {
+      continue;
+    }
+    for (const auto& [var, coefficient] : rows_[basic_var]) {
+      expected[var].push_back(basic_var);
+    }
+  }
+  for (std::size_t var = 0; var < expected.size(); ++var) {
+    std::vector<LraVarId> actual = occurs_in_[var];
+    std::sort(actual.begin(), actual.end());
+    std::sort(expected[var].begin(), expected[var].end());
+    if (actual != expected[var]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void LraTableau::rebuild_occurs_in_index() {
   // rows_ has a slot for every variable, not just currently-basic ones
   // (see rows_'s own comment) -- a nonbasic slot's leftover content must

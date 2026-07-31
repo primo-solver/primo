@@ -393,6 +393,15 @@ class LraTableau {
   // across add_row/pivot/pop (see occurs_in_'s own maintenance).
   const std::vector<LraVarId>& occurs_in(LraVarId var) const { return occurs_in_.at(var); }
 
+  // Whether occurs_in_ agrees with what a full rebuild from rows_/is_basic
+  // would produce. pivot() maintains this index by *delta* -- it touches
+  // only the variables that genuinely enter or leave a row -- and a
+  // divergence would not throw. It would make update() silently skip a
+  // dependent row, or sparse pricing misjudge a column, and surface much
+  // later as a wrong answer. Order within a listing is not part of the
+  // contract and is not compared. Test-only: O(all rows).
+  bool occurs_in_index_matches_full_rebuild() const;
+
  private:
   struct Bound {
     DeltaRational value;
@@ -471,6 +480,11 @@ class LraTableau {
   // under PivotingRule::Soi, whose explicitly-maintained objective row is
   // basis-dependent and so has to be restored.
   bool trails_assignments_and_pivots() const { return rule_ == PivotingRule::Soi; }
+
+  // Removes one "var occurs in basic_var's row" listing. Linear in that
+  // listing's length, so pivot() calls it only where a variable genuinely
+  // leaves a row -- see its delta-maintenance comment.
+  void drop_occurrence(LraVarId var, LraVarId basic_var);
 
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
   void undo(const TrailEntry& entry);

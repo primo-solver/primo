@@ -1201,6 +1201,42 @@ or leave it (cancelled to zero, or `entering_var` itself) need one.
 That is the clear next item, and it is larger than anything left in section
 6.5's direction list. Not attempted yet.
 
+#### Attempted 2026-07-31, reverted: delta-maintained `occurs_in_`
+
+The fix above was implemented and backed out the same day. It is recorded
+because the *reason* it failed is the useful part.
+
+The change: stop removing every term's occurrence entry and re-adding it,
+and instead touch only the variables that genuinely enter a row (from the
+entering row) or leave it (cancelled to zero). It builds and passes the
+pre-existing suite.
+
+It also **corrupts `occurs_in_`**, which the pre-existing suite did not
+notice. Two tests added alongside it do: they compare the index against a
+full rebuild after every pivot, across all four pivoting rules. The failure
+is duplicate entries -- `occurs_in_[y]` holding `{0,4,4,6,6}` where a rebuild
+gives `{0,4,6}` -- and duplicates compound, because a row listed twice in
+`occurs_in_[entering]` is rewritten twice by the affected-row loop.
+
+*The hypothesis worth recording, and its correction.* The first guess was
+that duplicates already existed and the round trip had been masking them:
+`std::remove` deletes **all** copies of a value, so remove-then-add silently
+repairs a duplicated entry, while a delta preserves it. That would have made
+this a latent bug the optimisation merely exposed. **It is wrong** -- with
+the round trip restored, the same tests pass, so the index is duplicate-free
+today and the duplicates were entirely self-inflicted by the delta.
+
+The defect was localised to a stale entry surviving a cancellation-adjacent
+path, but not root-caused before the attempt was stopped: this is the
+tableau's hottest and most correctness-critical loop, and there was a
+validated milestone in the same branch to protect.
+
+**What is kept:** `occurs_in_index_matches_full_rebuild()` and the two tests,
+which cost nothing against the current implementation and would catch this
+class of bug immediately on a second attempt. The prize is unchanged and
+still the largest item here -- ~91% of instructions, 37.6 billion element
+scans -- so this is worth retrying with the guard already in place.
+
 ### 6.3 What this rules out
 
 - **It is not the sparse-pricing cap.** `kSparsePricingCandidateLimit` is 16
