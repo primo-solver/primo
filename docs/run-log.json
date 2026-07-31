@@ -14726,6 +14726,65 @@
       },
       "interpretation": "The fast path is active on the intended mixed files and improves the default sample result from 15/20 to 16/20 solved at 10 seconds with no cross-solver answer disagreements. The model-equality branching variants now also solve 16/20 but remain slower than default on this sample, so they should stay default-off.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-uflra-skip-unused-care-scan",
+      "date": "2026-07-31",
+      "kind": "local-validation-and-diagnostic",
+      "scope": "Validation for skipping closure-aware EUF care-pair diagnostics in default mixed QF_UFLRA solving when default-off model-equality branching is disabled. The same change adds local counters for mixed LRA conflict clause literal volume and duplicate LRA conflict clauses.",
+      "commit": "aaa4f15",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: aaa4f15 source commit under local Release build; cadical: cadical-3.0.0-7b99c07",
+        "reference": "Z3 through scripts/qf_uflra_smoke_fuzz.py"
+      },
+      "commands": {
+        "focused_tests": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
+        "project_check": "make lint; make docs; make check",
+        "answer_fuzz": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260759 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-skip-unused-care-answer-1000",
+        "local_diagnostics": "timeout 8s ./build/primo --quiet --stats <cpachecker-induction-newtonkbd>; timeout 20s ./build/primo --quiet --stats <cpachecker-induction-magellan/newtonkbd>"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "fuzz_generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "fuzz_count": 1000,
+        "fuzz_seed": 20260759,
+        "fuzz_timeout_seconds": 5,
+        "focused_instances": [
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--input--joystick--magellan.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--input--keyboard--newtonkbd.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2"
+        ]
+      },
+      "artifacts": {
+        "answer_fuzz_summary": "fuzz-results/qf_uflra-skip-unused-care-answer-1000/summary.csv",
+        "evidence_status": "local_ignored_outputs"
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_sat": 706,
+        "answer_fuzz_unsat": 294,
+        "answer_fuzz_wrong_answer": 0,
+        "local_newtonkbd_8s_timeout": {
+          "sat_solve_calls": 634,
+          "lra_theory_checks": 634,
+          "lra_theory_conflicts": 633,
+          "lra_conflict_lits": 1369,
+          "lra_conflict_duplicates": 0,
+          "euf_care_checks": 0,
+          "lra_prepared_reused": 634
+        },
+        "local_option_probe_newtonkbd_20s": {
+          "default": "timeout with 634 LRA checks and 633 LRA conflicts",
+          "lra_theory_decisions": "timeout with same 634 LRA checks and 633 LRA conflicts",
+          "lra_row_propagation": "timeout with same 634 LRA checks and 633 LRA conflicts",
+          "lra_bidirectional_row_propagation": "timeout with same 634 LRA checks and 633 LRA conflicts",
+          "soi_pivoting": "timeout with 701 LRA checks and 700 LRA conflicts"
+        }
+      },
+      "interpretation": "Skipping unused care diagnostics is a correct default-path hygiene fix and removes an accidental quadratic diagnostic scan from default mixed solving, but it does not solve the CPAchecker induction timeout. The remaining local evidence points to the lazy mixed QF_UFLRA loop learning many short, distinct LRA conflict clauses one by one. Existing pure-QF_LRA online options do not affect this mixed path, so the next implementation target should be integrating useful LRA propagation or decisions into QF_UFLRA rather than tuning care-pair diagnostics.",
+      "evidence_status": "current"
     }
   ]
 }
