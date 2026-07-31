@@ -14864,6 +14864,75 @@
       },
       "interpretation": "The accepted local change removes the repeated outer lazy LRA-conflict loop from the default mixed path on the focused CPAchecker induction rows: both representative timeout rows now have one SAT solve call and hundreds of callback-owned LRA checks/propagations instead of hundreds of final-check conflicts. This is real solver work, but it is not enough by itself to solve the two large local rows at 20 seconds. Row propagation and theory decisions are not yet justified as defaults for this family. The next performance step should use SLURM family results to decide whether the online mixed path improves solved/PAR2 broadly, then profile the remaining single-SAT-call timeouts.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-uflra-cpachecker-induction-baseline-slurm",
+      "date": "2026-07-31",
+      "kind": "slurm-benchmark",
+      "scope": "Cluster-backed baseline comparison on the full QF_UFLRA cpachecker-induction-svcomp14 family before mixed online LRA was enabled. This run establishes the family target for the next QF_UFLRA performance iteration.",
+      "commit": "e0c5a62 on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "slurm",
+        "host": "redacted",
+        "job_id": "redacted",
+        "binary": "remote Release build of build-slurm-rel/primo at e0c5a62",
+        "reference": "Z3 from remote contrib/local/bin/z3"
+      },
+      "commands": {
+        "manifest": "benchmarks/qf_uflra-cpachecker-induction-svcomp14.txt",
+        "timeout": "10 seconds per file",
+        "render_html": "python3 scripts/render_benchmark_matrix_html.py --variant default=<artifact>/default.csv --variant z3=<artifact>/z3.csv --out <artifact>/compare.html --summary-json <artifact>/compare-summary.json --title 'QF_UFLRA CPAchecker Induction: Default vs Z3' --timeout 10 --strip-prefix tmp/QF_UFLRA/ --stat :time.parse-us --stat :time.preprocessing-us --stat :time.solve-us --stat :sat.solve-calls --stat :sat.conflicts --stat :sat.decisions --stat :sat.propagations --stat :lra.theory-checks --stat :lra.theory-conflicts --stat :no.interface.lra-prepared-reused --stat :no.interface.lra-prepared-augmented --stat :no.interface.euf-care-checks --stat :no.interface.euf-care-pairs --stat :no.interface.shared-real-terms --stat :no.interface.model-separation-model-oriented",
+        "answer_compare": "python3 scripts/compare_solver_answers.py results/qf_uflra-cpachecker-induction-slurm-e0c5a62-r2 --timeout 10"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "family": "cpachecker-induction-svcomp14",
+        "files": 359
+      },
+      "artifacts": {
+        "local_directory": "results/qf_uflra-cpachecker-induction-slurm-e0c5a62-r2",
+        "html": "results/qf_uflra-cpachecker-induction-slurm-e0c5a62-r2/compare.html",
+        "summary_json": "results/qf_uflra-cpachecker-induction-slurm-e0c5a62-r2/compare-summary.json",
+        "default_csv": "results/qf_uflra-cpachecker-induction-slurm-e0c5a62-r2/default.csv",
+        "z3_csv": "results/qf_uflra-cpachecker-induction-slurm-e0c5a62-r2/z3.csv",
+        "evidence_status": "local_ignored_outputs_collected_from_slurm"
+      },
+      "summary": {
+        "timeout_seconds": 10,
+        "default": {
+          "total": 359,
+          "solved": 77,
+          "sat": 50,
+          "unsat": 27,
+          "timeout": 282,
+          "error": 0,
+          "par2": 5692.280078
+        },
+        "z3": {
+          "total": 359,
+          "solved": 327,
+          "sat": 244,
+          "unsat": 83,
+          "timeout": 32,
+          "error": 0,
+          "par2": 870.081973
+        },
+        "cross_solver_disagreements": 0,
+        "solved_only_by_z3": 250,
+        "solved_only_by_default": 0,
+        "solved_by_nobody": 32,
+        "default_key_stats": {
+          "lra_theory_checks": 46227,
+          "lra_theory_conflicts": 46009,
+          "sat_solve_calls": 46243,
+          "euf_care_checks": 46224,
+          "shared_real_terms": 29901,
+          "lra_prepared_reused": 46108,
+          "lra_prepared_augmented": 115
+        }
+      },
+      "interpretation": "At the pre-online-LRA mixed baseline, CPAchecker induction is dominated by repeated lazy mixed checks: the default solver performs over 46k SAT solve calls and LRA theory checks across the family and solves only 77/359 at 10 seconds, while Z3 solves 327/359. There are no answer disagreements. This supports focusing follow-up evaluation on the e96dc1b mixed-online-LRA change.",
+      "evidence_status": "current"
     }
   ]
 }
