@@ -207,12 +207,15 @@ Implemented now:
   `smt::solve_qf_uf_lra`. The SMT layer accepts one SAT assignment, partitions
   visible theory atoms into EUF and LRA atoms, checks both theories, and learns
   the first ordinary per-theory conflict clause it finds. Arithmetic atoms may
-  contain Real-valued UF applications: a post-lowering SMT preprocessing slice
-  replaces each such application with an internal Real proxy and adds an EUF
-  definition equality. EUF atoms may also contain non-constant Real arguments:
-  the same purification slice replaces each such arithmetic term with an
-  internal Real proxy and adds the two LRA bounds that define the proxy as equal
-  to the arithmetic term. The coordinator creates positive SAT-visible equality
+  contain Real-valued UF applications, including applications whose `Real`
+  arguments are arithmetic terms or nested Real-valued UF applications: a
+  post-lowering SMT preprocessing slice replaces each such application with an
+  internal Real proxy and adds an EUF definition equality over an already-flat
+  UF application. Any non-constant Real argument needed for that EUF-side
+  application receives its own Real proxy and two LRA bounds defining the proxy
+  as equal to the arithmetic term. EUF atoms may also contain non-constant Real
+  arguments, handled by the same proxy mechanism. The coordinator creates
+  positive SAT-visible equality
   atoms lazily for shared Real-constant/proxy pairs when one theory first
   implies that equality. For the current SAT assignment, generated equality
   atoms that are true are asserted to both EUF and LRA; equality atoms that are

@@ -347,9 +347,9 @@ treating one theory's atoms as Boolean noise.
   SAT literal, and the current unknown/equal/disequal arrangement value for
   each pair. The final-check loop still reuses
   `BooleanClausifier::TheoryAtom`, `PreparedFlatTheory`, `PreparedLraTheory`,
-  `AssignedTheoryAtom`, and ordinary SAT clauses. The purification pass uses an
-  SMT-local map from original Real-valued UF application `TermId` to internal
-  proxy `TermId`.
+  `AssignedTheoryAtom`, and ordinary SAT clauses. The purification pass uses
+  SMT-local maps from original Real-valued UF application `TermId` values and
+  non-constant Real argument `TermId` values to internal proxy `TermId` values.
 - **Owner:** `smt/check_sat.cpp`, because it owns the Boolean abstraction and
   solver dispatch.
 - **Accepted shape:** EUF atoms over uninterpreted or Boolean terms, EUF
@@ -358,15 +358,17 @@ treating one theory's atoms as Boolean noise.
   after purification.
 - **Purification:** after Real equality lowering, each Real-valued UF
   application in an arithmetic term is replaced by a fresh `$primo_no_proxy_*`
-  Real constant. The pass appends a Real equality between that proxy and the
-  original UF application. Mixed dispatch treats that equality as EUF-owned
-  because it contains the UF application. Each non-constant Real argument in an
-  EUF atom is replaced by a fresh `$primo_no_real_arg_*` Real constant after
-  recursively purifying any Real-valued UF applications inside that arithmetic
-  argument. The pass appends two LRA-owned bounds, `proxy <= term` and
-  `term <= proxy`, instead of a Real equality, because the global
-  `lower_real_equalities` pass has already run and because Real-valued UF
-  application definitions must remain EUF-owned.
+  Real constant. Before the EUF definition equality is emitted, every
+  non-constant Real argument of that application is also purified to a
+  `$primo_no_real_arg_*` proxy, so the appended EUF-owned equality is over a
+  flat UF application rather than over an arithmetic expression such as
+  `f(x - y)`. The Real-argument proxy receives two LRA-owned bounds,
+  `proxy <= term` and `term <= proxy`, instead of a Real equality, because the
+  global `lower_real_equalities` pass has already run and because Real-valued
+  UF application definitions must remain EUF-owned. The same Real-argument
+  proxy mechanism is used for non-constant Real arguments in ordinary EUF atoms,
+  recursively purifying any Real-valued UF applications inside the arithmetic
+  argument.
 - **Interface equality check:** generated equality atoms are created lazily,
   only when EUF or LRA implies equality for a shared Real-constant/proxy pair.
   When such a generated equality literal is true in the current SAT assignment,

@@ -521,12 +521,14 @@ alternatives considered before/while implementing it.
 - **Real-only arithmetic.** No `Int` sort and no QF_LIA. A partial QF_UFLRA
   coordinator exists for separable formulas and for arithmetic atoms containing
   Real-valued UF applications. The SMT layer purifies each such application to
-  an internal Real proxy, sends the proxy definition to EUF, sends the purified
-  arithmetic atom to LRA, and checks EUF-implied proxy equalities against LRA
-  under the current SAT assignment. EUF atoms with non-constant Real arguments
-  are purified in the other direction: the EUF atom receives an internal Real
-  proxy, while LRA receives the two defining bounds `proxy <= term` and
-  `term <= proxy`. The reverse interface direction is checked for shared Real
+  an internal Real proxy, first replacing any non-constant Real arguments by
+  their own LRA-defined proxies so the EUF-side definition remains a flat UF
+  application. The purified arithmetic atom is sent to LRA, and EUF-implied
+  proxy equalities are checked against LRA under the current SAT assignment. EUF
+  atoms with non-constant Real arguments are purified in the other direction:
+  the EUF atom receives an internal Real proxy, while LRA receives the two
+  defining bounds `proxy <= term` and `term <= proxy`. The reverse interface
+  direction is checked for shared Real
   constants, including those internal Real-argument proxies: if LRA makes both
   `x < y` and `y < x` inconsistent under the current assignment, the coordinator
   asserts `x = y` into an augmented EUF check. Mixed `get-model` reconstructs
@@ -534,8 +536,12 @@ alternatives considered before/while implementing it.
   results: reconstruction augments the LRA model with EUF-implied equalities and
   strict separations for EUF-distinct Real constants before printing concrete
   Real values in UF table guards and results. This is not full Nelson-Oppen
-  combination; model-equality guesses and SAT-visible missing equality creation
-  are still not implemented.
+  combination: fine-grained cross-theory explanations, full model-equality
+  propagation, native false-`Eq` LRA atoms, and unbounded arrangement
+  enumeration are still not implemented. The optional `--model-equality-branching`
+  scaffold creates default-off equality assumptions for LRA-model-equal shared
+  Real pairs, but those guesses are not a complete arrangement-enumeration
+  procedure.
 - ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
   above. Was the dominant cause of `UnsupportedInput` in every fuzz
   campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in

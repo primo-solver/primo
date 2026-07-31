@@ -326,12 +326,13 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-separation-search-backtracks`
 
 These count internal proxy definitions in total, the split between Real-valued
-UF applications in arithmetic atoms and non-constant Real terms in EUF atoms,
-repeated uses of already-created application or Real-term proxies, Real proxy
-terms visible to both EUF and LRA, equality checks in each interface direction,
-positive SAT-visible shared-Real equality atoms created lazily so far, how many
-of those generated atoms are true or false in the last checked SAT assignment,
-how many were forced by EUF/LRA equality propagation, and strict shared-Real
+UF applications in arithmetic atoms and non-constant Real terms in EUF atoms or
+EUF-side application definitions, repeated uses of already-created application
+or Real-term proxies, Real proxy terms visible to both EUF and LRA, equality
+checks in each interface direction, positive SAT-visible shared-Real equality
+atoms created lazily so far, how many of those generated atoms are true or false
+in the last checked SAT assignment, how many were forced by EUF/LRA equality
+propagation, and strict shared-Real
 separations found while validating a final `sat` arrangement or reconstructing
 mixed models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary

@@ -742,6 +742,55 @@ void qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality() {
   assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
 }
 
+void qf_uf_lra_purifies_real_valued_application_arithmetic_arguments() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun f (Real) Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (< (f (- x y)) 0))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") == 1);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+}
+
+void qf_uf_lra_purifies_nested_real_valued_application_arguments() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun f (Real) Real)
+    (declare-fun g (Real) Real)
+    (declare-fun x () Real)
+    (assert (< (f (+ (g x) 1)) 0))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") == 2);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+}
+
+void qf_uf_lra_purifies_real_valued_application_disequality_arguments() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun f (Real) Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (not (= (f (- x y)) (- (f x)))))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 1);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") == 2);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") >= 1);
+}
+
 void real_equality_is_not_misclassified_as_euf() {
   // Regression test for a real bug hit while implementing this milestone:
   // mk_eq is sort-agnostic, so (= x y) on two Real terms builds the same
@@ -1851,6 +1900,9 @@ int main() {
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();
+  qf_uf_lra_purifies_real_valued_application_arithmetic_arguments();
+  qf_uf_lra_purifies_nested_real_valued_application_arguments();
+  qf_uf_lra_purifies_real_valued_application_disequality_arguments();
   real_equality_is_not_misclassified_as_euf();
   detects_direct_bound_conflict();
   detects_conflict_requiring_an_actual_pivot();
