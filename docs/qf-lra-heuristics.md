@@ -1003,15 +1003,19 @@ whole one.
 | # | direction | expected size | cost | status |
 |---|---|---|---|---|
 | D2 | Floating-point-guided basis selection (Monniaux) | large | medium | **applicability unverified** |
-| D3 | Offset-equality detection + bound propagation | **2.2-3.2x in z3** | medium | **investigated; design redirected** |
-| D4 | Revised simplex with an LU-factored basis | unknown | largest | open question |
+| D4 | Revised simplex with an LU-factored basis | unknown | largest | **the only direction still open** |
 | -- | ~~D1: row-based bound propagation, raised caps~~ | -- | -- | **rejected 2026-07-31** |
+| -- | ~~D3: offset-equality detection + bound propagation~~ | -- | -- | **closed 2026-07-31, by D1's sweep** |
 | -- | ~~Periodic refactorization~~ | -- | -- | **rejected 2026-07-30** |
 
-D1 was the top entry until its sweep came back flat -- see its outcome below,
-kept in place rather than deleted because the negative is informative: it
-rules out the cheapest direction on the list and takes D4's "conflicts with
-D1" caveat with it.
+D1 was the top entry until its sweep came back flat. Both closures are kept
+in place rather than deleted, because the negatives are informative and
+because **D1 and D3 turned out to be the same mechanism** -- D3's redirected
+design *is* `compute_implied_child_bound`, so the sweep that rejected D1
+tested D3's cheap design too, and D3's expensive design was already rejected
+on its own census evidence. One residual piece of D3 (a trigger D1's code
+lacks) is recorded under D3 below rather than left implicit. D1's rejection
+also takes D4's "conflicts with D1" caveat with it.
 
 **D1. Evaluate the row-based bound propagation Primo already has.**
 **Evaluated and rejected 2026-07-31 -- the outcome subsection below is the
@@ -1253,9 +1257,38 @@ already has. Note also that *scaled* binary rows (`a*x + b*y = c` with
 equally usable this way, so the opportunity is the `binary_rows` count, not
 the narrower `offset` one.
 
-*Status:* worth doing, at a fraction of the originally estimated cost. The
-anti-correlation is n=4 and suggestive rather than conclusive -- but it is
-enough to say the expensive design should not be built first.
+*Status, superseded 2026-07-31: mostly closed, and by D1's sweep rather than
+by its own experiment.* The cheap design described just above -- detect the
+relation, propagate bounds across it -- **is `compute_implied_child_bound`**,
+as D1's finding (a) records. So D1's cap sweep tested it: binary rows have
+size 2 and pass any row-size cap, and at caps 1024 the fanout gate is
+effectively off, so the mechanism ran at full reach on the whole band and did
+not beat the baseline. D3's expensive design was already rejected in step 2
+above. Both interpretations of D3 are therefore closed, and it should not be
+carried as an open direction.
+
+*What genuinely remains, stated so it is neither lost nor re-proposed at full
+cost:* a **trigger** D1's code does not have. D3 proposed firing on H7's hook
+-- the moment a basic variable becomes fixed. D1 fires only on a bound change
+to a variable that occurs as a *nonbasic term* in some row, and `pivot()`
+clears `occurs_in_[entering_var]`, so a basic variable occurs in nothing and a
+bound change on it scans nothing. Concretely: when the equality that fixes `s`
+is asserted after `x` already has its bound, the implied bound on `y` is not
+derived until one of that row's terms moves again. The assertion orders where
+the equality lands last are missed.
+
+That gap is real and cheap to close, but the sweep argues against expecting it
+to pay: it would buy *more firing*, and going from 21 to 8,419 bidirectional
+propagations on `scrambled312090` moved nothing. Worth recording, not worth
+building on this evidence.
+
+Two things from D3's own investigation survive independently of all this and
+are still the best evidence in this section: the z3 ablation (the mechanism is
+load-bearing for z3 on these instances, and it is *not* Nelson-Oppen theory
+combination), and the ceiling it establishes -- even with the mechanism off,
+z3 solves all four profiled instances in under 63s where Primo needs ~600s.
+**Offset equalities were never going to close this band**, which is now
+measured from both ends rather than argued from one.
 
 **D4. Revised simplex with an LU-factored basis.** The representation change
 the rejected entry below turned out to require, and the hardest item here.

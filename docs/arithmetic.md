@@ -646,21 +646,23 @@ median 2.8x. The payoff is near-linear, with no threshold to clear:
 21.7-91.1 terms during search, while entering columns reach up to 521 rows, so
 a single pivot can cost ~47,000 rational operations.
 
-**The open list is [](qf-lra-heuristics.md)'s section 6.5**, ranked by value
-per unit of work: D2 floating-point guided basis selection; D3 dynamic
-offset-equality detection; D4 revised simplex with an LU-factored basis.
-Periodic refactorization was considered and **rejected** -- for an explicit
-tableau the density is a property of the basis reached, so there is nothing
-for it to discard.
+**The open list is [](qf-lra-heuristics.md)'s section 6.5**, and after
+2026-07-31 it is short: D2 floating-point guided basis selection, and D4
+revised simplex with an LU-factored basis. Periodic refactorization was
+considered and **rejected** -- for an explicit tableau the density is a
+property of the basis reached, so there is nothing for it to discard.
 
 Ruled out already, so as not to be re-proposed: the sparse-pricing candidate
 cap (flat across a 60,000x range), fixed-equality slacks (item H7, ships
 opt-in, nets zero on this band), preprocessing size (tableau dimensions
-match z3's within ~5%), and **D1, row-based bound propagation at raised caps**
--- swept over the whole band on 2026-07-31 and rejected: no cap setting beats
-the baseline's solved count even with propagation firing 380x harder, and the
-single instance that motivated it turned out to be workstation noise at a
-timeout boundary.
+match z3's within ~5%), and **D1/D3, bound propagation across offset
+equalities** -- swept over the whole band on 2026-07-31 and rejected: no cap
+setting beats the baseline's solved count even with propagation firing 380x
+harder, and the single instance that motivated it turned out to be
+workstation noise at a timeout boundary. D1 and D3's cheap design are the
+same code (`compute_implied_child_bound`), so that one sweep closed both;
+D3's expensive column-merge design had already been rejected on its own
+evidence.
 
 - **Milestone 3b's real-benchmark impact**: a 500-case fuzz merge-gate
   re-run found zero wrong-answer disagreements against z3 (a real bug --
