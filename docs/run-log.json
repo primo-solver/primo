@@ -14555,6 +14555,80 @@
       },
       "interpretation": "The feature is active on this sample, but the enabled branch policies do not improve the small SMT-LIB sample: each loses one solved instance versus default at a 10 second timeout. Keep model-equality branching default-off and use this sample for focused tuning only.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-uflra-model-separation-fastpath",
+      "date": "2026-07-31",
+      "kind": "local-validation-and-diagnostic",
+      "scope": "Validation and focused local timing for QF_UFLRA final shared-Real model-separation fast paths. The source change reuses the base prepared LRA theory when no generated interface equality is active, and orients greedy capped separation candidates directly from one concrete LRA model before falling back to per-candidate consistency checks.",
+      "commit": "495c05d",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 495c05d source commit under local build; build: Release and ASAN Debug; cadical: cadical-3.0.0-7b99c07",
+        "reference": "Z3 through scripts/qf_uflra_smoke_fuzz.py",
+        "model_validator": "Dolmen through scripts/validate_model.py"
+      },
+      "commands": {
+        "focused_test": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
+        "project_gates": "ctest --test-dir build --output-on-failure; make docs; make lint; make check; make asan-test",
+        "static_review": "make tidy; make include-cleaner",
+        "answer_fuzz": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260758 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-separation-fastpath-answer-1000",
+        "model_validation": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen-timeout 10 --out results/qf_uflra-model-separation-fastpath-model-validation-1000 fuzz-results/qf_uflra-model-separation-fastpath-answer-1000/cases/*.smt2",
+        "focused_timing": "./build/primo --quiet --stats <QF_UFLRA-small-instance>"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "fuzz_generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "fuzz_count": 1000,
+        "fuzz_seed": 20260758,
+        "fuzz_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10,
+        "focused_instances": [
+          "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_10.smt2",
+          "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_11.smt2",
+          "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_12.smt2",
+          "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_13.smt2",
+          "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--edac--mce_amd_inj.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2"
+        ]
+      },
+      "artifacts": {
+        "answer_fuzz_summary": "fuzz-results/qf_uflra-model-separation-fastpath-answer-1000/summary.csv",
+        "model_validation_summary": "results/qf_uflra-model-separation-fastpath-model-validation-1000/summary.csv",
+        "evidence_status": "local_ignored_outputs"
+      },
+      "summary": {
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_sat": 717,
+        "answer_fuzz_unsat": 283,
+        "answer_fuzz_wrong_answer": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "model_validation_pass": 717,
+        "model_validation_not_sat": 283,
+        "model_validation_errors": 0,
+        "focused_local_timings_seconds_after": {
+          "pb_real_10_0100_10_10": 0.190664,
+          "pb_real_10_0100_10_11": 0.206543,
+          "pb_real_10_0100_10_12": 0.144455,
+          "pb_real_10_0100_10_13": 0.221018,
+          "pb_real_10_0100_10_14": 0.488222,
+          "cpachecker_induction_edac": 0.691745
+        },
+        "focused_local_diagnostic_baseline_seconds": {
+          "pb_real_10_0100_10_13_before_model_oriented_separations": 14.523968,
+          "cpachecker_induction_edac_before_model_oriented_separations": 3.023092
+        }
+      },
+      "verification": {
+        "regression_tests": "tests/unit/qf_lra_solver_tests.cpp includes a capped 21-candidate QF_UFLRA final-arrangement case and checks :no.interface.model-separation-model-oriented.",
+        "correctness_boundary": "The model-oriented path is used only when one concrete LRA model already assigns distinct values to the candidate shared Real terms. Pairs tied in that model still use the existing LRA consistency-check fallback.",
+        "performance_boundary": "The focused timing evidence is local only. A SLURM rerun of benchmarks/qf_uflra-smtlib-sample-5-per-family.txt is required before citing a cluster-backed benchmark improvement."
+      },
+      "evidence_status": "current"
     }
   ]
 }
