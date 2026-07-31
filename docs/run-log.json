@@ -14269,6 +14269,90 @@
       },
       "evidence_status": "current",
       "followups": "Use this extracted root as the input for a future SLURM-backed QF_UFLRA benchmark once the next Nelson-Oppen implementation step is ready. Do not commit the archive or extracted benchmark files."
+    },
+    {
+      "id": "2026-07-31-qf-uflra-real-application-argument-purification",
+      "date": "2026-07-31",
+      "kind": "implementation-fuzz-validation",
+      "scope": "Implementation and local validation of recursive QF_UFLRA purification for Real-valued UF applications whose Real arguments are arithmetic terms or nested Real-valued UF applications. This fixes the archive-smoke unsupported class where EUF flattening saw QF_LRA arithmetic nodes.",
+      "commit": "2562b6f on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "primo 0.1.0; git: 4ef97d0-dirty during pre-commit validation, source committed as 2562b6f; build: Release, sanitizers: none; cadical: cadical-3.0.0-7b99c07",
+        "reference": "/workspace/contrib/local/bin/z3",
+        "model_validator": "dolmen 0.10 on PATH"
+      },
+      "commands": {
+        "focused_test": "cmake --build build --target primo_qf_lra_solver_tests primo -j$(nproc) && ./build/primo_qf_lra_solver_tests",
+        "archive_smoke": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UFLRA --manifest tmp/qf_uflra_archive_smoke_20.txt --solver ./build/primo --solver-arg=--quiet --timeout 5 --out results/qf_uflra-archive-smoke-25-purified-args-primo.csv --summary results/qf_uflra-archive-smoke-25-purified-args-primo-summary.csv --log-dir results/qf_uflra-archive-smoke-25-purified-args-primo-logs",
+        "answer_fuzz": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref /workspace/contrib/local/bin/z3 --count 1000 --seed 2026073114 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-purified-real-args-1000-4ef97d0",
+        "model_validation": "PATH=\"<local-opam-bin>:/workspace/contrib/local/bin:$PATH\" python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 5 --dolmen dolmen --dolmen-timeout 10 --out results/qf_uflra-purified-real-args-dolmen-validation-1000-4ef97d0 fuzz-results/qf_uflra-purified-real-args-1000-4ef97d0/cases/*.smt2",
+        "project_gates": "make check && make docs && make lint && make asan-test",
+        "static_review": "clang-tidy -p build --quiet on all tracked non-generated .cpp files; clang-tidy -p build --quiet -checks='-*,misc-include-cleaner' src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp; solver_efficiency_snapshot.py --repo ."
+      },
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "Z3",
+          "argv": "/workspace/contrib/local/bin/z3"
+        },
+        {
+          "name": "Dolmen",
+          "argv": "dolmen --check-model=true -r response.rsmt2 problem.smt2"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "archive_smoke_manifest": "tmp/qf_uflra_archive_smoke_20.txt",
+        "archive_smoke_files": 25,
+        "archive_smoke_timeout_seconds": 5,
+        "fuzz_generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+        "fuzz_count": 1000,
+        "fuzz_seed": 2026073114,
+        "fuzz_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10
+      },
+      "artifacts": {
+        "archive_smoke_csv": "results/qf_uflra-archive-smoke-25-purified-args-primo.csv",
+        "archive_smoke_summary": "results/qf_uflra-archive-smoke-25-purified-args-primo-summary.csv",
+        "answer_fuzz_summary": "fuzz-results/qf_uflra-purified-real-args-1000-4ef97d0/summary.csv",
+        "answer_fuzz_cases": "fuzz-results/qf_uflra-purified-real-args-1000-4ef97d0/cases/",
+        "model_validation_summary": "results/qf_uflra-purified-real-args-dolmen-validation-1000-4ef97d0/summary.csv"
+      },
+      "summary": {
+        "archive_smoke_total": 25,
+        "archive_smoke_solved": 15,
+        "archive_smoke_sat": 12,
+        "archive_smoke_unsat": 3,
+        "archive_smoke_timeout": 10,
+        "archive_smoke_unsupported": 0,
+        "archive_smoke_wrong": 0,
+        "archive_smoke_par2": 110.481857,
+        "previous_archive_smoke_unsupported": 9,
+        "answer_fuzz_total": 1000,
+        "answer_fuzz_pass": 1000,
+        "answer_fuzz_sat": 686,
+        "answer_fuzz_unsat": 314,
+        "answer_fuzz_wrong_answer": 0,
+        "answer_fuzz_crash": 0,
+        "answer_fuzz_timeout": 0,
+        "answer_fuzz_unsupported": 0,
+        "model_validation_pass": 686,
+        "model_validation_not_sat": 314,
+        "model_validation_errors": 0
+      },
+      "verification": {
+        "regression_tests": "tests/unit/qf_lra_solver_tests.cpp now covers f(x-y) in an LRA atom, nested f(g(x)+1), and the FFT-style disequality (not (= (f (- x y)) (- (f x)))).",
+        "efficiency_review": "solver_efficiency_snapshot.py reported only one added vector allocation in preprocessing while normalizing application children. This is not in a SAT callback or per-decision hot path; it is proportional to the number of Real-valued UF applications that require purification.",
+        "asan_note": "An initial ASAN run found a TermManager reallocation use-after-free from retaining a Term reference across fresh proxy creation. The implementation now copies the symbol id before any term-manager mutation, and the final full make asan-test passed.",
+        "result": "The archive smoke class that previously produced 9 unsupported results now produces 0 unsupported results. Remaining archive-smoke non-solves are 5-second timeouts, not unsupported-input rejections."
+      },
+      "evidence_status": "current",
+      "followups": "Run a SLURM-backed QF_UFLRA archive benchmark when the cluster is available. The local archive smoke is useful coverage evidence, not a headline performance benchmark."
     }
   ]
 }
