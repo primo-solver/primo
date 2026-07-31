@@ -477,6 +477,15 @@ alternatives considered before/while implementing it.
     files. H8 is 1.19x and buys 5 there -- on the curve, not above it.
   - Gated: campaign-tier QF_LRA fuzz on the default path (3000 fuzzsmt cases,
     0 wrong) plus merge-tier on the SOI path (1000, 0 wrong).
+  - **Sanitizer coverage is local, not from the cluster.** The remote ASAN
+    toolchain is still broken, so H8 was covered with a local `build-asan`
+    instead: `make asan-test` (12/12), 45 real instances and 48 runs across
+    four configurations with zero sanitizer reports and zero answer
+    differences against Release, and 250 fuzzsmt cases against z3 (247 PASS,
+    3 timeouts at 20s under Debug+ASAN, 0 wrong). That is smoke-to-merge
+    tier, not campaign tier -- but it matters here specifically because H8
+    rewrites the row loop and moves rows into the trail, which is where this
+    class previously had a real heap-use-after-free.
 - **Fixed-variable elimination** (heuristics-note item H7, 2026-07-30,
   `lra_tableau.{hpp,cpp}`, **opt-in**, `--lra-fixed-elimination`): a basic
   variable whose lower and upper bounds coincide is pivoted out of the basis

@@ -12430,6 +12430,36 @@
       },
       "docs": "docs/qf-lra-heuristics.md section 6.2b; docs/arithmetic.md's H8 entry.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-h8-local-asan-verification",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "fuzz",
+      "scope": "Sanitizer coverage for item H8 (and the propagation-cap options), run locally because the remote ASAN toolchain is still broken. H8 rewrites pivot()'s hot row loop and changes when a row is moved into the trail -- the exact area that previously produced a real heap-use-after-free in this class -- so merging it with zero sanitizer coverage was the one defensible objection.",
+      "commit": "c7f288a",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build-asan/primo (Debug, -DPRIMO_SANITIZERS=address); reference answers from build/primo (Release) and contrib/local/bin/z3",
+        "notes": "build-asan had to be recreated: the existing directory was a 2026-07-22 cache generated under the host mount path /home/mikolas/git/primo rather than the sandbox's /workspace, so cmake refused it. Local libasan is present (libasan.so.8) even though the cluster's is not -- worth knowing, because task 16 had been read as 'no ASAN coverage available at all'."
+      },
+      "command": {
+        "unit": "make asan-test",
+        "instances": "build-asan/primo over the 45 smallest sandbox/QF_LRA files, answers diffed against the Release build",
+        "configurations": "the 12 smallest files x 4 configurations (--lra-pivoting-rule soi, row+bidirectional propagation, --lra-fixed-elimination, and all four caps at 1024), answers diffed against Release default",
+        "fuzz": "scripts/fuzz_external.py --fuzzer fuzzsmt --solver 'build-asan/primo --quiet' --refs z3 --logic QF_LRA --count 250 --timeout 20 --seed 990731 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2'"
+      },
+      "summary": {
+        "unit_tests": "12/12 pass under ASAN.",
+        "real_instances": "45 instances, 0 sanitizer reports, 0 answer differences against Release.",
+        "configuration_sweep": "48 runs across 4 configurations, 0 sanitizer reports, 0 answer differences. SOI matters here specifically because set_soi_direction is the other producer of a Row and so the other consumer of H8's new ordering invariant.",
+        "fuzz": "250 fuzzsmt QF_LRA cases against z3: 247 PASS, 3 TIMEOUT at the 20s budget (a Debug+ASAN build is slow; all three are cases z3 answers sat), 0 wrong answers, 0 sanitizer reports anywhere in the run tree.",
+        "conclusion": "H8 and the cap options now have sanitizer coverage at smoke-to-merge tier. This does NOT replace a campaign-tier ASAN gate on the cluster -- 250 local cases against 3000 remote ones -- but it removes 'no sanitizer coverage at all' as a blocker."
+      },
+      "docs": "Referenced from docs/arithmetic.md's H8 entry.",
+      "evidence_status": "current",
+      "followups": "Task 16 stands, but should be rescoped: the blocker is the *remote* toolchain (head node lacks libasan, compute nodes lack C++ headers), and local ASAN is a working substitute for anything below campaign tier."
     }
   ]
 }
