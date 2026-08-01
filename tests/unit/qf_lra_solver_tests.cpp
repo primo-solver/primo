@@ -653,6 +653,31 @@ void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
 }
 
+void qf_uf_lra_model_equality_branching_accumulates_active_assumptions() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (declare-fun r (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (q y))
+    (assert (r z))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-max-active-assumptions") >= 2);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") >= 2);
+}
+
 void qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
@@ -2060,6 +2085,7 @@ int main() {
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
   qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
+  qf_uf_lra_model_equality_branching_accumulates_active_assumptions();
   qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs();
   qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs();
   qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses();

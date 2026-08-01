@@ -15407,6 +15407,46 @@
       },
       "interpretation": "The committed overhead fixes hold on the representative row, but the sample still solves 2/6 with four 20s timeouts. Parsing/frontend/preprocessing are small on the timeout rows; remaining work is in QF_UFLRA solve/search, especially model-separation/arrangement behavior rather than parser or preprocessing overhead. A same-manifest Z3 5.0.0 local run solves all six in 0.0085s-0.0201s, so the remaining rows are true fast-reference gaps.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-uflra-model-equality-active-trail-local-fuzz",
+      "date": "2026-08-01",
+      "kind": "fuzz",
+      "commit": "ba889e6-dirty on nelson-oppen-closure-methods",
+      "scope": "Local correctness gate for changing default-off QF_UFLRA model-equality branching from one-shot assumptions to an active SAT-assumption trail over surviving LRA-model-equal shared Real equality guesses.",
+      "commands": {
+        "focused_unit": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
+        "check": "make check",
+        "docs": "make docs",
+        "fuzz_bad_reference_attempt": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --ref z3 --count 1000 --seed 20260801 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-equality-active-trail-1000",
+        "fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --ref contrib/local/bin/z3 --count 1000 --seed 20260801 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-equality-active-trail-1000-z3"
+      },
+      "environment": {
+        "host": "local workspace",
+        "logic": "QF_UFLRA",
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "shape": "mixed",
+        "seed": 20260801,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "reference": "contrib/local/bin/z3"
+      },
+      "artifacts": {
+        "summary_csv": "fuzz-results/qf_uflra-model-equality-active-trail-1000-z3/summary.csv",
+        "cases_dir": "fuzz-results/qf_uflra-model-equality-active-trail-1000-z3/cases",
+        "bad_reference_summary_csv": "fuzz-results/qf_uflra-model-equality-active-trail-1000/summary.csv"
+      },
+      "summary": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "reference_unusable_attempt": 1000
+      },
+      "interpretation": "The corrected Z3-backed local smoke gate found no answer disagreements, crashes, timeouts, or unsupported generated cases. The first attempt used bare `z3`, which was not on PATH in this shell and produced only REFERENCE_UNUSABLE rows; it is recorded as an unusable attempt, not correctness evidence.",
+      "evidence_status": "current"
     }
   ]
 }

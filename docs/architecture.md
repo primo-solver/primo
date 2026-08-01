@@ -246,9 +246,13 @@ Implemented now:
   another. After the receiving theory sees a forced equality, it reports any
   ordinary conflict using that literal as part of its reason. The optional
   `--model-equality-branching` mode
-  adds a default-off SAT-assumption scaffold for LRA-model-equal shared Real
-  pairs; those guessed equality atoms are optional branches, not permanent unit
-  clauses. This is intentionally not full Nelson-Oppen: fine-grained minimal
+  adds a default-off model-driven SAT-assumption loop for LRA-model-equal shared
+  Real pairs. Guessed equality atoms that survive SAT and theory checks remain
+  active as assumptions while the coordinator tries additional model-equal
+  pairs; if SAT later proves the active assumption set inconsistent, Primo
+  learns a blocking clause over the failed assumptions and drops them from the
+  active trail. These guesses are optional branches, not permanent unit clauses.
+  This is intentionally not full Nelson-Oppen: fine-grained minimal
   cross-theory explanations, full model-equality propagation,
   native false-`Eq` LRA atoms, and unbounded arrangement enumeration remain
   unsupported. Ordinary SMT-LIB Real disequality is handled before LRA theory

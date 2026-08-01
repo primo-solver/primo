@@ -118,13 +118,15 @@ Real separation atoms for EUF-distinct Real arguments.
 With `--model-equality-branching`, the coordinator may also ask the LRA model
 for same-sort shared Real pairs that currently have the same concrete value in
 the LRA model. This is a default-off branching scaffold, not a unit propagation
-rule: the equality atom is created as an optional SAT-visible atom, then tried
-as a one-shot SAT assumption. If the receiving theory rejects the equality, the
-ordinary theory conflict learned under that assumption blocks the bad branch;
-if the SAT core rejects the assumption directly, Primo permanently sets that
-optional atom false. A false optional equality is visible to EUF as a
-disequality but is still not an LRA disequality. While an optional
-model-equality assumption is active, any further EUF- or LRA-implied interface
+rule: the equality atom is created as an optional SAT-visible atom, then kept on
+an active IPASIR assumption trail while the coordinator tries further
+model-equal pairs. If SAT rejects the active assumption set, Primo learns a
+blocking clause over the failed assumptions reported by the SAT backend and
+drops those assumptions from the active trail. If the receiving theory rejects
+an active equality, the ordinary theory conflict learned under that assumption
+blocks the bad branch on a later SAT call. A false optional equality is visible
+to EUF as a disequality but is still not an LRA disequality. While optional
+model-equality assumptions are active, any further EUF- or LRA-implied interface
 equalities are learned through guarded assignment clauses, not as unconditional
 unit clauses. `--model-equality-branch-policy=first` preserves the original
 full-pair scan order. `ranked` prefers LRA-model-equal pairs that also appear in
@@ -178,6 +180,8 @@ coordinator publishes:
 - `:no.interface.model-equality-skipped-assigned`
 - `:no.interface.model-equality-skipped-tried`
 - `:no.interface.model-equality-adaptive-stops`
+- `:no.interface.model-equality-active-assumptions`
+- `:no.interface.model-equality-max-active-assumptions`
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
@@ -429,10 +433,13 @@ treating one theory's atoms as Boolean noise.
   ranked order and stops issuing guesses after repeated unproductive rejected
   assumptions or theory conflicts. For a missing, user-invisible equality atom,
   the branch creates a SAT-visible optional atom and retries the SAT loop with
-  that atom as a one-shot assumption. The equality is asserted to EUF/LRA when
-  SAT assigns the atom true. A failed assumption is blocked by setting the
-  optional atom false, which is then asserted to EUF as a disequality but still
-  not to LRA as a native false-`Eq` prepared atom.
+  that atom on an active model-equality assumption trail. Surviving model-equal
+  assumptions are re-applied while the coordinator tries later model-equal pairs.
+  The equality is asserted to EUF/LRA when SAT assigns the atom true. If the SAT
+  backend rejects the active assumption set, the coordinator learns a blocking
+  clause over the failed assumptions and removes them from the active trail; a
+  later false assignment is asserted to EUF as a disequality but still not to LRA
+  as a native false-`Eq` prepared atom.
   Ordinary input-level Real disequalities are supported by the Real-equality
   lowering pass and Boolean-level case splitting. The branch does not force
   additional interface equalities as permanent units while the optional equality
@@ -506,8 +513,9 @@ Limitations:
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;
-- opt-in model-equality branching is a scaffold over LRA-model-equal shared
-  Real pairs only, not the full de Moura/Bjorner algorithm;
+- opt-in model-equality branching is an active-assumption loop over
+  LRA-model-equal shared Real pairs only, not the full de Moura/Bjorner
+  algorithm;
 - Real-argument model reconstruction backtracks only up to a fixed candidate
   cap, currently 18 pairs, then records
   `:no.interface.model-separation-search-capped` and falls back to greedy
