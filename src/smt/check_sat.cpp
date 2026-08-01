@@ -1799,57 +1799,51 @@ bool contains_application_term(const core::TermManager& terms, core::TermId term
   return false;
 }
 
-// `(= a b)` is built by the sort-agnostic mk_eq for any sort, including Real.
-// A plain Real equality is an LRA atom, but a Real equality containing a UF
-// application is a purification definition and must dispatch to the mixed
-// EUF/LRA path so EUF can own the application.
-bool contains_equality(const core::TermManager& terms, core::TermId term_id) {
+struct FormulaFeatureSummary {
+  bool has_application_term = false;
+  bool has_equality = false;
+  bool has_arithmetic = false;
+  bool has_euf_predicate = false;
+};
+
+FormulaFeatureSummary summarize_formula_features(
+    const core::TermManager& terms, core::TermId term_id,
+    std::unordered_map<core::TermId, FormulaFeatureSummary>& memo) {
+  const auto found = memo.find(term_id);
+  if (found != memo.end()) {
+    return found->second;
+  }
+
   const core::Term& term = terms.get(term_id);
+  FormulaFeatureSummary summary;
+  summary.has_application_term = term.kind == core::TermKind::Application;
+  summary.has_euf_predicate =
+      (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
+      term.sort == terms.symbols().bool_sort();
+  summary.has_arithmetic = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
+
+  for (const core::TermId child : term.children) {
+    const FormulaFeatureSummary child_summary = summarize_formula_features(terms, child, memo);
+    summary.has_application_term |= child_summary.has_application_term;
+    summary.has_equality |= child_summary.has_equality;
+    summary.has_arithmetic |= child_summary.has_arithmetic;
+    summary.has_euf_predicate |= child_summary.has_euf_predicate;
+  }
+
+  // `(= a b)` is built by the sort-agnostic mk_eq for any sort, including Real.
+  // A plain Real equality is an LRA atom, but a Real equality containing a UF
+  // application is a purification definition and must dispatch to the mixed
+  // EUF/LRA path so EUF can own the application.
   if (term.kind == core::TermKind::Equality) {
-    if (terms.get(term.children.at(0)).sort != terms.symbols().real_sort()) {
-      return true;
-    }
-    if (contains_application_term(terms, term_id)) {
-      return true;
-    }
-  }
-  for (const core::TermId child : term.children) {
-    if (contains_equality(terms, child)) {
-      return true;
+    const bool real_equality = terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+    summary.has_arithmetic = summary.has_arithmetic || real_equality;
+    if (!real_equality || summary.has_application_term) {
+      summary.has_equality = true;
     }
   }
-  return false;
-}
 
-bool contains_euf_predicate_atom(const core::TermManager& terms, core::TermId term_id) {
-  const core::Term& term = terms.get(term_id);
-  if ((term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
-      term.sort == terms.symbols().bool_sort()) {
-    return true;
-  }
-  for (const core::TermId child : term.children) {
-    if (contains_euf_predicate_atom(terms, child)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool contains_arithmetic_atom(const core::TermManager& terms, core::TermId term_id) {
-  const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
-    return true;
-  }
-  if (term.kind == core::TermKind::Equality &&
-      terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
-    return true;
-  }
-  for (const core::TermId child : term.children) {
-    if (contains_arithmetic_atom(terms, child)) {
-      return true;
-    }
-  }
-  return false;
+  const auto [inserted, _] = memo.emplace(term_id, summary);
+  return inserted->second;
 }
 
 struct BooleanShape {
@@ -8005,36 +7999,24 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatTimePreprocessingUs,
                    elapsed_microseconds(preprocessing_start, PhaseClock::now()));
 
-    const bool has_equality = [&] {
-      for (const core::TermId assertion : assertions) {
-        if (contains_equality(frontend.terms(), assertion)) {
-          return true;
-        }
-      }
-      return false;
-    }();
+    FormulaFeatureSummary formula_features;
+    std::unordered_map<core::TermId, FormulaFeatureSummary> formula_feature_memo;
+    for (const core::TermId assertion : assertions) {
+      const FormulaFeatureSummary assertion_features =
+          summarize_formula_features(frontend.terms(), assertion, formula_feature_memo);
+      formula_features.has_equality |= assertion_features.has_equality;
+      formula_features.has_arithmetic |= assertion_features.has_arithmetic;
+      formula_features.has_euf_predicate |= assertion_features.has_euf_predicate;
+    }
+    const bool has_equality = formula_features.has_equality;
+    const bool has_arithmetic = formula_features.has_arithmetic;
+    const bool has_euf_predicate = formula_features.has_euf_predicate;
     const auto finish_solve = [&](CheckSatOutcome outcome, PhaseClock::time_point solve_start) {
       statistics.set(kStatTimeSolveUs, elapsed_microseconds(solve_start, PhaseClock::now()));
       statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
       outcome.statistics = statistics;
       return outcome;
     };
-    const bool has_arithmetic = [&] {
-      for (const core::TermId assertion : assertions) {
-        if (contains_arithmetic_atom(frontend.terms(), assertion)) {
-          return true;
-        }
-      }
-      return false;
-    }();
-    const bool has_euf_predicate = [&] {
-      for (const core::TermId assertion : assertions) {
-        if (contains_euf_predicate_atom(frontend.terms(), assertion)) {
-          return true;
-        }
-      }
-      return false;
-    }();
     if ((has_equality || has_euf_predicate) && has_arithmetic) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(
@@ -8043,6 +8025,14 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           solve_start);
     }
     if (has_arithmetic) {
+      const PhaseClock::time_point solve_start = PhaseClock::now();
+      return finish_solve(
+          solve_qf_lra(frontend.terms(), assertions, frontend.declared_real_constants(),
+                       preprocessing_model_assignments, solve_options, statistics),
+          solve_start);
+    }
+    if (options.produce_model && !frontend.declared_real_constants().empty() && !has_equality &&
+        !has_euf_predicate) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(
           solve_qf_lra(frontend.terms(), assertions, frontend.declared_real_constants(),

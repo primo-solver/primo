@@ -229,15 +229,48 @@ void collect_constants_in_term(const core::TermManager& terms, core::TermId root
   }
 }
 
-void count_term_occurrences(const core::TermManager& terms, core::TermId root,
-                            std::vector<std::size_t>& occurrences) {
-  if (root >= occurrences.size()) {
-    occurrences.resize(root + 1);
+using SubtreeOccurrenceMap =
+    std::unordered_map<core::TermId, std::vector<std::pair<core::TermId, std::size_t>>>;
+
+const std::vector<std::pair<core::TermId, std::size_t>>& subtree_occurrences(
+    const core::TermManager& terms, core::TermId root,
+    const std::unordered_set<core::TermId>& candidate_variables, SubtreeOccurrenceMap& memo) {
+  const auto found = memo.find(root);
+  if (found != memo.end()) {
+    return found->second;
   }
-  ++occurrences[root];
+
+  std::unordered_map<core::TermId, std::size_t> counts;
+  if (candidate_variables.contains(root)) {
+    counts.emplace(root, 1);
+  }
   const core::Term& term = terms.get(root);
   for (const core::TermId child : term.children) {
-    count_term_occurrences(terms, child, occurrences);
+    for (const auto& [term_id, count] :
+         subtree_occurrences(terms, child, candidate_variables, memo)) {
+      counts[term_id] += count;
+    }
+  }
+
+  std::vector<std::pair<core::TermId, std::size_t>> flattened;
+  flattened.reserve(counts.size());
+  for (const auto& [term_id, count] : counts) {
+    flattened.emplace_back(term_id, count);
+  }
+  const auto [inserted, _] = memo.emplace(root, std::move(flattened));
+  return inserted->second;
+}
+
+void count_term_occurrences(const core::TermManager& terms, core::TermId root,
+                            std::vector<std::size_t>& occurrences,
+                            const std::unordered_set<core::TermId>& candidate_variables,
+                            SubtreeOccurrenceMap& subtree_memo) {
+  for (const auto& [term_id, count] :
+       subtree_occurrences(terms, root, candidate_variables, subtree_memo)) {
+    if (term_id >= occurrences.size()) {
+      occurrences.resize(term_id + 1);
+    }
+    occurrences[term_id] += count;
   }
 }
 
@@ -2399,11 +2432,6 @@ SolvedConstantSubstitutionResult substitute_solved_constants(
     candidates.insert(candidates.end(), gaussian_candidates.begin(), gaussian_candidates.end());
   }
 
-  std::vector<std::size_t> occurrences(terms.size());
-  for (const core::TermId assertion : assertions) {
-    count_term_occurrences(terms, assertion, occurrences);
-  }
-
   result.candidates = candidates.size();
   if (candidates.empty()) {
     return result;
@@ -2412,6 +2440,13 @@ SolvedConstantSubstitutionResult substitute_solved_constants(
   std::unordered_set<core::TermId> candidate_variables;
   for (const SolvedConstantCandidate& candidate : candidates) {
     candidate_variables.insert(candidate.variable);
+  }
+
+  std::vector<std::size_t> occurrences(terms.size());
+  SubtreeOccurrenceMap subtree_occurrence_memo;
+  for (const core::TermId assertion : assertions) {
+    count_term_occurrences(terms, assertion, occurrences, candidate_variables,
+                           subtree_occurrence_memo);
   }
 
   std::unordered_map<core::TermId, core::TermId> replacements;
@@ -2469,6 +2504,10 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
   BooleanUnitPropagationResult result;
   const BooleanUnitAssignments assignments = collect_boolean_units(terms, assertions);
   result.units = assignments.values.size();
+  if (assignments.values.empty()) {
+    result.assertions = assertions;
+    return result;
+  }
   result.assignments.reserve(assignments.values.size());
   for (const auto& [term, value] : assignments.values) {
     result.assignments.emplace_back(term, value);
