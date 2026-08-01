@@ -69,7 +69,19 @@ FUZZSMT_SHARDS=${PRIMO_FUZZ_FUZZSMT_SHARDS:-6}
 FUZZSMT_COUNT=${PRIMO_FUZZ_FUZZSMT_COUNT:-500}
 FUZZSMT_TIMEOUT=${PRIMO_FUZZ_FUZZSMT_TIMEOUT:-5}
 FUZZSMT_LOGIC=${PRIMO_FUZZ_FUZZSMT_LOGIC:-QF_UF}
-FUZZSMT_REF=${PRIMO_FUZZ_FUZZSMT_REF:-z3}
+# Two references for QF_LRA, one for QF_UF. Yices 2 earns its place on
+# measurements, not on principle (2026-08-01, seeds of the 17-family corpus):
+# it answers latendresse and miplib_pp08a-9000 where z3 has no answer at 60s,
+# and on generator output it agreed with z3 on all 150 wide-coefficient cases
+# while running 6x faster, so it is also the cheaper reference. It does not
+# subsume z3 -- both time out on LassoRanker and tropical-matrix -- so this is
+# an addition, and it buys reference cross-checking (classify() reports
+# REF_DISAGREEMENT) for free.
+if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
+  FUZZSMT_REF=${PRIMO_FUZZ_FUZZSMT_REF:-"z3 yices-smt2"}
+else
+  FUZZSMT_REF=${PRIMO_FUZZ_FUZZSMT_REF:-z3}
+fi
 FUZZSMT_SEED_BASE=${PRIMO_FUZZ_FUZZSMT_SEED_BASE:-$(( ${SLURM_ARRAY_JOB_ID:-500000} % 900000 + 100000 ))}
 
 # FuzzSMT parameter profiles: one ';'-separated entry per profile, assigned to
@@ -131,7 +143,15 @@ YINYANG_ITERATIONS=${PRIMO_FUZZ_YINYANG_ITERATIONS:-100}
 YINYANG_TIMEOUT=${PRIMO_FUZZ_YINYANG_TIMEOUT:-5}
 YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-1500}
 
-MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
+# typefuzz takes ';'-separated targets, so this adds yices as a third one
+# alongside Primo and z3. It matters most exactly where the seed corpus was
+# widened to: at a 20s reference timeout, z3 gives no oracle for either
+# latendresse seed and yices answers both.
+if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
+  MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true;yices-smt2"}
+else
+  MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
+fi
 
 # typefuzz's own default here is 20000 bytes, and it drops oversized seeds
 # without saying so beyond a "N valid, M invalid" count. That silently
@@ -158,7 +178,17 @@ export PATH
 # fuzzer as "skip this stage" and exits 0, which is the right behaviour for a
 # local smoke run and exactly the wrong one for a gate whose entire purpose
 # is to have run.
-for required in fuzzsmt z3; do
+# Every reference this gate is configured to use has to be present, not just
+# z3: a missing second reference silently narrows the gate rather than failing
+# it, which is the whole failure family this check exists for.
+required_tools=(fuzzsmt z3)
+for ref in $FUZZSMT_REF ${MUTATION_REF//;/ }; do
+  case $ref in
+    *=*) continue ;;  # solver options such as model_validate=true
+  esac
+  required_tools+=("$ref")
+done
+for required in "${required_tools[@]}"; do
   if ! command -v "$required" >/dev/null 2>&1; then
     echo "required tool '$required' not found on PATH; refusing to report a gate that ran nothing" >&2
     exit 2

@@ -1,4 +1,4 @@
-.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -111,7 +111,7 @@ check: lint test
 fuzzsmt: build contrib-fuzzsmt contrib-z3
 	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./$(PRIMO) --refs z3 --logic QF_UF --count 20 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt
 
-contrib: contrib-required contrib-z3 contrib-cvc5 contrib-fuzzsmt contrib-ddsmt
+contrib: contrib-required contrib-z3 contrib-cvc5 contrib-yices contrib-fuzzsmt contrib-ddsmt
 
 contrib-required: contrib-antlr4 contrib-cli11 contrib-cadical contrib-gmp
 
@@ -132,6 +132,11 @@ contrib-z3:
 
 contrib-cvc5:
 	$(PYTHON) contrib/install_cvc5.py --prefix $(CONTRIB_PREFIX)
+
+# Reference solver only -- never linked, never read. See the header of
+# contrib/install_yices.py for why that boundary is stated explicitly here.
+contrib-yices:
+	$(PYTHON) contrib/install_yices.py --prefix $(CONTRIB_PREFIX)
 
 contrib-cadical: $(CADICAL_STAMP)
 

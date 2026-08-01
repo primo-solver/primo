@@ -48,7 +48,13 @@ def classify(ours: str, refs: list[str]) -> str:
         return ours
     if len(set(concrete_refs)) > 1:
         return "REF_DISAGREEMENT"
-    if not concrete_refs or ours == "unknown" or "unknown" in refs:
+    # Deliberately *not* "or 'unknown' in refs": with two references, one
+    # answering unknown while the other answers concretely is the normal case
+    # on hard inputs, and treating it as inconclusive would let a genuine
+    # disagreement with the concrete reference be reported as UNKNOWN_INVOLVED.
+    # With a single reference this is unchanged -- refs == ["unknown"] leaves
+    # concrete_refs empty and still lands on UNKNOWN_INVOLVED below.
+    if not concrete_refs or ours == "unknown":
         return "UNKNOWN_INVOLVED"
     ref = concrete_refs[0]
     if ours == ref:
@@ -161,11 +167,19 @@ def main() -> int:
         shlex.split(args.fuzzer_args),
     )
     solver_command = shlex.split(args.solver)
-    ref_commands = [
-        shlex.split(ref)
-        for ref in args.refs
-        if shutil.which(shlex.split(ref)[0]) is not None
-    ]
+    # A reference whose binary is not on PATH used to be dropped in silence,
+    # so a run requested with two references and given one read as a full
+    # result. Same failure shape as the "fuzzsmt is not installed; skipping"
+    # no-op gate: say what is missing, and refuse if nothing is left.
+    ref_commands = []
+    for ref in args.refs:
+        if shutil.which(shlex.split(ref)[0]) is None:
+            print(f"warning: reference '{ref}' not found on PATH; not used")
+            continue
+        ref_commands.append(shlex.split(ref))
+    if not ref_commands:
+        print(f"no requested reference solver is available ({', '.join(args.refs)})")
+        return 2
     bugs = args.out / "bugs"
     bugs.mkdir(parents=True, exist_ok=True)
 
