@@ -15310,7 +15310,10 @@
       "artifacts": {
         "csv": "results/local-cpachecker-gap-sample-db1baca.csv",
         "summary": "results/local-cpachecker-gap-sample-db1baca-summary.csv",
+        "z3_csv": "results/local-cpachecker-gap-sample-z3-20260801.csv",
+        "z3_summary": "results/local-cpachecker-gap-sample-z3-20260801-summary.csv",
         "logs": "results/local-cpachecker-gap-sample-db1baca-logs/",
+        "z3_logs": "results/local-cpachecker-gap-sample-z3-20260801-logs/",
         "evidence_status": "local_ignored_outputs"
       },
       "summary": {
@@ -15384,9 +15387,25 @@
           "no_interface_arrangement_separations": 968,
           "no_interface_equalities_propagated": 695,
           "no_purification_skipped_no_sites": 1
+        },
+        "z3": {
+          "command": "python3 scripts/bench_qf_uf_full.py --repo /workspace --root tmp/QF_UFLRA --manifest /tmp/cpachecker_gap_sample.txt --solver contrib/local/bin/z3 --timeout 20 --out results/local-cpachecker-gap-sample-z3-20260801.csv --summary results/local-cpachecker-gap-sample-z3-20260801-summary.csv --log-dir results/local-cpachecker-gap-sample-z3-20260801-logs",
+          "version": "Z3 version 5.0.0 - 64 bit",
+          "solved": 6,
+          "timeout": 0,
+          "wrong": 0,
+          "par2": 0.068904,
+          "row_seconds": {
+            "test_locks_5": 0.009238,
+            "test_locks_14": 0.010273,
+            "s3_srvr_6": 0.00988,
+            "linear_search": 0.0109,
+            "email_spec3_product18": 0.020095,
+            "m0": 0.008518
+          }
         }
       },
-      "interpretation": "The committed overhead fixes hold on the representative row, but the sample still solves 2/6 with four 20s timeouts. Parsing/frontend/preprocessing are small on the timeout rows; remaining work is in QF_UFLRA solve/search, especially model-separation/arrangement behavior rather than parser or preprocessing overhead.",
+      "interpretation": "The committed overhead fixes hold on the representative row, but the sample still solves 2/6 with four 20s timeouts. Parsing/frontend/preprocessing are small on the timeout rows; remaining work is in QF_UFLRA solve/search, especially model-separation/arrangement behavior rather than parser or preprocessing overhead. A same-manifest Z3 5.0.0 local run solves all six in 0.0085s-0.0201s, so the remaining rows are true fast-reference gaps.",
       "evidence_status": "current"
     }
   ]
