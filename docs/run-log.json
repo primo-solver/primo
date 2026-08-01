@@ -12651,6 +12651,62 @@
       "artifacts": "llm2smt-slurm:<slurm-workdir>/results/qf-lra-scrambled-118382/ (120 shard CSVs plus summaries)",
       "docs": "docs/arithmetic.md's QF_LRA standing section.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-lra-fuzz-coverage-audit",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "analysis",
+      "scope": "Audit of what the two QF_LRA fuzzers actually cover, prompted by the question 'is our fuzzing based on all the different families we have?'. The answer was no, in two independent ways: the mutation seed corpus held 3 of the division's 17 families, and every FuzzSMT run in this project's history used QF_LRA's stock default parameters.",
+      "commit": "d373f67",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo at c29ed09 (Release), fuzzsmt 0.3 and z3 5.0.0 from contrib/local",
+        "notes": "Parameter measurements are local and single-seed unless stated; they are throughput/size measurements, not performance claims."
+      },
+      "command": {
+        "size_ladder": "for each setting: fuzzsmt QF_LRA -seed <s> <args> -bulk-export 10..150, then build/primo -q on each output",
+        "differential": "python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_LRA --count 150 --timeout 10 --seed 777 --fuzzer-args <profile> --out <dir>, for profiles 1-3"
+      },
+      "summary": {
+        "seed_corpus_gap": "benchmarks/seeds/qf_lra_real held 14 files from check, DTP-Scheduling and keymaera, plus gasburner which is not in the division at all. 14 of 17 families had never been mutation-fuzzed, including latendresse (pure LP, zero decisions, very large pivot counts) and LassoRanker (419 files, the largest source of Primo's lead) -- the shapes items H8, H9 and H10 each rewrote.",
+        "fuzzsmt_parameter_gap": "Every QF_LRA gate in this log ran '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2'. For QF_LRA that is FuzzSMT's stock default: -ms/-Ms are sort counts and -mf/-mp/-ma/-Ma are function/predicate/arity knobs, applied only to the QF_UF* logics and silently ignored here. Effective settings were -Mv 3, -Mc 3, -Mbw 4, so every generated case had at most three Real variables and every coefficient in [1,15] -- the GMP bignum paths in DeltaRational and Farkas combination were never generated.",
+        "measured_costs": "-Mbw 16 free (max literal 15 -> 54430, no size or time cost); -Mc 10 3x file size; -Mv 15 9x; -ref 2 7x; -ref 3 20x with generation itself hitting the wall; -Mv 15 -ref 2 composes to ~2MB per case. -Mv 5 -Mc 4 -Mbw 16 costs 18s/100 cases with 1% timeouts and is the chosen mid tier.",
+        "bool_layer": "-bool-and yields 100% unsat and -bool-or 100% sat, both at ~4s/100 cases, against ~11% unsat for the random layer. -bool-cnf is unusable: FuzzSMT 0.3 emits a malformed let block and z3 rejects the output too ('invalid let declaration'); all 150 cases were correctly rejected by Primo's parser.",
+        "differential_result": "450 cases across profiles 1-3 against z3: 449 PASS, 1 timeout, zero answer disagreements and zero crashes."
+      },
+      "caveats": [
+        "The first measurement suggested -Mbw 16 was 5x CHEAPER than -Mbw 4 (4.2s vs 22.7s per 150 cases) and doubled the unsat rate. A second seed gave 3.4s vs 3.7s and no unsat difference: FuzzSMT's output is seed-driven and changing a parameter changes the random stream, so per-setting sizes wander. The defensible claim is that -Mbw 16 costs nothing, not that it wins.",
+        "This is a coverage widening, not a bug hunt that found something. No defect was found by any of it."
+      ],
+      "outcome": "Committed as d373f67 (FuzzSMT profile ladder in scripts/slurm_qfuf_fuzz_gate.sbatch) and 3c3892b (scripts/build_fuzz_seed_corpus.py). Documented in docs/fuzz-coverage-qf-lra.md."
+    },
+    {
+      "id": "2026-08-01-qf-lra-famfuzz-118543-superseded",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "fuzz",
+      "scope": "First mutation-fuzz campaign over the family-complete QF_LRA seed corpus: 1 opfuzz task plus 4 YinYang typefuzz shards. SUPERSEDED -- it covered 22 of the 34 seeds, for the reason below.",
+      "commit": "3c3892b",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at 3c3892b, reference 'z3 model_validate=true'",
+        "notes": "Job 118543, --array=6-10, all five tasks COMPLETED (10-25 minutes each)."
+      },
+      "command": {
+        "job": "sbatch --array=6-10 scripts/slurm_qfuf_fuzz_gate.sbatch with PRIMO_FUZZ_OPFUZZ_SEEDS/PRIMO_FUZZ_YINYANG_SEEDS=benchmarks/seeds/qf_lra_division, OPFUZZ_ITERATIONS=300, YINYANG_ITERATIONS=200, WALL_SECONDS=5400, timeouts 20s, no fuzzsmt shards"
+      },
+      "summary": {
+        "result": "All five tasks: '34 seeds processed, 22 valid, 12 invalid / 0 bug triggers found'. Zero entries in every bugs/ directory.",
+        "why_superseded": "The 12 'invalid' seeds were not malformed. typefuzz's -L is a seed FILE-SIZE limit, 20000 bytes by default in scripts/yinyang_fuzz.sh, and it drops oversized seeds silently. The 12 dropped seeds are exactly the 12 corpus files over 20 KB: tropical-matrix (160/180 KB), latendresse (125 KB), TM (77/81 KB), 2017-Heizmann (73/78 KB), miplib (70 KB) and LassoRanker (45 KB). The corpus had just been widened from 3 families to 17 and this cut it back to 11, discarding latendresse and LassoRanker -- the two families the widening existed to cover.",
+        "verification": "Confirmed per seed by running typefuzz -i 1 on each of the 34 seeds individually on the cluster: the 12 that report '0 valid, 1 invalid' are exactly the 12 over 20000 bytes, and the 22 that do not are all under."
+      },
+      "caveats": [
+        "An earlier hypothesis -- that YinYang discards seeds whose reference answer times out -- was WRONG. It only looked right because the oversized files are also the ones z3 cannot answer quickly. The per-seed run distinguished the two.",
+        "Separately and still true: at a 20s reference timeout z3 5.0.0 does not answer the unmutated LassoRanker, latendresse, miplib or tropical-matrix seeds at all, so even with the size limit raised those iterations cannot yield a verdict without a longer --solver-timeout."
+      ],
+      "outcome": "Fixed in 22409b1: the gate now passes --file-size-limit 200000 (matching build_fuzz_seed_corpus.py's --max-bytes) and yinyang_fuzz.sh names oversized seeds on stderr before starting. A replacement campaign is required before citing mutation-fuzz coverage of the widened corpus."
     }
   ]
 }

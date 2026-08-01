@@ -94,3 +94,9 @@ contrib/local/
 contrib/src/
 contrib/downloads/
 contrib/cadical-versions*/
+
+# Generated mutation-fuzz seed corpus (scripts/build_fuzz_seed_corpus.py).
+# Regenerate from a benchmark root rather than committing ~1.2MB of benchmarks;
+# it still has to exist on disk before a cluster sync, since
+# slurm_prepare_benchmark_workspace.py rsyncs with --delete.
+benchmarks/seeds/qf_lra_division/
