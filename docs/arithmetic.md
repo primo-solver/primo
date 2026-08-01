@@ -717,8 +717,14 @@ below before quoting that precisely. The 500KB-5MB band accounts for essentially
 that deficit, and cvc5 solves only 9 of the 59 gap files there -- so it is a
 z3-specific capability, not general difficulty.
 
-*Read the deficit as approximate.* z3's 429 is from job 117487 and is not
-re-run (it is unchanged). Cross-job drift at a 60s timeout on a shared
+*Read the reference figures as approximate, and check where they came from.*
+The directory `docs/run-log.json` cites for z3's 429 (job 117487) **no longer
+exists**. Surviving CSVs from a 2026-07-29 run of the same set give z3
+**430/595, PAR2 23078** against the log's 429/23138 -- most likely two
+separate z3 runs one file apart rather than a transcription error, but only
+the surviving set can be re-analysed. Those CSVs are now preserved under
+`results/reference-qf-lra-scrambled-60s-2026-07-29/` with a provenance note.
+A three-solver run at a longer timeout is what should settle this. Cross-job drift at a 60s timeout on a shared
 cluster is a few files in each direction -- job 117940's own pre-H8 baseline
 solved 369 where the 2026-07-30 run recorded 373 for a comparable
 configuration. **Within-job paired deltas are the trustworthy numbers here;
