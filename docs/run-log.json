@@ -12466,31 +12466,32 @@
       "started_at": "2026-08-01",
       "recorded_at": "2026-08-01",
       "kind": "fuzz+model-validation",
-      "scope": "Local reconciliation gate for adding the QF_LRA model-printing work on top of origin/main after the substantial QF_LRA merge. Covers the merged model construction path for user-declared nullary Real constants, preprocessing equality reconstruction, strict-bound delta concretization, and the reusable model validator's Dolmen-to-Z3 fallback for generated QF_LRA inputs that Dolmen rejects before model checking.",
-      "commit": "73514be",
+      "scope": "Local reconciliation gate for adding the QF_LRA model-printing work on top of origin/main after the substantial QF_LRA merge. Covers the merged model construction path for user-declared nullary Real constants, preprocessing equality reconstruction, strict-bound delta concretization, rejection of non-nullary QF_LRA declarations, and the reusable model validator's Dolmen-to-Z3 fallback for generated QF_LRA inputs that Dolmen rejects before model checking.",
+      "commit": "095e07f",
       "environment": {
         "type": "workstation",
         "host": "local",
-        "binary": "./build/primo --quiet built from reconcile-model-construction at 73514be; reference solver /workspace/contrib/local/bin/z3; Dolmen from PATH, version 0.10",
-        "notes": "Dolmen validates ordinary SMT-LIB model responses directly. Several FuzzSMT QF_LRA inputs use linear-arithmetic syntax that Dolmen 0.10 rejects before model checking, for example division by a negated constant expression; scripts/validate_model.py therefore falls back to asserting Primo's printed Real assignments into the original input and checking satisfiability with Z3 for this minimal QF_LRA model subset."
+        "binary": "./build/primo --quiet built from reconcile-model-construction at 095e07f; reference solver /workspace/contrib/local/bin/z3; Dolmen from PATH, version 0.10",
+        "notes": "Dolmen validates ordinary SMT-LIB model responses directly. Several FuzzSMT QF_LRA inputs use linear-arithmetic syntax that Dolmen 0.10 rejects before model checking, for example division by a negated constant expression; scripts/validate_model.py therefore falls back to asserting Primo's printed Real assignments into the original input and checking satisfiability with Z3 for this minimal QF_LRA model subset. The fallback now requires Z3 exit code 0 and rejects Z3 '(error ...)' output, so out-of-fragment QF_LRA+UF scripts cannot be counted as model-validation passes."
       },
       "command": {
         "build": "cmake --build build --target primo primo_qf_lra_solver_tests primo_smtlib_parser_tests primo_boolean_solver_tests -j2",
         "focused_tests": "./build/primo_qf_lra_solver_tests; ./build/primo_smtlib_parser_tests; (cd build && ./primo_boolean_solver_tests); python3 -m py_compile scripts/validate_model.py scripts/validate_qfuf_models_with_dolmen.py",
         "full_check": "make lint; make check; make docs",
-        "verdict_fuzz": "env PATH=\"/workspace/contrib/local/bin:$PATH\" /usr/bin/python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs /workspace/contrib/local/bin/z3 --logic QF_LRA --count 100 --timeout 5 --seed 801001 --out results/reconcile-model-qflra-fuzz-smoke-20260801b",
-        "model_validation": "/usr/bin/python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 10 --dolmen-timeout 10 --out results/reconcile-model-qflra-model-validation-dolmen-fallback-20260801 results/reconcile-model-qflra-fuzz-smoke-20260801b/generated/*.smt2"
+        "verdict_fuzz": "env PATH=\"/workspace/contrib/local/bin:$PATH\" /usr/bin/python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs /workspace/contrib/local/bin/z3 --logic QF_LRA --count 100 --timeout 5 --seed 801002 --out results/reconcile-model-qflra-fuzz-smoke-20260801c",
+        "model_validation": "/usr/bin/python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 10 --dolmen-timeout 10 --out results/reconcile-model-qflra-model-validation-20260801c results/reconcile-model-qflra-fuzz-smoke-20260801c/generated/*.smt2",
+        "negative_conformance": "./build/primo_qf_lra_solver_tests covers rejection of non-nullary Real functions and Bool predicates under QF_LRA; a direct validator repro for a QF_LRA script declaring f : Real -> Real is classified as solver-error, not pass"
       },
       "benchmark": {
-        "suite": "100 FuzzSMT-generated QF_LRA files, seed 801001",
+        "suite": "100 FuzzSMT-generated QF_LRA files, seed 801002",
         "logic": "QF_LRA",
         "timeout_seconds": "5 for verdict fuzzing; 10 for model-producing validation"
       },
       "artifacts": {
-        "fuzz_summary": "results/reconcile-model-qflra-fuzz-smoke-20260801b/summary.csv",
-        "model_validation_summary": "results/reconcile-model-qflra-model-validation-dolmen-fallback-20260801/summary.csv",
-        "generated_inputs": "results/reconcile-model-qflra-fuzz-smoke-20260801b/generated/*.smt2",
-        "model_validation_artifacts": "results/reconcile-model-qflra-model-validation-dolmen-fallback-20260801/"
+        "fuzz_summary": "results/reconcile-model-qflra-fuzz-smoke-20260801c/summary.csv",
+        "model_validation_summary": "results/reconcile-model-qflra-model-validation-20260801c/summary.csv",
+        "generated_inputs": "results/reconcile-model-qflra-fuzz-smoke-20260801c/generated/*.smt2",
+        "model_validation_artifacts": "results/reconcile-model-qflra-model-validation-20260801c/"
       },
       "summary": {
         "verdict_fuzz": {
@@ -12500,8 +12501,8 @@
           "timeout": 0
         },
         "model_validation": {
-          "pass": 87,
-          "not-sat": 13,
+          "pass": 82,
+          "not-sat": 18,
           "model_error": 0,
           "solver_timeout": 0
         },
