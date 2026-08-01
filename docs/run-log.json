@@ -12740,6 +12740,56 @@
         "Profile 1 (-Mbw 16) produced 7 timeouts against profile 0's 2. The pre-submission local measurement concluded -Mbw 16 is cost-neutral; that holds for the median but the tail is somewhat worse on cluster hardware. Not enough to change the profile, worth not overstating."
       ],
       "outcome": "The ladder works as designed and found no defect. Every QF_LRA generator-fuzz result before this one was obtained at FuzzSMT's stock QF_LRA defaults (max 3 Real variables, coefficients in [1,15]); this is the first covering wide coefficients, larger tableaux, and conjunctive/disjunctive Boolean layers."
+    },
+    {
+      "id": "2026-08-02-qf-lra-yices-reference-and-mutant-quality",
+      "started_at": "2026-08-02",
+      "recorded_at": "2026-08-02",
+      "kind": "analysis",
+      "scope": "Evaluating Yices 2 as a QF_LRA reference solver, prompted by the question of whether it is a better reference for some families than z3. Two further findings fell out: yices cannot read YinYang mutants at all without help, and for one family YinYang's mutants are ill-formed.",
+      "commit": "8eac51a",
+      "environment": {
+        "type": "mixed",
+        "host": "workstation for the seed/generator measurements; llm2smt-slurm for the mutant scan",
+        "binary": "build/primo at c29ed09, z3 5.0.0, Yices 2.7.0 (x86_64 static-gmp, GPLv3, reference-only)"
+      },
+      "summary": {
+        "is_yices_a_better_reference": "For some families, measurably yes. At 60s z3 answers neither latendresse seed nor miplib_pp08a-9000; yices answers all three (15.9s, 15.1s, 4.7s). At the 20s mutation timeout yices oracles 29 of 34 corpus seeds against z3's 26, and its failures are a strict subset of z3's, so the union is also 29. It does not subsume z3 -- both time out on LassoRanker at 20s (yices needs 109s; primo 3s) and neither answers tropical-matrix -- so it is added as a second reference, not a replacement.",
+        "generator_side": "On 150 wide-coefficient FuzzSMT cases yices agreed with z3 on all 150 and ran 6x faster (0.3s against 1.9s), so it is also the cheaper generator reference.",
+        "yices_cannot_read_mutants": "yices-smt2 requires (set-logic ...) before Real is a defined sort and has no --logic flag; z3 infers a default. typefuzz strips the command -- 0 of 200 sampled mutants had one -- so yices failed every mutant at line 1 with 'undefined sort: Real'. As a third target it contributed nothing while still costing a process launch per mutant, visible as YinYang's effective-call rate dropping from 65.1% (job 118548 opfuzz) to 42.8% (job 118611 opfuzz). Solving eff = effective/total for the third target gives roughly zero, which is what pointed at rejection rather than timeout. Fixed by scripts/yices_smt2_ref.sh, which prepends the logic only when absent.",
+        "typefuzz_mutants_are_ill_formed_for_ezsmt": "SUPERSEDED by the entry 2026-08-02-qf-lra-mutation-yield-is-structurally-low. The first diagnosis here -- that typefuzz invents symbols out of paren-bearing quoted names, affecting only the 2 ezsmt seeds -- was wrong on both the mechanism and the scale."
+      },
+      "caveats": [
+        "The eff comparison 65.1% -> 42.8% confounds two changes made at once: the third target AND opfuzz iterations 300 -> 200. It is not a clean measurement of yices's effect. It was still enough to point at the real defect, which was then confirmed directly by running yices on a mutant.",
+        "A prediction stated in advance -- that adding yices would raise the effective-call rate above the 28-43% band -- was wrong, and wrong for a reason worth keeping: the addition was broken, not merely unhelpful.",
+        "The ill-formed-mutant finding does NOT imply false bug reports. In opfuzz mode the first solver (primo) is the oracle; it produces no sat/unsat on these, so typefuzz counts the mutant invalid and skips it. The cost is wasted budget -- about 59 of 60 mutants for that seed -- not unsoundness."
+      ],
+      "outcome": "Yices added as a second reference (commit 2da20f4), wrapper added (8eac51a), gate pointed at the wrapper. Job 118611 was cancelled after its opfuzz task completed, rather than spending three more hours on the broken configuration; its opfuzz result (34/34 seeds, 0 bug triggers) stands as a primo-vs-z3 result."
+    },
+    {
+      "id": "2026-08-02-qf-lra-mutation-yield-is-structurally-low",
+      "started_at": "2026-08-02",
+      "recorded_at": "2026-08-02",
+      "kind": "analysis",
+      "scope": "Why YinYang mutation fuzzing yields so little against a QF_LRA-only solver. Measured directly on the mutants job 118611 left behind, after two earlier diagnoses in this log turned out to be wrong.",
+      "commit": "fffca07",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo, z3 5.0.0, Yices 2.7.0"
+      },
+      "summary": {
+        "headline": "Across 25 mutants from each of 8 seed groups (200 total), Primo can answer 15 -- 7.5%. Per group: Heizmann 0/25, ezsmt 0/25, check_bignum 2/25, DTP-Scheduling 3/25, meti-tarski 4/25, miplib 1/25, sal 3/25, spider 2/25.",
+        "cause_1_declaration_order": "typefuzz emits declare-fun commands after their first use. Verified concretely: in a Heizmann mutant, motzkin_2059_0 is used at line 17 and declared at line 49, while in the parent seed it is declared at line 77 and first used at line 86. Primo and Yices both reject with 'unknown symbol'; z3 drops the offending assertions and answers anyway, i.e. answers a strictly weaker formula. Mechanically fixable by hoisting declarations.",
+        "cause_2_nonlinearity_dominates": "Hoisting is not enough: the same mutant then fails with '* requires a literal rational coefficient operand (QF_LRA)'. opfuzz and typefuzz mutate operators in a SORT-aware way, and QF_LRA's linearity is a syntactic restriction beyond sorts, so operator mutation routinely produces products of non-constant terms -- e.g. (* (+ (* motzkin_2059_0 10.0) ...) ...) -- which leave the logic. Primo correctly rejects them; z3 solves them as nonlinear.",
+        "conclusion": "Mutation fuzzing has a low INTRINSIC yield against a linear-arithmetic-only solver: most mutants are no longer QF_LRA. This is a property of the tool/logic pairing, not a misconfiguration, and it explains why mutation fuzzing has never found anything here. It is not unsound -- in opfuzz mode Primo is the oracle, and a mutant it cannot answer is counted invalid and skipped, so no false bug is reported. The cost is budget: roughly 13 mutants generated per usable one."
+      },
+      "caveats": [
+        "Two earlier diagnoses in this session were wrong and are corrected here. First: that typefuzz invents symbols from paren-bearing quoted names -- it does not, the symbols are declared, just later. Second: that the problem was confined to the 2 ezsmt seeds, about 6% of the corpus -- Heizmann is 0/25 and has no quoted symbols at all.",
+        "The nonlinear-product count was initially under-measured by a regex that only matched (* ident ident) on one line; the real forms are nested and multi-line. Counting shapes rather than lines is what showed it.",
+        "The seed-corpus widening is still worth having: it broadens the shapes of the ~7.5% of mutants that do stay in QF_LRA. It just does not multiply the yield the way the seed count suggests."
+      ],
+      "outcome": "Recorded as a structural limit rather than a defect to fix. Hoisting declarations would recover cause 1, but cause 2 dominates and has no fix short of a logic-aware mutator, so it was not implemented. Generator fuzzing (the FuzzSMT ladder) remains the higher-yield path for QF_LRA and stays the primary gate."
     }
   ]
 }
