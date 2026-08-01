@@ -11,6 +11,7 @@ chapters:
   - file: qf-lra-heuristics
   - file: difference_logic
   - file: debugging
+  - file: fuzz-coverage-qf-lra
   - file: experiments
   - file: run-log
   - file: literature

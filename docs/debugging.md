@@ -290,6 +290,14 @@ unsatisfiable formulas. In particular, keep seeds for QG-style finite-domain
 operation tables, Goel hardware-style formulas, NEQ/PEQ/SEQ finite-domain
 choices, and any minimized bug reproducer that previously escaped fuzzing.
 
+Both fuzzers are only as broad as their inputs: FuzzSMT covers what its
+parameters say, and YinYang covers what is in its seed directory. Neither
+default is trustworthy without checking. See
+[](fuzz-coverage-qf-lra.md) for what that audit found for QF_LRA -- a seed
+corpus holding 3 of 17 benchmark families, and a generator that had never
+emitted a coefficient outside [1,15] -- and for the measured profile ladder and
+corpus builder that replaced them.
+
 Long fuzzing campaigns should run on SLURM, not on developer workstations.
 Preserve generated failures under `yinyang_bugs/` until each one is copied back,
 classified, minimized, and either turned into a regression test or documented as

@@ -133,6 +133,14 @@ YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-1500}
 
 MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
 
+# typefuzz's own default here is 20000 bytes, and it drops oversized seeds
+# without saying so beyond a "N valid, M invalid" count. That silently
+# truncated the family-complete QF_LRA corpus back to 11 of its 17 families
+# (job 118543). 200000 matches the --max-bytes that
+# scripts/build_fuzz_seed_corpus.py selects seeds under, so the limit no
+# longer decides the corpus; the corpus builder does.
+MUTATION_FILE_SIZE_LIMIT=${PRIMO_FUZZ_MUTATION_FILE_SIZE_LIMIT:-200000}
+
 cd "$WORKDIR"
 mkdir -p logs "$OUT_ROOT"
 
@@ -206,6 +214,7 @@ elif (( TASK_ID < yinyang_start )); then
     --seconds "$YINYANG_WALL_SECONDS" \
     --iterations "$OPFUZZ_ITERATIONS" \
     --solver-timeout "$OPFUZZ_TIMEOUT" \
+    --file-size-limit "$MUTATION_FILE_SIZE_LIMIT" \
     --bugs "$out/bugs" \
     --scratch "$out/scratch"
 else
@@ -219,6 +228,7 @@ else
     --seconds "$YINYANG_WALL_SECONDS" \
     --iterations "$YINYANG_ITERATIONS" \
     --solver-timeout "$YINYANG_TIMEOUT" \
+    --file-size-limit "$MUTATION_FILE_SIZE_LIMIT" \
     --bugs "$out/bugs" \
     --scratch "$out/scratch"
 fi
