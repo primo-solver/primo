@@ -363,3 +363,30 @@ six validation cases. Treat this as a diagnostic signal, not a default change:
 the winning profile uses aggressive online EUF propagation and the incremental
 CaDiCaL profile, so the engineering target is a cheaper, principled propagation
 queue rather than exposing another broad default profile.
+
+## Baseline worktrees and the sync (learned 2026-08-01)
+
+`slurm_prepare_benchmark_workspace.py` rsyncs with `--delete`, which
+includes the remote tree's `.git`. **That destroys any git worktree
+registered under it**: `.git/worktrees/<name>/` is removed, the worktree's
+own `.git` file becomes a dangling pointer, and `git worktree repair`
+cannot fix it because the registration is gone rather than stale.
+
+The failure is quiet in the worst way. A `git checkout <commit>` in the
+broken worktree fails, but a build there still succeeds against whatever
+source is on disk, and `--version` reports the commit baked in at the last
+*configure* (the git-revision header is generated at configure time, not
+build time). So an A/B can silently compare against the wrong baseline
+while its banner claims otherwise -- which happened once: a baseline
+intended to be pre-H10 was actually pre-H9, so the comparison would have
+measured two items and attributed them to one.
+
+What to do:
+
+- After any sync, **recreate the baseline worktree** rather than assuming
+  it survived: `git worktree prune && git worktree add -f <dir> <commit>`.
+- **Re-run `cmake` configure**, not just `--build`, so the version banner
+  matches the checkout.
+- **Verify the baseline by content, not only by banner** -- grep for a
+  marker of the change under test and confirm it is absent from the
+  baseline and present in the new tree. That is the check that caught this.
