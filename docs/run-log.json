@@ -12511,6 +12511,87 @@
       "docs": "docs/architecture.md, docs/arithmetic.md, and docs/preprocessing.md describe the supported QF_LRA model subset and the validation fallback.",
       "evidence_status": "current",
       "followups": "This is a local smoke/merge-level reconciliation gate, not an SLURM campaign. Run a larger SLURM fuzz/model-validation campaign before treating QF_LRA model printing as campaign-level evidence."
+    },
+    {
+      "id": "2026-08-01-slurm-qflra-model-fuzz-and-sandbox-0978c0d",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "fuzz+model-validation+performance-smoke",
+      "scope": "SLURM campaign for QF_LRA model construction on commit 0978c0d. It extends the local reconciliation gate with 3000 generated QF_LRA FuzzSMT cases, Dolmen/Z3 model validation for generated sat cases, opfuzz/typefuzz mutation over real QF_LRA seeds, and a sat-only model-validation batch over sandbox/non-incremental/QF_LRA. The sandbox batch filters with Z3 first and only invokes model checking for Z3-sat files.",
+      "commit": "0978c0d",
+      "environment": {
+        "type": "slurm",
+        "host": "private SLURM cluster via fresh isolated remote workspace",
+        "binary": "build-slurm-rel/primo --quiet; primo --version reported git 0978c0d and CaDiCaL cadical-3.0.0-7b99c07",
+        "notes": "A fresh remote workspace was used so this campaign did not share build or result directories with active Primo jobs already in the queue. Private usernames, hostnames, IPs, and absolute home paths are intentionally redacted. The patched YinYang fork was installed into the fresh workspace from https://github.com/MikolasJanota/yinyang.git at commit 3458e8e after the first mutation tasks found no opfuzz/typefuzz executable in PATH."
+      },
+      "command": {
+        "workspace_preflight": "Local sbatch validation with scripts/slurm_validate_sbatch.py and bash -n; remote binary checked immediately before sbatch and reported git 0978c0d plus CaDiCaL. The repo preflight script had already passed for this fresh workspace before the first fuzz submission; the later sandbox-only script was copied into the same workspace and does not change the solver binary.",
+        "fuzz_campaign": "scripts/slurm_qf_lra_model_fuzz_gate.sbatch with default FuzzSMT layout: 6 shards x 500 QF_LRA cases, timeout 5s, seeds 218571..218576, args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2'. Model validation used scripts/validate_model.py with Primo --quiet and Dolmen/Z3 fallback. Original job 118571 supplied the answer-fuzz summaries; mutation tasks were rerun as job 118580 after installing patched YinYang. A model-timeout rerun of generated shards with PRIMO_FUZZ_MODEL_TIMEOUT=60 was job 118583 and confirmed remaining failures are timeout-class rows, not model errors.",
+        "sandbox_model_batch": "scripts/slurm_qf_lra_sandbox_model_check.sbatch, job 118601, 8-way array over sandbox/non-incremental/QF_LRA. Each shard runs z3 -smt2 first, validates only Z3-sat files with scripts/validate_model.py, stops on definite model errors, and writes perf.csv comparing plain check-sat against check-sat+get-model for up to 24 sat files per shard.",
+        "manual_overhead_probe": "Additional confirmed-sat six-file timing probe under results/qf-lra-model-overhead-confirmed-sat-118601/overhead.csv with 5s caps for plain and model-producing runs. It used files already proven Z3-sat by the sandbox validation artifacts."
+      },
+      "benchmark": {
+        "suite": "FuzzSMT QF_LRA generated cases plus real-seed opfuzz/typefuzz over benchmarks/seeds/qf_lra_real; sandbox/non-incremental/QF_LRA sat-only model validation",
+        "logic": "QF_LRA",
+        "timeout_seconds": "5 for generated answer fuzzing; 10 then 60 for generated model validation rerun; 30 for sandbox Z3 filtering and Primo model validation; 5 for the quick manual overhead probe"
+      },
+      "artifacts": {
+        "remote_fuzz_answer_root": "<fresh-remote-workdir>/fuzz-results/qf-lra-model-gate-118571/",
+        "remote_mutation_root": "<fresh-remote-workdir>/fuzz-results/qf-lra-model-gate-118580/",
+        "remote_generated_model_rerun_root": "<fresh-remote-workdir>/fuzz-results/qf-lra-model-gate-118583/",
+        "remote_sandbox_model_root": "<fresh-remote-workdir>/results/qf-lra-sandbox-model-118601/",
+        "remote_overhead_probe": "<fresh-remote-workdir>/results/qf-lra-model-overhead-confirmed-sat-118601/overhead.csv",
+        "local_script": "scripts/slurm_qf_lra_sandbox_model_check.sbatch"
+      },
+      "summary": {
+        "generated_answer_fuzz": {
+          "cases": 3000,
+          "PASS": 2978,
+          "TIMEOUT": 22,
+          "wrong_answer": 0,
+          "crash": 0
+        },
+        "generated_model_validation_initial": {
+          "cases": 3000,
+          "pass": 2593,
+          "not_sat": 390,
+          "solver_timeout": 17,
+          "model_error": 0
+        },
+        "generated_model_validation_rerun": "With 60s Primo model timeout, shard 4 completed and the other shards still failed only through timeout-class rows. No model-error rows were observed in the inspected summaries; this run was used to classify the initial failures as timeout pressure rather than invalid printed models.",
+        "mutation": {
+          "jobs": "118580 tasks 6-8 completed with exit 0 after patched YinYang install",
+          "opfuzz_last_reported_solver_calls": 5592,
+          "typefuzz_last_reported_solver_calls": [
+            2690,
+            2758
+          ],
+          "bug_files": 0,
+          "notes": "The first mutation attempt in job 118571 failed immediately because opfuzz/typefuzz were not on PATH. Job 118580 is the replacement mutation evidence."
+        },
+        "sandbox_sat_only_model_validation": {
+          "files_total": 1753,
+          "z3_sat": 820,
+          "z3_unsat": 515,
+          "z3_timeout": 418,
+          "model_pass": 763,
+          "model_solver_timeout": 57,
+          "model_error": 0,
+          "definite_error_stop_triggered": false
+        },
+        "model_overhead": {
+          "sandbox_perf_rows": 192,
+          "average_model_over_plain_ratio": 0.970757359375,
+          "median_model_over_plain_ratio": 0.978947,
+          "max_model_over_plain_ratio": 1.03782,
+          "manual_confirmed_sat_probe": "Six confirmed-sat files: ratios 0.9998 timeout/timeout, 0.9582, 1.0102, 0.9873, 0.9893, 0.9999. No model-production-specific slowdown signal; no gprof run was justified for model printing overhead."
+        },
+        "headline": "No wrong answers, crashes, or invalid models were found. The remaining non-pass rows are timeouts: 22 generated answer-fuzz timeouts, generated model-validation solver timeouts, and 57 sandbox model-validation solver timeouts."
+      },
+      "docs": "This run-log entry records the new reusable sandbox SLURM script and the SLURM evidence. The script is intentionally redaction-safe: it takes PRIMO_WORKDIR/PRIMO_MODEL_* variables and contains no private host, user, or IP data.",
+      "evidence_status": "current",
+      "followups": "If we want to reduce the 57 sandbox model-validation timeouts, profile general QF_LRA solving on representative timeout files. The timing samples do not point to get-model printing as the bottleneck."
     }
   ]
 }
