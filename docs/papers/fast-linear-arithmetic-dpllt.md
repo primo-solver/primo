@@ -121,10 +121,12 @@ before it, so Section 4.2 propagation is unaffected. See
 
   *Why the report is so emphatic about this.* TR Sections 2.2-2.3 are an
   argument against the incremental-Simplex solvers that preceded it --
-  including SRI's own ICS and Simplics, via Rueß & Shankar (SRI-CSL-04-01,
-  reference [15]) -- whose backtracking removes rows and "otherwise, a
-  pivoting operation is applied first". Primo did not add and remove rows,
-  but undoing pivots put it in the same family for the same reason. See
+  including SRI's own ICS and Simplics -- whose backtracking removes rows and
+  "otherwise, a pivoting operation is applied first". Primo did not add and
+  remove rows, but undoing pivots put it in the same family for the same
+  reason. The scheme Primo removed is **Nelson's**: Rueß & Shankar
+  (CSL-SRI-04-01, reference [15]) record that in Nelson's method "retraction
+  of assertions is carried out by recording and undoing pivoting steps". See
   [](lra-related-work.md).
 
   **`PivotingRule::Soi` keeps the old scheme.** Its objective row is a sum
