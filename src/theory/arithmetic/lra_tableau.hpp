@@ -65,7 +65,8 @@ struct DeltaRational {
 // Incremental via push()/pop(checkpoint), trail-based (mirroring
 // FlatCongruenceClosure's discipline, not full state snapshotting).
 //
-// **Only bound changes are trailed**, which is the paper's own design
+// **Only bound changes are trailed** (heuristics-note item H9), which is
+// the paper's own design
 // (technical report SRI-CSL-06-01 Section 3.2.4: "We just need to save the
 // value of u_i (l_i) on a stack before it is updated... Backtracking does
 // not require to save the successive betas on a stack... Since no pivoting
@@ -174,7 +175,7 @@ class LraTableau {
   // (var, coefficient) pair per term.
   //
   // **Invariant: strictly ascending by var id, and never a zero
-  // coefficient.** Held by every producer of a Row -- add_row() sorts,
+  // coefficient** (heuristics-note item H8). Held by every producer of a Row -- add_row() sorts,
   // pivot() builds both of its outputs in order, set_soi_direction()
   // sorts, and undo() restores rows that already satisfied it. Relied on
   // by pivot()'s affected-row loop, which combines two rows with a linear

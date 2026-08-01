@@ -139,7 +139,7 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
 
 void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   ++pivot_count_;
-  // Bounds-only backtracking (see the class comment) means the trail needs
+  // Bounds-only backtracking (item H9, see the class comment) means the trail needs
   // nothing from this pivot at all on the default path; the snapshot below
   // is built only for SOI, which does have to undo it.
   const bool trail_this_pivot = trails_assignments_and_pivots();
@@ -249,7 +249,7 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     }
 
     // Both inputs are ordered by var id (the Row invariant), so combining
-    // them is a linear two-way merge. This used to concatenate them into
+    // them is a linear two-way merge -- heuristics-note item H8. This used to concatenate them into
     // combine_scratch_ and std::sort the result -- O(m log m) per affected
     // row, which a gprof profile put at 11.6% of runtime on
     // scrambled339450 (100M inner comparisons) before this change.

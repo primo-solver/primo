@@ -198,7 +198,7 @@ alternatives considered before/while implementing it.
     instances specifically, not average-case speed on typical ones. Not
     campaign-tier confirmed and not currently planned for default-on
     promotion given this; see `docs/run-log.json`.
-- **Two-tier rational representation** (heuristics-note item H2, 2026-07-28,
+- **Two-tier rational representation** ([heuristics-note item H2](qf-lra-heuristics.md#h2), 2026-07-28,
   `src/util/rational.{hpp,cpp}`, **unconditional**): `util::Rational` stores
   small values inline as `std::int64_t` numerator/denominator and only falls
   back to a heap `mpq_class` when a value genuinely needs more than 64 bits.
@@ -293,7 +293,7 @@ alternatives considered before/while implementing it.
     seeds -- 0 crashes, 0 wrong answers throughout. Incidentally, the gates'
     own timeout rates fell sharply (Bland campaign 118-143 -> 28, SOI campaign
     965-976 -> 324), the same speedup showing up in the fuzz corpus.
-- **Direct bounds for single-variable atoms** (heuristics-note item H1a,
+- **Direct bounds for single-variable atoms** ([heuristics-note item H1a](qf-lra-heuristics.md#h1),
   2026-07-28, `check_sat.cpp`, **unconditional**): an atom whose normalized
   polynomial is a single term `c*x` is a bound on `x` itself. The
   coefficient is divided out (`rhs' = rhs / c`) and no slack variable and no
@@ -350,7 +350,7 @@ alternatives considered before/while implementing it.
     fuzzsmt cases, two opfuzz runs and four yinyang typefuzz shards over real
     QF_LRA seeds -- 0 crashes, 0 wrong answers throughout, with the Bland
     merge gate coming back 500/500 PASS with no timeouts at all.
-- **Scale-canonical polynomial keys** (heuristics-note item H1b, the
+- **Scale-canonical polynomial keys** ([heuristics-note item H1b](qf-lra-heuristics.md#h1), the
   long-deferred competitiveness-roadmap item 3, 2026-07-28, `check_sat.cpp`,
   **unconditional**): `PolynomialKey` divides every coefficient by the
   coefficient of the lowest-indexed variable, so proportional polynomials
@@ -374,7 +374,7 @@ alternatives considered before/while implementing it.
     merging proportional rows concentrates fill-in into fewer, denser rows),
     so its 237-file verdict comes from item H3's four-way run, whose `bland`
     column measures exactly this item's effect on the default.
-- **Fill-in-aware pivot selection** (heuristics-note item H3, 2026-07-28,
+- **Fill-in-aware pivot selection** ([heuristics-note item H3](qf-lra-heuristics.md#h3), 2026-07-28,
   `lra_tableau.{hpp,cpp}`, **opt-in**): `PivotingRule::Sparse`, via
   `--lra-pivoting-rule sparse`. `pivot()` rewrites every row in
   `occurs_in_[entering]`, merging in a row of length `|row(leaving)|`, so a
@@ -452,7 +452,7 @@ alternatives considered before/while implementing it.
     117227 (new default, fuzzsmt 3000: 2990 PASS/10 TIMEOUT) and 117228 (SOI,
     3000: 2908/92), each with opfuzz 14/14 seeds valid and two yinyang shards,
     0 bug triggers throughout. No crashes, no wrong answers anywhere.
-- **Bounds-only backtracking** (2026-07-31, `lra_tableau.{hpp,cpp}`,
+- **Bounds-only backtracking** ([heuristics-note item H9](qf-lra-heuristics.md#h9), 2026-07-31, `lra_tableau.{hpp,cpp}`,
   **unconditional except under SOI**): `pop()` restores bounds and nothing
   else. It used to restore bounds, assignments *and* every pivot's row
   rewrite. This is the paper's own scheme -- technical report SRI-CSL-06-01
@@ -484,7 +484,7 @@ alternatives considered before/while implementing it.
   - Gated campaign-tier on the default path (3000 fuzzsmt QF_LRA cases plus
     opfuzz and two yinyang shards, 0 wrong) and merge-tier on SOI (2000, 0
     wrong), plus local ASAN across five configurations.
-- **Merged row combination in `pivot`** (heuristics-note item H8, 2026-07-31,
+- **Merged row combination in `pivot`** ([heuristics-note item H8](qf-lra-heuristics.md#h8), 2026-07-31,
   `lra_tableau.{hpp,cpp}`, **unconditional**): `pivot`'s affected-row loop
   combines the affected row with the scaled entering row by a linear two-way
   merge instead of concatenating both into a scratch buffer and sorting it.
@@ -518,7 +518,7 @@ alternatives considered before/while implementing it.
     tier, not campaign tier -- but it matters here specifically because H8
     rewrites the row loop and moves rows into the trail, which is where this
     class previously had a real heap-use-after-free.
-- **Fixed-variable elimination** (heuristics-note item H7, 2026-07-30,
+- **Fixed-variable elimination** ([heuristics-note item H7](qf-lra-heuristics.md#h7), 2026-07-30,
   `lra_tableau.{hpp,cpp}`, **opt-in**, `--lra-fixed-elimination`): a basic
   variable whose lower and upper bounds coincide is pivoted out of the basis
   as soon as it becomes fixed. `can_enter()` already rejects a fixed variable
