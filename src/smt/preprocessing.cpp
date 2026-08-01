@@ -996,11 +996,70 @@ void register_equality_query_terms(const core::TermManager& terms, core::TermId 
   }
 }
 
+struct UnitEqualityPropagationShape {
+  std::size_t unit_equalities = 0;
+  std::size_t equality_nodes = 0;
+};
+
+std::size_t count_top_level_unit_equalities(const core::TermManager& terms,
+                                            core::TermId assertion) {
+  const core::Term& node = terms.get(assertion);
+  if (node.kind == core::TermKind::Equality) {
+    return 1;
+  }
+  if (node.kind != core::TermKind::And) {
+    return 0;
+  }
+  std::size_t count = 0;
+  for (const core::TermId child : node.children) {
+    count += count_top_level_unit_equalities(terms, child);
+  }
+  return count;
+}
+
+std::size_t count_equality_nodes(const core::TermManager& terms, core::TermId assertion,
+                                 std::unordered_map<core::TermId, std::size_t>& memo) {
+  const auto found = memo.find(assertion);
+  if (found != memo.end()) {
+    return found->second;
+  }
+  const core::Term& node = terms.get(assertion);
+  std::size_t count = node.kind == core::TermKind::Equality ? 1 : 0;
+  if (count == 0) {
+    for (const core::TermId child : node.children) {
+      count += count_equality_nodes(terms, child, memo);
+    }
+  }
+  memo.emplace(assertion, count);
+  return count;
+}
+
+UnitEqualityPropagationShape unit_equality_propagation_shape(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  UnitEqualityPropagationShape shape;
+  for (const core::TermId assertion : assertions) {
+    shape.unit_equalities += count_top_level_unit_equalities(terms, assertion);
+  }
+  if (shape.unit_equalities == 0) {
+    return shape;
+  }
+  std::unordered_map<core::TermId, std::size_t> equality_count_memo;
+  for (const core::TermId assertion : assertions) {
+    shape.equality_nodes += count_equality_nodes(terms, assertion, equality_count_memo);
+  }
+  return shape;
+}
+
 core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId term,
-                                      theory::equality::IncrementalCongruenceClosure& closure) {
+                                      theory::equality::IncrementalCongruenceClosure& closure,
+                                      std::unordered_map<core::TermId, core::TermId>& memo) {
+  const auto found = memo.find(term);
+  if (found != memo.end()) {
+    return found->second;
+  }
   const core::Term& node = terms.get(term);
   const core::TermKind kind = node.kind;
-  const std::vector<core::TermId> node_children = node.children;
+  core::TermId result = term;
   switch (kind) {
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
@@ -1010,35 +1069,54 @@ core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId ter
     case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
-      return term;
+      break;
     case core::TermKind::Equality:
-      return closure.are_equal(node_children.at(0), node_children.at(1)) ? terms.mk_bool(true)
-                                                                         : term;
+      result =
+          closure.are_equal(node.children.at(0), node.children.at(1)) ? terms.mk_bool(true) : term;
+      break;
     case core::TermKind::Not: {
-      const core::TermId child = simplify_with_congruence(terms, node_children.at(0), closure);
-      return terms.mk_not(child);
+      const core::TermId original_child = node.children.at(0);
+      const core::TermId child = simplify_with_congruence(terms, original_child, closure, memo);
+      result = child == original_child ? term : terms.mk_not(child);
+      break;
     }
     case core::TermKind::And: {
+      const std::vector<core::TermId> node_children = node.children;
       std::vector<core::TermId> children;
       children.reserve(node_children.size());
+      bool changed = false;
       for (const core::TermId child : node_children) {
-        children.push_back(simplify_with_congruence(terms, child, closure));
+        const core::TermId rewritten = simplify_with_congruence(terms, child, closure, memo);
+        changed = changed || rewritten != child;
+        children.push_back(rewritten);
       }
-      return terms.mk_and(std::move(children));
+      result = changed ? terms.mk_and(std::move(children)) : term;
+      break;
     }
     case core::TermKind::Or: {
+      const std::vector<core::TermId> node_children = node.children;
       std::vector<core::TermId> children;
       children.reserve(node_children.size());
+      bool changed = false;
       for (const core::TermId child : node_children) {
-        children.push_back(simplify_with_congruence(terms, child, closure));
+        const core::TermId rewritten = simplify_with_congruence(terms, child, closure, memo);
+        changed = changed || rewritten != child;
+        children.push_back(rewritten);
       }
-      return terms.mk_or(std::move(children));
+      result = changed ? terms.mk_or(std::move(children)) : term;
+      break;
     }
-    case core::TermKind::Implies:
-      return terms.mk_implies(simplify_with_congruence(terms, node_children.at(0), closure),
-                              simplify_with_congruence(terms, node_children.at(1), closure));
+    case core::TermKind::Implies: {
+      const core::TermId original_lhs = node.children.at(0);
+      const core::TermId original_rhs = node.children.at(1);
+      const core::TermId lhs = simplify_with_congruence(terms, original_lhs, closure, memo);
+      const core::TermId rhs = simplify_with_congruence(terms, original_rhs, closure, memo);
+      result = lhs == original_lhs && rhs == original_rhs ? term : terms.mk_implies(lhs, rhs);
+      break;
+    }
   }
-  return term;
+  memo.emplace(term, result);
+  return result;
 }
 
 std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> collect_disequalities(
@@ -1654,6 +1732,8 @@ core::TermId rewrite_with_ground_unit_equalities(
 
   const core::Term& node = terms.get(term);
   const std::vector<core::TermId> node_children = node.children;
+  const core::SymbolId node_symbol = node.symbol;
+  const util::Rational node_rational = node.rational_value;
   core::TermId rewritten = term;
   switch (node.kind) {
     case core::TermKind::BoolValue:
@@ -1679,7 +1759,7 @@ core::TermId rewrite_with_ground_unit_equalities(
       const core::TermId rewritten_child = rewrite_with_ground_unit_equalities(
           terms, node_children.at(0), replacements, memo, rewrites);
       if (rewritten_child != node_children.at(0)) {
-        rewritten = terms.mk_times(node.rational_value, rewritten_child);
+        rewritten = terms.mk_times(node_rational, rewritten_child);
       }
       break;
     }
@@ -1706,7 +1786,7 @@ core::TermId rewrite_with_ground_unit_equalities(
         children.push_back(rewritten_child);
       }
       if (changed) {
-        rewritten = terms.mk_app(node.symbol, std::move(children));
+        rewritten = terms.mk_app(node_symbol, std::move(children));
       }
       break;
     }
@@ -1773,6 +1853,8 @@ core::TermId rewrite_with_solved_constants(
 
   const core::Term& term = terms.get(term_id);
   const std::vector<core::TermId> children = term.children;
+  const core::SymbolId symbol = term.symbol;
+  const util::Rational rational_value = term.rational_value;
   core::TermId rewritten = term_id;
   switch (term.kind) {
     case core::TermKind::BoolValue:
@@ -1798,7 +1880,7 @@ core::TermId rewrite_with_solved_constants(
       const core::TermId rewritten_child =
           rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites);
       if (rewritten_child != children.at(0)) {
-        rewritten = terms.mk_times(term.rational_value, rewritten_child);
+        rewritten = terms.mk_times(rational_value, rewritten_child);
       }
       break;
     }
@@ -1823,7 +1905,7 @@ core::TermId rewrite_with_solved_constants(
         rewritten_children.push_back(rewritten_child);
       }
       if (changed) {
-        rewritten = terms.mk_app(term.symbol, std::move(rewritten_children));
+        rewritten = terms.mk_app(symbol, std::move(rewritten_children));
       }
       break;
     }
@@ -2323,6 +2405,14 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   // derived by the equality bridge, are fed to the same ground congruence
   // relation used by the EUF solver, then equality atoms decided by that unit
   // relation are simplified before Boolean abstraction.
+  const UnitEqualityPropagationShape shape = unit_equality_propagation_shape(terms, assertions);
+  if (shape.unit_equalities == 0 || shape.equality_nodes <= shape.unit_equalities) {
+    if (consequences_added != nullptr) {
+      *consequences_added = 0;
+    }
+    return assertions;
+  }
+
   theory::equality::IncrementalCongruenceClosure closure(terms);
   for (const core::TermId assertion : assertions) {
     collect_unit_equalities(terms, assertion, closure);
@@ -2333,12 +2423,14 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   std::vector<core::TermId> simplified;
   simplified.reserve(assertions.size());
   std::unordered_set<core::TermId> emitted;
+  std::unordered_map<core::TermId, core::TermId> simplification_memo;
   std::size_t added = 0;
   for (const core::TermId assertion : assertions) {
     if (emitted.insert(assertion).second) {
       simplified.push_back(assertion);
     }
-    const core::TermId consequence = simplify_with_congruence(terms, assertion, closure);
+    const core::TermId consequence =
+        simplify_with_congruence(terms, assertion, closure, simplification_memo);
     const core::Term& consequence_node = terms.get(consequence);
     const bool true_consequence =
         consequence_node.kind == core::TermKind::BoolValue && consequence_node.bool_value;

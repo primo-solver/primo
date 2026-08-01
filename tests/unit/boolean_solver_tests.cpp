@@ -608,6 +608,26 @@ void nullary_define_fun_expansion_is_memoized() {
   assert(result.statistics.get(":frontend.define-fun.nullary-cache-entries") == 1);
 }
 
+void solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun f (A) A)
+    (declare-fun p (A) Bool)
+    (define-fun d0 () A c)
+    (define-fun d1 () A (f (f a)))
+    (assert (p d1))
+    (assert (= a b))
+    (assert (= b c))
+    (assert (not (= a c)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void compound_bool_arguments_are_bound_before_euf_flattening() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -2479,6 +2499,7 @@ int main() {
   annotated_assertions_are_solved();
   define_fun_macros_are_expanded();
   nullary_define_fun_expansion_is_memoized();
+  solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion();
   compound_bool_arguments_are_bound_before_euf_flattening();
   recursive_define_fun_is_rejected();
   boolean_ite_is_eliminated();

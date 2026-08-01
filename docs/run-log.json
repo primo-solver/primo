@@ -15196,6 +15196,95 @@
       },
       "interpretation": "The next profiler-backed inefficiency after nullary macro memoization was avoidable preprocessing traversal. The accepted fixes reduce the representative UNSAT row from about 4.91s to about 1.93s locally, without changing the six-row solved count. The remaining CPAchecker sample timeouts are now dominated by mixed-theory purification, congruence registration, and Nelson-Oppen/model-separation work; parsing and SMT-LIB macro expansion are no longer the limiting phase on this representative row.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-cpachecker-purification-unit-polarity-profile",
+      "date": "2026-08-01",
+      "kind": "implementation-verification",
+      "scope": "Profiler-guided follow-up on the next local CPAchecker QF_UFLRA bottlenecks after preprocessing traversal cleanup. Changes skip mixed purification when no purification sites exist, avoid recursive unit-equality work when no useful unit-equality query exists, memoize unit-equality simplification over hash-consed subterms, and memoize BooleanClausifier theory-atom polarity traversal by TermId and polarity.",
+      "commit": "5ab2d16-dirty on nelson-oppen-closure-methods; source/docs/tests to be committed adjacent to this run-log entry",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo Release build; ./build-gprof/primo RelWithDebInfo -pg profiling build with PRIMO_WARNINGS_AS_ERRORS=OFF"
+      },
+      "commands": {
+        "after_direct_pre_polarity_memo": "timeout 20s /workspace/build/primo --quiet --stats /workspace/tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2 > /workspace/results/profiling/test_locks_5.purification-unit-guards-final.stdout 2> /workspace/results/profiling/test_locks_5.purification-unit-guards-final.stderr",
+        "after_direct_final": "timeout 20s /workspace/build/primo --quiet --stats /workspace/tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2 > /workspace/results/profiling/test_locks_5.polarity-memo-final2.stdout 2> /workspace/results/profiling/test_locks_5.polarity-memo-final2.stderr",
+        "after_gprof": "cmake --build build-gprof --target primo -j2 && cd results/profiling/gprof-polarity-memo-after && timeout 20s /workspace/build-gprof/primo --quiet --stats /workspace/tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2 > stdout.txt 2> stderr.txt && gprof /workspace/build-gprof/primo gmon.out > gprof.txt",
+        "after_callgrind": "timeout 15s valgrind --tool=callgrind --callgrind-out-file=results/profiling/callgrind.test_locks_5.polarity-memo-final2.out /workspace/build/primo --quiet --stats /workspace/tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2 > results/profiling/test_locks_5.polarity-memo-final2-callgrind.stdout 2> results/profiling/test_locks_5.polarity-memo-final2-callgrind.stderr",
+        "local_sample": "python3 scripts/bench_qf_uf_full.py --repo /workspace --root tmp/QF_UFLRA --manifest /tmp/cpachecker_gap_sample.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 20 --out results/local-cpachecker-gap-sample-current-primo-after-purification-unit-polarity.csv --summary results/local-cpachecker-gap-sample-current-primo-after-purification-unit-polarity-summary.csv --log-dir results/local-cpachecker-gap-sample-current-primo-after-purification-unit-polarity-logs",
+        "focused_verification": "cmake --build build --target primo primo_qf_lra_solver_tests primo_preprocessing_tests -j2 && (cd build && ./primo_qf_lra_solver_tests && ./primo_preprocessing_tests)",
+        "fuzz_qf_uflra_final": "python3 scripts/qf_uflra_smoke_fuzz.py --solver /workspace/build/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 1000 --seed 20260802 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-purification-unit-polarity-final3-20260801",
+        "fuzz_define_fun_final": "python3 scripts/define_fun_macro_fuzz.py --solver /workspace/build/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 1000 --seed 20260802 --timeout 5 --out fuzz-results/define-fun-macro-purification-unit-polarity-final2-20260801"
+      },
+      "inputs": {
+        "representative_instance": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2",
+        "local_sample_manifest": "/tmp/cpachecker_gap_sample.txt from 2026-07-31 CPAchecker gap triage",
+        "timeout_seconds": 20
+      },
+      "artifacts": {
+        "profiling_dir": "results/profiling/",
+        "after_direct_stdout": "results/profiling/test_locks_5.polarity-memo-final2.stdout",
+        "after_direct_stderr": "results/profiling/test_locks_5.polarity-memo-final2.stderr",
+        "after_gprof": "results/profiling/gprof-polarity-memo-after/gprof.txt",
+        "after_callgrind": "results/profiling/callgrind.test_locks_5.polarity-memo-final2.out",
+        "local_sample_csv": "results/local-cpachecker-gap-sample-current-primo-after-purification-unit-polarity.csv",
+        "local_sample_summary": "results/local-cpachecker-gap-sample-current-primo-after-purification-unit-polarity-summary.csv",
+        "fuzz_qf_uflra_summary": "fuzz-results/qf_uflra-purification-unit-polarity-final3-20260801/summary.csv",
+        "fuzz_define_fun_summary": "fuzz-results/define-fun-macro-purification-unit-polarity-final2-20260801/summary.csv",
+        "evidence_status": "local_ignored_outputs"
+      },
+      "summary": {
+        "representative_direct": {
+          "before_this_entry": "unsat in 1.931333s; preprocessing 1767510us; solve 162902us after commit 5ab2d16.",
+          "after_purification_and_unit_guards": "unsat in 0.145365s; preprocessing 148us; solve 144409us; :no.purification.skipped-no-sites 1.",
+          "after_polarity_memo": "unsat in 0.005444s; preprocessing 139us; solve 4500us; SAT vars 190 and clauses 399 unchanged from the pre-polarity-memo direct run."
+        },
+        "profiling": {
+          "pre_polarity_memo_callgrind_instructions": 2313376947,
+          "post_polarity_memo_callgrind_instructions": 49392732,
+          "post_polarity_memo_callgrind_top": "kitten_solve 16.70%, allocator/CaDiCaL import/sweep costs next; BooleanClausifier::collect_theory_atom_polarities and purify_mixed_formula no longer appear in the shown top costs.",
+          "post_polarity_memo_gprof": "The run was too short for sampled self-time; call counts show TermManager::get down to 2971 calls, with no accumulated time."
+        },
+        "fuzz": {
+          "qf_uflra_mixed": {
+            "count": 1000,
+            "seed": 20260802,
+            "timeout_seconds": 5,
+            "reference": "contrib/local/bin/z3",
+            "pass": 1000,
+            "wrong_answer": 0,
+            "crash": 0,
+            "unsupported": 0,
+            "timeout": 0
+          },
+          "define_fun_macro": {
+            "count": 1000,
+            "seed": 20260802,
+            "timeout_seconds": 5,
+            "reference": "contrib/local/bin/z3",
+            "pass": 1000,
+            "wrong_answer": 0,
+            "crash": 0,
+            "unsupported": 0,
+            "timeout": 0,
+            "regression_found_and_fixed": "A pre-final run reported one UNSUPPORTED_INPUT on case-0833 due to solved-constant rewriting reading an invalidated Term reference after recursive interning; the final run passes the same case and the full 1000-case gate."
+          }
+        },
+        "local_sample": {
+          "total": 6,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 4,
+          "wrong": 0,
+          "par2": 166.049061,
+          "previous_after_preprocessing_traversal_fix_par2": 167.71128
+        }
+      },
+      "interpretation": "The addressed bottlenecks were pure overhead on the representative CPAchecker row: no mixed purification sites existed, no unit-equality consequences existed, and theory-atom polarity collection repeatedly traversed the same hash-consed formula. The row moves from about 1.93s at 5ab2d16 to about 5ms locally, and Callgrind instruction count drops by roughly 47x after the polarity memo. The six-row local sample still solves only 2/6 at 20s, so this is a targeted overhead cleanup rather than a broad CPAchecker solution; remaining timeouts are now in real mixed-theory search/model-separation work.",
+      "evidence_status": "current"
     }
   ]
 }

@@ -172,6 +172,8 @@ void accepts_separable_qf_uf_lra_mix() {
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.mixed.euf-atoms") > 0);
   assert(result.statistics.get(":no.mixed.lra-atoms") > 0);
+  assert(result.statistics.get(":no.purification.skipped-no-sites") == 1);
+  assert(result.statistics.get(":no.purification.definitions") == 0);
 }
 
 void qf_uf_lra_mix_learns_euf_conflicts() {

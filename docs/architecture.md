@@ -17,7 +17,9 @@ Primo is organized as layered components with explicit data ownership. This page
 
 - SMT-LIB syntax objects are consumed by `smt::Frontend` and converted to `core::TermId` values before reaching SAT or theory code.
 - SAT clauses contain `sat::Lit`, not terms.
-- The Boolean clausifier keeps the mapping from Boolean theory atoms to SAT literals.
+- The Boolean clausifier keeps the mapping from Boolean theory atoms to SAT
+  literals and memoizes theory-atom polarity collection per hash-consed term and
+  polarity.
 - Theory solvers reason over `core::TermId` values and never own SMT-LIB syntax.
 - All core terms are created through `core::TermManager`.
 

@@ -296,6 +296,7 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.purification.euf-real-term-definitions`
 - `:no.purification.reused-applications`
 - `:no.purification.reused-real-terms`
+- `:no.purification.skipped-no-sites`
 - `:no.interface.shared-real-terms`
 - `:no.interface.sat-equality-atoms`
 - `:no.interface.sat-equalities-true`

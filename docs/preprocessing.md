@@ -214,6 +214,12 @@ incremental EUF checks over `core::TermId` values. Preprocessing assertions have
 unconditional reasons, so the closure does not build congruence explanation
 paths while deriving simplification-only consequences.
 
+When no top-level unit equalities are present, the pass returns the assertion
+vector unchanged after inspecting only the top-level conjunction structure. When
+the only equality nodes are the unit equalities themselves, it also returns
+unchanged. Otherwise, simplification of repeated hash-consed Boolean subterms is
+memoized for the duration of the pass.
+
 `--ground-unit-substitution` additionally uses the same collected non-Boolean
 unit equalities for a bounded ground substitution pass. The pass preserves the
 unit equalities as explicit assertions, rebuilds the remaining assertion DAG
@@ -781,6 +787,14 @@ applications are EUF predicate atoms. Model-producing formulas with declared
 Real constants still route through the QF_LRA model builder when preprocessing
 has eliminated all arithmetic atoms, so solved Real constants are reconstructed
 as concrete SMT-LIB model values rather than abstract UF values.
+
+For QF_UFLRA, the SMT layer also runs a memoized pre-scan before mixed
+purification. If there are no Real-valued UF applications in arithmetic atoms and
+no non-constant Real terms inside EUF atoms, the purification pass returns the
+assertions unchanged and reports `:no.purification.skipped-no-sites`. The Boolean
+clausifier records theory-atom polarity by `(TermId, polarity)`, so repeated
+hash-consed subformulas are traversed at most once per polarity while preserving
+positive/negative occurrence flags.
 
 UF symmetry breaking traverses top-level conjunctions to collect explicit
 disequalities, then scans `or` nodes for choice disjunctions. The invariance
