@@ -147,8 +147,12 @@ YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-1500}
 # alongside Primo and z3. It matters most exactly where the seed corpus was
 # widened to: at a 20s reference timeout, z3 gives no oracle for either
 # latendresse seed and yices answers both.
+#
+# Via the wrapper, not the binary: typefuzz strips (set-logic ...) from every
+# mutant and yices needs it before Real is a sort, so bare yices-smt2 fails
+# every mutant at line 1. See scripts/yices_smt2_ref.sh.
 if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
-  MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true;yices-smt2"}
+  MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true;$WORKDIR/scripts/yices_smt2_ref.sh"}
 else
   MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
 fi
