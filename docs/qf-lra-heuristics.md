@@ -22,7 +22,7 @@ order they were proposed, not the order they were implemented.
 | [H7](#h7) | Fixed-variable elimination (equality slacks) | implemented, **opt-in** -- did not clear its bar |
 | [H8](#h8) | Merge instead of sort in `pivot`'s affected-row loop | implemented, default; **zero regressions** |
 | [H9](#h9) | Bounds-only backtracking (the paper's own scheme) | implemented, default except SOI; largest single gain |
-| [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; 1.15-4.85x |
+| [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 |
 
 Where the remaining gap is, and what has been ruled out, is [](#sec-6). Its
 ranked list of open directions is [](#sec-6-5): [D2](#d2) and [D4](#d4)
@@ -786,7 +786,20 @@ So the only scan-bearing update left is cancellation, which is rare.
 `occurs_in_[entering_var]` wholesale when it becomes basic -- it is basic
 afterwards and so belongs to no row's term list at all.
 
-**Result.** Paired interleaved A/B, two reps each, answers identical:
+**Result on the bars** (jobs 118218/118219, base `4f9b741` verified by
+content as well as banner): scrambled competition set **398 -> 439 solved**,
+PAR2 26723 -> 22207; stratified sample 197 -> 202. **Churn +41/-0 and
++5/-0** -- zero regressions on either, and only 2 of the 173
+commonly-solved files over a second are more than 10% slower. Median paired
+speedup 1.51x (p25 1.15, p75 2.26, max 8.0x).
+
+**439 against z3's 429 on the same 595 files**, from 56 behind on
+2026-07-29. Absolute counts drift a few files between jobs -- this run's own
+baseline solved 398 where [H9](#h9)'s recorded 399 -- so the within-job
++41/-0 is the trustworthy figure and the z3 comparison is "ahead, by
+roughly ten".
+
+**Local measurement.** Paired interleaved A/B, two reps each, answers identical:
 `scrambled228965` 4.85x/4.50x, `scrambled259571` 2.85x/3.00x,
 `scrambled365036` 2.23x/2.35x, `scrambled339450` 1.15x/1.22x. gprof on
 `scrambled228965` shows `pivot`'s self time falling **10.04s -> 1.26s** at

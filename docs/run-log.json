@@ -12554,6 +12554,36 @@
       },
       "docs": "docs/qf-lra-heuristics.md section 6.2c.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-lra-h10-delta-occurs-in",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "benchmark",
+      "scope": "Item H10: maintain occurs_in_ by delta instead of a remove-and-re-add round trip per affected row. The target callgrind identified as ~91% of instructions.",
+      "commit": "aa44320",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at aa44320 against a worktree rebuilt at 4f9b741",
+        "notes": "Baseline verified by CONTENT as well as banner. A first submission used a baseline whose --version said 8621237 and whose source was pre-H9: rsync --delete had destroyed the worktree's git registration, so the checkout failed while the build still succeeded, and the git-revision header is generated at configure time rather than build time. Those jobs were cancelled and the worktree recreated. See docs/experiments.md."
+      },
+      "command": {
+        "fuzz_default": "job 118164, campaign tier: 6 fuzzsmt shards x 500 plus opfuzz and two yinyang shards",
+        "fuzz_soi": "job 118165, 4 x 500 on --lra-pivoting-rule soi",
+        "scrambled595": "job 118218, base vs h10, 60s, 20 shards",
+        "stratified": "job 118219, base vs h10, 60s, 20 shards"
+      },
+      "summary": {
+        "headline": "595-file scrambled competition set at 60s: 398 -> 439 solved, PAR2 26723 -> 22207 (-17%). Churn +41/-0. Stratified 237: 197 -> 202, PAR2 5586 -> 4976, churn +5/-0.",
+        "passes_z3": "439 against z3's 429 on the same 595 files (z3 unchanged, from job 117487). Primo now solves 10 more than z3 on this set, having been 56 behind on 2026-07-29. Subject to the same cross-job caveat as every other absolute figure here: this job's own baseline solved 398 where the H9 job recorded 399, so treat absolutes as good to a few files and the within-job +41/-0 as the trustworthy number.",
+        "distribution": "Median paired speedup 1.51x over the 173 files both solve in more than a second (p25 1.15, p75 2.26, max 8.0x). Only 2 of those 173 are more than 10% slower, and the stratified sample has none at all. Unlike H9 this is close to a uniform win.",
+        "mechanism": "occurs_in_ records row identities, never coefficients, so a term carried through a pivot keeps the entry it had. Only cancellations remove and only genuinely new terms add. gprof: pivot self time 10.04s -> 1.26s at an identical 3,460 calls, 90.7% of the profile down to 49.6%, with the remainder arithmetic rather than bookkeeping.",
+        "correctness": "Campaign tier on the default path: 3000 fuzzsmt QF_LRA cases 2969 PASS / 31 TIMEOUT with 0 wrong, plus opfuzz 14/14 seeds and two yinyang typefuzz shards 14/14, 0 bug triggers and 0 bug files. SOI merge tier: 2000 cases, 1868 PASS / 132 TIMEOUT, 0 wrong. Zero cross-configuration disagreements on both benchmark runs. Locally: make check and make asan-test 12/12, 60 ASAN runs across five pivoting configurations with 0 reports and 0 answer differences, 300 ASAN fuzz cases against z3 with 0 wrong.",
+        "guard": "occurs_in_index_matches_full_rebuild() is checked after every pivot by two tests across all four pivoting rules plus a dedicated cancellation case. A wrong index does not crash; it makes update() skip a dependent row and produces a wrong answer later and elsewhere."
+      },
+      "docs": "docs/qf-lra-heuristics.md item H10; docs/arithmetic.md's Milestone roadmap.",
+      "evidence_status": "current"
     }
   ]
 }

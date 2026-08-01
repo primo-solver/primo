@@ -460,7 +460,11 @@ alternatives considered before/while implementing it.
   and only genuinely new terms add. Callgrind had put the round trip at ~91%
   of instructions -- 40.1M `std::remove` calls scanning 37.6 billion elements
   on `scrambled228965`.
-  - 1.15-4.85x on four mid-band instances, answers identical. `pivot`'s gprof
+  - **Scrambled competition set 398 -> 439 solved** (PAR2 26723 -> 22207),
+    stratified 197 -> 202, churn +41/-0 and +5/-0 -- zero regressions on
+    either bar. Median paired 1.51x. That is 439 against z3's 429 on the
+    same files. 1.15-4.85x locally on four mid-band instances, answers
+    identical. `pivot`'s gprof
     self time falls 10.04s -> 1.26s at an identical call count, and the
     profile becomes arithmetic-dominated rather than bookkeeping-dominated.
   - Guarded by `occurs_in_index_matches_full_rebuild()`, checked after every
@@ -706,9 +710,10 @@ work wherever it was triggered.
 ### Where QF_LRA work stands, and what is open (2026-07-31)
 
 **The whole remaining gap against z3 is one band.** On the 595-file scrambled
-competition set at 60s, Primo solves **399** (job 118045, after item H8 and
-bounds-only backtracking) to z3's 429 and cvc5's 351 -- up from 369 at the
-start of 2026-07-31. The 500KB-5MB band accounts for essentially all of
+competition set at 60s, Primo solves **439** (job 118218, after items H8, H9
+and H10) to z3's 429 and cvc5's 351 -- up from 369 on 2026-07-31. **Primo is
+now ahead of z3 on this set**, by roughly ten files; see the drift caveat
+below before quoting that precisely. The 500KB-5MB band accounts for essentially all of
 that deficit, and cvc5 solves only 9 of the 59 gap files there -- so it is a
 z3-specific capability, not general difficulty.
 
