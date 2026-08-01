@@ -15285,6 +15285,109 @@
       },
       "interpretation": "The addressed bottlenecks were pure overhead on the representative CPAchecker row: no mixed purification sites existed, no unit-equality consequences existed, and theory-atom polarity collection repeatedly traversed the same hash-consed formula. The row moves from about 1.93s at 5ab2d16 to about 5ms locally, and Callgrind instruction count drops by roughly 47x after the polarity memo. The six-row local sample still solves only 2/6 at 20s, so this is a targeted overhead cleanup rather than a broad CPAchecker solution; remaining timeouts are now in real mixed-theory search/model-separation work.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-cpachecker-gap-sample-db1baca",
+      "date": "2026-08-01",
+      "kind": "benchmark",
+      "scope": "Post-commit local rerun of the six-instance CPAchecker QF_UFLRA representative gap sample after db1baca.",
+      "commit": "db1baca on nelson-oppen-closure-methods",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo Release build reporting git db1baca; CaDiCaL cadical-3.0.0-7b99c07"
+      },
+      "commands": {
+        "build": "cmake --build build --target primo -j2 && ./build/primo --version",
+        "sample": "python3 scripts/bench_qf_uf_full.py --repo /workspace --root tmp/QF_UFLRA --manifest /tmp/cpachecker_gap_sample.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 20 --out results/local-cpachecker-gap-sample-db1baca.csv --summary results/local-cpachecker-gap-sample-db1baca-summary.csv --log-dir results/local-cpachecker-gap-sample-db1baca-logs"
+      },
+      "inputs": {
+        "benchmark_root": "tmp/QF_UFLRA",
+        "manifest": "/tmp/cpachecker_gap_sample.txt",
+        "timeout_seconds": 20,
+        "instances": 6
+      },
+      "artifacts": {
+        "csv": "results/local-cpachecker-gap-sample-db1baca.csv",
+        "summary": "results/local-cpachecker-gap-sample-db1baca-summary.csv",
+        "logs": "results/local-cpachecker-gap-sample-db1baca-logs/",
+        "evidence_status": "local_ignored_outputs"
+      },
+      "summary": {
+        "total": 6,
+        "solved": 2,
+        "sat": 1,
+        "unsat": 1,
+        "timeout": 4,
+        "unsupported": 0,
+        "wrong": 0,
+        "timed_out_with_stats": 4,
+        "par2": 166.113644,
+        "family": {
+          "cpachecker-induction-svcomp14": {
+            "total": 6,
+            "solved": 2,
+            "timeout": 4,
+            "wrong": 0
+          }
+        },
+        "rows": [
+          {
+            "file": "cpachecker-induction.test_locks_5_true-unreach-call_false-termination.c.smt2",
+            "status": "ok",
+            "answer": "unsat",
+            "seconds": 0.006628,
+            "time_total_us": 4551,
+            "time_solve_us": 3850,
+            "no_purification_skipped_no_sites": 1
+          },
+          {
+            "file": "cpachecker-induction.test_locks_14_false-unreach-call.c.smt2",
+            "status": "timeout",
+            "answer": "unknown",
+            "seconds": 20.021603,
+            "parse_frontend_preprocess_us": 1829
+          },
+          {
+            "file": "cpachecker-induction.s3_srvr_6_false-unreach-call.cil.c.smt2",
+            "status": "timeout",
+            "answer": "unknown",
+            "seconds": 20.023224,
+            "parse_frontend_preprocess_us": 1519
+          },
+          {
+            "file": "cpachecker-induction.linear_search_false-unreach-call.i.smt2",
+            "status": "timeout",
+            "answer": "unknown",
+            "seconds": 20.026188,
+            "parse_frontend_preprocess_us": 1543
+          },
+          {
+            "file": "cpachecker-induction.email_spec3_product18_false-unreach-call.cil.c.smt2",
+            "status": "timeout",
+            "answer": "unknown",
+            "seconds": 20.022102,
+            "parse_frontend_preprocess_us": 7188
+          },
+          {
+            "file": "cpachecker-induction.m0_false-unreach-call_drivers-staging-comedi-drivers-ni_660x-ko--107_1a--adbbc36-1.c.smt2",
+            "status": "ok",
+            "answer": "sat",
+            "seconds": 6.107016,
+            "time_total_us": 6103773,
+            "time_solve_us": 6102518
+          }
+        ],
+        "notable_stat_totals": {
+          "no_interface_model_separation_candidates": 29337,
+          "no_interface_model_separation_search_capped": 5,
+          "no_interface_arrangement_separations": 968,
+          "no_interface_equalities_propagated": 695,
+          "no_purification_skipped_no_sites": 1
+        }
+      },
+      "interpretation": "The committed overhead fixes hold on the representative row, but the sample still solves 2/6 with four 20s timeouts. Parsing/frontend/preprocessing are small on the timeout rows; remaining work is in QF_UFLRA solve/search, especially model-separation/arrangement behavior rather than parser or preprocessing overhead.",
+      "evidence_status": "current"
     }
   ]
 }
