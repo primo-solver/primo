@@ -6,7 +6,7 @@ set -euo pipefail
 SEEDS="benchmarks/seeds/qf_uf"
 SOLVER="build/primo --quiet"
 REF="z3 model_validate=true"
-SECONDS=300
+WALL_SECONDS=300
 ITERATIONS=50
 SOLVER_TIMEOUT=8
 BUGS="yinyang_bugs"
@@ -53,7 +53,7 @@ while (($#)); do
         --seeds) SEEDS="$2"; shift 2 ;;
         --solver) SOLVER="$2"; shift 2 ;;
         --ref) REF="$2"; shift 2 ;;
-        --seconds) SECONDS="$2"; shift 2 ;;
+        --seconds) WALL_SECONDS="$2"; shift 2 ;;
         --iterations) ITERATIONS="$2"; shift 2 ;;
         --solver-timeout) SOLVER_TIMEOUT="$2"; shift 2 ;;
         --bugs) BUGS="$2"; shift 2 ;;
@@ -122,7 +122,34 @@ cmd+=("${EXTRA_ARGS[@]}")
 cmd+=("$SOLVER;$REF" "$SEEDS")
 
 echo "YinYang command:"
-printf '  %q' timeout "$SECONDS" "${cmd[@]}"
+printf '  %q' timeout "$WALL_SECONDS" "${cmd[@]}"
 echo
 
-timeout "$SECONDS" "${cmd[@]}"
+exit_code=0
+timeout "$WALL_SECONDS" "${cmd[@]}" || exit_code=$?
+
+# Reaching --seconds is how a time-boxed campaign is *supposed* to end, but
+# `timeout` reports it as exit 124, which under the gate's `set -e` marks the
+# whole Slurm task FAILED. Job 118548's four typefuzz shards each ran the full
+# 90 minutes, found nothing, and were recorded as failures. Distinguish the
+# two, and say what the run is and is not evidence for: typefuzz writes each
+# bug to --bugs as it finds it, so an empty bugs/ after a wall-terminated run
+# does mean no bug was found in that time -- but the seeds-processed summary
+# never printed, so it is not evidence that every seed was covered.
+found=0
+if [[ -d $BUGS ]]; then
+    found=$(find "$BUGS" -mindepth 1 -type f | wc -l)
+fi
+
+if (( exit_code == 124 )); then
+    echo "yinyang_fuzz: reached the ${WALL_SECONDS}s wall; this is a time-boxed run, not a failure."
+    echo "yinyang_fuzz: $found bug file(s) in $BUGS. No seeds-processed summary: the run was cut short, so coverage of every seed is NOT established."
+    exit 0
+fi
+
+if (( exit_code != 0 )); then
+    echo "yinyang_fuzz: $TYPEFUZZ exited $exit_code ($found bug file(s) in $BUGS)" >&2
+    exit "$exit_code"
+fi
+
+echo "yinyang_fuzz: completed; $found bug file(s) in $BUGS"
