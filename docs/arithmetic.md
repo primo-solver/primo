@@ -709,7 +709,66 @@ work wherever it was triggered.
 
 ### Where QF_LRA work stands, and what is open (2026-08-01)
 
-**Three-solver comparison at 300s, all 595 scrambled competition files**
+**The complete non-incremental QF_LRA division, 1,753 files, 300s**
+(job 118382):
+
+| solver | solved | PAR2 | wrong |
+|---|---|---|---|
+| **primo** | **1631** (93.0%) | **94992** | **0** |
+| z3 5.0.0 | 1584 (90.4%) | 128079 | 0 |
+| cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
+
+**Zero wrong answers and zero cross-solver disagreements.** Every file in
+this set carries `(set-info :status)`, so unlike the scrambled set the
+harness's own wrong-answer column is live: this is ground-truth checking on
+1,753 files, and the strongest correctness evidence QF_LRA has.
+
+77 files only Primo solves against 30 only z3 solves; against cvc5, 130 to
+10.
+
+**Where the lead comes from** (delta against z3):
+
+| family | n | primo | z3 | cvc5 | vs z3 |
+|---|---|---|---|---|---|
+| 2017-Heizmann-UltimateInvariantSynthesis | 58 | 41 | 22 | 26 | **+19** |
+| LassoRanker | 419 | 347 | 331 | 266 | **+16** |
+| latendresse | 18 | 15 | 8 | 0 | **+7** |
+| tta_startup | 72 | 72 | 68 | 70 | +4 |
+| 2019-ezsmt | 105 | 103 | 100 | 99 | +3 |
+| miplib | 42 | 23 | **25** | 21 | -2 |
+| *twelve others* | | | | | tie |
+
+Twelve families tie, most because they are saturated (meti-tarski 488/488,
+sc 144/144, sal 107/107, DTP-Scheduling 91/91). **`miplib` is the only
+family where z3 leads**, 25 to 23 -- consistent with King, Barrett & Tinelli
+finding that CVC4's LP/MIP integration paid off on exactly that family and
+essentially nowhere else in QF_LRA.
+
+*`latendresse` is worth noting*: 15 of 18 against z3's 8 and cvc5's 0. It
+was 0/15 before [H3](qf-lra-heuristics.md#h3), and it is the family the SOI
+paper was written for.
+
+**The 595-file scrambled subset is not representative.** It gave a +8 lead;
+the division gives +47. The scrambled sample under-weights precisely the
+families Primo is strongest on -- Heizmann, LassoRanker and latendresse
+alone account for +42 of the +47. Comparisons quoted from the scrambled set
+should be read as a hard sample rather than as a division result.
+
+*What this is not.* Not a competition result. SMT-COMP uses a 1200s
+timeout, competition-entrant binaries and its own scoring; these are
+`contrib` builds at 300s, and no official SMT-COMP logs are available here.
+Nothing about placement follows.
+
+**How it got here.** On the scrambled subset, 369 solved at 60s on
+2026-07-31 to 439, via [H8](qf-lra-heuristics.md#h8) (merge instead of
+sort, +9/-0), [H9](qf-lra-heuristics.md#h9) (bounds-only backtracking,
++32/-11) and [H10](qf-lra-heuristics.md#h10) (delta-maintained
+`occurs_in_`, +41/-0). Five other directions were measured and rejected in
+the same period.
+
+#### The 595-file scrambled subset at 300s, for comparison
+
+**Three-solver comparison at 300s, all 595 scrambled competition files****Three-solver comparison at 300s, all 595 scrambled competition files**
 (job 118310; z3 and cvc5 re-run because the timeout differs from every
 stored result):
 

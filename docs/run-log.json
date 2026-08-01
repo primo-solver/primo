@@ -12617,6 +12617,40 @@
       "artifacts": "llm2smt-slurm:<slurm-workdir>/results/qf-lra-scrambled-118310/ (60 shard CSVs plus summaries)",
       "docs": "docs/arithmetic.md's QF_LRA standing section.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-lra-full-division-300s",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "benchmark",
+      "scope": "The complete non-incremental SMT-LIB QF_LRA division -- 1,753 files across 17 families -- against z3 and cvc5 at 300s. Every previous QF_LRA comparison used the 595-file scrambled subset.",
+      "commit": "aa44320",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at aa44320 (H10 code commit; later commits are docs only), z3 5.0.0 and cvc5 1.3.4 from contrib/local",
+        "notes": "Job 118382, 3 solvers x 40 shards = 120 tasks, all COMPLETED, 40/40 shard CSVs per solver."
+      },
+      "command": {
+        "job": "sbatch --array=0-119 --time=08:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-full-division.txt (1,753 files, 17 families)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "primo 1631/1753 (93.0%) PAR2 94992; z3 1584 (90.4%) PAR2 128079; cvc5 1511 (86.2%) PAR2 181248. Primo leads by 47 files over z3 and PAR2 is 26% better.",
+        "soundness": "ZERO wrong answers for all three solvers, and zero cross-solver disagreements. This set carries (set-info :status) on every file, so unlike the scrambled set the harness's own wrong-answer column is live -- this is ground-truth checking on 1,753 files, the strongest correctness evidence obtained for QF_LRA.",
+        "head_to_head": "77 files only Primo solves against 30 only z3 solves; against cvc5 it is 130 to 10.",
+        "where_the_lead_comes_from": "Family deltas against z3: 2017-Heizmann-UltimateInvariantSynthesis +19 (41 of 58 against 22), LassoRanker +16 (347 of 419 against 331), latendresse +7 (15 of 18 against 8), tta_startup +4, 2019-ezsmt +3. Twelve families are exact ties, most of them saturated (meti-tarski 488/488, sc 144/144, DTP-Scheduling 91/91, sal 107/107). The single family where z3 leads is miplib, 25 to 23.",
+        "contrast_with_the_scrambled_subset": "On the 595-file scrambled set the lead was +8; here it is +47. The scrambled sample is not representative of the division -- it under-weights exactly the families Primo is strongest on (Heizmann invariant synthesis, LassoRanker, latendresse), and those three account for +42 of the +47.",
+        "latendresse_note": "15 of 18 against z3's 8 and cvc5's 0. That family was 0/15 before item H3 and is the one the SOI paper was written for; it is now a Primo strength rather than a weakness.",
+        "what_this_is_not": "Not a competition result: SMT-COMP uses a 1200s timeout, competition-entrant binaries and its own scoring. These are contrib builds of z3 5.0.0 and cvc5 1.3.4 at 300s. No official SMT-COMP logs are available here, so nothing about placement follows."
+      },
+      "artifacts": "llm2smt-slurm:<slurm-workdir>/results/qf-lra-scrambled-118382/ (120 shard CSVs plus summaries)",
+      "docs": "docs/arithmetic.md's QF_LRA standing section.",
+      "evidence_status": "current"
     }
   ]
 }
