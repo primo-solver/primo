@@ -482,11 +482,6 @@ class LraTableau {
   // basis-dependent and so has to be restored.
   bool trails_assignments_and_pivots() const { return rule_ == PivotingRule::Soi; }
 
-  // Removes one "var occurs in basic_var's row" listing. Linear in that
-  // listing's length, so pivot() calls it only where a variable genuinely
-  // leaves a row -- see its delta-maintenance comment.
-  void drop_occurrence(LraVarId var, LraVarId basic_var);
-
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
   void undo(const TrailEntry& entry);
   void rebuild_occurs_in_index();
@@ -629,9 +624,12 @@ class LraTableau {
   // in check() -- no separate SOI-specific bookkeeping needed.
   std::set<LraVarId> violated_vars_;
   std::vector<TrailEntry> trail_;
-  // Reused across pivot()'s per-affected-row combine step and
-  // set_soi_direction()'s f-row combine step, both of which need to merge
-  // two sparse coefficient rows. Profiling (perf, on
+  // set_soi_direction()'s f-row combine buffer, and since item H8 its only
+  // user: pivot()'s affected-row loop used to share it but now merges two
+  // ordered rows straight into the rebuilt row, needing no scratch at all.
+  // The allocation history below is why it is a reused flat vector rather
+  // than a fresh container, and still applies to the remaining user.
+  // Profiling (perf, on
   // tmp/QF_LRA/sc/sc-21.induction3.cvc.smt2 and
   // tmp/QF_LRA/uart/uart-18.induction.cvc.smt2, both of which time out at
   // 10s while z3/cvc5 solve in under 1s) showed malloc/free/GMP-allocation
@@ -642,11 +640,9 @@ class LraTableau {
   // (clear() frees each node). A flat vector, sorted then merged, does the
   // same combine with only this member's own backing array (which clear()
   // does NOT deallocate) -- no per-element heap allocation at all beyond
-  // each Rational's own unavoidable GMP storage. Safe to share one
-  // instance: neither user ever holds it populated across a call into the
-  // other (pivot()'s own set_soi_direction() call happens before pivot()'s
-  // own use of this member, and completes fully first), and LraTableau is
-  // not reentrant.
+  // each Rational's own unavoidable GMP storage. With H8 leaving a single
+  // user there is no sharing question left; LraTableau is not reentrant in
+  // any case.
   std::vector<std::pair<LraVarId, util::Rational>> combine_scratch_;
 };
 
