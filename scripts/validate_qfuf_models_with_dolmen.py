@@ -97,6 +97,10 @@ def first_answer(stdout: str) -> str:
     return ""
 
 
+def has_solver_error(stdout: str, stderr: str) -> bool:
+    return "(error" in stdout or "(error" in stderr
+
+
 def safe_stem(index: int, path: Path) -> str:
     stem = path.name.replace("/", "_").replace("\\", "_")
     return f"{index:05d}-{stem}"
@@ -301,7 +305,12 @@ def main() -> int:
                     )
                 )
                 validation_seconds += z3_seconds
-                if z3_status == "done" and first_answer(z3_stdout) == "sat":
+                if (
+                    z3_status == "done"
+                    and z3_exit == 0
+                    and not has_solver_error(z3_stdout, z3_stderr)
+                    and first_answer(z3_stdout) == "sat"
+                ):
                     dolmen_stdout_path.write_text(
                         dolmen_stdout
                         + "\n--- Z3 fallback stdout ---\n"
@@ -334,7 +343,13 @@ def main() -> int:
             if z3_status == "timeout":
                 outcome = "z3-timeout"
                 failures += 1
-            elif z3_answer == "sat" and assignments:
+            elif (
+                z3_status == "done"
+                and dolmen_exit == 0
+                and not has_solver_error(dolmen_stdout, dolmen_stderr)
+                and z3_answer == "sat"
+                and assignments
+            ):
                 outcome = "pass"
             elif z3_answer == "unsat":
                 outcome = "model-error"

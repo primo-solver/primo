@@ -90,6 +90,10 @@ alternatives considered before/while implementing it.
   rewritten to. This is a supported minimal LRA model subset, not a mixed
   QF_UFLRA model: Real functions, arrays, nonlinear arithmetic, and
   Nelson-Oppen combination models remain unsupported.
+- **QF_LRA fragment boundary** (`Frontend::declare_fun`): QF_LRA accepts free
+  constants, but rejects non-nullary `declare-fun` declarations. Uninterpreted
+  functions or predicates over arithmetic terms are QF_UFLRA/NO work, not pure
+  QF_LRA.
 - **Same-variable bound propagation** (Milestone 3b, `check_sat.cpp`; called
   same-*slack* propagation before item H1a, when a slack was the only thing a
   bound could live on): after each successful bound assertion,
