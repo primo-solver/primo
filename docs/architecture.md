@@ -138,6 +138,13 @@ memoize parameterized macro applications. This keeps ordinary argument-dependent
 macro expansion simple while avoiding repeated reconstruction of
 CPAchecker-style definition DAGs.
 
+Parameterized macro applications are not reparsed from text. The parser has
+already stored each body as an SMT-LIB syntax tree, and each application walks
+that stored body under fresh parameter bindings to build `TermId` values. A
+future optimization could compile such bodies once into a frontend template and
+instantiate the template by explicit `TermId` substitution, instead of walking
+the SMT-LIB body through the general expression builder for every application.
+
 SMT-LIB `Bool` is a first-class sort, so QF_UF inputs may pass Boolean formulas
 as arguments to uninterpreted functions. The frontend normalizes compound
 Boolean arguments by introducing a fresh Boolean constant and a propositional
