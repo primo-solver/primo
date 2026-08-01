@@ -237,16 +237,10 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     Row& other_row = rows_[other_basic];
     row_term_op_count_ += other_row.size() + new_entering_row.size();
 
-    util::Rational entering_in_other(0);
-    for (const auto& [var, coeff] : other_row) {
-      if (var == entering_var) {
-        entering_in_other = coeff;
-        continue;
-      }
-      auto& occurrences = occurs_in_[var];
-      occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
-                        occurrences.end());
-    }
+    const auto entering_pos =
+        std::lower_bound(other_row.begin(), other_row.end(), entering_var,
+                         [](const auto& term, LraVarId var) { return term.first < var; });
+    const util::Rational entering_in_other = entering_pos->second;
 
     // Both inputs are ordered by var id (the Row invariant), so combining
     // them is a linear two-way merge -- heuristics-note item H8. This used to concatenate them into
@@ -272,7 +266,6 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
       if (have_other && (!have_entering || other_row[i].first < new_entering_row[j].first)) {
         // Carried over unchanged, and nonzero by the Row invariant.
         rebuilt.emplace_back(other_row[i].first, other_row[i].second);
-        occurs_in_[other_row[i].first].push_back(other_basic);
         ++i;
       } else if (have_entering && (!have_other || new_entering_row[j].first < other_row[i].first)) {
         // A product of two nonzero rationals, so it cannot be zero either.
@@ -281,14 +274,23 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
         occurs_in_[new_entering_row[j].first].push_back(other_basic);
         ++j;
       } else {
-        // The only place a coefficient can cancel to zero, so the only
-        // place that needs the check -- the invariant says a stored
-        // coefficient is never zero.
+        // Present on both sides. The coefficients add, and this is the only
+        // place one can cancel to zero -- the Row invariant says a stored
+        // coefficient never is.
         util::Rational sum = other_row[i].second + entering_in_other * new_entering_row[j].second;
-        if (!sum.is_zero()) {
-          const LraVarId var = other_row[i].first;
+        const LraVarId var = other_row[i].first;
+        if (sum.is_zero()) {
+          // The variable leaves this row, so its occurrence entry goes with
+          // it. This is the *only* removal the loop performs: entering_var
+          // needs none (its whole list was cleared when it became basic),
+          // and every other term either stays put or is new.
+          std::vector<LraVarId>& occurrences = occurs_in_[var];
+          occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
+                            occurrences.end());
+        } else {
+          // Present before and after: the coefficient changed, the
+          // occurrence entry did not.
           rebuilt.emplace_back(var, std::move(sum));
-          occurs_in_[var].push_back(other_basic);
         }
         ++i;
         ++j;

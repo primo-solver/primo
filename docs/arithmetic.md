@@ -452,6 +452,20 @@ alternatives considered before/while implementing it.
     117227 (new default, fuzzsmt 3000: 2990 PASS/10 TIMEOUT) and 117228 (SOI,
     3000: 2908/92), each with opfuzz 14/14 seeds valid and two yinyang shards,
     0 bug triggers throughout. No crashes, no wrong answers anywhere.
+- **Delta-maintained `occurs_in_`** ([heuristics-note item H10](qf-lra-heuristics.md#h10),
+  2026-08-01, `lra_tableau.{hpp,cpp}`, **unconditional**): `pivot()` no longer
+  removes and re-adds every affected row's occurrence entries. `occurs_in_`
+  records only which rows mention a variable, never a coefficient, so a term
+  carried through a pivot keeps the entry it had; only cancellations remove
+  and only genuinely new terms add. Callgrind had put the round trip at ~91%
+  of instructions -- 40.1M `std::remove` calls scanning 37.6 billion elements
+  on `scrambled228965`.
+  - 1.15-4.85x on four mid-band instances, answers identical. `pivot`'s gprof
+    self time falls 10.04s -> 1.26s at an identical call count, and the
+    profile becomes arithmetic-dominated rather than bookkeeping-dominated.
+  - Guarded by `occurs_in_index_matches_full_rebuild()`, checked after every
+    pivot across all four pivoting rules -- a wrong index does not crash, it
+    makes `update()` skip a dependent row and yields a wrong answer later.
 - **Bounds-only backtracking** ([heuristics-note item H9](qf-lra-heuristics.md#h9), 2026-07-31, `lra_tableau.{hpp,cpp}`,
   **unconditional except under SOI**): `pop()` restores bounds and nothing
   else. It used to restore bounds, assignments *and* every pivot's row

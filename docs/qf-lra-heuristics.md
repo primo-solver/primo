@@ -22,6 +22,7 @@ order they were proposed, not the order they were implemented.
 | [H7](#h7) | Fixed-variable elimination (equality slacks) | implemented, **opt-in** -- did not clear its bar |
 | [H8](#h8) | Merge instead of sort in `pivot`'s affected-row loop | implemented, default; **zero regressions** |
 | [H9](#h9) | Bounds-only backtracking (the paper's own scheme) | implemented, default except SOI; largest single gain |
+| [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; 1.15-4.85x |
 
 Where the remaining gap is, and what has been ruled out, is [](#sec-6). Its
 ranked list of open directions is [](#sec-6-5): [D2](#d2) and [D4](#d4)
@@ -752,6 +753,66 @@ nets +21 because the wins land on instances near the timeout. The variance
 is inherent: keeping the basis across a backtrack keeps one that suited the
 *previous* subproblem.
 
+(h10)=
+### H10 -- Delta-maintained `occurs_in_`
+
+**Status: implemented, unconditional, promoted 2026-08-01.** The item
+[](#sec-6-2c) identified as the largest remaining engineering target, and
+the last of the three that started from a profile rather than a design.
+
+**The reasoning, which is the whole of it.** `occurs_in_[v]` records *which
+basic rows mention `v`* -- a set of row identities, with **no coefficient
+information whatsoever**. `pivot()`'s affected-row loop used to remove
+`other_basic` from every term's list up front and then re-add it for every
+term of the rebuilt row. For any variable present both before and after,
+that round trip removes an entry and puts back the identical entry. It is a
+no-op performed 40.1 million times, scanning 37.6 billion vector elements
+(see [](#sec-6-2c) for the measurement).
+
+Enumerate what a pivot actually does to one affected row, using the fact
+that both inputs are ordered by var id ([H8](#h8)'s invariant), so the merge
+already classifies every term into exactly one of four cases:
+
+| case | row membership | `occurs_in_` |
+|---|---|---|
+| in `other_row` only | stays, coefficient unchanged | **unchanged** |
+| in both, sum non-zero | stays, coefficient changed | **unchanged** -- no coefficients are recorded |
+| in both, sum cancels to zero | leaves the row | **remove** |
+| in `new_entering_row` only | newly enters the row | **add** (`push_back`, no scan) |
+| `entering_var` | leaves the row | **nothing** -- see below |
+
+So the only scan-bearing update left is cancellation, which is rare.
+`entering_var` needs no per-row removal because `pivot()` clears
+`occurs_in_[entering_var]` wholesale when it becomes basic -- it is basic
+afterwards and so belongs to no row's term list at all.
+
+**Result.** Paired interleaved A/B, two reps each, answers identical:
+`scrambled228965` 4.85x/4.50x, `scrambled259571` 2.85x/3.00x,
+`scrambled365036` 2.23x/2.35x, `scrambled339450` 1.15x/1.22x. gprof on
+`scrambled228965` shows `pivot`'s self time falling **10.04s -> 1.26s** at
+an identical 3,460 calls -- 90.7% of the profile down to 49.6% -- and what
+remains is arithmetic (`Rational::operator*` 6.7%, `update` 4.3%,
+`operator<` 3.9%) rather than bookkeeping.
+
+**Correctness.** The risk here is not a crash but a silently wrong index:
+`update()` would skip a dependent row, or sparse pricing misjudge a column,
+and the answer would be wrong much later and elsewhere.
+`occurs_in_index_matches_full_rebuild()` compares the maintained index
+against a rebuild, and two tests call it after *every* pivot across all four
+pivoting rules plus a dedicated cancellation case. Those tests were written
+before the working implementation and caught the first attempt (below).
+
+*A note on the first attempt, since the docs briefly recorded the wrong
+diagnosis.* It was reverted on 2026-07-31 after producing duplicate
+`occurs_in_` entries, and the failure was written up as an unlocated defect
+"surviving a cancellation-adjacent path". The real cause was duller: the
+patch that was supposed to rewrite the cancellation branch **silently did
+not apply** -- a multi-line pattern that no longer matched after
+clang-format reflowed it -- so that branch kept the old round-trip
+behaviour, adding entries the new code no longer removed. The algorithm was
+right the first time; the edit was not. The lesson is about verifying that
+an edit landed, not about the tableau.
+
 (h4)=
 ### H4 -- Batched bound assertion (deferred `update()`)
 
@@ -1290,44 +1351,19 @@ one linear pass: a term carried over unchanged needs *no* occurrence update
 at all, and only terms that genuinely enter the row (from the entering row)
 or leave it (cancelled to zero, or `entering_var` itself) need one.
 
-That is the clear next item, and it is larger than anything left in section
-6.5's direction list. Not attempted yet.
+That is [H10](#h10), implemented 2026-08-01: 1.15-4.85x, with `pivot`'s own
+profile share falling from 90.7% to 49.6%.
 
-#### Attempted 2026-07-31, reverted: delta-maintained `occurs_in_`
+#### The 2026-07-31 attempt, and why it failed
 
-The fix above was implemented and backed out the same day. It is recorded
-because the *reason* it failed is the useful part.
-
-The change: stop removing every term's occurrence entry and re-adding it,
-and instead touch only the variables that genuinely enter a row (from the
-entering row) or leave it (cancelled to zero). It builds and passes the
-pre-existing suite.
-
-It also **corrupts `occurs_in_`**, which the pre-existing suite did not
-notice. Two tests added alongside it do: they compare the index against a
-full rebuild after every pivot, across all four pivoting rules. The failure
-is duplicate entries -- `occurs_in_[y]` holding `{0,4,4,6,6}` where a rebuild
-gives `{0,4,6}` -- and duplicates compound, because a row listed twice in
-`occurs_in_[entering]` is rewritten twice by the affected-row loop.
-
-*The hypothesis worth recording, and its correction.* The first guess was
-that duplicates already existed and the round trip had been masking them:
-`std::remove` deletes **all** copies of a value, so remove-then-add silently
-repairs a duplicated entry, while a delta preserves it. That would have made
-this a latent bug the optimisation merely exposed. **It is wrong** -- with
-the round trip restored, the same tests pass, so the index is duplicate-free
-today and the duplicates were entirely self-inflicted by the delta.
-
-The defect was localised to a stale entry surviving a cancellation-adjacent
-path, but not root-caused before the attempt was stopped: this is the
-tableau's hottest and most correctness-critical loop, and there was a
-validated milestone in the same branch to protect.
-
-**What is kept:** `occurs_in_index_matches_full_rebuild()` and the two tests,
-which cost nothing against the current implementation and would catch this
-class of bug immediately on a second attempt. The prize is unchanged and
-still the largest item here -- ~91% of instructions, 37.6 billion element
-scans -- so this is worth retrying with the guard already in place.
+An earlier implementation of the above was reverted the same day after
+corrupting `occurs_in_`. The cause is recorded under [H10](#h10): the patch
+meant to rewrite the cancellation branch silently did not apply, so that
+branch kept adding entries the rest of the new code no longer removed. The
+algorithm was correct; the edit had not landed. The guard that caught it --
+`occurs_in_index_matches_full_rebuild()` plus two tests that call it after
+every pivot -- was written during that attempt and is why the second one
+could be trusted.
 
 ### 6.3 What this rules out
 
