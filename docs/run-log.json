@@ -12707,6 +12707,39 @@
         "Separately and still true: at a 20s reference timeout z3 5.0.0 does not answer the unmutated LassoRanker, latendresse, miplib or tropical-matrix seeds at all, so even with the size limit raised those iterations cannot yield a verdict without a longer --solver-timeout."
       ],
       "outcome": "Fixed in 22409b1: the gate now passes --file-size-limit 200000 (matching build_fuzz_seed_corpus.py's --max-bytes) and yinyang_fuzz.sh names oversized seeds on stderr before starting. A replacement campaign is required before citing mutation-fuzz coverage of the widened corpus."
+    },
+    {
+      "id": "2026-08-01-qf-lra-fuzzsmt-ladder-118548",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "fuzz",
+      "scope": "First campaign-tier QF_LRA generator fuzz run using the six-profile FuzzSMT parameter ladder rather than the stock defaults every prior run used. Six shards x 500 cases, one profile each.",
+      "commit": "9724b54",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at 9724b54, reference z3 5.0.0",
+        "notes": "Job 118548 tasks 0-5. All COMPLETED; 6 of 6 shard summary.csv files present, so no shard was lost to the wall (the 117248-117251 failure mode)."
+      },
+      "command": {
+        "job": "sbatch --array=0-10 --time=04:00:00 --job-name=primo-qflra-fuzz-ladder scripts/slurm_qfuf_fuzz_gate.sbatch with PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA, FUZZSMT_SHARDS=6, FUZZSMT_COUNT=500, FUZZSMT_TIMEOUT=10; profiles come from the script's built-in QF_LRA ladder and are echoed per shard into the task log"
+      },
+      "benchmark": {
+        "suite": "FuzzSMT-generated QF_LRA, six parameter profiles",
+        "logic": "QF_LRA",
+        "timeout_seconds": 10
+      },
+      "summary": {
+        "result": "3000 cases: 2959 PASS, 41 TIMEOUT. Zero wrong answers, zero crashes, zero reference disagreements.",
+        "per_profile_timeouts": "profile 0 (-Mbw 4, the historical setting) 2; profile 1 (-Mbw 16) 7; profile 2 (-Mv 5 -Mc 4 -Mbw 16) 19; profile 3 (+bool-and) 4; profile 4 (+bool-or) 5; profile 5 (-Mbw 32) 4. Concentrated in profile 2, the widest tableau, as the ladder intends.",
+        "timeouts_are_not_defects": "Sampled one of the 41: a 330 KB, 8,928-line formula that Primo answers sat in under 60s, agreeing with z3. fuzz_external.py copies every non-PASS case into bugs/, so the 41 files there are the timeouts, not bugs.",
+        "wall_times": "Shard elapsed 00:00:55, 01:52, 06:11, 01:21, 01:56, 01:38 -- profile 2 is the expensive one, matching the pre-submission measurement."
+      },
+      "caveats": [
+        "This job's mutation tasks (6-10) used z3 as the sole reference; Yices was added afterwards (commit 2da20f4) and is not reflected here.",
+        "Profile 1 (-Mbw 16) produced 7 timeouts against profile 0's 2. The pre-submission local measurement concluded -Mbw 16 is cost-neutral; that holds for the median but the tail is somewhat worse on cluster hardware. Not enough to change the profile, worth not overstating."
+      ],
+      "outcome": "The ladder works as designed and found no defect. Every QF_LRA generator-fuzz result before this one was obtained at FuzzSMT's stock QF_LRA defaults (max 3 Real variables, coefficients in [1,15]); this is the first covering wide coefficients, larger tableaux, and conjunctive/disjunctive Boolean layers."
     }
   ]
 }

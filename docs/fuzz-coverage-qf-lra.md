@@ -86,10 +86,80 @@ Two changes, since one alone would leave the trap armed:
 There is a second, independent effect worth knowing when reading mutation
 results on these families: at a 20-second reference timeout, z3 5.0.0 does not
 answer the unmutated seed from `LassoRanker`, `latendresse`, `miplib`, or
-`tropical-matrix` at all. Those iterations run but cannot yield a verdict.
-Raising `--solver-timeout` is the lever, at a proportional cost in throughput.
-That residue is genuinely covered by the differential benchmark runs, where the
-division's `:status` fields give an oracle needing no reference solver.
+`tropical-matrix` at all -- 8 of the 34 seeds. Those iterations run but cannot
+yield a verdict. That is what [](#sec-yices) addresses.
+
+(sec-yices)=
+## Yices as a second reference
+
+A reference solver that cannot answer a seed is not a reference for it. Since
+the seeds without an oracle were concentrated in the families the corpus had
+just been widened to include, it was worth asking whether a different reference
+does better. Measured 2026-08-01 on the corpus seeds:
+
+| seed | primo | z3 @60s | yices @60s |
+|---|---|---|---|
+| `latendresse-compact2b` | sat, 3.2s | **timeout** | **sat, 15.9s** |
+| `latendresse-compact2` | unsat, 2.7s | **timeout** | **unsat, 15.1s** |
+| `miplib_pp08a-9000` | sat, 54.2s | **timeout** | **sat, 4.7s** |
+| `miplib_pp08a-7350` | unknown | timeout | timeout |
+| `tropical-matrix` x2 | unknown | timeout | timeout |
+| `LassoRanker` x2 | unsat, ~3s | timeout | unsat, 109s |
+| `TM` x2, `Heizmann` x2 | fast | fast | fast |
+
+At the 20s mutation timeout **yices oracles 29 of 34 seeds against z3's 26**,
+and its failures are a strict subset of z3's, so the union is also 29. The
+three it adds are both `latendresse` seeds -- the family the widening existed
+to cover -- and one `miplib` seed.
+
+Yices does not subsume z3: both time out on `LassoRanker` at 20s and on
+`tropical-matrix` outright. So it is added as a second reference, not a
+replacement, which also buys reference cross-checking: `classify()` in
+`scripts/fuzz_external.py` reports `REF_DISAGREEMENT` when two references
+disagree with each other.
+
+It is also the cheaper reference. On 150 wide-coefficient generator cases it
+agreed with z3 on all 150 and ran 6x faster (0.3s against 1.9s).
+
+Two asides the measurements forced out, both worth remembering rather than
+re-deriving. `miplib_pp08a-9000`: yices 4.7s against primo's 54.2s -- `miplib`
+was already the one division family z3 leads on, and yices looks stronger there
+still. Conversely `LassoRanker`: primo 3s against yices 109s, about 36x the
+other way.
+
+The five seeds nobody oracles are covered by the differential benchmark runs
+instead, where the division's `:status` fields are an oracle needing no
+reference solver at all.
+
+### What adding a reference broke
+
+Two defects in `scripts/fuzz_external.py` were latent under one reference and
+live under two:
+
+- `classify()` returned `UNKNOWN_INVOLVED` whenever *any* reference answered
+  unknown. With two references, one timing out while the other answers
+  concretely is the ordinary case on hard inputs, so a genuine disagreement
+  with the concrete reference would have been filed as inconclusive. Now only
+  our own unknown, or no concrete reference at all, is inconclusive.
+- A reference missing from `PATH` was dropped silently, so a run requested with
+  two references and given one read as a complete result -- the same shape as
+  the "fuzzsmt is not installed; skipping" no-op gate. It now reports the
+  missing reference and exits non-zero if none is left, and the gate's
+  required-tool check covers every configured reference rather than just z3.
+
+### The clean-room line
+
+Yices is installed by `contrib/install_yices.py` (`make contrib-yices`) into
+`contrib/local`, which is gitignored and excluded from the cluster rsync. It is
+a reference solver only: run as a separate process, never linked, source never
+read.
+
+That boundary is sharper here than for z3 or cvc5. Yices is the solver Dutertre
+and de Moura wrote alongside "Integrating Simplex with DPLL(T)", the paper
+Primo's QF_LRA theory follows. Reading the paper is the whole point; reading
+the implementation would be a clean-room violation. Yices 2 is GPLv3 -- running
+a binary imposes no obligation, linking would, so the installer deliberately
+installs neither `lib/` nor `include/`.
 
 (sec-fuzzsmt-profiles)=
 ## The FuzzSMT parameter ladder
@@ -163,7 +233,20 @@ claim is that `-Mbw 16` costs nothing, not that it wins.
 
 ## Status
 
-450 local cases across profiles 1-3 against z3: all PASS, zero disagreements.
-Job 118543 reported 0 bug triggers, but over 22 of 34 seeds, for the reason in
-[](#sec-invalid-seeds) -- it is superseded, not evidence for the widened
-corpus. See `docs/run-log.json` for the per-run entries.
+Job 118548 ran the full ladder: 6 shards x 500 cases, all six shard CSVs
+present. **2959 PASS, 41 TIMEOUT, zero wrong answers and zero crashes.**
+Timeouts by profile were 2, 7, 19, 4, 5, 4 -- concentrated in profile 2, the
+widest tableau, as intended.
+
+Those 41 are throughput artifacts, not defects: sampling one, it is a 330 KB
+8,928-line formula that Primo answers `sat` in under 60s, agreeing with z3.
+`fuzz_external.py` copies every non-`PASS` case into `bugs/`, so **a non-empty
+`bugs/` directory is not a bug count** -- check the outcome column before
+reading it as one.
+
+The earlier job 118543 reported 0 bug triggers, but over 22 of 34 seeds, for
+the reason in [](#sec-invalid-seeds); it is superseded, not evidence for the
+widened corpus. Job 118548's own mutation tasks still used z3 as the only
+reference, predating [](#sec-yices).
+
+See `docs/run-log.json` for the per-run entries.
