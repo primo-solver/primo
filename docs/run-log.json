@@ -12584,6 +12584,39 @@
       },
       "docs": "docs/qf-lra-heuristics.md item H10; docs/arithmetic.md's Milestone roadmap.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-lra-three-way-300s",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "benchmark",
+      "scope": "Three-solver comparison at a realistic budget after items H8, H9 and H10: all 595 scrambled QF_LRA competition files at 300s, Primo against z3 and cvc5.",
+      "commit": "aa44320",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at aa44320 (the H10 code commit; later commits are docs only), z3 5.0.0 and cvc5 1.3.4 as built in contrib/local",
+        "notes": "z3 and cvc5 were deliberately re-run despite being unchanged: the 300s timeout differs from every stored run, so earlier numbers do not transfer. Job 118310, 3 solvers x 20 shards = 60 tasks, all COMPLETED, 20/20 shard CSVs each."
+      },
+      "command": {
+        "job": "sbatch --array=0-59 --job-name=primo-qflra-3way-300s --time=08:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_TIMEOUT=300 and all three solvers"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-competition.txt (595 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "primo 515/595 (86.6%) PAR2 61303; z3 507 (85.2%) PAR2 66718; cvc5 465 (78.2%) PAR2 96616. Primo leads on both solved count and PAR2.",
+        "soundness": "ZERO cross-solver disagreements across 595 files and three solvers. The scrambled set carries no :status, so cross-solver agreement is the only soundness signal available and this is the strongest form of it obtained so far.",
+        "head_to_head": "Against z3 the solvers are complementary rather than dominating: 30 files only Primo solves, 22 only z3 solves, so 52 of 595 are decided by exactly one of them. Against cvc5 it is 59 to 9.",
+        "the_campaign_band_is_narrowed_not_closed": "By file size: 0-50KB all three solve 179/179; 50-500KB primo 173, z3 157, cvc5 154; 500KB-5MB primo 134, z3 141, cvc5 118; >5MB primo 29, z3 30, cvc5 14. So the 500KB-5MB band that this whole campaign was about is now -7 against z3 rather than -56, but it has NOT flipped. Primo's overall lead comes from the 50-500KB band (+16), where it was already ahead before the campaign.",
+        "consistency_with_the_60s_runs": "At 60s the H10 job had Primo 439 against z3's 430 from the preserved 2026-07-29 CSVs, +9. At 300s it is 515 to 507, +8. The two budgets agree on the sign and rough size of the lead.",
+        "what_this_is_not": "Not a competition result. SMT-COMP uses a 1200s timeout, competition-entrant binaries, and its own scoring; these are contrib builds of z3 5.0.0 and cvc5 1.3.4 on one 595-file scrambled set. No official SMT-COMP logs are available here, so no ranking can be inferred."
+      },
+      "artifacts": "llm2smt-slurm:<slurm-workdir>/results/qf-lra-scrambled-118310/ (60 shard CSVs plus summaries)",
+      "docs": "docs/arithmetic.md's QF_LRA standing section.",
+      "evidence_status": "current"
     }
   ]
 }

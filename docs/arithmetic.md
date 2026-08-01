@@ -707,28 +707,50 @@ item H7's elimination pivots -- which happen inside
 `:lra.pivot-row-updates` / `:lra.pivot-term-ops`, which count every pivot's
 work wherever it was triggered.
 
-### Where QF_LRA work stands, and what is open (2026-07-31)
+### Where QF_LRA work stands, and what is open (2026-08-01)
 
-**The whole remaining gap against z3 is one band.** On the 595-file scrambled
-competition set at 60s, Primo solves **439** (job 118218, after items H8, H9
-and H10) to z3's 429 and cvc5's 351 -- up from 369 on 2026-07-31. **Primo is
-now ahead of z3 on this set**, by roughly ten files; see the drift caveat
-below before quoting that precisely. The 500KB-5MB band accounts for essentially all of
-that deficit, and cvc5 solves only 9 of the 59 gap files there -- so it is a
-z3-specific capability, not general difficulty.
+**Three-solver comparison at 300s, all 595 scrambled competition files**
+(job 118310; z3 and cvc5 re-run because the timeout differs from every
+stored result):
 
-*Read the reference figures as approximate, and check where they came from.*
-The directory `docs/run-log.json` cites for z3's 429 (job 117487) **no longer
-exists**. Surviving CSVs from a 2026-07-29 run of the same set give z3
-**430/595, PAR2 23078** against the log's 429/23138 -- most likely two
-separate z3 runs one file apart rather than a transcription error, but only
-the surviving set can be re-analysed. Those CSVs are now preserved under
-`results/reference-qf-lra-scrambled-60s-2026-07-29/` with a provenance note.
-A three-solver run at a longer timeout is what should settle this. Cross-job drift at a 60s timeout on a shared
-cluster is a few files in each direction -- job 117940's own pre-H8 baseline
-solved 369 where the 2026-07-30 run recorded 373 for a comparable
-configuration. **Within-job paired deltas are the trustworthy numbers here;
-absolute cross-job counts are good to about ±4 files.**
+| solver | solved | PAR2 |
+|---|---|---|
+| **primo** | **515** (86.6%) | **61303** |
+| z3 5.0.0 | 507 (85.2%) | 66718 |
+| cvc5 1.3.4 | 465 (78.2%) | 96616 |
+
+**Zero cross-solver disagreements** over 595 files and three solvers -- the
+strongest soundness signal this set can give, since it carries no
+`:status`.
+
+Primo and z3 are **complementary rather than one dominating**: 30 files only
+Primo solves, 22 only z3 solves. Against cvc5 it is 59 to 9.
+
+**The band this campaign was about is narrowed, not closed:**
+
+| file size | n | primo | z3 | cvc5 |
+|---|---|---|---|---|
+| 0-50 KB | 179 | 179 | 179 | 179 |
+| 50-500 KB | 192 | **173** | 157 | 154 |
+| 500 KB-5 MB | 174 | 134 | **141** | 118 |
+| >5 MB | 50 | 29 | **30** | 14 |
+
+The 500KB-5MB band was **-56 against z3** on 2026-07-29 and is **-7** now.
+That is most of the deficit removed -- but it has not flipped, and Primo's
+overall lead comes from the 50-500KB band where it was already ahead before
+any of this work. The >5MB band is a tie.
+
+*What this is not.* Not a competition result. SMT-COMP uses a 1200s
+timeout, competition-entrant binaries and its own scoring; these are
+`contrib` builds on one 595-file scrambled set, and no official SMT-COMP
+logs are available here. It says Primo is competitive with z3 on this set at
+this budget, nothing about placement.
+
+**How it got here.** 369 solved at 60s on 2026-07-31 to 439 at 60s and 515
+at 300s, via [H8](qf-lra-heuristics.md#h8) (merge instead of sort, +9/-0),
+[H9](qf-lra-heuristics.md#h9) (bounds-only backtracking, +32/-11) and
+[H10](qf-lra-heuristics.md#h10) (delta-maintained `occurs_in_`, +41/-0).
+Five other directions were measured and rejected in the same period.
 
 **It is a constant factor, and a small one.** Re-run at 600s (job 117631),
 Primo solves 45 of those 59, median 167s. Against a 60s budget that is a
