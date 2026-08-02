@@ -12922,6 +12922,32 @@
         "The seed-corpus widening is still worth having: it broadens the shapes of the ~7.5% of mutants that do stay in QF_LRA. It just does not multiply the yield the way the seed count suggests."
       ],
       "outcome": "Recorded as a structural limit rather than a defect to fix. Hoisting declarations would recover cause 1, but cause 2 dominates and has no fix short of a logic-aware mutator, so it was not implemented. Generator fuzzing (the FuzzSMT ladder) remains the higher-yield path for QF_LRA and stays the primary gate."
+    },
+    {
+      "id": "2026-08-02-model-production-merge-review",
+      "started_at": "2026-08-02",
+      "recorded_at": "2026-08-02",
+      "kind": "analysis",
+      "scope": "Review of the model-production merge (origin/main, 9 commits) for QF_LRA correctness and performance regressions, against the pre-merge baseline 53d3d9d.",
+      "commit": "e8ac403",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo at the merge vs a git-worktree Release build of 53d3d9d; baseline verified BY CONTENT (0 vs 16 produce_model refs, model_builder.cpp 1 vs 273 lines), not by --version",
+        "notes": "Both binaries confirmed deterministic across repeated runs; cmake configurations compared and equal."
+      },
+      "summary": {
+        "correctness": "130 files, 8 per family across all 17 division families, both builds: zero wrong answers against declared :status. Answers identical except 3 files that moved unknown -> answered, all borderline at the 20s cap and confirmed solvable by both at 40s.",
+        "structural": "src/theory/ is byte-identical -- the tableau and H8/H9/H10 are untouched. The merge dropped no LRA work: 37 removed lines in check_sat.cpp are all signature/constructor changes, and every LRA knob is present with identical counts. Model paths are correctly gated on options.produce_model, which is settled before solving because all commands are parsed first.",
+        "defect_found": "The frontend interned a term per declared Real constant at declare-fun time, assigning TermIds in declaration order rather than first-use order. Preprocessing's Gaussian elimination pivots in ascending TermId order, so this silently changed which substitutions were accepted -- unconditionally, model requested or not. On miplib/vpm2-0: :preprocessing.solve-eqs.rewrites 390 -> 252, :lra.pivots 26890 -> 12537. Fixed in e3059e6 by recording SymbolId and materialising terms after the search.",
+        "post_fix_verification": "Non-time statistics identical on 31 of 31 A/B instances across 11 families. Preprocessing time 1894376us vs 1893674us, ratio 0.9996 -- the unconditional substitution-trail building added by the merge costs nothing measurable.",
+        "second_regression": "set-option moved from silently ignored to strictly parsed, so (set-option :verbosity (- 1)) is now rejected although SMT-LIB 2.6 permits an s-expression attribute value and z3 accepts it. No file in any local corpus uses set-option, so benchmarks are unaffected. Not fixed; recorded."
+      },
+      "caveats": [
+        "Wall-clock A/B could not resolve this. Two paired runs of the same 31 instances gave ratio 0.970 (before the fix) and 1.028 (after), while the CONTROL arm -- the same baseline binary on the same files -- moved 80.80s to 84.69s between runs, a 4.8% drift. The rig's noise floor exceeds the effect size, so neither ratio is evidence. The statistics-identity comparison is what settles it.",
+        "The three unknown -> answered files were first read as the new build being faster. That comparison was confounded: the baseline sweep ran concurrently with a timing probe while the new sweep ran alone. Re-running them uncontended showed both builds solve them.",
+        "The QF_LRA UF rejection added by 095e07f is a real behaviour change, but correct per the logic definition and no division file triggers it."
+      ],
+      "outcome": "Merge accepted. One defect found and fixed (e3059e6) with a regression test; one narrow spec regression recorded and left; the TermId-order coupling underneath opened as a docket (docs/termid-order-sensitivity.md) with H11 proposed behind --lra-gaussian-markowitz."
     }
   ]
 }
