@@ -13,6 +13,7 @@ BUGS="yinyang_bugs"
 SCRATCH="yinyang_scratch"
 FILE_SIZE_LIMIT=20000
 TYPEFUZZ="${TYPEFUZZ:-typefuzz}"
+YINYANG_INSTALL_SPEC="${YINYANG_INSTALL_SPEC:-yinyang}"
 DIAGNOSE=0
 KEEP_MUTANTS=0
 EXTRA_ARGS=()
@@ -37,7 +38,11 @@ Options:
   -h, --help               show this help
 
 Install:
-  python3 -m pip install yinyang z3-solver
+  python3 -m pip install "$YINYANG_INSTALL_SPEC" z3-solver
+
+For QF_LRA/QF_UFLRA campaigns, set YINYANG_INSTALL_SPEC to the patched fork
+until the package release includes the linear-Real mutation fix.
+  python3 -m pip install 'git+https://github.com/MikolasJanota/yinyang.git' z3-solver
 
 Example:
   scripts/yinyang_fuzz.sh \
@@ -73,7 +78,7 @@ if ! command -v "$TYPEFUZZ" >/dev/null 2>&1; then
 Error: '$TYPEFUZZ' not found.
 
 Install YinYang first:
-  python3 -m pip install yinyang z3-solver
+  python3 -m pip install "$YINYANG_INSTALL_SPEC" z3-solver
 
 Or pass --typefuzz /path/to/typefuzz.
 EOF

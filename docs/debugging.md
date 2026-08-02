@@ -505,6 +505,10 @@ representative benchmark-family shapes, not just tiny generic satisfiable and
 unsatisfiable formulas. In particular, keep seeds for QG-style finite-domain
 operation tables, Goel hardware-style formulas, NEQ/PEQ/SEQ finite-domain
 choices, and any minimized bug reproducer that previously escaped fuzzing.
+For QF_LRA and QF_UFLRA mutation campaigns, use the patched YinYang fork until
+the public package release includes the linear-Real mutation fix: older
+typefuzz builds can generate non-linear Real properties, so their arithmetic
+coverage is not acceptable fuzz-gate evidence.
 
 Long fuzzing campaigns should run on SLURM, not on developer workstations.
 Preserve generated failures under `yinyang_bugs/` until each one is copied back,
