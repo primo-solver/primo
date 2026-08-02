@@ -541,7 +541,7 @@ Deferred:
 - richer online conflict-clause injection;
 - minimal theory-propagation reasons;
 - proof output for preprocessing-generated lemmas;
-- model construction.
+- theory-facing EUF model fragments for combination and explanations.
 
 ## Paper Traceability
 

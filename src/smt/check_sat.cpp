@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <exception>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -24,10 +26,12 @@
 #include "sat/clause.hpp"
 #include "sat/ipasir_up.hpp"
 #include "sat/lit.hpp"
+#include "smt/model_builder.hpp"
 #include "smt/preprocessing.hpp"
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
 #include "theory/arithmetic/lra_tableau.hpp"
 #include "theory/equality/congruence_stats.hpp"
@@ -685,10 +689,22 @@ class Frontend {
     switch (command.kind) {
       case smtlib::CommandKind::Ignored:
         return;
+      case smtlib::CommandKind::SetOption:
+        if (command.option == ":produce-models") {
+          if (command.value == "true") {
+            produce_models_ = true;
+          } else if (command.value == "false") {
+            produce_models_ = false;
+          } else {
+            throw UnsupportedInput(":produce-models expects true or false");
+          }
+        }
+        return;
       case smtlib::CommandKind::SetLogic:
         if (command.logic != "QF_UF" && command.logic != "QF_LRA") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
         }
+        logic_ = command.logic;
         return;
       case smtlib::CommandKind::DeclareSort:
         symbols_.declare_sort(command.name);
@@ -711,10 +727,21 @@ class Frontend {
       case smtlib::CommandKind::CheckSat:
         saw_check_sat_ = true;
         return;
+      case smtlib::CommandKind::GetModel:
+        if (!saw_check_sat_) {
+          throw UnsupportedInput("get-model before check-sat is unsupported");
+        }
+        requested_model_ = true;
+        return;
     }
   }
 
   bool saw_check_sat() const { return saw_check_sat_; }
+  bool requested_model() const { return requested_model_; }
+  bool produce_models() const { return produce_models_; }
+  const std::vector<core::TermId>& declared_real_constants() const {
+    return declared_real_constants_;
+  }
   const core::SymbolTable& symbols() const { return symbols_; }
   const core::TermManager& terms() const { return terms_; }
   core::TermManager& terms() { return terms_; }
@@ -799,8 +826,14 @@ class Frontend {
       arg_sorts.push_back(lookup_sort_name(name));
     }
     const core::SortId result_sort = lookup_sort_name(command.result_sort);
+    if (logic_ == "QF_LRA" && !arg_sorts.empty()) {
+      throw UnsupportedInput("QF_LRA supports free constants but not uninterpreted functions");
+    }
     if (arg_sorts.empty()) {
-      symbols_.declare_constant(command.name, result_sort);
+      const core::SymbolId symbol = symbols_.declare_constant(command.name, result_sort);
+      if (result_sort == symbols_.real_sort()) {
+        declared_real_constants_.push_back(terms_.mk_constant(symbol));
+      }
     } else if (result_sort == symbols_.bool_sort()) {
       symbols_.declare_predicate(command.name, std::move(arg_sorts));
     } else {
@@ -848,10 +881,14 @@ class Frontend {
   std::unordered_map<std::string, Definition> definitions_;
   std::unordered_set<std::string> expanding_definitions_;
   std::vector<core::TermId> side_assertions_;
+  std::vector<core::TermId> declared_real_constants_;
+  std::optional<std::string> logic_;
   std::size_t auxiliary_counter_ = 0;
   std::size_t boolean_ites_ = 0;
   std::size_t auxiliary_ites_ = 0;
   bool saw_check_sat_ = false;
+  bool requested_model_ = false;
+  bool produce_models_ = false;
 };
 
 core::TermId TermBuilder::run(const smtlib::SExpr& root) {
@@ -1821,10 +1858,33 @@ void publish_theory_atom_purity_stats(const core::TermManager& terms,
                                       const std::vector<BooleanClausifier::TheoryAtom>& atoms,
                                       util::Statistics& statistics);
 
-CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
-                                          const std::vector<core::TermId>& assertions,
-                                          const CheckSatOptions& options,
-                                          util::Statistics& statistics) {
+void append_model_assignments(std::vector<TheoryModelAssignment>& target,
+                              const std::vector<TheoryModelAssignment>& source) {
+  target.insert(target.end(), source.begin(), source.end());
+}
+
+void append_boolean_model_assignments(
+    std::vector<TheoryModelAssignment>& target,
+    const std::vector<std::pair<core::TermId, bool>>& assignments) {
+  target.reserve(target.size() + assignments.size());
+  for (const auto& [term, value] : assignments) {
+    target.push_back(TheoryModelAssignment{term, value, false});
+  }
+}
+
+void append_equality_model_assignments(
+    core::TermManager& terms, std::vector<TheoryModelAssignment>& target,
+    const std::vector<std::pair<core::TermId, core::TermId>>& equalities) {
+  target.reserve(target.size() + equalities.size());
+  for (const auto& [lhs, rhs] : equalities) {
+    target.push_back(TheoryModelAssignment{terms.mk_eq(lhs, rhs), true, false});
+  }
+}
+
+CheckSatOutcome solve_boolean_conjunction(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   statistics.increment(kStatSolverBoolean);
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
@@ -1839,7 +1899,25 @@ CheckSatOutcome solve_boolean_conjunction(const core::TermManager& terms,
   statistics.increment(kStatSatSolveCalls);
   const CheckSatResult result = map_sat_result(backend.solve());
   publish_sat_stats(backend.statistics(), statistics);
-  return CheckSatOutcome{result, "", statistics};
+  if (result != CheckSatResult::Sat || !options.produce_model) {
+    return CheckSatOutcome{result, "", statistics, ""};
+  }
+
+  std::vector<TheoryModelAssignment> model_assignments;
+  model_assignments.reserve(preprocessing_model_assignments.size() +
+                            clausifier.theory_atoms().size());
+  append_model_assignments(model_assignments, preprocessing_model_assignments);
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+    const std::optional<bool> assignment = backend.value(var);
+    if (!assignment.has_value()) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
+                             statistics, ""};
+    }
+    const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
+    model_assignments.push_back(TheoryModelAssignment{atom.term, atom_value, false});
+  }
+  return CheckSatOutcome{result, "", statistics, build_qf_uf_model(terms, model_assignments)};
 }
 
 struct AssignedTheoryAtom {
@@ -3995,7 +4073,7 @@ struct PreparedLraTheory {
   PreparedLraTheory(const core::TermManager& terms,
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule, bool sparse_leaving,
-                    bool fixed_elimination);
+                    bool fixed_elimination, bool collect_model_variables);
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -4019,12 +4097,14 @@ struct PreparedLraTheory {
   // variables (PreparedAtom::is_arithmetic); non-arithmetic atoms' default
   // bound_var (0) is a sentinel and must not be mixed in.
   std::unordered_map<theory::arithmetic::LraVarId, std::vector<std::size_t>> atoms_by_bound_var;
+  std::unordered_map<core::TermId, theory::arithmetic::LraVarId> variables_by_term;
 };
 
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                      theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
-                                     bool sparse_leaving, bool fixed_elimination)
+                                     bool sparse_leaving, bool fixed_elimination,
+                                     bool collect_model_variables)
     : base_tableau(pivoting_rule) {
   base_tableau.set_sparse_leaving(sparse_leaving);
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
@@ -4035,6 +4115,9 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     }
     const theory::arithmetic::LraVarId id = base_tableau.add_variable();
     var_ids.emplace(term_id, id);
+    if (collect_model_variables) {
+      variables_by_term.emplace(term_id, id);
+    }
     return id;
   };
 
@@ -4104,6 +4187,220 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
   }
 
   base_tableau.set_fixed_elimination(fixed_elimination);
+}
+
+std::optional<util::Rational> positive_delta_upper_bound(theory::arithmetic::DeltaRational lhs,
+                                                         theory::arithmetic::DeltaRational rhs) {
+  const util::Rational rational_gap = rhs.rational - lhs.rational;
+  const util::Rational infinitesimal_diff = lhs.infinitesimal - rhs.infinitesimal;
+  if (rational_gap.sign() > 0 && infinitesimal_diff.sign() > 0) {
+    return rational_gap / infinitesimal_diff;
+  }
+  return std::nullopt;
+}
+
+void tighten_delta_upper_bound(std::optional<util::Rational>& upper,
+                               const std::optional<util::Rational>& candidate) {
+  if (!candidate.has_value() || candidate->sign() <= 0) {
+    return;
+  }
+  if (!upper.has_value() || candidate.value() < upper.value()) {
+    upper = candidate;
+  }
+}
+
+util::Rational choose_concrete_delta(const PreparedLraTheory& prepared,
+                                     const theory::arithmetic::LraTableau& tableau,
+                                     const std::vector<AssignedTheoryAtom>& assigned_atoms) {
+  std::optional<util::Rational> upper;
+  for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms.at(i);
+    if (!prepared_atom.is_arithmetic || assigned_atoms.at(i).filtered) {
+      continue;
+    }
+    const theory::arithmetic::DeltaRational value = tableau.assignment(prepared_atom.bound_var);
+    if (prepared_atom.relation == theory::arithmetic::LraRelation::Eq) {
+      continue;
+    }
+    const BoundAssertion assertion =
+        bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                        prepared_atom.asserts_lower_when_true, assigned_atoms.at(i).value);
+    if (assertion.is_upper) {
+      tighten_delta_upper_bound(upper, positive_delta_upper_bound(value, assertion.value));
+    } else {
+      tighten_delta_upper_bound(upper, positive_delta_upper_bound(assertion.value, value));
+    }
+  }
+  return upper.has_value() ? upper.value() / util::Rational(2) : util::Rational(1);
+}
+
+util::Rational concretize_delta_rational(theory::arithmetic::DeltaRational value,
+                                         const util::Rational& delta) {
+  return value.rational + value.infinitesimal * delta;
+}
+
+using RealModelValues = std::unordered_map<core::TermId, util::Rational>;
+
+std::optional<util::Rational> evaluate_real_model_term(const core::TermManager& terms,
+                                                       core::TermId term_id,
+                                                       const RealModelValues& values) {
+  const core::Term& term = terms.get(term_id);
+  if (term.sort != terms.symbols().real_sort()) {
+    return std::nullopt;
+  }
+  switch (term.kind) {
+    case core::TermKind::Rational:
+      return term.rational_value;
+    case core::TermKind::Constant: {
+      const auto found = values.find(term_id);
+      return found == values.end() ? std::nullopt : std::optional<util::Rational>{found->second};
+    }
+    case core::TermKind::Plus: {
+      util::Rational sum(0);
+      for (const core::TermId child : term.children) {
+        const std::optional<util::Rational> child_value =
+            evaluate_real_model_term(terms, child, values);
+        if (!child_value.has_value()) {
+          return std::nullopt;
+        }
+        sum = sum + child_value.value();
+      }
+      return sum;
+    }
+    case core::TermKind::Times: {
+      const std::optional<util::Rational> child_value =
+          evaluate_real_model_term(terms, term.children.at(0), values);
+      if (!child_value.has_value()) {
+        return std::nullopt;
+      }
+      return term.rational_value * child_value.value();
+    }
+    default:
+      return std::nullopt;
+  }
+}
+
+bool assign_real_model_value(const core::TermManager& terms, RealModelValues& values,
+                             core::TermId target, const util::Rational& value) {
+  const core::Term& term = terms.get(target);
+  if (term.kind != core::TermKind::Constant || term.sort != terms.symbols().real_sort()) {
+    return false;
+  }
+  const auto [it, inserted] = values.emplace(target, value);
+  if (!inserted && it->second != value) {
+    it->second = value;
+    return true;
+  }
+  return inserted;
+}
+
+void apply_real_preprocessing_model_assignments(
+    const core::TermManager& terms, RealModelValues& values,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (const TheoryModelAssignment& assignment : preprocessing_model_assignments) {
+      if (assignment.filtered || !assignment.value) {
+        continue;
+      }
+      const core::Term& equality = terms.get(assignment.term);
+      if (equality.kind != core::TermKind::Equality || equality.children.size() != 2) {
+        continue;
+      }
+      const core::TermId lhs = equality.children.at(0);
+      const core::TermId rhs = equality.children.at(1);
+      if (terms.get(lhs).sort != terms.symbols().real_sort() ||
+          terms.get(rhs).sort != terms.symbols().real_sort()) {
+        continue;
+      }
+      const std::optional<util::Rational> lhs_value = evaluate_real_model_term(terms, lhs, values);
+      const std::optional<util::Rational> rhs_value = evaluate_real_model_term(terms, rhs, values);
+      if (rhs_value.has_value()) {
+        changed |= assign_real_model_value(terms, values, lhs, rhs_value.value());
+      }
+      if (lhs_value.has_value()) {
+        changed |= assign_real_model_value(terms, values, rhs, lhs_value.value());
+      }
+    }
+  }
+}
+
+std::string smtlib_rational(const util::Rational& value) {
+  const std::string text = value.to_string();
+  const std::size_t slash = text.find('/');
+  if (slash == std::string::npos) {
+    if (text.starts_with('-')) {
+      return "(- " + text.substr(1) + ")";
+    }
+    return text;
+  }
+  const bool negative = text.starts_with('-');
+  const std::string numerator = negative ? text.substr(1, slash - 1) : text.substr(0, slash);
+  const std::string denominator = text.substr(slash + 1);
+  const std::string fraction = "(/ " + numerator + " " + denominator + ")";
+  return negative ? "(- " + fraction + ")" : fraction;
+}
+
+std::string build_real_constant_model(const core::TermManager& terms,
+                                      const std::vector<core::TermId>& model_terms,
+                                      const RealModelValues& values) {
+  std::ostringstream model;
+  model << "(model\n";
+  for (const core::TermId term_id : model_terms) {
+    const core::Term& term = terms.get(term_id);
+    if (term.kind != core::TermKind::Constant || term.sort != terms.symbols().real_sort()) {
+      continue;
+    }
+    const core::Symbol& symbol = terms.symbols().get_symbol(term.symbol);
+    const auto found = values.find(term_id);
+    const util::Rational value = found == values.end() ? util::Rational(0) : found->second;
+    model << "  (define-fun " << symbol.name << " () Real " << smtlib_rational(value) << ")\n";
+  }
+  model << ")";
+  return model.str();
+}
+
+std::string build_qf_lra_model(
+    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
+    const std::vector<AssignedTheoryAtom>& assigned_atoms) {
+  const util::Rational concrete_delta = choose_concrete_delta(prepared, tableau, assigned_atoms);
+  RealModelValues values;
+  values.reserve(prepared.variables_by_term.size() + model_terms.size());
+  for (const auto& [term_id, variable] : prepared.variables_by_term) {
+    values.emplace(term_id,
+                   concretize_delta_rational(tableau.assignment(variable), concrete_delta));
+  }
+  apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
+  return build_real_constant_model(terms, model_terms, values);
+}
+
+std::string build_qf_lra_preprocessing_only_model(
+    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
+  RealModelValues values;
+  values.reserve(model_terms.size());
+  apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
+  return build_real_constant_model(terms, model_terms, values);
+}
+
+std::vector<AssignedTheoryAtom> assigned_atoms_from_backend(
+    const sat::IpasirUpBackend& backend,
+    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms) {
+  std::vector<AssignedTheoryAtom> assigned_atoms;
+  assigned_atoms.reserve(theory_atoms.size());
+  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
+    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+    const std::optional<bool> assignment = backend.value(var);
+    if (!assignment.has_value()) {
+      throw UnsupportedInput("SAT backend did not assign theory atom");
+    }
+    const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
+    assigned_atoms.push_back(assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value));
+  }
+  return assigned_atoms;
 }
 
 // Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
@@ -4478,6 +4775,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   // comment for the verified invariant), so there is nothing left to
   // recompute once solve() actually returns SAT.
   std::optional<sat::Clause> conflict() const { return conflict_; }
+  const theory::arithmetic::LraTableau& tableau() const { return tableau_; }
 
 #if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
@@ -4859,9 +5157,11 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
 };
 #endif  // PRIMO_HAVE_IPASIR
 
-CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
-                                  const std::vector<core::TermId>& assertions,
-                                  const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_lra_impl(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const std::vector<core::TermId>& model_terms,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
+    const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
@@ -4875,7 +5175,7 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
 
   const PreparedLraTheory prepared_theory(
       terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
   publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR
@@ -4901,7 +5201,7 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
     if (sat_result != sat::SatResult::Sat) {
-      return CheckSatOutcome{map_sat_result(sat_result), "", statistics};
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
     statistics.increment(kStatLraTheoryChecks);
 
@@ -4933,12 +5233,45 @@ CheckSatOutcome solve_qf_lra_impl(const core::TermManager& terms,
 #endif
     if (!conflict_clause.has_value()) {
       publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
+      if (!options.produce_model) {
+        return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
+      }
+      const std::vector<AssignedTheoryAtom> assigned_atoms =
+          assigned_atoms_from_backend(backend, clausifier.theory_atoms());
+#if PRIMO_HAVE_IPASIR
+      return CheckSatOutcome{
+          CheckSatResult::Sat, "", statistics,
+          build_qf_lra_model(terms, model_terms, preprocessing_model_assignments, prepared_theory,
+                             online_propagator.tableau(), assigned_atoms)};
+#else
+      theory::arithmetic::LraTableau model_tableau = prepared_theory.base_tableau;
+      for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+        const AssignedTheoryAtom& atom = assigned_atoms[i];
+        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_theory.atoms[i];
+        if (!prepared_atom.is_arithmetic || atom.filtered) {
+          continue;
+        }
+        const auto conflict = assert_lra_atom_bound(
+            model_tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs,
+            atom.value, prepared_atom.asserts_lower_when_true, blocking_lit(atom));
+        if (conflict.has_value()) {
+          return CheckSatOutcome{CheckSatResult::Unknown,
+                                 "LRA model reconstruction found a bound conflict", statistics, ""};
+        }
+      }
+      if (model_tableau.check().has_value()) {
+        return CheckSatOutcome{CheckSatResult::Unknown,
+                               "LRA model reconstruction found a tableau conflict", statistics, ""};
+      }
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
+                             build_qf_lra_model(terms, model_terms, preprocessing_model_assignments,
+                                                prepared_theory, model_tableau, assigned_atoms)};
+#endif
     }
     statistics.increment(kStatLraTheoryConflicts);
     if (conflict_clause->empty()) {
       publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics};
+      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
     }
     backend.add_clause(conflict_clause.value());
     publish_sat_stats(backend.statistics(), statistics);
@@ -5039,8 +5372,10 @@ void record_disequality_propagation_opportunities(const core::TermManager& terms
   }
 }
 
-CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
-                            const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_uf(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
@@ -5131,7 +5466,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       euf_propagation == EufPropagationMode::Conflict) {
     return CheckSatOutcome{CheckSatResult::Unsupported,
                            "online EUF conflict/propagation requires CaDiCaL external propagators",
-                           statistics};
+                           statistics, ""};
   }
 #endif
 
@@ -5145,10 +5480,11 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     if ((conflict_terminator.has_value() && conflict_terminator->reached()) ||
         (options.max_theory_conflicts.has_value() &&
          statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value())) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics};
+      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
+                             ""};
     }
     if (sat_result != sat::SatResult::Sat) {
-      return CheckSatOutcome{map_sat_result(sat_result), "", statistics};
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
     statistics.increment(kStatTheoryChecks);
 
@@ -5158,7 +5494,7 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
       const std::optional<bool> assignment = backend.value(var);
       if (!assignment.has_value()) {
         return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
-                               statistics};
+                               statistics, ""};
       }
       const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
       AssignedTheoryAtom assigned =
@@ -5215,17 +5551,28 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
     }
     if (!conflict_clause.has_value()) {
       publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Sat, "", statistics};
+      if (!options.produce_model) {
+        return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
+      }
+      std::vector<TheoryModelAssignment> model_assignments;
+      model_assignments.reserve(preprocessing_model_assignments.size() + assigned_atoms.size());
+      append_model_assignments(model_assignments, preprocessing_model_assignments);
+      for (const AssignedTheoryAtom& atom : assigned_atoms) {
+        model_assignments.push_back(TheoryModelAssignment{atom.term, atom.value, atom.filtered});
+      }
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
+                             build_qf_uf_model(terms, model_assignments)};
     }
     statistics.increment(kStatTheoryConflicts);
     if (options.max_theory_conflicts.has_value() &&
         statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value()) {
       publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics};
+      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
+                             ""};
     }
     if (conflict_clause->empty()) {
       publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics};
+      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
     }
     backend.add_clause(conflict_clause.value());
     publish_sat_stats(backend.statistics(), statistics);
@@ -5243,12 +5590,15 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 // Diagnostic only, but not optional: without them, "is the machine-word fast
 // path actually being taken on this benchmark, and would a different small-form
 // width take it more often" is a guess rather than a measurement.
-CheckSatOutcome solve_qf_lra(const core::TermManager& terms,
-                             const std::vector<core::TermId>& assertions,
-                             const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_lra(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const std::vector<core::TermId>& model_terms,
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
+    const CheckSatOptions& options, util::Statistics& statistics) {
   const std::uint64_t promotions_before = util::Rational::promotion_count();
   const std::uint64_t big_operations_before = util::Rational::big_operation_count();
-  CheckSatOutcome outcome = solve_qf_lra_impl(terms, assertions, options, statistics);
+  CheckSatOutcome outcome = solve_qf_lra_impl(terms, assertions, model_terms,
+                                              preprocessing_model_assignments, options, statistics);
   const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
   const std::uint64_t big_operations =
       util::Rational::big_operation_count() - big_operations_before;
@@ -5469,7 +5819,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
 
   const auto finish = [&](CheckSatResult result, std::string message = "") {
     statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
-    return CheckSatOutcome{result, std::move(message), statistics};
+    return CheckSatOutcome{result, std::move(message), statistics, ""};
   };
 
   try {
@@ -5490,6 +5840,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatFrontendAuxiliaryItes, frontend.auxiliary_ites());
     if (!frontend.saw_check_sat()) {
       return finish(CheckSatResult::Unsupported, "missing check-sat command");
+    }
+    if (frontend.requested_model()) {
+      if (!frontend.produce_models()) {
+        return finish(CheckSatResult::Unsupported, "get-model requires :produce-models true");
+      }
+      options.produce_model = true;
     }
 
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
@@ -5581,6 +5937,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatPreprocessingTermSizeInitial,
                    reachable_term_count(frontend.terms(), assertions));
     const std::vector<core::TermId> symmetry_source_assertions = assertions;
+    std::vector<TheoryModelAssignment> preprocessing_model_assignments;
     std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
     std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
     if (use_finite_domain_amo) {
@@ -5594,6 +5951,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       SolvedConstantSubstitutionResult solved_constants =
           substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
       assertions = std::move(solved_constants.assertions);
+      if (options.produce_model) {
+        append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
+                                          solved_constants.substitutions);
+      }
       statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
       statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
       statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
@@ -5637,11 +5998,18 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       BooleanUnitPropagationResult boolean_units =
           propagate_boolean_units(frontend.terms(), assertions);
       assertions = std::move(boolean_units.assertions);
+      if (options.produce_model) {
+        append_boolean_model_assignments(preprocessing_model_assignments,
+                                         boolean_units.assignments);
+      }
       statistics.increment(kStatBooleanUnitFacts, boolean_units.units);
       statistics.increment(kStatBooleanUnitRewrites, boolean_units.rewrites);
       ForcedAtomPropagationResult forced_atoms =
           propagate_forced_atoms(frontend.terms(), assertions);
       assertions = std::move(forced_atoms.assertions);
+      if (options.produce_model) {
+        append_boolean_model_assignments(preprocessing_model_assignments, forced_atoms.assignments);
+      }
       statistics.increment(kStatForcedAtomFacts, forced_atoms.units);
       statistics.increment(kStatForcedAtomDisequalities, forced_atoms.disequalities);
       statistics.increment(kStatForcedAtomRewrites, forced_atoms.rewrites);
@@ -5654,6 +6022,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         SolvedConstantSubstitutionResult solved_constants =
             substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
         assertions = std::move(solved_constants.assertions);
+        if (options.produce_model) {
+          append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
+                                            solved_constants.substitutions);
+        }
         statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
         statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
         statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
@@ -5671,6 +6043,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                                ground_substitution, frontend.terms());
         if (accept_substitution) {
           assertions = std::move(ground_substitution.assertions);
+          if (options.produce_model) {
+            append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
+                                              ground_substitution.substitutions);
+          }
           statistics.increment(kStatUnitEqualitySubstitutionUnits, ground_substitution.units);
           statistics.increment(kStatUnitEqualitySubstitutions, ground_substitution.rewrites);
           statistics.increment(kStatUnitEqualitySubstitutionAccepted);
@@ -5800,7 +6176,17 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     if (assertions.empty() && !options.preprocess_only) {
       statistics.set(kStatTimePreprocessingUs,
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
-      return finish(CheckSatResult::Sat);
+      CheckSatOutcome outcome = finish(CheckSatResult::Sat);
+      if (options.produce_model) {
+        if (!frontend.declared_real_constants().empty()) {
+          outcome.model = build_qf_lra_preprocessing_only_model(frontend.terms(),
+                                                                frontend.declared_real_constants(),
+                                                                preprocessing_model_assignments);
+        } else {
+          outcome.model = build_qf_uf_model(frontend.terms(), preprocessing_model_assignments);
+        }
+      }
+      return outcome;
     }
     if (options.preprocess_only) {
       statistics.set(kStatTimePreprocessingUs,
@@ -5854,22 +6240,26 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     }
     if (has_arithmetic) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_lra(frontend.terms(), assertions, solve_options, statistics),
-                          solve_start);
+      return finish_solve(
+          solve_qf_lra(frontend.terms(), assertions, frontend.declared_real_constants(),
+                       preprocessing_model_assignments, solve_options, statistics),
+          solve_start);
     }
     if (has_equality) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics),
+      return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics,
+                                      preprocessing_model_assignments),
                           solve_start);
     }
     try {
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(
-          solve_boolean_conjunction(frontend.terms(), assertions, solve_options, statistics),
-          solve_start);
+      return finish_solve(solve_boolean_conjunction(frontend.terms(), assertions, solve_options,
+                                                    statistics, preprocessing_model_assignments),
+                          solve_start);
     } catch (const UnsupportedInput&) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics),
+      return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics,
+                                      preprocessing_model_assignments),
                           solve_start);
     }
   } catch (const UnsupportedInput& error) {

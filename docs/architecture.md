@@ -186,6 +186,17 @@ Implemented now:
 - Boolean clausification for assertions.
 - Lazy QF_UF checking over equality atoms and Boolean predicate applications.
 - Non-incremental congruence closure for the current SAT assignment.
+- Conservative QF_UF SMT-LIB model printing for `check-sat` followed by
+  `get-model` when `:produce-models true` is set. `smt::ModelBuilder` rebuilds
+  a ground EUF closure over `core::TermId` values, prints definitions for
+  user-declared constants, functions, and predicates, consumes preprocessing
+  reconstruction assignments for unit facts and substitutions, and omits
+  Primo-generated auxiliary symbols from the response.
+- Minimal QF_LRA SMT-LIB model printing for user-declared nullary `Real`
+  constants. The SMT layer records declared Real constants, the LRA path reads
+  their values from the final `LraTableau` assignment, and model reconstruction
+  replays Real equalities recorded by preprocessing so solved-away constants
+  are printed for the original problem.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -193,7 +204,9 @@ Not implemented yet:
 
 - push/pop assertion stacks.
 - proof production.
-- model construction.
+- model construction for mixed-theory fragments, arithmetic functions beyond
+  nullary `Real` constants, and reconstruction through future
+  satisfiability-preserving rewrites outside the current preprocessing trail.
 - explanation-producing congruence closure with proof forests.
 - arithmetic theory solving.
 
@@ -216,5 +229,12 @@ make contrib-z3
 make contrib-cvc5
 make contrib-cadical
 ```
+
+Dolmen is used as an optional external validator for SMT-LIB model response
+files. It is not vendored under `contrib/`; install it separately and run
+`scripts/validate_model.py`. For QF_LRA Real-constant models, the validator can
+fall back to Z3 when Dolmen rejects a generated input syntax before model
+checking; that fallback asserts Primo's printed Real assignments into the
+original problem and checks that the strengthened problem remains satisfiable.
 
 Downloaded archives and build trees under `contrib/downloads`, `contrib/src`, and `contrib/local` are not committed.

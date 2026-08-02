@@ -35,6 +35,7 @@ class TermManager {
   const Term& get(TermId id) const;
   const SymbolTable& symbols() const;
   std::size_t size() const;
+  const std::vector<Term>& terms() const;
 
  private:
   struct Key {

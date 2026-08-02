@@ -661,6 +661,89 @@ void strict_boundary_is_unsat() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void prints_lra_model_when_requested() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (< 0 x))
+    (assert (< x 1))
+    (assert (= y (+ x 2)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(model") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real (/ 1 4))") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real (/ 9 4))") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void lra_model_reconstructs_preprocessed_solved_constants() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= x 3))
+    (assert (= y (+ x 2)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x () Real 3)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real 5)") != std::string::npos);
+}
+
+void qf_lra_model_requires_get_model_command() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (< 0 x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.empty());
+}
+
+void get_model_requires_produce_models() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (< 0 x))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find(":produce-models true") != std::string::npos);
+}
+
+void qf_lra_rejects_uninterpreted_real_functions() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun f (Real) Real)
+    (assert (= (f x) 1))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("uninterpreted functions") != std::string::npos);
+}
+
+void qf_lra_rejects_uninterpreted_predicates() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (p x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("uninterpreted functions") != std::string::npos);
+}
+
 void boolean_structure_over_arithmetic_atoms_can_require_branching() {
   // (x<=0 or x>=10) together with 3<=x<=7 rules out both disjuncts.
   const auto result = check_sat_smtlib(R"(
@@ -1290,6 +1373,12 @@ int main() {
   theory_decisions_can_reach_a_conflict();
   deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
+  prints_lra_model_when_requested();
+  lra_model_reconstructs_preprocessed_solved_constants();
+  qf_lra_model_requires_get_model_command();
+  get_model_requires_produce_models();
+  qf_lra_rejects_uninterpreted_real_functions();
+  qf_lra_rejects_uninterpreted_predicates();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
   sparse_pivoting_rule_matches_bland_on_multi_pivot_scenarios();

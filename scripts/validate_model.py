@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Validate produced models where possible."""
+"""Validate produced models where possible.
+
+This compatibility entry point delegates to the Dolmen-backed model validator.
+The implementation file still carries its original QF_UF name, but the Dolmen
+check also covers the currently printed QF_LRA Real-constant model subset.
+"""
 
 from __future__ import annotations
 
-
-def main() -> int:
-    print("model validation is not implemented yet")
-    return 0
+from validate_qfuf_models_with_dolmen import main as validate_qfuf_models
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(validate_qfuf_models())

@@ -3,10 +3,25 @@
 ## Solver statistics
 
 Use `--stats` to print numeric counters to stderr while leaving stdout as the
-single SMT result line:
+SMT result stream:
 
 ```bash
 ./build/primo --stats input.smt2
+```
+
+For a model-producing script, stdout contains the result line followed by the
+SMT-LIB model response when the input requests it:
+
+```text
+(set-option :produce-models true)
+(check-sat)
+(get-model)
+```
+
+```text
+sat
+(model
+  (define-fun ...))
 ```
 
 Statistics are intentionally stable, colon-prefixed keys so benchmark scripts can
@@ -256,6 +271,43 @@ current abstraction.
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are
 documented; add a new key instead of changing the meaning of an old one.
+
+## Model Validation
+
+Primo supports a conservative QF_UF `get-model` response for scripts that set
+`:produce-models true` and call `get-model` after `check-sat`. The printed
+model is intended to be validated as an SMT-LIB response file: stdout starts
+with `sat`, followed by a parenthesized `model` containing `define-fun`
+definitions for user-declared constants, functions, and predicates.
+
+Use [Dolmen](https://ceur-ws.org/Vol-3429/short9.pdf) as the independent
+model-format and assertion validator. Dolmen's model-validation interface uses a
+solver response file, conventionally with an `.rsmt2` extension:
+
+```bash
+python3 scripts/validate_qfuf_models_with_dolmen.py \
+  --solver ./build/primo \
+  benchmarks/smoke/qf_uf/*.smt2 \
+  --out results/qfuf-dolmen-smoke
+```
+
+The script writes the input problem, Primo response file (`.rsmt2`), stdout and
+stderr logs, and `summary.csv`. It runs Dolmen with `--check-model=true -r` by
+default. Pass `--check-model-mode=full` or `--check-model-mode=interleave` only
+when the installed Dolmen binary supports that option; Dolmen's interleave mode
+imposes additional ordering constraints between input declarations and model
+definitions. Dolmen is an external dependency and is not vendored in this
+repository.
+
+Current limitations:
+
+- only `QF_UF` and pure Boolean model values are printed;
+- unsupported, unknown, and unsat results do not print a model;
+- QF_UF preprocessing reconstruction is limited to Boolean/forced unit facts,
+  solved-constant substitutions, and ground-unit substitutions;
+- no model reconstruction is implemented for future arithmetic, arrays,
+  Nelson-Oppen combination fragments, or future preprocessing rewrites that do
+  not emit reconstruction assignments.
 
 ## Fuzzing and Reduction
 

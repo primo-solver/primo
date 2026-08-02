@@ -357,9 +357,27 @@ bounded:
 - all terms are rebuilt through `core::TermManager`, preserving hash-consing and
   sort checks.
 
-The pass preserves satisfiability, not a user-facing model for the eliminated
-constant. Primo currently does not expose model reconstruction, so this is
-acceptable for `check-sat`; model support would need a substitution trail.
+The pass also records each accepted `x -> t` replacement as a model
+reconstruction equality `x = t`. When `get-model` is requested, `check_sat`
+passes those equalities to the active model builder together with the SAT or
+theory assignment, so the printed model is checked against the original SMT-LIB
+assertions rather than only the rewritten assertion set. The current consumers
+are the QF_UF model builder and the minimal QF_LRA Real-constant model
+printer; this trail is still not a general model object for future
+Nelson-Oppen theory combinations.
+
+The reconstruction trail is owned by the preprocessing result objects in
+`src/smt/preprocessing.hpp`: `BooleanUnitPropagationResult::assignments`,
+`ForcedAtomPropagationResult::assignments`,
+`SolvedConstantSubstitutionResult::substitutions`, and
+`GroundEqualitySubstitutionResult::substitutions`. These vectors contain only
+hash-consed `core::TermId` handles and are consumed by `check_sat` before the
+shared `core::TermManager` is destroyed. `check_sat` converts substitutions to
+true equality assignments and Boolean/forced units to `TheoryModelAssignment`
+entries, then `smt::ModelBuilder` adds them to the same EUF closure as the final
+SAT assignment. Future preprocessing rewrites that remove user-visible facts
+must add equivalent reconstruction assignments before they can be enabled under
+`get-model`.
 
 The pass is reported by:
 
