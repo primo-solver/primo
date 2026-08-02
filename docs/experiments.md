@@ -76,6 +76,20 @@ binary. Use a separate remote workdir for overlapping campaigns; reserve
 `--allow-active-jobs` for cases where the active jobs are known to use another
 workspace.
 
+Archive-mode preparation intentionally excludes `tmp/`, so benchmark manifests
+that refer to locally extracted SMT-LIB archives need a separate staging step.
+Use the manifest staging helper to copy only the listed files into the matching
+remote root, without copying `.git` or the whole archive:
+
+```bash
+python3 scripts/slurm_stage_manifest_files.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote llm2smt-slurm \
+  --remote-dir <remote-home>/primo-cadical-profile \
+  --root tmp/QF_UFLRA \
+  --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt
+```
+
 If the published `interesting.html` table is available, pass
 `--reference-html path/to/interesting.html`. The script extracts table text with
 standard-library HTML parsing and writes `results/interesting-qf-uf-reference.csv`
