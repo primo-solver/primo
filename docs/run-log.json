@@ -16703,6 +16703,35 @@
         "z3": "92/100 solved, 8 timeouts, 0 wrong, PAR2 204.999821; family solved FFT 10/10, cpachecker-bmc 7/15, cpachecker-induction 50/50, mathsat 25/25."
       },
       "outcome": "The broader sample confirms that the mutation filter is active and removes most optional equality search: mutation-on checks 889 LRA-model-equal pairs and skips 846, while no-mutation variants create about 170 optional equality atoms and have worse PAR2. The solved-count movement over default is only +1 and is not a clean search win because default also hit three CaDiCaL factor API aborts on cpachecker-induction files. Local triage reproduced those aborts and showed --cadical-option=factor=0 avoids the abort on the three repro files, turning two into local 15s timeouts and one into sat."
+    },
+    {
+      "id": "2026-08-02-cadical-declare-more-variables-8e88eef",
+      "date": "2026-08-02",
+      "commit": "8e88eef8e4cb14b73daff8f918658dbe654464ce",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "correctness",
+      "scope": "CaDiCaL incremental variable-allocation protocol fix for QF_UFLRA runs that add SAT variables after earlier solve calls while CaDiCaL's factor option is enabled.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "binary": "build/primo at 8e88eef, Debug, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3, version 5.0.0",
+        "artifact_dir": "fuzz-results/qf_uflra-cadical-declare-vars-1000-8e88eef"
+      },
+      "commands": {
+        "build": "cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=/workspace/contrib/local; cmake --build build --target primo",
+        "regression_unit": "cmake --build build --target primo_sat_backend_tests primo -j4 && ./build/primo_sat_backend_tests",
+        "repro": "timeout 15 ./build/primo --quiet --stats <three cpachecker-induction QF_UFLRA files that aborted in 2026-08-02-qf-uflra-broader-100-mutation-compare-6799453>",
+        "fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 1000 --seed 20260802 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-cadical-declare-vars-1000-8e88eef",
+        "validation": "make lint; make check; make asan-test; make docs; git diff --check; rg --files -g '*.cpp' | rg -v '(^build/|^build-asan/|^contrib/|antlr|generated)' | xargs clang-tidy -p build --quiet"
+      },
+      "summary": {
+        "protocol_root_cause": "CaDiCaL 3.0's factor/BVA machinery can introduce internal extension variables. Incremental clients that add more user variables after solve must use declare_more_variables() when available; Primo previously grew max_var with resize()/reserve(), which can collide with CaDiCaL-owned extension variables and causes CaDiCaL to abort by design.",
+        "implemented_fix": "CMake now detects CaDiCaL::Solver::declare_more_variables; sat::CadicalBackend::new_var() uses it when available and falls back to resize()/reserve() only for older CaDiCaL versions.",
+        "local_repro": "The three default-run cpachecker-induction aborts from the broader 100-instance SLURM comparison no longer abort locally with default CaDiCaL options: two return unknown under a 15s timeout and one returns sat.",
+        "fuzz": "1000 generated mixed QF_UFLRA cases, seed 20260802, timeout 5s: PASS 1000, wrong 0, crash 0, reference disagreements 0."
+      },
+      "outcome": "Accepted and committed as 8e88eef. The protocol abort is fixed locally and covered by a SAT-backend regression test plus QF_UFLRA differential fuzzing. A fresh SLURM broader-sample rerun is still needed before replacing the previous 6799453 performance table."
     }
   ]
 }
