@@ -12,6 +12,9 @@ SOLVER_TIMEOUT=8
 BUGS="yinyang_bugs"
 SCRATCH="yinyang_scratch"
 FILE_SIZE_LIMIT=20000
+CONFIG=""
+KEEP_LOGIC=0
+HOIST_DECLARATIONS=0
 TYPEFUZZ="${TYPEFUZZ:-typefuzz}"
 DIAGNOSE=0
 KEEP_MUTANTS=0
@@ -31,6 +34,9 @@ Options:
   --bugs DIR               bug output directory
   --scratch DIR            scratch directory
   --file-size-limit N      max seed size in bytes
+  --config PATH            operator/signature config restricting mutations
+  --keep-logic             keep the seed's (set-logic ...) in mutants
+  --hoist-declarations     emit declarations before their first use
   --typefuzz PATH          typefuzz executable
   --diagnose               forward solver output to stdout
   --keep-mutants           keep generated mutants in scratch
@@ -59,6 +65,9 @@ while (($#)); do
         --bugs) BUGS="$2"; shift 2 ;;
         --scratch) SCRATCH="$2"; shift 2 ;;
         --file-size-limit) FILE_SIZE_LIMIT="$2"; shift 2 ;;
+        --config) CONFIG="$2"; shift 2 ;;
+        --keep-logic) KEEP_LOGIC=1; shift ;;
+        --hoist-declarations) HOIST_DECLARATIONS=1; shift ;;
         --typefuzz) TYPEFUZZ="$2"; shift 2 ;;
         --diagnose) DIAGNOSE=1; shift ;;
         --keep-mutants) KEEP_MUTANTS=1; shift ;;
@@ -115,8 +124,21 @@ cmd=(
 if ((DIAGNOSE)); then
     cmd+=(-d)
 fi
+if [[ -n $CONFIG ]]; then
+    if [[ ! -f $CONFIG ]]; then
+        echo "Error: --config file does not exist: $CONFIG" >&2
+        exit 1
+    fi
+    cmd+=(-c "$CONFIG")
+fi
+if ((KEEP_LOGIC)); then
+    cmd+=(-kl)
+fi
+if ((HOIST_DECLARATIONS)); then
+    cmd+=(-hd)
+fi
 if ((KEEP_MUTANTS)); then
-    cmd+=(-km)
+    cmd+=(-k)
 fi
 cmd+=("${EXTRA_ARGS[@]}")
 cmd+=("$SOLVER;$REF" "$SEEDS")

@@ -165,6 +165,34 @@ fi
 # longer decides the corpus; the corpus builder does.
 MUTATION_FILE_SIZE_LIMIT=${PRIMO_FUZZ_MUTATION_FILE_SIZE_LIMIT:-200000}
 
+# Restrict mutation to operators that stay inside QF_LRA. YinYang's stock
+# configs cover all of SMT-LIB and rewrite within sort signatures only, so on
+# a QF_LRA seed they happily produce `(* x y)` from `(+ x y)` (config line
+# `+,-,* :arity 2+`) and `(abs x)` from `(- x)` (line `abs,- :arity 1`).
+# Those mutants are no longer QF_LRA and Primo rightly refuses them, which
+# burns the mutation budget: measured 2026-08-02 over six seed families,
+# opfuzz went from 47 of 72 mutants answerable to 72 of 72, with the same 72
+# distinct mutants either way -- nothing is lost but the out-of-logic ones.
+#
+# This needs no change to the YinYang fork: both entry points take -c/--config.
+if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
+  OPFUZZ_CONFIG=${PRIMO_FUZZ_OPFUZZ_CONFIG:-"$WORKDIR/benchmarks/fuzz-configs/qf_lra_operator_mutations.txt"}
+  YINYANG_CONFIG=${PRIMO_FUZZ_YINYANG_CONFIG:-"$WORKDIR/benchmarks/fuzz-configs/qf_lra_typefuzz.txt"}
+  # Both come from contrib/patches/yinyang-mutant-validity.patch, applied by
+  # contrib/install_yinyang.py. --keep-logic makes every solver judge the
+  # mutant against the seed's logic (and is what lets yices-smt2 read a mutant
+  # at all); --hoist-declarations repairs typefuzz emitting a declaration
+  # after its first use. opfuzz does not need the latter -- it substitutes
+  # operators in place and leaves command order alone.
+  MUTATION_KEEP_LOGIC=${PRIMO_FUZZ_MUTATION_KEEP_LOGIC-1}
+  MUTATION_HOIST_DECLARATIONS=${PRIMO_FUZZ_MUTATION_HOIST_DECLARATIONS-1}
+else
+  OPFUZZ_CONFIG=${PRIMO_FUZZ_OPFUZZ_CONFIG:-}
+  YINYANG_CONFIG=${PRIMO_FUZZ_YINYANG_CONFIG:-}
+  MUTATION_KEEP_LOGIC=${PRIMO_FUZZ_MUTATION_KEEP_LOGIC-}
+  MUTATION_HOIST_DECLARATIONS=${PRIMO_FUZZ_MUTATION_HOIST_DECLARATIONS-}
+fi
+
 cd "$WORKDIR"
 mkdir -p logs "$OUT_ROOT"
 
@@ -242,6 +270,8 @@ elif (( TASK_ID < yinyang_start )); then
   echo "task $TASK_ID: opfuzz over $OPFUZZ_SEEDS"
   scripts/yinyang_fuzz.sh \
     --typefuzz opfuzz \
+    ${OPFUZZ_CONFIG:+--config "$OPFUZZ_CONFIG"} \
+    ${MUTATION_KEEP_LOGIC:+--keep-logic} \
     --seeds "$OPFUZZ_SEEDS" \
     --solver "$SOLVER_BIN --quiet" \
     --ref "$MUTATION_REF" \
@@ -256,6 +286,9 @@ else
   mkdir -p "$out"
   echo "task $TASK_ID: yinyang typefuzz over $YINYANG_SEEDS"
   scripts/yinyang_fuzz.sh \
+    ${YINYANG_CONFIG:+--config "$YINYANG_CONFIG"} \
+    ${MUTATION_KEEP_LOGIC:+--keep-logic} \
+    ${MUTATION_HOIST_DECLARATIONS:+--hoist-declarations} \
     --seeds "$YINYANG_SEEDS" \
     --solver "$SOLVER_BIN --quiet" \
     --ref "$MUTATION_REF" \

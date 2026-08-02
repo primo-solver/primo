@@ -1,0 +1,28 @@
+; typefuzz generative signatures restricted to QF_LRA.
+;
+; typefuzz builds new terms from these signatures, so any signature listed
+; here can appear in a mutant. The stock typefuzz_config.txt covers all of
+; SMT-LIB, and three of its Real entries take a mutant out of QF_LRA:
+;
+;   (* Real Real Real)   product of two Reals is nonlinear
+;   (/ Real Real Real)   division by a non-constant is nonlinear
+;   (abs ...)            not a QF_LRA symbol
+;
+; Every Int signature is dropped too: QF_LRA has no Int sort, so those
+; signatures can only ever produce out-of-logic terms.
+;
+; What is left still mutates freely -- Boolean structure, negation,
+; addition/subtraction and all four comparisons.
+(par (A) (id A A))
+(not Bool Bool)
+(=> Bool Bool Bool :right-assoc)
+(and Bool Bool Bool :left-assoc)
+(or Bool Bool Bool :left-assoc)
+(xor Bool Bool Bool :left-assoc)
+(- Real Real)                  ; negation
+(- Real Real Real :left-assoc) ; subtraction
+(+ Real Real Real :left-assoc)
+(<= Real Real Bool :chainable)
+(<  Real Real Bool :chainable)
+(>= Real Real Bool :chainable)
+(>  Real Real Bool :chainable)

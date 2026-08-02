@@ -1,0 +1,228 @@
+diff --git a/yinyang/config/OpfuzzHelptext.py b/yinyang/config/OpfuzzHelptext.py
+index 968d74f..ec68452 100644
+--- a/yinyang/config/OpfuzzHelptext.py
++++ b/yinyang/config/OpfuzzHelptext.py
+@@ -158,6 +158,9 @@ options:
+     -L <bytes>, --limit <bytes>
+             file size limit on seed formula in bytes (default: 100000)
+     -k, --keep-mutants  do not delete scratch files
++    -kl, --keep-logic  retain the seed's (set-logic ...) in mutants
++    -hd, --hoist-declarations
++            emit declarations before the commands that use them
+     -n, --no-log    disable logging
+     -q, --quiet     do not print statistics and other output
+     -v, --version   show version number and exit
+diff --git a/yinyang/config/TypefuzzHelptext.py b/yinyang/config/TypefuzzHelptext.py
+index 74497d0..c1fd143 100644
+--- a/yinyang/config/TypefuzzHelptext.py
++++ b/yinyang/config/TypefuzzHelptext.py
+@@ -126,6 +126,9 @@ options:
+     -L <bytes>, --limit <bytes>
+             file size limit on seed formula in bytes (default: 100000)
+     -k, --keep-mutants  do not delete scratch files
++    -kl, --keep-logic  retain the seed's (set-logic ...) in mutants
++    -hd, --hoist-declarations
++            emit declarations before the commands that use them
+     -n, --no-log    disable logging
+     -q, --quiet     do not print statistics and other output
+     -v, --version   show version number and exit
+diff --git a/yinyang/src/base/ArgumentParser.py b/yinyang/src/base/ArgumentParser.py
+index e4bd67d..03f8e51 100644
+--- a/yinyang/src/base/ArgumentParser.py
++++ b/yinyang/src/base/ArgumentParser.py
+@@ -83,6 +83,18 @@ def add_common_args(parser, rootpath, current_dir):
+         "--keep-mutants",
+         action="store_true",
+     )
++    parser.add_argument(
++        "-kl",
++        "--keep-logic",
++        action="store_true",
++        help="retain the seed's (set-logic ...) in mutants",
++    )
++    parser.add_argument(
++        "-hd",
++        "--hoist-declarations",
++        action="store_true",
++        help="emit declarations before the commands that use them",
++    )
+     parser.add_argument(
+         "-s",
+         "--scratchfolder",
+diff --git a/yinyang/src/core/Fuzzer.py b/yinyang/src/core/Fuzzer.py
+index 4098d97..8e74412 100644
+--- a/yinyang/src/core/Fuzzer.py
++++ b/yinyang/src/core/Fuzzer.py
+@@ -33,7 +33,7 @@ import pathlib
+ from yinyang.src.core.Statistic import Statistic
+ from yinyang.src.core.Solver import Solver, SolverQueryResult, SolverResult
+ 
+-from yinyang.src.parsing.Parse import parse_file
++from yinyang.src.parsing.Parse import hoist_declarations, parse_file
+ from yinyang.src.parsing.Typechecker import typecheck
+ 
+ from yinyang.src.mutators.TypeAwareOpMutation import TypeAwareOpMutation
+@@ -119,7 +119,9 @@ class Fuzzer:
+         self.currentseeds.append(pathlib.Path(seed).stem)
+         # Extract header comments before parsing
+         self.header_comments = self.extract_header_comments(seed)
+-        script, glob = parse_file(seed, silent=True)
++        script, glob = parse_file(
++            seed, silent=True, keep_logic=getattr(self.args, "keep_logic", False)
++        )
+ 
+         if not script:
+ 
+@@ -241,6 +243,8 @@ class Fuzzer:
+             self.name,
+             random_string(),
+         )
++        if getattr(self.args, "hoist_declarations", False):
++            script = hoist_declarations(script)
+         with open(testcase, "w") as testcase_writer:
+             # Prepend header comments if they exist
+             if self.header_comments:
+diff --git a/yinyang/src/parsing/Parse.py b/yinyang/src/parsing/Parse.py
+index d0318ec..6b2fb7b 100644
+--- a/yinyang/src/parsing/Parse.py
++++ b/yinyang/src/parsing/Parse.py
+@@ -44,11 +44,18 @@ class ErrorListener(ErrorListener):
+                       % (line, column), flush=True)
+ 
+ 
+-def prepare_seed(formula):
++def prepare_seed(formula, keep_logic=False):
+     """
+     Prepare seed script for fuzzing. Remove set-logic, set-info and other
+     output-producing commands. Set-logic and set-info may raise warning
+-    messages from SMT solvers. Output-producing commands may cause errors,
++    messages from SMT solvers.
++
++    With keep_logic=True the (set-logic ...) command is retained. Dropping it
++    is not free: solvers that require the logic before a sort is defined
++    reject every mutant outright (yices-smt2 fails with `undefined sort:
++    Real` at line 1), and solvers that infer a default will happily solve a
++    mutant that has left the seed's logic instead of rejecting it. Keeping
++    the command makes every solver judge the mutant against the same logic. Output-producing commands may cause errors,
+     e.g., get-model, get-proof etc. Errors such as
+ 
+                 (error "line X column Y: msg")
+@@ -64,6 +71,8 @@ def prepare_seed(formula):
+         if "set-info" in cmd.__str__():
+             continue
+         if "set-logic" in cmd.__str__():
++            if keep_logic:
++                new_cmds.append(cmd)
+             continue
+ 
+         # Ignore output-producing commands to make sure the detection logic
+@@ -91,7 +100,40 @@ def prepare_seed(formula):
+     return formula
+ 
+ 
+-def generate_ast(stream, prep_seed=True):
++def hoist_declarations(formula):
++    """
++    Move declarations ahead of the commands that use them.
++
++    typefuzz builds new terms out of variables of the right sort without
++    checking that the variable is declared *before* the assert it lands in, so
++    a mutant can use a symbol dozens of lines above its own declare-fun. That
++    is not valid SMT-LIB: solvers that enforce declare-before-use reject the
++    whole mutant (Primo and yices-smt2 do; z3 recovers and answers a formula
++    with the offending assertions dropped, which is worse). Measured on
++    2026-08-02 it cost 23 of 72 typefuzz mutants.
++
++    Moving a declaration earlier can never break a script -- top-level
++    declarations are global and cannot shadow -- so this is a safe
++    normalisation rather than a semantic change. Order is otherwise preserved,
++    and set-logic/set-info/set-option stay in front of the declarations they
++    have to precede.
++
++    opfuzz does not need this: it only substitutes operators in place and
++    leaves command order alone.
++    """
++    def rank(cmd):
++        text = cmd.__str__()
++        if text.startswith("(set-") or text.lstrip().startswith(";"):
++            return 0
++        if text.startswith("(declare-"):
++            return 1
++        return 2
++
++    formula.commands = sorted(formula.commands, key=rank)
++    return formula
++
++
++def generate_ast(stream, prep_seed=True, keep_logic=False):
+     error_listener = ErrorListener()
+     lexer = SMTLIBv2Lexer(stream)
+     lexer.removeErrorListeners()
+@@ -107,30 +149,30 @@ def generate_ast(stream, prep_seed=True):
+     if len(formula.commands) == 0:
+         return None
+ 
+-    return prepare_seed(formula) if prep_seed else formula, vis.global_vars
++    return (prepare_seed(formula, keep_logic) if prep_seed else formula), vis.global_vars
+ 
+ 
+-def parse_filestream(fn, timeout_limit):
++def parse_filestream(fn, timeout_limit, keep_logic=False):
+     @exit_after(timeout_limit)
+     def _parse_filestream(fn):
+         fstream = FileStream(fn, encoding="utf8")
+-        ast, globs = generate_ast(fstream)
++        ast, globs = generate_ast(fstream, keep_logic=keep_logic)
+         return ast, globs
+ 
+     return _parse_filestream(fn)
+ 
+ 
+-def parse_inputstream(s, timeout_limit):
++def parse_inputstream(s, timeout_limit, keep_logic=False):
+     @exit_after(timeout_limit)
+     def _parse_inputstream(s):
+         istream = InputStream(s)
+-        ast, globs = generate_ast(istream)
++        ast, globs = generate_ast(istream, keep_logic=keep_logic)
+         return ast, globs
+ 
+     return _parse_inputstream(s)
+ 
+ 
+-def parse(parse_fct, arg, timeout_limit, silent=True):
++def parse(parse_fct, arg, timeout_limit, silent=True, keep_logic=False):
+     """
+     Parser helper function.
+ 
+@@ -143,7 +185,7 @@ def parse(parse_fct, arg, timeout_limit, silent=True):
+     globs = None
+ 
+     try:
+-        script, globs = parse_fct(arg, timeout_limit)
++        script, globs = parse_fct(arg, timeout_limit, keep_logic)
+     except KeyboardInterrupt:
+         print("Parser timed out or was interrupted.")
+     except Exception as e:
+@@ -154,7 +196,7 @@ def parse(parse_fct, arg, timeout_limit, silent=True):
+     return script, globs
+ 
+ 
+-def parse_file(fn, timeout_limit=30, silent=True):
++def parse_file(fn, timeout_limit=30, silent=True, keep_logic=False):
+     """
+     Parse SMT-LIB file.
+ 
+@@ -164,10 +206,10 @@ def parse_file(fn, timeout_limit=30, silent=True):
+     :returns: Script object representing AST of SMT-LIB file. None if timeout
+               or crash occurred.
+     """
+-    return parse(parse_filestream, fn, timeout_limit, silent)
++    return parse(parse_filestream, fn, timeout_limit, silent, keep_logic)
+ 
+ 
+-def parse_str(s, timeout_limit=30, silent=True):
++def parse_str(s, timeout_limit=30, silent=True, keep_logic=False):
+     """
+     Parse SMT-LIB from string.
+ 

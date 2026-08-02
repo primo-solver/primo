@@ -1,4 +1,4 @@
-.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-yinyang contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -137,6 +137,12 @@ contrib-cvc5:
 # contrib/install_yices.py for why that boundary is stated explicitly here.
 contrib-yices:
 	$(PYTHON) contrib/install_yices.py --prefix $(CONTRIB_PREFIX)
+
+# Installs the fork with contrib/patches applied, into .venv-yinyang. Not part
+# of `contrib`: it builds a venv rather than dropping a binary in
+# contrib/local, and the fuzz targets skip cleanly when typefuzz is absent.
+contrib-yinyang:
+	$(PYTHON) contrib/install_yinyang.py
 
 contrib-cadical: $(CADICAL_STAMP)
 
