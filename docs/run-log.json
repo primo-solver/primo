@@ -16267,6 +16267,68 @@
         "asan": "make asan-test passed 13/13 tests with AddressSanitizer."
       },
       "limitations": "This is integration evidence, not a fresh post-merge SLURM fuzz campaign for the QF_UFLRA model-guided path. A fresh fuzz/reference gate remains required before merge-ready claims."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-fuzz-gate-3660d9e",
+      "date": "2026-08-02",
+      "commit": "3660d9e",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "fuzz",
+      "scope": "Post-main-integration QF_UFLRA model-guided Nelson-Oppen fuzz gate, plus regression evidence for the SLURM workspace dependency-preparation helper.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-workspace>",
+        "binary": "build-slurm-rel/primo at 3660d9e, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3, version 5.0.0",
+        "job_id": "118686",
+        "artifact_dir": "<fresh-remote-workspace>/slurm-results/qf_uflra-fuzz-gate-3660d9e"
+      },
+      "commands": {
+        "local_validation": "python3 -m py_compile scripts/slurm_prepare_benchmark_workspace.py; git diff --check; make docs; make lint; make check; python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_fuzz_gate.sbatch; bash -n scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --sync-mode archive --jobs 4",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --check-only",
+        "submission": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_FUZZ_COUNT=750,PRIMO_FUZZ_SEED_BASE=820200,PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-fuzz-gate-3660d9e scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "aggregation": "sacct -j 118686 --format=JobID,State,ExitCode,Elapsed,MaxRSS -P; aggregate task-*/summary.csv"
+      },
+      "benchmark": {
+        "suite": "scripts/qf_uflra_smoke_fuzz.py generated mixed QF_UFLRA formulas",
+        "logic": "QF_UFLRA",
+        "generator": "qf_uflra_smoke_fuzz.py",
+        "shape": "mixed",
+        "seed_base": 820200,
+        "tasks": 4,
+        "count_per_task": 750,
+        "total_cases": 3000,
+        "timeout_seconds": 5
+      },
+      "summary": {
+        "slurm_state": "All four array tasks completed with exit code 0:0 in 00:00:17 each.",
+        "outcomes": {
+          "PASS": 3000,
+          "WRONG": 0,
+          "CRASH": 0,
+          "TIMEOUT": 0,
+          "UNSUPPORTED": 0,
+          "REFERENCE_DISAGREEMENT": 0
+        },
+        "per_task": {
+          "task-0": {
+            "PASS": 750
+          },
+          "task-1": {
+            "PASS": 750
+          },
+          "task-2": {
+            "PASS": 750
+          },
+          "task-3": {
+            "PASS": 750
+          }
+        },
+        "dependency_preparation": "The fixed slurm_prepare_benchmark_workspace.py path installed or reused the CMake venv on PATH, ran make contrib-required, configured Primo successfully with CLI11, ANTLR4, CaDiCaL, and GMP, and built a binary reporting git: 3660d9e."
+      },
+      "limitations": "This is generated mixed QF_UFLRA fuzz evidence, not a full SMT-LIB corpus performance comparison. The sample-compare sbatch remains separate because its archive-mode workspace excludes tmp/ benchmark payloads unless a manifest-backed corpus is staged explicitly."
     }
   ]
 }
