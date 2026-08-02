@@ -514,6 +514,15 @@ void qf_uf_lra_shares_purified_real_argument_equalities_with_euf() {
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
   assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(result.statistics.get(":no.interface.equality-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.equality-missing-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.equality-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.equality-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.equality-rechecks") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-rechecks") >= 1);
 }
 
 void qf_uf_lra_prints_model_with_purified_real_predicate_argument() {
@@ -951,6 +960,10 @@ void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
   assert(result.statistics.get(":no.interface.equalities-propagated") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
   assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(result.statistics.get(":no.interface.euf-to-lra-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.euf-to-lra-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.euf-to-lra-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.euf-to-lra-rechecks") >= 1);
   assert(result.statistics.get(":no.interface.conflicts") >= 1);
   assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
 
@@ -960,6 +973,8 @@ void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
   assert(lazy_result.result == CheckSatResult::Unsat);
   assert(lazy_result.statistics.get(":no.interface.equalities-propagated") >= 1);
   assert(lazy_result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(lazy_result.statistics.get(":no.interface.euf-to-lra-candidates") >= 1);
+  assert(lazy_result.statistics.get(":no.interface.euf-to-lra-clauses") >= 1);
 }
 
 void qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality() {

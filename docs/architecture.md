@@ -240,11 +240,16 @@ Implemented now:
   false are asserted to EUF as disequalities, while LRA disequality is still
   handled indirectly by rejecting false atoms when LRA later entails equality
   and by model-reconstruction separation. EUF- or LRA-implied shared
-  equalities are learned as guarded clauses over those generated equality
-  literals; the guards are the blocking literals for the current theory
-  assignment, so an equality learned in one Boolean branch does not leak into
-  another. After the receiving theory sees a forced equality, it reports any
-  ordinary conflict using that literal as part of its reason. The optional
+  equalities are learned as guarded clauses over interface equality literals;
+  the guards are the blocking literals for the current theory assignment, so an
+  equality learned in one Boolean branch does not leak into another. The
+  propagation path first reuses an existing interface equality literal when one
+  is registered and lazily creates a missing literal only for the equality being
+  forced; it is not an exhaustive arrangement-enumeration pass. The statistics
+  split producing-theory candidates, existing or missing atoms, created atoms,
+  learned clauses, reason literals, and solver-loop rechecks by direction. After
+  the receiving theory sees a forced equality, it reports any ordinary conflict
+  using that literal as part of its reason. The optional
   `--model-equality-branching` mode
   adds a default-off model-driven SAT-assumption loop for LRA-model-equal shared
   Real pairs. Before creating a guessed equality atom, its narrow mutation filter
@@ -294,10 +299,12 @@ Not implemented yet:
   QF_UFLRA subset, arithmetic functions beyond nullary `Real` constants and
   Real-valued UF tables, and reconstruction through future
   satisfiability-preserving rewrites outside the current preprocessing trail.
-- Full Nelson-Oppen theory combination with bidirectional shared-variable
-  equality propagation, model-equality propagation, care sets, fine-grained
-  cross-theory explanations, and SAT atom creation for missing interface
-  equalities.
+- Full Nelson-Oppen theory combination with a mutable shared equality model,
+  unbounded arrangement enumeration, model-equality propagation, care-set-driven
+  default search, and fine-grained minimal cross-theory explanations. The
+  current QF_UFLRA path has guarded bidirectional shared-Real equality
+  propagation for equalities reported by EUF/LRA final checks, with lazy
+  equality-atom creation for forced equalities only.
 - explanation-producing congruence closure with proof forests.
 
 ## Paper Traceability

@@ -4083,10 +4083,49 @@ void append_true_interface_equalities(
   append_interface_equalities(interface_equalities, true, theory_atoms, assignments);
 }
 
-bool force_implied_interface_equalities(
+struct InterfacePropagationResult {
+  std::size_t candidates = 0;
+  std::size_t deliverable_existing = 0;
+  std::size_t missing_atoms = 0;
+  std::size_t created_atoms = 0;
+  std::size_t already_true = 0;
+  std::size_t assigned_false = 0;
+  std::size_t clauses = 0;
+  std::size_t reason_lits = 0;
+
+  bool triggered_recheck() const { return clauses != 0; }
+};
+
+void publish_interface_propagation_result(const InterfacePropagationResult& result,
+                                          std::string_view prefix, util::Statistics& statistics) {
+  statistics.increment(":no.interface.equality-candidates", result.candidates);
+  statistics.increment(":no.interface.equality-existing-atoms", result.deliverable_existing);
+  statistics.increment(":no.interface.equality-missing-atoms", result.missing_atoms);
+  statistics.increment(":no.interface.equality-created-atoms", result.created_atoms);
+  statistics.increment(":no.interface.equality-already-true", result.already_true);
+  statistics.increment(":no.interface.equality-assigned-false", result.assigned_false);
+  statistics.increment(":no.interface.equality-clauses", result.clauses);
+  statistics.increment(":no.interface.equality-reason-lits", result.reason_lits);
+  if (result.triggered_recheck()) {
+    statistics.increment(":no.interface.equality-rechecks");
+  }
+
+  statistics.increment(std::string{prefix} + "-candidates", result.candidates);
+  statistics.increment(std::string{prefix} + "-existing-atoms", result.deliverable_existing);
+  statistics.increment(std::string{prefix} + "-missing-atoms", result.missing_atoms);
+  statistics.increment(std::string{prefix} + "-created-atoms", result.created_atoms);
+  statistics.increment(std::string{prefix} + "-clauses", result.clauses);
+  if (result.triggered_recheck()) {
+    statistics.increment(std::string{prefix} + "-rechecks");
+  }
+}
+
+InterfacePropagationResult force_implied_interface_equalities(
     const core::TermManager& terms, BooleanClausifier& clausifier, sat::IpasirUpBackend& backend,
     TheoryCombinationManager& manager, const std::vector<core::TermId>& implied_equalities,
     const std::vector<AssignedTheoryAtom>& reason_assignments, util::Statistics& statistics) {
+  InterfacePropagationResult result;
+  result.candidates = implied_equalities.size();
   std::vector<sat::Clause> clauses_to_learn;
   clauses_to_learn.reserve(implied_equalities.size());
   std::vector<core::TermId> equalities_to_create;
@@ -4100,16 +4139,24 @@ bool force_implied_interface_equalities(
       }
     }
     append_lit_once(clause, implied_lit);
+    result.reason_lits += clause.size() > 0 ? clause.size() - 1U : 0U;
     return clause;
   };
   for (const core::TermId equality : implied_equalities) {
     const std::optional<sat::Lit> lit = manager.interface_equality_lit(equality);
     if (!lit.has_value()) {
+      ++result.missing_atoms;
       equalities_to_create.push_back(equality);
       continue;
     }
-    if (is_lit_true_in_backend(backend, lit.value())) {
+    ++result.deliverable_existing;
+    const std::optional<bool> value = lit_value_in_backend(backend, lit.value());
+    if (value.has_value() && value.value()) {
+      ++result.already_true;
       continue;
+    }
+    if (value.has_value() && !value.value()) {
+      ++result.assigned_false;
     }
     clauses_to_learn.push_back(make_reason_clause(lit.value()));
   }
@@ -4119,16 +4166,18 @@ bool force_implied_interface_equalities(
     if (!lit.has_value()) {
       continue;
     }
+    ++result.created_atoms;
     clauses_to_learn.push_back(make_reason_clause(lit.value()));
   }
   for (const sat::Clause& clause : clauses_to_learn) {
     backend.add_clause(clause);
   }
+  result.clauses = clauses_to_learn.size();
   statistics.set(":no.interface.sat-equality-atoms",
                  registered_interface_equality_atom_count(manager));
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-  statistics.increment(":no.interface.sat-equalities-forced", clauses_to_learn.size());
-  return !clauses_to_learn.empty();
+  statistics.increment(":no.interface.sat-equalities-forced", result.clauses);
+  return result;
 }
 
 bool clause_mentions_interface_equality(const sat::Clause& clause,
@@ -7158,6 +7207,27 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.equalities-propagated", 0);
   statistics.set(":no.interface.euf-to-lra-equalities", 0);
   statistics.set(":no.interface.lra-to-euf-equalities", 0);
+  statistics.set(":no.interface.equality-candidates", 0);
+  statistics.set(":no.interface.equality-existing-atoms", 0);
+  statistics.set(":no.interface.equality-missing-atoms", 0);
+  statistics.set(":no.interface.equality-created-atoms", 0);
+  statistics.set(":no.interface.equality-already-true", 0);
+  statistics.set(":no.interface.equality-assigned-false", 0);
+  statistics.set(":no.interface.equality-clauses", 0);
+  statistics.set(":no.interface.equality-reason-lits", 0);
+  statistics.set(":no.interface.equality-rechecks", 0);
+  statistics.set(":no.interface.euf-to-lra-candidates", 0);
+  statistics.set(":no.interface.euf-to-lra-existing-atoms", 0);
+  statistics.set(":no.interface.euf-to-lra-missing-atoms", 0);
+  statistics.set(":no.interface.euf-to-lra-created-atoms", 0);
+  statistics.set(":no.interface.euf-to-lra-clauses", 0);
+  statistics.set(":no.interface.euf-to-lra-rechecks", 0);
+  statistics.set(":no.interface.lra-to-euf-candidates", 0);
+  statistics.set(":no.interface.lra-to-euf-existing-atoms", 0);
+  statistics.set(":no.interface.lra-to-euf-missing-atoms", 0);
+  statistics.set(":no.interface.lra-to-euf-created-atoms", 0);
+  statistics.set(":no.interface.lra-to-euf-clauses", 0);
+  statistics.set(":no.interface.lra-to-euf-rechecks", 0);
   statistics.set(":no.interface.conflicts", 0);
   statistics.set(":no.interface.euf-conflicts", 0);
   statistics.set(":no.interface.lra-conflicts", 0);
@@ -7440,9 +7510,11 @@ CheckSatOutcome solve_qf_uf_lra(
           terms, prepared_flat_theory.value(), euf_check->closure, shared_real_terms);
       statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
       statistics.increment(":no.interface.euf-to-lra-equalities", implied_equalities.size());
-      if (force_implied_interface_equalities(terms, clausifier, backend, no_manager,
-                                             implied_equalities, euf_assignments_for_check,
-                                             statistics)) {
+      const InterfacePropagationResult propagation = force_implied_interface_equalities(
+          terms, clausifier, backend, no_manager, implied_equalities, euf_assignments_for_check,
+          statistics);
+      publish_interface_propagation_result(propagation, ":no.interface.euf-to-lra", statistics);
+      if (propagation.triggered_recheck()) {
         if (!active_model_equality_branches.empty()) {
           model_equality_branch_state.unproductive_rejections = 0;
         }
@@ -7456,9 +7528,11 @@ CheckSatOutcome solve_qf_uf_lra(
           terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
       statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
       statistics.increment(":no.interface.lra-to-euf-equalities", implied_equalities.size());
-      if (force_implied_interface_equalities(terms, clausifier, backend, no_manager,
-                                             implied_equalities, lra_assignments_for_check,
-                                             statistics)) {
+      const InterfacePropagationResult propagation = force_implied_interface_equalities(
+          terms, clausifier, backend, no_manager, implied_equalities, lra_assignments_for_check,
+          statistics);
+      publish_interface_propagation_result(propagation, ":no.interface.lra-to-euf", statistics);
+      if (propagation.triggered_recheck()) {
         if (!active_model_equality_branches.empty()) {
           model_equality_branch_state.unproductive_rejections = 0;
         }

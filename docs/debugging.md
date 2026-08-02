@@ -308,6 +308,27 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.equalities-propagated`
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
+- `:no.interface.equality-candidates`
+- `:no.interface.equality-existing-atoms`
+- `:no.interface.equality-missing-atoms`
+- `:no.interface.equality-created-atoms`
+- `:no.interface.equality-already-true`
+- `:no.interface.equality-assigned-false`
+- `:no.interface.equality-clauses`
+- `:no.interface.equality-reason-lits`
+- `:no.interface.equality-rechecks`
+- `:no.interface.euf-to-lra-candidates`
+- `:no.interface.euf-to-lra-existing-atoms`
+- `:no.interface.euf-to-lra-missing-atoms`
+- `:no.interface.euf-to-lra-created-atoms`
+- `:no.interface.euf-to-lra-clauses`
+- `:no.interface.euf-to-lra-rechecks`
+- `:no.interface.lra-to-euf-candidates`
+- `:no.interface.lra-to-euf-existing-atoms`
+- `:no.interface.lra-to-euf-missing-atoms`
+- `:no.interface.lra-to-euf-created-atoms`
+- `:no.interface.lra-to-euf-clauses`
+- `:no.interface.lra-to-euf-rechecks`
 - `:no.interface.conflicts`
 - `:no.interface.euf-conflicts`
 - `:no.interface.lra-conflicts`
@@ -353,13 +374,24 @@ These count internal proxy definitions in total, the split between Real-valued
 UF applications in arithmetic atoms and non-constant Real terms in EUF atoms or
 EUF-side application definitions, repeated uses of already-created application
 or Real-term proxies, same-pass rewrite-cache hits over hash-consed formula,
-arithmetic, and EUF terms, Real proxy terms visible to both EUF and LRA, equality
-checks in each interface direction, positive SAT-visible shared-Real equality
-atoms created lazily so far, how many of those generated atoms are true or false
-in the last checked SAT assignment, how many were forced by EUF/LRA equality
-propagation, and strict shared-Real
-separations found while validating a final `sat` arrangement or reconstructing
-mixed models. A false generated interface equality is asserted to EUF as a
+arithmetic, and EUF terms, Real proxy terms visible to both EUF and LRA, and
+equality checks in each interface direction. The older
+`:no.interface.equalities-propagated`, `:no.interface.euf-to-lra-equalities`,
+and `:no.interface.lra-to-euf-equalities` counters count implied equalities
+reported by the producing theory, even when the equality is already true or
+cannot yet be delivered as a useful SAT clause. The newer
+`:no.interface.equality-*` counters split that total into SAT-visible existing
+atoms, missing equality atoms, lazily created atoms, already-true equalities,
+equalities assigned false in the current SAT assignment, guarded clauses added,
+reason literals in those clauses, and solver-loop rechecks caused by those
+clauses. The directional `:no.interface.euf-to-lra-*` and
+`:no.interface.lra-to-euf-*` counters provide the same clause-delivery split per
+producer/consumer direction. `:no.interface.sat-equality-atoms` counts
+SAT-visible shared-Real equality atoms registered so far, while
+`:no.interface.sat-equalities-true` and `:no.interface.sat-equalities-false`
+describe the last checked SAT assignment. Strict shared-Real separations are
+counted while validating a final `sat` arrangement or reconstructing mixed
+models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
@@ -417,9 +449,12 @@ pairs; it is still not a
 permanent unit clause. The current positive-equality path should
 also show activity in
 `:no.interface.sat-equalities-forced`, which counts guarded propagation clauses
-from the current theory assignment to a generated interface equality literal,
-and then ordinary EUF/LRA theory-conflict counters if the forced equality is
-inconsistent.
+from the current theory assignment to an interface equality literal, and then
+ordinary EUF/LRA theory-conflict counters if the forced equality is
+inconsistent. Compare it with `:no.interface.equality-candidates`: a large gap
+means the producer is rediscovering equalities that are already true, missing
+from the current interface registry, or not useful enough to force a SAT
+recheck.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are
