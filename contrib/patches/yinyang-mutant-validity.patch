@@ -1,3 +1,54 @@
+From d7f660e3333c5e5f43f8777491b90cbf97119770 Mon Sep 17 00:00:00 2001
+From: mikolas <mikolas.janota@gmail.com>
+Date: Sun, 2 Aug 2026 08:26:41 +0200
+Subject: [PATCH] Add --keep-logic and --hoist-declarations
+
+Both address mutants that are not valid SMT-LIB in the seed's logic, and
+both default off, so existing behaviour is unchanged.
+
+--keep-logic (-kl) retains the seed's (set-logic ...). prepare_seed drops
+it to avoid solver warnings, but that has two costs. A solver that needs
+the logic before a sort exists rejects every mutant outright: yices-smt2
+fails with
+
+    (error "at line 1, column 21: undefined sort: Real")
+
+at line 1, so as a differential reference it contributes nothing at all
+while still costing a process launch per mutant. And a solver that infers
+a default will answer a mutant that has left the seed's logic instead of
+rejecting it, which makes it a poor oracle for a solver implementing only
+that logic. Keeping the command makes every solver judge the mutant
+against the same logic.
+
+--hoist-declarations (-hd) emits declarations before the commands that use
+them. typefuzz builds new terms out of sort-compatible variables without
+checking that the variable is declared before the assert it lands in, so a
+mutant can use a symbol well above its own declare-fun -- for instance
+motzkin_2063_2 declared at line 87 and used at line 44. Solvers that
+enforce declare-before-use reject the whole mutant; z3 recovers and answers
+a formula with the offending assertions silently dropped, which is worse.
+Moving a declaration earlier can never break a script, since top-level
+declarations are global and cannot shadow, so this is a normalisation
+rather than a semantic change. opfuzz does not need it: it substitutes
+operators in place and leaves command order alone.
+
+Measured on QF_LRA seeds from six benchmark families, 72 mutants, using a
+QF_LRA-restricted operator config in both arms:
+
+    typefuzz, config only          41/72 mutants answerable
+    typefuzz, config + -kl + -hd   62/72
+
+The remaining 10 are genuinely nonlinear products, which no config can
+prevent because typefuzz recombines subterms that already exist in the
+seed rather than introducing the operator itself.
+---
+ yinyang/config/OpfuzzHelptext.py   |  3 ++
+ yinyang/config/TypefuzzHelptext.py |  3 ++
+ yinyang/src/base/ArgumentParser.py | 12 ++++++
+ yinyang/src/core/Fuzzer.py         |  8 +++-
+ yinyang/src/parsing/Parse.py       | 68 ++++++++++++++++++++++++------
+ 5 files changed, 79 insertions(+), 15 deletions(-)
+
 diff --git a/yinyang/config/OpfuzzHelptext.py b/yinyang/config/OpfuzzHelptext.py
 index 968d74f..ec68452 100644
 --- a/yinyang/config/OpfuzzHelptext.py
@@ -226,3 +277,6 @@ index d0318ec..6b2fb7b 100644
      """
      Parse SMT-LIB from string.
  
+-- 
+2.43.0
+

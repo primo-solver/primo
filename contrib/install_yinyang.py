@@ -11,10 +11,14 @@ not from PyPI or from upstream: the fork already carries local changes (e.g.
 "Handle QF_UF custom sorts in typefuzz"), and Primo's own patches under
 contrib/patches are applied on top.
 
-Patches applied:
+No patches are applied at present: the two flags Primo needs,
+--keep-logic and --hoist-declarations, were contributed to the fork itself
+(commit 04c8618) and now come with a plain clone. contrib/patches still holds
+yinyang-mutant-validity.patch for provenance and for patching an older
+checkout. The verification below stays regardless, because what matters is
+that the installed venv HAS the flags, not how they got there.
 
-  yinyang-mutant-validity.patch
-      Two flags, both about mutants being valid SMT-LIB in the seed's logic.
+What those flags are for:
 
       -kl/--keep-logic retains the seed's (set-logic ...). YinYang strips it
       by default so solvers do not emit warnings, but dropping it has two
@@ -44,7 +48,12 @@ from pathlib import Path
 
 
 REPO = "https://github.com/MikolasJanota/yinyang.git"
-PATCHES = ["yinyang-mutant-validity.patch"]
+# Empty: --keep-logic and --hoist-declarations landed upstream in the fork
+# (MikolasJanota/yinyang 04c8618, 2026-08-02), so applying
+# contrib/patches/yinyang-mutant-validity.patch on top would now fail as
+# already-applied. The patch file is kept for provenance and for applying to a
+# checkout that predates it; add new patches here.
+PATCHES: list[str] = []
 
 
 def run(command: list[str], cwd: Path | None = None) -> None:
