@@ -153,6 +153,9 @@ coordinator publishes:
 - `:no.purification.euf-real-term-definitions`
 - `:no.purification.reused-applications`
 - `:no.purification.reused-real-terms`
+- `:no.purification.memoized-formula-rewrites`
+- `:no.purification.memoized-arithmetic-rewrites`
+- `:no.purification.memoized-euf-rewrites`
 - `:no.purification.skipped-no-sites`
 - `:no.interface.shared-real-terms`
 - `:no.interface.sat-equality-atoms`
@@ -371,7 +374,11 @@ treating one theory's atoms as Boolean noise.
   SMT-local maps from original Real-valued UF application `TermId` values and
   non-constant Real argument `TermId` values to internal proxy `TermId` values.
   A memoized pre-scan detects when no such purification sites exist, in which
-  case the pass leaves the assertion vector unchanged.
+  case the pass leaves the assertion vector unchanged. When purification is
+  needed, the rewrite pass also memoizes formula, arithmetic-term, and EUF-term
+  rewrites over hash-consed `TermId`s. This is an implementation efficiency
+  guard for the current proxy-purification subset, not the de Moura-Bjorner
+  model-guided combination loop.
 - **Owner:** `smt/check_sat.cpp`, because it owns the Boolean abstraction and
   solver dispatch.
 - **Accepted shape:** EUF atoms over uninterpreted or Boolean terms, EUF

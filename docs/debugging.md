@@ -296,6 +296,9 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.purification.euf-real-term-definitions`
 - `:no.purification.reused-applications`
 - `:no.purification.reused-real-terms`
+- `:no.purification.memoized-formula-rewrites`
+- `:no.purification.memoized-arithmetic-rewrites`
+- `:no.purification.memoized-euf-rewrites`
 - `:no.purification.skipped-no-sites`
 - `:no.interface.shared-real-terms`
 - `:no.interface.sat-equality-atoms`
@@ -346,7 +349,8 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 These count internal proxy definitions in total, the split between Real-valued
 UF applications in arithmetic atoms and non-constant Real terms in EUF atoms or
 EUF-side application definitions, repeated uses of already-created application
-or Real-term proxies, Real proxy terms visible to both EUF and LRA, equality
+or Real-term proxies, same-pass rewrite-cache hits over hash-consed formula,
+arithmetic, and EUF terms, Real proxy terms visible to both EUF and LRA, equality
 checks in each interface direction, positive SAT-visible shared-Real equality
 atoms created lazily so far, how many of those generated atoms are true or false
 in the last checked SAT assignment, how many were forced by EUF/LRA equality

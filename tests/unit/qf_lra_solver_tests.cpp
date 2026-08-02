@@ -471,7 +471,28 @@ void qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies() {
                                        no_preprocessing());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
-  assert(result.statistics.get(":no.purification.reused-real-terms") >= 1);
+  assert(result.statistics.get(":no.purification.reused-real-terms") +
+             result.statistics.get(":no.purification.memoized-euf-rewrites") >=
+         1);
+}
+
+void qf_uf_lra_memoizes_repeated_mixed_purification_rewrites() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun f (U) Real)
+    (declare-fun x () Real)
+    (assert (and
+      (<= (+ (f a) x) 3)
+      (<= (+ (f a) x) 3)
+      (<= (+ (f a) x) 4)))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") == 1);
+  assert(result.statistics.get(":no.purification.memoized-arithmetic-rewrites") > 0);
 }
 
 void qf_uf_lra_shares_purified_real_argument_equalities_with_euf() {
@@ -2101,6 +2122,7 @@ int main() {
   qf_uf_lra_orients_capped_model_separations_from_lra_model();
   qf_uf_lra_purifies_nonconstant_real_predicate_arguments();
   qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies();
+  qf_uf_lra_memoizes_repeated_mixed_purification_rewrites();
   qf_uf_lra_shares_purified_real_argument_equalities_with_euf();
   qf_uf_lra_prints_model_with_purified_real_predicate_argument();
   qf_uf_lra_model_keeps_true_purified_real_literal_argument_entry();

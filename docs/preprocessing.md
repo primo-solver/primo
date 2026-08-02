@@ -792,9 +792,12 @@ For QF_UFLRA, the SMT layer also runs a memoized pre-scan before mixed
 purification. If there are no Real-valued UF applications in arithmetic atoms and
 no non-constant Real terms inside EUF atoms, the purification pass returns the
 assertions unchanged and reports `:no.purification.skipped-no-sites`. The Boolean
-clausifier records theory-atom polarity by `(TermId, polarity)`, so repeated
-hash-consed subformulas are traversed at most once per polarity while preserving
-positive/negative occurrence flags.
+mixed-purification rewrite itself also memoizes formula, arithmetic, and EUF
+rewrites by `TermId` for that pass. Repeated hash-consed subterms therefore reuse
+their rewritten result and do not recursively rebuild the same proxy definitions
+or child vectors. The Boolean clausifier records theory-atom polarity by
+`(TermId, polarity)`, so repeated hash-consed subformulas are traversed at most
+once per polarity while preserving positive/negative occurrence flags.
 
 UF symmetry breaking traverses top-level conjunctions to collect explicit
 disequalities, then scans `or` nodes for choice disjunctions. The invariance

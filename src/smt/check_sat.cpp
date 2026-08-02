@@ -5503,6 +5503,9 @@ struct MixedTheoryPurificationResult {
   std::size_t euf_real_term_definitions = 0;
   std::size_t reused_applications = 0;
   std::size_t reused_real_terms = 0;
+  std::size_t memoized_formula_rewrites = 0;
+  std::size_t memoized_arithmetic_rewrites = 0;
+  std::size_t memoized_euf_rewrites = 0;
   bool skipped_no_sites = false;
 };
 
@@ -5628,56 +5631,66 @@ bool assertions_need_mixed_purification(const core::TermManager& terms,
   return false;
 }
 
-core::TermId purify_mixed_formula(
-    Frontend& frontend, core::TermId term_id,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
-    std::vector<core::TermId>& app_definitions, std::size_t& reused_applications,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
-    std::vector<core::TermId>& lra_definition_atoms, std::size_t& reused_real_terms);
+struct MixedPurificationRewriteState {
+  std::unordered_map<core::TermId, core::TermId> proxy_by_app;
+  std::unordered_map<core::TermId, core::TermId> proxy_by_real_term;
+  std::unordered_map<core::TermId, core::TermId> formula_rewrite_memo;
+  std::unordered_map<core::TermId, core::TermId> arithmetic_rewrite_memo;
+  std::unordered_map<core::TermId, core::TermId> euf_rewrite_memo;
+  std::vector<core::TermId> app_definitions;
+  std::vector<core::TermId> lra_definition_atoms;
+  std::size_t reused_applications = 0;
+  std::size_t reused_real_terms = 0;
+  std::size_t memoized_formula_rewrites = 0;
+  std::size_t memoized_arithmetic_rewrites = 0;
+  std::size_t memoized_euf_rewrites = 0;
+};
+
+core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
+                                  MixedPurificationRewriteState& state);
 
 core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
-                             std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
-                             std::vector<core::TermId>& app_definitions,
-                             std::size_t& reused_applications,
-                             std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
-                             std::vector<core::TermId>& lra_definition_atoms,
-                             std::size_t& reused_real_terms);
+                             MixedPurificationRewriteState& state);
 
-core::TermId purify_arithmetic_term(
-    Frontend& frontend, core::TermId term_id,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
-    std::vector<core::TermId>& app_definitions, std::size_t& reused_applications,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
-    std::vector<core::TermId>& lra_definition_atoms, std::size_t& reused_real_terms) {
+core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
+                                    MixedPurificationRewriteState& state) {
+  const auto memoized = state.arithmetic_rewrite_memo.find(term_id);
+  if (memoized != state.arithmetic_rewrite_memo.end()) {
+    ++state.memoized_arithmetic_rewrites;
+    return memoized->second;
+  }
   core::TermManager& terms = frontend.terms();
   const core::Term& term = terms.get(term_id);
   const core::TermKind kind = term.kind;
   const core::SortId sort = term.sort;
   const core::SymbolId symbol = term.symbol;
   const util::Rational rational_value = term.rational_value;
+  core::TermId result = term_id;
   if (kind == core::TermKind::Application && sort == terms.symbols().real_sort()) {
-    const auto found = proxy_by_app.find(term_id);
-    if (found != proxy_by_app.end()) {
-      ++reused_applications;
-      return found->second;
+    const auto found = state.proxy_by_app.find(term_id);
+    if (found != state.proxy_by_app.end()) {
+      ++state.reused_applications;
+      result = found->second;
+      state.arithmetic_rewrite_memo.emplace(term_id, result);
+      return result;
     }
     const std::vector<core::TermId> children = term.children;
     const core::TermId proxy = frontend.fresh_internal_constant(sort, "no_proxy");
-    proxy_by_app.emplace(term_id, proxy);
+    state.proxy_by_app.emplace(term_id, proxy);
     std::vector<core::TermId> purified_children;
     purified_children.reserve(children.size());
     bool changed = false;
     for (const core::TermId child : children) {
-      const core::TermId purified =
-          purify_euf_term(frontend, child, proxy_by_app, app_definitions, reused_applications,
-                          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+      const core::TermId purified = purify_euf_term(frontend, child, state);
       changed = changed || purified != child;
       purified_children.push_back(purified);
     }
     const core::TermId purified_application =
         changed ? terms.mk_app(symbol, std::move(purified_children)) : term_id;
-    app_definitions.push_back(terms.mk_eq(proxy, purified_application));
-    return proxy;
+    state.app_definitions.push_back(terms.mk_eq(proxy, purified_application));
+    result = proxy;
+    state.arithmetic_rewrite_memo.emplace(term_id, result);
+    return result;
   }
 
   switch (kind) {
@@ -5687,78 +5700,74 @@ core::TermId purify_arithmetic_term(
       rewritten_children.reserve(children.size());
       bool changed = false;
       for (const core::TermId child : children) {
-        const core::TermId rewritten = purify_arithmetic_term(
-            frontend, child, proxy_by_app, app_definitions, reused_applications, proxy_by_real_term,
-            lra_definition_atoms, reused_real_terms);
+        const core::TermId rewritten = purify_arithmetic_term(frontend, child, state);
         changed = changed || rewritten != child;
         rewritten_children.push_back(rewritten);
       }
-      return changed ? terms.mk_plus(std::move(rewritten_children)) : term_id;
+      result = changed ? terms.mk_plus(std::move(rewritten_children)) : term_id;
+      break;
     }
     case core::TermKind::Times: {
       const core::TermId original_child = term.children.at(0);
-      const core::TermId child = purify_arithmetic_term(
-          frontend, original_child, proxy_by_app, app_definitions, reused_applications,
-          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-      return child == original_child ? term_id : terms.mk_times(rational_value, child);
+      const core::TermId child = purify_arithmetic_term(frontend, original_child, state);
+      result = child == original_child ? term_id : terms.mk_times(rational_value, child);
+      break;
     }
     default:
-      return term_id;
+      break;
   }
+  state.arithmetic_rewrite_memo.emplace(term_id, result);
+  return result;
 }
 
-core::TermId purify_euf_real_argument(
-    Frontend& frontend, core::TermId term_id,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
-    std::vector<core::TermId>& app_definitions, std::size_t& reused_applications,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
-    std::vector<core::TermId>& lra_definition_atoms, std::size_t& reused_real_terms) {
+core::TermId purify_euf_real_argument(Frontend& frontend, core::TermId term_id,
+                                      MixedPurificationRewriteState& state) {
   core::TermManager& terms = frontend.terms();
   const core::Term& term = terms.get(term_id);
   if (term.sort != terms.symbols().real_sort()) {
     return term_id;
   }
 
-  const core::TermId arithmetic_term =
-      purify_arithmetic_term(frontend, term_id, proxy_by_app, app_definitions, reused_applications,
-                             proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+  const core::TermId arithmetic_term = purify_arithmetic_term(frontend, term_id, state);
   const core::Term& rewritten = terms.get(arithmetic_term);
   if (rewritten.kind == core::TermKind::Constant) {
     return arithmetic_term;
   }
 
-  const auto found = proxy_by_real_term.find(arithmetic_term);
-  if (found != proxy_by_real_term.end()) {
-    ++reused_real_terms;
+  const auto found = state.proxy_by_real_term.find(arithmetic_term);
+  if (found != state.proxy_by_real_term.end()) {
+    ++state.reused_real_terms;
     return found->second;
   }
   const core::TermId proxy = frontend.fresh_internal_constant(rewritten.sort, "no_real_arg");
-  proxy_by_real_term.emplace(arithmetic_term, proxy);
-  lra_definition_atoms.push_back(terms.mk_le(proxy, arithmetic_term));
-  lra_definition_atoms.push_back(terms.mk_le(arithmetic_term, proxy));
+  state.proxy_by_real_term.emplace(arithmetic_term, proxy);
+  state.lra_definition_atoms.push_back(terms.mk_le(proxy, arithmetic_term));
+  state.lra_definition_atoms.push_back(terms.mk_le(arithmetic_term, proxy));
   return proxy;
 }
 
 core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
-                             std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
-                             std::vector<core::TermId>& app_definitions,
-                             std::size_t& reused_applications,
-                             std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
-                             std::vector<core::TermId>& lra_definition_atoms,
-                             std::size_t& reused_real_terms) {
+                             MixedPurificationRewriteState& state) {
+  const auto memoized = state.euf_rewrite_memo.find(term_id);
+  if (memoized != state.euf_rewrite_memo.end()) {
+    ++state.memoized_euf_rewrites;
+    return memoized->second;
+  }
   core::TermManager& terms = frontend.terms();
   const core::Term& term = terms.get(term_id);
   const core::TermKind kind = term.kind;
   const core::SortId sort = term.sort;
   const core::SymbolId symbol = term.symbol;
+  core::TermId result = term_id;
   if (sort == terms.symbols().real_sort()) {
-    return purify_euf_real_argument(frontend, term_id, proxy_by_app, app_definitions,
-                                    reused_applications, proxy_by_real_term, lra_definition_atoms,
-                                    reused_real_terms);
+    result = purify_euf_real_argument(frontend, term_id, state);
+    state.euf_rewrite_memo.emplace(term_id, result);
+    return result;
   }
 
   if (kind != core::TermKind::Application) {
-    return term_id;
+    state.euf_rewrite_memo.emplace(term_id, result);
+    return result;
   }
 
   const std::vector<core::TermId> term_children = term.children;
@@ -5766,77 +5775,66 @@ core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
   children.reserve(term_children.size());
   bool changed = false;
   for (const core::TermId child : term_children) {
-    const core::TermId rewritten =
-        purify_euf_term(frontend, child, proxy_by_app, app_definitions, reused_applications,
-                        proxy_by_real_term, lra_definition_atoms, reused_real_terms);
+    const core::TermId rewritten = purify_euf_term(frontend, child, state);
     changed = changed || rewritten != child;
     children.push_back(rewritten);
   }
-  return changed ? terms.mk_app(symbol, std::move(children)) : term_id;
+  result = changed ? terms.mk_app(symbol, std::move(children)) : term_id;
+  state.euf_rewrite_memo.emplace(term_id, result);
+  return result;
 }
 
-core::TermId purify_mixed_formula(
-    Frontend& frontend, core::TermId term_id,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_app,
-    std::vector<core::TermId>& app_definitions, std::size_t& reused_applications,
-    std::unordered_map<core::TermId, core::TermId>& proxy_by_real_term,
-    std::vector<core::TermId>& lra_definition_atoms, std::size_t& reused_real_terms) {
+core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
+                                  MixedPurificationRewriteState& state) {
+  const auto memoized = state.formula_rewrite_memo.find(term_id);
+  if (memoized != state.formula_rewrite_memo.end()) {
+    ++state.memoized_formula_rewrites;
+    return memoized->second;
+  }
   core::TermManager& terms = frontend.terms();
   const core::Term& term = terms.get(term_id);
   const core::TermKind kind = term.kind;
   const core::SortId sort = term.sort;
+  core::TermId result = term_id;
   switch (kind) {
     case core::TermKind::Le: {
       const std::vector<core::TermId> term_children = term.children;
-      const core::TermId lhs = purify_arithmetic_term(
-          frontend, term_children.at(0), proxy_by_app, app_definitions, reused_applications,
-          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-      const core::TermId rhs = purify_arithmetic_term(
-          frontend, term_children.at(1), proxy_by_app, app_definitions, reused_applications,
-          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-      return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                      : terms.mk_le(lhs, rhs);
+      const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
+      const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
+      result = lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
+                                                                        : terms.mk_le(lhs, rhs);
+      break;
     }
     case core::TermKind::Lt: {
       const std::vector<core::TermId> term_children = term.children;
-      const core::TermId lhs = purify_arithmetic_term(
-          frontend, term_children.at(0), proxy_by_app, app_definitions, reused_applications,
-          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-      const core::TermId rhs = purify_arithmetic_term(
-          frontend, term_children.at(1), proxy_by_app, app_definitions, reused_applications,
-          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-      return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                      : terms.mk_lt(lhs, rhs);
+      const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
+      const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
+      result = lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
+                                                                        : terms.mk_lt(lhs, rhs);
+      break;
     }
     case core::TermKind::Equality:
       if (terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
         const std::vector<core::TermId> term_children = term.children;
-        const core::TermId lhs = purify_arithmetic_term(
-            frontend, term_children.at(0), proxy_by_app, app_definitions, reused_applications,
-            proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-        const core::TermId rhs = purify_arithmetic_term(
-            frontend, term_children.at(1), proxy_by_app, app_definitions, reused_applications,
-            proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-        return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                        : terms.mk_eq(lhs, rhs);
+        const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
+        const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
+        result = lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
+                                                                          : terms.mk_eq(lhs, rhs);
+        break;
       }
       {
         const std::vector<core::TermId> term_children = term.children;
-        const core::TermId lhs = purify_euf_term(
-            frontend, term_children.at(0), proxy_by_app, app_definitions, reused_applications,
-            proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-        const core::TermId rhs = purify_euf_term(
-            frontend, term_children.at(1), proxy_by_app, app_definitions, reused_applications,
-            proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-        return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                        : terms.mk_eq(lhs, rhs);
+        const core::TermId lhs = purify_euf_term(frontend, term_children.at(0), state);
+        const core::TermId rhs = purify_euf_term(frontend, term_children.at(1), state);
+        result = lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
+                                                                          : terms.mk_eq(lhs, rhs);
+        break;
       }
     case core::TermKind::Not: {
       const core::TermId original_child = term.children.at(0);
-      const core::TermId child = purify_mixed_formula(
-          frontend, original_child, proxy_by_app, app_definitions, reused_applications,
-          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-      return child == original_child ? term_id : terms.mk_not(child);
+      const core::TermId child = purify_mixed_formula(frontend, original_child, state);
+      result = child == original_child ? term_id : terms.mk_not(child);
+      break;
     }
     case core::TermKind::And:
     case core::TermKind::Or: {
@@ -5845,71 +5843,63 @@ core::TermId purify_mixed_formula(
       children.reserve(term_children.size());
       bool changed = false;
       for (const core::TermId child : term_children) {
-        const core::TermId rewritten = purify_mixed_formula(
-            frontend, child, proxy_by_app, app_definitions, reused_applications, proxy_by_real_term,
-            lra_definition_atoms, reused_real_terms);
+        const core::TermId rewritten = purify_mixed_formula(frontend, child, state);
         changed = changed || rewritten != child;
         children.push_back(rewritten);
       }
-      if (!changed) {
-        return term_id;
-      }
-      return kind == core::TermKind::And ? terms.mk_and(std::move(children))
-                                         : terms.mk_or(std::move(children));
+      result = !changed ? term_id
+                        : (kind == core::TermKind::And ? terms.mk_and(std::move(children))
+                                                       : terms.mk_or(std::move(children)));
+      break;
     }
     case core::TermKind::Implies: {
       const std::vector<core::TermId> term_children = term.children;
-      const core::TermId lhs = purify_mixed_formula(
-          frontend, term_children.at(0), proxy_by_app, app_definitions, reused_applications,
-          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-      const core::TermId rhs = purify_mixed_formula(
-          frontend, term_children.at(1), proxy_by_app, app_definitions, reused_applications,
-          proxy_by_real_term, lra_definition_atoms, reused_real_terms);
-      return lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                      : terms.mk_implies(lhs, rhs);
+      const core::TermId lhs = purify_mixed_formula(frontend, term_children.at(0), state);
+      const core::TermId rhs = purify_mixed_formula(frontend, term_children.at(1), state);
+      result = lhs == term_children.at(0) && rhs == term_children.at(1)
+                   ? term_id
+                   : terms.mk_implies(lhs, rhs);
+      break;
     }
     case core::TermKind::Application:
       if (sort == terms.symbols().bool_sort()) {
-        return purify_euf_term(frontend, term_id, proxy_by_app, app_definitions,
-                               reused_applications, proxy_by_real_term, lra_definition_atoms,
-                               reused_real_terms);
+        result = purify_euf_term(frontend, term_id, state);
       }
-      return term_id;
+      break;
     default:
-      return term_id;
+      break;
   }
+  state.formula_rewrite_memo.emplace(term_id, result);
+  return result;
 }
 
 MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
     Frontend& frontend, const std::vector<core::TermId>& assertions) {
   if (!assertions_need_mixed_purification(frontend.terms(), assertions)) {
-    return MixedTheoryPurificationResult{assertions, 0, 0, 0, 0, true};
+    return MixedTheoryPurificationResult{.assertions = assertions, .skipped_no_sites = true};
   }
-  std::unordered_map<core::TermId, core::TermId> proxy_by_application;
-  std::unordered_map<core::TermId, core::TermId> proxy_by_real_term;
+  MixedPurificationRewriteState state;
   std::vector<core::TermId> rewritten_assertions;
-  std::vector<core::TermId> app_definitions;
-  std::vector<core::TermId> lra_definition_atoms;
-  std::size_t reused_applications = 0;
-  std::size_t reused_real_terms = 0;
   rewritten_assertions.reserve(assertions.size());
-  app_definitions.reserve(assertions.size());
-  lra_definition_atoms.reserve(assertions.size() * 2);
+  state.app_definitions.reserve(assertions.size());
+  state.lra_definition_atoms.reserve(assertions.size() * 2);
   for (const core::TermId assertion : assertions) {
-    rewritten_assertions.push_back(purify_mixed_formula(
-        frontend, assertion, proxy_by_application, app_definitions, reused_applications,
-        proxy_by_real_term, lra_definition_atoms, reused_real_terms));
+    rewritten_assertions.push_back(purify_mixed_formula(frontend, assertion, state));
   }
-  rewritten_assertions.insert(rewritten_assertions.end(), app_definitions.begin(),
-                              app_definitions.end());
-  rewritten_assertions.insert(rewritten_assertions.end(), lra_definition_atoms.begin(),
-                              lra_definition_atoms.end());
-  return MixedTheoryPurificationResult{std::move(rewritten_assertions),
-                                       app_definitions.size(),
-                                       proxy_by_real_term.size(),
-                                       reused_applications,
-                                       reused_real_terms,
-                                       false};
+  rewritten_assertions.insert(rewritten_assertions.end(), state.app_definitions.begin(),
+                              state.app_definitions.end());
+  rewritten_assertions.insert(rewritten_assertions.end(), state.lra_definition_atoms.begin(),
+                              state.lra_definition_atoms.end());
+  return MixedTheoryPurificationResult{
+      .assertions = std::move(rewritten_assertions),
+      .arithmetic_uf_definitions = state.app_definitions.size(),
+      .euf_real_term_definitions = state.proxy_by_real_term.size(),
+      .reused_applications = state.reused_applications,
+      .reused_real_terms = state.reused_real_terms,
+      .memoized_formula_rewrites = state.memoized_formula_rewrites,
+      .memoized_arithmetic_rewrites = state.memoized_arithmetic_rewrites,
+      .memoized_euf_rewrites = state.memoized_euf_rewrites,
+      .skipped_no_sites = false};
 }
 
 // Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies
@@ -8133,6 +8123,11 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                      purification.euf_real_term_definitions);
       statistics.set(":no.purification.reused-applications", purification.reused_applications);
       statistics.set(":no.purification.reused-real-terms", purification.reused_real_terms);
+      statistics.set(":no.purification.memoized-formula-rewrites",
+                     purification.memoized_formula_rewrites);
+      statistics.set(":no.purification.memoized-arithmetic-rewrites",
+                     purification.memoized_arithmetic_rewrites);
+      statistics.set(":no.purification.memoized-euf-rewrites", purification.memoized_euf_rewrites);
       statistics.set(":no.purification.skipped-no-sites", purification.skipped_no_sites ? 1 : 0);
     }
     statistics.set(kStatAssertionsFinal, assertions.size());
