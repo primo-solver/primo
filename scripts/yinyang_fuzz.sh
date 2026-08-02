@@ -87,6 +87,22 @@ fi
 
 mkdir -p "$BUGS" "$SCRATCH"
 
+# typefuzz's -L silently drops any seed larger than the limit; it reports the
+# loss only as "N valid, M invalid" in its summary, which reads like a
+# well-sortedness result rather than "your corpus was truncated". On
+# 2026-08-01 that discarded 12 of the 34 seeds in the family-complete QF_LRA
+# corpus -- every seed from latendresse, LassoRanker, Heizmann, miplib, TM and
+# tropical-matrix, i.e. exactly the families the corpus had just been widened
+# to include. Say so up front, so the campaign log records what it did not fuzz.
+if [[ -d "$SEEDS" ]]; then
+    oversized=$(find "$SEEDS" -type f -name '*.smt2' -size +"${FILE_SIZE_LIMIT}"c | wc -l)
+    total=$(find "$SEEDS" -type f -name '*.smt2' | wc -l)
+    if (( oversized > 0 )); then
+        echo "warning: $oversized of $total seeds exceed --file-size-limit ${FILE_SIZE_LIMIT}B and will be skipped:" >&2
+        find "$SEEDS" -type f -name '*.smt2' -size +"${FILE_SIZE_LIMIT}"c -printf '  %f (%s B)\n' >&2
+    fi
+fi
+
 cmd=(
     "$TYPEFUZZ"
     -i "$ITERATIONS"

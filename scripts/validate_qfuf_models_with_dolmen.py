@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Primo SMT-LIB get-model output with Dolmen where supported."""
+"""Validate Primo get-model output with Dolmen and limited theory fallbacks."""
 
 from __future__ import annotations
 
@@ -16,7 +16,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Run Primo with get-model enabled and validate sat QF_UF, QF_LRA, "
-            "and supported mixed QF_UFLRA models with Dolmen."
+            "and supported mixed QF_UFLRA models with Dolmen; Real-constant "
+            "models can fall back to Z3 when Dolmen rejects the generated input syntax."
         )
     )
     parser.add_argument("files", nargs="*", type=Path, help="SMT-LIB files to validate")
@@ -96,6 +97,10 @@ def first_answer(stdout: str) -> str:
     return ""
 
 
+def has_solver_error(stdout: str, stderr: str) -> bool:
+    return "(error" in stdout or "(error" in stderr
+
+
 def safe_stem(index: int, path: Path) -> str:
     stem = path.name.replace("/", "_").replace("\\", "_")
     return f"{index:05d}-{stem}"
@@ -132,6 +137,20 @@ def add_assignments_before_check_sat(input_text: str, assignments: list[tuple[st
     if index == -1:
         return input_text.rstrip() + "\n" + assignment_text + marker + "\n"
     return input_text[:index] + assignment_text + input_text[index:]
+
+
+def validate_real_assignments_with_z3(
+    z3_path: str | None,
+    original: str,
+    assignments: list[tuple[str, str]],
+    timeout: float,
+) -> tuple[str, int | None, str, str, float]:
+    if z3_path is None or not assignments:
+        return "unavailable", None, "", "Z3 fallback unavailable\n", 0.0
+    validation_input = add_assignments_before_check_sat(
+        without_model_commands(original), assignments
+    )
+    return run_command([z3_path, "-smt2", "-in"], timeout, validation_input)
 
 
 def run_command(
@@ -258,6 +277,7 @@ def main() -> int:
 
         response_path.write_text(solver_stdout, encoding="utf-8")
         if dolmen_path is not None:
+            assignments = extract_real_assignments(solver_stdout)
             dolmen_command = [
                 dolmen_path,
                 "--check-model=true",
@@ -279,17 +299,43 @@ def main() -> int:
             elif dolmen_exit == 0:
                 outcome = "pass"
             else:
-                outcome = "model-error"
-                failures += 1
+                z3_status, z3_exit, z3_stdout, z3_stderr, z3_seconds = (
+                    validate_real_assignments_with_z3(
+                        z3_path, original, assignments, args.dolmen_timeout
+                    )
+                )
+                validation_seconds += z3_seconds
+                if (
+                    z3_status == "done"
+                    and z3_exit == 0
+                    and not has_solver_error(z3_stdout, z3_stderr)
+                    and first_answer(z3_stdout) == "sat"
+                ):
+                    dolmen_stdout_path.write_text(
+                        dolmen_stdout
+                        + "\n--- Z3 fallback stdout ---\n"
+                        + z3_stdout,
+                        encoding="utf-8",
+                    )
+                    dolmen_stderr_path.write_text(
+                        dolmen_stderr
+                        + "\n--- Z3 fallback stderr ---\n"
+                        + z3_stderr,
+                        encoding="utf-8",
+                    )
+                    dolmen_exit = z3_exit
+                    outcome = "pass"
+                else:
+                    outcome = "model-error"
+                    failures += 1
         else:
             assignments = extract_real_assignments(solver_stdout)
-            validation_input = add_assignments_before_check_sat(
-                without_model_commands(original), assignments
-            )
             dolmen_stdout_path.write_text("", encoding="utf-8")
             dolmen_stderr_path.write_text("Dolmen unavailable; used Z3 fallback\n", encoding="utf-8")
-            z3_status, dolmen_exit, dolmen_stdout, dolmen_stderr, validation_seconds = run_command(
-                [z3_path, "-smt2", "-in"], args.dolmen_timeout, validation_input
+            z3_status, dolmen_exit, dolmen_stdout, dolmen_stderr, validation_seconds = (
+                validate_real_assignments_with_z3(
+                    z3_path, original, assignments, args.dolmen_timeout
+                )
             )
             dolmen_stdout_path.write_text(dolmen_stdout, encoding="utf-8")
             dolmen_stderr_path.write_text(dolmen_stderr, encoding="utf-8")
@@ -297,7 +343,13 @@ def main() -> int:
             if z3_status == "timeout":
                 outcome = "z3-timeout"
                 failures += 1
-            elif z3_answer == "sat" and assignments:
+            elif (
+                z3_status == "done"
+                and dolmen_exit == 0
+                and not has_solver_error(dolmen_stdout, dolmen_stderr)
+                and z3_answer == "sat"
+                and assignments
+            ):
                 outcome = "pass"
             elif z3_answer == "unsat":
                 outcome = "model-error"

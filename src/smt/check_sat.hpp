@@ -77,6 +77,30 @@ enum class LraPivotingRule {
   Sparse,
 };
 
+// Defensive caps on row-based/interval bound propagation's per-bound-change
+// cost. Unlike same-slack propagation (O(atoms sharing a slack), typically
+// small), a row-based scan is triggered by *any* bound change on a variable
+// that may occur in many rows, and the reverse direction runs an O(row size)
+// child-bound computation for *each* other term of each affected row --
+// multiplicatively pricier, which is why its two caps default smaller.
+//
+// The defaults are not derived from theory; they were picked to be generous
+// enough to matter on real formulas and small enough to bound worst-case cost
+// on adversarial/fuzzed input (the Gaussian-elimination caps' own precedent).
+// They are options rather than constants because measurement says the
+// defaults are the binding constraint, not the mechanism: on the 500KB-5MB
+// gap band the scan fires 11-68 times against a 7k-190k opportunity count,
+// and raising the caps to 256 makes scrambled312090 -- a file that times out
+// at 60s by default -- solve in about 58s. See docs/qf-lra-heuristics.md
+// section 6.5 (direction D1); the sweep that settles the defaults needs to
+// vary them per run, not per build.
+struct LraRowPropagationLimits {
+  std::size_t max_row_size = 64;
+  std::size_t max_fanout = 64;
+  std::size_t bidirectional_max_row_size = 32;
+  std::size_t bidirectional_max_fanout = 32;
+};
+
 struct AutoBudget {
   enum class Kind {
     Auto,
@@ -141,6 +165,9 @@ struct CheckSatOptions {
   // lra_row_propagation) so the two directions can be A/B tested
   // independently -- see docs/arithmetic.md's Milestone roadmap.
   bool lra_bidirectional_row_propagation = false;
+  // Cost caps for the two row-propagation directions above -- see
+  // LraRowPropagationLimits. Inert unless lra_row_propagation is on.
+  LraRowPropagationLimits lra_row_propagation_limits;
   // Competitiveness-roadmap item 8: theory-guided decisions via CaDiCaL's
   // cb_decide -- the arithmetic theory actively ranks and supplies a
   // decision literal on (almost) every decision, rather than leaving every

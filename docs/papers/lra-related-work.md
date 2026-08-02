@@ -26,6 +26,10 @@ Freely accessible (fetched and read the actual PDF):
 - Nalbach et al., "FMplex" (arXiv 2310.00995)
 - Bromberger/Weidenbach, "Computing a Complete Basis for Equalities..." (SMT@IJCAR 2016, MPI repository)
 - Bixby, "Solving Real-World Linear Programs" (Operations Research 2002, gwern.net mirror)
+- Rueß & Shankar, "Solving Linear Arithmetic Constraints" (CSL-SRI-04-01,
+  2004) -- the SRI technical-report URLs on Shankar's page are dead `ftp://`
+  links and no open mirror was found; copy supplied by the user, read
+  2026-08-01
 - "Local Search For SMT On Linear and Multilinear Real Arithmetic" (arXiv 2303.06676)
 - Fast Cube Tests for LIA / New Techniques for Linear Arithmetic (MPI-hosted, same publisher pattern as the equalities paper above — not individually re-verified)
 
@@ -113,6 +117,90 @@ Clean-room note: implemented from this paper's prose (plus Knuth TAOCP Vol. 2
 Sec. 4.5.1 for the rational arithmetic itself), not from any solver's source.
 https://arxiv.org/abs/0904.3525
 
+### Floating-point-guided exact simplex: the rest of the line
+
+Monniaux's CAV 2009 force-pivot is not a one-off, and the follow-up work is
+what should calibrate direction D2 in [](../qf-lra-heuristics.md) section 6.5.
+Surveyed 2026-07-31; the two papers marked *read* were read for this note, the
+rest are cited from their descriptions in those two.
+
+**Tim King, Clark Barrett, Cesare Tinelli. "Leveraging Linear and Mixed
+Integer Programming for SMT." FMCAD 2014, 139-146.** *(read)*
+<https://theory.stanford.edu/~barrett/pubs/KBT14.pdf>
+**The most relevant paper to D2, and a second independent implementation of
+Monniaux's idea** -- in CVC4, using GLPK 4.52. Its `SeedExact` procedure takes
+the LP solver's final basic set `B̃` and pivots the exact tableau toward it,
+repeatedly finding a pair `x_i, x_j` where `x_j` should be basic and `x_i`
+should not and `T_i,j != 0`. The paper says so directly: "The SeedExact
+procedure can be seen as achieving a similar effect as ForcedPivot in [10]"
+-- where [10] is Monniaux CAV 2009.
+
+Three things here matter more to us than the basis transfer itself.
+
+1. **The control structure is a fallback, not a preprocessing phase.**
+   `BalancedSolve` runs the *exact* solver first under a pivot cap (k_EX =
+   200), and calls the LP solver only when that cap is exceeded. "We thus use
+   an exact solver optimized for fast incremental checks as the primary theory
+   solver. However, we also instrument this solver so that it can detect when
+   it is starting to have difficulty, and in these cases we have it call the
+   LP solver." This dissolves D2's Risk B (that a preprocessing phase cannot
+   see bounds asserted during search): called mid-search, the bounds are known.
+2. **`ImportAssignment`**: the LP solver's floating-point assignment is turned
+   back into rationals by Diophantine approximation (continued-fraction
+   expansion, denominators capped at D = 2^26), deliberately biased toward
+   values that are cheap to represent, "partly because the discarded portion
+   often corresponds exactly to a rounding error". D2 would need this and it
+   is not obvious.
+3. **The measured payoff on QF_LRA is small.** Table I: on 652 QF_LRA
+   benchmarks CVC4+MIP solves 645 against plain CVC4's 636 -- "**plus 9
+   additional problems** (solving more than any other solver), all from the
+   challenging `miplib` family", which after preprocessing is internally mixed
+   integer/real, so the gain runs through the *MIP* path rather than the LP
+   force-pivot path. The comparison set includes yices2 632, mathsat5 622, z3
+   615.
+
+And the sentence that should be read before anyone budgets D2 as a large win:
+"In each of these studies, experimental results on SMT-LIB benchmarks show
+that existing SMT solvers outperform the experimental solvers modified to use
+LP solvers, **even if the LP solver results are not checked for correctness**.
+The main reason for this is that for these benchmarks ... solving requires
+many related calls to the theory solver, each of which is relatively simple."
+KBT's contribution is precisely the balanced control structure that makes it
+pay at all.
+
+**Diego Caminha B. de Oliveira, David Monniaux. "Experiments on the
+feasibility of using a floating-point simplex in an SMT solver." PAAR 2012.**
+<https://easychair.org/publications/paper/NqS>
+The direct continuation of Monniaux CAV 2009, in OpenSMT: call the LP solver
+first and use the result to seed the exact search. Reported **14% faster
+overall** (4h44m45s against the exact simplex's 5h26m55s over 634 benchmarks),
+with **11 of 634 (1.7%)** having at least one check where the floating-point
+and exact simplexes disagreed -- rare, but the reason the exact solver must
+still verify. 14% is the number to weigh D2 against, not the 2-3x that other
+entries in section 6.5 offer.
+
+**Germain Faure, Robert Nieuwenhuis, Albert Oliveras, Enric
+Rodríguez-Carbonell. "SAT Modulo the Theory of Linear Arithmetic: Exact,
+Inexact and Commercial Solvers." SAT 2008, 77-90.**
+<https://www.cs.upc.edu/~oliveras/sat08.pdf>
+Several LP solvers integrated into Barcelogic, with an exact solver lazily
+checking their results for soundness. Analyses why sophisticated LP solvers
+are hard to use inside SMT at all -- disequalities, strict inequalities, and
+incorrect results from floating-point arithmetic -- and proposes result
+checking plus error recovery. The earliest of this line to take unsoundness
+seriously.
+
+**Y. Yu, S. Malik. "Lemma Learning in SMT on Linear Constraints." SAT 2006,
+142-155.** The earliest use of an LP solver as an SMT theory solver, and
+noted by KBT as *not* addressing the possibility of incorrect LP results.
+Cited for provenance only.
+
+**Practical note, measured 2026-07-31.** The cvc5 1.3.4 binary this project
+benchmarks against reports `glpk : no` in `--show-config`. CVC4's LP
+integration is therefore **not** present in the reference solver, and cvc5's
+results on the mid-band gap (9 of 59) are not evidence about this technique
+in either direction.
+
 **Tim King, Clark Barrett, Bruno Dutertre. "Simplex with Sum of
 Infeasibilities for SMT." FMCAD 2013.**
 Addresses Dutertre-de Moura's weakest point: its Bland's-rule pivoting has no
@@ -175,6 +263,112 @@ but Steepest Edge fewest iterations, with Bland notably *not* the most
 robust choice outside its anti-cycling guarantee — a useful sanity check
 before assuming any one rule dominates.
 
+**Tim King. "Effective Algorithms for the Satisfiability of Quantifier-Free
+Formulas Over Linear Real and Integer Arithmetic." PhD thesis, New York
+University, September 2014.**
+<https://cs.nyu.edu/media/publications/king_tim.pdf>
+The most complete implementor's account of Simplex-for-DPLL(T) available, and
+the reference that settles two questions for us.
+
+- **The column-length entering rule is the field's standard, not a novelty.**
+  Section 2.2.12: "The heuristic commonly used in implementations of
+  SimplexForSMT for selecting the entering variable is to select the `x_j`
+  with minimum column length `|(T^|)_j|` with ties broken by [the variable
+  order]. This heuristic works quite well in practice but is not guaranteed to
+  terminate. A simple means of ensuring termination is to count the number of
+  heuristic selections and switch to Bland's rule once this passes a finite
+  cap." That is precisely item H3 *and* its anti-cycling fallback, and King
+  attributes the family to MathSAT, OpenSMT, Yices, Yices 2, z3 and CVC4. Our
+  own citation of Monniaux (CAV 2009) for the sparsity criterion remains
+  accurate as a source, but H3 should not be read as a technique transferred
+  from one paper -- it is what everyone in this space already does. King also
+  records Griggio's most-violated leaving-variable rule (used by CVC4 and
+  MathSAT5), which is our Dantzig-style leaving choice; our opt-in
+  *shortest-row* leaving rule (`--lra-sparse-leaving`) is the part with no
+  counterpart described here.
+- **The tableau is stored explicitly, and fill-in growth is not addressed.**
+  Section 2.2.7 describes a sparse matrix with each nonzero entry linked into
+  both a row list and a column list. Searching the thesis for fill-in, density,
+  Markowitz or refactorization finds only the description of the sparse format
+  itself -- there is no mechanism for controlling densification during search.
+  So the fill-in problem measured in [](../qf-lra-heuristics.md)'s section 6 is
+  not one this literature offers a ready answer to.
+
+**Erling D. Andersen, Knud D. Andersen. "Presolving in linear programming."
+Mathematical Programming 71 (1995), 221-245.**
+<https://link.springer.com/article/10.1007/BF01586000>
+The canonical reference for LP presolve, including removal of fixed
+variables -- the prior art for heuristics-note item H7, whose header
+previously called it "the standard eliminate-fixed-variables step" with no
+citation at all. Note the difference in setting, which is the whole reason H7
+did not pay: presolve removes fixed variables **once, before solving**, from a
+problem whose bounds are all known. In DPLL(T) a variable becomes fixed
+*during* search, when two bounds asserted at some decision level happen to
+coincide, and must be restored on backtracking. Paper not read in full; cited
+for the technique's provenance, not for a result.
+
+**Harald Rueß, Natarajan Shankar. "Solving Linear Arithmetic Constraints."
+CSL Technical Report CSL-SRI-04-01, SRI International, 15 January 2004.**
+*(Read 2026-08-01. This entry previously characterised the paper from how
+Dutertre & de Moura cite it; the corrections below are what reading it
+changed.)*
+
+It is reference [15] of the Dutertre & de Moura technical report, cited
+three times: for the incremental-Simplex family generally ("Tools based on
+this approach include our own tools, Yices and Simplics"), for *zero
+variables* in explanations, and for the *zero-detection procedure* used on
+disequalities. It extends **Nelson's** simplex method with a better
+treatment of restricted (non-negative slack) versus unrestricted variables,
+a way to add equalities *and disequalities* to a tableau, optimised equality
+propagation, and proof/model generation.
+
+**Correction: the backtracking design Primo used to have is Nelson's, not
+this paper's.** This entry previously said Primo had "independently
+re-invented" Rueß & Shankar's design. That overreached. Their related-work
+section attributes it elsewhere: of Nelson's method, "**Retraction of
+assertions is carried out by recording and undoing pivoting steps**" -- which
+is precisely what Primo did until item [H9](../qf-lra-heuristics.md#h9). They
+also note Cassowary "introduces a simple and elegant mechanism for retracting
+assertions". So the lineage of the scheme Primo removed runs to Nelson, and
+this paper is where that characterisation is written down rather than where
+the design originates.
+
+**What the zero test actually is (Chapter 6, "Detecting and Propagating
+Implicit Equalities").** A *zero-tableau* `Z` collects the slack variables
+explicitly equal to 0. A variable is *implicitly* equal to 0 when the
+constraints force it there without any equality having been asserted, and the
+chapter's contribution is finding those "without actually maximizing each
+variable" -- via a stratification order on the non-zero variables and the
+iterated `zbnd*` construction. Detecting implicit equalities is what makes
+two things possible: deciding a disequality `a != 0` (you must know whether
+`a = 0` is implied), and **propagating derived equalities to other decision
+procedures**, which their introduction lists as a requirement: "Equality
+information derived by the inequality solver must be propagated to other
+inference procedures."
+
+**What Primo does instead, and where that stops working.** Primo implements
+none of this, deliberately. Real equalities are lowered to two inequalities
+in preprocessing (`lower_real_equalities`), so a disequality becomes ordinary
+Boolean structure and CDCL performs the case split -- no zero test needed.
+`assert_lra_atom_bound` keeps a guard that throws on a negated `Eq` atom, as
+a backstop for one arriving unlowered.
+
+That works because **QF_LRA is a single theory**. It stops working for
+QF_UFLRA, which `check_sat.cpp` currently rejects outright ("combined
+equality and arithmetic (QF_UFLRA) is not supported ... would need real
+Nelson-Oppen"). A Nelson-Oppen combination has to exchange *implied*
+equalities between the arithmetic and equality solvers, and Primo has no
+mechanism for deriving them -- there is no equality propagation out of
+`LraTableau` at all. **Chapter 6 is the algorithm that gap needs**, so this
+paper is worth reading against the Nelson-Oppen work rather than the QF_LRA
+work.
+
+**One aside relevant to [H3](../qf-lra-heuristics.md#h3).** On Hentenryck &
+Graf's SF2 normal form they observe that "lexicographic pivoting is an
+alternative to Bland's rule for avoiding pivoting cycles, but can be more
+expensive, particularly in situations where implicit equalities are rare" --
+a third anti-cycling option beside the Bland fallback Primo uses.
+
 **General engineering (presolve, scaling, degeneracy, refactorization).**
 Robert Bixby, "Solving Real-World Linear Programs: A Decade and More of
 Progress" (Operations Research 50(1), 2002) — a implementor's-eye survey of
@@ -184,6 +378,41 @@ degeneracy handling), useful as an engineering checklist independent of any
 single algorithm choice. Istvan Maros, "Computational Techniques of the
 Simplex Method" (Springer, 2003) is the standard book-length reference for
 the same territory if a deeper dive is ever warranted.
+
+**Exact-arithmetic factorization and coefficient growth.** The reason a
+factored basis is not obviously a win in exact arithmetic: LU factors suffer
+coefficient growth, so entries become large rationals and a sparser
+representation can still lose to a denser one. Integer-preserving
+(Bareiss-style) factorization exists to address exactly this. Relevant if D4
+in [](../qf-lra-heuristics.md) section 6.5 is ever pursued:
+
+- "Expediting exact linear programming solvers via integer preserving
+  factorization", Operations Research Letters (2025) --
+  <https://www.sciencedirect.com/science/article/abs/pii/S0167637725001646>.
+  Reports SoPlex with faster exact integer factorizations at 3.33x (average)
+  and 1.60x (geometric mean) over baseline. Not read in full; found while
+  checking whether refactorization transfers.
+- Applegate, Cook, Dash, Espinoza, "Exact solutions to linear programming
+  problems" -- <https://www.math.uwaterloo.ca/~bico/papers/exact_simplex.pdf>.
+  The QSopt_ex approach: use floating point for speed and confine exact
+  rational work to what is needed for correctness. Same philosophy as
+  Monniaux's CAV 2009 contribution, from the LP side.
+
+**Why LU refactorization does not transfer to Primo's representation.** In the
+*revised* simplex method the basis is held as an LU factorization that is
+updated per pivot (Forrest-Tomlin, Bartels-Golub); those updates accumulate
+both fill-in and floating-point error beyond what a fresh factorization would
+need, which is exactly what periodic refactorization discards. Primo, like
+every Simplex-for-DPLL(T) implementation King describes, stores the **explicit
+tableau** instead. For a given basic/non-basic partition that tableau is
+`B^-1 N`, which is *uniquely determined*: recomputing it from the original rows
+yields the identical matrix, with identical density. There is no
+representational slack to reclaim, so "refactor periodically to discard
+accumulated fill-in" is void here -- the density measured in
+[](../qf-lra-heuristics.md) section 6.2 is a property of the basis reached, not
+of the pivot path taken to it. Reducing it therefore means either reaching
+sparser bases or changing representation to revised simplex, and only the
+latter makes refactorization meaningful.
 
 ## Alternative (non-Simplex) decision procedures
 

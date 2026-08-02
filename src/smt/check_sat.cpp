@@ -706,6 +706,7 @@ class Frontend {
         if (command.logic != "QF_UF" && command.logic != "QF_LRA" && command.logic != "QF_UFLRA") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
         }
+        logic_ = command.logic;
         return;
       case smtlib::CommandKind::DeclareSort:
         symbols_.declare_sort(command.name);
@@ -837,6 +838,9 @@ class Frontend {
       arg_sorts.push_back(lookup_sort_name(name));
     }
     const core::SortId result_sort = lookup_sort_name(command.result_sort);
+    if (logic_ == "QF_LRA" && !arg_sorts.empty()) {
+      throw UnsupportedInput("QF_LRA supports free constants but not uninterpreted functions");
+    }
     if (arg_sorts.empty()) {
       const core::SymbolId symbol = symbols_.declare_constant(command.name, result_sort);
       if (result_sort == symbols_.real_sort()) {
@@ -891,6 +895,7 @@ class Frontend {
   std::unordered_map<std::string, core::TermId> nullary_definition_cache_;
   std::vector<core::TermId> side_assertions_;
   std::vector<core::TermId> declared_real_constants_;
+  std::optional<std::string> logic_;
   std::size_t auxiliary_counter_ = 0;
   std::size_t boolean_ites_ = 0;
   std::size_t auxiliary_ites_ = 0;

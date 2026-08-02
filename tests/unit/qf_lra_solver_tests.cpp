@@ -998,6 +998,30 @@ void real_equality_is_not_misclassified_as_euf() {
   assert(result.result == CheckSatResult::Sat);
 }
 
+void qf_lra_rejects_uninterpreted_real_functions() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun f (Real) Real)
+    (assert (= (f x) 1))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("uninterpreted functions") != std::string::npos);
+}
+
+void qf_lra_rejects_uninterpreted_predicates() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (p x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("uninterpreted functions") != std::string::npos);
+}
+
 void detects_direct_bound_conflict() {
   // Regression test for a real bug hit while implementing this milestone:
   // before the has_arithmetic dispatch guard existed, this formula fell
@@ -2099,6 +2123,8 @@ int main() {
   qf_uf_lra_purifies_nested_real_valued_application_arguments();
   qf_uf_lra_purifies_real_valued_application_disequality_arguments();
   real_equality_is_not_misclassified_as_euf();
+  qf_lra_rejects_uninterpreted_real_functions();
+  qf_lra_rejects_uninterpreted_predicates();
   detects_direct_bound_conflict();
   detects_conflict_requiring_an_actual_pivot();
   atoms_sharing_identical_polynomial_solve_correctly();

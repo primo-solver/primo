@@ -15447,6 +15447,797 @@
       },
       "interpretation": "The corrected Z3-backed local smoke gate found no answer disagreements, crashes, timeouts, or unsupported generated cases. The first attempt used bare `z3`, which was not on PATH in this shell and produced only REFERENCE_UNUSABLE rows; it is recorded as an unusable attempt, not correctness evidence.",
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-30-qf-lra-post-h7-gap-profiling",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "profiling",
+      "scope": "Local profiling pass locating the remaining QF_LRA gap against z3 after H7 shipped opt-in. Recorded in docs/qf-lra-heuristics.md section 6. Profiling evidence for a design decision, not a benchmark claim.",
+      "commit": "53eb45e",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build/primo --quiet --stats (Release); contrib/local/bin/z3 -st",
+        "notes": "Wall-clock on this workstation was unreliable during this session (an unmodified binary timed 1.63s / 2.45s / 4.48s on the same input; load average 7.46 on 14 cores from outside the sandbox). Only counters are cited, never times."
+      },
+      "command": {
+        "census": "throwaway instrumentation in publish_lra_tableau_shape_stats printing a row-length histogram and a count of literal x-y=c rows; measured, then reverted, not committed",
+        "pricing_sweep": "throwaway env override of kSparsePricingCandidateLimit, values 16/64/256/1000000 on scrambled312090; reverted",
+        "comparison": "z3 -st and primo --quiet --stats on the p10/p25/p50/p75 instances of the band by z3 solve time"
+      },
+      "benchmark": {
+        "suite": "4 instances sampled by z3-time quartile from the 59 gap files in the 500KB-5MB band",
+        "logic": "QF_LRA",
+        "timeout_seconds": 60
+      },
+      "summary": {
+        "gap_localisation": "76 gap files: 59 in 500KB-5MB, 8 in 50-500KB, 7 above 5MB, 2 below 50KB. cvc5 solves only 9 of the 59, so this is a z3-specific strength rather than general difficulty. z3's median time on them is 25.0s of 60s (min 1.7, max 56.2), so a longer competition timeout would likely recover many of them.",
+        "fill_in_decomposition": "lra.pivot-row-updates / lra.pivot-term-ops decompose a pivot into its two Markowitz factors. Rows rewritten per pivot and terms merged per rewrite, against nonzeros/row in the prepared tableau: scrambled228965 359 / 31.2 vs 5.80; scrambled15659 26 / 21.7 vs 4.10; scrambled312090 521 / 91.1 vs 5.25; scrambled180721 35 / 44.4 vs 4.53. Rows densify 5-17x during search while entering columns reach hundreds of rows, so one pivot on scrambled312090 costs ~47,000 rational operations and the instance spends 60s on 3,904 of them. scrambled312090 has 0 conflicts and 7,555 decisions -- the SAT search is not thrashing, the time is all in the tableau.",
+        "ruled_out_pricing_cap": "kSparsePricingCandidateLimit is not the bottleneck. Per-pivot term-ops on scrambled312090 at limits 16/64/256/1000000: 51,738 / 52,428 / 46,833 / 47,312 -- flat across a 60,000x range. When every eligible candidate occurs in hundreds of rows there is no cheaper choice to find; H3 prices the pivot correctly, the cheapest available pivot is simply expensive.",
+        "z3_counters": "arith-offset-eqs dominates: 139,942 / 259,413 / 1,100,682 on the three profiled instances, against arith-fixed-eqs 45,068 / 158,312 / 373,175. But a row-shape census of the prepared tableau finds only 175 / 2,267 / 1,844 rows of literal x-y=c shape (3.4% / 15% / 7.6%), so z3 derives these DYNAMICALLY during search rather than syntactically up front. Any Primo equivalent is a search-time mechanism, materially bigger than H7."
+      },
+      "verification": {
+        "instrumentation_reverted": "Both throwaway patches (shape census, pricing-limit override) were reverted; git status clean and the tree builds with 0 errors afterwards.",
+        "sampling_method": "Instances chosen by z3-time quartile across the band, explicitly to avoid the instance-selection bias recorded in the H7 entry."
+      },
+      "evidence_status": "current",
+      "followups": "Three candidate directions recorded in docs/qf-lra-heuristics.md section 6.5, unranked and untested: (1) attack fill-in directly via periodic refactorization from the original rows -- the measured 5-17x densification is the headroom; (2) dynamic offset-equality detection matching z3's dominant counter; (3) evaluate the existing opt-in row-based bound propagation on this band, which has never been tried there. A falsifier for the whole diagnosis is stated in the note."
+    },
+    {
+      "id": "2026-07-30-qf-lra-midband-gap-600s",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "benchmark",
+      "scope": "Separates 'Primo cannot solve the mid-band gap files' from 'Primo is a constant factor too slow' by re-running exactly the 59 files of benchmarks/qf-lra-scrambled-midband-gap.txt at 600s instead of 60s. That band holds the entire 56-file deficit against z3 (docs/qf-lra-heuristics.md section 6).",
+      "commit": "01d0a93",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo --quiet [--lra-fixed-elimination] (remote Release)"
+      },
+      "command": {
+        "run": "sbatch --array=0-39 --job-name=primo-lra-midband-600 --export=ALL,'PRIMO_COMPARE_SOLVERS=primo=...;primoh7=... --lra-fixed-elimination',PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-scrambled-midband-gap.txt,PRIMO_COMPARE_TIMEOUT=600 scripts/slurm_qf_lra_scrambled_compare.sbatch",
+        "analysis": "python3 scripts/compare_solver_answers.py results/qf-lra-midband-600s --timeout 600"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-midband-gap.txt (59 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 600
+      },
+      "job_id": "117631 (all 40 tasks COMPLETED, 40 shard CSVs present)",
+      "artifacts": {
+        "results": "results/qf-lra-midband-600s (fetched)"
+      },
+      "summary": {
+        "headline": "Primo solves 45 of 59 at 600s, against 0 of 59 at 60s by construction. The band is a constant-factor problem, not a capability wall; only 8 files resist both configurations.",
+        "the_factor_is_small": "Time on the 45 solved: min 64s, p25 114s, median 167s, p75 275s, max 563s. Against a 60s budget that is a median 2.8x, p75 4.6x, worst 9.4x. Files recovered at 60s per speedup achieved: 2x -> 15, 3x -> 24, 5x -> 37, 10x -> 45. The payoff is close to linear, with no threshold to clear first -- this is the number future work on this band should be calibrated against.",
+        "vs_z3": "Over the 45 both solve, primo(600s)/z3(60s) time ratio is median 6.6x, p90 31.6x, max 100x.",
+        "residue": "14 files do not solve even at 600s -- about a quarter of the band -- and are the genuine capability part. They should not be conflated with the rest when judging a mechanism.",
+        "h7_at_longer_budget": "H7 solves 41 against the default's 45 (+6/-10 churn), so it does not convert at a longer budget either. Independent confirmation that shipping it opt-in was correct, from a run where the 60s cliff cannot be the explanation.",
+        "soundness": "Zero cross-solver disagreements between the two configurations."
+      },
+      "verification": {
+        "completeness": "sacct reports 80 COMPLETED for job 117631 and all 40 shard CSVs are present; checked before analysis, per the truncated-shard precedent.",
+        "reference_not_rerun": "z3 was deliberately not re-run: it solves all 59 by construction of the gap set."
+      },
+      "evidence_status": "current",
+      "followups": "Calibrates docs/qf-lra-heuristics.md section 6.5's candidate directions: a 3x is worth 24 files and a 5x is worth 37, so periodic refactorization (measured 5-17x densification headroom) is worth attempting on its own merits without needing to reach z3 parity."
+    },
+    {
+      "id": "2026-07-30-qf-lra-refactorization-literature-check",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "literature",
+      "scope": "Literature check on the top candidate direction from docs/qf-lra-heuristics.md section 6.5 (periodic refactorization to discard accumulated tableau fill-in) before any implementation. Result: the proposal is retracted as mathematically void for Primo's representation, and a separate correction to item H3's prior-art framing was found along the way.",
+      "commit": "f04806e",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "n/a -- reading only"
+      },
+      "command": {
+        "sources": "Tim King, 'Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic', PhD thesis, New York University, September 2014, https://cs.nyu.edu/media/publications/king_tim.pdf (sections 2.2.7 and 2.2.12); Bixby, 'Solving Real-World Linear Programs' (OR 2002) and Maros, 'Computational Techniques of the Simplex Method' (Springer 2003), both already in the survey; Wikipedia's revised simplex article for the Forrest-Tomlin / Bartels-Golub refactorization rationale.",
+        "note": "The King PDF was read outside the repository and not committed, per the no-copyrighted-material-in-repo rule."
+      },
+      "summary": {
+        "retraction": "Periodic refactorization does not transfer. In REVISED simplex the basis is an LU factorization updated per pivot, and those updates accumulate fill-in and numerical error beyond a fresh factorization -- that surplus is what refactorization discards. Primo stores the EXPLICIT tableau, which for a given basic/non-basic partition is B^-1 N and is uniquely determined: recomputing it from the original rows returns an identical matrix with identical density. The 5-17x densification measured in section 6.2 is a property of the basis reached, not recoverable garbage from the path taken to it. There is nothing to discard.",
+        "lesson": "'Measured headroom' is only headroom if some mechanism can recover it. The 5-17x figure looked like an opportunity and was in fact a description of the problem. Retracted before any implementation effort, on a literature check that cost one session.",
+        "h3_prior_art_correction": "King section 2.2.12 records minimum-column-length entering selection, with a switch to Bland's rule past a finite cap, as the heuristic 'commonly used in implementations of SimplexForSMT', attributing it to MathSAT, OpenSMT, Yices, Yices 2, z3 and CVC4. That is item H3 and its anti-cycling fallback exactly. Our Monniaux (CAV 2009) citation remains accurate as a source but H3 must not be read as novel; the note and the LraTableau header now say so. The opt-in shortest-row LEAVING rule is the part with no counterpart described there -- King records Griggio's most-violated rule (CVC4, MathSAT5), which is our Dantzig choice.",
+        "fill_in_not_addressed_in_smt_literature": "King section 2.2.7 describes the explicit sparse tableau (entries linked into both a row list and a column list). Searching the thesis for fill-in, density, Markowitz and refactorization finds only that description -- no mechanism for controlling densification during search. The section 6.2 problem is not one this literature offers a ready answer to."
+      },
+      "verification": {
+        "claim_basis": "The uniqueness of B^-1 N for a fixed basis is a property of the formulation, not an empirical finding; Primo's rows are maintained in exactly the basic = sum(coeff * nonbasic) form that makes it so."
+      },
+      "evidence_status": "current",
+      "followups": "Section 6.5 reordered: the cheapest remaining direction is evaluating the EXISTING opt-in row-based bound propagation on this band (a benchmark run, not an implementation). Revised simplex with an LU-factored basis is now listed explicitly as the representation change refactorization would require, with the observation that King records no Simplex-for-DPLL(T) implementation doing it. Monniaux's floating-point-guided basis selection is promoted for re-examination, since section 6.2 says the BASIS determines density and that is precisely what it chooses."
+    },
+    {
+      "id": "2026-07-30-qf-lra-offset-equality-investigation",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "profiling",
+      "scope": "Two-step investigation of direction D3 (dynamic offset-equality detection) in docs/qf-lra-heuristics.md section 6.5, deliberately before any implementation, after item H7 showed that a large z3 counter plus large per-instance wins is not evidence a mechanism pays.",
+      "commit": "b24d8e5",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build/primo --quiet --stats (Release); contrib/local/bin/z3 -st",
+        "notes": "Wall times here are z3-vs-z3 on the same machine minutes apart, so the on/off ratio is meaningful even though this workstation's absolute timings were unreliable this session."
+      },
+      "command": {
+        "step1": "contrib/local/bin/z3 -st [smt.arith.propagate_eqs=false] on the four profiled 500KB-5MB gap instances",
+        "step2": "throwaway instrumentation on LraTableau's existing fixed-variable hook, classifying each fixed basic variable's row (size, coefficient shape, distinct pairs, distinct eliminable columns); measured, then reverted, not committed"
+      },
+      "benchmark": {
+        "suite": "scrambled228965, scrambled15659, scrambled312090, scrambled180721 -- the z3-time quartile sample of the 59-file mid-band gap",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "step1_mechanism_is_real": "Ablating smt.arith.propagate_eqs in z3: 3.1->6.9s (2.2x), 8.0->25.9s (3.2x), 19.7->62.8s (3.2x), and 26.1->21.1s (0.81x, i.e. HARMFUL) on the fourth. :arith-offset-eqs drops to zero when disabled, confirming the counter tracks this mechanism.",
+        "step1_not_theory_combination": "These are pure QF_LRA with no second theory, so the mechanism is not Nelson-Oppen equality propagation -- the usual purpose of implied equalities in SMT, and the outcome that would have made D3 worthless here. This was the specific risk the step was designed to test.",
+        "step1_ceiling": "Even with the mechanism disabled z3 solves all four in under 63s where Primo needs ~600s, so offset equalities are worth a few x of a 10-30x gap. D3 done perfectly would be valuable and would not close the band.",
+        "step2_detection_is_free": "Primo can detect these on H7's existing fixed-variable hook: a fixed basic variable whose row has two terms is a relation between two variables. Measured distinct pairs per instance: 591 / 3,224 / 1,519 / 4,721.",
+        "step2_kills_the_expensive_design": "Distinct eliminable columns are 369/5,694 (6.5%), 2,524/23,571 (10.7%), 778/26,041 (3.0%) and 4,032/17,286 (23.3%). Against z3's measured speedups the correlation is INVERTED: the instance with the most eliminable columns (23.3%) is the one where z3's mechanism hurts, and the one with the fewest (3.0%) gets the largest win. If the payoff came from shrinking the tableau it would track the eliminable share; it anti-correlates. So column merging is not the mechanism.",
+        "design_redirected": "The expensive interpretation (merge columns, eliminate a variable) needs a constant term in Row -- 17 internal term loops, 4 external consumers of row(), and the constant would participate in assignments and in Farkas certificates, so pivot(), update() and build_conflict() all change. That expense is not justified. The cheap interpretation fits the evidence: detect the relation and propagate bounds across it (x - y = c and x >= l gives y >= l - c), which needs no constant column and reuses both H7's detection hook and Primo's existing theory-propagation path. Scaled binary rows (a*x + b*y = c, a != -b) outnumber literal offset rows on two of four instances and are equally usable, so the opportunity is the binary-row count, not the narrower offset one."
+      },
+      "verification": {
+        "instrumentation_reverted": "The census patch was reverted; git status clean and the tree rebuilds with 0 errors.",
+        "caveat": "The anti-correlation is n=4 and suggestive rather than conclusive. It is enough to say the expensive design should not be built first, not enough to prove bound propagation is the whole mechanism."
+      },
+      "evidence_status": "current",
+      "followups": "D3 stays on the list at medium rather than largest cost, with the redirected design. D1 (evaluate Primo's existing row-based bound propagation on this band) is now doubly interesting, since it is the same machinery the redirected D3 would extend."
+    },
+    {
+      "id": "2026-07-30-qf-lra-row-propagation-cap-finding",
+      "started_at": "2026-07-30",
+      "recorded_at": "2026-07-30",
+      "kind": "profiling",
+      "scope": "First local look at direction D1 (evaluate Primo's existing row-based bound propagation on the mid-band gap), plus the QF_LRA code/docs/CLI audit that followed.",
+      "commit": "4a0aba4",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build/primo --quiet --stats with a throwaway env override of the propagation caps (reverted, not committed)",
+        "notes": "Absolute wall times on this workstation were unreliable this session; the cap comparison is same-binary A/B/C minutes apart, so relative effects are meaningful, but n=2 and the 58.5s figure sits at a 60s boundary."
+      },
+      "command": {
+        "smoke": "./build/primo --quiet --stats [--lra-row-propagation [--lra-bidirectional-row-propagation]] on two profiled gap instances",
+        "cap_sweep": "same, with PRIMO_RP_ROW/PRIMO_RP_FAN/PRIMO_BP_ROW/PRIMO_BP_FAN overriding the four hardcoded caps at 32, 256 and effectively unlimited"
+      },
+      "benchmark": {
+        "suite": "scrambled228965, scrambled312090",
+        "logic": "QF_LRA",
+        "timeout_seconds": 90
+      },
+      "summary": {
+        "d1_and_d3_are_the_same_code": "compute_implied_child_bound derives a bound on one row term from the basic variable's bound plus the remaining terms. For s = x - y with s fixed and x bounded that yields a bound on y -- exactly the cheap offset-equality mechanism D3 was redirected to. D1 and the useful part of D3 are the same implementation.",
+        "the_feature_is_gated_off_where_it_is_needed": "kBidirectionalRowPropagationMaxRowSize/MaxFanout are 32/32 and kRowBasedPropagation's are 64/64, all documented in-source as 'not precisely derived'. On these instances occurs_in reaches 521 and rows reach 91 terms, so bidirectional propagation fires only 11-68 times where the D3 census finds 7,000-190,000 binary rows.",
+        "raising_the_caps_helps_and_is_non_monotone": "scrambled228965: 9.6s (68 props) at 32/32, 6.5s (2,072) at 256/256, 32.8s (2,181) unlimited. scrambled312090: 61.6s (22), 58.5s (7,959), 64.3s (8,593). Unlimited is worse than 256 on both, so the caps do real work and are simply set an order of magnitude below what these instances need.",
+        "headline": "scrambled312090 is a gap file that times out at 60s in the default configuration and solves in ~58s with row propagation enabled at raised caps. That is the first direct evidence any of the section 6.5 directions moves a gap file.",
+        "audit": "Every --lra-* CLI option maps to a CheckSatOptions field and appears in the docs; no orphans in either direction. Three statistics (:lra.theory-checks, :lra.theory-conflicts, :lra.theory-decisions) were emitted but documented nowhere. docs/arithmetic.md now carries a full option table with defaults and a statistics table, including the :lra.pivots-is-not-comparable-across-an-H7-ablation caveat, and documents the four un-exposed propagation caps.",
+        "citation_gap_closed": "Item H7's header claimed it implemented 'the standard eliminate fixed variables step' with NO citation -- precisely the unsupported claim the paper-grounded rule exists to catch. Now cited to Andersen & Andersen, 'Presolving in linear programming', Mathematical Programming 71 (1995) 221-245, with the setting difference stated: presolve removes fixed variables once, before solving, from a problem whose bounds are all known, whereas H7 fires during search and must restore on backtracking. That difference is the likely reason H7 did not pay."
+      },
+      "verification": {
+        "instrumentation_reverted": "The cap-override patch was reverted; git status clean, make check green.",
+        "caveat": "n=2, and 58.5s against a 60s budget is at this workstation's noise boundary. This justifies the cluster cap sweep, not a conclusion."
+      },
+      "evidence_status": "superseded",
+      "followups": "Run the cap sweep on the 59-file mid-band manifest on Slurm. That needs the four caps exposed as options first, since they are currently compile-time constants -- a small change, and the natural way to make the sweep reproducible.",
+      "superseded_by": "2026-07-31-qf-lra-d1-cap-sweep. The cluster sweep contradicts this entry's headline number: scrambled312090 reads 61.6s -> 58.5s here but 143s -> 139s on the cluster, and no cap setting beats the baseline on the 59-file band. This entry's own caveat (n=2, at a 60s boundary, workstation timing unreliable that session) was correct. The cap *counts* it reports do reproduce -- raising the caps really does turn the mechanism on by 2-3 orders of magnitude -- so what is superseded is the timing conclusion, not the diagnosis that the feature is gated off where it would be needed."
+    },
+    {
+      "id": "2026-07-31-qf-lra-d1-cap-sweep",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "benchmark",
+      "scope": "Direction D1's cap sweep: does row-based/bidirectional bound propagation, run with caps large enough to actually fire, move the 500KB-5MB gap band? Plus the merge-tier fuzz gate for the raised-cap configuration.",
+      "commit": "50ad2dd",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo (Release, cadical-3.0.0-7b99c07), verified at git 50ad2dd by slurm_prepare_benchmark_workspace.py --check-only before submission",
+        "notes": "The four propagation caps became CheckSatOptions fields in commit 2e1eb55 specifically so this sweep could vary them per run rather than per build; the 2026-07-30 entry's numbers came from a rebuild per data point."
+      },
+      "command": {
+        "sweep": "sbatch scripts/slurm_qf_lra_row_propagation_sweep.sbatch -- job 117726, 5 configurations x 20 shards = 100 array tasks, all COMPLETED, 20/20 shard CSVs present per configuration",
+        "fuzz_gate": "sbatch --array=0-3 --export=...,PRIMO_FUZZ_SOLVER='build-slurm-rel/primo --lra-row-propagation --lra-bidirectional-row-propagation <all four caps>=1024',PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_ARGS='-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2',PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0 scripts/slurm_qfuf_fuzz_gate.sbatch -- job 117767"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-midband-gap.txt (59 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300,
+        "configurations": [
+          "base (propagation off)",
+          "rp-default (64/64, 32/32)",
+          "rp-128",
+          "rp-256",
+          "rp-1024"
+        ],
+        "timeout_rationale": "The manifest is defined as the files z3 solves at 60s and Primo does not, so at 60s the baseline solves 0 of 59 by construction and every configuration is scored against zero. At 300s a majority already solves (section 6.1a: 45/59 at 600s, median 167s), so the sweep compares per-file times."
+      },
+      "summary": {
+        "result": "REJECTED. Solved counts: base 37, rp-default 34, rp-128 37, rp-256 36, rp-1024 36 of 59. No cap setting beats the baseline; the best is a tie. PAR2 19465 / 19719 / 18155 / 19294 / 18591.",
+        "median_speedup_is_real_but_does_not_convert": "Median paired speedup over files both configurations solve in >1s rises with the caps: 1.01x, 1.20x, 1.14x, 1.30x (n=30-33). Every configuration nonetheless loses about as many files as it gains (+3/-6, +4/-4, +5/-6, +6/-7), and the gained and lost files are different files.",
+        "the_mechanism_definitely_ran": "Raising the caps turns propagation on by 2-3 orders of magnitude on this band. scrambled312090 bidirectional propagations 21 -> 7,959 (256) -> 8,419 (1024), row-based 213,354 -> 904,275 -> 955,787; scrambled228965 bidirectional 55 -> 2,072 -> 2,719. This is a mechanism firing 380x harder and still not moving the band, not a null result from code that never fired.",
+        "the_motivating_instance_does_not_reproduce": "scrambled312090 was the whole case for D1: locally 61.6s at default caps against 58.5s at 256, i.e. a gap file crossing a 60s budget. On the cluster it is 143s at baseline against 139s at 256 -- a 3% difference, with both figures more than double the local ones. The 2026-07-30 entry's own caveat (n=2, at a 60s boundary, workstation timing unreliable that session) was correct and is the explanation. scrambled228965 does reproduce (67s -> 13s at 256, a genuine 5x) but 1024 makes it worse than baseline (101s).",
+        "churn_signature": "scrambled178771 (222s at baseline) and scrambled21782 (148s) are lost by every configuration. scrambled11414 is gained by every configuration but lands anywhere from 48s to 244s depending on caps. That spread is churn at the timeout boundary, not a systematic effect.",
+        "not_ruled_out": "A per-instance or adaptive cap policy. The 5x on scrambled228965 and the 1.30x median are real; something that could identify those instances in advance would collect them. That is a materially larger item than the one closed here and is not pursued on this evidence -- the precedent is item H7, rejected rather than tuned after its own bar came back flat.",
+        "soundness": "Zero cross-configuration answer disagreements over the 59 files (the scrambled set carries no :status, so cross-configuration disagreement is the only soundness signal available from it) and zero wrong answers reported.",
+        "fuzz_gate": "Job 117767: 2,000 fuzzsmt QF_LRA cases against z3 on the 1024-cap configuration, 4/4 shard summaries present, 0 wrong answers, 1,976 PASS + 24 TIMEOUT at the 5s per-case budget. All 24 timeouts were re-checked individually against the default configuration: none is a soundness disagreement, 12 are unknown under both configurations even at a longer budget, and 3 differ only in whether one configuration finished within the budget.",
+        "gate_limitation": "The fuzz gate ran the Release build, not build-slurm-fuzz: the remote ASAN toolchain is still broken (head node lacks libasan, compute nodes lack C++ headers). This gate therefore carries no sanitizer coverage and must not be read as if it did.",
+        "also_closes_d3": "This sweep closes direction D3 (offset-equality detection + bound propagation) as well, which was not noticed when the result was first written up. D3's redirected cheap design -- 'detect x - y = c and propagate bounds across it' -- IS compute_implied_child_bound, as D1's own finding (a) already recorded ('D1 and the useful part of D3 are the same code'). Binary rows have size 2 so no row-size cap ever excluded them, and at caps 1024 the fanout gate is effectively off, so the sweep ran D3's design at full reach on the whole band. D3's expensive column-merge design was already rejected on the 2026-07-30 anti-correlation census.",
+        "residual_d3_gap_not_tested": "One piece of D3 the sweep did NOT test: a trigger, not a computation. D3 proposed firing on H7's hook -- the moment a basic variable becomes fixed. D1's code fires only on a bound change to a variable occurring as a nonbasic term, and pivot() clears occurs_in_[entering_var], so a basic variable occurs in nothing and a bound change on it scans nothing. When the equality fixing s is asserted after x already has its bound, the implied bound on y is not derived until one of that row's terms moves again. Cheap to close, but the sweep argues against expecting it to pay: it buys more firing, and 21 -> 8,419 firings moved nothing. Recorded, not built."
+      },
+      "artifacts": {
+        "sweep": "llm2smt-slurm:<slurm-workdir>/results/qf-lra-rowprop-sweep-117726/ (100 shard CSVs + 100 shard summaries)",
+        "fuzz_gate": "llm2smt-slurm:<slurm-workdir>/fuzz-results/qfuf-gate-117767/"
+      },
+      "docs": "docs/qf-lra-heuristics.md section 6.5, D1's outcome subsection and the ranked table."
+    },
+    {
+      "id": "2026-07-31-d2-literature-survey",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "literature",
+      "scope": "Is there work other than Monniaux CAV 2009 on floating-point-guided basis selection for an exact simplex in SMT? Prompted by D2 being named the next direction after D1/D3 closed.",
+      "commit": "3b11347",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "notes": "Web search plus two papers read in full (KBT FMCAD 2014, and the PAAR 2012 abstract/results). PDFs read outside the repo and not committed, per the no-copyrighted-material rule."
+      },
+      "summary": {
+        "answer": "Yes -- the technique has been implemented at least twice more since Monniaux, both in SMT solvers, and both report far smaller gains than D2 was scoped for.",
+        "king_barrett_tinelli_2014": "FMCAD 2014, CVC4 + GLPK 4.52. Their SeedExact procedure pivots the exact tableau toward the LP solver's final basic set, and the paper explicitly equates it to Monniaux's ForcedPivot. Two design points we did not have: (1) BalancedSolve calls the exact solver FIRST under a 200-pivot cap and only falls back to the LP solver when that cap is exceeded, so it is a fallback for hard theory calls rather than a preprocessing phase -- this dissolves D2's Risk B, since bounds are known mid-search; (2) ImportAssignment converts the LP solver's float assignment back to rationals by Diophantine approximation with denominators capped at 2^26. Measured QF_LRA payoff: 645 of 652 against plain CVC4's 636, i.e. +9 files, all from the miplib family, which is internally mixed integer/real so the gain runs through the MIP path rather than the LP force-pivot path.",
+        "de_oliveira_monniaux_2012": "PAAR 2012, OpenSMT, the direct continuation of CAV 2009: LP called first, result seeds the exact search. 14% faster overall (4h44m45s against 5h26m55s over 634 benchmarks), with 11 of 634 (1.7%) showing at least one float/exact disagreement -- rare, but why the exact solver must verify.",
+        "earlier_work": "Faure, Nieuwenhuis, Oliveras & Rodriguez-Carbonell (SAT 2008) integrated several LP solvers into Barcelogic with lazy exact checking; Yu & Malik (SAT 2006) used an LP solver as a theory solver without addressing incorrect results.",
+        "the_sentence_that_recalibrates_d2": "KBT's own summary of all prior studies: existing SMT solvers outperform the LP-augmented versions on SMT-LIB benchmarks, EVEN IF the LP solver results are not checked for correctness, because solving requires many related but individually simple theory calls. Their balanced control structure is what makes the technique pay at all.",
+        "consequence_for_d2": "Section 6.1a says this band needs 2x for 15 files and 5x for 37. The literature offers ~14% overall and +9 files on a 652-file set. D2 is not a 10-30x technique and its entry has been rescoped accordingly -- still open, but no longer described as 'large'.",
+        "cvc5_has_no_glpk": "Measured: contrib/local/bin/cvc5 1.3.4 --show-config reports 'glpk : no'. The reference cvc5 therefore carries none of CVC4's LP integration, so its 9-of-59 on the mid-band gap is not evidence about this technique in either direction. Worth knowing before anyone reads cvc5's weakness there as a verdict on LP-guided simplex."
+      },
+      "docs": "docs/papers/lra-related-work.md (new 'Floating-point-guided exact simplex' subsection) and docs/qf-lra-heuristics.md section 6.5's D2 entry (Risk C, and the ranked table's expected-size column).",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-lra-midband-gprof-profile",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "profiling",
+      "scope": "First flat profile of the 500KB-5MB mid-band gap files at the current commit. Prompted by the question of whether gprof had ever been run on the lagging instances -- it had not: the only QF_LRA flat profile on record was perf on constraints-tempo-width-30 at 35878c4 (before H1/H2/H3/H7), and the 2026-07-30 'post-H7 gap profiling' entry used counters and throwaway instrumentation rather than a profiler.",
+      "commit": "02e7e50",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build-gprof/primo (RelWithDebInfo -pg -O2 -g) for gprof; build/primo (Release) for the allocator measurement",
+        "notes": "perf is unusable in this sandbox -- kernel.perf_event_paranoid=4 and sysctl is permission-denied -- and valgrind is not installed, so compile-time instrumentation was the only available profiler. -pg penalises call-heavy code, so gprof rankings are sound but absolute percentages are indicative."
+      },
+      "command": {
+        "gprof": "cmake -B build-gprof -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS='-pg -O2 -g -fno-omit-frame-pointer' -DCMAKE_EXE_LINKER_FLAGS=-pg; then build-gprof/primo --quiet <instance>; gprof -b -p / -q build-gprof/primo gmon.out",
+        "allocator": "LD_PRELOAD of a throwaway wrapper (scratchpad only, not committed) around malloc/free/realloc/calloc accumulating rdtsc cycles, run against the Release binary -- gprof samples only the executable's text segment and cannot see libc"
+      },
+      "benchmark": {
+        "suite": "scrambled339450 and scrambled228965 from benchmarks/qf-lra-scrambled-midband-gap.txt",
+        "logic": "QF_LRA"
+      },
+      "summary": {
+        "allocator_is_retired": "THE headline. The 2026-07-27 perf profile that motivated item H2 put ~42% of runtime in the allocator and ~12% in GMP copy/init. On the gap band at the current commit it is 6.0% and 4.0% (9.78M and 16.94M malloc/free pairs). H2 did what it was built for. Anyone reading the older profile would still rank the allocator first; it should not be.",
+        "pivot_dominates": "LraTableau::pivot is 61.0% self on scrambled339450 (3,706 calls) and 85.4% on scrambled228965 (11,647 calls, 1.96 ms/call). No hidden hotspot anywhere else.",
+        "confirms_section_6_2": "Section 6.2's fill-in diagnosis was derived entirely from counters (:lra.pivot-row-updates, :lra.pivot-term-ops) and had never been checked against a profiler. It holds.",
+        "direction_setting": "Positive evidence that no misplaced overhead remains to reclaim: after rebuild_occurs_in_index and the allocator, the rest is pivot doing real arithmetic. The remaining gap needs an algorithmic change (fewer or cheaper pivots), not tuning -- the same conclusion D1's rejection reached from the other side.",
+        "lead_1_rebuild_occurs_in_index": "Consistently second at 7.5% / 4.4%. Its CALL COUNT is already fixed (the 2026-07-27 item-0 follow-up cut it from once-per-undone-pivot to once-per-pop, -97%; counts here are 522/526 and 3,870/3,874, so that holds). What remains is that each call is a full O(vars_.size()) rebuild and these instances have ~26,000 variables -- about 3.8ms per call. Making it incremental over the undone trail entries is a different fix from the one already applied.",
+        "lead_2_sort_should_be_a_merge": "11.6% on scrambled339450 (but only 1.6% on scrambled228965, so instance-dependent) is the sort-merge in pivot's affected-row loop. combine_scratch_ concatenates the affected row's terms with the scaled entering row's terms and std::sorts the result, but both halves are already ordered by variable id -- this is a merge, not a sort. Must first check whether rows are ordered on every path into that loop; the candidate-selection site's comment says a Row is not sorted by var id.",
+        "symbol_name_caveat": "gprof reports a hot vector<SoiBreakPoint>::_M_realloc_insert, which is impossible under the default Sparse rule since soi_select() is gated behind rule_ == PivotingRule::Soi. Its call-graph parent is the introsort inside pivot, so this is COMDAT folding of identically-generated template code, not SOI running by default. Checked rather than assumed, because a hot SOI symbol in a non-SOI run would read as a real bug."
+      },
+      "docs": "docs/qf-lra-heuristics.md new section 6.2a.",
+      "evidence_status": "current",
+      "followups": "Neither lead is implemented. Both are hot-path changes to LraTableau and would need a fuzz gate plus a Slurm A/B before being described as wins."
+    },
+    {
+      "id": "2026-07-31-qf-lra-h8-pivot-merge",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "benchmark",
+      "scope": "Item H8: pivot()'s affected-row loop merges two ordered rows instead of concatenating and sorting them. Found by the 6.2a flat profile. Includes the incremental occurs_in_ experiment that was built alongside it and rejected.",
+      "commit": "e6020ca",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo at e6020ca; baseline is a second worktree built at the parent commit 03c28da, so the A/B is same-node and same-time",
+        "notes": "Local paired A/Bs were run interleaved base/new per instance, two reps each, after an earlier round in this project produced sign-flipped timings from measuring while builds competed for CPU."
+      },
+      "command": {
+        "fuzz_campaign": "sbatch scripts/slurm_qfuf_fuzz_gate.sbatch with PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA and QF_LRA seeds -- job 117841 (fuzzsmt) plus job 117932 (re-run of the 3 mutation tasks with TYPEFUZZ set, output merged into 117841's directory)",
+        "fuzz_soi": "same, --lra-pivoting-rule soi, 2 shards x 500 -- job 117842",
+        "midband_ab": "sbatch --array=0-39 scripts/slurm_qf_lra_scrambled_compare.sbatch, manifest qf-lra-scrambled-midband-gap.txt, 300s, solvers base/merge -- job 117843",
+        "stratified_ab": "same on benchmarks/qf-lra-stratified-sample.txt over tmp/QF_LRA at 60s -- job 117844"
+      },
+      "summary": {
+        "change": "pivot()'s affected-row loop was O(m log m) per affected row: it concatenated the affected row's terms with the scaled entering row's terms into combine_scratch_ and std::sorted the result. Both halves are already ordered by var id, so it is a linear merge. Rows were only incidentally ordered, so this makes it an invariant on Row (add_row sorts; pivot splices basic_var into new_entering_row at its ordered position instead of prepending). Two smaller wins follow: the zero check is needed only in the equal-var-id branch, and the affected row is taken by reference and moved into the trail instead of copied twice.",
+        "midband_result": "base 37 solved / PAR2 19475, H8 38 solved / PAR2 18309. Median paired speedup 1.16x over the 37 files both solve in >1s (p25 1.13, p75 1.22). Churn +1/-0.",
+        "stratified_result": "base 189 solved / PAR2 6473, H8 192 solved / PAR2 6067. Median paired 1.23x over 67 files >1s (p25 1.10, p75 1.33). Churn +3/-0.",
+        "no_regressions": "Zero regressions on either bar -- churn is one-directional on both, which no other item in the heuristics note has managed. The p25-p75 span of 1.10-1.33 says this is a uniform constant-factor win, not a few instances carrying an average.",
+        "soundness": "Zero cross-configuration answer disagreements and zero wrong answers on both benchmark runs (the stratified sample carries :status, so its wrong-answer column is live, unlike the scrambled set's).",
+        "fuzz_gates": "Campaign tier on the default path: 3000 fuzzsmt QF_LRA cases, 6/6 shard summaries, 2980 PASS / 20 TIMEOUT, 0 wrong. Mutation tasks (job 117932): opfuzz 14/14 seeds valid with 5,448 solver calls, two yinyang typefuzz shards 14/14 valid with 2,748 and 2,744 calls, 0 bug triggers and 0 bug files across all three. Merge tier on the SOI path: 1000 fuzzsmt cases, 2/2 summaries, 943 PASS / 57 TIMEOUT, 0 wrong. Release build -- the remote ASAN toolchain is still broken, so none of this carries sanitizer coverage.",
+        "summarizer_caveat": "scripts/summarize_fuzz_results.py reports opfuzz/yinyang as summaries=0 cases=0 because those stages do not write a fuzz_external.py-style summary.csv. That is a summarizer limitation, not a gate that ran nothing -- verified from the task logs (seed counts, solver-call counts, 0 bug triggers) and by finding zero files under the bugs directories. Do not read that 0 as a failure, and do not read it as a pass without checking the logs.",
+        "rejected_incremental_occurs_in": "The profile's other lead, rebuild_occurs_in_index() at 8%, was also built and then reverted. Instrumentation split its cost exactly: clear pass 0.05s, fill 1.65s over 138M scattered push_backs into 57,658 separate heap vectors. Since a pop restores only ~384 rows of 47,148, patching occurs_in_ per restored row inside undo() looked like ~100x less work. Measured, it is 1.4-1.8x SLOWER (0.88, 0.97, 0.55, 0.61, 0.70, 0.71, 0.62, 0.60 across four instances, two reps). Two compounding errors in the estimate: the cost scales with pivots undone (3,706), not pops (522); and dropping a listing is a std::remove scan of occurs_in_[var], not O(1), over rows averaging ~1,048 terms per row update. A full rebuild of a cheap index beats a targeted patch of an expensive one. The only fix that would actually help is a CSR-style representation for occurs_in_, which touches 29 call sites and should be considered as part of D4 rather than on its own."
+      },
+      "docs": "docs/qf-lra-heuristics.md section 6.2b (H8 and the rejection); docs/arithmetic.md's Milestone roadmap H8 entry.",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-lra-h8-scrambled-595",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "benchmark",
+      "scope": "H8 on the headline bar: all 595 scrambled QF_LRA competition files at 60s, paired same-node against the pre-H8 commit.",
+      "commit": "e6020ca",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "build-slurm-rel/primo at e6020ca against a second worktree built at 03c28da",
+        "notes": "Primo only. z3 and cvc5 are unchanged, so their columns come from job 117487's CSVs rather than being re-run."
+      },
+      "command": {
+        "job": "sbatch --array=0-39 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_SOLVERS='base=<03c28da>/primo --quiet;h8=<e6020ca>/primo --quiet', 60s, 20 shards -- job 117940, 40/40 COMPLETED, 20/20 shard CSVs per configuration"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-competition.txt (595 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 60
+      },
+      "summary": {
+        "result": "base 369 solved / PAR2 29561, H8 378 / PAR2 28654. +9 files, churn +9/-0 -- zero regressions across the whole competition set. Median paired speedup 1.19x over the 154 files both solve in >1s (p25 1.12, p75 1.25).",
+        "by_band": "0-50KB 177 -> 177 (saturated), 50-500KB 144 -> 148, 500KB-5MB 41 -> 46, >5MB 7 -> 7. Five of the nine gained files are in the 500KB-5MB gap band, which is where the entire deficit against z3 sits.",
+        "soundness": "Zero cross-configuration answer disagreements over 595 files. That set carries no :status, so disagreement is the only soundness signal it can give.",
+        "z3_comparison_caveat": "z3 solved 429 of these at 60s in job 117487, so the deficit reads 51 where it was 56 at H7 time. Treat that as approximate rather than exact: this job's own baseline solves 369 where the H7-era run recorded 373 for a comparable configuration, i.e. about 4 files of cross-job drift at a 60s timeout on a shared cluster. The within-job +9/-0 is the trustworthy number; the cross-job deficit figure is not measured to better than a few files.",
+        "calibration": "Section 6.1a's payoff curve says the gap band needs 2x for 15 files and 5x for 37. H8 is 1.19x and buys 5 there, which is consistent with the curve rather than better than it. This does not change the conclusion that closing the band needs an algorithmic change, not a constant factor."
+      },
+      "docs": "docs/qf-lra-heuristics.md section 6.2b; docs/arithmetic.md's H8 entry.",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-h8-local-asan-verification",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "fuzz",
+      "scope": "Sanitizer coverage for item H8 (and the propagation-cap options), run locally because the remote ASAN toolchain is still broken. H8 rewrites pivot()'s hot row loop and changes when a row is moved into the trail -- the exact area that previously produced a real heap-use-after-free in this class -- so merging it with zero sanitizer coverage was the one defensible objection.",
+      "commit": "c7f288a",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build-asan/primo (Debug, -DPRIMO_SANITIZERS=address); reference answers from build/primo (Release) and contrib/local/bin/z3",
+        "notes": "build-asan had to be recreated: the existing directory was a 2026-07-22 cache generated under the host mount path /home/mikolas/git/primo rather than the sandbox's /workspace, so cmake refused it. Local libasan is present (libasan.so.8) even though the cluster's is not -- worth knowing, because task 16 had been read as 'no ASAN coverage available at all'."
+      },
+      "command": {
+        "unit": "make asan-test",
+        "instances": "build-asan/primo over the 45 smallest sandbox/QF_LRA files, answers diffed against the Release build",
+        "configurations": "the 12 smallest files x 4 configurations (--lra-pivoting-rule soi, row+bidirectional propagation, --lra-fixed-elimination, and all four caps at 1024), answers diffed against Release default",
+        "fuzz": "scripts/fuzz_external.py --fuzzer fuzzsmt --solver 'build-asan/primo --quiet' --refs z3 --logic QF_LRA --count 250 --timeout 20 --seed 990731 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2'"
+      },
+      "summary": {
+        "unit_tests": "12/12 pass under ASAN.",
+        "real_instances": "45 instances, 0 sanitizer reports, 0 answer differences against Release.",
+        "configuration_sweep": "48 runs across 4 configurations, 0 sanitizer reports, 0 answer differences. SOI matters here specifically because set_soi_direction is the other producer of a Row and so the other consumer of H8's new ordering invariant.",
+        "fuzz": "250 fuzzsmt QF_LRA cases against z3: 247 PASS, 3 TIMEOUT at the 20s budget (a Debug+ASAN build is slow; all three are cases z3 answers sat), 0 wrong answers, 0 sanitizer reports anywhere in the run tree.",
+        "conclusion": "H8 and the cap options now have sanitizer coverage at smoke-to-merge tier. This does NOT replace a campaign-tier ASAN gate on the cluster -- 250 local cases against 3000 remote ones -- but it removes 'no sanitizer coverage at all' as a blocker."
+      },
+      "docs": "Referenced from docs/arithmetic.md's H8 entry.",
+      "evidence_status": "current",
+      "followups": "Task 16 stands, but should be rescoped: the blocker is the *remote* toolchain (head node lacks libasan, compute nodes lack C++ headers), and local ASAN is a working substitute for anything below campaign tier."
+    },
+    {
+      "id": "2026-08-01-reconcile-qflra-model-construction-local-gate",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "fuzz+model-validation",
+      "scope": "Local reconciliation gate for adding the QF_LRA model-printing work on top of origin/main after the substantial QF_LRA merge. Covers the merged model construction path for user-declared nullary Real constants, preprocessing equality reconstruction, strict-bound delta concretization, rejection of non-nullary QF_LRA declarations, and the reusable model validator's Dolmen-to-Z3 fallback for generated QF_LRA inputs that Dolmen rejects before model checking.",
+      "commit": "095e07f",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "./build/primo --quiet built from reconcile-model-construction at 095e07f; reference solver /workspace/contrib/local/bin/z3; Dolmen from PATH, version 0.10",
+        "notes": "Dolmen validates ordinary SMT-LIB model responses directly. Several FuzzSMT QF_LRA inputs use linear-arithmetic syntax that Dolmen 0.10 rejects before model checking, for example division by a negated constant expression; scripts/validate_model.py therefore falls back to asserting Primo's printed Real assignments into the original input and checking satisfiability with Z3 for this minimal QF_LRA model subset. The fallback now requires Z3 exit code 0 and rejects Z3 '(error ...)' output, so out-of-fragment QF_LRA+UF scripts cannot be counted as model-validation passes."
+      },
+      "command": {
+        "build": "cmake --build build --target primo primo_qf_lra_solver_tests primo_smtlib_parser_tests primo_boolean_solver_tests -j2",
+        "focused_tests": "./build/primo_qf_lra_solver_tests; ./build/primo_smtlib_parser_tests; (cd build && ./primo_boolean_solver_tests); python3 -m py_compile scripts/validate_model.py scripts/validate_qfuf_models_with_dolmen.py",
+        "full_check": "make lint; make check; make docs",
+        "verdict_fuzz": "env PATH=\"/workspace/contrib/local/bin:$PATH\" /usr/bin/python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs /workspace/contrib/local/bin/z3 --logic QF_LRA --count 100 --timeout 5 --seed 801002 --out results/reconcile-model-qflra-fuzz-smoke-20260801c",
+        "model_validation": "/usr/bin/python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --timeout 10 --dolmen-timeout 10 --out results/reconcile-model-qflra-model-validation-20260801c results/reconcile-model-qflra-fuzz-smoke-20260801c/generated/*.smt2",
+        "negative_conformance": "./build/primo_qf_lra_solver_tests covers rejection of non-nullary Real functions and Bool predicates under QF_LRA; a direct validator repro for a QF_LRA script declaring f : Real -> Real is classified as solver-error, not pass"
+      },
+      "benchmark": {
+        "suite": "100 FuzzSMT-generated QF_LRA files, seed 801002",
+        "logic": "QF_LRA",
+        "timeout_seconds": "5 for verdict fuzzing; 10 for model-producing validation"
+      },
+      "artifacts": {
+        "fuzz_summary": "results/reconcile-model-qflra-fuzz-smoke-20260801c/summary.csv",
+        "model_validation_summary": "results/reconcile-model-qflra-model-validation-20260801c/summary.csv",
+        "generated_inputs": "results/reconcile-model-qflra-fuzz-smoke-20260801c/generated/*.smt2",
+        "model_validation_artifacts": "results/reconcile-model-qflra-model-validation-20260801c/"
+      },
+      "summary": {
+        "verdict_fuzz": {
+          "PASS": 100,
+          "wrong_answer": 0,
+          "crash": 0,
+          "timeout": 0
+        },
+        "model_validation": {
+          "pass": 82,
+          "not-sat": 18,
+          "model_error": 0,
+          "solver_timeout": 0
+        },
+        "headline": "No wrong answers, crashes, or invalid models in this local smoke gate. The 13 not-sat rows are unsat generated inputs for which no model is expected."
+      },
+      "docs": "docs/architecture.md, docs/arithmetic.md, and docs/preprocessing.md describe the supported QF_LRA model subset and the validation fallback.",
+      "evidence_status": "current",
+      "followups": "This is a local smoke/merge-level reconciliation gate, not an SLURM campaign. Run a larger SLURM fuzz/model-validation campaign before treating QF_LRA model printing as campaign-level evidence."
+    },
+    {
+      "id": "2026-08-01-slurm-qflra-model-fuzz-and-sandbox-0978c0d",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "fuzz+model-validation+performance-smoke",
+      "scope": "SLURM campaign for QF_LRA model construction on commit 0978c0d. It extends the local reconciliation gate with 3000 generated QF_LRA FuzzSMT cases, Dolmen/Z3 model validation for generated sat cases, opfuzz/typefuzz mutation over real QF_LRA seeds, and a sat-only model-validation batch over sandbox/non-incremental/QF_LRA. The sandbox batch filters with Z3 first and only invokes model checking for Z3-sat files.",
+      "commit": "0978c0d",
+      "environment": {
+        "type": "slurm",
+        "host": "private SLURM cluster via fresh isolated remote workspace",
+        "binary": "build-slurm-rel/primo --quiet; primo --version reported git 0978c0d and CaDiCaL cadical-3.0.0-7b99c07",
+        "notes": "A fresh remote workspace was used so this campaign did not share build or result directories with active Primo jobs already in the queue. Private usernames, hostnames, IPs, and absolute home paths are intentionally redacted. The patched YinYang fork was installed into the fresh workspace from https://github.com/MikolasJanota/yinyang.git at commit 3458e8e after the first mutation tasks found no opfuzz/typefuzz executable in PATH."
+      },
+      "command": {
+        "workspace_preflight": "Local sbatch validation with scripts/slurm_validate_sbatch.py and bash -n; remote binary checked immediately before sbatch and reported git 0978c0d plus CaDiCaL. The repo preflight script had already passed for this fresh workspace before the first fuzz submission; the later sandbox-only script was copied into the same workspace and does not change the solver binary.",
+        "fuzz_campaign": "scripts/slurm_qf_lra_model_fuzz_gate.sbatch with default FuzzSMT layout: 6 shards x 500 QF_LRA cases, timeout 5s, seeds 218571..218576, args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2'. Model validation used scripts/validate_model.py with Primo --quiet and Dolmen/Z3 fallback. Original job 118571 supplied the answer-fuzz summaries; mutation tasks were rerun as job 118580 after installing patched YinYang. A model-timeout rerun of generated shards with PRIMO_FUZZ_MODEL_TIMEOUT=60 was job 118583 and confirmed remaining failures are timeout-class rows, not model errors.",
+        "sandbox_model_batch": "scripts/slurm_qf_lra_sandbox_model_check.sbatch, job 118601, 8-way array over sandbox/non-incremental/QF_LRA. Each shard runs z3 -smt2 first, validates only Z3-sat files with scripts/validate_model.py, stops on definite model errors, and writes perf.csv comparing plain check-sat against check-sat+get-model for up to 24 sat files per shard.",
+        "manual_overhead_probe": "Additional confirmed-sat six-file timing probe under results/qf-lra-model-overhead-confirmed-sat-118601/overhead.csv with 5s caps for plain and model-producing runs. It used files already proven Z3-sat by the sandbox validation artifacts."
+      },
+      "benchmark": {
+        "suite": "FuzzSMT QF_LRA generated cases plus real-seed opfuzz/typefuzz over benchmarks/seeds/qf_lra_real; sandbox/non-incremental/QF_LRA sat-only model validation",
+        "logic": "QF_LRA",
+        "timeout_seconds": "5 for generated answer fuzzing; 10 then 60 for generated model validation rerun; 30 for sandbox Z3 filtering and Primo model validation; 5 for the quick manual overhead probe"
+      },
+      "artifacts": {
+        "remote_fuzz_answer_root": "<fresh-remote-workdir>/fuzz-results/qf-lra-model-gate-118571/",
+        "remote_mutation_root": "<fresh-remote-workdir>/fuzz-results/qf-lra-model-gate-118580/",
+        "remote_generated_model_rerun_root": "<fresh-remote-workdir>/fuzz-results/qf-lra-model-gate-118583/",
+        "remote_sandbox_model_root": "<fresh-remote-workdir>/results/qf-lra-sandbox-model-118601/",
+        "remote_overhead_probe": "<fresh-remote-workdir>/results/qf-lra-model-overhead-confirmed-sat-118601/overhead.csv",
+        "local_script": "scripts/slurm_qf_lra_sandbox_model_check.sbatch"
+      },
+      "summary": {
+        "generated_answer_fuzz": {
+          "cases": 3000,
+          "PASS": 2978,
+          "TIMEOUT": 22,
+          "wrong_answer": 0,
+          "crash": 0
+        },
+        "generated_model_validation_initial": {
+          "cases": 3000,
+          "pass": 2593,
+          "not_sat": 390,
+          "solver_timeout": 17,
+          "model_error": 0
+        },
+        "generated_model_validation_rerun": "With 60s Primo model timeout, shard 4 completed and the other shards still failed only through timeout-class rows. No model-error rows were observed in the inspected summaries; this run was used to classify the initial failures as timeout pressure rather than invalid printed models.",
+        "mutation": {
+          "jobs": "118580 tasks 6-8 completed with exit 0 after patched YinYang install",
+          "opfuzz_last_reported_solver_calls": 5592,
+          "typefuzz_last_reported_solver_calls": [
+            2690,
+            2758
+          ],
+          "bug_files": 0,
+          "notes": "The first mutation attempt in job 118571 failed immediately because opfuzz/typefuzz were not on PATH. Job 118580 is the replacement mutation evidence."
+        },
+        "sandbox_sat_only_model_validation": {
+          "files_total": 1753,
+          "z3_sat": 820,
+          "z3_unsat": 515,
+          "z3_timeout": 418,
+          "model_pass": 763,
+          "model_solver_timeout": 57,
+          "model_error": 0,
+          "definite_error_stop_triggered": false
+        },
+        "model_overhead": {
+          "sandbox_perf_rows": 192,
+          "average_model_over_plain_ratio": 0.970757359375,
+          "median_model_over_plain_ratio": 0.978947,
+          "max_model_over_plain_ratio": 1.03782,
+          "manual_confirmed_sat_probe": "Six confirmed-sat files: ratios 0.9998 timeout/timeout, 0.9582, 1.0102, 0.9873, 0.9893, 0.9999. No model-production-specific slowdown signal; no gprof run was justified for model printing overhead."
+        },
+        "headline": "No wrong answers, crashes, or invalid models were found. The remaining non-pass rows are timeouts: 22 generated answer-fuzz timeouts, generated model-validation solver timeouts, and 57 sandbox model-validation solver timeouts."
+      },
+      "docs": "This run-log entry records the new reusable sandbox SLURM script and the SLURM evidence. The script is intentionally redaction-safe: it takes PRIMO_WORKDIR/PRIMO_MODEL_* variables and contains no private host, user, or IP data.",
+      "evidence_status": "current",
+      "followups": "If we want to reduce the 57 sandbox model-validation timeouts, profile general QF_LRA solving on representative timeout files. The timing samples do not point to get-model printing as the bottleneck."
+    },
+    {
+      "id": "2026-07-31-presimplification-census",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "profiling",
+      "scope": "Settle TR Section 3.1 presimplification -- the one technique from the base paper Primo does not implement -- by counting how much of the tableau it would actually remove, rather than continuing to infer it from H1a and the z3 dimension match.",
+      "commit": "8621237",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build/primo with throwaway instrumentation in solve_qf_lra, next to publish_lra_tableau_shape_stats; measured, reverted, not committed",
+        "notes": "Counts are structural properties of the prepared tableau, so no timing is involved and workstation load is irrelevant."
+      },
+      "command": {
+        "census": "count prepared-tableau variables that are the bound_var of no arithmetic PreparedAtom (the paper's 'does not occur in any elementary atom'), split by basic/non-basic, plus the number of rows holding at least one such variable"
+      },
+      "benchmark": {
+        "suite": "scrambled339450, scrambled312090, scrambled228965 from benchmarks/qf-lra-scrambled-midband-gap.txt",
+        "logic": "QF_LRA"
+      },
+      "summary": {
+        "result": "Free variables are 0.5-4.3% of the tableau: scrambled339450 2,503 of 57,658 (4.3%), scrambled312090 119 of 26,041 (0.46%), scrambled228965 28 of 5,694 (0.5%).",
+        "why_it_is_worse_than_the_share_suggests": "Those few variables are spread across nearly every row -- 43,140 of the rows on scrambled339450 (91%), 17,812 on scrambled312090, 2,999 on scrambled228965 hold at least one. The elimination is Gaussian, so substituting them out rewrites all those rows and generates fill-in, which section 6.2 identifies as the bottleneck. Shrinking the matrix by 4% while densifying 91% of its rows is not a trade this band can afford.",
+        "sanity_check": "Every free variable found was non-basic (basic count zero on all three instances), which is the expected shape: a slack exists only because some polynomial carried an atom, so slacks always have bounds, and the free variables are exactly the structural ones that never got a direct bound. A nonzero basic count would have meant the census was measuring the wrong thing.",
+        "supersedes_an_inference": "The prior reasoning -- H1a already removed the trivial slack rows, and prepared dimensions match z3's within ~5% -- pointed the same way but was an inference. This is a direct count.",
+        "conclusion": "TR Section 3.1 presimplification stays unimplemented, now on measured rather than inferred grounds. With it closed, no technique from the base paper remains unimplemented for QF_LRA."
+      },
+      "docs": "docs/papers/fast-linear-arithmetic-dpllt.md, the 'Not implemented' entry for presimplification.",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-qf-lra-paper-backtracking",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "benchmark",
+      "scope": "Adopt the paper's own backtracking scheme (TR SRI-CSL-06-01 Section 3.2.4): trail only bounds, never the assignment or the basis. Found by re-reading the technical report line by line against the code.",
+      "commit": "ec6244e",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at 94f5c60 against a worktree built at 8621237",
+        "notes": "Run from a NEW remote tree ~/primo-qflra, provisioned specifically so QF_LRA work stops sharing primo-cadical-profile with the Nelson-Oppen stream. The sync succeeded while a Nelson-Oppen job was still running, which is the workdir-aware guard behaving correctly."
+      },
+      "command": {
+        "fuzz_default": "campaign-tier QF_LRA fuzz, job 118043 (6 shards x 500)",
+        "fuzz_soi": "merge-tier on the SOI path, job 118044 (4 x 500) -- SOI keeps the old trail scheme and so needs its own gate",
+        "scrambled595": "job 118045, base vs bt, 60s, 20 shards",
+        "stratified": "job 118046, base vs bt, 60s, 20 shards"
+      },
+      "summary": {
+        "headline": "595-file scrambled competition set at 60s: 378 -> 399 solved (+21), PAR2 28691 -> 26661 (-7%). Stratified 237: 192 -> 197, PAR2 6069 -> 5575. Zero cross-configuration disagreements and zero wrong answers on both.",
+        "mechanism": "Not undoing pivots means the search keeps the repair work it already paid for. Pivot counts drop 2.3-5.3x on the profiled instances (scrambled228965 11,647 -> 3,460; scrambled339450 3,706 -> 1,629; scrambled365036 122,026 -> 22,926), and gprof shows rebuild_occurs_in_index gone from the profile entirely since nothing structural changes on a pop.",
+        "THIS IS NOT A FREE WIN": "Unlike item H8, the churn is two-directional: +32/-11 on the 595 set and +7/-2 on the stratified sample. Among the 145 commonly-solved files taking more than a second, 62 are >10% SLOWER and 64 are >10% faster -- median paired speedup is 1.01x with p25 0.63 and p75 1.30. The tails are large in both directions (max 24.9x, min 0.10x; worst case scrambled31749 at 2.5s -> 24.0s). It nets +21 because the wins land on instances near the timeout while most of the losses do not.",
+        "regression_shape": "10 of the 11 lost files were already taking 24-60s against a 60s budget, so they were marginal before. The 32 gained files solve at a median of 27.9s.",
+        "why_the_variance": "Inherent to the design rather than a defect: keeping the basis across a backtrack keeps a basis that was good for the *previous* subproblem. Sometimes that is a warm start, sometimes it is a worse starting point than the initial all-slack basis would have been.",
+        "bearing_on_d2": "This is the first direct evidence on our own solver that the starting basis matters enormously -- 10x in either direction on the same instance, from nothing but which basis the search happens to inherit. That is the premise D2 (floating-point-guided basis selection) rests on, and it had not previously been measured here.",
+        "soi_excluded": "PivotingRule::Soi keeps the old scheme: its objective row is a sum over the currently violated rows, not a linear combination of A, so neither half of the soundness argument covers it.",
+        "correctness": "Campaign-tier fuzz on the default path: 3000 fuzzsmt QF_LRA cases, 6/6 shard summaries, 2975 PASS / 25 TIMEOUT, 0 wrong. SOI merge tier: 2000 cases, 4/4, 1848 PASS / 152 TIMEOUT, 0 wrong (SOI's timeout rate is 7.6% against the default path's 0.8%, in line with the 5.7% it showed on job 117842, so unchanged by this work). Locally: make check and make asan-test both 12/12, 70 ASAN runs across 5 configurations with 0 reports and 0 answer differences against the pre-change binary, 300 ASAN fuzz cases and 300 SOI fuzz cases against z3 with 0 wrong.",
+        "gate_gap": "The mutation tier initially failed in the new tree because .venv-yinyang is host-provisioned per tree, like contrib/local, and had not been created there. Provisioned and re-run as job 118144: all three tasks COMPLETED, opfuzz 14/14 seeds valid over 5,542 solver calls and two yinyang typefuzz shards 14/14 over 2,794 and 2,722 calls, 0 bug triggers and 0 bug files across all three. The campaign gate is therefore complete: 3000 fuzzsmt cases plus opfuzz plus two yinyang shards, all clean on the default path, with SOI gated separately at merge tier. Note summarize_fuzz_results.py still prints opfuzz/yinyang as summaries=0 cases=0 -- that is the known summarizer limitation, not a gate that ran nothing; verified from the task logs and the empty bugs directories."
+      },
+      "docs": "docs/papers/fast-linear-arithmetic-dpllt.md's deviations section; LraTableau's class comment carries the soundness argument.",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-07-31-callgrind-after-backtracking",
+      "started_at": "2026-07-31",
+      "recorded_at": "2026-07-31",
+      "kind": "profiling",
+      "scope": "Re-profile after H8 and bounds-only backtracking, with callgrind rather than gprof so libc and GMP are visible. Merge-readiness check that turned into the largest single finding left.",
+      "commit": "282c20b",
+      "environment": {
+        "type": "workstation",
+        "host": "local",
+        "binary": "build-callgrind/primo (RelWithDebInfo) under valgrind 3.22 --tool=callgrind; counts confirmed with throwaway instrumentation on the Release build",
+        "notes": "valgrind became available on this machine partway through the day; perf remains blocked (perf_event_paranoid=4)."
+      },
+      "command": {
+        "callgrind": "valgrind --tool=callgrind --cache-sim=no --branch-sim=no build-callgrind/primo --quiet <instance>; callgrind_annotate",
+        "counter_check": "temporary counters around the std::remove in pivot's affected-row loop, measured then reverted"
+      },
+      "benchmark": {
+        "suite": "scrambled228965, scrambled339450",
+        "logic": "QF_LRA"
+      },
+      "summary": {
+        "distribution": "On scrambled228965, 262.5 billion instructions total: 70.4% in stl_algobase.h attributed to LraTableau::pivot, 11.1% stl_iterator.h, 9.8% predefined_ops.h -- about 91% inside pivot, and almost none of it arithmetic (Rational::operator* is ~1%, libc _int_malloc 0.22%).",
+        "what_it_actually_is": "One linear-scan algorithm: the std::remove that drops other_basic from occurs_in_[var]. Counted directly rather than inferred from symbol names, because attribution has misled here before (6.2a's COMDAT folding). scrambled228965: 40.1M calls scanning 37.6 BILLION elements, average 938 per call. scrambled339450: 51.5M calls, 25.9 billion elements, average 504.",
+        "the_fix_that_follows": "Most of that work is immediately undone: the loop removes other_basic from every term's occurrence list and then re-adds it for every term of the rebuilt row, and after H8's merge most terms are in both. Both rows are ordered by var id (the Row invariant H8 established), so the true delta is one linear pass -- a term carried over unchanged needs no occurrence update at all, and only terms genuinely entering (from the entering row) or leaving (cancelled to zero, or entering_var itself) need one.",
+        "significance": "This is larger than anything left in section 6.5's direction list, and unlike D2 or D4 it is contained, additive, and rests on an invariant that already exists. Not attempted yet.",
+        "allocator_still_retired": "libc _int_malloc is 0.22% of instructions, confirming the 2026-07-31 finding that H2 retired the allocator as a target; it has not crept back."
+      },
+      "docs": "docs/qf-lra-heuristics.md section 6.2c.",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-lra-h10-delta-occurs-in",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "benchmark",
+      "scope": "Item H10: maintain occurs_in_ by delta instead of a remove-and-re-add round trip per affected row. The target callgrind identified as ~91% of instructions.",
+      "commit": "aa44320",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at aa44320 against a worktree rebuilt at 4f9b741",
+        "notes": "Baseline verified by CONTENT as well as banner. A first submission used a baseline whose --version said 8621237 and whose source was pre-H9: rsync --delete had destroyed the worktree's git registration, so the checkout failed while the build still succeeded, and the git-revision header is generated at configure time rather than build time. Those jobs were cancelled and the worktree recreated. See docs/experiments.md."
+      },
+      "command": {
+        "fuzz_default": "job 118164, campaign tier: 6 fuzzsmt shards x 500 plus opfuzz and two yinyang shards",
+        "fuzz_soi": "job 118165, 4 x 500 on --lra-pivoting-rule soi",
+        "scrambled595": "job 118218, base vs h10, 60s, 20 shards",
+        "stratified": "job 118219, base vs h10, 60s, 20 shards"
+      },
+      "summary": {
+        "headline": "595-file scrambled competition set at 60s: 398 -> 439 solved, PAR2 26723 -> 22207 (-17%). Churn +41/-0. Stratified 237: 197 -> 202, PAR2 5586 -> 4976, churn +5/-0.",
+        "passes_z3": "439 against z3's 429 on the same 595 files (z3 unchanged, from job 117487). Primo now solves 10 more than z3 on this set, having been 56 behind on 2026-07-29. Subject to the same cross-job caveat as every other absolute figure here: this job's own baseline solved 398 where the H9 job recorded 399, so treat absolutes as good to a few files and the within-job +41/-0 as the trustworthy number.",
+        "distribution": "Median paired speedup 1.51x over the 173 files both solve in more than a second (p25 1.15, p75 2.26, max 8.0x). Only 2 of those 173 are more than 10% slower, and the stratified sample has none at all. Unlike H9 this is close to a uniform win.",
+        "mechanism": "occurs_in_ records row identities, never coefficients, so a term carried through a pivot keeps the entry it had. Only cancellations remove and only genuinely new terms add. gprof: pivot self time 10.04s -> 1.26s at an identical 3,460 calls, 90.7% of the profile down to 49.6%, with the remainder arithmetic rather than bookkeeping.",
+        "correctness": "Campaign tier on the default path: 3000 fuzzsmt QF_LRA cases 2969 PASS / 31 TIMEOUT with 0 wrong, plus opfuzz 14/14 seeds and two yinyang typefuzz shards 14/14, 0 bug triggers and 0 bug files. SOI merge tier: 2000 cases, 1868 PASS / 132 TIMEOUT, 0 wrong. Zero cross-configuration disagreements on both benchmark runs. Locally: make check and make asan-test 12/12, 60 ASAN runs across five pivoting configurations with 0 reports and 0 answer differences, 300 ASAN fuzz cases against z3 with 0 wrong.",
+        "guard": "occurs_in_index_matches_full_rebuild() is checked after every pivot by two tests across all four pivoting rules plus a dedicated cancellation case. A wrong index does not crash; it makes update() skip a dependent row and produces a wrong answer later and elsewhere."
+      },
+      "docs": "docs/qf-lra-heuristics.md item H10; docs/arithmetic.md's Milestone roadmap.",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-lra-three-way-300s",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "benchmark",
+      "scope": "Three-solver comparison at a realistic budget after items H8, H9 and H10: all 595 scrambled QF_LRA competition files at 300s, Primo against z3 and cvc5.",
+      "commit": "aa44320",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at aa44320 (the H10 code commit; later commits are docs only), z3 5.0.0 and cvc5 1.3.4 as built in contrib/local",
+        "notes": "z3 and cvc5 were deliberately re-run despite being unchanged: the 300s timeout differs from every stored run, so earlier numbers do not transfer. Job 118310, 3 solvers x 20 shards = 60 tasks, all COMPLETED, 20/20 shard CSVs each."
+      },
+      "command": {
+        "job": "sbatch --array=0-59 --job-name=primo-qflra-3way-300s --time=08:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_TIMEOUT=300 and all three solvers"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-competition.txt (595 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "primo 515/595 (86.6%) PAR2 61303; z3 507 (85.2%) PAR2 66718; cvc5 465 (78.2%) PAR2 96616. Primo leads on both solved count and PAR2.",
+        "soundness": "ZERO cross-solver disagreements across 595 files and three solvers. The scrambled set carries no :status, so cross-solver agreement is the only soundness signal available and this is the strongest form of it obtained so far.",
+        "head_to_head": "Against z3 the solvers are complementary rather than dominating: 30 files only Primo solves, 22 only z3 solves, so 52 of 595 are decided by exactly one of them. Against cvc5 it is 59 to 9.",
+        "the_campaign_band_is_narrowed_not_closed": "By file size: 0-50KB all three solve 179/179; 50-500KB primo 173, z3 157, cvc5 154; 500KB-5MB primo 134, z3 141, cvc5 118; >5MB primo 29, z3 30, cvc5 14. So the 500KB-5MB band that this whole campaign was about is now -7 against z3 rather than -56, but it has NOT flipped. Primo's overall lead comes from the 50-500KB band (+16), where it was already ahead before the campaign.",
+        "consistency_with_the_60s_runs": "At 60s the H10 job had Primo 439 against z3's 430 from the preserved 2026-07-29 CSVs, +9. At 300s it is 515 to 507, +8. The two budgets agree on the sign and rough size of the lead.",
+        "what_this_is_not": "Not a competition result. SMT-COMP uses a 1200s timeout, competition-entrant binaries, and its own scoring; these are contrib builds of z3 5.0.0 and cvc5 1.3.4 on one 595-file scrambled set. No official SMT-COMP logs are available here, so no ranking can be inferred."
+      },
+      "artifacts": "llm2smt-slurm:<slurm-workdir>/results/qf-lra-scrambled-118310/ (60 shard CSVs plus summaries)",
+      "docs": "docs/arithmetic.md's QF_LRA standing section.",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-lra-full-division-300s",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "benchmark",
+      "scope": "The complete non-incremental SMT-LIB QF_LRA division -- 1,753 files across 17 families -- against z3 and cvc5 at 300s. Every previous QF_LRA comparison used the 595-file scrambled subset.",
+      "commit": "aa44320",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at aa44320 (H10 code commit; later commits are docs only), z3 5.0.0 and cvc5 1.3.4 from contrib/local",
+        "notes": "Job 118382, 3 solvers x 40 shards = 120 tasks, all COMPLETED, 40/40 shard CSVs per solver."
+      },
+      "command": {
+        "job": "sbatch --array=0-119 --time=08:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-full-division.txt (1,753 files, 17 families)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "primo 1631/1753 (93.0%) PAR2 94992; z3 1584 (90.4%) PAR2 128079; cvc5 1511 (86.2%) PAR2 181248. Primo leads by 47 files over z3 and PAR2 is 26% better.",
+        "soundness": "ZERO wrong answers for all three solvers, and zero cross-solver disagreements. This set carries (set-info :status) on every file, so unlike the scrambled set the harness's own wrong-answer column is live -- this is ground-truth checking on 1,753 files, the strongest correctness evidence obtained for QF_LRA.",
+        "head_to_head": "77 files only Primo solves against 30 only z3 solves; against cvc5 it is 130 to 10.",
+        "where_the_lead_comes_from": "Family deltas against z3: 2017-Heizmann-UltimateInvariantSynthesis +19 (41 of 58 against 22), LassoRanker +16 (347 of 419 against 331), latendresse +7 (15 of 18 against 8), tta_startup +4, 2019-ezsmt +3. Twelve families are exact ties, most of them saturated (meti-tarski 488/488, sc 144/144, DTP-Scheduling 91/91, sal 107/107). The single family where z3 leads is miplib, 25 to 23.",
+        "contrast_with_the_scrambled_subset": "On the 595-file scrambled set the lead was +8; here it is +47. The scrambled sample is not representative of the division -- it under-weights exactly the families Primo is strongest on (Heizmann invariant synthesis, LassoRanker, latendresse), and those three account for +42 of the +47.",
+        "latendresse_note": "15 of 18 against z3's 8 and cvc5's 0. That family was 0/15 before item H3 and is the one the SOI paper was written for; it is now a Primo strength rather than a weakness.",
+        "what_this_is_not": "Not a competition result: SMT-COMP uses a 1200s timeout, competition-entrant binaries and its own scoring. These are contrib builds of z3 5.0.0 and cvc5 1.3.4 at 300s. No official SMT-COMP logs are available here, so nothing about placement follows."
+      },
+      "artifacts": "llm2smt-slurm:<slurm-workdir>/results/qf-lra-scrambled-118382/ (120 shard CSVs plus summaries)",
+      "docs": "docs/arithmetic.md's QF_LRA standing section.",
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-01-qf-lra-fuzz-coverage-audit",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "analysis",
+      "scope": "Audit of what the two QF_LRA fuzzers actually cover, prompted by the question 'is our fuzzing based on all the different families we have?'. The answer was no, in two independent ways: the mutation seed corpus held 3 of the division's 17 families, and every FuzzSMT run in this project's history used QF_LRA's stock default parameters.",
+      "commit": "d373f67",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo at c29ed09 (Release), fuzzsmt 0.3 and z3 5.0.0 from contrib/local",
+        "notes": "Parameter measurements are local and single-seed unless stated; they are throughput/size measurements, not performance claims."
+      },
+      "command": {
+        "size_ladder": "for each setting: fuzzsmt QF_LRA -seed <s> <args> -bulk-export 10..150, then build/primo -q on each output",
+        "differential": "python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 --logic QF_LRA --count 150 --timeout 10 --seed 777 --fuzzer-args <profile> --out <dir>, for profiles 1-3"
+      },
+      "summary": {
+        "seed_corpus_gap": "benchmarks/seeds/qf_lra_real held 14 files from check, DTP-Scheduling and keymaera, plus gasburner which is not in the division at all. 14 of 17 families had never been mutation-fuzzed, including latendresse (pure LP, zero decisions, very large pivot counts) and LassoRanker (419 files, the largest source of Primo's lead) -- the shapes items H8, H9 and H10 each rewrote.",
+        "fuzzsmt_parameter_gap": "Every QF_LRA gate in this log ran '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2'. For QF_LRA that is FuzzSMT's stock default: -ms/-Ms are sort counts and -mf/-mp/-ma/-Ma are function/predicate/arity knobs, applied only to the QF_UF* logics and silently ignored here. Effective settings were -Mv 3, -Mc 3, -Mbw 4, so every generated case had at most three Real variables and every coefficient in [1,15] -- the GMP bignum paths in DeltaRational and Farkas combination were never generated.",
+        "measured_costs": "-Mbw 16 free (max literal 15 -> 54430, no size or time cost); -Mc 10 3x file size; -Mv 15 9x; -ref 2 7x; -ref 3 20x with generation itself hitting the wall; -Mv 15 -ref 2 composes to ~2MB per case. -Mv 5 -Mc 4 -Mbw 16 costs 18s/100 cases with 1% timeouts and is the chosen mid tier.",
+        "bool_layer": "-bool-and yields 100% unsat and -bool-or 100% sat, both at ~4s/100 cases, against ~11% unsat for the random layer. -bool-cnf is unusable: FuzzSMT 0.3 emits a malformed let block and z3 rejects the output too ('invalid let declaration'); all 150 cases were correctly rejected by Primo's parser.",
+        "differential_result": "450 cases across profiles 1-3 against z3: 449 PASS, 1 timeout, zero answer disagreements and zero crashes."
+      },
+      "caveats": [
+        "The first measurement suggested -Mbw 16 was 5x CHEAPER than -Mbw 4 (4.2s vs 22.7s per 150 cases) and doubled the unsat rate. A second seed gave 3.4s vs 3.7s and no unsat difference: FuzzSMT's output is seed-driven and changing a parameter changes the random stream, so per-setting sizes wander. The defensible claim is that -Mbw 16 costs nothing, not that it wins.",
+        "This is a coverage widening, not a bug hunt that found something. No defect was found by any of it."
+      ],
+      "outcome": "Committed as d373f67 (FuzzSMT profile ladder in scripts/slurm_qfuf_fuzz_gate.sbatch) and 3c3892b (scripts/build_fuzz_seed_corpus.py). Documented in docs/fuzz-coverage-qf-lra.md."
+    },
+    {
+      "id": "2026-08-01-qf-lra-famfuzz-118543-superseded",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "fuzz",
+      "scope": "First mutation-fuzz campaign over the family-complete QF_LRA seed corpus: 1 opfuzz task plus 4 YinYang typefuzz shards. SUPERSEDED -- it covered 22 of the 34 seeds, for the reason below.",
+      "commit": "3c3892b",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at 3c3892b, reference 'z3 model_validate=true'",
+        "notes": "Job 118543, --array=6-10, all five tasks COMPLETED (10-25 minutes each)."
+      },
+      "command": {
+        "job": "sbatch --array=6-10 scripts/slurm_qfuf_fuzz_gate.sbatch with PRIMO_FUZZ_OPFUZZ_SEEDS/PRIMO_FUZZ_YINYANG_SEEDS=benchmarks/seeds/qf_lra_division, OPFUZZ_ITERATIONS=300, YINYANG_ITERATIONS=200, WALL_SECONDS=5400, timeouts 20s, no fuzzsmt shards"
+      },
+      "summary": {
+        "result": "All five tasks: '34 seeds processed, 22 valid, 12 invalid / 0 bug triggers found'. Zero entries in every bugs/ directory.",
+        "why_superseded": "The 12 'invalid' seeds were not malformed. typefuzz's -L is a seed FILE-SIZE limit, 20000 bytes by default in scripts/yinyang_fuzz.sh, and it drops oversized seeds silently. The 12 dropped seeds are exactly the 12 corpus files over 20 KB: tropical-matrix (160/180 KB), latendresse (125 KB), TM (77/81 KB), 2017-Heizmann (73/78 KB), miplib (70 KB) and LassoRanker (45 KB). The corpus had just been widened from 3 families to 17 and this cut it back to 11, discarding latendresse and LassoRanker -- the two families the widening existed to cover.",
+        "verification": "Confirmed per seed by running typefuzz -i 1 on each of the 34 seeds individually on the cluster: the 12 that report '0 valid, 1 invalid' are exactly the 12 over 20000 bytes, and the 22 that do not are all under."
+      },
+      "caveats": [
+        "An earlier hypothesis -- that YinYang discards seeds whose reference answer times out -- was WRONG. It only looked right because the oversized files are also the ones z3 cannot answer quickly. The per-seed run distinguished the two.",
+        "Separately and still true: at a 20s reference timeout z3 5.0.0 does not answer the unmutated LassoRanker, latendresse, miplib or tropical-matrix seeds at all, so even with the size limit raised those iterations cannot yield a verdict without a longer --solver-timeout."
+      ],
+      "outcome": "Fixed in 22409b1: the gate now passes --file-size-limit 200000 (matching build_fuzz_seed_corpus.py's --max-bytes) and yinyang_fuzz.sh names oversized seeds on stderr before starting. A replacement campaign is required before citing mutation-fuzz coverage of the widened corpus."
+    },
+    {
+      "id": "2026-08-01-qf-lra-fuzzsmt-ladder-118548",
+      "started_at": "2026-08-01",
+      "recorded_at": "2026-08-01",
+      "kind": "fuzz",
+      "scope": "First campaign-tier QF_LRA generator fuzz run using the six-profile FuzzSMT parameter ladder rather than the stock defaults every prior run used. Six shards x 500 cases, one profile each.",
+      "commit": "9724b54",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at 9724b54, reference z3 5.0.0",
+        "notes": "Job 118548 tasks 0-5. All COMPLETED; 6 of 6 shard summary.csv files present, so no shard was lost to the wall (the 117248-117251 failure mode)."
+      },
+      "command": {
+        "job": "sbatch --array=0-10 --time=04:00:00 --job-name=primo-qflra-fuzz-ladder scripts/slurm_qfuf_fuzz_gate.sbatch with PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA, FUZZSMT_SHARDS=6, FUZZSMT_COUNT=500, FUZZSMT_TIMEOUT=10; profiles come from the script's built-in QF_LRA ladder and are echoed per shard into the task log"
+      },
+      "benchmark": {
+        "suite": "FuzzSMT-generated QF_LRA, six parameter profiles",
+        "logic": "QF_LRA",
+        "timeout_seconds": 10
+      },
+      "summary": {
+        "result": "3000 cases: 2959 PASS, 41 TIMEOUT. Zero wrong answers, zero crashes, zero reference disagreements.",
+        "per_profile_timeouts": "profile 0 (-Mbw 4, the historical setting) 2; profile 1 (-Mbw 16) 7; profile 2 (-Mv 5 -Mc 4 -Mbw 16) 19; profile 3 (+bool-and) 4; profile 4 (+bool-or) 5; profile 5 (-Mbw 32) 4. Concentrated in profile 2, the widest tableau, as the ladder intends.",
+        "timeouts_are_not_defects": "Sampled one of the 41: a 330 KB, 8,928-line formula that Primo answers sat in under 60s, agreeing with z3. fuzz_external.py copies every non-PASS case into bugs/, so the 41 files there are the timeouts, not bugs.",
+        "wall_times": "Shard elapsed 00:00:55, 01:52, 06:11, 01:21, 01:56, 01:38 -- profile 2 is the expensive one, matching the pre-submission measurement."
+      },
+      "caveats": [
+        "This job's mutation tasks (6-10) used z3 as the sole reference; Yices was added afterwards (commit 2da20f4) and is not reflected here.",
+        "Profile 1 (-Mbw 16) produced 7 timeouts against profile 0's 2. The pre-submission local measurement concluded -Mbw 16 is cost-neutral; that holds for the median but the tail is somewhat worse on cluster hardware. Not enough to change the profile, worth not overstating."
+      ],
+      "outcome": "The ladder works as designed and found no defect. Every QF_LRA generator-fuzz result before this one was obtained at FuzzSMT's stock QF_LRA defaults (max 3 Real variables, coefficients in [1,15]); this is the first covering wide coefficients, larger tableaux, and conjunctive/disjunctive Boolean layers."
     }
   ]
 }

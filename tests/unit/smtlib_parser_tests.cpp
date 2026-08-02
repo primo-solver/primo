@@ -188,6 +188,7 @@ int main() {
   parses_define_fun_macros();
   parses_model_commands();
   parses_and_copies_pathologically_deep_nesting();
+  parses_model_commands();
   rejects_malformed_or_unsupported_input();
   return 0;
 }

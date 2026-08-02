@@ -69,9 +69,68 @@ FUZZSMT_SHARDS=${PRIMO_FUZZ_FUZZSMT_SHARDS:-6}
 FUZZSMT_COUNT=${PRIMO_FUZZ_FUZZSMT_COUNT:-500}
 FUZZSMT_TIMEOUT=${PRIMO_FUZZ_FUZZSMT_TIMEOUT:-5}
 FUZZSMT_LOGIC=${PRIMO_FUZZ_FUZZSMT_LOGIC:-QF_UF}
-FUZZSMT_ARGS=${PRIMO_FUZZ_FUZZSMT_ARGS:-"-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"}
-FUZZSMT_REF=${PRIMO_FUZZ_FUZZSMT_REF:-z3}
+# Two references for QF_LRA, one for QF_UF. Yices 2 earns its place on
+# measurements, not on principle (2026-08-01, seeds of the 17-family corpus):
+# it answers latendresse and miplib_pp08a-9000 where z3 has no answer at 60s,
+# and on generator output it agreed with z3 on all 150 wide-coefficient cases
+# while running 6x faster, so it is also the cheaper reference. It does not
+# subsume z3 -- both time out on LassoRanker and tropical-matrix -- so this is
+# an addition, and it buys reference cross-checking (classify() reports
+# REF_DISAGREEMENT) for free.
+if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
+  FUZZSMT_REF=${PRIMO_FUZZ_FUZZSMT_REF:-"z3 yices-smt2"}
+else
+  FUZZSMT_REF=${PRIMO_FUZZ_FUZZSMT_REF:-z3}
+fi
 FUZZSMT_SEED_BASE=${PRIMO_FUZZ_FUZZSMT_SEED_BASE:-$(( ${SLURM_ARRAY_JOB_ID:-500000} % 900000 + 100000 ))}
+
+# FuzzSMT parameter profiles: one ';'-separated entry per profile, assigned to
+# shards round-robin (shard i gets profile i % count). Setting
+# PRIMO_FUZZ_FUZZSMT_ARGS forces a single profile, which is what every
+# pre-2026-08-01 docs/run-log.json command line does -- those stay reproducible.
+#
+# Why a ladder rather than one setting. Until 2026-08-01 every QF_LRA gate ran
+# `-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2`, and for QF_LRA that is the
+# *stock default*: `-ms/-Ms` are sort counts and `-mf/-mp/-ma/-Ma` are function,
+# predicate and arity knobs, all of which FuzzSMT applies only to the QF_UF*
+# logics and silently ignores here (it does not reject them, so nothing ever
+# complained). What was left -- `-Mv 3`, `-Mc 3`, `-Mbw 4` by default -- means
+# every generated case in this project's history had at most three Real
+# variables and **every coefficient in [1,15]**. Wide rationals, and hence the
+# GMP bignum paths in DeltaRational and in Farkas coefficient combination, were
+# never generated. Measured 2026-08-01, 100-150 cases per profile:
+#
+#   -Mbw 4 -> 16 (`wide`)   max literal 15 -> 54430, cost unchanged
+#   -Mv 5 -Mc 4 (`tableau`) ~9x rows, 18s/100 cases, 1% timeouts
+#   -bool-and / -bool-or    100% unsat / 100% sat, ~4s/100 cases
+#
+# The knobs that do *not* pay: `-ref 2` alone is a 7x file-size blowup and
+# `-ref 3` a 20x one (generation itself starts hitting the wall), `-Mv 15`
+# is 9x, and the two compose -- `-Mv 15 -ref 2` yields 2MB *per case*.
+# `-bool-cnf` is unusable: FuzzSMT 0.3 emits a malformed let-block for it and
+# z3 rejects the output too ("invalid let declaration"), so it is a generator
+# bug, not something to work around here.
+#
+# `-bool-and` earns its shard: the random Boolean layer yields only ~11% unsat,
+# and unsat is the discriminating outcome, since it is the one that exercises
+# conflict detection and the Farkas certificate rather than just model search.
+FUZZSMT_PROFILES_QF_LRA=$(cat <<'EOF'
+-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 4;-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 16;-mv 2 -Mv 5 -mc 1 -Mc 4 -Mbw 16;-mv 2 -Mv 5 -mc 1 -Mc 4 -Mbw 16 -bool-and;-mv 2 -Mv 5 -mc 1 -Mc 4 -Mbw 16 -bool-or;-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 32
+EOF
+)
+FUZZSMT_PROFILES_DEFAULT="-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2"
+
+if [[ -n ${PRIMO_FUZZ_FUZZSMT_ARGS:-} ]]; then
+  FUZZSMT_PROFILES=$PRIMO_FUZZ_FUZZSMT_ARGS
+elif [[ -n ${PRIMO_FUZZ_FUZZSMT_PROFILES:-} ]]; then
+  FUZZSMT_PROFILES=$PRIMO_FUZZ_FUZZSMT_PROFILES
+elif [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
+  FUZZSMT_PROFILES=$FUZZSMT_PROFILES_QF_LRA
+else
+  FUZZSMT_PROFILES=$FUZZSMT_PROFILES_DEFAULT
+fi
+
+IFS=';' read -r -a fuzzsmt_profiles <<< "$FUZZSMT_PROFILES"
 
 OPFUZZ_TASKS=${PRIMO_FUZZ_OPFUZZ_TASKS:-1}
 OPFUZZ_SEEDS=${PRIMO_FUZZ_OPFUZZ_SEEDS:-"$WORKDIR/benchmarks/seeds/qf_uf"}
@@ -84,7 +143,23 @@ YINYANG_ITERATIONS=${PRIMO_FUZZ_YINYANG_ITERATIONS:-100}
 YINYANG_TIMEOUT=${PRIMO_FUZZ_YINYANG_TIMEOUT:-5}
 YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-1500}
 
-MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
+# typefuzz takes ';'-separated targets, so this adds yices as a third one
+# alongside Primo and z3. It matters most exactly where the seed corpus was
+# widened to: at a 20s reference timeout, z3 gives no oracle for either
+# latendresse seed and yices answers both.
+if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
+  MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true;yices-smt2"}
+else
+  MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
+fi
+
+# typefuzz's own default here is 20000 bytes, and it drops oversized seeds
+# without saying so beyond a "N valid, M invalid" count. That silently
+# truncated the family-complete QF_LRA corpus back to 11 of its 17 families
+# (job 118543). 200000 matches the --max-bytes that
+# scripts/build_fuzz_seed_corpus.py selects seeds under, so the limit no
+# longer decides the corpus; the corpus builder does.
+MUTATION_FILE_SIZE_LIMIT=${PRIMO_FUZZ_MUTATION_FILE_SIZE_LIMIT:-200000}
 
 cd "$WORKDIR"
 mkdir -p logs "$OUT_ROOT"
@@ -103,7 +178,17 @@ export PATH
 # fuzzer as "skip this stage" and exits 0, which is the right behaviour for a
 # local smoke run and exactly the wrong one for a gate whose entire purpose
 # is to have run.
-for required in fuzzsmt z3; do
+# Every reference this gate is configured to use has to be present, not just
+# z3: a missing second reference silently narrows the gate rather than failing
+# it, which is the whole failure family this check exists for.
+required_tools=(fuzzsmt z3)
+for ref in $FUZZSMT_REF ${MUTATION_REF//;/ }; do
+  case $ref in
+    *=*) continue ;;  # solver options such as model_validate=true
+  esac
+  required_tools+=("$ref")
+done
+for required in "${required_tools[@]}"; do
   if ! command -v "$required" >/dev/null 2>&1; then
     echo "required tool '$required' not found on PATH; refusing to report a gate that ran nothing" >&2
     exit 2
@@ -130,9 +215,13 @@ IFS=' ' read -r -a solver_words <<< "$SOLVER_BIN"
 if (( TASK_ID < opfuzz_start )); then
   shard=$TASK_ID
   seed=$((FUZZSMT_SEED_BASE + shard))
+  profile_index=$((shard % ${#fuzzsmt_profiles[@]}))
+  profile=${fuzzsmt_profiles[$profile_index]}
   out="$OUT_ROOT/fuzzsmt/shard-$shard"
   mkdir -p "$out"
-  echo "task $TASK_ID: fuzzsmt shard $shard seed $seed"
+  # Record the profile: with a ladder, "shard 3 was clean" only means something
+  # if the log says which parameters shard 3 ran.
+  echo "task $TASK_ID: fuzzsmt shard $shard seed $seed profile $profile_index [$profile]"
   python3 scripts/fuzz_external.py \
     --fuzzer fuzzsmt \
     --solver "$SOLVER_BIN --quiet" \
@@ -141,7 +230,7 @@ if (( TASK_ID < opfuzz_start )); then
     --count "$FUZZSMT_COUNT" \
     --timeout "$FUZZSMT_TIMEOUT" \
     --seed "$seed" \
-    --fuzzer-args "$FUZZSMT_ARGS" \
+    --fuzzer-args "$profile" \
     --out "$out"
 elif (( TASK_ID < yinyang_start )); then
   out="$OUT_ROOT/opfuzz/task-$TASK_ID"
@@ -155,6 +244,7 @@ elif (( TASK_ID < yinyang_start )); then
     --seconds "$YINYANG_WALL_SECONDS" \
     --iterations "$OPFUZZ_ITERATIONS" \
     --solver-timeout "$OPFUZZ_TIMEOUT" \
+    --file-size-limit "$MUTATION_FILE_SIZE_LIMIT" \
     --bugs "$out/bugs" \
     --scratch "$out/scratch"
 else
@@ -168,6 +258,7 @@ else
     --seconds "$YINYANG_WALL_SECONDS" \
     --iterations "$YINYANG_ITERATIONS" \
     --solver-timeout "$YINYANG_TIMEOUT" \
+    --file-size-limit "$MUTATION_FILE_SIZE_LIMIT" \
     --bugs "$out/bugs" \
     --scratch "$out/scratch"
 fi
