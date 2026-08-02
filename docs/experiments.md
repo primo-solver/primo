@@ -55,14 +55,17 @@ python3 scripts/slurm_prepare_benchmark_workspace.py \
 ```
 
 The script refuses a dirty local tree, installs a `git archive` snapshot of the
-committed source by default, rebuilds CaDiCaL on the cluster, rebuilds
-`build-slurm-rel/primo`, and checks that `primo --version` reports the local
-commit and a CaDiCaL version. The archive sync deliberately avoids copying the
-local `.git` directory, build trees, result trees, fuzz output, and
-machine-local dependency installations. The remote build receives the commit
-through `PRIMO_GIT_REVISION_OVERRIDE`, so stale generated outputs in a reused
-workspace cannot make benchmark binaries report a spurious `-dirty` suffix.
-Use `--sync-mode rsync` only for a deliberate legacy full-tree sync.
+committed source by default, provisions the required cluster-local dependencies
+with `make contrib-required`, rebuilds `build-slurm-rel/primo`, and checks that
+`primo --version` reports the local commit and a CaDiCaL version. If the cluster
+does not provide CMake on `PATH`, the helper installs CMake into `.venv-build`
+and prepends that environment for dependency and build commands. The archive
+sync deliberately avoids copying the local `.git` directory, build trees, result
+trees, fuzz output, and machine-local dependency installations. The remote build
+receives the commit through `PRIMO_GIT_REVISION_OVERRIDE`, so stale generated
+outputs in a reused workspace cannot make benchmark binaries report a spurious
+`-dirty` suffix. Use `--sync-mode rsync` only for a deliberate legacy full-tree
+sync.
 
 The local CMake build refreshes a generated git-revision header on every `primo`
 build; uncommitted source changes are reported with a `-dirty` suffix. Use

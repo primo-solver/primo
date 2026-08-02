@@ -154,18 +154,22 @@ def build_command(workdir: str, cmake: str, target: str, jobs: int, git: str) ->
     return f"""
 set -eu
 cd {shlex.quote(workdir)}
+cmake_path={shlex.quote(cmake)}
 if [ ! -x {shlex.quote(cmake)} ]; then
   python3 -m venv .venv-build
   . .venv-build/bin/activate
   python -m pip install --upgrade pip cmake
 fi
+case "$cmake_path" in
+  */*) cmake_dir=$(dirname "$cmake_path"); export PATH="$PWD/$cmake_dir:$PATH" ;;
+esac
 rm -f contrib/local/.cadical.stamp contrib/local/lib/libcadical.a
 rm -rf contrib/src/cadical/build contrib/src/cadical/makefile \
   contrib/src/cadical/src/makefile build-slurm-rel
-make contrib-cadical
-{shlex.quote(cmake)} -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release \
+make contrib-required
+"$cmake_path" -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release \
   -DPRIMO_GIT_REVISION_OVERRIDE={shlex.quote(git)}
-{shlex.quote(cmake)} --build build-slurm-rel --target {shlex.quote(target)} -j{jobs}
+"$cmake_path" --build build-slurm-rel --target {shlex.quote(target)} -j{jobs}
 build-slurm-rel/{shlex.quote(target)} --version
 """.strip()
 
