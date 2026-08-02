@@ -16536,6 +16536,59 @@
         "z3": "20/20 solved, 0 timeouts, 0 wrong, PAR2 3.886172; every family 5/5 solved."
       },
       "outcome": "No solved-count movement relative to the 1267d8b sample comparison. Default remains the best Primo configuration on this sample; the accepted memoization primarily removes a local preprocessing cliff on repeated mixed-purification rewrites."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-model-equality-mutation-local-fuzz-c6e6071",
+      "date": "2026-08-02",
+      "commit": "c6e607109f1dbed800d9a0cdc81049d53a862de2",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "fuzz",
+      "scope": "Local QF_UFLRA mixed-formula fuzz gate for the default-on mutation filter inside the default-off model-equality branching mode.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --ref contrib/local/bin/z3 --count 1000 --seed 20260802 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-equality-mutation-1000-c6e6071",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet --model-equality-branching"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "seed": 20260802,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uflra-model-equality-mutation-1000-c6e6071/summary.csv",
+        "results": null,
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 716,
+        "unsat": 284
+      },
+      "notes": "This is a local merge-gate run for a default-off experimental option path. It is not a headline SLURM performance comparison."
     }
   ]
 }
