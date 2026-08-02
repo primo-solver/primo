@@ -16329,6 +16329,61 @@
         "dependency_preparation": "The fixed slurm_prepare_benchmark_workspace.py path installed or reused the CMake venv on PATH, ran make contrib-required, configured Primo successfully with CLI11, ANTLR4, CaDiCaL, and GMP, and built a binary reporting git: 3660d9e."
       },
       "limitations": "This is generated mixed QF_UFLRA fuzz evidence, not a full SMT-LIB corpus performance comparison. The sample-compare sbatch remains separate because its archive-mode workspace excludes tmp/ benchmark payloads unless a manifest-backed corpus is staged explicitly."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-sample-compare-1267d8b",
+      "date": "2026-08-02",
+      "commit": "1267d8b",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "benchmark",
+      "scope": "QF_UFLRA 5-per-family sample comparison after adding a manifest-only SLURM staging helper, comparing default mixed solving, three default-off model-equality branching policies, and Z3.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-workspace>",
+        "binary": "build-slurm-rel/primo at 1267d8b, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3, version 5.0.0",
+        "job_id": "118690",
+        "remote_artifact_dir": "<fresh-remote-workspace>/results/qf-uflra-sample-1267d8b",
+        "local_html": "results/qf-uflra-sample-1267d8b/index.html"
+      },
+      "commands": {
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --sync-mode archive --jobs 4",
+        "stage_manifest_files": "python3 scripts/slurm_stage_manifest_files.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --check-only",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_sample_compare.sbatch; bash -n scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "submission": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_COMPARE_TIMEOUT=10,PRIMO_COMPARE_OUT_ROOT=results/qf-uflra-sample-1267d8b scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "render_html": "python3 scripts/render_solver_compare_html.py results/qf-uflra-sample-1267d8b --solvers default first ranked adaptive z3 --title 'QF_UFLRA sample comparison 1267d8b' --timeout 10 --out results/qf-uflra-sample-1267d8b/index.html"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "logic": "QF_UFLRA",
+        "root": "tmp/QF_UFLRA",
+        "families": [
+          "FFT",
+          "cpachecker-bmc-svcomp14",
+          "cpachecker-induction-svcomp14",
+          "mathsat"
+        ],
+        "instances": 20,
+        "timeout_seconds": 10
+      },
+      "solvers": {
+        "default": "build-slurm-rel/primo --quiet --stats",
+        "first": "build-slurm-rel/primo --quiet --stats --model-equality-branching",
+        "ranked": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked",
+        "adaptive": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy adaptive",
+        "z3": "contrib/local/bin/z3"
+      },
+      "summary": {
+        "default": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.736871; family solved FFT 5/5, cpachecker-bmc 3/5, cpachecker-induction 3/5, mathsat 5/5.",
+        "first": "16/20 solved, 4 timeouts, 0 wrong, PAR2 97.029988; model-equality branching created 59 atoms, made 630 assumptions, and recorded 6 model-equality conflicts.",
+        "ranked": "15/20 solved, 5 timeouts, 0 wrong, PAR2 109.120962; selected 19 care-ranked and 40 full-pair model-equality guesses.",
+        "adaptive": "15/20 solved, 5 timeouts, 0 wrong, PAR2 109.128962; same solved profile as ranked on this run.",
+        "z3": "20/20 solved, 0 timeouts, PAR2 3.899202.",
+        "notable_delta": "On cpachecker-induction.32_1_cilled...edac--mce_amd_inj..., default solved sat in 1.463s, first solved sat in 7.972s, while ranked/adaptive timed out at 10s; Z3 solved it in 0.022s."
+      },
+      "outcome": "Do not promote model-equality branching. The branch policies are active and measurable, but on this sample they do not improve solved count or PAR2 over the default; ranked/adaptive regress one cpachecker-induction instance."
     }
   ]
 }
