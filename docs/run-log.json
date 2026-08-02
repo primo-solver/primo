@@ -16643,6 +16643,66 @@
         "ranked_nomut": "15/20 solved, 5 timeouts, 0 wrong, PAR2 109.210894; candidates 848, assumptions 602, optional equality atoms created 59."
       },
       "outcome": "The mutation filter materially suppresses avoidable model-equality guesses on this sample and removes the ranked-policy solved-count regression, but it does not improve solved count over default solving. Treat it as a useful guard for the experimental branch path, not as a default-performance win."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-broader-100-mutation-compare-6799453",
+      "date": "2026-08-02",
+      "commit": "6799453",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "benchmark",
+      "scope": "SLURM QF_UFLRA broader 100-instance deterministic sample comparison of default solving, model-equality branching with the mutation filter, the same branch policies with mutation disabled, and Z3.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-workspace>",
+        "binary": "build-slurm-rel/primo at 6799453, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3, version 5.0.0",
+        "job_ids": [
+          "118729",
+          "118746"
+        ],
+        "remote_artifact_dir": "<fresh-remote-workspace>/results/qf-uflra-broader-100-mutation-compare-6799453",
+        "local_html": "results/qf-uflra-broader-100-mutation-compare-6799453/index.html"
+      },
+      "commands": {
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --sync-mode archive --jobs 4",
+        "stage_manifest_files": "python3 scripts/slurm_stage_manifest_files.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-broader-100.txt",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --check-only",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py /tmp/primo_qf_uflra_broader_compare.sbatch; bash -n /tmp/primo_qf_uflra_broader_compare.sbatch; python3 scripts/slurm_validate_sbatch.py /tmp/primo_qf_uflra_broader_z3.sbatch; bash -n /tmp/primo_qf_uflra_broader_z3.sbatch",
+        "submission": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_COMPARE_TIMEOUT=10,PRIMO_COMPARE_MANIFEST=benchmarks/qf_uflra-smtlib-broader-100.txt,PRIMO_COMPARE_OUT_ROOT=results/qf-uflra-broader-100-mutation-compare-6799453,PRIMO_COMPARE_SOLVERS='<sanitized solver specs>' scripts/slurm_qf_uflra_broader_compare.sbatch; after installing z3, reran a one-task z3 column with scripts/slurm_qf_uflra_broader_z3.sbatch",
+        "render_html": "python3 scripts/render_solver_compare_html.py results/qf-uflra-broader-100-mutation-compare-6799453 --solvers default first_mut first_nomut ranked_mut ranked_nomut z3 --title 'QF_UFLRA broader 100 mutation comparison 6799453' --timeout 10 --out results/qf-uflra-broader-100-mutation-compare-6799453/index.html"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf_uflra-smtlib-broader-100.txt",
+        "logic": "QF_UFLRA",
+        "root": "tmp/QF_UFLRA",
+        "selection": "all 10 FFT, all 15 cpachecker-bmc-svcomp14, lexicographically first 50 cpachecker-induction-svcomp14, lexicographically first 25 mathsat",
+        "families": [
+          "FFT",
+          "cpachecker-bmc-svcomp14",
+          "cpachecker-induction-svcomp14",
+          "mathsat"
+        ],
+        "instances": 100,
+        "timeout_seconds": 10
+      },
+      "solvers": {
+        "default": "build-slurm-rel/primo --quiet --stats",
+        "first_mut": "build-slurm-rel/primo --quiet --stats --model-equality-branching",
+        "first_nomut": "build-slurm-rel/primo --quiet --stats --model-equality-branching --no-model-equality-mutation",
+        "ranked_mut": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked",
+        "ranked_nomut": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked --no-model-equality-mutation",
+        "z3": "contrib/local/bin/z3"
+      },
+      "summary": {
+        "default": "43/100 solved, 54 timeouts with stats, 3 errors, 0 wrong, PAR2 1156.762708; family solved FFT 10/10, cpachecker-bmc 4/15, cpachecker-induction 4/50, mathsat 25/25.",
+        "first_mut": "44/100 solved, 56 timeouts, 0 errors, 0 wrong, PAR2 1134.975644; family solved FFT 10/10, cpachecker-bmc 4/15, cpachecker-induction 5/50, mathsat 25/25; mutation checks 889, mutated/skipped 846, forced 43, optional equality atoms created 0.",
+        "first_nomut": "44/100 solved, 56 timeouts, 0 errors, 0 wrong, PAR2 1162.584383; candidates 1411, assumptions 1528, optional equality atoms created 170.",
+        "ranked_mut": "44/100 solved, 56 timeouts, 0 errors, 0 wrong, PAR2 1134.987623; mutation checks 889, mutated/skipped 846, forced 43, optional equality atoms created 0.",
+        "ranked_nomut": "43/100 solved, 57 timeouts, 0 errors, 0 wrong, PAR2 1175.989831; candidates 1869, assumptions 1839, optional equality atoms created 173.",
+        "z3": "92/100 solved, 8 timeouts, 0 wrong, PAR2 204.999821; family solved FFT 10/10, cpachecker-bmc 7/15, cpachecker-induction 50/50, mathsat 25/25."
+      },
+      "outcome": "The broader sample confirms that the mutation filter is active and removes most optional equality search: mutation-on checks 889 LRA-model-equal pairs and skips 846, while no-mutation variants create about 170 optional equality atoms and have worse PAR2. The solved-count movement over default is only +1 and is not a clean search win because default also hit three CaDiCaL factor API aborts on cpachecker-induction files. Local triage reproduced those aborts and showed --cadical-option=factor=0 avoids the abort on the three repro files, turning two into local 15s timeouts and one into sat."
     }
   ]
 }
