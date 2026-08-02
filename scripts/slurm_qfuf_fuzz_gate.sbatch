@@ -18,10 +18,26 @@
 #    scripts/summarize_fuzz_results.py prints it for this reason.
 #
 # 2. The bound itself: a shard is FUZZSMT_COUNT cases, each costing up to
-#    FUZZSMT_TIMEOUT for our solver plus the same for the reference, so the
-#    worst case is roughly COUNT * 2 * TIMEOUT -- 500 * 2 * 5s = 83 minutes at
-#    the defaults, which the previous 45-minute limit was under. Raise this if
-#    you raise either.
+#    FUZZSMT_TIMEOUT for our solver plus the same for EACH reference, so the
+#    worst case is roughly COUNT * (1 + refs) * TIMEOUT -- with QF_LRA's two
+#    references that is 500 * 3 * 10s = 4.2 hours, not the 83 minutes the
+#    single-reference arithmetic gave. Raise this if you raise any of them.
+#
+#    Generation is not free either, and its cost is NOT a function of the
+#    parameters alone. Measured 2026-08-02 at the identical profile
+#    `-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 4`, 100 files each:
+#
+#      seed 218735   20.9s   34.7 MB      <-- ~200x slower, ~20x bigger
+#      seed 218736    0.1s    1.9 MB
+#      seed 218740    0.1s    1.4 MB
+#      seed 12345     0.3s    3.8 MB
+#
+#    FuzzSMT's output size is a property of its random stream, so a seed can
+#    emit ~347 KB formulas where its neighbours emit ~14 KB ones. A shard that
+#    draws such a seed does far more work than its siblings at every stage --
+#    generating, solving, and referencing -- and looks stuck while being
+#    merely slow. Job 118735's shard 0 sat at an hour while shards 1-5
+#    finished in 1-8 minutes, purely from this.
 #
 # That arithmetic was NOT what caused the 117248-117251 losses, though, and
 # the investigation is worth not repeating: all four lost shards were the same
@@ -35,6 +51,11 @@
 # drained. Treat a whole-shard timeout as an environment signal first, but
 # check the seed pattern -- if one seed fails across configurations *and*
 # reproduces on a quiet cluster, that would be the real thing.
+#
+# Since 2026-08-02 there is a second explanation to rule out before blaming
+# the environment, and it is cheap to check: regenerate that shard's seed
+# locally and time it (see the generation-cost note above). A seed that is
+# pathologically expensive to generate needs no cluster to reproduce.
 #
 # Combined QF_UF fuzz gate: FuzzSMT (generator) + opfuzz + YinYang typefuzz
 # (mutation), one array job. This is the campaign previously reconstructed
