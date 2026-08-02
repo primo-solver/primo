@@ -1414,16 +1414,23 @@ void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
                                   k = std::move(k)](std::vector<core::TermId> operands) mutable {
     const core::TermId lhs = operands[0];
     const core::TermId rhs = operands[1];
-    if (frontend_.terms_.get(lhs).kind != core::TermKind::Rational ||
-        frontend_.terms_.get(rhs).kind != core::TermKind::Rational) {
-      throw UnsupportedInput("/ is only supported between rational literals in QF_LRA");
+    // Only the divisor has to be a literal. Dividing a linear term by a
+    // nonzero rational is linear -- (/ t c) is (* (1/c) t) -- so it belongs in
+    // QF_LRA, and both z3 and Yices accept it. Requiring the dividend to be a
+    // literal too rejected ordinary input such as (/ x 2.0).
+    if (frontend_.terms_.get(rhs).kind != core::TermKind::Rational) {
+      throw UnsupportedInput("/ requires a literal rational divisor (QF_LRA)");
     }
     const util::Rational& denominator = frontend_.terms_.get(rhs).rational_value;
     if (denominator.is_zero()) {
       throw UnsupportedInput("division by zero is not a valid QF_LRA literal");
     }
-    resume(std::move(k),
-           frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value / denominator));
+    if (frontend_.terms_.get(lhs).kind == core::TermKind::Rational) {
+      resume(std::move(k),
+             frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value / denominator));
+      return;
+    }
+    resume(std::move(k), frontend_.terms_.mk_times(util::Rational(1) / denominator, lhs));
   });
 }
 

@@ -115,13 +115,25 @@ Command Parser::parse_command(const SExpr& expr) const {
   }
 
   if (head == "set-option") {
-    if (expr.list.size() != 3) {
-      throw ParseError("set-option expects a keyword and a value", 0);
+    // SMT-LIB 2.6: (set-option <option>), <option> ::= <attribute>, and
+    // <attribute> ::= <keyword> | <keyword> <attribute_value>. So a bare
+    // keyword is legal, and <attribute_value> ::= <spec_constant> | <symbol>
+    // | ( <s_expr>* ) -- the value may be a list. Requiring exactly a keyword
+    // and an *atom* rejected conforming scripts such as
+    // (set-option :verbosity (- 1)), which z3 accepts.
+    //
+    // Only :produce-models is acted on (see Frontend::process_command); every
+    // other option is ignored, so a non-atom value is recorded as empty rather
+    // than refused. An option we do act on still validates its own value.
+    if (expr.list.size() < 2 || expr.list.size() > 3) {
+      throw ParseError("set-option expects a single option", 0);
     }
     Command command;
     command.kind = CommandKind::SetOption;
     command.option = require_atom(expr.list[1], "option keyword");
-    command.value = require_atom(expr.list[2], "option value");
+    if (expr.list.size() == 3 && expr.list[2].kind == SExpr::Kind::Atom) {
+      command.value = expr.list[2].atom;
+    }
     return command;
   }
 

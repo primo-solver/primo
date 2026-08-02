@@ -129,17 +129,6 @@ void rejects_three_operand_multiplication() {
   assert(result.message.find("* has wrong arity") != std::string::npos);
 }
 
-void rejects_general_term_division() {
-  const auto result = check_sat_smtlib(R"(
-    (set-logic QF_LRA)
-    (declare-fun x () Real)
-    (assert (<= (/ x 2) 5))
-    (check-sat)
-  )");
-  assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("/ is only supported between rational literals") != std::string::npos);
-}
-
 void rejects_combined_equality_and_arithmetic() {
   // Uses an uninterpreted-sort equality alongside a Real comparison -- a
   // genuine EUF+LRA mix. (= x y) between two *Real* terms is itself a pure
@@ -697,6 +686,84 @@ void prints_lra_model_when_requested() {
 // Note the defect was NOT conditional on models being requested, so comparing
 // a produce-models run against a plain one does not detect it -- both arms
 // move together. Declaration order is the invariant that discriminates.
+// (/ t c) with a nonzero rational literal c is linear -- it is (* (1/c) t) --
+// so it belongs in QF_LRA even when t is not a literal. Requiring both
+// operands to be literals rejected ordinary input; z3 and Yices both accept
+// it. Division by a non-literal stays rejected because it really is nonlinear,
+// and Yices agrees ("non-linear arithmetic").
+void divides_a_linear_term_by_a_rational_literal() {
+  const auto solved = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (= (/ x 4) 2))
+    (check-sat)
+    (get-model)
+  )");
+  assert(solved.result == CheckSatResult::Sat);
+  assert(solved.model.find("(define-fun x () Real 8)") != std::string::npos);
+
+  // Nested inside other arithmetic, and pinning the sign of the reciprocal:
+  // x/2 - y/4 > 0 with x < 0 < y needs 2x > y, which is impossible. If the
+  // rewrite dropped the sign of the (- 4) divisor this would become x/2 + y/4
+  // and flip to sat. z3 and Yices both agree it is unsat.
+  const auto signed_nested = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (> (+ (/ x 2) (/ y (- 4))) 0))
+    (assert (< x 0))
+    (assert (> y 0))
+    (check-sat)
+  )");
+  assert(signed_nested.result == CheckSatResult::Unsat);
+
+  // The same shape is satisfiable once x may be positive (x = 10, y = 1).
+  const auto nested = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (> (+ (/ x 2) (/ y (- 4))) 0))
+    (assert (> x 0))
+    (assert (> y 0))
+    (check-sat)
+  )");
+  assert(nested.result == CheckSatResult::Sat);
+
+  // Unsat must stay unsat: x/2 >= 3 and x <= 5 cannot both hold.
+  const auto contradiction = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (>= (/ x 2) 3))
+    (assert (<= x 5))
+    (check-sat)
+  )");
+  assert(contradiction.result == CheckSatResult::Unsat);
+}
+
+// Replaces the former rejects_general_term_division, which asserted that
+// (/ x 2) is unsupported. That pinned a limitation rather than a requirement:
+// dividing a linear term by a rational literal is linear. What must still be
+// rejected is a non-literal divisor, and division by zero.
+void rejects_nonlinear_and_zero_division() {
+  const auto nonlinear = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (> (/ x y) 1))
+    (check-sat)
+  )");
+  assert(nonlinear.result == CheckSatResult::Unsupported);
+
+  const auto by_zero = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (> (/ x 0) 1))
+    (check-sat)
+  )");
+  assert(by_zero.result == CheckSatResult::Unsupported);
+}
+
 void declaration_order_does_not_change_the_search() {
   const std::string body =
       "(assert (= a (+ b 1)))"
@@ -1406,7 +1473,6 @@ int main() {
   recognizes_let_bound_literal_coefficients();
   rejects_two_variable_multiplication();
   rejects_three_operand_multiplication();
-  rejects_general_term_division();
   rejects_combined_equality_and_arithmetic();
   real_equality_is_not_misclassified_as_euf();
   detects_direct_bound_conflict();
@@ -1424,6 +1490,8 @@ int main() {
   deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
   prints_lra_model_when_requested();
+  divides_a_linear_term_by_a_rational_literal();
+  rejects_nonlinear_and_zero_division();
   declaration_order_does_not_change_the_search();
   lra_model_reconstructs_preprocessed_solved_constants();
   qf_lra_model_requires_get_model_command();

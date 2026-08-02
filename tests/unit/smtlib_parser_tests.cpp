@@ -168,7 +168,39 @@ void parses_model_commands() {
   assert(commands[1].kind == CommandKind::GetModel);
 }
 
+// SMT-LIB 2.6: (set-option <option>), <option> ::= <attribute>, and
+// <attribute> ::= <keyword> | <keyword> <attribute_value>, where
+// <attribute_value> ::= <spec_constant> | <symbol> | ( <s_expr>* ).
+// So a bare keyword is legal and the value may be a list. Parsing set-option
+// as strictly "keyword plus atom" rejected conforming scripts such as
+// (set-option :verbosity (- 1)), which z3 accepts. Only :produce-models is
+// acted on; the rest are ignored, so a list value is recorded as empty.
+void parses_standard_set_option_forms() {
+  Parser parser(R"(
+    (set-option :some-flag)
+    (set-option :verbosity (- 1))
+    (set-option :opts (a (b c) d))
+    (set-option :random-seed 5)
+  )");
+  const auto commands = parser.parse_commands();
+  assert(commands.size() == 4);
+  for (const auto& command : commands) {
+    assert(command.kind == CommandKind::SetOption);
+  }
+  assert(commands[0].option == ":some-flag");
+  assert(commands[0].value.empty());
+  assert(commands[1].option == ":verbosity");
+  assert(commands[1].value.empty());  // list value, not acted on
+  assert(commands[2].option == ":opts");
+  assert(commands[3].option == ":random-seed");
+  assert(commands[3].value == "5");
+}
+
 void rejects_malformed_or_unsupported_input() {
+  // Two options in one command is not legal SMT-LIB -- <option> is a single
+  // <attribute>. z3 tolerates it; being stricter here is the standard.
+  expect_parse_error([] { Parser("(set-option :a 1 :b 2)").parse_commands(); });
+  expect_parse_error([] { Parser("(set-option)").parse_commands(); });
   expect_parse_error([] { Parser("(check-sat extra)").parse_commands(); });
   expect_parse_error([] { Parser("(get-model extra)").parse_commands(); });
   expect_parse_error([] { Parser("(declare-sort A 1)").parse_commands(); });
@@ -188,6 +220,7 @@ int main() {
   parses_define_fun_macros();
   parses_and_copies_pathologically_deep_nesting();
   parses_model_commands();
+  parses_standard_set_option_forms();
   rejects_malformed_or_unsupported_input();
   return 0;
 }
