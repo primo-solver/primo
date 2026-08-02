@@ -23,6 +23,7 @@ order they were proposed, not the order they were implemented.
 | [H8](#h8) | Merge instead of sort in `pivot`'s affected-row loop | implemented, default; **zero regressions** |
 | [H9](#h9) | Bounds-only backtracking (the paper's own scheme) | implemented, default except SOI; largest single gain |
 | [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 |
+| [H11](#h11) | Fill-in-aware pivoting in *preprocessing* Gaussian elimination | proposed, opt-in when built |
 
 Where the remaining gap is, and what has been ruled out, is [](#sec-6). Its
 ranked list of open directions is [](#sec-6-5): [D2](#d2) and [D4](#d4)
@@ -1824,3 +1825,91 @@ and the band's solved count does not move, then per-pivot cost is not what
 separates Primo from z3 here, and the remaining explanation is search *order*
 (z3 needs 36,778 decisions where Primo needs 7,555 but never finishes -- the
 shapes are not comparable, which is itself a hint worth chasing).
+
+
+(h11)=
+## H11 -- Fill-in-aware pivoting in preprocessing Gaussian elimination
+
+**Status: proposed, not implemented.** To be added behind an option, default
+off, and promoted only on measurement.
+
+### Where this came from
+
+Not from a design argument. Reviewing the model-production merge on 2026-08-02
+turned up a QF_LRA behaviour change with no plausible cause in the diff:
+`miplib/vpm2-0` moved `:preprocessing.solve-eqs.rewrites` 390 -> 252 and
+`:lra.pivots` 26890 -> 12537. Bisecting it landed on the frontend interning a
+term per declared Real constant at `declare-fun` time, which assigns TermIds in
+declaration order rather than first-use order.
+
+The site is tracked as entry 1 in [](termid-order-sensitivity.md), the docket for
+this class of behaviour. It mattered because of this, in
+`collect_gaussian_elimination_candidates`:
+
+```cpp
+std::sort(eligible_variables.begin(), eligible_variables.end());  // by TermId
+for (const core::TermId variable : eligible_variables) {          // pivot order
+  for (std::size_t i = 0; i < rows.size(); ++i) {                 // first row with it
+```
+
+**Preprocessing Gaussian elimination pivots on whichever eligible variable has
+the smallest TermId, and eliminates using the first row that mentions it.**
+Deterministic, but arbitrary: pivot choice is a function of term-allocation
+order, so an unrelated frontend change reshuffles it. The eager interning was
+reverted (see the [regression test](#h11-note-on-the-fix)), which removes *this*
+trigger without removing the coupling.
+
+Two things are worth separating. Order sensitivity of this kind is ordinary in
+SMT and is not by itself a defect. What makes it worth an item is that the
+pivot rule is *uninformed*: it optimises nothing.
+
+### The proposal
+
+Choose pivots by expected fill-in rather than by TermId, exactly as
+[H3](#h3) does for the tableau's entering variable -- the Markowitz product of
+the variable's occurrence count and the pivot row's length. Two of the three
+inputs are already computed a few lines away in `substitute_solved_constants`:
+`occurrences` is built there, and row lengths are available from
+`rows[i].coefficients`.
+
+This is the naive strategy H3 already replaced once, in the other pivoting
+context. The argument that worked there is the argument here.
+
+### Option
+
+`--lra-gaussian-markowitz` (default off), so the preprocessing pivot rule can
+be A/B'd without rebuilding, and so a promotion decision rests on a paired run
+rather than on the change being obviously sensible. Ablation invariance is the
+first check: with the option off, `:preprocessing.solve-eqs.*` and `:lra.pivots`
+must be bit-identical to the pre-change build, the check that made H2 and H3
+trustworthy.
+
+### Falsifier, stated in advance
+
+*If fill-in-aware pivoting does not reduce `:preprocessing.term-size.final` or
+`:lra.pivot-term-ops` on the instances where TermId order demonstrably mattered
+-- `miplib/vpm2-0`, `miplib/pp08a-*`, the Heizmann chain -- then preprocessing
+pivot choice is not worth optimising and the item should be rejected outright
+rather than tuned.* [D1](#d1) and the item-8 cost-ranking episode are the
+precedents for rejecting rather than tuning.
+
+A second, cheaper falsifier comes first: on the five-variable chain in
+`declaration_order_does_not_change_the_search`, reversing the declarations
+changed accepted substitutions from 4 to 0 under the old behaviour. If a
+fill-in-aware rule cannot keep that at 4 under both orders, it is not actually
+choosing on fill-in.
+
+(h11-note-on-the-fix)=
+### Note on the fix that preceded this
+
+The eager interning was replaced by recording `SymbolId` and materialising
+terms in `declared_real_constant_terms()`, called only when a model was
+requested and only after the search. `mk_constant` interns, so constants
+occurring in an assertion keep the id they already had.
+
+The regression test is worth knowing about before writing another one like it.
+The obvious test -- compare a `produce-models` run against a plain one -- does
+**not** detect the defect, because the interning was unconditional and moved
+both arms together; that test passed with the defect reintroduced. The
+invariant that discriminates is that permuting `declare-fun` lines must not
+change the search.

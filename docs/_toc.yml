@@ -9,6 +9,7 @@ chapters:
   - file: preprocessing
   - file: arithmetic
   - file: qf-lra-heuristics
+  - file: termid-order-sensitivity
   - file: difference_logic
   - file: debugging
   - file: fuzz-coverage-qf-lra
