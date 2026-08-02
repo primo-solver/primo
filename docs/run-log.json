@@ -16384,6 +16384,158 @@
         "notable_delta": "On cpachecker-induction.32_1_cilled...edac--mce_amd_inj..., default solved sat in 1.463s, first solved sat in 7.972s, while ranked/adaptive timed out at 10s; Z3 solved it in 0.022s."
       },
       "outcome": "Do not promote model-equality branching. The branch policies are active and measurable, but on this sample they do not improve solved count or PAR2 over the default; ranked/adaptive regress one cpachecker-induction instance."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-purification-rewrite-memo-profile",
+      "date": "2026-08-02",
+      "commit": "6e44027",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "profile",
+      "scope": "Profiler-guided cleanup for repeated QF_UFLRA mixed-purification rewrites on the CPAchecker BMC diskperf sample row. The change memoizes formula, arithmetic, and EUF rewrites by hash-consed TermId during the purification pass.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "binary": "build/primo at 6e44027, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3"
+      },
+      "commands": {
+        "target_shape": "wc -l -c tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2; rg token counts for assert, declare-fun, or/and/not/=/<,/<=,+,-,*",
+        "before_timing": "/usr/bin/time -f 'wall=%e user=%U sys=%S maxrss=%M' timeout 15s build/primo --quiet --stats tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+        "before_callgrind": "timeout 20s valgrind --tool=callgrind --callgrind-out-file=/tmp/callgrind.primo-diskperf.1785653938.%p build/primo --quiet --stats tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+        "after_timing": "/usr/bin/time -f 'wall=%e user=%U sys=%S maxrss=%M' timeout 15s build/primo --quiet --stats tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+        "after_callgrind": "timeout 20s valgrind --tool=callgrind --callgrind-out-file=/tmp/callgrind.primo-diskperf-after.1785654391.%p build/primo --quiet --stats tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+        "option_sweep": "timeout 15s build/primo --quiet --stats with default, --no-lra-propagation, --lra-pivoting-rule=dantzig, --lra-pivoting-rule=sparse, --theory-phase=positive, and --theory-phase=none",
+        "local_validation": "cmake --build build --target primo_qf_lra_solver_tests -j4 && ./build/primo_qf_lra_solver_tests; make docs; make lint; make check; rg --files -g '*.cpp' | rg -v '(^build/|^contrib/|antlr|generated)' | xargs clang-tidy -p build --quiet; make asan-test"
+      },
+      "benchmark": {
+        "suite": "tmp/QF_UFLRA/cpachecker-bmc-svcomp14",
+        "instance": "cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+        "logic": "QF_UFLRA",
+        "timeout_seconds": 15
+      },
+      "summary": {
+        "shape": "5271 lines, 248892 bytes, one top-level assertion, 604 declare-fun commands, 742 equalities before Real-equality lowering, 377 < atoms, 377 <= atoms, no ITEs.",
+        "before": "At 1267d8b-equivalent source, Primo timed out before completing preprocessing: preprocessing.assertions 0, preprocessing.term-size.final 0, time.preprocessing-us 0, wall 15.00s. Callgrind top costs were mixed purification recursion and allocation: purify_arithmetic_term 13.52%, purify_mixed_formula 13.47%, malloc/free about 21% combined.",
+        "after": "At 6e44027, Primo still times out at 15s, but preprocessing completes: preprocessing.assertions 206, preprocessing.term-size.final 4016, time.preprocessing-us 5343, no.purification.definitions 169, memoized formula/arithmetic/EUF rewrites 9882/3205/5, SAT vars 2722, SAT clauses 13233.",
+        "remaining_bottleneck": "After memoization, Callgrind moves to LRA/SAT search: Rational::operator+ 20.22%, Rational::from_int128_reduced 11.79%, LraTableau::check 11.32%, Rational::operator- 9.49%; stats show 5418 LRA online checks, 888 pivots, and 3186 LRA theory propagations before timeout.",
+        "option_sweep": "None of the six tried existing options solved the row under 15s. --no-lra-propagation reduced online checks to 3598 but still timed out; --theory-phase=positive reduced pivots to 511 and propagations to 816 but still timed out."
+      },
+      "outcome": "Accepted as a preprocessing-cliff cleanup, not as a CPAchecker-family solution. The next target is LRA online-check/search cost after purification."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-fuzz-gate-6e44027",
+      "date": "2026-08-02",
+      "commit": "6e44027",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "fuzz",
+      "scope": "SLURM QF_UFLRA mixed-formula fuzz gate after memoizing mixed-purification rewrites.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-workspace>",
+        "binary": "build-slurm-rel/primo at 6e44027, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3, version 5.0.0",
+        "job_id": "118695",
+        "remote_artifact_dir": "<fresh-remote-workspace>/slurm-results/qf_uflra-fuzz-gate-6e44027",
+        "local_artifact_dir": "slurm-results/qf_uflra-fuzz-gate-6e44027"
+      },
+      "commands": {
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --sync-mode archive --jobs 4",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --check-only",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_fuzz_gate.sbatch; bash -n scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "submission": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_FUZZ_COUNT=750,PRIMO_FUZZ_SEED_BASE=840200,PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-fuzz-gate-6e44027 scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "aggregation": "sacct -j 118695 --format=JobID,State,ExitCode,Elapsed,MaxRSS -P; aggregate task-*/summary.csv by outcome"
+      },
+      "benchmark": {
+        "suite": "scripts/qf_uflra_smoke_fuzz.py generated mixed QF_UFLRA formulas",
+        "logic": "QF_UFLRA",
+        "generator": "qf_uflra_smoke_fuzz.py",
+        "shape": "mixed",
+        "seed_base": 840200,
+        "tasks": 4,
+        "count_per_task": 750,
+        "total_cases": 3000,
+        "timeout_seconds": 5
+      },
+      "summary": {
+        "slurm_state": "All four array tasks completed with exit code 0:0 in 00:00:16 each.",
+        "outcomes": {
+          "PASS": 3000,
+          "WRONG": 0,
+          "CRASH": 0,
+          "TIMEOUT": 0,
+          "UNSUPPORTED": 0,
+          "REFERENCE_DISAGREEMENT": 0
+        },
+        "per_task": {
+          "task-0": {
+            "PASS": 750
+          },
+          "task-1": {
+            "PASS": 750
+          },
+          "task-2": {
+            "PASS": 750
+          },
+          "task-3": {
+            "PASS": 750
+          }
+        }
+      },
+      "limitations": "Generated mixed QF_UFLRA fuzz evidence; the benchmark-sample comparison is recorded separately."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-sample-compare-6e44027",
+      "date": "2026-08-02",
+      "commit": "6e44027",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "benchmark",
+      "scope": "QF_UFLRA 5-per-family SLURM sample comparison after mixed-purification rewrite memoization, comparing default mixed solving, three default-off model-equality branching policies, and Z3.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-workspace>",
+        "binary": "build-slurm-rel/primo at 6e44027, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3, version 5.0.0",
+        "job_id": "118699",
+        "remote_artifact_dir": "<fresh-remote-workspace>/results/qf-uflra-sample-6e44027",
+        "local_html": "results/qf-uflra-sample-6e44027/index.html"
+      },
+      "commands": {
+        "stage_manifest_files": "python3 scripts/slurm_stage_manifest_files.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --check-only",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_sample_compare.sbatch; bash -n scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "submission": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_COMPARE_TIMEOUT=10,PRIMO_COMPARE_OUT_ROOT=results/qf-uflra-sample-6e44027 scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "render_html": "python3 scripts/render_solver_compare_html.py results/qf-uflra-sample-6e44027 --solvers default first ranked adaptive z3 --title 'QF_UFLRA sample comparison 6e44027' --timeout 10 --out results/qf-uflra-sample-6e44027/index.html"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "logic": "QF_UFLRA",
+        "root": "tmp/QF_UFLRA",
+        "families": [
+          "FFT",
+          "cpachecker-bmc-svcomp14",
+          "cpachecker-induction-svcomp14",
+          "mathsat"
+        ],
+        "instances": 20,
+        "timeout_seconds": 10
+      },
+      "solvers": {
+        "default": "build-slurm-rel/primo --quiet --stats",
+        "first": "build-slurm-rel/primo --quiet --stats --model-equality-branching",
+        "ranked": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked",
+        "adaptive": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy adaptive",
+        "z3": "contrib/local/bin/z3"
+      },
+      "summary": {
+        "default": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.735791; family solved FFT 5/5, cpachecker-bmc 3/5, cpachecker-induction 3/5, mathsat 5/5.",
+        "first": "16/20 solved, 4 timeouts, 0 wrong, PAR2 97.073929; family solved FFT 5/5, cpachecker-bmc 3/5, cpachecker-induction 3/5, mathsat 5/5.",
+        "ranked": "15/20 solved, 5 timeouts, 0 wrong, PAR2 109.200700; family solved FFT 5/5, cpachecker-bmc 3/5, cpachecker-induction 2/5, mathsat 5/5.",
+        "adaptive": "15/20 solved, 5 timeouts, 0 wrong, PAR2 109.186083; family solved FFT 5/5, cpachecker-bmc 3/5, cpachecker-induction 2/5, mathsat 5/5.",
+        "z3": "20/20 solved, 0 timeouts, 0 wrong, PAR2 3.886172; every family 5/5 solved."
+      },
+      "outcome": "No solved-count movement relative to the 1267d8b sample comparison. Default remains the best Primo configuration on this sample; the accepted memoization primarily removes a local preprocessing cliff on repeated mixed-purification rewrites."
     }
   ]
 }
