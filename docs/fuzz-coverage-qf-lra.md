@@ -279,6 +279,47 @@ claim is that `-Mbw 16` costs nothing, not that it wins.
 
 ## Status
 
+**Job 118735 (2026-08-02)** is the first campaign with everything here active
+at once: the ladder, both QF_LRA-restricted configs, `--keep-logic` and
+`--hoist-declarations`, Yices as a second reference, and the family-complete
+corpus. No defect was found in roughly 4,700 generator and mutation cases.
+
+The result worth keeping is what the configs did to opfuzz's effective-call
+rate -- the fraction of solver invocations that return a usable answer:
+
+| campaign | configuration | opfuzz efficiency |
+|---|---|---|
+| 118548 | stock configs, z3 only | 65.1% |
+| 118611 | + Yices, which could not read mutants | 42.8% |
+| **118735** | **QF_LRA configs + `--keep-logic` + Yices** | **99.7%** |
+
+typefuzz improved less -- 41.7%, 65.0% and 51.3% against a 27-43% baseline --
+which is the expected shape: it *generates* new terms rather than substituting
+operators in place, so it produces harder mutants and a residue that no config
+can prevent (see [](#sec-mutation-yield)).
+
+Generator side, 5 of 6 shards at time of writing: 2500 cases, 2455 PASS, 45
+TIMEOUT, zero wrong answers and zero reference disagreements. Every case
+consulted **both** references -- checked from the summary CSVs rather than
+assumed, because `fuzz_external.py` does not echo its arguments.
+
+The 45 files under `bugs/` are exactly those 45 timeouts, all in FuzzSMT shard
+directories and none in any mutation directory. **A non-empty `bugs/` is not a
+bug count** -- `fuzz_external.py` copies every non-`PASS` case there.
+
+Two operational findings from the same job, both now in
+`scripts/slurm_qfuf_fuzz_gate.sbatch`:
+
+- **FuzzSMT generation cost varies ~200x by seed** at identical parameters
+  (seed 218735: 20.9s and 34.7 MB per 100 files, against 0.1s and 1.9 MB for
+  its neighbour). A shard drawing such a seed looks stuck while being merely
+  slow, which had previously been attributed to cluster load.
+- **One mutation shard was SIGKILLed and the cause was not established.**
+  Memory is ruled out -- two sibling tasks reported *higher* MaxRSS on the same
+  request and completed. Primo is not reproducibly implicated: 800 mutants with
+  it capped at 4 GB produced no kill, and the largest mutant solves in 0.01s
+  using 9 MB. Recorded as unexplained rather than attributed to anything.
+
 Job 118548 ran the full ladder: 6 shards x 500 cases, all six shard CSVs
 present. **2959 PASS, 41 TIMEOUT, zero wrong answers and zero crashes.**
 Timeouts by profile were 2, 7, 19, 4, 5, 4 -- concentrated in profile 2, the

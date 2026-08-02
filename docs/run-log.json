@@ -12948,6 +12948,33 @@
         "The QF_LRA UF rejection added by 095e07f is a real behaviour change, but correct per the logic definition and no division file triggers it."
       ],
       "outcome": "Merge accepted. One defect found and fixed (e3059e6) with a regression test; one narrow spec regression recorded and left; the TermId-order coupling underneath opened as a docket (docs/termid-order-sensitivity.md) with H11 proposed behind --lra-gaussian-markowitz."
+    },
+    {
+      "id": "2026-08-02-qf-lra-full-fuzz-campaign-118735",
+      "started_at": "2026-08-02",
+      "recorded_at": "2026-08-02",
+      "kind": "fuzz",
+      "scope": "First campaign with every piece of this session's fuzzing work active at once: the six-profile FuzzSMT ladder, QF_LRA-restricted opfuzz and typefuzz configs, --keep-logic and --hoist-declarations (now upstream in the fork at 04c8618), Yices as a second reference, and the family-complete 34-seed corpus.",
+      "commit": "67140b2",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at 57fcf0a; references z3 5.0.0 and Yices 2.7.0 via scripts/yices_smt2_ref.sh",
+        "notes": "Job 118735, 11 tasks, 6h wall. Prerequisites verified before submitting: cluster venv reinstalled via contrib/install_yinyang.py because it still predated the upstreamed flags (keep_logic reported False). Flags confirmed present in the ACTUAL command lines, not assumed from env vars."
+      },
+      "summary": {
+        "generator": "5 of 6 ladder shards complete at time of writing: 2500 cases, 2455 PASS, 45 TIMEOUT, zero wrong answers and zero REF_DISAGREEMENT. Every case consulted BOTH references -- verified from the summary CSVs as 'refs per case: {2: 2500}', since fuzz_external.py does not echo its arguments and silent reference-dropping was a real defect fixed earlier the same day.",
+        "opfuzz_efficiency": "The headline result. opfuzz completed all 34 seeds with 0 bug triggers at an effective-call rate of 99.7%, against 65.1% for the same task under the stock configs (job 118548) and 42.8% when Yices was added but could not read mutants (job 118611). The QF_LRA operator config plus --keep-logic is what closed it.",
+        "typefuzz_efficiency": "More modest: 41.7%, 65.0% and 51.3% on the three shards that ran to the wall, against a 27-43% baseline. typefuzz is generative rather than substitutional, so it produces harder mutants; the improvement is real but not the step change opfuzz saw.",
+        "bug_files": "45 files under bugs/, exactly matching the 45 FuzzSMT TIMEOUTs, all in fuzzsmt shard directories and none in any mutation bugs/ directory. No defect was found anywhere in the campaign.",
+        "wall_handling": "Tasks 7, 8 and 10 each ran the full 10800s wall and exited 0 with 'reached the 10800s wall; this is a time-boxed run, not a failure'. Under the pre-b790e63 behaviour all three would have been recorded as FAILED."
+      },
+      "caveats": [
+        "Task 9 was SIGKILLed (exit 137) at 2:06:21 and the cause was NOT established. Memory is ruled out as the explanation: tasks 7 and 10 reported higher MaxRSS (107GB and 108GB against task 9's 80GB) on the same 2G request and completed, so those figures are an accounting artifact rather than real resident size. Primo is not reproducibly implicated -- 25 minutes and 800 mutants with primo capped at 4GB of address space produced no kill and no bug, and the largest mutant (92KB) solves in 0.01s using 9MB. Recorded as unexplained rather than attributed.",
+        "Ladder shard 0 was still running when this entry was written; its 500 cases are not included in the 2500 above.",
+        "The opfuzz and typefuzz efficiency figures are not directly comparable to each other -- opfuzz substitutes operators in place while typefuzz generates new terms -- and the local 2-target reproduction measured 76.5%, so target count moves the number too."
+      ],
+      "outcome": "No defect found across roughly 4700 generator and mutation cases with two independent references. The efficiency prediction stated in advance -- that the QF_LRA configs would lift the effective-call rate above the 28-43% band -- is confirmed for opfuzz (99.7%) and only partly for typefuzz (41.7-65.0%)."
     }
   ]
 }
