@@ -623,6 +623,7 @@ void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
 void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -644,9 +645,35 @@ void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
   assert(result.statistics.get(":no.interface.sat-equalities-false") >= 1);
 }
 
+void qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-lra-equal") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-mutation-checks") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-mutated") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-created") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-conflicts") == 0);
+}
+
 void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -677,6 +704,7 @@ void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
 void qf_uf_lra_model_equality_branching_accumulates_active_assumptions() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -702,6 +730,7 @@ void qf_uf_lra_model_equality_branching_accumulates_active_assumptions() {
 void qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
   options.nelson_oppen_model_equality_branch_policy = primo::smt::ModelEqualityBranchPolicy::Ranked;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -730,6 +759,7 @@ void qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs() {
 void qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
   options.nelson_oppen_model_equality_branch_policy = primo::smt::ModelEqualityBranchPolicy::Ranked;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -755,6 +785,7 @@ void qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs() {
 void qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
   options.nelson_oppen_model_equality_branch_policy =
       primo::smt::ModelEqualityBranchPolicy::Adaptive;
   options.nelson_oppen_model_equality_branch_budget = 16;
@@ -802,6 +833,7 @@ void qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses() {
 void qf_uf_lra_reports_euf_care_pair_diagnostics() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -829,6 +861,7 @@ void qf_uf_lra_reports_euf_care_pair_diagnostics() {
 void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -2130,6 +2163,7 @@ int main() {
   qf_uf_lra_guards_interface_equality_propagation_by_assignment();
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
+  qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess();
   qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
   qf_uf_lra_model_equality_branching_accumulates_active_assumptions();
   qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs();

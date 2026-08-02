@@ -138,6 +138,7 @@ struct CheckSatOptions {
   bool euf_ackermann_diagnostics = false;
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
+  bool nelson_oppen_model_equality_mutation = true;
   ModelEqualityBranchPolicy nelson_oppen_model_equality_branch_policy =
       ModelEqualityBranchPolicy::First;
   bool euf_dynamic_ackermann_shadow = false;

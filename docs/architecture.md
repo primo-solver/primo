@@ -247,15 +247,19 @@ Implemented now:
   ordinary conflict using that literal as part of its reason. The optional
   `--model-equality-branching` mode
   adds a default-off model-driven SAT-assumption loop for LRA-model-equal shared
-  Real pairs. Guessed equality atoms that survive SAT and theory checks remain
-  active as assumptions while the coordinator tries additional model-equal
-  pairs; if SAT later proves the active assumption set inconsistent, Primo
-  learns a blocking clause over the failed assumptions and drops them from the
-  active trail. These guesses are optional branches, not permanent unit clauses.
-  This is intentionally not full Nelson-Oppen: fine-grained minimal
-  cross-theory explanations, full model-equality propagation,
-  native false-`Eq` LRA atoms, and unbounded arrangement enumeration remain
-  unsupported. Ordinary SMT-LIB Real disequality is handled before LRA theory
+  Real pairs. Before creating a guessed equality atom, its narrow mutation filter
+  asks whether either strict separation of the two terms is still LRA-consistent
+  under the current Boolean assignment; if so, the equality is treated as an
+  avoidable model artifact and skipped. Guessed equality atoms that survive SAT
+  and theory checks remain active as assumptions while the coordinator tries
+  additional model-equal pairs; if SAT later proves the active assumption set
+  inconsistent, Primo learns a blocking clause over the failed assumptions and
+  drops them from the active trail. These guesses are optional branches, not
+  permanent unit clauses. This is intentionally not full Nelson-Oppen:
+  fine-grained minimal cross-theory explanations, full model-equality
+  propagation, a mutable shared theory-model object, native false-`Eq` LRA atoms,
+  and unbounded arrangement enumeration remain unsupported. Ordinary SMT-LIB
+  Real disequality is handled before LRA theory
   assertion by lowering Real equality to linear inequalities and letting the
   Boolean layer split negated equalities. Mixed model reconstruction uses a
   bounded search over strict shared-Real separation orientations, with a greedy

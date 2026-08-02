@@ -321,6 +321,9 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
+- `:no.interface.model-equality-mutation-checks`
+- `:no.interface.model-equality-mutated`
+- `:no.interface.model-equality-mutation-forced`
 - `:no.interface.model-equality-selected-care`
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
@@ -400,14 +403,17 @@ separated consistently by LRA, with failures and accepted strict separations
 split into the corresponding arrangement counters. When
 `--model-equality-branching` is enabled, the model-equality counters record
 full shared Real pairs scanned, how many were equal in the current LRA model,
-optional SAT equality atoms created for those pairs, active assumption attempts
-over those atoms, assumptions rejected at the SAT level, assigned or
-already-tried equality literals skipped, whether the selected guess came from
-the care-ranked prefix or the full-pair fallback, adaptive stops, the current
-and maximum active model-equality assumption-trail size, and ordinary theory
-conflicts reached while at least one guessed equality was active. A surviving
-model-equality guess is re-applied as an IPASIR assumption on later SAT calls
-while the coordinator tries additional model-equal pairs; it is still not a
+how many such equalities were checked by the model-mutation filter, how many
+were skipped because either strict separation is still LRA-consistent, how many
+were not separated by that filter, optional SAT equality atoms created for those
+pairs, active assumption attempts over those atoms, assumptions rejected at the
+SAT level, assigned or already-tried equality literals skipped, whether the
+selected guess came from the care-ranked prefix or the full-pair fallback,
+adaptive stops, the current and maximum active model-equality assumption-trail
+size, and ordinary theory conflicts reached while at least one guessed equality
+was active. A surviving model-equality guess is re-applied as an IPASIR
+assumption on later SAT calls while the coordinator tries additional model-equal
+pairs; it is still not a
 permanent unit clause. The current positive-equality path should
 also show activity in
 `:no.interface.sat-equalities-forced`, which counts guarded propagation clauses

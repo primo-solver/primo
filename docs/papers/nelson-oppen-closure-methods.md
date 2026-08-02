@@ -120,20 +120,26 @@ for same-sort shared Real pairs that currently have the same concrete value in
 the LRA model. This is a default-off branching scaffold, not a unit propagation
 rule: the equality atom is created as an optional SAT-visible atom, then kept on
 an active IPASIR assumption trail while the coordinator tries further
-model-equal pairs. If SAT rejects the active assumption set, Primo learns a
-blocking clause over the failed assumptions reported by the SAT backend and
-drops those assumptions from the active trail. If the receiving theory rejects
-an active equality, the ordinary theory conflict learned under that assumption
-blocks the bad branch on a later SAT call. A false optional equality is visible
-to EUF as a disequality but is still not an LRA disequality. While optional
-model-equality assumptions are active, any further EUF- or LRA-implied interface
-equalities are learned through guarded assignment clauses, not as unconditional
-unit clauses. `--model-equality-branch-policy=first` preserves the original
-full-pair scan order. `ranked` prefers LRA-model-equal pairs that also appear in
-the EUF care diagnostic, then pairs whose terms both occur as EUF arguments,
-then the remaining full-pair fallback. `adaptive` uses the same ranking but
-stops adding model-equality assumptions after repeated failed assumptions or
-theory conflicts that did not produce interface equality propagation.
+model-equal pairs. Before creating the optional equality atom, the default-on
+mutation filter for this branch mode checks whether adding either strict
+separation, `x < y` or `y < x`, is still LRA-consistent under the current Boolean
+assignment. If so, the current equality is treated as avoidable model choice and
+the branch candidate is skipped. This is only a conservative instantiation of
+the paper's mutation idea; Primo does not mutate the stored LRA tableau model.
+If SAT rejects the active assumption set, Primo learns a blocking clause over the
+failed assumptions reported by the SAT backend and drops those assumptions from
+the active trail. If the receiving theory rejects an active equality, the
+ordinary theory conflict learned under that assumption blocks the bad branch on a
+later SAT call. A false optional equality is visible to EUF as a disequality but
+is still not an LRA disequality. While optional model-equality assumptions are
+active, any further EUF- or LRA-implied interface equalities are learned through
+guarded assignment clauses, not as unconditional unit clauses.
+`--model-equality-branch-policy=first` preserves the original full-pair scan
+order. `ranked` prefers LRA-model-equal pairs that also appear in the EUF care
+diagnostic, then pairs whose terms both occur as EUF arguments, then the
+remaining full-pair fallback. `adaptive` uses the same ranking but stops adding
+model-equality assumptions after repeated failed assumptions or theory conflicts
+that did not produce interface equality propagation.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
@@ -178,6 +184,9 @@ coordinator publishes:
 - `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
+- `:no.interface.model-equality-mutation-checks`
+- `:no.interface.model-equality-mutated`
+- `:no.interface.model-equality-mutation-forced`
 - `:no.interface.model-equality-selected-care`
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
@@ -250,10 +259,10 @@ For Primo this is relevant because:
 Historical note: this was the original staging plan. The current branch has
 moved past part of it: the partial QF_UFLRA coordinator now runs in the default
 final check, creates interface equality atoms lazily, and has an opt-in
-model-equality branching mode. This is still not the de Moura/Bjorner
-model-based combination algorithm. Primo does not yet have a mutable model
-object shared by the theory solvers, complete non-convex arrangement
-enumeration, or minimal paper-style explanations.
+model-equality branching mode with a strict-separation mutation filter. This is
+still not the de Moura/Bjorner model-based combination algorithm. Primo does not
+yet have a mutable model object shared by the theory solvers, complete
+non-convex arrangement enumeration, or minimal paper-style explanations.
 
 The first implementable subset should be split into two tracks. Track A is a
 prerequisite for any model-guided closure claim:

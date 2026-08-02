@@ -27,14 +27,17 @@ combination. It has these related pieces:
 - guarded equality clauses when EUF or LRA implies a shared Real equality;
 - bounded shared-Real separation for the documented model-printing subset;
 - default-off `--model-equality-branching`, which keeps surviving
-  LRA-model-equal shared Real equality guesses on an active SAT-assumption trail.
+  LRA-model-equal shared Real equality guesses on an active SAT-assumption trail;
+- a narrow LRA model-mutation filter for that branch mode: before guessing an
+  LRA-model-equal pair, Primo checks whether either strict separation is still
+  LRA-consistent under the current Boolean assignment and skips the guess if so.
 
 The missing parts are the paper's central mechanisms:
 
 - no generic model object carried by the DPLL(T) state;
 - no generic per-theory API for model equality queries;
 - no full `M-Propagate` transition;
-- no `M-Mutate` transition;
+- no full `M-Mutate` transition or mutable theory-model object;
 - no theory-independent implementation for more than EUF plus Real LRA;
 - no completeness claim for general Nelson-Oppen combination.
 
@@ -51,10 +54,10 @@ The missing parts are the paper's central mechanisms:
 | 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Not implemented as DTC.** Primo creates shared Real equality atoms lazily when a theory implication or model-equality branch needs them; it does not eagerly add all pair literals. |
 | 3.3 Ackermannization | Ackermann reduction replaces UF reasoning with constraints over applications and congruence axioms. The paper treats it as useful in some cases but potentially expensive. | **Separate from this work.** Primo's Ackermann and disequality-propagation options are EUF-side mechanisms. They are not integrated as the paper's model-combination method. |
 | 3.3.1 Dynamic Ackermannization | Dynamic Ackermannization adds Ackermann constraints during search, especially when disequalities between applications make argument disequalities relevant. | **Separate/partial.** This belongs to the QF_UF disequality propagation line, not to current mixed QF_UFLRA model-based combination. |
-| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Not fully implemented.** Primo has only a default-off LRA-model-equality assumption loop for the QF_UFLRA coordinator. There is no generic `DPLL(T^M)` state, no generic model-equality propagation, and no model mutation. |
+| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Not fully implemented.** Primo has only a default-off LRA-model-equality assumption loop for the QF_UFLRA coordinator. It now includes a narrow mutation filter that skips a model-equal pair if adding either strict separation remains LRA-consistent. There is no generic `DPLL(T^M)` state and no generic model-equality propagation. |
 | 5 Simplex: An Example Model-Producing Theory Solver | The paper shows how Simplex naturally provides a model: the current assignment maps arithmetic variables to rational values. Equal-valued shared variables are equality candidates. | **Partial.** Primo's LRA path has a tableau assignment and can produce values for user-declared nullary Real constants and selected shared Real terms. It is not yet a complete Simplex-backed combination API. |
 | 5.1 Opportunistic Equality Propagation | The paper describes cheaper equality-detection opportunities in Simplex, such as fixed variables and row-derived equalities. | **Partial, not the paper algorithm.** Primo has LRA propagation and bound reasoning, but it does not implement the paper's opportunistic equality rules as named combination operations. Current LRA-to-EUF equality detection is still a final-check-oriented mechanism. |
-| 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Not implemented.** Primo uses LRA model values for model printing, separation orientation, and optional equality guesses. It does not mutate the LRA model to reduce equality candidates. |
+| 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Partial filter, not the paper algorithm.** Primo does not perturb the stored Simplex assignment. In the default-off branch mode, it uses strict-separation consistency checks as a conservative proxy for "this equality can be avoided by mutation" and suppresses that optional equality guess. |
 | 6 Experimental Evaluation | The paper compares model-based theory combination against DTC, Ackermannization, Yices, and MathSAT on several UF+arithmetic benchmark families. | **Not reproduced.** Primo has local and SLURM benchmark evidence in `docs/run-log.json`, including QF_UFLRA CPAchecker and sample Z3 comparisons, but it has not reproduced the paper's experiment suite. |
 | 7 Conclusions | The paper emphasizes that the approach requires theories to efficiently answer whether two shared terms have equal values in the current model. | **Partial.** Primo can answer this for some LRA Real terms and can query EUF closure equality, but there is no uniform cross-theory model-query object yet. |
 | 7.1 On the Significance of Ackermann's Reduction | The paper argues that model-based combination can avoid some Ackermannization costs, while dynamic Ackermannization remains useful in UF-heavy cases. | **Separate.** Primo's Ackermann-related work should stay documented as EUF-specific unless it is explicitly wired into mixed-theory model combination. |
@@ -84,9 +87,10 @@ Use this wording when summarizing the current state:
 
 > Primo implements prerequisites and a narrow experimental QF_UFLRA
 > model-equality assumption loop inspired by de Moura and Bjorner's
-> model-based theory-combination paper. It does not yet implement the full
-> `DPLL(T^M)` procedure, generic model mutation, or complete Nelson-Oppen
-> model-equality propagation.
+> model-based theory-combination paper, including a strict-separation
+> consistency filter for avoidable LRA model equalities. It does not yet
+> implement the full `DPLL(T^M)` procedure, a mutable generic theory-model
+> object, or complete Nelson-Oppen model-equality propagation.
 
 Avoid saying that Primo implements "the de Moura-Bjorner algorithm" without the
 qualification above.

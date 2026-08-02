@@ -169,6 +169,7 @@ int main(int argc, char** argv) {
   bool euf_ackermann_diagnostics = false;
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
+  bool no_nelson_oppen_model_equality_mutation = false;
   std::string model_equality_branch_policy = "first";
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
@@ -340,6 +341,9 @@ int main(int argc, char** argv) {
   app.add_flag("--model-equality-branching", nelson_oppen_model_equality_branching,
                "Enable experimental QF_UFLRA model-equality branching over shared Real terms; "
                "default off and not a full Nelson-Oppen model-equality implementation");
+  app.add_flag("--no-model-equality-mutation", no_nelson_oppen_model_equality_mutation,
+               "Disable the experimental QF_UFLRA LRA model-mutation filter inside "
+               "--model-equality-branching");
   app.add_option("--model-equality-branch-budget",
                  solver_options.nelson_oppen_model_equality_branch_budget,
                  "Maximum QF_UFLRA model-equality branch assumptions per check-sat")
@@ -468,10 +472,11 @@ int main(int argc, char** argv) {
     if (starts_with(name, "--euf-") || starts_with(name, "--no-euf-") ||
         starts_with(name, "--finite-domain-") || starts_with(name, "--no-finite-domain-") ||
         starts_with(name, "--ground-") || starts_with(name, "--guarded-ground-") ||
-        starts_with(name, "--qf-uf-") || starts_with(name, "--auto-basic-") ||
-        starts_with(name, "--no-auto-basic-") || starts_with(name, "--preprocessing-") ||
-        starts_with(name, "--preprocess-passes") || name == "--eq-bridge" ||
-        name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
+        starts_with(name, "--model-equality-") || starts_with(name, "--no-model-equality-") ||
+        starts_with(name, "--nelson-oppen-") || starts_with(name, "--qf-uf-") ||
+        starts_with(name, "--auto-basic-") || starts_with(name, "--no-auto-basic-") ||
+        starts_with(name, "--preprocessing-") || starts_with(name, "--preprocess-passes") ||
+        name == "--eq-bridge" || name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
         name == "--no-uf-symmetry-breaking" || name == "--no-solved-constant-substitution" ||
         name == "--prop-interval" || name == "--prop-assign-threshold" ||
         name == "--prop-delivery-budget") {
@@ -632,6 +637,9 @@ int main(int argc, char** argv) {
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
   solver_options.nelson_oppen_model_equality_branching = nelson_oppen_model_equality_branching;
+  if (no_nelson_oppen_model_equality_mutation) {
+    solver_options.nelson_oppen_model_equality_mutation = false;
+  }
   if (model_equality_branch_policy == "adaptive") {
     solver_options.nelson_oppen_model_equality_branch_policy =
         primo::smt::ModelEqualityBranchPolicy::Adaptive;

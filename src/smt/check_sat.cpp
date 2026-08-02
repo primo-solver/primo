@@ -5324,6 +5324,21 @@ std::optional<LraModelState> build_lra_model_state(
                        std::move(augmented_lra_assignments)};
 }
 
+bool lra_model_equality_can_be_mutated(core::TermManager& terms,
+                                       const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+                                       const std::vector<AssignedTheoryAtom>& lra_assignments,
+                                       core::TermId lhs, core::TermId rhs,
+                                       const CheckSatOptions& options) {
+  const core::TermId lhs_lt_rhs = terms.mk_lt(lhs, rhs);
+  if (!lra_assignment_conflicts_with_extra_atom(terms, lra_atoms, lra_assignments, lhs_lt_rhs,
+                                                options)) {
+    return true;
+  }
+  const core::TermId rhs_lt_lhs = terms.mk_lt(rhs, lhs);
+  return !lra_assignment_conflicts_with_extra_atom(terms, lra_atoms, lra_assignments, rhs_lt_lhs,
+                                                   options);
+}
+
 struct ModelEqualityBranchState {
   std::unordered_set<int> tried_vars;
   std::uint64_t unproductive_rejections = 0;
@@ -5454,6 +5469,14 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
       continue;
     }
     statistics.increment(":no.interface.model-equality-lra-equal");
+    if (options.nelson_oppen_model_equality_mutation) {
+      statistics.increment(":no.interface.model-equality-mutation-checks");
+      if (lra_model_equality_can_be_mutated(terms, lra_atoms, lra_assignments, lhs, rhs, options)) {
+        statistics.increment(":no.interface.model-equality-mutated");
+        continue;
+      }
+      statistics.increment(":no.interface.model-equality-mutation-forced");
+    }
     statistics.increment(":no.interface.model-equality-candidates");
     const core::TermId equality = terms.mk_eq(lhs, rhs);
     if (theory_atom_occurs_in_formula(clausifier, equality)) {
@@ -7148,6 +7171,9 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.model-equality-care-pruned-pairs", 0);
   statistics.set(":no.interface.model-equality-scanned", 0);
   statistics.set(":no.interface.model-equality-lra-equal", 0);
+  statistics.set(":no.interface.model-equality-mutation-checks", 0);
+  statistics.set(":no.interface.model-equality-mutated", 0);
+  statistics.set(":no.interface.model-equality-mutation-forced", 0);
   statistics.set(":no.interface.model-equality-selected-care", 0);
   statistics.set(":no.interface.model-equality-selected-full", 0);
   statistics.set(":no.interface.model-equality-skipped-assigned", 0);
