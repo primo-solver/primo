@@ -134,6 +134,11 @@ if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   )
   check_cxx_source_compiles(
     "#include <cadical.hpp>
+     int main() { auto fn = &CaDiCaL::Solver::declare_more_variables; (void) fn; return 0; }"
+    PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES
+  )
+  check_cxx_source_compiles(
+    "#include <cadical.hpp>
      struct P : CaDiCaL::ExternalPropagator {
        void notify_assignment(const std::vector<int>&) override {}
        void notify_new_decision_level() override {}
@@ -220,6 +225,7 @@ if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   target_compile_definitions(primo_core PUBLIC
     PRIMO_CADICAL_HAS_RESIZE=$<BOOL:${PRIMO_CADICAL_HAS_RESIZE}>
     PRIMO_CADICAL_HAS_RESERVE=$<BOOL:${PRIMO_CADICAL_HAS_RESERVE}>
+    PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES=$<BOOL:${PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES}>
     PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR=$<BOOL:${PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR}>
     PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR=$<BOOL:${PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR}>
   )

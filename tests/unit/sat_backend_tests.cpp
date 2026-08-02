@@ -81,6 +81,25 @@ void backend_rejects_invalid_cadical_options() {
   assert(false && "expected invalid CaDiCaL option to be rejected");
 }
 
+void backend_declares_variables_safely_with_factor_enabled() {
+  if (primo::sat::cadical_signature() == "unavailable") {
+    return;
+  }
+
+  CadicalBackend backend({{"factor", 1}});
+  const int root = backend.new_var();
+  backend.add_clause(Clause{Lit{root}});
+  assert(backend.solve() == SatResult::Sat);
+
+  for (int i = 0; i < 32; ++i) {
+    const int next = backend.new_var();
+    backend.add_clause(Clause{Lit{-root}, Lit{next}});
+    assert(backend.solve() == SatResult::Sat);
+    assert(backend.value(next).has_value());
+    assert(backend.value(next).value());
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -89,5 +108,6 @@ int main() {
   backend_supports_assumptions();
   backend_accepts_valid_cadical_options();
   backend_rejects_invalid_cadical_options();
+  backend_declares_variables_safely_with_factor_enabled();
   return 0;
 }
