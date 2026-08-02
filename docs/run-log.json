@@ -16589,6 +16589,60 @@
         "unsat": 284
       },
       "notes": "This is a local merge-gate run for a default-off experimental option path. It is not a headline SLURM performance comparison."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-mutation-compare-e898a5e",
+      "date": "2026-08-02",
+      "commit": "e898a5e",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "benchmark",
+      "scope": "SLURM QF_UFLRA 5-per-family sample comparison of default solving, model-equality branching with the mutation filter, and the same branch policies with the mutation filter disabled.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-workspace>",
+        "binary": "build-slurm-rel/primo at e898a5e, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": null,
+        "job_id": "118704",
+        "remote_artifact_dir": "<fresh-remote-workspace>/results/qf-uflra-mutation-compare-e898a5e",
+        "local_html": "results/qf-uflra-mutation-compare-e898a5e/index.html"
+      },
+      "commands": {
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --sync-mode archive --jobs 4",
+        "stage_manifest_files": "python3 scripts/slurm_stage_manifest_files.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --check-only",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_sample_compare.sbatch; bash -n scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "submission": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_COMPARE_TIMEOUT=10,PRIMO_COMPARE_OUT_ROOT=results/qf-uflra-mutation-compare-e898a5e,PRIMO_COMPARE_SOLVERS='<five sanitized solver specs>' scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "render_html": "python3 scripts/render_solver_compare_html.py results/qf-uflra-mutation-compare-e898a5e --solvers default first_mut first_nomut ranked_mut ranked_nomut --title 'QF_UFLRA mutation comparison e898a5e' --timeout 10 --out results/qf-uflra-mutation-compare-e898a5e/index.html"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "logic": "QF_UFLRA",
+        "root": "tmp/QF_UFLRA",
+        "families": [
+          "FFT",
+          "cpachecker-bmc-svcomp14",
+          "cpachecker-induction-svcomp14",
+          "mathsat"
+        ],
+        "instances": 20,
+        "timeout_seconds": 10
+      },
+      "solvers": {
+        "default": "build-slurm-rel/primo --quiet --stats",
+        "first_mut": "build-slurm-rel/primo --quiet --stats --model-equality-branching",
+        "first_nomut": "build-slurm-rel/primo --quiet --stats --model-equality-branching --no-model-equality-mutation",
+        "ranked_mut": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked",
+        "ranked_nomut": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked --no-model-equality-mutation"
+      },
+      "summary": {
+        "default": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.772386.",
+        "first_mut": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.308055; mutation checks 389, mutated/skipped 371, forced 18, optional equality atoms created 0.",
+        "first_nomut": "16/20 solved, 4 timeouts, 0 wrong, PAR2 97.185286; candidates 515, assumptions 630, optional equality atoms created 59.",
+        "ranked_mut": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.304383; mutation checks 389, mutated/skipped 371, forced 18, optional equality atoms created 0.",
+        "ranked_nomut": "15/20 solved, 5 timeouts, 0 wrong, PAR2 109.210894; candidates 848, assumptions 602, optional equality atoms created 59."
+      },
+      "outcome": "The mutation filter materially suppresses avoidable model-equality guesses on this sample and removes the ranked-policy solved-count regression, but it does not improve solved count over default solving. Treat it as a useful guard for the experimental branch path, not as a default-performance win."
     }
   ]
 }
