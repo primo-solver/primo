@@ -16732,6 +16732,101 @@
         "fuzz": "1000 generated mixed QF_UFLRA cases, seed 20260802, timeout 5s: PASS 1000, wrong 0, crash 0, reference disagreements 0."
       },
       "outcome": "Accepted and committed as 8e88eef. The protocol abort is fixed locally and covered by a SAT-backend regression test plus QF_UFLRA differential fuzzing. A fresh SLURM broader-sample rerun is still needed before replacing the previous 6799453 performance table."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-no-prop-stats-missing-reference-118780",
+      "date": "2026-08-02",
+      "commit": "957a5db8625113c886731c91e4be17fce86317d1",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "fuzz",
+      "scope": "Rejected SLURM QF_UFLRA mixed smoke-fuzzer gate for Nelson-Oppen interface equality propagation statistics.",
+      "evidence_status": "rejected",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-workspace>",
+        "binary": "build-slurm-rel/primo at 957a5db, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "z3 missing from the remote workspace PATH",
+        "job_ids": [
+          "118780"
+        ],
+        "remote_artifact_dir": "<fresh-remote-workspace>/slurm-results/qf_uflra-no-prop-stats-957a5db"
+      },
+      "commands": {
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --target primo --jobs 4",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --target primo --check-only",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_fuzz_gate.sbatch; bash -n scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "submission": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_FUZZ_COUNT=750,PRIMO_FUZZ_SEED_BASE=202608020,PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-no-prop-stats-957a5db scripts/slurm_qf_uflra_fuzz_gate.sbatch"
+      },
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "seed_base": 202608020,
+        "array_tasks": 4,
+        "count_per_task": 750,
+        "count": 3000,
+        "timeout_seconds": 5
+      },
+      "summary": {
+        "total": 3000,
+        "pass": 0,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_unusable": 3000,
+        "reference_disagreement": 0
+      },
+      "outcome": "Rejected as fuzz evidence because every generated case reported REFERENCE_UNUSABLE: the remote workspace did not yet have z3 installed. The replacement SLURM gate is 2026-08-02-qf-uflra-no-prop-stats-118786."
+    },
+    {
+      "id": "2026-08-02-qf-uflra-no-prop-stats-118786",
+      "date": "2026-08-02",
+      "commit": "957a5db8625113c886731c91e4be17fce86317d1",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "fuzz",
+      "scope": "SLURM QF_UFLRA mixed smoke-fuzzer gate for Nelson-Oppen interface equality propagation statistics.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-workspace>",
+        "binary": "build-slurm-rel/primo at 957a5db, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3, version 5.0.0",
+        "job_ids": [
+          "118786"
+        ],
+        "remote_artifact_dir": "<fresh-remote-workspace>/slurm-results/qf_uflra-no-prop-stats-957a5db-z3",
+        "local_artifact_dir": "results/slurm-qf_uflra-no-prop-stats-118786"
+      },
+      "commands": {
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --target primo --jobs 4",
+        "reference_install": "cd <fresh-remote-workspace> && make contrib-z3 && PATH=$PWD/contrib/local/bin:$PATH z3 --version",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-workspace> --local-dir . --target primo --check-only",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_fuzz_gate.sbatch; bash -n scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "submission": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_FUZZ_COUNT=750,PRIMO_FUZZ_SEED_BASE=202608030,PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-no-prop-stats-957a5db-z3 scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "local_validation": "cmake --build build --target primo_qf_lra_solver_tests primo -j4; ./build/primo_qf_lra_solver_tests; make check before creating .venv (tests pass, Python lint skipped because ruff was absent); after creating .venv and installing ruff, make lint exposes the existing scripts/contrib Python lint baseline; make docs; make asan-test; git diff --check; make tidy; python3 /home/user/.codex/skills/solver-efficiency-review/scripts/solver_efficiency_snapshot.py --repo ."
+      },
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "seed_base": 202608030,
+        "array_tasks": 4,
+        "count_per_task": 750,
+        "count": 3000,
+        "timeout_seconds": 5
+      },
+      "summary": {
+        "total": 3000,
+        "pass": 3000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_unusable": 0,
+        "reference_disagreement": 0
+      },
+      "outcome": "Accepted as the SLURM fuzz gate for commit 957a5db. The change adds statistics for existing, missing, lazily created, already-true, false-assigned, clause-emitting, reason-literal, and recheck behavior in guarded NO interface equality propagation; it preserves the existing propagation semantics. make lint was rerun after creating .venv and enabling ruff, which exposed an existing unrelated Python lint baseline across scripts/contrib rather than a regression in this C++/documentation change."
     }
   ]
 }
