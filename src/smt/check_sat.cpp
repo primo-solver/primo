@@ -739,8 +739,18 @@ class Frontend {
   bool saw_check_sat() const { return saw_check_sat_; }
   bool requested_model() const { return requested_model_; }
   bool produce_models() const { return produce_models_; }
-  const std::vector<core::TermId>& declared_real_constants() const {
-    return declared_real_constants_;
+  bool has_declared_real_constants() const { return !declared_real_constant_symbols_.empty(); }
+
+  // Materialises a term per declared Real constant. Only call once the search
+  // is over: mk_constant interns, so this assigns TermIds. Constants that
+  // already occur in an assertion keep the id they were interned with.
+  std::vector<core::TermId> declared_real_constant_terms() {
+    std::vector<core::TermId> model_terms;
+    model_terms.reserve(declared_real_constant_symbols_.size());
+    for (const core::SymbolId symbol : declared_real_constant_symbols_) {
+      model_terms.push_back(terms_.mk_constant(symbol));
+    }
+    return model_terms;
   }
   const core::SymbolTable& symbols() const { return symbols_; }
   const core::TermManager& terms() const { return terms_; }
@@ -832,7 +842,17 @@ class Frontend {
     if (arg_sorts.empty()) {
       const core::SymbolId symbol = symbols_.declare_constant(command.name, result_sort);
       if (result_sort == symbols_.real_sort()) {
-        declared_real_constants_.push_back(terms_.mk_constant(symbol));
+        // Record the symbol, not a term. Interning a term here would allocate
+        // TermIds in *declaration* order rather than first-use order, and
+        // preprocessing's Gaussian elimination pivots in ascending TermId
+        // order (collect_gaussian_elimination_candidates sorts
+        // eligible_variables), so doing it eagerly silently changes which
+        // substitutions preprocessing accepts -- on miplib/vpm2-0 that moved
+        // :preprocessing.solve-eqs.rewrites 390 -> 252 and :lra.pivots
+        // 26890 -> 12537, on every run, whether or not a model was asked for.
+        // Terms are materialised in declared_real_constant_terms(), after
+        // solving, where they cannot perturb the search.
+        declared_real_constant_symbols_.push_back(symbol);
       }
     } else if (result_sort == symbols_.bool_sort()) {
       symbols_.declare_predicate(command.name, std::move(arg_sorts));
@@ -881,7 +901,7 @@ class Frontend {
   std::unordered_map<std::string, Definition> definitions_;
   std::unordered_set<std::string> expanding_definitions_;
   std::vector<core::TermId> side_assertions_;
-  std::vector<core::TermId> declared_real_constants_;
+  std::vector<core::SymbolId> declared_real_constant_symbols_;
   std::optional<std::string> logic_;
   std::size_t auxiliary_counter_ = 0;
   std::size_t boolean_ites_ = 0;
@@ -6178,9 +6198,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
       CheckSatOutcome outcome = finish(CheckSatResult::Sat);
       if (options.produce_model) {
-        if (!frontend.declared_real_constants().empty()) {
-          outcome.model = build_qf_lra_preprocessing_only_model(frontend.terms(),
-                                                                frontend.declared_real_constants(),
+        if (frontend.has_declared_real_constants()) {
+          const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
+          outcome.model = build_qf_lra_preprocessing_only_model(frontend.terms(), model_terms,
                                                                 preprocessing_model_assignments);
         } else {
           outcome.model = build_qf_uf_model(frontend.terms(), preprocessing_model_assignments);
@@ -6239,11 +6259,17 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       throw UnsupportedInput("combined equality and arithmetic (QF_UFLRA) is not supported");
     }
     if (has_arithmetic) {
+      // Empty unless a model was requested. Materialising here would intern the
+      // declared constants before the search, and preprocessing has already
+      // run -- but interning still costs TermIds for constants that appear in
+      // no assertion, so keep the benchmark path allocating nothing.
+      const std::vector<core::TermId> lra_model_terms =
+          solve_options.produce_model ? frontend.declared_real_constant_terms()
+                                      : std::vector<core::TermId>{};
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(
-          solve_qf_lra(frontend.terms(), assertions, frontend.declared_real_constants(),
-                       preprocessing_model_assignments, solve_options, statistics),
-          solve_start);
+      return finish_solve(solve_qf_lra(frontend.terms(), assertions, lra_model_terms,
+                                       preprocessing_model_assignments, solve_options, statistics),
+                          solve_start);
     }
     if (has_equality) {
       const PhaseClock::time_point solve_start = PhaseClock::now();

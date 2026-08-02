@@ -680,6 +680,56 @@ void prints_lra_model_when_requested() {
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
+// Permuting declare-fun lines must not change the search. The two scripts
+// below have identical assertions and differ only in the order the constants
+// are declared, so every solver counter has to match.
+//
+// This is a regression test for a concrete defect. The frontend used to intern
+// a term for each declared Real constant at declare-fun time, which assigned
+// TermIds in *declaration* order rather than first-use order. Preprocessing's
+// Gaussian elimination pivots in ascending TermId order
+// (collect_gaussian_elimination_candidates sorts eligible_variables), so
+// declaration order silently decided which substitutions were accepted: on the
+// chain below, reversing the declarations took solve-eqs from 4 accepted /
+// 12 rewrites to 0 / 0, and on miplib/vpm2-0 it moved :lra.pivots between
+// 26890 and 12537.
+//
+// Note the defect was NOT conditional on models being requested, so comparing
+// a produce-models run against a plain one does not detect it -- both arms
+// move together. Declaration order is the invariant that discriminates.
+void declaration_order_does_not_change_the_search() {
+  const std::string body =
+      "(assert (= a (+ b 1)))"
+      "(assert (= b (+ c 2)))"
+      "(assert (= c (+ d 3)))"
+      "(assert (= d (+ e 4)))"
+      "(assert (< e 10))"
+      "(assert (> a 0))"
+      "(check-sat)";
+  const std::string forward =
+      "(set-logic QF_LRA)"
+      "(declare-fun a () Real)(declare-fun b () Real)(declare-fun c () Real)"
+      "(declare-fun d () Real)(declare-fun e () Real)" +
+      body;
+  const std::string reversed =
+      "(set-logic QF_LRA)"
+      "(declare-fun e () Real)(declare-fun d () Real)(declare-fun c () Real)"
+      "(declare-fun b () Real)(declare-fun a () Real)" +
+      body;
+
+  const auto first = check_sat_smtlib(forward);
+  const auto second = check_sat_smtlib(reversed);
+  assert(first.result == CheckSatResult::Sat);
+  assert(second.result == CheckSatResult::Sat);
+  // Guard the guard: if preprocessing stopped substituting here the test would
+  // pass vacuously with 0 == 0.
+  assert(first.statistics.get(StatKey::SolvedConstantAccepted) > 0);
+  for (const StatKey key : {StatKey::SolvedConstantAccepted, StatKey::SolvedConstantRewrites,
+                            StatKey::LraPivots, StatKey::SatDecisions}) {
+    assert(first.statistics.get(key) == second.statistics.get(key));
+  }
+}
+
 void lra_model_reconstructs_preprocessed_solved_constants() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -1374,6 +1424,7 @@ int main() {
   deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
   prints_lra_model_when_requested();
+  declaration_order_does_not_change_the_search();
   lra_model_reconstructs_preprocessed_solved_constants();
   qf_lra_model_requires_get_model_command();
   get_model_requires_produce_models();
