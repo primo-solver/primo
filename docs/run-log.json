@@ -16238,6 +16238,35 @@
         "Profile 1 (-Mbw 16) produced 7 timeouts against profile 0's 2. The pre-submission local measurement concluded -Mbw 16 is cost-neutral; that holds for the median but the tail is somewhat worse on cluster hardware. Not enough to change the profile, worth not overstating."
       ],
       "outcome": "The ladder works as designed and found no defect. Every QF_LRA generator-fuzz result before this one was obtained at FuzzSMT's stock QF_LRA defaults (max 3 Real variables, coefficients in [1,15]); this is the first covering wide coefficients, larger tableaux, and conjunctive/disjunctive Boolean layers."
+    },
+    {
+      "id": "2026-08-02-no-branch-main-integration-3085a9d",
+      "date": "2026-08-02",
+      "commit": "3085a9d",
+      "branch": "nelson-oppen-closure-methods",
+      "scope": "Integrated current main, including QF_LRA model-production and fuzz-ladder work, into the existing Nelson-Oppen branch before continuing model-guided QF_UFLRA work.",
+      "evidence_status": "current",
+      "commands": {
+        "merge": "git switch nelson-oppen-closure-methods && git merge main",
+        "run_log_json": "python3 -m json.tool docs/run-log.json >/tmp/runlog-merged-no.json",
+        "python_compile": "python3 -m py_compile scripts/validate_model.py scripts/validate_qfuf_models_with_dolmen.py scripts/build_fuzz_seed_corpus.py scripts/fuzz_external.py",
+        "sbatch_validate": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_lra_model_fuzz_gate.sbatch scripts/slurm_qf_lra_sandbox_model_check.sbatch scripts/slurm_qfuf_fuzz_gate.sbatch scripts/slurm_qf_lra_row_propagation_sweep.sbatch",
+        "sbatch_bash_n": "bash -n scripts/slurm_qf_lra_model_fuzz_gate.sbatch && bash -n scripts/slurm_qf_lra_sandbox_model_check.sbatch && bash -n scripts/slurm_qfuf_fuzz_gate.sbatch && bash -n scripts/slurm_qf_lra_row_propagation_sweep.sbatch",
+        "check": "make check",
+        "docs": "make docs",
+        "lint": "make lint",
+        "asan": "make asan-test"
+      },
+      "result": {
+        "merge_conflicts": "Resolved docs/run-log.json by preserving both histories; resolved NO/main code conflicts by keeping the NO QF_UFLRA path and restoring main's pure-QF_LRA uninterpreted-function rejection.",
+        "tests": "make check passed 13/13 tests after removing a duplicated parser-test function introduced by the merge.",
+        "docs": "make docs succeeded with 6 MyST missing-anchor warnings in QF_LRA docs inherited from the merged main side.",
+        "run_log_entries": "Merged run-log contains 288 unique entries.",
+        "sbatch": "Affected sbatch files passed local validator and bash -n.",
+        "lint": "make lint passed; ruff unavailable so Python lint was skipped after py_compile.",
+        "asan": "make asan-test passed 13/13 tests with AddressSanitizer."
+      },
+      "limitations": "This is integration evidence, not a fresh post-merge SLURM fuzz campaign for the QF_UFLRA model-guided path. A fresh fuzz/reference gate remains required before merge-ready claims."
     }
   ]
 }
