@@ -70,7 +70,7 @@ recurring.
 | TR Section 3.2.3 -- assertion procedures | `LraTableau::assert_upper` / `assert_lower` | `lra_tableau.cpp` |
 | Section 3.1 -- infinitesimal delta for strict inequalities | `DeltaRational` (`q + k*delta`, lexicographically ordered); no floating point anywhere | `lra_tableau.hpp` |
 | Section 3.2 -- conflict explanation from row coefficients and the stuck variables' binding bounds | `LraTableau::build_conflict` | `lra_tableau.cpp` |
-| Section 4 -- backtracking | `push()` / `pop(checkpoint)`, trail-based (one `TrailEntry` per bound, assignment, pivot and SOI f-row change, replayed backwards) | `lra_tableau.{hpp,cpp}` |
+| TR Section 3.2.4 -- backtracking | `push()` / `pop(checkpoint)`, trailing **bounds only** as the report specifies; `PivotingRule::Soi` additionally trails assignments, pivots and its f-row | `lra_tableau.{hpp,cpp}` |
 | Section 4 -- precomputing the tableau once per problem | `PreparedLraTheory` (mirrors `PreparedFlatTheory` for EUF) | `smt/check_sat.cpp` |
 | Section 4.2 -- "deriving satisfied atoms" | `OnlineLraPropagator::scan_for_propagations`, over the atoms sharing a bound variable | `smt/check_sat.cpp` |
 | Section 4.2 -- deriving *new* bounds from equations plus bounds (the slides' `x = y - z`, `y <= 2`, `z >= 3` gives `x <= -1`, explained by `y <= 2, z >= 3`) | `compute_implied_bound` / `compute_implied_child_bound`, **opt-in and off by default** -- `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | `smt/check_sat.cpp` |
@@ -109,13 +109,47 @@ before it, so Section 4.2 propagation is unaffected. See
   non-Bland prefix followed by a Bland suffix is still covered by the paper's
   own argument. The threshold (`4 * vars_.size() + 64`) is a heuristic, not a
   derived bound. `--lra-pivoting-rule bland` restores the paper's choice.
-- **Pivots are undone on `pop()`.** The paper notes that which basic/non-basic
-  partition is current is an internal representation choice, not something
-  tied to search depth. Primo still has to undo a pivot's row rewrite,
-  because leaving it in place while reverting the bounds and assignments it
-  was performed under would break the invariant that every basic variable's
-  row equation holds for the current assignment. See `LraTableau`'s class
-  comment.
+- **Backtracking now follows the paper** ([heuristics-note item H9](../qf-lra-heuristics.md#h9), 2026-07-31, commit `ec6244e`).
+  TR Section 3.2.4: "We just need to save the value of `u_i` (`l_i`) on a
+  stack before it is updated... Backtracking does not require to save the
+  successive betas on a stack... Since no pivoting or other expensive
+  operation is used, backtracking is very cheap." Primo used to trail and
+  undo bounds, assignments *and* every pivot's row rewrite, justified by an
+  argument that was circular -- reverting the assignments is what forced
+  reverting the pivots. It now trails bounds only. The soundness argument
+  lives on `LraTableau`'s class comment.
+
+  *Why the report is so emphatic about this.* TR Sections 2.2-2.3 are an
+  argument against the incremental-Simplex solvers that preceded it --
+  including SRI's own ICS and Simplics -- whose backtracking removes rows and
+  "otherwise, a pivoting operation is applied first". Primo did not add and
+  remove rows, but undoing pivots put it in the same family for the same
+  reason. The scheme Primo removed is **Nelson's**: Rueß & Shankar
+  (CSL-SRI-04-01, reference [15]) record that in Nelson's method "retraction
+  of assertions is carried out by recording and undoing pivoting steps". See
+  [](lra-related-work.md).
+
+  **`PivotingRule::Soi` keeps the old scheme.** Its objective row is a sum
+  over the *currently violated* rows, not a linear combination of `A`, so
+  neither half of the argument covers it.
+
+  *Result, jobs 118043-118046:* on the 595-file scrambled competition set at
+  60s, **378 -> 399 solved** and PAR2 28691 -> 26661; on the 237-file
+  stratified sample, 192 -> 197. Zero disagreements, zero wrong answers.
+  The mechanism is that not undoing pivots lets the search keep the repair
+  work it already paid for: pivot counts fall 2.3-5.3x on the profiled
+  instances, and `rebuild_occurs_in_index` leaves the profile entirely
+  because nothing structural changes on a pop.
+
+  *It is not a free win, unlike item H8.* Churn is two-directional
+  (+32/-11 here, +7/-2 on the stratified sample), and among the 145
+  commonly-solved files over a second, **62 are more than 10% slower and 64
+  more than 10% faster** -- median 1.01x, p25 0.63, p75 1.30, tails from
+  0.10x to 24.9x. It nets +21 because the wins land on instances near the
+  timeout. That variance is inherent rather than a defect: keeping the basis
+  across a backtrack keeps one that suited the *previous* subproblem, which
+  is sometimes a warm start and sometimes worse than starting fresh.
+
 - **Real equality is lowered, not handled in the tableau.** `t1 = t2` becomes
   `(t1 <= t2) AND (t2 <= t1)` -- sound because Real is a total order -- so
   `NOT(t1 = t2)` reduces to ordinary Boolean structure that
@@ -129,7 +163,18 @@ before it, so Section 4.2 propagation is unaffected. See
   not at parse time, so solve-eqs and the other `Equality`-aware passes still
   see genuine Real equalities. See [](../preprocessing.md).
 - **`pop()` rebuilds the `occurs_in_` reverse index** rather than diffing it
-  incrementally -- once per `pop()` call, not once per pivot undone.
+  incrementally -- once per `pop()` call, not once per pivot undone. An
+  incremental version was built and measured on 2026-07-31 and is *slower*
+  (1.4-1.8x); see [](../qf-lra-heuristics.md) section 6.2b. Note this index
+  exists only to serve the explicit tableau, so it would disappear entirely
+  under the paper's backtracking scheme above.
+- **No model extraction.** TR Section 3.3's second half converts a satisfying
+  β' over the delta-rationals into a concrete rational assignment, by
+  computing `delta_0 = min{(d_i - c_i)/(k_i - h_i) | c_i < d_i, k_i > h_i}`
+  and evaluating each variable at it. Primo implements none of this and
+  handles neither `get-model` nor `get-value`, so it answers sat/unsat
+  without ever producing the witness. Not a deviation in the algorithm, but
+  a missing capability that this paper does specify.
 
 ## Extensions beyond the paper
 
@@ -188,14 +233,30 @@ it has one outside this paper, is in [](lra-related-work.md).
   significantly" and call the resulting speedup substantial. Primo does not
   do this. Note what it is *not*: `--gaussian-elimination` here solves
   asserted linear **equality systems** feeding solve-eqs, a different pass.
-  - *Probably already covered in effect, which is why it is not a lead.*
-    Item H1a removed the trivial `s = c*x` slack rows that were 36-95% of
-    the tableau on the lagging families, and the 2026-07-29 measurement has
-    Primo's prepared tableau dimensions matching z3's within ~5% on every
-    profiled gap instance. A pass that shrinks the matrix cannot be worth
-    much when the matrix is already the same size as the reference's. Worth
-    an hour to confirm by counting variables absent from all atoms before
-    anyone spends longer.
+  - **Measured 2026-07-31, and it is not a lead.** Throwaway instrumentation
+    (added, measured, reverted) counted prepared-tableau variables bounded by
+    no atom -- exactly the paper's criterion:
+
+    | instance | variables | free (in no atom) | share | rows holding >=1 free var |
+    |---|---|---|---|---|
+    | `scrambled339450` | 57,658 | 2,503 | 4.3% | 43,140 |
+    | `scrambled312090` | 26,041 | 119 | 0.46% | 17,812 |
+    | `scrambled228965` | 5,694 | 28 | 0.5% | 2,999 |
+
+    So the pass would remove **0.5-4.3%** of variables. Worse, those few are
+    spread across nearly every row -- 91% of rows on `scrambled339450` hold
+    at least one -- and the elimination is *Gaussian*, so substituting them
+    out rewrites those rows and generates fill-in. That is the mechanism
+    section 6.2 identifies as the bottleneck in the first place. A pass that
+    shrinks the matrix by 4% while densifying 91% of its rows is not a
+    trade this band can afford.
+  - Sanity check on the measurement: every free variable found was
+    *non-basic* (basic count zero on all three). That is the expected shape
+    -- a slack exists only because some polynomial had an atom, so slacks are
+    always bounded, and the free variables are exactly the structural ones
+    that never received a direct bound.
+  - The earlier inference from H1a and the ~5% dimension match against z3
+    pointed the same way; this replaces it with a direct count.
   - The paper's name for a variable with no bounds at all is a **free
     variable** (`l_j = -inf`, `u_j = +inf`); that predicate exists here as
     `LraTableau::is_unbounded`, used for H7's entering-candidate preference.

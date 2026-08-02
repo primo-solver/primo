@@ -26,6 +26,10 @@ Freely accessible (fetched and read the actual PDF):
 - Nalbach et al., "FMplex" (arXiv 2310.00995)
 - Bromberger/Weidenbach, "Computing a Complete Basis for Equalities..." (SMT@IJCAR 2016, MPI repository)
 - Bixby, "Solving Real-World Linear Programs" (Operations Research 2002, gwern.net mirror)
+- Rueß & Shankar, "Solving Linear Arithmetic Constraints" (CSL-SRI-04-01,
+  2004) -- the SRI technical-report URLs on Shankar's page are dead `ftp://`
+  links and no open mirror was found; copy supplied by the user, read
+  2026-08-01
 - "Local Search For SMT On Linear and Multilinear Real Arithmetic" (arXiv 2303.06676)
 - Fast Cube Tests for LIA / New Techniques for Linear Arithmetic (MPI-hosted, same publisher pattern as the equalities paper above — not individually re-verified)
 
@@ -302,6 +306,68 @@ problem whose bounds are all known. In DPLL(T) a variable becomes fixed
 *during* search, when two bounds asserted at some decision level happen to
 coincide, and must be restored on backtracking. Paper not read in full; cited
 for the technique's provenance, not for a result.
+
+**Harald Rueß, Natarajan Shankar. "Solving Linear Arithmetic Constraints."
+CSL Technical Report CSL-SRI-04-01, SRI International, 15 January 2004.**
+*(Read 2026-08-01. This entry previously characterised the paper from how
+Dutertre & de Moura cite it; the corrections below are what reading it
+changed.)*
+
+It is reference [15] of the Dutertre & de Moura technical report, cited
+three times: for the incremental-Simplex family generally ("Tools based on
+this approach include our own tools, Yices and Simplics"), for *zero
+variables* in explanations, and for the *zero-detection procedure* used on
+disequalities. It extends **Nelson's** simplex method with a better
+treatment of restricted (non-negative slack) versus unrestricted variables,
+a way to add equalities *and disequalities* to a tableau, optimised equality
+propagation, and proof/model generation.
+
+**Correction: the backtracking design Primo used to have is Nelson's, not
+this paper's.** This entry previously said Primo had "independently
+re-invented" Rueß & Shankar's design. That overreached. Their related-work
+section attributes it elsewhere: of Nelson's method, "**Retraction of
+assertions is carried out by recording and undoing pivoting steps**" -- which
+is precisely what Primo did until item [H9](../qf-lra-heuristics.md#h9). They
+also note Cassowary "introduces a simple and elegant mechanism for retracting
+assertions". So the lineage of the scheme Primo removed runs to Nelson, and
+this paper is where that characterisation is written down rather than where
+the design originates.
+
+**What the zero test actually is (Chapter 6, "Detecting and Propagating
+Implicit Equalities").** A *zero-tableau* `Z` collects the slack variables
+explicitly equal to 0. A variable is *implicitly* equal to 0 when the
+constraints force it there without any equality having been asserted, and the
+chapter's contribution is finding those "without actually maximizing each
+variable" -- via a stratification order on the non-zero variables and the
+iterated `zbnd*` construction. Detecting implicit equalities is what makes
+two things possible: deciding a disequality `a != 0` (you must know whether
+`a = 0` is implied), and **propagating derived equalities to other decision
+procedures**, which their introduction lists as a requirement: "Equality
+information derived by the inequality solver must be propagated to other
+inference procedures."
+
+**What Primo does instead, and where that stops working.** Primo implements
+none of this, deliberately. Real equalities are lowered to two inequalities
+in preprocessing (`lower_real_equalities`), so a disequality becomes ordinary
+Boolean structure and CDCL performs the case split -- no zero test needed.
+`assert_lra_atom_bound` keeps a guard that throws on a negated `Eq` atom, as
+a backstop for one arriving unlowered.
+
+That works because **QF_LRA is a single theory**. It stops working for
+QF_UFLRA, which `check_sat.cpp` currently rejects outright ("combined
+equality and arithmetic (QF_UFLRA) is not supported ... would need real
+Nelson-Oppen"). A Nelson-Oppen combination has to exchange *implied*
+equalities between the arithmetic and equality solvers, and Primo has no
+mechanism for deriving them -- there is no equality propagation out of
+`LraTableau` at all. **Chapter 6 is the algorithm that gap needs**, so this
+paper is worth reading against the Nelson-Oppen work rather than the QF_LRA
+work.
+
+**One aside relevant to [H3](../qf-lra-heuristics.md#h3).** On Hentenryck &
+Graf's SF2 normal form they observe that "lexicographic pivoting is an
+alternative to Bland's rule for avoiding pivoting cycles, but can be more
+expensive, particularly in situations where implicit equalities are rare" --
+a third anti-cycling option beside the Bland fallback Primo uses.
 
 **General engineering (presolve, scaling, degeneracy, refactorization).**
 Robert Bixby, "Solving Real-World Linear Programs: A Decade and More of

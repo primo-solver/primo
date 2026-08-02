@@ -1,15 +1,33 @@
 # QF_LRA Speedup Heuristics: Design Note
 
-Written 2026-07-27 as a design note; **H2, H1a, H1b, H3 and H8 are
-implemented and promoted to default; H7 is implemented but NOT promoted
-(opt-in, see its falsifier outcome); H4, H5 and H6 remain designs** (each
-item below carries its own status). H8 came later than the rest and from a
-different route -- a flat profile rather than a design argument -- so it is
-written up in section 6.2b with the profile that found it. It picks up where
-the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s Milestone
-roadmap) left off, and is grounded in a fresh local
+Written 2026-07-27 as a design note and extended through 2026-07-31. It picks
+up where the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s
+Milestone roadmap) left off, and is grounded in a fresh local
 profiling/instrumentation pass run at commit `35878c4` -- not in the older
 3-file evidence items 0-6 were designed against.
+
+## Items at a glance
+
+Every item, its status, and where it is defined. Items are numbered in the
+order they were proposed, not the order they were implemented.
+
+| item | what | status |
+|---|---|---|
+| [H1](#h1) | Direct bounds for single-variable atoms; scale-canonical polynomial keys | implemented, default |
+| [H2](#h2) | Small-rational fast path in `util::Rational` | implemented, default |
+| [H3](#h3) | Fill-in-aware (Markowitz-style) entering-variable selection | implemented, default |
+| [H4](#h4) | Batched bound assertion (deferred `update()`) | design only |
+| [H5](#h5) | Model-based phase selection | design only |
+| [H6](#h6) | A difference-logic fast path | design only |
+| [H7](#h7) | Fixed-variable elimination (equality slacks) | implemented, **opt-in** -- did not clear its bar |
+| [H8](#h8) | Merge instead of sort in `pivot`'s affected-row loop | implemented, default; **zero regressions** |
+| [H9](#h9) | Bounds-only backtracking (the paper's own scheme) | implemented, default except SOI; largest single gain |
+| [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 |
+
+Where the remaining gap is, and what has been ruled out, is [](#sec-6). Its
+ranked list of open directions is [](#sec-6-5): [D2](#d2) and [D4](#d4)
+remain open, [D1](#d1) and [D3](#d3) were measured and rejected. The largest
+known engineering item is in [](#sec-6-2c).
 
 **Where things stand on the 237-file promotion bar** (10s timeout, z3 167 and
 cvc5 150 unchanged throughout):
@@ -186,6 +204,7 @@ Two facts follow directly, and they drive most of this note:
 Priority = (measured share of the bottleneck) × (breadth of families hit) ÷
 (implementation and correctness risk).
 
+(h1)=
 ### H1 -- Direct bounds for single-variable atoms (+ scale-canonical polynomials)
 
 **Status: both halves implemented, unconditional and promoted.** H1a: 124 ->
@@ -281,6 +300,7 @@ row count was never its cost. What remains there is a 1,394-row LP with a
 H3's fill-in problem. That sharpens H3 from "helps Class B" to "is the only
 remaining lever for Class A", and it is the concrete reason to do H3 next.
 
+(h2)=
 ### H2 -- Small-rational fast path in `util::Rational`
 
 **Status: implemented, unconditional, 2026-07-28.** See
@@ -370,6 +390,7 @@ coefficients genuinely outgrow 64 bits: 1.22M promotions, so it keeps paying
 GMP's cost. That is also the first hard evidence for which instances the
 width ablation could still move.
 
+(h3)=
 ### H3 -- Fill-in-aware (Markowitz-style) entering-variable selection
 
 **Prior art, checked 2026-07-30 (after implementation).** This rule is the field's standard rather than a technique transferred from one paper. King's thesis (NYU 2014) Section 2.2.12 records minimum-column-length entering selection with a Bland fallback past a finite cap as what MathSAT, OpenSMT, Yices, Yices 2, z3 and CVC4 all do -- i.e. H3 and its anti-cycling story exactly. The Monniaux citation below remains an accurate source for the sparsity criterion, but H3 should not be read as novel. The *leaving*-side knob is the part with no counterpart there: King records Griggio's most-violated rule (CVC4, MathSAT5), which is our Dantzig choice, not our shortest-row one. See [](papers/lra-related-work.md).
@@ -474,6 +495,7 @@ The lesson is the one item 8 taught, applied correctly: take the broad
 sample's verdict, and neither tune a losing heuristic nor discard one on a
 single instance.
 
+(h7)=
 ### H7 -- Fixed-variable elimination (equality slacks)
 
 **Status: designed 2026-07-29, implemented 2026-07-30, and NOT promoted --
@@ -483,9 +505,11 @@ deleted outright. See the falsifier outcome at the end of this item; that is
 the part worth reading. This is also the first item in this note whose
 evidence comes from a set Primo was never tuned against.
 
-**Where it comes from.** On the 595-file scrambled QF_LRA competition set at a
-60s timeout, Primo solves 373 against z3's 429 and cvc5's 351 -- ahead of cvc5,
-behind z3, with zero cross-solver disagreements. The whole deficit sits in one
+**Where it comes from** *(figures as of 2026-07-29, when H7 was designed --
+[H8](#h8) and [H9](#h9) have since taken this to 399; see [](arithmetic.md)
+for the current standing)*. On the 595-file scrambled QF_LRA competition set
+at a 60s timeout, Primo solved 373 against z3's 429 and cvc5's 351 -- ahead
+of cvc5, behind z3, with zero cross-solver disagreements. The whole deficit sits in one
 size band:
 
 | file size | n | primo | z3 | cvc5 |
@@ -668,6 +692,141 @@ z3's other counter, 855-68,937 per instance) and the possibility that the
 mid-range cost here is the elimination pivots' own price on tableaus where
 fixed rows were never the bottleneck. Recorded rather than chased.
 
+(h8)=
+### H8 -- Merge instead of sort in `pivot`'s affected-row loop
+
+**Status: implemented, unconditional, promoted 2026-07-31.** Unlike H1-H7
+this came from a flat profile rather than a design argument, so its
+measurement and the profile that found it are written up in [](#sec-6-2b);
+this entry is the definition the rest of the docs refer to.
+
+**What it is.** `pivot()` combines each affected row with the scaled
+entering row. It used to concatenate the two into a scratch buffer and
+`std::sort` the result, once per affected row per pivot. Both halves are
+already ordered by variable id, so this is a *merge*. The change makes that
+ordering an invariant on `Row` -- strictly ascending, never a zero
+coefficient -- which `add_row` establishes by sorting and `pivot` preserves
+by splicing `basic_var` into `new_entering_row` at its ordered position.
+Two smaller wins follow: the zero check is needed only in the equal-var-id
+branch, and the affected row is taken by reference and *moved* into the
+trail rather than copied twice.
+
+**Result.** Scrambled competition set (595 files, 60s) 369 -> 378 solved with
+churn **+9/-0**; stratified sample 189 -> 192, +3/-0; mid-band gap 37 -> 38,
++1/-0. Median paired speedup 1.16-1.23x with a tight p25-p75 (1.10-1.33), so
+a uniform constant factor rather than a few instances carrying an average.
+**Zero regressions on any bar**, which no other item here has managed.
+
+**Why it matters beyond its own number.** The `Row` ordering invariant it
+established is what later made bounds-only backtracking's merge cheap, and
+it is the precondition for the delta-maintained `occurs_in_` that
+[](#sec-6-2c) identifies as the largest item left.
+
+(h9)=
+### H9 -- Bounds-only backtracking
+
+**Status: implemented, unconditional except under SOI, promoted 2026-07-31.**
+Strictly this is not a heuristic but a return to the paper's own design,
+found by re-reading the technical report line by line against the code; it
+is numbered here so the rest of the docs have something to point at. Full
+write-up in [](papers/fast-linear-arithmetic-dpllt.md)'s deviations section.
+
+**What it is.** `pop()` restores bounds and nothing else. It used to restore
+bounds, assignments *and* every pivot's row rewrite. The paper (technical
+report SRI-CSL-06-01 Section 3.2.4) trails only bounds: the assignment
+satisfies `Ax = 0` independently of the basis, and `pop()` only ever
+*relaxes* bounds, so neither the assignment nor the basis needs restoring.
+Primo's contrary justification was circular -- reverting the assignments is
+what forced reverting the pivots. `PivotingRule::Soi` keeps the old scheme,
+since its objective row is a sum over the currently-violated rows rather
+than a linear combination of `A`.
+
+**Result.** Scrambled competition set **378 -> 399 solved**, PAR2 28691 ->
+26661; stratified 192 -> 197. The mechanism is that not undoing pivots lets
+the search keep the repair work it already paid for: pivot counts fall
+2.3-5.3x on the profiled instances.
+
+**It is not regression-free, unlike [](#h8).** Churn is +32/-11, and among
+the 145 commonly-solved files over a second, 62 are more than 10% *slower*
+against 64 more than 10% faster -- median 1.01x, tails 0.10x to 24.9x. It
+nets +21 because the wins land on instances near the timeout. The variance
+is inherent: keeping the basis across a backtrack keeps one that suited the
+*previous* subproblem.
+
+(h10)=
+### H10 -- Delta-maintained `occurs_in_`
+
+**Status: implemented, unconditional, promoted 2026-08-01.** The item
+[](#sec-6-2c) identified as the largest remaining engineering target, and
+the last of the three that started from a profile rather than a design.
+
+**The reasoning, which is the whole of it.** `occurs_in_[v]` records *which
+basic rows mention `v`* -- a set of row identities, with **no coefficient
+information whatsoever**. `pivot()`'s affected-row loop used to remove
+`other_basic` from every term's list up front and then re-add it for every
+term of the rebuilt row. For any variable present both before and after,
+that round trip removes an entry and puts back the identical entry. It is a
+no-op performed 40.1 million times, scanning 37.6 billion vector elements
+(see [](#sec-6-2c) for the measurement).
+
+Enumerate what a pivot actually does to one affected row, using the fact
+that both inputs are ordered by var id ([H8](#h8)'s invariant), so the merge
+already classifies every term into exactly one of four cases:
+
+| case | row membership | `occurs_in_` |
+|---|---|---|
+| in `other_row` only | stays, coefficient unchanged | **unchanged** |
+| in both, sum non-zero | stays, coefficient changed | **unchanged** -- no coefficients are recorded |
+| in both, sum cancels to zero | leaves the row | **remove** |
+| in `new_entering_row` only | newly enters the row | **add** (`push_back`, no scan) |
+| `entering_var` | leaves the row | **nothing** -- see below |
+
+So the only scan-bearing update left is cancellation, which is rare.
+`entering_var` needs no per-row removal because `pivot()` clears
+`occurs_in_[entering_var]` wholesale when it becomes basic -- it is basic
+afterwards and so belongs to no row's term list at all.
+
+**Result on the bars** (jobs 118218/118219, base `4f9b741` verified by
+content as well as banner): scrambled competition set **398 -> 439 solved**,
+PAR2 26723 -> 22207; stratified sample 197 -> 202. **Churn +41/-0 and
++5/-0** -- zero regressions on either, and only 2 of the 173
+commonly-solved files over a second are more than 10% slower. Median paired
+speedup 1.51x (p25 1.15, p75 2.26, max 8.0x).
+
+**439 against z3's 429 on the same 595 files**, from 56 behind on
+2026-07-29. Absolute counts drift a few files between jobs -- this run's own
+baseline solved 398 where [H9](#h9)'s recorded 399 -- so the within-job
++41/-0 is the trustworthy figure and the z3 comparison is "ahead, by
+roughly ten".
+
+**Local measurement.** Paired interleaved A/B, two reps each, answers identical:
+`scrambled228965` 4.85x/4.50x, `scrambled259571` 2.85x/3.00x,
+`scrambled365036` 2.23x/2.35x, `scrambled339450` 1.15x/1.22x. gprof on
+`scrambled228965` shows `pivot`'s self time falling **10.04s -> 1.26s** at
+an identical 3,460 calls -- 90.7% of the profile down to 49.6% -- and what
+remains is arithmetic (`Rational::operator*` 6.7%, `update` 4.3%,
+`operator<` 3.9%) rather than bookkeeping.
+
+**Correctness.** The risk here is not a crash but a silently wrong index:
+`update()` would skip a dependent row, or sparse pricing misjudge a column,
+and the answer would be wrong much later and elsewhere.
+`occurs_in_index_matches_full_rebuild()` compares the maintained index
+against a rebuild, and two tests call it after *every* pivot across all four
+pivoting rules plus a dedicated cancellation case. Those tests were written
+before the working implementation and caught the first attempt (below).
+
+*A note on the first attempt, since the docs briefly recorded the wrong
+diagnosis.* It was reverted on 2026-07-31 after producing duplicate
+`occurs_in_` entries, and the failure was written up as an unlocated defect
+"surviving a cancellation-adjacent path". The real cause was duller: the
+patch that was supposed to rewrite the cancellation branch **silently did
+not apply** -- a multi-line pattern that no longer matched after
+clang-format reflowed it -- so that branch kept the old round-trip
+behaviour, adding entries the new code no longer removed. The algorithm was
+right the first time; the edit was not. The lesson is about verifying that
+an edit landed, not about the tableau.
+
+(h4)=
 ### H4 -- Batched bound assertion (deferred `update()`)
 
 **Targets:** Class C (DTP-Scheduling, tta_startup, TM/sc/uart).
@@ -699,6 +858,7 @@ keep clearing the pending queue the same way item 6's fix had to clear
 here. Same-slack/row-based propagation read *bounds*, not assignments, so
 they are unaffected (item 6 already verified that property).
 
+(h5)=
 ### H5 -- Model-based phase selection (replacing item 8's variable override)
 
 **Targets:** the TM/sc/uart cluster, without item 8's regressions
@@ -741,6 +901,7 @@ worse search order. Keep `--lra-theory-decisions` as-is (it stays a useful
 lever for its file shape) and add this as a separate flag rather than
 replacing it.
 
+(h6)=
 ### H6 -- A difference-logic fast path
 
 **Targets:** DTP-Scheduling (4 gap files, avg row exactly 2.00, max row 2 --
@@ -888,6 +1049,7 @@ Local-only evidence that remains local, and is labelled as such where it
 appears: the paired A/B timings, the tableau-shape row counts, and the
 32-bit-vs-64-bit width ablation.
 
+(sec-6)=
 ## 6. Where the gap is after H7 (2026-07-30)
 
 Written immediately after the H7 result, while the measurements are fresh.
@@ -908,6 +1070,7 @@ Two things sharpen that:
   likely recover a large share of them for Primo -- which is worth
   remembering before treating this as an algorithmic wall.
 
+(sec-6-1a)=
 ### 6.1a It is a constant factor, not a wall -- and the factor is small
 
 Job 117631 re-ran exactly those 59 files at a 600s budget (two Primo
@@ -983,6 +1146,7 @@ Note also `scrambled312090`'s search shape: **0 conflicts, 7,555 decisions**.
 The SAT solver is not thrashing and learns nothing; essentially all of the
 time is inside the tableau.
 
+(sec-6-2a)=
 ### 6.2a A flat profile of the band, at last (2026-07-31)
 
 Everything in 6.2 above is derived from **counters** (`:lra.pivot-row-updates`,
@@ -1031,7 +1195,12 @@ reached from the other side.
 D-list, and worth noting because between them they are ~6-19% against D2's
 ~14% literature ceiling:
 
-- **`rebuild_occurs_in_index()` is consistently second**, 4.4-7.5%. Its call
+- **`rebuild_occurs_in_index()` is consistently second**, 4.4-7.5%.
+  *(Superseded 2026-07-31: this call no longer happens at all on the default
+  path. Bounds-only backtracking means nothing structural changes on a pop,
+  so there is no index to rebuild -- see [](arithmetic.md)'s roadmap entry.
+  The analysis below stands as the record of how the cost was characterised
+  and why the incremental fix was the wrong answer.)* Its call
   count is already fixed -- the 2026-07-27 item-0 follow-up cut it from
   once-per-undone-pivot to once-per-`pop()`, a 97% reduction, and the counts
   here (522 calls / 526 pops, 3,870 / 3,874) confirm that holds. What remains
@@ -1056,6 +1225,7 @@ default `Sparse` rule -- `soi_select()` is gated behind
 not evidence that SOI runs by default. Checked, because a hot SOI symbol in a
 non-SOI run would otherwise read as a real bug.
 
+(sec-6-2b)=
 ### 6.2b Acting on the profile: H8, and one rejection (2026-07-31)
 
 Both leads 6.2a surfaced were built and measured. One is now the default; the
@@ -1144,12 +1314,69 @@ list scans. **A full rebuild of a cheap index beats a targeted patch of an
 expensive one**, which is exactly the tradeoff `rebuild_violated_vars()`'s
 own comment already claimed for the analogous case.
 
-The remaining 8% therefore stands, and the only fix that would actually
-address it is a different representation for `occurs_in_` (a CSR-style flat
+**Postscript, 2026-07-31.** The remaining 8% did not stand for long, and
+neither fix above was the answer: adopting the paper's bounds-only
+backtracking removed the rebuild entirely, because a pop that changes no
+row structure has no index to repair. The right lesson is that both
+attempts here -- full rebuild and incremental patch -- were optimising a
+data structure that only needed maintaining because of a divergence from
+the paper elsewhere. Were it still needed, the only fix would be a
+different representation for `occurs_in_` (a CSR-style flat
 array, so the transpose writes into one contiguous block rather than 57k
 separate ones). That touches 29 call sites and is not worth it for 8% on its
 own -- but it is the same representation change direction D4 would force
 anyway, so it should be considered there rather than separately.
+
+(sec-6-2c)=
+### 6.2c Where the time goes now (callgrind, 2026-07-31)
+
+After H8 and bounds-only backtracking, re-profiled with **callgrind** --
+which, unlike gprof, sees libc and GMP. On `scrambled228965`:
+
+| share of instructions | attributed to |
+|---|---|
+| 70.4% | `stl_algobase.h` : `LraTableau::pivot` |
+| 11.1% | `stl_iterator.h` : `LraTableau::pivot` |
+| 9.8% | `predefined_ops.h` : `LraTableau::pivot` |
+| ~1% each | `Rational::operator*`, `from_int128_reduced`, `operator+` |
+| 0.22% | libc `_int_malloc` |
+
+**~91% of all instructions are inside `pivot`, and almost none of it is
+arithmetic.** The signature -- an STL algorithm, its iterator, and a
+predicate wrapper -- is one linear-scan algorithm, and the only such call in
+that loop is the `std::remove` that drops `other_basic` from
+`occurs_in_[var]`. Counted directly rather than inferred, since symbol
+attribution has misled here before (see 6.2a's COMDAT-folding note):
+
+| instance | `std::remove` calls | elements scanned | average scan |
+|---|---|---|---|
+| `scrambled228965` | 40.1M | **37.6 billion** | 938 |
+| `scrambled339450` | 51.5M | **25.9 billion** | 504 |
+
+262.5 billion instructions total on `scrambled228965`, so those scans are
+essentially the whole program.
+
+**Most of that work is immediately undone.** The loop removes `other_basic`
+from every term's occurrence list, then re-adds it for every term of the
+rebuilt row -- and after H8's merge, most terms are in both. Since both rows
+are ordered by var id (the `Row` invariant), the true delta is computable in
+one linear pass: a term carried over unchanged needs *no* occurrence update
+at all, and only terms that genuinely enter the row (from the entering row)
+or leave it (cancelled to zero, or `entering_var` itself) need one.
+
+That is [H10](#h10), implemented 2026-08-01: 1.15-4.85x, with `pivot`'s own
+profile share falling from 90.7% to 49.6%.
+
+#### The 2026-07-31 attempt, and why it failed
+
+An earlier implementation of the above was reverted the same day after
+corrupting `occurs_in_`. The cause is recorded under [H10](#h10): the patch
+meant to rewrite the cancellation branch silently did not apply, so that
+branch kept adding entries the rest of the new code no longer removed. The
+algorithm was correct; the edit had not landed. The guard that caught it --
+`occurs_in_index_matches_full_rebuild()` plus two tests that call it after
+every pivot -- was written during that attempt and is why the second one
+could be trusted.
 
 ### 6.3 What this rules out
 
@@ -1189,6 +1416,7 @@ front.** Any Primo version of this is therefore a search-time mechanism, not
 a preprocessing pass -- which makes it materially bigger than H7 was, and
 that should be priced in before committing to it.
 
+(sec-6-5)=
 ### 6.5 Candidate directions -- ranked, with status
 
 The open list for this band. **Nothing still open here is implemented** --
@@ -1215,6 +1443,8 @@ tested D3's cheap design too, and D3's expensive design was already rejected
 on its own census evidence. One residual piece of D3 (a trigger D1's code
 lacks) is recorded under D3 below rather than left implicit. D1's rejection
 also takes D4's "conflicts with D1" caveat with it.
+
+(d1)=
 
 **D1. Evaluate the row-based bound propagation Primo already has.**
 **Evaluated and rejected 2026-07-31 -- the outcome subsection below is the
@@ -1347,6 +1577,8 @@ configuration finished within the budget. This gate ran the **Release** build
 -- the remote ASAN toolchain is still broken, so it carries no sanitizer
 coverage.
 
+(d2)=
+
 **D2. Floating-point-guided basis selection** (Monniaux, CAV 2009): run a
 floating-point LP, then force-pivot the exact tableau to the basis it found.
 Sound, because the numeric result only chooses a starting configuration and is
@@ -1425,6 +1657,8 @@ fraction of each gap instance's bounds are asserted at decision level 0 --
 that decides preprocessing-phase versus KBT-style fallback, and it is a
 counter, not an implementation. (2) Before either, weigh Risk C: the honest
 reading is that the whole line is worth ~14% where this band needs 200-500%.
+
+(d3)=
 
 **D3. Dynamic offset-equality detection.** Investigated 2026-07-30 in two
 steps, both before writing any implementation. The result is that the
@@ -1519,6 +1753,8 @@ combination), and the ceiling it establishes -- even with the mechanism off,
 z3 solves all four profiled instances in under 63s where Primo needs ~600s.
 **Offset equalities were never going to close this band**, which is now
 measured from both ends rather than argued from one.
+
+(d4)=
 
 **D4. Revised simplex with an LU-factored basis.** The representation change
 the rejected entry below turned out to require, and the hardest item here.

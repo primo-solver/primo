@@ -94,7 +94,9 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, Delt
 void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
   VarState& state = vars_.at(nonbasic_var);
   const DeltaRational delta = new_value - state.assignment;
-  trail_.push_back(AssignmentTrailEntry{nonbasic_var, state.assignment});
+  if (trails_assignments_and_pivots()) {
+    trail_.push_back(AssignmentTrailEntry{nonbasic_var, state.assignment});
+  }
   state.assignment = new_value;
   // nonbasic_var is, by this function's own contract, never basic --
   // update_violation_status() therefore always erases it here (a no-op if
@@ -117,7 +119,9 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
     for (const auto& [var, coefficient] : rows_.at(basic_var)) {
       if (var == nonbasic_var) {
         VarState& basic_state = vars_.at(basic_var);
-        trail_.push_back(AssignmentTrailEntry{basic_var, basic_state.assignment});
+        if (trails_assignments_and_pivots()) {
+          trail_.push_back(AssignmentTrailEntry{basic_var, basic_state.assignment});
+        }
         basic_state.assignment = basic_state.assignment + delta.scaled(coefficient);
         // f_var_ is harmless to include here too: it has no bounds, so
         // update_violation_status() always computes "not violated" for it.
@@ -135,10 +139,16 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
 
 void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   ++pivot_count_;
+  // Bounds-only backtracking (item H9, see the class comment) means the trail needs
+  // nothing from this pivot at all on the default path; the snapshot below
+  // is built only for SOI, which does have to undo it.
+  const bool trail_this_pivot = trails_assignments_and_pivots();
   PivotTrailEntry trail_entry;
   trail_entry.basic_var = basic_var;
   trail_entry.entering_var = entering_var;
-  trail_entry.old_basic_row = rows_.at(basic_var);
+  if (trail_this_pivot) {
+    trail_entry.old_basic_row = rows_.at(basic_var);
+  }
 
   // No violated_vars_ update here for basic_var (about to become
   // nonbasic): both of this function's call sites in check() always
@@ -227,19 +237,13 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     Row& other_row = rows_[other_basic];
     row_term_op_count_ += other_row.size() + new_entering_row.size();
 
-    util::Rational entering_in_other(0);
-    for (const auto& [var, coeff] : other_row) {
-      if (var == entering_var) {
-        entering_in_other = coeff;
-        continue;
-      }
-      auto& occurrences = occurs_in_[var];
-      occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
-                        occurrences.end());
-    }
+    const auto entering_pos =
+        std::lower_bound(other_row.begin(), other_row.end(), entering_var,
+                         [](const auto& term, LraVarId var) { return term.first < var; });
+    const util::Rational entering_in_other = entering_pos->second;
 
     // Both inputs are ordered by var id (the Row invariant), so combining
-    // them is a linear two-way merge. This used to concatenate them into
+    // them is a linear two-way merge -- heuristics-note item H8. This used to concatenate them into
     // combine_scratch_ and std::sort the result -- O(m log m) per affected
     // row, which a gprof profile put at 11.6% of runtime on
     // scrambled339450 (100M inner comparisons) before this change.
@@ -262,7 +266,6 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
       if (have_other && (!have_entering || other_row[i].first < new_entering_row[j].first)) {
         // Carried over unchanged, and nonzero by the Row invariant.
         rebuilt.emplace_back(other_row[i].first, other_row[i].second);
-        occurs_in_[other_row[i].first].push_back(other_basic);
         ++i;
       } else if (have_entering && (!have_other || new_entering_row[j].first < other_row[i].first)) {
         // A product of two nonzero rationals, so it cannot be zero either.
@@ -271,20 +274,31 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
         occurs_in_[new_entering_row[j].first].push_back(other_basic);
         ++j;
       } else {
-        // The only place a coefficient can cancel to zero, so the only
-        // place that needs the check -- the invariant says a stored
-        // coefficient is never zero.
+        // Present on both sides. The coefficients add, and this is the only
+        // place one can cancel to zero -- the Row invariant says a stored
+        // coefficient never is.
         util::Rational sum = other_row[i].second + entering_in_other * new_entering_row[j].second;
-        if (!sum.is_zero()) {
-          const LraVarId var = other_row[i].first;
+        const LraVarId var = other_row[i].first;
+        if (sum.is_zero()) {
+          // The variable leaves this row, so its occurrence entry goes with
+          // it. This is the *only* removal the loop performs: entering_var
+          // needs none (its whole list was cleared when it became basic),
+          // and every other term either stays put or is new.
+          std::vector<LraVarId>& occurrences = occurs_in_[var];
+          occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
+                            occurrences.end());
+        } else {
+          // Present before and after: the coefficient changed, the
+          // occurrence entry did not.
           rebuilt.emplace_back(var, std::move(sum));
-          occurs_in_[var].push_back(other_basic);
         }
         ++i;
         ++j;
       }
     }
-    trail_entry.old_other_rows.emplace_back(other_basic, std::move(other_row));
+    if (trail_this_pivot) {
+      trail_entry.old_other_rows.emplace_back(other_basic, std::move(other_row));
+    }
     rows_[other_basic] = std::move(rebuilt);
   }
 
@@ -293,7 +307,9 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   }
   rows_[entering_var] = std::move(new_entering_row);
 
-  trail_.push_back(std::move(trail_entry));
+  if (trail_this_pivot) {
+    trail_.push_back(std::move(trail_entry));
+  }
 }
 
 bool LraTableau::is_fixed(LraVarId var) const {
@@ -1087,6 +1103,27 @@ void LraTableau::undo(const TrailEntry& entry) {
   const auto& f_row_entry = std::get<FRowTrailEntry>(entry);
   rows_[*f_var_] = f_row_entry.previous_f_row;
   soi_directions_[f_row_entry.var] = f_row_entry.previous_direction;
+}
+
+bool LraTableau::occurs_in_index_matches_full_rebuild() const {
+  std::vector<std::vector<LraVarId>> expected(occurs_in_.size());
+  for (LraVarId basic_var = 0; basic_var < vars_.size(); ++basic_var) {
+    if (!vars_[basic_var].is_basic) {
+      continue;
+    }
+    for (const auto& [var, coefficient] : rows_[basic_var]) {
+      expected[var].push_back(basic_var);
+    }
+  }
+  for (std::size_t var = 0; var < expected.size(); ++var) {
+    std::vector<LraVarId> actual = occurs_in_[var];
+    std::sort(actual.begin(), actual.end());
+    std::sort(expected[var].begin(), expected[var].end());
+    if (actual != expected[var]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void LraTableau::rebuild_occurs_in_index() {

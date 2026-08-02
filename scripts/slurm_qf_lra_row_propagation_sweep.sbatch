@@ -49,7 +49,11 @@
 
 set -euo pipefail
 
-WORKDIR=${PRIMO_WORKDIR:-$HOME/primo-cadical-profile}
+# Default to the directory the job was submitted from, so two parallel
+# work streams in two checkouts cannot land in the same tree. A shared
+# hardcoded default was how a QF_LRA sync nearly clobbered the binary a
+# running Nelson-Oppen job depended on (2026-07-31).
+WORKDIR=${PRIMO_WORKDIR:-${SLURM_SUBMIT_DIR:-$PWD}}
 PRIMO=${PRIMO_SWEEP_BINARY:-build-slurm-rel/primo}
 ROW_PROP="--lra-row-propagation --lra-bidirectional-row-propagation"
 

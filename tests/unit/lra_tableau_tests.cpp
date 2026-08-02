@@ -21,6 +21,29 @@ namespace {
 
 DeltaRational rat(long value) { return DeltaRational::from_rational(Rational(value)); }
 
+// The two invariants that make bounds-only backtracking sound (see
+// LraTableau's class comment, and SRI-CSL-06-01 Section 3.2.4): the
+// assignment still solves every row equation, and every non-basic variable
+// still sits within its own bounds. pop() is required to preserve these --
+// it is *not* required to restore the assignment or the basis, so tests
+// check these rather than field-by-field equality with the pre-push state.
+void assert_tableau_invariants(const LraTableau& tableau) {
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (tableau.is_basic(var)) {
+      DeltaRational sum = rat(0);
+      for (const auto& [term_var, coeff] : tableau.row(var)) {
+        sum = sum + tableau.assignment(term_var).scaled(coeff);
+      }
+      assert(sum == tableau.assignment(var));
+      continue;
+    }
+    const auto upper = tableau.upper_bound(var);
+    const auto lower = tableau.lower_bound(var);
+    assert(!upper.has_value() || tableau.assignment(var) <= upper->value);
+    assert(!lower.has_value() || tableau.assignment(var) >= lower->value);
+  }
+}
+
 bool has_reason(const std::vector<Lit>& reasons, Lit lit) {
   return std::find_if(reasons.begin(), reasons.end(),
                       [&](Lit r) { return r.value == lit.value; }) != reasons.end();
@@ -285,10 +308,16 @@ void push_pop_rebuilds_violated_vars_across_multiple_simultaneous_violations() {
   assert(same_reason_set(result_inside_push, result_after_pop_and_redo));
 }
 
-void push_pop_restores_propagated_basic_assignment() {
-  // s = x + y; asserting a lower bound on the *non-basic* x propagates
-  // into s's (basic) assignment via update()'s propagation loop -- verify
-  // that propagated change is undone on pop too, not just x's own bound.
+void pop_restores_bounds_and_keeps_the_assignment_consistent() {
+  // s = x + y; asserting a lower bound on the *non-basic* x propagates into
+  // s's (basic) assignment via update()'s propagation loop.
+  //
+  // pop() deliberately does NOT put either assignment back. Bounds-only
+  // backtracking is the paper's own scheme (SRI-CSL-06-01 Section 3.2.4),
+  // and this test pins the two invariants that make it sound, which are
+  // what actually matters -- not the stronger "every field is byte-identical
+  // to before the push", which this test used to assert and which the paper
+  // says is unnecessary work.
   LraTableau tableau;
   const LraVarId x = tableau.add_variable();
   const LraVarId y = tableau.add_variable();
@@ -302,8 +331,22 @@ void push_pop_restores_propagated_basic_assignment() {
   assert(tableau.assignment(s) == rat(5));  // propagated
 
   tableau.pop(checkpoint);
-  assert(tableau.assignment(x) == rat(0));
-  assert(tableau.assignment(s) == rat(0));
+
+  // (1) The bound itself is gone -- that is the whole job of pop(). An
+  // upper bound of 2 would have conflicted with x >= 5 before the pop.
+  assert(!tableau.assert_upper(x, rat(2), Lit{2}).has_value());
+
+  // (2) The assignment still satisfies every row equation, which is why it
+  // does not need restoring: it solved Ax = 0 before the pop and the rows
+  // did not change.
+  assert_tableau_invariants(tableau);
+  assert(tableau.assignment(s) == tableau.assignment(x) + tableau.assignment(y));
+
+  // (3) And the search can still make progress from here.
+  assert(!tableau.check().has_value());
+  assert_tableau_invariants(tableau);
+  assert(tableau.assignment(s) == tableau.assignment(x) + tableau.assignment(y));
+  assert(tableau.assignment(x) <= rat(2));
 }
 
 void nested_push_pop_levels() {
@@ -915,21 +958,23 @@ void push_pop_restores_state_across_an_elimination_pivot() {
   const std::size_t checkpoint = tableau.push();
   fixture.fix_s_at(4);
   assert(tableau.elimination_pivot_count() == 1);
-  const LraVarId entered = tableau.is_basic(fixture.x) ? fixture.x : fixture.y;
 
   tableau.pop(checkpoint);
-  assert(tableau.is_basic(fixture.s));
-  assert(!tableau.is_basic(entered));
-  assert(tableau.assignment(fixture.s) == rat(0));
-  assert(tableau.assignment(entered) == rat(0));
+  // The elimination pivot is deliberately *not* undone -- bounds-only
+  // backtracking leaves the basis wherever the search left it. What has to
+  // hold is the pair of invariants that makes that sound, plus the bounds
+  // actually being gone.
+  assert_tableau_invariants(tableau);
 
-  // Genuinely restored, not merely flag-correct: a bound on a non-basic term
-  // must propagate into s again, and s must be able to go out of bounds and
-  // be repaired.
-  assert(!tableau.assert_lower(fixture.x, rat(3), Lit{5}).has_value());
-  assert(tableau.assignment(fixture.s) == rat(3));
+  // s was fixed at 4 inside the level; after the pop that is gone, so a
+  // conflicting bound is now assertable where it would have clashed before.
   assert(!tableau.assert_upper(fixture.s, rat(1), Lit{6}).has_value());
+  assert(!tableau.assert_lower(fixture.x, rat(3), Lit{5}).has_value());
+
+  // And the tableau still solves: the row equation holds, s respects its
+  // new bound, and nothing is left violated.
   assert(!tableau.check().has_value());
+  assert_tableau_invariants(tableau);
   assert(tableau.assignment(fixture.s) <= rat(1));
   assert(tableau.assignment(fixture.x) + tableau.assignment(fixture.y) ==
          tableau.assignment(fixture.s));
@@ -1079,6 +1124,94 @@ void merge_and_sort_rebuilds_agree_on_a_cancelling_pivot() {
   }
 }
 
+void delta_maintained_occurs_in_matches_a_full_rebuild() {
+  // pivot() maintains occurs_in_ by delta: a term carried through a pivot
+  // keeps its entry untouched, and only variables that genuinely enter a
+  // row (from the entering row) or leave it (cancelled to zero) are
+  // updated. That replaced removing every term's entry and re-adding it,
+  // which callgrind put at ~91% of the program's instructions.
+  //
+  // A delta that is wrong in either direction -- a stale entry left behind,
+  // or a live one dropped -- does not throw. It makes update() skip a
+  // dependent row or sparse pricing misjudge a column, and surfaces much
+  // later as a wrong answer. So this checks the index against a full
+  // rebuild after *every* pivot, across all four pivoting rules and a range
+  // of bound combinations that produce different pivot sequences.
+  for (const LraTableau::PivotingRule rule :
+       {LraTableau::PivotingRule::Bland, LraTableau::PivotingRule::Sparse,
+        LraTableau::PivotingRule::Dantzig, LraTableau::PivotingRule::Soi}) {
+    for (const long bound : {-9L, -1L, 0L, 3L, 8L, 21L}) {
+      LraTableau tableau(rule);
+      const LraVarId x = tableau.add_variable();
+      const LraVarId y = tableau.add_variable();
+      const LraVarId z = tableau.add_variable();
+      const LraVarId w = tableau.add_variable();
+      const LraVarId s1 = tableau.add_variable();
+      const LraVarId s2 = tableau.add_variable();
+      const LraVarId s3 = tableau.add_variable();
+
+      // Deliberately overlapping supports, so pivots produce shared terms
+      // (the "carried through, touch nothing" case) as well as terms that
+      // are new to a row, which is the pair the delta has to tell apart.
+      tableau.add_row(s1,
+                      {{w, Rational(1)}, {z, Rational(-1)}, {y, Rational(2)}, {x, Rational(1)}});
+      tableau.add_row(s2, {{z, Rational(1)}, {x, Rational(3)}, {w, Rational(-2)}});
+      tableau.add_row(s3, {{y, Rational(1)}, {z, Rational(4)}, {x, Rational(-3)}});
+      assert(tableau.occurs_in_index_matches_full_rebuild());
+
+      assert(!tableau.assert_lower(s1, rat(bound), Lit{1}).has_value());
+      assert(!tableau.assert_upper(s2, rat(bound + 4), Lit{2}).has_value());
+      tableau.check();
+      assert(tableau.occurs_in_index_matches_full_rebuild());
+
+      const std::size_t checkpoint = tableau.push();
+      assert(!tableau.assert_lower(s3, rat(bound + 2), Lit{3}).has_value());
+      assert(!tableau.assert_upper(s1, rat(bound + 25), Lit{4}).has_value());
+      tableau.check();
+      assert(tableau.occurs_in_index_matches_full_rebuild());
+
+      tableau.pop(checkpoint);
+      assert(tableau.occurs_in_index_matches_full_rebuild());
+      tableau.check();
+      assert(tableau.occurs_in_index_matches_full_rebuild());
+      assert_tableau_invariants(tableau);
+    }
+  }
+}
+
+void cancelling_pivot_drops_the_occurrence_entry() {
+  // The one case where the delta must *remove*: a shared term whose
+  // coefficient cancels to exactly zero leaves the row, so its occurrence
+  // entry has to go with it. Getting this wrong leaves a stale entry that
+  // makes update() walk a row no longer mentioning the variable.
+  LraTableau tableau(LraTableau::PivotingRule::Bland);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(-1)}});
+
+  assert(!tableau.assert_lower(s1, rat(4), Lit{1}).has_value());
+  assert(!tableau.assert_upper(s1, rat(4), Lit{2}).has_value());
+  assert(!tableau.assert_lower(s2, rat(0), Lit{3}).has_value());
+  assert(!tableau.check().has_value());
+
+  assert(tableau.occurs_in_index_matches_full_rebuild());
+  assert_tableau_invariants(tableau);
+  // No stored coefficient may be zero -- a cancelled term must be absent
+  // from the row, not present with a zero value.
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (!tableau.is_basic(var)) {
+      continue;
+    }
+    for (const auto& [term_var, coeff] : tableau.row(var)) {
+      assert(!coeff.is_zero());
+      (void)term_var;
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -1092,7 +1225,7 @@ int main() {
   push_pop_restores_a_bound();
   push_pop_restores_state_across_a_pivot();
   push_pop_rebuilds_violated_vars_across_multiple_simultaneous_violations();
-  push_pop_restores_propagated_basic_assignment();
+  pop_restores_bounds_and_keeps_the_assignment_consistent();
   nested_push_pop_levels();
   bound_accessors_report_nullopt_before_any_assertion();
   bound_accessors_report_value_and_reason();
@@ -1117,5 +1250,7 @@ int main() {
   elimination_agrees_with_the_ablation_on_multi_pivot_scenarios();
   rows_stay_ordered_and_nonzero_through_pivoting();
   merge_and_sort_rebuilds_agree_on_a_cancelling_pivot();
+  delta_maintained_occurs_in_matches_a_full_rebuild();
+  cancelling_pivot_drops_the_occurrence_entry();
   return 0;
 }

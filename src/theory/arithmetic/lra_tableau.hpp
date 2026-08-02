@@ -62,17 +62,40 @@ struct DeltaRational {
 // been added alongside it (see PivotingRule), each falling back to Bland
 // selection past a per-call pivot threshold so termination still holds.
 //
-// Incremental via push()/pop(checkpoint), genuinely trail-based (mirroring
-// FlatCongruenceClosure's discipline, not full state snapshotting): every
-// bound change, assignment change, and pivot's row rewrite pushes a
-// TrailEntry recording enough to undo it, and pop() replays entries
-// backwards. Per the paper's Section 4 design, pivots (which basic/
-// non-basic partition and row structure are current) are NOT semantically
-// tied to search depth -- they're just an internal representation choice
-// -- but they still have to be undone on pop here, because leaving a
-// pivot's row rewrite in place while reverting the bounds/assignments it
-// was performed under would violate the invariant that every basic
-// variable's row equation holds for the current assignment.
+// Incremental via push()/pop(checkpoint), trail-based (mirroring
+// FlatCongruenceClosure's discipline, not full state snapshotting).
+//
+// **Only bound changes are trailed** (heuristics-note item H9), which is
+// the paper's own design
+// (technical report SRI-CSL-06-01 Section 3.2.4: "We just need to save the
+// value of u_i (l_i) on a stack before it is updated... Backtracking does
+// not require to save the successive betas on a stack... Since no pivoting
+// or other expensive operation is used, backtracking is very cheap.")
+// Neither the assignment nor the basis is restored, and the argument for
+// why that is sound has two halves:
+//
+//   * the assignment satisfies Ax = 0, and every tableau row is a linear
+//     combination of A's rows, so it keeps satisfying the row equations
+//     across any change of basis; and
+//   * pop() only ever *relaxes* bounds, so the invariant that every
+//     non-basic variable sits within its bounds (report equation 3.2)
+//     survives untouched.
+//
+// Note the two schemes are each self-consistent and it is *mixing* them
+// that breaks: restoring the assignment but not the basis would leave a
+// variable that was basic at snapshot time -- and so unconstrained by
+// (3.2) -- now non-basic and possibly outside its bounds. Primo used to
+// restore all three (bounds, assignments, pivots) for exactly that reason,
+// which was circular: reverting the assignments is what forced reverting
+// the pivots.
+//
+// **PivotingRule::Soi is the exception and still trails everything.** Its
+// objective row is explicitly maintained and genuinely basis-dependent --
+// it is a sum over the *currently* violated rows, not a linear combination
+// of A -- so neither half of the argument above covers it. SOI is an
+// extension beyond the paper (FMCAD 2013), so it keeps the pre-2026-07-31
+// behaviour rather than being made to fit an argument written for the
+// paper's algorithm.
 //
 // Rows must all be added via add_row() before the first push() in the
 // caller's intended usage (build the full tableau once, then push/assert/
@@ -152,7 +175,7 @@ class LraTableau {
   // (var, coefficient) pair per term.
   //
   // **Invariant: strictly ascending by var id, and never a zero
-  // coefficient.** Held by every producer of a Row -- add_row() sorts,
+  // coefficient** (heuristics-note item H8). Held by every producer of a Row -- add_row() sorts,
   // pivot() builds both of its outputs in order, set_soi_direction()
   // sorts, and undo() restores rows that already satisfied it. Relied on
   // by pivot()'s affected-row loop, which combines two rows with a linear
@@ -371,6 +394,15 @@ class LraTableau {
   // across add_row/pivot/pop (see occurs_in_'s own maintenance).
   const std::vector<LraVarId>& occurs_in(LraVarId var) const { return occurs_in_.at(var); }
 
+  // Whether occurs_in_ agrees with what a full rebuild from rows_/is_basic
+  // would produce. pivot() maintains this index by *delta* -- it touches
+  // only the variables that genuinely enter or leave a row -- and a
+  // divergence would not throw. It would make update() silently skip a
+  // dependent row, or sparse pricing misjudge a column, and surface much
+  // later as a wrong answer. Order within a listing is not part of the
+  // contract and is not compared. Test-only: O(all rows).
+  bool occurs_in_index_matches_full_rebuild() const;
+
  private:
   struct Bound {
     DeltaRational value;
@@ -443,6 +475,12 @@ class LraTableau {
   // variable's row can never be violated, so it never demands a repair pivot
   // -- which is why the elimination pivot prefers such a candidate.
   bool is_unbounded(LraVarId var) const;
+
+  // Whether assignment changes and pivots go on the trail at all. False for
+  // the paper's own scheme (bounds only, see the class comment); true only
+  // under PivotingRule::Soi, whose explicitly-maintained objective row is
+  // basis-dependent and so has to be restored.
+  bool trails_assignments_and_pivots() const { return rule_ == PivotingRule::Soi; }
 
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
   void undo(const TrailEntry& entry);
@@ -586,9 +624,12 @@ class LraTableau {
   // in check() -- no separate SOI-specific bookkeeping needed.
   std::set<LraVarId> violated_vars_;
   std::vector<TrailEntry> trail_;
-  // Reused across pivot()'s per-affected-row combine step and
-  // set_soi_direction()'s f-row combine step, both of which need to merge
-  // two sparse coefficient rows. Profiling (perf, on
+  // set_soi_direction()'s f-row combine buffer, and since item H8 its only
+  // user: pivot()'s affected-row loop used to share it but now merges two
+  // ordered rows straight into the rebuilt row, needing no scratch at all.
+  // The allocation history below is why it is a reused flat vector rather
+  // than a fresh container, and still applies to the remaining user.
+  // Profiling (perf, on
   // tmp/QF_LRA/sc/sc-21.induction3.cvc.smt2 and
   // tmp/QF_LRA/uart/uart-18.induction.cvc.smt2, both of which time out at
   // 10s while z3/cvc5 solve in under 1s) showed malloc/free/GMP-allocation
@@ -599,11 +640,9 @@ class LraTableau {
   // (clear() frees each node). A flat vector, sorted then merged, does the
   // same combine with only this member's own backing array (which clear()
   // does NOT deallocate) -- no per-element heap allocation at all beyond
-  // each Rational's own unavoidable GMP storage. Safe to share one
-  // instance: neither user ever holds it populated across a call into the
-  // other (pivot()'s own set_soi_direction() call happens before pivot()'s
-  // own use of this member, and completes fully first), and LraTableau is
-  // not reentrant.
+  // each Rational's own unavoidable GMP storage. With H8 leaving a single
+  // user there is no sharing question left; LraTableau is not reentrant in
+  // any case.
   std::vector<std::pair<LraVarId, util::Rational>> combine_scratch_;
 };
 
