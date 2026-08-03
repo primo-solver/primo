@@ -1,6 +1,7 @@
 #include "smt/check_sat.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -4689,7 +4690,29 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     reason_stream_index_ = 0;
   }
 
-  bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
+  // Unconditional `true` is sound, but only because this propagator runs in
+  // EAGER mode, and that coupling is not local -- so it is stated here.
+  //
+  // CaDiCaL's search loop (contrib/src/cadical/src/internal.cpp) runs
+  // `external_propagate()` BEFORE it tests `satisfied()`, and
+  // `external_propagate()` calls `ask_external_clause()` -- hence
+  // `cb_has_external_clause()`, hence run_deferred_check_if_needed() --
+  // unconditionally whenever there is no conflict
+  // (external_propagate.cpp, "if (!unsat && !conflict)"). So by the time
+  // `external_check_solution()` asks us to approve a model, the theory check
+  // has already run this iteration and produced no conflict clause. There is
+  // nothing left to verify.
+  //
+  // That entire argument collapses if the propagator is ever registered lazy:
+  // `external_propagate()` short-circuits on `!external_prop_is_lazy`, so no
+  // theory check would run, and approving the model unconditionally would
+  // report SAT on a theory-inconsistent assignment. `is_lazy` is a public
+  // member of CaDiCaL::ExternalPropagator defaulting to false; we never set
+  // it, and the assert below fails loudly if someone does.
+  bool cb_check_found_model(const std::vector<int>& /*model*/) override {
+    assert(!is_lazy && "approving models unconditionally requires eager mode");
+    return true;
+  }
 
   // Competitiveness-roadmap item 8: called by CaDiCaL right before it would
   // otherwise make a generic VSIDS decision (Internal::ask_decision(),
@@ -4773,6 +4796,18 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   int cb_add_reason_clause_lit(int propagated_lit) override {
     const auto found = reasons_.find(propagated_lit);
     if (found == reasons_.end()) {
+      // Returning 0 here streams an EMPTY reason clause, and CaDiCaL
+      // documents that an external clause which is empty after simplification
+      // sets `unsat` -- i.e. a missing reason would answer "unsatisfiable".
+      // In practice CaDiCaL's own REQUIRE ("external reason clause must
+      // contain the propagated literal") aborts first, and contracts are
+      // compiled into our build, so this is loud rather than silent. Assert
+      // anyway, so the failure names OUR broken invariant -- cb_propagate
+      // records reasons_[lit] before returning lit, and notify_backtrack
+      // erases only literals it actually unassigns -- rather than CaDiCaL's
+      // symptom. Getting that erasure wrong was a real bug once (see
+      // notify_backtrack's comment).
+      assert(false && "CaDiCaL asked for a reason we never recorded");
       return 0;
     }
     if (reason_stream_active_lit_ != propagated_lit) {

@@ -88,6 +88,54 @@ a merged CSV. This is the preferred way to compare tags such as `rel-1.9.5`,
 `rel-2.2.1`, and `rel-3.0.0` without relying on whatever CaDiCaL happens to be
 installed in `contrib/local`.
 
+## Protocol audit (2026-08-03)
+
+Reviewed `OnlineLraPropagator` against CaDiCaL's IPASIR-UP contract, reading
+`contrib/src/cadical/src/{internal,external_propagate,contract}.{cpp,hpp}`
+rather than reasoning from the interface. **No live violation was found.** Two
+couplings are load-bearing but non-local, and are now asserted in the code:
+
+**`cb_check_found_model` returns `true` unconditionally, and that is only sound
+in eager mode.** CaDiCaL's search loop runs `external_propagate()` before it
+tests `satisfied()`, and `external_propagate()` calls `ask_external_clause()`
+-- hence our theory check -- unconditionally whenever there is no conflict. So
+a model is only offered for approval after a check produced no conflict clause.
+But `external_propagate()` short-circuits on `!external_prop_is_lazy`: register
+the propagator lazy and no check runs, so approving unconditionally would
+report **sat on a theory-inconsistent assignment**. `is_lazy` is a public
+member defaulting to false and we never set it; `cb_check_found_model` now
+asserts it.
+
+**A missing entry in `reasons_` would stream an empty reason clause.** CaDiCaL
+documents that an external clause empty after simplification sets `unsat` --
+so the symptom would be answering *unsatisfiable*. In practice its own
+`REQUIRE` ("external reason clause must contain the propagated literal") aborts
+first, and contracts are compiled into our CaDiCaL (`NCONTRACTS` is unset --
+verified by finding the message in the built `libcadical.a`), so the failure is
+loud. `cb_add_reason_clause_lit` now asserts too, so the abort names our broken
+invariant rather than CaDiCaL's symptom.
+
+Checked and found correct without change:
+
+- `cb_decide` returns only unassigned, observed literals. CaDiCaL calls
+  `notify_assignments()` immediately before `cb_decide`, so the propagator's
+  `assigned_` mirror cannot be stale at that point, and every theory-atom
+  variable is registered through `add_observed_var`. CaDiCaL `REQUIRE`s both.
+- `cb_propagate` skips variables assigned since a candidate was queued, and
+  records `reasons_[lit]` before returning `lit`.
+- The reason stream emits the propagated literal first, satisfying CaDiCaL's
+  "must contain the propagated literal" contract.
+- `notify_backtrack` erases `reasons_` only for literals it actually
+  unassigns. Clearing unconditionally was a real bug once, fixed in `d00134b`.
+
+One latent item, left alone deliberately: `cb_has_external_clause` copies
+`conflict_` without clearing it, so a second call before any
+`notify_backtrack` would re-offer the same clause. It is unreachable in
+practice -- a Farkas conflict clause is falsified by the current assignment, so
+CaDiCaL must either backtrack (which resets `conflict_`) or derive unsat at
+level 0 -- and `conflict()` is read after `solve()` returns, so clearing it
+early would break that reader.
+
 ## References
 
 See `docs/papers/ipasir-up.md`.
