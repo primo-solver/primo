@@ -140,6 +140,23 @@ observed literal, this online mode pre-registers the shared Real equality atoms
 before search. This precreation is opt-in and is the reason the default remains
 `final`; it is also why the single-theory invariant below is required.
 
+This precreation is a backend accommodation, not the desired
+theory-combination architecture. CaDiCaL's current external-propagator contract
+says that assignment notifications, external propagation, and external clauses
+are over observed variables; observed variables are frozen for inprocessing;
+fresh variables may be observed during solving; and `cb_propagate()` must
+return an observed literal. Therefore a plain FIFO of theory candidates does
+not by itself remove the quadratic cost: before the dispatcher can return
+candidate `(= a b)`, the SAT equality literal must already exist and be
+observed. The model-based direction is to make the queue hold theory/model
+candidates, lazily create or find the corresponding interface equality atom
+only when a candidate is selected, observe that fresh variable, and then either
+propagate the observed literal with the theory reason or add a guarded external
+clause over observed literals. If CaDiCaL rejects fresh observed variables or
+fresh clauses in a particular callback phase, the fallback is not all-pairs
+precreation; it is a smaller precreation set derived from the same
+model/care/paired-bound candidate source.
+
 The paired-bound producer is deliberately the stable online LRA-to-EUF subset
 for now. It is sound, has a compact two-literal explanation, and exercises the
 combination path without making every LRA bound change search the tableau for
@@ -332,6 +349,22 @@ gap:
    stable candidate model and a sound disagreement response.
 5. Keep atom creation for missing interface equalities as a separate milestone,
    because it changes the Boolean abstraction contract.
+
+Track C is the callback-safe model-based online refinement prompted by the
+current profiling result:
+
+1. Replace online all-pairs equality precreation with a candidate queue whose
+   entries come from paired LRA bounds, model-equality guesses that survive the
+   mutation filter, or a care-ranked equality source.
+2. Create or find the SAT-visible interface equality only after a candidate is
+   selected.
+3. Observe the fresh equality variable before returning it from
+   `cb_propagate()` or mentioning it in an external guarded clause.
+4. Keep the full shared-pair cross product as a counter and fallback
+   diagnostic, not as the set of observed SAT variables.
+5. Cap or replace the final `lra_implied_real_equalities` all-pairs
+   strict-bound scan when online mode is active, because profiling shows this
+   final scan can dominate after the online path adds more arrangement traffic.
 
 Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or
@@ -715,6 +748,10 @@ backjumping.
   before the SAT model can be accepted.
   Current coverage includes the implemented online LRA-bound equality rule; it
   does not yet cover a general model-guided equality producer.
+- For IPASIR-UP/CaDiCaL integration, do not confuse an internal candidate queue
+  with a legal SAT propagation queue. A returned propagation literal and every
+  literal in a current external clause must be observed under the backend
+  contract Primo currently targets.
 
 ## Delayed And SAT-Mediated Combination
 
@@ -741,9 +778,11 @@ These papers are implementation-relevant because Primo already has a SAT-backed
 theory atom abstraction. The risk is that adding all shared-pair equalities
 eagerly may dominate parsing, clausification, and SAT preprocessing, exactly the
 kind of overhead seen in earlier QF_UF experiments when a mechanism was active
-but had little delivered propagation. The current QF_UFLRA subset follows the
-first checklist item below by checking candidate equalities separately from
-lazy SAT atom creation.
+but had little delivered propagation. The current QF_UFLRA default `final` path
+follows the first checklist item below by checking candidate equalities
+separately from lazy SAT atom creation. The opt-in online paired-bound path does
+not yet satisfy that item because it precreates and observes all shared Real
+equality atoms to satisfy CaDiCaL's propagation contract.
 
 ### Primo Checklist Items
 
@@ -753,7 +792,9 @@ lazy SAT atom creation.
 - Keep eager all-pair equality creation out of the default path. Current
   `--nelson-oppen-prop=online` precreates shared Real equality atoms only
   because CaDiCaL's callback must return existing observed literals; the
-  default `final` mode keeps lazy creation.
+  default `final` mode keeps lazy creation. The next online implementation
+  should create-and-observe equality atoms from selected model/care/theory
+  candidates, not from the full shared-pair cross product.
 - Keep a delayed strategy available as an ablation baseline against
   model-based closure.
 

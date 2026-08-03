@@ -256,7 +256,14 @@ Implemented now:
   maps that theory-owned candidate to the SAT-visible interface equality literal
   and streams the LRA-provided reason literals back to CaDiCaL. The online path
   pre-registers the relevant shared Real equality atoms because CaDiCaL
-  propagation can only return existing observed literals. More general
+  propagation can only return existing observed literals. CaDiCaL permits fresh
+  variables to be observed during solving, but current external propagations and
+  external clauses are still over observed variables, and observed variables are
+  frozen for inprocessing. The intended model-based refinement is therefore not
+  a plain queue over missing equalities: the mixed coordinator should queue
+  model/care/theory candidates, lazily create and observe the selected
+  interface equality atom, and only then return a propagation literal or guarded
+  external clause. More general
   LRA-implied shared equalities remain a documented opportunity, not the next
   committed extension: discovering them from arbitrary tableau rows could add a
   wider per-bound-change scan, more explanation bookkeeping, and more

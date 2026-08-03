@@ -444,7 +444,11 @@ theory and performs an ordinary final check.
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
 callback, was connected. `:no.online.precreated-equality-atoms` counts the
 shared Real equality literals created before SAT search so the callback can
-return existing observed literals. `:no.online.assignments` and
+return existing observed literals. A high value here is not expected model-based
+behavior; it is the current opt-in accommodation for CaDiCaL's observed-literal
+callback contract. The target online design is to count full shared pairs
+separately, then create and observe equality atoms only for selected
+model/care/theory candidates. `:no.online.assignments` and
 `:no.online.backtracks` count the dispatcher trail traffic.
 `:no.online.lra-published-equalities` counts equality candidates produced by
 `OnlineLraPropagator`; today those are exactly the implemented paired-bound
