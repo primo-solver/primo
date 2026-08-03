@@ -211,13 +211,13 @@ int main(int argc, char** argv) {
                "Disable QF_LRA bound propagation (conflict detection only) [default: on]");
   app.add_flag(
       "--lra-row-propagation", solver_options.lra_row_propagation,
-      "Enable experimental QF_LRA row-based/interval bound propagation across  [default: off]"
-      "different variables (only takes effect if --lra-propagation is also on)");
-  app.add_flag(
-      "--lra-bidirectional-row-propagation", solver_options.lra_bidirectional_row_propagation,
-      "Enable the reverse direction of --lra-row-propagation: tighten a row's  [default: off]"
-      "other terms from its own bound, not just derive the row's own implied "
-      "bound (only takes effect if --lra-row-propagation is also on)");
+      "Enable experimental QF_LRA row-based/interval bound propagation across "
+      "different variables (only takes effect if --lra-propagation is also on) [default: off]");
+  app.add_flag("--lra-bidirectional-row-propagation",
+               solver_options.lra_bidirectional_row_propagation,
+               "Enable the reverse direction of --lra-row-propagation: tighten a row's "
+               "other terms from its own bound, not just derive the row's own implied "
+               "bound (only takes effect if --lra-row-propagation is also on) [default: off]");
   app.add_option("--lra-row-propagation-max-row-size",
                  solver_options.lra_row_propagation_limits.max_row_size,
                  "Cap on the row length --lra-row-propagation will derive an implied bound "
@@ -240,11 +240,10 @@ int main(int argc, char** argv) {
                  "Fanout cap for the reverse direction "
                  "(--lra-bidirectional-row-propagation, default 32)")
       ->check(CLI::PositiveNumber);
-  app.add_flag(
-      "--lra-theory-decisions", solver_options.lra_theory_decisions,
-      "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory  [default: off]"
-      "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
-      "literal itself instead of leaving every decision to generic VSIDS");
+  app.add_flag("--lra-theory-decisions", solver_options.lra_theory_decisions,
+               "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
+               "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
+               "literal itself instead of leaving every decision to generic VSIDS [default: off]");
   app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
                  "QF_LRA Check/Pivot variable-selection rule: sparse (default -- prices "
                  "what a pivot costs: among the entering candidates that all repair the "
@@ -257,17 +256,15 @@ int main(int argc, char** argv) {
                  "but bland fall back to bland selection after enough pivots within one "
                  "check(), which is what keeps termination proven")
       ->check(CLI::IsMember({"bland", "dantzig", "soi", "sparse"}));
-  app.add_flag(
-      "--no-lra-sparse-leaving", no_lra_sparse_leaving,
-      "Disable the default-on leaving-side half of --lra-pivoting-rule sparse  [default: on]"
-      "(prefer repairing a violated variable whose row is short, using "
-      "violation magnitude only as a tie-break), for ablation");
-  app.add_flag(
-      "--lra-fixed-elimination", solver_options.lra_fixed_elimination,
-      "Pivot a basic LRA variable out of the basis as soon as its bounds coincide  [default: off]"
-      "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
-      "competition set, but doubles the >5MB band, so it is worth enabling on "
-      "equality-dominated input");
+  app.add_flag("--no-lra-sparse-leaving", no_lra_sparse_leaving,
+               "Disable the default-on leaving-side half of --lra-pivoting-rule sparse "
+               "(prefer repairing a violated variable whose row is short, using "
+               "violation magnitude only as a tie-break), for ablation [default: on]");
+  app.add_flag("--lra-fixed-elimination", solver_options.lra_fixed_elimination,
+               "Pivot a basic LRA variable out of the basis as soon as its bounds coincide "
+               "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
+               "competition set, but doubles the >5MB band, so it is worth enabling on "
+               "equality-dominated input [default: off]");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses [default: off]");
   app.add_flag(
@@ -279,22 +276,21 @@ int main(int argc, char** argv) {
                "[default: off]");
   app.add_flag("--no-solved-constant-substitution", no_solved_constant_substitution,
                "Disable default QF_UF solved-constant substitution [default: on]");
-  app.add_flag(
-      "--gaussian-elimination", solver_options.gaussian_elimination,
-      "Enable default-on QF_LRA Gauss-Jordan elimination over asserted linear  [default: on]"
-      "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25)");
+  app.add_flag("--gaussian-elimination", solver_options.gaussian_elimination,
+               "Enable default-on QF_LRA Gauss-Jordan elimination over asserted linear "
+               "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25) [default: on]");
   app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
                "Disable QF_LRA Gauss-Jordan equality-system elimination [default: on]");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Always encode top-level disjunctions with Tseitin support clauses [default: only "
-               "when the automatic rule below fires]");
+               "when the automatic rule fires]");
   app.add_flag("--no-top-level-or-tseitin", no_top_level_or_tseitin,
-               "Never encode them: keep each top-level disjunction as one clause, and turn the "
-               "automatic rule off too [default: rule enabled]");
+               "Never encode them: keep each top-level disjunction as one clause, and turn "
+               "the automatic rule off too [default: automatic rule enabled]");
   app.add_flag("--no-auto-top-level-or-tseitin", no_auto_top_level_or_tseitin,
                "Disable the automatic rule, which encodes Tseitin-style only on finite-domain "
-               "problems having 1000-2500 top-level OR nodes and at most 700 negations "
-               "[default: rule enabled]");
+               "problems having 1000-2500 top-level OR nodes and at most 700 negations [default: "
+               "automatic rule enabled]");
   app.add_flag(
       "--preprocess-only", solver_options.preprocess_only,
       "Run parsing and preprocessing, print unknown, and skip SAT/theory solving [default: off]");
