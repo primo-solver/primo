@@ -7,6 +7,34 @@ Record every nontrivial benchmark, fuzzing, profiling, tuning, dependency-profil
 or reference-comparison run in `docs/run-log.json`; see [](run-log.md) for the
 schema and evidence policy.
 
+## Non-standard unsolved benchmarks
+
+A benchmark left unsolved because the solver ran out of time is an honest
+result. One left unsolved because we could not **parse** it, or refused input
+the logic permits, is a defect wearing a timeout's clothes: it costs a benchmark
+exactly as much, and a solved-count table cannot tell the two apart.
+
+SMT-LIB inputs are well-formed by construction, so any such failure is ours
+until shown otherwise. Two found in August 2026, both by reading code rather
+than by any benchmark report:
+
+- `(/ x 2.0)` was rejected although it is linear -- `(* (1/2) x)` -- and both
+  z3 and Yices accept it.
+- `(set-option :verbosity (- 1))` was rejected although SMT-LIB 2.6 allows an
+  s-expression attribute value.
+
+`scripts/compare_solver_answers.py` now prints an
+`=== unsolved for NON-STANDARD reasons ===` section: per solver, grouped by
+cause with example files, plus a warning when the count is non-zero. A row
+counts as non-standard when its `status` is neither `ok` nor `timeout` and its
+answer is not an honest `unknown` (a solver giving up inside its budget is
+legitimate).
+
+**Check it before quoting solved counts or PAR2.** If a cause is genuinely out
+of scope -- an unimplemented theory, say -- record that in writing rather than
+letting it sit in an aggregate.
+
+
 ## Interesting QF_UF Exact Set
 
 `benchmarks/interesting-qf-uf.txt` is the source of truth for the 118-row
