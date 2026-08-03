@@ -16879,6 +16879,59 @@
         "unsat": 298
       },
       "outcome": "Accepted as the SLURM merge fuzz gate for opt-in online Nelson-Oppen propagation at commit c2bca93. The implementation commit was staged from a git archive rather than rsyncing a full working tree, and the revision override made the remote binary report c2bca93 despite the archive containing no .git directory. An earlier submission, job 118984, is rejected because the batch script passed solver options as separate --solver-arg values and argparse stopped before generating cases."
+    },
+    {
+      "id": "2026-08-03-qf-uflra-no-lra-publish-6cc6be3",
+      "date": "2026-08-03",
+      "commit": "6cc6be3",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "fuzz",
+      "scope": "SLURM QF_UFLRA mixed smoke-fuzzer gate for LRA-owned Nelson-Oppen interface equality publishing.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-archive-workspace>",
+        "binary": "build-slurm-rel/primo at 6cc6be3, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": ".venv-fuzz/bin/z3, version 5.0.0",
+        "job_ids": [
+          "<omitted>"
+        ],
+        "remote_artifact_dir": "<fresh-remote-archive-workspace>/fuzz-results/qf_uflra-no-lra-publish-6cc6be3",
+        "local_artifact_dir": "fuzz-results/qf_uflra-no-lra-publish-6cc6be3"
+      },
+      "commands": {
+        "workspace_prepare": "git archive 6cc6be3 copied to <fresh-remote-archive-workspace>; no .git history or local working-tree artifacts were synchronized",
+        "remote_build": "cmake -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/contrib/local -DPRIMO_GIT_REVISION_OVERRIDE=6cc6be3; cmake --build build-slurm-rel --target primo -j4",
+        "reference_install": "python3 -m venv .venv-fuzz; . .venv-fuzz/bin/activate; python -m pip install --upgrade pip z3-solver; z3 -version",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-archive-workspace> --local-dir /workspace --target primo",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py /tmp/primo_qf_uflra_lra_publish_fuzz.sbatch; bash -n /tmp/primo_qf_uflra_lra_publish_fuzz.sbatch",
+        "submission": "sbatch primo_qf_uflra_lra_publish_fuzz.sbatch",
+        "fuzz_task": "python3 scripts/qf_uflra_smoke_fuzz.py --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--nelson-oppen-prop=online --ref .venv-fuzz/bin/z3 --count 250 --seed 2026080310+SLURM_ARRAY_TASK_ID --timeout 5 --shape mixed --out fuzz-results/qf_uflra-no-lra-publish-6cc6be3/shard-$SLURM_ARRAY_TASK_ID",
+        "local_validation": "cmake --build build --target primo_qf_lra_solver_tests primo_theory_combination_tests primo -j4; ./build/primo_qf_lra_solver_tests; ./build/primo_theory_combination_tests; make docs; git diff --check; ctest --test-dir build --output-on-failure; make asan-test; make tidy; python3 /home/user/.codex/skills/solver-efficiency-review/scripts/solver_efficiency_snapshot.py --repo ."
+      },
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "seed_base": 2026080310,
+        "array_tasks": 4,
+        "count_per_task": 250,
+        "count": 1000,
+        "timeout_seconds": 5
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_unusable": 0,
+        "reference_disagreement": 0,
+        "sat": 710,
+        "unsat": 290
+      },
+      "outcome": "Accepted as the SLURM merge fuzz gate for LRA-owned interface equality publishing at commit 6cc6be3. The implementation was staged from a git archive rather than synchronizing a full working tree. The numeric SLURM job id and private remote path are omitted from the committed ledger under the no-private-cluster-id policy."
     }
   ]
 }
