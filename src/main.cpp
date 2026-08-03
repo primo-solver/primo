@@ -180,37 +180,44 @@ int main(int argc, char** argv) {
 
   CLI::App app{"Primo SMT solver scaffold"};
   app.add_flag("-q,--quiet", quiet, "Suppress startup version banner");
-  app.add_flag("--stats", print_stats, "Print solver statistics to stderr");
+  app.add_flag("--stats", print_stats, "Print solver statistics to stderr [default: off]");
   app.add_flag("--uf-symmetry-breaking", solver_options.uf_symmetry_breaking,
-               "Enable default-on QF_UF symmetry breaking over invariant finite-domain values");
+               "Enable default-on QF_UF symmetry breaking over invariant finite-domain values "
+               "[default: on]");
   app.add_flag("--no-uf-symmetry-breaking", no_uf_symmetry_breaking,
-               "Disable QF_UF finite-domain symmetry breaking");
-  app.add_flag("--finite-domain-value-precedence", solver_options.finite_domain_value_precedence,
-               "Enable fixed-term value precedence inside finite-domain symmetry breaking");
-  app.add_flag("--no-finite-domain-value-precedence", no_finite_domain_value_precedence,
-               "Disable fixed-term value precedence inside finite-domain symmetry breaking");
-  app.add_flag("--finite-domain-equality-definitions", finite_domain_equality_definitions,
-               "Enable guarded finite-domain equality definitions in auto preprocessing");
+               "Disable QF_UF finite-domain symmetry breaking [default: on]");
+  app.add_flag(
+      "--finite-domain-value-precedence", solver_options.finite_domain_value_precedence,
+      "Enable fixed-term value precedence inside finite-domain symmetry breaking [default: on]");
+  app.add_flag(
+      "--no-finite-domain-value-precedence", no_finite_domain_value_precedence,
+      "Disable fixed-term value precedence inside finite-domain symmetry breaking [default: on]");
+  app.add_flag(
+      "--finite-domain-equality-definitions", finite_domain_equality_definitions,
+      "Enable guarded finite-domain equality definitions in auto preprocessing [default: on]");
   app.add_flag("--no-finite-domain-equality-definitions", no_finite_domain_equality_definitions,
-               "Disable finite-domain SAT-visible equality definition clauses");
+               "Disable finite-domain SAT-visible equality definition clauses [default: on]");
   app.add_flag("--no-finite-domain-post-amo", no_finite_domain_post_amo,
-               "Disable the post-simplification finite-domain AMO scan");
-  app.add_flag("--eq-bridge", solver_options.eq_bridge,
-               "Add equalities implied by every branch of selected QF_UF disjunctions");
-  app.add_flag("--no-eq-bridge", no_eq_bridge,
-               "Disable equality bridging unless required by the preprocessing preset");
+               "Disable the post-simplification finite-domain AMO scan [default: on]");
+  app.add_flag(
+      "--eq-bridge", solver_options.eq_bridge,
+      "Add equalities implied by every branch of selected QF_UF disjunctions [default: on]");
+  app.add_flag(
+      "--no-eq-bridge", no_eq_bridge,
+      "Disable equality bridging unless required by the preprocessing preset [default: on]");
   app.add_flag("--lra-propagation", solver_options.lra_propagation,
-               "Enable QF_LRA same-slack bound propagation (Milestone 3b)");
+               "Enable QF_LRA same-slack bound propagation (Milestone 3b) [default: on]");
   app.add_flag("--no-lra-propagation", no_lra_propagation,
-               "Disable QF_LRA bound propagation (conflict detection only)");
-  app.add_flag("--lra-row-propagation", solver_options.lra_row_propagation,
-               "Enable experimental QF_LRA row-based/interval bound propagation across "
-               "different variables (only takes effect if --lra-propagation is also on)");
-  app.add_flag("--lra-bidirectional-row-propagation",
-               solver_options.lra_bidirectional_row_propagation,
-               "Enable the reverse direction of --lra-row-propagation: tighten a row's "
-               "other terms from its own bound, not just derive the row's own implied "
-               "bound (only takes effect if --lra-row-propagation is also on)");
+               "Disable QF_LRA bound propagation (conflict detection only) [default: on]");
+  app.add_flag(
+      "--lra-row-propagation", solver_options.lra_row_propagation,
+      "Enable experimental QF_LRA row-based/interval bound propagation across  [default: off]"
+      "different variables (only takes effect if --lra-propagation is also on)");
+  app.add_flag(
+      "--lra-bidirectional-row-propagation", solver_options.lra_bidirectional_row_propagation,
+      "Enable the reverse direction of --lra-row-propagation: tighten a row's  [default: off]"
+      "other terms from its own bound, not just derive the row's own implied "
+      "bound (only takes effect if --lra-row-propagation is also on)");
   app.add_option("--lra-row-propagation-max-row-size",
                  solver_options.lra_row_propagation_limits.max_row_size,
                  "Cap on the row length --lra-row-propagation will derive an implied bound "
@@ -233,10 +240,11 @@ int main(int argc, char** argv) {
                  "Fanout cap for the reverse direction "
                  "(--lra-bidirectional-row-propagation, default 32)")
       ->check(CLI::PositiveNumber);
-  app.add_flag("--lra-theory-decisions", solver_options.lra_theory_decisions,
-               "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
-               "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
-               "literal itself instead of leaving every decision to generic VSIDS");
+  app.add_flag(
+      "--lra-theory-decisions", solver_options.lra_theory_decisions,
+      "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory  [default: off]"
+      "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
+      "literal itself instead of leaving every decision to generic VSIDS");
   app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
                  "QF_LRA Check/Pivot variable-selection rule: sparse (default -- prices "
                  "what a pivot costs: among the entering candidates that all repair the "
@@ -249,50 +257,59 @@ int main(int argc, char** argv) {
                  "but bland fall back to bland selection after enough pivots within one "
                  "check(), which is what keeps termination proven")
       ->check(CLI::IsMember({"bland", "dantzig", "soi", "sparse"}));
-  app.add_flag("--no-lra-sparse-leaving", no_lra_sparse_leaving,
-               "Disable the default-on leaving-side half of --lra-pivoting-rule sparse "
-               "(prefer repairing a violated variable whose row is short, using "
-               "violation magnitude only as a tie-break), for ablation");
-  app.add_flag("--lra-fixed-elimination", solver_options.lra_fixed_elimination,
-               "Pivot a basic LRA variable out of the basis as soon as its bounds coincide "
-               "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
-               "competition set, but doubles the >5MB band, so it is worth enabling on "
-               "equality-dominated input");
+  app.add_flag(
+      "--no-lra-sparse-leaving", no_lra_sparse_leaving,
+      "Disable the default-on leaving-side half of --lra-pivoting-rule sparse  [default: on]"
+      "(prefer repairing a violated variable whose row is short, using "
+      "violation magnitude only as a tie-break), for ablation");
+  app.add_flag(
+      "--lra-fixed-elimination", solver_options.lra_fixed_elimination,
+      "Pivot a basic LRA variable out of the basis as soon as its bounds coincide  [default: off]"
+      "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
+      "competition set, but doubles the >5MB band, so it is worth enabling on "
+      "equality-dominated input");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
-               "Enable bounded SAT-visible ground congruence clauses");
-  app.add_flag("--ground-unit-substitution", solver_options.ground_unit_substitution,
-               "Enable experimental ground substitution from visible unit equalities");
+               "Enable bounded SAT-visible ground congruence clauses [default: off]");
+  app.add_flag(
+      "--ground-unit-substitution", solver_options.ground_unit_substitution,
+      "Enable experimental ground substitution from visible unit equalities [default: off]");
   app.add_flag("--guarded-ground-unit-substitution",
                solver_options.guarded_ground_unit_substitution,
-               "Enable guarded ground substitution only when preprocessing metrics predict a win");
+               "Enable guarded ground substitution only when preprocessing metrics predict a win "
+               "[default: off]");
   app.add_flag("--no-solved-constant-substitution", no_solved_constant_substitution,
-               "Disable default QF_UF solved-constant substitution");
-  app.add_flag("--gaussian-elimination", solver_options.gaussian_elimination,
-               "Enable default-on QF_LRA Gauss-Jordan elimination over asserted linear "
-               "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25)");
+               "Disable default QF_UF solved-constant substitution [default: on]");
+  app.add_flag(
+      "--gaussian-elimination", solver_options.gaussian_elimination,
+      "Enable default-on QF_LRA Gauss-Jordan elimination over asserted linear  [default: on]"
+      "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25)");
   app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
-               "Disable QF_LRA Gauss-Jordan equality-system elimination");
+               "Disable QF_LRA Gauss-Jordan equality-system elimination [default: on]");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
-               "Encode top-level disjunctions with Tseitin support clauses");
+               "Encode top-level disjunctions with Tseitin support clauses [default: automatic]");
   app.add_flag("--no-top-level-or-tseitin", no_top_level_or_tseitin,
-               "Keep top-level disjunctions as one clause");
-  app.add_flag("--no-auto-top-level-or-tseitin", no_auto_top_level_or_tseitin,
-               "Disable guarded automatic top-level disjunction Tseitin encoding");
-  app.add_flag("--preprocess-only", solver_options.preprocess_only,
-               "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
+               "Keep top-level disjunctions as one clause [default: automatic]");
+  app.add_flag(
+      "--no-auto-top-level-or-tseitin", no_auto_top_level_or_tseitin,
+      "Disable guarded automatic top-level disjunction Tseitin encoding [default: automatic]");
+  app.add_flag(
+      "--preprocess-only", solver_options.preprocess_only,
+      "Run parsing and preprocessing, print unknown, and skip SAT/theory solving [default: off]");
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
                  "QF_UF preprocessing preset: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
   app.add_flag("--no-auto-basic-single", no_auto_basic_single,
-               "Disable the guarded auto basic-single preprocessing selector");
+               "Disable the guarded auto basic-single preprocessing selector [default: on]");
   app.add_flag("--no-auto-basic-single-predicate-polarity", no_auto_basic_single_predicate_polarity,
-               "Disable polarity phase for auto basic-single formulas with Boolean UF predicates");
-  app.add_flag("--auto-basic-multi", auto_basic_multi,
-               "Enable the experimental auto basic-multi preprocessing and phase heuristic");
+               "Disable polarity phase for auto basic-single formulas with Boolean UF predicates "
+               "[default: on]");
+  app.add_flag(
+      "--auto-basic-multi", auto_basic_multi,
+      "Enable the experimental auto basic-multi preprocessing and phase heuristic [default: off]");
   app.add_flag("--no-auto-basic-multi", no_auto_basic_multi,
-               "Disable the auto basic-multi preprocessing and phase heuristic");
+               "Disable the auto basic-multi preprocessing and phase heuristic [default: off]");
   app.add_flag("--no-auto-basic-multi-polarity", no_auto_basic_multi_polarity,
-               "Disable polarity phase for auto basic-multi formulas");
+               "Disable polarity phase for auto basic-multi formulas [default: on]");
   CLI::Option* profile_option = app.add_option("--qf-uf-profile", qf_uf_profile,
                                                "QF_UF profile: default or tuned-interesting")
                                     ->check(CLI::IsMember({"default", "tuned-interesting"}));
@@ -313,15 +330,17 @@ int main(int argc, char** argv) {
       ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest",
                              "reoriented-proof-forest", "structural-proof-forest"}));
   app.add_flag("--euf-proof-forest-diagnostics", euf_proof_forest_diagnostics,
-               "Record proof-forest path counters for incremental EUF explanations");
+               "Record proof-forest path counters for incremental EUF explanations [default: off]");
   app.add_flag("--euf-diseq-prop-diagnostics", euf_diseq_propagation_diagnostics,
-               "Record diagnostic-only QF_UF app-disequality propagation opportunity counters");
+               "Record diagnostic-only QF_UF app-disequality propagation opportunity counters "
+               "[default: off]");
   app.add_flag("--euf-ackermann-diagnostics", euf_ackermann_diagnostics,
-               "Record diagnostic-only QF_UF Ackermannization cost counters");
-  app.add_flag("--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
-               "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them");
+               "Record diagnostic-only QF_UF Ackermannization cost counters [default: off]");
+  app.add_flag(
+      "--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
+      "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them [default: off]");
   app.add_flag("--euf-diseq-ackermann", euf_diseq_ackermann,
-               "Enable watched QF_UF disequality Ackermann propagation");
+               "Enable watched QF_UF disequality Ackermann propagation [default: off]");
   app.add_option("--euf-diseq-ackermann-max-width", solver_options.euf_diseq_ackermann_max_width,
                  "Maximum width of watched disequality Ackermann clauses")
       ->check(CLI::Range(2, 1000));
