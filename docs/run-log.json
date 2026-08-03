@@ -13041,6 +13041,79 @@
         "UBSan reports and continues rather than aborting, so the stderr grep is the detection mechanism for it, not the harness's outcome column."
       ],
       "outcome": "The remote sanitizer toolchain works and its first gate is clean. Task 16 closed."
+    },
+    {
+      "id": "2026-08-03-qf-lra-division-opensmt",
+      "started_at": "2026-08-03",
+      "recorded_at": "2026-08-03",
+      "kind": "benchmark",
+      "scope": "Adds OpenSMT 2.9.2 as a fifth reference on the complete non-incremental QF_LRA division. Only OpenSMT ran: primo, Yices, z3 and cvc5 are unchanged, so their CSVs are reused.",
+      "commit": "f04fd42",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "OpenSMT 2.9.2 (opensmt-x64-linux-static) from contrib/local, installed by contrib/install_opensmt.py. primo at b6b8d55 and Yices 2.7.0 rows come from job 118904 (2026-08-03); z3 5.0.0 and cvc5 1.3.4 from job 118382 (2026-08-01).",
+        "notes": "Job 119045, 1 solver x 40 shards = 40 tasks, all COMPLETED, 40/40 shard CSVs present. Same manifest, root, timeout and harness as 118904."
+      },
+      "command": {
+        "install": "python3 contrib/install_opensmt.py  (or make contrib-opensmt)",
+        "job": "sbatch --array=0-39 --time=10:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40, PRIMO_COMPARE_SOLVERS='opensmt=contrib/local/bin/opensmt'",
+        "analysis": "python3 scripts/compare_solver_answers.py <119045 + 118904 + 118382 merged into one dir> --timeout 300",
+        "plot": "python3 scripts/plot_cactus.py --series opensmt=<119045> --series yices=<118904> --series primo=<118904> --series z3=<118382> --series cvc5=<118382> --timeout 300 --out docs/_static/qf-lra-cactus.svg"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-full-division.txt (1,753 files, 17 families)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "OpenSMT 1670/1753 (95.3%) PAR2 68068; Yices 1645 (93.8%) PAR2 80585; primo 1631 (93.0%) PAR2 95091; z3 1584 (90.4%) PAR2 128079; cvc5 1511 (86.2%) PAR2 181248. OpenSMT leads on both measures.",
+        "standings_change": "primo drops from second to third. Its own score is unchanged at 1631 -- every movement in its apparent standing on this division (ahead by 47, then second, now third) has come from adding references, not from anything primo did. Recorded because the sequence is easy to misread as a regression.",
+        "where_it_is_decided": "LassoRanker (419 files) goes 385 to primo's 347 and 2017-Heizmann 48 to 41 -- those two carry OpenSMT's 39-file margin. tropical-matrix is the sharpest single result: OpenSMT 5 of 10 where primo, Yices and z3 each take 1 and cvc5 0. primo leads 2019-ezsmt 103-95, latendresse 15-11 and ties tta_startup at 72. Ten of seventeen families are saturated for all five solvers.",
+        "complementarity": "29 instances primo solves that OpenSMT does not, against 68 the other way. Uniquely solved: 23 OpenSMT, 8 primo, 8 Yices, 1 z3, 0 cvc5; 40 files defeat all five.",
+        "soundness": "Zero wrong answers for all five against the division's own (set-info :status) -- 1,629 of 1,753 files carry a checkable status. Zero cross-solver disagreements across five independent implementations, and zero benchmarks unsolved for a non-standard reason: every unsolved instance is an honest timeout."
+      },
+      "caveats": [
+        "Not a single simultaneous run. OpenSMT ran 2026-08-03 alongside nothing else of its own; primo and Yices come from job 118904 the same day; z3 and cvc5 from job 118382 on 2026-08-01. Same manifest, timeout, harness and cluster, different days -- the standing policy of not re-running unchanged reference solvers.",
+        "OpenSMT was run at its defaults with no flags, exactly as the other references are. No attempt was made to find a better configuration for it or for primo.",
+        "Reference-only: contrib/install_opensmt.py installs the release binary and nothing else. OpenSMT's source was not read, for the same clean-room reason stated for Yices -- its simplex core descends from the same Dutertre and de Moura paper primo's does."
+      ],
+      "outcome": "OpenSMT 2.9.2 is the strongest solver measured on this division, and the cactus plot at docs/_static/qf-lra-cactus.svg now carries five series."
+    },
+    {
+      "id": "2026-08-03-qf-lra-scrambled-300s-opensmt",
+      "started_at": "2026-08-03",
+      "recorded_at": "2026-08-03",
+      "kind": "benchmark",
+      "scope": "Adds OpenSMT 2.9.2 to the 595-file scrambled competition set at 300s -- the set used as the promotion bar for the H-series heuristics -- so that bar is measured against the same reference set as the division.",
+      "commit": "f04fd42",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "OpenSMT 2.9.2 from contrib/local. primo, z3 5.0.0 and cvc5 1.3.4 rows come from job 118310 and were not re-run.",
+        "notes": "Job 119085, 1 solver x 20 shards = 20 tasks, all COMPLETED, 20/20 shard CSVs present."
+      },
+      "command": {
+        "job": "sbatch --array=0-19 --time=10:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=sandbox/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-scrambled-competition.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=20, PRIMO_COMPARE_SOLVERS='opensmt=contrib/local/bin/opensmt'",
+        "analysis": "python3 scripts/compare_solver_answers.py <119085 + 118310 merged into one dir> --timeout 300"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-competition.txt (595 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "OpenSMT 552/595 (92.8%) PAR2 33907; primo 515 (86.6%) PAR2 61303; z3 507 (85.2%) PAR2 66718; cvc5 465 (78.2%) PAR2 96616.",
+        "band_revision": "The 500KB-5MB band -- the one the H7-H10 campaign was built around -- is primo 134, z3 141, OpenSMT 166 of 174. Against z3 the remaining deficit is 7 files and the campaign recovered 56 of the original 63; against OpenSMT the deficit is 32. The campaign's diagnosis of WHERE the work was needed holds; its claim that 'most of the deficit is removed' was measured against a reference that is not the strongest available.",
+        "other_bands": "0-50KB saturated for all four at 179. 50-500KB: OpenSMT 178, primo 173, z3 157, cvc5 154 -- primo's own strongest band and still ahead of both older references. >5MB: z3 30, primo 29, OpenSMT 29, cvc5 14, so nothing in that band separates the leaders.",
+        "complementarity": "11 files only primo solves against 48 only OpenSMT solves; 29 of the 595 fall to OpenSMT alone, against 3 to primo alone.",
+        "soundness": "Zero cross-solver disagreements over four solvers, and zero files unsolved for a non-standard reason. This set carries no (set-info :status), so disagreement is the only soundness signal it can give -- a 'wrong=0' column here means nothing on its own."
+      },
+      "caveats": [
+        "primo, z3 and cvc5 were not re-run; their rows come from job 118310. Same manifest, root, timeout and harness.",
+        "This set is a hard sample, not a division result: it under-weights the families primo is strongest on. The division comparison of the same day is the headline measurement, not this one."
+      ],
+      "outcome": "The promotion bar now has a fourth reference, and it moves the reading of the mid-band campaign: against OpenSMT that band is -32, not -7."
     }
   ]
 }

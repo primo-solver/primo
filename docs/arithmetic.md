@@ -722,38 +722,46 @@ item H7's elimination pivots -- which happen inside
 `:lra.pivot-row-updates` / `:lra.pivot-term-ops`, which count every pivot's
 work wherever it was triggered.
 
-### Where QF_LRA work stands, and what is open (2026-08-01)
+### Where QF_LRA work stands, and what is open (2026-08-03)
 
 **The complete non-incremental QF_LRA division, 1,753 files, 300s**
-(jobs 118382 and 118904):
+(jobs 118382, 118904 and 119045):
 
 | solver | solved | PAR2 | wrong |
 |---|---|---|---|
-| **Yices 2.7.0** | **1645** (93.8%) | **80585** | **0** |
+| **OpenSMT 2.9.2** | **1670** (95.3%) | **68068** | **0** |
+| Yices 2.7.0 | 1645 (93.8%) | 80585 | 0 |
 | primo | 1631 (93.0%) | 95091 | 0 |
 | z3 5.0.0 | 1584 (90.4%) | 128079 | 0 |
 | cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
 
 ```{figure} _static/qf-lra-cactus.svg
-:alt: Instances solved against per-instance time budget for Yices, primo, z3 and cvc5.
+:alt: Instances solved against per-instance time budget for OpenSMT, Yices, primo, z3 and cvc5.
 :width: 100%
 
 Instances solved against the per-instance time budget. Only solved instances
 contribute a point, so the vertical gap to 1,753 is the unsolved remainder.
 ```
 
-**Yices leads, and primo is second by 14 instances.** Yices was added on
-2026-08-03; before that the division had only been measured against z3 and
-cvc5, where primo led by 47. Any claim that Primo leads this division needs
-that qualifier.
+**OpenSMT leads and primo is third**, 39 behind OpenSMT and 14 behind Yices.
+The reference set was built in that order -- z3 and cvc5 first, Yices on
+2026-08-03, OpenSMT the same day -- and Primo's apparent standing fell at
+each addition: ahead by 47, then second, now third. **The movement is
+entirely in the reference set; Primo's own score has not changed.** That is
+the honest reading of a three-reference comparison being extended to five,
+and it is why "Primo leads QF_LRA" was never a safe claim to make from three.
 
-**One family decides it.** LassoRanker is the largest at 419 instances and
-Yices takes it 381 to 347 -- a 34-file gap against a 14-file overall margin.
-primo recovers 24 elsewhere: 2017-Heizmann +16 (41 against 25), 2019-ezsmt +4,
-`latendresse` +2 (15 against 13), `tta_startup` +2; `miplib` goes to Yices by
-4. Eleven of seventeen families tie exactly, ten of them saturated. The two
-are complementary rather than ranked -- 29 instances only primo solves, 26
-only Yices, and 63 defeat all four.
+**Two families carry OpenSMT's margin.** LassoRanker, the division's largest
+at 419, goes 385 to Primo's 347, and 2017-Heizmann 48 to 41. `tropical-matrix`
+is the sharpest single result on the board: OpenSMT 5 of 10 where every other
+solver manages 1 or 0. Primo takes `2019-ezsmt` 103 to 95, `latendresse` 15 to
+11 and `tta_startup` 72 to 72-with-z3-at-68; eleven of seventeen families tie
+exactly, ten of them saturated.
+
+**They are still complementary, not ranked.** 29 instances Primo solves and
+OpenSMT does not, against 68 the other way; 23 fall only to OpenSMT, 8 only to
+Primo, 8 only to Yices, 1 only to z3, none only to cvc5, and 40 defeat all
+five. A portfolio of Primo and OpenSMT would solve more than either.
 
 primo scores 1631 at `b6b8d55` against 1631 at `aa44320`, PAR2 95091 against
 94992: independent confirmation that the model-production merge and the
@@ -761,33 +769,52 @@ frontend changes of 2026-08-03 are behaviour-neutral here.
 
 **Zero wrong answers and zero cross-solver disagreements.** Every file in
 this set carries `(set-info :status)`, so unlike the scrambled set the
-harness's own wrong-answer column is live: this is ground-truth checking on
-1,753 files, and the strongest correctness evidence QF_LRA has.
+harness's own wrong-answer column is live: 1,629 of the 1,753 carry a
+checkable status, all five solvers agree with it on every file they answer,
+and no file is unsolved for a non-standard reason. This is the strongest
+correctness evidence QF_LRA has, and adding a fifth independent
+implementation strengthened it rather than finding a crack.
 
 77 files only Primo solves against 30 only z3 solves; against cvc5, 130 to
 10.
 
-**Where the lead comes from** (delta against z3):
+**Per family**, every solver, sorted by size:
 
-| family | n | primo | z3 | cvc5 | vs z3 |
-|---|---|---|---|---|---|
-| 2017-Heizmann-UltimateInvariantSynthesis | 58 | 41 | 22 | 26 | **+19** |
-| LassoRanker | 419 | 347 | 331 | 266 | **+16** |
-| latendresse | 18 | 15 | 8 | 0 | **+7** |
-| tta_startup | 72 | 72 | 68 | 70 | +4 |
-| 2019-ezsmt | 105 | 103 | 100 | 99 | +3 |
-| miplib | 42 | 23 | **25** | 21 | -2 |
-| *twelve others* | | | | | tie |
+| family | n | opensmt | yices | primo | z3 | cvc5 |
+|---|---|---|---|---|---|---|
+| meti-tarski | 488 | 488 | 488 | 488 | 488 | 488 |
+| LassoRanker | 419 | **385** | 381 | 347 | 331 | 266 |
+| sc | 144 | 144 | 144 | 144 | 144 | 144 |
+| sal | 107 | 107 | 107 | 107 | 107 | 107 |
+| 2019-ezsmt | 105 | 95 | 99 | **103** | 100 | 99 |
+| DTP-Scheduling | 91 | 91 | 91 | 91 | 91 | 91 |
+| uart | 73 | 73 | 73 | 73 | 73 | 73 |
+| tta_startup | 72 | **72** | 70 | **72** | 68 | 70 |
+| 2017-Heizmann-UltimateInvariantSynthesis | 58 | **48** | 25 | 41 | 22 | 26 |
+| miplib | 42 | 25 | **27** | 23 | 25 | 21 |
+| spider_benchmarks | 42 | 42 | 42 | 42 | 42 | 42 |
+| clock_synchro | 36 | 36 | 36 | 36 | 36 | 36 |
+| TM | 25 | 25 | 25 | 25 | 25 | 25 |
+| keymaera | 21 | 21 | 21 | 21 | 21 | 21 |
+| latendresse | 18 | 11 | 13 | **15** | 8 | 0 |
+| tropical-matrix | 10 | **5** | 1 | 1 | 1 | 0 |
+| check | 2 | 2 | 2 | 2 | 2 | 2 |
 
-Twelve families tie, most because they are saturated (meti-tarski 488/488,
-sc 144/144, sal 107/107, DTP-Scheduling 91/91). **`miplib` is the only
-family where z3 leads**, 25 to 23 -- consistent with King, Barrett & Tinelli
-finding that CVC4's LP/MIP integration paid off on exactly that family and
-essentially nowhere else in QF_LRA.
+Ten families are saturated -- every solver takes all of them -- so the
+division is decided by seven. **`miplib` is the only family where z3 beats
+Primo**, 25 to 23, consistent with King, Barrett & Tinelli finding that
+CVC4's LP/MIP integration paid off on exactly that family and essentially
+nowhere else in QF_LRA.
 
-*`latendresse` is worth noting*: 15 of 18 against z3's 8 and cvc5's 0. It
-was 0/15 before [H3](#h3), and it is the family the SOI
-paper was written for.
+*`latendresse` is worth noting*: 15 of 18, ahead of every reference
+including OpenSMT's 11 and cvc5's 0. It was 0/15 before [H3](#h3), and it is
+the family the SOI paper was written for.
+
+*`tropical-matrix` is the open question OpenSMT raises.* 10 instances, on
+which the other four solvers score 1, 1, 1 and 0 -- a pattern that read like
+an intrinsically hard family. OpenSMT's 5 says it is not.
+Whatever it does there is worth understanding, and it is small enough to
+profile.
 
 **The 595-file scrambled subset is not representative.** It gave a +8 lead;
 the division gives +47. The scrambled sample under-weights precisely the
@@ -810,41 +837,51 @@ the same period.
 #### The 595-file scrambled subset at 300s, for comparison
 
 **Comparison at 300s, all 595 scrambled competition files**
-(job 118310; z3 and cvc5 re-run because the timeout differs from every
-stored result):
+(job 118310, plus OpenSMT from job 119085; z3 and cvc5 were re-run for 118310
+because the timeout differs from every stored result, and primo/z3/cvc5 were
+*not* re-run for OpenSMT's addition):
 
 | solver | solved | PAR2 |
 |---|---|---|
-| **primo** | **515** (86.6%) | **61303** |
+| **OpenSMT 2.9.2** | **552** (92.8%) | **33907** |
+| primo | 515 (86.6%) | 61303 |
 | z3 5.0.0 | 507 (85.2%) | 66718 |
 | cvc5 1.3.4 | 465 (78.2%) | 96616 |
 
-**Zero cross-solver disagreements** over 595 files and three solvers -- the
+**Zero cross-solver disagreements** over 595 files and four solvers -- the
 strongest soundness signal this set can give, since it carries no
 `:status`.
 
 Primo and z3 are **complementary rather than one dominating**: 30 files only
-Primo solves, 22 only z3 solves. Against cvc5 it is 59 to 9.
+Primo solves, 22 only z3 solves. Against cvc5 it is 59 to 9. Against OpenSMT
+the gap is real rather than complementary: 11 files only Primo solves against
+48 only OpenSMT solves, and 29 of the 595 fall to OpenSMT alone.
 
-**The band this campaign was about is narrowed, not closed:**
+**The band this campaign was about is narrowed against z3, and not against
+OpenSMT:**
 
-| file size | n | primo | z3 | cvc5 |
-|---|---|---|---|---|
-| 0-50 KB | 179 | 179 | 179 | 179 |
-| 50-500 KB | 192 | **173** | 157 | 154 |
-| 500 KB-5 MB | 174 | 134 | **141** | 118 |
-| >5 MB | 50 | 29 | **30** | 14 |
+| file size | n | opensmt | primo | z3 | cvc5 |
+|---|---|---|---|---|---|
+| 0-50 KB | 179 | 179 | 179 | 179 | 179 |
+| 50-500 KB | 192 | **178** | 173 | 157 | 154 |
+| 500 KB-5 MB | 174 | **166** | 134 | 141 | 118 |
+| >5 MB | 50 | 29 | 29 | **30** | 14 |
 
 The 500KB-5MB band was **-56 against z3** on 2026-07-29 and is **-7** now.
-That is most of the deficit removed -- but it has not flipped, and Primo's
-overall lead comes from the 50-500KB band where it was already ahead before
-any of this work. The >5MB band is a tie.
+Against OpenSMT the same band is **-32**, on a set where Primo and z3 are
+within seven files of each other overall. **z3 was flattering as a yardstick
+here.** The campaign's diagnosis was not wrong -- that band is where the work
+was needed, and 56 files of it were recovered -- but "most of the deficit
+removed" was measured against the wrong reference, and the honest statement is
+that a third of the original gap remains against the best solver now measured.
+The >5MB band ties at 29-30 across all three, so nothing in that band is
+specific to Primo.
 
 *What this is not.* Not a competition result. SMT-COMP uses a 1200s
 timeout, competition-entrant binaries and its own scoring; these are
 `contrib` builds on one 595-file scrambled set, and no official SMT-COMP
-logs are available here. It says Primo is competitive with z3 on this set at
-this budget, nothing about placement.
+logs are available here. It says Primo is competitive with z3 and behind
+OpenSMT on this set at this budget, nothing about placement.
 
 **How it got here.** 369 solved at 60s on 2026-07-31 to 439 at 60s and 515
 at 300s, via [H8](#h8) (merge instead of sort, +9/-0),

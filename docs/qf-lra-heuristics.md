@@ -22,7 +22,7 @@ order they were proposed, not the order they were implemented.
 | [H7](#h7) | Fixed-variable elimination (equality slacks) | implemented, **opt-in** -- did not clear its bar |
 | [H8](#h8) | Merge instead of sort in `pivot`'s affected-row loop | implemented, default; **zero regressions** |
 | [H9](#h9) | Bounds-only backtracking (the paper's own scheme) | implemented, default except SOI; largest single gain |
-| [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 (Yices, added 2026-08-03, is ahead of both) |
+| [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 (Yices and OpenSMT, both added 2026-08-03, are ahead of both) |
 | [H11](#h11) | Fill-in-aware pivoting in *preprocessing* Gaussian elimination | proposed, opt-in when built |
 
 Where the remaining gap is, and what has been ruled out, is [](#sec-6). Its
