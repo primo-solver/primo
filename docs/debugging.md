@@ -350,6 +350,33 @@ corpus holding 3 of 17 benchmark families, and a generator that had never
 emitted a coefficient outside [1,15] -- and for the measured profile ladder and
 corpus builder that replaced them.
 
+### The remote sanitizer build
+
+Building an ASAN/UBSan binary on the cluster needs the EasyBuild GCCcore
+toolchain, not the system compiler, and it must be built on the **head node**.
+`scripts/build_slurm_fuzz.sh` does both.
+
+The reason is worth knowing because the earlier diagnosis in
+`docs/run-log.json` had it backwards ("head node lacks libasan, compute nodes
+lack C++ headers", concluding the build belonged in a batch job). Measured
+2026-08-03:
+
+- Compute nodes have no C++ standard headers at all -- `#include <vector>`
+  fails there with the system compiler, sanitizers or not. They cannot compile
+  anything, which makes a batch job the wrong vehicle.
+- The head node's system gcc has a broken libasan: its linker script reads
+  `INPUT ( /usr/lib64/libasan.so.6.0.0 )` and that file does not exist. The
+  path is absolute inside the script, so `-L` cannot redirect it.
+
+`module load GCCcore/11.3.0` fixes both -- own headers, own libasan, linker
+script pointing inside its own tree. Compute nodes still need the runtime when
+*executing*, so anything running the binary must put
+`/export/eb/software/GCCcore/11.3.0/lib64` on `LD_LIBRARY_PATH`; the fuzz gate
+does this itself.
+
+Verified end to end: configure, build, and a compute-node run answering both
+sat and unsat with zero sanitizer reports.
+
 Long fuzzing campaigns should run on SLURM, not on developer workstations.
 Preserve generated failures under `yinyang_bugs/` until each one is copied back,
 classified, minimized, and either turned into a regression test or documented as

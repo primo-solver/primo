@@ -227,6 +227,17 @@ mkdir -p logs "$OUT_ROOT"
 PATH="$WORKDIR/contrib/local/bin:$PATH"
 export PATH
 
+# A sanitizer build made by scripts/build_slurm_fuzz.sh links against the
+# EasyBuild GCCcore runtime, which compute nodes do not have on their default
+# search path -- the binary dies with "libasan.so.6: cannot open shared object
+# file" before solving anything. Harmless for a Release build, required for an
+# ASAN one, so it is set unconditionally.
+GCCCORE_LIB=${PRIMO_GCCCORE_LIB:-/export/eb/software/GCCcore/11.3.0/lib64}
+if [[ -d $GCCCORE_LIB ]]; then
+  LD_LIBRARY_PATH="$GCCCORE_LIB:${LD_LIBRARY_PATH:-}"
+  export LD_LIBRARY_PATH
+fi
+
 # And fail loudly rather than skipping: fuzz_external.py treats a missing
 # fuzzer as "skip this stage" and exits 0, which is the right behaviour for a
 # local smoke run and exactly the wrong one for a gate whose entire purpose
