@@ -446,8 +446,11 @@ callback, was connected. `:no.online.precreated-equality-atoms` counts the
 shared Real equality literals created before SAT search so the callback can
 return existing observed literals. `:no.online.assignments` and
 `:no.online.backtracks` count the dispatcher trail traffic.
-`:no.online.lra-bound-equality-candidates` counts the implemented online rule:
-both `(<= a b)` and `(<= b a)` are true for a shared Real pair.
+`:no.online.lra-published-equalities` counts equality candidates produced by
+`OnlineLraPropagator`; today those are exactly the implemented paired-bound
+rule where both `(<= a b)` and `(<= b a)` are true for a shared Real pair.
+`:no.online.lra-bound-equality-candidates` counts candidates that reached the
+dispatcher's SAT-visible interface equality filter.
 `:no.online.propagations` counts returned equality literals, and
 `:no.online.reason-lits` counts the two bound literals used as the SAT reason.
 `:no.online.skipped-assigned` counts candidates already assigned by SAT before

@@ -4539,6 +4539,11 @@ struct PreparedLraTheory {
     // the atom really means `bound_var >= rhs` rather than `<= rhs`. See
     // bound_assertion(), which is the single place this is interpreted.
     bool asserts_lower_when_true = false;
+    // NO/LRA interface equality propagation: when the original atom is a
+    // non-strict real inequality `(<= lhs rhs)`, LRA can publish the pair
+    // once both directions are true. Strict inequalities and normalized
+    // internal tableau shape do not matter for that rule.
+    TermPairKey non_strict_le_pair;
   };
 
   theory::arithmetic::LraTableau base_tableau;
@@ -4614,7 +4619,11 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     if (canonical.key.sorted_terms.size() == 1) {
       const theory::arithmetic::LraVarId bound_var = get_var(canonical.key.sorted_terms[0].first);
       const std::size_t atom_index = atoms.size();
-      atoms.push_back(PreparedAtom{true, bound_var, normalized.relation, rhs, flipped});
+      const TermPairKey non_strict_le_pair =
+          term.kind == core::TermKind::Le ? TermPairKey{term.children.at(0), term.children.at(1)}
+                                          : TermPairKey{};
+      atoms.push_back(
+          PreparedAtom{true, bound_var, normalized.relation, rhs, flipped, non_strict_le_pair});
       atoms_by_bound_var[bound_var].push_back(atom_index);
       continue;
     }
@@ -4634,7 +4643,11 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
       slack_by_polynomial.emplace(canonical.key, slack);
     }
     const std::size_t atom_index = atoms.size();
-    atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped});
+    const TermPairKey non_strict_le_pair =
+        term.kind == core::TermKind::Le ? TermPairKey{term.children.at(0), term.children.at(1)}
+                                        : TermPairKey{};
+    atoms.push_back(
+        PreparedAtom{true, slack, normalized.relation, rhs, flipped, non_strict_le_pair});
     atoms_by_bound_var[slack].push_back(atom_index);
   }
 
@@ -6179,6 +6192,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     }
     observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     assigned_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    assigned_lit_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, theory_atoms_.size());
     for (std::size_t i = 0; i < theory_atoms_.size(); ++i) {
       const BooleanClausifier::TheoryAtom& atom = theory_atoms_[i];
@@ -6222,9 +6236,12 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
         // that with an empty (invalid) reason clause.
         reasons_.erase(var);
         reasons_.erase(-var);
+        assigned_lit_by_var_[static_cast<std::size_t>(var)] = 0;
       }
       level_starts_.resize(new_level);
     }
+    rebuild_true_interface_bounds();
+    published_interface_pairs_.clear();
     conflict_.reset();
     // Sound to drop unconditionally per notify_assignment_lit's own
     // verified invariant: a new decision level can never open while a
@@ -6239,6 +6256,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     // safe to drop unconditionally (unlike reasons_ above): at worst a
     // still-valid candidate gets rediscovered next time its slack changes.
     pending_.clear();
+    pending_interface_equalities_.clear();
     reason_stream_active_lit_ = 0;
     reason_stream_index_ = 0;
   }
@@ -6358,6 +6376,21 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   std::optional<sat::Clause> conflict() const { return conflict_; }
   const theory::arithmetic::LraTableau& tableau() const { return tableau_; }
 
+  struct InterfaceEqualityPropagation {
+    TermPairKey pair;
+    std::vector<sat::Lit> reasons;
+  };
+
+  std::vector<InterfaceEqualityPropagation> take_interface_equality_propagations() {
+    std::vector<InterfaceEqualityPropagation> result;
+    result.reserve(pending_interface_equalities_.size());
+    while (!pending_interface_equalities_.empty()) {
+      result.push_back(std::move(pending_interface_equalities_.front()));
+      pending_interface_equalities_.pop_front();
+    }
+    return result;
+  }
+
 #if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
     run_deferred_check_if_needed();
@@ -6419,6 +6452,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       return;
     }
     assigned_[static_cast<std::size_t>(var)] = 1;
+    assigned_lit_by_var_[static_cast<std::size_t>(var)] = lit;
     var_trail_.push_back(var);
     const std::size_t atom_index = atom_index_by_var_[static_cast<std::size_t>(var)];
     const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
@@ -6429,9 +6463,10 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     const bool atom_value = atom.lit.value > 0 ? lit > 0 : lit < 0;
     const AssignedTheoryAtom assigned =
         assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value);
+    const sat::Lit reason = blocking_lit(assigned);
     const auto direct_conflict = assert_lra_atom_bound(
         tableau_, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom_value,
-        prepared_atom.asserts_lower_when_true, blocking_lit(assigned));
+        prepared_atom.asserts_lower_when_true, reason);
     // Item H7's counters move inside assert_upper/assert_lower, not inside
     // check(), so they are published here rather than alongside the pivot
     // counters in run_deferred_check_if_needed(). They are cumulative
@@ -6454,6 +6489,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       if (row_propagation_enabled_) {
         scan_row_based_propagations(prepared_atom.bound_var);
       }
+    }
+    if (atom_value) {
+      observe_true_interface_bound(atom_index, reason);
     }
     // Defer the expensive Check/Pivot repair rather than running it
     // eagerly after every single assignment (decisions *and* propagated
@@ -6510,6 +6548,52 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     statistics_.increment(kStatLraPivotRowUpdates,
                           tableau_.row_update_count() - row_updates_before);
     statistics_.increment(kStatLraPivotTermOps, tableau_.row_term_op_count() - term_ops_before);
+  }
+
+  void observe_true_interface_bound(std::size_t atom_index, sat::Lit reason) {
+    const TermPairKey pair = prepared_.atoms[atom_index].non_strict_le_pair;
+    if (pair.lhs == core::kInvalidTermId) {
+      return;
+    }
+    true_lra_le_reasons_[pair] = reason;
+    enqueue_lra_interface_equality_if_forced(pair);
+  }
+
+  void rebuild_true_interface_bounds() {
+    true_lra_le_reasons_.clear();
+    for (std::size_t atom_index = 0; atom_index < theory_atoms_.size(); ++atom_index) {
+      const TermPairKey pair = prepared_.atoms[atom_index].non_strict_le_pair;
+      if (pair.lhs == core::kInvalidTermId) {
+        continue;
+      }
+      const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+      if (!is_assigned_var(var)) {
+        continue;
+      }
+      const int assigned_lit = assigned_lit_by_var_[static_cast<std::size_t>(var)];
+      const bool atom_value = atom.lit.value > 0 ? assigned_lit > 0 : assigned_lit < 0;
+      if (atom_value) {
+        true_lra_le_reasons_[pair] = sat::Lit{-assigned_lit};
+      }
+    }
+  }
+
+  void enqueue_lra_interface_equality_if_forced(const TermPairKey& pair) {
+    const auto forward = true_lra_le_reasons_.find(pair);
+    if (forward == true_lra_le_reasons_.end()) {
+      return;
+    }
+    const auto reverse = true_lra_le_reasons_.find(TermPairKey{pair.rhs, pair.lhs});
+    if (reverse == true_lra_le_reasons_.end()) {
+      return;
+    }
+    const TermPairKey canonical_pair = pair.lhs < pair.rhs ? pair : TermPairKey{pair.rhs, pair.lhs};
+    if (!published_interface_pairs_.insert(canonical_pair).second) {
+      return;
+    }
+    pending_interface_equalities_.push_back(
+        InterfaceEqualityPropagation{pair, {forward->second, reverse->second}});
   }
 
   // Scans the other atoms sharing `slack` with the atom that was just
@@ -6710,11 +6794,15 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   util::Statistics& statistics_;
   std::vector<char> observed_vars_;
   std::vector<char> assigned_;
+  std::vector<int> assigned_lit_by_var_;
   std::vector<int> var_trail_;
   std::vector<std::size_t> atom_index_by_var_;
   std::vector<std::size_t> checkpoints_;
   std::vector<std::size_t> level_starts_;
   std::deque<PendingPropagation> pending_;
+  std::deque<InterfaceEqualityPropagation> pending_interface_equalities_;
+  std::unordered_map<TermPairKey, sat::Lit, TermPairKeyHash> true_lra_le_reasons_;
+  std::unordered_set<TermPairKey, TermPairKeyHash> published_interface_pairs_;
   std::unordered_map<int, std::vector<sat::Lit>> reasons_;
   int reason_stream_active_lit_ = 0;
   int reason_stream_index_ = 0;
@@ -6736,12 +6824,11 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
 
 class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagator {
  public:
-  MixedTheoryPropagationDispatcher(const core::TermManager& terms,
-                                   TheoryCombinationManager& manager,
+  MixedTheoryPropagationDispatcher(TheoryCombinationManager& manager,
                                    OnlineLraPropagator* lra_propagator,
                                    const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
                                    util::Statistics& statistics)
-      : terms_(terms), manager_(manager), lra_propagator_(lra_propagator), statistics_(statistics) {
+      : manager_(manager), lra_propagator_(lra_propagator), statistics_(statistics) {
     int max_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
       max_var = std::max(max_var, sat_var(atom.lit));
@@ -6752,14 +6839,9 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
       }
     }
     assignment_by_var_.assign(static_cast<std::size_t>(max_var) + 1, 0);
-    lra_atom_by_var_.assign(static_cast<std::size_t>(max_var) + 1, nullptr);
     interface_pair_by_var_.assign(static_cast<std::size_t>(max_var) + 1, TermPairKey{});
     pending_var_.assign(static_cast<std::size_t>(max_var) + 1, 0);
 
-    for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
-      const int var = sat_var(atom.lit);
-      lra_atom_by_var_[static_cast<std::size_t>(var)] = &atom;
-    }
     for (const InterfaceEqualityRegistryEntry& entry : manager_.summary().equality_registry) {
       if (entry.lit.value == 0) {
         continue;
@@ -6774,6 +6856,7 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
   void notify_assignment(const std::vector<int>& lits) override {
     if (lra_propagator_ != nullptr) {
       lra_propagator_->notify_assignment(lits);
+      drain_lra_interface_equalities();
     }
     for (const int lit : lits) {
       notify_assignment_lit(lit);
@@ -6783,6 +6866,7 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
   void notify_assignment(int lit, bool is_fixed) override {
     if (lra_propagator_ != nullptr) {
       lra_propagator_->notify_assignment(lit, is_fixed);
+      drain_lra_interface_equalities();
     }
     notify_assignment_lit(lit);
   }
@@ -6810,7 +6894,6 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
       reasons_.erase(-lit);
     }
     level_starts_.resize(std::min<std::size_t>(new_level, level_starts_.size()));
-    rebuild_true_lra_bounds();
     pending_.clear();
     std::fill(pending_var_.begin(), pending_var_.end(), 0);
     reason_stream_active_lit_ = 0;
@@ -6940,58 +7023,23 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
       manager_.set_interface_equality_value(
           interface_pair.lhs, interface_pair.rhs,
           lit > 0 ? InterfaceEqualityValue::Equal : InterfaceEqualityValue::Disequal);
-      return;
-    }
-
-    const BooleanClausifier::TheoryAtom* atom = lra_atom_by_var_[static_cast<std::size_t>(var)];
-    if (atom == nullptr) {
-      return;
-    }
-    const bool atom_value = atom->lit.value > 0 ? lit > 0 : lit < 0;
-    if (!atom_value) {
-      return;
-    }
-    const core::Term& term = terms_.get(atom->term);
-    if (term.kind != core::TermKind::Le || term.children.size() != 2) {
-      return;
-    }
-    const TermPairKey pair{term.children.at(0), term.children.at(1)};
-    true_lra_le_reasons_[pair] = sat::Lit{-atom->lit.value};
-    enqueue_if_lra_bounds_force_equality(pair);
-  }
-
-  void rebuild_true_lra_bounds() {
-    true_lra_le_reasons_.clear();
-    for (const int lit : trail_) {
-      const int var = sat_var(sat::Lit{lit});
-      if (var >= static_cast<int>(lra_atom_by_var_.size())) {
-        continue;
-      }
-      const BooleanClausifier::TheoryAtom* atom = lra_atom_by_var_[static_cast<std::size_t>(var)];
-      if (atom == nullptr) {
-        continue;
-      }
-      const bool atom_value = atom->lit.value > 0 ? lit > 0 : lit < 0;
-      if (!atom_value) {
-        continue;
-      }
-      const core::Term& term = terms_.get(atom->term);
-      if (term.kind == core::TermKind::Le && term.children.size() == 2) {
-        true_lra_le_reasons_[TermPairKey{term.children.at(0), term.children.at(1)}] =
-            sat::Lit{-atom->lit.value};
-      }
     }
   }
 
-  void enqueue_if_lra_bounds_force_equality(const TermPairKey& pair) {
-    const auto reverse = true_lra_le_reasons_.find(TermPairKey{pair.rhs, pair.lhs});
-    if (reverse == true_lra_le_reasons_.end()) {
+  void drain_lra_interface_equalities() {
+    if (lra_propagator_ == nullptr) {
       return;
     }
-    const auto forward = true_lra_le_reasons_.find(pair);
-    if (forward == true_lra_le_reasons_.end()) {
-      return;
+    std::vector<OnlineLraPropagator::InterfaceEqualityPropagation> candidates =
+        lra_propagator_->take_interface_equality_propagations();
+    statistics_.increment(":no.online.lra-published-equalities", candidates.size());
+    for (OnlineLraPropagator::InterfaceEqualityPropagation& candidate : candidates) {
+      enqueue_if_interface_equality_lit_available(candidate.pair, std::move(candidate.reasons));
     }
+  }
+
+  void enqueue_if_interface_equality_lit_available(const TermPairKey& pair,
+                                                   std::vector<sat::Lit> reasons) {
     const std::optional<sat::Lit> equality_lit =
         manager_.interface_equality_lit(pair.lhs, pair.rhs);
     if (!equality_lit.has_value()) {
@@ -7010,19 +7058,16 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
       return;
     }
     pending_var_[static_cast<std::size_t>(equality_var)] = 1;
-    pending_.push_back(PendingEquality{equality_lit->value, {forward->second, reverse->second}});
+    pending_.push_back(PendingEquality{equality_lit->value, std::move(reasons)});
   }
 
-  const core::TermManager& terms_;
   TheoryCombinationManager& manager_;
   OnlineLraPropagator* lra_propagator_ = nullptr;
   util::Statistics& statistics_;
   std::vector<int> assignment_by_var_;
   std::vector<int> trail_;
   std::vector<std::size_t> level_starts_;
-  std::vector<const BooleanClausifier::TheoryAtom*> lra_atom_by_var_;
   std::vector<TermPairKey> interface_pair_by_var_;
-  std::unordered_map<TermPairKey, sat::Lit, TermPairKeyHash> true_lra_le_reasons_;
   std::deque<PendingEquality> pending_;
   std::vector<char> pending_var_;
   std::unordered_map<int, std::vector<sat::Lit>> reasons_;
@@ -7585,6 +7630,7 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.online.precreated-equality-atoms", online_precreated_equalities);
   statistics.set(":no.online.assignments", 0);
   statistics.set(":no.online.backtracks", 0);
+  statistics.set(":no.online.lra-published-equalities", 0);
   statistics.set(":no.online.lra-bound-equality-candidates", 0);
   statistics.set(":no.online.propagations", 0);
   statistics.set(":no.online.reason-lits", 0);
@@ -7625,7 +7671,7 @@ CheckSatOutcome solve_qf_uf_lra(
         base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions, statistics);
     if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online) {
-      mixed_online_dispatcher.emplace(terms, no_manager, &online_lra_propagator.value(), lra_atoms,
+      mixed_online_dispatcher.emplace(no_manager, &online_lra_propagator.value(), lra_atoms,
                                       statistics);
       backend.connect_external_propagator(&mixed_online_dispatcher.value());
     } else {

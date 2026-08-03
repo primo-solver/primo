@@ -249,13 +249,16 @@ Implemented now:
   propagation clauses for ablation. `--nelson-oppen-prop=online` is an opt-in
   mixed-theory callback path: the SMT layer connects a single
   `MixedTheoryPropagationDispatcher` to CaDiCaL, delegates ordinary arithmetic
-  propagation to `OnlineLraPropagator`, and additionally propagates a
-  SAT-visible shared Real equality when both non-strict bounds `(<= a b)` and
-  `(<= b a)` over registered shared Real constants/proxies are true on the SAT
-  trail. The online path pre-registers the relevant shared Real equality atoms
-  because CaDiCaL propagation can only return existing observed literals. More
-  general LRA-implied shared equalities still use the final guarded check; this
-  is not yet the full model-guided Nelson-Oppen algorithm.
+  propagation to `OnlineLraPropagator`, and consumes LRA-published interface
+  equality candidates. The implemented LRA producer publishes a shared Real
+  equality when both non-strict bounds `(<= a b)` and `(<= b a)` over registered
+  shared Real constants/proxies are true on the SAT trail. The dispatcher then
+  maps that theory-owned candidate to the SAT-visible interface equality literal
+  and streams the LRA-provided reason literals back to CaDiCaL. The online path
+  pre-registers the relevant shared Real equality atoms because CaDiCaL
+  propagation can only return existing observed literals. More general
+  LRA-implied shared equalities still use the final guarded check; this is not
+  yet the full model-guided Nelson-Oppen algorithm.
 - **Single-theory invariant:** the combination dispatcher is used only by the
   mixed QF_UFLRA solver when `--nelson-oppen-prop=online` is selected. Pure
   QF_UF keeps its direct EUF propagator path, and pure QF_LRA keeps its direct

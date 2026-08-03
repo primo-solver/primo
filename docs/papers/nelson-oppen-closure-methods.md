@@ -129,12 +129,15 @@ EUF-distinct Real arguments.
 path. In mixed QF_UFLRA only, `MixedTheoryPropagationDispatcher` is connected as
 CaDiCaL's single external propagator and delegates ordinary LRA callbacks to
 `OnlineLraPropagator`. The dispatcher tracks SAT assignments and manager
-arrangement values on the SAT trail. When it sees both true non-strict bounds
-`(<= a b)` and `(<= b a)` over a registered shared Real pair, it propagates the
-positive interface equality literal with the two bound-blocking literals as the
-reason clause. Because CaDiCaL propagation must return an existing observed
-literal, this online mode pre-registers the shared Real equality atoms before
-search. This precreation is opt-in and is the reason the default remains
+arrangement values on the SAT trail, but it no longer inspects LRA atoms for the
+implemented rule. `OnlineLraPropagator` publishes an interface equality
+candidate when its own trail contains both true non-strict bounds `(<= a b)` and
+`(<= b a)` over a registered shared Real pair, with the two bound-blocking
+literals as the explanation. The dispatcher maps that theory-owned candidate to
+the positive SAT-visible interface equality literal and streams the LRA-provided
+reason clause to CaDiCaL. Because CaDiCaL propagation must return an existing
+observed literal, this online mode pre-registers the shared Real equality atoms
+before search. This precreation is opt-in and is the reason the default remains
 `final`; it is also why the single-theory invariant below is required.
 
 **Single-theory invariant.** `MixedTheoryPropagationDispatcher` is never used

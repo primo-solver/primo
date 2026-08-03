@@ -998,6 +998,7 @@ void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.online.enabled") == 1);
   assert(result.statistics.get(":no.online.precreated-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.online.lra-published-equalities") >= 1);
   assert(result.statistics.get(":no.online.lra-bound-equality-candidates") >= 1);
   assert(result.statistics.get(":no.online.propagations") >= 1);
   assert(result.statistics.get(":no.online.reason-lits") >= 2);
