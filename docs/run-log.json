@@ -17027,6 +17027,107 @@
         "solved_only_by_z3": 4
       },
       "outcome": "The online paired-bound path is active on this sample but is not a performance improvement: final and online both solve 16/20 with no wrong answers or disagreements, while online has higher PAR2 and wall-clock sum. This is shallow diagnostic evidence only, not default-promotion evidence. The useful signal is that paired-bound LRA publishing fires on real SMT-LIB instances: 11,916 published candidates and 1,820 propagated interface equality literals across 8 files. The strongest activity occurs on BMC timeout rows, so the next investigation should inspect whether this creates SAT churn or whether the timeout rows need a different mixed-theory mechanism."
+    },
+    {
+      "id": "2026-08-03-qf-uflra-no-online-profile-cee669f",
+      "date": "2026-08-03",
+      "commit": "eea5164",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "profiling",
+      "scope": "Local callgrind and gprof diagnosis of the opt-in online Nelson-Oppen regression observed in the shallow QF_UFLRA comparison.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "binary": "build-profile/primo at eea5164, RelWithDebInfo, PRIMO_WARNINGS_AS_ERRORS=OFF for profiling-only GCC 13 build; build-gprof/primo at eea5164 with -pg",
+        "artifact_dir": "results/profiles/no-online-cee669f",
+        "probe_artifact_dir": "results/local-no-profile-probes"
+      },
+      "commands": {
+        "profile_build": "cmake -B build-profile -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=$PWD/contrib/local -DPRIMO_GIT_REVISION_OVERRIDE=eea5164 -DPRIMO_WARNINGS_AS_ERRORS=OFF; cmake --build build-profile --target primo -j4",
+        "gprof_build": "cmake -B build-gprof -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=$PWD/contrib/local -DPRIMO_GIT_REVISION_OVERRIDE=eea5164 -DPRIMO_WARNINGS_AS_ERRORS=OFF -DCMAKE_CXX_FLAGS='-pg' -DCMAKE_EXE_LINKER_FLAGS='-pg'; cmake --build build-gprof --target primo -j4",
+        "local_probe": "python3 scripts/bench_qf_uf_full.py --repo /workspace --root tmp/QF_UFLRA --manifest <two BMC rows> --solver ./build-profile/primo --solver-arg=--quiet --solver-arg=--stats [--solver-arg=--nelson-oppen-prop=online] --timeout 10",
+        "callgrind_final": "valgrind --tool=callgrind --callgrind-out-file=results/profiles/no-online-cee669f/callgrind.mathsat-final.out ./build-profile/primo --quiet --stats tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2",
+        "callgrind_online": "valgrind --tool=callgrind --callgrind-out-file=results/profiles/no-online-cee669f/callgrind.mathsat-online.out ./build-profile/primo --quiet --stats --nelson-oppen-prop=online tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2",
+        "gprof_online": "cd results/profiles/no-online-cee669f/gprof && /workspace/build-gprof/primo --quiet --stats --nelson-oppen-prop=online /workspace/tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2; gprof /workspace/build-gprof/primo gmon.out > gprof.mathsat-online.txt"
+      },
+      "inputs": {
+        "timeout_probe_files": [
+          "tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.floppy_false-unreach-call.i.cil.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2"
+        ],
+        "profile_file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2"
+      },
+      "summary": {
+        "timeout_probe": {
+          "floppy_final": {
+            "status": "timeout",
+            "seconds": 10.015,
+            ":sat.decisions": 4393,
+            ":sat.conflicts": 74,
+            ":sat.propagations": 43091
+          },
+          "floppy_online": {
+            "status": "timeout",
+            "seconds": 10.033,
+            ":sat.decisions": 1419961,
+            ":sat.conflicts": 83,
+            ":sat.propagations": 1456790,
+            ":no.online.lra-published-equalities": 8534,
+            ":no.online.propagations": 1742
+          },
+          "diskperf_final": {
+            "status": "timeout",
+            "seconds": 10.013,
+            ":sat.decisions": 8524,
+            ":sat.conflicts": 40,
+            ":sat.propagations": 24269
+          },
+          "diskperf_online": {
+            "status": "timeout",
+            "seconds": 10.015,
+            ":sat.decisions": 70999,
+            ":sat.conflicts": 44,
+            ":sat.propagations": 84279,
+            ":no.online.lra-published-equalities": 2599,
+            ":no.online.propagations": 54
+          }
+        },
+        "profile_file_stats": {
+          "final": {
+            "wall_seconds": 0.36,
+            ":time.solve-us": 356410,
+            ":sat.solve-calls": 4,
+            ":sat.decisions": 171,
+            ":lra.online-check-calls": 127,
+            ":lra.pivot-term-ops": 14221,
+            ":no.interface.equality-rechecks": 1,
+            ":no.online.precreated-equality-atoms": 0
+          },
+          "online": {
+            "wall_seconds": 2.01,
+            ":time.solve-us": 2010918,
+            ":sat.solve-calls": 17,
+            ":sat.decisions": 5808,
+            ":lra.online-check-calls": 555,
+            ":lra.pivot-term-ops": 18200,
+            ":no.interface.equality-rechecks": 16,
+            ":no.online.precreated-equality-atoms": 300,
+            ":no.online.lra-published-equalities": 69,
+            ":no.online.propagations": 5
+          }
+        },
+        "callgrind": {
+          "final_total_ir": 2979055658,
+          "online_total_ir": 14468797539,
+          "online_vs_final_ir_ratio": 4.86,
+          "online_top_inclusive": "lra_implied_real_equalities accounts for 12,983,637,602 instructions, 89.74% of online total."
+        },
+        "gprof_online": {
+          "top_self_time": "Rational::operator* 38.93%, Rational::operator+ 13.74%, LraTableau::pivot 13.74%",
+          "hot_call_counts": "lra_assignment_conflicts_with_extra_atom 6450 calls, PreparedLraTheory constructor 6517 calls, LraTableau::check 7005 calls"
+        }
+      },
+      "outcome": "The online regression is not parsing/preprocessing and not primarily the paired-bound callback producer. Online precreation and propagated interface equalities increase SAT arrangement traffic, which causes repeated final mixed checks. Each final LRA-to-EUF scan calls lra_implied_real_equalities, which checks all shared Real pairs by rebuilding an augmented LRA theory for lhs < rhs and rhs < lhs. On the solved MathSAT profile case this all-pairs scan dominates callgrind at 89.74% of instructions; gprof independently shows thousands of augmented LRA preparations and tableau checks. The next design decision is whether online mode should skip or cap this broader final LRA equality mining, or replace it with cached/reused LRA equality evidence, while retaining the narrow paired-bound online producer."
     }
   ]
 }
