@@ -257,8 +257,12 @@ Implemented now:
   and streams the LRA-provided reason literals back to CaDiCaL. The online path
   pre-registers the relevant shared Real equality atoms because CaDiCaL
   propagation can only return existing observed literals. More general
-  LRA-implied shared equalities still use the final guarded check; this is not
-  yet the full model-guided Nelson-Oppen algorithm.
+  LRA-implied shared equalities remain a documented opportunity, not the next
+  committed extension: discovering them from arbitrary tableau rows could add a
+  wider per-bound-change scan, more explanation bookkeeping, and more
+  SAT-visible equality traffic. The paired-bound rule is therefore the stable
+  online LRA-to-EUF propagation subset for now; this is not yet the full
+  model-guided Nelson-Oppen algorithm.
 - **Single-theory invariant:** the combination dispatcher is used only by the
   mixed QF_UFLRA solver when `--nelson-oppen-prop=online` is selected. Pure
   QF_UF keeps its direct EUF propagator path, and pure QF_LRA keeps its direct

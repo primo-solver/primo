@@ -449,6 +449,9 @@ return existing observed literals. `:no.online.assignments` and
 `:no.online.lra-published-equalities` counts equality candidates produced by
 `OnlineLraPropagator`; today those are exactly the implemented paired-bound
 rule where both `(<= a b)` and `(<= b a)` are true for a shared Real pair.
+Broader LRA-derived equalities are intentionally not part of this counter yet:
+mining arbitrary tableau rows for equal shared terms is a future opportunity
+with explicit cost risk, not a stable online propagation mode.
 `:no.online.lra-bound-equality-candidates` counts candidates that reached the
 dispatcher's SAT-visible interface equality filter.
 `:no.online.propagations` counts returned equality literals, and

@@ -140,6 +140,17 @@ observed literal, this online mode pre-registers the shared Real equality atoms
 before search. This precreation is opt-in and is the reason the default remains
 `final`; it is also why the single-theory invariant below is required.
 
+The paired-bound producer is deliberately the stable online LRA-to-EUF subset
+for now. It is sound, has a compact two-literal explanation, and exercises the
+combination path without making every LRA bound change search the tableau for
+new shared equalities. A broader producer could look for tableau-implied
+equalities, fixed offset rows, or other linear combinations that force two
+shared Real terms to the same value, but that is an opportunity rather than a
+current implementation target. Before such a producer is built, it needs a
+separate design note and benchmark plan covering trigger conditions, duplicate
+suppression, explanation construction, backtracking, and caps on the number of
+candidate interface equalities created per SAT branch.
+
 **Single-theory invariant.** `MixedTheoryPropagationDispatcher` is never used
 for pure QF_UF or pure QF_LRA. Pure QF_UF keeps its direct EUF callback path;
 pure QF_LRA keeps its direct `OnlineLraPropagator` path. The CVC-like
