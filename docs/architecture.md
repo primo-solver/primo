@@ -243,6 +243,24 @@ Implemented now:
   equalities are learned as guarded clauses over interface equality literals;
   the guards are the blocking literals for the current theory assignment, so an
   equality learned in one Boolean branch does not leak into another. The
+  default is `--nelson-oppen-prop=final`: equality propagation is performed
+  after a complete SAT assignment and before the model is accepted.
+  `--nelson-oppen-prop=off` disables these guarded interface-equality
+  propagation clauses for ablation. `--nelson-oppen-prop=online` is an opt-in
+  mixed-theory callback path: the SMT layer connects a single
+  `MixedTheoryPropagationDispatcher` to CaDiCaL, delegates ordinary arithmetic
+  propagation to `OnlineLraPropagator`, and additionally propagates a
+  SAT-visible shared Real equality when both non-strict bounds `(<= a b)` and
+  `(<= b a)` over registered shared Real constants/proxies are true on the SAT
+  trail. The online path pre-registers the relevant shared Real equality atoms
+  because CaDiCaL propagation can only return existing observed literals. More
+  general LRA-implied shared equalities still use the final guarded check; this
+  is not yet the full model-guided Nelson-Oppen algorithm.
+- **Single-theory invariant:** the combination dispatcher is used only by the
+  mixed QF_UFLRA solver when `--nelson-oppen-prop=online` is selected. Pure
+  QF_UF keeps its direct EUF propagator path, and pure QF_LRA keeps its direct
+  `OnlineLraPropagator` path, so single-theory runs do not pay for shared
+  equality registration, dispatcher callbacks, or arrangement bookkeeping. The
   propagation path first reuses an existing interface equality literal when one
   is registered and lazily creates a missing literal only for the equality being
   forced; it is not an exhaustive arrangement-enumeration pass. The statistics

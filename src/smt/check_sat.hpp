@@ -119,6 +119,12 @@ enum class CheckSatResult {
   Unsupported,
 };
 
+enum class NelsonOppenPropagationMode {
+  Off,
+  Final,
+  Online,
+};
+
 struct CheckSatOutcome {
   CheckSatResult result = CheckSatResult::Unknown;
   std::string message;
@@ -141,6 +147,7 @@ struct CheckSatOptions {
   bool nelson_oppen_model_equality_mutation = true;
   ModelEqualityBranchPolicy nelson_oppen_model_equality_branch_policy =
       ModelEqualityBranchPolicy::First;
+  NelsonOppenPropagationMode nelson_oppen_propagation = NelsonOppenPropagationMode::Final;
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   AutoBudget euf_propagation_budget;

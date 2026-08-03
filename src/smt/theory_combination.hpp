@@ -91,14 +91,23 @@ class TheoryCombinationManager {
   bool set_interface_equality_value(core::TermId lhs, core::TermId rhs,
                                     InterfaceEqualityValue value);
   void clear_interface_equality_values();
+  void push_level();
+  void pop_to_level(std::size_t new_level);
 
  private:
+  struct EqualityValueTrailEntry {
+    std::size_t index = 0;
+    InterfaceEqualityValue old_value = InterfaceEqualityValue::Unknown;
+  };
+
   static std::uint64_t equality_key(core::TermId lhs, core::TermId rhs);
   void rebuild_equality_index();
 
   const core::TermManager& terms_;
   NelsonOppenInterfaceSummary summary_;
   std::unordered_map<std::uint64_t, std::size_t> equality_index_;
+  std::vector<EqualityValueTrailEntry> value_trail_;
+  std::vector<std::size_t> level_starts_;
 };
 
 // Conservative Track-B scaffold for Nelson-Oppen bookkeeping. It only reports

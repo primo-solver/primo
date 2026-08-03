@@ -170,6 +170,7 @@ int main(int argc, char** argv) {
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
   bool no_nelson_oppen_model_equality_mutation = false;
+  std::string nelson_oppen_propagation = "final";
   std::string model_equality_branch_policy = "first";
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
@@ -344,6 +345,11 @@ int main(int argc, char** argv) {
   app.add_flag("--no-model-equality-mutation", no_nelson_oppen_model_equality_mutation,
                "Disable the experimental QF_UFLRA LRA model-mutation filter inside "
                "--model-equality-branching");
+  app.add_option("--nelson-oppen-prop", nelson_oppen_propagation,
+                 "QF_UFLRA Nelson-Oppen interface equality propagation mode: off, final, or "
+                 "online. Pure QF_UF and QF_LRA keep their direct theory propagators")
+      ->check(CLI::IsMember({"off", "final", "online"}))
+      ->default_val("final");
   app.add_option("--model-equality-branch-budget",
                  solver_options.nelson_oppen_model_equality_branch_budget,
                  "Maximum QF_UFLRA model-equality branch assumptions per check-sat")
@@ -637,6 +643,13 @@ int main(int argc, char** argv) {
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
   solver_options.nelson_oppen_model_equality_branching = nelson_oppen_model_equality_branching;
+  if (nelson_oppen_propagation == "off") {
+    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Off;
+  } else if (nelson_oppen_propagation == "online") {
+    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Online;
+  } else {
+    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Final;
+  }
   if (no_nelson_oppen_model_equality_mutation) {
     solver_options.nelson_oppen_model_equality_mutation = false;
   }

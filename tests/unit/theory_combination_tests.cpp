@@ -262,6 +262,39 @@ void manager_rebuild_replaces_previous_arrangement() {
   assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Unknown);
 }
 
+void manager_rolls_back_interface_equality_values_by_decision_level() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto b_symbol = symbols.declare_constant("b", sort_a);
+  const auto c_symbol = symbols.declare_constant("c", sort_a);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+
+  assert(manager.set_interface_equality_value(a, b, InterfaceEqualityValue::Equal));
+  manager.push_level();
+  assert(manager.set_interface_equality_value(a, b, InterfaceEqualityValue::Disequal));
+  assert(manager.set_interface_equality_value(b, c, InterfaceEqualityValue::Equal));
+  manager.push_level();
+  assert(manager.set_interface_equality_value(a, c, InterfaceEqualityValue::Disequal));
+
+  manager.pop_to_level(1);
+  assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Disequal);
+  assert(manager.interface_equality_value(b, c) == InterfaceEqualityValue::Equal);
+  assert(manager.interface_equality_value(a, c) == InterfaceEqualityValue::Unknown);
+
+  manager.pop_to_level(0);
+  assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Equal);
+  assert(manager.interface_equality_value(b, c) == InterfaceEqualityValue::Unknown);
+  assert(manager.interface_equality_value(a, c) == InterfaceEqualityValue::Unknown);
+}
+
 void manager_rebuilds_registry_from_explicit_interface_terms() {
   SymbolTable symbols;
   const auto real_sort = symbols.real_sort();
@@ -355,6 +388,7 @@ int main() {
   manager_tracks_canonical_interface_equality_values();
   manager_rejects_unregistered_or_cross_sort_equality_values();
   manager_rebuild_replaces_previous_arrangement();
+  manager_rolls_back_interface_equality_values_by_decision_level();
   manager_rebuilds_registry_from_explicit_interface_terms();
   reports_real_terms_inside_euf_atoms_as_purification_sites();
   reports_uninterpreted_applications_inside_arithmetic_atoms();

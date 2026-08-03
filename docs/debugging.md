@@ -361,6 +361,16 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.euf-care-pruned-pairs`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
+- `:no.interface.lra-online-enabled`
+- `:no.interface.lra-online-final-checks`
+- `:no.online.enabled`
+- `:no.online.precreated-equality-atoms`
+- `:no.online.assignments`
+- `:no.online.backtracks`
+- `:no.online.lra-bound-equality-candidates`
+- `:no.online.propagations`
+- `:no.online.reason-lits`
+- `:no.online.skipped-assigned`
 - `:no.interface.lra-conflict-lits`
 - `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-separations`
@@ -429,6 +439,20 @@ LRA consistency result came from that callback-owned state. This online path is
 disabled for the experimental `--model-equality-branching` mode; when generated
 interface equalities are true, the coordinator still rebuilds the augmented LRA
 theory and performs an ordinary final check.
+
+`--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
+callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
+callback, was connected. `:no.online.precreated-equality-atoms` counts the
+shared Real equality literals created before SAT search so the callback can
+return existing observed literals. `:no.online.assignments` and
+`:no.online.backtracks` count the dispatcher trail traffic.
+`:no.online.lra-bound-equality-candidates` counts the implemented online rule:
+both `(<= a b)` and `(<= b a)` are true for a shared Real pair.
+`:no.online.propagations` counts returned equality literals, and
+`:no.online.reason-lits` counts the two bound literals used as the SAT reason.
+`:no.online.skipped-assigned` counts candidates already assigned by SAT before
+the dispatcher could return them. Pure QF_UF and pure QF_LRA runs should leave
+`:no.online.enabled` at zero; that is the guard against single-theory overhead.
 `:no.interface.arrangement-checks` counts non-model `sat` results where the
 coordinator validated that the EUF arrangement over Real arguments can be
 separated consistently by LRA, with failures and accepted strict separations

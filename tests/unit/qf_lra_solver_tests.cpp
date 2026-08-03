@@ -15,6 +15,7 @@ using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
 using primo::smt::EufEngine;
 using primo::smt::LraPivotingRule;
+using primo::smt::NelsonOppenPropagationMode;
 using primo::util::StatKey;
 
 namespace {
@@ -975,6 +976,62 @@ void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
   assert(lazy_result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
   assert(lazy_result.statistics.get(":no.interface.euf-to-lra-candidates") >= 1);
   assert(lazy_result.statistics.get(":no.interface.euf-to-lra-clauses") >= 1);
+}
+
+void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.online.enabled") == 1);
+  assert(result.statistics.get(":no.online.precreated-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.online.lra-bound-equality-candidates") >= 1);
+  assert(result.statistics.get(":no.online.propagations") >= 1);
+  assert(result.statistics.get(":no.online.reason-lits") >= 2);
+}
+
+void nelson_oppen_online_option_does_not_wrap_single_theory_lra() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= x 1))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 0);
+  assert(result.statistics.get(":no.online.enabled") == 0);
+}
+
+void nelson_oppen_online_option_does_not_wrap_single_theory_euf() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (assert (= a a))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 0);
+  assert(result.statistics.get(":no.online.enabled") == 0);
 }
 
 void qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality() {
@@ -2189,6 +2246,9 @@ int main() {
   qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
+  qf_uf_lra_online_propagates_simple_lra_shared_equalities();
+  nelson_oppen_online_option_does_not_wrap_single_theory_lra();
+  nelson_oppen_online_option_does_not_wrap_single_theory_euf();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();
   qf_uf_lra_purifies_real_valued_application_arithmetic_arguments();
   qf_uf_lra_purifies_nested_real_valued_application_arguments();

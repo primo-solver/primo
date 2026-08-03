@@ -8,8 +8,11 @@ scaffolds: an SMT-owned `TheoryCombinationManager` for interface equality
 bookkeeping, a compatibility read-only analyzer, and a partial mixed QF_UFLRA
 coordinator with Real-valued UF-application purification, EUF-to-LRA proxy
 equality checks, LRA-to-EUF equality checks over shared Real constants, and
-model reconstruction for the supported Real-argument subset. It does not claim
-that Primo implements the full Nelson-Oppen procedure yet.
+model reconstruction for the supported Real-argument subset. It also records
+the first SAT-callback combination slice: an opt-in
+`MixedTheoryPropagationDispatcher` for `--nelson-oppen-prop=online` that
+propagates shared Real equality from paired non-strict LRA bounds. It does not
+claim that Primo implements the full Nelson-Oppen procedure yet.
 
 The intended project is to add theory-combination closure mechanisms based on
 Nelson-Oppen-style equality sharing, with de Moura and Bjorner's
@@ -61,9 +64,12 @@ post-preprocessing assertions, records user-visible non-Boolean constants by
 sort, records already-visible equality atoms whose two sides are such
 constants, and builds a canonical same-sort interface equality registry. The
 registry can store the current combination-layer value of each registered pair:
-unknown, equal, or disequal. For the mixed QF_UFLRA path, the manager is also
-rebuilt from shared Real interface terms and stores the SAT literal registered
-for each lazily generated equality atom. `analyze_nelson_oppen_interface` is a
+unknown, equal, or disequal. These values are backtrackable through
+`TheoryCombinationManager::push_level` and `pop_to_level`; the manager owns only
+the arrangement value, not theory-local closure/tableau state. For the mixed
+QF_UFLRA path, the manager is also rebuilt from shared Real interface terms and
+stores the SAT literal registered for each lazily generated or online-precreated
+equality atom. `analyze_nelson_oppen_interface` is a
 compatibility wrapper around this manager, and the diagnostic path reports the
 same information through `check_sat` statistics:
 
@@ -108,12 +114,34 @@ clause contains the generated equality literal plus the blocking literals for
 the current assignment of the theory that implied it. This is intentionally less
 minimal than a theory-local explanation, but it is sound for lazy final checks:
 an equality discovered in one Boolean branch cannot become an unconditional
-fact in another branch. Generated equality literals that are true are asserted
-to both EUF and LRA. Generated equality literals that are false are asserted to
-EUF as disequalities. They are not asserted to LRA as native Real disequalities;
-instead, LRA can still reject such a false assignment by later entailing the
-corresponding equality, and mixed model reconstruction separately adds strict
-Real separation atoms for EUF-distinct Real arguments.
+fact in another branch. `--nelson-oppen-prop=final` is this default guarded
+final-check mode. `--nelson-oppen-prop=off` disables those guarded
+equality-propagation clauses for ablations, while leaving ordinary per-theory
+conflict checks and model reconstruction checks intact. Generated equality
+literals that are true are asserted to both EUF and LRA. Generated equality
+literals that are false are asserted to EUF as disequalities. They are not
+asserted to LRA as native Real disequalities; instead, LRA can still reject such
+a false assignment by later entailing the corresponding equality, and mixed
+model reconstruction separately adds strict Real separation atoms for
+EUF-distinct Real arguments.
+
+`--nelson-oppen-prop=online` adds a deliberately narrow online combination
+path. In mixed QF_UFLRA only, `MixedTheoryPropagationDispatcher` is connected as
+CaDiCaL's single external propagator and delegates ordinary LRA callbacks to
+`OnlineLraPropagator`. The dispatcher tracks SAT assignments and manager
+arrangement values on the SAT trail. When it sees both true non-strict bounds
+`(<= a b)` and `(<= b a)` over a registered shared Real pair, it propagates the
+positive interface equality literal with the two bound-blocking literals as the
+reason clause. Because CaDiCaL propagation must return an existing observed
+literal, this online mode pre-registers the shared Real equality atoms before
+search. This precreation is opt-in and is the reason the default remains
+`final`; it is also why the single-theory invariant below is required.
+
+**Single-theory invariant.** `MixedTheoryPropagationDispatcher` is never used
+for pure QF_UF or pure QF_LRA. Pure QF_UF keeps its direct EUF callback path;
+pure QF_LRA keeps its direct `OnlineLraPropagator` path. The CVC-like
+combination object is paid for only when the solver is actually combining EUF
+and LRA in the mixed QF_UFLRA path.
 
 With `--model-equality-branching`, the coordinator may also ask the LRA model
 for same-sort shared Real pairs that currently have the same concrete value in
@@ -642,6 +670,11 @@ consumer-driven filter, not the architectural foundation.
   model-based equality branching.
 - Before using manager arrangement values in search, add a SAT-level
   backtracking trail and explanation path for each `Equal` or `Disequal` value.
+  The current branch implements that trail for SAT-visible interface equality
+  values owned by `TheoryCombinationManager`.
+- Do not route pure single-theory solving through the combination dispatcher:
+  QF_UF and QF_LRA must keep their direct callback paths unless a second theory
+  is present.
 
 ## DPLL(T) Integration
 
@@ -666,6 +699,8 @@ backjumping.
   explanations.
 - Add tests where equality inferred by one theory must be visible to another
   before the SAT model can be accepted.
+  Current coverage includes the implemented online LRA-bound equality rule; it
+  does not yet cover a general model-guided equality producer.
 
 ## Delayed And SAT-Mediated Combination
 
@@ -701,6 +736,10 @@ lazy SAT atom creation.
 - Separate candidate generation from SAT atom creation.
 - Measure shared-pair count, created equality atoms, propagated interface
   equalities, and conflicts caused by interface disagreement.
+- Keep eager all-pair equality creation out of the default path. Current
+  `--nelson-oppen-prop=online` precreates shared Real equality atoms only
+  because CaDiCaL's callback must return existing observed literals; the
+  default `final` mode keeps lazy creation.
 - Keep a delayed strategy available as an ablation baseline against
   model-based closure.
 

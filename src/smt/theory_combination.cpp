@@ -161,6 +161,8 @@ void TheoryCombinationManager::rebuild_from_interface_terms(
     const std::vector<core::TermId>& interface_terms) {
   summary_ = NelsonOppenInterfaceSummary{};
   equality_index_.clear();
+  value_trail_.clear();
+  level_starts_.clear();
   std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
   for (const core::TermId term_id : interface_terms) {
     const core::Term& term = terms_.get(term_id);
@@ -202,6 +204,8 @@ void TheoryCombinationManager::rebuild_from_interface_terms(
 
 void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertions) {
   summary_ = NelsonOppenInterfaceSummary{};
+  value_trail_.clear();
+  level_starts_.clear();
   std::vector<core::TermId> pending = assertions;
   std::unordered_set<core::TermId> visited;
   std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
@@ -373,7 +377,12 @@ bool TheoryCombinationManager::set_interface_equality_value(core::TermId lhs, co
   if (found == equality_index_.end()) {
     return false;
   }
-  summary_.equality_registry[found->second].value = value;
+  InterfaceEqualityRegistryEntry& entry = summary_.equality_registry[found->second];
+  if (entry.value == value) {
+    return true;
+  }
+  value_trail_.push_back(EqualityValueTrailEntry{found->second, entry.value});
+  entry.value = value;
   return true;
 }
 
@@ -381,6 +390,23 @@ void TheoryCombinationManager::clear_interface_equality_values() {
   for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
     entry.value = InterfaceEqualityValue::Unknown;
   }
+  value_trail_.clear();
+  level_starts_.clear();
+}
+
+void TheoryCombinationManager::push_level() { level_starts_.push_back(value_trail_.size()); }
+
+void TheoryCombinationManager::pop_to_level(std::size_t new_level) {
+  const std::size_t keep =
+      new_level < level_starts_.size() ? level_starts_[new_level] : std::size_t{0};
+  while (value_trail_.size() > keep) {
+    const EqualityValueTrailEntry entry = value_trail_.back();
+    value_trail_.pop_back();
+    if (entry.index < summary_.equality_registry.size()) {
+      summary_.equality_registry[entry.index].value = entry.old_value;
+    }
+  }
+  level_starts_.resize(std::min<std::size_t>(new_level, level_starts_.size()));
 }
 
 }  // namespace primo::smt
