@@ -32,8 +32,9 @@ combination. It has these related pieces:
   LRA-model-equal pair, Primo checks whether either strict separation is still
   LRA-consistent under the current Boolean assignment and skips the guess if so.
 - an opt-in `--nelson-oppen-prop=online` paired-bound LRA-to-EUF propagation
-  experiment that precreates shared Real equality atoms only because the current
-  CaDiCaL callback path can propagate observed literals.
+  experiment that avoids all-pairs equality precreation; on current CaDiCaL it
+  precreates only the paired-bound candidate equality atoms because fresh
+  variable allocation is rejected from the callback phase.
 
 The missing parts are the paper's central mechanisms:
 
@@ -54,7 +55,7 @@ The missing parts are the paper's central mechanisms:
 | 2.1 Nelson-Oppen Combination Method | Reviews purification, shared variables, arrangements, and equality propagation between disjoint theories. For convex theories, propagating implied equalities can avoid arrangement enumeration. | **Partial.** Primo has QF_UFLRA purification and lazy equality sharing for shared Real terms. It is not full Nelson-Oppen: it lacks general bidirectional equality propagation, full arrangements, fine-grained cross-theory explanations, and generic multi-theory support. |
 | 3 Related Work | Places the approach against Shostak-style combination, delayed theory combination, Ackermannization, and dynamic Ackermannization. The paper's point is that existing alternatives can add too many literals or too many lemmas. | **Mostly not implemented as paper mechanisms.** Primo has separate EUF/Ackermann diagnostics and separate QF_UF disequality-propagation work, but these are not the model-based combination algorithm. |
 | 3.1 Convex Theories | Describes equality propagation for convex theories and notes that complete enumeration of all theory-implied equalities can be expensive. | **Partial, different shape.** Primo detects some EUF- and LRA-implied shared Real equalities during mixed final checks and learns guarded clauses. It does not implement a complete eager equality-propagation engine. |
-| 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Not implemented as DTC.** Default `final` mode creates shared Real equality atoms lazily when a theory implication or model-equality branch needs them. Opt-in `--nelson-oppen-prop=online` currently precreates shared Real equality atoms so CaDiCaL can return observed propagation literals; that is the known quadratic compromise to remove, not a default DTC design. |
+| 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Not implemented as DTC.** Default `final` mode creates shared Real equality atoms lazily when a theory implication or model-equality branch needs them. Opt-in `--nelson-oppen-prop=online` now also avoids the all-pairs precreation compromise for its paired-bound producer: on current CaDiCaL it precreates only paired-bound candidate equality atoms, not the full shared-pair cross product. |
 | 3.3 Ackermannization | Ackermann reduction replaces UF reasoning with constraints over applications and congruence axioms. The paper treats it as useful in some cases but potentially expensive. | **Separate from this work.** Primo's Ackermann and disequality-propagation options are EUF-side mechanisms. They are not integrated as the paper's model-combination method. |
 | 3.3.1 Dynamic Ackermannization | Dynamic Ackermannization adds Ackermann constraints during search, especially when disequalities between applications make argument disequalities relevant. | **Separate/partial.** This belongs to the QF_UF disequality propagation line, not to current mixed QF_UFLRA model-based combination. |
 | 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Not fully implemented.** Primo has only a default-off LRA-model-equality assumption loop for the QF_UFLRA coordinator. It now includes a narrow mutation filter that skips a model-equal pair if adding either strict separation remains LRA-consistent. There is no generic `DPLL(T^M)` state and no generic model-equality propagation. |
@@ -94,16 +95,21 @@ pair cross product.
 
 For the current CaDiCaL backend, the concrete rule is:
 
-1. Keep a theory/model candidate queue in the mixed coordinator.
-2. When a candidate pair is selected, create or find the interface equality
-   atom at that point.
-3. Observe the fresh SAT variable before using it in `cb_propagate()` or an
-   external guarded clause.
+1. Keep the online producer's paired-bound candidates separate from the full
+   shared-pair cross product.
+2. Before search, create equality atoms only for shared Real pairs that already
+   have both non-strict LRA bounds in the prepared formula.
+3. After the mixed dispatcher is connected, observe those reduced candidate
+   equality variables before they can be returned from `cb_propagate()`.
 4. Stream the theory-owned explanation if the equality is entailed; use SAT
    assumptions or guarded clauses for model-equality guesses.
-5. Record the full shared-pair count, candidate count, created/observed atom
-   count, delivered propagation count, disagreement conflicts, and skipped
-   mutation-avoidable candidates.
+5. Record the full shared-pair count, paired-bound candidate count,
+   created/observed atom count, delivered propagation count, disagreement
+   conflicts, and skipped mutation-avoidable candidates.
+
+A future backend phase that permits fresh variable allocation from the relevant
+callback may move step 2 to true create-and-observe for the selected candidate
+without reverting to all-pairs equality precreation.
 
 This direction is still not a full `DPLL(T^M)` implementation until the solver
 has a generic mutable theory-model object and per-theory model-equality API.
@@ -116,8 +122,9 @@ Use this wording when summarizing the current state:
 > model-equality assumption loop inspired by de Moura and Bjorner's
 > model-based theory-combination paper, including a strict-separation
 > consistency filter for avoidable LRA model equalities. The opt-in online
-> paired-bound producer exercises the SAT callback path but still uses a
-> quadratic precreated-observed equality set. Primo does not yet implement the
+> paired-bound producer exercises the SAT callback path without all-pairs
+> equality precreation; current CaDiCaL uses the reduced paired-bound
+> precreation fallback. Primo does not yet implement the
 > full `DPLL(T^M)` procedure, a mutable generic theory-model object, or
 > complete Nelson-Oppen model-equality propagation.
 

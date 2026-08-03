@@ -364,13 +364,21 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-online-enabled`
 - `:no.interface.lra-online-final-checks`
 - `:no.online.enabled`
+- `:no.online.shared-real-pairs`
 - `:no.online.precreated-equality-atoms`
+- `:no.online.paired-bound-precreate-candidates`
 - `:no.online.assignments`
 - `:no.online.backtracks`
 - `:no.online.lra-bound-equality-candidates`
+- `:no.online.lra-bound-equality-missing-atoms`
+- `:no.online.lra-bound-equality-materialized`
+- `:no.online.lazy-equality-atoms-created`
+- `:no.online.lazy-equality-vars-observed`
 - `:no.online.propagations`
 - `:no.online.reason-lits`
 - `:no.online.skipped-assigned`
+- `:no.online.final-lra-equality-scan-skipped`
+- `:no.online.final-lra-equality-scan-capped`
 - `:no.interface.lra-conflict-lits`
 - `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-separations`
@@ -443,12 +451,14 @@ theory and performs an ordinary final check.
 `--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
 callback, was connected. `:no.online.precreated-equality-atoms` counts the
-shared Real equality literals created before SAT search so the callback can
-return existing observed literals. A high value here is not expected model-based
-behavior; it is the current opt-in accommodation for CaDiCaL's observed-literal
-callback contract. The target online design is to count full shared pairs
-separately, then create and observe equality atoms only for selected
-model/care/theory candidates. `:no.online.assignments` and
+shared Real equality literals created before SAT search. Current CaDiCaL rejects
+fresh SAT-variable allocation from the callback phase, so online mode uses the
+smaller fallback precreation set recorded by
+`:no.online.paired-bound-precreate-candidates`: shared Real pairs for which both
+non-strict LRA bounds are already present in the prepared formula. This counter
+should be much smaller than `:no.online.shared-real-pairs`, which records the
+full shared Real cross product for diagnostics only, not as an observed SAT
+variable count. `:no.online.assignments` and
 `:no.online.backtracks` count the dispatcher trail traffic.
 `:no.online.lra-published-equalities` counts equality candidates produced by
 `OnlineLraPropagator`; today those are exactly the implemented paired-bound
@@ -456,8 +466,22 @@ rule where both `(<= a b)` and `(<= b a)` are true for a shared Real pair.
 Broader LRA-derived equalities are intentionally not part of this counter yet:
 mining arbitrary tableau rows for equal shared terms is a future opportunity
 with explicit cost risk, not a stable online propagation mode.
-`:no.online.lra-bound-equality-candidates` counts candidates that reached the
-dispatcher's SAT-visible interface equality filter.
+`:no.online.lra-bound-equality-candidates` counts published candidates that
+already had a SAT-visible interface equality literal. `:no.online.lra-bound-equality-missing-atoms`
+counts published candidates whose atom was not registered; under the current
+paired-bound fallback this should remain zero because the static candidate set
+matches the producer. `:no.online.lra-bound-equality-materialized` counts
+candidates with a deliverable equality literal. `:no.online.lazy-equality-atoms-created`
+is reserved for a future backend phase that permits in-callback allocation and
+remains zero in the fallback path, and
+`:no.online.lazy-equality-vars-observed` counts newly observed equality
+variables registered outside the callback. `:no.online.final-lra-equality-scan-skipped`
+counts online final checks where at least one paired-bound equality candidate
+was materialized and the broad all-pairs `lra_implied_real_equalities`
+strict-bound scan was skipped; if no candidate was materialized, the broad scan
+still runs as the final-check completeness fallback.
+`:no.online.final-lra-equality-scan-capped` is reserved for a future capped
+replacement and remains zero in the current skip policy.
 `:no.online.propagations` counts returned equality literals, and
 `:no.online.reason-lits` counts the two bound literals used as the SAT reason.
 `:no.online.skipped-assigned` counts candidates already assigned by SAT before

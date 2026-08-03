@@ -997,11 +997,69 @@ void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.online.enabled") == 1);
-  assert(result.statistics.get(":no.online.precreated-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.online.precreated-equality-atoms") == 1);
+  assert(result.statistics.get(":no.online.paired-bound-precreate-candidates") == 1);
   assert(result.statistics.get(":no.online.lra-published-equalities") >= 1);
   assert(result.statistics.get(":no.online.lra-bound-equality-candidates") >= 1);
+  assert(result.statistics.get(":no.online.lra-bound-equality-missing-atoms") == 0);
+  assert(result.statistics.get(":no.online.lra-bound-equality-materialized") >= 1);
+  assert(result.statistics.get(":no.online.lazy-equality-atoms-created") == 0);
   assert(result.statistics.get(":no.online.propagations") >= 1);
   assert(result.statistics.get(":no.online.reason-lits") >= 2);
+}
+
+void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.online.enabled") == 1);
+  assert(result.statistics.get(":no.online.shared-real-pairs") == 3);
+  assert(result.statistics.get(":no.online.precreated-equality-atoms") == 1);
+  assert(result.statistics.get(":no.online.paired-bound-precreate-candidates") == 1);
+  assert(result.statistics.get(":no.online.lazy-equality-atoms-created") == 0);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 1);
+}
+
+void qf_uf_lra_online_skips_final_lra_all_pairs_scan() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.online.enabled") == 1);
+  assert(result.statistics.get(":no.online.precreated-equality-atoms") == 1);
+  assert(result.statistics.get(":no.online.paired-bound-precreate-candidates") == 1);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
 }
 
 void nelson_oppen_online_option_does_not_wrap_single_theory_lra() {
@@ -2248,6 +2306,8 @@ int main() {
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   qf_uf_lra_online_propagates_simple_lra_shared_equalities();
+  qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs();
+  qf_uf_lra_online_skips_final_lra_all_pairs_scan();
   nelson_oppen_online_option_does_not_wrap_single_theory_lra();
   nelson_oppen_online_option_does_not_wrap_single_theory_euf();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();

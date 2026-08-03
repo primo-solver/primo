@@ -68,8 +68,9 @@ unknown, equal, or disequal. These values are backtrackable through
 `TheoryCombinationManager::push_level` and `pop_to_level`; the manager owns only
 the arrangement value, not theory-local closure/tableau state. For the mixed
 QF_UFLRA path, the manager is also rebuilt from shared Real interface terms and
-stores the SAT literal registered for each lazily generated or online-precreated
-equality atom. `analyze_nelson_oppen_interface` is a
+stores the SAT literal registered for each lazily generated or paired-bound
+precreated equality atom.
+`analyze_nelson_oppen_interface` is a
 compatibility wrapper around this manager, and the diagnostic path reports the
 same information through `check_sat` statistics:
 
@@ -135,27 +136,26 @@ candidate when its own trail contains both true non-strict bounds `(<= a b)` and
 `(<= b a)` over a registered shared Real pair, with the two bound-blocking
 literals as the explanation. The dispatcher maps that theory-owned candidate to
 the positive SAT-visible interface equality literal and streams the LRA-provided
-reason clause to CaDiCaL. Because CaDiCaL propagation must return an existing
-observed literal, this online mode pre-registers the shared Real equality atoms
-before search. This precreation is opt-in and is the reason the default remains
-`final`; it is also why the single-theory invariant below is required.
+reason clause to CaDiCaL. Current CaDiCaL rejects fresh SAT-variable allocation
+from this callback phase, so the implemented fallback precreates only the
+paired-bound candidate equality atoms before search. The previous all-pairs
+online precreation accommodation has been removed from this path:
+`:no.online.precreated-equality-atoms` counts the paired-bound fallback set,
+`:no.online.paired-bound-precreate-candidates` records the candidate count, and
+`:no.online.shared-real-pairs` is only a diagnostic cross-product count. If a
+future backend permits fresh observed variables or fresh clauses in the relevant
+callback phase, this path can move the same selected candidate set to true lazy
+create-and-observe without reverting to all-pairs precreation.
 
-This precreation is a backend accommodation, not the desired
-theory-combination architecture. CaDiCaL's current external-propagator contract
-says that assignment notifications, external propagation, and external clauses
-are over observed variables; observed variables are frozen for inprocessing;
-fresh variables may be observed during solving; and `cb_propagate()` must
-return an observed literal. Therefore a plain FIFO of theory candidates does
-not by itself remove the quadratic cost: before the dispatcher can return
-candidate `(= a b)`, the SAT equality literal must already exist and be
-observed. The model-based direction is to make the queue hold theory/model
-candidates, lazily create or find the corresponding interface equality atom
-only when a candidate is selected, observe that fresh variable, and then either
-propagate the observed literal with the theory reason or add a guarded external
-clause over observed literals. If CaDiCaL rejects fresh observed variables or
-fresh clauses in a particular callback phase, the fallback is not all-pairs
-precreation; it is a smaller precreation set derived from the same
-model/care/paired-bound candidate source.
+Online mode also skips the older final `lra_implied_real_equalities`
+strict-bound scan over all shared Real pairs after it has materialized at least
+one paired-bound equality candidate. If no candidate was materialized, the broad
+scan still runs as the final-check completeness fallback. Default `final` mode
+keeps that broad scan unchanged. This is a measured cost cap, not a more
+complete LRA equality producer: arbitrary tableau-implied equalities remain
+unsupported by the online producer, and cases that need those equalities after
+paired-bound materialization may still need the default final mode or a future
+capped/reused equality check.
 
 The paired-bound producer is deliberately the stable online LRA-to-EUF subset
 for now. It is sound, has a compact two-literal explanation, and exercises the
@@ -353,18 +353,21 @@ gap:
 Track C is the callback-safe model-based online refinement prompted by the
 current profiling result:
 
-1. Replace online all-pairs equality precreation with a candidate queue whose
-   entries come from paired LRA bounds, model-equality guesses that survive the
-   mutation filter, or a care-ranked equality source.
-2. Create or find the SAT-visible interface equality only after a candidate is
-   selected.
-3. Observe the fresh equality variable before returning it from
-   `cb_propagate()` or mentioning it in an external guarded clause.
-4. Keep the full shared-pair cross product as a counter and fallback
+1. The current implemented slice replaces online all-pairs equality precreation
+   with a paired-bound candidate set.
+2. Because current CaDiCaL rejects fresh variable allocation from the callback,
+   Primo precreates only that paired-bound candidate set before search.
+3. The dispatcher then returns only observed equality literals from that reduced
+   candidate set.
+4. Future slices may add model-equality guesses that survive the mutation filter
+   or a care-ranked equality source to the same candidate-first path.
+5. Keep the full shared-pair cross product as a counter and fallback
    diagnostic, not as the set of observed SAT variables.
-5. Cap or replace the final `lra_implied_real_equalities` all-pairs
-   strict-bound scan when online mode is active, because profiling shows this
-   final scan can dominate after the online path adds more arrangement traffic.
+6. Online mode now skips the final `lra_implied_real_equalities` all-pairs
+   strict-bound scan only after a paired-bound equality candidate has been
+   materialized, because profiling showed this final scan can dominate after the
+   online path adds more arrangement traffic. The reserved capped-scan counter
+   remains zero until a capped replacement is implemented.
 
 Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or
@@ -781,20 +784,22 @@ kind of overhead seen in earlier QF_UF experiments when a mechanism was active
 but had little delivered propagation. The current QF_UFLRA default `final` path
 follows the first checklist item below by checking candidate equalities
 separately from lazy SAT atom creation. The opt-in online paired-bound path does
-not yet satisfy that item because it precreates and observes all shared Real
-equality atoms to satisfy CaDiCaL's propagation contract.
+not precreate the full shared-pair cross product. On current CaDiCaL it
+precreates only the paired-bound candidate set because fresh variable allocation
+is rejected from the callback phase; a future backend that permits allocation in
+that phase can use the same selected candidate set for true lazy
+create-and-observe.
 
 ### Primo Checklist Items
 
 - Separate candidate generation from SAT atom creation.
 - Measure shared-pair count, created equality atoms, propagated interface
   equalities, and conflicts caused by interface disagreement.
-- Keep eager all-pair equality creation out of the default path. Current
-  `--nelson-oppen-prop=online` precreates shared Real equality atoms only
-  because CaDiCaL's callback must return existing observed literals; the
-  default `final` mode keeps lazy creation. The next online implementation
-  should create-and-observe equality atoms from selected model/care/theory
-  candidates, not from the full shared-pair cross product.
+- Keep eager all-pair equality creation out of both the default path and the
+  opt-in online paired-bound path. Current `--nelson-oppen-prop=online`
+  precreates equality atoms only from selected paired-bound candidates because
+  current CaDiCaL rejects in-callback variable allocation; it does not precreate
+  the full shared-pair cross product. Model/care candidates remain future work.
 - Keep a delayed strategy available as an ablation baseline against
   model-based closure.
 

@@ -17128,6 +17128,101 @@
         }
       },
       "outcome": "The online regression is not parsing/preprocessing and not primarily the paired-bound callback producer. Online precreation and propagated interface equalities increase SAT arrangement traffic, which causes repeated final mixed checks. Each final LRA-to-EUF scan calls lra_implied_real_equalities, which checks all shared Real pairs by rebuilding an augmented LRA theory for lhs < rhs and rhs < lhs. On the solved MathSAT profile case this all-pairs scan dominates callgrind at 89.74% of instructions; gprof independently shows thousands of augmented LRA preparations and tableau checks. The next design decision is whether online mode should skip or cap this broader final LRA equality mining, or replace it with cached/reused LRA equality evidence, while retaining the narrow paired-bound online producer."
+    },
+    {
+      "id": "2026-08-03-qf-uflra-online-lazy-equality-local-gate",
+      "date": "2026-08-03",
+      "branch": "nelson-oppen-closure-methods",
+      "commit": "6d7b494-dirty on nelson-oppen-closure-methods; source/docs/tests/run-log to be committed adjacent to this entry",
+      "scope": "Local validation for replacing opt-in QF_UFLRA online all-pairs interface equality precreation with the current candidate-first fallback: precreate only paired-bound interface equality atoms before search, observe them after the CaDiCaL propagator is connected, and skip the broad final LRA all-pairs strict-bound equality scan in online mode only after a paired-bound candidate has materialized.",
+      "environment": {
+        "host": "local workstation",
+        "binary": "./build/primo, Debug, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3",
+        "slurm_status": "not run: this workspace exposes no concrete SLURM host, jump host, remote workdir, or usable SSH alias; only redacted placeholders were available"
+      },
+      "commands": {
+        "focused_unit": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
+        "docs": "make docs",
+        "diff_check": "git diff --check",
+        "cpp_format": "clang-format --dry-run --Werror $(find src tests \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) | grep -v '^src/smtlib/antlr/')",
+        "ctest": "ctest --test-dir build --output-on-failure",
+        "asan_test": "make asan-test",
+        "tidy": "make tidy",
+        "include_cleaner": "make include-cleaner",
+        "local_probe": "/usr/bin/timeout 15s ./build/primo --quiet --stats --nelson-oppen-prop=online tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2 and tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+        "fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--nelson-oppen-prop=online --ref contrib/local/bin/z3 --count 1000 --seed 20260803 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-online-guarded-skip-1000-6d7b494-dirty",
+        "make_check": "make check"
+      },
+      "artifacts": {
+        "local_probes": "results/no-online-lazy-local-probes",
+        "fuzz_summary": "fuzz-results/qf_uflra-online-guarded-skip-1000-6d7b494-dirty/summary.csv",
+        "fuzz_cases": "fuzz-results/qf_uflra-online-guarded-skip-1000-6d7b494-dirty/cases"
+      },
+      "summary": {
+        "focused_unit": "pass",
+        "docs": "pass",
+        "diff_check": "pass",
+        "cpp_format": "pass",
+        "ctest": "13/13 passed",
+        "asan_test": "13/13 passed",
+        "tidy": "whole-tree clang-tidy passed on 63 tracked non-generated C++ files",
+        "include_cleaner": "completed as an advisory whole-tree scan with the repository's existing broad include-cleaner baseline warnings",
+        "fuzz": {
+          "count": 1000,
+          "seed": 20260803,
+          "timeout_seconds": 5,
+          "shape": "mixed",
+          "pass": 1000,
+          "wrong_answer": 0,
+          "crash": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "ours_answers": {
+            "sat": 717,
+            "unsat": 283
+          },
+          "reference_answers": {
+            "sat": 717,
+            "unsat": 283
+          }
+        },
+        "local_probe": {
+          "mathsat_pb_real_10_0100_10_14": {
+            "status": "sat",
+            ":no.online.shared-real-pairs": 300,
+            ":no.online.precreated-equality-atoms": 4,
+            ":no.online.paired-bound-precreate-candidates": 4,
+            ":no.online.lra-bound-equality-materialized": 14,
+            ":no.online.propagations": 3,
+            ":no.online.final-lra-equality-scan-skipped": 2,
+            ":no.interface.lra-to-euf-equalities": 0
+          },
+          "cpachecker_bmc_diskperf": {
+            "status": "timeout at 15 seconds",
+            ":no.online.shared-real-pairs": 34191,
+            ":no.online.precreated-equality-atoms": 93,
+            ":no.online.paired-bound-precreate-candidates": 93,
+            ":no.online.lra-bound-equality-materialized": 8586,
+            ":no.online.propagations": 3645,
+            ":no.online.final-lra-equality-scan-skipped": 2
+          },
+          "backend_limit": "An attempted true lazy callback path was rejected by CaDiCaL: declare_more_variables is invalid in the callback state, and add_observed_var must run only after a propagator is connected. The accepted implementation therefore uses the reduced paired-bound precreation fallback, not the full shared-pair cross product."
+        },
+        "make_check": "blocked by pre-existing repository-wide Ruff baseline in scripts/ and contrib/ before this change's tests; C++ format, py_compile prefix, docs, and CTest were checked separately"
+      },
+      "counters_checked_by_unit_tests": [
+        ":no.online.precreated-equality-atoms == 1 on the simple paired-bound regression",
+        ":no.online.paired-bound-precreate-candidates == 1 on the simple paired-bound regression",
+        ":no.online.shared-real-pairs == 3 and :no.interface.sat-equality-atoms == 1 on the unpublished-shared-pair regression",
+        ":no.online.lra-bound-equality-missing-atoms == 0 under the static paired-bound fallback",
+        ":no.online.lra-bound-equality-materialized >= 1",
+        ":no.online.lazy-equality-atoms-created == 0 under the current CaDiCaL fallback",
+        ":no.online.final-lra-equality-scan-skipped >= 1 on a SAT final-check case",
+        "pure QF_UF and pure QF_LRA keep :no.online.enabled == 0"
+      ],
+      "outcome": "Local correctness evidence supports the reduced candidate-first fallback: the paired-bound producer still propagates with two reason literals, only paired-bound candidate equalities are precreated and observed, unrelated shared Real pairs are not materialized just because they are in the full pair set, and online final checks skip the profiled broad all-pairs LRA equality scan only after a paired-bound equality candidate has materialized. True lazy in-callback equality creation remains future work for a backend phase that permits fresh variable allocation. SLURM sample comparison and SLURM fuzz were not run from this context because concrete cluster connection details were unavailable."
     }
   ]
 }
