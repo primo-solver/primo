@@ -16932,6 +16932,101 @@
         "unsat": 290
       },
       "outcome": "Accepted as the SLURM merge fuzz gate for LRA-owned interface equality publishing at commit 6cc6be3. The implementation was staged from a git archive rather than synchronizing a full working tree. The numeric SLURM job id and private remote path are omitted from the committed ledger under the no-private-cluster-id policy."
+    },
+    {
+      "id": "2026-08-03-qf-uflra-no-online-shallow-cee669f",
+      "date": "2026-08-03",
+      "commit": "cee669f",
+      "branch": "nelson-oppen-closure-methods",
+      "kind": "benchmark",
+      "scope": "Shallow SLURM QF_UFLRA comparison of default final Nelson-Oppen interface propagation, opt-in online paired-bound LRA propagation, and Z3 on the 5-per-family sample.",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "workspace": "<fresh-remote-archive-workspace>",
+        "binary": "build-slurm-rel/primo at cee669f, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": ".venv-eval/bin/z3, version 5.0.0",
+        "job_ids": [
+          "<omitted>"
+        ],
+        "remote_artifact_dir": "<fresh-remote-archive-workspace>/results/qf_uflra-no-online-smoke-cee669f",
+        "local_artifact_dir": "results/qf_uflra-no-online-smoke-cee669f",
+        "local_html": "results/qf_uflra-no-online-smoke-cee669f/index.html"
+      },
+      "commands": {
+        "workspace_prepare": "git archive cee669f copied to <fresh-remote-archive-workspace>; no .git history or local working-tree artifacts were synchronized",
+        "manifest_stage": "python3 scripts/slurm_stage_manifest_files.py --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-archive-workspace> --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "remote_build": "cmake -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PWD/contrib/local -DPRIMO_GIT_REVISION_OVERRIDE=cee669f; cmake --build build-slurm-rel --target primo -j4",
+        "reference_install": "python3 -m venv .venv-eval; . .venv-eval/bin/activate; python -m pip install --upgrade pip z3-solver; z3 -version",
+        "pre_submit_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --ssh-config <temp-ssh-config> --remote <slurm-alias> --remote-dir <fresh-remote-archive-workspace> --local-dir /workspace --target primo",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py /tmp/primo_qf_uflra_online_shallow_compare.sbatch; bash -n /tmp/primo_qf_uflra_online_shallow_compare.sbatch",
+        "submission": "sbatch primo_qf_uflra_online_shallow_compare.sbatch",
+        "benchmark_task": "python3 scripts/bench_qf_uf_full.py --repo <fresh-remote-archive-workspace> --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt --solver <solver> --solver-arg=<config-options> --timeout 10 --out results/qf_uflra-no-online-smoke-cee669f/<name>.csv --summary results/qf_uflra-no-online-smoke-cee669f/<name>-summary.csv",
+        "local_render": "python3 scripts/render_solver_compare_html.py results/qf_uflra-no-online-smoke-cee669f --solvers final online z3 --title 'QF_UFLRA NO online shallow smoke cee669f' --timeout 10 --out results/qf_uflra-no-online-smoke-cee669f/index.html",
+        "local_comparison": "python3 scripts/compare_solver_answers.py results/qf_uflra-no-online-smoke-cee669f --timeout 10"
+      },
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "files": 20,
+        "timeout_seconds": 10,
+        "solvers": {
+          "final": "build-slurm-rel/primo --quiet --stats",
+          "online": "build-slurm-rel/primo --quiet --stats --nelson-oppen-prop=online",
+          "z3": ".venv-eval/bin/z3"
+        }
+      },
+      "summary": {
+        "final": {
+          "solved": 16,
+          "sat": 13,
+          "unsat": 3,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "seconds_sum": 44.86,
+          "par2_total": 84.8,
+          "par2_mean": 4.24,
+          ":no.interface.equalities-propagated_sum": 92,
+          ":no.interface.lra-to-euf-equalities_sum": 55
+        },
+        "online": {
+          "solved": 16,
+          "sat": 13,
+          "unsat": 3,
+          "timeout": 4,
+          "error": 0,
+          "wrong": 0,
+          "seconds_sum": 49.508,
+          "par2_total": 89.4,
+          "par2_mean": 4.472,
+          ":no.online.enabled_nonzero_files": 18,
+          ":no.online.lra-published-equalities_sum": 11916,
+          ":no.online.lra-published-equalities_nonzero_files": 18,
+          ":no.online.lra-bound-equality-candidates_sum": 4409,
+          ":no.online.lra-bound-equality-candidates_nonzero_files": 11,
+          ":no.online.propagations_sum": 1820,
+          ":no.online.propagations_nonzero_files": 8,
+          ":no.online.reason-lits_sum": 3640,
+          ":no.interface.equalities-propagated_sum": 430,
+          ":no.interface.lra-to-euf-equalities_sum": 172
+        },
+        "z3": {
+          "solved": 20,
+          "sat": 17,
+          "unsat": 3,
+          "timeout": 0,
+          "error": 0,
+          "wrong": 0,
+          "seconds_sum": 3.86,
+          "par2_total": 3.9,
+          "par2_mean": 0.193
+        },
+        "cross_solver_disagreements": 0,
+        "solved_only_by_z3": 4
+      },
+      "outcome": "The online paired-bound path is active on this sample but is not a performance improvement: final and online both solve 16/20 with no wrong answers or disagreements, while online has higher PAR2 and wall-clock sum. This is shallow diagnostic evidence only, not default-promotion evidence. The useful signal is that paired-bound LRA publishing fires on real SMT-LIB instances: 11,916 published candidates and 1,820 propagated interface equality literals across 8 files. The strongest activity occurs on BMC timeout rows, so the next investigation should inspect whether this creates SAT churn or whether the timeout rows need a different mixed-theory mechanism."
     }
   ]
 }
