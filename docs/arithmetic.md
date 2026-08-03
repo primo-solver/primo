@@ -809,7 +809,7 @@ the same period.
 
 #### The 595-file scrambled subset at 300s, for comparison
 
-**Three-solver comparison at 300s, all 595 scrambled competition files****Three-solver comparison at 300s, all 595 scrambled competition files**
+**Comparison at 300s, all 595 scrambled competition files**
 (job 118310; z3 and cvc5 re-run because the timeout differs from every
 stored result):
 

@@ -25,6 +25,7 @@ Example:
     python3 scripts/plot_cactus.py \\
         --series primo=results/div-118904 --series yices=results/div-118904 \\
         --series z3=results/div-118382 --series cvc5=results/div-118382 \\
+        --series opensmt=results/div-119045 \\
         --timeout 300 --out docs/_static/qf-lra-cactus.svg
 """
 
