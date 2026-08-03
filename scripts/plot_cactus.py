@@ -90,7 +90,9 @@ def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
     def y_of(n: int) -> float:
         return top + plot_h * (1 - n / max_solved)
 
-    palette = ["#1b6ca8", "#c1121f", "#2a9d8f", "#8d5bb5", "#e07a00"]
+    # Deliberately no red: series are solvers, not severities, and a red curve
+    # reads as a verdict on whichever solver happens to be second.
+    palette = ["#1b6ca8", "#c9760a", "#2a9d8f", "#8d5bb5", "#5a6472"]
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
            f'viewBox="0 0 {width} {height}" font-family="system-ui,-apple-system,sans-serif">',
            '<rect width="100%" height="100%" fill="#ffffff"/>',
