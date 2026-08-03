@@ -194,8 +194,7 @@ int main(int argc, char** argv) {
   app.add_flag("--no-finite-domain-equality-definitions", no_finite_domain_equality_definitions,
                "Disable finite-domain SAT-visible equality definition clauses");
   app.add_flag("--no-finite-domain-post-amo", no_finite_domain_post_amo,
-               "Disable the post-simplification finite-domain AMO scan")
-      ->default_val(false);
+               "Disable the post-simplification finite-domain AMO scan");
   app.add_flag("--eq-bridge", solver_options.eq_bridge,
                "Add equalities implied by every branch of selected QF_UF disjunctions");
   app.add_flag("--no-eq-bridge", no_eq_bridge,
@@ -206,14 +205,12 @@ int main(int argc, char** argv) {
                "Disable QF_LRA bound propagation (conflict detection only)");
   app.add_flag("--lra-row-propagation", solver_options.lra_row_propagation,
                "Enable experimental QF_LRA row-based/interval bound propagation across "
-               "different variables (only takes effect if --lra-propagation is also on)")
-      ->default_val(false);
+               "different variables (only takes effect if --lra-propagation is also on)");
   app.add_flag("--lra-bidirectional-row-propagation",
                solver_options.lra_bidirectional_row_propagation,
                "Enable the reverse direction of --lra-row-propagation: tighten a row's "
                "other terms from its own bound, not just derive the row's own implied "
-               "bound (only takes effect if --lra-row-propagation is also on)")
-      ->default_val(false);
+               "bound (only takes effect if --lra-row-propagation is also on)");
   app.add_option("--lra-row-propagation-max-row-size",
                  solver_options.lra_row_propagation_limits.max_row_size,
                  "Cap on the row length --lra-row-propagation will derive an implied bound "
@@ -239,8 +236,7 @@ int main(int argc, char** argv) {
   app.add_flag("--lra-theory-decisions", solver_options.lra_theory_decisions,
                "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
                "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
-               "literal itself instead of leaving every decision to generic VSIDS")
-      ->default_val(false);
+               "literal itself instead of leaving every decision to generic VSIDS");
   app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
                  "QF_LRA Check/Pivot variable-selection rule: sparse (default -- prices "
                  "what a pivot costs: among the entering candidates that all repair the "
@@ -270,43 +266,33 @@ int main(int argc, char** argv) {
                solver_options.guarded_ground_unit_substitution,
                "Enable guarded ground substitution only when preprocessing metrics predict a win");
   app.add_flag("--no-solved-constant-substitution", no_solved_constant_substitution,
-               "Disable default QF_UF solved-constant substitution")
-      ->default_val(false);
+               "Disable default QF_UF solved-constant substitution");
   app.add_flag("--gaussian-elimination", solver_options.gaussian_elimination,
                "Enable default-on QF_LRA Gauss-Jordan elimination over asserted linear "
                "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25)");
   app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
-               "Disable QF_LRA Gauss-Jordan equality-system elimination")
-      ->default_val(false);
+               "Disable QF_LRA Gauss-Jordan equality-system elimination");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
-               "Encode top-level disjunctions with Tseitin support clauses")
-      ->default_val(false);
+               "Encode top-level disjunctions with Tseitin support clauses");
   app.add_flag("--no-top-level-or-tseitin", no_top_level_or_tseitin,
-               "Keep top-level disjunctions as one clause")
-      ->default_val(false);
+               "Keep top-level disjunctions as one clause");
   app.add_flag("--no-auto-top-level-or-tseitin", no_auto_top_level_or_tseitin,
-               "Disable guarded automatic top-level disjunction Tseitin encoding")
-      ->default_val(false);
+               "Disable guarded automatic top-level disjunction Tseitin encoding");
   app.add_flag("--preprocess-only", solver_options.preprocess_only,
                "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
                  "QF_UF preprocessing preset: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
   app.add_flag("--no-auto-basic-single", no_auto_basic_single,
-               "Disable the guarded auto basic-single preprocessing selector")
-      ->default_val(false);
+               "Disable the guarded auto basic-single preprocessing selector");
   app.add_flag("--no-auto-basic-single-predicate-polarity", no_auto_basic_single_predicate_polarity,
-               "Disable polarity phase for auto basic-single formulas with Boolean UF predicates")
-      ->default_val(false);
+               "Disable polarity phase for auto basic-single formulas with Boolean UF predicates");
   app.add_flag("--auto-basic-multi", auto_basic_multi,
-               "Enable the experimental auto basic-multi preprocessing and phase heuristic")
-      ->default_val(false);
+               "Enable the experimental auto basic-multi preprocessing and phase heuristic");
   app.add_flag("--no-auto-basic-multi", no_auto_basic_multi,
-               "Disable the auto basic-multi preprocessing and phase heuristic")
-      ->default_val(false);
+               "Disable the auto basic-multi preprocessing and phase heuristic");
   app.add_flag("--no-auto-basic-multi-polarity", no_auto_basic_multi_polarity,
-               "Disable polarity phase for auto basic-multi formulas")
-      ->default_val(false);
+               "Disable polarity phase for auto basic-multi formulas");
   CLI::Option* profile_option = app.add_option("--qf-uf-profile", qf_uf_profile,
                                                "QF_UF profile: default or tuned-interesting")
                                     ->check(CLI::IsMember({"default", "tuned-interesting"}));
