@@ -725,13 +725,39 @@ work wherever it was triggered.
 ### Where QF_LRA work stands, and what is open (2026-08-01)
 
 **The complete non-incremental QF_LRA division, 1,753 files, 300s**
-(job 118382):
+(jobs 118382 and 118904):
 
 | solver | solved | PAR2 | wrong |
 |---|---|---|---|
-| **primo** | **1631** (93.0%) | **94992** | **0** |
+| **Yices 2.7.0** | **1645** (93.8%) | **80585** | **0** |
+| primo | 1631 (93.0%) | 95091 | 0 |
 | z3 5.0.0 | 1584 (90.4%) | 128079 | 0 |
 | cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
+
+```{figure} _static/qf-lra-cactus.svg
+:alt: Instances solved against per-instance time budget for Yices, primo, z3 and cvc5.
+:width: 100%
+
+Instances solved against the per-instance time budget. Only solved instances
+contribute a point, so the vertical gap to 1,753 is the unsolved remainder.
+```
+
+**Yices leads, and primo is second by 14 instances.** Yices was added on
+2026-08-03; before that the division had only been measured against z3 and
+cvc5, where primo led by 47. Any claim that Primo leads this division needs
+that qualifier.
+
+**One family decides it.** LassoRanker is the largest at 419 instances and
+Yices takes it 381 to 347 -- a 34-file gap against a 14-file overall margin.
+primo recovers 24 elsewhere: 2017-Heizmann +16 (41 against 25), 2019-ezsmt +4,
+`latendresse` +2 (15 against 13), `tta_startup` +2; `miplib` goes to Yices by
+4. Eleven of seventeen families tie exactly, ten of them saturated. The two
+are complementary rather than ranked -- 29 instances only primo solves, 26
+only Yices, and 63 defeat all four.
+
+primo scores 1631 at `b6b8d55` against 1631 at `aa44320`, PAR2 95091 against
+94992: independent confirmation that the model-production merge and the
+frontend changes of 2026-08-03 are behaviour-neutral here.
 
 **Zero wrong answers and zero cross-solver disagreements.** Every file in
 this set carries `(set-info :status)`, so unlike the scrambled set the
