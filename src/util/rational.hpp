@@ -53,6 +53,27 @@ namespace primo::util {
 // Kept as Primo's own type (rather than using mpq_class directly at every call
 // site) so the GMP dependency stays contained to this file, the same way
 // CadicalBackend contains the CaDiCaL dependency.
+//
+// **Why not let the library do this?** GMP cannot: __mpz_struct holds
+// `mp_limb_t *_mp_d`, a pointer to separately allocated limbs, with no inline
+// storage, and __mpq_struct is two of those. That layout is frozen public ABI
+// -- callers embed mpq_t by value and macros read _mp_size/_mp_d directly --
+// so GMP could not add a small-value form without breaking every program
+// compiled against it. Even a 1-limb value allocates.
+//
+// Other libraries *do* provide exactly this scheme, and FLINT's fmpz/fmpq is
+// the clearest example: one machine word holding either a small immediate
+// value or a reference to a big one. So the real choice was never "hand-roll
+// versus use a library" -- it was "keep GMP and add a fast path in front of
+// it" versus "adopt a library whose rationals already have one".
+//
+// Only the first was evaluated. That is an omission, not a conclusion: no
+// measurement here says the hand-written path beats fmpq, because none was
+// taken. What can be said is that the containment above makes the question
+// cheap to revisit -- every GMP mention is in this file, so swapping the
+// backing representation does not touch a call site. Against that, the
+// canonical-form invariant below is the kind of subtle correctness obligation
+// a library would own instead of us.
 class Rational {
  public:
   Rational() = default;

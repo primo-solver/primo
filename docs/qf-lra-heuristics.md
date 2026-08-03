@@ -321,6 +321,20 @@ is **required**, not forbidden -- see the canonical-form paragraph.
 Section 4), found only after the profiling above independently reached the same
 diagnosis -- see [](papers/lra-related-work.md).
 
+**An alternative that was never evaluated (recorded 2026-08-03).** GMP itself
+cannot do this: `__mpz_struct` holds a pointer to separately allocated limbs
+with no inline storage, and that layout is frozen public ABI, so even a 1-limb
+value allocates. But other libraries *do* -- FLINT's `fmpz`/`fmpq` is one word
+holding either a small immediate or a reference to a big value, which is
+precisely the scheme below. So the real choice was "keep GMP and add a fast
+path" versus "adopt a library whose rationals already have one", and only the
+first was considered. No measurement says the hand-written path beats `fmpq`,
+because none was taken. The point in its favour is that
+[](arithmetic.md)'s containment keeps every GMP mention inside
+`util::Rational`, so the question stays cheap to revisit; the point against is
+that the canonical-form invariant is a correctness obligation a library would
+own instead of us.
+
 **Targets:** everything. **The single largest measured lever (54%).**
 
 **Problem.** `util::Rational` wraps `mpq_class`; every value is two
