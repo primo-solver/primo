@@ -67,13 +67,14 @@ namespace primo::util {
 // versus use a library" -- it was "keep GMP and add a fast path in front of
 // it" versus "adopt a library whose rationals already have one".
 //
-// Only the first was evaluated. That is an omission, not a conclusion: no
-// measurement here says the hand-written path beats fmpq, because none was
-// taken. What can be said is that the containment above makes the question
-// cheap to revisit -- every GMP mention is in this file, so swapping the
-// backing representation does not touch a call site. Against that, the
-// canonical-form invariant below is the kind of subtle correctness obligation
-// a library would own instead of us.
+// Only the first was evaluated. That is an omission, not a conclusion -- no
+// measurement says the hand-written path beats fmpq, because none was taken --
+// and it is tracked as direction D5 in docs/qf-lra-heuristics.md, ranked there
+// as an opportunity rather than a priority. The containment above is what
+// keeps it cheap to revisit: every GMP mention is in this file, so swapping
+// the backing representation does not touch a call site. The reason to bother
+// would be shedding the canonical-form invariant below, which is the kind of
+// subtle correctness obligation a library would own instead of us.
 class Rational {
  public:
   Rational() = default;

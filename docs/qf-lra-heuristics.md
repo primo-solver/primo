@@ -321,19 +321,14 @@ is **required**, not forbidden -- see the canonical-form paragraph.
 Section 4), found only after the profiling above independently reached the same
 diagnosis -- see [](papers/lra-related-work.md).
 
-**An alternative that was never evaluated (recorded 2026-08-03).** GMP itself
-cannot do this: `__mpz_struct` holds a pointer to separately allocated limbs
-with no inline storage, and that layout is frozen public ABI, so even a 1-limb
-value allocates. But other libraries *do* -- FLINT's `fmpz`/`fmpq` is one word
-holding either a small immediate or a reference to a big value, which is
-precisely the scheme below. So the real choice was "keep GMP and add a fast
-path" versus "adopt a library whose rationals already have one", and only the
-first was considered. No measurement says the hand-written path beats `fmpq`,
-because none was taken. The point in its favour is that
-[](arithmetic.md)'s containment keeps every GMP mention inside
-`util::Rational`, so the question stays cheap to revisit; the point against is
-that the canonical-form invariant is a correctness obligation a library would
-own instead of us.
+**An alternative that was never evaluated:** GMP cannot provide a small form
+itself (its struct is pointer-based and its layout is frozen ABI), but other
+libraries can and do -- FLINT's `fmpq` is this exact scheme. So the real choice
+was "keep GMP and add a fast path" against "adopt a library that already has
+one", and only the first was considered. Tracked as [D5](#d5), where it is
+deliberately ranked as not a priority: H2 already took the win that was on the
+table, and the reason to revisit would be shedding the canonical-form
+invariant rather than chasing speed.
 
 **Targets:** everything. **The single largest measured lever (54%).**
 
@@ -1446,6 +1441,7 @@ whole one.
 |---|---|---|---|---|
 | D2 | Floating-point-guided basis selection (Monniaux) | **~14% in the literature** | medium | open, but **much smaller than first scoped** |
 | D4 | Revised simplex with an LU-factored basis | unknown | largest | open |
+| D5 | Replace the hand-written small-rational form with a library that has one | **unknown, plausibly ~0** | small | open, **not a priority** |
 | -- | ~~D1: row-based bound propagation, raised caps~~ | -- | -- | **rejected 2026-07-31** |
 | -- | ~~D3: offset-equality detection + bound propagation~~ | -- | -- | **closed 2026-07-31, by D1's sweep** |
 | -- | ~~Periodic refactorization~~ | -- | -- | **rejected 2026-07-30** |
@@ -1842,6 +1838,53 @@ shapes are not comparable, which is itself a hint worth chasing).
 
 
 (h11)=
+(d5)=
+### D5 -- Let a library own the small-rational representation
+
+**Status: open, and deliberately not a priority.** Recorded 2026-08-03 because
+it was an unexamined assumption, not because anything measured says it is
+wrong.
+
+**What [H2](#h2) actually chose.** The two-tier `util::Rational` is documented
+as though the options were "wrap `mpq_class`" or "write a fast path". GMP
+really cannot do it itself -- `__mpz_struct` holds a pointer to separately
+allocated limbs with no inline storage, `__mpq_struct` is two of those, and
+that layout is frozen public ABI, so even a 1-limb value allocates. But other
+libraries *do* provide exactly this scheme: FLINT's `fmpz`/`fmpq` is one
+machine word holding either a small immediate or a reference to a big value,
+which is what H2 implements by hand. The real choice was therefore "keep GMP
+and add a fast path" against "adopt a library that already has one", and only
+the first was ever considered.
+
+**Why it is not urgent.** H2 already captured the win that was on the table --
+54% of runtime was allocation and GMP bookkeeping, and removing it gave
+2.1-5.2x on the profiled instances and 108 -> 124 on the promotion bar. A
+library-provided form would be solving a problem that is already solved. The
+plausible gain is whatever separates `fmpq`'s immediate path from ours, which
+there is no reason to assume is large, and it is not where the remaining QF_LRA
+gap lives: [](#sec-6) puts that in pivot count and search order, not in
+per-rational overhead.
+
+**Why it is worth keeping on the list.** The cost is not performance, it is
+ownership. The canonical-form invariant -- big form *iff* the value does not
+fit small -- is ours to maintain, and violating it breaks
+`LinearPolynomial`/`PolynomialKey` hashing *silently* rather than visibly. That
+is precisely the class of obligation a library should carry. If the invariant
+ever does produce a bug, this direction stops being cosmetic.
+
+**Cheap to attempt, if it is ever attempted.** Every GMP mention is inside
+`src/util/rational.{hpp,cpp}`, by the same containment rule that keeps CaDiCaL
+inside `CadicalBackend`, so the backing representation can be swapped without
+touching a call site.
+
+**Falsifier, stated in advance:** *if a `fmpq`-backed `util::Rational` is not
+at least as fast as the current one on the H2 profiling instances
+(`DTP-Scheduling/constraints-tempo-width-30` and the four scrambled
+instances), the hand-written path stays and this entry closes.* Speed parity
+is the bar, not speed improvement -- the reason to switch would be shedding
+the invariant, so matching performance is enough to justify it and failing to
+match is enough to reject it.
+
 ## H11 -- Fill-in-aware pivoting in preprocessing Gaussian elimination
 
 **Status: proposed, not implemented.** To be added behind an option, default
