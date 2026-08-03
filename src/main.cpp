@@ -286,12 +286,15 @@ int main(int argc, char** argv) {
   app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
                "Disable QF_LRA Gauss-Jordan equality-system elimination [default: on]");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
-               "Encode top-level disjunctions with Tseitin support clauses [default: automatic]");
+               "Always encode top-level disjunctions with Tseitin support clauses [default: only "
+               "when the automatic rule below fires]");
   app.add_flag("--no-top-level-or-tseitin", no_top_level_or_tseitin,
-               "Keep top-level disjunctions as one clause [default: automatic]");
-  app.add_flag(
-      "--no-auto-top-level-or-tseitin", no_auto_top_level_or_tseitin,
-      "Disable guarded automatic top-level disjunction Tseitin encoding [default: automatic]");
+               "Never encode them: keep each top-level disjunction as one clause, and turn the "
+               "automatic rule off too [default: rule enabled]");
+  app.add_flag("--no-auto-top-level-or-tseitin", no_auto_top_level_or_tseitin,
+               "Disable the automatic rule, which encodes Tseitin-style only on finite-domain "
+               "problems having 1000-2500 top-level OR nodes and at most 700 negations "
+               "[default: rule enabled]");
   app.add_flag(
       "--preprocess-only", solver_options.preprocess_only,
       "Run parsing and preprocessing, print unknown, and skip SAT/theory solving [default: off]");
