@@ -17,8 +17,8 @@ families had never been mutated. The omissions included the two that matter
 most to recent work:
 
 - **`latendresse`** -- pure LP, zero decisions, very large pivot counts. This
-  is the shape items [H8](qf-lra-heuristics.md#h8), [H9](qf-lra-heuristics.md#h9)
-  and [H10](qf-lra-heuristics.md#h10) each rewrote.
+  is the shape items [H8](#h8), [H9](#h9)
+  and [H10](#h10) each rewrote.
 - **`LassoRanker`** -- 419 files, the largest single source of Primo's lead over
   the reference solvers.
 

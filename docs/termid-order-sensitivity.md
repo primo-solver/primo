@@ -19,7 +19,7 @@ The reason to track it is narrower and practical:
 - **It is invisible in tests.** Both outcomes are correct, so nothing fails.
 - **It hides the real question.** A tie-break on an identifier optimises
   nothing. Where one turns out to matter, that is usually an argument for an
-  *informed* rule -- which is how [H11](qf-lra-heuristics.md#h11) came about.
+  *informed* rule -- which is how [H11](#h11) came about.
 
 So: record the site, note whether it was measured, and only act where an
 informed rule would plausibly beat an arbitrary one.
@@ -64,8 +64,8 @@ for (const core::TermId variable : eligible_variables) {          // pivot order
 substitutions from 4 to 0.
 
 **Status:** open. The pivot rule is uninformed -- it optimises nothing -- which
-is the subject of [H11](qf-lra-heuristics.md#h11): choose by expected fill-in
-(Markowitz), as [H3](qf-lra-heuristics.md#h3) already does for the tableau.
+is the subject of [H11](#h11): choose by expected fill-in
+(Markowitz), as [H3](#h3) already does for the tableau.
 
 (termid-2)=
 ### 2. `polynomial_to_term` builds terms in TermId order

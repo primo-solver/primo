@@ -327,7 +327,7 @@ this paper's.** This entry previously said Primo had "independently
 re-invented" Rueß & Shankar's design. That overreached. Their related-work
 section attributes it elsewhere: of Nelson's method, "**Retraction of
 assertions is carried out by recording and undoing pivoting steps**" -- which
-is precisely what Primo did until item [H9](../qf-lra-heuristics.md#h9). They
+is precisely what Primo did until item [H9](#h9). They
 also note Cassowary "introduces a simple and elegant mechanism for retracting
 assertions". So the lineage of the scheme Primo removed runs to Nelson, and
 this paper is where that characterisation is written down rather than where
@@ -363,7 +363,7 @@ mechanism for deriving them -- there is no equality propagation out of
 paper is worth reading against the Nelson-Oppen work rather than the QF_LRA
 work.
 
-**One aside relevant to [H3](../qf-lra-heuristics.md#h3).** On Hentenryck &
+**One aside relevant to [H3](#h3).** On Hentenryck &
 Graf's SF2 normal form they observe that "lexicographic pivoting is an
 alternative to Bland's rule for avoiding pivoting cycles, but can be more
 expensive, particularly in situations where implicit equalities are rare" --
