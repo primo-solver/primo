@@ -43,10 +43,6 @@
 #include "util/rational.hpp"
 #include "util/statistics.hpp"
 
-#if PRIMO_HAVE_IPASIR
-#include <cadical.hpp>
-#endif
-
 namespace primo::smt {
 
 namespace {
@@ -2957,7 +2953,7 @@ struct ModelPropagationResult {
 };
 
 #if PRIMO_HAVE_IPASIR
-class TheoryConflictTerminator final : public CaDiCaL::Terminator {
+class TheoryConflictTerminator final : public sat::Terminator {
  public:
   TheoryConflictTerminator(util::Statistics& statistics, std::size_t conflict_limit)
       : statistics_(statistics), conflict_limit_(conflict_limit) {}
@@ -2978,7 +2974,7 @@ class TheoryConflictTerminator final : public CaDiCaL::Terminator {
   bool reached_ = false;
 };
 
-class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
+class OnlineEufPropagator final : public sat::ExternalPropagator {
  public:
   OnlineEufPropagator(const core::TermManager& terms,
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
@@ -3024,19 +3020,12 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     }
   }
 
-#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   void notify_assignment(const std::vector<int>& lits) override {
     for (const int lit : lits) {
       notify_assignment_lit(lit);
     }
     finish_assignment_notification();
   }
-#else
-  void notify_assignment(int lit, bool /*is_fixed*/) override {
-    notify_assignment_lit(lit);
-    finish_assignment_notification();
-  }
-#endif
 
   void notify_new_decision_level() override {
     level_starts_.push_back(trail_.size());
@@ -3153,7 +3142,6 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     return reason.antecedents[antecedent_index];
   }
 
-#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
     maybe_store_conflict();
     maybe_store_diseq_ackermann_conflict();
@@ -3163,13 +3151,12 @@ class OnlineEufPropagator final : public CaDiCaL::ExternalPropagator {
     is_forgettable = false;
     return true;
   }
-#else
+
   bool cb_has_external_clause() override {
     maybe_store_conflict();
     maybe_store_diseq_ackermann_conflict();
     return !external_clause_.empty();
   }
-#endif
 
   int cb_add_external_clause_lit() override {
     if (external_clause_index_ >= external_clause_.size()) {
@@ -6197,7 +6184,7 @@ void publish_lra_tableau_shape_stats(const theory::arithmetic::LraTableau& table
 // pop() -- this is what actually exercises push/pop for cross-round reuse,
 // unlike solve_qf_lra's other path (find_incremental_lra_theory_conflict),
 // which copies the base tableau fresh every round.
-class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
+class OnlineLraPropagator final : public sat::ExternalPropagator {
  public:
   OnlineLraPropagator(const PreparedLraTheory& prepared,
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
@@ -6229,15 +6216,11 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     }
   }
 
-#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   void notify_assignment(const std::vector<int>& lits) override {
     for (const int lit : lits) {
       notify_assignment_lit(lit);
     }
   }
-#else
-  void notify_assignment(int lit, bool /*is_fixed*/) override { notify_assignment_lit(lit); }
-#endif
 
   void notify_new_decision_level() override {
     checkpoints_.push_back(tableau_.push());
@@ -6418,7 +6401,6 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     return result;
   }
 
-#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
     run_deferred_check_if_needed();
     if (!conflict_.has_value()) {
@@ -6429,7 +6411,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     is_forgettable = false;
     return true;
   }
-#else
+
   bool cb_has_external_clause() override {
     run_deferred_check_if_needed();
     if (!conflict_.has_value()) {
@@ -6439,7 +6421,6 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     external_clause_index_ = 0;
     return true;
   }
-#endif
 
   int cb_add_external_clause_lit() override {
     if (external_clause_index_ >= external_clause_.size()) {
@@ -6849,9 +6830,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   std::size_t decide_cursor_ = 0;
 };
 
-class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagator {
+class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
  public:
-  MixedTheoryPropagationDispatcher(sat::CadicalBackend& backend, TheoryCombinationManager& manager,
+  MixedTheoryPropagationDispatcher(sat::IpasirUpBackend& backend, TheoryCombinationManager& manager,
                                    OnlineLraPropagator* lra_propagator,
                                    const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
                                    util::Statistics& statistics)
@@ -6882,7 +6863,6 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
     }
   }
 
-#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   void notify_assignment(const std::vector<int>& lits) override {
     if (lra_propagator_ != nullptr) {
       lra_propagator_->notify_assignment(lits);
@@ -6892,15 +6872,6 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
       notify_assignment_lit(lit);
     }
   }
-#else
-  void notify_assignment(int lit, bool is_fixed) override {
-    if (lra_propagator_ != nullptr) {
-      lra_propagator_->notify_assignment(lit, is_fixed);
-      drain_lra_interface_equalities();
-    }
-    notify_assignment_lit(lit);
-  }
-#endif
 
   void notify_new_decision_level() override {
     if (lra_propagator_ != nullptr) {
@@ -6995,7 +6966,6 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
     return 0;
   }
 
-#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
     if (lra_propagator_ != nullptr && lra_propagator_->cb_has_external_clause(is_forgettable)) {
       active_external_owner_ = PropagationOwner::Lra;
@@ -7003,7 +6973,7 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
     }
     return false;
   }
-#else
+
   bool cb_has_external_clause() override {
     if (lra_propagator_ != nullptr && lra_propagator_->cb_has_external_clause()) {
       active_external_owner_ = PropagationOwner::Lra;
@@ -7011,7 +6981,6 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
     }
     return false;
   }
-#endif
 
   int cb_add_external_clause_lit() override {
     if (active_external_owner_ == PropagationOwner::Lra && lra_propagator_ != nullptr) {
@@ -7119,7 +7088,7 @@ class MixedTheoryPropagationDispatcher final : public CaDiCaL::ExternalPropagato
     }
   }
 
-  sat::CadicalBackend& backend_;
+  sat::IpasirUpBackend& backend_;
   TheoryCombinationManager& manager_;
   OnlineLraPropagator* lra_propagator_ = nullptr;
   util::Statistics& statistics_;

@@ -1,7 +1,7 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
-Status stamp: 2026-08-03, branch `nelson-oppen-closure-methods`, current
-documentation/code baseline after commit `77182cc`.
+Status stamp: 2026-08-04, branch `sat-ipasir-up-interface`, current
+documentation/code baseline for the backend-neutral IPASIR-UP refactor.
 
 Reference:
 
@@ -34,10 +34,13 @@ combination. It has these related pieces:
 - an opt-in `--nelson-oppen-prop=online` paired-bound LRA-to-EUF propagation
   experiment that avoids all-pairs equality precreation; on current CaDiCaL it
   precreates only the paired-bound candidate equality atoms because fresh
-  variable allocation is rejected from the callback phase. Online mode normally
-  skips the broad final all-pairs LRA equality scan after materializing a
-  paired-bound candidate, but reruns that scan once if final arrangement/model
-  validation otherwise cannot separate shared Real arguments.
+  equality allocation has not yet been wired into the mixed dispatcher. The SAT
+  layer has a backend-neutral IPASIR-UP interface and a focused
+  `new_observed_var()` probe that succeeds from CaDiCaL's complete-model
+  callback. Online mode normally skips the broad final all-pairs LRA equality
+  scan after materializing a paired-bound candidate, but reruns that scan once
+  if final arrangement/model validation otherwise cannot separate shared Real
+  arguments.
 
 The missing parts are the paper's central mechanisms:
 
@@ -100,19 +103,19 @@ For the current CaDiCaL backend, the concrete rule is:
 
 1. Keep the online producer's paired-bound candidates separate from the full
    shared-pair cross product.
-2. Before search, create equality atoms only for shared Real pairs that already
-   have both non-strict LRA bounds in the prepared formula.
-3. After the mixed dispatcher is connected, observe those reduced candidate
-   equality variables before they can be returned from `cb_propagate()`.
-4. Stream the theory-owned explanation if the equality is entailed; use SAT
+2. For CaDiCaL-backed online search, use the backend-neutral
+   `sat::ExternalPropagator` and `IpasirUpBackend::new_observed_var()` path to
+   test selected fresh equality atoms at controlled callback boundaries before
+   relying on them in the mixed dispatcher.
+3. Stream the theory-owned explanation if the equality is entailed; use SAT
    assumptions or guarded clauses for model-equality guesses.
-5. Record the full shared-pair count, paired-bound candidate count,
+4. Record the full shared-pair count, paired-bound candidate count,
    created/observed atom count, delivered propagation count, disagreement
    conflicts, and skipped mutation-avoidable candidates.
 
-A future backend phase that permits fresh variable allocation from the relevant
-callback may move step 2 to true create-and-observe for the selected candidate
-without reverting to all-pairs equality precreation.
+Until that dispatcher follow-up lands, `--nelson-oppen-prop=online` keeps the
+reduced paired-bound precreation fallback. The SAT probe only proves that the
+backend boundary can support a later lazy candidate queue.
 
 This direction is still not a full `DPLL(T^M)` implementation until the solver
 has a generic mutable theory-model object and per-theory model-equality API.

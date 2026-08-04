@@ -452,9 +452,10 @@ theory and performs an ordinary final check.
 `--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
 callback, was connected. `:no.online.precreated-equality-atoms` counts the
-shared Real equality literals created before SAT search. Current CaDiCaL rejects
-fresh SAT-variable allocation from the callback phase, so online mode uses the
-smaller fallback precreation set recorded by
+shared Real equality literals created before SAT search. The SAT backend now has
+a backend-neutral IPASIR-UP fresh-observed-variable path, but this mixed
+Nelson-Oppen mode has not yet been changed to allocate equality atoms during
+search. It therefore still uses the smaller fallback precreation set recorded by
 `:no.online.paired-bound-precreate-candidates`: shared Real pairs for which both
 non-strict LRA bounds are already present in the prepared formula. This counter
 should be much smaller than `:no.online.shared-real-pairs`, which records the

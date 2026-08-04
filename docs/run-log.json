@@ -17649,6 +17649,72 @@
         }
       },
       "outcome": "The fallback fixes the two online SAT-to-unknown regressions found at c4caf88: both regression rows now return sat under online mode on SLURM. The 20-file sample has no wrong answers or cross-solver disagreements; online and final both solve 16/20, while Z3 solves all 20. Online remains opt-in because the BMC timeout rows still show substantial SAT churn from paired-bound propagation, even though the profiled MathSAT row keeps the broad-scan skip path and remains faster than final on this shallow sample."
+    },
+    {
+      "id": "2026-08-04-sat-ipasir-up-interface-local-probe",
+      "date": "2026-08-04",
+      "branch": "sat-ipasir-up-interface",
+      "commit": "9a71a84",
+      "evidence_status": "current",
+      "scope": "Backend-neutral IPASIR-UP interface refactor and local CaDiCaL fresh-observed-variable callback probe. No Nelson-Oppen behavior change is claimed.",
+      "commands": {
+        "focused_build_and_probe": "cmake --build build --target primo_sat_backend_tests primo_boolean_solver_tests primo_qf_lra_solver_tests primo -j2 && ./build/primo_sat_backend_tests",
+        "focused_unit_tests": "cd build && ./primo_sat_backend_tests && ./primo_boolean_solver_tests && ./primo_qf_lra_solver_tests",
+        "ctest": "python3 -m json.tool docs/run-log.json >/tmp/run-log-check.json && ctest --test-dir build --output-on-failure",
+        "docs": "make docs",
+        "asan": "make asan-test",
+        "lint_check": "make lint; make check",
+        "tidy": "make tidy",
+        "include_cleaner": "make include-cleaner",
+        "format_diff": "clang-format --dry-run --Werror src/sat/ipasir_up.hpp src/sat/cadical_backend.hpp src/sat/cadical_backend.cpp src/smt/check_sat.cpp tests/unit/sat_backend_tests.cpp; git diff --check",
+        "solver_efficiency_review": "python3 /home/user/.codex/skills/solver-efficiency-review/scripts/solver_efficiency_snapshot.py --repo .",
+        "fuzz_default": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 1000 --seed 2026080401 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-ipasir-up-interface-default-1000",
+        "fuzz_online": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--nelson-oppen-prop=online --ref contrib/local/bin/z3 --count 1000 --seed 2026080402 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-ipasir-up-interface-online-1000",
+        "cryptominisat_check": "Reviewed upstream CryptoMiniSat README, cryptominisat_c.h, and ipasir.cpp on 2026-08-04: current public API exposes ordinary IPASIR, not IPASIR-UP observed-variable/user-propagator callbacks."
+      },
+      "environment": {
+        "host": "local workspace",
+        "cadical": "contrib/local CaDiCaL, signature reported by the linked build",
+        "cryptominisat": "upstream GitHub msoos/cryptominisat as of 2026-08-04"
+      },
+      "results": {
+        "focused_build": "passed",
+        "sat_backend_probe": "passed: a connected Primo sat::ExternalPropagator rejected the complete model once, created a fresh observed variable through IpasirUpBackend::new_observed_var() from cb_check_found_model, queued that literal through cb_propagate(), streamed a unit reason, and the backend returned SAT with the fresh variable true",
+        "unit_tests": "focused SAT/online SMT unit binaries passed; ctest 13/13 passed",
+        "docs": "make docs passed",
+        "asan": "make asan-test passed 13/13",
+        "lint_check": "make lint and make check failed on the existing Ruff baseline in untouched scripts/contrib Python files; py_compile completed before Ruff reported EXE001/I001/UP022/etc.",
+        "tidy": "make tidy passed whole-tree clang-tidy over 63 tracked non-generated C++ files",
+        "include_cleaner": "completed advisory scan with the existing broad warning baseline; no source changes were made from advisory output",
+        "format_diff": "clang-format dry-run and git diff --check passed",
+        "solver_efficiency_review": "no blocking issue after replacing the scalar callback adapter's temporary one-element vector with a reusable buffer; change is an enabling refactor, not a default-performance claim",
+        "fuzz_default": {
+          "artifact": "fuzz-results/qf_uflra-ipasir-up-interface-default-1000",
+          "pass": 1000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0,
+          "reference_disagreement": 0,
+          "answers": {
+            "sat": 734,
+            "unsat": 266
+          }
+        },
+        "fuzz_online": {
+          "artifact": "fuzz-results/qf_uflra-ipasir-up-interface-online-1000",
+          "pass": 1000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0,
+          "reference_disagreement": 0,
+          "answers": {
+            "sat": 681,
+            "unsat": 319
+          }
+        },
+        "cryptominisat": "negative portability check: ordinary IPASIR only, so CryptoMiniSat is not a drop-in backend for Primo online theory propagation"
+      },
+      "outcome": "The SAT solver limitation is adapter-specific rather than fundamental for CaDiCaL: Primo now has a backend-neutral IPASIR-UP boundary and a passing fresh-observed-variable callback probe. Mixed Nelson-Oppen online propagation still uses the paired-bound precreation fallback until a later branch wires dynamic equality atom allocation into the dispatcher."
     }
   ]
 }

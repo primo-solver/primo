@@ -142,10 +142,12 @@ paired-bound candidate equality atoms before search. The previous all-pairs
 online precreation accommodation has been removed from this path:
 `:no.online.precreated-equality-atoms` counts the paired-bound fallback set,
 `:no.online.paired-bound-precreate-candidates` records the candidate count, and
-`:no.online.shared-real-pairs` is only a diagnostic cross-product count. If a
-future backend permits fresh observed variables or fresh clauses in the relevant
-callback phase, this path can move the same selected candidate set to true lazy
-create-and-observe without reverting to all-pairs precreation.
+`:no.online.shared-real-pairs` is only a diagnostic cross-product count. The SAT
+layer now exposes a backend-neutral IPASIR-UP interface and a CaDiCaL-backed
+`new_observed_var()` probe that succeeds from the complete-model callback, but
+the mixed Nelson-Oppen dispatcher has not yet been changed to allocate equality
+atoms during search. That follow-up should move only selected candidate pairs to
+true lazy create-and-observe without reverting to all-pairs precreation.
 
 Online mode also skips the older final `lra_implied_real_equalities`
 strict-bound scan over all shared Real pairs after it has materialized at least

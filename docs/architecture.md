@@ -6,7 +6,9 @@ Primo is organized as layered components with explicit data ownership. This page
 
 - `smtlib/` parses SMT-LIB commands into lightweight syntax objects.
 - `core/` owns sorts, symbols, and hash-consed terms.
-- `sat/` owns propositional variables, literals, clauses, assumptions, and the CaDiCaL/IPASIR backend adapter.
+- `sat/` owns propositional variables, literals, clauses, assumptions, the
+  backend-neutral IPASIR-UP callback interfaces, and the concrete CaDiCaL
+  adapter.
 - `smt/` owns SMT-LIB command processing, preprocessing, Boolean abstraction,
   clausification, QF_UF/QF_LRA solver orchestration, and the current separable
   mixed QF_UFLRA coordinator.
@@ -248,17 +250,19 @@ Implemented now:
   `--nelson-oppen-prop=off` disables these guarded interface-equality
   propagation clauses for ablation. `--nelson-oppen-prop=online` is an opt-in
   mixed-theory callback path: the SMT layer connects a single
-  `MixedTheoryPropagationDispatcher` to CaDiCaL, delegates ordinary arithmetic
+  `MixedTheoryPropagationDispatcher` through the SAT backend's
+  `sat::ExternalPropagator` interface, delegates ordinary arithmetic
   propagation to `OnlineLraPropagator`, and consumes LRA-published interface
   equality candidates. The implemented LRA producer publishes a shared Real
   equality when both non-strict bounds `(<= a b)` and `(<= b a)` over registered
   shared Real constants/proxies are true on the SAT trail. The dispatcher then
   maps that theory-owned candidate to a SAT-visible interface equality literal
-  and streams the LRA-provided reason literals back to CaDiCaL. Current CaDiCaL
-  rejects fresh SAT-variable allocation from this callback phase, so Primo uses
-  the documented fallback: before search it precreates only interface equality
-  atoms for shared Real pairs that already have both non-strict LRA bounds in
-  the prepared formula. This is still a candidate-first path, not all-pairs
+  and streams the LRA-provided reason literals back through the SAT backend.
+  The SAT layer has a fresh observed-variable callback probe, but this
+  Nelson-Oppen path still uses the documented fallback: before search it
+  precreates only interface equality atoms for shared Real pairs that already
+  have both non-strict LRA bounds in the prepared formula. This is still a
+  candidate-first path, not all-pairs
   Delayed Theory Combination: the full shared Real pair count remains
   diagnostic, while only paired-bound candidates become observed SAT variables.
   After online mode has materialized at least one paired-bound equality
@@ -351,7 +355,9 @@ Not implemented yet:
 
 ## Paper Traceability
 
-- IPASIR-UP motivates the SAT-backend interface, but the current backend is a direct CaDiCaL/IPASIR-style adapter in `src/sat/`.
+- IPASIR-UP motivates the SAT-backend interface. `src/sat/` owns the
+  backend-neutral propagator/terminator contracts and adapts them to CaDiCaL's
+  concrete C++ API.
 - Congruence-closure papers motivate the EUF direction. The current implementation has congruence closure and disequality checking, but it does not yet implement explanation-producing union-find or the full fast algorithms described in the literature notes.
 - DPLL(T) papers motivate the lazy SAT/theory loop. Primo currently implements a simple lazy loop that rebuilds/checks theory consistency from each SAT assignment rather than an incremental propagating theory solver.
 - SMT symmetry-breaking papers motivate the default-on QF_UF preprocessing pass.

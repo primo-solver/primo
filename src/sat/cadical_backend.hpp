@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -8,9 +9,7 @@
 #include "sat/ipasir_up.hpp"
 
 namespace CaDiCaL {
-class ExternalPropagator;
 class Solver;
-class Terminator;
 }  // namespace CaDiCaL
 
 namespace primo::sat {
@@ -27,21 +26,28 @@ class CadicalBackend final : public IpasirUpBackend {
   CadicalBackend& operator=(const CadicalBackend&) = delete;
 
   int new_var() override;
+  int new_observed_var() override;
   void add_clause(const Clause& clause) override;
   void assume(Lit lit) override;
   SatResult solve() override;
   std::optional<bool> value(int var) const override;
   bool failed(Lit lit) const override;
   BackendStatistics statistics() const override;
-  void phase(Lit lit);
-  void connect_external_propagator(CaDiCaL::ExternalPropagator* propagator);
-  void disconnect_external_propagator();
-  void connect_terminator(CaDiCaL::Terminator* terminator);
-  void disconnect_terminator();
-  void add_observed_var(int var);
+  IpasirUpCapabilities capabilities() const override;
+  void phase(Lit lit) override;
+  void connect_external_propagator(ExternalPropagator* propagator) override;
+  void disconnect_external_propagator() override;
+  void add_observed_var(int var) override;
+  void connect_terminator(Terminator* terminator) override;
+  void disconnect_terminator() override;
 
  private:
+  class ExternalPropagatorAdapter;
+  class TerminatorAdapter;
+
   CaDiCaL::Solver* solver_ = nullptr;
+  std::unique_ptr<ExternalPropagatorAdapter> external_adapter_;
+  std::unique_ptr<TerminatorAdapter> terminator_adapter_;
   int max_var_ = 0;
   SatResult last_result_ = SatResult::Unknown;
   BackendStatistics statistics_;
