@@ -8,7 +8,6 @@ import csv
 from collections import Counter
 from pathlib import Path
 
-
 SHADOW_PREFIX = ":euf.dynamic-ack.shadow."
 
 

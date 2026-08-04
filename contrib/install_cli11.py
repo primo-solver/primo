@@ -5,7 +5,6 @@ import argparse
 import urllib.request
 from pathlib import Path
 
-
 DEFAULT_VERSION = "v2.6.2"
 URL_TEMPLATE = "https://github.com/CLIUtils/CLI11/releases/download/{version}/CLI11.hpp"
 

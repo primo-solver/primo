@@ -29,8 +29,7 @@ def shell_syntax_check(command: str) -> None:
         ["bash", "-n"],
         input=command,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if proc.returncode != 0:
@@ -132,8 +131,7 @@ rm -rf "$snapshot"
             ssh_command,
             stdin=archive_proc.stdout,
             text=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
     finally:

@@ -21,7 +21,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-
 ANSWERS = {"sat", "unsat", "unknown", "unsupported"}
 CHECKABLE = {"sat", "unsat"}
 
@@ -176,8 +175,7 @@ def run_solver(
             command,
             check=False,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
         )
         stdout = proc.stdout

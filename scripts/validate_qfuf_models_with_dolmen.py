@@ -163,8 +163,7 @@ def run_command(
             check=False,
             text=True,
             input=input_text,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
         )
         elapsed = time.monotonic() - start

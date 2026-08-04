@@ -8,7 +8,6 @@ import csv
 from collections import Counter
 from pathlib import Path
 
-
 ACK_PREFIX = ":euf.ackermann."
 
 

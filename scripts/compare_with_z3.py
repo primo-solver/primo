@@ -9,7 +9,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 RESULTS = {"sat", "unsat", "unknown"}
 
 
@@ -19,8 +18,7 @@ def run_solver(command: list[str], timeout: float) -> tuple[str, int, str, str]:
             command,
             check=False,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:

@@ -110,8 +110,8 @@ def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
     # Deliberately no red: series are solvers, not severities, and a red curve
     # reads as a verdict on whichever solver happens to be second.
     palette = ["#1b6ca8", "#c9760a", "#2a9d8f", "#8d5bb5", "#5a6472"]
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-           f'viewBox="0 0 {width} {height}" font-family="system-ui,-apple-system,sans-serif">',
+    out = [(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+           f'viewBox="0 0 {width} {height}" font-family="system-ui,-apple-system,sans-serif">'),
            '<rect width="100%" height="100%" fill="#ffffff"/>',
            f'<text x="{left}" y="30" font-size="17" font-weight="600">{title}</text>']
 
@@ -229,8 +229,8 @@ def main() -> int:
         problems += 1
 
     total = max(totals)
-    caption = [f"{total} instances, {args.timeout:g}s per instance. "
-               "Only solved instances contribute a point; timeouts do not."]
+    caption = [(f"{total} instances, {args.timeout:g}s per instance. "
+               "Only solved instances contribute a point; timeouts do not.")]
     if dropped:
         caption.append(
             f"Excludes {dropped} further instances every solver finished in under "

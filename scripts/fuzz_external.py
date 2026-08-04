@@ -5,12 +5,11 @@ from __future__ import annotations
 
 import argparse
 import csv
-import shlex
-import subprocess
 import random
+import shlex
 import shutil
+import subprocess
 from pathlib import Path
-
 
 RESULTS = {"sat", "unsat", "unknown"}
 
@@ -21,8 +20,7 @@ def run_solver(command: list[str], path: Path, timeout: float) -> tuple[str, int
             [*command, str(path)],
             check=False,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:

@@ -10,7 +10,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 CHECKABLE = {"sat", "unsat", "unknown"}
 BAD_OUTCOMES = {
     "CRASH",
@@ -29,8 +28,7 @@ def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
             command,
             check=False,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:

@@ -29,8 +29,7 @@ def run_file(path: Path, solver: str, timeout: float) -> tuple[str, int]:
             [solver, str(path)],
             check=False,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
         )
         status = classify(proc.stdout, proc.stderr, proc.returncode)

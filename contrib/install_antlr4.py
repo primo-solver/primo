@@ -8,7 +8,6 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-
 VERSION = "4.13.2"
 ANTLR_JAR_URL = f"https://www.antlr.org/download/antlr-{VERSION}-complete.jar"
 ANTLR_SOURCE_URL = f"https://github.com/antlr/antlr4/archive/refs/tags/{VERSION}.zip"

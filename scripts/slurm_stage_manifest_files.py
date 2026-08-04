@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 
 def run(command: list[str], *, stdin=None) -> subprocess.CompletedProcess[bytes]:
     print("+", " ".join(shlex.quote(part) for part in command), flush=True)
-    return subprocess.run(command, stdin=stdin, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return subprocess.run(command, stdin=stdin, check=True, capture_output=True)
 
 
 def shell_syntax_check(command: str) -> None:
@@ -19,8 +19,7 @@ def shell_syntax_check(command: str) -> None:
         ["bash", "-n"],
         input=command,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if proc.returncode != 0:
@@ -90,8 +89,7 @@ tar -xf - -C {shlex.quote(remote_root)}
         ssh_proc = subprocess.run(
             ssh_command,
             stdin=tar_proc.stdout,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
     finally:
