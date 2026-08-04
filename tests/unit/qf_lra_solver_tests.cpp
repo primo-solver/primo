@@ -361,6 +361,8 @@ void qf_uf_lra_validates_final_arrangement_without_model() {
   assert(result.statistics.get(":no.interface.arrangement-checks") >= 1);
   assert(result.statistics.get(":no.interface.arrangement-failures") == 0);
   assert(result.statistics.get(":no.interface.arrangement-separations") >= 1);
+  assert(result.statistics.get(":no.interface.lra-extra-atom-probes") >= 1);
+  assert(result.statistics.get(":no.interface.lra-extra-atoms-probed") >= 1);
 }
 
 void qf_uf_lra_prints_shared_real_equal_predicate_model() {
@@ -408,6 +410,8 @@ void qf_uf_lra_searches_multiple_shared_real_model_separations() {
   assert(result.statistics.get(":no.interface.model-separations") == 3);
   assert(result.statistics.get(":no.interface.model-separation-search-capped") == 0);
   assert(result.statistics.get(":no.interface.model-separation-search-branches") >= 3);
+  assert(result.statistics.get(":no.interface.lra-extra-atom-probes") >= 3);
+  assert(result.statistics.get(":no.interface.lra-extra-atoms-probed") >= 3);
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
@@ -459,6 +463,30 @@ void qf_uf_lra_orients_capped_model_separations_from_lra_model() {
   assert(result.statistics.get(":no.interface.arrangement-separations") == 21);
   assert(result.statistics.get(":no.interface.model-separation-search-capped") == 1);
   assert(result.statistics.get(":no.interface.model-separation-model-oriented") == 21);
+  assert(result.statistics.get(":no.interface.lra-extra-atom-probe-limit-hit") == 0);
+}
+
+void qf_uf_lra_arrangement_probe_limit_returns_unknown() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_arrangement_probe_limit = 1;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun h (Real) U)
+    (assert (<= 0 x))
+    (assert (not (= (h x) (h y))))
+    (assert (not (= (h x) (h z))))
+    (assert (not (= (h y) (h z))))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unknown);
+  assert(result.message.find("probe limit") != std::string::npos);
+  assert(result.statistics.get(":no.interface.lra-extra-atom-probe-limit-hit") == 1);
+  assert(result.statistics.get(":no.interface.arrangement-lra-extra-atom-probes") == 1);
 }
 
 void qf_uf_lra_purifies_nonconstant_real_predicate_arguments() {
@@ -2623,6 +2651,7 @@ int main() {
   qf_uf_lra_prints_shared_real_equal_predicate_model();
   qf_uf_lra_searches_multiple_shared_real_model_separations();
   qf_uf_lra_orients_capped_model_separations_from_lra_model();
+  qf_uf_lra_arrangement_probe_limit_returns_unknown();
   qf_uf_lra_purifies_nonconstant_real_predicate_arguments();
   qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies();
   qf_uf_lra_memoizes_repeated_mixed_purification_rewrites();

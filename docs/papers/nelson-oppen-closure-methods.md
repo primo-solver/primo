@@ -281,6 +281,11 @@ coordinator publishes:
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
+- `:no.interface.arrangement-lra-extra-atom-probes`
+- `:no.interface.arrangement-lra-extra-atoms-probed`
+- `:no.interface.lra-extra-atom-probes`
+- `:no.interface.lra-extra-atoms-probed`
+- `:no.interface.lra-extra-atom-probe-limit-hit`
 - `:no.interface.euf-care-checks`
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
@@ -655,7 +660,12 @@ treating one theory's atoms as Boolean noise.
   assignment remains consistent. When the candidate set exceeds the current
   reconstruction cap, currently 18 candidate pairs, Primo records that fact and
   falls back to the former greedy orientation order instead of attempting
-  unbounded arrangement search.
+  exponential backtracking. This candidate-count cap does not by itself bound
+  the total number of augmented LRA consistency probes. The opt-in
+  `--nelson-oppen-arrangement-probe-limit` option is the soft work cap for
+  temporary LRA probes in final LRA-to-EUF equality sharing and
+  arrangement/model reconstruction; reaching it returns `unknown` and sets
+  `:no.interface.lra-extra-atom-probe-limit-hit`.
   The resulting concrete Real values are used when printing UF tables for
   symbols with Real arguments and for Real-valued UF application results.
   Real-valued function tables use `0` as their default result and add entries for

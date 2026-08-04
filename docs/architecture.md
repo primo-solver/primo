@@ -341,9 +341,13 @@ Implemented now:
   assertion by lowering Real equality to linear inequalities and letting the
   Boolean layer split negated equalities. Mixed model reconstruction uses a
   bounded search over strict shared-Real separation orientations, with a greedy
-  fallback when the candidate set exceeds the current cap. The same bounded
-  separation check is also run before returning a non-model QF_UFLRA `sat`
-  result, so the reported assignment has at least a checked Real-argument
+  fallback when the candidate set exceeds the current backtracking cap. The
+  optional `--nelson-oppen-arrangement-probe-limit` is a separate soft work
+  budget over temporary LRA consistency probes, including the conservative final
+  LRA-to-EUF equality scan that feeds arrangement validation; hitting it returns
+  `unknown` rather than using an incomplete equality/arrangement check. The same
+  bounded separation check is also run before returning a non-model QF_UFLRA
+  `sat` result, so the reported assignment has at least a checked Real-argument
   arrangement for the documented purification subset.
   When default-off model-equality branching is enabled, the mixed coordinator
   also computes EUF care-pair counters for shared Real arguments under flat EUF

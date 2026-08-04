@@ -178,6 +178,7 @@ int main(int argc, char** argv) {
   std::string theory_phase = "negative";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
+  std::size_t nelson_oppen_arrangement_probe_limit = 0;
   std::size_t max_theory_conflicts = 0;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::string> cadical_options;
@@ -361,6 +362,12 @@ int main(int argc, char** argv) {
   app.add_option("--model-equality-branch-policy", model_equality_branch_policy,
                  "QF_UFLRA model-equality branch policy: first, ranked, adaptive, or care-queued")
       ->check(CLI::IsMember({"first", "ranked", "adaptive", "care-queued"}));
+  CLI::Option* no_arrangement_probe_limit_option =
+      app.add_option("--nelson-oppen-arrangement-probe-limit", nelson_oppen_arrangement_probe_limit,
+                     "Return unknown once mixed QF_UFLRA final equality sharing or "
+                     "arrangement/model reconstruction has used this many temporary LRA "
+                     "consistency probes")
+          ->check(CLI::Range(1, 1000000000));
   app.add_flag(
       "--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
       "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them [default: off]");
@@ -711,6 +718,9 @@ int main(int argc, char** argv) {
   solver_options.euf_propagation_delivery = parsed_prop_delivery.value();
   if (max_theory_conflicts_option->count() > 0) {
     solver_options.max_theory_conflicts = max_theory_conflicts;
+  }
+  if (no_arrangement_probe_limit_option->count() > 0) {
+    solver_options.nelson_oppen_arrangement_probe_limit = nelson_oppen_arrangement_probe_limit;
   }
   for (const std::string& option : cadical_options) {
     const std::optional<std::pair<std::string, int>> parsed = parse_cadical_option(option);

@@ -261,6 +261,11 @@ post-model theory conflict. In online/conflict callback mode Primo also installs
 a CaDiCaL terminator, so a long in-progress SAT call can stop soon after the
 callback reaches the limit. This is intended for profiling and stats snapshots
 on timeout-prone benchmarks; it is not a solving heuristic.
+For mixed QF_UFLRA instances that finish SAT search but spend time in final
+equality sharing or arrangement/model reconstruction,
+`--nelson-oppen-arrangement-probe-limit N` instead caps temporary LRA
+consistency probes and returns `unknown` at the cap. Use it when
+`:no.interface.lra-extra-atom-probes` grows but `:theory.conflicts` does not.
 
 When the CLI is run with `--stats`, it keeps the current counters in a live
 statistics sink. On `SIGTERM` it prints `unknown` to stdout and flushes the
@@ -385,6 +390,11 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
+- `:no.interface.arrangement-lra-extra-atom-probes`
+- `:no.interface.arrangement-lra-extra-atoms-probed`
+- `:no.interface.lra-extra-atom-probes`
+- `:no.interface.lra-extra-atoms-probed`
+- `:no.interface.lra-extra-atom-probe-limit-hit`
 - `:no.interface.euf-care-checks`
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
@@ -527,8 +537,23 @@ the dispatcher could return them. Pure QF_UF and pure QF_LRA runs should leave
 `:no.interface.arrangement-checks` counts non-model `sat` results where the
 coordinator validated that the EUF arrangement over Real arguments can be
 separated consistently by LRA, with failures and accepted strict separations
-split into the corresponding arrangement counters. When
-`--model-equality-branching` is enabled, the model-equality counters record
+split into the corresponding arrangement counters.
+`:no.interface.lra-extra-atom-probes` counts LRA consistency checks that rebuild
+an augmented LRA theory with one or more temporary strict separation/equality
+atoms. `:no.interface.lra-extra-atoms-probed` sums the number of temporary atoms
+included across those checks. These live counters expose arrangement exploration
+cost even if the final arrangement search does not finish before a profiling
+timeout.
+`:no.interface.arrangement-lra-extra-atom-probes` and
+`:no.interface.arrangement-lra-extra-atoms-probed` are the subset spent while
+choosing strict separations for final mixed QF_UFLRA arrangement validation or
+model reconstruction. `--nelson-oppen-arrangement-probe-limit N` caps the broader
+temporary-probe counter, including conservative LRA-to-EUF equality scans that
+feed the final mixed check, and returns `unknown` when the next temporary LRA
+consistency check would exceed the budget.
+`:no.interface.lra-extra-atom-probe-limit-hit` marks that soft stop. The cap is
+opt-in and does not limit SAT solving or ordinary LRA theory conflicts.
+When `--model-equality-branching` is enabled, the model-equality counters record
 full shared Real pairs scanned, how many were equal in the current LRA model,
 how many such equalities were checked by the model-mutation filter, how many
 were skipped because either strict separation is still LRA-consistent, how many

@@ -18782,6 +18782,103 @@
         }
       },
       "outcome": "Accepted as preprocessing-target triage. The primary next target is the MathSAT random pb_real cluster because it accounts for 90 of the committed top-100 fast-Z3/default-timeout files and current preprocessing only lowers Real equalities and purifies mixed UF/LRA applications there. The secondary target is CPAchecker Real equality-to-constant alias DAGs, where small Real domains are visible after resolving nullary define-fun aliases but current finite-domain preprocessing remains UF-oriented and reports zero domains."
+    },
+    {
+      "id": "2026-08-04-qf-uflra-extra-atom-probe-cap-smoke",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "local-smoke",
+      "scope": "QF_UFLRA temporary LRA extra-atom probe budget on profiled MathSAT candidate",
+      "commit": "1e6e2cf",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "./build/primo --quiet --stats --nelson-oppen-arrangement-probe-limit 5 tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2 2>&1 | rg '^(sat|unsat|unknown|:no\\.interface\\.(arrangement|lra-extra)|:time\\.|:sat\\.|:lra\\.)'",
+      "solver": {
+        "name": "Primo",
+        "argv": "--quiet --stats --nelson-oppen-arrangement-probe-limit 5"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2",
+        "source_manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt"
+      },
+      "summary": {
+        "status": "unknown",
+        "time_total_us": 41290,
+        "time_solve_us": 23683,
+        "sat_solve_calls": 1,
+        "sat_decisions": 73,
+        "sat_conflicts": 0,
+        "lra_online_check_calls": 54,
+        "lra_extra_atom_probes": 5,
+        "lra_extra_atoms_probed": 5,
+        "arrangement_lra_extra_atom_probes": 0,
+        "probe_limit_hit": 1
+      },
+      "outcome": "Accepted as a local smoke check for the opt-in soft cap. The cap now stops the conservative final LRA-to-EUF temporary-probe scan before the model-arrangement phase; a prior cap limited only separation probes and still allowed 5471 broad extra-atom probes on the same input before returning unknown. This is diagnostic/runtime-control evidence, not a default-profile benchmark claim.",
+      "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-04-qf-uflra-probe-cap-local-fuzz-200",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA generated smoke cases, default and opt-in temporary LRA probe cap",
+      "commit": "1e6e2cf",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 100 --seed 20260804 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-probe-cap-default-z3-20260804; python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--nelson-oppen-arrangement-probe-limit --solver-arg=20 --ref contrib/local/bin/z3 --count 100 --seed 20260805 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-probe-cap-opt-z3-20260804",
+      "solver": {
+        "name": "Primo",
+        "argv": "default; --nelson-oppen-arrangement-probe-limit 20"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "count": 200,
+        "seeds": [
+          20260804,
+          20260805
+        ],
+        "timeout_seconds": 5
+      },
+      "artifacts": [
+        "fuzz-results/qf_uflra-probe-cap-default-z3-20260804/summary.csv",
+        "fuzz-results/qf_uflra-probe-cap-opt-z3-20260804/summary.csv"
+      ],
+      "summary": {
+        "default": {
+          "pass": 100,
+          "wrong_answer": 0,
+          "crash": 0,
+          "timeout": 0,
+          "unknown_involved": 0,
+          "reference_unusable": 0
+        },
+        "probe_cap_20": {
+          "pass": 94,
+          "unknown_involved": 6,
+          "wrong_answer": 0,
+          "crash": 0,
+          "timeout": 0,
+          "reference_unusable": 0
+        }
+      },
+      "outcome": "Accepted as a local smoke fuzz gate for the default path and the opt-in temporary LRA probe cap. The capped profile may return unknown when the soft budget is hit; no wrong answers, crashes, or reference-unusable results occurred. This is not a replacement for the SLURM QF_UFLRA merge gate before making a default-profile performance claim.",
+      "evidence_status": "current-local"
     }
   ]
 }

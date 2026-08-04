@@ -235,6 +235,7 @@ struct CheckSatOptions {
   std::size_t finite_domain_eqdefs_auto_domain_limit = 8;
   std::size_t finite_domain_eqdefs_auto_clause_limit = 5000;
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
+  std::optional<std::size_t> nelson_oppen_arrangement_probe_limit;
   std::optional<std::size_t> max_theory_conflicts;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;

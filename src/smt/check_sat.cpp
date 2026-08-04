@@ -5147,7 +5147,11 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 std::optional<sat::Clause> lra_assignment_conflict_with_extra_atom(
     const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId extra_atom,
-    const CheckSatOptions& options) {
+    const CheckSatOptions& options, util::Statistics* statistics = nullptr) {
+  if (statistics != nullptr) {
+    statistics->increment(":no.interface.lra-extra-atom-probes");
+    statistics->increment(":no.interface.lra-extra-atoms-probed");
+  }
   std::vector<BooleanClausifier::TheoryAtom> augmented_lra_atoms = lra_atoms;
   augmented_lra_atoms.push_back(BooleanClausifier::TheoryAtom{sat::Lit{0}, extra_atom});
   std::vector<AssignedTheoryAtom> augmented_lra_assignments = lra_assignments;
@@ -5161,23 +5165,23 @@ std::optional<sat::Clause> lra_assignment_conflict_with_extra_atom(
 bool lra_assignment_conflicts_with_extra_atom(
     const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId extra_atom,
-    const CheckSatOptions& options) {
+    const CheckSatOptions& options, util::Statistics* statistics = nullptr) {
   return lra_assignment_conflict_with_extra_atom(terms, lra_atoms, lra_assignments, extra_atom,
-                                                 options)
+                                                 options, statistics)
       .has_value();
 }
 
 std::optional<sat::Clause> lra_forced_equality_reason(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId lhs, core::TermId rhs,
-    const CheckSatOptions& options) {
+    const CheckSatOptions& options, util::Statistics* statistics = nullptr) {
   const std::optional<sat::Clause> lhs_lt_rhs_conflict = lra_assignment_conflict_with_extra_atom(
-      terms, lra_atoms, lra_assignments, terms.mk_lt(lhs, rhs), options);
+      terms, lra_atoms, lra_assignments, terms.mk_lt(lhs, rhs), options, statistics);
   if (!lhs_lt_rhs_conflict.has_value()) {
     return std::nullopt;
   }
   const std::optional<sat::Clause> rhs_lt_lhs_conflict = lra_assignment_conflict_with_extra_atom(
-      terms, lra_atoms, lra_assignments, terms.mk_lt(rhs, lhs), options);
+      terms, lra_atoms, lra_assignments, terms.mk_lt(rhs, lhs), options, statistics);
   if (!rhs_lt_lhs_conflict.has_value()) {
     return std::nullopt;
   }
@@ -5196,34 +5200,69 @@ std::optional<sat::Clause> lra_forced_equality_reason(
   return reason;
 }
 
-std::vector<core::TermId> lra_implied_real_equalities(
+struct LraImpliedRealEqualitiesResult {
+  std::vector<core::TermId> equalities;
+  bool probe_limit_hit = false;
+};
+
+bool consume_no_extra_atom_probe_budget(const CheckSatOptions& options,
+                                        util::Statistics& statistics, std::size_t extra_atom_count,
+                                        bool arrangement_probe) {
+  if (options.nelson_oppen_arrangement_probe_limit.has_value() &&
+      statistics.get(":no.interface.lra-extra-atom-probes") >=
+          options.nelson_oppen_arrangement_probe_limit.value()) {
+    statistics.set(":no.interface.lra-extra-atom-probe-limit-hit", 1);
+    return false;
+  }
+  if (arrangement_probe) {
+    statistics.increment(":no.interface.arrangement-lra-extra-atom-probes");
+    statistics.increment(":no.interface.arrangement-lra-extra-atoms-probed", extra_atom_count);
+  }
+  return true;
+}
+
+LraImpliedRealEqualitiesResult lra_implied_real_equalities(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments,
-    const std::vector<core::TermId>& shared_terms, const CheckSatOptions& options) {
+    const std::vector<core::TermId>& shared_terms, const CheckSatOptions& options,
+    util::Statistics* statistics = nullptr) {
   std::vector<core::TermId> equalities;
   for (std::size_t i = 0; i < shared_terms.size(); ++i) {
     for (std::size_t j = i + 1; j < shared_terms.size(); ++j) {
       const core::TermId lhs = shared_terms[i];
       const core::TermId rhs = shared_terms[j];
+      if (statistics != nullptr &&
+          !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
+        return LraImpliedRealEqualitiesResult{std::move(equalities), true};
+      }
       const bool lhs_lt_rhs_conflicts = lra_assignment_conflicts_with_extra_atom(
-          terms, lra_atoms, lra_assignments, terms.mk_lt(lhs, rhs), options);
+          terms, lra_atoms, lra_assignments, terms.mk_lt(lhs, rhs), options, statistics);
       if (!lhs_lt_rhs_conflicts) {
         continue;
       }
+      if (statistics != nullptr &&
+          !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
+        return LraImpliedRealEqualitiesResult{std::move(equalities), true};
+      }
       const bool rhs_lt_lhs_conflicts = lra_assignment_conflicts_with_extra_atom(
-          terms, lra_atoms, lra_assignments, terms.mk_lt(rhs, lhs), options);
+          terms, lra_atoms, lra_assignments, terms.mk_lt(rhs, lhs), options, statistics);
       if (rhs_lt_lhs_conflicts) {
         equalities.push_back(terms.mk_eq(lhs, rhs));
       }
     }
   }
-  return equalities;
+  return LraImpliedRealEqualitiesResult{std::move(equalities), false};
 }
 
 bool lra_assignment_conflicts_with_extra_atoms(
     const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments,
-    const std::vector<core::TermId>& extra_atoms, const CheckSatOptions& options) {
+    const std::vector<core::TermId>& extra_atoms, const CheckSatOptions& options,
+    util::Statistics* statistics = nullptr) {
+  if (statistics != nullptr) {
+    statistics->increment(":no.interface.lra-extra-atom-probes");
+    statistics->increment(":no.interface.lra-extra-atoms-probed", extra_atoms.size());
+  }
   std::vector<BooleanClausifier::TheoryAtom> augmented_lra_atoms = lra_atoms;
   augmented_lra_atoms.reserve(lra_atoms.size() + extra_atoms.size());
   std::vector<AssignedTheoryAtom> augmented_lra_assignments = lra_assignments;
@@ -5274,14 +5313,26 @@ struct RealSeparationCandidate {
 
 constexpr std::size_t kNoModelSeparationBacktrackingCandidateLimit = 18;
 
-bool search_shared_real_model_separations(
+enum class RealModelSeparationStatus {
+  Success,
+  Inconsistent,
+  ProbeLimit,
+};
+
+struct RealModelSeparationResult {
+  RealModelSeparationStatus status = RealModelSeparationStatus::Inconsistent;
+  std::vector<core::TermId> atoms;
+};
+
+RealModelSeparationStatus search_shared_real_model_separations(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments,
     const std::vector<RealSeparationCandidate>& candidates, std::size_t next_candidate,
     std::vector<core::TermId>& accumulated, std::vector<core::TermId>& separations,
-    const CheckSatOptions& options, std::uint64_t& branches, std::uint64_t& backtracks) {
+    const CheckSatOptions& options, util::Statistics& statistics, std::uint64_t& branches,
+    std::uint64_t& backtracks) {
   if (next_candidate == candidates.size()) {
-    return true;
+    return RealModelSeparationStatus::Success;
   }
 
   const RealSeparationCandidate& candidate = candidates[next_candidate];
@@ -5291,29 +5342,45 @@ bool search_shared_real_model_separations(
   const auto try_orientation = [&](core::TermId atom) {
     ++branches;
     accumulated.push_back(atom);
+    if (!consume_no_extra_atom_probe_budget(options, statistics, accumulated.size(), true)) {
+      accumulated.pop_back();
+      return RealModelSeparationStatus::ProbeLimit;
+    }
     if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
-                                                   options)) {
+                                                   options, &statistics)) {
       separations.push_back(atom);
-      if (search_shared_real_model_separations(terms, lra_atoms, lra_assignments, candidates,
-                                               next_candidate + 1, accumulated, separations,
-                                               options, branches, backtracks)) {
-        return true;
+      const RealModelSeparationStatus status = search_shared_real_model_separations(
+          terms, lra_atoms, lra_assignments, candidates, next_candidate + 1, accumulated,
+          separations, options, statistics, branches, backtracks);
+      if (status == RealModelSeparationStatus::Success) {
+        return RealModelSeparationStatus::Success;
+      }
+      if (status == RealModelSeparationStatus::ProbeLimit) {
+        accumulated.pop_back();
+        return status;
       }
       separations.pop_back();
     }
     accumulated.pop_back();
-    return false;
+    return RealModelSeparationStatus::Inconsistent;
   };
 
-  if (try_orientation(lhs_lt_rhs) || try_orientation(rhs_lt_lhs)) {
-    return true;
+  const RealModelSeparationStatus lhs_status = try_orientation(lhs_lt_rhs);
+  if (lhs_status == RealModelSeparationStatus::Success ||
+      lhs_status == RealModelSeparationStatus::ProbeLimit) {
+    return lhs_status;
+  }
+  const RealModelSeparationStatus rhs_status = try_orientation(rhs_lt_lhs);
+  if (rhs_status == RealModelSeparationStatus::Success ||
+      rhs_status == RealModelSeparationStatus::ProbeLimit) {
+    return rhs_status;
   }
 
   ++backtracks;
-  return false;
+  return RealModelSeparationStatus::Inconsistent;
 }
 
-std::optional<std::vector<core::TermId>> greedy_shared_real_model_separation_atoms(
+RealModelSeparationResult greedy_shared_real_model_separation_atoms(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments,
     const std::vector<RealSeparationCandidate>& candidates,
@@ -5389,25 +5456,31 @@ std::optional<std::vector<core::TermId>> greedy_shared_real_model_separation_ato
 
     const core::TermId rhs_lt_lhs = terms.mk_lt(candidate.rhs, candidate.lhs);
     accumulated.push_back(lhs_lt_rhs);
+    if (!consume_no_extra_atom_probe_budget(options, statistics, accumulated.size(), true)) {
+      return RealModelSeparationResult{RealModelSeparationStatus::ProbeLimit, {}};
+    }
     if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
-                                                   options)) {
+                                                   options, &statistics)) {
       separations.push_back(lhs_lt_rhs);
       continue;
     }
     accumulated.pop_back();
 
     accumulated.push_back(rhs_lt_lhs);
+    if (!consume_no_extra_atom_probe_budget(options, statistics, accumulated.size(), true)) {
+      return RealModelSeparationResult{RealModelSeparationStatus::ProbeLimit, {}};
+    }
     if (!lra_assignment_conflicts_with_extra_atoms(terms, lra_atoms, lra_assignments, accumulated,
-                                                   options)) {
+                                                   options, &statistics)) {
       separations.push_back(rhs_lt_lhs);
       continue;
     }
-    return std::nullopt;
+    return RealModelSeparationResult{RealModelSeparationStatus::Inconsistent, {}};
   }
-  return separations;
+  return RealModelSeparationResult{RealModelSeparationStatus::Success, std::move(separations)};
 }
 
-std::optional<std::vector<core::TermId>> shared_real_model_separation_atoms(
+RealModelSeparationResult shared_real_model_separation_atoms(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments, const PreparedFlatTheory& prepared_euf,
     theory::equality::FlatCongruenceClosure& closure, const std::vector<core::TermId>& shared_terms,
@@ -5441,16 +5514,17 @@ std::optional<std::vector<core::TermId>> shared_real_model_separation_atoms(
   std::vector<core::TermId> separations;
   std::uint64_t branches = 0;
   std::uint64_t backtracks = 0;
-  if (!search_shared_real_model_separations(terms, lra_atoms, lra_assignments, candidates, 0,
-                                            accumulated, separations, options, branches,
-                                            backtracks)) {
+  const RealModelSeparationStatus status = search_shared_real_model_separations(
+      terms, lra_atoms, lra_assignments, candidates, 0, accumulated, separations, options,
+      statistics, branches, backtracks);
+  if (status != RealModelSeparationStatus::Success) {
     statistics.set(":no.interface.model-separation-search-branches", branches);
     statistics.set(":no.interface.model-separation-search-backtracks", backtracks);
-    return std::nullopt;
+    return RealModelSeparationResult{status, {}};
   }
   statistics.set(":no.interface.model-separation-search-branches", branches);
   statistics.set(":no.interface.model-separation-search-backtracks", backtracks);
-  return separations;
+  return RealModelSeparationResult{RealModelSeparationStatus::Success, std::move(separations)};
 }
 
 void append_supported_uf_model_assignments(const core::TermManager& terms,
@@ -8121,6 +8195,11 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.arrangement-checks", 0);
   statistics.set(":no.interface.arrangement-failures", 0);
   statistics.set(":no.interface.arrangement-separations", 0);
+  statistics.set(":no.interface.arrangement-lra-extra-atom-probes", 0);
+  statistics.set(":no.interface.arrangement-lra-extra-atoms-probed", 0);
+  statistics.set(":no.interface.lra-extra-atom-probes", 0);
+  statistics.set(":no.interface.lra-extra-atoms-probed", 0);
+  statistics.set(":no.interface.lra-extra-atom-probe-limit-hit", 0);
   statistics.set(":no.interface.euf-care-checks", 0);
   statistics.set(":no.interface.euf-care-full-pairs", 0);
   statistics.set(":no.interface.euf-care-pairs", 0);
@@ -8356,13 +8435,22 @@ CheckSatOutcome solve_qf_uf_lra(
       if (skip_online_final_lra_equality_scan()) {
         statistics.increment(":no.online.final-lra-equality-scan-skipped");
       } else {
-        const std::vector<core::TermId> implied_equalities = lra_implied_real_equalities(
-            terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
-        statistics.increment(":no.interface.equalities-propagated", implied_equalities.size());
-        statistics.increment(":no.interface.lra-to-euf-equalities", implied_equalities.size());
+        const LraImpliedRealEqualitiesResult implied_equalities =
+            lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
+                                        shared_real_terms, options, &statistics);
+        if (implied_equalities.probe_limit_hit) {
+          return CheckSatOutcome{
+              CheckSatResult::Unknown,
+              "mixed QF_UFLRA LRA-to-EUF equality scan hit the LRA extra-atom probe limit",
+              statistics, ""};
+        }
+        statistics.increment(":no.interface.equalities-propagated",
+                             implied_equalities.equalities.size());
+        statistics.increment(":no.interface.lra-to-euf-equalities",
+                             implied_equalities.equalities.size());
         const InterfacePropagationResult propagation = force_implied_interface_equalities(
-            terms, clausifier, backend, no_manager, implied_equalities, lra_assignments_for_check,
-            statistics);
+            terms, clausifier, backend, no_manager, implied_equalities.equalities,
+            lra_assignments_for_check, statistics);
 #if PRIMO_HAVE_IPASIR
         if (mixed_online_dispatcher.has_value()) {
           mixed_online_dispatcher->observe_registered_interface_equalities();
@@ -8409,38 +8497,61 @@ CheckSatOutcome solve_qf_uf_lra(
             statistics.increment(":no.online.final-lra-equality-scan-skipped");
             skipped_lra_implied_equalities_for_model = true;
           } else {
-            const std::vector<core::TermId> lra_implied_equalities_for_euf =
+            const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
                 lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
-                                            shared_real_terms, options);
+                                            shared_real_terms, options, &statistics);
+            if (lra_implied_equalities_for_euf.probe_limit_hit) {
+              statistics.increment(":no.interface.arrangement-failures");
+              return CheckSatOutcome{
+                  CheckSatResult::Unknown,
+                  "mixed QF_UFLRA final arrangement equality scan hit the LRA extra-atom probe "
+                  "limit",
+                  statistics, ""};
+            }
             forced_model_equalities.insert(forced_model_equalities.end(),
-                                           lra_implied_equalities_for_euf.begin(),
-                                           lra_implied_equalities_for_euf.end());
+                                           lra_implied_equalities_for_euf.equalities.begin(),
+                                           lra_implied_equalities_for_euf.equalities.end());
           }
         }
-        std::optional<std::vector<core::TermId>> separation_atoms =
-            shared_real_model_separation_atoms(
-                terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
-                euf_model_real_terms, forced_model_equalities, options, statistics);
-        if (!separation_atoms.has_value() && skipped_lra_implied_equalities_for_model) {
+        RealModelSeparationResult separation_atoms = shared_real_model_separation_atoms(
+            terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
+            euf_model_real_terms, forced_model_equalities, options, statistics);
+        if (separation_atoms.status == RealModelSeparationStatus::Inconsistent &&
+            skipped_lra_implied_equalities_for_model) {
           statistics.increment(":no.online.final-lra-equality-scan-fallbacks");
-          const std::vector<core::TermId> lra_implied_equalities_for_euf =
+          const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
               lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
-                                          shared_real_terms, options);
+                                          shared_real_terms, options, &statistics);
+          if (lra_implied_equalities_for_euf.probe_limit_hit) {
+            statistics.increment(":no.interface.arrangement-failures");
+            return CheckSatOutcome{
+                CheckSatResult::Unknown,
+                "mixed QF_UFLRA final arrangement equality scan hit the LRA extra-atom probe "
+                "limit",
+                statistics, ""};
+          }
           forced_model_equalities.insert(forced_model_equalities.end(),
-                                         lra_implied_equalities_for_euf.begin(),
-                                         lra_implied_equalities_for_euf.end());
+                                         lra_implied_equalities_for_euf.equalities.begin(),
+                                         lra_implied_equalities_for_euf.equalities.end());
           separation_atoms = shared_real_model_separation_atoms(
               terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
               euf_model_real_terms, forced_model_equalities, options, statistics);
         }
-        if (!separation_atoms.has_value()) {
+        if (separation_atoms.status == RealModelSeparationStatus::ProbeLimit) {
+          statistics.increment(":no.interface.arrangement-failures");
+          return CheckSatOutcome{
+              CheckSatResult::Unknown,
+              "mixed QF_UFLRA final arrangement hit the LRA extra-atom probe limit", statistics,
+              ""};
+        }
+        if (separation_atoms.status != RealModelSeparationStatus::Success) {
           statistics.increment(":no.interface.arrangement-failures");
           return CheckSatOutcome{
               CheckSatResult::Unknown,
               "mixed QF_UFLRA final arrangement could not separate Real argument constants",
               statistics, ""};
         }
-        statistics.set(":no.interface.arrangement-separations", separation_atoms->size());
+        statistics.set(":no.interface.arrangement-separations", separation_atoms.atoms.size());
       }
     }
     if (options.produce_model) {
@@ -8459,8 +8570,17 @@ CheckSatOutcome solve_qf_uf_lra(
             statistics.increment(":no.online.final-lra-equality-scan-skipped");
             skipped_lra_implied_equalities_for_model = true;
           } else {
-            lra_implied_equalities_for_euf = lra_implied_real_equalities(
-                terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
+            const LraImpliedRealEqualitiesResult lra_implied_scan =
+                lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
+                                            shared_real_terms, options, &statistics);
+            if (lra_implied_scan.probe_limit_hit) {
+              return CheckSatOutcome{
+                  CheckSatResult::Unknown,
+                  "mixed QF_UFLRA model reconstruction equality scan hit the LRA extra-atom probe "
+                  "limit",
+                  statistics, ""};
+            }
+            lra_implied_equalities_for_euf = lra_implied_scan.equalities;
           }
         }
         extra_lra_model_atoms = euf_implied_equalities;
@@ -8468,14 +8588,23 @@ CheckSatOutcome solve_qf_uf_lra(
         forced_model_equalities.insert(forced_model_equalities.end(),
                                        lra_implied_equalities_for_euf.begin(),
                                        lra_implied_equalities_for_euf.end());
-        std::optional<std::vector<core::TermId>> separation_atoms =
-            shared_real_model_separation_atoms(
-                terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
-                euf_model_real_terms, forced_model_equalities, options, statistics);
-        if (!separation_atoms.has_value() && skipped_lra_implied_equalities_for_model) {
+        RealModelSeparationResult separation_atoms = shared_real_model_separation_atoms(
+            terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
+            euf_model_real_terms, forced_model_equalities, options, statistics);
+        if (separation_atoms.status == RealModelSeparationStatus::Inconsistent &&
+            skipped_lra_implied_equalities_for_model) {
           statistics.increment(":no.online.final-lra-equality-scan-fallbacks");
-          lra_implied_equalities_for_euf = lra_implied_real_equalities(
-              terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
+          const LraImpliedRealEqualitiesResult lra_implied_scan =
+              lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
+                                          shared_real_terms, options, &statistics);
+          if (lra_implied_scan.probe_limit_hit) {
+            return CheckSatOutcome{
+                CheckSatResult::Unknown,
+                "mixed QF_UFLRA model reconstruction equality scan hit the LRA extra-atom probe "
+                "limit",
+                statistics, ""};
+          }
+          lra_implied_equalities_for_euf = lra_implied_scan.equalities;
           forced_model_equalities.insert(forced_model_equalities.end(),
                                          lra_implied_equalities_for_euf.begin(),
                                          lra_implied_equalities_for_euf.end());
@@ -8483,15 +8612,21 @@ CheckSatOutcome solve_qf_uf_lra(
               terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
               euf_model_real_terms, forced_model_equalities, options, statistics);
         }
-        if (!separation_atoms.has_value()) {
+        if (separation_atoms.status == RealModelSeparationStatus::ProbeLimit) {
+          return CheckSatOutcome{
+              CheckSatResult::Unknown,
+              "mixed QF_UFLRA model reconstruction hit the LRA extra-atom probe limit", statistics,
+              ""};
+        }
+        if (separation_atoms.status != RealModelSeparationStatus::Success) {
           return CheckSatOutcome{
               CheckSatResult::Unknown,
               "mixed QF_UFLRA model reconstruction could not separate Real argument constants",
               statistics, ""};
         }
-        extra_lra_model_atoms.insert(extra_lra_model_atoms.end(), separation_atoms->begin(),
-                                     separation_atoms->end());
-        statistics.set(":no.interface.model-separations", separation_atoms->size());
+        extra_lra_model_atoms.insert(extra_lra_model_atoms.end(), separation_atoms.atoms.begin(),
+                                     separation_atoms.atoms.end());
+        statistics.set(":no.interface.model-separations", separation_atoms.atoms.size());
       } else {
         statistics.set(":no.interface.model-separations", 0);
         statistics.set(":no.interface.model-separation-candidates", 0);
