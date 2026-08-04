@@ -17715,6 +17715,54 @@
         "cryptominisat": "negative portability check: ordinary IPASIR only, so CryptoMiniSat is not a drop-in backend for Primo online theory propagation"
       },
       "outcome": "The SAT solver limitation is adapter-specific rather than fundamental for CaDiCaL: Primo now has a backend-neutral IPASIR-UP boundary and a passing fresh-observed-variable callback probe. Mixed Nelson-Oppen online propagation still uses the paired-bound precreation fallback until a later branch wires dynamic equality atom allocation into the dispatcher."
+    },
+    {
+      "id": "2026-08-04-sat-ipasir-up-interface-qflra-qfuf-stats-local",
+      "date": "2026-08-04",
+      "branch": "sat-ipasir-up-interface",
+      "commit": "785c534 compared against baseline 34c3d15",
+      "evidence_status": "current",
+      "scope": "Local deterministic statistics regression check for the backend-neutral IPASIR-UP interface refactor on a small pure QF_LRA and pure QF_UF sample. This is not a performance benchmark; wall-clock statistics were intentionally ignored.",
+      "commands": {
+        "current_build": "cmake --build build --target primo -j2",
+        "baseline_worktree": "git worktree add --detach /tmp/primo-stats-baseline-34c3d15-20260804 34c3d15",
+        "baseline_build": "cmake -S /tmp/primo-stats-baseline-34c3d15-20260804 -B /tmp/primo-stats-baseline-34c3d15-20260804/build-stats -DCMAKE_BUILD_TYPE=Release -DCLI11_INCLUDE_DIR=/workspace/contrib/local/include -DANTLR4_RUNTIME_INCLUDE_DIR=/workspace/contrib/local/include/antlr4-runtime -DANTLR4_RUNTIME_LIBRARY=/workspace/contrib/local/lib/libantlr4-runtime.a -DIPASIR_UP_INCLUDE_DIR=/workspace/contrib/local/include -DCADICAL_LIBRARY=/workspace/contrib/local/lib/libcadical.a -DGMP_INCLUDE_DIR=/workspace/contrib/local/include -DGMPXX_INCLUDE_DIR=/workspace/contrib/local/include -DGMP_LIBRARY=/workspace/contrib/local/lib/libgmp.a -DGMPXX_LIBRARY=/workspace/contrib/local/lib/libgmpxx.a && cmake --build /tmp/primo-stats-baseline-34c3d15-20260804/build-stats --target primo -j2",
+        "comparison": "python3 local comparison script running baseline and current as: primo --quiet --stats [--euf-prop=online] <file>"
+      },
+      "environment": {
+        "host": "local workspace",
+        "baseline_binary": "/tmp/primo-stats-baseline-34c3d15-20260804/build-stats/primo",
+        "current_binary": "/workspace/build/primo",
+        "dependency_prefix": "/workspace/contrib/local"
+      },
+      "artifact": "results/stats-ipasir-up-interface-785c534-vs-34c3d15/summary.json",
+      "sample": {
+        "qf_lra_default": [
+          "benchmarks/seeds/qf_lra/seed_basic.smt2",
+          "benchmarks/seeds/qf_lra/seed_branching.smt2",
+          "benchmarks/seeds/qf_lra/seed_unsat_pivot.smt2",
+          "benchmarks/seeds/qf_lra_real/DTP-Scheduling_constraints-cooking01.smt2",
+          "benchmarks/seeds/qf_lra_real/check_bignum_lra1.smt2"
+        ],
+        "qf_uf_default": [
+          "benchmarks/smoke/qf_uf/sat_nested_functions.smt2",
+          "benchmarks/smoke/qf_uf/unary_congruence_contradiction.smt2",
+          "benchmarks/smoke/qf_uf/binary_congruence_contradiction.smt2",
+          "benchmarks/seeds/qf_uf/seed_basic.smt2",
+          "benchmarks/regression/qf_uf/online_reason_cache.smt2"
+        ],
+        "qf_uf_online": [
+          "same five QF_UF files with --euf-prop=online"
+        ]
+      },
+      "results": {
+        "case_count": 15,
+        "answer_or_status_diff_count": 0,
+        "cases_with_non_time_stat_diffs": 0,
+        "non_time_stat_diff_count": 0,
+        "ignored_time_stat_diff_count": 71
+      },
+      "outcome": "All compared QF_LRA default, QF_UF default, and QF_UF --euf-prop=online runs returned the same answer/status and identical non-time statistics between baseline 34c3d15 and current 785c534. Only :time.* counters differed."
     }
   ]
 }
