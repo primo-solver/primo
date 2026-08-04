@@ -1,0 +1,62 @@
+# QF_UFLRA preprocessing opportunity sample.
+# Evidence date: 2026-08-04.
+# Source: full-corpus fast-Z3/default-Primo-timeout ranking at commit 77599f4.
+# Each listed file is relative to tmp/QF_UFLRA.
+#
+# Group A: MathSAT random pb_real files.
+# Selection: fastest Z3 rows from the full-corpus gap ranking where default
+# Primo timed out at 5s. Shape: one huge guarded Boolean/LRA/EUF assertion,
+# many ternary disjunctions, Real-valued UF applications, mixed purification
+# proxies, and no current finite-domain/equality-definition preprocessing
+# activity. This is the first implementation target.
+mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2
+mathsat/RandomDecoupled/pb_real_40_80_60_96.smt2
+mathsat/RandomDecoupled/pb_real_30_60_45_64.smt2
+mathsat/RandomCoupled/pb_real_20_0300_10_21.smt2
+mathsat/RandomCoupled/pb_real_20_0200_10_17.smt2
+mathsat/RandomDecoupled/pb_real_30_60_45_96.smt2
+mathsat/RandomDecoupled/pb_real_30_60_45_37.smt2
+mathsat/RandomCoupled/pb_real_20_0400_10_15.smt2
+mathsat/RandomDecoupled/pb_real_30_60_45_31.smt2
+mathsat/RandomCoupled/pb_real_20_0300_10_28.smt2
+mathsat/RandomCoupled/pb_real_20_0200_10_18.smt2
+mathsat/RandomCoupled/pb_real_20_0200_10_25.smt2
+mathsat/RandomCoupled/pb_real_30_0300_10_21.smt2
+mathsat/RandomCoupled/pb_real_20_0200_10_10.smt2
+mathsat/RandomDecoupled/pb_real_30_60_45_91.smt2
+mathsat/RandomDecoupled/pb_real_40_80_60_36.smt2
+mathsat/RandomCoupled/pb_real_20_0200_10_26.smt2
+mathsat/RandomCoupled/pb_real_20_0400_10_26.smt2
+mathsat/RandomDecoupled/pb_real_30_60_45_84.smt2
+mathsat/RandomCoupled/pb_real_30_0300_10_27.smt2
+mathsat/RandomDecoupled/pb_real_30_60_45_40.smt2
+mathsat/RandomCoupled/pb_real_20_0200_10_20.smt2
+mathsat/RandomDecoupled/pb_real_30_60_45_30.smt2
+mathsat/RandomCoupled/pb_real_20_0200_10_11.smt2
+mathsat/RandomCoupled/pb_real_20_0400_10_14.smt2
+
+# Group B: CPAchecker Real equality-to-constant domain aliases.
+# Selection: fast-Z3/default-timeout CPAchecker rows with many Bool define-fun
+# aliases for Real equalities to small constants after resolving nullary Real
+# define-fun aliases. Shape: small Real domains are present syntactically, but
+# current finite-domain preprocessing is UF-oriented and reports zero domains.
+cpachecker-induction-svcomp14/cpachecker-induction.Problem01_00_true-unreach-call.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.floppy_simpl3_false-unreach-call_true-termination.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product27_false-unreach-call.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.kbfiltr_simpl2_false-unreach-call_true-termination.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.kbfiltr_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.cdaudio_simpl1_false-unreach-call_true-termination.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product28_false-unreach-call.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product29_false-unreach-call.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product19_false-unreach-call.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product17_false-unreach-call.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.s3_srvr.blast.06_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.s3_srvr.blast.16_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.s3_srvr.blast.14_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.s3_srvr.blast.15_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.s3_srvr.blast.12_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.s3_srvr.blast.08_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.s3_srvr.blast.10_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.pc_sfifo_2_false-unreach-call_false-termination.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.Problem14_60_false-unreach-call.c.smt2
+cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2

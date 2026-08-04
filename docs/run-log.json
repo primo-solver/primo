@@ -18700,6 +18700,76 @@
         }
       },
       "outcome": "Accepted as the better QF_UFLRA performance triage sample. The original 20-file sample was not diagnostic. The full-corpus mining finds 582 fast-Z3/default-timeout files and commits a top-100 manifest for the next optimization loop. The current model-equality branch path is not the likely lever for these gaps: it solves five more files but has worse PAR2, and all mutation-forced equalities seen in this run were already true at the SAT level, so no forced equality clauses were learned."
+    },
+    {
+      "id": "2026-08-04-local-qf-uflra-preprocessing-opportunity-triage-9229169",
+      "date": "2026-08-04",
+      "kind": "profile",
+      "scope": "Local structural mining and profiling of QF_UFLRA fast-Z3/default-Primo-timeout files to identify benchmark clusters where preprocessing is likely to help before adding new solver logic.",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "9229169 plus docs-only commit 416b6c1",
+      "environment": {
+        "type": "local",
+        "binary": "./build/primo from the current branch; debug info present",
+        "profiler": "perf unavailable locally because perf_event_paranoid=4; callgrind used as fallback"
+      },
+      "commands": {
+        "structural_mining": "Python csv/text scan over results/qf-uflra-full-mine-z3-fast-default-timeout-77599f4-5s.csv and tmp/QF_UFLRA",
+        "preprocess_snapshots": "./build/primo --quiet --stats --preprocess-only <candidate>",
+        "solve_snapshots": "timeout --signal=TERM --kill-after=2 5 ./build/primo --quiet --stats <candidate>",
+        "profile_attempt": "perf record -F 99 -g ... failed with perf_event_paranoid=4",
+        "callgrind": "timeout --signal=TERM --kill-after=2 18 valgrind --tool=callgrind --callgrind-out-file=results/profiling/qf-uflra-preprocess-candidates/callgrind.mathsat.pb_real_20_0200_10_28.<timestamp> ./build/primo --quiet tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2"
+      },
+      "artifacts": {
+        "input_ranking": "results/qf-uflra-full-mine-z3-fast-default-timeout-77599f4-5s.csv",
+        "top100_gap_manifest": "benchmarks/qf_uflra-z3-fast-primo-timeout-100.txt",
+        "preprocessing_opportunity_manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "callgrind_profile": "results/profiling/qf-uflra-preprocess-candidates/callgrind.mathsat.pb_real_20_0200_10_28.*",
+        "evidence_status": "current local triage evidence; callgrind profile is local ignored artifact, manifest is committed"
+      },
+      "summary": {
+        "gap_rows_scanned": 582,
+        "mathsat_random_rows": {
+          "RandomDecoupled": 268,
+          "RandomCoupled": 167,
+          "top100_manifest_mathsat_rows": 90
+        },
+        "cpa_real_domain_alias_rows": 130,
+        "representative_mathsat": {
+          "file": "mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2",
+          "z3_seconds": 0.037458,
+          "default_primo_status": "timeout at 5s in SLURM mining",
+          "preprocess_only": {
+            "assertions": 52,
+            "real_equalities_lowered": 24,
+            "finite_domain_domains": 0,
+            "finite_domain_amo_clauses": 0,
+            "equality_definitions": 0,
+            "purification_definitions": 43,
+            "top_level_or_nodes": 200
+          },
+          "sigterm_snapshot": {
+            "sat_vars": 219,
+            "sat_clauses": 323,
+            "sat_decisions": 73,
+            "sat_conflicts": 0,
+            "lra_online_check_calls": 54,
+            "lra_theory_propagations": 19,
+            "shared_real_pairs": 1711,
+            "interface_equalities_propagated": 0
+          }
+        },
+        "representative_cpa": {
+          "file": "cpachecker-induction-svcomp14/cpachecker-induction.Problem01_00_true-unreach-call.c.smt2",
+          "z3_seconds": 0.046994,
+          "default_primo_status": "timeout at 5s in SLURM mining",
+          "alias_resolved_domain_variables": 13,
+          "alias_resolved_domain_values": 46,
+          "max_alias_resolved_domain_size": 6,
+          "current_finite_domain_domains_reported": 0
+        }
+      },
+      "outcome": "Accepted as preprocessing-target triage. The primary next target is the MathSAT random pb_real cluster because it accounts for 90 of the committed top-100 fast-Z3/default-timeout files and current preprocessing only lowers Real equalities and purifies mixed UF/LRA applications there. The secondary target is CPAchecker Real equality-to-constant alias DAGs, where small Real domains are visible after resolving nullary define-fun aliases but current finite-domain preprocessing remains UF-oriented and reports zero domains."
     }
   ]
 }
