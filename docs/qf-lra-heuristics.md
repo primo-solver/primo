@@ -694,13 +694,14 @@ negative in the table above -- four files lost in the 500KB-5MB band (41
 against 45) for one gained elsewhere -- while carrying every bit of H7's
 wrong-answer risk. 352 lines removed against 106 added.
 
-**What this says about the remaining gap.** The 56-file deficit against z3 is
-*not* mostly the fixed-equality effect, even though that effect is real and
-large per-instance. Two candidates remain, and the honest position is that
-neither has been tested: offset equalities (`x - y = c` as a column merge,
-z3's other counter, 855-68,937 per instance) and the possibility that the
-mid-range cost here is the elimination pivots' own price on tableaus where
-fixed rows were never the bottleneck. Recorded rather than chased.
+**What this said about the remaining gap at the time.** The 56-file deficit
+against z3 was *not* mostly the fixed-equality effect, even though that effect
+was real and large per-instance. At the time, two candidates remained:
+offset equalities (`x - y = c` as a column merge, z3's other counter,
+855-68,937 per instance) and the possibility that the mid-range cost here was
+the elimination pivots' own price on tableaus where fixed rows were never the
+bottleneck. The offset-equality branch is now closed by the D1/D3 sweep below;
+the sentence is kept as history, not as an open task.
 
 (h8)=
 ### H8 -- Merge instead of sort in `pivot`'s affected-row loop
@@ -936,6 +937,51 @@ PAR2 moves 24.08s to 23.36s. The direction is mixed: H5 helps the sc rows
 and the added `tta_startup` reference-slower row, but hurts two added uart
 rows (`uart-15`, `uart-25`). This is enough to keep the opt-in experiment,
 not enough to promote it.
+
+#### Tropical-matrix polarity follow-up, 2026-08-04
+
+The OpenSMT comparison makes `tropical-matrix` the open family in
+[](arithmetic.md): OpenSMT solves 5/10 at 300s where Primo, Yices and z3 each
+solve 1/10. A local follow-up on branch `qflra-tropical-investigation`
+checked whether the earlier "all solvers struggle" reading was hiding a cheap
+phase heuristic.
+
+The family shape is unusual but regular: each file is one huge assertion,
+contains thousands of ORs/equalities, no ITEs, and pairs Boolean markers
+`fNm` with Real costs `fNc`. On the smallest status-sat file,
+`constraint-199552.smt2`, OpenSMT with `:verbosity 1` solves in 29.39s after
+about 56k conflicts; Yices times out at 90s. OpenSMT's public help does not
+advertise detailed LRA counters, and `:produce-stats`/`:stats-out` produced no
+useful final stats file in this build, so the behavioral signal is only the
+search trace: many conflicts, low memory, no evidence of an instant
+preprocessing shortcut.
+
+Primo's own option matrix on the same file is more informative. Default,
+negative phase, model phase, row+bidirectional propagation at 1024 caps,
+fixed-elimination, top-level-OR Tseitin, and disabling sparse leaving all ran
+past a 45s diagnostic cap. `--theory-phase positive` solved `sat` in about
+19-26s. The solved run still spent real time in the tableau -- 40,504 pivots,
+5.88M row updates, 478M pivot term ops -- but it found the satisfying branch.
+The default/negative 45s partial runs accumulated roughly 1.36-1.38B pivot
+term ops without solving. In other words: pivot cost is still the local
+expense, but polarity decides whether we burn that cost on the useful part of
+the search.
+
+A 60s local two-solver probe over all 10 tropical files is diagnostic only
+(not SLURM), but it supports the same lead:
+
+| solver/config | solved / 10 at 60s | solved files |
+|---|---:|---|
+| Primo `--theory-phase positive` | 2 | `constraint-199552`, `constraint-223827` |
+| OpenSMT `:verbosity 1` | 2 | `constraint-199552`, `constraint-223827` |
+
+This does **not** promote positive phase globally. It says the next cheap
+tropical-specific experiment should be an auto phase rule for this shape:
+single huge assertion, many top-level ORs, many positive theory atoms, no ITEs,
+and `:status sat` on the known solved cases. The bar is a SLURM A/B over all
+10 tropical files, with the full QF_LRA division checked for regressions
+before any default change. Offset equalities remain closed by D1/D3; they are
+not the tropical lead from this probe.
 
 (h6)=
 ### H6 -- A difference-logic fast path

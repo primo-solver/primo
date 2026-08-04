@@ -18382,6 +18382,45 @@
         "status": "Recorded in docs/qf-lra-heuristics.md under D4. D4 itself remains open; the CSR/library shortcut is tabled."
       },
       "evidence_status": "tabled"
+    },
+    {
+      "id": "2026-08-04-qf-lra-tropical-phase-investigation",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "profiling",
+      "scope": "Separate-branch local investigation of tropical-matrix heuristics, including whether OpenSMT statistics suggest a mechanism and whether the stale offset-equality note is still open.",
+      "commit": "23699c9",
+      "branch": "qflra-tropical-investigation",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo at 23699c9; OpenSMT 2.9.2 and Yices 2.7.0 from contrib/local/bin",
+        "notes": "Diagnostic local runs only. Not a SLURM benchmark and not promotion evidence."
+      },
+      "command": {
+        "shape_census": "Python text census over tmp/QF_LRA/tropical-matrix/*.smt2: bytes, assertions, OR/AND/ITE/equality/comparison/declaration counts.",
+        "opensmt_stats_probe": "OpenSMT public --help exposes only --verbose, but the SMT-LIB option :verbosity 1 prints a search trace. Ran `{ (set-option :verbosity 1) (set-option :time-queries true) <file> } | contrib/local/bin/opensmt --pipe` on constraint-199552.smt2; :produce-stats/:stats-out created no useful final stats file in this build.",
+        "single_file_matrix": "On constraint-199552.smt2, ran Primo variants default, --lra-model-phase, --theory-phase positive/negative, row+bidirectional propagation caps 1024, --lra-fixed-elimination, --top-level-or-tseitin, and --no-lra-sparse-leaving under a 45s diagnostic cap; then re-ran --theory-phase positive with full stats.",
+        "ten_file_probe": "Parallel local 60s probe over all 10 tropical files for Primo --theory-phase positive and OpenSMT :verbosity 1. Artifact results/tropical-investigation-local/tropical-primo-positive-opensmt-60s.csv."
+      },
+      "benchmark": {
+        "suite": "tmp/QF_LRA/tropical-matrix/*.smt2",
+        "logic": "QF_LRA",
+        "timeout_seconds": "45 and 60 locally, plus one 90s Yices/OpenSMT check on constraint-199552.smt2",
+        "artifacts": [
+          "results/tropical-investigation-local/",
+          "results/tropical-investigation-local/tropical-primo-positive-opensmt-60s.csv"
+        ]
+      },
+      "summary": {
+        "shape": "Each tropical file is one huge assertion with no ITEs. constraint-199552.smt2 has 36 Bool marker declarations, 36 Real cost declarations, 2265 OR nodes, 1377 AND nodes, 2322 equalities, 1512 <= atoms, 756 < atoms, 72 >= atoms, and 84 > atoms.",
+        "opensmt_signal": "OpenSMT solves constraint-199552.smt2 sat in 29.39s with max RSS 37.9 MB and a verbose trace reaching about 56k conflicts. On the same file Yices timed out at 90s. OpenSMT exposes coarse SAT progress but not detailed LRA pivot counters in this build, so the behavioral indication is many conflicts at low memory, not an instant preprocessing shortcut.",
+        "primo_phase_positive": "On constraint-199552.smt2, default, negative phase, model phase, row+bidirectional propagation at 1024 caps, fixed elimination, top-level-OR Tseitin, and no-sparse-leaving all ran past a 45s diagnostic cap. --theory-phase positive solved sat in 19-26s. The full-stats positive run had 5773 SAT conflicts, 33056 decisions, 30739 LRA online checks, 40504 pivots, 5.88M pivot row updates, 478M pivot term ops, and solve-us 19.7M.",
+        "default_contrast": "The 45s default/negative partial runs did not solve and accumulated roughly 1.36-1.38B pivot term ops. This keeps pivot/fill-in as the local cost, but shows polarity can decide whether that cost is spent on a useful sat branch.",
+        "ten_file_probe": "At a local 60s cap, Primo --theory-phase positive solved 2/10 tropical files: constraint-199552 and constraint-223827. OpenSMT :verbosity 1 also solved exactly those 2/10 in this local cap. This is below OpenSMT's 5/10 at the 300s SLURM division run, so longer SLURM evaluation is still needed.",
+        "offset_equalities": "The stale H7 paragraph that said offset equalities were untested was corrected. D3 remains closed by the D1/D3 sweep; offset equalities are not the tropical lead from this probe."
+      },
+      "outcome": "Next plausible cheap tropical experiment: an auto positive-phase rule for the tropical shape (single huge assertion, many OR/equality atoms, many positive theory atoms, no ITEs), evaluated first on the 10-file tropical set and then against the full QF_LRA division for regressions. Do not promote from local evidence alone.",
+      "evidence_status": "diagnostic"
     }
   ]
 }
