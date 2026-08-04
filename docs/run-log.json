@@ -18789,7 +18789,7 @@
       "recorded_at": "2026-08-04",
       "kind": "local-smoke",
       "scope": "QF_UFLRA temporary LRA extra-atom probe budget on profiled MathSAT candidate",
-      "commit": "1e6e2cf",
+      "commit": "6b0dc07",
       "environment": {
         "type": "local",
         "host": "workspace",
@@ -18827,7 +18827,7 @@
       "recorded_at": "2026-08-04",
       "kind": "fuzz",
       "scope": "QF_UFLRA generated smoke cases, default and opt-in temporary LRA probe cap",
-      "commit": "1e6e2cf",
+      "commit": "6b0dc07",
       "environment": {
         "type": "local",
         "host": "workspace",
