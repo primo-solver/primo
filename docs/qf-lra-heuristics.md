@@ -1466,7 +1466,7 @@ whole one.
 | # | direction | expected size | cost | status |
 |---|---|---|---|---|
 | D2 | Floating-point-guided basis selection (Monniaux) | **~14% in the literature** | medium | open, but **much smaller than first scoped** |
-| D4 | Revised simplex with an LU-factored basis | unknown | largest | open |
+| D4 | Revised simplex with an LU-factored basis | unknown | largest | open; CSR/library subdirection tabled |
 | D5 | Replace the hand-written small-rational form with a library that has one | **unknown, plausibly ~0** | small | open, **not a priority** |
 | -- | ~~D1: row-based bound propagation, raised caps~~ | -- | -- | **rejected 2026-07-31** |
 | -- | ~~D3: offset-equality detection + bound propagation~~ | -- | -- | **closed 2026-07-31, by D1's sweep** |
@@ -1832,6 +1832,37 @@ studied is evidenced by integer-preserving (Bareiss-style) factorization and
 SPEX existing at all -- see "Expediting exact linear programming solvers via
 integer preserving factorization" (Operations Research Letters, 2025). This,
 rather than oversight, is the plausible reason nobody in SMT does it.
+
+*CSR/library note, tabled 2026-08-04.* The tempting smaller version of D4 is
+"replace `rows_` / `occurs_in_` with a respectable sparse-matrix library".
+The respectable candidates exist, but they do not make this a local change.
+Eigen's `SparseMatrix` is a compressed row/column sparse container with
+compressed and insertion modes, and its own documentation explicitly prices
+random insertion and sparse write access as special cases rather than the
+normal fast path. SuiteSparse is the standard sparse linear-algebra suite, but
+it is aimed at sparse factorizations and graph/sparse kernels, not at a
+mutable exact DPLL(T) tableau that must emit explanations after every pivot.
+HiGHS and COIN-OR CLP are the respectable LP/simplex libraries, but using
+them would be a theory-solver architecture change rather than a container
+swap: they are numerical optimization engines, not exact SMT theory solvers
+with Primo's bound trail, strict-delta arithmetic, and Farkas reasons.
+
+Plain CSR is therefore tabled as an implementation shortcut. It makes the
+wrong operations hard for the current explicit tableau: each pivot changes row
+lengths, inserts new coefficients, deletes zeros after cancellation, updates
+the transpose `occurs_in_` view, and has to be undoable on the SOI path.
+Keeping both row-major and column-major compressed mirrors would move the
+complexity into synchronization; keeping only row-major CSR would make the
+current sparse-pricing and update paths lose their cheap column access. The
+2026-08-04 vector-capacity prototype already falsified the simplest
+allocation-level version of this idea. Any worthwhile sparse-layout work
+should be scoped as D4 proper -- revised/simplex-style representation or a
+custom row+column entry structure -- not as "use CSR".
+
+References checked for this note: Eigen sparse-matrix documentation
+(`https://libeigen.gitlab.io/eigen/docs-nightly/group__TutorialSparse.html`),
+SuiteSparse (`https://github.com/DrTimothyAldenDavis/SuiteSparse`), HiGHS
+(`https://highs.dev/`), and COIN-OR CLP (`https://github.com/coin-or/Clp`).
 
 *Cheap first step, which is not building it.* Take a prepared tableau from one
 of the four profiled instances, compute an exact LU with a Markowitz ordering

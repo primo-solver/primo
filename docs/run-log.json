@@ -18356,6 +18356,32 @@
         "outcome": "Rejected and reverted. The likely vector-level opportunity is not simple capacity reuse; any worthwhile representation change probably needs a different sparse matrix layout such as row/column linked entries or CSR-style occurrence storage, which belongs with the larger D4/revised-simplex representation work."
       },
       "evidence_status": "rejected"
+    },
+    {
+      "id": "2026-08-04-qf-lra-csr-library-triage",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "design-triage",
+      "scope": "Triage of whether a respectable CSR/sparse-matrix or LP library could turn the remaining QF_LRA pivot-vector cost into a local implementation task.",
+      "commit": "7820508",
+      "environment": {
+        "type": "workstation",
+        "notes": "Documentation and design triage only; no source implementation."
+      },
+      "sources": [
+        "Eigen sparse-matrix documentation: https://libeigen.gitlab.io/eigen/docs-nightly/group__TutorialSparse.html",
+        "SuiteSparse: https://github.com/DrTimothyAldenDavis/SuiteSparse",
+        "HiGHS: https://highs.dev/",
+        "COIN-OR CLP: https://github.com/coin-or/Clp"
+      ],
+      "summary": {
+        "conclusion": "Tabled as a shortcut. Respectable libraries exist, but plain CSR and off-the-shelf sparse containers optimize mostly-static sparse algebra, while Primo's hot operation is a mutable exact tableau pivot that changes row length, updates a transpose occurrence view, removes zero cancellations, and must remain explainable and undoable.",
+        "eigen_suitesparse": "Eigen SparseMatrix and SuiteSparse are credible sparse-matrix/factorization tools, but they would not remove the need to maintain row/column synchronization, exact Rational arithmetic, strict-delta assignments, and Farkas reason extraction.",
+        "highs_clp": "HiGHS and CLP are the relevant respectable simplex/LP libraries, but direct use would be a solver architecture decision: numerical LP/simplex behavior would still need exact verification and SMT explanations, so this is D4-scale work rather than a container swap.",
+        "what_becomes_harder_under_csr": "Frequent structural row updates, deletion after coefficient cancellation, cheap column access for occurs_in_/sparse pricing/update propagation, SOI/pivot undo, and exact-arithmetic ownership.",
+        "status": "Recorded in docs/qf-lra-heuristics.md under D4. D4 itself remains open; the CSR/library shortcut is tabled."
+      },
+      "evidence_status": "tabled"
     }
   ]
 }
