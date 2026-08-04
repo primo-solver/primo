@@ -452,15 +452,11 @@ theory and performs an ordinary final check.
 `--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
 callback, was connected. `:no.online.precreated-equality-atoms` counts the
-shared Real equality literals created before SAT search. The SAT backend now has
-a backend-neutral IPASIR-UP fresh-observed-variable path, but this mixed
-Nelson-Oppen mode has not yet been changed to allocate equality atoms during
-search. It therefore still uses the smaller fallback precreation set recorded by
-`:no.online.paired-bound-precreate-candidates`: shared Real pairs for which both
-non-strict LRA bounds are already present in the prepared formula. This counter
-should be much smaller than `:no.online.shared-real-pairs`, which records the
-full shared Real cross product for diagnostics only, not as an observed SAT
-variable count. `:no.online.assignments` and
+shared Real equality literals created before SAT search; in the lazy online path
+it should remain zero. `:no.online.paired-bound-precreate-candidates` is kept as
+a compatibility diagnostic and should also remain zero. The full shared Real
+cross product is reported by `:no.online.shared-real-pairs` for diagnostics
+only, not as an observed SAT variable count. `:no.online.assignments` and
 `:no.online.backtracks` count the dispatcher trail traffic.
 `:no.online.lra-published-equalities` counts equality candidates produced by
 `OnlineLraPropagator`; today those are exactly the implemented paired-bound
@@ -468,17 +464,17 @@ rule where both `(<= a b)` and `(<= b a)` are true for a shared Real pair.
 Broader LRA-derived equalities are intentionally not part of this counter yet:
 mining arbitrary tableau rows for equal shared terms is a future opportunity
 with explicit cost risk, not a stable online propagation mode.
-`:no.online.lra-bound-equality-candidates` counts published candidates that
-already had a SAT-visible interface equality literal. `:no.online.lra-bound-equality-missing-atoms`
-counts published candidates whose atom was not registered. This can be nonzero
-even in the current paired-bound fallback because the pure LRA producer may
+`:no.online.lra-bound-equality-candidates` counts published candidates whose
+pair is known to the mixed-theory interface registry.
+`:no.online.lra-bound-equality-missing-atoms` counts published candidates outside
+that registry; this can still be nonzero because the pure LRA producer may
 publish equalities for pairs that are not mixed-theory shared Real interface
-pairs, while the dispatcher only materializes registered interface candidates.
-`:no.online.lra-bound-equality-materialized` counts candidates with a
-deliverable equality literal. `:no.online.lazy-equality-atoms-created` is
-reserved for a future backend phase that permits in-callback allocation and
-remains zero in the fallback path, and `:no.online.lazy-equality-vars-observed`
-counts newly observed equality variables registered outside the callback.
+pairs. `:no.online.lra-bound-equality-materialized` counts candidates that
+obtained a deliverable equality literal, either by reusing an existing atom or
+by lazy creation. `:no.online.lazy-equality-atoms-created` counts equality atoms
+created by the dispatcher from `cb_propagate()`, and
+`:no.online.lazy-equality-vars-observed` counts the corresponding fresh observed
+SAT variables.
 `:no.online.final-lra-equality-scan-skipped` counts online final checks where at
 least one paired-bound equality candidate was materialized and the broad
 all-pairs `lra_implied_real_equalities` strict-bound scan was skipped; if no

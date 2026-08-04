@@ -273,13 +273,13 @@ Implemented now:
   shared Real constants/proxies are true on the SAT trail. The dispatcher then
   maps that theory-owned candidate to a SAT-visible interface equality literal
   and streams the LRA-provided reason literals back through the SAT backend.
-  The SAT layer has a fresh observed-variable callback probe, but this
-  Nelson-Oppen path still uses the documented fallback: before search it
-  precreates only interface equality atoms for shared Real pairs that already
-  have both non-strict LRA bounds in the prepared formula. This is still a
-  candidate-first path, not all-pairs
-  Delayed Theory Combination: the full shared Real pair count remains
-  diagnostic, while only paired-bound candidates become observed SAT variables.
+  If the equality literal does not already exist, the dispatcher creates the
+  equality term, registers it with `TheoryCombinationManager`, allocates a fresh
+  observed SAT variable through `sat::IpasirUpBackend::new_observed_var()` from
+  `cb_propagate()`, and records the mapping before returning the literal. This
+  is still a candidate-first path, not all-pairs Delayed Theory Combination:
+  the full shared Real pair count remains diagnostic, while only published
+  paired-bound candidates become observed SAT variables.
   After online mode has materialized at least one paired-bound equality
   candidate, the coordinator skips the older final all-pairs
   `lra_implied_real_equalities` strict-bound mining pass because profiling

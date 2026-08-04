@@ -1554,6 +1554,30 @@ class BooleanClausifier {
     return theory_atom_for_term(term);
   }
 
+  const TheoryAtom& ensure_generated_theory_atom_with_lit(core::TermId term, sat::Lit lit) {
+    if (terms_.get(term).sort != terms_.symbols().bool_sort()) {
+      throw UnsupportedInput("generated theory atom is not Boolean");
+    }
+    if (lit.value == 0) {
+      throw UnsupportedInput("generated theory atom literal is invalid");
+    }
+    ensure_term_index(term);
+    const std::size_t existing = theory_atom_by_term_[term];
+    if (existing != kNoTheoryAtom) {
+      if (theory_atoms_[existing].lit.value != lit.value) {
+        throw UnsupportedInput("generated theory atom literal mismatch");
+      }
+      return theory_atoms_[existing];
+    }
+    if (lit_by_term_[term].value != 0 && lit_by_term_[term].value != lit.value) {
+      throw UnsupportedInput("generated theory atom literal mismatch");
+    }
+    lit_by_term_[term] = lit;
+    theory_atom_by_term_[term] = theory_atoms_.size();
+    theory_atoms_.push_back(TheoryAtom{lit, term, false, false});
+    return theory_atoms_.back();
+  }
+
   const std::vector<TheoryAtom>& theory_atoms() const { return theory_atoms_; }
 
  private:
@@ -4111,22 +4135,6 @@ struct InterfacePropagationResult {
   bool triggered_recheck() const { return clauses != 0; }
 };
 
-std::size_t ensure_interface_equality_lits(core::TermManager& terms, BooleanClausifier& clausifier,
-                                           TheoryCombinationManager& manager,
-                                           const std::vector<TermPairKey>& pairs) {
-  std::size_t created = 0;
-  for (const TermPairKey& pair : pairs) {
-    if (manager.interface_equality_lit(pair.lhs, pair.rhs).has_value()) {
-      continue;
-    }
-    const core::TermId equality = terms.mk_eq(pair.lhs, pair.rhs);
-    if (create_interface_equality_lit(terms, clausifier, manager, equality).has_value()) {
-      ++created;
-    }
-  }
-  return created;
-}
-
 void publish_interface_propagation_result(const InterfacePropagationResult& result,
                                           std::string_view prefix, util::Statistics& statistics) {
   statistics.increment(":no.interface.equality-candidates", result.candidates);
@@ -5128,33 +5136,6 @@ std::vector<core::TermId> lra_implied_real_equalities(
     }
   }
   return equalities;
-}
-
-std::vector<TermPairKey> paired_bound_interface_pairs(const PreparedLraTheory& prepared,
-                                                      const TheoryCombinationManager& manager) {
-  std::unordered_set<TermPairKey, TermPairKeyHash> seen_oriented;
-  for (const PreparedLraTheory::PreparedAtom& atom : prepared.atoms) {
-    if (atom.non_strict_le_pair.lhs != core::kInvalidTermId) {
-      seen_oriented.insert(atom.non_strict_le_pair);
-    }
-  }
-
-  std::unordered_set<TermPairKey, TermPairKeyHash> canonical_pairs;
-  for (const TermPairKey& pair : seen_oriented) {
-    if (!seen_oriented.contains(TermPairKey{pair.rhs, pair.lhs})) {
-      continue;
-    }
-    const TermPairKey canonical_pair = pair.lhs < pair.rhs ? pair : TermPairKey{pair.rhs, pair.lhs};
-    if (manager.interface_equality(canonical_pair.lhs, canonical_pair.rhs).has_value()) {
-      canonical_pairs.insert(canonical_pair);
-    }
-  }
-
-  std::vector<TermPairKey> pairs(canonical_pairs.begin(), canonical_pairs.end());
-  std::sort(pairs.begin(), pairs.end(), [](const TermPairKey& lhs, const TermPairKey& rhs) {
-    return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
-  });
-  return pairs;
 }
 
 bool lra_assignment_conflicts_with_extra_atoms(
@@ -6888,11 +6869,14 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
 
 class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
  public:
-  MixedTheoryPropagationDispatcher(sat::IpasirUpBackend& backend, TheoryCombinationManager& manager,
+  MixedTheoryPropagationDispatcher(core::TermManager& terms, BooleanClausifier& clausifier,
+                                   sat::IpasirUpBackend& backend, TheoryCombinationManager& manager,
                                    OnlineLraPropagator* lra_propagator,
                                    const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
                                    util::Statistics& statistics)
-      : backend_(backend),
+      : terms_(terms),
+        clausifier_(clausifier),
+        backend_(backend),
         manager_(manager),
         lra_propagator_(lra_propagator),
         statistics_(statistics) {
@@ -6907,7 +6891,6 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
     }
     assignment_by_var_.assign(static_cast<std::size_t>(max_var) + 1, 0);
     interface_pair_by_var_.assign(static_cast<std::size_t>(max_var) + 1, TermPairKey{});
-    pending_var_.assign(static_cast<std::size_t>(max_var) + 1, 0);
     observed_interface_var_.assign(static_cast<std::size_t>(max_var) + 1, 0);
 
     statistics_.set(":no.online.enabled", 1);
@@ -6952,7 +6935,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
     }
     level_starts_.resize(std::min<std::size_t>(new_level, level_starts_.size()));
     pending_.clear();
-    std::fill(pending_var_.begin(), pending_var_.end(), 0);
+    pending_pairs_.clear();
     reason_stream_active_lit_ = 0;
     reason_stream_index_ = 0;
     statistics_.increment(":no.online.backtracks");
@@ -6978,18 +6961,25 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
     while (!pending_.empty()) {
       PendingEquality candidate = std::move(pending_.front());
       pending_.pop_front();
-      const int var = sat_var(sat::Lit{candidate.lit});
+      pending_pairs_.erase(candidate.pair);
+      std::optional<sat::Lit> equality_lit =
+          materialize_observed_interface_equality_lit(candidate.pair);
+      if (!equality_lit.has_value()) {
+        statistics_.increment(":no.online.lra-bound-equality-missing-atoms");
+        continue;
+      }
+      const int var = sat_var(equality_lit.value());
       if (var < static_cast<int>(assignment_by_var_.size()) &&
           assignment_by_var_[static_cast<std::size_t>(var)] != 0) {
         statistics_.increment(":no.online.skipped-assigned");
         continue;
       }
-      pending_var_[static_cast<std::size_t>(var)] = 0;
-      reasons_[candidate.lit] = std::move(candidate.reasons);
-      propagated_owner_[candidate.lit] = PropagationOwner::NelsonOppen;
+      const int lit = equality_lit->value;
+      reasons_[lit] = std::move(candidate.reasons);
+      propagated_owner_[lit] = PropagationOwner::NelsonOppen;
       statistics_.increment(":no.online.propagations");
-      statistics_.increment(":no.online.reason-lits", reasons_[candidate.lit].size());
-      return candidate.lit;
+      statistics_.increment(":no.online.reason-lits", reasons_[lit].size());
+      return lit;
     }
     return 0;
   }
@@ -7057,7 +7047,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   };
 
   struct PendingEquality {
-    int lit = 0;
+    TermPairKey pair;
     std::vector<sat::Lit> reasons;
   };
 
@@ -7095,23 +7085,49 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
 
   void enqueue_if_interface_equality_lit_available(const TermPairKey& pair,
                                                    std::vector<sat::Lit> reasons) {
-    std::optional<sat::Lit> equality_lit = manager_.interface_equality_lit(pair.lhs, pair.rhs);
-    if (!equality_lit.has_value()) {
+    statistics_.increment(":no.online.lra-bound-equality-candidates");
+    if (!manager_.interface_equality(pair.lhs, pair.rhs).has_value()) {
       statistics_.increment(":no.online.lra-bound-equality-missing-atoms");
       return;
     }
-    const int equality_var = sat_var(equality_lit.value());
-    statistics_.increment(":no.online.lra-bound-equality-candidates");
+    const TermPairKey canonical_pair = canonical_term_pair(pair.lhs, pair.rhs);
+    if (!pending_pairs_.insert(canonical_pair).second) {
+      return;
+    }
+    pending_.push_back(PendingEquality{canonical_pair, std::move(reasons)});
+  }
+
+  std::optional<sat::Lit> materialize_observed_interface_equality_lit(const TermPairKey& pair) {
+    if (const std::optional<InterfaceEqualityRegistryEntry> existing =
+            manager_.interface_equality(pair.lhs, pair.rhs);
+        existing.has_value() && existing->lit.value != 0) {
+      observe_interface_equality_entry(existing.value());
+      statistics_.increment(":no.online.lra-bound-equality-materialized");
+      return existing->lit;
+    }
+
+    const core::TermId equality = terms_.mk_eq(pair.lhs, pair.rhs);
+    if (!manager_.interface_equality(equality).has_value()) {
+      return std::nullopt;
+    }
+    const sat::Lit lit{backend_.new_observed_var()};
+    clausifier_.ensure_generated_theory_atom_with_lit(equality, lit);
+    if (!manager_.register_interface_equality_atom(equality, lit)) {
+      return std::nullopt;
+    }
+    statistics_.increment(":no.online.lazy-equality-atoms-created");
+    statistics_.increment(":no.online.lazy-equality-vars-observed");
     statistics_.increment(":no.online.lra-bound-equality-materialized");
-    if (assignment_by_var_[static_cast<std::size_t>(equality_var)] != 0) {
-      statistics_.increment(":no.online.skipped-assigned");
-      return;
+    statistics_.set(":no.interface.sat-equality-atoms",
+                    registered_interface_equality_atom_count(manager_));
+    statistics_.set(kStatTheoryAtoms, clausifier_.theory_atoms().size());
+    if (const std::optional<InterfaceEqualityRegistryEntry> entry =
+            manager_.interface_equality(equality);
+        entry.has_value()) {
+      observe_interface_equality_entry(entry.value(), /*count_observation=*/false,
+                                       /*already_observed=*/true);
     }
-    if (pending_var_[static_cast<std::size_t>(equality_var)] != 0) {
-      return;
-    }
-    pending_var_[static_cast<std::size_t>(equality_var)] = 1;
-    pending_.push_back(PendingEquality{equality_lit->value, std::move(reasons)});
+    return lit;
   }
 
   void ensure_var_capacity(int var) {
@@ -7122,13 +7138,13 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
     if (assignment_by_var_.size() < needed) {
       assignment_by_var_.resize(needed, 0);
       interface_pair_by_var_.resize(needed, TermPairKey{});
-      pending_var_.resize(needed, 0);
       observed_interface_var_.resize(needed, 0);
     }
   }
 
   void observe_interface_equality_entry(const InterfaceEqualityRegistryEntry& entry,
-                                        bool count_observation) {
+                                        bool count_observation = true,
+                                        bool already_observed = false) {
     if (entry.lit.value == 0) {
       return;
     }
@@ -7136,7 +7152,9 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
     ensure_var_capacity(var);
     interface_pair_by_var_[static_cast<std::size_t>(var)] = TermPairKey{entry.lhs, entry.rhs};
     if (observed_interface_var_[static_cast<std::size_t>(var)] == 0) {
-      backend_.add_observed_var(var);
+      if (!already_observed) {
+        backend_.add_observed_var(var);
+      }
       observed_interface_var_[static_cast<std::size_t>(var)] = 1;
       if (count_observation) {
         statistics_.increment(":no.online.lazy-equality-vars-observed");
@@ -7144,6 +7162,8 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
     }
   }
 
+  core::TermManager& terms_;
+  BooleanClausifier& clausifier_;
   sat::IpasirUpBackend& backend_;
   TheoryCombinationManager& manager_;
   OnlineLraPropagator* lra_propagator_ = nullptr;
@@ -7153,7 +7173,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   std::vector<std::size_t> level_starts_;
   std::vector<TermPairKey> interface_pair_by_var_;
   std::deque<PendingEquality> pending_;
-  std::vector<char> pending_var_;
+  std::unordered_set<TermPairKey, TermPairKeyHash> pending_pairs_;
   std::vector<char> observed_interface_var_;
   std::unordered_map<int, std::vector<sat::Lit>> reasons_;
   std::unordered_map<int, PropagationOwner> propagated_owner_;
@@ -7634,7 +7654,6 @@ CheckSatOutcome solve_qf_uf_lra(
   const std::vector<TermPairKey> shared_real_pairs = all_term_pairs(shared_real_terms);
   TheoryCombinationManager no_manager(terms);
   no_manager.rebuild_from_interface_terms(shared_real_terms);
-  std::size_t online_precreated_equalities = 0;
   std::optional<sat::Lit> pending_model_equality_branch;
   std::vector<sat::Lit> active_model_equality_branches;
   ModelEqualityBranchState model_equality_branch_state;
@@ -7713,7 +7732,7 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-online-enabled", 0);
   statistics.set(":no.interface.lra-online-final-checks", 0);
   statistics.set(":no.online.enabled", 0);
-  statistics.set(":no.online.precreated-equality-atoms", online_precreated_equalities);
+  statistics.set(":no.online.precreated-equality-atoms", 0);
   statistics.set(":no.online.paired-bound-precreate-candidates", 0);
   statistics.set(":no.online.assignments", 0);
   statistics.set(":no.online.backtracks", 0);
@@ -7756,18 +7775,6 @@ CheckSatOutcome solve_qf_uf_lra(
   const PreparedLraTheory base_prepared_lra_theory(
       terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
       options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
-  if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online &&
-      !options.nelson_oppen_model_equality_branching && !lra_atoms.empty()) {
-    const std::vector<TermPairKey> paired_bound_pairs =
-        paired_bound_interface_pairs(base_prepared_lra_theory, no_manager);
-    statistics.set(":no.online.paired-bound-precreate-candidates", paired_bound_pairs.size());
-    online_precreated_equalities =
-        ensure_interface_equality_lits(terms, clausifier, no_manager, paired_bound_pairs);
-    statistics.set(":no.online.precreated-equality-atoms", online_precreated_equalities);
-    statistics.set(":no.interface.sat-equality-atoms",
-                   registered_interface_equality_atom_count(no_manager));
-    statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-  }
   publish_lra_tableau_shape_stats(base_prepared_lra_theory.base_tableau, statistics);
 #if PRIMO_HAVE_IPASIR
   std::optional<OnlineLraPropagator> online_lra_propagator;
@@ -7777,8 +7784,8 @@ CheckSatOutcome solve_qf_uf_lra(
         base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions, statistics);
     if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online) {
-      mixed_online_dispatcher.emplace(backend, no_manager, &online_lra_propagator.value(),
-                                      lra_atoms, statistics);
+      mixed_online_dispatcher.emplace(terms, clausifier, backend, no_manager,
+                                      &online_lra_propagator.value(), lra_atoms, statistics);
       backend.connect_external_propagator(&mixed_online_dispatcher.value());
       mixed_online_dispatcher->observe_registered_interface_equalities(
           /*count_observation=*/false);

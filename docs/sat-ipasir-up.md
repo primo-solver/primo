@@ -80,9 +80,10 @@ The practical Primo rules are therefore:
 - `sat::IpasirUpCapabilities` records whether a backend supports observed
   variables, external propagation, external clauses, external decisions, and
   fresh observed variables during solving.
-- Current Nelson-Oppen online propagation still uses the reduced paired-bound
-  precreation fallback. The fresh-observed-variable probe is an enabling SAT
-  result, not yet mixed-theory behavior.
+- Current Nelson-Oppen online propagation uses that fresh-observed-variable path
+  for selected paired-bound candidates: the mixed dispatcher creates and
+  observes the interface equality atom from `cb_propagate()` immediately before
+  returning the propagated equality literal.
 - CryptoMiniSat's upstream public API currently exposes ordinary IPASIR, not
   IPASIR-UP observed-variable and user-propagator callbacks, so it is not a
   drop-in backend for online theory propagation.

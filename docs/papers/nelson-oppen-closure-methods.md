@@ -136,18 +136,19 @@ candidate when its own trail contains both true non-strict bounds `(<= a b)` and
 `(<= b a)` over a registered shared Real pair, with the two bound-blocking
 literals as the explanation. The dispatcher maps that theory-owned candidate to
 the positive SAT-visible interface equality literal and streams the LRA-provided
-reason clause to CaDiCaL. Current CaDiCaL rejects fresh SAT-variable allocation
-from this callback phase, so the implemented fallback precreates only the
-paired-bound candidate equality atoms before search. The previous all-pairs
-online precreation accommodation has been removed from this path:
-`:no.online.precreated-equality-atoms` counts the paired-bound fallback set,
-`:no.online.paired-bound-precreate-candidates` records the candidate count, and
-`:no.online.shared-real-pairs` is only a diagnostic cross-product count. The SAT
-layer now exposes a backend-neutral IPASIR-UP interface and a CaDiCaL-backed
-`new_observed_var()` probe that succeeds from the complete-model callback, but
-the mixed Nelson-Oppen dispatcher has not yet been changed to allocate equality
-atoms during search. That follow-up should move only selected candidate pairs to
-true lazy create-and-observe without reverting to all-pairs precreation.
+reason clause to CaDiCaL. If the equality atom is missing, the dispatcher
+creates the equality term, registers it with `TheoryCombinationManager`,
+allocates a fresh observed SAT variable with
+`sat::IpasirUpBackend::new_observed_var()` from `cb_propagate()`, and records
+the dispatcher mapping before returning the literal. The previous all-pairs
+online precreation accommodation and the temporary paired-bound precreation
+fallback have both been removed from this path:
+`:no.online.precreated-equality-atoms` and
+`:no.online.paired-bound-precreate-candidates` should remain zero, while
+`:no.online.lazy-equality-atoms-created` and
+`:no.online.lazy-equality-vars-observed` record selected candidate
+materialization. `:no.online.shared-real-pairs` is only a diagnostic
+cross-product count.
 
 Online mode also skips the older final `lra_implied_real_equalities`
 strict-bound scan over all shared Real pairs after it has materialized at least
@@ -361,11 +362,11 @@ Track C is the callback-safe model-based online refinement prompted by the
 current profiling result:
 
 1. The current implemented slice replaces online all-pairs equality precreation
-   with a paired-bound candidate set.
-2. Because current CaDiCaL rejects fresh variable allocation from the callback,
-   Primo precreates only that paired-bound candidate set before search.
-3. The dispatcher then returns only observed equality literals from that reduced
-   candidate set.
+   with lazy materialization of selected paired-bound candidates.
+2. The dispatcher allocates and observes a fresh SAT variable from
+   `cb_propagate()` only after the LRA producer publishes a candidate pair.
+3. The dispatcher then returns only the observed equality literal for that
+   selected candidate.
 4. Future slices may add model-equality guesses that survive the mutation filter
    or a care-ranked equality source to the same candidate-first path.
 5. Keep the full shared-pair cross product as a counter and fallback
@@ -794,11 +795,10 @@ kind of overhead seen in earlier QF_UF experiments when a mechanism was active
 but had little delivered propagation. The current QF_UFLRA default `final` path
 follows the first checklist item below by checking candidate equalities
 separately from lazy SAT atom creation. The opt-in online paired-bound path does
-not precreate the full shared-pair cross product. On current CaDiCaL it
-precreates only the paired-bound candidate set because fresh variable allocation
-is rejected from the callback phase; a future backend that permits allocation in
-that phase can use the same selected candidate set for true lazy
-create-and-observe.
+not precreate the full shared-pair cross product. With the backend-neutral
+IPASIR-UP boundary, it also avoids the temporary paired-bound precreation
+fallback: the dispatcher creates and observes a SAT equality literal only for a
+selected published candidate.
 
 ### Primo Checklist Items
 
@@ -807,9 +807,9 @@ create-and-observe.
   equalities, and conflicts caused by interface disagreement.
 - Keep eager all-pair equality creation out of both the default path and the
   opt-in online paired-bound path. Current `--nelson-oppen-prop=online`
-  precreates equality atoms only from selected paired-bound candidates because
-  current CaDiCaL rejects in-callback variable allocation; it does not precreate
-  the full shared-pair cross product. Model/care candidates remain future work.
+  precreates no equality atoms; it lazily creates and observes equality atoms
+  only for selected paired-bound candidates. Model/care candidates remain future
+  work.
 - Keep a delayed strategy available as an ablation baseline against
   model-based closure.
 

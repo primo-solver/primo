@@ -18092,6 +18092,59 @@
         "This set is a hard sample, not a division result: it under-weights the families primo is strongest on. The division comparison of the same day is the headline measurement, not this one."
       ],
       "outcome": "The promotion bar now has a fourth reference, and it moves the reading of the mid-band campaign: against OpenSMT that band is -32, not -7."
+    },
+    {
+      "id": "2026-08-04-qf-uflra-online-lazy-ipasir-up-local",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "validation",
+      "scope": "Local validation for replacing the opt-in QF_UFLRA online paired-bound precreation fallback with true lazy IPASIR-UP create-and-observe from MixedTheoryPropagationDispatcher::cb_propagate().",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "5de7341-dirty",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "./build/primo --version reported primo 0.1.0, git 5de7341-dirty, Debug build, CaDiCaL cadical-3.0.0-7b99c07; reference solver was contrib/local/bin/z3 version 5.0.0",
+        "notes": "The run was executed before the validation commit, so the binary identifies the working tree as dirty relative to 5de7341."
+      },
+      "commands": {
+        "build": "cmake --build build --target primo_sat_backend_tests primo_qf_lra_solver_tests primo -j2",
+        "focused_tests": "./build/primo_sat_backend_tests && ./build/primo_qf_lra_solver_tests",
+        "full_ctest": "ctest --test-dir build --output-on-failure",
+        "docs": "make docs",
+        "format_diff": "clang-format -i src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp tests/unit/sat_backend_tests.cpp; git diff --check",
+        "fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--nelson-oppen-prop=online --ref contrib/local/bin/z3 --count 1000 --seed 2026080403 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-online-lazy-ipasir-up-1000",
+        "counter_probe": "./build/primo --quiet --stats --nelson-oppen-prop=online < simple paired-bound QF_UFLRA probe",
+        "lint": "make lint",
+        "check": "make check",
+        "efficiency_review": "git diff --stat; git diff --check; scripts/solver_efficiency_snapshot.py --repo . (helper missing); manual callback hot-path review"
+      },
+      "artifact": "fuzz-results/qf_uflra-online-lazy-ipasir-up-1000/summary.csv",
+      "summary": {
+        "unit_tests": "Focused SAT backend and QF_UFLRA unit tests passed. Full ctest passed 13/13. make docs passed.",
+        "fuzz": {
+          "count": 1000,
+          "pass": 1000,
+          "wrong_answer": 0,
+          "crash_or_error": 0,
+          "timeout": 0,
+          "reference_disagreement": 0
+        },
+        "counter_probe": {
+          ":no.online.precreated-equality-atoms": 0,
+          ":no.online.paired-bound-precreate-candidates": 0,
+          ":no.online.lra-published-equalities": 1,
+          ":no.online.lra-bound-equality-candidates": 1,
+          ":no.online.lra-bound-equality-materialized": 1,
+          ":no.online.lazy-equality-atoms-created": 1,
+          ":no.online.lazy-equality-vars-observed": 1,
+          ":no.online.propagations": 1,
+          ":no.online.reason-lits": 2
+        },
+        "lint_check": "make lint and make check both fail at the existing Ruff baseline before this change's C++ tests: 66 reported Python issues across contrib/ and scripts/, including EXE001 shebang executability, I001 import order, UP022 capture_output, ISC004 implicit concatenation, and PLW1510 explicit check.",
+        "efficiency_review": "No added full shared-pair precreation or all-pairs callback scan found. The dispatcher queues selected candidate pairs, materializes only at cb_propagate(), and reuses the existing paired-bound two-literal reason. The skill-requested scripts/solver_efficiency_snapshot.py helper was absent from this repository."
+      },
+      "outcome": "Local evidence supports the lazy IPASIR-UP online path: the SAT backend accepts fresh observed variables from cb_propagate(), online NO precreates zero equality atoms, the simple paired-bound case lazily creates and observes exactly one interface equality atom before propagation, and 1000 generated mixed QF_UFLRA cases agree with Z3. The feature remains opt-in."
     }
   ]
 }
