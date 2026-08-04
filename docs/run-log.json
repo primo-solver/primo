@@ -18145,6 +18145,68 @@
         "efficiency_review": "No added full shared-pair precreation or all-pairs callback scan found. The dispatcher queues selected candidate pairs, materializes only at cb_propagate(), and reuses the existing paired-bound two-literal reason. The skill-requested scripts/solver_efficiency_snapshot.py helper was absent from this repository."
       },
       "outcome": "Local evidence supports the lazy IPASIR-UP online path: the SAT backend accepts fresh observed variables from cb_propagate(), online NO precreates zero equality atoms, the simple paired-bound case lazily creates and observes exactly one interface equality atom before propagation, and 1000 generated mixed QF_UFLRA cases agree with Z3. The feature remains opt-in."
+    },
+    {
+      "id": "2026-08-04-qf-uflra-online-lazy-ipasir-up-slurm",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "validation",
+      "scope": "SLURM merge-gate validation and 20-file QF_UFLRA sample comparison for the opt-in lazy IPASIR-UP Nelson-Oppen online propagation path.",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "7838c2e",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm via ssh -J janotmik@data.ciirc.cvut.cz janotmik@10.35.125.63",
+        "workspace": "primo-online-lazy-7838c2e",
+        "binary": "build-slurm-rel/primo --version reported primo 0.1.0, git 7838c2e, Release build, CaDiCaL cadical-3.0.0-7b99c07; reference solver contrib/local/bin/z3 reported Z3 version 5.0.0.",
+        "notes": "Remote workspace was prepared with scripts/slurm_prepare_benchmark_workspace.py and verified with --check-only immediately before submission. Z3 was installed into the remote workspace after the first reference-dependent submission failed because contrib/local/bin/z3 was absent."
+      },
+      "commands": {
+        "workspace_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config $CFG --remote primo-slurm --remote-dir primo-online-lazy-7838c2e --target primo --jobs 4",
+        "workspace_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config $CFG --remote primo-slurm --remote-dir primo-online-lazy-7838c2e --target primo --check-only",
+        "stage_sample": "python3 scripts/slurm_stage_manifest_files.py --ssh-config $CFG --remote primo-slurm --remote-dir primo-online-lazy-7838c2e --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "install_z3_after_failed_first_attempt": "ssh -F $CFG primo-slurm 'cd primo-online-lazy-7838c2e && python3 contrib/install_z3.py --prefix contrib/local'",
+        "fuzz": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_FUZZ_COUNT=250,PRIMO_FUZZ_SEED_BASE=2026080404,PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-online-lazy-fuzz-7838c2e-z3 primo_qf_uflra_online_lazy_fuzz.sbatch",
+        "sample": "sbatch --array=0-2 --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_COMPARE_TIMEOUT=10,PRIMO_COMPARE_OUT_ROOT=results/qf-uflra-online-lazy-sample-7838c2e,PRIMO_COMPARE_SOLVERS='final=build-slurm-rel/primo --quiet --stats;online=build-slurm-rel/primo --quiet --stats --nelson-oppen-prop=online;z3=contrib/local/bin/z3' scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "sample_z3_rerun": "sbatch --array=2 with the same PRIMO_COMPARE_* environment after installing contrib/local/bin/z3",
+        "analysis": "python3 scripts/compare_solver_answers.py results/qf-uflra-online-lazy-sample-7838c2e --timeout 10; python3 scripts/render_solver_compare_html.py results/qf-uflra-online-lazy-sample-7838c2e --solvers final online z3 --title 'QF_UFLRA online lazy sample 7838c2e' --timeout 10 --out results/qf-uflra-online-lazy-sample-7838c2e/index.html; aggregate task-*/summary.csv from the fuzz output"
+      },
+      "benchmark": {
+        "fuzz": "1000 generated mixed QF_UFLRA cases, 4 array tasks x 250 cases, seeds 2026080404..2026080407, 5s per case, online mode compared against Z3 5.0.0",
+        "sample": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt, 20 files from FFT, cpachecker-bmc-svcomp14, cpachecker-induction-svcomp14, and mathsat/RandomCoupled, 10s per file",
+        "logic": "QF_UFLRA"
+      },
+      "jobs": {
+        "failed_first_attempts": "119166 fuzz array failed all 4 tasks with REFERENCE_UNUSABLE/MISSING because z3 was absent; 119170_2 sample z3 task failed with FileNotFoundError for contrib/local/bin/z3. Primo final and online sample tasks 119170_0 and 119170_1 completed and were retained.",
+        "fuzz": "119173 array 0-3, all COMPLETED 0:0 in 00:00:06 per task.",
+        "sample": "119170_0 final COMPLETED 0:0 in 00:00:46; 119170_1 online COMPLETED 0:0 in 00:00:44; 119177_2 z3 rerun COMPLETED 0:0 in 00:00:04."
+      },
+      "artifacts": {
+        "local_fuzz": "slurm-results/qf_uflra-online-lazy-fuzz-7838c2e-z3/task-*/summary.csv",
+        "local_sample": "results/qf-uflra-online-lazy-sample-7838c2e/",
+        "remote_logs": "primo-online-lazy-7838c2e/slurm_logs/ and primo-online-lazy-7838c2e/logs/",
+        "evidence_status": "current; raw generated cases and CSVs are local ignored artifacts, with remote copies retained in the SLURM workspace."
+      },
+      "summary": {
+        "fuzz": {
+          "count": 1000,
+          "pass": 1000,
+          "wrong_answer": 0,
+          "crash_or_error": 0,
+          "timeout": 0,
+          "reference_disagreement": 0,
+          "reference_unusable_after_rerun": 0
+        },
+        "sample": {
+          "final": "20 files, solved 16, sat 13, unsat 3, timeout 4, error 0, PAR2 84.888647.",
+          "online": "20 files, solved 16, sat 13, unsat 3, timeout 4, error 0, PAR2 83.274290.",
+          "z3": "20 files, solved 20, sat 17, unsat 3, timeout 0, error 0, PAR2 3.757215.",
+          "cross_solver_disagreements": 0,
+          "non_standard_unsolved_reasons": 0,
+          "coverage": "Solved by nobody: 0; only final: 0; only online: 0; only z3: 4."
+        }
+      },
+      "outcome": "SLURM evidence supports merging the opt-in lazy online path: the 1000-case QF_UFLRA online fuzz gate passes against Z3, and the 20-file sample has identical final and online solved counts and zero disagreements with Z3. The first reference-dependent submission is recorded as rejected evidence because the remote Z3 binary was missing."
     }
   ]
 }
