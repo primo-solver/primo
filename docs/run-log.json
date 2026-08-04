@@ -13059,7 +13059,7 @@
         "install": "python3 contrib/install_opensmt.py  (or make contrib-opensmt)",
         "job": "sbatch --array=0-39 --time=10:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40, PRIMO_COMPARE_SOLVERS='opensmt=contrib/local/bin/opensmt'",
         "analysis": "python3 scripts/compare_solver_answers.py <119045 + 118904 + 118382 merged into one dir> --timeout 300",
-        "plot": "python3 scripts/plot_cactus.py --series opensmt=<119045> --series yices=<118904> --series primo=<118904> --series z3=<118382> --series cvc5=<118382> --timeout 300 --out docs/_static/qf-lra-cactus.svg"
+        "plot": "python3 scripts/plot_cactus.py --series opensmt=<119045> --series yices=<118904> --series primo=<118904> --series z3=<118382> --series cvc5=<118382> --timeout 300 --drop-solved-by-all-under 10 --out docs/_static/qf-lra-cactus.svg  (the committed figure omits the 1,097 instances every solver finished under 10s, leaving 656; drop the flag for the unfiltered version. Filtering subtracts the same constant from every curve, so the gaps are unchanged, but the legend counts are of 656.)"
       },
       "benchmark": {
         "suite": "benchmarks/qf-lra-full-division.txt (1,753 files, 17 families)",
@@ -13071,7 +13071,8 @@
         "standings_change": "primo drops from second to third. Its own score is unchanged at 1631 -- every movement in its apparent standing on this division (ahead by 47, then second, now third) has come from adding references, not from anything primo did. Recorded because the sequence is easy to misread as a regression.",
         "where_it_is_decided": "LassoRanker (419 files) goes 385 to primo's 347 and 2017-Heizmann 48 to 41 -- those two carry OpenSMT's 39-file margin. tropical-matrix is the sharpest single result: OpenSMT 5 of 10 where primo, Yices and z3 each take 1 and cvc5 0. primo leads 2019-ezsmt 103-95, latendresse 15-11 and ties tta_startup at 72. Ten of seventeen families are saturated for all five solvers.",
         "complementarity": "29 instances primo solves that OpenSMT does not, against 68 the other way. Uniquely solved: 23 OpenSMT, 8 primo, 8 Yices, 1 z3, 0 cvc5; 40 files defeat all five.",
-        "soundness": "Zero wrong answers for all five against the division's own (set-info :status) -- 1,629 of 1,753 files carry a checkable status. Zero cross-solver disagreements across five independent implementations, and zero benchmarks unsolved for a non-standard reason: every unsolved instance is an honest timeout."
+        "soundness": "Zero wrong answers for all five against the division's own (set-info :status) -- 1,629 of 1,753 files carry a checkable status. Zero cross-solver disagreements across five independent implementations, and zero benchmarks unsolved for a non-standard reason: every unsolved instance is an honest timeout.",
+        "budget_sensitivity": "Yices leads at every budget up to 10s (1428 to OpenSMT's 1370) and OpenSMT leads from 30s on (1527 to 1525); they cross between the two. At a 10s timeout the division standings would read Yices, OpenSMT, primo, z3, cvc5 with Yices ahead by 58 -- which reference is strongest depends on the timeout."
       },
       "caveats": [
         "Not a single simultaneous run. OpenSMT ran 2026-08-03 alongside nothing else of its own; primo and Yices come from job 118904 the same day; z3 and cvc5 from job 118382 on 2026-08-01. Same manifest, timeout, harness and cluster, different days -- the standing policy of not re-running unchanged reference solvers.",

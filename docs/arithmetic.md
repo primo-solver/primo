@@ -736,12 +736,36 @@ work wherever it was triggered.
 | cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
 
 ```{figure} _static/qf-lra-cactus.svg
-:alt: Instances solved against per-instance time budget for OpenSMT, Yices, primo, z3 and cvc5.
+:alt: Instances solved against per-instance time budget for OpenSMT, Yices, primo, z3 and cvc5, over the 656 instances not solved by every solver within 10s.
 :width: 100%
 
-Instances solved against the per-instance time budget. Only solved instances
-contribute a point, so the vertical gap to 1,753 is the unsolved remainder.
+Instances solved against the per-instance time budget, over the **656
+instances that at least one solver did not finish within 10s**. The 1,097
+instances every solver finished quickly are omitted: each contributed one
+point to all five curves, so removing them subtracts the same constant from
+every series and leaves every gap between curves intact, while the vertical
+range stops being dominated by the shared easy majority. **The counts in the
+legend are therefore of 656, not of 1,753** -- the table above has the full
+numbers. Regenerate with `--drop-solved-by-all-under 10`; omit that flag for
+the unfiltered version.
 ```
+
+**The plot shows a crossover the table cannot.** Yices is the fastest solver
+at every budget up to 10s and OpenSMT is the strongest by 300s; they trade
+places between 10s and 30s:
+
+| solved within | 0.1s | 1s | 10s | 30s | 60s | 300s |
+|---|---|---|---|---|---|---|
+| OpenSMT | 868 | 1103 | 1370 | **1527** | **1595** | **1670** |
+| Yices | **1003** | **1173** | **1428** | 1525 | 1575 | 1645 |
+| primo | 832 | 1066 | 1286 | 1440 | 1515 | 1631 |
+| z3 | 861 | 1028 | 1227 | 1346 | 1430 | 1584 |
+| cvc5 | 711 | 945 | 1118 | 1209 | 1296 | 1511 |
+
+At a 10s budget Yices would lead this division by 58 files and OpenSMT would
+be second. **Which reference is "strongest" is a function of the timeout**,
+which is worth remembering whenever a single 300s number is quoted as the
+standing.
 
 **OpenSMT leads and primo is third**, 39 behind OpenSMT and 14 behind Yices.
 The reference set was built in that order -- z3 and cvc5 first, Yices on

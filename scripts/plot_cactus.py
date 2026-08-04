@@ -21,6 +21,16 @@ Solvers may come from different result directories -- a reference solver that
 has not changed should not be re-run (see docs/experiments.md) -- so the
 provenance of each series is recorded in the caption rather than implied.
 
+``--drop-solved-by-all-under S`` removes the instances every series solved in
+under S seconds. This is a presentation change, not a scoring one: an instance
+every solver finishes quickly contributes exactly one point to every curve, so
+dropping it subtracts the same constant from all of them. Every gap between
+curves survives untouched while the vertical range stops being dominated by
+the shared easy majority. What it does change is PAR2 and the solved counts,
+which are then computed over the retained instances only -- so the printed
+table and the legend are counts *of the hard subset*, and the caption says so.
+Numbers from a filtered plot are not comparable with numbers from a full one.
+
 Example:
     python3 scripts/plot_cactus.py \\
         --series primo=results/div-118904 --series yices=results/div-118904 \\
@@ -77,8 +87,14 @@ def summarize(rows: list[dict[str, str]], timeout: float) -> dict[str, object]:
 
 def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
         title: str, caption: list[str]) -> str:
-    width, height = 900, 560
-    left, right, top, bottom = 78, 250, 56, 96
+    # The caption grows with the number of provenance notes, so the canvas and
+    # the bottom margin grow with it rather than the plot area shrinking --
+    # otherwise a fourth line simply falls off the bottom edge, which is how
+    # the --drop-solved-by-all-under note first went missing.
+    caption_leading = 14
+    extra = caption_leading * max(0, len(caption) - 3)
+    width, height = 900, 560 + extra
+    left, right, top, bottom = 78, 250, 56, 96 + extra
     plot_w, plot_h = width - left - right, height - top - bottom
     max_solved = max((len(s) for _, s in series), default=1) or 1
     # Log time axis: solved counts bunch up at the low end otherwise, and the
@@ -117,7 +133,9 @@ def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
         out.append(f'<text x="{left-10}" y="{y+4:.1f}" font-size="12" '
                    f'text-anchor="end" fill="#444">{n}</text>')
 
-    out.append(f'<text x="{left+plot_w/2:.0f}" y="{height-58}" font-size="13" '
+    # Anchored to the plot area, not the canvas: with a caption-driven height
+    # a canvas-relative offset walks down into the caption block.
+    out.append(f'<text x="{left+plot_w/2:.0f}" y="{top+plot_h+38}" font-size="13" '
                f'text-anchor="middle" fill="#222">per-instance time budget (log scale)</text>')
     out.append(f'<text x="18" y="{top+plot_h/2:.0f}" font-size="13" fill="#222" '
                f'transform="rotate(-90 18 {top+plot_h/2:.0f})" text-anchor="middle">'
@@ -135,8 +153,10 @@ def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
         out.append(f'<text x="{left+plot_w+52}" y="{ly+4}" font-size="13" fill="#222">'
                    f'{name} &#8212; {len(solved)}</text>')
 
+    caption_top = height - 12 - caption_leading * (len(caption) - 1)
     for i, line in enumerate(caption):
-        out.append(f'<text x="{left}" y="{height-34+i*14}" font-size="11" fill="#666">{line}</text>')
+        out.append(f'<text x="{left}" y="{caption_top+i*caption_leading}" '
+                   f'font-size="11" fill="#666">{line}</text>')
     out.append("</svg>")
     return "\n".join(out)
 
@@ -151,12 +171,12 @@ def main() -> int:
     parser.add_argument("--title", default="QF_LRA")
     parser.add_argument("--note", action="append", default=[],
                         help="extra caption line, e.g. run provenance")
+    parser.add_argument("--drop-solved-by-all-under", type=float, metavar="SECONDS",
+                        help="omit instances every series solved faster than this; "
+                             "counts and PAR2 are then over the retained instances")
     args = parser.parse_args()
 
-    plotted: list[tuple[str, list[float]]] = []
-    totals: set[int] = set()
-    problems = 0
-    print(f"{'solver':10s} {'files':>6} {'solved':>7} {'wrong':>6} {'PAR2':>10}")
+    loaded: list[tuple[str, list[dict[str, str]]]] = []
     for spec in args.series:
         if "=" not in spec:
             raise SystemExit(f"--series expects NAME=DIR, got {spec!r}")
@@ -164,6 +184,33 @@ def main() -> int:
         rows = load_series(pathlib.Path(directory), name)
         if not rows:
             raise SystemExit(f"no rows for {name} under {directory}")
+        loaded.append((name, rows))
+
+    dropped = 0
+    if args.drop_solved_by_all_under is not None:
+        cutoff = args.drop_solved_by_all_under
+        # A file missing from some series cannot have been solved by all of
+        # them, so it is kept -- `all()` over the series it does appear in
+        # would silently drop it on the strength of a partial set.
+        seen: collections.Counter[str] = collections.Counter()
+        fast: collections.Counter[str] = collections.Counter()
+        for _, rows in loaded:
+            for row in rows:
+                seen[row["file"]] += 1
+                if row["status"] == "ok" and float(row["seconds"]) < cutoff:
+                    fast[row["file"]] += 1
+        easy = {f for f, count in fast.items() if count == len(loaded) == seen[f]}
+        dropped = len(easy)
+        loaded = [(name, [r for r in rows if r["file"] not in easy])
+                  for name, rows in loaded]
+        print(f"dropping {dropped} instances every series solved in under "
+              f"{cutoff:g}s; counts and PAR2 below are over what remains")
+
+    plotted: list[tuple[str, list[float]]] = []
+    totals: set[int] = set()
+    problems = 0
+    print(f"{'solver':10s} {'files':>6} {'solved':>7} {'wrong':>6} {'PAR2':>10}")
+    for name, rows in loaded:
         stats = summarize(rows, args.timeout)
         totals.add(int(stats["total"]))
         print(f"{name:10s} {stats['total']:6d} {len(stats['solved']):7d} "
@@ -184,6 +231,11 @@ def main() -> int:
     total = max(totals)
     caption = [f"{total} instances, {args.timeout:g}s per instance. "
                "Only solved instances contribute a point; timeouts do not."]
+    if dropped:
+        caption.append(
+            f"Excludes {dropped} further instances every solver finished in under "
+            f"{args.drop_solved_by_all_under:g}s, so every count here is of the "
+            f"remaining {total}. Gaps between curves are unaffected.")
     caption += args.note
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(svg(plotted, args.timeout, total, args.title, caption))
