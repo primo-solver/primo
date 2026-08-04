@@ -206,7 +206,11 @@ order. `ranked` prefers LRA-model-equal pairs that also appear in the EUF care
 diagnostic, then pairs whose terms both occur as EUF arguments, then the
 remaining full-pair fallback. `adaptive` uses the same ranking but stops adding
 model-equality assumptions after repeated failed assumptions or theory conflicts
-that did not produce interface equality propagation.
+that did not produce interface equality propagation. `care-queued` is a
+default-off pruning policy: it rebuilds a bounded candidate queue from the
+current EUF care pairs only, filters already-tried, assigned, formula-occurring,
+and mutation-avoidable candidates before creating a fresh equality atom, and
+does not fall back to the full shared Real cross product.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
@@ -264,6 +268,13 @@ coordinator publishes:
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
 - `:no.interface.model-equality-skipped-tried`
+- `:no.interface.model-equality-queue-builds`
+- `:no.interface.model-equality-queued`
+- `:no.interface.model-equality-queue-pops`
+- `:no.interface.model-equality-queue-skipped-tried`
+- `:no.interface.model-equality-queue-skipped-assigned`
+- `:no.interface.model-equality-queue-skipped-mutation`
+- `:no.interface.model-equality-queue-empty`
 - `:no.interface.model-equality-adaptive-stops`
 - `:no.interface.model-equality-active-assumptions`
 - `:no.interface.model-equality-max-active-assumptions`
@@ -396,11 +407,15 @@ arithmetic terms. Section 5.2 motivates model mutation, but Primo currently
 implements only the strict-separation consistency filter described below.
 
 **Implemented subset.** `--model-equality-branching` remains default-off. In
-mixed QF_UFLRA, `choose_lra_model_equality_branch` scans shared Real pairs,
-keeps only pairs equal in the current LRA model, applies the optional
-strict-separation mutation filter, creates a SAT-visible equality atom only for
-the selected pair, and sets the SAT phase so the positive equality is tried
-first. `ModelEqualityArrangementState` owns the resulting assumption lifecycle:
+mixed QF_UFLRA, `choose_lra_model_equality_branch` scans shared Real pairs for
+the legacy `first`, `ranked`, and `adaptive` policies. The `care-queued` policy
+uses `ModelEqualityCandidateQueue` instead: it rebuilds a queue from the current
+EUF care pairs, caps it by the remaining branch budget, and consumes those
+candidates without full-pair fallback. Both paths keep only pairs equal in the
+current LRA model, apply the optional strict-separation mutation filter, create a
+SAT-visible equality atom only for the selected pair, and set the SAT phase so
+the positive equality is tried first. `ModelEqualityArrangementState` owns the
+resulting assumption lifecycle:
 one selected equality literal is queued, activated as an IPASIR assumption on
 the next SAT call, retained across later SAT calls when it survives, and removed
 when the SAT backend reports it as a failed assumption. SAT-level rejections
@@ -410,10 +425,12 @@ the ordinary theory-conflict path.
 
 **Data structures and owners.** `TheoryCombinationManager` owns the mapping
 from equality term to SAT literal. `BooleanClausifier` creates the optional
-theory atom when the equality is selected. `ModelEqualityArrangementState` owns
-the pending literal, active IPASIR assumption trail, tried SAT variables, and
-adaptive rejection counters. The SAT adapter still sees only literals and
-clauses; theory solvers still see ordinary theory atoms and explanations.
+theory atom when the equality is selected. `ModelEqualityCandidateQueue` owns
+the care-pair candidate queue for the `care-queued` policy during the mixed
+coordinator loop. `ModelEqualityArrangementState` owns the pending literal,
+active IPASIR assumption trail, tried SAT variables, and adaptive rejection
+counters. The SAT adapter still sees only literals and clauses; theory solvers
+still see ordinary theory atoms and explanations.
 
 **Invariants and operations.**
 
@@ -427,11 +444,10 @@ clauses; theory solvers still see ordinary theory atoms and explanations.
    filter select a pair; shared Real pairs are not preallocated for this mode.
 
 **Complexity expectation.** Candidate enumeration is still bounded by
-`--model-equality-branch-budget` and the shared Real pair list. This patch does
-not improve the all-pairs scan used by the default `first` branch policy. Its
-purpose is to isolate the assumption lifecycle so a later IPASIR-UP queue or
-care-set candidate source can replace the current scan without changing the SAT
-backtracking invariants.
+`--model-equality-branch-budget` and the shared Real pair list for the legacy
+policies. The `care-queued` policy avoids the broad candidate scan for branch
+selection and rebuilds only from EUF care pairs. This is still a final-check
+branching scaffold, not a generic model-propagation transition.
 
 **Proof obligations.** The only clauses introduced by this subset are ordinary
 theory conflicts, guarded interface-equality clauses from the existing
@@ -608,10 +624,12 @@ treating one theory's atoms as Boolean noise.
   full-pair order. The `ranked` policy keeps the full candidate set but tries
   care-diagnostic and EUF-argument pairs first. The `adaptive` policy uses the
   ranked order and stops issuing guesses after repeated unproductive rejected
-  assumptions or theory conflicts. For a missing, user-invisible equality atom,
-  the branch creates a SAT-visible optional atom and retries the SAT loop with
-  that atom on an active model-equality assumption trail. Surviving model-equal
-  assumptions are re-applied while the coordinator tries later model-equal pairs.
+  assumptions or theory conflicts. The `care-queued` policy scans only a bounded
+  queue rebuilt from the current EUF care pairs, with no full-pair fallback. For
+  a missing, user-invisible equality atom, the branch creates a SAT-visible
+  optional atom and retries the SAT loop with that atom on an active
+  model-equality assumption trail. Surviving model-equal assumptions are
+  re-applied while the coordinator tries later model-equal pairs.
   The equality is asserted to EUF/LRA when SAT assigns the atom true. If the SAT
   backend rejects the active assumption set, the coordinator learns a blocking
   clause over the failed assumptions and removes them from the active trail; a

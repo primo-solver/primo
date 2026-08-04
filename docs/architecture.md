@@ -341,13 +341,16 @@ Implemented now:
   shared Real pair set. The default `first` model-equality branch policy also
   uses the full pair order; the opt-in `ranked` and `adaptive` policies use
   care-pair diagnostics only to rank guesses, with full-pair fallback. The
-  optional branch path is owned by `ModelEqualityArrangementState`: a selected
-  LRA-model-equal pair is queued, then activated as an IPASIR assumption on the
-  next SAT call. SAT-level failed assumptions are blocked by a learned clause
-  over their negations and removed from the active assumption trail; ordinary
-  EUF/LRA theory conflicts under active assumptions are learned by the normal
-  theory-conflict path. These guesses are not exposed as entailed theory
-  propagations.
+  `care-queued` policy is the first pruning policy: `ModelEqualityCandidateQueue`
+  is owned by the mixed coordinator, rebuilt from the current EUF care pairs,
+  bounded by `--model-equality-branch-budget`, and consumed before creating a
+  fresh equality atom. The optional branch path is owned by
+  `ModelEqualityArrangementState`: a selected LRA-model-equal pair is queued,
+  then activated as an IPASIR assumption on the next SAT call. SAT-level failed
+  assumptions are blocked by a learned clause over their negations and removed
+  from the active assumption trail; ordinary EUF/LRA theory conflicts under
+  active assumptions are learned by the normal theory-conflict path. These
+  guesses are not exposed as entailed theory propagations.
   In default mixed QF_UFLRA solving, the original LRA atoms are observed by the
   same trail-synced online LRA propagator used by pure QF_LRA, so arithmetic
   conflicts and bound propagations can be delivered inside the SAT search. Final

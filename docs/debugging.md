@@ -355,6 +355,13 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
 - `:no.interface.model-equality-skipped-tried`
+- `:no.interface.model-equality-queue-builds`
+- `:no.interface.model-equality-queued`
+- `:no.interface.model-equality-queue-pops`
+- `:no.interface.model-equality-queue-skipped-tried`
+- `:no.interface.model-equality-queue-skipped-assigned`
+- `:no.interface.model-equality-queue-skipped-mutation`
+- `:no.interface.model-equality-queue-empty`
 - `:no.interface.model-equality-adaptive-stops`
 - `:no.interface.model-equality-active-assumptions`
 - `:no.interface.model-equality-max-active-assumptions`
@@ -430,7 +437,9 @@ validation use the full shared Real pair set. The default
 reports the full pair count through `:no.interface.model-equality-care-pairs`
 for continuity. The `ranked` and `adaptive` policies use care-pair diagnostics
 only as a ranking signal; they fall back to the full pair set instead of pruning
-the search.
+the search. The opt-in `care-queued` policy rebuilds a bounded queue from the
+current EUF care pairs only, so a shared Real pair that is merely present in the
+full cross product is not materialized as a model-equality branch candidate.
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use
@@ -513,6 +522,9 @@ assumption attempts over those atoms, SAT-level failed-assumption blocking
 clauses, dropped failed assumptions, the active assumptions retained after the
 last SAT rejection, assigned or already-tried equality literals skipped, whether
 the selected guess came from the care-ranked prefix or the full-pair fallback,
+care-queued queue builds, queued candidates, queue pops, queued candidates
+skipped because their existing equality atom was already tried or assigned,
+queued candidates skipped by the mutation filter before optional atom creation,
 adaptive stops, the current and maximum active model-equality assumption-trail
 size, and ordinary theory conflicts reached while at least one guessed equality
 was active. A surviving model-equality guess is re-applied as an IPASIR

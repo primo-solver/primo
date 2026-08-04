@@ -62,6 +62,7 @@ enum class ModelEqualityBranchPolicy {
   First,
   Ranked,
   Adaptive,
+  CareQueued,
 };
 
 // Mirrors theory::arithmetic::LraTableau::PivotingRule -- kept as a

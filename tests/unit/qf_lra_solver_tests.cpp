@@ -821,6 +821,105 @@ void qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs() {
   assert(result.statistics.get(":no.interface.model-equality-activated") >= 1);
 }
 
+void qf_uf_lra_care_queued_model_equality_branching_uses_only_care_pairs() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  options.nelson_oppen_model_equality_branch_policy =
+      primo::smt::ModelEqualityBranchPolicy::CareQueued;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-full-pairs") == 3);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 2);
+  assert(result.statistics.get(":no.interface.model-equality-queue-builds") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-queued") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-queue-pops") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-selected-care") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-selected-full") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-created") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-activated") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-conflicts") >= 1);
+}
+
+void qf_uf_lra_care_queued_model_equality_branching_does_not_fallback_to_full_pairs() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  options.nelson_oppen_model_equality_branch_policy =
+      primo::smt::ModelEqualityBranchPolicy::CareQueued;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.model-equality-full-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-queue-builds") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-queued") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-queue-empty") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-created") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-pending") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-activated") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-selected-full") == 0);
+}
+
+void qf_uf_lra_care_queued_model_equality_mutation_skips_before_atom_creation() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_branch_policy =
+      primo::smt::ModelEqualityBranchPolicy::CareQueued;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-lra-equal") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-mutation-checks") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-mutated") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-queue-skipped-mutation") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-created") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-pending") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-activated") == 0);
+}
+
 void qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
@@ -2489,6 +2588,9 @@ int main() {
   qf_uf_lra_model_equality_branching_accumulates_active_assumptions();
   qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs();
   qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs();
+  qf_uf_lra_care_queued_model_equality_branching_uses_only_care_pairs();
+  qf_uf_lra_care_queued_model_equality_branching_does_not_fallback_to_full_pairs();
+  qf_uf_lra_care_queued_model_equality_mutation_skips_before_atom_creation();
   qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses();
   qf_uf_lra_reports_euf_care_pair_diagnostics();
   qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
