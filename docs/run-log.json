@@ -18207,6 +18207,61 @@
         }
       },
       "outcome": "SLURM evidence supports merging the opt-in lazy online path: the 1000-case QF_UFLRA online fuzz gate passes against Z3, and the 20-file sample has identical final and online solved counts and zero disagreements with Z3. The first reference-dependent submission is recorded as rejected evidence because the remote Z3 binary was missing."
+    },
+    {
+      "id": "2026-08-04-qf-uflra-model-equality-arrangement-state",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "validation",
+      "scope": "Local validation for the default-off QF_UFLRA model-equality assumption lifecycle refactor.",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "5d89a32",
+      "environment": {
+        "type": "local",
+        "host": "/workspace",
+        "binary": "./build/primo from commit 5d89a32 after make check rebuild; CaDiCaL rel-3.0.0 via contrib/local; reference solver contrib/local/bin/z3.",
+        "notes": "The change does not add a new entailed propagation rule. It moves queued and active model-equality SAT assumptions, failed-assumption blocking, and adaptive rejection state into ModelEqualityArrangementState."
+      },
+      "commands": {
+        "focused_unit": "cmake --build build --target primo_qf_lra_solver_tests -j2; ./build/primo_qf_lra_solver_tests",
+        "lint": "make lint",
+        "docs": "make docs",
+        "check": "make check",
+        "diff_check": "git diff --check",
+        "clang_tidy": "git ls-files '*.cpp' | rg -v '(^build/|/generated/|ANTLR|antlr)' | xargs -r clang-tidy -p build --quiet",
+        "include_cleaner_advisory": "git ls-files '*.cpp' | rg -v '(^build/|/generated/|ANTLR|antlr)' | xargs -r clang-tidy -p build --quiet -checks='-*,misc-include-cleaner'",
+        "efficiency_snapshot": "python3 /home/user/.codex/skills/solver-efficiency-review/scripts/solver_efficiency_snapshot.py --repo .",
+        "fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --ref contrib/local/bin/z3 --count 300 --seed 2026080405 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-equality-arrangement-300"
+      },
+      "benchmark": {
+        "logic": "QF_UFLRA",
+        "suite": "300 generated mixed QF_UFLRA formulas from scripts/qf_uflra_smoke_fuzz.py",
+        "seed": 2026080405,
+        "timeout_seconds": 5,
+        "solver_argv": "./build/primo --quiet --model-equality-branching",
+        "reference_argv": "contrib/local/bin/z3"
+      },
+      "artifacts": {
+        "fuzz_summary": "fuzz-results/qf_uflra-model-equality-arrangement-300/summary.csv",
+        "fuzz_cases": "fuzz-results/qf_uflra-model-equality-arrangement-300/cases/",
+        "evidence_status": "current local smoke evidence; generated cases and CSVs are ignored artifacts."
+      },
+      "summary": {
+        "focused_unit": "primo_qf_lra_solver_tests passed.",
+        "make_check": "13/13 CTest tests passed.",
+        "fuzz": {
+          "count": 300,
+          "pass": 300,
+          "wrong_answer": 0,
+          "crash_or_error": 0,
+          "timeout": 0,
+          "reference_disagreement": 0
+        },
+        "clang_tidy": "Whole-tree tracked non-generated .cpp clang-tidy sweep completed with no diagnostics.",
+        "include_cleaner_advisory": "misc-include-cleaner reported the existing broad include baseline, mostly self-include and direct-include warnings outside this diff; no include change was made for this milestone.",
+        "efficiency_review": "No new callback full-pair scan, no default-path activation, and no entailed model-equality propagation found. The only added vector work is on the default-off assumption lifecycle path; SAT failed-assumption blocking still emits clauses over negated guessed literals."
+      },
+      "outcome": "Local evidence supports the model-equality arrangement-state refactor: lifecycle counters are covered by focused QF_UFLRA tests, standard local checks pass, and 300 generated QF_UFLRA model-branching cases agree with Z3. The mode remains default-off and is still documented as a partial assumption loop, not full DPLL(T^M)."
     }
   ]
 }
