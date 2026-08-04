@@ -18330,6 +18330,32 @@
         "next_mechanisms": "Local design notes still point to D2 floating-point-guided basis seeding and D4 revised simplex/LU basis representation as the plausible remaining pivot-cost directions; cheaper leaving selection is not supported by this profile."
       },
       "evidence_status": "current"
+    },
+    {
+      "id": "2026-08-04-qf-lra-pivot-vector-capacity-prototype",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "profiling-rejected-experiment",
+      "scope": "Local check of whether pivot() was missing a std::vector capacity-reuse trick on affected-row rebuilds after the 119178 pivot profile showed LraTableau::pivot dominating.",
+      "commit": "b692be3",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo --quiet --stats, Release"
+      },
+      "command": {
+        "target": "tmp/QF_LRA/LassoRanker/CooperatingT2/eric.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+        "prototype": "Throwaway patch changed the default non-SOI pivot affected-row loop to append the rebuilt row into the existing row vector, then erase the old prefix, preserving per-row capacity across repeated rewrites. The SOI/trailing path kept the existing rebuild-and-move path.",
+        "build": "cmake --build build --target primo primo_qf_lra_solver_tests -j4",
+        "unit": "./build/primo_qf_lra_solver_tests",
+        "timing": "for i in 1 2 3; do /usr/bin/time -f 'run$i elapsed %e maxrss %M' build/primo --quiet --stats target >/tmp/primo-vector-proto-$i.out; done"
+      },
+      "summary": {
+        "baseline": "The same target at b692be3 default solved in about 5.6s, with 2015 pivots, 1,221,351 pivot row updates, 73,146,715 pivot term ops, zero Rational promotions and zero Rational big operations.",
+        "prototype_result": "The prototype preserved the exact search and pivot counters but was slower: 6.58s, 6.73s, 6.63s wall time, max RSS about 129 MB. Reported solve-us was 6.40M, 6.54M, 6.44M.",
+        "interpretation": "Capacity reuse is not free in the current vector-of-pairs representation: appending the rebuilt output and erasing the old prefix adds a compaction/move pass over the same hot row data. That cost outweighed any avoided allocation on this representative pivot-heavy case.",
+        "outcome": "Rejected and reverted. The likely vector-level opportunity is not simple capacity reuse; any worthwhile representation change probably needs a different sparse matrix layout such as row/column linked entries or CSR-style occurrence storage, which belongs with the larger D4/revised-simplex representation work."
+      },
+      "evidence_status": "rejected"
     }
   ]
 }
