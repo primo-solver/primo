@@ -499,6 +499,69 @@ void lower_real_equalities_distributes_single_guarded_real_equality() {
   check(result.assertions.front() == expected);
 }
 
+void lower_real_equalities_rewrites_guard_before_distribution() {
+  RealFixture fixture;
+  const primo::core::TermId flag = fixture.terms.mk_constant(
+      fixture.symbols.declare_constant("flag", fixture.symbols.bool_sort()));
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId z = fixture.constant(fixture.z);
+  const primo::core::TermId sum = fixture.terms.mk_plus({x, y});
+  const primo::core::TermId real_equality_guard = fixture.terms.mk_eq(x, y);
+  const primo::core::TermId rewritten_real_equality_guard =
+      fixture.terms.mk_and({fixture.terms.mk_le(x, y), fixture.terms.mk_le(y, x)});
+  const primo::core::TermId guard = fixture.terms.mk_and({flag, real_equality_guard});
+  const primo::core::TermId rewritten_guard =
+      fixture.terms.mk_and({flag, rewritten_real_equality_guard});
+  const primo::core::TermId guarded = fixture.terms.mk_or({guard, fixture.terms.mk_eq(z, sum)});
+
+  const primo::smt::RealEqualityLoweringResult result =
+      primo::smt::lower_real_equalities(fixture.terms, {guarded});
+
+  check(result.lowered == 2);
+  check(result.guarded_distributed == 1);
+  const primo::core::TermId expected =
+      fixture.terms.mk_and({fixture.terms.mk_or({rewritten_guard, fixture.terms.mk_le(z, sum)}),
+                            fixture.terms.mk_or({rewritten_guard, fixture.terms.mk_le(sum, z)})});
+  check(result.assertions.front() == expected);
+}
+
+void lower_real_equalities_does_not_distribute_negated_real_equality() {
+  RealFixture fixture;
+  const primo::core::TermId guard = fixture.terms.mk_constant(
+      fixture.symbols.declare_constant("guard", fixture.symbols.bool_sort()));
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId disequality = fixture.terms.mk_not(fixture.terms.mk_eq(x, y));
+  const primo::core::TermId guarded = fixture.terms.mk_or({guard, disequality});
+
+  const primo::smt::RealEqualityLoweringResult result =
+      primo::smt::lower_real_equalities(fixture.terms, {guarded});
+
+  check(result.lowered == 1);
+  check(result.guarded_distributed == 0);
+  const primo::core::TermId expected =
+      fixture.terms.mk_or({guard, fixture.terms.mk_not(fixture.terms.mk_and(
+                                      {fixture.terms.mk_le(x, y), fixture.terms.mk_le(y, x)}))});
+  check(result.assertions.front() == expected);
+}
+
+void lower_real_equalities_does_not_distribute_uninterpreted_equality() {
+  Fixture fixture;
+  const primo::core::TermId guard = fixture.terms.mk_constant(
+      fixture.symbols.declare_constant("guard", fixture.symbols.bool_sort()));
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId guarded = fixture.terms.mk_or({guard, fixture.terms.mk_eq(a, b)});
+
+  const primo::smt::RealEqualityLoweringResult result =
+      primo::smt::lower_real_equalities(fixture.terms, {guarded});
+
+  check(result.lowered == 0);
+  check(result.guarded_distributed == 0);
+  check(result.assertions.front() == guarded);
+}
+
 void lower_real_equalities_does_not_overdistribute_multiple_guarded_equalities() {
   RealFixture fixture;
   const primo::core::TermId guard = fixture.terms.mk_constant(
@@ -992,6 +1055,9 @@ int main() {
   gaussian_elimination_bails_out_above_equation_cap();
   lower_real_equalities_rewrites_real_sorted_equality_only();
   lower_real_equalities_distributes_single_guarded_real_equality();
+  lower_real_equalities_rewrites_guard_before_distribution();
+  lower_real_equalities_does_not_distribute_negated_real_equality();
+  lower_real_equalities_does_not_distribute_uninterpreted_equality();
   lower_real_equalities_does_not_overdistribute_multiple_guarded_equalities();
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();

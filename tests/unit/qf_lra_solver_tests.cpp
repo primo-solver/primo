@@ -2467,6 +2467,58 @@ void fixed_variable_elimination_fires_and_preserves_the_verdict() {
   }
 }
 
+void guarded_real_equality_lowering_fires_end_to_end() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun guard () Bool)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or guard (= z (+ x y))))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::RealEqualityLowered) == 1);
+  assert(result.statistics.get(StatKey::GuardedRealEqualityDistributed) == 1);
+}
+
+void guarded_real_equality_lowering_does_not_strengthen_guarded_sat_branch() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun guard () Bool)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or guard (= z (+ x y))))
+    (assert (not (= z (+ x y))))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::RealEqualityLowered) == 2);
+  assert(result.statistics.get(StatKey::GuardedRealEqualityDistributed) == 1);
+}
+
+void multiple_guarded_real_equalities_use_generic_lowering_end_to_end() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun guard () Bool)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or guard (= x y) (= y z)))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::RealEqualityLowered) == 2);
+  assert(result.statistics.get(StatKey::GuardedRealEqualityDistributed) == 0);
+}
+
 }  // namespace
 
 int main() {
@@ -2565,5 +2617,8 @@ int main() {
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
   fixed_variable_elimination_fires_and_preserves_the_verdict();
+  guarded_real_equality_lowering_fires_end_to_end();
+  guarded_real_equality_lowering_does_not_strengthen_guarded_sat_branch();
+  multiple_guarded_real_equalities_use_generic_lowering_end_to_end();
   return 0;
 }
