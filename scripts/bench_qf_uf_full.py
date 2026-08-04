@@ -102,36 +102,49 @@ def run_solver(command: list[str], path: Path, timeout: float) -> dict[str, obje
         "exit_code": exit_code,
         "stdout": stdout,
         "stderr": stderr,
-        "stats": parse_stats(stderr),
+        "stats": parse_stats(f"{stdout}\n{stderr}"),
         "stderr_head": " ".join(stderr.splitlines()[:2])[:240],
     }
 
 
-def parse_stats(stderr: str) -> dict[str, str]:
+def parse_stats(output: str) -> dict[str, str]:
     stats: dict[str, str] = {}
     in_llm2smt_stats = False
-    for line in stderr.splitlines():
+    for line in output.splitlines():
         line = line.strip()
         if line == "[stats]":
             in_llm2smt_stats = True
             continue
         if line.startswith("--"):
             continue
+        if line == ")":
+            continue
+        if line.startswith("("):
+            line = line[1:].strip()
+        if line.endswith(")"):
+            line = line[:-1].strip()
         parts = line.split(maxsplit=1)
         if len(parts) != 2:
             continue
+        value = parts[1].strip()
         if line.startswith(":"):
-            stats[parts[0]] = parts[1]
-        elif in_llm2smt_stats and parts[1].isdigit():
-            stats[f"llm2smt.{parts[0]}"] = parts[1]
+            stats[parts[0]] = value
+        elif in_llm2smt_stats and value.isdigit():
+            stats[f"llm2smt.{parts[0]}"] = value
     return stats
 
 
-def stat_value(row: dict[str, object], key: str) -> int:
+def stat_value(row: dict[str, object], key: str) -> float:
     try:
-        return int(str(row.get(key, "") or "0"))
+        return float(str(row.get(key, "") or "0"))
     except ValueError:
-        return 0
+        return 0.0
+
+
+def format_stat_total(value: float) -> str:
+    if value.is_integer():
+        return str(int(value))
+    return f"{value:.6f}"
 
 
 def safe_log_stem(index: int, path: Path) -> str:
@@ -217,7 +230,9 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
         for key in stat_keys:
             total_value = sum(stat_value(row, key) for row in rows)
             active_rows = sum(1 for row in rows if stat_value(row, key) > 0)
-            writer.writerow({"metric": f"stat-total.{key}", "value": total_value})
+            writer.writerow(
+                {"metric": f"stat-total.{key}", "value": format_stat_total(total_value)}
+            )
             writer.writerow(
                 {"metric": f"stat-active-files.{key}", "value": active_rows}
             )
