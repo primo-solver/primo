@@ -18423,6 +18423,48 @@
       },
       "outcome": "Next plausible cheap tropical experiment: an auto positive-phase rule for the tropical shape (single huge assertion, many OR/equality atoms, many positive theory atoms, no ITEs), evaluated first on the 10-file tropical set and then against the full QF_LRA division for regressions. Difference logic is plausible only as a hybrid or special recognizer for the guarded comparison/min subgraph; a pure RDL handoff cannot cover these instances because of the sum-definition layer. Do not promote from local evidence alone.",
       "evidence_status": "diagnostic"
+    },
+    {
+      "id": "2026-08-04-qf-lra-guarded-real-equality-lowering-local",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "implementation-benchmark-fuzz",
+      "scope": "Option 2 tropical experiment: distribute a single guarded Real equality directly to two guarded inequalities in the existing Real-equality lowering pass.",
+      "commit": "7e9c91f",
+      "branch": "qflra-tropical-investigation",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo from working tree before commit; references z3 and yices-smt2 from contrib/local/bin",
+        "notes": "Local correctness and diagnostic performance evidence only; not a SLURM promotion run."
+      },
+      "command": {
+        "focused_tests": "cmake --build build --target primo_preprocessing_tests primo -j4 && ./build/primo_preprocessing_tests; cmake --build build --target primo_qf_lra_solver_tests primo_lra_atom_tests primo_lra_tableau_tests -j4 && ./build/primo_qf_lra_solver_tests && ./build/primo_lra_atom_tests && ./build/primo_lra_tableau_tests",
+        "check": "make check",
+        "fuzz": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 yices-smt2 --logic QF_LRA --count 1000 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf-lra-guarded-real-equality-lowering-20260804 --seed 60806",
+        "single_file_default": "/usr/bin/time -f 'elapsed %e maxrss %M' timeout 60s build/primo --quiet --stats tmp/QF_LRA/tropical-matrix/constraint-199552.smt2 > results/tropical-option2-local/199552-default.out 2> results/tropical-option2-local/199552-default.err",
+        "single_file_positive": "/usr/bin/time -f 'elapsed %e maxrss %M' timeout 60s build/primo --quiet --stats --theory-phase positive tmp/QF_LRA/tropical-matrix/constraint-199552.smt2 > results/tropical-option2-local/199552-positive.out 2> results/tropical-option2-local/199552-positive.err",
+        "ten_file_probe": "Local Python subprocess probe over tmp/QF_LRA/tropical-matrix/*.smt2 at 60s for default and --theory-phase positive; wrote results/tropical-option2-local/tropical-default-60s.csv and results/tropical-option2-local/tropical-positive-60s.csv."
+      },
+      "benchmark": {
+        "suite": "tmp/QF_LRA/tropical-matrix/*.smt2",
+        "logic": "QF_LRA",
+        "timeout_seconds": 60,
+        "artifacts": [
+          "results/tropical-option2-local/",
+          "fuzz-results/qf-lra-guarded-real-equality-lowering-20260804/summary.csv",
+          "fuzz-results/qf-lra-guarded-real-equality-lowering-20260804/bugs/"
+        ]
+      },
+      "summary": {
+        "implementation": "The existing mandatory Real-equality lowering now rewrites an Or with exactly one Real equality child as two guarded inequality disjunctions, avoiding the extra Tseitin variable for the lowered equality conjunction. Multiple guarded Real equalities in the same Or still use the old non-distributed lowering.",
+        "single_file_default": "constraint-199552.smt2 solved sat at the 60s cap in 5.3-5.8s, with 648 guarded distributions, 5460 SAT vars, 10059 SAT clauses, 93 conflicts, 7679 LRA pivots, and 128M pivot term ops. The earlier same-branch default probe had timed out at 45s after about 1.36B pivot term ops.",
+        "single_file_positive": "With --theory-phase positive, constraint-199552.smt2 solved sat in about 11.1s, with 3074 SAT conflicts, 22596 LRA pivots, and 266M pivot term ops. This is still faster than the earlier positive run on the old encoding, but slower than the new default run.",
+        "ten_file_default": "At a local 60s cap, default Primo with this rewrite solved 1/10 tropical files: constraint-199552.smt2. The other 9 timed out.",
+        "ten_file_positive": "At the same local 60s cap, --theory-phase positive with this rewrite also solved 1/10. This regressed the earlier positive-phase diagnostic where constraint-223827.smt2 solved in about 11.3s.",
+        "fuzz": "QF_LRA fuzzsmt count 1000, seed 60806, timeout 5s, refs z3 and yices-smt2: 995 PASS, 5 timeout-only cases, 0 wrong answers, 0 crashes, 0 reference disagreements.",
+        "interpretation": "Sound and useful as a small SAT-encoding simplification, with a large local win on constraint-199552.smt2, but not a tropical-family solution. Do not cite as broad performance improvement until a SLURM tropical/full-QF_LRA A/B is run."
+      },
+      "evidence_status": "current-local"
     }
   ]
 }

@@ -43,6 +43,7 @@ GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
 struct RealEqualityLoweringResult {
   std::vector<core::TermId> assertions;
   std::size_t lowered = 0;
+  std::size_t guarded_distributed = 0;
 };
 
 // Rewrites every Equality node whose operands are Real-sorted into

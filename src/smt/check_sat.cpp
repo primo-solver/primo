@@ -82,6 +82,8 @@ constexpr util::StatKey kStatSolvedConstantRejectedCycles =
 constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
 constexpr util::StatKey kStatRealEqualityLowered = util::StatKey::RealEqualityLowered;
+constexpr util::StatKey kStatGuardedRealEqualityDistributed =
+    util::StatKey::GuardedRealEqualityDistributed;
 constexpr util::StatKey kStatSolvedConstantGaussianCandidates =
     util::StatKey::SolvedConstantGaussianCandidates;
 constexpr util::StatKey kStatFiniteDomainDomains = util::StatKey::FiniteDomainDomains;
@@ -8807,6 +8809,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           lower_real_equalities(frontend.terms(), assertions);
       assertions = std::move(lowered_equalities.assertions);
       statistics.increment(kStatRealEqualityLowered, lowered_equalities.lowered);
+      statistics.increment(kStatGuardedRealEqualityDistributed,
+                           lowered_equalities.guarded_distributed);
     }
     if (use_symmetry_breaking) {
       if (!symmetry_result.has_value()) {

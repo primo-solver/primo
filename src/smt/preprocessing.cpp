@@ -1951,9 +1951,15 @@ core::TermId rewrite_with_solved_constants(
   return rewritten;
 }
 
+bool is_real_equality(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  return term.kind == core::TermKind::Equality &&
+         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+}
+
 core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermId term_id,
                                            std::unordered_map<core::TermId, core::TermId>& memo,
-                                           std::size_t& lowered) {
+                                           RealEqualityLoweringResult& result) {
   if (const auto found = memo.find(term_id); found != memo.end()) {
     return found->second;
   }
@@ -1976,7 +1982,7 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
       bool changed = false;
       for (const core::TermId child : children) {
         const core::TermId rewritten_child =
-            lower_real_equalities_rewrite(terms, child, memo, lowered);
+            lower_real_equalities_rewrite(terms, child, memo, result);
         changed = changed || rewritten_child != child;
         rewritten_children.push_back(rewritten_child);
       }
@@ -1986,41 +1992,80 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
       break;
     }
     case core::TermKind::Equality: {
-      const core::TermId lhs = lower_real_equalities_rewrite(terms, children.at(0), memo, lowered);
-      const core::TermId rhs = lower_real_equalities_rewrite(terms, children.at(1), memo, lowered);
+      const core::TermId lhs = lower_real_equalities_rewrite(terms, children.at(0), memo, result);
+      const core::TermId rhs = lower_real_equalities_rewrite(terms, children.at(1), memo, result);
       if (terms.get(lhs).sort == terms.symbols().real_sort()) {
         rewritten = terms.mk_and({terms.mk_le(lhs, rhs), terms.mk_le(rhs, lhs)});
-        ++lowered;
+        ++result.lowered;
       } else {
         rewritten = terms.mk_eq(lhs, rhs);
       }
       break;
     }
     case core::TermKind::Not:
-      rewritten = terms.mk_not(lower_real_equalities_rewrite(terms, children.at(0), memo, lowered));
+      rewritten = terms.mk_not(lower_real_equalities_rewrite(terms, children.at(0), memo, result));
       break;
     case core::TermKind::And: {
       std::vector<core::TermId> rewritten_children;
       rewritten_children.reserve(children.size());
       for (const core::TermId child : children) {
-        rewritten_children.push_back(lower_real_equalities_rewrite(terms, child, memo, lowered));
+        rewritten_children.push_back(lower_real_equalities_rewrite(terms, child, memo, result));
       }
       rewritten = terms.mk_and(std::move(rewritten_children));
       break;
     }
     case core::TermKind::Or: {
+      std::optional<core::TermId> equality_child;
+      for (const core::TermId child : children) {
+        if (!is_real_equality(terms, child)) {
+          continue;
+        }
+        if (equality_child.has_value()) {
+          equality_child.reset();
+          break;
+        }
+        equality_child = child;
+      }
+      if (equality_child.has_value() && children.size() > 1) {
+        const core::Term& equality = terms.get(*equality_child);
+        const core::TermId lhs =
+            lower_real_equalities_rewrite(terms, equality.children.at(0), memo, result);
+        const core::TermId rhs =
+            lower_real_equalities_rewrite(terms, equality.children.at(1), memo, result);
+
+        std::vector<core::TermId> le_children;
+        std::vector<core::TermId> ge_children;
+        le_children.reserve(children.size());
+        ge_children.reserve(children.size());
+        for (const core::TermId child : children) {
+          if (child == *equality_child) {
+            continue;
+          }
+          const core::TermId rewritten_child =
+              lower_real_equalities_rewrite(terms, child, memo, result);
+          le_children.push_back(rewritten_child);
+          ge_children.push_back(rewritten_child);
+        }
+        le_children.push_back(terms.mk_le(lhs, rhs));
+        ge_children.push_back(terms.mk_le(rhs, lhs));
+        rewritten = terms.mk_and(
+            {terms.mk_or(std::move(le_children)), terms.mk_or(std::move(ge_children))});
+        ++result.lowered;
+        ++result.guarded_distributed;
+        break;
+      }
       std::vector<core::TermId> rewritten_children;
       rewritten_children.reserve(children.size());
       for (const core::TermId child : children) {
-        rewritten_children.push_back(lower_real_equalities_rewrite(terms, child, memo, lowered));
+        rewritten_children.push_back(lower_real_equalities_rewrite(terms, child, memo, result));
       }
       rewritten = terms.mk_or(std::move(rewritten_children));
       break;
     }
     case core::TermKind::Implies:
       rewritten =
-          terms.mk_implies(lower_real_equalities_rewrite(terms, children.at(0), memo, lowered),
-                           lower_real_equalities_rewrite(terms, children.at(1), memo, lowered));
+          terms.mk_implies(lower_real_equalities_rewrite(terms, children.at(0), memo, result),
+                           lower_real_equalities_rewrite(terms, children.at(1), memo, result));
       break;
   }
   memo.emplace(term_id, rewritten);
@@ -2451,8 +2496,7 @@ RealEqualityLoweringResult lower_real_equalities(core::TermManager& terms,
   result.assertions.reserve(assertions.size());
   std::unordered_map<core::TermId, core::TermId> memo;
   for (const core::TermId assertion : assertions) {
-    result.assertions.push_back(
-        lower_real_equalities_rewrite(terms, assertion, memo, result.lowered));
+    result.assertions.push_back(lower_real_equalities_rewrite(terms, assertion, memo, result));
   }
   return result;
 }

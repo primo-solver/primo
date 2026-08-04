@@ -472,9 +472,27 @@ to see and reason about genuine Real `Equality` nodes, instead of a second,
 parallel `And(Le,Le)` representation those passes would otherwise need to
 special-case. It must still run before `BooleanClausifier`/theory dispatch,
 or QF_LRA disequality would regress to needing the case-split machinery this
-design avoids. Reported by `:preprocessing.real-equality-lowering.lowered`.
-Not optional (no CLI flag) -- it is load-bearing for correctness, not a
-heuristic.
+design avoids.
+
+For a guarded disjunction with exactly one Real equality child, the pass lowers
+the equality by distributing the guard directly:
+
+```text
+(or G (= x y))  ==>  (and (or G (<= x y))
+                          (or G (<= y x)))
+```
+
+This is a local Boolean rewrite, not a separate arithmetic propagator. It keeps
+LRA as the only arithmetic checker while avoiding the extra Tseitin variable
+that would be introduced by first rewriting the equality to an inner
+`And(Le,Le)` under the `Or`. The implementation deliberately does not
+distribute disjunctions with multiple Real equality children, where the direct
+CNF expansion would either blow up or require a more careful clausification
+strategy.
+
+Reported by `:preprocessing.real-equality-lowering.lowered` and
+`:preprocessing.real-equality-lowering.guarded-distributed`. Not optional (no
+CLI flag) -- it is load-bearing for correctness, not a heuristic.
 
 ## ITE Lowering
 
