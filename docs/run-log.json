@@ -17371,7 +17371,7 @@
       "id": "2026-08-04-qf-uflra-online-final-scan-fallback-local",
       "date": "2026-08-04",
       "branch": "nelson-oppen-closure-methods",
-      "commit": "74e0375",
+      "commit": "ebe692a",
       "kind": "local-validation",
       "scope": "Local validation for the online final-arrangement fallback after the c4caf88 SLURM sample exposed SAT-to-unknown regressions.",
       "evidence_status": "pending_commit_and_slurm_followup",
