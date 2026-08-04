@@ -11,6 +11,5 @@ from __future__ import annotations
 
 from validate_qfuf_models_with_dolmen import main as validate_qfuf_models
 
-
 if __name__ == "__main__":
     raise SystemExit(validate_qfuf_models())

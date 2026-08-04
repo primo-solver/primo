@@ -17,7 +17,6 @@ import time
 from collections import Counter
 from pathlib import Path
 
-
 ANSWERS = {"sat", "unsat", "unknown", "unsupported"}
 CHECKABLE_ANSWERS = {"sat", "unsat"}
 TIMEOUT_GRACE_SECONDS = 2.0
@@ -334,7 +333,7 @@ def main() -> int:
             key
             for row in rows
             for key in row
-            if key.startswith(":") or key.startswith("llm2smt.")
+            if key.startswith((":", "llm2smt."))
         }
     )
     fieldnames = [*base_fieldnames, *stat_fieldnames]

@@ -13,7 +13,6 @@ import csv
 import sys
 from pathlib import Path
 
-
 CHECKABLE = {"sat", "unsat"}
 
 

@@ -15,7 +15,6 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-
 API_URL = "https://api.github.com/repos/cvc5/cvc5/releases/latest"
 
 

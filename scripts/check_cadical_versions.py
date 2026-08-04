@@ -30,8 +30,7 @@ def solver_version(solver: Path, repo: Path) -> str:
         cwd=repo,
         check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         timeout=10,
     )
     return (proc.stdout + proc.stderr).strip().replace("\n", " | ")

@@ -36,7 +36,6 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-
 API_URL = (
     "https://api.github.com/repos/usi-verification-and-security/opensmt/releases/latest"
 )

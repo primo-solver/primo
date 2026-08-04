@@ -8,7 +8,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 REPO = "https://github.com/arminbiere/cadical.git"
 
 

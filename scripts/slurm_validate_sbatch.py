@@ -15,7 +15,6 @@ import re
 import subprocess
 from pathlib import Path
 
-
 HEREDOC_RE = re.compile(
     r"<<-?\s*(?P<quoted>['\"]?)(?P<tag>[A-Za-z_][A-Za-z0-9_]*)['\"]?"
 )
@@ -26,8 +25,7 @@ def bash_syntax_check(path: Path) -> list[str]:
     proc = subprocess.run(
         ["bash", "-n", str(path)],
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if proc.returncode == 0:

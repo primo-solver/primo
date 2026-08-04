@@ -31,7 +31,6 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-
 API_URL = "https://api.github.com/repos/SRI-CSL/yices2/releases/latest"
 
 

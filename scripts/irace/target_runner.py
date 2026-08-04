@@ -15,7 +15,6 @@ import sys
 import time
 from pathlib import Path
 
-
 ANSWERS = {"sat", "unsat", "unknown", "unsupported"}
 CHECKABLE = {"sat", "unsat"}
 
@@ -155,8 +154,7 @@ def main() -> int:
             command,
             check=False,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
         )
         stdout = proc.stdout

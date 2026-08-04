@@ -11,7 +11,6 @@ import tarfile
 import urllib.request
 from pathlib import Path
 
-
 DEFAULT_VERSION = "6.3.0"
 URL_TEMPLATE = "https://ftp.gnu.org/gnu/gmp/gmp-{version}.tar.xz"
 
@@ -47,9 +46,8 @@ def main() -> int:
         with urllib.request.urlopen(url, timeout=120) as response:
             archive.write_bytes(response.read())
         print(f"Extracting {archive}")
-        with lzma.open(archive) as xz:
-            with tarfile.open(fileobj=xz) as tar:
-                tar.extractall(src_root)
+        with lzma.open(archive) as xz, tarfile.open(fileobj=xz) as tar:
+            tar.extractall(src_root)
         archive.unlink()
 
     # Build out of a stable "gmp" symlink-free copy so re-runs with a

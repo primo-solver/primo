@@ -18,7 +18,6 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-
 DEFAULT_FAMILY_GLOBS = {
     "Goel-hwbench": "tmp/QF_UF/2018-Goel-hwbench/*.smt2",
     "NEQ": "tmp/QF_UF/**/NEQ*.smt2",
@@ -456,7 +455,7 @@ def main() -> int:
             key
             for row in rows
             for key in row
-            if key.startswith(":") or key.startswith("llm2smt.")
+            if key.startswith((":", "llm2smt."))
         }
     )
     fieldnames.extend(stat_fields)

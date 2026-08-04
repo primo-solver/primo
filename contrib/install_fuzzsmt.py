@@ -9,7 +9,6 @@ import stat
 import subprocess
 from pathlib import Path
 
-
 REPO = "https://github.com/msoos/fuzzsmt.git"
 
 
