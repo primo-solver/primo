@@ -18471,6 +18471,112 @@
         "code_review": "code review pass: no blocking issues found. The remaining known gap is algorithmic, not from this patch: generic DPLL(T^M), freedom-interval mutation, and non-LRA model-equality propagation are still unsupported."
       },
       "outcome": "Accepted as a conservative QF_UFLRA slice. Mutation-forced LRA model equalities now become explained guarded clauses, while avoidable model equalities remain skipped and unexplained model guesses remain SAT assumptions. The behavior remains default-off under --model-equality-branching and is not a default performance claim."
+    },
+    {
+      "id": "2026-08-04-slurm-qf-uflra-model-equality-forced-clause-06ae7ad",
+      "started_at": "2026-08-04T16:48:00+02:00",
+      "recorded_at": "2026-08-04T16:56:04+02:00",
+      "kind": "validation",
+      "scope": "SLURM validation for the default-off QF_UFLRA mutation-forced model-equality clause path. This validates the pushed nelson-oppen-online-lazy-ipasir-up branch on the remote Release build and compares the model-equality branch option against default Primo and Z3 on the deterministic QF_UFLRA sample.",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "06ae7ad",
+      "environment": {
+        "type": "slurm",
+        "host": "SLURM remote workspace",
+        "slurm_job_ids": {
+          "qf_uflra_fuzz_gate": "119319",
+          "qf_uflra_sample_compare": "119323"
+        },
+        "binary": "build-slurm-rel/primo reports git: 06ae7ad, build: Release, sanitizers: none, cadical: cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3 reports Z3 version 5.0.0 - 64 bit"
+      },
+      "commands": {
+        "workspace_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --remote <slurm-remote> --remote-dir <remote-workspace> --target primo --check-only",
+        "validate_fuzz_sbatch": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_fuzz_gate.sbatch && bash -n scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "validate_sample_sbatch": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_sample_compare.sbatch && bash -n scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "stage_manifest": "python3 scripts/slurm_stage_manifest_files.py --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "fuzz_submit": "sbatch --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_FUZZ_COUNT=250,PRIMO_FUZZ_SEED_BASE=2026080412,PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-model-eq-forced-fuzz-06ae7ad-z3 scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "sample_submit": "sbatch --array=0-2 --export=ALL,PRIMO_WORKDIR=$PWD,PRIMO_COMPARE_TIMEOUT=10,PRIMO_COMPARE_OUT_ROOT=results/qf-uflra-model-eq-forced-sample-06ae7ad,PRIMO_COMPARE_SOLVERS='default=build-slurm-rel/primo --quiet --stats;model=build-slurm-rel/primo --quiet --stats --model-equality-branching;z3=contrib/local/bin/z3' scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "fuzz_aggregate": "python3 csv aggregation over slurm-results/qf_uflra-model-eq-forced-fuzz-06ae7ad-z3/task-*/summary.csv",
+        "sample_compare": "python3 scripts/compare_solver_answers.py results/qf-uflra-model-eq-forced-sample-06ae7ad --timeout 10",
+        "sample_html": "python3 scripts/render_solver_compare_html.py results/qf-uflra-model-eq-forced-sample-06ae7ad --solvers default model z3 --title 'QF_UFLRA model equality forced sample 06ae7ad' --timeout 10 --out results/qf-uflra-model-eq-forced-sample-06ae7ad/index.html"
+      },
+      "benchmark": {
+        "fuzz": {
+          "logic": "QF_UFLRA",
+          "suite": "1000 generated mixed QF_UFLRA formulas from scripts/qf_uflra_smoke_fuzz.py split across four SLURM array tasks",
+          "seed_base": 2026080412,
+          "array_tasks": 4,
+          "count_per_task": 250,
+          "timeout_seconds": 5,
+          "solver_argv": "./build-slurm-rel/primo",
+          "reference_argv": "z3"
+        },
+        "sample": {
+          "logic": "QF_UFLRA",
+          "suite": "20-file deterministic sample from benchmarks/qf_uflra-smtlib-sample-5-per-family.txt staged from tmp/QF_UFLRA",
+          "timeout_seconds": 10,
+          "solvers": {
+            "default": "build-slurm-rel/primo --quiet --stats",
+            "model": "build-slurm-rel/primo --quiet --stats --model-equality-branching",
+            "z3": "contrib/local/bin/z3"
+          }
+        }
+      },
+      "artifacts": {
+        "fuzz_summary_glob": "slurm-results/qf_uflra-model-eq-forced-fuzz-06ae7ad-z3/task-*/summary.csv",
+        "fuzz_cases": "slurm-results/qf_uflra-model-eq-forced-fuzz-06ae7ad-z3/task-*/cases/",
+        "sample_results": "results/qf-uflra-model-eq-forced-sample-06ae7ad/",
+        "sample_html": "results/qf-uflra-model-eq-forced-sample-06ae7ad/index.html",
+        "slurm_logs": "results/slurm_logs/qf-uflra-model-eq-forced-06ae7ad/",
+        "evidence_status": "current SLURM validation evidence; generated fuzz cases, benchmark CSVs, and SLURM logs are local artifacts and are not committed."
+      },
+      "summary": {
+        "fuzz": {
+          "total": 1000,
+          "pass": 1000,
+          "wrong_answer": 0,
+          "crash_or_error": 0,
+          "timeout": 0,
+          "reference_disagreement": 0,
+          "primo_sat": 702,
+          "primo_unsat": 298,
+          "z3_sat": 702,
+          "z3_unsat": 298
+        },
+        "sample_compare": {
+          "cross_solver_disagreements": 0,
+          "non_standard_unsolved": 0,
+          "default": {
+            "files": 20,
+            "solved": 16,
+            "sat": 13,
+            "unsat": 3,
+            "timeout": 4,
+            "error": 0,
+            "par2": 84.929014
+          },
+          "model": {
+            "files": 20,
+            "solved": 16,
+            "sat": 13,
+            "unsat": 3,
+            "timeout": 4,
+            "error": 0,
+            "par2": 84.658873
+          },
+          "z3": {
+            "files": 20,
+            "solved": 20,
+            "sat": 17,
+            "unsat": 3,
+            "timeout": 0,
+            "error": 0,
+            "par2": 3.752949
+          }
+        }
+      },
+      "outcome": "Accepted as SLURM-backed validation evidence for commit 06ae7ad. The model-equality branch option shows no wrong answers or non-timeout errors in this gate and no dramatic timing change versus default Primo on the deterministic 20-file QF_UFLRA sample; Z3 remains substantially faster on the sample."
     }
   ]
 }
