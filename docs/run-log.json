@@ -18195,6 +18195,52 @@
         "This is a local merge gate for an opt-in heuristic; it is not a campaign gate for default promotion."
       ],
       "outcome": "No correctness blocker was found for keeping --lra-model-phase as an opt-in QF_LRA heuristic."
+    },
+    {
+      "id": "2026-08-04-qf-lra-h5-ipasir-merge-local",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "merge-validation",
+      "scope": "Merged the H5 opt-in QF_LRA model-phase heuristic onto origin/main after the backend-neutral IPASIR-UP callback adapter landed, then revalidated the H5 path locally.",
+      "commit": "84336a2",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo at merge commit 84336a2; references z3 and contrib/local/bin/yices-smt2 used only for fuzz answer comparison."
+      },
+      "command": {
+        "merge": "git merge origin/main, resolving docs/arithmetic.md and src/smt/check_sat.cpp by keeping upstream sat::ExternalPropagator/IpasirUpBackend and applying H5 phase hints through IpasirUpBackend::phase",
+        "check": "make check",
+        "docs": "make docs",
+        "asan": "make asan-test",
+        "tidy": "make tidy",
+        "include_cleaner": "make include-cleaner (advisory; completed with the repository's broad existing include-cleaner warning class plus upstream warnings in new IPASIR/theory-combination files)",
+        "fuzz": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --lra-model-phase' --refs z3 yices-smt2 --logic QF_LRA --count 1000 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf-lra-h5-ipasir-merge-fuzzsmt-20260804 --seed 60805",
+        "default_benchmark": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_LRA --manifest benchmarks/qf-lra-h5-evaluation.txt --solver ./build/primo --solver-arg=--quiet --timeout 10 --out results/qf-lra-h5-ipasir-merge-local-20260804/default.csv --summary results/qf-lra-h5-ipasir-merge-local-20260804/default-summary.csv",
+        "model_phase_benchmark": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_LRA --manifest benchmarks/qf-lra-h5-evaluation.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--lra-model-phase --timeout 10 --out results/qf-lra-h5-ipasir-merge-local-20260804/model-phase.csv --summary results/qf-lra-h5-ipasir-merge-local-20260804/model-phase-summary.csv"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-h5-evaluation.txt (13 files) and 1000 generated FuzzSMT QF_LRA inputs",
+        "logic": "QF_LRA",
+        "timeout_seconds": "10 for benchmark rows, 5 for generated fuzz inputs",
+        "artifacts": [
+          "results/qf-lra-h5-ipasir-merge-local-20260804/default-summary.csv",
+          "results/qf-lra-h5-ipasir-merge-local-20260804/model-phase-summary.csv",
+          "fuzz-results/qf-lra-h5-ipasir-merge-fuzzsmt-20260804/summary.csv"
+        ]
+      },
+      "summary": {
+        "unit_and_docs": "make check, make docs, make asan-test, and make tidy passed on the merged tree.",
+        "fuzz": "1000 FuzzSMT QF_LRA cases with --lra-model-phase: 996 PASS, 4 TIMEOUT, 0 wrong answers, 0 crashes, 0 parser/type errors, 0 reference disagreements. The timeout-only inputs copied to bugs were files 87, 173, 830, and 877.",
+        "focused_benchmark": "Default and --lra-model-phase both solved 12/13; tropical-matrix/constraint-199552.smt2 timed out in both. Focused PAR2 moved from 25.320037 to 23.330412 at 10s.",
+        "per_file_signal": "H5 improved TM/p-DepotsNum, TM/p6, sc-17, sc-19, sc-21, sc-27, uart-16, uart-18, uart-25, and tta_startup/simple_startup_12nodes.missing; it regressed uart-17 and uart-15. The tropical sentinel still timed out."
+      },
+      "caveats": [
+        "This is a local merge validation, not a SLURM or broad-regression promotion run.",
+        "Timeout-only fuzz cases are performance artifacts, not correctness failures.",
+        "No OpenSMT, Yices, or other solver source was inspected."
+      ],
+      "outcome": "The clean IPASIR-UP merge is compatible with H5 after resolving OnlineLraPropagator to depend on sat::IpasirUpBackend instead of CadicalBackend. H5 remains opt-in; the focused local result is positive but not enough for default promotion."
     }
   ]
 }
