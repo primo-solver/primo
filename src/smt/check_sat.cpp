@@ -1,6 +1,7 @@
 #include "smt/check_sat.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -737,8 +738,18 @@ class Frontend {
   bool saw_check_sat() const { return saw_check_sat_; }
   bool requested_model() const { return requested_model_; }
   bool produce_models() const { return produce_models_; }
-  const std::vector<core::TermId>& declared_real_constants() const {
-    return declared_real_constants_;
+  bool has_declared_real_constants() const { return !declared_real_constant_symbols_.empty(); }
+
+  // Materialises a term per declared Real constant. Only call once the search
+  // is over: mk_constant interns, so this assigns TermIds. Constants that
+  // already occur in an assertion keep the id they were interned with.
+  std::vector<core::TermId> declared_real_constant_terms() {
+    std::vector<core::TermId> model_terms;
+    model_terms.reserve(declared_real_constant_symbols_.size());
+    for (const core::SymbolId symbol : declared_real_constant_symbols_) {
+      model_terms.push_back(terms_.mk_constant(symbol));
+    }
+    return model_terms;
   }
   const core::SymbolTable& symbols() const { return symbols_; }
   const core::TermManager& terms() const { return terms_; }
@@ -840,7 +851,17 @@ class Frontend {
     if (arg_sorts.empty()) {
       const core::SymbolId symbol = symbols_.declare_constant(command.name, result_sort);
       if (result_sort == symbols_.real_sort()) {
-        declared_real_constants_.push_back(terms_.mk_constant(symbol));
+        // Record the symbol, not a term. Interning a term here would allocate
+        // TermIds in *declaration* order rather than first-use order, and
+        // preprocessing's Gaussian elimination pivots in ascending TermId
+        // order (collect_gaussian_elimination_candidates sorts
+        // eligible_variables), so doing it eagerly silently changes which
+        // substitutions preprocessing accepts -- on miplib/vpm2-0 that moved
+        // :preprocessing.solve-eqs.rewrites 390 -> 252 and :lra.pivots
+        // 26890 -> 12537, on every run, whether or not a model was asked for.
+        // Terms are materialised in declared_real_constant_terms(), after
+        // solving, where they cannot perturb the search.
+        declared_real_constant_symbols_.push_back(symbol);
       }
     } else if (result_sort == symbols_.bool_sort()) {
       symbols_.declare_predicate(command.name, std::move(arg_sorts));
@@ -890,7 +911,7 @@ class Frontend {
   std::unordered_set<std::string> expanding_definitions_;
   std::unordered_map<std::string, core::TermId> nullary_definition_cache_;
   std::vector<core::TermId> side_assertions_;
-  std::vector<core::TermId> declared_real_constants_;
+  std::vector<core::SymbolId> declared_real_constant_symbols_;
   std::optional<std::string> logic_;
   std::size_t auxiliary_counter_ = 0;
   std::size_t boolean_ites_ = 0;
@@ -1405,16 +1426,23 @@ void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
                                   k = std::move(k)](std::vector<core::TermId> operands) mutable {
     const core::TermId lhs = operands[0];
     const core::TermId rhs = operands[1];
-    if (frontend_.terms_.get(lhs).kind != core::TermKind::Rational ||
-        frontend_.terms_.get(rhs).kind != core::TermKind::Rational) {
-      throw UnsupportedInput("/ is only supported between rational literals in QF_LRA");
+    // Only the divisor has to be a literal. Dividing a linear term by a
+    // nonzero rational is linear -- (/ t c) is (* (1/c) t) -- so it belongs in
+    // QF_LRA, and both z3 and Yices accept it. Requiring the dividend to be a
+    // literal too rejected ordinary input such as (/ x 2.0).
+    if (frontend_.terms_.get(rhs).kind != core::TermKind::Rational) {
+      throw UnsupportedInput("/ requires a literal rational divisor (QF_LRA)");
     }
     const util::Rational& denominator = frontend_.terms_.get(rhs).rational_value;
     if (denominator.is_zero()) {
       throw UnsupportedInput("division by zero is not a valid QF_LRA literal");
     }
-    resume(std::move(k),
-           frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value / denominator));
+    if (frontend_.terms_.get(lhs).kind == core::TermKind::Rational) {
+      resume(std::move(k),
+             frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value / denominator));
+      return;
+    }
+    resume(std::move(k), frontend_.terms_.mk_times(util::Rational(1) / denominator, lhs));
   });
 }
 
@@ -6271,6 +6299,22 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     reason_stream_index_ = 0;
   }
 
+  // Unconditional `true` is sound, but only because this propagator runs in
+  // EAGER mode, and that coupling is not local -- so it is stated here.
+  //
+  // CaDiCaL's search loop (contrib/src/cadical/src/internal.cpp) runs
+  // `external_propagate()` BEFORE it tests `satisfied()`, and
+  // `external_propagate()` calls `ask_external_clause()` -- hence
+  // `cb_has_external_clause()`, hence run_deferred_check_if_needed() --
+  // unconditionally whenever there is no conflict
+  // (external_propagate.cpp, "if (!unsat && !conflict)"). So by the time
+  // `external_check_solution()` asks us to approve a model, the theory check
+  // has already run this iteration and produced no conflict clause. There is
+  // nothing left to verify.
+  //
+  // That entire argument collapses if the propagator is ever registered lazy.
+  // The SAT adapter owns that backend-specific registration detail; CaDiCaL's
+  // adapter currently leaves ExternalPropagator::is_lazy at its eager default.
   bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
 
   // Competitiveness-roadmap item 8: called by CaDiCaL right before it would
@@ -6355,6 +6399,18 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   int cb_add_reason_clause_lit(int propagated_lit) override {
     const auto found = reasons_.find(propagated_lit);
     if (found == reasons_.end()) {
+      // Returning 0 here streams an EMPTY reason clause, and CaDiCaL
+      // documents that an external clause which is empty after simplification
+      // sets `unsat` -- i.e. a missing reason would answer "unsatisfiable".
+      // In practice CaDiCaL's own REQUIRE ("external reason clause must
+      // contain the propagated literal") aborts first, and contracts are
+      // compiled into our build, so this is loud rather than silent. Assert
+      // anyway, so the failure names OUR broken invariant -- cb_propagate
+      // records reasons_[lit] before returning lit, and notify_backtrack
+      // erases only literals it actually unassigns -- rather than CaDiCaL's
+      // symptom. Getting that erasure wrong was a real bug once (see
+      // notify_backtrack's comment).
+      assert(false && "CaDiCaL asked for a reason we never recorded");
       return 0;
     }
     if (reason_stream_active_lit_ != propagated_lit) {
@@ -8747,9 +8803,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
       CheckSatOutcome outcome = finish(CheckSatResult::Sat);
       if (options.produce_model) {
-        if (!frontend.declared_real_constants().empty()) {
-          outcome.model = build_qf_lra_preprocessing_only_model(frontend.terms(),
-                                                                frontend.declared_real_constants(),
+        if (frontend.has_declared_real_constants()) {
+          const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
+          outcome.model = build_qf_lra_preprocessing_only_model(frontend.terms(), model_terms,
                                                                 preprocessing_model_assignments);
         } else {
           outcome.model = build_qf_uf_model(frontend.terms(), preprocessing_model_assignments);
@@ -8798,26 +8854,35 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       return outcome;
     };
     if ((has_equality || has_euf_predicate) && has_arithmetic) {
+      const std::vector<core::TermId> model_terms = solve_options.produce_model
+                                                        ? frontend.declared_real_constant_terms()
+                                                        : std::vector<core::TermId>{};
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(
-          solve_qf_uf_lra(frontend.terms(), assertions, frontend.declared_real_constants(),
+          solve_qf_uf_lra(frontend.terms(), assertions, model_terms,
                           preprocessing_model_assignments, solve_options, statistics),
           solve_start);
     }
     if (has_arithmetic) {
+      // Empty unless a model was requested. Materialising here would intern the
+      // declared constants before the search, and preprocessing has already
+      // run -- but interning still costs TermIds for constants that appear in
+      // no assertion, so keep the benchmark path allocating nothing.
+      const std::vector<core::TermId> lra_model_terms =
+          solve_options.produce_model ? frontend.declared_real_constant_terms()
+                                      : std::vector<core::TermId>{};
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(
-          solve_qf_lra(frontend.terms(), assertions, frontend.declared_real_constants(),
-                       preprocessing_model_assignments, solve_options, statistics),
-          solve_start);
+      return finish_solve(solve_qf_lra(frontend.terms(), assertions, lra_model_terms,
+                                       preprocessing_model_assignments, solve_options, statistics),
+                          solve_start);
     }
-    if (options.produce_model && !frontend.declared_real_constants().empty() && !has_equality &&
+    if (options.produce_model && frontend.has_declared_real_constants() && !has_equality &&
         !has_euf_predicate) {
+      const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(
-          solve_qf_lra(frontend.terms(), assertions, frontend.declared_real_constants(),
-                       preprocessing_model_assignments, solve_options, statistics),
-          solve_start);
+      return finish_solve(solve_qf_lra(frontend.terms(), assertions, model_terms,
+                                       preprocessing_model_assignments, solve_options, statistics),
+                          solve_start);
     }
     if (has_equality) {
       const PhaseClock::time_point solve_start = PhaseClock::now();

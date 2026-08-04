@@ -6,12 +6,15 @@ set -euo pipefail
 SEEDS="benchmarks/seeds/qf_uf"
 SOLVER="build/primo --quiet"
 REF="z3 model_validate=true"
-SECONDS=300
+WALL_SECONDS=300
 ITERATIONS=50
 SOLVER_TIMEOUT=8
 BUGS="yinyang_bugs"
 SCRATCH="yinyang_scratch"
 FILE_SIZE_LIMIT=20000
+CONFIG=""
+KEEP_LOGIC=0
+HOIST_DECLARATIONS=0
 TYPEFUZZ="${TYPEFUZZ:-typefuzz}"
 YINYANG_INSTALL_SPEC="${YINYANG_INSTALL_SPEC:-yinyang}"
 DIAGNOSE=0
@@ -32,6 +35,9 @@ Options:
   --bugs DIR               bug output directory
   --scratch DIR            scratch directory
   --file-size-limit N      max seed size in bytes
+  --config PATH            operator/signature config restricting mutations
+  --keep-logic             keep the seed's (set-logic ...) in mutants
+  --hoist-declarations     emit declarations before their first use
   --typefuzz PATH          typefuzz executable
   --diagnose               forward solver output to stdout
   --keep-mutants           keep generated mutants in scratch
@@ -58,12 +64,15 @@ while (($#)); do
         --seeds) SEEDS="$2"; shift 2 ;;
         --solver) SOLVER="$2"; shift 2 ;;
         --ref) REF="$2"; shift 2 ;;
-        --seconds) SECONDS="$2"; shift 2 ;;
+        --seconds) WALL_SECONDS="$2"; shift 2 ;;
         --iterations) ITERATIONS="$2"; shift 2 ;;
         --solver-timeout) SOLVER_TIMEOUT="$2"; shift 2 ;;
         --bugs) BUGS="$2"; shift 2 ;;
         --scratch) SCRATCH="$2"; shift 2 ;;
         --file-size-limit) FILE_SIZE_LIMIT="$2"; shift 2 ;;
+        --config) CONFIG="$2"; shift 2 ;;
+        --keep-logic) KEEP_LOGIC=1; shift ;;
+        --hoist-declarations) HOIST_DECLARATIONS=1; shift ;;
         --typefuzz) TYPEFUZZ="$2"; shift 2 ;;
         --diagnose) DIAGNOSE=1; shift ;;
         --keep-mutants) KEEP_MUTANTS=1; shift ;;
@@ -120,14 +129,54 @@ cmd=(
 if ((DIAGNOSE)); then
     cmd+=(-d)
 fi
+if [[ -n $CONFIG ]]; then
+    if [[ ! -f $CONFIG ]]; then
+        echo "Error: --config file does not exist: $CONFIG" >&2
+        exit 1
+    fi
+    cmd+=(-c "$CONFIG")
+fi
+if ((KEEP_LOGIC)); then
+    cmd+=(-kl)
+fi
+if ((HOIST_DECLARATIONS)); then
+    cmd+=(-hd)
+fi
 if ((KEEP_MUTANTS)); then
-    cmd+=(-km)
+    cmd+=(-k)
 fi
 cmd+=("${EXTRA_ARGS[@]}")
 cmd+=("$SOLVER;$REF" "$SEEDS")
 
 echo "YinYang command:"
-printf '  %q' timeout "$SECONDS" "${cmd[@]}"
+printf '  %q' timeout "$WALL_SECONDS" "${cmd[@]}"
 echo
 
-timeout "$SECONDS" "${cmd[@]}"
+exit_code=0
+timeout "$WALL_SECONDS" "${cmd[@]}" || exit_code=$?
+
+# Reaching --seconds is how a time-boxed campaign is *supposed* to end, but
+# `timeout` reports it as exit 124, which under the gate's `set -e` marks the
+# whole Slurm task FAILED. Job 118548's four typefuzz shards each ran the full
+# 90 minutes, found nothing, and were recorded as failures. Distinguish the
+# two, and say what the run is and is not evidence for: typefuzz writes each
+# bug to --bugs as it finds it, so an empty bugs/ after a wall-terminated run
+# does mean no bug was found in that time -- but the seeds-processed summary
+# never printed, so it is not evidence that every seed was covered.
+found=0
+if [[ -d $BUGS ]]; then
+    found=$(find "$BUGS" -mindepth 1 -type f | wc -l)
+fi
+
+if (( exit_code == 124 )); then
+    echo "yinyang_fuzz: reached the ${WALL_SECONDS}s wall; this is a time-boxed run, not a failure."
+    echo "yinyang_fuzz: $found bug file(s) in $BUGS. No seeds-processed summary: the run was cut short, so coverage of every seed is NOT established."
+    exit 0
+fi
+
+if (( exit_code != 0 )); then
+    echo "yinyang_fuzz: $TYPEFUZZ exited $exit_code ($found bug file(s) in $BUGS)" >&2
+    exit "$exit_code"
+fi
+
+echo "yinyang_fuzz: completed; $found bug file(s) in $BUGS"

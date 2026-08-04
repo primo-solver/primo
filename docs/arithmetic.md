@@ -210,7 +210,9 @@ alternatives considered before/while implementing it.
     instances specifically, not average-case speed on typical ones. Not
     campaign-tier confirmed and not currently planned for default-on
     promotion given this; see `docs/run-log.json`.
-- **Two-tier rational representation** (heuristics-note item H2, 2026-07-28,
+
+- **Two-tier rational representation** ([heuristics-note item H2](#h2), 2026-07-28,
+
   `src/util/rational.{hpp,cpp}`, **unconditional**): `util::Rational` stores
   small values inline as `std::int64_t` numerator/denominator and only falls
   back to a heap `mpq_class` when a value genuinely needs more than 64 bits.
@@ -305,7 +307,9 @@ alternatives considered before/while implementing it.
     seeds -- 0 crashes, 0 wrong answers throughout. Incidentally, the gates'
     own timeout rates fell sharply (Bland campaign 118-143 -> 28, SOI campaign
     965-976 -> 324), the same speedup showing up in the fuzz corpus.
-- **Direct bounds for single-variable atoms** (heuristics-note item H1a,
+
+- **Direct bounds for single-variable atoms** ([heuristics-note item H1a](#h1),
+
   2026-07-28, `check_sat.cpp`, **unconditional**): an atom whose normalized
   polynomial is a single term `c*x` is a bound on `x` itself. The
   coefficient is divided out (`rhs' = rhs / c`) and no slack variable and no
@@ -362,7 +366,9 @@ alternatives considered before/while implementing it.
     fuzzsmt cases, two opfuzz runs and four yinyang typefuzz shards over real
     QF_LRA seeds -- 0 crashes, 0 wrong answers throughout, with the Bland
     merge gate coming back 500/500 PASS with no timeouts at all.
-- **Scale-canonical polynomial keys** (heuristics-note item H1b, the
+
+- **Scale-canonical polynomial keys** ([heuristics-note item H1b](#h1), the
+
   long-deferred competitiveness-roadmap item 3, 2026-07-28, `check_sat.cpp`,
   **unconditional**): `PolynomialKey` divides every coefficient by the
   coefficient of the lowest-indexed variable, so proportional polynomials
@@ -386,7 +392,9 @@ alternatives considered before/while implementing it.
     merging proportional rows concentrates fill-in into fewer, denser rows),
     so its 237-file verdict comes from item H3's four-way run, whose `bland`
     column measures exactly this item's effect on the default.
-- **Fill-in-aware pivot selection** (heuristics-note item H3, 2026-07-28,
+
+- **Fill-in-aware pivot selection** ([heuristics-note item H3](#h3), 2026-07-28,
+
   `lra_tableau.{hpp,cpp}`, **opt-in**): `PivotingRule::Sparse`, via
   `--lra-pivoting-rule sparse`. `pivot()` rewrites every row in
   `occurs_in_[entering]`, merging in a row of length `|row(leaving)|`, so a
@@ -464,7 +472,93 @@ alternatives considered before/while implementing it.
     117227 (new default, fuzzsmt 3000: 2990 PASS/10 TIMEOUT) and 117228 (SOI,
     3000: 2908/92), each with opfuzz 14/14 seeds valid and two yinyang shards,
     0 bug triggers throughout. No crashes, no wrong answers anywhere.
-- **Fixed-variable elimination** (heuristics-note item H7, 2026-07-30,
+
+- **Delta-maintained `occurs_in_`** ([heuristics-note item H10](#h10),
+  2026-08-01, `lra_tableau.{hpp,cpp}`, **unconditional**): `pivot()` no longer
+  removes and re-adds every affected row's occurrence entries. `occurs_in_`
+  records only which rows mention a variable, never a coefficient, so a term
+  carried through a pivot keeps the entry it had; only cancellations remove
+  and only genuinely new terms add. Callgrind had put the round trip at ~91%
+  of instructions -- 40.1M `std::remove` calls scanning 37.6 billion elements
+  on `scrambled228965`.
+  - **Scrambled competition set 398 -> 439 solved** (PAR2 26723 -> 22207),
+    stratified 197 -> 202, churn +41/-0 and +5/-0 -- zero regressions on
+    either bar. Median paired 1.51x. That is 439 against z3's 429 on the
+    same files. 1.15-4.85x locally on four mid-band instances, answers
+    identical. `pivot`'s gprof
+    self time falls 10.04s -> 1.26s at an identical call count, and the
+    profile becomes arithmetic-dominated rather than bookkeeping-dominated.
+  - Guarded by `occurs_in_index_matches_full_rebuild()`, checked after every
+    pivot across all four pivoting rules -- a wrong index does not crash, it
+    makes `update()` skip a dependent row and yields a wrong answer later.
+- **Bounds-only backtracking** ([heuristics-note item H9](#h9), 2026-07-31, `lra_tableau.{hpp,cpp}`,
+  **unconditional except under SOI**): `pop()` restores bounds and nothing
+  else. It used to restore bounds, assignments *and* every pivot's row
+  rewrite. This is the paper's own scheme -- technical report SRI-CSL-06-01
+  Section 3.2.4, "since no pivoting or other expensive operation is used,
+  backtracking is very cheap" -- and Primo had diverged from it on a
+  justification that turned out circular: reverting the assignments is what
+  forced reverting the pivots. Sound because the assignment satisfies
+  `Ax = 0` independently of the basis, and `pop()` only ever *relaxes*
+  bounds. `PivotingRule::Soi` keeps the old scheme; its objective row is a
+  sum over the currently-violated rows, not a linear combination of `A`. The
+  argument is on `LraTableau`'s class comment; the line-by-line comparison
+  that found it is in [](papers/fast-linear-arithmetic-dpllt.md).
+  - **The largest single gain measured on this project.** Scrambled
+    competition set (595 files, 60s): **378 -> 399 solved**, PAR2 28691 ->
+    26661. Stratified sample (237, 60s): 192 -> 197, PAR2 6069 -> 5575. Zero
+    cross-configuration disagreements, zero wrong answers.
+  - The mechanism is that not undoing pivots lets the search keep the repair
+    work it already paid for: pivot counts fall 2.3-5.3x on the profiled
+    instances, and `rebuild_occurs_in_index` leaves the profile entirely
+    because nothing structural changes on a pop.
+  - **Unlike H8 it is not regression-free, and that is the part to read.**
+    Churn is +32/-11 on the 595 set and +7/-2 on the stratified sample, and
+    among the 145 commonly-solved files over a second, 62 are more than 10%
+    *slower* against 64 more than 10% faster -- median 1.01x, p25 0.63, p75
+    1.30, tails 0.10x to 24.9x. It nets +21 because the wins land near the
+    timeout: 10 of the 11 lost files already took 24-60s of a 60s budget.
+    The variance is inherent -- keeping the basis across a backtrack keeps
+    one that suited the *previous* subproblem.
+  - Gated campaign-tier on the default path (3000 fuzzsmt QF_LRA cases plus
+    opfuzz and two yinyang shards, 0 wrong) and merge-tier on SOI (2000, 0
+    wrong), plus local ASAN across five configurations.
+- **Merged row combination in `pivot`** ([heuristics-note item H8](#h8), 2026-07-31,
+  `lra_tableau.{hpp,cpp}`, **unconditional**): `pivot`'s affected-row loop
+  combines the affected row with the scaled entering row by a linear two-way
+  merge instead of concatenating both into a scratch buffer and sorting it.
+  This rests on a new **`Row` invariant -- strictly ascending by var id, never
+  a zero coefficient** -- which `add_row` now establishes by sorting and
+  `pivot` preserves by splicing `basic_var` into `new_entering_row` at its
+  ordered position. The affected row is also taken by reference and *moved*
+  into the trail rather than copied twice.
+  - Found by a flat profile rather than by design argument: a gprof run put
+    11.6% of runtime on `scrambled339450` in that one `std::sort`, with 100M
+    inner comparisons. See [](qf-lra-heuristics.md) section 6.2a.
+  - **Promoted on every bar, with zero regressions on any of them.** Scrambled
+    competition set (595 files, 60s): **369 -> 378 solved**, PAR2 29561 ->
+    28654, median paired 1.19x, **+9/-0** -- five of the nine in the
+    500KB-5MB gap band. Mid-band gap (59 files, 300s): 37 -> 38, PAR2 19475
+    -> 18309, median 1.16x, +1/-0. Stratified sample (237 files, 60s): 189 ->
+    192, PAR2 6473 -> 6067, median 1.23x, +3/-0. All three same-node paired
+    against the parent commit; 0 cross-configuration disagreements and 0
+    wrong answers throughout.
+  - Calibration, so this is not over-read: the payoff curve in
+    [](qf-lra-heuristics.md) section 6.1a says the gap band needs 2x for 15
+    files. H8 is 1.19x and buys 5 there -- on the curve, not above it.
+  - Gated: campaign-tier QF_LRA fuzz on the default path (3000 fuzzsmt cases,
+    0 wrong) plus merge-tier on the SOI path (1000, 0 wrong).
+  - **Sanitizer coverage is local, not from the cluster.** The remote ASAN
+    toolchain is still broken, so H8 was covered with a local `build-asan`
+    instead: `make asan-test` (12/12), 45 real instances and 48 runs across
+    four configurations with zero sanitizer reports and zero answer
+    differences against Release, and 250 fuzzsmt cases against z3 (247 PASS,
+    3 timeouts at 20s under Debug+ASAN, 0 wrong). That is smoke-to-merge
+    tier, not campaign tier -- but it matters here specifically because H8
+    rewrites the row loop and moves rows into the trail, which is where this
+    class previously had a real heap-use-after-free.
+- **Fixed-variable elimination** ([heuristics-note item H7](#h7), 2026-07-30,
+
   `lra_tableau.{hpp,cpp}`, **opt-in**, `--lra-fixed-elimination`): a basic
   variable whose lower and upper bounds coincide is pivoted out of the basis
   as soon as it becomes fixed. `can_enter()` already rejects a fixed variable
@@ -586,6 +680,296 @@ alternatives considered before/while implementing it.
 See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
 Milestones 1-4 (above) are all done, plus disequality support and the
 recursion-removal pass -- QF_LRA is **supported**, not experimental.
+
+
+### QF_LRA options and statistics reference
+
+Every `--lra-*` option, its default, and where its evidence lives. Verified
+against `CheckSatOptions` and `--help` on 2026-07-30.
+
+| option | default | what it does |
+|---|---|---|
+| `--lra-pivoting-rule {bland,dantzig,soi,sparse}` | `sparse` | Check/Pivot variable selection. `sparse` is item H3. |
+| `--no-lra-sparse-leaving` | leaving rule **on** | Ablates the leaving-side half of `sparse`. |
+| `--no-lra-propagation` | propagation **on** | Ablates same-slack propagation (Dutertre & de Moura 4.2). |
+| `--lra-row-propagation` | **off** | Row/interval implied bounds (roadmap item 2). |
+| `--lra-bidirectional-row-propagation` | **off** | Reverse direction: tighten a row term from the row's own bound (item 7). Requires `--lra-row-propagation`. |
+| `--lra-theory-decisions` | **off** | Theory-supplied decision literals via `cb_decide` (item 8). |
+| `--lra-fixed-elimination` | **off** | Item H7 (LP presolve's fixed-variable removal, Andersen & Andersen 1995). Opt-in; see its falsifier outcome. |
+| `--lra-row-propagation-max-row-size` | 64 | Longest row row-propagation will derive a bound for. |
+| `--lra-row-propagation-max-fanout` | 64 | Most rows one bound change may scan. |
+| `--lra-bidirectional-row-propagation-max-row-size` | 32 | Reverse direction's row-length cap. |
+| `--lra-bidirectional-row-propagation-max-fanout` | 32 | Reverse direction's fanout cap. |
+
+**The four propagation caps** bound the per-bound-change cost of the two
+row-propagation directions. Their defaults are documented in the source as
+"not precisely derived", and on the mid-band gap instances they gate the
+bidirectional path off almost entirely: `occurs_in` reaches 521 and rows
+reach 91 terms there, so it fires 11-68 times against a 7k-190k opportunity
+count. They were compile-time constants until 2026-07-31 and became options
+so that direction D1's sweep could vary them per run rather than per build.
+
+**That sweep came back negative** (job 117726, 59 mid-band files at 300s):
+raising all four to 128, 256 or 1024 turns propagation on by two to three
+orders of magnitude and still does not beat the baseline's solved count, so
+the defaults stand. The options remain because they cost nothing to keep and
+are what made the question answerable. Full outcome in
+[](qf-lra-heuristics.md)'s D1.
+
+The reverse direction's two caps default smaller than the forward pair
+because it runs an O(row size) child-bound computation for *each* other term
+of each affected row, not once per row.
+
+**Statistics.** All are cumulative per solve.
+
+| statistic | meaning |
+|---|---|
+| `:lra.theory-checks` | full theory checks run (non-incremental path) |
+| `:lra.theory-conflicts` | theory conflicts reported to the SAT solver |
+| `:lra.theory-propagations` | literals propagated by the theory |
+| `:lra.theory-decisions` | decisions supplied via `cb_decide` |
+| `:lra.online-check-calls` | `LraTableau::check()` calls from the online propagator |
+| `:lra.pivots` | **repair** pivots inside `check()` only -- see the caveat below |
+| `:lra.pivot-row-updates` | rows rewritten by pivots (Markowitz column factor) |
+| `:lra.pivot-term-ops` | terms merged while rewriting them (row factor) |
+| `:lra.bland-fallbacks` | `check()` calls that hit the anti-cycling fallback |
+| `:lra.rows` / `:lra.tableau-vars` / `:lra.row-nonzeros` | prepared tableau shape |
+| `:lra.row-propagations` / `:lra.bidirectional-row-propagations` | propagations by direction |
+| `:lra.soi-multi-row-conflicts` / `:lra.soi-quickxplain-calls` | SOI-only |
+| `:lra.fixed-variables` / `:lra.elimination-pivots` | item H7 |
+| `:rational.promotions` / `:rational.big-operations` | item H2's small-to-GMP transitions |
+
+**Caveat on `:lra.pivots`:** it is sampled as a delta around `check()`, so
+item H7's elimination pivots -- which happen inside
+`assert_upper`/`assert_lower` -- are **not** counted in it. Comparing
+`:lra.pivots` across an H7 ablation is therefore misleading; use
+`:lra.pivot-row-updates` / `:lra.pivot-term-ops`, which count every pivot's
+work wherever it was triggered.
+
+### Where QF_LRA work stands, and what is open (2026-08-03)
+
+**The complete non-incremental QF_LRA division, 1,753 files, 300s**
+(jobs 118382, 118904 and 119045):
+
+| solver | solved | PAR2 | wrong |
+|---|---|---|---|
+| **OpenSMT 2.9.2** | **1670** (95.3%) | **68068** | **0** |
+| Yices 2.7.0 | 1645 (93.8%) | 80585 | 0 |
+| primo | 1631 (93.0%) | 95091 | 0 |
+| z3 5.0.0 | 1584 (90.4%) | 128079 | 0 |
+| cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
+
+```{figure} _static/qf-lra-cactus.svg
+:alt: Instances solved against per-instance time budget for OpenSMT, Yices, primo, z3 and cvc5, over the 656 instances not solved by every solver within 10s.
+:width: 100%
+
+Instances solved against the per-instance time budget, over the **656
+instances that at least one solver did not finish within 10s**. The 1,097
+instances every solver finished quickly are omitted: each contributed one
+point to all five curves, so removing them subtracts the same constant from
+every series and leaves every gap between curves intact, while the vertical
+range stops being dominated by the shared easy majority. **The counts in the
+legend are therefore of 656, not of 1,753** -- the table above has the full
+numbers. Regenerate with `--drop-solved-by-all-under 10`; omit that flag for
+the unfiltered version.
+```
+
+**The plot shows a crossover the table cannot.** Yices is the fastest solver
+at every budget up to 10s and OpenSMT is the strongest by 300s; they trade
+places between 10s and 30s:
+
+| solved within | 0.1s | 1s | 10s | 30s | 60s | 300s |
+|---|---|---|---|---|---|---|
+| OpenSMT | 868 | 1103 | 1370 | **1527** | **1595** | **1670** |
+| Yices | **1003** | **1173** | **1428** | 1525 | 1575 | 1645 |
+| primo | 832 | 1066 | 1286 | 1440 | 1515 | 1631 |
+| z3 | 861 | 1028 | 1227 | 1346 | 1430 | 1584 |
+| cvc5 | 711 | 945 | 1118 | 1209 | 1296 | 1511 |
+
+At a 10s budget Yices would lead this division by 58 files and OpenSMT would
+be second. **Which reference is "strongest" is a function of the timeout**,
+which is worth remembering whenever a single 300s number is quoted as the
+standing.
+
+**OpenSMT leads and primo is third**, 39 behind OpenSMT and 14 behind Yices.
+The reference set was built in that order -- z3 and cvc5 first, Yices on
+2026-08-03, OpenSMT the same day -- and Primo's apparent standing fell at
+each addition: ahead by 47, then second, now third. **The movement is
+entirely in the reference set; Primo's own score has not changed.** That is
+the honest reading of a three-reference comparison being extended to five,
+and it is why "Primo leads QF_LRA" was never a safe claim to make from three.
+
+**Two families carry OpenSMT's margin.** LassoRanker, the division's largest
+at 419, goes 385 to Primo's 347, and 2017-Heizmann 48 to 41. `tropical-matrix`
+is the sharpest single result on the board: OpenSMT 5 of 10 where every other
+solver manages 1 or 0. Primo takes `2019-ezsmt` 103 to 95, `latendresse` 15 to
+11 and `tta_startup` 72 to 72-with-z3-at-68; eleven of seventeen families tie
+exactly, ten of them saturated.
+
+**They are still complementary, not ranked.** 29 instances Primo solves and
+OpenSMT does not, against 68 the other way; 23 fall only to OpenSMT, 8 only to
+Primo, 8 only to Yices, 1 only to z3, none only to cvc5, and 40 defeat all
+five. A portfolio of Primo and OpenSMT would solve more than either.
+
+primo scores 1631 at `b6b8d55` against 1631 at `aa44320`, PAR2 95091 against
+94992: independent confirmation that the model-production merge and the
+frontend changes of 2026-08-03 are behaviour-neutral here.
+
+**Zero wrong answers and zero cross-solver disagreements.** Every file in
+this set carries `(set-info :status)`, so unlike the scrambled set the
+harness's own wrong-answer column is live: 1,629 of the 1,753 carry a
+checkable status, all five solvers agree with it on every file they answer,
+and no file is unsolved for a non-standard reason. This is the strongest
+correctness evidence QF_LRA has, and adding a fifth independent
+implementation strengthened it rather than finding a crack.
+
+77 files only Primo solves against 30 only z3 solves; against cvc5, 130 to
+10.
+
+**Per family**, every solver, sorted by size:
+
+| family | n | opensmt | yices | primo | z3 | cvc5 |
+|---|---|---|---|---|---|---|
+| meti-tarski | 488 | 488 | 488 | 488 | 488 | 488 |
+| LassoRanker | 419 | **385** | 381 | 347 | 331 | 266 |
+| sc | 144 | 144 | 144 | 144 | 144 | 144 |
+| sal | 107 | 107 | 107 | 107 | 107 | 107 |
+| 2019-ezsmt | 105 | 95 | 99 | **103** | 100 | 99 |
+| DTP-Scheduling | 91 | 91 | 91 | 91 | 91 | 91 |
+| uart | 73 | 73 | 73 | 73 | 73 | 73 |
+| tta_startup | 72 | **72** | 70 | **72** | 68 | 70 |
+| 2017-Heizmann-UltimateInvariantSynthesis | 58 | **48** | 25 | 41 | 22 | 26 |
+| miplib | 42 | 25 | **27** | 23 | 25 | 21 |
+| spider_benchmarks | 42 | 42 | 42 | 42 | 42 | 42 |
+| clock_synchro | 36 | 36 | 36 | 36 | 36 | 36 |
+| TM | 25 | 25 | 25 | 25 | 25 | 25 |
+| keymaera | 21 | 21 | 21 | 21 | 21 | 21 |
+| latendresse | 18 | 11 | 13 | **15** | 8 | 0 |
+| tropical-matrix | 10 | **5** | 1 | 1 | 1 | 0 |
+| check | 2 | 2 | 2 | 2 | 2 | 2 |
+
+Ten families are saturated -- every solver takes all of them -- so the
+division is decided by seven. **`miplib` is the only family where z3 beats
+Primo**, 25 to 23, consistent with King, Barrett & Tinelli finding that
+CVC4's LP/MIP integration paid off on exactly that family and essentially
+nowhere else in QF_LRA.
+
+*`latendresse` is worth noting*: 15 of 18, ahead of every reference
+including OpenSMT's 11 and cvc5's 0. It was 0/15 before [H3](#h3), and it is
+the family the SOI paper was written for.
+
+*`tropical-matrix` is the open question OpenSMT raises.* 10 instances, on
+which the other four solvers score 1, 1, 1 and 0 -- a pattern that read like
+an intrinsically hard family. OpenSMT's 5 says it is not.
+Whatever it does there is worth understanding, and it is small enough to
+profile.
+
+**The 595-file scrambled subset is not representative.** It gave a +8 lead;
+the division gives +47. The scrambled sample under-weights precisely the
+families Primo is strongest on -- Heizmann, LassoRanker and latendresse
+alone account for +42 of the +47. Comparisons quoted from the scrambled set
+should be read as a hard sample rather than as a division result.
+
+*What this is not.* Not a competition result. SMT-COMP uses a 1200s
+timeout, competition-entrant binaries and its own scoring; these are
+`contrib` builds at 300s, and no official SMT-COMP logs are available here.
+Nothing about placement follows.
+
+**How it got here.** On the scrambled subset, 369 solved at 60s on
+2026-07-31 to 439, via [H8](#h8) (merge instead of
+sort, +9/-0), [H9](#h9) (bounds-only backtracking,
++32/-11) and [H10](#h10) (delta-maintained
+`occurs_in_`, +41/-0). Five other directions were measured and rejected in
+the same period.
+
+#### The 595-file scrambled subset at 300s, for comparison
+
+**Comparison at 300s, all 595 scrambled competition files**
+(job 118310, plus OpenSMT from job 119085; z3 and cvc5 were re-run for 118310
+because the timeout differs from every stored result, and primo/z3/cvc5 were
+*not* re-run for OpenSMT's addition):
+
+| solver | solved | PAR2 |
+|---|---|---|
+| **OpenSMT 2.9.2** | **552** (92.8%) | **33907** |
+| primo | 515 (86.6%) | 61303 |
+| z3 5.0.0 | 507 (85.2%) | 66718 |
+| cvc5 1.3.4 | 465 (78.2%) | 96616 |
+
+**Zero cross-solver disagreements** over 595 files and four solvers -- the
+strongest soundness signal this set can give, since it carries no
+`:status`.
+
+Primo and z3 are **complementary rather than one dominating**: 30 files only
+Primo solves, 22 only z3 solves. Against cvc5 it is 59 to 9. Against OpenSMT
+the gap is real rather than complementary: 11 files only Primo solves against
+48 only OpenSMT solves, and 29 of the 595 fall to OpenSMT alone.
+
+**The band this campaign was about is narrowed against z3, and not against
+OpenSMT:**
+
+| file size | n | opensmt | primo | z3 | cvc5 |
+|---|---|---|---|---|---|
+| 0-50 KB | 179 | 179 | 179 | 179 | 179 |
+| 50-500 KB | 192 | **178** | 173 | 157 | 154 |
+| 500 KB-5 MB | 174 | **166** | 134 | 141 | 118 |
+| >5 MB | 50 | 29 | 29 | **30** | 14 |
+
+The 500KB-5MB band was **-56 against z3** on 2026-07-29 and is **-7** now.
+Against OpenSMT the same band is **-32**, on a set where Primo and z3 are
+within seven files of each other overall. **z3 was flattering as a yardstick
+here.** The campaign's diagnosis was not wrong -- that band is where the work
+was needed, and 56 files of it were recovered -- but "most of the deficit
+removed" was measured against the wrong reference, and the honest statement is
+that a third of the original gap remains against the best solver now measured.
+The >5MB band ties at 29-30 across all three, so nothing in that band is
+specific to Primo.
+
+*What this is not.* Not a competition result. SMT-COMP uses a 1200s
+timeout, competition-entrant binaries and its own scoring; these are
+`contrib` builds on one 595-file scrambled set, and no official SMT-COMP
+logs are available here. It says Primo is competitive with z3 and behind
+OpenSMT on this set at this budget, nothing about placement.
+
+**How it got here.** 369 solved at 60s on 2026-07-31 to 439 at 60s and 515
+at 300s, via [H8](#h8) (merge instead of sort, +9/-0),
+[H9](#h9) (bounds-only backtracking, +32/-11) and
+[H10](#h10) (delta-maintained `occurs_in_`, +41/-0).
+Five other directions were measured and rejected in the same period.
+
+**It is a constant factor, and a small one.** Re-run at 600s (job 117631),
+Primo solves 45 of those 59, median 167s. Against a 60s budget that is a
+median 2.8x. The payoff is near-linear, with no threshold to clear:
+
+| speedup | files recovered at 60s (of 59) |
+|---|---|
+| 2x | 15 |
+| 3x | 24 |
+| 5x | 37 |
+| 10x | 45 |
+
+**The cost is fill-in.** Rows holding 4.1-5.8 nonzeros when prepared merge
+21.7-91.1 terms during search, while entering columns reach up to 521 rows, so
+a single pivot can cost ~47,000 rational operations.
+
+**The open list is [](qf-lra-heuristics.md)'s section 6.5**, and after
+2026-07-31 it is short: D2 floating-point guided basis selection, and D4
+revised simplex with an LU-factored basis. Periodic refactorization was
+considered and **rejected** -- for an explicit tableau the density is a
+property of the basis reached, so there is nothing for it to discard.
+
+Ruled out already, so as not to be re-proposed: the sparse-pricing candidate
+cap (flat across a 60,000x range), fixed-equality slacks (item H7, ships
+opt-in, nets zero on this band), preprocessing size (tableau dimensions
+match z3's within ~5%), and **D1/D3, bound propagation across offset
+equalities** -- swept over the whole band on 2026-07-31 and rejected: no cap
+setting beats the baseline's solved count even with propagation firing 380x
+harder, and the single instance that motivated it turned out to be
+workstation noise at a timeout boundary. D1 and D3's cheap design are the
+same code (`compute_implied_child_bound`), so that one sweep closed both;
+D3's expensive column-merge design had already been rejected on its own
+evidence.
+
 
 - **Milestone 3b's real-benchmark impact**: a 500-case fuzz merge-gate
   re-run found zero wrong-answer disagreements against z3 (a real bug --

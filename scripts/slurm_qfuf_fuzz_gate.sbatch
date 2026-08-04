@@ -18,10 +18,26 @@
 #    scripts/summarize_fuzz_results.py prints it for this reason.
 #
 # 2. The bound itself: a shard is FUZZSMT_COUNT cases, each costing up to
-#    FUZZSMT_TIMEOUT for our solver plus the same for the reference, so the
-#    worst case is roughly COUNT * 2 * TIMEOUT -- 500 * 2 * 5s = 83 minutes at
-#    the defaults, which the previous 45-minute limit was under. Raise this if
-#    you raise either.
+#    FUZZSMT_TIMEOUT for our solver plus the same for EACH reference, so the
+#    worst case is roughly COUNT * (1 + refs) * TIMEOUT -- with QF_LRA's two
+#    references that is 500 * 3 * 10s = 4.2 hours, not the 83 minutes the
+#    single-reference arithmetic gave. Raise this if you raise any of them.
+#
+#    Generation is not free either, and its cost is NOT a function of the
+#    parameters alone. Measured 2026-08-02 at the identical profile
+#    `-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 4`, 100 files each:
+#
+#      seed 218735   20.9s   34.7 MB      <-- ~200x slower, ~20x bigger
+#      seed 218736    0.1s    1.9 MB
+#      seed 218740    0.1s    1.4 MB
+#      seed 12345     0.3s    3.8 MB
+#
+#    FuzzSMT's output size is a property of its random stream, so a seed can
+#    emit ~347 KB formulas where its neighbours emit ~14 KB ones. A shard that
+#    draws such a seed does far more work than its siblings at every stage --
+#    generating, solving, and referencing -- and looks stuck while being
+#    merely slow. Job 118735's shard 0 sat at an hour while shards 1-5
+#    finished in 1-8 minutes, purely from this.
 #
 # That arithmetic was NOT what caused the 117248-117251 losses, though, and
 # the investigation is worth not repeating: all four lost shards were the same
@@ -35,6 +51,11 @@
 # drained. Treat a whole-shard timeout as an environment signal first, but
 # check the seed pattern -- if one seed fails across configurations *and*
 # reproduces on a quiet cluster, that would be the real thing.
+#
+# Since 2026-08-02 there is a second explanation to rule out before blaming
+# the environment, and it is cheap to check: regenerate that shard's seed
+# locally and time it (see the generation-cost note above). A seed that is
+# pathologically expensive to generate needs no cluster to reproduce.
 #
 # Combined QF_UF fuzz gate: FuzzSMT (generator) + opfuzz + YinYang typefuzz
 # (mutation), one array job. This is the campaign previously reconstructed
@@ -147,8 +168,12 @@ YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-1500}
 # alongside Primo and z3. It matters most exactly where the seed corpus was
 # widened to: at a 20s reference timeout, z3 gives no oracle for either
 # latendresse seed and yices answers both.
+#
+# Via the wrapper, not the binary: typefuzz strips (set-logic ...) from every
+# mutant and yices needs it before Real is a sort, so bare yices-smt2 fails
+# every mutant at line 1. See scripts/yices_smt2_ref.sh.
 if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
-  MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true;yices-smt2"}
+  MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true;$WORKDIR/scripts/yices_smt2_ref.sh"}
 else
   MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
 fi
@@ -160,6 +185,34 @@ fi
 # scripts/build_fuzz_seed_corpus.py selects seeds under, so the limit no
 # longer decides the corpus; the corpus builder does.
 MUTATION_FILE_SIZE_LIMIT=${PRIMO_FUZZ_MUTATION_FILE_SIZE_LIMIT:-200000}
+
+# Restrict mutation to operators that stay inside QF_LRA. YinYang's stock
+# configs cover all of SMT-LIB and rewrite within sort signatures only, so on
+# a QF_LRA seed they happily produce `(* x y)` from `(+ x y)` (config line
+# `+,-,* :arity 2+`) and `(abs x)` from `(- x)` (line `abs,- :arity 1`).
+# Those mutants are no longer QF_LRA and Primo rightly refuses them, which
+# burns the mutation budget: measured 2026-08-02 over six seed families,
+# opfuzz went from 47 of 72 mutants answerable to 72 of 72, with the same 72
+# distinct mutants either way -- nothing is lost but the out-of-logic ones.
+#
+# This needs no change to the YinYang fork: both entry points take -c/--config.
+if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
+  OPFUZZ_CONFIG=${PRIMO_FUZZ_OPFUZZ_CONFIG:-"$WORKDIR/benchmarks/fuzz-configs/qf_lra_operator_mutations.txt"}
+  YINYANG_CONFIG=${PRIMO_FUZZ_YINYANG_CONFIG:-"$WORKDIR/benchmarks/fuzz-configs/qf_lra_typefuzz.txt"}
+  # Both come from contrib/patches/yinyang-mutant-validity.patch, applied by
+  # contrib/install_yinyang.py. --keep-logic makes every solver judge the
+  # mutant against the seed's logic (and is what lets yices-smt2 read a mutant
+  # at all); --hoist-declarations repairs typefuzz emitting a declaration
+  # after its first use. opfuzz does not need the latter -- it substitutes
+  # operators in place and leaves command order alone.
+  MUTATION_KEEP_LOGIC=${PRIMO_FUZZ_MUTATION_KEEP_LOGIC-1}
+  MUTATION_HOIST_DECLARATIONS=${PRIMO_FUZZ_MUTATION_HOIST_DECLARATIONS-1}
+else
+  OPFUZZ_CONFIG=${PRIMO_FUZZ_OPFUZZ_CONFIG:-}
+  YINYANG_CONFIG=${PRIMO_FUZZ_YINYANG_CONFIG:-}
+  MUTATION_KEEP_LOGIC=${PRIMO_FUZZ_MUTATION_KEEP_LOGIC-}
+  MUTATION_HOIST_DECLARATIONS=${PRIMO_FUZZ_MUTATION_HOIST_DECLARATIONS-}
+fi
 
 cd "$WORKDIR"
 mkdir -p logs "$OUT_ROOT"
@@ -173,6 +226,17 @@ mkdir -p logs "$OUT_ROOT"
 # nothing.
 PATH="$WORKDIR/contrib/local/bin:$PATH"
 export PATH
+
+# A sanitizer build made by scripts/build_slurm_fuzz.sh links against the
+# EasyBuild GCCcore runtime, which compute nodes do not have on their default
+# search path -- the binary dies with "libasan.so.6: cannot open shared object
+# file" before solving anything. Harmless for a Release build, required for an
+# ASAN one, so it is set unconditionally.
+GCCCORE_LIB=${PRIMO_GCCCORE_LIB:-/export/eb/software/GCCcore/11.3.0/lib64}
+if [[ -d $GCCCORE_LIB ]]; then
+  LD_LIBRARY_PATH="$GCCCORE_LIB:${LD_LIBRARY_PATH:-}"
+  export LD_LIBRARY_PATH
+fi
 
 # And fail loudly rather than skipping: fuzz_external.py treats a missing
 # fuzzer as "skip this stage" and exits 0, which is the right behaviour for a
@@ -238,6 +302,8 @@ elif (( TASK_ID < yinyang_start )); then
   echo "task $TASK_ID: opfuzz over $OPFUZZ_SEEDS"
   scripts/yinyang_fuzz.sh \
     --typefuzz opfuzz \
+    ${OPFUZZ_CONFIG:+--config "$OPFUZZ_CONFIG"} \
+    ${MUTATION_KEEP_LOGIC:+--keep-logic} \
     --seeds "$OPFUZZ_SEEDS" \
     --solver "$SOLVER_BIN --quiet" \
     --ref "$MUTATION_REF" \
@@ -252,6 +318,9 @@ else
   mkdir -p "$out"
   echo "task $TASK_ID: yinyang typefuzz over $YINYANG_SEEDS"
   scripts/yinyang_fuzz.sh \
+    ${YINYANG_CONFIG:+--config "$YINYANG_CONFIG"} \
+    ${MUTATION_KEEP_LOGIC:+--keep-logic} \
+    ${MUTATION_HOIST_DECLARATIONS:+--hoist-declarations} \
     --seeds "$YINYANG_SEEDS" \
     --solver "$SOLVER_BIN --quiet" \
     --ref "$MUTATION_REF" \

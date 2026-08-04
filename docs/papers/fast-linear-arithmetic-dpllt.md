@@ -109,7 +109,7 @@ before it, so Section 4.2 propagation is unaffected. See
   non-Bland prefix followed by a Bland suffix is still covered by the paper's
   own argument. The threshold (`4 * vars_.size() + 64`) is a heuristic, not a
   derived bound. `--lra-pivoting-rule bland` restores the paper's choice.
-- **Backtracking now follows the paper** ([heuristics-note item H9](../qf-lra-heuristics.md#h9), 2026-07-31, commit `ec6244e`).
+- **Backtracking now follows the paper** ([heuristics-note item H9](#h9), 2026-07-31, commit `ec6244e`).
   TR Section 3.2.4: "We just need to save the value of `u_i` (`l_i`) on a
   stack before it is updated... Backtracking does not require to save the
   successive betas on a stack... Since no pivoting or other expensive

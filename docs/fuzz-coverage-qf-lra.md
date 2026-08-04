@@ -17,8 +17,8 @@ families had never been mutated. The omissions included the two that matter
 most to recent work:
 
 - **`latendresse`** -- pure LP, zero decisions, very large pivot counts. This
-  is the shape items [H8](qf-lra-heuristics.md#h8), [H9](qf-lra-heuristics.md#h9)
-  and [H10](qf-lra-heuristics.md#h10) each rewrote.
+  is the shape items [H8](#h8), [H9](#h9)
+  and [H10](#h10) each rewrote.
 - **`LassoRanker`** -- 419 files, the largest single source of Primo's lead over
   the reference solvers.
 
@@ -147,6 +147,52 @@ live under two:
   missing reference and exits non-zero if none is left, and the gate's
   required-tool check covers every configured reference rather than just z3.
 
+(sec-mutation-yield)=
+### How much mutation fuzzing actually tests
+
+Chasing why yices looked useless as a third target turned up something more
+important than the answer. Across 25 mutants from each of 8 seed groups, 200
+in total, **Primo can answer 15 of them -- 7.5%**:
+
+| seed group | usable |
+|---|---|
+| `2017-Heizmann__overflow` | 0 / 25 |
+| `2019-ezsmt_1_4` | 0 / 25 |
+| `meti-tarski` | 4 / 25 |
+| `DTP-Scheduling`, `sal` | 3 / 25 |
+| `check_bignum`, `spider` | 2 / 25 |
+| `miplib` | 1 / 25 |
+
+Two independent causes, and the second is the one that matters.
+
+**Declaration order.** typefuzz emits `declare-fun` after the first use. In one
+Heizmann mutant `motzkin_2059_0` is used at line 17 and declared at line 49,
+where the parent seed declares it at line 77 and first uses it at line 86.
+Primo and yices both reject with `unknown symbol`; z3 drops the offending
+assertions and answers anyway -- so on these inputs **z3 answers a strictly
+weaker formula than the one it was given**. Mechanically fixable by hoisting.
+
+**Nonlinearity, which dominates.** Hoisting is not enough: the same mutant then
+fails with `* requires a literal rational coefficient operand (QF_LRA)`.
+`opfuzz` and `typefuzz` mutate operators in a *sort*-aware way, and QF_LRA's
+linearity is a syntactic restriction beyond sorts, so operator mutation
+routinely yields products of non-constant terms such as
+`(* (+ (* motzkin_2059_0 10.0) ...) ...)`. Those are no longer QF_LRA. Primo
+correctly rejects them; z3 solves them as nonlinear.
+
+So mutation fuzzing has a **low intrinsic yield against a linear-only solver**:
+most mutants leave the logic. That is a property of the tool/logic pairing, not
+a misconfiguration, and it explains why mutation fuzzing has never found
+anything here. It is not unsound -- in opfuzz mode Primo is the oracle, and a
+mutant it cannot answer is counted invalid and skipped, so no false bug is
+reported. The cost is budget: roughly 13 mutants generated per usable one.
+
+The corpus widening in [](#sec-seed-corpus) is still worth having, because it
+broadens the shapes of the 7.5% that do stay linear. It just does not multiply
+the yield the way the seed count suggests. **Generator fuzzing -- the ladder in
+[](#sec-fuzzsmt-profiles) -- is the higher-yield path for QF_LRA and should
+stay the primary gate.**
+
 ### The clean-room line
 
 Yices is installed by `contrib/install_yices.py` (`make contrib-yices`) into
@@ -232,6 +278,47 @@ showed 3.4s versus 3.7s and no meaningful unsat difference. The defensible
 claim is that `-Mbw 16` costs nothing, not that it wins.
 
 ## Status
+
+**Job 118735 (2026-08-02)** is the first campaign with everything here active
+at once: the ladder, both QF_LRA-restricted configs, `--keep-logic` and
+`--hoist-declarations`, Yices as a second reference, and the family-complete
+corpus. No defect was found in roughly 4,700 generator and mutation cases.
+
+The result worth keeping is what the configs did to opfuzz's effective-call
+rate -- the fraction of solver invocations that return a usable answer:
+
+| campaign | configuration | opfuzz efficiency |
+|---|---|---|
+| 118548 | stock configs, z3 only | 65.1% |
+| 118611 | + Yices, which could not read mutants | 42.8% |
+| **118735** | **QF_LRA configs + `--keep-logic` + Yices** | **99.7%** |
+
+typefuzz improved less -- 41.7%, 65.0% and 51.3% against a 27-43% baseline --
+which is the expected shape: it *generates* new terms rather than substituting
+operators in place, so it produces harder mutants and a residue that no config
+can prevent (see [](#sec-mutation-yield)).
+
+Generator side, 5 of 6 shards at time of writing: 2500 cases, 2455 PASS, 45
+TIMEOUT, zero wrong answers and zero reference disagreements. Every case
+consulted **both** references -- checked from the summary CSVs rather than
+assumed, because `fuzz_external.py` does not echo its arguments.
+
+The 45 files under `bugs/` are exactly those 45 timeouts, all in FuzzSMT shard
+directories and none in any mutation directory. **A non-empty `bugs/` is not a
+bug count** -- `fuzz_external.py` copies every non-`PASS` case there.
+
+Two operational findings from the same job, both now in
+`scripts/slurm_qfuf_fuzz_gate.sbatch`:
+
+- **FuzzSMT generation cost varies ~200x by seed** at identical parameters
+  (seed 218735: 20.9s and 34.7 MB per 100 files, against 0.1s and 1.9 MB for
+  its neighbour). A shard drawing such a seed looks stuck while being merely
+  slow, which had previously been attributed to cluster load.
+- **One mutation shard was SIGKILLed and the cause was not established.**
+  Memory is ruled out -- two sibling tasks reported *higher* MaxRSS on the same
+  request and completed. Primo is not reproducibly implicated: 800 mutants with
+  it capped at 4 GB produced no kill, and the largest mutant solves in 0.01s
+  using 9 MB. Recorded as unexplained rather than attributed to anything.
 
 Job 118548 ran the full ladder: 6 shards x 500 cases, all six shard CSVs
 present. **2959 PASS, 41 TIMEOUT, zero wrong answers and zero crashes.**

@@ -91,6 +91,45 @@ def main() -> int:
                 print(f"      {name}: {answer}")
     print(f"total: {disagreements}")
 
+    # A benchmark left unsolved because the solver ran out of time is an
+    # honest result. One left unsolved because we could not PARSE it, or
+    # rejected input the logic permits, is a defect wearing a timeout's
+    # clothes -- it costs a benchmark exactly as much, and it never shows up
+    # in a solved-count table. SMT-LIB inputs are well-formed by construction,
+    # so any such failure is ours until proven otherwise.
+    print("\n=== unsolved for NON-STANDARD reasons ===")
+    print("(anything other than a timeout or an honest 'unknown')")
+    total_nonstandard = 0
+    for name in names:
+        by_cause: dict[str, list[str]] = collections.defaultdict(list)
+        for path, row in solvers[name].items():
+            if row["status"] in {"ok", "timeout"}:
+                continue
+            if row.get("answer") == "unknown":
+                continue  # solver gave up inside its budget; that is legitimate
+            head = (row.get("stderr_head") or "").strip()
+            # Solvers prefix the offending path, so group on the message
+            # itself -- otherwise one cause across 146 files prints 146 lines.
+            if ".smt2: " in head:
+                head = head.split(".smt2: ", 1)[1]
+            cause = head or f"status={row['status']} answer={row.get('answer', '')}"
+            by_cause[cause[:88]].append(path)
+        count = sum(len(v) for v in by_cause.values())
+        total_nonstandard += count
+        if not count:
+            print(f"  {name}: none")
+            continue
+        print(f"  {name}: {count} file(s)  <-- INVESTIGATE")
+        for cause, paths in sorted(by_cause.items(), key=lambda kv: -len(kv[1])):
+            print(f"      {len(paths):5d}  {cause}")
+            for example in paths[:2]:
+                print(f"             e.g. {example}")
+    if total_nonstandard:
+        print(f"\n  WARNING: {total_nonstandard} benchmark(s) unsolved for non-standard")
+        print("  reasons. A parse or unsupported-input failure on SMT-LIB input is a")
+        print("  gap in the frontend, not a performance result -- fix it or record why")
+        print("  the construct is legitimately out of scope before citing these numbers.")
+
     # Files nobody solved are the honest remaining-gap measure; files only one
     # solver got are where it is uniquely ahead.
     print("\n=== coverage ===")

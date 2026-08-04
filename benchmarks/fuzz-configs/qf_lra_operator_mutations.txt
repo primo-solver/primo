@@ -1,0 +1,20 @@
+; Operator-mutation classes restricted to QF_LRA.
+;
+; The stock operator_mutations.txt is written for the whole SMT-LIB, so it
+; rewrites within sort signatures without regard to a logic's syntactic
+; restrictions. Against a QF_LRA-only solver that produces mutants outside
+; the logic, which the solver then (correctly) refuses:
+;
+;   +,-,* :arity 2+   turns (+ x y) into (* x y)  -- nonlinear, not QF_LRA
+;   abs,- :arity 1    turns (- x) into (abs x)    -- abs is not a QF_LRA symbol
+;   mod,div           Int-only operators
+;
+; Dropping those three lines leaves the mutations that stay inside the logic:
+; Boolean structure, comparison direction, equality/disequality, and +/-.
+=,distinct
+exists,forall
+not -> and,or
+and,or,=> :arity 3+
+and,or,=>,xor :arity 2
+<=,>=,<,>
++,- :arity 2+

@@ -34,6 +34,8 @@ make contrib
 ```bash
 make contrib-z3
 make contrib-cvc5
+make contrib-yices
+make contrib-opensmt
 make contrib-cadical
 make contrib-cli11
 make contrib-antlr4
@@ -47,6 +49,11 @@ make contrib-ddsmt
 - CLI11 is downloaded as the single header used by the solver executable.
 - Z3 is installed through `pip install z3-solver` into the active Python environment and a `contrib/local/bin/z3` wrapper is created when possible.
 - cvc5 is downloaded from GitHub releases into `contrib/local/bin/cvc5`.
+- Yices 2 and OpenSMT2 are downloaded from GitHub releases into
+  `contrib/local/bin/yices-smt2` and `contrib/local/bin/opensmt`. Both are
+  **reference solvers only** -- run as differential oracles, never linked
+  against and never read. That boundary is stated in each installer's header
+  because both implement the same QF_LRA algorithm Primo does.
 - CaDiCaL is cloned and built from its GitHub release tag, then installed into `contrib/local`.
 - FuzzSMT is cloned from the public release repository and exposed as
   `contrib/local/bin/fuzzsmt`.

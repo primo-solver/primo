@@ -22,7 +22,8 @@ order they were proposed, not the order they were implemented.
 | [H7](#h7) | Fixed-variable elimination (equality slacks) | implemented, **opt-in** -- did not clear its bar |
 | [H8](#h8) | Merge instead of sort in `pivot`'s affected-row loop | implemented, default; **zero regressions** |
 | [H9](#h9) | Bounds-only backtracking (the paper's own scheme) | implemented, default except SOI; largest single gain |
-| [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 |
+| [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 (Yices and OpenSMT, both added 2026-08-03, are ahead of both) |
+| [H11](#h11) | Fill-in-aware pivoting in *preprocessing* Gaussian elimination | proposed, opt-in when built |
 
 Where the remaining gap is, and what has been ruled out, is [](#sec-6). Its
 ranked list of open directions is [](#sec-6-5): [D2](#d2) and [D4](#d4)
@@ -319,6 +320,15 @@ is **required**, not forbidden -- see the canonical-form paragraph.
 **Prior art**: this is Monniaux's own implementation choice (CAV 2009,
 Section 4), found only after the profiling above independently reached the same
 diagnosis -- see [](papers/lra-related-work.md).
+
+**An alternative that was never evaluated:** GMP cannot provide a small form
+itself (its struct is pointer-based and its layout is frozen ABI), but other
+libraries can and do -- FLINT's `fmpq` is this exact scheme. So the real choice
+was "keep GMP and add a fast path" against "adopt a library that already has
+one", and only the first was considered. Tracked as [D5](#d5), where it is
+deliberately ranked as not a priority: H2 already took the win that was on the
+table, and the reason to revisit would be shedding the canonical-form
+invariant rather than chasing speed.
 
 **Targets:** everything. **The single largest measured lever (54%).**
 
@@ -1431,6 +1441,7 @@ whole one.
 |---|---|---|---|---|
 | D2 | Floating-point-guided basis selection (Monniaux) | **~14% in the literature** | medium | open, but **much smaller than first scoped** |
 | D4 | Revised simplex with an LU-factored basis | unknown | largest | open |
+| D5 | Replace the hand-written small-rational form with a library that has one | **unknown, plausibly ~0** | small | open, **not a priority** |
 | -- | ~~D1: row-based bound propagation, raised caps~~ | -- | -- | **rejected 2026-07-31** |
 | -- | ~~D3: offset-equality detection + bound propagation~~ | -- | -- | **closed 2026-07-31, by D1's sweep** |
 | -- | ~~Periodic refactorization~~ | -- | -- | **rejected 2026-07-30** |
@@ -1824,3 +1835,138 @@ and the band's solved count does not move, then per-pivot cost is not what
 separates Primo from z3 here, and the remaining explanation is search *order*
 (z3 needs 36,778 decisions where Primo needs 7,555 but never finishes -- the
 shapes are not comparable, which is itself a hint worth chasing).
+
+
+(h11)=
+(d5)=
+### D5 -- Let a library own the small-rational representation
+
+**Status: open, and deliberately not a priority.** Recorded 2026-08-03 because
+it was an unexamined assumption, not because anything measured says it is
+wrong.
+
+**What [H2](#h2) actually chose.** The two-tier `util::Rational` is documented
+as though the options were "wrap `mpq_class`" or "write a fast path". GMP
+really cannot do it itself -- `__mpz_struct` holds a pointer to separately
+allocated limbs with no inline storage, `__mpq_struct` is two of those, and
+that layout is frozen public ABI, so even a 1-limb value allocates. But other
+libraries *do* provide exactly this scheme: FLINT's `fmpz`/`fmpq` is one
+machine word holding either a small immediate or a reference to a big value,
+which is what H2 implements by hand. The real choice was therefore "keep GMP
+and add a fast path" against "adopt a library that already has one", and only
+the first was ever considered.
+
+**Why it is not urgent.** H2 already captured the win that was on the table --
+54% of runtime was allocation and GMP bookkeeping, and removing it gave
+2.1-5.2x on the profiled instances and 108 -> 124 on the promotion bar. A
+library-provided form would be solving a problem that is already solved. The
+plausible gain is whatever separates `fmpq`'s immediate path from ours, which
+there is no reason to assume is large, and it is not where the remaining QF_LRA
+gap lives: [](#sec-6) puts that in pivot count and search order, not in
+per-rational overhead.
+
+**Why it is worth keeping on the list.** The cost is not performance, it is
+ownership. The canonical-form invariant -- big form *iff* the value does not
+fit small -- is ours to maintain, and violating it breaks
+`LinearPolynomial`/`PolynomialKey` hashing *silently* rather than visibly. That
+is precisely the class of obligation a library should carry. If the invariant
+ever does produce a bug, this direction stops being cosmetic.
+
+**Cheap to attempt, if it is ever attempted.** Every GMP mention is inside
+`src/util/rational.{hpp,cpp}`, by the same containment rule that keeps CaDiCaL
+inside `CadicalBackend`, so the backing representation can be swapped without
+touching a call site.
+
+**Falsifier, stated in advance:** *if a `fmpq`-backed `util::Rational` is not
+at least as fast as the current one on the H2 profiling instances
+(`DTP-Scheduling/constraints-tempo-width-30` and the four scrambled
+instances), the hand-written path stays and this entry closes.* Speed parity
+is the bar, not speed improvement -- the reason to switch would be shedding
+the invariant, so matching performance is enough to justify it and failing to
+match is enough to reject it.
+
+## H11 -- Fill-in-aware pivoting in preprocessing Gaussian elimination
+
+**Status: proposed, not implemented.** To be added behind an option, default
+off, and promoted only on measurement.
+
+### Where this came from
+
+Not from a design argument. Reviewing the model-production merge on 2026-08-02
+turned up a QF_LRA behaviour change with no plausible cause in the diff:
+`miplib/vpm2-0` moved `:preprocessing.solve-eqs.rewrites` 390 -> 252 and
+`:lra.pivots` 26890 -> 12537. Bisecting it landed on the frontend interning a
+term per declared Real constant at `declare-fun` time, which assigns TermIds in
+declaration order rather than first-use order.
+
+The site is tracked as entry 1 in [](termid-order-sensitivity.md), the docket for
+this class of behaviour. It mattered because of this, in
+`collect_gaussian_elimination_candidates`:
+
+```cpp
+std::sort(eligible_variables.begin(), eligible_variables.end());  // by TermId
+for (const core::TermId variable : eligible_variables) {          // pivot order
+  for (std::size_t i = 0; i < rows.size(); ++i) {                 // first row with it
+```
+
+**Preprocessing Gaussian elimination pivots on whichever eligible variable has
+the smallest TermId, and eliminates using the first row that mentions it.**
+Deterministic, but arbitrary: pivot choice is a function of term-allocation
+order, so an unrelated frontend change reshuffles it. The eager interning was
+reverted (see the [regression test](#h11-note-on-the-fix)), which removes *this*
+trigger without removing the coupling.
+
+Two things are worth separating. Order sensitivity of this kind is ordinary in
+SMT and is not by itself a defect. What makes it worth an item is that the
+pivot rule is *uninformed*: it optimises nothing.
+
+### The proposal
+
+Choose pivots by expected fill-in rather than by TermId, exactly as
+[H3](#h3) does for the tableau's entering variable -- the Markowitz product of
+the variable's occurrence count and the pivot row's length. Two of the three
+inputs are already computed a few lines away in `substitute_solved_constants`:
+`occurrences` is built there, and row lengths are available from
+`rows[i].coefficients`.
+
+This is the naive strategy H3 already replaced once, in the other pivoting
+context. The argument that worked there is the argument here.
+
+### Option
+
+`--lra-gaussian-markowitz` (default off), so the preprocessing pivot rule can
+be A/B'd without rebuilding, and so a promotion decision rests on a paired run
+rather than on the change being obviously sensible. Ablation invariance is the
+first check: with the option off, `:preprocessing.solve-eqs.*` and `:lra.pivots`
+must be bit-identical to the pre-change build, the check that made H2 and H3
+trustworthy.
+
+### Falsifier, stated in advance
+
+*If fill-in-aware pivoting does not reduce `:preprocessing.term-size.final` or
+`:lra.pivot-term-ops` on the instances where TermId order demonstrably mattered
+-- `miplib/vpm2-0`, `miplib/pp08a-*`, the Heizmann chain -- then preprocessing
+pivot choice is not worth optimising and the item should be rejected outright
+rather than tuned.* [D1](#d1) and the item-8 cost-ranking episode are the
+precedents for rejecting rather than tuning.
+
+A second, cheaper falsifier comes first: on the five-variable chain in
+`declaration_order_does_not_change_the_search`, reversing the declarations
+changed accepted substitutions from 4 to 0 under the old behaviour. If a
+fill-in-aware rule cannot keep that at 4 under both orders, it is not actually
+choosing on fill-in.
+
+(h11-note-on-the-fix)=
+### Note on the fix that preceded this
+
+The eager interning was replaced by recording `SymbolId` and materialising
+terms in `declared_real_constant_terms()`, called only when a model was
+requested and only after the search. `mk_constant` interns, so constants
+occurring in an assertion keep the id they already had.
+
+The regression test is worth knowing about before writing another one like it.
+The obvious test -- compare a `produce-models` run against a plain one -- does
+**not** detect the defect, because the interning was unconditional and moved
+both arms together; that test passed with the defect reintroduced. The
+invariant that discriminates is that permuting `declare-fun` lines must not
+change the search.

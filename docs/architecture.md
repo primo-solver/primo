@@ -161,12 +161,27 @@ argument through SAT clauses.
 The SAT layer does not inspect `Term` objects directly. `smt::BooleanClausifier`
 maps Boolean structure to SAT clauses. Top-level asserted conjunctions are
 asserted child-by-child instead of through an auxiliary Tseitin literal.
-Top-level asserted disjunctions are asserted as one clause by default. The CLI
-flag `--top-level-or-tseitin` enables the same cached Tseitin encoding as nested
-disjunctions and asserts the auxiliary literal by a unit clause; this adds binary
-support clauses that can expose branch literals to SAT search, but a 334-row
-QF_UF SLURM validation rejected it as a default because it regressed PEQ and
-SEQ rows. Equalities and Boolean-returning predicate applications become theory
+Top-level asserted disjunctions are asserted as one clause. `--top-level-or-tseitin`
+instead applies the same cached Tseitin encoding as nested disjunctions and
+asserts the auxiliary literal by a unit clause; this adds binary support clauses
+that can expose branch literals to SAT search, but a 334-row QF_UF SLURM
+validation rejected it as an unconditional default because it regressed PEQ and
+SEQ rows.
+
+What survived that rejection is a **guarded automatic rule**, on by default and
+disabled with `--no-auto-top-level-or-tseitin`. It is much narrower than
+"automatic" suggests -- `should_use_auto_top_level_or_tseitin` requires *all* of:
+
+- the problem has finite-domain at-most-one structure (`choices != 0` and a
+  non-empty clause set), so it only ever fires on QF_UF finite-domain shapes;
+- between 1000 and 2500 top-level OR nodes;
+- at most 700 negation nodes;
+- `--top-level-or-tseitin` was not forced on.
+
+Outside that band the effective default is one clause per top-level
+disjunction. The size window is what keeps the encoding away from the rows it
+regressed: small formulas gain nothing from the extra literals, and large ones
+paid for them. Equalities and Boolean-returning predicate applications become theory
 atoms with associated SAT literals.
 
 The equality theory receives `TermId` values. Congruence closure uses those ids to inspect term structure through `TermManager::get`, merge equality classes, and test disequalities. EUF equality is therefore a theory relation over term ids, not the same thing as hash-consed syntactic identity.

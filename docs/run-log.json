@@ -17849,6 +17849,249 @@
         ]
       },
       "outcome": "The backend-neutral IPASIR-UP refactor shows no meaningful timing regression on the second-scale pure QF_UF sample. Default-mode median total time stayed within -2.1% to +2.1%; --euf-prop=online stayed within -3.1% to +6.8%. All answers/statuses and all non-time statistics matched between baseline and current."
+    },
+    {
+      "id": "2026-08-02-qf-lra-yices-reference-and-mutant-quality",
+      "started_at": "2026-08-02",
+      "recorded_at": "2026-08-02",
+      "kind": "analysis",
+      "scope": "Evaluating Yices 2 as a QF_LRA reference solver, prompted by the question of whether it is a better reference for some families than z3. Two further findings fell out: yices cannot read YinYang mutants at all without help, and for one family YinYang's mutants are ill-formed.",
+      "commit": "8eac51a",
+      "environment": {
+        "type": "mixed",
+        "host": "workstation for the seed/generator measurements; llm2smt-slurm for the mutant scan",
+        "binary": "build/primo at c29ed09, z3 5.0.0, Yices 2.7.0 (x86_64 static-gmp, GPLv3, reference-only)"
+      },
+      "summary": {
+        "is_yices_a_better_reference": "For some families, measurably yes. At 60s z3 answers neither latendresse seed nor miplib_pp08a-9000; yices answers all three (15.9s, 15.1s, 4.7s). At the 20s mutation timeout yices oracles 29 of 34 corpus seeds against z3's 26, and its failures are a strict subset of z3's, so the union is also 29. It does not subsume z3 -- both time out on LassoRanker at 20s (yices needs 109s; primo 3s) and neither answers tropical-matrix -- so it is added as a second reference, not a replacement.",
+        "generator_side": "On 150 wide-coefficient FuzzSMT cases yices agreed with z3 on all 150 and ran 6x faster (0.3s against 1.9s), so it is also the cheaper generator reference.",
+        "yices_cannot_read_mutants": "yices-smt2 requires (set-logic ...) before Real is a defined sort and has no --logic flag; z3 infers a default. typefuzz strips the command -- 0 of 200 sampled mutants had one -- so yices failed every mutant at line 1 with 'undefined sort: Real'. As a third target it contributed nothing while still costing a process launch per mutant, visible as YinYang's effective-call rate dropping from 65.1% (job 118548 opfuzz) to 42.8% (job 118611 opfuzz). Solving eff = effective/total for the third target gives roughly zero, which is what pointed at rejection rather than timeout. Fixed by scripts/yices_smt2_ref.sh, which prepends the logic only when absent.",
+        "typefuzz_mutants_are_ill_formed_for_ezsmt": "SUPERSEDED by the entry 2026-08-02-qf-lra-mutation-yield-is-structurally-low. The first diagnosis here -- that typefuzz invents symbols out of paren-bearing quoted names, affecting only the 2 ezsmt seeds -- was wrong on both the mechanism and the scale."
+      },
+      "caveats": [
+        "The eff comparison 65.1% -> 42.8% confounds two changes made at once: the third target AND opfuzz iterations 300 -> 200. It is not a clean measurement of yices's effect. It was still enough to point at the real defect, which was then confirmed directly by running yices on a mutant.",
+        "A prediction stated in advance -- that adding yices would raise the effective-call rate above the 28-43% band -- was wrong, and wrong for a reason worth keeping: the addition was broken, not merely unhelpful.",
+        "The ill-formed-mutant finding does NOT imply false bug reports. In opfuzz mode the first solver (primo) is the oracle; it produces no sat/unsat on these, so typefuzz counts the mutant invalid and skips it. The cost is wasted budget -- about 59 of 60 mutants for that seed -- not unsoundness."
+      ],
+      "outcome": "Yices added as a second reference (commit 2da20f4), wrapper added (8eac51a), gate pointed at the wrapper. Job 118611 was cancelled after its opfuzz task completed, rather than spending three more hours on the broken configuration; its opfuzz result (34/34 seeds, 0 bug triggers) stands as a primo-vs-z3 result."
+    },
+    {
+      "id": "2026-08-02-qf-lra-mutation-yield-is-structurally-low",
+      "started_at": "2026-08-02",
+      "recorded_at": "2026-08-02",
+      "kind": "analysis",
+      "scope": "Why YinYang mutation fuzzing yields so little against a QF_LRA-only solver. Measured directly on the mutants job 118611 left behind, after two earlier diagnoses in this log turned out to be wrong.",
+      "commit": "fffca07",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo, z3 5.0.0, Yices 2.7.0"
+      },
+      "summary": {
+        "headline": "Across 25 mutants from each of 8 seed groups (200 total), Primo can answer 15 -- 7.5%. Per group: Heizmann 0/25, ezsmt 0/25, check_bignum 2/25, DTP-Scheduling 3/25, meti-tarski 4/25, miplib 1/25, sal 3/25, spider 2/25.",
+        "cause_1_declaration_order": "typefuzz emits declare-fun commands after their first use. Verified concretely: in a Heizmann mutant, motzkin_2059_0 is used at line 17 and declared at line 49, while in the parent seed it is declared at line 77 and first used at line 86. Primo and Yices both reject with 'unknown symbol'; z3 drops the offending assertions and answers anyway, i.e. answers a strictly weaker formula. Mechanically fixable by hoisting declarations.",
+        "cause_2_nonlinearity_dominates": "Hoisting is not enough: the same mutant then fails with '* requires a literal rational coefficient operand (QF_LRA)'. opfuzz and typefuzz mutate operators in a SORT-aware way, and QF_LRA's linearity is a syntactic restriction beyond sorts, so operator mutation routinely produces products of non-constant terms -- e.g. (* (+ (* motzkin_2059_0 10.0) ...) ...) -- which leave the logic. Primo correctly rejects them; z3 solves them as nonlinear.",
+        "conclusion": "Mutation fuzzing has a low INTRINSIC yield against a linear-arithmetic-only solver: most mutants are no longer QF_LRA. This is a property of the tool/logic pairing, not a misconfiguration, and it explains why mutation fuzzing has never found anything here. It is not unsound -- in opfuzz mode Primo is the oracle, and a mutant it cannot answer is counted invalid and skipped, so no false bug is reported. The cost is budget: roughly 13 mutants generated per usable one."
+      },
+      "caveats": [
+        "Two earlier diagnoses in this session were wrong and are corrected here. First: that typefuzz invents symbols from paren-bearing quoted names -- it does not, the symbols are declared, just later. Second: that the problem was confined to the 2 ezsmt seeds, about 6% of the corpus -- Heizmann is 0/25 and has no quoted symbols at all.",
+        "The nonlinear-product count was initially under-measured by a regex that only matched (* ident ident) on one line; the real forms are nested and multi-line. Counting shapes rather than lines is what showed it.",
+        "The seed-corpus widening is still worth having: it broadens the shapes of the ~7.5% of mutants that do stay in QF_LRA. It just does not multiply the yield the way the seed count suggests."
+      ],
+      "outcome": "Recorded as a structural limit rather than a defect to fix. Hoisting declarations would recover cause 1, but cause 2 dominates and has no fix short of a logic-aware mutator, so it was not implemented. Generator fuzzing (the FuzzSMT ladder) remains the higher-yield path for QF_LRA and stays the primary gate."
+    },
+    {
+      "id": "2026-08-02-model-production-merge-review",
+      "started_at": "2026-08-02",
+      "recorded_at": "2026-08-02",
+      "kind": "analysis",
+      "scope": "Review of the model-production merge (origin/main, 9 commits) for QF_LRA correctness and performance regressions, against the pre-merge baseline 53d3d9d.",
+      "commit": "e8ac403",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo at the merge vs a git-worktree Release build of 53d3d9d; baseline verified BY CONTENT (0 vs 16 produce_model refs, model_builder.cpp 1 vs 273 lines), not by --version",
+        "notes": "Both binaries confirmed deterministic across repeated runs; cmake configurations compared and equal."
+      },
+      "summary": {
+        "correctness": "130 files, 8 per family across all 17 division families, both builds: zero wrong answers against declared :status. Answers identical except 3 files that moved unknown -> answered, all borderline at the 20s cap and confirmed solvable by both at 40s.",
+        "structural": "src/theory/ is byte-identical -- the tableau and H8/H9/H10 are untouched. The merge dropped no LRA work: 37 removed lines in check_sat.cpp are all signature/constructor changes, and every LRA knob is present with identical counts. Model paths are correctly gated on options.produce_model, which is settled before solving because all commands are parsed first.",
+        "defect_found": "The frontend interned a term per declared Real constant at declare-fun time, assigning TermIds in declaration order rather than first-use order. Preprocessing's Gaussian elimination pivots in ascending TermId order, so this silently changed which substitutions were accepted -- unconditionally, model requested or not. On miplib/vpm2-0: :preprocessing.solve-eqs.rewrites 390 -> 252, :lra.pivots 26890 -> 12537. Fixed in e3059e6 by recording SymbolId and materialising terms after the search.",
+        "post_fix_verification": "Non-time statistics identical on 31 of 31 A/B instances across 11 families. Preprocessing time 1894376us vs 1893674us, ratio 0.9996 -- the unconditional substitution-trail building added by the merge costs nothing measurable.",
+        "second_regression": "set-option moved from silently ignored to strictly parsed, so (set-option :verbosity (- 1)) is now rejected although SMT-LIB 2.6 permits an s-expression attribute value and z3 accepts it. No file in any local corpus uses set-option, so benchmarks are unaffected. Not fixed; recorded."
+      },
+      "caveats": [
+        "Wall-clock A/B could not resolve this. Two paired runs of the same 31 instances gave ratio 0.970 (before the fix) and 1.028 (after), while the CONTROL arm -- the same baseline binary on the same files -- moved 80.80s to 84.69s between runs, a 4.8% drift. The rig's noise floor exceeds the effect size, so neither ratio is evidence. The statistics-identity comparison is what settles it.",
+        "The three unknown -> answered files were first read as the new build being faster. That comparison was confounded: the baseline sweep ran concurrently with a timing probe while the new sweep ran alone. Re-running them uncontended showed both builds solve them.",
+        "The QF_LRA UF rejection added by 095e07f is a real behaviour change, but correct per the logic definition and no division file triggers it."
+      ],
+      "outcome": "Merge accepted. One defect found and fixed (e3059e6) with a regression test; one narrow spec regression recorded and left; the TermId-order coupling underneath opened as a docket (docs/termid-order-sensitivity.md) with H11 proposed behind --lra-gaussian-markowitz."
+    },
+    {
+      "id": "2026-08-02-qf-lra-full-fuzz-campaign-118735",
+      "started_at": "2026-08-02",
+      "recorded_at": "2026-08-02",
+      "kind": "fuzz",
+      "scope": "First campaign with every piece of this session's fuzzing work active at once: the six-profile FuzzSMT ladder, QF_LRA-restricted opfuzz and typefuzz configs, --keep-logic and --hoist-declarations (now upstream in the fork at 04c8618), Yices as a second reference, and the family-complete 34-seed corpus.",
+      "commit": "67140b2",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at 57fcf0a; references z3 5.0.0 and Yices 2.7.0 via scripts/yices_smt2_ref.sh",
+        "notes": "Job 118735, 11 tasks, 6h wall. Prerequisites verified before submitting: cluster venv reinstalled via contrib/install_yinyang.py because it still predated the upstreamed flags (keep_logic reported False). Flags confirmed present in the ACTUAL command lines, not assumed from env vars."
+      },
+      "summary": {
+        "generator": "5 of 6 ladder shards complete at time of writing: 2500 cases, 2455 PASS, 45 TIMEOUT, zero wrong answers and zero REF_DISAGREEMENT. Every case consulted BOTH references -- verified from the summary CSVs as 'refs per case: {2: 2500}', since fuzz_external.py does not echo its arguments and silent reference-dropping was a real defect fixed earlier the same day.",
+        "opfuzz_efficiency": "The headline result. opfuzz completed all 34 seeds with 0 bug triggers at an effective-call rate of 99.7%, against 65.1% for the same task under the stock configs (job 118548) and 42.8% when Yices was added but could not read mutants (job 118611). The QF_LRA operator config plus --keep-logic is what closed it.",
+        "typefuzz_efficiency": "More modest: 41.7%, 65.0% and 51.3% on the three shards that ran to the wall, against a 27-43% baseline. typefuzz is generative rather than substitutional, so it produces harder mutants; the improvement is real but not the step change opfuzz saw.",
+        "bug_files": "45 files under bugs/, exactly matching the 45 FuzzSMT TIMEOUTs, all in fuzzsmt shard directories and none in any mutation bugs/ directory. No defect was found anywhere in the campaign.",
+        "wall_handling": "Tasks 7, 8 and 10 each ran the full 10800s wall and exited 0 with 'reached the 10800s wall; this is a time-boxed run, not a failure'. Under the pre-b790e63 behaviour all three would have been recorded as FAILED."
+      },
+      "caveats": [
+        "Task 9 was SIGKILLed (exit 137) at 2:06:21 and the cause was NOT established. Memory is ruled out as the explanation: tasks 7 and 10 reported higher MaxRSS (107GB and 108GB against task 9's 80GB) on the same 2G request and completed, so those figures are an accounting artifact rather than real resident size. Primo is not reproducibly implicated -- 25 minutes and 800 mutants with primo capped at 4GB of address space produced no kill and no bug, and the largest mutant (92KB) solves in 0.01s using 9MB. Recorded as unexplained rather than attributed.",
+        "Ladder shard 0 was still running when this entry was written; its 500 cases are not included in the 2500 above.",
+        "The opfuzz and typefuzz efficiency figures are not directly comparable to each other -- opfuzz substitutes operators in place while typefuzz generates new terms -- and the local 2-target reproduction measured 76.5%, so target count moves the number too."
+      ],
+      "outcome": "No defect found across roughly 4700 generator and mutation cases with two independent references. The efficiency prediction stated in advance -- that the QF_LRA configs would lift the effective-call rate above the 28-43% band -- is confirmed for opfuzz (99.7%) and only partly for typefuzz (41.7-65.0%)."
+    },
+    {
+      "id": "2026-08-03-qf-lra-division-four-solver",
+      "started_at": "2026-08-03",
+      "recorded_at": "2026-08-03",
+      "kind": "benchmark",
+      "scope": "Adds Yices 2.7.0 to the complete non-incremental QF_LRA division comparison, and re-runs primo at the current commit. z3 and cvc5 were NOT re-run -- unchanged since job 118382, whose CSVs are reused.",
+      "commit": "b6b8d55",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-rel/primo at b6b8d55; Yices 2.7.0 from contrib/local. z3 5.0.0 and cvc5 1.3.4 rows come from job 118382 (2026-08-01).",
+        "notes": "Job 118904, 2 solvers x 40 shards = 80 tasks, all COMPLETED, 40/40 shard CSVs each."
+      },
+      "command": {
+        "job": "sbatch --array=0-79 --time=10:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40, PRIMO_COMPARE_SOLVERS='primo=build-slurm-rel/primo --quiet;yices=contrib/local/bin/yices-smt2'",
+        "plot": "python3 scripts/plot_cactus.py --series yices=<118904> --series primo=<118904> --series z3=<118382> --series cvc5=<118382> --timeout 300 --out docs/_static/qf-lra-cactus.svg"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-full-division.txt (1,753 files, 17 families)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "Yices 1645/1753 (93.8%) PAR2 80585; primo 1631 (93.0%) PAR2 95091; z3 1584 (90.4%) PAR2 128079; cvc5 1511 (86.2%) PAR2 181248. Yices leads on both measures; primo is second by 14 instances.",
+        "standings_change": "This revises the headline. Against z3 and cvc5 alone primo led the division by 47; with Yices included it is second. Any claim that primo leads the QF_LRA division needs the qualifier 'of the three previously compared solvers'.",
+        "where_it_is_decided": "LassoRanker, the division's largest family at 419 instances: Yices 381, primo 347 -- a 34-file gap against a 14-file overall margin, so that family alone decides the standings. primo recovers 24 of it elsewhere: 2017-Heizmann +16 (41 against 25), 2019-ezsmt +4, latendresse +2 (15 against 13), tta_startup +2. miplib goes to Yices by 4. Eleven of seventeen families tie exactly, ten of them saturated.",
+        "complementarity": "29 instances only primo solves, 26 only Yices, 2 only z3, 3 only cvc5; 63 defeat all four. The two leaders are complementary rather than one dominating.",
+        "soundness": "Zero wrong answers for all four against the division's own (set-info :status), zero cross-solver disagreements, and zero benchmarks unsolved for non-standard reasons -- every unsolved instance is an honest timeout, not a parse error or refused construct.",
+        "primo_unchanged": "primo scores 1631 at b6b8d55 against 1631 at aa44320 (PAR2 95091 against 94992, 0.1%). Independent confirmation that the model-production merge plus today's frontend changes are behaviour-neutral on this division."
+      },
+      "caveats": [
+        "Not a single simultaneous run. primo and Yices ran 2026-08-03; z3 and cvc5 come from job 118382 on 2026-08-01 and were deliberately not re-run because neither changed. Same manifest, timeout, harness and cluster, different days.",
+        "The division desugaring committed today (57fcf0a) could in principle have changed primo's score: 146 of the 1753 files contain a syntactic (/ <non-numeral> ...). It did not -- a parse-only sweep of all 1753 files reports zero unsupported inputs both before and after, so those operands all resolve to literals through let-expansion.",
+        "No division file uses abs or set-option, so neither the abs rejection nor the set-option change affects these numbers."
+      ],
+      "outcome": "Cactus plot committed at docs/_static/qf-lra-cactus.svg, generated by scripts/plot_cactus.py. Yices is now the strongest solver measured on this division."
+    },
+    {
+      "id": "2026-08-03-qf-lra-first-remote-asan-gate",
+      "started_at": "2026-08-03",
+      "recorded_at": "2026-08-03",
+      "kind": "fuzz",
+      "scope": "First fuzz gate ever run on the cluster against a sanitizer build. Every previous Slurm gate ran the Release binary, and several run-log entries say so explicitly ('This gate therefore carries no sanitizer coverage and must not be read as if it did').",
+      "commit": "2622ce1",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "primo-qflra/build-slurm-fuzz/primo -- Debug, sanitizers: address,undefined, built by scripts/build_slurm_fuzz.sh on the head node under GCCcore/11.3.0; reference z3 5.0.0",
+        "notes": "Job 119005, 4 tasks. Sized down from the Release ladder (250 cases per shard, 30s timeouts) because a sanitized build runs several times slower."
+      },
+      "command": {
+        "build": "ssh <cluster> 'cd primo-qflra && scripts/build_slurm_fuzz.sh'",
+        "job": "sbatch --array=0-3 --time=06:00:00 --job-name=primo-qflra-asan-gate scripts/slurm_qfuf_fuzz_gate.sbatch with PRIMO_FUZZ_SOLVER=build-slurm-fuzz/primo, FUZZSMT_SHARDS=4, FUZZSMT_COUNT=250, FUZZSMT_TIMEOUT=30, OPFUZZ_TASKS=0, YINYANG_SHARDS=0"
+      },
+      "summary": {
+        "result": "1000 cases across four ladder profiles: 979 PASS, 21 TIMEOUT. Zero AddressSanitizer, LeakSanitizer or UBSan reports anywhere in the shard logs. Zero wrong answers.",
+        "coverage_confirmed": "All 4 of 4 shard logs report 'sanitizers: address,undefined' in the startup banner, checked rather than assumed -- a gate that silently ran the Release binary would look identical in its outcome table. 4 of 4 shard CSVs present, so no shard was lost to the wall.",
+        "bug_files": "21 files under bugs/, exactly matching the 21 timeouts. fuzz_external.py copies every non-PASS case there, so a non-empty bugs/ is not a bug count."
+      },
+      "caveats": [
+        "Generator path only. No mutation tasks ran, so opfuzz and typefuzz have still never been run under sanitizers on the cluster.",
+        "1000 cases is smoke-to-merge tier, not campaign tier. It establishes that the toolchain works and finds nothing at this size; it does not replace the 3000-case Release campaign.",
+        "UBSan reports and continues rather than aborting, so the stderr grep is the detection mechanism for it, not the harness's outcome column."
+      ],
+      "outcome": "The remote sanitizer toolchain works and its first gate is clean. Task 16 closed."
+    },
+    {
+      "id": "2026-08-03-qf-lra-division-opensmt",
+      "started_at": "2026-08-03",
+      "recorded_at": "2026-08-03",
+      "kind": "benchmark",
+      "scope": "Adds OpenSMT 2.9.2 as a fifth reference on the complete non-incremental QF_LRA division. Only OpenSMT ran: primo, Yices, z3 and cvc5 are unchanged, so their CSVs are reused.",
+      "commit": "f04fd42",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "OpenSMT 2.9.2 (opensmt-x64-linux-static) from contrib/local, installed by contrib/install_opensmt.py. primo at b6b8d55 and Yices 2.7.0 rows come from job 118904 (2026-08-03); z3 5.0.0 and cvc5 1.3.4 from job 118382 (2026-08-01).",
+        "notes": "Job 119045, 1 solver x 40 shards = 40 tasks, all COMPLETED, 40/40 shard CSVs present. Same manifest, root, timeout and harness as 118904."
+      },
+      "command": {
+        "install": "python3 contrib/install_opensmt.py  (or make contrib-opensmt)",
+        "job": "sbatch --array=0-39 --time=10:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40, PRIMO_COMPARE_SOLVERS='opensmt=contrib/local/bin/opensmt'",
+        "analysis": "python3 scripts/compare_solver_answers.py <119045 + 118904 + 118382 merged into one dir> --timeout 300",
+        "plot": "python3 scripts/plot_cactus.py --series opensmt=<119045> --series yices=<118904> --series primo=<118904> --series z3=<118382> --series cvc5=<118382> --timeout 300 --drop-solved-by-all-under 10 --out docs/_static/qf-lra-cactus.svg  (the committed figure omits the 1,097 instances every solver finished under 10s, leaving 656; drop the flag for the unfiltered version. Filtering subtracts the same constant from every curve, so the gaps are unchanged, but the legend counts are of 656.)"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-full-division.txt (1,753 files, 17 families)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "OpenSMT 1670/1753 (95.3%) PAR2 68068; Yices 1645 (93.8%) PAR2 80585; primo 1631 (93.0%) PAR2 95091; z3 1584 (90.4%) PAR2 128079; cvc5 1511 (86.2%) PAR2 181248. OpenSMT leads on both measures.",
+        "standings_change": "primo drops from second to third. Its own score is unchanged at 1631 -- every movement in its apparent standing on this division (ahead by 47, then second, now third) has come from adding references, not from anything primo did. Recorded because the sequence is easy to misread as a regression.",
+        "where_it_is_decided": "LassoRanker (419 files) goes 385 to primo's 347 and 2017-Heizmann 48 to 41 -- those two carry OpenSMT's 39-file margin. tropical-matrix is the sharpest single result: OpenSMT 5 of 10 where primo, Yices and z3 each take 1 and cvc5 0. primo leads 2019-ezsmt 103-95, latendresse 15-11 and ties tta_startup at 72. Ten of seventeen families are saturated for all five solvers.",
+        "complementarity": "29 instances primo solves that OpenSMT does not, against 68 the other way. Uniquely solved: 23 OpenSMT, 8 primo, 8 Yices, 1 z3, 0 cvc5; 40 files defeat all five.",
+        "soundness": "Zero wrong answers for all five against the division's own (set-info :status) -- 1,629 of 1,753 files carry a checkable status. Zero cross-solver disagreements across five independent implementations, and zero benchmarks unsolved for a non-standard reason: every unsolved instance is an honest timeout.",
+        "budget_sensitivity": "Yices leads at every budget up to 10s (1428 to OpenSMT's 1370) and OpenSMT leads from 30s on (1527 to 1525); they cross between the two. At a 10s timeout the division standings would read Yices, OpenSMT, primo, z3, cvc5 with Yices ahead by 58 -- which reference is strongest depends on the timeout."
+      },
+      "caveats": [
+        "Not a single simultaneous run. OpenSMT ran 2026-08-03 alongside nothing else of its own; primo and Yices come from job 118904 the same day; z3 and cvc5 from job 118382 on 2026-08-01. Same manifest, timeout, harness and cluster, different days -- the standing policy of not re-running unchanged reference solvers.",
+        "OpenSMT was run at its defaults with no flags, exactly as the other references are. No attempt was made to find a better configuration for it or for primo.",
+        "Reference-only: contrib/install_opensmt.py installs the release binary and nothing else. OpenSMT's source was not read, for the same clean-room reason stated for Yices -- its simplex core descends from the same Dutertre and de Moura paper primo's does."
+      ],
+      "outcome": "OpenSMT 2.9.2 is the strongest solver measured on this division, and the cactus plot at docs/_static/qf-lra-cactus.svg now carries five series."
+    },
+    {
+      "id": "2026-08-03-qf-lra-scrambled-300s-opensmt",
+      "started_at": "2026-08-03",
+      "recorded_at": "2026-08-03",
+      "kind": "benchmark",
+      "scope": "Adds OpenSMT 2.9.2 to the 595-file scrambled competition set at 300s -- the set used as the promotion bar for the H-series heuristics -- so that bar is measured against the same reference set as the division.",
+      "commit": "f04fd42",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "binary": "OpenSMT 2.9.2 from contrib/local. primo, z3 5.0.0 and cvc5 1.3.4 rows come from job 118310 and were not re-run.",
+        "notes": "Job 119085, 1 solver x 20 shards = 20 tasks, all COMPLETED, 20/20 shard CSVs present."
+      },
+      "command": {
+        "job": "sbatch --array=0-19 --time=10:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=sandbox/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-scrambled-competition.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=20, PRIMO_COMPARE_SOLVERS='opensmt=contrib/local/bin/opensmt'",
+        "analysis": "python3 scripts/compare_solver_answers.py <119085 + 118310 merged into one dir> --timeout 300"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-scrambled-competition.txt (595 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": 300
+      },
+      "summary": {
+        "result": "OpenSMT 552/595 (92.8%) PAR2 33907; primo 515 (86.6%) PAR2 61303; z3 507 (85.2%) PAR2 66718; cvc5 465 (78.2%) PAR2 96616.",
+        "band_revision": "The 500KB-5MB band -- the one the H7-H10 campaign was built around -- is primo 134, z3 141, OpenSMT 166 of 174. Against z3 the remaining deficit is 7 files and the campaign recovered 56 of the original 63; against OpenSMT the deficit is 32. The campaign's diagnosis of WHERE the work was needed holds; its claim that 'most of the deficit is removed' was measured against a reference that is not the strongest available.",
+        "other_bands": "0-50KB saturated for all four at 179. 50-500KB: OpenSMT 178, primo 173, z3 157, cvc5 154 -- primo's own strongest band and still ahead of both older references. >5MB: z3 30, primo 29, OpenSMT 29, cvc5 14, so nothing in that band separates the leaders.",
+        "complementarity": "11 files only primo solves against 48 only OpenSMT solves; 29 of the 595 fall to OpenSMT alone, against 3 to primo alone.",
+        "soundness": "Zero cross-solver disagreements over four solvers, and zero files unsolved for a non-standard reason. This set carries no (set-info :status), so disagreement is the only soundness signal it can give -- a 'wrong=0' column here means nothing on its own."
+      },
+      "caveats": [
+        "primo, z3 and cvc5 were not re-run; their rows come from job 118310. Same manifest, root, timeout and harness.",
+        "This set is a hard sample, not a division result: it under-weights the families primo is strongest on. The division comparison of the same day is the headline measurement, not this one."
+      ],
+      "outcome": "The promotion bar now has a fourth reference, and it moves the reading of the mid-band campaign: against OpenSMT that band is -32, not -7."
     }
   ]
 }

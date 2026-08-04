@@ -19,6 +19,11 @@ The generated HTML is written under `docs/_build/html`.
 - Keep claims synchronized with implemented functionality.
 - Cite the paper or design note behind each nontrivial algorithmic component.
 - Keep dependency integration notes separate from algorithm descriptions.
+- Link to an explicit target such as `(h8)=` by its label alone -- `[H8](#h8)`
+  -- not by path and fragment. The path form (`qf-lra-heuristics.md#h8`) makes
+  MyST look up an HTML id in a document that may not have been rendered yet, so
+  it emits `xref_missing` warnings that depend on build order while still
+  producing a working link. Labels resolve globally and do not.
 
 ## Main sections
 
