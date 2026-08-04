@@ -17654,7 +17654,7 @@
       "id": "2026-08-04-sat-ipasir-up-interface-local-probe",
       "date": "2026-08-04",
       "branch": "sat-ipasir-up-interface",
-      "commit": "9a71a84",
+      "commit": "e138069; run-log hash correction committed immediately after",
       "evidence_status": "current",
       "scope": "Backend-neutral IPASIR-UP interface refactor and local CaDiCaL fresh-observed-variable callback probe. No Nelson-Oppen behavior change is claimed.",
       "commands": {
