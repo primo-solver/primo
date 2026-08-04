@@ -321,7 +321,15 @@ Implemented now:
   additional model-equal pairs; if SAT later proves the active assumption set
   inconsistent, Primo learns a blocking clause over the failed assumptions and
   drops them from the active trail. These guesses are optional branches, not
-  permanent unit clauses. This is intentionally not full Nelson-Oppen:
+  permanent unit clauses. The branch selector now routes LRA model-equality
+  decisions through a narrow theory-model query result:
+  `theory::ModelEqualityEvaluation` is the generic theory-layer status object,
+  while the mixed coordinator's `LraTheoryModelView` is the current LRA-only
+  adapter that reads tableau model values and classifies equalities as
+  mutation-unqueried, mutation-avoidable, or not avoided by the strict
+  separation filter. This remains a query/classification interface, not a
+  model-equality propagation mechanism. This is intentionally not full
+  Nelson-Oppen:
   fine-grained minimal cross-theory explanations, full model-equality
   propagation, a mutable shared theory-model object, native false-`Eq` LRA atoms,
   and unbounded arrangement enumeration remain unsupported. Ordinary SMT-LIB

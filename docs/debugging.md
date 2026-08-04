@@ -348,6 +348,13 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
+- `:no.interface.model-equality-api-builds`
+- `:no.interface.model-equality-api-queries`
+- `:no.interface.model-equality-api-not-equal`
+- `:no.interface.model-equality-api-equal`
+- `:no.interface.model-equality-api-mutation-unqueried`
+- `:no.interface.model-equality-api-mutation-avoidable`
+- `:no.interface.model-equality-api-mutation-forced`
 - `:no.interface.model-equality-mutation-checks`
 - `:no.interface.model-equality-mutated`
 - `:no.interface.model-equality-mutation-forced`
@@ -529,7 +536,14 @@ adaptive stops, the current and maximum active model-equality assumption-trail
 size, and ordinary theory conflicts reached while at least one guessed equality
 was active. A surviving model-equality guess is re-applied as an IPASIR
 assumption on later SAT calls while the coordinator tries additional model-equal
-pairs; it is still not a permanent unit clause. The current positive-equality path should
+pairs; it is still not a permanent unit clause.
+`:no.interface.model-equality-api-builds` counts LRA theory-model views built
+for this optional branch path, and `:no.interface.model-equality-api-*` counters
+split the per-pair query result into unequal, equal without a mutation query,
+equal but mutation-avoidable, and equal but not avoided by the mutation filter.
+These counters are a guard that the branch heuristic is using the generic
+`theory::ModelEqualityEvaluation` result object rather than directly peeking at
+LRA values at the branch-selection site. The current positive-equality path should
 also show activity in
 `:no.interface.sat-equalities-forced`, which counts guarded propagation clauses
 from the current theory assignment to an interface equality literal, and then

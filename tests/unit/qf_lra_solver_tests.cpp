@@ -665,6 +665,10 @@ void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-mutation-unqueried") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-candidates") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-created") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-pending") >= 1);
@@ -693,6 +697,10 @@ void qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-mutation-avoidable") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-lra-equal") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-mutation-checks") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-mutated") >= 1);
@@ -722,6 +730,10 @@ void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-mutation-unqueried") >= 1);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 1);
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
@@ -844,6 +856,10 @@ void qf_uf_lra_care_queued_model_equality_branching_uses_only_care_pairs() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-mutation-unqueried") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-full-pairs") == 3);
   assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 1);
   assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 2);
@@ -910,6 +926,10 @@ void qf_uf_lra_care_queued_model_equality_mutation_skips_before_atom_creation() 
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-mutation-avoidable") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-lra-equal") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-mutation-checks") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-mutated") >= 1);

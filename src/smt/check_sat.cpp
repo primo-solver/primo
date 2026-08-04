@@ -41,6 +41,7 @@
 #include "theory/equality/explained_congruence_closure.hpp"
 #include "theory/equality/flat_congruence_closure.hpp"
 #include "theory/equality/flat_terms.hpp"
+#include "theory/theory_solver.hpp"
 #include "util/rational.hpp"
 #include "util/statistics.hpp"
 
@@ -5440,6 +5441,73 @@ bool lra_model_equality_can_be_mutated(core::TermManager& terms,
                                                    options);
 }
 
+class LraTheoryModelView {
+ public:
+  LraTheoryModelView(core::TermManager& terms,
+                     const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+                     const std::vector<AssignedTheoryAtom>& lra_assignments,
+                     const RealModelValues& real_values, const CheckSatOptions& options,
+                     bool mutation_queries_enabled)
+      : terms_(terms),
+        lra_atoms_(lra_atoms),
+        lra_assignments_(lra_assignments),
+        real_values_(real_values),
+        options_(options),
+        mutation_queries_enabled_(mutation_queries_enabled) {}
+
+  theory::ModelEqualityEvaluation evaluate_equality(core::TermId lhs, core::TermId rhs) const {
+    if (value_of(lhs) != value_of(rhs)) {
+      return theory::ModelEqualityEvaluation{lhs, rhs, theory::ModelEqualityStatus::kNotEqual};
+    }
+    if (!mutation_queries_enabled_) {
+      return theory::ModelEqualityEvaluation{lhs, rhs,
+                                             theory::ModelEqualityStatus::kEqualMutationUnknown};
+    }
+    if (lra_model_equality_can_be_mutated(terms_, lra_atoms_, lra_assignments_, lhs, rhs,
+                                          options_)) {
+      return theory::ModelEqualityEvaluation{lhs, rhs,
+                                             theory::ModelEqualityStatus::kEqualMutationAvoidable};
+    }
+    return theory::ModelEqualityEvaluation{lhs, rhs,
+                                           theory::ModelEqualityStatus::kEqualMutationForced};
+  }
+
+ private:
+  util::Rational value_of(core::TermId term) const {
+    const auto found = real_values_.find(term);
+    return found == real_values_.end() ? util::Rational(0) : found->second;
+  }
+
+  core::TermManager& terms_;
+  const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms_;
+  const std::vector<AssignedTheoryAtom>& lra_assignments_;
+  const RealModelValues& real_values_;
+  const CheckSatOptions& options_;
+  bool mutation_queries_enabled_ = false;
+};
+
+void record_model_equality_evaluation(const theory::ModelEqualityEvaluation& evaluation,
+                                      util::Statistics& statistics) {
+  statistics.increment(":no.interface.model-equality-api-queries");
+  switch (evaluation.status) {
+    case theory::ModelEqualityStatus::kNotEqual:
+      statistics.increment(":no.interface.model-equality-api-not-equal");
+      break;
+    case theory::ModelEqualityStatus::kEqualMutationUnknown:
+      statistics.increment(":no.interface.model-equality-api-equal");
+      statistics.increment(":no.interface.model-equality-api-mutation-unqueried");
+      break;
+    case theory::ModelEqualityStatus::kEqualMutationAvoidable:
+      statistics.increment(":no.interface.model-equality-api-equal");
+      statistics.increment(":no.interface.model-equality-api-mutation-avoidable");
+      break;
+    case theory::ModelEqualityStatus::kEqualMutationForced:
+      statistics.increment(":no.interface.model-equality-api-equal");
+      statistics.increment(":no.interface.model-equality-api-mutation-forced");
+      break;
+  }
+}
+
 struct ModelEqualityBranchState {
   std::unordered_set<int> tried_vars;
   std::uint64_t unproductive_rejections = 0;
@@ -5709,10 +5777,9 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
   }
   const RealModelValues real_values = real_model_values_from_lra(
       terms, care_terms, {}, model_state->prepared, model_state->tableau, model_state->assignments);
-  const auto value_of = [&](core::TermId term) {
-    const auto found = real_values.find(term);
-    return found == real_values.end() ? util::Rational(0) : found->second;
-  };
+  statistics.increment(":no.interface.model-equality-api-builds");
+  const LraTheoryModelView lra_model_view(terms, lra_atoms, lra_assignments, real_values, options,
+                                          options.nelson_oppen_model_equality_mutation);
 
   const std::vector<ModelEqualityCandidate> ranked_candidates =
       options.nelson_oppen_model_equality_branch_policy == ModelEqualityBranchPolicy::First ||
@@ -5764,19 +5831,22 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
         }
       }
     }
-    if (value_of(lhs) != value_of(rhs)) {
+    const theory::ModelEqualityEvaluation evaluation = lra_model_view.evaluate_equality(lhs, rhs);
+    record_model_equality_evaluation(evaluation, statistics);
+    if (!evaluation.equal_in_model()) {
       continue;
     }
     statistics.increment(":no.interface.model-equality-lra-equal");
     if (options.nelson_oppen_model_equality_mutation) {
       statistics.increment(":no.interface.model-equality-mutation-checks");
-      if (lra_model_equality_can_be_mutated(terms, lra_atoms, lra_assignments, lhs, rhs, options)) {
+      if (evaluation.avoidable_by_mutation()) {
         statistics.increment(":no.interface.model-equality-mutated");
         if (care_queued_policy) {
           statistics.increment(":no.interface.model-equality-queue-skipped-mutation");
         }
         continue;
       }
+      assert(evaluation.forced_after_mutation_filter());
       statistics.increment(":no.interface.model-equality-mutation-forced");
     }
     statistics.increment(":no.interface.model-equality-candidates");
@@ -7927,6 +7997,13 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.model-equality-care-pruned-pairs", 0);
   statistics.set(":no.interface.model-equality-scanned", 0);
   statistics.set(":no.interface.model-equality-lra-equal", 0);
+  statistics.set(":no.interface.model-equality-api-builds", 0);
+  statistics.set(":no.interface.model-equality-api-queries", 0);
+  statistics.set(":no.interface.model-equality-api-not-equal", 0);
+  statistics.set(":no.interface.model-equality-api-equal", 0);
+  statistics.set(":no.interface.model-equality-api-mutation-unqueried", 0);
+  statistics.set(":no.interface.model-equality-api-mutation-avoidable", 0);
+  statistics.set(":no.interface.model-equality-api-mutation-forced", 0);
   statistics.set(":no.interface.model-equality-mutation-checks", 0);
   statistics.set(":no.interface.model-equality-mutated", 0);
   statistics.set(":no.interface.model-equality-mutation-forced", 0);

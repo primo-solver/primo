@@ -619,16 +619,21 @@ treating one theory's atoms as Boolean noise.
   and this final arrangement validation succeeds.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
-  model and scans the full same-sort shared Real pair set for pairs whose
-  concrete LRA values are equal. The default `first` policy keeps the historical
-  full-pair order. The `ranked` policy keeps the full candidate set but tries
-  care-diagnostic and EUF-argument pairs first. The `adaptive` policy uses the
-  ranked order and stops issuing guesses after repeated unproductive rejected
-  assumptions or theory conflicts. The `care-queued` policy scans only a bounded
-  queue rebuilt from the current EUF care pairs, with no full-pair fallback. For
-  a missing, user-invisible equality atom, the branch creates a SAT-visible
-  optional atom and retries the SAT loop with that atom on an active
-  model-equality assumption trail. Surviving model-equal assumptions are
+  model and classifies candidate pairs through the LRA-backed
+  `theory::ModelEqualityEvaluation` path. The current adapter,
+  `LraTheoryModelView`, reads the concrete LRA values and, when mutation
+  filtering is enabled, asks whether either strict orientation is still
+  LRA-consistent before a SAT equality atom is created. The default `first`
+  policy keeps the historical full-pair order. The `ranked` policy keeps the
+  full candidate set but tries care-diagnostic and EUF-argument pairs first. The
+  `adaptive` policy uses the ranked order and stops issuing guesses after
+  repeated unproductive rejected assumptions or theory conflicts. The
+  `care-queued` policy scans only a bounded queue rebuilt from the current EUF
+  care pairs, with no full-pair fallback. For a missing, user-invisible equality
+  atom, the branch creates a SAT-visible optional atom only after the query
+  reports an equal pair that was not filtered as mutation-avoidable, then
+  retries the SAT loop with that atom on an active model-equality assumption
+  trail. Surviving model-equal assumptions are
   re-applied while the coordinator tries later model-equal pairs.
   The equality is asserted to EUF/LRA when SAT assigns the atom true. If the SAT
   backend rejects the active assumption set, the coordinator learns a blocking
@@ -677,8 +682,10 @@ treating one theory's atoms as Boolean noise.
   full shared Real pair set for LRA-to-EUF equality propagation even when the
   EUF care diagnostic reports a pair as pruned, default-off model-equality
   guessing with both the historical full-pair order and the ranked care-first
-  policy, adaptive model-equality backoff, a non-unary regression where equality
-  of both binary-predicate arguments is needed for an EUF conflict, final
+  policy, adaptive model-equality backoff, query-layer counters for
+  mutation-disabled and mutation-filtered model equalities, a non-unary
+  regression where equality of both binary-predicate arguments is needed for an
+  EUF conflict, final
   arrangement validation before a non-model `sat` result,
   and a regression where default preprocessing solves away a UF equality before
   the remaining arithmetic formula dispatches to the LRA solver. It also covers
@@ -709,8 +716,10 @@ Limitations:
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;
 - opt-in model-equality branching is an active-assumption loop over
-  LRA-model-equal shared Real pairs only, not the full de Moura/Bjorner
-  algorithm;
+  LRA-model-equal shared Real pairs only. It now has a generic
+  model-equality-result type and an LRA adapter, but still is not the full de
+  Moura/Bjorner algorithm because no mutable theory-model object or
+  explanation-producing model-equality propagation exists;
 - Real-argument model reconstruction backtracks only up to a fixed candidate
   cap, currently 18 pairs, then records
   `:no.interface.model-separation-search-capped` and falls back to greedy

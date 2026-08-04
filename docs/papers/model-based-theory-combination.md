@@ -43,11 +43,18 @@ combination. It has these related pieces:
 The missing parts are the paper's central mechanisms:
 
 - no generic model object carried by the DPLL(T) state;
-- no generic per-theory API for model equality queries;
 - no full `M-Propagate` transition;
 - no full `M-Mutate` transition or mutable theory-model object;
 - no theory-independent implementation for more than EUF plus Real LRA;
 - no completeness claim for general Nelson-Oppen combination.
+
+The first generic API hook is now present: `theory::ModelEqualityEvaluation`
+records the result of a per-theory query over two shared terms. The current
+QF_UFLRA coordinator implements an LRA-only adapter, `LraTheoryModelView`,
+which classifies a pair as unequal in the current arithmetic model, equal with
+mutation not queried, equal but avoidable by the strict-separation mutation
+filter, or equal and not avoided by that filter. This is an API and
+classification slice, not the paper's full model-carrying transition system.
 
 ## Section-by-Section Comparison
 
@@ -89,6 +96,70 @@ The relevant implemented pieces are documented and tested here:
 - `tests/unit/qf_lra_solver_tests.cpp`: QF_UFLRA model-printing, shared-Real
   equality propagation, separation, and model-equality-branching regressions.
 
+## 2026-08-04 Model-Equality Query Checklist
+
+Bibliographic basis:
+
+- de Moura and Bjorner, "Model-based Theory Combination", Section 4 for the
+  model-based equality-sharing trigger and `M-Propagate`/`M-Mutate` transition
+  shape;
+- Section 5 for the Simplex assignment as the arithmetic model;
+- Section 5.2 for the idea that a theory may mutate or diversify its model to
+  avoid unnecessary equalities before sharing them.
+
+Implemented subset:
+
+- `src/theory/theory_solver.hpp` defines `theory::ModelEqualityEvaluation` and
+  `theory::ModelEqualityStatus` as a backend-neutral result object over two
+  `core::TermId`s.
+- `src/smt/check_sat.cpp` has the current LRA adapter, `LraTheoryModelView`,
+  owned by the mixed QF_UFLRA coordinator. It reads the concrete rational
+  values extracted from the tableau model and, when enabled, asks the existing
+  strict-separation filter whether either `(< lhs rhs)` or `(< rhs lhs)` is
+  consistent with the current LRA assignment.
+- `choose_lra_model_equality_branch` consumes this result object before it
+  creates a SAT-visible equality atom. Model-equal pairs that the filter marks
+  avoidable are skipped while still unmaterialized. Pairs that survive remain
+  default-off SAT assumption guesses managed by `ModelEqualityArrangementState`.
+
+Data structures and invariants:
+
+- The theory-layer status type stores only term ids and an equality/mutation
+  classification. It does not depend on SAT literals, SMT-LIB ASTs, or the mixed
+  coordinator.
+- The LRA view is local to the SMT coordinator because it has to combine an LRA
+  tableau model, the current Boolean assignment to arithmetic atoms, and the
+  coordinator's branch policy.
+- The mutation classification is a query result. Primo does not update the
+  tableau assignment as Section 5.2's freedom-interval `update` operation would.
+- A model equality classified as equal is still not an entailed theory
+  propagation. Without a paper-style explanation, it remains only a SAT
+  assumption guess.
+
+Counters and tests:
+
+- `:no.interface.model-equality-api-builds` counts LRA model views built for
+  the optional model-equality branch loop.
+- `:no.interface.model-equality-api-queries` counts pair classifications.
+- `:no.interface.model-equality-api-not-equal`,
+  `:no.interface.model-equality-api-equal`,
+  `:no.interface.model-equality-api-mutation-unqueried`,
+  `:no.interface.model-equality-api-mutation-avoidable`, and
+  `:no.interface.model-equality-api-mutation-forced` split the query outcomes.
+- Unit regressions in `tests/unit/qf_lra_solver_tests.cpp` assert both the
+  mutation-disabled assumption path and mutation-enabled skip path go through
+  the query API.
+
+Deviations and limitations:
+
+- No generic `DPLL(T^M)` state carries per-theory model objects yet.
+- No `M-Propagate` implementation exists for model equalities.
+- No freedom-interval mutation is implemented; the current mutation result is a
+  conservative strict-separation consistency proxy.
+- No EUF or non-LRA theory model implements this API yet.
+- No completeness claim changes. The supported behavior remains the documented
+  experimental QF_UFLRA branch heuristic.
+
 ## Next Implementation Direction
 
 The next Nelson-Oppen online design should follow the paper's model-based
@@ -117,7 +188,8 @@ but it still does not turn arbitrary LRA model equalities into entailed theory
 propagations.
 
 This direction is still not a full `DPLL(T^M)` implementation until the solver
-has a generic mutable theory-model object and per-theory model-equality API.
+has a generic mutable theory-model object and theory implementations that can
+produce explained model-equality propagations from this query interface.
 
 ## Documentation Claim To Use
 
