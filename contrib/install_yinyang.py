@@ -46,7 +46,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPO = "https://github.com/MikolasJanota/yinyang.git"
 # Empty: --keep-logic and --hoist-declarations landed upstream in the fork
 # (MikolasJanota/yinyang 04c8618, 2026-08-02), so applying
@@ -119,11 +118,11 @@ def main() -> int:
     # the behaviour the patch exists for.
     probe = subprocess.run(
         [str(args.venv / "bin" / "python"), "-c",
-         "import inspect, sys;"
+         ("import inspect, sys;"
          "from yinyang.src.parsing.Parse import prepare_seed;"
          "from yinyang.src.parsing.Parse import hoist_declarations;"
-         "sys.exit(0 if 'keep_logic' in inspect.signature(prepare_seed).parameters else 1)"],
-        capture_output=True, text=True,
+         "sys.exit(0 if 'keep_logic' in inspect.signature(prepare_seed).parameters else 1)")],
+        capture_output=True, text=True, check=False,
     )
     if probe.returncode != 0:
         raise SystemExit(

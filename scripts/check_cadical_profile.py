@@ -14,7 +14,6 @@ import subprocess
 import time
 from pathlib import Path
 
-
 INCREMENTAL_PROFILE = [
     "ilb=2",
     "sweep=0",
@@ -46,8 +45,7 @@ def run(command: list[str], timeout: float) -> dict[str, object]:
             command,
             check=False,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout,
         )
         stdout = proc.stdout
@@ -84,8 +82,7 @@ def solver_version(solver: list[str]) -> str:
         [*solver, "--version"],
         check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         timeout=10,
     )
     return (proc.stdout + proc.stderr).strip().replace("\n", " | ")
