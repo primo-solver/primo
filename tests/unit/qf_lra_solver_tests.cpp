@@ -712,6 +712,36 @@ void qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess() {
   assert(result.statistics.get(":no.interface.model-equality-conflicts") == 0);
 }
 
+void qf_uf_lra_model_equality_forced_by_lra_gets_explained_clause() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Off;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-api-mutation-forced") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-mutation-forced") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-forced-propagations") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-forced-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-forced-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-forced-reason-lits") >= 2);
+  assert(result.statistics.get(":no.interface.model-equality-pending") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-activated") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+}
+
 void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
@@ -2604,6 +2634,7 @@ int main() {
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
   qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess();
+  qf_uf_lra_model_equality_forced_by_lra_gets_explained_clause();
   qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
   qf_uf_lra_model_equality_branching_accumulates_active_assumptions();
   qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs();

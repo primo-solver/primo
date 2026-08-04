@@ -4220,6 +4220,50 @@ InterfacePropagationResult force_implied_interface_equalities(
   return result;
 }
 
+InterfacePropagationResult force_implied_interface_equality_with_reason(
+    const core::TermManager& terms, BooleanClausifier& clausifier, sat::IpasirUpBackend& backend,
+    TheoryCombinationManager& manager, core::TermId equality, const sat::Clause& reason_lits,
+    util::Statistics& statistics) {
+  InterfacePropagationResult result;
+  result.candidates = 1;
+
+  std::optional<sat::Lit> lit = manager.interface_equality_lit(equality);
+  bool created = false;
+  if (!lit.has_value()) {
+    ++result.missing_atoms;
+    lit = create_interface_equality_lit(terms, clausifier, manager, equality);
+    if (!lit.has_value()) {
+      return result;
+    }
+    ++result.created_atoms;
+    created = true;
+  } else {
+    ++result.deliverable_existing;
+  }
+
+  if (!created) {
+    const std::optional<bool> value = lit_value_in_backend(backend, lit.value());
+    if (value.has_value() && value.value()) {
+      ++result.already_true;
+      return result;
+    }
+    if (value.has_value() && !value.value()) {
+      ++result.assigned_false;
+    }
+  }
+
+  sat::Clause clause = reason_lits;
+  append_lit_once(clause, lit.value());
+  result.reason_lits = clause.size() > 0 ? clause.size() - 1U : 0U;
+  backend.add_clause(clause);
+  result.clauses = 1;
+  statistics.set(":no.interface.sat-equality-atoms",
+                 registered_interface_equality_atom_count(manager));
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  statistics.increment(":no.interface.sat-equalities-forced");
+  return result;
+}
+
 bool clause_mentions_interface_equality(const sat::Clause& clause,
                                         const TheoryCombinationManager& manager) {
   for (const sat::Lit lit : clause) {
@@ -5100,7 +5144,7 @@ std::vector<core::TermId> euf_implied_real_equalities(
 std::optional<sat::Clause> find_incremental_lra_theory_conflict(
     const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& atoms);
 
-bool lra_assignment_conflicts_with_extra_atom(
+std::optional<sat::Clause> lra_assignment_conflict_with_extra_atom(
     const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId extra_atom,
     const CheckSatOptions& options) {
@@ -5111,8 +5155,45 @@ bool lra_assignment_conflicts_with_extra_atom(
   const PreparedLraTheory augmented_lra_theory(
       terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
       options.lra_sparse_leaving, options.lra_fixed_elimination, false);
-  return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments)
+  return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments);
+}
+
+bool lra_assignment_conflicts_with_extra_atom(
+    const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId extra_atom,
+    const CheckSatOptions& options) {
+  return lra_assignment_conflict_with_extra_atom(terms, lra_atoms, lra_assignments, extra_atom,
+                                                 options)
       .has_value();
+}
+
+std::optional<sat::Clause> lra_forced_equality_reason(
+    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId lhs, core::TermId rhs,
+    const CheckSatOptions& options) {
+  const std::optional<sat::Clause> lhs_lt_rhs_conflict = lra_assignment_conflict_with_extra_atom(
+      terms, lra_atoms, lra_assignments, terms.mk_lt(lhs, rhs), options);
+  if (!lhs_lt_rhs_conflict.has_value()) {
+    return std::nullopt;
+  }
+  const std::optional<sat::Clause> rhs_lt_lhs_conflict = lra_assignment_conflict_with_extra_atom(
+      terms, lra_atoms, lra_assignments, terms.mk_lt(rhs, lhs), options);
+  if (!rhs_lt_lhs_conflict.has_value()) {
+    return std::nullopt;
+  }
+
+  sat::Clause reason;
+  reason.reserve(lhs_lt_rhs_conflict->size() + rhs_lt_lhs_conflict->size());
+  const auto append_non_synthetic_reason = [&reason](const sat::Clause& conflict) {
+    for (const sat::Lit lit : conflict) {
+      if (lit.value != 0) {
+        append_lit_once(reason, lit);
+      }
+    }
+  };
+  append_non_synthetic_reason(lhs_lt_rhs_conflict.value());
+  append_non_synthetic_reason(rhs_lt_lhs_conflict.value());
+  return reason;
 }
 
 std::vector<core::TermId> lra_implied_real_equalities(
@@ -5472,6 +5553,10 @@ class LraTheoryModelView {
                                            theory::ModelEqualityStatus::kEqualMutationForced};
   }
 
+  std::optional<sat::Clause> forced_equality_reason(core::TermId lhs, core::TermId rhs) const {
+    return lra_forced_equality_reason(terms_, lra_atoms_, lra_assignments_, lhs, rhs, options_);
+  }
+
  private:
   util::Rational value_of(core::TermId term) const {
     const auto found = real_values_.find(term);
@@ -5716,7 +5801,12 @@ std::vector<ModelEqualityCandidate> ranked_model_equality_candidates(
   return ranked;
 }
 
-std::optional<sat::Lit> choose_lra_model_equality_branch(
+struct ModelEqualityBranchChoice {
+  std::optional<sat::Lit> pending_branch;
+  bool learned_clause = false;
+};
+
+ModelEqualityBranchChoice choose_lra_model_equality_branch(
     core::TermManager& terms, BooleanClausifier& clausifier, sat::IpasirUpBackend& backend,
     TheoryCombinationManager& manager, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments,
@@ -5726,7 +5816,7 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
   ModelEqualityBranchState& branch_state = arrangement_state.branch_search;
   if (!options.nelson_oppen_model_equality_branching || candidate_pairs.empty() ||
       branch_state.tried_vars.size() >= options.nelson_oppen_model_equality_branch_budget) {
-    return std::nullopt;
+    return {};
   }
   if (options.nelson_oppen_model_equality_branch_policy == ModelEqualityBranchPolicy::Adaptive &&
       branch_state.unproductive_rejections >= 4) {
@@ -5734,7 +5824,7 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
       statistics.increment(":no.interface.model-equality-adaptive-stops");
       branch_state.adaptive_stopped = true;
     }
-    return std::nullopt;
+    return {};
   }
 
   const bool care_queued_policy =
@@ -5757,7 +5847,7 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
         options.nelson_oppen_model_equality_branch_budget - branch_state.tried_vars.size();
     candidate_queue.rebuild_from_care_pairs(euf_care.term_pairs, remaining_budget, statistics);
     if (candidate_queue.candidates.empty()) {
-      return std::nullopt;
+      return {};
     }
     care_terms = candidate_queue.terms();
   } else {
@@ -5773,7 +5863,7 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
   std::optional<LraModelState> model_state =
       build_lra_model_state(terms, lra_atoms, lra_assignments, {}, options);
   if (!model_state.has_value()) {
-    return std::nullopt;
+    return {};
   }
   const RealModelValues real_values = real_model_values_from_lra(
       terms, care_terms, {}, model_state->prepared, model_state->tableau, model_state->assignments);
@@ -5812,24 +5902,7 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
     std::optional<sat::Lit> lit;
     if (care_queued_policy) {
       equality = terms.mk_eq(lhs, rhs);
-      if (theory_atom_occurs_in_formula(clausifier, equality.value())) {
-        continue;
-      }
       lit = manager.interface_equality_lit(equality.value());
-      if (lit.has_value()) {
-        const int existing_var = sat_var(lit.value());
-        if (branch_state.tried_vars.contains(existing_var)) {
-          statistics.increment(":no.interface.model-equality-skipped-tried");
-          statistics.increment(":no.interface.model-equality-queue-skipped-tried");
-          continue;
-        }
-        const std::optional<bool> value = lit_value_in_backend(backend, lit.value());
-        if (value.has_value()) {
-          statistics.increment(":no.interface.model-equality-skipped-assigned");
-          statistics.increment(":no.interface.model-equality-queue-skipped-assigned");
-          continue;
-        }
-      }
     }
     const theory::ModelEqualityEvaluation evaluation = lra_model_view.evaluate_equality(lhs, rhs);
     record_model_equality_evaluation(evaluation, statistics);
@@ -5848,12 +5921,36 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
       }
       assert(evaluation.forced_after_mutation_filter());
       statistics.increment(":no.interface.model-equality-mutation-forced");
+      std::optional<sat::Clause> forced_reason = lra_model_view.forced_equality_reason(lhs, rhs);
+      if (forced_reason.has_value()) {
+        if (!equality.has_value()) {
+          equality = terms.mk_eq(lhs, rhs);
+        }
+        const InterfacePropagationResult forced_propagation =
+            force_implied_interface_equality_with_reason(terms, clausifier, backend, manager,
+                                                         equality.value(), forced_reason.value(),
+                                                         statistics);
+        publish_interface_propagation_result(forced_propagation,
+                                             ":no.interface.model-equality-forced", statistics);
+        statistics.increment(":no.interface.model-equality-forced-reason-lits",
+                             forced_propagation.reason_lits);
+        statistics.increment(":no.interface.model-equality-forced-already-true",
+                             forced_propagation.already_true);
+        statistics.increment(":no.interface.model-equality-forced-assigned-false",
+                             forced_propagation.assigned_false);
+        if (forced_propagation.triggered_recheck()) {
+          statistics.increment(":no.interface.equalities-propagated");
+          statistics.increment(":no.interface.model-equality-forced-propagations");
+          return ModelEqualityBranchChoice{.pending_branch = std::nullopt, .learned_clause = true};
+        }
+        continue;
+      }
     }
     statistics.increment(":no.interface.model-equality-candidates");
     if (!equality.has_value()) {
       equality = terms.mk_eq(lhs, rhs);
     }
-    if (!care_queued_policy && theory_atom_occurs_in_formula(clausifier, equality.value())) {
+    if (theory_atom_occurs_in_formula(clausifier, equality.value())) {
       continue;
     }
 
@@ -5898,9 +5995,9 @@ std::optional<sat::Lit> choose_lra_model_equality_branch(
     statistics.set(":no.interface.sat-equality-atoms",
                    registered_interface_equality_atom_count(manager));
     statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-    return lit;
+    return ModelEqualityBranchChoice{.pending_branch = lit, .learned_clause = false};
   }
-  return std::nullopt;
+  return {};
 }
 
 struct MixedTheoryPurificationResult {
@@ -8282,13 +8379,17 @@ CheckSatOutcome solve_qf_uf_lra(
       }
     }
 
-    const std::optional<sat::Lit> pending_model_equality_branch = choose_lra_model_equality_branch(
+    const ModelEqualityBranchChoice model_equality_branch = choose_lra_model_equality_branch(
         terms, clausifier, backend, no_manager, lra_atoms_for_check, lra_assignments_for_check,
         shared_real_pairs, euf_care, options, model_equality_arrangement,
         model_equality_candidate_queue, statistics);
-    if (pending_model_equality_branch.has_value()) {
-      model_equality_arrangement.enqueue_pending_branch(pending_model_equality_branch.value(),
-                                                        statistics);
+    if (model_equality_branch.learned_clause) {
+      publish_sat_stats(backend.statistics(), statistics);
+      continue;
+    }
+    if (model_equality_branch.pending_branch.has_value()) {
+      model_equality_arrangement.enqueue_pending_branch(
+          model_equality_branch.pending_branch.value(), statistics);
       publish_sat_stats(backend.statistics(), statistics);
       continue;
     }

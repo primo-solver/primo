@@ -358,6 +358,16 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-mutation-checks`
 - `:no.interface.model-equality-mutated`
 - `:no.interface.model-equality-mutation-forced`
+- `:no.interface.model-equality-forced-propagations`
+- `:no.interface.model-equality-forced-candidates`
+- `:no.interface.model-equality-forced-existing-atoms`
+- `:no.interface.model-equality-forced-missing-atoms`
+- `:no.interface.model-equality-forced-created-atoms`
+- `:no.interface.model-equality-forced-clauses`
+- `:no.interface.model-equality-forced-rechecks`
+- `:no.interface.model-equality-forced-reason-lits`
+- `:no.interface.model-equality-forced-already-true`
+- `:no.interface.model-equality-forced-assigned-false`
 - `:no.interface.model-equality-selected-care`
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
@@ -543,15 +553,20 @@ split the per-pair query result into unequal, equal without a mutation query,
 equal but mutation-avoidable, and equal but not avoided by the mutation filter.
 These counters are a guard that the branch heuristic is using the generic
 `theory::ModelEqualityEvaluation` result object rather than directly peeking at
-LRA values at the branch-selection site. The current positive-equality path should
-also show activity in
+LRA values at the branch-selection site. When mutation is enabled and both strict
+separations of a model-equal Real pair conflict with the current LRA assignment,
+the pair is no longer queued as a branch assumption: Primo learns a guarded
+equality clause using the two strict-separation conflict reasons, excluding the
+synthetic temporary probe literal. The `:no.interface.model-equality-forced-*`
+counters report that narrow path: whether an equality atom already existed or had
+to be created, whether the equality was already true or assigned false, the
+learned clause/recheck count, and the antecedent size. This also contributes to
 `:no.interface.sat-equalities-forced`, which counts guarded propagation clauses
 from the current theory assignment to an interface equality literal, and then
-ordinary EUF/LRA theory-conflict counters if the forced equality is
-inconsistent. Compare it with `:no.interface.equality-candidates`: a large gap
-means the producer is rediscovering equalities that are already true, missing
-from the current interface registry, or not useful enough to force a SAT
-recheck.
+ordinary EUF/LRA theory-conflict counters if the forced equality is inconsistent.
+Compare it with `:no.interface.equality-candidates`: a large gap means the
+producer is rediscovering equalities that are already true, missing from the
+current interface registry, or not useful enough to force a SAT recheck.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are

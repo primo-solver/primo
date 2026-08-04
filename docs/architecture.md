@@ -327,13 +327,17 @@ Implemented now:
   while the mixed coordinator's `LraTheoryModelView` is the current LRA-only
   adapter that reads tableau model values and classifies equalities as
   mutation-unqueried, mutation-avoidable, or not avoided by the strict
-  separation filter. This remains a query/classification interface, not a
-  model-equality propagation mechanism. This is intentionally not full
-  Nelson-Oppen:
-  fine-grained minimal cross-theory explanations, full model-equality
-  propagation, a mutable shared theory-model object, native false-`Eq` LRA atoms,
-  and unbounded arrangement enumeration remain unsupported. Ordinary SMT-LIB
-  Real disequality is handled before LRA theory
+  separation filter. A pair not avoided by this filter has LRA evidence: both
+  strict separations conflict with the current arithmetic assignment. In the
+  default-off model-equality mode, such a pair is handled by learning a guarded
+  equality clause from the two strict-separation conflict reasons and re-entering
+  SAT, not by enqueueing a model-equality assumption. Equalities whose current
+  model value is accidental or mutation-avoidable still stay out of entailed
+  propagation. This is intentionally not full Nelson-Oppen: generic
+  `DPLL(T^M)` state, freedom-interval mutation, a mutable shared theory-model
+  object, native false-`Eq` LRA atoms, complete model-equality propagation for
+  arbitrary theories, and unbounded arrangement enumeration remain unsupported.
+  Ordinary SMT-LIB Real disequality is handled before LRA theory
   assertion by lowering Real equality to linear inequalities and letting the
   Boolean layer split negated equalities. Mixed model reconstruction uses a
   bounded search over strict shared-Real separation orientations, with a greedy
@@ -357,8 +361,9 @@ Implemented now:
   then activated as an IPASIR assumption on the next SAT call. SAT-level failed
   assumptions are blocked by a learned clause over their negations and removed
   from the active assumption trail; ordinary EUF/LRA theory conflicts under
-  active assumptions are learned by the normal theory-conflict path. These
-  guesses are not exposed as entailed theory propagations.
+  active assumptions are learned by the normal theory-conflict path. Guesses are
+  not exposed as entailed theory propagations; only mutation-forced LRA equalities
+  with strict-separation conflict reasons use the guarded equality-clause path.
   In default mixed QF_UFLRA solving, the original LRA atoms are observed by the
   same trail-synced online LRA propagator used by pure QF_LRA, so arithmetic
   conflicts and bound propagations can be delivered inside the SAT search. Final
@@ -379,11 +384,12 @@ Not implemented yet:
   Real-valued UF tables, and reconstruction through future
   satisfiability-preserving rewrites outside the current preprocessing trail.
 - Full Nelson-Oppen theory combination with a mutable shared equality model,
-  unbounded arrangement enumeration, model-equality propagation, care-set-driven
-  default search, and fine-grained minimal cross-theory explanations. The
-  current QF_UFLRA path has guarded bidirectional shared-Real equality
-  propagation for equalities reported by EUF/LRA final checks, with lazy
-  equality-atom creation for forced equalities only.
+  unbounded arrangement enumeration, generic model-equality propagation,
+  care-set-driven default search, and fine-grained minimal cross-theory
+  explanations. The current QF_UFLRA path has guarded bidirectional shared-Real
+  equality propagation for equalities reported by EUF/LRA final checks, plus a
+  default-off guarded clause for LRA model-equal pairs whose strict separations
+  both conflict.
 - explanation-producing congruence closure with proof forests.
 
 ## Paper Traceability

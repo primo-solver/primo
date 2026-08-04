@@ -1,7 +1,7 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
-Status stamp: 2026-08-04, branch `sat-ipasir-up-interface`, current
-documentation/code baseline for the backend-neutral IPASIR-UP refactor.
+Status stamp: 2026-08-04, branch `nelson-oppen-online-lazy-ipasir-up`, current
+documentation/code baseline for the default-off QF_UFLRA model-equality scaffold.
 
 Reference:
 
@@ -30,7 +30,11 @@ combination. It has these related pieces:
   LRA-model-equal shared Real equality guesses on an active SAT-assumption trail;
 - a narrow LRA model-mutation filter for that branch mode: before guessing an
   LRA-model-equal pair, Primo checks whether either strict separation is still
-  LRA-consistent under the current Boolean assignment and skips the guess if so.
+  LRA-consistent under the current Boolean assignment and skips the guess if so;
+- a narrower explained clause path for mutation-forced LRA equalities: if both
+  strict separations conflict, Primo learns a guarded interface-equality clause
+  from those two conflict reasons instead of keeping the equality as a SAT
+  assumption guess.
 - an opt-in `--nelson-oppen-prop=online` paired-bound LRA-to-EUF propagation
   experiment that avoids all-pairs equality precreation. The mixed dispatcher
   now creates and observes a fresh SAT equality variable from `cb_propagate()`
@@ -43,7 +47,7 @@ combination. It has these related pieces:
 The missing parts are the paper's central mechanisms:
 
 - no generic model object carried by the DPLL(T) state;
-- no full `M-Propagate` transition;
+- no full or generic `M-Propagate` transition;
 - no full `M-Mutate` transition or mutable theory-model object;
 - no theory-independent implementation for more than EUF plus Real LRA;
 - no completeness claim for general Nelson-Oppen combination.
@@ -54,14 +58,17 @@ QF_UFLRA coordinator implements an LRA-only adapter, `LraTheoryModelView`,
 which classifies a pair as unequal in the current arithmetic model, equal with
 mutation not queried, equal but avoidable by the strict-separation mutation
 filter, or equal and not avoided by that filter. This is an API and
-classification slice, not the paper's full model-carrying transition system.
+classification slice, not the paper's full model-carrying transition system. The
+only explained positive-equality use currently built on top of it is the
+QF_UFLRA strict-separation case where the same LRA assignment refutes both
+`(< lhs rhs)` and `(< rhs lhs)`.
 
 ## Section-by-Section Comparison
 
 | Paper section | Paper content | Primo status |
 | --- | --- | --- |
 | Abstract | The paper proposes reconciling candidate models from component theories instead of eagerly propagating every implied equality or eagerly adding all shared equality literals. | **Partial.** Primo has model printing and partial QF_UFLRA reconciliation, but no full model-based combination engine. |
-| 1 Introduction | The motivating example is that a theory model can reveal that two shared variables have equal values. The solver can use such model equalities to guide equality sharing between theories. | **Partial scaffold.** `--model-equality-branching` can inspect the LRA model and keep surviving equality guesses between shared Real terms on an active SAT-assumption trail, but it is still optional SAT branching, not the paper's full model-propagation transition. |
+| 1 Introduction | The motivating example is that a theory model can reveal that two shared variables have equal values. The solver can use such model equalities to guide equality sharing between theories. | **Partial scaffold.** `--model-equality-branching` can inspect the LRA model and keep surviving equality guesses between shared Real terms on an active SAT-assumption trail. Mutation-forced LRA equalities now learn a guarded equality clause from strict-separation conflict reasons, but this is still not the paper's full model-propagation transition. |
 | 2 Background | Defines signatures, formulas, theories, structures, satisfaction, equality, stable infiniteness, convexity, and combination terminology. | **Conceptual only.** Primo has typed terms, EUF, LRA, and model fragments, but no explicit theory-combination contract that records stable infiniteness, convexity, or model-production obligations per theory. |
 | 2.1 Nelson-Oppen Combination Method | Reviews purification, shared variables, arrangements, and equality propagation between disjoint theories. For convex theories, propagating implied equalities can avoid arrangement enumeration. | **Partial.** Primo has QF_UFLRA purification and lazy equality sharing for shared Real terms. It is not full Nelson-Oppen: it lacks general bidirectional equality propagation, full arrangements, fine-grained cross-theory explanations, and generic multi-theory support. |
 | 3 Related Work | Places the approach against Shostak-style combination, delayed theory combination, Ackermannization, and dynamic Ackermannization. The paper's point is that existing alternatives can add too many literals or too many lemmas. | **Mostly not implemented as paper mechanisms.** Primo has separate EUF/Ackermann diagnostics and separate QF_UF disequality-propagation work, but these are not the model-based combination algorithm. |
@@ -69,7 +76,7 @@ classification slice, not the paper's full model-carrying transition system.
 | 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Not implemented as DTC.** Default `final` mode creates shared Real equality atoms lazily when a theory implication or model-equality branch needs them. Opt-in `--nelson-oppen-prop=online` also avoids all-pairs precreation: it creates and observes only the paired-bound candidate equality atom it is about to propagate. |
 | 3.3 Ackermannization | Ackermann reduction replaces UF reasoning with constraints over applications and congruence axioms. The paper treats it as useful in some cases but potentially expensive. | **Separate from this work.** Primo's Ackermann and disequality-propagation options are EUF-side mechanisms. They are not integrated as the paper's model-combination method. |
 | 3.3.1 Dynamic Ackermannization | Dynamic Ackermannization adds Ackermann constraints during search, especially when disequalities between applications make argument disequalities relevant. | **Separate/partial.** This belongs to the QF_UF disequality propagation line, not to current mixed QF_UFLRA model-based combination. |
-| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Not fully implemented.** Primo has only a default-off LRA-model-equality assumption loop for the QF_UFLRA coordinator. `ModelEqualityArrangementState` owns the queued guess, active IPASIR assumptions, SAT failed-assumption blocking, and adaptive rejection counters. The loop includes a narrow mutation filter that skips a model-equal pair if adding either strict separation remains LRA-consistent. There is no generic `DPLL(T^M)` state and no generic model-equality propagation. |
+| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Not fully implemented.** Primo has a default-off LRA-model-equality path for the QF_UFLRA coordinator. `ModelEqualityArrangementState` owns queued guesses, active IPASIR assumptions, SAT failed-assumption blocking, and adaptive rejection counters. The loop includes a narrow mutation filter that skips a model-equal pair if adding either strict separation remains LRA-consistent. If both strict separations conflict, the equality is treated as LRA-entailed and learned as a guarded clause with those conflict reasons. There is no generic `DPLL(T^M)` state and no generic model-equality propagation. |
 | 5 Simplex: An Example Model-Producing Theory Solver | The paper shows how Simplex naturally provides a model: the current assignment maps arithmetic variables to rational values. Equal-valued shared variables are equality candidates. | **Partial.** Primo's LRA path has a tableau assignment and can produce values for user-declared nullary Real constants and selected shared Real terms. It is not yet a complete Simplex-backed combination API. |
 | 5.1 Opportunistic Equality Propagation | The paper describes cheaper equality-detection opportunities in Simplex, such as fixed variables and row-derived equalities. | **Partial, not the paper algorithm.** Primo has LRA propagation and bound reasoning, but it does not implement the paper's opportunistic equality rules as named combination operations. Current LRA-to-EUF equality detection is still a final-check-oriented mechanism. |
 | 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Partial filter, not the paper algorithm.** Primo does not perturb the stored Simplex assignment. In the default-off branch mode, it uses strict-separation consistency checks as a conservative proxy for "this equality can be avoided by mutation" and suppresses that optional equality guess. |
@@ -119,8 +126,11 @@ Implemented subset:
   consistent with the current LRA assignment.
 - `choose_lra_model_equality_branch` consumes this result object before it
   creates a SAT-visible equality atom. Model-equal pairs that the filter marks
-  avoidable are skipped while still unmaterialized. Pairs that survive remain
-  default-off SAT assumption guesses managed by `ModelEqualityArrangementState`.
+  avoidable are skipped while still unmaterialized. Pairs that survive because
+  both strict separations conflict are materialized only as needed and learned as
+  guarded equality clauses using the strict-separation conflict reasons. Pairs
+  whose equality is model-based but not explained remain default-off SAT
+  assumption guesses managed by `ModelEqualityArrangementState`.
 
 Data structures and invariants:
 
@@ -132,9 +142,10 @@ Data structures and invariants:
   coordinator's branch policy.
 - The mutation classification is a query result. Primo does not update the
   tableau assignment as Section 5.2's freedom-interval `update` operation would.
-- A model equality classified as equal is still not an entailed theory
-  propagation. Without a paper-style explanation, it remains only a SAT
-  assumption guess.
+- A model equality classified as equal is not automatically an entailed theory
+  propagation. The only current positive case is `kEqualMutationForced`, where
+  LRA separately proves both strict separation orientations inconsistent and
+  therefore supplies a guarded equality-clause reason.
 
 Counters and tests:
 
@@ -146,14 +157,20 @@ Counters and tests:
   `:no.interface.model-equality-api-mutation-unqueried`,
   `:no.interface.model-equality-api-mutation-avoidable`, and
   `:no.interface.model-equality-api-mutation-forced` split the query outcomes.
+- `:no.interface.model-equality-forced-*` counters split the strict-separation
+  explained path into candidate, created/existing atom, learned clause, recheck,
+  reason-literal, already-true, and assigned-false counts.
 - Unit regressions in `tests/unit/qf_lra_solver_tests.cpp` assert both the
   mutation-disabled assumption path and mutation-enabled skip path go through
-  the query API.
+  the query API. `qf_uf_lra_model_equality_forced_by_lra_gets_explained_clause`
+  disables broad final Nelson-Oppen propagation and checks that a paired LRA
+  bound equality is learned through the model-equality forced-clause path without
+  entering the SAT-assumption trail.
 
 Deviations and limitations:
 
 - No generic `DPLL(T^M)` state carries per-theory model objects yet.
-- No `M-Propagate` implementation exists for model equalities.
+- No generic `M-Propagate` implementation exists for model equalities.
 - No freedom-interval mutation is implemented; the current mutation result is a
   conservative strict-separation consistency proxy.
 - No EUF or non-LRA theory model implements this API yet.
@@ -187,6 +204,9 @@ The dispatcher follow-up has landed for the paired-bound source only:
 but it still does not turn arbitrary LRA model equalities into entailed theory
 propagations.
 
+The next narrow step after the paired-bound dispatcher has also landed for the
+QF_UFLRA branch path: a mutation-forced LRA model equality now uses the same
+strict-separation conflicts that made mutation impossible as its SAT antecedent.
 This direction is still not a full `DPLL(T^M)` implementation until the solver
 has a generic mutable theory-model object and theory implementations that can
 produce explained model-equality propagations from this query interface.
@@ -198,9 +218,10 @@ Use this wording when summarizing the current state:
 > Primo implements prerequisites and a narrow experimental QF_UFLRA
 > model-equality assumption loop inspired by de Moura and Bjorner's
 > model-based theory-combination paper, including a strict-separation
-> consistency filter for avoidable LRA model equalities. Guesses stay SAT
-> assumptions managed by `ModelEqualityArrangementState`; they are not entailed
-> theory propagations. The opt-in online
+> consistency filter for avoidable LRA model equalities. Mutation-forced LRA
+> equalities can learn guarded clauses from strict-separation conflict reasons;
+> other guesses stay SAT assumptions managed by `ModelEqualityArrangementState`.
+> The opt-in online
 > paired-bound producer exercises the SAT callback path without all-pairs
 > equality precreation and lazily creates only the selected equality atom it is
 > about to propagate. Primo does not yet implement the full `DPLL(T^M)`
