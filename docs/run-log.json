@@ -18577,6 +18577,129 @@
         }
       },
       "outcome": "Accepted as SLURM-backed validation evidence for commit 06ae7ad. The model-equality branch option shows no wrong answers or non-timeout errors in this gate and no dramatic timing change versus default Primo on the deterministic 20-file QF_UFLRA sample; Z3 remains substantially faster on the sample."
+    },
+    {
+      "id": "2026-08-04-slurm-qf-uflra-full-gap-mine-77599f4",
+      "started_at": "2026-08-04T17:40:00+02:00",
+      "recorded_at": "2026-08-04T18:20:00+02:00",
+      "kind": "benchmark",
+      "scope": "Full local QF_UFLRA corpus mining for the actionable performance sample: files where Z3 is fast and Primo times out. This run also validates Z3 -st statistics capture in the benchmark CSV parser and checks whether the default-off model-equality branch path learns forced equality clauses on real benchmark instances.",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "77599f4",
+      "environment": {
+        "type": "slurm",
+        "host": "SLURM remote workspace",
+        "slurm_job_ids": "kept out of committed run-log; available in local notes and conversation",
+        "binary": "build-slurm-rel/primo reports git: 77599f4, build: Release, sanitizers: none, cadical: cadical-3.0.0-7b99c07",
+        "reference": "contrib/local/bin/z3 reports Z3 version 5.0.0 - 64 bit"
+      },
+      "commands": {
+        "workspace_check": "python3 scripts/slurm_prepare_benchmark_workspace.py --remote <slurm-remote> --remote-dir <remote-workspace> --target primo --check-only",
+        "validate_sbatch": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_model_mine.sbatch && bash -n scripts/slurm_qf_uflra_model_mine.sbatch",
+        "stage_corpus": "rsync tmp/QF_UFLRA/ to the prepared remote workspace",
+        "default_submit": "sbatch --array=0-3 --time=00:45:00 --export=ALL,PRIMO_MINE_TIMEOUT=5,PRIMO_MINE_SHARDS=4,PRIMO_MINE_OUT_ROOT=results/qf-uflra-full-mine-default-77599f4-5s,PRIMO_MINE_SOLVER='build-slurm-rel/primo --quiet --stats' scripts/slurm_qf_uflra_model_mine.sbatch",
+        "model_submit": "sbatch --array=0-3 --time=00:45:00 --export=ALL,PRIMO_MINE_TIMEOUT=5,PRIMO_MINE_SHARDS=4,PRIMO_MINE_OUT_ROOT=results/qf-uflra-full-mine-model-77599f4-5s,PRIMO_MINE_SOLVER='build-slurm-rel/primo --quiet --stats --model-equality-branching' scripts/slurm_qf_uflra_model_mine.sbatch",
+        "z3_submit": "sbatch --array=0-3 --time=00:45:00 --export=ALL,PRIMO_MINE_TIMEOUT=5,PRIMO_MINE_SHARDS=4,PRIMO_MINE_OUT_ROOT=results/qf-uflra-full-mine-z3stats-77599f4-5s,PRIMO_MINE_SOLVER='contrib/local/bin/z3 -st' scripts/slurm_qf_uflra_model_mine.sbatch",
+        "aggregation": "Merged shard-0.csv through shard-3.csv per solver and ranked cases where Z3 solved in <=1s while default Primo timed out at 5s."
+      },
+      "benchmark": {
+        "logic": "QF_UFLRA",
+        "suite": "1284 files under tmp/QF_UFLRA: FFT, cpachecker-bmc-svcomp14, cpachecker-induction-svcomp14, and mathsat",
+        "timeout_seconds": 5,
+        "par2_timeout_seconds": 10,
+        "shards": 4,
+        "solvers": {
+          "default": "build-slurm-rel/primo --quiet --stats",
+          "model": "build-slurm-rel/primo --quiet --stats --model-equality-branching",
+          "z3stats": "contrib/local/bin/z3 -st"
+        }
+      },
+      "artifacts": {
+        "default_results": "results/qf-uflra-full-mine-default-77599f4-5s/",
+        "model_results": "results/qf-uflra-full-mine-model-77599f4-5s/",
+        "z3_stats_results": "results/qf-uflra-full-mine-z3stats-77599f4-5s/",
+        "gap_ranking": "results/qf-uflra-full-mine-z3-fast-default-timeout-77599f4-5s.csv",
+        "gap_manifest": "benchmarks/qf_uflra-z3-fast-primo-timeout-100.txt",
+        "slurm_logs": "results/slurm_logs/qf-uflra-full-mine-77599f4/",
+        "evidence_status": "current SLURM mining evidence; generated CSVs and logs are local ignored artifacts, while the reusable sbatch and top-100 gap manifest are committed."
+      },
+      "summary": {
+        "cross_solver_disagreements_when_both_solved": 0,
+        "default": {
+          "files": 1284,
+          "solved": 600,
+          "sat": 121,
+          "unsat": 479,
+          "timeout": 684,
+          "par2": 6946.117713,
+          "families": {
+            "FFT": {"solved": 10, "timeout": 0},
+            "cpachecker-bmc-svcomp14": {"solved": 4, "timeout": 11},
+            "cpachecker-induction-svcomp14": {"solved": 123, "timeout": 236},
+            "mathsat": {"solved": 463, "timeout": 437}
+          }
+        },
+        "model": {
+          "files": 1284,
+          "solved": 605,
+          "sat": 127,
+          "unsat": 478,
+          "timeout": 679,
+          "par2": 6977.939077,
+          "families": {
+            "FFT": {"solved": 10, "timeout": 0},
+            "cpachecker-bmc-svcomp14": {"solved": 4, "timeout": 11},
+            "cpachecker-induction-svcomp14": {"solved": 119, "timeout": 240},
+            "mathsat": {"solved": 472, "timeout": 428}
+          }
+        },
+        "z3stats": {
+          "files": 1284,
+          "solved": 1234,
+          "sat": 736,
+          "unsat": 498,
+          "timeout": 50,
+          "par2": 758.708455,
+          "families": {
+            "FFT": {"solved": 10, "timeout": 0},
+            "cpachecker-bmc-svcomp14": {"solved": 7, "timeout": 8},
+            "cpachecker-induction-svcomp14": {"solved": 317, "timeout": 42},
+            "mathsat": {"solved": 900, "timeout": 0}
+          },
+          "stats_totals": {
+            ":conflicts": 290447,
+            ":decisions": 533644,
+            ":propagations": 12993881,
+            ":binary-propagations": 2028005,
+            ":arith-conflicts": 794,
+            ":arith-lower": 623392,
+            ":arith-upper": 603095,
+            ":arith-make-feasible": 377330,
+            ":mk-bool-var": 413631,
+            ":mk-clause": 891024,
+            ":mk-clause-binary": 1092871,
+            ":rlimit-count": 1095142234,
+            ":total-time": 189.99,
+            ":max-memory": 24700.93
+          }
+        },
+        "gap_sample": {
+          "z3_solved_le_1s_default_timeout": 582,
+          "top100_manifest": "benchmarks/qf_uflra-z3-fast-primo-timeout-100.txt",
+          "selection": "Top 100 by Z3 wall time among full-corpus cases where Z3 solved in <=1s and default Primo timed out at 5s."
+        },
+        "model_equality_mechanism": {
+          "api_queries": 371969,
+          "api_equal": 108680,
+          "mutation_forced": 4831,
+          "active_files_with_mutation_forced": 287,
+          "forced_candidates": 4830,
+          "forced_already_true": 4830,
+          "forced_clauses": 0,
+          "assumptions": 0
+        }
+      },
+      "outcome": "Accepted as the better QF_UFLRA performance triage sample. The original 20-file sample was not diagnostic. The full-corpus mining finds 582 fast-Z3/default-timeout files and commits a top-100 manifest for the next optimization loop. The current model-equality branch path is not the likely lever for these gaps: it solves five more files but has worse PAR2, and all mutation-forced equalities seen in this run were already true at the SAT level, so no forced equality clauses were learned."
     }
   ]
 }
