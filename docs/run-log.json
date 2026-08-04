@@ -18502,6 +18502,39 @@
         "review": "The shortcut remains opt-in because the local 10-file tropical result in 2026-08-04-qf-lra-guarded-real-equality-lowering-local was mixed."
       },
       "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-04-qf-lra-tropical-matrix-structure-analysis",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "profiling",
+      "scope": "Structural analysis of the tropical-matrix QF_LRA family read from the benchmark source, plus a local A/B testing whether the 468 guarded arithmetic definitions can be soundly unguarded. Establishes the encoding (tropical/arctic semiring, paired Bool -infinity flag and Real value), verifies the don't-care precondition, and measures fill-in on the one instance Primo solves. Diagnostic only; no solver change is proposed as promoted on this evidence.",
+      "commit": "058929d",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo, Release",
+        "notes": "14 cores, load average ~2.1 during both A/B runs; the concurrent tropical propagation sweep was running but single-threaded, so contention is not a plausible explanation for a 27x gap. Local diagnostic, not a SLURM benchmark claim."
+      },
+      "command": {
+        "structure_census": "grep/regex census over sandbox/non-incremental/QF_LRA/tropical-matrix/constraint-199552.smt2: 954 m/c variable pairs (36 f*, 918 l*), 468 unconditional Boolean definitions (= lKm (or lIm lJm)), 468 guarded arithmetic definitions (or lKm (= lKc (+ a b))), 0 ite, 0 multiplications.",
+        "dont_care_check": "scratchpad guard_check2.py: inlines let bindings and walks the term with an explicit stack, treating both guard polarities (positive sibling disjunct in an or, negative sibling conjunct in an and).",
+        "baseline": "build/primo --quiet --stats --guarded-real-equality-lowering constraint-199552.smt2",
+        "unguarded": "same binary on a rewritten copy with all 468 (or lKm (= lKc (+ a b))) replaced by (= lKc (+ a b))"
+      },
+      "result": {
+        "dont_care_precondition": "All 468 guarded arithmetic definitions have every occurrence of their c-variable protected by their own m-flag, so unguarding is satisfiability-preserving. 774 of 954 c-variables are fully protected; 3,774 of 5,106 occurrences (73.9%). Checking only one guard polarity reports 0 of 468 and is wrong.",
+        "baseline": "sat in 4.13s; 15,766 decisions, 93 conflicts, 7,679 pivots, 128.4M pivot term ops.",
+        "unguarded": "sat in 112s; 125,603 decisions, 13,359 conflicts, 526,566 pivots, 3,831M pivot term ops.",
+        "conclusion": "Unguarding is sound (both answer sat) but 27x slower with 68x the pivots. The guards are load-bearing: setting lKm true discharges the definition at the Boolean level, so the case split is cheaper than the tableau row it avoids. This rejects the family of guard-simplifying preprocessing ideas and explains why T1 helps only because it keeps the guard.",
+        "fill_in": "On the solved baseline run: 1,440 rows, 3,519 row-nonzeros (initial average row length 2.44), 164 rows touched per pivot, ~102 terms per row update -- roughly 42x fill-in. :lra.fixed-variables and :lra.elimination-pivots are both 0, so existing elimination machinery does nothing on this family."
+      },
+      "artifacts": {
+        "analysis_note": "docs/tropical-matrix-structure.md",
+        "scripts": "scratchpad only (guard_check2.py, unguard.py); not committed -- the note records the method and the counts, and the rewrite is a four-line regex substitution reproducible from the note."
+      },
+      "follow_up": "Two leads recorded in docs/tropical-matrix-structure.md: L1, prefer m-flag variables in decision order (cheap, the Boolean layer is self-contained over 36 free inputs and the solved run shows 15,766 decisions against 93 conflicts); L2, relevancy propagation to avoid asserting theory atoms under already-satisfied guards (literature-backed, absent from Primo, needs a paper note first). Neither is implemented."
     }
   ]
 }
