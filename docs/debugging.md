@@ -379,6 +379,7 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.online.skipped-assigned`
 - `:no.online.final-lra-equality-scan-skipped`
 - `:no.online.final-lra-equality-scan-capped`
+- `:no.online.final-lra-equality-scan-fallbacks`
 - `:no.interface.lra-conflict-lits`
 - `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-separations`
@@ -468,18 +469,25 @@ mining arbitrary tableau rows for equal shared terms is a future opportunity
 with explicit cost risk, not a stable online propagation mode.
 `:no.online.lra-bound-equality-candidates` counts published candidates that
 already had a SAT-visible interface equality literal. `:no.online.lra-bound-equality-missing-atoms`
-counts published candidates whose atom was not registered; under the current
-paired-bound fallback this should remain zero because the static candidate set
-matches the producer. `:no.online.lra-bound-equality-materialized` counts
-candidates with a deliverable equality literal. `:no.online.lazy-equality-atoms-created`
-is reserved for a future backend phase that permits in-callback allocation and
-remains zero in the fallback path, and
-`:no.online.lazy-equality-vars-observed` counts newly observed equality
-variables registered outside the callback. `:no.online.final-lra-equality-scan-skipped`
-counts online final checks where at least one paired-bound equality candidate
-was materialized and the broad all-pairs `lra_implied_real_equalities`
-strict-bound scan was skipped; if no candidate was materialized, the broad scan
-still runs as the final-check completeness fallback.
+counts published candidates whose atom was not registered. This can be nonzero
+even in the current paired-bound fallback because the pure LRA producer may
+publish equalities for pairs that are not mixed-theory shared Real interface
+pairs, while the dispatcher only materializes registered interface candidates.
+`:no.online.lra-bound-equality-materialized` counts candidates with a
+deliverable equality literal. `:no.online.lazy-equality-atoms-created` is
+reserved for a future backend phase that permits in-callback allocation and
+remains zero in the fallback path, and `:no.online.lazy-equality-vars-observed`
+counts newly observed equality variables registered outside the callback.
+`:no.online.final-lra-equality-scan-skipped` counts online final checks where at
+least one paired-bound equality candidate was materialized and the broad
+all-pairs `lra_implied_real_equalities` strict-bound scan was skipped; if no
+candidate was materialized, the broad scan still runs as the final-check
+completeness fallback. If final arrangement validation or model reconstruction
+cannot separate shared Real arguments after such a skip,
+`:no.online.final-lra-equality-scan-fallbacks` increments and Primo runs the
+broad scan once to classify additional LRA-implied equalities for that final
+validation step. Those fallback equalities are not reported as online theory
+propagations.
 `:no.online.final-lra-equality-scan-capped` is reserved for a future capped
 replacement and remains zero in the current skip policy.
 `:no.online.propagations` counts returned equality literals, and

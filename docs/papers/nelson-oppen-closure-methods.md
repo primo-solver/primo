@@ -151,11 +151,16 @@ Online mode also skips the older final `lra_implied_real_equalities`
 strict-bound scan over all shared Real pairs after it has materialized at least
 one paired-bound equality candidate. If no candidate was materialized, the broad
 scan still runs as the final-check completeness fallback. Default `final` mode
-keeps that broad scan unchanged. This is a measured cost cap, not a more
-complete LRA equality producer: arbitrary tableau-implied equalities remain
-unsupported by the online producer, and cases that need those equalities after
-paired-bound materialization may still need the default final mode or a future
-capped/reused equality check.
+keeps that broad scan unchanged. If final arrangement validation or model
+reconstruction fails after the skip, online mode runs the broad scan once as a
+validation fallback and records
+`:no.online.final-lra-equality-scan-fallbacks`. Those equalities are local to
+the final validation/model step and are not reported as online LRA-to-EUF theory
+propagations. This is a measured cost cap, not a more complete LRA equality
+producer: arbitrary tableau-implied equalities remain unsupported by the online
+producer, and cases that repeatedly need those equalities after paired-bound
+materialization may still need the default final mode or a future capped/reused
+equality check.
 
 The paired-bound producer is deliberately the stable online LRA-to-EUF subset
 for now. It is sound, has a compact two-literal explanation, and exercises the
@@ -366,8 +371,11 @@ current profiling result:
 6. Online mode now skips the final `lra_implied_real_equalities` all-pairs
    strict-bound scan only after a paired-bound equality candidate has been
    materialized, because profiling showed this final scan can dominate after the
-   online path adds more arrangement traffic. The reserved capped-scan counter
-   remains zero until a capped replacement is implemented.
+   online path adds more arrangement traffic. If the resulting final
+   arrangement or model separation attempt fails, the broad scan runs once as a
+   validation fallback and increments
+   `:no.online.final-lra-equality-scan-fallbacks`. The reserved capped-scan
+   counter remains zero until a capped replacement is implemented.
 
 Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or

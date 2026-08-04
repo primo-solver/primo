@@ -267,6 +267,12 @@ Implemented now:
   showed that scan can dominate after online propagation adds arrangement
   traffic. If no online equality candidate is materialized, the broad final scan
   is still available to preserve the current final-check completeness fallback.
+  If the skip leaves final arrangement validation or model reconstruction unable
+  to separate Real arguments, online mode runs that broad scan once as a
+  last-mile validation fallback and records
+  `:no.online.final-lra-equality-scan-fallbacks`; the resulting equalities are
+  used only for the final validation/model step, not as online propagated theory
+  consequences.
   The default `final` mode keeps that broad final scan unchanged. More general
   LRA-implied shared equalities remain a documented opportunity, not the next
   committed extension: discovering them from arbitrary tableau rows could add a

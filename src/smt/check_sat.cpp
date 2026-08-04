@@ -7703,6 +7703,7 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.online.skipped-assigned", 0);
   statistics.set(":no.online.final-lra-equality-scan-skipped", 0);
   statistics.set(":no.online.final-lra-equality-scan-capped", 0);
+  statistics.set(":no.online.final-lra-equality-scan-fallbacks", 0);
   statistics.set(":no.interface.lra-conflict-lits", 0);
   statistics.set(":no.interface.lra-conflict-duplicates", 0);
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
@@ -8036,9 +8037,11 @@ CheckSatOutcome solve_qf_uf_lra(
         const std::vector<core::TermId> euf_implied_equalities = euf_implied_real_equalities(
             terms, prepared_flat_theory.value(), euf_check->closure, euf_model_real_terms);
         std::vector<core::TermId> forced_model_equalities = euf_implied_equalities;
+        bool skipped_lra_implied_equalities_for_model = false;
         if (!shared_real_terms.empty()) {
           if (skip_online_final_lra_equality_scan()) {
             statistics.increment(":no.online.final-lra-equality-scan-skipped");
+            skipped_lra_implied_equalities_for_model = true;
           } else {
             const std::vector<core::TermId> lra_implied_equalities_for_euf =
                 lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
@@ -8048,10 +8051,22 @@ CheckSatOutcome solve_qf_uf_lra(
                                            lra_implied_equalities_for_euf.end());
           }
         }
-        const std::optional<std::vector<core::TermId>> separation_atoms =
+        std::optional<std::vector<core::TermId>> separation_atoms =
             shared_real_model_separation_atoms(
                 terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
                 euf_model_real_terms, forced_model_equalities, options, statistics);
+        if (!separation_atoms.has_value() && skipped_lra_implied_equalities_for_model) {
+          statistics.increment(":no.online.final-lra-equality-scan-fallbacks");
+          const std::vector<core::TermId> lra_implied_equalities_for_euf =
+              lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
+                                          shared_real_terms, options);
+          forced_model_equalities.insert(forced_model_equalities.end(),
+                                         lra_implied_equalities_for_euf.begin(),
+                                         lra_implied_equalities_for_euf.end());
+          separation_atoms = shared_real_model_separation_atoms(
+              terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
+              euf_model_real_terms, forced_model_equalities, options, statistics);
+        }
         if (!separation_atoms.has_value()) {
           statistics.increment(":no.interface.arrangement-failures");
           return CheckSatOutcome{
@@ -8072,9 +8087,11 @@ CheckSatOutcome solve_qf_uf_lra(
       if (euf_check.has_value() && !euf_model_real_terms.empty()) {
         euf_implied_equalities = euf_implied_real_equalities(
             terms, prepared_flat_theory.value(), euf_check->closure, euf_model_real_terms);
+        bool skipped_lra_implied_equalities_for_model = false;
         if (!shared_real_terms.empty()) {
           if (skip_online_final_lra_equality_scan()) {
             statistics.increment(":no.online.final-lra-equality-scan-skipped");
+            skipped_lra_implied_equalities_for_model = true;
           } else {
             lra_implied_equalities_for_euf = lra_implied_real_equalities(
                 terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
@@ -8085,10 +8102,21 @@ CheckSatOutcome solve_qf_uf_lra(
         forced_model_equalities.insert(forced_model_equalities.end(),
                                        lra_implied_equalities_for_euf.begin(),
                                        lra_implied_equalities_for_euf.end());
-        const std::optional<std::vector<core::TermId>> separation_atoms =
+        std::optional<std::vector<core::TermId>> separation_atoms =
             shared_real_model_separation_atoms(
                 terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
                 euf_model_real_terms, forced_model_equalities, options, statistics);
+        if (!separation_atoms.has_value() && skipped_lra_implied_equalities_for_model) {
+          statistics.increment(":no.online.final-lra-equality-scan-fallbacks");
+          lra_implied_equalities_for_euf = lra_implied_real_equalities(
+              terms, lra_atoms_for_check, lra_assignments_for_check, shared_real_terms, options);
+          forced_model_equalities.insert(forced_model_equalities.end(),
+                                         lra_implied_equalities_for_euf.begin(),
+                                         lra_implied_equalities_for_euf.end());
+          separation_atoms = shared_real_model_separation_atoms(
+              terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
+              euf_model_real_terms, forced_model_equalities, options, statistics);
+        }
         if (!separation_atoms.has_value()) {
           return CheckSatOutcome{
               CheckSatResult::Unknown,

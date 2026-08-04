@@ -1062,6 +1062,37 @@ void qf_uf_lra_online_skips_final_lra_all_pairs_scan() {
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
 }
 
+void qf_uf_lra_online_falls_back_for_final_arrangement() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun u () Real)
+    (declare-fun v () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (= (+ u 1) (+ v 1)))
+    (assert (p x))
+    (assert (p y))
+    (assert (q u))
+    (assert (q v))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.online.enabled") == 1);
+  assert(result.statistics.get(":no.online.lra-bound-equality-materialized") >= 1);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") >= 1);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-fallbacks") == 1);
+  assert(result.statistics.get(":no.interface.arrangement-failures") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+}
+
 void nelson_oppen_online_option_does_not_wrap_single_theory_lra() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
@@ -2308,6 +2339,7 @@ int main() {
   qf_uf_lra_online_propagates_simple_lra_shared_equalities();
   qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs();
   qf_uf_lra_online_skips_final_lra_all_pairs_scan();
+  qf_uf_lra_online_falls_back_for_final_arrangement();
   nelson_oppen_online_option_does_not_wrap_single_theory_lra();
   nelson_oppen_online_option_does_not_wrap_single_theory_euf();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();

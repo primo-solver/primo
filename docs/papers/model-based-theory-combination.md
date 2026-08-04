@@ -34,7 +34,10 @@ combination. It has these related pieces:
 - an opt-in `--nelson-oppen-prop=online` paired-bound LRA-to-EUF propagation
   experiment that avoids all-pairs equality precreation; on current CaDiCaL it
   precreates only the paired-bound candidate equality atoms because fresh
-  variable allocation is rejected from the callback phase.
+  variable allocation is rejected from the callback phase. Online mode normally
+  skips the broad final all-pairs LRA equality scan after materializing a
+  paired-bound candidate, but reruns that scan once if final arrangement/model
+  validation otherwise cannot separate shared Real arguments.
 
 The missing parts are the paper's central mechanisms:
 
