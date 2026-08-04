@@ -13156,11 +13156,11 @@
       "recorded_at": "2026-08-04",
       "kind": "benchmark",
       "scope": "Implementation and local diagnostic evaluation of H5 model-based QF_LRA phase hints, including additional rows where default Primo is locally slower than both OpenSMT and Yices plus one tropical sentinel.",
-      "commit": "67daa27 plus uncommitted H5 implementation changes",
+      "commit": "434d50d source-equivalent worktree; run started before the commit was created",
       "environment": {
         "type": "local",
         "host": "workspace",
-        "binary": "build/primo rebuilt from the H5 worktree; references contrib/local/bin/yices-smt2 and contrib/local/bin/opensmt used only for behavioral timing comparison.",
+        "binary": "build/primo rebuilt from the H5 worktree later committed as 434d50d; references contrib/local/bin/yices-smt2 and contrib/local/bin/opensmt used only for behavioral timing comparison.",
         "notes": "Local workstation timing only. Results are evidence for keeping the option as an experiment, not for default promotion. No OpenSMT or Yices source was inspected."
       },
       "command": {
@@ -13179,7 +13179,7 @@
         "per_file_signal": "H5 improved TM/p-DepotsNum, sc-17, sc-19, sc-21, sc-27, uart-18, and tta_startup/simple_startup_12nodes.missing; it regressed TM/p6, uart-16, uart-17, uart-15, and uart-25. The tropical sentinel still timed out."
       },
       "caveats": [
-        "The H5 source changes were uncommitted when this local diagnostic was recorded; re-run before making any default or headline claim.",
+        "The H5 source changes were committed after this local diagnostic as 434d50d; re-run before making any default or headline claim.",
         "Workstation timings are short and noisy; the option needs SLURM evaluation on the focused manifest and a broad regression bar before promotion.",
         "This run used default Primo as the reference for the additional row selection; the selection is a local diagnostic, not a full mined division comparison against the OpenSMT/Yices SLURM artifacts."
       ],
@@ -13191,11 +13191,11 @@
       "recorded_at": "2026-08-04",
       "kind": "fuzz",
       "scope": "Merge-gate QF_LRA FuzzSMT run for opt-in H5 model-based SAT phase hints.",
-      "commit": "67daa27 plus uncommitted H5 implementation changes",
+      "commit": "434d50d source-equivalent worktree; run started before the commit was created",
       "environment": {
         "type": "local",
         "host": "workspace",
-        "binary": "build/primo rebuilt from the H5 worktree; references z3 and contrib/local/bin/yices-smt2 used only for answer comparison."
+        "binary": "build/primo rebuilt from the H5 worktree later committed as 434d50d; references z3 and contrib/local/bin/yices-smt2 used only for answer comparison."
       },
       "command": {
         "fuzz": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --lra-model-phase' --refs z3 yices-smt2 --logic QF_LRA --count 1000 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf-lra-h5-model-phase-fuzzsmt-20260804 --seed 60804",
