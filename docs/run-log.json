@@ -18407,6 +18407,70 @@
         "efficiency_review": "solver_efficiency_snapshot.py reported no added hot-path patterns. Manual review found no new default-path work, no callback scan, no entailed propagation without explanation, and no new SAT equality atom creation before the existing care-queued branch filter. make include-cleaner completed with the repository's existing advisory baseline; it did not report a changed check_sat.cpp include issue."
       },
       "outcome": "Accepted as a paper-grounded API/classification slice. It does not implement full DPLL(T^M), model mutation by freedom intervals, or model-equality M-Propagate; it only gives the existing default-off LRA model-equality assumption branch a theory-layer query result and observable counters."
+    },
+    {
+      "id": "2026-08-04-qf-uflra-model-equality-forced-clause-71417a1",
+      "started_at": "2026-08-04T15:55:00+02:00",
+      "recorded_at": "2026-08-04T16:31:59+02:00",
+      "kind": "validation",
+      "scope": "Local validation for the default-off QF_UFLRA mutation-forced model-equality clause path. The implementation keeps avoidable LRA model equalities as skipped model artifacts, but when both strict separations conflict it learns a guarded interface-equality clause from those two LRA conflict reasons instead of queuing an IPASIR assumption.",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "71417a1",
+      "environment": {
+        "local": "./build/primo from source commit 71417a1; CaDiCaL rel-3.0.0 via contrib/local; reference solver contrib/local/bin/z3.",
+        "slurm": null
+      },
+      "commands": {
+        "focused_unit": "cmake --build build --target primo_qf_lra_solver_tests -j4 && ./build/primo_qf_lra_solver_tests",
+        "forced_counter_probe": "./build/primo --quiet --stats --model-equality-branching --nelson-oppen-prop=off on a QF_UFLRA x<=y, y<=x, p(x), not p(y) probe",
+        "lint_check_docs_test_asan": "make lint && make check && make docs && make test && make asan-test",
+        "local_fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --ref contrib/local/bin/z3 --count 1000 --seed 2026080411 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-equality-forced-clause-1000",
+        "clang_tidy": "make tidy",
+        "include_cleaner_advisory": "make include-cleaner",
+        "diff_check": "git diff --check",
+        "efficiency_snapshot": "/home/user/.codex/skills/solver-efficiency-review/scripts/solver_efficiency_snapshot.py --repo .",
+        "code_review": "Manual smt-code-review pass using skills/code-review/SKILL.md."
+      },
+      "benchmark": {
+        "fuzz": {
+          "logic": "QF_UFLRA",
+          "suite": "1000 generated mixed QF_UFLRA formulas from scripts/qf_uflra_smoke_fuzz.py",
+          "seed": 2026080411,
+          "timeout_seconds": 5,
+          "solver_argv": "./build/primo --quiet --model-equality-branching",
+          "reference_argv": "contrib/local/bin/z3"
+        }
+      },
+      "artifacts": {
+        "local_fuzz_summary": "fuzz-results/qf_uflra-model-equality-forced-clause-1000/summary.csv",
+        "local_fuzz_cases": "fuzz-results/qf_uflra-model-equality-forced-clause-1000/cases/",
+        "evidence_status": "current local validation evidence; generated fuzz artifacts are ignored and not committed."
+      },
+      "summary": {
+        "focused_unit": "primo_qf_lra_solver_tests passed, including qf_uf_lra_model_equality_forced_by_lra_gets_explained_clause.",
+        "forced_counter_probe": "Returned unsat with :no.interface.model-equality-forced-propagations=1, :no.interface.model-equality-forced-clauses=1, :no.interface.model-equality-forced-created-atoms=1, :no.interface.model-equality-forced-reason-lits=2, :no.interface.model-equality-assumptions=0, and :no.interface.lra-to-euf-equalities=0.",
+        "make_lint": "python bytecode lint passed.",
+        "make_check": "13/13 CTest tests passed.",
+        "make_docs": "Jupyter Book build succeeded.",
+        "make_test": "13/13 CTest tests passed.",
+        "asan": "13/13 ASAN CTest tests passed.",
+        "local_fuzz": {
+          "count": 1000,
+          "pass": 1000,
+          "wrong_answer": 0,
+          "crash_or_error": 0,
+          "timeout": 0,
+          "reference_disagreement": 0,
+          "sat": 720,
+          "unsat": 280
+        },
+        "clang_tidy": "make tidy completed over 63 tracked non-generated C++ files without blocking diagnostics.",
+        "include_cleaner": "make include-cleaner completed with the repository's existing advisory baseline; no changed check_sat.cpp or qf_lra_solver_tests.cpp include issue was identified.",
+        "diff_check": "git diff --check passed.",
+        "efficiency_review": "solver_efficiency_snapshot.py reported the expected new SAT clause emission in src/smt/check_sat.cpp. Manual review found the path remains default-off behind --model-equality-branching, adds no callback scan, learns at most one selected equality clause per branch-selection pass, strips the synthetic strict-probe literal from LRA reasons, and does not query fresh CaDiCaL equality variables before re-entering SAT.",
+        "code_review": "code review pass: no blocking issues found. The remaining known gap is algorithmic, not from this patch: generic DPLL(T^M), freedom-interval mutation, and non-LRA model-equality propagation are still unsupported."
+      },
+      "outcome": "Accepted as a conservative QF_UFLRA slice. Mutation-forced LRA model equalities now become explained guarded clauses, while avoidable model equalities remain skipped and unexplained model guesses remain SAT assumptions. The behavior remains default-off under --model-equality-branching and is not a default performance claim."
     }
   ]
 }
