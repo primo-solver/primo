@@ -17763,6 +17763,40 @@
         "ignored_time_stat_diff_count": 71
       },
       "outcome": "All compared QF_LRA default, QF_UF default, and QF_UF --euf-prop=online runs returned the same answer/status and identical non-time statistics between baseline 34c3d15 and current 785c534. Only :time.* counters differed."
+    },
+    {
+      "id": "2026-08-04-sat-ipasir-up-interface-qflra-qfuf-release-timing-local",
+      "date": "2026-08-04",
+      "branch": "sat-ipasir-up-interface",
+      "commit": "785c534 compared against baseline 34c3d15; run-log entry committed immediately after",
+      "evidence_status": "current",
+      "scope": "Release-vs-Release local timing sanity check for the same 15-case QF_LRA/QF_UF statistics sample. This corrects the timing interpretation of the prior stats artifact, where the baseline binary was Release but the current workspace binary was Debug.",
+      "commands": {
+        "current_release_build": "cmake -S . -B build-stats-release -DCMAKE_BUILD_TYPE=Release -DCLI11_INCLUDE_DIR=/workspace/contrib/local/include -DANTLR4_RUNTIME_INCLUDE_DIR=/workspace/contrib/local/include/antlr4-runtime -DANTLR4_RUNTIME_LIBRARY=/workspace/contrib/local/lib/libantlr4-runtime.a -DIPASIR_UP_INCLUDE_DIR=/workspace/contrib/local/include -DCADICAL_LIBRARY=/workspace/contrib/local/lib/libcadical.a -DGMP_INCLUDE_DIR=/workspace/contrib/local/include -DGMPXX_INCLUDE_DIR=/workspace/contrib/local/include -DGMP_LIBRARY=/workspace/contrib/local/lib/libgmp.a -DGMPXX_LIBRARY=/workspace/contrib/local/lib/libgmpxx.a && cmake --build build-stats-release --target primo -j2",
+        "comparison": "python3 local comparison script running baseline Release and current Release as: primo --quiet --stats [--euf-prop=online] <file>"
+      },
+      "environment": {
+        "host": "local workspace",
+        "baseline_binary": "/tmp/primo-stats-baseline-34c3d15-20260804/build-stats/primo",
+        "current_binary": "/workspace/build-stats-release/primo",
+        "baseline_build": "Release",
+        "current_build": "Release",
+        "dependency_prefix": "/workspace/contrib/local"
+      },
+      "artifact": "results/stats-ipasir-up-interface-release-785c534-vs-34c3d15/summary.json",
+      "results": {
+        "case_count": 15,
+        "answer_or_status_diff_count": 0,
+        "cases_with_non_time_stat_diffs": 0,
+        "non_time_stat_diff_count": 0,
+        "time_stat_diff_count": 65,
+        "notable_total_time_deltas_us": {
+          "qf_uf_default_online_reason_cache": "34548 -> 37208 (+7.7%)",
+          "qf_uf_online_online_reason_cache": "42967 -> 38037 (-11.5%)",
+          "qf_lra_default_DTP-Scheduling_constraints-cooking01": "691 -> 799 (+15.6%)"
+        }
+      },
+      "outcome": "Release-vs-Release timings stayed in the expected local-noise range for this tiny sample. The largest absolute pure QF_UF case moved from 34.5 ms to 37.2 ms in default mode and from 43.0 ms to 38.0 ms in --euf-prop=online mode; small microsecond-level cases had larger percentages but negligible absolute movement."
     }
   ]
 }
