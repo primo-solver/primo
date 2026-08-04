@@ -18959,6 +18959,85 @@
       },
       "outcome": "Accepted as correctness evidence for an opt-in candidate-first final scan. The MathSAT representative shows that the candidate scan prunes equality probes and finds equalities, but under a 1000-probe cap it is slower than the default capped run because final arrangement separation dominates afterward. Do not promote this option as a performance win or default behavior without a broader SLURM run and an arrangement-side improvement.",
       "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-04-qf-uflra-candidate-final-scan-slurm-sample",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "benchmark",
+      "scope": "QF_UFLRA preprocessing opportunity sample, default vs candidate final scan vs Z3",
+      "commit": "7a585fc",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "slurm_job_id": "omitted from committed run log per cluster privacy policy; recorded in the agent transcript"
+      },
+      "command": "sbatch scripts/slurm_qf_uflra_candidate_final_scan_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "default; --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 45,
+        "timeout_seconds": 10
+      },
+      "artifacts": [
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/default-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/candidate-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/default.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/candidate.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3.csv"
+      ],
+      "summary": {
+        "default": {
+          "total": 45,
+          "solved": 7,
+          "timeout": 38,
+          "wrong": 0,
+          "par2": 814.425316,
+          "families": {
+            "mathsat": {"solved": 6, "timeout": 19},
+            "cpachecker-induction-svcomp14": {"solved": 1, "timeout": 18},
+            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+          }
+        },
+        "candidate_final_scan": {
+          "total": 45,
+          "solved": 14,
+          "timeout": 31,
+          "wrong": 0,
+          "par2": 695.106294,
+          "families": {
+            "mathsat": {"solved": 14, "timeout": 11},
+            "cpachecker-induction-svcomp14": {"solved": 0, "timeout": 19},
+            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+          }
+        },
+        "z3": {
+          "total": 45,
+          "solved": 45,
+          "timeout": 0,
+          "wrong": 0,
+          "par2": 5.834142,
+          "families": {
+            "mathsat": {"solved": 25, "timeout": 0},
+            "cpachecker-induction-svcomp14": {"solved": 19, "timeout": 0},
+            "cpachecker-bmc-svcomp14": {"solved": 1, "timeout": 0}
+          }
+        }
+      },
+      "outcome": "Accepted as current SLURM evidence for the default-off candidate final scan. It improves the MathSAT slice of this sample, solving 14/25 MathSAT files versus 6/25 for default at 10s, and improves total solved from 7/45 to 14/45 with no wrong answers. It regresses the CPAchecker induction slice by losing the single default solve, and Z3 remains much faster at 45/45 solved. Keep the option default-off and continue with arrangement/preprocessing work before any default-profile claim.",
+      "evidence_status": "current-slurm"
     }
   ]
 }
