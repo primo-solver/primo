@@ -18262,6 +18262,88 @@
         "efficiency_review": "No new callback full-pair scan, no default-path activation, and no entailed model-equality propagation found. The only added vector work is on the default-off assumption lifecycle path; SAT failed-assumption blocking still emits clauses over negated guessed literals."
       },
       "outcome": "Local evidence supports the model-equality arrangement-state refactor: lifecycle counters are covered by focused QF_UFLRA tests, standard local checks pass, and 300 generated QF_UFLRA model-branching cases agree with Z3. The mode remains default-off and is still documented as a partial assumption loop, not full DPLL(T^M)."
+    },
+    {
+      "id": "2026-08-04-qf-uflra-care-queued-model-equality",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "validation",
+      "scope": "Validation for the default-off QF_UFLRA care-queued model-equality branch policy. The policy builds a bounded queue from EUF care pairs only, keeps model-equality guesses as IPASIR assumptions, and does not create equality atoms for full shared-Real pairs that are not care candidates.",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "10541bd",
+      "environment": {
+        "local": "./build/primo from commit 10541bd after make check rebuild; CaDiCaL rel-3.0.0 via contrib/local; reference solver contrib/local/bin/z3.",
+        "slurm": "Release build from archived clean HEAD 10541bd with CaDiCaL 3.0.0 and repo-managed Z3 5.0.0. Cluster identifiers and the scheduler job id are intentionally redacted from the committed log; the final status was COMPLETED with exit code 0 for all six array tasks."
+      },
+      "commands": {
+        "focused_unit": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
+        "cli_care_stats_probe": "./build/primo --quiet --stats --model-equality-branching --model-equality-branch-policy=care-queued --no-model-equality-mutation",
+        "diff_check": "git diff --check",
+        "lint": "make lint",
+        "docs": "make docs",
+        "check": "make check",
+        "clang_tidy": "make tidy",
+        "include_cleaner_advisory": "make include-cleaner",
+        "efficiency_snapshot": "/home/user/.codex/skills/solver-efficiency-review/scripts/solver_efficiency_snapshot.py --repo .",
+        "local_fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --solver-arg=--model-equality-branch-policy=care-queued --ref contrib/local/bin/z3 --count 1000 --seed 2026080406 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-care-queued-model-equality-1000",
+        "slurm_sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_sample_compare.sbatch && bash -n scripts/slurm_qf_uflra_sample_compare.sbatch",
+        "slurm_workspace_check": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified remote build git: 10541bd and cadical: cadical-3.0.0-7b99c07 immediately before sbatch",
+        "slurm_sample": "scripts/slurm_qf_uflra_sample_compare.sbatch with variants default, first, ranked, adaptive, care, and z3; PRIMO_COMPARE_SOLVERS included care=build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy care-queued"
+      },
+      "benchmark": {
+        "fuzz": {
+          "logic": "QF_UFLRA",
+          "suite": "1000 generated mixed QF_UFLRA formulas from scripts/qf_uflra_smoke_fuzz.py",
+          "seed": 2026080406,
+          "timeout_seconds": 5,
+          "solver_argv": "./build/primo --quiet --model-equality-branching --model-equality-branch-policy=care-queued",
+          "reference_argv": "contrib/local/bin/z3"
+        },
+        "sample": {
+          "logic": "QF_UFLRA",
+          "suite": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt staged from tmp/QF_UFLRA",
+          "files": 20,
+          "timeout_seconds": 10,
+          "variants": {
+            "default": "build-slurm-rel/primo --quiet --stats",
+            "first": "build-slurm-rel/primo --quiet --stats --model-equality-branching",
+            "ranked": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy ranked",
+            "adaptive": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy adaptive",
+            "care": "build-slurm-rel/primo --quiet --stats --model-equality-branching --model-equality-branch-policy care-queued",
+            "z3": "contrib/local/bin/z3"
+          }
+        }
+      },
+      "artifacts": {
+        "local_fuzz_summary": "fuzz-results/qf_uflra-care-queued-model-equality-1000/summary.csv",
+        "local_fuzz_cases": "fuzz-results/qf_uflra-care-queued-model-equality-1000/cases/",
+        "slurm_sample_csvs": "results/qf-uflra-care-queued-sample-10541bd/",
+        "slurm_logs": "results/slurm_logs/qf-uflra-care-queued-sample-10541bd/",
+        "evidence_status": "current local and SLURM-backed validation evidence; large generated artifacts are ignored and not committed."
+      },
+      "summary": {
+        "focused_unit": "primo_qf_lra_solver_tests passed, including care-queued care-only, no-full-fallback, and mutation-skip-before-atom-creation regressions.",
+        "make_check": "13/13 CTest tests passed.",
+        "local_fuzz": {
+          "count": 1000,
+          "pass": 1000,
+          "wrong_answer": 0,
+          "crash_or_error": 0,
+          "timeout": 0,
+          "reference_disagreement": 0
+        },
+        "pure_probes": "Small QF_LRA and QF_UF CLI probes with --model-equality-branching --model-equality-branch-policy=care-queued stayed out of the mixed QF_UFLRA coordinator; no model-equality queue counters were emitted.",
+        "slurm_sample": {
+          "default": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.897226.",
+          "first": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.671552; 2645 scanned model-equality pairs and 31 candidates.",
+          "ranked": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.644687; 2645 scanned model-equality pairs and 31 candidates.",
+          "adaptive": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.633643; 2645 scanned model-equality pairs and 31 candidates.",
+          "care": "16/20 solved, 4 timeouts, 0 wrong, PAR2 84.529365; 12 queue builds, 111 queued/popped candidates, 111 scanned model-equality pairs, 26 mutation skips, and 0 optional model-equality assumptions on this sample.",
+          "z3": "20/20 solved, 0 wrong, PAR2 3.907417."
+        },
+        "efficiency_review": "No default-path activation, no callback full-pair scan, and no entailed model-equality propagation found. The expected fresh vectors are confined to the default-off care-queued final-check branch selector. The SLURM sample shows the queued selector greatly reduces model-equality pair scans relative to first/ranked/adaptive on this sample, but does not improve solved count."
+      },
+      "outcome": "Accepted as a default-off pruning policy for the model-equality assumption scaffold. It is correctness-gated locally and on a SLURM sample, remains off by default, and should not be promoted as a performance win until broader QF_UFLRA campaigns show solved-count or PAR2 gains."
     }
   ]
 }
