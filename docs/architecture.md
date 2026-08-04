@@ -292,9 +292,17 @@ Implemented now:
   `:no.online.final-lra-equality-scan-fallbacks`; the resulting equalities are
   used only for the final validation/model step, not as online propagated theory
   consequences.
-  The default `final` mode keeps that broad final scan unchanged. More general
-  LRA-implied shared equalities remain a documented opportunity, not the next
-  committed extension: discovering them from arbitrary tableau rows could add a
+  The default `final` mode keeps that broad final scan unchanged. The
+  experimental `--qf-uflra-candidate-final-scan` mode is the first opt-in
+  pruning step for that path: after an LRA check it probes only current EUF care
+  pairs, shared Real constants co-occurring in one EUF atom, and pairs whose
+  two non-strict LRA bounds are both true. If final arrangement validation or
+  model reconstruction later shows that the candidate set missed an
+  LRA-implied equality, Primo runs the broad scan once and forces any equality
+  found by that fallback through the existing interface-equality SAT clause
+  machinery before accepting the final arrangement. More general LRA-implied
+  shared equalities remain a documented opportunity, not the next committed
+  online extension: discovering them from arbitrary tableau rows could add a
   wider per-bound-change scan, more explanation bookkeeping, and more
   SAT-visible equality traffic. The paired-bound rule is therefore the stable
   online LRA-to-EUF propagation subset for now; this is not yet the full
@@ -354,10 +362,12 @@ Implemented now:
   function prefixes that are equal in the current EUF closure. Default solving
   skips this scan because there is no active consumer for the care-pair ranking.
   Equality propagation and final arrangement validation still use the full
-  shared Real pair set. The default `first` model-equality branch policy also
-  uses the full pair order; the opt-in `ranked` and `adaptive` policies use
-  care-pair diagnostics only to rank guesses, with full-pair fallback. The
-  `care-queued` policy is the first pruning policy: `ModelEqualityCandidateQueue`
+  shared Real pair set unless `--qf-uflra-candidate-final-scan` is enabled for
+  the final LRA-to-EUF equality scan. The default `first` model-equality branch
+  policy also uses the full pair order; the opt-in `ranked` and `adaptive`
+  policies use care-pair diagnostics only to rank guesses, with full-pair
+  fallback. The `care-queued` policy is the first pruning policy:
+  `ModelEqualityCandidateQueue`
   is owned by the mixed coordinator, rebuilt from the current EUF care pairs,
   bounded by `--model-equality-branch-budget`, and consumed before creating a
   fresh equality atom. The optional branch path is owned by

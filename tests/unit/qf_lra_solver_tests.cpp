@@ -633,6 +633,69 @@ void qf_uf_lra_shares_lra_implied_real_equalities_with_euf() {
   assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
 }
 
+void qf_uf_lra_candidate_final_scan_propagates_paired_bound_equality() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_candidate_final_scan = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (assert (< 0 z))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-enabled") == 1);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 3);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-pairs") >= 1);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-skipped-pairs") >= 1);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+}
+
+void qf_uf_lra_candidate_final_scan_falls_back_through_sat() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_candidate_final_scan = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun a () U)
+    (declare-fun h (Real) U)
+    (declare-fun k (Real) U)
+    (assert (<= x z))
+    (assert (<= z x))
+    (assert (<= y z))
+    (assert (<= z y))
+    (assert (not (= (h x) a)))
+    (assert (not (= (k y) a)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-enabled") == 1);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-pairs") == 0);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-skipped-pairs") == 1);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-equalities") == 0);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-fallbacks") >= 1);
+  assert(result.statistics.get(":no.interface.candidate-final-scan-fallback-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-rechecks") >= 1);
+  assert(result.statistics.get(":no.interface.euf-conflicts") == 0);
+}
+
 void qf_uf_lra_guards_interface_equality_propagation_by_assignment() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -2659,6 +2722,8 @@ int main() {
   qf_uf_lra_prints_model_with_purified_real_predicate_argument();
   qf_uf_lra_model_keeps_true_purified_real_literal_argument_entry();
   qf_uf_lra_shares_lra_implied_real_equalities_with_euf();
+  qf_uf_lra_candidate_final_scan_propagates_paired_bound_equality();
+  qf_uf_lra_candidate_final_scan_falls_back_through_sat();
   qf_uf_lra_guards_interface_equality_propagation_by_assignment();
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();

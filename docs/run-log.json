@@ -18879,6 +18879,86 @@
       },
       "outcome": "Accepted as a local smoke fuzz gate for the default path and the opt-in temporary LRA probe cap. The capped profile may return unknown when the soft budget is hit; no wrong answers, crashes, or reference-unusable results occurred. This is not a replacement for the SLURM QF_UFLRA merge gate before making a default-profile performance claim.",
       "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-04-qf-uflra-candidate-final-scan-local-gate",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "implementation-validation",
+      "scope": "Opt-in QF_UFLRA candidate-first final LRA equality scan",
+      "commit": "working-tree-after-597ccf0",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build --target primo_qf_lra_solver_tests primo -j4 && ./build/primo_qf_lra_solver_tests; make lint; make check; make docs; python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--qf-uflra-candidate-final-scan --ref contrib/local/bin/z3 --count 100 --seed 20260804 --timeout 5 --shape mixed --out fuzz-results/qf_uflra_candidate_final_scan_smoke_20260804_b",
+      "solver": {
+        "name": "Primo",
+        "argv": "--qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "count": 100,
+        "seed": 20260804,
+        "timeout_seconds": 5
+      },
+      "artifacts": [
+        "fuzz-results/qf_uflra_candidate_final_scan_smoke_20260804_b/summary.csv"
+      ],
+      "summary": {
+        "focused_unit_target": "pass",
+        "make_lint": "pass",
+        "make_check": "pass, 13/13 tests",
+        "make_docs": "pass",
+        "fuzz": {
+          "pass": 100,
+          "wrong_answer": 0,
+          "crash": 0,
+          "timeout": 0,
+          "unknown_involved": 0
+        },
+        "pure_theory_sample": {
+          "qf_lra_files": 2,
+          "qf_uf_files": 2,
+          "default_and_candidate_results_match": true,
+          "candidate_mixed_path_entered": false
+        },
+        "mathsat_representative_probe_cap_1000": {
+          "file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2",
+          "default": {
+            "status": "unknown",
+            "elapsed_seconds": 3.36,
+            "sat_decisions": 73,
+            "sat_propagations": 378,
+            "lra_extra_atom_probes": 1000,
+            "candidate_pairs": 0,
+            "candidate_equalities": 0
+          },
+          "candidate_final_scan": {
+            "status": "unknown",
+            "elapsed_seconds": 17.74,
+            "sat_decisions": 615,
+            "sat_propagations": 1639,
+            "lra_extra_atom_probes": 1000,
+            "candidate_pairs": 195,
+            "candidate_skipped_pairs": 1516,
+            "candidate_equalities": 29,
+            "candidate_fallbacks": 1,
+            "candidate_fallback_equalities": 0
+          }
+        }
+      },
+      "outcome": "Accepted as correctness evidence for an opt-in candidate-first final scan. The MathSAT representative shows that the candidate scan prunes equality probes and finds equalities, but under a 1000-probe cap it is slower than the default capped run because final arrangement separation dominates afterward. Do not promote this option as a performance win or default behavior without a broader SLURM run and an arrangement-side improvement.",
+      "evidence_status": "current-local"
     }
   ]
 }

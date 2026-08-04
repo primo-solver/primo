@@ -825,6 +825,11 @@ The next high-value opportunities therefore belong in preprocessing and
 SAT-visible arithmetic strengthening before adding broader Nelson-Oppen
 machinery:
 
+- the first adjacent Nelson-Oppen pruning step is implemented as opt-in
+  `--qf-uflra-candidate-final-scan`: it reduces the final LRA-to-EUF equality
+  scan to EUF care pairs, EUF-atom co-occurrence pairs, and true paired LRA
+  bounds, with a broad-scan fallback that routes discovered equalities back
+  through SAT before accepting the arrangement;
 - recognize MathSAT-style pseudo-Boolean-over-Real encodings as LRA-local
   finite-domain shapes, not only as UF finite-domain choice disjunctions;
 - add guarded SAT-visible at-most-one/exactly-one structure for repeated Real
@@ -838,8 +843,9 @@ machinery:
   choosing between LRA-domain preprocessing, stronger arithmetic propagation, or
   Boolean encoding changes.
 
-These are planned opportunities, not implemented behavior. Any accepted pass
-must emit ordinary `TermId` assertions, preserve the preprocessing
+Except for the opt-in candidate final scan noted above, these are planned
+opportunities, not implemented behavior. Any accepted preprocessing pass must
+emit ordinary `TermId` assertions, preserve the preprocessing
 reconstruction trail for model-producing runs, include counters showing the
 recognizer and generated clauses are active, and be evaluated against the
 current SLURM QF_UFLRA baseline.

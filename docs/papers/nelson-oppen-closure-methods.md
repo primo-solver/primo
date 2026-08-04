@@ -165,6 +165,18 @@ producer, and cases that repeatedly need those equalities after paired-bound
 materialization may still need the default final mode or a future capped/reused
 equality check.
 
+Default `final` propagation keeps the broad all-pairs scan unless the
+experimental `--qf-uflra-candidate-final-scan` option is enabled. That option
+builds a SAT-assignment-local candidate set from EUF care pairs, shared Real
+constants that co-occur inside one EUF atom, and pairs whose two non-strict LRA
+bounds are both true. Only those pairs are probed before LRA-to-EUF propagation.
+If final arrangement validation or mixed model reconstruction fails after this
+candidate scan, Primo runs the broad scan once and routes any newly discovered
+LRA-implied equalities through `force_implied_interface_equalities()` before
+accepting the arrangement. This is still a conservative implementation-local
+pruning heuristic over entailed equalities, not the full paper transition system
+with a mutable shared model object.
+
 The paired-bound producer is deliberately the stable online LRA-to-EUF subset
 for now. It is sound, has a compact two-literal explanation, and exercises the
 combination path without making every LRA bound change search the tableau for
@@ -290,6 +302,12 @@ coordinator publishes:
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
 - `:no.interface.euf-care-pruned-pairs`
+- `:no.interface.candidate-final-scan-enabled`
+- `:no.interface.candidate-final-scan-pairs`
+- `:no.interface.candidate-final-scan-skipped-pairs`
+- `:no.interface.candidate-final-scan-equalities`
+- `:no.interface.candidate-final-scan-fallbacks`
+- `:no.interface.candidate-final-scan-fallback-equalities`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
 - `:no.interface.model-separations`
@@ -401,6 +419,11 @@ current profiling result:
    validation fallback and increments
    `:no.online.final-lra-equality-scan-fallbacks`. The reserved capped-scan
    counter remains zero until a capped replacement is implemented.
+7. The default-off `--qf-uflra-candidate-final-scan` option applies the same
+   candidate-first discipline to final-mode LRA-to-EUF equality sharing without
+   changing default behavior. Its fallback broad scan is a validation escape
+   hatch only; any fallback equality must be learned through the SAT-visible
+   interface-equality clause path before the final arrangement is accepted.
 
 ### 2026-08-04 Model-Equality Assumption Lifecycle Checklist
 

@@ -467,6 +467,21 @@ only as a ranking signal; they fall back to the full pair set instead of pruning
 the search. The opt-in `care-queued` policy rebuilds a bounded queue from the
 current EUF care pairs only, so a shared Real pair that is merely present in the
 full cross product is not materialized as a model-equality branch candidate.
+The opt-in `--qf-uflra-candidate-final-scan` path also consumes the EUF care
+diagnostic, but for entailed LRA-to-EUF equality propagation rather than model
+guesses. It probes only a candidate set made from current EUF care pairs, shared
+Real constants co-occurring inside one EUF atom, and shared Real pairs whose
+two non-strict LRA bounds are both true in the current SAT assignment. The
+counters `:no.interface.candidate-final-scan-enabled`,
+`:no.interface.candidate-final-scan-pairs`,
+`:no.interface.candidate-final-scan-skipped-pairs`, and
+`:no.interface.candidate-final-scan-equalities` report that first pass. If
+final arrangement validation or model reconstruction cannot be completed using
+those equalities, `:no.interface.candidate-final-scan-fallbacks` increments and
+Primo runs the broad all-pairs LRA equality scan once. Equalities found by that
+fallback are forced through SAT before the solver accepts the final
+arrangement; `:no.interface.candidate-final-scan-fallback-equalities` records
+how many the fallback found.
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use
