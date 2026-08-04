@@ -243,8 +243,14 @@ coordinator publishes:
 - `:no.interface.lra-conflicts`
 - `:no.interface.model-equality-candidates`
 - `:no.interface.model-equality-created`
+- `:no.interface.model-equality-pending`
+- `:no.interface.model-equality-activated`
+- `:no.interface.model-equality-duplicate-pending`
 - `:no.interface.model-equality-assumptions`
 - `:no.interface.model-equality-failed-assumptions`
+- `:no.interface.model-equality-blocking-clauses`
+- `:no.interface.model-equality-dropped-assumptions`
+- `:no.interface.model-equality-retained-assumptions`
 - `:no.interface.model-equality-conflicts`
 - `:no.interface.model-equality-full-pairs`
 - `:no.interface.model-equality-care-pairs`
@@ -379,6 +385,72 @@ current profiling result:
    validation fallback and increments
    `:no.online.final-lra-equality-scan-fallbacks`. The reserved capped-scan
    counter remains zero until a capped replacement is implemented.
+
+### 2026-08-04 Model-Equality Assumption Lifecycle Checklist
+
+**Bibliographic basis.** The branch lifecycle is based on de Moura and
+Bjorner, "Model-based Theory Combination", Section 4, where a theory model may
+suggest `u = v` for shared terms and the positive case is tried first, plus the
+Section 5 observation that Simplex model values can be used to find equal
+arithmetic terms. Section 5.2 motivates model mutation, but Primo currently
+implements only the strict-separation consistency filter described below.
+
+**Implemented subset.** `--model-equality-branching` remains default-off. In
+mixed QF_UFLRA, `choose_lra_model_equality_branch` scans shared Real pairs,
+keeps only pairs equal in the current LRA model, applies the optional
+strict-separation mutation filter, creates a SAT-visible equality atom only for
+the selected pair, and sets the SAT phase so the positive equality is tried
+first. `ModelEqualityArrangementState` owns the resulting assumption lifecycle:
+one selected equality literal is queued, activated as an IPASIR assumption on
+the next SAT call, retained across later SAT calls when it survives, and removed
+when the SAT backend reports it as a failed assumption. SAT-level rejections
+learn a blocking clause over the negated failed assumptions. EUF or LRA
+conflicts reached while at least one guessed equality is active are learned by
+the ordinary theory-conflict path.
+
+**Data structures and owners.** `TheoryCombinationManager` owns the mapping
+from equality term to SAT literal. `BooleanClausifier` creates the optional
+theory atom when the equality is selected. `ModelEqualityArrangementState` owns
+the pending literal, active IPASIR assumption trail, tried SAT variables, and
+adaptive rejection counters. The SAT adapter still sees only literals and
+clauses; theory solvers still see ordinary theory atoms and explanations.
+
+**Invariants and operations.**
+
+1. A model-equality guess is never reported as an entailed propagation.
+2. A guessed equality remains an IPASIR assumption until SAT or a learned theory
+   clause rejects it.
+3. A SAT-level failed-assumption result must add a blocking clause containing
+   only negated guessed literals.
+4. The same SAT variable is not activated twice on the assumption trail.
+5. Optional equality atoms are created lazily after the LRA model and mutation
+   filter select a pair; shared Real pairs are not preallocated for this mode.
+
+**Complexity expectation.** Candidate enumeration is still bounded by
+`--model-equality-branch-budget` and the shared Real pair list. This patch does
+not improve the all-pairs scan used by the default `first` branch policy. Its
+purpose is to isolate the assumption lifecycle so a later IPASIR-UP queue or
+care-set candidate source can replace the current scan without changing the SAT
+backtracking invariants.
+
+**Proof obligations.** The only clauses introduced by this subset are ordinary
+theory conflicts, guarded interface-equality clauses from the existing
+propagation path, and SAT failed-assumption blocking clauses over guessed
+equalities. Because the guessed equality is an assumption, not a permanent unit,
+the solver may backtrack and explore the negated arrangement.
+
+**Deviations and limitations.** Primo does not implement the paper's full
+`DPLL(T^M)` transition system, generic theory model object, paper-style
+`M-Propagate` state, or real model mutation. The strict-separation mutation
+filter asks whether either `x < y` or `y < x` is LRA-consistent under the
+current assignment; when one is consistent, the model equality is treated as an
+avoidable model choice and skipped. This is conservative and incomplete.
+
+**Tests derived from the subset.** The QF_UFLRA unit tests cover a rejected
+bad model-equality guess, mutation-filter skipping, full-pair fallback, active
+assumption accumulation, care-ranked selection, ranked fallback, and adaptive
+backoff. The tests assert lifecycle counters for queued and activated guesses,
+and assert that mutation-filtered cases create no queued assumptions.
 
 Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or

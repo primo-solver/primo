@@ -334,8 +334,14 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-conflicts`
 - `:no.interface.model-equality-candidates`
 - `:no.interface.model-equality-created`
+- `:no.interface.model-equality-pending`
+- `:no.interface.model-equality-activated`
+- `:no.interface.model-equality-duplicate-pending`
 - `:no.interface.model-equality-assumptions`
 - `:no.interface.model-equality-failed-assumptions`
+- `:no.interface.model-equality-blocking-clauses`
+- `:no.interface.model-equality-dropped-assumptions`
+- `:no.interface.model-equality-retained-assumptions`
 - `:no.interface.model-equality-conflicts`
 - `:no.interface.model-equality-full-pairs`
 - `:no.interface.model-equality-care-pairs`
@@ -501,15 +507,17 @@ full shared Real pairs scanned, how many were equal in the current LRA model,
 how many such equalities were checked by the model-mutation filter, how many
 were skipped because either strict separation is still LRA-consistent, how many
 were not separated by that filter, optional SAT equality atoms created for those
-pairs, active assumption attempts over those atoms, assumptions rejected at the
-SAT level, assigned or already-tried equality literals skipped, whether the
-selected guess came from the care-ranked prefix or the full-pair fallback,
+pairs, guesses queued for the next SAT call, guesses activated onto the IPASIR
+assumption trail, duplicate queued guesses that were already active, active
+assumption attempts over those atoms, SAT-level failed-assumption blocking
+clauses, dropped failed assumptions, the active assumptions retained after the
+last SAT rejection, assigned or already-tried equality literals skipped, whether
+the selected guess came from the care-ranked prefix or the full-pair fallback,
 adaptive stops, the current and maximum active model-equality assumption-trail
 size, and ordinary theory conflicts reached while at least one guessed equality
 was active. A surviving model-equality guess is re-applied as an IPASIR
 assumption on later SAT calls while the coordinator tries additional model-equal
-pairs; it is still not a
-permanent unit clause. The current positive-equality path should
+pairs; it is still not a permanent unit clause. The current positive-equality path should
 also show activity in
 `:no.interface.sat-equalities-forced`, which counts guarded propagation clauses
 from the current theory assignment to an interface equality literal, and then

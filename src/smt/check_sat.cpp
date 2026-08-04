@@ -5446,6 +5446,113 @@ struct ModelEqualityBranchState {
   bool adaptive_stopped = false;
 };
 
+struct ModelEqualityArrangementState {
+  ModelEqualityBranchState branch_search;
+  std::optional<sat::Lit> pending_branch;
+  std::vector<sat::Lit> active_branches;
+
+  bool has_active_branch() const { return !active_branches.empty(); }
+
+  void publish_active_stats(util::Statistics& statistics) const {
+    statistics.set(":no.interface.model-equality-active-assumptions", active_branches.size());
+    if (active_branches.size() >
+        statistics.get(":no.interface.model-equality-max-active-assumptions")) {
+      statistics.set(":no.interface.model-equality-max-active-assumptions", active_branches.size());
+    }
+  }
+
+  void enqueue_pending_branch(sat::Lit lit, util::Statistics& statistics) {
+    pending_branch = lit;
+    statistics.increment(":no.interface.model-equality-pending");
+  }
+
+  void activate_pending_branch(util::Statistics& statistics) {
+    if (!pending_branch.has_value()) {
+      return;
+    }
+    const int pending_var = sat_var(pending_branch.value());
+    bool already_active = false;
+    for (const sat::Lit lit : active_branches) {
+      if (sat_var(lit) == pending_var) {
+        already_active = true;
+        break;
+      }
+    }
+    if (already_active) {
+      statistics.increment(":no.interface.model-equality-duplicate-pending");
+    } else {
+      active_branches.push_back(pending_branch.value());
+      statistics.increment(":no.interface.model-equality-activated");
+    }
+    pending_branch.reset();
+    publish_active_stats(statistics);
+  }
+
+  std::optional<std::uint64_t> assume_active_branches(sat::CadicalBackend& backend,
+                                                      util::Statistics& statistics) const {
+    if (active_branches.empty()) {
+      return std::nullopt;
+    }
+    const std::uint64_t propagation_start = statistics.get(":no.interface.equalities-propagated");
+    for (const sat::Lit lit : active_branches) {
+      backend.assume(lit);
+    }
+    statistics.increment(":no.interface.model-equality-assumptions", active_branches.size());
+    publish_active_stats(statistics);
+    return propagation_start;
+  }
+
+  void record_rejection(std::optional<std::uint64_t> propagation_start,
+                        util::Statistics& statistics) {
+    if (propagation_start.has_value() &&
+        statistics.get(":no.interface.equalities-propagated") <= propagation_start.value()) {
+      ++branch_search.unproductive_rejections;
+    } else {
+      branch_search.unproductive_rejections = 0;
+    }
+  }
+
+  void record_theory_conflict(std::optional<std::uint64_t> propagation_start,
+                              util::Statistics& statistics) {
+    if (!has_active_branch()) {
+      return;
+    }
+    statistics.increment(":no.interface.model-equality-conflicts");
+    record_rejection(propagation_start, statistics);
+  }
+
+  void learn_failed_assumption_clause(sat::CadicalBackend& backend,
+                                      std::optional<std::uint64_t> propagation_start,
+                                      util::Statistics& statistics) {
+    sat::Clause failed_assumption_clause;
+    std::vector<sat::Lit> surviving_assumptions;
+    surviving_assumptions.reserve(active_branches.size());
+    for (const sat::Lit lit : active_branches) {
+      if (backend.failed(lit)) {
+        failed_assumption_clause.push_back(sat::Lit{-lit.value});
+      } else {
+        surviving_assumptions.push_back(lit);
+      }
+    }
+    if (failed_assumption_clause.empty()) {
+      for (const sat::Lit lit : active_branches) {
+        failed_assumption_clause.push_back(sat::Lit{-lit.value});
+      }
+      surviving_assumptions.clear();
+    }
+    backend.add_clause(failed_assumption_clause);
+    statistics.increment(":no.interface.model-equality-failed-assumptions",
+                         failed_assumption_clause.size());
+    statistics.increment(":no.interface.model-equality-dropped-assumptions",
+                         failed_assumption_clause.size());
+    statistics.increment(":no.interface.model-equality-blocking-clauses");
+    active_branches = std::move(surviving_assumptions);
+    statistics.set(":no.interface.model-equality-retained-assumptions", active_branches.size());
+    publish_active_stats(statistics);
+    record_rejection(propagation_start, statistics);
+  }
+};
+
 struct ModelEqualityCandidate {
   TermPairKey pair;
   std::size_t original_index = 0;
@@ -7654,9 +7761,7 @@ CheckSatOutcome solve_qf_uf_lra(
   const std::vector<TermPairKey> shared_real_pairs = all_term_pairs(shared_real_terms);
   TheoryCombinationManager no_manager(terms);
   no_manager.rebuild_from_interface_terms(shared_real_terms);
-  std::optional<sat::Lit> pending_model_equality_branch;
-  std::vector<sat::Lit> active_model_equality_branches;
-  ModelEqualityBranchState model_equality_branch_state;
+  ModelEqualityArrangementState model_equality_arrangement;
   std::unordered_set<std::string> seen_lra_conflict_clauses;
   const auto skip_online_final_lra_equality_scan = [&statistics, &options]() {
     return options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online &&
@@ -7702,8 +7807,14 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-conflicts", 0);
   statistics.set(":no.interface.model-equality-candidates", 0);
   statistics.set(":no.interface.model-equality-created", 0);
+  statistics.set(":no.interface.model-equality-pending", 0);
+  statistics.set(":no.interface.model-equality-activated", 0);
+  statistics.set(":no.interface.model-equality-duplicate-pending", 0);
   statistics.set(":no.interface.model-equality-assumptions", 0);
   statistics.set(":no.interface.model-equality-failed-assumptions", 0);
+  statistics.set(":no.interface.model-equality-blocking-clauses", 0);
+  statistics.set(":no.interface.model-equality-dropped-assumptions", 0);
+  statistics.set(":no.interface.model-equality-retained-assumptions", 0);
   statistics.set(":no.interface.model-equality-conflicts", 0);
   statistics.set(":no.interface.model-equality-full-pairs", 0);
   statistics.set(":no.interface.model-equality-care-pairs", 0);
@@ -7802,69 +7913,14 @@ CheckSatOutcome solve_qf_uf_lra(
 
   while (true) {
     statistics.increment(kStatSatSolveCalls);
-    if (pending_model_equality_branch.has_value()) {
-      const int pending_var = sat_var(pending_model_equality_branch.value());
-      bool already_active = false;
-      for (const sat::Lit lit : active_model_equality_branches) {
-        if (sat_var(lit) == pending_var) {
-          already_active = true;
-          break;
-        }
-      }
-      if (!already_active) {
-        active_model_equality_branches.push_back(pending_model_equality_branch.value());
-      }
-      pending_model_equality_branch.reset();
-    }
-    std::optional<std::uint64_t> active_model_equality_propagation_start;
-    if (!active_model_equality_branches.empty()) {
-      active_model_equality_propagation_start =
-          statistics.get(":no.interface.equalities-propagated");
-      for (const sat::Lit lit : active_model_equality_branches) {
-        backend.assume(lit);
-      }
-      statistics.increment(":no.interface.model-equality-assumptions",
-                           active_model_equality_branches.size());
-      statistics.set(":no.interface.model-equality-active-assumptions",
-                     active_model_equality_branches.size());
-      if (active_model_equality_branches.size() >
-          statistics.get(":no.interface.model-equality-max-active-assumptions")) {
-        statistics.set(":no.interface.model-equality-max-active-assumptions",
-                       active_model_equality_branches.size());
-      }
-    }
+    model_equality_arrangement.activate_pending_branch(statistics);
+    const std::optional<std::uint64_t> active_model_equality_propagation_start =
+        model_equality_arrangement.assume_active_branches(backend, statistics);
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
-    if (sat_result == sat::SatResult::Unsat && !active_model_equality_branches.empty()) {
-      sat::Clause failed_assumption_clause;
-      std::vector<sat::Lit> surviving_assumptions;
-      surviving_assumptions.reserve(active_model_equality_branches.size());
-      for (const sat::Lit lit : active_model_equality_branches) {
-        if (backend.failed(lit)) {
-          failed_assumption_clause.push_back(sat::Lit{-lit.value});
-        } else {
-          surviving_assumptions.push_back(lit);
-        }
-      }
-      if (failed_assumption_clause.empty()) {
-        for (const sat::Lit lit : active_model_equality_branches) {
-          failed_assumption_clause.push_back(sat::Lit{-lit.value});
-        }
-        surviving_assumptions.clear();
-      }
-      backend.add_clause(failed_assumption_clause);
-      statistics.increment(":no.interface.model-equality-failed-assumptions",
-                           failed_assumption_clause.size());
-      active_model_equality_branches = std::move(surviving_assumptions);
-      statistics.set(":no.interface.model-equality-active-assumptions",
-                     active_model_equality_branches.size());
-      if (active_model_equality_propagation_start.has_value() &&
-          statistics.get(":no.interface.equalities-propagated") <=
-              active_model_equality_propagation_start.value()) {
-        ++model_equality_branch_state.unproductive_rejections;
-      } else {
-        model_equality_branch_state.unproductive_rejections = 0;
-      }
+    if (sat_result == sat::SatResult::Unsat && model_equality_arrangement.has_active_branch()) {
+      model_equality_arrangement.learn_failed_assumption_clause(
+          backend, active_model_equality_propagation_start, statistics);
       publish_sat_stats(backend.statistics(), statistics);
       continue;
     }
@@ -7913,16 +7969,8 @@ CheckSatOutcome solve_qf_uf_lra(
       statistics.increment(kStatTheoryConflicts);
       record_interface_conflict(euf_conflict, no_manager, ":no.interface.euf-conflicts",
                                 statistics);
-      if (!active_model_equality_branches.empty()) {
-        statistics.increment(":no.interface.model-equality-conflicts");
-        if (active_model_equality_propagation_start.has_value() &&
-            statistics.get(":no.interface.equalities-propagated") <=
-                active_model_equality_propagation_start.value()) {
-          ++model_equality_branch_state.unproductive_rejections;
-        } else {
-          model_equality_branch_state.unproductive_rejections = 0;
-        }
-      }
+      model_equality_arrangement.record_theory_conflict(active_model_equality_propagation_start,
+                                                        statistics);
       if (euf_conflict->empty()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
@@ -7981,16 +8029,8 @@ CheckSatOutcome solve_qf_uf_lra(
       }
       record_interface_conflict(lra_conflict, no_manager, ":no.interface.lra-conflicts",
                                 statistics);
-      if (!active_model_equality_branches.empty()) {
-        statistics.increment(":no.interface.model-equality-conflicts");
-        if (active_model_equality_propagation_start.has_value() &&
-            statistics.get(":no.interface.equalities-propagated") <=
-                active_model_equality_propagation_start.value()) {
-          ++model_equality_branch_state.unproductive_rejections;
-        } else {
-          model_equality_branch_state.unproductive_rejections = 0;
-        }
-      }
+      model_equality_arrangement.record_theory_conflict(active_model_equality_propagation_start,
+                                                        statistics);
       if (lra_conflict->empty()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
@@ -8016,8 +8056,8 @@ CheckSatOutcome solve_qf_uf_lra(
 #endif
       publish_interface_propagation_result(propagation, ":no.interface.euf-to-lra", statistics);
       if (propagation.triggered_recheck()) {
-        if (!active_model_equality_branches.empty()) {
-          model_equality_branch_state.unproductive_rejections = 0;
+        if (model_equality_arrangement.has_active_branch()) {
+          model_equality_arrangement.record_rejection(std::nullopt, statistics);
         }
         publish_sat_stats(backend.statistics(), statistics);
         continue;
@@ -8043,8 +8083,8 @@ CheckSatOutcome solve_qf_uf_lra(
 #endif
         publish_interface_propagation_result(propagation, ":no.interface.lra-to-euf", statistics);
         if (propagation.triggered_recheck()) {
-          if (!active_model_equality_branches.empty()) {
-            model_equality_branch_state.unproductive_rejections = 0;
+          if (model_equality_arrangement.has_active_branch()) {
+            model_equality_arrangement.record_rejection(std::nullopt, statistics);
           }
           publish_sat_stats(backend.statistics(), statistics);
           continue;
@@ -8052,10 +8092,12 @@ CheckSatOutcome solve_qf_uf_lra(
       }
     }
 
-    pending_model_equality_branch = choose_lra_model_equality_branch(
+    const std::optional<sat::Lit> pending_model_equality_branch = choose_lra_model_equality_branch(
         terms, clausifier, backend, no_manager, lra_atoms_for_check, lra_assignments_for_check,
-        shared_real_pairs, euf_care, options, model_equality_branch_state, statistics);
+        shared_real_pairs, euf_care, options, model_equality_arrangement.branch_search, statistics);
     if (pending_model_equality_branch.has_value()) {
+      model_equality_arrangement.enqueue_pending_branch(pending_model_equality_branch.value(),
+                                                        statistics);
       publish_sat_stats(backend.statistics(), statistics);
       continue;
     }
