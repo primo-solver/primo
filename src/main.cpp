@@ -167,6 +167,11 @@ int main(int argc, char** argv) {
   bool euf_proof_forest_diagnostics = false;
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
+  bool nelson_oppen_diagnostics = false;
+  bool nelson_oppen_model_equality_branching = false;
+  bool no_nelson_oppen_model_equality_mutation = false;
+  std::string nelson_oppen_propagation = "final";
+  std::string model_equality_branch_policy = "first";
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   std::string pure_theory_filter = "auto";
@@ -339,6 +344,27 @@ int main(int argc, char** argv) {
                "[default: off]");
   app.add_flag("--euf-ackermann-diagnostics", euf_ackermann_diagnostics,
                "Record diagnostic-only QF_UF Ackermannization cost counters [default: off]");
+  app.add_flag("--nelson-oppen-diagnostics", nelson_oppen_diagnostics,
+               "Record diagnostic-only Nelson-Oppen interface counters [default: off]");
+  app.add_flag("--model-equality-branching", nelson_oppen_model_equality_branching,
+               "Enable experimental QF_UFLRA model-equality branching over shared Real terms; "
+               "not a full Nelson-Oppen model-equality implementation [default: off]");
+  app.add_flag("--no-model-equality-mutation", no_nelson_oppen_model_equality_mutation,
+               "Disable the experimental QF_UFLRA LRA model-mutation filter inside "
+               "--model-equality-branching [default: on]");
+  app.add_option("--nelson-oppen-prop", nelson_oppen_propagation,
+                 "QF_UFLRA Nelson-Oppen interface equality propagation mode: off, final, or "
+                 "online. Pure QF_UF and QF_LRA keep their direct theory propagators [default: "
+                 "final]")
+      ->check(CLI::IsMember({"off", "final", "online"}))
+      ->default_val("final");
+  app.add_option("--model-equality-branch-budget",
+                 solver_options.nelson_oppen_model_equality_branch_budget,
+                 "Maximum QF_UFLRA model-equality branch assumptions per check-sat")
+      ->check(CLI::Range(0, 1000000));
+  app.add_option("--model-equality-branch-policy", model_equality_branch_policy,
+                 "QF_UFLRA model-equality branch policy: first, ranked, or adaptive")
+      ->check(CLI::IsMember({"first", "ranked", "adaptive"}));
   app.add_flag(
       "--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
       "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them [default: off]");
@@ -461,10 +487,11 @@ int main(int argc, char** argv) {
     if (starts_with(name, "--euf-") || starts_with(name, "--no-euf-") ||
         starts_with(name, "--finite-domain-") || starts_with(name, "--no-finite-domain-") ||
         starts_with(name, "--ground-") || starts_with(name, "--guarded-ground-") ||
-        starts_with(name, "--qf-uf-") || starts_with(name, "--auto-basic-") ||
-        starts_with(name, "--no-auto-basic-") || starts_with(name, "--preprocessing-") ||
-        starts_with(name, "--preprocess-passes") || name == "--eq-bridge" ||
-        name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
+        starts_with(name, "--model-equality-") || starts_with(name, "--no-model-equality-") ||
+        starts_with(name, "--nelson-oppen-") || starts_with(name, "--qf-uf-") ||
+        starts_with(name, "--auto-basic-") || starts_with(name, "--no-auto-basic-") ||
+        starts_with(name, "--preprocessing-") || starts_with(name, "--preprocess-passes") ||
+        name == "--eq-bridge" || name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
         name == "--no-uf-symmetry-breaking" || name == "--no-solved-constant-substitution" ||
         name == "--prop-interval" || name == "--prop-assign-threshold" ||
         name == "--prop-delivery-budget") {
@@ -623,6 +650,28 @@ int main(int argc, char** argv) {
   }
   solver_options.euf_diseq_propagation_diagnostics = euf_diseq_propagation_diagnostics;
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
+  solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
+  solver_options.nelson_oppen_model_equality_branching = nelson_oppen_model_equality_branching;
+  if (nelson_oppen_propagation == "off") {
+    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Off;
+  } else if (nelson_oppen_propagation == "online") {
+    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Online;
+  } else {
+    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Final;
+  }
+  if (no_nelson_oppen_model_equality_mutation) {
+    solver_options.nelson_oppen_model_equality_mutation = false;
+  }
+  if (model_equality_branch_policy == "adaptive") {
+    solver_options.nelson_oppen_model_equality_branch_policy =
+        primo::smt::ModelEqualityBranchPolicy::Adaptive;
+  } else if (model_equality_branch_policy == "ranked") {
+    solver_options.nelson_oppen_model_equality_branch_policy =
+        primo::smt::ModelEqualityBranchPolicy::Ranked;
+  } else {
+    solver_options.nelson_oppen_model_equality_branch_policy =
+        primo::smt::ModelEqualityBranchPolicy::First;
+  }
   solver_options.euf_dynamic_ackermann_shadow = euf_dynamic_ackermann_shadow;
   solver_options.euf_diseq_ackermann = euf_diseq_ackermann;
   if (pure_theory_filter == "off") {

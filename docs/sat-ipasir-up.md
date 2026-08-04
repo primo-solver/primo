@@ -6,7 +6,7 @@ Primo does not implement a SAT solver.
 
 The SAT layer owns Primo's propositional variables, literals, clauses, assumptions, and backend adapter. Actual SAT solving is delegated through IPASIR-UP, initially using CaDiCaL as the implementation.
 
-## Initial scope
+## Implemented scope
 
 - create and destroy a backend instance
 - add permanent clauses
@@ -14,22 +14,78 @@ The SAT layer owns Primo's propositional variables, literals, clauses, assumptio
 - call solve
 - read Boolean assignments after SAT
 - identify failed assumptions where supported
-- return clear unsupported-feature errors for callbacks not wired yet
+- connect one CaDiCaL external propagator
+- observe SAT variables for that propagator
+- receive assignment, decision-level, backtrack, and complete-model callbacks
+- return theory propagations with streamed reason clauses
+- return external conflict or lemma clauses during search
+- provide theory-guided decision literals where the connected propagator supports
+  them
+- expose the IPASIR-UP callback shape through Primo-owned SAT interfaces
+- create and observe a fresh SAT variable during a solving callback where the
+  backend advertises support
+- return clear unsupported-feature errors when CaDiCaL/IPASIR-UP is unavailable
 
 ## Deferred scope
 
-- online theory propagation through user-propagator callbacks
-- theory-guided decisions
-- adding clauses during search
-- explaining user propagations
 - proof-producing integration
+- safe removal of observed variables from a live mixed-theory search
+- proof infrastructure for external clauses and external propagation reasons
+- using fresh observed variables inside the Nelson-Oppen dispatcher
 
 ## Boundaries
 
 - The backend sees only SAT literals and clauses.
 - SMT terms and theory literals do not cross into CaDiCaL-specific code.
-- CaDiCaL-specific APIs stay isolated in the backend module.
+- CaDiCaL-specific callback and terminator APIs stay isolated in the backend
+  module. SMT propagators implement `sat::ExternalPropagator`, not
+  `CaDiCaL::ExternalPropagator`.
 - Missing IPASIR-UP/CaDiCaL dependencies must be reported explicitly.
+
+## User-Propagator Contract
+
+Primo's SMT layer uses a backend-neutral `sat::ExternalPropagator` interface
+that mirrors the IPASIR-UP role described by Fazekas, Niemetz, Preiner,
+Kirchweger, Szeider, and Biere. `sat::CadicalBackend` adapts that interface to
+CaDiCaL's C++ external-propagator API. The contract matters for Nelson-Oppen
+work because it controls when a mixed-theory candidate equality may become a SAT
+literal.
+
+Only one external propagator can be connected to a CaDiCaL solver at a time, so
+mixed QF_UFLRA uses `MixedTheoryPropagationDispatcher` as the single callback
+object and lets that dispatcher delegate ordinary arithmetic callbacks to
+`OnlineLraPropagator`. Pure QF_LRA and pure QF_UF keep their direct callback
+objects and do not pay for the mixed dispatcher.
+
+Variables relevant to the external propagator must be marked observed after the
+propagator is connected. CaDiCaL's current header states that external
+propagation, clause addition during search, and assignment notifications are
+over observed variables. Observed variables are frozen for inprocessing. The
+same header allows a fresh variable to be observed during solving, but
+`cb_propagate()` must return an observed literal and current external clauses
+are expected to be over observed variables. Primo exposes this as
+`IpasirUpBackend::new_observed_var()`: unlike ordinary `new_var()`, it is the
+fresh-observe path intended for solving callbacks and must not call CaDiCaL's
+`declare_more_variables`, whose local API precondition is `READY`.
+
+The practical Primo rules are therefore:
+
+- A callback queue may store theory-owned candidates, but it may return only a
+  SAT literal that already exists and has been observed.
+- Eagerly observing the full same-sort shared-pair cross product is a quadratic
+  cost and should stay out of default paths.
+- A model-based Nelson-Oppen path should create and observe an interface
+  equality atom only when a model/care/theory candidate asks for that pair, then
+  propagate it or add a guarded external clause.
+- `sat::IpasirUpCapabilities` records whether a backend supports observed
+  variables, external propagation, external clauses, external decisions, and
+  fresh observed variables during solving.
+- Current Nelson-Oppen online propagation still uses the reduced paired-bound
+  precreation fallback. The fresh-observed-variable probe is an enabling SAT
+  result, not yet mixed-theory behavior.
+- CryptoMiniSat's upstream public API currently exposes ordinary IPASIR, not
+  IPASIR-UP observed-variable and user-propagator callbacks, so it is not a
+  drop-in backend for online theory propagation.
 
 ## CaDiCaL option overrides
 

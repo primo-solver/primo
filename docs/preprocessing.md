@@ -80,7 +80,10 @@ reproducing narrower configurations:
   `--qf-uf-preprocess=strong` keeps the historical unbounded expansion. Use
   `--no-finite-domain-equality-definitions` for ablations;
 - solved-constant substitution for acyclic unit definitions, enabled by default
-  and disabled with `--no-solved-constant-substitution`;
+  and disabled with `--no-solved-constant-substitution`. The pass keeps exact
+  tree-occurrence accounting for its definition-size guard, but memoizes each
+  hash-consed subtree's candidate-variable occurrence multiset so repeated
+  macro-expanded DAG fragments are not recursively recounted from every parent;
 - bounded ground-congruence clauses over applications already present in the
   formula, enabled by `--ground-congruence`;
 - symmetry breaking over finite-domain choice disjunctions, enabled by default
@@ -210,6 +213,12 @@ IncrementalCongruenceClosure`, the same use-list/lookup implementation used for
 incremental EUF checks over `core::TermId` values. Preprocessing assertions have
 unconditional reasons, so the closure does not build congruence explanation
 paths while deriving simplification-only consequences.
+
+When no top-level unit equalities are present, the pass returns the assertion
+vector unchanged after inspecting only the top-level conjunction structure. When
+the only equality nodes are the unit equalities themselves, it also returns
+unchanged. Otherwise, simplification of repeated hash-consed Boolean subterms is
+memoized for the duration of the pass.
 
 `--ground-unit-substitution` additionally uses the same collected non-Boolean
 unit equalities for a bounded ground substitution pass. The pass preserves the
@@ -764,6 +773,31 @@ Boolean unit propagation collects top-level user Bool constants and rewrites
 Boolean structure with those constants while preserving the unit assertions. It
 does not rewrite inside UF applications, so SAT/EUF still receives the facts
 needed for Boolean terms used as first-order arguments.
+
+If there are no top-level Boolean-unit facts, the pass returns the input
+assertion vector unchanged and reports zero rewrites. This avoids constructing
+temporary equality/query structures for formulas whose Boolean simplification
+cannot use the pass.
+
+After preprocessing, `check_sat.cpp` classifies the final assertion DAG with a
+memoized per-term feature summary. The summary preserves the existing dispatch
+rules: plain Real equalities are arithmetic atoms, Real equalities containing UF
+applications are mixed EUF/LRA atoms, and Bool-sorted UF constants or
+applications are EUF predicate atoms. Model-producing formulas with declared
+Real constants still route through the QF_LRA model builder when preprocessing
+has eliminated all arithmetic atoms, so solved Real constants are reconstructed
+as concrete SMT-LIB model values rather than abstract UF values.
+
+For QF_UFLRA, the SMT layer also runs a memoized pre-scan before mixed
+purification. If there are no Real-valued UF applications in arithmetic atoms and
+no non-constant Real terms inside EUF atoms, the purification pass returns the
+assertions unchanged and reports `:no.purification.skipped-no-sites`. The Boolean
+mixed-purification rewrite itself also memoizes formula, arithmetic, and EUF
+rewrites by `TermId` for that pass. Repeated hash-consed subterms therefore reuse
+their rewritten result and do not recursively rebuild the same proxy definitions
+or child vectors. The Boolean clausifier records theory-atom polarity by
+`(TermId, polarity)`, so repeated hash-consed subformulas are traversed at most
+once per polarity while preserving positive/negative occurrence flags.
 
 UF symmetry breaking traverses top-level conjunctions to collect explicit
 disequalities, then scans `or` nodes for choice disjunctions. The invariance

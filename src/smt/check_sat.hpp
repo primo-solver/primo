@@ -58,6 +58,12 @@ enum class QfUfPortfolioMode {
   BasicPolarity,
 };
 
+enum class ModelEqualityBranchPolicy {
+  First,
+  Ranked,
+  Adaptive,
+};
+
 // Mirrors theory::arithmetic::LraTableau::PivotingRule -- kept as a
 // separate check_sat.hpp-local enum (translated at the wiring point, see
 // lra_pivoting_rule_from_options in check_sat.cpp) rather than reused
@@ -113,6 +119,12 @@ enum class CheckSatResult {
   Unsupported,
 };
 
+enum class NelsonOppenPropagationMode {
+  Off,
+  Final,
+  Online,
+};
+
 struct CheckSatOutcome {
   CheckSatResult result = CheckSatResult::Unknown;
   std::string message;
@@ -130,6 +142,12 @@ struct CheckSatOptions {
   bool euf_proof_forest_diagnostics = false;
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
+  bool nelson_oppen_diagnostics = false;
+  bool nelson_oppen_model_equality_branching = false;
+  bool nelson_oppen_model_equality_mutation = true;
+  ModelEqualityBranchPolicy nelson_oppen_model_equality_branch_policy =
+      ModelEqualityBranchPolicy::First;
+  NelsonOppenPropagationMode nelson_oppen_propagation = NelsonOppenPropagationMode::Final;
   bool euf_dynamic_ackermann_shadow = false;
   bool euf_diseq_ackermann = false;
   AutoBudget euf_propagation_budget;
@@ -214,6 +232,7 @@ struct CheckSatOptions {
   std::size_t euf_diseq_ackermann_max_width = 3;
   std::size_t euf_diseq_ackermann_queue_budget = 4096;
   std::size_t euf_diseq_ackermann_per_symbol = 64;
+  std::size_t nelson_oppen_model_equality_branch_budget = 16;
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;

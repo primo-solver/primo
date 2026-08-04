@@ -892,8 +892,8 @@ all** -- the bound is already satisfied. That is a genuine
 override: VSIDS keeps its ordering, so a family whose search needs VSIDS
 focus loses nothing.
 
-Mechanism: CaDiCaL's `phase(lit)` forced-phase API, already exposed by the
-adapter as `CadicalBackend::phase(Lit)` (`src/sat/cadical_backend.cpp`).
+Mechanism: the IPASIR-UP backend's `phase(lit)` hook, exposed through
+`sat::IpasirUpBackend::phase(Lit)`.
 Implemented behind `--lra-model-phase` in `OnlineLraPropagator`: it stores a
 reference to the SAT backend, keeps the last phase literal per observed
 arithmetic atom, and refreshes phase literals at the same quiescence point

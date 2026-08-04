@@ -15,9 +15,9 @@ from pathlib import Path
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run Primo with get-model enabled and validate sat models with Dolmen; "
-            "QF_LRA Real-constant models can fall back to Z3 when Dolmen rejects "
-            "the generated input syntax."
+            "Run Primo with get-model enabled and validate sat QF_UF, QF_LRA, "
+            "and supported mixed QF_UFLRA models with Dolmen; Real-constant "
+            "models can fall back to Z3 when Dolmen rejects the generated input syntax."
         )
     )
     parser.add_argument("files", nargs="*", type=Path, help="SMT-LIB files to validate")

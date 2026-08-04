@@ -25,6 +25,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(PRIMO_WARNINGS_AS_ERRORS "Treat Primo C++ compiler warnings as errors" ON)
 set(PRIMO_SANITIZERS "" CACHE STRING "Semicolon-separated sanitizer list for Primo targets, e.g. address;undefined")
 set(PRIMO_CADICAL_ROOT "" CACHE PATH "CaDiCaL installation prefix to prefer over contrib/local")
+set(PRIMO_GIT_REVISION_OVERRIDE "" CACHE STRING "Git revision banner for source snapshots without .git")
 
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/contrib/local")
 
@@ -133,6 +134,11 @@ if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   )
   check_cxx_source_compiles(
     "#include <cadical.hpp>
+     int main() { auto fn = &CaDiCaL::Solver::declare_more_variables; (void) fn; return 0; }"
+    PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES
+  )
+  check_cxx_source_compiles(
+    "#include <cadical.hpp>
      struct P : CaDiCaL::ExternalPropagator {
        void notify_assignment(const std::vector<int>&) override {}
        void notify_new_decision_level() override {}
@@ -219,6 +225,7 @@ if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
   target_compile_definitions(primo_core PUBLIC
     PRIMO_CADICAL_HAS_RESIZE=$<BOOL:${PRIMO_CADICAL_HAS_RESIZE}>
     PRIMO_CADICAL_HAS_RESERVE=$<BOOL:${PRIMO_CADICAL_HAS_RESERVE}>
+    PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES=$<BOOL:${PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES}>
     PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR=$<BOOL:${PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR}>
     PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR=$<BOOL:${PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR}>
   )
@@ -242,6 +249,7 @@ add_custom_target(primo_git_revision_header ALL
   COMMAND "${CMAKE_COMMAND}"
     -DPRIMO_SOURCE_DIR=${CMAKE_SOURCE_DIR}
     -DPRIMO_GIT_REVISION_HEADER=${CMAKE_BINARY_DIR}/generated/primo_git_revision.hpp
+    -DPRIMO_GIT_REVISION_OVERRIDE=${PRIMO_GIT_REVISION_OVERRIDE}
     -P ${CMAKE_SOURCE_DIR}/scripts/write_git_revision.cmake
   BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/primo_git_revision.hpp"
   VERBATIM
@@ -292,6 +300,12 @@ primo_enable_warnings(primo_preprocessing_tests)
 primo_enable_sanitizers(primo_preprocessing_tests)
 target_link_libraries(primo_preprocessing_tests PRIVATE primo_core)
 add_test(NAME primo_preprocessing_tests COMMAND primo_preprocessing_tests)
+
+add_executable(primo_theory_combination_tests tests/unit/theory_combination_tests.cpp)
+primo_enable_warnings(primo_theory_combination_tests)
+primo_enable_sanitizers(primo_theory_combination_tests)
+target_link_libraries(primo_theory_combination_tests PRIVATE primo_core)
+add_test(NAME primo_theory_combination_tests COMMAND primo_theory_combination_tests)
 
 add_executable(primo_rational_tests tests/unit/rational_tests.cpp)
 primo_enable_warnings(primo_rational_tests)

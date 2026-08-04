@@ -241,6 +241,24 @@ void unit_equality_propagation_simplifies_nested_boolean_terms_after_interning()
   check(consequences >= 1);
 }
 
+void unit_equality_propagation_skips_without_nonunit_queries() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const std::vector<primo::core::TermId> assertions{
+      fixture.terms.mk_eq(a, b),
+      fixture.terms.mk_and({fixture.terms.mk_eq(b, c)}),
+  };
+
+  std::size_t consequences = 99;
+  const std::vector<primo::core::TermId> simplified =
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &consequences);
+
+  check(consequences == 0);
+  check(simplified == assertions);
+}
+
 void ground_unit_substitution_rewrites_applications_and_preserves_units() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -504,6 +522,25 @@ void boolean_unit_propagation_preserves_contradictory_units() {
       primo::smt::propagate_boolean_units(fixture.terms, assertions);
 
   check(result.units == 0);
+  check(result.rewrites == 0);
+  check(result.assertions == assertions);
+}
+
+void boolean_unit_propagation_skips_when_no_units_exist() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const std::vector<primo::core::TermId> assertions{
+      fixture.terms.mk_or({fixture.terms.mk_eq(a, b), fixture.terms.mk_eq(b, c)}),
+      fixture.terms.mk_not(fixture.terms.mk_eq(a, c)),
+  };
+
+  const primo::smt::BooleanUnitPropagationResult result =
+      primo::smt::propagate_boolean_units(fixture.terms, assertions);
+
+  check(result.units == 0);
+  check(result.assignments.empty());
   check(result.rewrites == 0);
   check(result.assertions == assertions);
 }
@@ -901,6 +938,7 @@ int main() {
   equality_bridge_derives_common_branch_consequence();
   unit_equality_propagation_simplifies_disequality();
   unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();
+  unit_equality_propagation_skips_without_nonunit_queries();
   ground_unit_substitution_rewrites_applications_and_preserves_units();
   ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts();
   solved_constant_substitution_eliminates_acyclic_definition();
@@ -912,6 +950,7 @@ int main() {
   lower_real_equalities_rewrites_real_sorted_equality_only();
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();
+  boolean_unit_propagation_skips_when_no_units_exist();
   forced_atom_propagation_simplifies_predicate_units();
   forced_atom_propagation_uses_negative_equality_units();
   forced_atom_propagation_folds_disequalities_modulo_equalities();

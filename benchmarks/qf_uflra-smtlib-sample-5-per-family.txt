@@ -1,0 +1,31 @@
+# Deterministic local QF_UFLRA tuning sample from sandbox/QF_UFLRA.
+# Selection rule: lexicographically first five .smt2 files per top-level family
+# in tmp/QF_UFLRA as of 2026-07-31.
+
+# FFT
+FFT/smtlib.620524.smt2
+FFT/smtlib.623586.smt2
+FFT/smtlib.624882.smt2
+FFT/smtlib.624898.smt2
+FFT/smtlib.624914.smt2
+
+# cpachecker-bmc-svcomp14
+cpachecker-bmc-svcomp14/cpachecker-bmc.callfpointer.c_false-unreach-call.i.smt2
+cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2
+cpachecker-bmc-svcomp14/cpachecker-bmc.floppy_false-unreach-call.i.cil.c.smt2
+cpachecker-bmc-svcomp14/cpachecker-bmc.implicitfloatconversion_false-unreach-call.i.smt2
+cpachecker-bmc-svcomp14/cpachecker-bmc.integerpromotion_false-unreach-call.i.smt2
+
+# cpachecker-induction-svcomp14
+cpachecker-induction-svcomp14/cpachecker-induction.1_3.c_false-unreach-call.i.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--edac--mce_amd_inj.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--i2c--algos--i2c-algo-pca.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--input--joystick--magellan.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--input--keyboard--newtonkbd.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2
+
+# mathsat
+mathsat/RandomCoupled/pb_real_10_0100_10_10.smt2
+mathsat/RandomCoupled/pb_real_10_0100_10_11.smt2
+mathsat/RandomCoupled/pb_real_10_0100_10_12.smt2
+mathsat/RandomCoupled/pb_real_10_0100_10_13.smt2
+mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2

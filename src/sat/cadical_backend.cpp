@@ -1,5 +1,6 @@
 #include "sat/cadical_backend.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -29,6 +30,71 @@ std::size_t nonnegative_statistic(CaDiCaL::Solver* solver, const char* name) {
 #endif
 
 }  // namespace
+
+#if PRIMO_HAVE_IPASIR
+class CadicalBackend::ExternalPropagatorAdapter final : public CaDiCaL::ExternalPropagator {
+ public:
+  explicit ExternalPropagatorAdapter(::primo::sat::ExternalPropagator& propagator)
+      : propagator_(propagator) {
+    scalar_assignment_buffer_.reserve(1);
+  }
+
+#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
+  void notify_assignment(const std::vector<int>& lits) override {
+    propagator_.notify_assignment(lits);
+  }
+#else
+  void notify_assignment(int lit, bool /*is_fixed*/) override {
+    scalar_assignment_buffer_.clear();
+    scalar_assignment_buffer_.push_back(lit);
+    propagator_.notify_assignment(scalar_assignment_buffer_);
+  }
+#endif
+
+  void notify_new_decision_level() override { propagator_.notify_new_decision_level(); }
+
+  void notify_backtrack(size_t new_level) override { propagator_.notify_backtrack(new_level); }
+
+  bool cb_check_found_model(const std::vector<int>& model) override {
+    return propagator_.cb_check_found_model(model);
+  }
+
+  int cb_decide() override { return propagator_.cb_decide(); }
+
+  int cb_propagate() override { return propagator_.cb_propagate(); }
+
+  int cb_add_reason_clause_lit(int propagated_lit) override {
+    return propagator_.cb_add_reason_clause_lit(propagated_lit);
+  }
+
+#if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
+  bool cb_has_external_clause(bool& is_forgettable) override {
+    return propagator_.cb_has_external_clause(is_forgettable);
+  }
+#else
+  bool cb_has_external_clause() override { return propagator_.cb_has_external_clause(); }
+#endif
+
+  int cb_add_external_clause_lit() override { return propagator_.cb_add_external_clause_lit(); }
+
+ private:
+  ::primo::sat::ExternalPropagator& propagator_;
+  std::vector<int> scalar_assignment_buffer_;
+};
+
+class CadicalBackend::TerminatorAdapter final : public CaDiCaL::Terminator {
+ public:
+  explicit TerminatorAdapter(::primo::sat::Terminator& terminator) : terminator_(terminator) {}
+
+  bool terminate() override { return terminator_.terminate(); }
+
+ private:
+  ::primo::sat::Terminator& terminator_;
+};
+#else
+class CadicalBackend::ExternalPropagatorAdapter {};
+class CadicalBackend::TerminatorAdapter {};
+#endif
 
 std::string_view cadical_signature() {
 #if PRIMO_HAVE_IPASIR
@@ -66,16 +132,39 @@ CadicalBackend::~CadicalBackend() {
 }
 
 int CadicalBackend::new_var() {
-  ++max_var_;
-  statistics_.variables = static_cast<std::size_t>(max_var_);
 #if PRIMO_HAVE_IPASIR
-#if PRIMO_CADICAL_HAS_RESIZE
+#if PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES
+  max_var_ = solver_->declare_more_variables(1);
+#elif PRIMO_CADICAL_HAS_RESIZE
+  ++max_var_;
   solver_->resize(max_var_);
 #elif PRIMO_CADICAL_HAS_RESERVE
+  ++max_var_;
   solver_->reserve(max_var_);
+#else
+  ++max_var_;
 #endif
+#else
+  ++max_var_;
 #endif
+  statistics_.variables = static_cast<std::size_t>(max_var_);
   return max_var_;
+}
+
+int CadicalBackend::new_observed_var() {
+#if PRIMO_HAVE_IPASIR
+  if (solver_ == nullptr) {
+    throw std::runtime_error("IPASIR solver is not initialized");
+  }
+  const int next_var = std::max(max_var_, solver_->vars()) + 1;
+  solver_->add_observed_var(next_var);
+  max_var_ = std::max(next_var, solver_->vars());
+#else
+  ++max_var_;
+  const int next_var = max_var_;
+#endif
+  statistics_.variables = static_cast<std::size_t>(max_var_);
+  return next_var;
 }
 
 void CadicalBackend::add_clause(const Clause& clause) {
@@ -177,6 +266,18 @@ BackendStatistics CadicalBackend::statistics() const {
   return stats;
 }
 
+IpasirUpCapabilities CadicalBackend::capabilities() const {
+  IpasirUpCapabilities capabilities;
+#if PRIMO_HAVE_IPASIR
+  capabilities.external_propagation = true;
+  capabilities.external_clauses = true;
+  capabilities.external_decisions = true;
+  capabilities.observed_variables = true;
+  capabilities.fresh_observed_variables_during_solving = true;
+#endif
+  return capabilities;
+}
+
 void CadicalBackend::phase(Lit lit) {
 #if PRIMO_HAVE_IPASIR
   if (lit.value == 0) {
@@ -188,9 +289,15 @@ void CadicalBackend::phase(Lit lit) {
 #endif
 }
 
-void CadicalBackend::connect_external_propagator(CaDiCaL::ExternalPropagator* propagator) {
+void CadicalBackend::connect_external_propagator(ExternalPropagator* propagator) {
 #if PRIMO_HAVE_IPASIR
-  solver_->connect_external_propagator(propagator);
+  if (propagator == nullptr) {
+    solver_->disconnect_external_propagator();
+    external_adapter_.reset();
+    return;
+  }
+  external_adapter_ = std::make_unique<ExternalPropagatorAdapter>(*propagator);
+  solver_->connect_external_propagator(external_adapter_.get());
 #else
   (void)propagator;
 #endif
@@ -199,12 +306,19 @@ void CadicalBackend::connect_external_propagator(CaDiCaL::ExternalPropagator* pr
 void CadicalBackend::disconnect_external_propagator() {
 #if PRIMO_HAVE_IPASIR
   solver_->disconnect_external_propagator();
+  external_adapter_.reset();
 #endif
 }
 
-void CadicalBackend::connect_terminator(CaDiCaL::Terminator* terminator) {
+void CadicalBackend::connect_terminator(Terminator* terminator) {
 #if PRIMO_HAVE_IPASIR
-  solver_->connect_terminator(terminator);
+  if (terminator == nullptr) {
+    solver_->disconnect_terminator();
+    terminator_adapter_.reset();
+    return;
+  }
+  terminator_adapter_ = std::make_unique<TerminatorAdapter>(*terminator);
+  solver_->connect_terminator(terminator_adapter_.get());
 #else
   (void)terminator;
 #endif
@@ -213,6 +327,7 @@ void CadicalBackend::connect_terminator(CaDiCaL::Terminator* terminator) {
 void CadicalBackend::disconnect_terminator() {
 #if PRIMO_HAVE_IPASIR
   solver_->disconnect_terminator();
+  terminator_adapter_.reset();
 #endif
 }
 

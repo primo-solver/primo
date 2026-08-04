@@ -127,6 +127,19 @@ void parses_define_fun_macros() {
   assert(commands[1].result_sort == "A");
 }
 
+void parses_model_commands() {
+  Parser parser(R"(
+    (set-option :produce-models true)
+    (get-model)
+  )");
+  const auto commands = parser.parse_commands();
+  assert(commands.size() == 2);
+  assert(commands[0].kind == CommandKind::SetOption);
+  assert(commands[0].option == ":produce-models");
+  assert(commands[0].value == "true");
+  assert(commands[1].kind == CommandKind::GetModel);
+}
+
 // SExpr parsing, copying, and destruction are all iterative (explicit
 // stack), not recursive descent -- see ast.cpp/parser.cpp's class/function
 // comments. Deeply nested input like this used to stack-overflow (found
@@ -153,19 +166,6 @@ void parses_and_copies_pathologically_deep_nesting() {
   // Both the original Command and this copy go out of scope at the end of
   // this function, exercising the iterative destructor on two separate
   // deep trees.
-}
-
-void parses_model_commands() {
-  Parser parser(R"(
-    (set-option :produce-models true)
-    (get-model)
-  )");
-  const auto commands = parser.parse_commands();
-  assert(commands.size() == 2);
-  assert(commands[0].kind == CommandKind::SetOption);
-  assert(commands[0].option == ":produce-models");
-  assert(commands[0].value == "true");
-  assert(commands[1].kind == CommandKind::GetModel);
 }
 
 // SMT-LIB 2.6: (set-option <option>), <option> ::= <attribute>, and

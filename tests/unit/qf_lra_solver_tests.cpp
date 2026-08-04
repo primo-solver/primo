@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "smt/check_sat.hpp"
@@ -12,10 +13,24 @@
 using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
+using primo::smt::EufEngine;
 using primo::smt::LraPivotingRule;
+using primo::smt::NelsonOppenPropagationMode;
 using primo::util::StatKey;
 
 namespace {
+
+CheckSatOptions no_preprocessing() {
+  CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  return options;
+}
+
+CheckSatOptions no_preprocessing_or_substitution() {
+  CheckSatOptions options = no_preprocessing();
+  options.solved_constant_substitution = false;
+  return options;
+}
 
 void accepts_set_logic_and_real_declarations() {
   const auto result = check_sat_smtlib(R"(
@@ -25,7 +40,8 @@ void accepts_set_logic_and_real_declarations() {
     (assert (<= (+ x (* 2 y)) 5))
     (assert (< 0 x))
     (check-sat)
-  )");
+  )",
+                                       no_preprocessing());
   assert(result.result == CheckSatResult::Sat);
 }
 
@@ -129,11 +145,20 @@ void rejects_three_operand_multiplication() {
   assert(result.message.find("* has wrong arity") != std::string::npos);
 }
 
-void rejects_combined_equality_and_arithmetic() {
+void accepts_linear_term_division() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (/ x 2) 5))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void routes_combined_equality_and_arithmetic_to_mixed_solver() {
   // Uses an uninterpreted-sort equality alongside a Real comparison -- a
   // genuine EUF+LRA mix. (= x y) between two *Real* terms is itself a pure
-  // QF_LRA atom (see real_equality_is_not_misclassified_as_euf below), not
-  // a case of this rejection.
+  // QF_LRA atom (see real_equality_is_not_misclassified_as_euf below).
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-sort U 0)
@@ -143,8 +168,1051 @@ void rejects_combined_equality_and_arithmetic() {
     (assert (or (= a b) (<= x 5)))
     (check-sat)
   )");
-  assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("QF_UFLRA") != std::string::npos);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.mixed.euf-atoms") == 1);
+  assert(result.statistics.get(":no.mixed.lra-atoms") == 1);
+}
+
+void accepts_separable_qf_uf_lra_mix() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (assert (not (= a b)))
+    (assert (< 0 x))
+    (assert (< x 1))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.mixed.euf-atoms") > 0);
+  assert(result.statistics.get(":no.mixed.lra-atoms") > 0);
+  assert(result.statistics.get(":no.purification.skipped-no-sites") == 1);
+  assert(result.statistics.get(":no.purification.definitions") == 0);
+}
+
+void qf_uf_lra_mix_learns_euf_conflicts() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) U)
+    (declare-fun x () Real)
+    (assert (= a b))
+    (assert (not (= (f a) (f b))))
+    (assert (< 0 x))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(StatKey::TheoryConflicts) > 0);
+}
+
+void qf_uf_lra_mix_learns_lra_conflicts() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= a b))
+    (assert (or (<= (+ x y) 0) (<= (+ x (* 2 y)) 0)))
+    (assert (<= 3 x))
+    (assert (<= 3 y))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+#if PRIMO_HAVE_IPASIR
+  assert(result.statistics.get(":no.interface.lra-online-enabled") == 1);
+  assert(result.statistics.get(StatKey::LraOnlineCheckCalls) > 0);
+#else
+  assert(result.statistics.get(StatKey::LraTheoryConflicts) > 0);
+#endif
+}
+
+void qf_uf_lra_prints_separable_mixed_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (assert (= a b))
+    (assert (< 0 x))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(model") != std::string::npos);
+  assert(result.model.find("(define-fun a () U (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun b () U (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= a b))
+    (assert (not (< (+ x y) 5)))
+    (assert (< 2 x))
+    (assert (not (< y 3)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun a () U (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun b () U (as @uc_") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real ") != std::string::npos);
+  assert(result.statistics.get(":solver.qf-lra") == 1);
+}
+
+void qf_uf_lra_prints_real_valued_uf_application_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun f (U) Real)
+    (assert (< 0 (f a)))
+    (assert (< (f a) 2))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun f ((x0 U)) Real ") != std::string::npos);
+  assert(result.model.find("(ite (= x0 (as @uc_") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void qf_uf_lra_model_reflects_real_valued_uf_equalities() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) Real)
+    (assert (= (f a) (f b)))
+    (assert (< 1 (f a)))
+    (assert (< (f b) 3))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun f ((x0 U)) Real ") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") >= 2);
+}
+
+void qf_uf_lra_prints_shared_real_predicate_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun p ((x0 Real)) Bool ") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real ") != std::string::npos);
+  assert(result.statistics.get(":no.interface.model-separations") >= 1);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void qf_uf_lra_validates_final_arrangement_without_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.arrangement-checks") >= 1);
+  assert(result.statistics.get(":no.interface.arrangement-failures") == 0);
+  assert(result.statistics.get(":no.interface.arrangement-separations") >= 1);
+}
+
+void qf_uf_lra_prints_shared_real_equal_predicate_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (p y))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun p ((x0 Real)) Bool ") != std::string::npos);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.model-separations") == 0);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void qf_uf_lra_searches_multiple_shared_real_model_separations() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun h (Real) U)
+    (assert (<= 0 x))
+    (assert (not (= (h x) (h y))))
+    (assert (not (= (h x) (h z))))
+    (assert (not (= (h y) (h z))))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun h ((x0 Real)) U ") != std::string::npos);
+  assert(result.statistics.get(":no.interface.model-separation-candidates") == 3);
+  assert(result.statistics.get(":no.interface.model-separations") == 3);
+  assert(result.statistics.get(":no.interface.model-separation-search-capped") == 0);
+  assert(result.statistics.get(":no.interface.model-separation-search-branches") >= 3);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void qf_uf_lra_orients_capped_model_separations_from_lra_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun x0 () Real)
+    (declare-fun x1 () Real)
+    (declare-fun x2 () Real)
+    (declare-fun x3 () Real)
+    (declare-fun x4 () Real)
+    (declare-fun x5 () Real)
+    (declare-fun x6 () Real)
+    (declare-fun h (Real) U)
+    (assert (= x0 0))
+    (assert (= x1 1))
+    (assert (= x2 2))
+    (assert (= x3 3))
+    (assert (= x4 4))
+    (assert (= x5 5))
+    (assert (= x6 6))
+    (assert (not (= (h x0) (h x1))))
+    (assert (not (= (h x0) (h x2))))
+    (assert (not (= (h x0) (h x3))))
+    (assert (not (= (h x0) (h x4))))
+    (assert (not (= (h x0) (h x5))))
+    (assert (not (= (h x0) (h x6))))
+    (assert (not (= (h x1) (h x2))))
+    (assert (not (= (h x1) (h x3))))
+    (assert (not (= (h x1) (h x4))))
+    (assert (not (= (h x1) (h x5))))
+    (assert (not (= (h x1) (h x6))))
+    (assert (not (= (h x2) (h x3))))
+    (assert (not (= (h x2) (h x4))))
+    (assert (not (= (h x2) (h x5))))
+    (assert (not (= (h x2) (h x6))))
+    (assert (not (= (h x3) (h x4))))
+    (assert (not (= (h x3) (h x5))))
+    (assert (not (= (h x3) (h x6))))
+    (assert (not (= (h x4) (h x5))))
+    (assert (not (= (h x4) (h x6))))
+    (assert (not (= (h x5) (h x6))))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-separation-candidates") == 21);
+  assert(result.statistics.get(":no.interface.arrangement-separations") == 21);
+  assert(result.statistics.get(":no.interface.model-separation-search-capped") == 1);
+  assert(result.statistics.get(":no.interface.model-separation-model-oriented") == 21);
+}
+
+void qf_uf_lra_purifies_nonconstant_real_predicate_arguments() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (p (+ x 1)))
+    (assert (< 0 x))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.definitions") == 1);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+  assert(result.statistics.get(":no.mixed.euf-atoms") > 0);
+  assert(result.statistics.get(":no.mixed.lra-atoms") > 0);
+}
+
+void qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun q (Real Real) Bool)
+    (assert (q (+ x 1) (+ x 1)))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+  assert(result.statistics.get(":no.purification.reused-real-terms") +
+             result.statistics.get(":no.purification.memoized-euf-rewrites") >=
+         1);
+}
+
+void qf_uf_lra_memoizes_repeated_mixed_purification_rewrites() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun f (U) Real)
+    (declare-fun x () Real)
+    (assert (and
+      (<= (+ (f a) x) 3)
+      (<= (+ (f a) x) 3)
+      (<= (+ (f a) x) 4)))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") == 1);
+  assert(result.statistics.get(":no.purification.memoized-arithmetic-rewrites") > 0);
+}
+
+void qf_uf_lra_shares_purified_real_argument_equalities_with_euf() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= (+ x 1) y))
+    (assert (<= y (+ x 1)))
+    (assert (p (+ x 1)))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(result.statistics.get(":no.interface.equality-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.equality-missing-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.equality-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.equality-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.equality-rechecks") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-rechecks") >= 1);
+}
+
+void qf_uf_lra_prints_model_with_purified_real_predicate_argument() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (p (+ x 1)))
+    (assert (not (p x)))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun p ((x0 Real)) Bool ") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+}
+
+void qf_uf_lra_model_keeps_true_purified_real_literal_argument_entry() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (p 0))
+    (assert (not (p (+ x 1))))
+    (assert (< 0 x))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(ite (= x0 0) true false)") != std::string::npos);
+  assert(result.model.find("$primo_") == std::string::npos);
+}
+
+void qf_uf_lra_shares_lra_implied_real_equalities_with_euf() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
+}
+
+void qf_uf_lra_guards_interface_equality_propagation_by_assignment() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun choose_separate () Bool)
+    (assert (or choose_separate (and (<= x y) (<= y x))))
+    (assert choose_separate)
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
+}
+
+void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 0);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 0);
+}
+
+void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-created") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-false") >= 1);
+}
+
+void qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-lra-equal") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-mutation-checks") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-mutated") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-created") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-conflicts") == 0);
+}
+
+void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 1);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-full-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-created") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+}
+
+void qf_uf_lra_model_equality_branching_accumulates_active_assumptions() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (declare-fun r (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (q y))
+    (assert (r z))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-max-active-assumptions") >= 2);
+  assert(result.statistics.get(":no.interface.model-equality-candidates") >= 2);
+}
+
+void qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  options.nelson_oppen_model_equality_branch_policy = primo::smt::ModelEqualityBranchPolicy::Ranked;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 2);
+  assert(result.statistics.get(":no.interface.model-equality-selected-care") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-conflicts") >= 1);
+}
+
+void qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  options.nelson_oppen_model_equality_branch_policy = primo::smt::ModelEqualityBranchPolicy::Ranked;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 1);
+  assert(result.statistics.get(":no.interface.model-equality-selected-care") == 0);
+  assert(result.statistics.get(":no.interface.model-equality-selected-full") >= 1);
+}
+
+void qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  options.nelson_oppen_model_equality_branch_policy =
+      primo::smt::ModelEqualityBranchPolicy::Adaptive;
+  options.nelson_oppen_model_equality_branch_budget = 16;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x0 () Real)
+    (declare-fun y0 () Real)
+    (declare-fun x1 () Real)
+    (declare-fun y1 () Real)
+    (declare-fun x2 () Real)
+    (declare-fun y2 () Real)
+    (declare-fun x3 () Real)
+    (declare-fun y3 () Real)
+    (declare-fun x4 () Real)
+    (declare-fun y4 () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x0))
+    (assert (<= 0 y0))
+    (assert (<= 0 x1))
+    (assert (<= 0 y1))
+    (assert (<= 0 x2))
+    (assert (<= 0 y2))
+    (assert (<= 0 x3))
+    (assert (<= 0 y3))
+    (assert (<= 0 x4))
+    (assert (<= 0 y4))
+    (assert (p x0))
+    (assert (not (p y0)))
+    (assert (p x1))
+    (assert (not (p y1)))
+    (assert (p x2))
+    (assert (not (p y2)))
+    (assert (p x3))
+    (assert (not (p y3)))
+    (assert (p x4))
+    (assert (not (p y4)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 4);
+  assert(result.statistics.get(":no.interface.model-equality-adaptive-stops") == 1);
+}
+
+void qf_uf_lra_reports_euf_care_pair_diagnostics() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 3);
+  assert(result.statistics.get(":no.interface.euf-care-checks") >= 1);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 3);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 2);
+}
+
+void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun w () Real)
+    (declare-fun q (Real Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (<= z w))
+    (assert (<= w z))
+    (assert (q x z))
+    (assert (not (q y w)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 4);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 6);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") >= 2);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 2);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 2);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 2);
+  assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
+}
+
+void qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 0);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+}
+
+void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) Real)
+    (assert (= a b))
+    (assert (< (f a) 1))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.definitions") == 1);
+  assert(result.statistics.get(":no.mixed.euf-atoms") > 0);
+  assert(result.statistics.get(":no.mixed.lra-atoms") > 0);
+}
+
+void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) Real)
+    (assert (= a b))
+    (assert (< (f a) 0))
+    (assert (< 1 (f b)))
+    (check-sat)
+  )";
+
+  const auto result = check_sat_smtlib(input, no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.definitions") == 2);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.equalities-propagated") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(result.statistics.get(":no.interface.euf-to-lra-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.euf-to-lra-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.euf-to-lra-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.euf-to-lra-rechecks") >= 1);
+  assert(result.statistics.get(":no.interface.conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
+
+  CheckSatOptions lazy_options = no_preprocessing_or_substitution();
+  lazy_options.euf_engine = EufEngine::Lazy;
+  const auto lazy_result = check_sat_smtlib(input, lazy_options);
+  assert(lazy_result.result == CheckSatResult::Unsat);
+  assert(lazy_result.statistics.get(":no.interface.equalities-propagated") >= 1);
+  assert(lazy_result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+  assert(lazy_result.statistics.get(":no.interface.euf-to-lra-candidates") >= 1);
+  assert(lazy_result.statistics.get(":no.interface.euf-to-lra-clauses") >= 1);
+}
+
+void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.online.enabled") == 1);
+  assert(result.statistics.get(":no.online.precreated-equality-atoms") == 1);
+  assert(result.statistics.get(":no.online.paired-bound-precreate-candidates") == 1);
+  assert(result.statistics.get(":no.online.lra-published-equalities") >= 1);
+  assert(result.statistics.get(":no.online.lra-bound-equality-candidates") >= 1);
+  assert(result.statistics.get(":no.online.lra-bound-equality-missing-atoms") == 0);
+  assert(result.statistics.get(":no.online.lra-bound-equality-materialized") >= 1);
+  assert(result.statistics.get(":no.online.lazy-equality-atoms-created") == 0);
+  assert(result.statistics.get(":no.online.propagations") >= 1);
+  assert(result.statistics.get(":no.online.reason-lits") >= 2);
+}
+
+void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (<= 0 z))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.online.enabled") == 1);
+  assert(result.statistics.get(":no.online.shared-real-pairs") == 3);
+  assert(result.statistics.get(":no.online.precreated-equality-atoms") == 1);
+  assert(result.statistics.get(":no.online.paired-bound-precreate-candidates") == 1);
+  assert(result.statistics.get(":no.online.lazy-equality-atoms-created") == 0);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 1);
+}
+
+void qf_uf_lra_online_skips_final_lra_all_pairs_scan() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.online.enabled") == 1);
+  assert(result.statistics.get(":no.online.precreated-equality-atoms") == 1);
+  assert(result.statistics.get(":no.online.paired-bound-precreate-candidates") == 1);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+}
+
+void qf_uf_lra_online_falls_back_for_final_arrangement() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun u () Real)
+    (declare-fun v () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (= (+ u 1) (+ v 1)))
+    (assert (p x))
+    (assert (p y))
+    (assert (q u))
+    (assert (q v))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.online.enabled") == 1);
+  assert(result.statistics.get(":no.online.lra-bound-equality-materialized") >= 1);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") >= 1);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-fallbacks") == 1);
+  assert(result.statistics.get(":no.interface.arrangement-failures") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+}
+
+void nelson_oppen_online_option_does_not_wrap_single_theory_lra() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= x 1))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 0);
+  assert(result.statistics.get(":no.online.enabled") == 0);
+}
+
+void nelson_oppen_online_option_does_not_wrap_single_theory_euf() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (assert (= a a))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 0);
+  assert(result.statistics.get(":no.online.enabled") == 0);
+}
+
+void qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= a b))
+    (assert (= (f a) x))
+    (assert (= (f b) y))
+    (assert (not (= x y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 1);
+  assert(result.statistics.get(":no.purification.definitions") >= 2);
+  assert(result.statistics.get(":no.interface.equalities-propagated") >= 1);
+  assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
+}
+
+void qf_uf_lra_purifies_real_valued_application_arithmetic_arguments() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun f (Real) Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (< (f (- x y)) 0))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") == 1);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+}
+
+void qf_uf_lra_purifies_nested_real_valued_application_arguments() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun f (Real) Real)
+    (declare-fun g (Real) Real)
+    (declare-fun x () Real)
+    (assert (< (f (+ (g x) 1)) 0))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") == 2);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
+}
+
+void qf_uf_lra_purifies_real_valued_application_disequality_arguments() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun f (Real) Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (not (= (f (- x y)) (- (f x)))))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 1);
+  assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") == 2);
+  assert(result.statistics.get(":no.purification.euf-real-term-definitions") >= 1);
 }
 
 void real_equality_is_not_misclassified_as_euf() {
@@ -162,6 +1230,30 @@ void real_equality_is_not_misclassified_as_euf() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Sat);
+}
+
+void qf_lra_rejects_uninterpreted_real_functions() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun f (Real) Real)
+    (assert (= (f x) 1))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("uninterpreted functions") != std::string::npos);
+}
+
+void qf_lra_rejects_uninterpreted_predicates() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (p x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsupported);
+  assert(result.message.find("uninterpreted functions") != std::string::npos);
 }
 
 void detects_direct_bound_conflict() {
@@ -406,99 +1498,6 @@ void bidirectional_row_propagation_can_reach_a_conflict() {
   forward_only.lra_bidirectional_row_propagation = false;
   const auto not_propagated = check_sat_smtlib(formula, forward_only);
   assert(not_propagated.result == CheckSatResult::Unsat);
-}
-
-void row_propagation_caps_are_options_not_constants() {
-  // The four row-propagation cost caps were compile-time constants until
-  // 2026-07-31, which made the direction-D1 cap sweep need a rebuild per
-  // point (see docs/qf-lra-heuristics.md section 6.5). They are now
-  // CheckSatOptions fields, and this pins that they are actually read at
-  // the gates rather than being decorative: a cap below the row's own size
-  // must suppress the propagation, and the verdict must not depend on it,
-  // since propagation is an accelerator and never changes the answer.
-  //
-  // The forward row is (+ x1 x2 x3 x4 x5), so a max_row_size of 2 is
-  // comfortably under it and the default 64 comfortably over.
-  const std::string forward_formula = R"(
-    (set-logic QF_LRA)
-    (declare-fun x1 () Real)
-    (declare-fun x2 () Real)
-    (declare-fun x3 () Real)
-    (declare-fun x4 () Real)
-    (declare-fun x5 () Real)
-    (declare-fun w () Real)
-    (assert (<= x1 1))
-    (assert (<= x2 1))
-    (assert (<= x3 1))
-    (assert (<= x4 1))
-    (assert (<= x5 1))
-    (assert (or (<= (+ x1 x2 x3 x4 x5) 10) (>= w 1000)))
-    (check-sat)
-  )";
-
-  CheckSatOptions default_caps;
-  default_caps.lra_propagation = true;
-  default_caps.lra_row_propagation = true;
-  const auto with_default_caps = check_sat_smtlib(forward_formula, default_caps);
-  assert(with_default_caps.result == CheckSatResult::Sat);
-  assert(with_default_caps.statistics.get(StatKey::LraRowPropagations) > 0);
-
-  CheckSatOptions tight_row_size = default_caps;
-  tight_row_size.lra_row_propagation_limits.max_row_size = 2;
-  const auto with_tight_row_size = check_sat_smtlib(forward_formula, tight_row_size);
-  assert(with_tight_row_size.result == CheckSatResult::Sat);
-  assert(with_tight_row_size.statistics.get(StatKey::LraRowPropagations) == 0);
-
-  // A fanout cap of 0 admits no affected-row list at all, so it gates the
-  // scan independently of any row's length.
-  CheckSatOptions tight_fanout = default_caps;
-  tight_fanout.lra_row_propagation_limits.max_fanout = 0;
-  const auto with_tight_fanout = check_sat_smtlib(forward_formula, tight_fanout);
-  assert(with_tight_fanout.result == CheckSatResult::Sat);
-  assert(with_tight_fanout.statistics.get(StatKey::LraRowPropagations) == 0);
-
-  // Same two gates for the reverse direction, on the formula
-  // bidirectional_row_propagation_drives_boolean_structure establishes it
-  // fires on -- its row is (+ x y), so a cap of 1 is under it.
-  const std::string reverse_formula = R"(
-    (set-logic QF_LRA)
-    (declare-fun x () Real)
-    (declare-fun y () Real)
-    (declare-fun w () Real)
-    (assert (>= (+ x y) 5))
-    (assert (<= x 2))
-    (assert (or (<= y 2) (>= w 1000)))
-    (check-sat)
-  )";
-
-  CheckSatOptions bidirectional = default_caps;
-  bidirectional.lra_bidirectional_row_propagation = true;
-  const auto reverse_default = check_sat_smtlib(reverse_formula, bidirectional);
-  assert(reverse_default.result == CheckSatResult::Sat);
-  assert(reverse_default.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
-
-  CheckSatOptions tight_reverse_row_size = bidirectional;
-  tight_reverse_row_size.lra_row_propagation_limits.bidirectional_max_row_size = 1;
-  const auto reverse_tight_row_size = check_sat_smtlib(reverse_formula, tight_reverse_row_size);
-  assert(reverse_tight_row_size.result == CheckSatResult::Sat);
-  assert(reverse_tight_row_size.statistics.get(StatKey::LraBidirectionalRowPropagations) == 0);
-
-  CheckSatOptions tight_reverse_fanout = bidirectional;
-  tight_reverse_fanout.lra_row_propagation_limits.bidirectional_max_fanout = 0;
-  const auto reverse_tight_fanout = check_sat_smtlib(reverse_formula, tight_reverse_fanout);
-  assert(reverse_tight_fanout.result == CheckSatResult::Sat);
-  assert(reverse_tight_fanout.statistics.get(StatKey::LraBidirectionalRowPropagations) == 0);
-
-  // Raising the caps well past the defaults must stay sound and must not
-  // lose the propagations the defaults already found -- the direction the
-  // D1 sweep actually explores.
-  CheckSatOptions raised = default_caps;
-  raised.lra_row_propagation_limits.max_row_size = 256;
-  raised.lra_row_propagation_limits.max_fanout = 256;
-  const auto with_raised_caps = check_sat_smtlib(forward_formula, raised);
-  assert(with_raised_caps.result == CheckSatResult::Sat);
-  assert(with_raised_caps.statistics.get(StatKey::LraRowPropagations) >=
-         with_default_caps.statistics.get(StatKey::LraRowPropagations));
 }
 
 void theory_decisions_drive_boolean_structure() {
@@ -865,30 +1864,6 @@ void get_model_requires_produce_models() {
   )");
   assert(result.result == CheckSatResult::Unsupported);
   assert(result.message.find(":produce-models true") != std::string::npos);
-}
-
-void qf_lra_rejects_uninterpreted_real_functions() {
-  const auto result = check_sat_smtlib(R"(
-    (set-logic QF_LRA)
-    (declare-fun x () Real)
-    (declare-fun f (Real) Real)
-    (assert (= (f x) 1))
-    (check-sat)
-  )");
-  assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("uninterpreted functions") != std::string::npos);
-}
-
-void qf_lra_rejects_uninterpreted_predicates() {
-  const auto result = check_sat_smtlib(R"(
-    (set-logic QF_LRA)
-    (declare-fun x () Real)
-    (declare-fun p (Real) Bool)
-    (assert (p x))
-    (check-sat)
-  )");
-  assert(result.result == CheckSatResult::Unsupported);
-  assert(result.message.find("uninterpreted functions") != std::string::npos);
 }
 
 void boolean_structure_over_arithmetic_atoms_can_require_branching() {
@@ -1503,8 +2478,54 @@ int main() {
   recognizes_let_bound_literal_coefficients();
   rejects_two_variable_multiplication();
   rejects_three_operand_multiplication();
-  rejects_combined_equality_and_arithmetic();
+  accepts_linear_term_division();
+  routes_combined_equality_and_arithmetic_to_mixed_solver();
+  accepts_separable_qf_uf_lra_mix();
+  qf_uf_lra_mix_learns_euf_conflicts();
+  qf_uf_lra_mix_learns_lra_conflicts();
+  qf_uf_lra_prints_separable_mixed_model();
+  qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities();
+  qf_uf_lra_prints_real_valued_uf_application_model();
+  qf_uf_lra_model_reflects_real_valued_uf_equalities();
+  qf_uf_lra_prints_shared_real_predicate_model();
+  qf_uf_lra_validates_final_arrangement_without_model();
+  qf_uf_lra_prints_shared_real_equal_predicate_model();
+  qf_uf_lra_searches_multiple_shared_real_model_separations();
+  qf_uf_lra_orients_capped_model_separations_from_lra_model();
+  qf_uf_lra_purifies_nonconstant_real_predicate_arguments();
+  qf_uf_lra_reuses_nonconstant_real_predicate_argument_proxies();
+  qf_uf_lra_memoizes_repeated_mixed_purification_rewrites();
+  qf_uf_lra_shares_purified_real_argument_equalities_with_euf();
+  qf_uf_lra_prints_model_with_purified_real_predicate_argument();
+  qf_uf_lra_model_keeps_true_purified_real_literal_argument_entry();
+  qf_uf_lra_shares_lra_implied_real_equalities_with_euf();
+  qf_uf_lra_guards_interface_equality_propagation_by_assignment();
+  qf_uf_lra_does_not_share_unentailed_lra_equalities();
+  qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
+  qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess();
+  qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
+  qf_uf_lra_model_equality_branching_accumulates_active_assumptions();
+  qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs();
+  qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs();
+  qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses();
+  qf_uf_lra_reports_euf_care_pair_diagnostics();
+  qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
+  qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();
+  qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
+  qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
+  qf_uf_lra_online_propagates_simple_lra_shared_equalities();
+  qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs();
+  qf_uf_lra_online_skips_final_lra_all_pairs_scan();
+  qf_uf_lra_online_falls_back_for_final_arrangement();
+  nelson_oppen_online_option_does_not_wrap_single_theory_lra();
+  nelson_oppen_online_option_does_not_wrap_single_theory_euf();
+  qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();
+  qf_uf_lra_purifies_real_valued_application_arithmetic_arguments();
+  qf_uf_lra_purifies_nested_real_valued_application_arguments();
+  qf_uf_lra_purifies_real_valued_application_disequality_arguments();
   real_equality_is_not_misclassified_as_euf();
+  qf_lra_rejects_uninterpreted_real_functions();
+  qf_lra_rejects_uninterpreted_predicates();
   detects_direct_bound_conflict();
   detects_conflict_requiring_an_actual_pivot();
   atoms_sharing_identical_polynomial_solve_correctly();
@@ -1514,7 +2535,6 @@ int main() {
   row_based_propagation_can_reach_a_conflict();
   bidirectional_row_propagation_drives_boolean_structure();
   bidirectional_row_propagation_can_reach_a_conflict();
-  row_propagation_caps_are_options_not_constants();
   theory_decisions_drive_boolean_structure();
   theory_decisions_can_reach_a_conflict();
   model_phase_refreshes_from_tableau_assignment();
@@ -1527,8 +2547,6 @@ int main() {
   lra_model_reconstructs_preprocessed_solved_constants();
   qf_lra_model_requires_get_model_command();
   get_model_requires_produce_models();
-  qf_lra_rejects_uninterpreted_real_functions();
-  qf_lra_rejects_uninterpreted_predicates();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
   dantzig_pivoting_rule_matches_bland_on_multi_pivot_scenarios();
   sparse_pivoting_rule_matches_bland_on_multi_pivot_scenarios();

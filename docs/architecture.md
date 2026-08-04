@@ -6,36 +6,22 @@ Primo is organized as layered components with explicit data ownership. This page
 
 - `smtlib/` parses SMT-LIB commands into lightweight syntax objects.
 - `core/` owns sorts, symbols, and hash-consed terms.
-- `sat/` owns propositional variables, literals, clauses, assumptions, and the CaDiCaL/IPASIR backend adapter.
-- `smt/` owns SMT-LIB command processing, QF_UF preprocessing, Boolean abstraction, clausification, and the current lazy QF_UF loop.
-- `theory/` owns equality reasoning and congruence closure.
-
-## Command-line options
-
-`src/main.cpp` registers ~70 options, which `--help` prints in four
-sections mirroring the layers above:
-
-| section | what it tunes |
-|---|---|
-| Procedural options | the run rather than the reasoning: `--quiet`, `--stats`, `--preprocess-only`, `--version`, input files |
-| QF_UF / EUF theory options | the `--euf-*`, `--finite-domain-*`, `--ground-*`, `--qf-uf-*`, `--auto-basic-*` and `--preprocessing-*` families, plus symmetry breaking, equality bridging and the online-propagation knobs |
-| QF_LRA theory options | the `--lra-*` family and Gaussian elimination |
-| SAT and DPLL(T) options | `--cadical-option`, and the knobs on the theory/SAT boundary: `--theory-phase`, `--pure-theory-filter`, `--max-theory-conflicts`, top-level-OR Tseitin encoding |
-
-The assignment is one `group_for()` table near the end of `main()` rather
-than a `->group()` on each of the ~70 registrations, so there is a single
-place to read and a single place to change. **Adding an option means adding
-it to that table**: anything unmatched lands in an "Other options" heading
-*and* prints a warning to stderr naming the option, so the omission
-surfaces on the next run rather than being noticed in `--help` much later.
-Sections are printed in the order each group's first option is registered,
-not in the order the group constants are declared.
+- `sat/` owns propositional variables, literals, clauses, assumptions, the
+  backend-neutral IPASIR-UP callback interfaces, and the concrete CaDiCaL
+  adapter.
+- `smt/` owns SMT-LIB command processing, preprocessing, Boolean abstraction,
+  clausification, QF_UF/QF_LRA solver orchestration, and the current separable
+  mixed QF_UFLRA coordinator.
+- `theory/` owns equality reasoning, congruence closure, and arithmetic
+  tableau solving.
 
 ## Boundaries
 
 - SMT-LIB syntax objects are consumed by `smt::Frontend` and converted to `core::TermId` values before reaching SAT or theory code.
 - SAT clauses contain `sat::Lit`, not terms.
-- The Boolean clausifier keeps the mapping from Boolean theory atoms to SAT literals.
+- The Boolean clausifier keeps the mapping from Boolean theory atoms to SAT
+  literals and memoizes theory-atom polarity collection per hash-consed term and
+  polarity.
 - Theory solvers reason over `core::TermId` values and never own SMT-LIB syntax.
 - All core terms are created through `core::TermManager`.
 
@@ -147,6 +133,22 @@ body through `TermManager`. The implementation checks argument and result sorts
 against the declared sorted variables, and deliberately rejects recursive
 definitions instead of treating them as uninterpreted functions.
 
+Zero-argument `define-fun` bodies are memoized after their first successful
+expansion when there is no active non-empty `let` or macro-parameter scope. The
+cache maps the definition name to the resulting `TermId`, after recursive-use
+detection and result-sort checking. This is a bounded cache: it contains at most
+one entry per nullary definition in the current SMT-LIB session, and it does not
+memoize parameterized macro applications. This keeps ordinary argument-dependent
+macro expansion simple while avoiding repeated reconstruction of
+CPAchecker-style definition DAGs.
+
+Parameterized macro applications are not reparsed from text. The parser has
+already stored each body as an SMT-LIB syntax tree, and each application walks
+that stored body under fresh parameter bindings to build `TermId` values. A
+future optimization could compile such bodies once into a frontend template and
+instantiate the template by explicit `TermId` substitution, instead of walking
+the SMT-LIB body through the general expression builder for every application.
+
 SMT-LIB `Bool` is a first-class sort, so QF_UF inputs may pass Boolean formulas
 as arguments to uninterpreted functions. The frontend normalizes compound
 Boolean arguments by introducing a fresh Boolean constant and a propositional
@@ -201,6 +203,9 @@ Implemented now:
 - Boolean clausification for assertions.
 - Lazy QF_UF checking over equality atoms and Boolean predicate applications.
 - Non-incremental congruence closure for the current SAT assignment.
+- QF_LRA solving for linear Real arithmetic through a Simplex tableau with
+  CaDiCaL/IPASIR-UP integration, same-variable bound propagation, and default
+  sparse pivot heuristics.
 - Conservative QF_UF SMT-LIB model printing for `check-sat` followed by
   `get-model` when `:produce-models true` is set. `smt::ModelBuilder` rebuilds
   a ground EUF closure over `core::TermId` values, prints definitions for
@@ -208,10 +213,142 @@ Implemented now:
   reconstruction assignments for unit facts and substitutions, and omits
   Primo-generated auxiliary symbols from the response.
 - Minimal QF_LRA SMT-LIB model printing for user-declared nullary `Real`
-  constants. The SMT layer records declared Real constants, the LRA path reads
-  their values from the final `LraTableau` assignment, and model reconstruction
-  replays Real equalities recorded by preprocessing so solved-away constants
-  are printed for the original problem.
+  constants, with shared support from the QF_UF model builder for non-Real
+  declarations that survive only as preprocessing reconstruction facts. The SMT
+  layer records declared Real constants, the LRA path reads their values from
+  the final `LraTableau` assignment, and model reconstruction replays
+  preprocessing equalities through the appropriate Real-value or UF-closure
+  fragment so solved-away constants are printed for the original problem.
+- Minimal QF_UFLRA model printing. For separable mixed formulas,
+  `solve_qf_uf_lra` composes the QF_UF model body with the nullary-Real QF_LRA
+  definitions. UF symbols may take Real arguments or return `Real` values:
+  model reconstruction augments the LRA side with EUF-implied Real-constant
+  equalities and strict separations for EUF-distinct Real constants before
+  printing concrete Real argument values and Real-valued UF application results
+  in the UF function tables. If QF_UFLRA preprocessing removes all remaining
+  EUF atoms and dispatches the simplified problem to the QF_LRA solver, the same
+  composed model builder is used so original UF constants and solved UF
+  equalities remain defined in `get-model` output.
+- Read-only Nelson-Oppen interface diagnostics in
+  `smt::analyze_nelson_oppen_interface`: the SMT layer counts user-visible,
+  non-Boolean constants by sort and already-visible equality atoms over those
+  constants after preprocessing when `--nelson-oppen-diagnostics` is enabled.
+  It also materializes an opt-in registry of same-sort interface pairs marked
+  as `Visible` or `Missing`, and reports purification sites for Real terms in
+  EUF atoms and uninterpreted applications in arithmetic atoms. This is
+  bookkeeping only; it does not create proxy terms or equality atoms, propagate
+  interface equalities, combine theories, or inspect theory-local models.
+- Partial Nelson-Oppen-style mixed QF_UFLRA final checks in
+  `smt::solve_qf_uf_lra`. The SMT layer accepts one SAT assignment, partitions
+  visible theory atoms into EUF and LRA atoms, checks both theories, and learns
+  the first ordinary per-theory conflict clause it finds. Arithmetic atoms may
+  contain Real-valued UF applications, including applications whose `Real`
+  arguments are arithmetic terms or nested Real-valued UF applications: a
+  post-lowering SMT preprocessing slice replaces each such application with an
+  internal Real proxy and adds an EUF definition equality over an already-flat
+  UF application. Any non-constant Real argument needed for that EUF-side
+  application receives its own Real proxy and two LRA bounds defining the proxy
+  as equal to the arithmetic term. EUF atoms may also contain non-constant Real
+  arguments, handled by the same proxy mechanism. The coordinator creates
+  positive SAT-visible equality
+  atoms lazily for shared Real-constant/proxy pairs when one theory first
+  implies that equality. For the current SAT assignment, generated equality
+  atoms that are true are asserted to both EUF and LRA; equality atoms that are
+  false are asserted to EUF as disequalities, while LRA disequality is still
+  handled indirectly by rejecting false atoms when LRA later entails equality
+  and by model-reconstruction separation. EUF- or LRA-implied shared
+  equalities are learned as guarded clauses over interface equality literals;
+  the guards are the blocking literals for the current theory assignment, so an
+  equality learned in one Boolean branch does not leak into another. The
+  default is `--nelson-oppen-prop=final`: equality propagation is performed
+  after a complete SAT assignment and before the model is accepted.
+  `--nelson-oppen-prop=off` disables these guarded interface-equality
+  propagation clauses for ablation. `--nelson-oppen-prop=online` is an opt-in
+  mixed-theory callback path: the SMT layer connects a single
+  `MixedTheoryPropagationDispatcher` through the SAT backend's
+  `sat::ExternalPropagator` interface, delegates ordinary arithmetic
+  propagation to `OnlineLraPropagator`, and consumes LRA-published interface
+  equality candidates. The implemented LRA producer publishes a shared Real
+  equality when both non-strict bounds `(<= a b)` and `(<= b a)` over registered
+  shared Real constants/proxies are true on the SAT trail. The dispatcher then
+  maps that theory-owned candidate to a SAT-visible interface equality literal
+  and streams the LRA-provided reason literals back through the SAT backend.
+  The SAT layer has a fresh observed-variable callback probe, but this
+  Nelson-Oppen path still uses the documented fallback: before search it
+  precreates only interface equality atoms for shared Real pairs that already
+  have both non-strict LRA bounds in the prepared formula. This is still a
+  candidate-first path, not all-pairs
+  Delayed Theory Combination: the full shared Real pair count remains
+  diagnostic, while only paired-bound candidates become observed SAT variables.
+  After online mode has materialized at least one paired-bound equality
+  candidate, the coordinator skips the older final all-pairs
+  `lra_implied_real_equalities` strict-bound mining pass because profiling
+  showed that scan can dominate after online propagation adds arrangement
+  traffic. If no online equality candidate is materialized, the broad final scan
+  is still available to preserve the current final-check completeness fallback.
+  If the skip leaves final arrangement validation or model reconstruction unable
+  to separate Real arguments, online mode runs that broad scan once as a
+  last-mile validation fallback and records
+  `:no.online.final-lra-equality-scan-fallbacks`; the resulting equalities are
+  used only for the final validation/model step, not as online propagated theory
+  consequences.
+  The default `final` mode keeps that broad final scan unchanged. More general
+  LRA-implied shared equalities remain a documented opportunity, not the next
+  committed extension: discovering them from arbitrary tableau rows could add a
+  wider per-bound-change scan, more explanation bookkeeping, and more
+  SAT-visible equality traffic. The paired-bound rule is therefore the stable
+  online LRA-to-EUF propagation subset for now; this is not yet the full
+  model-guided Nelson-Oppen algorithm.
+- **Single-theory invariant:** the combination dispatcher is used only by the
+  mixed QF_UFLRA solver when `--nelson-oppen-prop=online` is selected. Pure
+  QF_UF keeps its direct EUF propagator path, and pure QF_LRA keeps its direct
+  `OnlineLraPropagator` path, so single-theory runs do not pay for shared
+  equality registration, dispatcher callbacks, or arrangement bookkeeping. The
+  propagation path first reuses an existing interface equality literal when one
+  is registered and lazily creates a missing literal only for the equality being
+  forced; it is not an exhaustive arrangement-enumeration pass. The statistics
+  split producing-theory candidates, existing or missing atoms, created atoms,
+  learned clauses, reason literals, and solver-loop rechecks by direction. After
+  the receiving theory sees a forced equality, it reports any ordinary conflict
+  using that literal as part of its reason. The optional
+  `--model-equality-branching` mode
+  adds a default-off model-driven SAT-assumption loop for LRA-model-equal shared
+  Real pairs. Before creating a guessed equality atom, its narrow mutation filter
+  asks whether either strict separation of the two terms is still LRA-consistent
+  under the current Boolean assignment; if so, the equality is treated as an
+  avoidable model artifact and skipped. Guessed equality atoms that survive SAT
+  and theory checks remain active as assumptions while the coordinator tries
+  additional model-equal pairs; if SAT later proves the active assumption set
+  inconsistent, Primo learns a blocking clause over the failed assumptions and
+  drops them from the active trail. These guesses are optional branches, not
+  permanent unit clauses. This is intentionally not full Nelson-Oppen:
+  fine-grained minimal cross-theory explanations, full model-equality
+  propagation, a mutable shared theory-model object, native false-`Eq` LRA atoms,
+  and unbounded arrangement enumeration remain unsupported. Ordinary SMT-LIB
+  Real disequality is handled before LRA theory
+  assertion by lowering Real equality to linear inequalities and letting the
+  Boolean layer split negated equalities. Mixed model reconstruction uses a
+  bounded search over strict shared-Real separation orientations, with a greedy
+  fallback when the candidate set exceeds the current cap. The same bounded
+  separation check is also run before returning a non-model QF_UFLRA `sat`
+  result, so the reported assignment has at least a checked Real-argument
+  arrangement for the documented purification subset.
+  When default-off model-equality branching is enabled, the mixed coordinator
+  also computes EUF care-pair counters for shared Real arguments under flat EUF
+  function prefixes that are equal in the current EUF closure. Default solving
+  skips this scan because there is no active consumer for the care-pair ranking.
+  Equality propagation and final arrangement validation still use the full
+  shared Real pair set. The default `first` model-equality branch policy also
+  uses the full pair order; the opt-in `ranked` and `adaptive` policies use
+  care-pair diagnostics only to rank guesses, with full-pair fallback.
+  In default mixed QF_UFLRA solving, the original LRA atoms are observed by the
+  same trail-synced online LRA propagator used by pure QF_LRA, so arithmetic
+  conflicts and bound propagations can be delivered inside the SAT search. Final
+  checks reuse that online state while no generated interface equality is true,
+  and rebuild an augmented prepared LRA theory only when true generated
+  interface equalities must be included. The experimental
+  `--model-equality-branching` path keeps the older final-check-only LRA path so
+  its branch-ranking diagnostics remain comparable.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -219,15 +356,23 @@ Not implemented yet:
 
 - push/pop assertion stacks.
 - proof production.
-- model construction for mixed-theory fragments, arithmetic functions beyond
-  nullary `Real` constants, and reconstruction through future
+- full model construction for mixed-theory fragments beyond the documented
+  QF_UFLRA subset, arithmetic functions beyond nullary `Real` constants and
+  Real-valued UF tables, and reconstruction through future
   satisfiability-preserving rewrites outside the current preprocessing trail.
+- Full Nelson-Oppen theory combination with a mutable shared equality model,
+  unbounded arrangement enumeration, model-equality propagation, care-set-driven
+  default search, and fine-grained minimal cross-theory explanations. The
+  current QF_UFLRA path has guarded bidirectional shared-Real equality
+  propagation for equalities reported by EUF/LRA final checks, with lazy
+  equality-atom creation for forced equalities only.
 - explanation-producing congruence closure with proof forests.
-- arithmetic theory solving.
 
 ## Paper Traceability
 
-- IPASIR-UP motivates the SAT-backend interface, but the current backend is a direct CaDiCaL/IPASIR-style adapter in `src/sat/`.
+- IPASIR-UP motivates the SAT-backend interface. `src/sat/` owns the
+  backend-neutral propagator/terminator contracts and adapts them to CaDiCaL's
+  concrete C++ API.
 - Congruence-closure papers motivate the EUF direction. The current implementation has congruence closure and disequality checking, but it does not yet implement explanation-producing union-find or the full fast algorithms described in the literature notes.
 - DPLL(T) papers motivate the lazy SAT/theory loop. Primo currently implements a simple lazy loop that rebuilds/checks theory consistency from each SAT assignment rather than an incremental propagating theory solver.
 - SMT symmetry-breaking papers motivate the default-on QF_UF preprocessing pass.
@@ -247,9 +392,6 @@ make contrib-cadical
 
 Dolmen is used as an optional external validator for SMT-LIB model response
 files. It is not vendored under `contrib/`; install it separately and run
-`scripts/validate_model.py`. For QF_LRA Real-constant models, the validator can
-fall back to Z3 when Dolmen rejects a generated input syntax before model
-checking; that fallback asserts Primo's printed Real assignments into the
-original problem and checks that the strengthened problem remains satisfiable.
+`scripts/validate_model.py`.
 
 Downloaded archives and build trees under `contrib/downloads`, `contrib/src`, and `contrib/local` are not committed.

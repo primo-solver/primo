@@ -82,17 +82,41 @@ python3 scripts/slurm_prepare_benchmark_workspace.py \
   --remote-dir <remote-home>/primo-cadical-profile
 ```
 
-The script refuses a dirty local tree, syncs the committed source, rebuilds
-CaDiCaL on the cluster, rebuilds `build-slurm-rel/primo`, and checks that
-`primo --version` reports the local commit and a CaDiCaL version. The local
-CMake build refreshes a generated git-revision header on every `primo` build;
-uncommitted source changes are reported with a `-dirty` suffix. Use
+The script refuses a dirty local tree, installs a `git archive` snapshot of the
+committed source by default, provisions the required cluster-local dependencies
+with `make contrib-required`, rebuilds `build-slurm-rel/primo`, and checks that
+`primo --version` reports the local commit and a CaDiCaL version. If the cluster
+does not provide CMake on `PATH`, the helper installs CMake into `.venv-build`
+and prepends that environment for dependency and build commands. The archive
+sync deliberately avoids copying the local `.git` directory, build trees, result
+trees, fuzz output, and machine-local dependency installations. The remote build
+receives the commit through `PRIMO_GIT_REVISION_OVERRIDE`, so stale generated
+outputs in a reused workspace cannot make benchmark binaries report a spurious
+`-dirty` suffix. Use `--sync-mode rsync` only for a deliberate legacy full-tree
+sync.
+
+The local CMake build refreshes a generated git-revision header on every `primo`
+build; uncommitted source changes are reported with a `-dirty` suffix. Use
 `--check-only` immediately before `sbatch` when the workspace was already
 prepared. Destructive sync/rebuild is refused while active SLURM jobs with Primo
 job names are present, because those jobs may be using the same `build-slurm-rel`
 binary. Use a separate remote workdir for overlapping campaigns; reserve
 `--allow-active-jobs` for cases where the active jobs are known to use another
 workspace.
+
+Archive-mode preparation intentionally excludes `tmp/`, so benchmark manifests
+that refer to locally extracted SMT-LIB archives need a separate staging step.
+Use the manifest staging helper to copy only the listed files into the matching
+remote root, without copying `.git` or the whole archive:
+
+```bash
+python3 scripts/slurm_stage_manifest_files.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote llm2smt-slurm \
+  --remote-dir <remote-home>/primo-cadical-profile \
+  --root tmp/QF_UFLRA \
+  --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt
+```
 
 If the published `interesting.html` table is available, pass
 `--reference-html path/to/interesting.html`. The script extracts table text with

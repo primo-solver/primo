@@ -25,4 +25,6 @@ chapters:
   - file: papers/fast-linear-arithmetic-dpllt
   - file: papers/lra-related-work
   - file: papers/difference-constraint-propagation
+  - file: papers/model-based-theory-combination
+  - file: papers/nelson-oppen-closure-methods
   - file: reference/llm2smt-retrospective

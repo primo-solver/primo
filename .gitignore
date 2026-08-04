@@ -85,9 +85,11 @@ fuzz-results/
 yinyang_bugs/
 yinyang_scratch/
 slurm_logs/
+slurm-results/
 tmp/
 sandbox/
 QF_UF.tar.zst
+docs/papers/model-guided-no.pdf
 
 # local optional dependencies
 contrib/local/

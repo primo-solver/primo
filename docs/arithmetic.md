@@ -3,7 +3,7 @@
 QF_LRA (quantifier-free linear real arithmetic) is implemented through
 Milestone 4 of the plan described below: a full SMT-LIB QF_LRA frontend
 plus a bounded-variable Simplex theory solver integrated into DPLL(T) via a
-trail-synced CaDiCaL external propagator, with both conflict detection and
+trail-synced IPASIR-UP external propagator, with both conflict detection and
 same-variable bound propagation, following Dutertre & de Moura's "A Fast
 Linear-Arithmetic Solver for DPLL(T)". **Supported**, not just
 experimental, as of the 2026-07-24 campaign-tier fuzz gate (3000 fuzzsmt
@@ -71,11 +71,11 @@ alternatives considered before/while implementing it.
   single-variable atoms" below). The `atoms_by_bound_var` index records
   which atoms bound which tableau variable, slack or not.
   `OnlineLraPropagator` (Milestone 3a) is a trail-synced
-  `CaDiCaL::ExternalPropagator`, owning one `LraTableau` (copied once from
+  `sat::ExternalPropagator`, owning one `LraTableau` (copied once from
   the prepared base) kept in sync via `notify_new_decision_level`/
   `notify_backtrack` calling `LraTableau::push()`/`pop()` -- this is what
   actually exercises push/pop for cross-round reuse. `solve_qf_lra` always
-  prefers this when CaDiCaL's external-propagator API is available
+  prefers this when the backend reports external-propagator support
   (`#if PRIMO_HAVE_IPASIR`); `find_incremental_lra_theory_conflict` (copy
   the base tableau and reassert every round, no push/pop reuse) survives
   only as the fallback when it isn't.
@@ -87,17 +87,18 @@ alternatives considered before/while implementing it.
   strict bounds. The model builder also replays preprocessing reconstruction
   equalities from solve-eqs/Gaussian elimination, so a constant eliminated
   before theory solving is assigned from the final values of the terms it was
-  rewritten to. This is a supported minimal LRA model subset, not a mixed
-  QF_UFLRA model: Real functions, arrays, nonlinear arithmetic, and
-  Nelson-Oppen combination models remain unsupported.
+  rewritten to. The mixed QF_UFLRA path composes this nullary-Real model body
+  with a QF_UF model for separable formulas, UF symbols with Real arguments, and
+  Real-valued UF applications after purification. Arrays, nonlinear arithmetic,
+  and full Nelson-Oppen model-guided combination remain unsupported.
 - **Model-based SAT phase hints** (heuristics item H5, `check_sat.cpp`,
   **opt-in** via `CheckSatOptions::lra_model_phase` / `--lra-model-phase`):
-  `OnlineLraPropagator` keeps CaDiCaL's VSIDS variable choice but refreshes
+  `OnlineLraPropagator` keeps the SAT backend's variable choice but refreshes
   arithmetic atom polarities from the current tableau assignment β at
   quiescence points. For each arithmetic atom, it evaluates the atom's TRUE
   bound using the same `DeltaRational` `bound_assertion()` representation
   used by Assert-Bound and same-variable propagation, then calls
-  `CadicalBackend::phase()` only when the preferred literal changed since
+  `IpasirUpBackend::phase()` only when the preferred literal changed since
   the previous refresh. This is a search hint only; it does not add clauses,
   propagations, or theory decisions.
 - **QF_LRA fragment boundary** (`Frontend::declare_fun`): QF_LRA accepts free
@@ -139,7 +140,7 @@ alternatives considered before/while implementing it.
   `cb_add_reason_clause_lit` were widened from a single `sat::Lit` to
   `vector<sat::Lit>` to carry this (same-slack entries become singleton
   vectors, unchanged behavior). Two defensive, non-adaptive caps
-  (`--lra-row-propagation-max-row-size`, `--lra-row-propagation-max-fanout`,
+  (`kRowBasedPropagationMaxRowSize`, `kRowBasedPropagationMaxFanout`,
   both 64) bound the O(row size) per-affected-row cost this technique has
   that same-slack propagation's O(atoms sharing a slack) doesn't. Reported
   by `:lra.row-propagations`, alongside the existing aggregate
@@ -223,7 +224,9 @@ alternatives considered before/while implementing it.
     instances specifically, not average-case speed on typical ones. Not
     campaign-tier confirmed and not currently planned for default-on
     promotion given this; see `docs/run-log.json`.
+
 - **Two-tier rational representation** ([heuristics-note item H2](#h2), 2026-07-28,
+
   `src/util/rational.{hpp,cpp}`, **unconditional**): `util::Rational` stores
   small values inline as `std::int64_t` numerator/denominator and only falls
   back to a heap `mpq_class` when a value genuinely needs more than 64 bits.
@@ -318,7 +321,9 @@ alternatives considered before/while implementing it.
     seeds -- 0 crashes, 0 wrong answers throughout. Incidentally, the gates'
     own timeout rates fell sharply (Bland campaign 118-143 -> 28, SOI campaign
     965-976 -> 324), the same speedup showing up in the fuzz corpus.
+
 - **Direct bounds for single-variable atoms** ([heuristics-note item H1a](#h1),
+
   2026-07-28, `check_sat.cpp`, **unconditional**): an atom whose normalized
   polynomial is a single term `c*x` is a bound on `x` itself. The
   coefficient is divided out (`rhs' = rhs / c`) and no slack variable and no
@@ -375,7 +380,9 @@ alternatives considered before/while implementing it.
     fuzzsmt cases, two opfuzz runs and four yinyang typefuzz shards over real
     QF_LRA seeds -- 0 crashes, 0 wrong answers throughout, with the Bland
     merge gate coming back 500/500 PASS with no timeouts at all.
+
 - **Scale-canonical polynomial keys** ([heuristics-note item H1b](#h1), the
+
   long-deferred competitiveness-roadmap item 3, 2026-07-28, `check_sat.cpp`,
   **unconditional**): `PolynomialKey` divides every coefficient by the
   coefficient of the lowest-indexed variable, so proportional polynomials
@@ -399,7 +406,9 @@ alternatives considered before/while implementing it.
     merging proportional rows concentrates fill-in into fewer, denser rows),
     so its 237-file verdict comes from item H3's four-way run, whose `bland`
     column measures exactly this item's effect on the default.
+
 - **Fill-in-aware pivot selection** ([heuristics-note item H3](#h3), 2026-07-28,
+
   `lra_tableau.{hpp,cpp}`, **opt-in**): `PivotingRule::Sparse`, via
   `--lra-pivoting-rule sparse`. `pivot()` rewrites every row in
   `occurs_in_[entering]`, merging in a row of length `|row(leaving)|`, so a
@@ -477,6 +486,7 @@ alternatives considered before/while implementing it.
     117227 (new default, fuzzsmt 3000: 2990 PASS/10 TIMEOUT) and 117228 (SOI,
     3000: 2908/92), each with opfuzz 14/14 seeds valid and two yinyang shards,
     0 bug triggers throughout. No crashes, no wrong answers anywhere.
+
 - **Delta-maintained `occurs_in_`** ([heuristics-note item H10](#h10),
   2026-08-01, `lra_tableau.{hpp,cpp}`, **unconditional**): `pivot()` no longer
   removes and re-adds every affected row's occurrence entries. `occurs_in_`
@@ -562,6 +572,7 @@ alternatives considered before/while implementing it.
     rewrites the row loop and moves rows into the trail, which is where this
     class previously had a real heap-use-after-free.
 - **Fixed-variable elimination** ([heuristics-note item H7](#h7), 2026-07-30,
+
   `lra_tableau.{hpp,cpp}`, **opt-in**, `--lra-fixed-elimination`): a basic
   variable whose lower and upper bounds coincide is pivoted out of the basis
   as soon as it becomes fixed. `can_enter()` already rejects a fixed variable
@@ -570,13 +581,7 @@ alternatives considered before/while implementing it.
   row moves. The entering candidate is preferred unbounded (an unbounded basic
   variable's row can never be violated), then by Markowitz occurrence count,
   then by a unit coefficient -- and never one that is itself already fixed,
-  which the other criteria actively steer into. The prior art is LP presolve's
-  fixed-variable removal (Andersen & Andersen, *Presolving in linear
-  programming*, Mathematical Programming 71, 1995, 221-245), with one
-  difference that turns out to matter: presolve removes fixed variables once,
-  before solving, from a problem whose bounds are all known, whereas H7 fires
-  during search and must restore on backtracking. See
-  [](papers/lra-related-work.md) and item H7's write-up.
+  which the other criteria actively steer into.
   - **Not promoted, and the reason is worth reading.** Per-instance the
     mechanism is decisive: `latendresse/ecoliFBAyicesTest-500` 0.8s -> 0.1s
     with `:lra.pivot-term-ops` 8.66M -> 0.13M, `scrambled335326` 51.0s ->
@@ -621,9 +626,30 @@ alternatives considered before/while implementing it.
 
 ### Implemented subset vs. deviations vs. limitations
 
-- **Real-only.** No `Int` sort, no QF_LIA/QF_UFLRA. Mixing `Real` equality
-  with uninterpreted-sort equality is explicitly rejected (`Unsupported`),
-  not silently mishandled -- would need real Nelson-Oppen combination.
+- **Real-only arithmetic.** No `Int` sort and no QF_LIA. A partial QF_UFLRA
+  coordinator exists for separable formulas and for arithmetic atoms containing
+  Real-valued UF applications. The SMT layer purifies each such application to
+  an internal Real proxy, first replacing any non-constant Real arguments by
+  their own LRA-defined proxies so the EUF-side definition remains a flat UF
+  application. The purified arithmetic atom is sent to LRA, and EUF-implied
+  proxy equalities are checked against LRA under the current SAT assignment. EUF
+  atoms with non-constant Real arguments are purified in the other direction:
+  the EUF atom receives an internal Real proxy, while LRA receives the two
+  defining bounds `proxy <= term` and `term <= proxy`. The reverse interface
+  direction is checked for shared Real
+  constants, including those internal Real-argument proxies: if LRA makes both
+  `x < y` and `y < x` inconsistent under the current assignment, the coordinator
+  asserts `x = y` into an augmented EUF check. Mixed `get-model` reconstructs
+  concrete Real values for both Real arguments and Real-valued UF application
+  results: reconstruction augments the LRA model with EUF-implied equalities and
+  strict separations for EUF-distinct Real constants before printing concrete
+  Real values in UF table guards and results. This is not full Nelson-Oppen
+  combination: fine-grained cross-theory explanations, full model-equality
+  propagation, native false-`Eq` LRA atoms, and unbounded arrangement
+  enumeration are still not implemented. The optional `--model-equality-branching`
+  scaffold creates default-off equality assumptions for LRA-model-equal shared
+  Real pairs, but those guesses are not a complete arrangement-enumeration
+  procedure.
 - ~~Disequality (negated `=`) is rejected~~ -- **fixed 2026-07-24**, see
   above. Was the dominant cause of `UnsupportedInput` in every fuzz
   campaign (394-418/500 cases); after the fix, zero `UnsupportedInput` in
@@ -665,8 +691,10 @@ alternatives considered before/while implementing it.
 
 ## Milestone roadmap
 
+See `/home/user/.claude/plans/piped-wondering-fairy.md` for the full plan.
 Milestones 1-4 (above) are all done, plus disequality support and the
 recursion-removal pass -- QF_LRA is **supported**, not experimental.
+
 
 ### QF_LRA options and statistics reference
 
@@ -957,6 +985,7 @@ workstation noise at a timeout boundary. D1 and D3's cheap design are the
 same code (`compute_implied_child_bound`), so that one sweep closed both;
 D3's expensive column-merge design had already been rejected on its own
 evidence.
+
 
 - **Milestone 3b's real-benchmark impact**: a 500-case fuzz merge-gate
   re-run found zero wrong-answer disagreements against z3 (a real bug --
