@@ -24,6 +24,7 @@ chapters:
   - file: papers/finite-model-finding-sorts
   - file: papers/fast-linear-arithmetic-dpllt
   - file: papers/lra-related-work
+  - file: papers/griggio-mathsat-thesis
   - file: papers/difference-constraint-propagation
   - file: papers/model-based-theory-combination
   - file: papers/nelson-oppen-closure-methods
