@@ -698,7 +698,7 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
 
 ### QF_LRA options and statistics reference
 
-Every `--lra-*` option, its default, and where its evidence lives. Verified
+Every QF_LRA option, its default, and where its evidence lives. Verified
 against `CheckSatOptions` and `--help` on 2026-08-04.
 
 | option | default | what it does |
@@ -711,6 +711,7 @@ against `CheckSatOptions` and `--help` on 2026-08-04.
 | `--lra-theory-decisions` | **off** | Theory-supplied decision literals via `cb_decide` (item 8). |
 | `--lra-model-phase` | **off** | H5 beta-based phase hints for arithmetic atoms; keeps VSIDS variable choice. |
 | `--lra-fixed-elimination` | **off** | Item H7 (LP presolve's fixed-variable removal, Andersen & Andersen 1995). Opt-in; see its falsifier outcome. |
+| `--guarded-real-equality-lowering` | **off** | Opt-in guarded equality distribution inside Real-equality lowering; useful local tropical result but mixed 10-file evidence. |
 | `--lra-row-propagation-max-row-size` | 64 | Longest row row-propagation will derive a bound for. |
 | `--lra-row-propagation-max-fanout` | 64 | Most rows one bound change may scan. |
 | `--lra-bidirectional-row-propagation-max-row-size` | 32 | Reverse direction's row-length cap. |

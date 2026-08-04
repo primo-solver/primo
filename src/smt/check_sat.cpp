@@ -8805,8 +8805,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       // generation below and the has_equality/has_arithmetic dispatch, so
       // downstream passes/the tableau see the same Le/Lt-pair shape they
       // always have.
-      RealEqualityLoweringResult lowered_equalities =
-          lower_real_equalities(frontend.terms(), assertions);
+      RealEqualityLoweringResult lowered_equalities = lower_real_equalities(
+          frontend.terms(), assertions, options.guarded_real_equality_lowering);
       assertions = std::move(lowered_equalities.assertions);
       statistics.increment(kStatRealEqualityLowered, lowered_equalities.lowered);
       statistics.increment(kStatGuardedRealEqualityDistributed,

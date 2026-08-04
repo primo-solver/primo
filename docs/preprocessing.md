@@ -474,8 +474,8 @@ special-case. It must still run before `BooleanClausifier`/theory dispatch,
 or QF_LRA disequality would regress to needing the case-split machinery this
 design avoids.
 
-For a guarded disjunction with exactly one Real equality child, the pass lowers
-the equality by distributing the guard directly:
+When `--guarded-real-equality-lowering` is enabled, a guarded disjunction with
+exactly one Real equality child lowers by distributing the guard directly:
 
 ```text
 (or G (= x y))  ==>  (and (or G (<= x y))
@@ -485,14 +485,16 @@ the equality by distributing the guard directly:
 This is a local Boolean rewrite, not a separate arithmetic propagator. It keeps
 LRA as the only arithmetic checker while avoiding the extra Tseitin variable
 that would be introduced by first rewriting the equality to an inner
-`And(Le,Le)` under the `Or`. The implementation deliberately does not
-distribute disjunctions with multiple Real equality children, where the direct
-CNF expansion would either blow up or require a more careful clausification
+`And(Le,Le)` under the `Or`. The option deliberately does not distribute
+disjunctions with multiple Real equality children, where the direct CNF
+expansion would either blow up or require a more careful clausification
 strategy.
 
 Reported by `:preprocessing.real-equality-lowering.lowered` and
-`:preprocessing.real-equality-lowering.guarded-distributed`. Not optional (no
-CLI flag) -- it is load-bearing for correctness, not a heuristic.
+`:preprocessing.real-equality-lowering.guarded-distributed`. The basic Real
+equality lowering is not optional -- it is load-bearing for correctness -- but
+the guarded distribution shortcut is opt-in (`--guarded-real-equality-lowering`)
+because the first tropical-matrix measurement was mixed.
 
 ## ITE Lowering
 

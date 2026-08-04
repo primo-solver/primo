@@ -66,6 +66,8 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.solve-eqs.rewrites`;
 - `:preprocessing.solve-eqs.rejected-cycles`;
 - `:preprocessing.solve-eqs.rejected-blowups`;
+- `:preprocessing.real-equality-lowering.lowered`;
+- `:preprocessing.real-equality-lowering.guarded-distributed`;
 - `:preprocessing.finite-domain.domains`;
 - `:preprocessing.finite-domain.amo-clauses`;
 - `:preprocessing.finite-domain.evaluated-equalities`;

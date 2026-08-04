@@ -488,7 +488,8 @@ void lower_real_equalities_distributes_single_guarded_real_equality() {
   const primo::core::TermId guarded = fixture.terms.mk_or({guard, fixture.terms.mk_eq(z, sum)});
 
   const primo::smt::RealEqualityLoweringResult result =
-      primo::smt::lower_real_equalities(fixture.terms, {guarded});
+      primo::smt::lower_real_equalities(fixture.terms, {guarded},
+                                        /*enable_guarded_real_equality_distribution=*/true);
 
   check(result.lowered == 1);
   check(result.guarded_distributed == 1);
@@ -496,6 +497,26 @@ void lower_real_equalities_distributes_single_guarded_real_equality() {
   const primo::core::TermId expected =
       fixture.terms.mk_and({fixture.terms.mk_or({guard, fixture.terms.mk_le(z, sum)}),
                             fixture.terms.mk_or({guard, fixture.terms.mk_le(sum, z)})});
+  check(result.assertions.front() == expected);
+}
+
+void lower_real_equalities_keeps_guarded_distribution_disabled_by_default() {
+  RealFixture fixture;
+  const primo::core::TermId guard = fixture.terms.mk_constant(
+      fixture.symbols.declare_constant("guard", fixture.symbols.bool_sort()));
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId z = fixture.constant(fixture.z);
+  const primo::core::TermId sum = fixture.terms.mk_plus({x, y});
+  const primo::core::TermId guarded = fixture.terms.mk_or({guard, fixture.terms.mk_eq(z, sum)});
+
+  const primo::smt::RealEqualityLoweringResult result =
+      primo::smt::lower_real_equalities(fixture.terms, {guarded});
+
+  check(result.lowered == 1);
+  check(result.guarded_distributed == 0);
+  const primo::core::TermId expected = fixture.terms.mk_or(
+      {guard, fixture.terms.mk_and({fixture.terms.mk_le(z, sum), fixture.terms.mk_le(sum, z)})});
   check(result.assertions.front() == expected);
 }
 
@@ -516,7 +537,8 @@ void lower_real_equalities_rewrites_guard_before_distribution() {
   const primo::core::TermId guarded = fixture.terms.mk_or({guard, fixture.terms.mk_eq(z, sum)});
 
   const primo::smt::RealEqualityLoweringResult result =
-      primo::smt::lower_real_equalities(fixture.terms, {guarded});
+      primo::smt::lower_real_equalities(fixture.terms, {guarded},
+                                        /*enable_guarded_real_equality_distribution=*/true);
 
   check(result.lowered == 2);
   check(result.guarded_distributed == 1);
@@ -1055,6 +1077,7 @@ int main() {
   gaussian_elimination_bails_out_above_equation_cap();
   lower_real_equalities_rewrites_real_sorted_equality_only();
   lower_real_equalities_distributes_single_guarded_real_equality();
+  lower_real_equalities_keeps_guarded_distribution_disabled_by_default();
   lower_real_equalities_rewrites_guard_before_distribution();
   lower_real_equalities_does_not_distribute_negated_real_equality();
   lower_real_equalities_does_not_distribute_uninterpreted_equality();

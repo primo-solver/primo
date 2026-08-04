@@ -56,8 +56,9 @@ struct RealEqualityLoweringResult {
 // what lets QF_LRA disequality avoid needing case-split machinery in
 // LraTableau/OnlineLraPropagator. Non-Real equalities are left
 // untouched.
-RealEqualityLoweringResult lower_real_equalities(core::TermManager& terms,
-                                                 const std::vector<core::TermId>& assertions);
+RealEqualityLoweringResult lower_real_equalities(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    bool enable_guarded_real_equality_distribution = false);
 
 struct SolvedConstantSubstitutionResult {
   std::vector<core::TermId> assertions;

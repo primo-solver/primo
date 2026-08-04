@@ -148,6 +148,7 @@ int main(int argc, char** argv) {
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
+  bool guarded_real_equality_lowering = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
   bool no_auto_top_level_or_tseitin = false;
@@ -290,6 +291,10 @@ int main(int argc, char** argv) {
                "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25) [default: on]");
   app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
                "Disable QF_LRA Gauss-Jordan equality-system elimination [default: on]");
+  app.add_flag("--guarded-real-equality-lowering", guarded_real_equality_lowering,
+               "Enable experimental guarded Real equality lowering: rewrite a disjunction "
+               "with one Real equality child directly to two guarded inequalities, avoiding "
+               "one Tseitin layer on some QF_LRA encodings [default: off]");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Always encode top-level disjunctions with Tseitin support clauses [default: only "
                "when the automatic rule fires]");
@@ -459,7 +464,8 @@ int main(int argc, char** argv) {
   };
   const auto group_for = [&starts_with](const std::string& name) -> std::string {
     if (starts_with(name, "--lra-") || starts_with(name, "--no-lra-") ||
-        name == "--gaussian-elimination" || name == "--no-gaussian-elimination") {
+        name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
+        name == "--guarded-real-equality-lowering") {
       return kGroupLra;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)
@@ -579,6 +585,9 @@ int main(int argc, char** argv) {
   }
   if (no_gaussian_elimination) {
     solver_options.gaussian_elimination = false;
+  }
+  if (guarded_real_equality_lowering) {
+    solver_options.guarded_real_equality_lowering = true;
   }
   if (top_level_or_tseitin) {
     solver_options.top_level_or_tseitin = true;

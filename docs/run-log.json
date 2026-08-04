@@ -18429,7 +18429,7 @@
       "started_at": "2026-08-04",
       "recorded_at": "2026-08-04",
       "kind": "implementation-benchmark-fuzz",
-      "scope": "Option 2 tropical experiment: distribute a single guarded Real equality directly to two guarded inequalities in the existing Real-equality lowering pass.",
+      "scope": "Option 2 tropical experiment: distribute a single guarded Real equality directly to two guarded inequalities in the existing Real-equality lowering pass. A follow-up change made this opt-in behind --guarded-real-equality-lowering because the local 10-file evidence was mixed.",
       "commit": "b8dde6e",
       "branch": "qflra-tropical-investigation",
       "environment": {
@@ -18456,13 +18456,50 @@
         ]
       },
       "summary": {
-        "implementation": "The existing mandatory Real-equality lowering now rewrites an Or with exactly one Real equality child as two guarded inequality disjunctions, avoiding the extra Tseitin variable for the lowered equality conjunction. Multiple guarded Real equalities in the same Or still use the old non-distributed lowering.",
+        "implementation": "The guarded distribution shortcut rewrites an Or with exactly one Real equality child as two guarded inequality disjunctions, avoiding the extra Tseitin variable for the lowered equality conjunction. Multiple guarded Real equalities in the same Or still use the old non-distributed lowering. A follow-up change made the shortcut opt-in behind --guarded-real-equality-lowering; the mandatory generic Real-equality lowering remains default-on.",
         "single_file_default": "constraint-199552.smt2 solved sat at the 60s cap in 5.3-5.8s, with 648 guarded distributions, 5460 SAT vars, 10059 SAT clauses, 93 conflicts, 7679 LRA pivots, and 128M pivot term ops. The earlier same-branch default probe had timed out at 45s after about 1.36B pivot term ops.",
         "single_file_positive": "With --theory-phase positive, constraint-199552.smt2 solved sat in about 11.1s, with 3074 SAT conflicts, 22596 LRA pivots, and 266M pivot term ops. This is still faster than the earlier positive run on the old encoding, but slower than the new default run.",
         "ten_file_default": "At a local 60s cap, default Primo with this rewrite solved 1/10 tropical files: constraint-199552.smt2. The other 9 timed out.",
         "ten_file_positive": "At the same local 60s cap, --theory-phase positive with this rewrite also solved 1/10. This regressed the earlier positive-phase diagnostic where constraint-223827.smt2 solved in about 11.3s.",
         "fuzz": "QF_LRA fuzzsmt count 1000, seed 60806, timeout 5s, refs z3 and yices-smt2: 995 PASS, 5 timeout-only cases, 0 wrong answers, 0 crashes, 0 reference disagreements.",
         "interpretation": "Sound and useful as a small SAT-encoding simplification, with a large local win on constraint-199552.smt2, but not a tropical-family solution. Do not cite as broad performance improvement until a SLURM tropical/full-QF_LRA A/B is run."
+      },
+      "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-04-qf-lra-guarded-real-equality-lowering-option-fuzz",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "implementation-fuzz",
+      "scope": "Follow-up optionization of the guarded Real equality distribution shortcut. Generic Real equality lowering remains default-on for correctness, while the guarded distribution shortcut is reachable only through --guarded-real-equality-lowering.",
+      "commit": "pending",
+      "branch": "main",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo from working tree before commit; references z3 and yices-smt2 from contrib/local/bin",
+        "notes": "Correctness gate for the opt-in option path. This is not a performance promotion run."
+      },
+      "command": {
+        "focused_tests": "cmake --build build --target primo_preprocessing_tests primo_qf_lra_solver_tests primo -j4 && ./build/primo_preprocessing_tests && ./build/primo_qf_lra_solver_tests",
+        "cli_stats_default": "build/primo --quiet --stats on a guarded Real equality smoke input reported sat, :preprocessing.real-equality-lowering.lowered 1, and :preprocessing.real-equality-lowering.guarded-distributed 0.",
+        "cli_stats_option": "build/primo --quiet --stats --guarded-real-equality-lowering on the same guarded Real equality smoke input reported sat, :preprocessing.real-equality-lowering.lowered 1, and :preprocessing.real-equality-lowering.guarded-distributed 1.",
+        "check": "make check",
+        "docs": "make docs",
+        "fuzz": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --guarded-real-equality-lowering' --refs z3 yices-smt2 --logic QF_LRA --count 1000 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf-lra-guarded-real-equality-lowering-option-20260804 --seed 60807"
+      },
+      "benchmark": {
+        "suite": "fuzzsmt-generated QF_LRA",
+        "logic": "QF_LRA",
+        "timeout_seconds": 5,
+        "artifacts": [
+          "fuzz-results/qf-lra-guarded-real-equality-lowering-option-20260804/summary.csv",
+          "fuzz-results/qf-lra-guarded-real-equality-lowering-option-20260804/bugs/"
+        ]
+      },
+      "summary": {
+        "option_status": "--guarded-real-equality-lowering is default-off. The shortcut rewrites only a disjunction with exactly one Real equality child to two guarded inequalities; multiple equality children and non-Real equalities keep generic lowering.",
+        "fuzz": "QF_LRA fuzzsmt count 1000, seed 60807, timeout 5s, refs z3 and yices-smt2: 994 PASS, 6 timeout-only cases, 0 wrong answers, 0 crashes, 0 reference disagreements. The timeout cases were file_414, file_423, file_613, file_665, file_668, and file_74, all with references reporting sat.",
+        "review": "The shortcut remains opt-in because the local 10-file tropical result in 2026-08-04-qf-lra-guarded-real-equality-lowering-local was mixed."
       },
       "evidence_status": "current-local"
     }

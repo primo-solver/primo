@@ -24,7 +24,7 @@ order they were proposed, not the order they were implemented.
 | [H9](#h9) | Bounds-only backtracking (the paper's own scheme) | implemented, default except SOI; largest single gain |
 | [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 (Yices and OpenSMT, both added 2026-08-03, are ahead of both) |
 | [H11](#h11) | Fill-in-aware pivoting in *preprocessing* Gaussian elimination | proposed, opt-in when built |
-| [T1](#t1) | Guarded Real equality distribution for tropical cost definitions | implemented, default; local tropical evidence is mixed |
+| [T1](#t1) | Guarded Real equality distribution for tropical cost definitions | implemented, opt-in; local tropical evidence is mixed |
 
 Where the remaining gap is, and what has been ruled out, is [](#sec-6). Its
 ranked list of open directions is [](#sec-6-5): [D2](#d2) and [D4](#d4)
@@ -999,7 +999,7 @@ not the tropical lead from this probe.
 (t1)=
 ### T1 -- Guarded Real equality distribution for tropical cost definitions
 
-**Status: implemented as part of mandatory Real-equality lowering; local
+**Status: implemented behind `--guarded-real-equality-lowering`; local
 tropical evidence is mixed.** The rewrite is deliberately not a portfolio
 branch and not a second difference-logic propagator. It stays inside the
 existing preprocessing pipeline and keeps LRA as the only arithmetic checker.
@@ -1032,24 +1032,26 @@ to avoid an exponential CNF expansion. The counter
 specialized case.
 
 **Focused local result (2026-08-04, branch
-`qflra-tropical-investigation`).** On `constraint-199552.smt2`, default Primo
-now solves `sat` in 5.3-5.8s at a 60s cap. The run distributed 648 guarded
-equalities, encoded 5,460 SAT variables and 10,059 clauses, and spent 7,679
-pivots / 128M pivot term ops. That is a clear improvement over the earlier
-same-branch default probe, which timed out at 45s after about 1.36B pivot term
-ops, and over the earlier `--theory-phase positive` run on the old encoding
-(about 19.8s, 6,108 vars, 11,355 clauses, 40,504 pivots, 478M term ops).
+`qflra-tropical-investigation`).** With this option enabled on
+`constraint-199552.smt2`, Primo solved `sat` in 5.3-5.8s at a 60s cap. The run
+distributed 648 guarded equalities, encoded 5,460 SAT variables and 10,059
+clauses, and spent 7,679 pivots / 128M pivot term ops. That is a clear
+improvement over the earlier same-branch default probe, which timed out at 45s
+after about 1.36B pivot term ops, and over the earlier `--theory-phase
+positive` run on the old encoding (about 19.8s, 6,108 vars, 11,355 clauses,
+40,504 pivots, 478M term ops).
 
 The 10-file tropical probe is not a win yet:
 
 | config | solved / 10 at 60s | note |
 |---|---:|---|
-| Primo default with T1 | 1 | `constraint-199552` only |
-| Primo `--theory-phase positive` with T1 | 1 | `constraint-199552` only; `constraint-223827` regressed from the earlier positive-phase diagnostic |
+| Primo with `--guarded-real-equality-lowering` | 1 | `constraint-199552` only |
+| Primo `--theory-phase positive --guarded-real-equality-lowering` | 1 | `constraint-199552` only; `constraint-223827` regressed from the earlier positive-phase diagnostic |
 
 Interpretation: T1 removes real Boolean/SAT overhead for exactly the guarded
 cost definitions present in this family, and can materially change search on a
-single instance. It does not solve the tropical family. Before using it as
+single instance. It does not solve the tropical family, and the mixed local
+evidence is why it remains an option rather than a default. Before using it as
 performance evidence, run a SLURM A/B over all 10 tropical files and the full
 QF_LRA division for regressions. The next tropical work should still focus on
 the mixed Boolean/arithmetic search shape or a hybrid treatment of the
