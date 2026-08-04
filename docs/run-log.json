@@ -18344,6 +18344,67 @@
         "efficiency_review": "No default-path activation, no callback full-pair scan, and no entailed model-equality propagation found. The expected fresh vectors are confined to the default-off care-queued final-check branch selector. The SLURM sample shows the queued selector greatly reduces model-equality pair scans relative to first/ranked/adaptive on this sample, but does not improve solved count."
       },
       "outcome": "Accepted as a default-off pruning policy for the model-equality assumption scaffold. It is correctness-gated locally and on a SLURM sample, remains off by default, and should not be promoted as a performance win until broader QF_UFLRA campaigns show solved-count or PAR2 gains."
+    },
+    {
+      "id": "2026-08-04-qf-uflra-model-equality-query-api-7239e07",
+      "started_at": "2026-08-04T18:45:00+02:00",
+      "recorded_at": "2026-08-04T19:10:00+02:00",
+      "kind": "validation",
+      "scope": "Local validation for the model-equality query API slice in the default-off QF_UFLRA model-equality assumption path. The implementation adds theory::ModelEqualityEvaluation, routes LRA model-equality branch classification through LraTheoryModelView, and keeps model equalities as SAT assumptions rather than entailed M-Propagate consequences.",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "7239e07",
+      "environment": {
+        "local": "./build/primo from source commit 7239e07; CaDiCaL rel-3.0.0 via contrib/local; reference solver contrib/local/bin/z3.",
+        "slurm": null
+      },
+      "commands": {
+        "paper_extraction": "pdftotext -layout docs/papers/model-guided-no.pdf /tmp/model-guided-no.txt",
+        "focused_unit": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
+        "build_check_lint_docs": "cmake --build build --target primo -j2 && make check && make lint && make docs",
+        "asan": "make asan-test",
+        "diff_check": "git diff --check",
+        "clang_tidy": "make tidy",
+        "include_cleaner_advisory": "make include-cleaner",
+        "efficiency_snapshot": "/home/user/.codex/skills/solver-efficiency-review/scripts/solver_efficiency_snapshot.py --repo .",
+        "mixed_stats_probe": "./build/primo --quiet --stats --model-equality-branching --model-equality-branch-policy=care-queued --no-model-equality-mutation",
+        "pure_qfuf_probe": "./build/primo --quiet --stats --model-equality-branching --model-equality-branch-policy=care-queued on a small QF_UF input with an explicit uninterpreted sort",
+        "pure_qflra_probe": "./build/primo --quiet --stats --model-equality-branching --model-equality-branch-policy=care-queued on a small QF_LRA input",
+        "local_fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--model-equality-branching --solver-arg=--model-equality-branch-policy=care-queued --ref contrib/local/bin/z3 --count 1000 --seed 2026080410 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-model-equality-api-1000-7239e07"
+      },
+      "benchmark": {
+        "fuzz": {
+          "logic": "QF_UFLRA",
+          "suite": "1000 generated mixed QF_UFLRA formulas from scripts/qf_uflra_smoke_fuzz.py",
+          "seed": 2026080410,
+          "timeout_seconds": 5,
+          "solver_argv": "./build/primo --quiet --model-equality-branching --model-equality-branch-policy=care-queued",
+          "reference_argv": "contrib/local/bin/z3"
+        }
+      },
+      "artifacts": {
+        "local_fuzz_summary": "fuzz-results/qf_uflra-model-equality-api-1000-7239e07/summary.csv",
+        "local_fuzz_cases": "fuzz-results/qf_uflra-model-equality-api-1000-7239e07/cases/",
+        "evidence_status": "current local validation evidence; generated fuzz artifacts are ignored and not committed."
+      },
+      "summary": {
+        "focused_unit": "primo_qf_lra_solver_tests passed, including new assertions for :no.interface.model-equality-api-* counters in mutation-disabled and mutation-filtered paths.",
+        "make_check": "13/13 CTest tests passed.",
+        "asan": "13/13 ASAN CTest tests passed.",
+        "local_fuzz": {
+          "count": 1000,
+          "pass": 1000,
+          "wrong_answer": 0,
+          "crash_or_error": 0,
+          "timeout": 0,
+          "reference_disagreement": 0,
+          "sat": 726,
+          "unsat": 274
+        },
+        "pure_probes": "Small QF_UF and QF_LRA CLI probes with model-equality branch options stayed out of the mixed QF_UFLRA coordinator; the new :no.interface.model-equality-api-* counters are emitted by the mixed path only.",
+        "mixed_stats_probe": "The care-queued mixed probe reported :no.interface.model-equality-api-builds=2, :no.interface.model-equality-api-queries=1, :no.interface.model-equality-api-equal=1, and :no.interface.model-equality-api-mutation-unqueried=1 with mutation disabled.",
+        "efficiency_review": "solver_efficiency_snapshot.py reported no added hot-path patterns. Manual review found no new default-path work, no callback scan, no entailed propagation without explanation, and no new SAT equality atom creation before the existing care-queued branch filter. make include-cleaner completed with the repository's existing advisory baseline; it did not report a changed check_sat.cpp include issue."
+      },
+      "outcome": "Accepted as a paper-grounded API/classification slice. It does not implement full DPLL(T^M), model mutation by freedom intervals, or model-equality M-Propagate; it only gives the existing default-off LRA model-equality assumption branch a theory-layer query result and observable counters."
     }
   ]
 }
