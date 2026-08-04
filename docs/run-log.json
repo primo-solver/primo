@@ -17797,6 +17797,58 @@
         }
       },
       "outcome": "Release-vs-Release timings stayed in the expected local-noise range for this tiny sample. The largest absolute pure QF_UF case moved from 34.5 ms to 37.2 ms in default mode and from 43.0 ms to 38.0 ms in --euf-prop=online mode; small microsecond-level cases had larger percentages but negligible absolute movement."
+    },
+    {
+      "id": "2026-08-04-sat-ipasir-up-interface-qfuf-seconds-release-local",
+      "date": "2026-08-04",
+      "branch": "sat-ipasir-up-interface",
+      "commit": "source comparison 785c534 against baseline 34c3d15; run-log entry committed immediately after",
+      "evidence_status": "current",
+      "scope": "Release-vs-Release local timing and deterministic-statistics check on pure QF_UF cases whose total time is around 1.3-1.7 seconds. This extends the earlier tiny pure QF_UF/QF_LRA sample; it is not a full-corpus benchmark.",
+      "commands": {
+        "baseline_binary": "/tmp/primo-stats-baseline-34c3d15-20260804/build-stats/primo --quiet --stats [--euf-prop=online] <file>",
+        "current_binary": "/workspace/build-stats-release/primo --quiet --stats [--euf-prop=online] <file>",
+        "comparison": "python3 local comparison script, 6 tmp/QF_UF/QG-classification/qg7 files, default and --euf-prop=online, 3 repetitions per solver/configuration"
+      },
+      "environment": {
+        "host": "local workspace",
+        "baseline_build": "Release",
+        "current_build": "Release",
+        "dependency_prefix": "/workspace/contrib/local"
+      },
+      "artifact": "results/stats-ipasir-up-interface-qfuf-seconds-release-785c534-vs-34c3d15/summary.json",
+      "sample": [
+        "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen013.smt2",
+        "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen017.smt2",
+        "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen010.smt2",
+        "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen011.smt2",
+        "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen018.smt2",
+        "tmp/QF_UF/QG-classification/qg7/iso_brn_nogen016.smt2"
+      ],
+      "results": {
+        "case_count": 12,
+        "run_count": 72,
+        "answer_or_status_diff_count": 0,
+        "cases_with_non_time_stat_diffs": 0,
+        "non_time_stat_diff_count": 0,
+        "default_total_median_delta_percent_range": [
+          -2.041203230965745,
+          2.0519011604582444
+        ],
+        "default_solve_median_delta_percent_range": [
+          -3.3423752290533413,
+          3.5256900082525746
+        ],
+        "online_total_median_delta_percent_range": [
+          -3.0925006422231878,
+          6.795269957738739
+        ],
+        "online_solve_median_delta_percent_range": [
+          -0.8000086283370761,
+          9.187936681776234
+        ]
+      },
+      "outcome": "The backend-neutral IPASIR-UP refactor shows no meaningful timing regression on the second-scale pure QF_UF sample. Default-mode median total time stayed within -2.1% to +2.1%; --euf-prop=online stayed within -3.1% to +6.8%. All answers/statuses and all non-time statistics matched between baseline and current."
     }
   ]
 }
