@@ -956,6 +956,18 @@ useful final stats file in this build, so the behavioral signal is only the
 search trace: many conflicts, low memory, no evidence of an instant
 preprocessing shortcut.
 
+A follow-up arithmetic-shape census shows that the family is close to, but not
+inside, difference logic. Across the 10 files, about 70-72% of arithmetic atoms
+are unary or two-variable bounds/equalities such as `l3c <= l0c`,
+`l105c >= l258c`, or `f0c >= 0`. The systematic non-difference-logic residue is
+almost entirely the tropical multiplication/cost-composition encoding:
+definitions such as `l1c = f13c + f15c` and `l0c = f12c + f12c`, which become
+three-variable or non-unit-coefficient rows after normalization. A pure RDL
+solver therefore cannot take the whole instance. The exploitable shape would
+need to be a hybrid: either recognize these `out = a + b` cost definitions as a
+separate acyclic layer, or feed only the guarded min/comparison subgraph to a
+difference-logic engine while the sum definitions remain in LRA.
+
 Primo's own option matrix on the same file is more informative. Default,
 negative phase, model phase, row+bidirectional propagation at 1024 caps,
 fixed-elimination, top-level-OR Tseitin, and disabling sparse leaving all ran

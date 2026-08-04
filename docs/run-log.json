@@ -18398,6 +18398,7 @@
       },
       "command": {
         "shape_census": "Python text census over tmp/QF_LRA/tropical-matrix/*.smt2: bytes, assertions, OR/AND/ITE/equality/comparison/declaration counts.",
+        "difference_logic_census": "Local Python S-expression census over tmp/QF_LRA/tropical-matrix/*.smt2 with declaration-sort tracking and let expansion; classified arithmetic atoms as unary/two-variable unit-coefficient difference-logic shaped versus larger linear rows.",
         "opensmt_stats_probe": "OpenSMT public --help exposes only --verbose, but the SMT-LIB option :verbosity 1 prints a search trace. Ran `{ (set-option :verbosity 1) (set-option :time-queries true) <file> } | contrib/local/bin/opensmt --pipe` on constraint-199552.smt2; :produce-stats/:stats-out created no useful final stats file in this build.",
         "single_file_matrix": "On constraint-199552.smt2, ran Primo variants default, --lra-model-phase, --theory-phase positive/negative, row+bidirectional propagation caps 1024, --lra-fixed-elimination, --top-level-or-tseitin, and --no-lra-sparse-leaving under a 45s diagnostic cap; then re-ran --theory-phase positive with full stats.",
         "ten_file_probe": "Parallel local 60s probe over all 10 tropical files for Primo --theory-phase positive and OpenSMT :verbosity 1. Artifact results/tropical-investigation-local/tropical-primo-positive-opensmt-60s.csv."
@@ -18413,13 +18414,14 @@
       },
       "summary": {
         "shape": "Each tropical file is one huge assertion with no ITEs. constraint-199552.smt2 has 36 Bool marker declarations, 36 Real cost declarations, 2265 OR nodes, 1377 AND nodes, 2322 equalities, 1512 <= atoms, 756 < atoms, 72 >= atoms, and 84 > atoms.",
+        "difference_logic_shape": "The family is close to RDL but not inside it. Across the 10 files, 69.7-71.7% of arithmetic atoms are unary or two-variable unit-coefficient bounds/equalities. The non-RDL residue is systematic: cost-composition definitions such as l1c = f13c + f15c and l0c = f12c + f12c, which normalize to three-variable rows or non-unit coefficients. constraint-199552.smt2 has 2250 arithmetic atoms: 1602 DL-shaped and 648 non-DL.",
         "opensmt_signal": "OpenSMT solves constraint-199552.smt2 sat in 29.39s with max RSS 37.9 MB and a verbose trace reaching about 56k conflicts. On the same file Yices timed out at 90s. OpenSMT exposes coarse SAT progress but not detailed LRA pivot counters in this build, so the behavioral indication is many conflicts at low memory, not an instant preprocessing shortcut.",
         "primo_phase_positive": "On constraint-199552.smt2, default, negative phase, model phase, row+bidirectional propagation at 1024 caps, fixed elimination, top-level-OR Tseitin, and no-sparse-leaving all ran past a 45s diagnostic cap. --theory-phase positive solved sat in 19-26s. The full-stats positive run had 5773 SAT conflicts, 33056 decisions, 30739 LRA online checks, 40504 pivots, 5.88M pivot row updates, 478M pivot term ops, and solve-us 19.7M.",
         "default_contrast": "The 45s default/negative partial runs did not solve and accumulated roughly 1.36-1.38B pivot term ops. This keeps pivot/fill-in as the local cost, but shows polarity can decide whether that cost is spent on a useful sat branch.",
         "ten_file_probe": "At a local 60s cap, Primo --theory-phase positive solved 2/10 tropical files: constraint-199552 and constraint-223827. OpenSMT :verbosity 1 also solved exactly those 2/10 in this local cap. This is below OpenSMT's 5/10 at the 300s SLURM division run, so longer SLURM evaluation is still needed.",
         "offset_equalities": "The stale H7 paragraph that said offset equalities were untested was corrected. D3 remains closed by the D1/D3 sweep; offset equalities are not the tropical lead from this probe."
       },
-      "outcome": "Next plausible cheap tropical experiment: an auto positive-phase rule for the tropical shape (single huge assertion, many OR/equality atoms, many positive theory atoms, no ITEs), evaluated first on the 10-file tropical set and then against the full QF_LRA division for regressions. Do not promote from local evidence alone.",
+      "outcome": "Next plausible cheap tropical experiment: an auto positive-phase rule for the tropical shape (single huge assertion, many OR/equality atoms, many positive theory atoms, no ITEs), evaluated first on the 10-file tropical set and then against the full QF_LRA division for regressions. Difference logic is plausible only as a hybrid or special recognizer for the guarded comparison/min subgraph; a pure RDL handoff cannot cover these instances because of the sum-definition layer. Do not promote from local evidence alone.",
       "evidence_status": "diagnostic"
     }
   ]
