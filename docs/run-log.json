@@ -18472,7 +18472,7 @@
       "recorded_at": "2026-08-04",
       "kind": "implementation-fuzz",
       "scope": "Follow-up optionization of the guarded Real equality distribution shortcut. Generic Real equality lowering remains default-on for correctness, while the guarded distribution shortcut is reachable only through --guarded-real-equality-lowering.",
-      "commit": "pending",
+      "commit": "81f9988",
       "branch": "main",
       "environment": {
         "type": "workstation",
