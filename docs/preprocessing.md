@@ -810,6 +810,40 @@ Generated assertions are ordinary `TermId` formulas using `mk_not`,
 they reuse the same SAT abstraction and congruence-closure code as user
 assertions.
 
+## QF_UFLRA Preprocessing Opportunities
+
+The 2026-08-04 full-corpus QF_UFLRA mining run at commit `77599f4` found 582
+files where Z3 solved in at most one second while default Primo timed out at
+five seconds. The committed follow-up manifest
+`benchmarks/qf_uflra-z3-fast-primo-timeout-100.txt` is the current optimization
+sample. The first model-equality/NO pass did not explain these gaps: the
+default-off model-equality branch solved only five more files, worsened PAR2,
+and learned no forced model-equality clauses on the full run because every
+mutation-forced candidate was already true at the SAT level.
+
+The next high-value opportunities therefore belong in preprocessing and
+SAT-visible arithmetic strengthening before adding broader Nelson-Oppen
+machinery:
+
+- recognize MathSAT-style pseudo-Boolean-over-Real encodings as LRA-local
+  finite-domain shapes, not only as UF finite-domain choice disjunctions;
+- add guarded SAT-visible at-most-one/exactly-one structure for repeated Real
+  domain choices such as `x = c0`, `x = c1`, ..., when the disequality/order
+  facts make the strengthening sound;
+- simplify large mixed Boolean/LRA disjunctions using top-level LRA unit facts
+  and solved Real definitions before SAT search;
+- reuse equality and bound definitions aggressively for repeated linear terms
+  and Real-valued UF proxies introduced by mixed purification;
+- profile representative files from the committed top-100 gap manifest before
+  choosing between LRA-domain preprocessing, stronger arithmetic propagation, or
+  Boolean encoding changes.
+
+These are planned opportunities, not implemented behavior. Any accepted pass
+must emit ordinary `TermId` assertions, preserve the preprocessing
+reconstruction trail for model-producing runs, include counters showing the
+recognizer and generated clauses are active, and be evaluated against the
+current SLURM QF_UFLRA baseline.
+
 ## Current Status
 
 Implemented:
