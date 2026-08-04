@@ -18361,6 +18361,7 @@
         "paper_extraction": "pdftotext -layout docs/papers/model-guided-no.pdf /tmp/model-guided-no.txt",
         "focused_unit": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
         "build_check_lint_docs": "cmake --build build --target primo -j2 && make check && make lint && make docs",
+        "test": "make test",
         "asan": "make asan-test",
         "diff_check": "git diff --check",
         "clang_tidy": "make tidy",
@@ -18389,6 +18390,7 @@
       "summary": {
         "focused_unit": "primo_qf_lra_solver_tests passed, including new assertions for :no.interface.model-equality-api-* counters in mutation-disabled and mutation-filtered paths.",
         "make_check": "13/13 CTest tests passed.",
+        "make_test": "13/13 CTest tests passed.",
         "asan": "13/13 ASAN CTest tests passed.",
         "local_fuzz": {
           "count": 1000,
