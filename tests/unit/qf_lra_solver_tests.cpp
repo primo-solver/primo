@@ -574,6 +574,36 @@ void theory_decisions_can_reach_a_conflict() {
   assert(undecided.statistics.get(StatKey::LraTheoryDecisions) == 0);
 }
 
+void model_phase_refreshes_from_tableau_assignment() {
+  // H5 model-based phase selection is deliberately weaker than
+  // --lra-theory-decisions: it never chooses the variable, only the SAT
+  // phase. The initial tableau assignment beta is x=0, so the two x <= ...
+  // atoms below start FALSE. The unit x <= -2 then moves beta(x) to -2,
+  // and the next quiescence point must refresh those phases to TRUE.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= x (- 2)))
+    (assert (or (<= x (- 1)) (<= y 0)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_model_phase;
+  with_model_phase.lra_model_phase = true;
+  const auto hinted = check_sat_smtlib(formula, with_model_phase);
+  assert(hinted.result == CheckSatResult::Sat);
+  assert(hinted.statistics.get(StatKey::LraModelPhaseRefreshes) >= 2);
+  assert(hinted.statistics.get(StatKey::LraModelPhaseHints) >
+         hinted.statistics.get(StatKey::TheoryAtoms));
+
+  CheckSatOptions without_model_phase;
+  const auto unhinted = check_sat_smtlib(formula, without_model_phase);
+  assert(unhinted.result == CheckSatResult::Sat);
+  assert(unhinted.statistics.get(StatKey::LraModelPhaseRefreshes) == 0);
+  assert(unhinted.statistics.get(StatKey::LraModelPhaseHints) == 0);
+}
+
 void row_based_propagation_can_reach_a_conflict() {
   // Same row (+ x y) as above, but the disjunction's other branch is also
   // ruled out (< w 1000), and the shared-polynomial atom is negated --
@@ -1487,6 +1517,7 @@ int main() {
   row_propagation_caps_are_options_not_constants();
   theory_decisions_drive_boolean_structure();
   theory_decisions_can_reach_a_conflict();
+  model_phase_refreshes_from_tableau_assignment();
   deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
   prints_lra_model_when_requested();

@@ -166,6 +166,8 @@ constexpr util::StatKey kStatLraRowPropagations = util::StatKey::LraRowPropagati
 constexpr util::StatKey kStatLraBidirectionalRowPropagations =
     util::StatKey::LraBidirectionalRowPropagations;
 constexpr util::StatKey kStatLraTheoryDecisions = util::StatKey::LraTheoryDecisions;
+constexpr util::StatKey kStatLraModelPhaseRefreshes = util::StatKey::LraModelPhaseRefreshes;
+constexpr util::StatKey kStatLraModelPhaseHints = util::StatKey::LraModelPhaseHints;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -4609,7 +4611,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
                       bool propagation_enabled, bool row_propagation_enabled,
                       bool bidirectional_row_propagation_enabled,
                       const LraRowPropagationLimits& limits, bool theory_decisions_enabled,
-                      util::Statistics& statistics)
+                      bool model_phase_enabled, bool model_phase_backtrack_may_change_beta,
+                      sat::CadicalBackend& backend, util::Statistics& statistics)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
@@ -4618,6 +4621,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
         bidirectional_row_propagation_enabled_(bidirectional_row_propagation_enabled),
         limits_(limits),
         theory_decisions_enabled_(theory_decisions_enabled),
+        model_phase_enabled_(model_phase_enabled),
+        model_phase_backtrack_may_change_beta_(model_phase_backtrack_may_change_beta),
+        backend_(backend),
         statistics_(statistics) {
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
@@ -4626,6 +4632,8 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     }
     observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     assigned_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    model_phase_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    model_phase_dirty_bound_vars_.assign(prepared_.base_tableau.variable_count(), 0);
     atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, theory_atoms_.size());
     for (std::size_t i = 0; i < theory_atoms_.size(); ++i) {
       const BooleanClausifier::TheoryAtom& atom = theory_atoms_[i];
@@ -4633,6 +4641,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       observed_vars_[static_cast<std::size_t>(var)] = 1;
       atom_index_by_var_[static_cast<std::size_t>(var)] = i;
     }
+    refresh_model_phases();
   }
 
 #if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
@@ -4688,6 +4697,9 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     pending_.clear();
     reason_stream_active_lit_ = 0;
     reason_stream_index_ = 0;
+    if (model_phase_backtrack_may_change_beta_) {
+      mark_all_model_phases_dirty();
+    }
   }
 
   // Unconditional `true` is sound, but only because this propagator runs in
@@ -4842,6 +4854,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
 #if PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR
   bool cb_has_external_clause(bool& is_forgettable) override {
     run_deferred_check_if_needed();
+    refresh_model_phases_if_ready();
     if (!conflict_.has_value()) {
       return false;
     }
@@ -4853,6 +4866,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
 #else
   bool cb_has_external_clause() override {
     run_deferred_check_if_needed();
+    refresh_model_phases_if_ready();
     if (!conflict_.has_value()) {
       return false;
     }
@@ -4906,6 +4920,10 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     if (!prepared_atom.is_arithmetic) {
       return;
     }
+    const bool bound_var_was_basic = tableau_.is_basic(prepared_atom.bound_var);
+    const theory::arithmetic::DeltaRational bound_var_assignment_before =
+        tableau_.assignment(prepared_atom.bound_var);
+    const std::size_t elimination_pivots_before = tableau_.elimination_pivot_count();
     const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
     const bool atom_value = atom.lit.value > 0 ? lit > 0 : lit < 0;
     const AssignedTheoryAtom assigned =
@@ -4929,6 +4947,16 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
       // conflict branch, so check() alone wouldn't even rediscover it.)
       needs_check_ = false;
       return;
+    }
+    if (tableau_.elimination_pivot_count() != elimination_pivots_before) {
+      mark_all_model_phases_dirty();
+    } else if (!bound_var_was_basic &&
+               tableau_.assignment(prepared_atom.bound_var) != bound_var_assignment_before) {
+      mark_model_phase_bound_var_dirty(prepared_atom.bound_var);
+      for (const theory::arithmetic::LraVarId affected_row :
+           tableau_.occurs_in(prepared_atom.bound_var)) {
+        mark_model_phase_bound_var_dirty(affected_row);
+      }
     }
     if (propagation_enabled_) {
       scan_for_propagations(atom_index, prepared_atom.bound_var);
@@ -4981,16 +5009,107 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
     const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
     conflict_ = tableau_.check();
+    const std::size_t pivot_delta = tableau_.pivot_count() - pivots_before;
     statistics_.increment(kStatLraBlandFallbacks,
                           tableau_.bland_fallback_count() - fallbacks_before);
     statistics_.increment(kStatLraSoiMultiRowConflicts,
                           tableau_.soi_multi_row_conflict_count() - multi_row_conflicts_before);
     statistics_.increment(kStatLraSoiQuickxplainCalls,
                           tableau_.soi_quickxplain_call_count() - quickxplain_calls_before);
-    statistics_.increment(kStatLraPivots, tableau_.pivot_count() - pivots_before);
+    statistics_.increment(kStatLraPivots, pivot_delta);
     statistics_.increment(kStatLraPivotRowUpdates,
                           tableau_.row_update_count() - row_updates_before);
     statistics_.increment(kStatLraPivotTermOps, tableau_.row_term_op_count() - term_ops_before);
+    if (!conflict_.has_value() && pivot_delta != 0) {
+      mark_all_model_phases_dirty();
+    }
+  }
+
+  std::optional<sat::Lit> model_phase_literal(std::size_t atom_index) const {
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+    if (!prepared_atom.is_arithmetic ||
+        prepared_atom.relation == theory::arithmetic::LraRelation::Eq) {
+      return std::nullopt;
+    }
+    const BoundAssertion true_assertion =
+        bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                        prepared_atom.asserts_lower_when_true, /*atom_value=*/true);
+    const theory::arithmetic::DeltaRational& beta = tableau_.assignment(prepared_atom.bound_var);
+    const bool atom_holds =
+        true_assertion.is_upper ? beta <= true_assertion.value : beta >= true_assertion.value;
+    const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+    return sat::Lit{atom_holds ? atom.lit.value : -atom.lit.value};
+  }
+
+  void refresh_model_phases_if_ready() {
+    if (conflict_.has_value() || !model_phase_enabled_ ||
+        (!model_phase_all_dirty_ && model_phase_dirty_bound_var_list_.empty())) {
+      return;
+    }
+    refresh_model_phases();
+  }
+
+  void refresh_model_phases() {
+    if (!model_phase_enabled_) {
+      return;
+    }
+    statistics_.increment(kStatLraModelPhaseRefreshes);
+    if (model_phase_all_dirty_) {
+      for (std::size_t atom_index = 0; atom_index < theory_atoms_.size(); ++atom_index) {
+        refresh_model_phase_atom(atom_index);
+      }
+    } else {
+      for (const theory::arithmetic::LraVarId bound_var : model_phase_dirty_bound_var_list_) {
+        const auto found = prepared_.atoms_by_bound_var.find(bound_var);
+        if (found == prepared_.atoms_by_bound_var.end()) {
+          continue;
+        }
+        for (const std::size_t atom_index : found->second) {
+          refresh_model_phase_atom(atom_index);
+        }
+      }
+    }
+    clear_model_phase_dirty_vars();
+  }
+
+  void refresh_model_phase_atom(std::size_t atom_index) {
+    const std::optional<sat::Lit> phase_lit = model_phase_literal(atom_index);
+    if (!phase_lit.has_value()) {
+      return;
+    }
+    const int var = phase_lit->value > 0 ? phase_lit->value : -phase_lit->value;
+    if (model_phase_by_var_[static_cast<std::size_t>(var)] == phase_lit->value) {
+      return;
+    }
+    model_phase_by_var_[static_cast<std::size_t>(var)] = phase_lit->value;
+    backend_.phase(*phase_lit);
+    statistics_.increment(kStatLraModelPhaseHints);
+  }
+
+  void mark_model_phase_bound_var_dirty(theory::arithmetic::LraVarId bound_var) {
+    if (!model_phase_enabled_ || model_phase_all_dirty_ ||
+        bound_var >= model_phase_dirty_bound_vars_.size() ||
+        model_phase_dirty_bound_vars_[bound_var] != 0) {
+      return;
+    }
+    model_phase_dirty_bound_vars_[bound_var] = 1;
+    model_phase_dirty_bound_var_list_.push_back(bound_var);
+  }
+
+  void mark_all_model_phases_dirty() {
+    if (!model_phase_enabled_) {
+      return;
+    }
+    clear_model_phase_dirty_vars();
+    model_phase_all_dirty_ = true;
+  }
+
+  void clear_model_phase_dirty_vars() {
+    for (const theory::arithmetic::LraVarId bound_var : model_phase_dirty_bound_var_list_) {
+      model_phase_dirty_bound_vars_[bound_var] = 0;
+    }
+    model_phase_dirty_bound_var_list_.clear();
+    model_phase_all_dirty_ = false;
   }
 
   // Scans the other atoms sharing `slack` with the atom that was just
@@ -5191,9 +5310,15 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   bool bidirectional_row_propagation_enabled_;
   LraRowPropagationLimits limits_;
   bool theory_decisions_enabled_;
+  bool model_phase_enabled_;
+  bool model_phase_backtrack_may_change_beta_;
+  sat::CadicalBackend& backend_;
   util::Statistics& statistics_;
   std::vector<char> observed_vars_;
   std::vector<char> assigned_;
+  std::vector<int> model_phase_by_var_;
+  std::vector<char> model_phase_dirty_bound_vars_;
+  std::vector<theory::arithmetic::LraVarId> model_phase_dirty_bound_var_list_;
   std::vector<int> var_trail_;
   std::vector<std::size_t> atom_index_by_var_;
   std::vector<std::size_t> checkpoints_;
@@ -5209,6 +5334,7 @@ class OnlineLraPropagator final : public CaDiCaL::ExternalPropagator {
   // tableau_.check() eagerly per literal, resolved lazily by
   // run_deferred_check_if_needed() (called from cb_has_external_clause()).
   bool needs_check_ = false;
+  bool model_phase_all_dirty_ = true;
   // cb_decide()'s rotating position (competitiveness-roadmap item 8):
   // gives cb_decide() a stable, persistent round-robin order over
   // arithmetic atoms across calls, rather than always restarting from
@@ -5250,7 +5376,9 @@ CheckSatOutcome solve_qf_lra_impl(
   OnlineLraPropagator online_propagator(
       prepared_theory, clausifier.theory_atoms(), options.lra_propagation,
       options.lra_row_propagation, options.lra_bidirectional_row_propagation,
-      options.lra_row_propagation_limits, options.lra_theory_decisions, statistics);
+      options.lra_row_propagation_limits, options.lra_theory_decisions, options.lra_model_phase,
+      options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination, backend,
+      statistics);
   backend.connect_external_propagator(&online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;

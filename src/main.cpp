@@ -244,6 +244,10 @@ int main(int argc, char** argv) {
                "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
                "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
                "literal itself instead of leaving every decision to generic VSIDS [default: off]");
+  app.add_flag("--lra-model-phase", solver_options.lra_model_phase,
+               "Enable experimental QF_LRA model-based SAT phase hints: keep CaDiCaL's "
+               "variable choice, but refresh arithmetic atom polarity from the current "
+               "tableau assignment at quiescence points [default: off]");
   app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
                  "QF_LRA Check/Pivot variable-selection rule: sparse (default -- prices "
                  "what a pivot costs: among the entering candidates that all repair the "

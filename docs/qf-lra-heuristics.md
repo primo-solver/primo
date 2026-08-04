@@ -17,7 +17,7 @@ order they were proposed, not the order they were implemented.
 | [H2](#h2) | Small-rational fast path in `util::Rational` | implemented, default |
 | [H3](#h3) | Fill-in-aware (Markowitz-style) entering-variable selection | implemented, default |
 | [H4](#h4) | Batched bound assertion (deferred `update()`) | design only |
-| [H5](#h5) | Model-based phase selection | design only |
+| [H5](#h5) | Model-based phase selection | implemented, **opt-in** -- needs measurement |
 | [H6](#h6) | A difference-logic fast path | design only |
 | [H7](#h7) | Fixed-variable elimination (equality slacks) | implemented, **opt-in** -- did not clear its bar |
 | [H8](#h8) | Merge instead of sort in `pivot`'s affected-row loop | implemented, default; **zero regressions** |
@@ -892,11 +892,23 @@ all** -- the bound is already satisfied. That is a genuine
 override: VSIDS keeps its ordering, so a family whose search needs VSIDS
 focus loses nothing.
 
-Mechanism: CaDiCaL's `phase(lit)`/`unphase(lit)` forced-phase API, already
-exposed by the adapter as `CadicalBackend::phase(Lit)`
-(`src/sat/cadical_backend.cpp`). Refresh phases lazily for the atoms whose
-truth under β changed, at the same quiescence point item 6 uses -- not per
-assignment.
+Mechanism: CaDiCaL's `phase(lit)` forced-phase API, already exposed by the
+adapter as `CadicalBackend::phase(Lit)` (`src/sat/cadical_backend.cpp`).
+Implemented behind `--lra-model-phase` in `OnlineLraPropagator`: it stores a
+reference to the SAT backend, keeps the last phase literal per observed
+arithmetic atom, and refreshes phase literals at the same quiescence point
+item 6 uses -- not per assignment. Refreshes are dirty-variable scoped after
+ordinary non-basic Assert-Bound moves (the moved variable plus basic rows
+that mention it), and fall back to a full scan after a successful
+`LraTableau::check()` performs pivots, since pivots may change many β values
+at once. They also fall back to a full scan after backtracking in the two
+modes whose pop can restore pivot/assignment state (`PivotingRule::Soi` and
+`--lra-fixed-elimination`); ordinary bounds-only backtracking does not change
+β and so does not dirty phases by itself. The truth test is over
+`LraTableau::assignment(bound_var)` and the
+same `DeltaRational` `bound_assertion()` encoding used by assertion and
+propagation, so strict inequalities are handled in the symbolic-delta
+ordering rather than by rounding.
 
 **Interpretation to test:** the hypothesis is that item 8's win came mostly
 from "decide atoms that need no theory work", and only incidentally from
@@ -908,8 +920,22 @@ informative negative result either way.
 
 **Risk: low.** Phase hints cannot affect soundness; the worst case is a
 worse search order. Keep `--lra-theory-decisions` as-is (it stays a useful
-lever for its file shape) and add this as a separate flag rather than
-replacing it.
+lever for its file shape) and keep this as a separate opt-in flag unless the
+tropical/sc/uart target set and a broad-regression bar both clear. The
+implementation is observable through `:lra.model-phase.refreshes` and
+`:lra.model-phase.hints`.
+
+**First local measurement (2026-08-04, diagnostic only).** The focused
+manifest `benchmarks/qf-lra-h5-evaluation.txt` has three slices: the old
+item-8 TM/sc/uart dramatic-gap rows, rows verified locally where default
+Primo is slower than both OpenSMT and Yices (`sc-21`, `uart-25`,
+`tta_startup/simple_startup_12nodes.missing` under a 1.5x/50ms rule), and
+one tropical sentinel. At 10s on the workstation, default and
+`--lra-model-phase` both solve 12/13 with the tropical sentinel timing out;
+PAR2 moves 24.08s to 23.36s. The direction is mixed: H5 helps the sc rows
+and the added `tta_startup` reference-slower row, but hurts two added uart
+rows (`uart-15`, `uart-25`). This is enough to keep the opt-in experiment,
+not enough to promote it.
 
 (h6)=
 ### H6 -- A difference-logic fast path

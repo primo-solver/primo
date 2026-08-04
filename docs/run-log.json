@@ -13115,6 +13115,109 @@
         "This set is a hard sample, not a division result: it under-weights the families primo is strongest on. The division comparison of the same day is the headline measurement, not this one."
       ],
       "outcome": "The promotion bar now has a fourth reference, and it moves the reading of the mid-band campaign: against OpenSMT that band is -32, not -7."
+    },
+    {
+      "id": "2026-08-04-qf-lra-tropical-source-review-local",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "profiling",
+      "scope": "Local first-pass QF_LRA tropical-matrix source review after reading docs/papers/fast-linear-arithmetic-dpllt.md; short timeout counter sweep plus one representative option matrix, not a headline benchmark.",
+      "commit": "67daa27",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo at 67daa27; reference binaries present under contrib/local/bin but only used for a 15s smoke on one representative file.",
+        "notes": "The worktree had unrelated untracked file 'resume'. The gprof binary was tried on constraint-199552.smt2 with --max-theory-conflicts 80, but was interrupted after 99.88s before producing useful profile data."
+      },
+      "command": {
+        "tropical_counter_sweep": "for f in tmp/QF_LRA/tropical-matrix/*.smt2; do timeout 8s ./build/primo --quiet --stats \"$f\"; done",
+        "representative_option_matrix": "timeout 15s ./build/primo --quiet --stats [default | --lra-theory-decisions | --lra-row-propagation --lra-bidirectional-row-propagation with all row caps 256 | --lra-fixed-elimination | --lra-pivoting-rule dantzig | --lra-pivoting-rule bland | --top-level-or-tseitin] tmp/QF_LRA/tropical-matrix/constraint-199552.smt2"
+      },
+      "benchmark": {
+        "suite": "tmp/QF_LRA/tropical-matrix/*.smt2 (10 files)",
+        "logic": "QF_LRA",
+        "timeout_seconds": "8 for the 10-file counter sweep; 15 for the representative option matrix"
+      },
+      "summary": {
+        "counter_sweep": "All 10 tropical files timed out at 8s locally. Preprocessing was small (roughly 14ms-113ms reported before timeout), while :lra.pivot-term-ops reached about 85M-222M per file and :lra.pivot-row-updates about 0.85M-2.16M, so the immediate local bottleneck is tableau pivot/fill-in work rather than parsing or preprocessing.",
+        "representative_default": "constraint-199552.smt2 at 15s default timed out with sat.conflicts 222, sat.decisions about 7.2k, lra.online-check-calls about 5.0k, lra.pivots about 20.0k, lra.pivot-row-updates about 3.72M, and lra.pivot-term-ops about 413.6M.",
+        "option_matrix": "--lra-theory-decisions was actively bad on the representative file (about 1.9M SAT decisions and 1.9M online checks in 15s). Row+bidirectional propagation with caps 256 and --lra-fixed-elimination reduced pivot-term work somewhat but still timed out. --top-level-or-tseitin increased clauses and did not help. Dantzig/Bland changed pivot counts but did not remove the fill-in bottleneck."
+      },
+      "caveats": [
+        "Local timeout-killed runs are diagnostic only; use SLURM artifacts before making promotion or headline claims.",
+        "The option matrix covered one representative file, constraint-199552.smt2, because the goal was source triage rather than benchmark evaluation.",
+        "No OpenSMT or Yices source was inspected; reference solvers were treated only as behavioral comparators under the clean-room policy."
+      ],
+      "outcome": "Source-review leads: prioritize QF_LRA model-based phase hints (H5) and batched bound assertion/deferred update (H4), add observability for update() row visits/term work, and deprioritize top-level-OR Tseitin and round-robin theory decisions for tropical-matrix."
+    },
+    {
+      "id": "2026-08-04-qf-lra-h5-model-phase-local",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "benchmark",
+      "scope": "Implementation and local diagnostic evaluation of H5 model-based QF_LRA phase hints, including additional rows where default Primo is locally slower than both OpenSMT and Yices plus one tropical sentinel.",
+      "commit": "67daa27 plus uncommitted H5 implementation changes",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo rebuilt from the H5 worktree; references contrib/local/bin/yices-smt2 and contrib/local/bin/opensmt used only for behavioral timing comparison.",
+        "notes": "Local workstation timing only. Results are evidence for keeping the option as an experiment, not for default promotion. No OpenSMT or Yices source was inspected."
+      },
+      "command": {
+        "reference_scan": "python3 local runner over benchmarks/qf-lra-h5-evaluation.txt, timeout 5s, solvers: ./build/primo --quiet, contrib/local/bin/yices-smt2, contrib/local/bin/opensmt; wrote results/qf-lra-h5-local-20260804/reference-scan.csv",
+        "default": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_LRA --manifest benchmarks/qf-lra-h5-evaluation.txt --solver ./build/primo --solver-arg=--quiet --timeout 10 --out results/qf-lra-h5-local-20260804/default.csv --summary results/qf-lra-h5-local-20260804/default-summary.csv",
+        "model_phase": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_LRA --manifest benchmarks/qf-lra-h5-evaluation.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--lra-model-phase --timeout 10 --out results/qf-lra-h5-local-20260804/model-phase.csv --summary results/qf-lra-h5-local-20260804/model-phase-summary.csv"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-h5-evaluation.txt (13 files: item-8 TM/sc/uart rows, OpenSMT/Yices-slower rows, and one tropical-matrix sentinel)",
+        "logic": "QF_LRA",
+        "timeout_seconds": "5 for the reference scan, 10 for default vs --lra-model-phase"
+      },
+      "summary": {
+        "reference_slow_rows": "Under the 1.5x and >50ms local rule, default Primo was slower than both Yices and OpenSMT on sc/sc-21.induction3.cvc.smt2 (0.208s vs Yices 0.028s/OpenSMT 0.105s), uart/uart-25.induction.cvc.smt2 (0.523s vs 0.036s/0.288s), and tta_startup/simple_startup_12nodes.missing.induct.smt2 (1.237s vs 0.065s/0.493s). uart-15 was also slower than both but below the stricter 1.5x margin on the repeated scan.",
+        "default_vs_h5": "Both default and --lra-model-phase solved 12/13, with tropical-matrix/constraint-199552.smt2 timing out in both. PAR2 moved from 24.080948 to 23.356696 at 10s.",
+        "per_file_signal": "H5 improved TM/p-DepotsNum, sc-17, sc-19, sc-21, sc-27, uart-18, and tta_startup/simple_startup_12nodes.missing; it regressed TM/p6, uart-16, uart-17, uart-15, and uart-25. The tropical sentinel still timed out."
+      },
+      "caveats": [
+        "The H5 source changes were uncommitted when this local diagnostic was recorded; re-run before making any default or headline claim.",
+        "Workstation timings are short and noisy; the option needs SLURM evaluation on the focused manifest and a broad regression bar before promotion.",
+        "This run used default Primo as the reference for the additional row selection; the selection is a local diagnostic, not a full mined division comparison against the OpenSMT/Yices SLURM artifacts."
+      ],
+      "outcome": "H5 is implemented behind --lra-model-phase and remains opt-in. The broadened evaluation set lives in benchmarks/qf-lra-h5-evaluation.txt; local evidence is mixed but slightly positive on the focused PAR2, with clear uart regressions preventing default promotion."
+    },
+    {
+      "id": "2026-08-04-qf-lra-h5-model-phase-fuzzsmt-local",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "fuzz",
+      "scope": "Merge-gate QF_LRA FuzzSMT run for opt-in H5 model-based SAT phase hints.",
+      "commit": "67daa27 plus uncommitted H5 implementation changes",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "binary": "build/primo rebuilt from the H5 worktree; references z3 and contrib/local/bin/yices-smt2 used only for answer comparison."
+      },
+      "command": {
+        "fuzz": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --lra-model-phase' --refs z3 yices-smt2 --logic QF_LRA --count 1000 --timeout 5 --fuzzer-args '-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf-lra-h5-model-phase-fuzzsmt-20260804 --seed 60804",
+        "summary": "python3 local CSV counter over fuzz-results/qf-lra-h5-model-phase-fuzzsmt-20260804/summary.csv"
+      },
+      "benchmark": {
+        "suite": "1000 generated FuzzSMT QF_LRA instances",
+        "logic": "QF_LRA",
+        "timeout_seconds": 5,
+        "seed": 60804,
+        "artifact": "fuzz-results/qf-lra-h5-model-phase-fuzzsmt-20260804"
+      },
+      "summary": {
+        "outcomes": "994 PASS, 6 TIMEOUT, 0 wrong answers, 0 crashes, 0 parser/type errors, 0 reference disagreements.",
+        "answers": "Primo returned sat on 870 generated inputs, unsat on 124, and timed out on 6. The reference pair agreed on 999 inputs; one timeout case had z3=sat and yices-smt2=TIMEOUT.",
+        "timeout_artifacts": "Timeout-only inputs were copied by the harness to fuzz-results/qf-lra-h5-model-phase-fuzzsmt-20260804/bugs: files 62, 410, 427, 443, 814, and 897."
+      },
+      "caveats": [
+        "Timeout-only fuzz cases are performance artifacts, not correctness failures.",
+        "This is a local merge gate for an opt-in heuristic; it is not a campaign gate for default promotion."
+      ],
+      "outcome": "No correctness blocker was found for keeping --lra-model-phase as an opt-in QF_LRA heuristic."
     }
   ]
 }

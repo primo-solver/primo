@@ -166,6 +166,8 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.online-check-calls"sv,
     ":lra.bidirectional-row-propagations"sv,
     ":lra.theory-decisions"sv,
+    ":lra.model-phase.refreshes"sv,
+    ":lra.model-phase.hints"sv,
     ":rational.promotions"sv,
     ":rational.big-operations"sv,
     ":lra.tableau-vars"sv,

@@ -164,6 +164,8 @@ enum class StatKey : std::size_t {
   LraOnlineCheckCalls,
   LraBidirectionalRowPropagations,
   LraTheoryDecisions,
+  LraModelPhaseRefreshes,
+  LraModelPhaseHints,
   RationalPromotions,
   RationalBigOperations,
   LraTableauVars,

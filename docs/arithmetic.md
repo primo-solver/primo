@@ -90,6 +90,16 @@ alternatives considered before/while implementing it.
   rewritten to. This is a supported minimal LRA model subset, not a mixed
   QF_UFLRA model: Real functions, arrays, nonlinear arithmetic, and
   Nelson-Oppen combination models remain unsupported.
+- **Model-based SAT phase hints** (heuristics item H5, `check_sat.cpp`,
+  **opt-in** via `CheckSatOptions::lra_model_phase` / `--lra-model-phase`):
+  `OnlineLraPropagator` keeps CaDiCaL's VSIDS variable choice but refreshes
+  arithmetic atom polarities from the current tableau assignment β at
+  quiescence points. For each arithmetic atom, it evaluates the atom's TRUE
+  bound using the same `DeltaRational` `bound_assertion()` representation
+  used by Assert-Bound and same-variable propagation, then calls
+  `CadicalBackend::phase()` only when the preferred literal changed since
+  the previous refresh. This is a search hint only; it does not add clauses,
+  propagations, or theory decisions.
 - **QF_LRA fragment boundary** (`Frontend::declare_fun`): QF_LRA accepts free
   constants, but rejects non-nullary `declare-fun` declarations. Uninterpreted
   functions or predicates over arithmetic terms are QF_UFLRA/NO work, not pure
@@ -661,7 +671,7 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
 ### QF_LRA options and statistics reference
 
 Every `--lra-*` option, its default, and where its evidence lives. Verified
-against `CheckSatOptions` and `--help` on 2026-07-30.
+against `CheckSatOptions` and `--help` on 2026-08-04.
 
 | option | default | what it does |
 |---|---|---|
@@ -671,6 +681,7 @@ against `CheckSatOptions` and `--help` on 2026-07-30.
 | `--lra-row-propagation` | **off** | Row/interval implied bounds (roadmap item 2). |
 | `--lra-bidirectional-row-propagation` | **off** | Reverse direction: tighten a row term from the row's own bound (item 7). Requires `--lra-row-propagation`. |
 | `--lra-theory-decisions` | **off** | Theory-supplied decision literals via `cb_decide` (item 8). |
+| `--lra-model-phase` | **off** | H5 beta-based phase hints for arithmetic atoms; keeps VSIDS variable choice. |
 | `--lra-fixed-elimination` | **off** | Item H7 (LP presolve's fixed-variable removal, Andersen & Andersen 1995). Opt-in; see its falsifier outcome. |
 | `--lra-row-propagation-max-row-size` | 64 | Longest row row-propagation will derive a bound for. |
 | `--lra-row-propagation-max-fanout` | 64 | Most rows one bound change may scan. |
@@ -704,6 +715,7 @@ of each affected row, not once per row.
 | `:lra.theory-conflicts` | theory conflicts reported to the SAT solver |
 | `:lra.theory-propagations` | literals propagated by the theory |
 | `:lra.theory-decisions` | decisions supplied via `cb_decide` |
+| `:lra.model-phase.refreshes` / `:lra.model-phase.hints` | H5 phase-refresh scans and changed hints sent to CaDiCaL |
 | `:lra.online-check-calls` | `LraTableau::check()` calls from the online propagator |
 | `:lra.pivots` | **repair** pivots inside `check()` only -- see the caveat below |
 | `:lra.pivot-row-updates` | rows rewritten by pivots (Markowitz column factor) |
