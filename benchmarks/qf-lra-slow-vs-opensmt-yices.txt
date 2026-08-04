@@ -1,0 +1,86 @@
+# QF_LRA instances where Primo is slower than both OpenSMT and Yices.
+# Root: tmp/QF_LRA
+# Selection input: bench_qf_uf_full.py CSVs for primo, opensmt, yices.
+# Criteria: OpenSMT and Yices solved and agreed; Primo did not give a
+# wrong answer; Primo timed out or was at least 2x and 0.5s slower than the slower reference.
+# Representative cap: up to 100 per family, 100 total.
+# Candidate rows: 76; selected: 76.
+# Selected family counts:
+#   LassoRanker: 73
+#   miplib: 3
+LassoRanker/CooperatingT2/eric.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2
+miplib/pp08a-1000.smt2
+LassoRanker/CooperatingT2/eric.t2.c_Iteration1_Loop_7-phaseTemplate.smt2
+miplib/pp08a-2000.smt2
+LassoRanker/Ultimate/OpposedDisjuncts.bpl_Iteration1_Lasso_5-phaseTemplate.smt2
+miplib/opt1217--1.smt2
+LassoRanker/Ultimate/Gulwani.bpl_Iteration1_Lasso_6-phaseTemplate.smt2
+LassoRanker/Ultimate/OpposedDisjuncts.bpl_Iteration1_Lasso_6-phaseTemplate.smt2
+LassoRanker/SV-COMP/min_rf_true-termination.c_Iteration1_Loop_6-phaseTemplate.smt2
+LassoRanker/Ultimate/Gcd_havoc.bpl_Iteration1_Lasso_6-phaseTemplate.smt2
+LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_5-nestedTemplate.smt2
+LassoRanker/Ultimate/GulwaniResetBranchOnly.bpl_Iteration1_Lasso_4-pieceTemplate.smt2
+LassoRanker/Ultimate/BradleyMannaSipma-2005ICALP-Fig1-deterministic.bpl_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/polyrank4.t2.c_Iteration10_Loop_7-phaseTemplate.smt2
+LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex5_true-termination.c_Iteration2_Lasso_4-phaseTemplate.smt2
+LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex6_true-termination.c_Iteration1_Lasso_4-pieceTemplate.smt2
+LassoRanker/Ultimate/simple-scaled250.bpl_Iteration1_Lasso_4-nestedTemplate.smt2
+LassoRanker/Ultimate/yPositive-SIscaled100.bpl_Iteration1_Loop_5-phaseTemplate.smt2
+LassoRanker/SV-COMP/CookSeeZuleger-2013TACAS-Fig3_true-termination.c_Iteration1_Loop_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/bsort100.t2.c_Iteration13_Loop_4-pieceTemplate.smt2
+LassoRanker/CooperatingT2/disj_nightmare.t2.c_Iteration1_Loop_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/disj_nightmare.t2.c_Iteration2_Loop_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/ex11.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/Ultimate/OpposedDisjuncts.bpl_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/collatz.t2.c_Iteration3_Loop_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/toeplz.c.i.toeplz.pl.t2.fixed.t2.c_Iteration9_Loop_7-phaseTemplate.smt2
+LassoRanker/Ultimate/simple-scaled200.bpl_Iteration1_Lasso_3-lexTemplate.smt2
+LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex6_true-termination.c_Iteration2_Lasso_7-phaseTemplate.smt2
+LassoRanker/Ultimate/Gcd_havoc.bpl_Iteration1_Lasso_3-pieceTemplate.smt2
+LassoRanker/Ultimate/Canberra.bpl_Iteration1_Loop_6-phaseTemplate.smt2
+LassoRanker/SV-COMP/joey_false-termination.c_Iteration2_Loop_7-phaseTemplate.smt2
+LassoRanker/Ultimate/OpposedDisjuncts.bpl_Iteration1_Loop_7-phaseTemplate.smt2
+LassoRanker/SV-COMP/NoriSharma-2013FSE-Fig7_true-termination.c_Iteration1_Loop_7-phaseTemplate.smt2
+LassoRanker/SV-COMP/KroeningSharyginaTsitovichWintersteiger-2010CAV-Fig1_true-termination.c_Iteration1_Lasso_5-phaseTemplate.smt2
+LassoRanker/Ultimate/SyntaxSupportBooleans5.bpl_Iteration1_Loop_4-pieceTemplate.smt2
+LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex2_true-termination.c_Iteration1_Lasso_4-pieceTemplate.smt2
+LassoRanker/CooperatingT2/broydn.c.i.broydn.pl.t2.fixed.t2.c_Iteration8_Loop_7-phaseTemplate.smt2
+LassoRanker/Ultimate/simple-scaled200.bpl_Iteration1_Lasso_6-nestedTemplate.smt2
+LassoRanker/CooperatingT2/sas2.t2.c_Iteration6_Lasso_5-phaseTemplate.smt2
+LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex1_true-termination.c_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/p-43.t2.c_Iteration2_Loop_4-pieceTemplate.smt2
+LassoRanker/CooperatingT2/sas2.t2.c_Iteration3_Lasso_5-phaseTemplate.smt2
+LassoRanker/CooperatingT2/toeplz.t2.c_Iteration2_Loop_3-pieceTemplate.smt2
+LassoRanker/CooperatingT2/toeplz.c.i.toeplz.pl.t2.fixed.t2.c_Iteration2_Loop_3-pieceTemplate.smt2
+LassoRanker/Ultimate/yPositive-SIscaled50.bpl_Iteration1_Loop_5-phaseTemplate.smt2
+LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_6-nestedTemplate.smt2
+LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex6_true-termination.c_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/Ultimate/Canberra.bpl_Iteration1_Lasso_6-phaseTemplate.smt2
+LassoRanker/CooperatingT2/afagp-fail.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_7-nestedTemplate.smt2
+LassoRanker/Ultimate/simple-scaled200.bpl_Iteration1_Lasso_5-nestedTemplate.smt2
+LassoRanker/Ultimate/yPositive-SIscaled75.bpl_Iteration1_Loop_4-phaseTemplate.smt2
+LassoRanker/Ultimate/NoriSharma-2013FSE-Fig7.bpl_Iteration1_Loop_7-phaseTemplate.smt2
+LassoRanker/Ultimate/yPositive-SIscaled50.bpl_Iteration1_Loop_6-phaseTemplate.smt2
+LassoRanker/Ultimate/Gcd_havoc.bpl_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/SV-COMP/NoriSharma-2013FSE-Fig8_true-termination.c_Iteration1_Loop_5-phaseTemplate.smt2
+LassoRanker/CooperatingT2/magic.t2.c_Iteration23_Loop_7-phaseTemplate.smt2
+LassoRanker/SV-COMP/TelAviv-Amir-Minimum_true-termination.c_Iteration1_Loop_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/elmhes.t2.c_Iteration2_Loop_7-phaseTemplate.smt2
+LassoRanker/Ultimate/Canberra.bpl_Iteration1_Loop_4-pieceTemplate.smt2
+LassoRanker/CooperatingT2/hongyi1.t2.c_Iteration9_Loop_4-phaseTemplate.smt2
+LassoRanker/SV-COMP/Masse_true-termination.c_Iteration1_Loop_3-pieceTemplate.smt2
+LassoRanker/SV-COMP/BradleyMannaSipma-2005ICALP-Fig1_true-termination.c_Iteration1_Lasso_6-phaseTemplate.smt2
+LassoRanker/Ultimate/simple-scaled250.bpl_Iteration1_Lasso_7-nestedTemplate.smt2
+LassoRanker/CooperatingT2/toeplz.t2.c_Iteration2_Loop_7-phaseTemplate.smt2
+LassoRanker/Ultimate/BradleyMannaSipma-2005ICALP-Fig1-deterministic.bpl_Iteration1_Lasso_4-pieceTemplate.smt2
+LassoRanker/CooperatingT2/sas2.t2.c_Iteration7_Loop_5-phaseTemplate.smt2
+LassoRanker/CooperatingT2/sas2.t2.c_Iteration1_Lasso_5-phaseTemplate.smt2
+LassoRanker/CooperatingT2/toeplz.t2.c_Iteration9_Loop_7-phaseTemplate.smt2
+LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex6_true-termination.c_Iteration2_Lasso_6-phaseTemplate.smt2
+LassoRanker/CooperatingT2/ludcmp.t2.c_Iteration7_Loop_6-phaseTemplate.smt2
+LassoRanker/Ultimate/Cairo2.bpl_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/sas2.t2.c_Iteration5_Lasso_4-lexTemplate.smt2
+LassoRanker/Ultimate/NonTerminationDifficult.bpl_Iteration1_Lasso_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/ludcmp.c.i.ludcmp.pl.t2.fixed.t2.c_Iteration8_Loop_6-phaseTemplate.smt2
+LassoRanker/CooperatingT2/matrixsqrt.t2.c_Iteration12_Loop_4-pieceTemplate.smt2

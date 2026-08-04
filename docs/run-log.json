@@ -18241,6 +18241,51 @@
         "No OpenSMT, Yices, or other solver source was inspected."
       ],
       "outcome": "The clean IPASIR-UP merge is compatible with H5 after resolving OnlineLraPropagator to depend on sat::IpasirUpBackend instead of CadicalBackend. H5 remains opt-in; the focused local result is positive but not enough for default promotion."
+    },
+    {
+      "id": "2026-08-04-qf-lra-slow-vs-opensmt-yices-set",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "benchmark-set",
+      "scope": "Created a reusable QF_LRA manifest of instances where Primo is slower than both OpenSMT and Yices, selected from focused local triage over the full division's known separating families, then attempted the requested SLURM preflight.",
+      "commit": "3512bc5 solver binary for local triage; manifest and selector committed in the adjacent benchmark-set commit",
+      "environment": {
+        "type": "local triage plus blocked SLURM preflight",
+        "host": "workspace for local triage; private SLURM cluster access unavailable in this container",
+        "binary": "build/primo --quiet at git 3512bc5; references contrib/local/bin/opensmt v2.9.2 and contrib/local/bin/yices-smt2 2.7.0 used only for timing and answer comparison"
+      },
+      "command": {
+        "focused_source_manifest": "Generated results/qf-lra-slow-both-focused-source-20260804.txt from benchmarks/qf-lra-full-division.txt, keeping families LassoRanker, 2017-Heizmann-UltimateInvariantSynthesis, 2019-ezsmt, miplib, and tropical-matrix (634 files).",
+        "local_triad": "For each solver in {primo=build/primo --quiet, opensmt=contrib/local/bin/opensmt, yices=contrib/local/bin/yices-smt2}, ran scripts/bench_qf_uf_full.py --repo . --root tmp/QF_LRA --manifest results/qf-lra-slow-both-focused-source-20260804.txt --timeout 5 --shards 8 over all shard indices; artifact results/qf-lra-slow-both-focused-triage-20260804-123923/.",
+        "selection": "python3 scripts/select_qf_lra_slow_vs_opensmt_yices.py --primo 'results/qf-lra-slow-both-focused-triage-20260804-123923/primo.shard-*.csv' --opensmt 'results/qf-lra-slow-both-focused-triage-20260804-123923/opensmt.shard-*.csv' --yices 'results/qf-lra-slow-both-focused-triage-20260804-123923/yices.shard-*.csv' --timeout 5 --min-ratio 2 --min-abs-gap 0.5 --per-family 100 --limit 100 --out benchmarks/qf-lra-slow-vs-opensmt-yices.txt",
+        "local_cross_check": "python3 scripts/compare_solver_answers.py results/qf-lra-slow-both-focused-triage-20260804-123923 --timeout 5",
+        "slurm_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_lra_scrambled_compare.sbatch; bash -n scripts/slurm_qf_lra_scrambled_compare.sbatch",
+        "slurm_preflight_blocker": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --remote-dir primo-qflra-slow-both --target primo"
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-slow-vs-opensmt-yices.txt",
+        "source_suite": "benchmarks/qf-lra-full-division.txt via focused local triage",
+        "logic": "QF_LRA",
+        "root": "tmp/QF_LRA",
+        "timeout_seconds": 5,
+        "artifacts": [
+          "results/qf-lra-slow-both-focused-source-20260804.txt",
+          "results/qf-lra-slow-both-focused-triage-20260804-123923/",
+          "benchmarks/qf-lra-slow-vs-opensmt-yices.txt"
+        ]
+      },
+      "summary": {
+        "selection": "76 selected files: 73 LassoRanker and 3 miplib. Both OpenSMT and Yices solved and agreed on every selected file; Primo had no wrong answers on solved rows.",
+        "selected_set_5s_counts": "On the selected 76 rows from the local triage, Primo solved 10 and timed out on 66 (PAR2 698.209 at 5s); OpenSMT solved 76 (PAR2 163.572); Yices solved 76 (PAR2 97.807).",
+        "focused_triad_counts": "Across the 634-file focused source set at 5s: Primo solved 155/PAR2 5028.7, OpenSMT 220/PAR2 4491.8, Yices 315/PAR2 3632.1; zero cross-solver disagreements and zero non-standard unsolved reasons.",
+        "gap_shape": "The selected set is intentionally concentrated in LassoRanker because the prior full-division SLURM run identified LassoRanker as the largest margin against both references; the strict local filter found only three additional miplib rows where both references also solved under 5s. Median selected-set gap was 2.28s against the slower reference, with 66 Primo timeouts at the 5s local cap."
+      },
+      "slurm_status": {
+        "status": "blocked_before_submission",
+        "reason": "The required SSH config /tmp/llm2smt_slurm_ssh_config was absent in this container, so the SLURM workspace check-only step could not contact the cluster and no sbatch job id exists.",
+        "validated_locally": "scripts/slurm_qf_lra_scrambled_compare.sbatch passed scripts/slurm_validate_sbatch.py and bash -n before the blocked workspace preflight."
+      },
+      "evidence_status": "local_manifest_created_slurm_blocked"
     }
   ]
 }
