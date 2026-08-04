@@ -18430,7 +18430,7 @@
       "recorded_at": "2026-08-04",
       "kind": "implementation-benchmark-fuzz",
       "scope": "Option 2 tropical experiment: distribute a single guarded Real equality directly to two guarded inequalities in the existing Real-equality lowering pass.",
-      "commit": "7e9c91f",
+      "commit": "b8dde6e",
       "branch": "qflra-tropical-investigation",
       "environment": {
         "type": "workstation",
