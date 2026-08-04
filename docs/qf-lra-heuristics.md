@@ -1053,9 +1053,62 @@ cost definitions present in this family, and can materially change search on a
 single instance. It does not solve the tropical family, and the mixed local
 evidence is why it remains an option rather than a default. Before using it as
 performance evidence, run a SLURM A/B over all 10 tropical files and the full
-QF_LRA division for regressions. The next tropical work should still focus on
-the mixed Boolean/arithmetic search shape or a hybrid treatment of the
-difference-logic subgraph plus sum-definition layer.
+QF_LRA division for regressions.
+
+#### T2 -- Row propagation on top of T1: rejected, 2026-08-04
+
+The obvious follow-up, and the one this branch was opened for: T1 leaves a
+leaner CNF (5,460 vars / 10,059 clauses against the pre-T1 6,108 / 11,355), and
+the family's census is 70-72% unary/binary atoms whose residue is exactly the
+`out = a + b` cost rows that `compute_implied_child_bound` is built to exploit.
+Row propagation had only ever been tried on the pre-T1 encoding. **Measured on
+all 10 files at 60s, it rejects at every cap setting.**
+
+| config | solved / 10 at 60s |
+|---|---:|
+| `--guarded-real-equality-lowering` (baseline) | **1** |
+| + row/bidirectional propagation, default caps | **0** |
+| + both at 128 | **0** |
+| + both at 1024 | **0** |
+
+Not neutral -- a regression. Every propagation configuration *loses*
+`constraint-199552`, the one file the baseline solves.
+
+**The experiment is well-controlled, and the counters explain it.** On
+`constraint-199552` at a short diagnostic cap:
+
+| config | pivots | pivot term ops | row props | bidi props |
+|---|---:|---:|---:|---:|
+| T1 only | **7,679** | **128M** | -- | -- |
+| + propagation, default caps | 64,272 | 1,013M | 2,088 | 128 |
+| + propagation at 128 | 64,272 | 1,013M | 2,088 | 128 |
+| + propagation at 1024 | 64,272 | 1,013M | 2,088 | 128 |
+
+Two things follow. First, the mechanism definitely ran -- 2,088 row
+propagations, so this is not a null result from code that never fired. Second,
+and decisively, **the counters are identical across all three cap settings**:
+unlike the mid-band files that motivated D1 (fanout reaching 521, rows of 91
+terms), tropical's fanout and row sizes never approach even the default caps,
+so raising them changes nothing. The caps were never the binding constraint
+here. What propagation does instead is *hurt*: 8.4x the pivots and 7.9x the
+term ops against T1 alone, perturbing the search away from the cheap branch T1
+finds.
+
+No SLURM A/B and no fuzz gate were run, because nothing is being promoted; this
+is a local diagnostic recorded as such in `docs/run-log.json`.
+
+**Where this leaves the family.** T2's rejection and the independent structural
+result in [](tropical-matrix-structure.md) bound the same conclusion from
+opposite sides. That note reads the actual encoding -- a tropical/arctic
+semiring where each quantity is a paired Boolean `-infinity` flag and Real value
+-- and shows by measurement that *removing* the guards is 27x slower, because
+the guard is what lets the solver skip the arithmetic entirely. So the encoding
+is already close to the right shape for a lazy solver: it needs neither more
+propagation (T2) nor fewer guards. The residual cost is structural fill-in
+(rows going from 2.44 to ~102 terms, ~42x), with `:lra.fixed-variables` and
+`:lra.elimination-pivots` both zero. The two live leads are recorded there --
+`m`-flag-first decision ordering, and relevancy propagation -- and neither is
+a pivoting-rule or propagation-cap question.
 
 (h6)=
 ### H6 -- A difference-logic fast path

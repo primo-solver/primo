@@ -18535,6 +18535,45 @@
         "scripts": "scratchpad only (guard_check2.py, unguard.py); not committed -- the note records the method and the counts, and the rewrite is a four-line regex substitution reproducible from the note."
       },
       "follow_up": "Two leads recorded in docs/tropical-matrix-structure.md: L1, prefer m-flag variables in decision order (cheap, the Boolean layer is self-contained over 36 free inputs and the solved run shows 15,766 decisions against 93 conflicts); L2, relevancy propagation to avoid asserting theory atoms under already-satisfied guards (literature-backed, absent from Primo, needs a paper note first). Neither is implemented."
+    },
+    {
+      "id": "2026-08-04-qf-lra-tropical-t1-row-propagation-rejected",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "parameter-tuning",
+      "scope": "Local A/B of row and bidirectional row propagation layered on top of T1 (--guarded-real-equality-lowering) over all 10 tropical-matrix files, sweeping the four propagation caps. Tests whether T1's leaner CNF makes propagation pay off on the out = a + b cost rows, a combination never measured before: propagation had only been tried on the pre-T1 encoding. Rejected.",
+      "commit": "a83243a",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo, Release",
+        "notes": "14 cores; sweep ran one solver process at a time. Local diagnostic screen, not a SLURM benchmark claim. No SLURM A/B and no fuzz gate were run because nothing is promoted by this result."
+      },
+      "command": {
+        "manifest": "benchmarks/qf-lra-tropical-matrix.txt (all 10 sandbox/non-incremental/QF_LRA/tropical-matrix files)",
+        "timeout_seconds": 60,
+        "baseline": "build/primo --quiet --stats --guarded-real-equality-lowering <file>",
+        "propagation": "same plus --lra-row-propagation --lra-bidirectional-row-propagation, with the four cap options at default, 128 and 1024",
+        "driver": "scripts/bench_tropical_matrix_sweep.py"
+      },
+      "result": {
+        "solved": {
+          "t1_only": "1/10 (constraint-199552, 4.214s)",
+          "t1_rowprop_default_caps": "0/10",
+          "t1_rowprop_128": "0/10",
+          "t1_rowprop_1024": "0/10"
+        },
+        "mechanism_fired": "Yes: 2,088 :lra.row-propagations and 128 :lra.bidirectional-row-propagations on constraint-199552. Not a null result from code that never ran.",
+        "caps_not_binding": "Pivots, term ops and both propagation counters are IDENTICAL at default, 128 and 1024 caps (64,272 pivots / 1,012,810,802 term ops / 2,088 / 128). Unlike the mid-band files behind D1 (fanout 521, rows of 91 terms), tropical never approaches even the default caps, so the caps were never the binding constraint.",
+        "cost": "Against T1 alone on constraint-199552 (7,679 pivots, 128.4M term ops), propagation gives 64,272 pivots and 1,013M term ops -- 8.4x the pivots and 7.9x the term ops -- and loses the file.",
+        "conclusion": "Rejected at every cap setting tested. Propagation is not neutral on this family, it is a regression: it loses the single file the baseline solves. Combined with the separate finding that unguarding the definitions is 27x slower (see 2026-08-04-qf-lra-tropical-matrix-structure-analysis), the encoding needs neither more propagation nor fewer guards."
+      },
+      "artifacts": {
+        "results_dir": "results/tropical-t1-propagation/ (CSV per config plus fired-*.err counter dumps); local-only, not committed",
+        "write_up": "docs/qf-lra-heuristics.md section T2, and docs/tropical-matrix-structure.md for the structural half"
+      },
+      "follow_up": "Not a pivoting-rule or propagation-cap question. Live leads are recorded in docs/tropical-matrix-structure.md: m-flag-first decision ordering (cheap) and relevancy propagation (larger, absent from Primo, needs a paper note first)."
     }
   ]
 }
