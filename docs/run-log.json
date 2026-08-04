@@ -18286,6 +18286,50 @@
         "validated_locally": "scripts/slurm_qf_lra_scrambled_compare.sbatch passed scripts/slurm_validate_sbatch.py and bash -n before the blocked workspace preflight."
       },
       "evidence_status": "local_manifest_created_slurm_blocked"
+    },
+    {
+      "id": "2026-08-04-qf-lra-slow-vs-opensmt-yices-slurm-119178",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "benchmark-and-profile",
+      "scope": "Fresh SLURM validation of benchmarks/qf-lra-slow-vs-opensmt-yices.txt plus local profiling of a representative pivot-heavy selected instance.",
+      "commit": "899234f",
+      "environment": {
+        "type": "private SLURM cluster plus local workspace profiling",
+        "host": "private SLURM cluster details intentionally omitted; local profiling on workspace",
+        "binary": "remote build-slurm-rel/primo --quiet reported git 899234f and cadical-3.0.0-7b99c07; references were contrib/local/bin/opensmt v2.9.2 and contrib/local/bin/yices-smt2 2.7.0"
+      },
+      "command": {
+        "slurm_workspace": "scripts/slurm_prepare_benchmark_workspace.py archived tracked HEAD 899234f to the remote workspace, built --target primo, and --check-only verified git 899234f plus CaDiCaL before submission; scripts/slurm_stage_manifest_files.py staged the 76 manifest files under tmp/QF_LRA.",
+        "slurm_job": "Submitted job 119178 with scripts/slurm_qf_lra_scrambled_compare.sbatch, array 0-23, 3 solvers x 8 shards, PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-slow-vs-opensmt-yices.txt, PRIMO_COMPARE_TIMEOUT=60, PRIMO_COMPARE_SHARDS=8, solvers primo/OpenSMT/Yices.",
+        "analysis": "python3 scripts/compare_solver_answers.py results/qf-lra-slow-vs-opensmt-yices-slurm-119178 --timeout 60 plus a local CSV summarizer for slower-than-both counts and family counts.",
+        "profile_target": "tmp/QF_LRA/LassoRanker/CooperatingT2/eric.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+        "local_stats": "build/primo --quiet --stats profile_target; /usr/bin/time; timeout 20s ablations for default, --no-lra-sparse-leaving, --lra-pivoting-rule bland, and --lra-pivoting-rule dantzig.",
+        "local_profile": "perf record was attempted but blocked by perf_event_paranoid=4; rebuilt build-gprof with -pg and ran gprof on the same target."
+      },
+      "benchmark": {
+        "suite": "benchmarks/qf-lra-slow-vs-opensmt-yices.txt",
+        "logic": "QF_LRA",
+        "root": "tmp/QF_LRA",
+        "timeout_seconds": 60,
+        "slurm_job_id": "119178",
+        "artifacts": [
+          "results/qf-lra-slow-vs-opensmt-yices-slurm-119178/",
+          "slurm_logs/qf-lra-slowrefs-119178/",
+          "/tmp/primo-gprof-target.gprof",
+          "/tmp/primo-profile-target.err"
+        ]
+      },
+      "summary": {
+        "slurm_counts": "OpenSMT solved 76/76, PAR2 181.7; Yices solved 76/76, PAR2 102.7; Primo solved 61/76 and timed out on 15, PAR2 2924.4. All three had zero errors and zero cross-solver disagreements.",
+        "slower_than_both": "75/76 rows remained slower-than-both at 60s: 15 Primo timeouts with both references solved, plus 60 Primo-solved rows slower than both references. For the 60 solved-slow rows, median Primo/reference ratio against the slower reference was 6.42x, median absolute gap 13.14s; max gap 54.88s.",
+        "family_counts": "LassoRanker: Primo 58/73, OpenSMT 73/73, Yices 73/73. miplib: all three 3/3.",
+        "profile_default": "On eric.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2 locally, default Primo solved in 5.5-6.2s with 2015 pivots, 1,221,351 pivot row updates, and 73,146,715 pivot term ops (~606 row updates and ~36k term ops per pivot).",
+        "profile_gprof": "gprof attributed 71.05% self time to LraTableau::pivot. LraTableau::check was 0% self time, select_entering_variable and select_sparse_entering_variable were both 0% sampled self time, and can_enter was 0% sampled self time. update_violation_status was 2.19% self; rebuild_violated_vars 0.44% self.",
+        "leaving_selection": "Disabling sparse leaving did not reveal saved overhead; it made the target time out at 20s with 4943 pivots and 249,101,775 pivot term ops. Bland and Dantzig also timed out at 20s with 201,795,909 and 231,288,256 pivot term ops respectively. The evidence points to pivot rewrite/fill-in cost, not leaving-variable selection overhead.",
+        "next_mechanisms": "Local design notes still point to D2 floating-point-guided basis seeding and D4 revised simplex/LU basis representation as the plausible remaining pivot-cost directions; cheaper leaving selection is not supported by this profile."
+      },
+      "evidence_status": "current"
     }
   ]
 }
