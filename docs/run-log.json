@@ -18718,13 +18718,16 @@
         "preprocess_snapshots": "./build/primo --quiet --stats --preprocess-only <candidate>",
         "solve_snapshots": "timeout --signal=TERM --kill-after=2 5 ./build/primo --quiet --stats <candidate>",
         "profile_attempt": "perf record -F 99 -g ... failed with perf_event_paranoid=4",
-        "callgrind": "timeout --signal=TERM --kill-after=2 18 valgrind --tool=callgrind --callgrind-out-file=results/profiling/qf-uflra-preprocess-candidates/callgrind.mathsat.pb_real_20_0200_10_28.<timestamp> ./build/primo --quiet tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2"
+        "callgrind": "timeout --signal=TERM --kill-after=2 18 valgrind --tool=callgrind --callgrind-out-file=results/profiling/qf-uflra-preprocess-candidates/callgrind.mathsat.pb_real_20_0200_10_28.<timestamp> ./build/primo --quiet tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2",
+        "gprof_build": "cmake -S . -B build-gprof -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS_RELWITHDEBINFO='-O2 -g -DNDEBUG -pg' -DCMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO='-pg' -DCMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO='-pg' && cmake --build build-gprof --target primo -j4",
+        "gprof_run": "cd results/profiling/qf-uflra-preprocess-candidates/gprof-mathsat && timeout --signal=TERM --kill-after=2 8 /workspace/build-gprof/primo --quiet /workspace/tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_20_0200_10_28.smt2 && gprof /workspace/build-gprof/primo gmon.out > pb_real_20_0200_10_28.gprof.txt"
       },
       "artifacts": {
         "input_ranking": "results/qf-uflra-full-mine-z3-fast-default-timeout-77599f4-5s.csv",
         "top100_gap_manifest": "benchmarks/qf_uflra-z3-fast-primo-timeout-100.txt",
         "preprocessing_opportunity_manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
         "callgrind_profile": "results/profiling/qf-uflra-preprocess-candidates/callgrind.mathsat.pb_real_20_0200_10_28.*",
+        "gprof_profile": "results/profiling/qf-uflra-preprocess-candidates/gprof-mathsat/pb_real_20_0200_10_28.gprof.txt",
         "evidence_status": "current local triage evidence; callgrind profile is local ignored artifact, manifest is committed"
       },
       "summary": {
@@ -18757,6 +18760,15 @@
             "lra_theory_propagations": 19,
             "shared_real_pairs": 1711,
             "interface_equalities_propagated": 0
+          },
+          "gprof_flat_profile": {
+            "sample_seconds": 3.23,
+            "LraTableau::pivot_percent": 34.06,
+            "Rational::operator_multiply_percent": 26.93,
+            "Rational::operator_add_percent": 10.53,
+            "Rational::from_int128_reduced_percent": 5.57,
+            "LraTableau::update_percent": 5.26,
+            "PreparedLraTheory_constructor_percent": 2.79
           }
         },
         "representative_cpa": {
