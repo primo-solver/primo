@@ -36,7 +36,7 @@ notes it points to.
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
 | [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | ~1.20x median in its source | small | open |
 | [8](#lead-dl6) | DL6: decide precision statically before search | unknown | small | blocked on a DL solver |
-| [9](#lead-monotone) | Monotone (one-sided) variable elimination | 86,126 one-sided reals corpus-wide | small-medium | **reopened** on corpus evidence |
+| [9](#lead-monotone) | Monotone (one-sided) variable elimination | neutral on the promotion bar | done | **implemented, opt-in; did not clear its bar** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -287,6 +287,36 @@ sound on non-NNF input.
 against `:lra.rows` / `:lra.row-nonzeros`. If eliminating those columns does not
 reduce rows or fill-in materially, the lead closes for real this time, and it
 closes on solver counters rather than on a syntactic census.
+
+### Outcome: implemented, and it did not clear the promotion bar
+
+**Status: implemented behind `--monotone-elimination`, correctness-gated, and
+NOT promoted.** The prototype numbers below did not survive a real sample.
+
+Slurm job 119465, 237-file stratified sample, 10s bar, same binary both sides:
+
+| configuration | solved | PAR2 | wrong |
+|---|---:|---:|---:|
+| default | **174** | **1415.10** | 0 |
+| `--monotone-elimination` | 173 | 1432.84 | 0 |
+
+One file lost, none gained. Over the 71 instances both configurations solve in
+more than 0.2s the paired effect is **neutral** -- median ratio 0.997, p10
+0.986, p90 1.014, 147.9s against 149.1s in total. The lost file
+(`LassoRanker/.../byron-2...phaseTemplate`) is a genuine 3.5x slowdown rather
+than boundary churn: re-run at 120s it takes 3.14s by default and 10.91s with
+the pass. That single file accounts for 16.81 of the 17.75 PAR2 delta.
+
+Worth recording precisely because it is the trap this register exists for: a
+first cut of the analysis reported "faster on 57 files, slower on 1", which
+counted sub-second instances where the ratio is noise. On non-trivial
+instances the effect vanishes. Correctness held throughout -- zero wrong
+answers here, and a clean fuzz gate at job 119430 (3,000 cases, 0 wrong
+answers, 2,594 models validated, 0 invalid).
+
+The pass stays available as an option and its machinery -- polarity-aware
+one-sidedness detection, and postsolve model reconstruction -- is reusable.
+But nothing about it is proposed for default on this evidence.
 
 ### Prototype measurement, 2026-08-05
 

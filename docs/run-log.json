@@ -18856,6 +18856,44 @@
         "logs": "logs/primo-qflra-model-fuzz-119430-*.out|.err on the same host"
       },
       "follow_up": "Correctness gate satisfied for the opt-in pass. Still outstanding before any default change: a benchmark evaluation on the stratified sample, since performance evidence is currently two locally prototyped files (-10% and -36%)."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-elimination-stratified-sample",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "benchmark",
+      "scope": "Promotion-bar A/B for the opt-in --monotone-elimination pass: default Primo against the same binary with the flag, over the 237-file QF_LRA stratified sample at the standing 10s bar. Reference solvers deliberately not re-run; z3/cvc5 CSVs from job 114200 are unchanged.",
+      "commit": "c054811",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm, compute partition, node-01",
+        "remote_dir": "/home/janotmik/primo-monotone-c054811",
+        "binary": "build-slurm-rel/primo Release; both tasks logged 'git: c054811' and cadical-3.0.0-7b99c07",
+        "notes": "First submission (job 119463) failed in 11s: bench_qf_uf_full.py calls path.relative_to(repo), so benchmarks must live inside the workspace and a symlink to another checkout resolves outside it. Re-run after copying the 237 manifest files (344MB) into tmp/QF_LRA."
+      },
+      "command": {
+        "job_id": "119465",
+        "submit": "sbatch --array=0-1 --export=ALL,PRIMO_WORKDIR=<w>,PRIMO_COMPARE_TIMEOUT=10,'PRIMO_COMPARE_SOLVERS=primo-default=build-slurm-rel/primo --quiet;primo-monotone=build-slurm-rel/primo --quiet --monotone-elimination' scripts/slurm_qf_lra_solver_compare.sbatch",
+        "manifest": "benchmarks/qf-lra-stratified-sample.txt (237 files)",
+        "timeout_seconds": 10
+      },
+      "result": {
+        "default": "solved 174/237, PAR2 1415.098, wrong 0, unsupported 0",
+        "monotone": "solved 173/237, PAR2 1432.843, wrong 0, unsupported 0",
+        "verdict": "Does NOT clear the promotion bar: -1 solved and worse PAR2.",
+        "lost_file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2, default sat in 3.19s, monotone timed out. Re-run at a 120s budget it is a real 3.5x slowdown (3.14s vs 10.91s), not churn at the timeout boundary. Nothing was gained anywhere.",
+        "paired_effect": "Over the 71 files both configurations solve in more than 0.2s: median default/monotone ratio 0.997, p10 0.986, p90 1.014, monotone more than 10% faster on 5 and more than 10% slower on 1, total 147.9s against 149.1s. The effect is neutral, not positive.",
+        "par2_accounting": "PAR2 delta 17.75, of which the single lost file accounts for 16.81 -- essentially the whole regression.",
+        "correctness": "Zero wrong answers in both configurations, confirming the fuzz gate's result at benchmark scale.",
+        "retracted_intermediate": "A first cut of this analysis reported 'monotone faster on 57 files, slower on 1'. That counted files taking well under a second, where the ratio is noise. Restricted to non-trivial instances the effect disappears. The figure is recorded as retracted so it is not quoted from an intermediate log."
+      },
+      "artifacts": {
+        "remote_results": "/home/janotmik/primo-monotone-c054811/results/qf-lra-solver-compare-119465/{primo-default,primo-monotone}{,-summary}.csv; cluster-local",
+        "failed_first_attempt": "job 119463, no results, see environment note"
+      },
+      "follow_up": "The two prototype wins (-10% and -36% on single files) did not generalize. The pass stays opt-in and is not proposed for default. Lead 9 in docs/open-leads.md moves from reopened to evaluated-and-not-promoted."
     }
   ]
 }
