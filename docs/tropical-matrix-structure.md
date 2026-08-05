@@ -140,8 +140,10 @@ Also worth noting: `:lra.fixed-variables 0` and `:lra.elimination-pivots 0` --
 (leads)=
 ## What this suggests, ranked
 
-Neither is implemented; both are recorded here rather than in
-[](qf-lra-heuristics.md)'s item list until one is actually tried.
+None of these is implemented. They are recorded here rather than in
+[](qf-lra-heuristics.md)'s item list until one is actually tried, and
+[](open-leads.md) is the register that tracks their current status -- L3 in
+particular has since been downgraded there.
 
 **L1 -- Decide the `m` skeleton before the arithmetic (cheap).** The Boolean
 layer is *self-contained*: 468 unconditional definitions
@@ -178,35 +180,40 @@ pathological case. It also means L1 is a *small* change rather than a new
 mechanism -- it is the same `cb_decide()` hook with the filter inverted, and
 the existing option is a ready-made control to A/B against.
 
-**L3 -- Extend the pure-theory-filter to LRA atoms (cheapest of the three).**
-Primo already has a polarity-based relevance filter: `--pure-theory-filter`
-omits a theory literal from the theory assignment when the atom occurs only
-with the opposite polarity, on the argument that such an assignment cannot be
-what satisfies the Boolean abstraction ([](euf.md), from Sebastiani's survey
-§6.10). It is **implemented for QF_UF only** -- equality atoms, Boolean
-predicate applications, Boolean constants -- and is inert here:
+**L3 -- Extend the pure-theory-filter to LRA atoms. Downgraded 2026-08-05;
+the original version of this paragraph was wrong.** Primo has a
+polarity-based relevance filter, `--pure-theory-filter`, which omits a theory
+literal from the theory assignment when the atom occurs with only one polarity
+*and the solver assigned it the opposite way* ([](euf.md), from Sebastiani's
+survey §6.10).
+
+This entry originally read the counters below as showing that three quarters of
+the family's atoms were filterable, and that the mechanism did not reach LRA at
+all. **Both readings were wrong**, and the corrected analysis is in
+[](open-leads.md)'s lead 1. In short:
+
+- The rule is generic and the LRA side already *consumes* it; the QF_LRA path
+  simply calls an `assigned_atoms_from_backend` overload that hardcodes the
+  mode to `Off`, which is a two-line change and a documented scope decision
+  rather than a bug.
+- A pure-**positive** atom is filtered only when assigned **false**. On a
+  satisfiable guarded instance most are assigned true, so the 2,892 figure is
+  not a count of filterable atoms. With the two-line change applied,
+  `constraint-199552` reports identical counters either way -- 7,679 pivots
+  and 128.4M pivot term ops -- so the filter finds nothing to do here.
+
+The counters, kept because they are still an accurate description of the
+family's polarity structure, just not of the filter's opportunity:
 
 | counter on `constraint-199552` | value |
 |---|---:|
 | `:euf.theory-atoms` | 3,846 |
-| `:euf.pure-atoms.positive` | **2,892 (75%)** |
+| `:euf.pure-atoms.positive` | 2,892 |
 | `:euf.pure-atoms.negative` | 0 |
-| `:euf.pure-filter.enabled` | **0** |
-| `:euf.pure-literals.filtered` | **0** |
 
-So the polarity analysis already runs on this family and already finds that
-**three quarters of the theory atoms are pure-positive** -- and then filters
-none of them, because the mechanism does not apply to LRA. Ablating
-`--pure-theory-filter=on|off` confirms it: 4.152s against 4.150s, no effect
-whatsoever.
-
-This is a much smaller step than L2. It is the same soundness argument as the
-EUF case (a pure-positive atom assigned false cannot be what satisfies any
-clause, so its consistency need not be checked), reusing analysis that is
-already computed and already reported. It is a *static polarity* approximation
-of L2's *dynamic assignment* relevance -- weaker, but nearly free. The
-literature caveat carries over unchanged and is the thing to get right:
-filtered literals must never be used as theory-deduced premises.
+(`:euf.pure-filter.enabled` and `:euf.pure-literals.filtered` read 0 on any
+QF_LRA file because both are set inside `solve_qf_uf`, which is what made them
+misleading here.)
 
 **L2 -- Relevancy propagation (literature-backed, larger).** In DPLL(T) the SAT
 solver assigns *every* variable, including theory atoms sitting in clauses that
