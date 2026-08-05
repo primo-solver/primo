@@ -44,7 +44,11 @@ combination. It has these related pieces:
   arrangement/model validation otherwise cannot separate shared Real
   arguments.
 
-The missing parts are the paper's central mechanisms:
+The missing parts are the paper's central mechanisms. `TheoryCombinationManager`
+already provides shared interface bookkeeping for terms, equality atoms, SAT
+literals, and trailed equality values, but it is not a shared model object in
+the paper's sense: it does not own component model fragments, mutation state, or
+the current reconciled arrangement.
 
 - no generic model object carried by the DPLL(T) state;
 - no full or generic `M-Propagate` transition;

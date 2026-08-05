@@ -190,6 +190,15 @@ Required tests:
 After the two narrow optimizations above, the larger architectural step is to
 move from final-check loops toward a QF_UFLRA model state.
 
+Primo already has shared combination bookkeeping in `TheoryCombinationManager`.
+That class owns the interface term list, visible or generated interface equality
+registry, SAT literals for equality atoms, and a trailed
+`InterfaceEqualityValue` field. This is necessary shared interface state, but it
+is not yet the model state meant here. It does not own an EUF model, an LRA
+model, a reconciled arrangement/model view, mutation classifications, or
+absorbed equalities used only for final/model validation. Those objects are
+currently rebuilt in `solve_qf_uf_lra` as local final-check data.
+
 The first useful state object should record:
 
 - current shared Real terms;
@@ -267,4 +276,3 @@ Reject or revise it if:
 - the implementation only moves cost from SAT rechecks into more EUF push/pop
   probes;
 - the counters show the skipped population is negligible on the target sample.
-
