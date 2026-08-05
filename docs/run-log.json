@@ -18574,6 +18574,33 @@
         "write_up": "docs/qf-lra-heuristics.md section T2, and docs/tropical-matrix-structure.md for the structural half"
       },
       "follow_up": "Not a pivoting-rule or propagation-cap question. Live leads are recorded in docs/tropical-matrix-structure.md: m-flag-first decision ordering (cheap) and relevancy propagation (larger, absent from Primo, needs a paper note first)."
+    },
+    {
+      "id": "2026-08-05-qf-lra-tropical-lead-triage",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Triage of the two leads recorded in docs/tropical-matrix-structure.md, checking whether either is already implemented before proposing work. Establishes that both are untried, that the existing --lra-theory-decisions does the opposite of L1 and is catastrophic here, and that a third and cheaper lead (L3) exists because the pure-theory-filter machinery already computes what it needs but is gated to QF_UF.",
+      "commit": "c3748c0",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo, Release",
+        "notes": "Single-file diagnostic on constraint-199552.smt2. Local only."
+      },
+      "command": {
+        "l1_control": "build/primo --quiet --stats --guarded-real-equality-lowering [--lra-theory-decisions] constraint-199552.smt2",
+        "l3_ablation": "build/primo --quiet --guarded-real-equality-lowering --pure-theory-filter=on|off constraint-199552.smt2",
+        "code_check": "src/smt/check_sat.cpp cb_decide(): skips atoms where !prepared_atom.is_arithmetic"
+      },
+      "result": {
+        "l1_status": "Untried. --lra-theory-decisions is the nearest existing mechanism and does the inverse: cb_decide() decides arithmetic atoms first and defers Boolean flags to VSIDS.",
+        "l1_measurement": "Baseline 3.5s sat; with --lra-theory-decisions, timeout at 90s after 9,185,550 theory decisions. A falsification test of the structural reading that came out as predicted: deciding arithmetic before the flags that make it relevant is the pathological order.",
+        "l2_status": "Untried and genuinely absent -- no relevancy machinery in src/. The only adjacent thing is the polarity-based pure-theory-filter, which is L3.",
+        "l3_finding": "On constraint-199552: :euf.theory-atoms 3846, :euf.pure-atoms.positive 2892 (75%), :euf.pure-atoms.negative 0, :euf.pure-filter.enabled 0, :euf.pure-literals.filtered 0. The polarity analysis runs and finds three quarters of theory atoms pure-positive, then filters none, because the mechanism is implemented for QF_UF only. Ablation confirms inertness: --pure-theory-filter=on 4.152s vs off 4.150s."
+      },
+      "follow_up": "Ranked L3 (extend pure-theory-filter to LRA; cheapest, machinery already computes the answer), then L1 (invert the cb_decide filter; small, with --lra-theory-decisions as a ready-made control), then L2 (dynamic relevancy propagation; largest, needs a paper note first and should follow L3's outcome)."
     }
   ]
 }

@@ -158,6 +158,56 @@ polarity follow-up -- and the phase result is corroborating evidence, since
 `--theory-phase positive` helped by setting `m` literals true, i.e. by firing
 guards.
 
+**The infrastructure already exists, and currently does the exact opposite.**
+`--lra-theory-decisions` (item 8) supplies decision literals from
+`cb_decide()` instead of leaving them to VSIDS -- but its loop skips every
+atom with `!prepared_atom.is_arithmetic`, so it decides *arithmetic* atoms
+first, in round-robin, and reaches the Boolean flags only once every
+arithmetic atom is assigned. On this family that is precisely the worst
+possible order, and it is catastrophic in measurement:
+
+| config on `constraint-199552` | result |
+|---|---|
+| `--guarded-real-equality-lowering` | **3.5s**, sat |
+| the same plus `--lra-theory-decisions` | **timeout at 90s**, after 9,185,550 theory decisions |
+
+9.2M decisions and no answer, against 3.5s. This is a falsification test of the
+structural reading in [](#dont-care) that came out the predicted way: forcing
+the arithmetic to be decided before the flags that make it relevant is the
+pathological case. It also means L1 is a *small* change rather than a new
+mechanism -- it is the same `cb_decide()` hook with the filter inverted, and
+the existing option is a ready-made control to A/B against.
+
+**L3 -- Extend the pure-theory-filter to LRA atoms (cheapest of the three).**
+Primo already has a polarity-based relevance filter: `--pure-theory-filter`
+omits a theory literal from the theory assignment when the atom occurs only
+with the opposite polarity, on the argument that such an assignment cannot be
+what satisfies the Boolean abstraction ([](euf.md), from Sebastiani's survey
+§6.10). It is **implemented for QF_UF only** -- equality atoms, Boolean
+predicate applications, Boolean constants -- and is inert here:
+
+| counter on `constraint-199552` | value |
+|---|---:|
+| `:euf.theory-atoms` | 3,846 |
+| `:euf.pure-atoms.positive` | **2,892 (75%)** |
+| `:euf.pure-atoms.negative` | 0 |
+| `:euf.pure-filter.enabled` | **0** |
+| `:euf.pure-literals.filtered` | **0** |
+
+So the polarity analysis already runs on this family and already finds that
+**three quarters of the theory atoms are pure-positive** -- and then filters
+none of them, because the mechanism does not apply to LRA. Ablating
+`--pure-theory-filter=on|off` confirms it: 4.152s against 4.150s, no effect
+whatsoever.
+
+This is a much smaller step than L2. It is the same soundness argument as the
+EUF case (a pure-positive atom assigned false cannot be what satisfies any
+clause, so its consistency need not be checked), reusing analysis that is
+already computed and already reported. It is a *static polarity* approximation
+of L2's *dynamic assignment* relevance -- weaker, but nearly free. The
+literature caveat carries over unchanged and is the thing to get right:
+filtered literals must never be used as theory-deduced premises.
+
 **L2 -- Relevancy propagation (literature-backed, larger).** In DPLL(T) the SAT
 solver assigns *every* variable, including theory atoms sitting in clauses that
 are already satisfied by their guard; Primo then asserts those bounds into the
@@ -166,9 +216,12 @@ experiment made visible in extreme form. z3's answer is **relevancy
 propagation** (de Moura and Bjorner) -- track which atoms are relevant to the
 current partial assignment and never assert the irrelevant ones. This is absent
 from Primo and from [](papers/lra-related-work.md) entirely, and it targets
-exactly the structure documented above. It is the more principled of the two
-and much the larger piece of work; it should not be started before L1 has been
-tried, and it needs its own paper note first.
+exactly the structure documented above. It is the most principled of the three
+and much the largest piece of work; it should not be started before L1 and L3
+have been tried, and it needs its own paper note first. L3 is its cheap static
+approximation and is the honest first step toward it: if filtering on polarity
+alone moves this family, dynamic relevance is worth the investment; if it does
+not, that is evidence about the family before a large mechanism is built.
 
 **Explicitly not suggested:** any further guard-simplification preprocessing
 (closed by [](#unguarding)), and any attempt to exploit the DAG by eager
