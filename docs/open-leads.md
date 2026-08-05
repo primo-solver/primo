@@ -35,7 +35,7 @@ notes it points to.
 | [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | zero as a wiring fix; the filter reaches only the once-called final check | large if done properly | **downgraded**; merge into lead 5 |
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
 | [2b](#lead-two-lra-paths) | **TODO: the two QF_LRA solve paths diverge in behaviour** | 40x on one file, identical encodings | unknown | **filed; blocked on NO being under construction** |
-| [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 1.42x median in its source | **small** | open |
+| [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
@@ -270,6 +270,34 @@ Primo uses `4 * vars_.size() + 64`.
 
 **Falsifier.** No improvement in solved count or PAR2 on the 237-file
 stratified sample against both existing leaving policies.
+
+### Outcome: implemented, did not clear the bar, and corroborated the source
+
+Slurm job 119530, 237 files, 10s, same binary all three ways:
+
+| leaving policy | solved | PAR2 | wrong |
+|---|---:|---:|---:|
+| shortest-row (current default) | **174** | **1415.97** | 0 |
+| least-violated + short-row tie-break (this lead) | 167 | 1543.92 | 0 |
+| most-violated, Dantzig-style | 162 | 1653.46 | 0 |
+
+**Complementarity**, the first application of [](#complementarity): against the
+default it gained 2 and lost 9; against most-violated it gained 12 and lost 7.
+Virtual best of all three is 177, of default plus this rule 176, against the
+default's 174.
+
+**And the caveat in that section immediately earns its place.** Both gained
+files are boundary churn, not capability: at 120s the default solves
+`rand_80_340_1159656267_18.lp` in 14.73s (against 2.99s) and
+`0051-labyrinth-12-0` in 10.10s (against 6.60s). So the portfolio case is
+weak. The 5x on the first file is a real per-instance speedup, but "solves
+what the default cannot" is not what happened.
+
+**The result that does matter.** This rule beats the *other* existing policy
+by 5 solved and 110 PAR2, gaining 12 files against it. Griggio's actual rule
+really is better than the most-violated rule this project's docs had
+attributed to him -- independent support, on our own benchmarks, that the
+attribution corrected in [](papers/griggio-mathsat-thesis.md) was wrong.
 
 (lead-aep)=
 ## 4. Adaptive Early Pruning

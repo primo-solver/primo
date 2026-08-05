@@ -19013,6 +19013,38 @@
         "ruled_out": "NOT the observed-variable set. solve_qf_lra observes all 3,846 theory atoms while solve_qf_uf_lra observes only the 2,892 arithmetic ones, which looked like the obvious cause. Restricting the pure path to observe only arithmetic atoms does not help: still a 180s timeout, at 307,336 pivots, slightly worse. Also NOT Nelson-Oppen doing useful work -- it no-ops for lack of shared real terms."
       },
       "follow_up": "Filed as a TODO in docs/open-leads.md rather than fixed, on instruction: Nelson-Oppen is heavily under construction in another branch and this sits in solve_qf_uf_lra and the dispatch, both of which that work touches. Two paths producing identical encodings and wildly different searches is a behaviour bug regardless of which is faster; the goal is convergence, and 'always assume NO' is a legitimate route since on a single theory the combination layer should reduce to nothing. The remaining check is to diff the two solve LOOPS, not their setup, which is already known to agree."
+    },
+    {
+      "id": "2026-08-05-qf-lra-least-violated-leaving-rule",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "benchmark",
+      "scope": "Promotion-bar three-way for lead 3: MathSAT's actual leaving-variable rule (Griggio thesis 2.5.3 p.53, least-violated first with short-row tie-break) against both leaving policies Primo already had. First evaluation to apply the complementarity criterion from docs/open-leads.md.",
+      "commit": "dfb83f8",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm, compute partition, node-07",
+        "remote_dir": "/home/janotmik/primo-leaving-dfb83f8",
+        "binary": "build-slurm-rel/primo Release; all three tasks logged 'git: dfb83f8'"
+      },
+      "command": {
+        "job_id": "119530",
+        "manifest": "benchmarks/qf-lra-stratified-sample.txt (237 files)",
+        "timeout_seconds": 10,
+        "solvers": "shortrow-default (current default); most-violated (--no-lra-sparse-leaving); least-violated (--lra-least-violated-leaving)"
+      },
+      "result": {
+        "shortrow_default": "solved 174/237, PAR2 1415.974, wrong 0",
+        "most_violated": "solved 162/237, PAR2 1653.456, wrong 0",
+        "least_violated": "solved 167/237, PAR2 1543.921, wrong 0",
+        "verdict": "Does NOT clear the promotion bar. The new rule sits between the two existing policies: 7 solved behind the shortest-row default, 5 ahead of Dantzig-style most-violated.",
+        "complementarity": "least-violated vs default: gained 2, lost 9. least-violated vs most-violated: gained 12, lost 7. Virtual best of all three 177/237; of default+least-violated 176/237 against the default's 174.",
+        "churn_check": "The two gained files are boundary effects, not capability, per the caveat in docs/open-leads.md. Re-run at 120s the default solves both: rand_80_340_1159656267_18.lp in 14.73s (against 2.99s) and 0051-labyrinth-12-0 in 10.10s (against 6.60s). So the portfolio case is weak -- though the first is a genuine 5x per-instance speedup.",
+        "corroborates_the_primary_source": "least-violated beats most-violated by 5 solved and 110 PAR2, gaining 12 files against it. Griggio's actual rule really is better than the most-violated rule Primo's docs had attributed to him -- which is independent support for that attribution having been wrong, on this project's own benchmarks rather than on the thesis's numbers."
+      },
+      "follow_up": "Lead 3 closed for default promotion; kept as an option. The attribution correction in docs/papers/griggio-mathsat-thesis.md and docs/papers/lra-related-work.md now has local empirical support, not only the primary source."
     }
   ]
 }
