@@ -19147,7 +19147,7 @@
     {
       "id": "2026-08-05-qf-uflra-interface-arrangement-local-gate",
       "date": "2026-08-05",
-      "commit": "uncommitted-interface-arrangement-fix",
+      "commit": "7763845",
       "host": "local-workspace",
       "scope": "Local validation for restricting QF_UFLRA final arrangement/model reconstruction to shared Real interface terms",
       "command": "cmake --build build --target primo_qf_lra_solver_tests primo -j4 && ./build/primo_qf_lra_solver_tests; make lint; make check; make docs; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260805 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-interface-arrangement-20260805; ./build/primo --quiet --stats --nelson-oppen-arrangement-probe-limit=1 <representative-cpachecker-kbfiltr-file>",
@@ -19189,6 +19189,135 @@
       },
       "outcome": "Accepted as a correctness and invariant gate for the source change, not as performance-win evidence. The new unit tests cover EUF-only Real constants being excluded from final arrangement and model reconstruction. The representative CPAchecker timeout still has 105 common EUF/LRA Real interface terms and filters none of them, so the remaining CPAchecker gap is genuine shared-interface explosion rather than broad EUF-only leakage.",
       "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-05-qf-uflra-interface-arrangement-slurm-sample-60s",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "benchmark",
+      "scope": "QF_UFLRA preprocessing opportunity sample after restricting final arrangement to shared Real interface terms, default vs candidate final scan vs Z3, 60s timeout",
+      "commit": "7763845",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "slurm_job_id": "omitted from committed run log per cluster privacy policy; recorded in the agent transcript"
+      },
+      "command": "PRIMO_COMPARE_TIMEOUT=60 sbatch scripts/primo_qfuflra_iface_45m.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "default; --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 45,
+        "timeout_seconds": 60
+      },
+      "artifacts": [
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-iface-<job-id>-0.out",
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-iface-<job-id>-1.out",
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-iface-<job-id>-2.out",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/default-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/candidate-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/default.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/candidate.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3.csv"
+      ],
+      "supersedes": [
+        {
+          "job": "previous 20-minute SLURM submission, omitted from committed run log per cluster privacy policy",
+          "reason": "The Z3 array task finished, but the default and candidate Primo array tasks hit the batch wall limit before merged CSV summaries were written. The 45-minute submission repeated the same 60s-per-instance comparison and completed."
+        }
+      ],
+      "summary": {
+        "default": {
+          "total": 45,
+          "solved": 26,
+          "timeout": 19,
+          "wrong": 0,
+          "par2": 2569.220419,
+          "families": {
+            "mathsat": {"solved": 18, "timeout": 7},
+            "cpachecker-induction-svcomp14": {"solved": 8, "timeout": 11},
+            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+          },
+          "selected_stats": {
+            "model_real_terms_before_interface_filter": 3840,
+            "model_real_terms_filtered": 67,
+            "shared_real_terms": 3773,
+            "model_separation_candidates": 134245,
+            "lra_extra_atom_probes": 1174141,
+            "lra_extra_atoms_probed": 16027054,
+            "arrangement_lra_extra_atom_probes": 15474,
+            "arrangement_lra_extra_atoms_probed": 14868387,
+            "lra_to_euf_equalities": 6513,
+            "lra_to_euf_rechecks": 309,
+            "sat_equalities_forced": 3552
+          }
+        },
+        "candidate_final_scan": {
+          "total": 45,
+          "solved": 28,
+          "timeout": 17,
+          "wrong": 0,
+          "par2": 2218.235007,
+          "families": {
+            "mathsat": {"solved": 20, "timeout": 5},
+            "cpachecker-induction-svcomp14": {"solved": 8, "timeout": 11},
+            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+          },
+          "selected_stats": {
+            "model_real_terms_before_interface_filter": 3840,
+            "model_real_terms_filtered": 67,
+            "shared_real_terms": 3773,
+            "model_separation_candidates": 204846,
+            "candidate_final_scan_pairs": 49155,
+            "candidate_final_scan_equalities": 21605,
+            "lra_extra_atom_probes": 506050,
+            "lra_extra_atoms_probed": 22458798,
+            "arrangement_lra_extra_atom_probes": 22066,
+            "arrangement_lra_extra_atoms_probed": 21974814,
+            "lra_to_euf_equalities": 21605,
+            "lra_to_euf_rechecks": 1177,
+            "sat_equalities_forced": 11462
+          }
+        },
+        "z3": {
+          "total": 45,
+          "solved": 45,
+          "timeout": 0,
+          "wrong": 0,
+          "par2": 5.65906,
+          "families": {
+            "mathsat": {"solved": 25, "timeout": 0},
+            "cpachecker-induction-svcomp14": {"solved": 19, "timeout": 0},
+            "cpachecker-bmc-svcomp14": {"solved": 1, "timeout": 0}
+          }
+        },
+        "comparison_to_previous_sample": {
+          "baseline_commit": "f9bd054",
+          "default_solved_delta": 0,
+          "candidate_solved_delta": 0,
+          "default_par2_before": 2673.602478,
+          "default_par2_after": 2569.220419,
+          "candidate_par2_before": 2338.964269,
+          "candidate_par2_after": 2218.235007,
+          "default_arrangement_atoms_probed_before": 21327061,
+          "default_arrangement_atoms_probed_after": 14868387,
+          "candidate_arrangement_atoms_probed_before": 30122029,
+          "candidate_arrangement_atoms_probed_after": 21974814
+        }
+      },
+      "outcome": "Accepted as current SLURM evidence for the shared-interface final-arrangement fix at a 60s timeout. The invariant change produced no wrong answers and reduced broad arrangement probe work, but solved counts did not improve on this sample: default remains 26/45 and candidate final scan remains 28/45. Only 67 of 3840 EUF model Real terms were filtered out, so the MathSAT/CPAchecker gap is dominated by genuine shared-interface arrangement traffic rather than accidental EUF-only Real constants. Candidate mode remains default-off.",
+      "evidence_status": "current-slurm"
     }
   ]
 }
