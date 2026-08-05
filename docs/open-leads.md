@@ -30,7 +30,7 @@ notes it points to.
 |---|---|---|---|---|
 | [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | zero as a wiring fix; the filter reaches only the once-called final check | large if done properly | **downgraded**; merge into lead 5 |
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
-| [2b](#lead-two-lra-paths) | **Why is the pure QF_LRA path 40x slower than the mixed one?** | 40x on one file, two of our own paths | unknown | **new, top of queue** |
+| [2b](#lead-two-lra-paths) | **TODO: the two QF_LRA solve paths diverge in behaviour** | 40x on one file, identical encodings | unknown | **filed; blocked on NO being under construction** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 1.42x median in its source | **small** | open |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
@@ -162,49 +162,84 @@ natural companion to whatever the Nelson-Oppen work settles on, and should be
 picked up there rather than re-attempted here.
 
 (lead-two-lra-paths)=
-## 2b. Why is the pure QF_LRA path 40x slower than the mixed one?
+## 2b. TODO: the two QF_LRA solve paths diverge in behaviour, and should not
 
-**Found 2026-08-05, by accident, while checking why Nelson-Oppen fires on a
-formula with nothing to combine.**
+**Status: important TODO, deliberately not acted on. Do not fix this from the
+arithmetic side, and do not touch it while Nelson-Oppen is under
+construction.**
+
+### The divergence
 
 `has_euf_predicate` is set by
-`(kind == Application || kind == Constant) && sort == Bool`, so a bare
-Boolean **Constant** -- an ordinary propositional variable -- counts as an EUF
-predicate. Any QF_LRA formula containing one dispatches to `solve_qf_uf_lra`.
-`constraint-199552` declares no sorts and no uninterpreted functions
-whatsoever; it is pure QF_LRA plus propositional variables, and it still takes
-the mixed path. **35% of a 40-file stratified-sample census does.**
+`(kind == Application || kind == Constant) && sort == Bool`, so a bare Boolean
+**Constant** -- an ordinary propositional variable -- counts as an EUF
+predicate, and the dispatch at `(has_equality || has_euf_predicate) &&
+has_arithmetic` routes the formula to `solve_qf_uf_lra`.
+`constraint-199552` declares no sorts and no uninterpreted functions at all;
+it is pure QF_LRA plus propositional variables, and it still takes the mixed
+path. **14 of 40 sampled stratified-sample files (35%) do.**
 
-The obvious reading is that this is wasted work -- and it builds a congruence
-closure over the 954 Boolean constants to prove it (`:euf.incremental.merges`
-954), with Nelson-Oppen itself no-oping for lack of shared real terms.
+Nelson-Oppen then no-ops there for lack of shared real terms -- which is the
+expected and correct behaviour for a single theory, and is the reason "always
+assume NO" is a coherent option: on one theory it should cost nothing.
 
-**The obvious reading is wrong.** Restricting `has_euf_predicate` to
-`Application` sends the file to the pure QF_LRA solver, and it becomes
-*drastically* worse:
+### The problem is that the two paths do not agree
 
-| path | result |
-|---|---|
-| `solve_qf_uf_lra` (current default) | **sat in 4.39s**, 7,679 pivots |
-| `solve_qf_lra` (after "fixing" the classifier) | **timeout at 180s**, 230,163 pivots |
+Same file, same options, at a 60s budget:
 
-So the misclassification is load-bearing. The 954 merges are a trivial
-one-time cost, and something in the QF_UFLRA solve loop is worth far more than
-that on this shape.
+| counter | `solve_qf_lra` | `solve_qf_uf_lra` |
+|---|---:|---:|
+| `:sat.clauses` | 10,059 | 10,059 |
+| `:lra.rows` | 1,440 | 1,440 |
+| `:lra.tableau-vars` | 2,394 | 2,394 |
+| `:sat.conflicts` | 5,256 | **93** |
+| `:sat.decisions` | 59,388 | **15,766** |
+| `:lra.online-check-calls` | 58,146 | **6,528** |
+| `:lra.pivots` | 98,191 | **7,679** |
+| outcome | **timeout >180s** | **sat in 4.39s** |
 
-**Do not "fix" the classifier without measuring** -- on this evidence it is a
-large regression, not a cleanup.
+The encoding is *identical* -- same clause count, same rows, same tableau
+variables. Preprocessing, clausification and tableau construction all agree.
+**The entire divergence is in search**, and the mixed path is 40x better.
 
-**The lead is the inverse question:** given identical input, what does
-`solve_qf_uf_lra` do that `solve_qf_lra_impl` does not? A 40x gap between two
-of our own paths on the same formula is a bigger and better-localized target
-than any heuristic remaining on this list, and it is entirely inside the
-arithmetic layer -- no theory-combination code involved.
+### What is already ruled out
 
-**Falsifier.** If the gap turns out to be one option defaulting differently
-between the two paths, this collapses to a one-line default change rather than
-a lead. That would be the best possible outcome and is the first thing to
-check: diff the two functions' propagator construction and option handling.
+Recorded so nobody repeats these:
+
+- **Not the encoding.** Clause, row and tableau-variable counts match exactly.
+- **Not the observed-variable set.** `solve_qf_lra` observes all 3,846 theory
+  atoms while `solve_qf_uf_lra` observes only the 2,892 arithmetic ones. That
+  looked like the obvious cause. Restricting the pure path to observe only
+  arithmetic atoms does **not** help -- it still times out, at 307,336 pivots,
+  slightly *worse*.
+- **Not Nelson-Oppen doing useful work.** It no-ops: no shared real terms,
+  `:no.purification.skipped-no-sites 1`.
+
+What remains is whatever else differs in how the two paths drive the search --
+the propagator's atom-vector length and indexing, the separate EUF assignment
+handling (note `solve_qf_uf_lra` passes `options.pure_theory_filter` for
+`euf_assignments` while the pure path passes nothing), or decision/phase
+ordering effects.
+
+### Why it is filed rather than fixed
+
+1. **Nelson-Oppen is heavily under construction** in another branch. This sits
+   in `solve_qf_uf_lra` and in the dispatch, both of which that work touches.
+2. **The naive fixes are regressions.** Correcting the classifier so pure
+   QF_LRA takes the pure path costs 40x on this file. The misclassification is
+   currently load-bearing.
+3. Two paths that produce identical encodings and wildly different searches is
+   a **behaviour bug regardless of which is faster**. The goal is convergence,
+   not picking a winner -- and "always assume NO" is a legitimate way to get
+   there, since on a single theory the combination layer should reduce to
+   nothing.
+
+### The check that would settle it
+
+Diff the two functions' solve loops -- not their setup, which is already known
+to agree -- and account for every place they hand different information to the
+SAT backend or the propagator. The answer is in there, since everything before
+the first decision is identical.
 
 (lead-leaving-rule)=
 ## 3. MathSAT's actual leaving-variable rule
