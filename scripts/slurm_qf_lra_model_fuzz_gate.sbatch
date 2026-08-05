@@ -18,6 +18,12 @@ set -euo pipefail
 
 WORKDIR=${PRIMO_WORKDIR:?PRIMO_WORKDIR must name the fresh remote workspace}
 SOLVER_BIN=${PRIMO_FUZZ_SOLVER:-"$WORKDIR/build-slurm-rel/primo"}
+# Extra solver flags to gate, e.g. an opt-in preprocessing pass. Kept separate
+# from PRIMO_FUZZ_SOLVER because the Dolmen model validator takes the solver as
+# a bare executable plus discrete --solver-arg entries, so flags folded into
+# SOLVER_BIN would reach the answer fuzzer but silently NOT the model check --
+# which is the half that matters for a pass that reconstructs models.
+SOLVER_EXTRA_ARGS=${PRIMO_FUZZ_SOLVER_EXTRA_ARGS:-""}
 OUT_ROOT=${PRIMO_FUZZ_OUT_ROOT:-"$WORKDIR/fuzz-results/qf-lra-model-gate-${SLURM_ARRAY_JOB_ID:-manual}"}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 
@@ -68,6 +74,11 @@ if (( TASK_ID >= total_tasks )); then
 fi
 
 IFS=' ' read -r -a solver_words <<< "$SOLVER_BIN"
+IFS=' ' read -r -a extra_args <<< "$SOLVER_EXTRA_ARGS"
+model_solver_args=(--solver-arg=--quiet)
+for extra in ${extra_args+"${extra_args[@]}"}; do
+  model_solver_args+=("--solver-arg=$extra")
+done
 "${solver_words[0]}" --version
 
 if (( TASK_ID < opfuzz_start )); then
@@ -79,7 +90,7 @@ if (( TASK_ID < opfuzz_start )); then
   echo "task $TASK_ID: QF_LRA FuzzSMT shard $shard seed $seed"
   python3 scripts/fuzz_external.py \
     --fuzzer fuzzsmt \
-    --solver "$SOLVER_BIN --quiet" \
+    --solver "$SOLVER_BIN --quiet $SOLVER_EXTRA_ARGS" \
     --refs z3 \
     --logic QF_LRA \
     --count "$FUZZSMT_COUNT" \
@@ -88,8 +99,8 @@ if (( TASK_ID < opfuzz_start )); then
     --fuzzer-args "$FUZZSMT_ARGS" \
     --out "$out"
   python3 scripts/validate_model.py \
-    --solver "$SOLVER_BIN" \
-    --solver-arg=--quiet \
+    --solver "${solver_words[0]}" \
+    "${model_solver_args[@]}" \
     --timeout "$MODEL_TIMEOUT" \
     --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
     --out "$model_out" \
@@ -101,7 +112,7 @@ elif (( TASK_ID < yinyang_start )); then
   scripts/yinyang_fuzz.sh \
     --typefuzz opfuzz \
     --seeds "$OPFUZZ_SEEDS" \
-    --solver "$SOLVER_BIN --quiet" \
+    --solver "$SOLVER_BIN --quiet $SOLVER_EXTRA_ARGS" \
     --ref "$MUTATION_REF" \
     --seconds "$YINYANG_WALL_SECONDS" \
     --iterations "$OPFUZZ_ITERATIONS" \
@@ -114,7 +125,7 @@ else
   echo "task $TASK_ID: yinyang typefuzz over $YINYANG_SEEDS"
   scripts/yinyang_fuzz.sh \
     --seeds "$YINYANG_SEEDS" \
-    --solver "$SOLVER_BIN --quiet" \
+    --solver "$SOLVER_BIN --quiet $SOLVER_EXTRA_ARGS" \
     --ref "$MUTATION_REF" \
     --seconds "$YINYANG_WALL_SECONDS" \
     --iterations "$YINYANG_ITERATIONS" \
