@@ -32,6 +32,29 @@ Usage
     python3 scripts/analyze_smt2.py --json FILE    # machine-readable
     python3 scripts/analyze_smt2.py --selftest     # verify the analyzer
 
+Known limitations
+-----------------
+Both are recorded because they bound what a report can be used to claim.
+
+* **`ite` inside an arithmetic term** (`(<= (ite c a b) 5)`, the usual min/max
+  encoding) is classified `opaque`, and every real in such an atom is forced
+  two-sided. Resolving it properly means case-splitting the atom, which would
+  change the atom count and can blow up combinatorially -- `sc` files carry
+  ~380 ites at term depths past 160. So on `sc` (20.8% opaque atoms) and
+  `tta_startup` (12.1%) a "no one-sided variables" reading is weak evidence:
+  it says the analyzer could not tell, not that none exist. Every other
+  family in the QF_LRA corpus is at 0.0%.
+* **`inline_lets` materialises the let-DAG into a tree.** `substitute` copies a
+  bound term at each use site, so a heavily-shared formula expands well beyond
+  its input size; this, not parsing, is what makes the largest files slow
+  (~43s and ~1GB at the tail). The fix is to traverse the DAG directly,
+  pushing a bound name's definition with the current context instead of
+  copying. Note the subtlety that makes naive memoisation wrong: the same
+  subterm can occur under different polarities and different guard sets, so
+  any memo key must be (node, polarity, guards), never node alone. Not yet
+  done; the full 1,753-file corpus run completed without a single timeout or
+  OOM, so it is a performance follow-up rather than a correctness one.
+
 What it reports
 ---------------
 declarations by sort; assertion and let-sharing counts; an atom census
@@ -171,6 +194,62 @@ RELS = {'<=', '<', '>=', '>', '=', 'distinct'}
 OPAQUE = object()
 
 
+def const_value(term):
+    """Evaluate a ground numeric term, or return None if it is not one.
+
+    Needed because SMT-LIB writes negative coefficients as unary minus:
+    `(* (- 1) x)` is linear, but a check for *string* numerals alone sees
+    `(- 1)` as a non-constant factor and misjudges the product nonlinear.
+    That single gap accounted for the great majority of `opaque` atoms in the
+    QF_LRA corpus (e.g. all 899 on latendresse's first file).
+
+    Iterative post-order evaluation; no recursion.
+    """
+    if isinstance(term, str):
+        return float(term) if NUM.match(term) else None
+    if not term:
+        return None
+    # Post-order: push (node, visited) pairs and accumulate child values.
+    values: dict = {}
+    stack = [(term, False)]
+    while stack:
+        node, visited = stack.pop()
+        key = id(node)
+        if isinstance(node, str):
+            values[key] = float(node) if NUM.match(node) else None
+            continue
+        if not node or not isinstance(node[0], str):
+            values[key] = None
+            continue
+        if not visited:
+            stack.append((node, True))
+            for child in node[1:]:
+                stack.append((child, False))
+            continue
+        head = node[0]
+        args = [values.get(id(c)) for c in node[1:]]
+        if any(a is None for a in args) or not args:
+            values[key] = None
+            continue
+        if head == '+':
+            values[key] = sum(args)
+        elif head == '-':
+            values[key] = -args[0] if len(args) == 1 else args[0] - sum(args[1:])
+        elif head == '*':
+            acc = 1.0
+            for a in args:
+                acc *= a
+            values[key] = acc
+        elif head == '/':
+            if len(args) == 2 and args[1] != 0:
+                values[key] = args[0] / args[1]
+            else:
+                values[key] = None
+        else:
+            values[key] = None
+    return values.get(id(term))
+
+
 def linear_form(term, reals):
     """Return {var: coeff} plus a constant, or OPAQUE if not linear.
 
@@ -205,21 +284,24 @@ def linear_form(term, reals):
                 for arg in node[2:]:
                     stack.append((arg, -mul))
         elif head == '*':
-            nums = [a for a in node[1:] if isinstance(a, str) and NUM.match(a)]
-            rest = [a for a in node[1:] if not (isinstance(a, str) and NUM.match(a))]
-            if len(rest) > 1:
-                return OPAQUE, 0.0   # nonlinear
             factor = 1.0
-            for n in nums:
-                factor *= float(n)
+            rest = []
+            for arg in node[1:]:
+                value = const_value(arg)
+                if value is None:
+                    rest.append(arg)
+                else:
+                    factor *= value
+            if len(rest) > 1:
+                return OPAQUE, 0.0   # genuinely nonlinear
             if not rest:
                 const += mul * factor
             else:
                 stack.append((rest[0], mul * factor))
         elif head == '/':
-            if len(node) == 3 and isinstance(node[2], str) and NUM.match(node[2]):
-                d = float(node[2])
-                if d == 0:
+            if len(node) == 3:
+                d = const_value(node[2])
+                if d is None or d == 0:
                     return OPAQUE, 0.0
                 stack.append((node[1], mul / d))
             else:
@@ -310,6 +392,7 @@ def analyze(path):
     var_sides: dict = collections.defaultdict(set)
     var_occurrences = collections.Counter()
     opaque_atoms = 0
+    opaque_samples: list = []
     max_depth = 0
     ite_count = 0
 
@@ -372,12 +455,27 @@ def analyze(path):
                     stack.append((arg, 0, guards, depth + 1))
                 continue
             if head in RELS:
+                # Count `ite`s nested *inside* the atom before classifying.
+                # The branch below does not descend into the atom, so an
+                # arithmetic ite such as `(<= (ite c a b) 5)` would otherwise
+                # never be counted and the report would claim "ite: 0" for a
+                # family full of them. Classification is unaffected (such
+                # atoms are correctly opaque); this is a reporting fix.
+                inner = list(node[1:])
+                while inner:
+                    sub_node = inner.pop()
+                    if isinstance(sub_node, list) and sub_node:
+                        if isinstance(sub_node[0], str) and sub_node[0] == 'ite':
+                            ite_count += 1
+                        inner.extend(sub_node)
                 shape, net = classify_atom(node, reals)
                 atom_shapes[shape] += 1
                 key = sexpr(node)
                 atom_polarity[key].add(pol)
                 if shape == 'opaque' or net is None:
                     opaque_atoms += 1
+                    if len(opaque_samples) < 8:
+                        opaque_samples.append(sexpr(node)[:200])
                     # conservative: every real under here is two-sided
                     sub = [node]
                     while sub:
@@ -439,6 +537,7 @@ def analyze(path):
         'reals_unconstrained': len(unconstrained),
         'reals_fully_guard_protected': len(fully_guarded),
         'one_sided_examples': sorted(one_sided)[:8],
+        'opaque_samples': opaque_samples,
     }
 
 
@@ -473,6 +572,8 @@ def report(info):
     if info['opaque_atoms']:
         print(f"  OPAQUE atoms      : {info['opaque_atoms']} "
               f"(not understood; their variables forced two-sided)")
+        for sample in info.get('opaque_samples', [])[:4]:
+            print(f"      e.g. {sample}")
     print(f"  real variables    : one-sided {info['reals_one_sided']}, "
           f"two-sided {info['reals_two_sided']}, unconstrained {info['reals_unconstrained']}")
     print(f"  guard-protected   : {info['reals_fully_guard_protected']} reals have every "
@@ -513,11 +614,77 @@ def selftest():
           '(assert (or (>= x 10) d))(assert (<= x 0))',
           reals=1, reals_two_sided=1, reals_one_sided=0)
 
-    # Polarity through `not`: the atom occurs only negatively.
+    # ---- polarity on NON-NNF input.
+    # Input formulas are not in negation normal form, so polarity must be
+    # computed through the connectives rather than read off the syntax. Each
+    # case below pins one way that can go wrong.
+
     check('polarity-negative',
           '(set-logic QF_LRA)(declare-fun x () Real)'
           '(assert (not (<= x 3)))',
           atoms_pure_negative=1, atoms_pure_positive=0)
+
+    # Negation distributes over a conjunction: both atoms are negative.
+    check('polarity-not-and',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun y () Real)'
+          '(assert (not (and (<= x 1) (>= y 2))))',
+          atoms_pure_negative=2, atoms_pure_positive=0, atoms_mixed_polarity=0)
+
+    # Implication: antecedent flips, consequent does not.
+    check('polarity-implication',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun y () Real)'
+          '(assert (=> (<= x 1) (>= y 2)))',
+          atoms_pure_negative=1, atoms_pure_positive=1, atoms_mixed_polarity=0)
+
+    # Double negation returns to positive.
+    check('polarity-double-negation',
+          '(set-logic QF_LRA)(declare-fun x () Real)'
+          '(assert (not (not (<= x 1))))',
+          atoms_pure_positive=1, atoms_pure_negative=0)
+
+    # Negated implication: the antecedent flips twice and ends up POSITIVE
+    # while the consequent goes negative. This is the case that actually
+    # exercises the sign bookkeeping.
+    check('polarity-not-implication',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun y () Real)'
+          '(assert (not (=> (<= x 1) (>= y 2))))',
+          atoms_pure_positive=1, atoms_pure_negative=1, atoms_mixed_polarity=0)
+
+    # An ite condition is used in both directions; the branches are not.
+    check('polarity-ite',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun y () Real)'
+          '(declare-fun z () Real)'
+          '(assert (ite (<= x 1) (>= y 2) (<= z 3)))',
+          atoms_mixed_polarity=1, atoms_pure_positive=2, atoms_pure_negative=0)
+
+    # xor uses both operands in both directions.
+    check('polarity-xor',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun y () Real)'
+          '(assert (xor (<= x 1) (>= y 2)))',
+          atoms_mixed_polarity=2, atoms_pure_positive=0, atoms_pure_negative=0)
+
+    # The same atom at both polarities in different clauses is mixed, which is
+    # what makes it ineligible for polarity-based filtering.
+    check('polarity-shared-atom-mixed',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun p () Bool)'
+          '(assert (and (or (<= x 1) p) (or (not (<= x 1)) p)))',
+          atoms_mixed_polarity=1, atoms_pure_positive=0, atoms_pure_negative=0)
+
+    # A Boolean equivalence puts both sides under an iff, so neither has a
+    # definite polarity.
+    check('polarity-boolean-iff-is-mixed',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun y () Real)'
+          '(declare-fun p () Bool)'
+          '(assert (= p (<= x 1)))(assert (= (>= y 2) p))',
+          atoms_mixed_polarity=2, atoms_pure_positive=0, atoms_pure_negative=0)
+
+    # An `ite` inside an arithmetic atom must be counted, not lost because the
+    # traversal stops at the atom boundary.
+    check('ite-inside-atom-is-counted',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun a () Real)'
+          '(declare-fun b () Real)(declare-fun c () Bool)'
+          '(assert (<= (ite c a b) 5))',
+          ite_count=1, opaque_atoms=1)
 
     # Guard protection, both polarities: positive disjunct sibling and
     # negative conjunct sibling must both count.
@@ -526,6 +693,26 @@ def selftest():
           '(declare-fun bm () Bool)(declare-fun bc () Real)'
           '(assert (or am (and (not bm) (>= ac bc))))',
           reals_fully_guard_protected=2)
+
+    # Negative coefficients written as unary minus are linear, not opaque.
+    # This construct accounted for the great majority of opaque atoms in the
+    # QF_LRA corpus before it was handled.
+    check('unary-minus-coefficient',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun y () Real)'
+          '(assert (= (+ (* 3 x) (* (- 1) y)) 0))',
+          opaque_atoms=0, atom_shapes={'two-variable': 1})
+
+    # A rational coefficient with a computed denominator is still linear.
+    check('rational-coefficient',
+          '(set-logic QF_LRA)(declare-fun x () Real)'
+          '(assert (<= (/ x (- 2)) 5))',
+          opaque_atoms=0, atom_shapes={'unary-bound': 1})
+
+    # Unit coefficients of opposite sign must still read as a difference.
+    check('unary-minus-difference',
+          '(set-logic QF_LRA)(declare-fun x () Real)(declare-fun y () Real)'
+          '(assert (<= (+ x (* (- 1) y)) 3))',
+          opaque_atoms=0, atom_shapes={'difference': 1})
 
     # Nonlinear must be OPAQUE, not silently dropped.
     check('nonlinear-is-opaque',
