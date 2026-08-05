@@ -19589,6 +19589,157 @@
       },
       "outcome": "Accepted local smoke evidence for the behavior-neutral TheoryCombinationManager shared equality ledger cleanup. The run compares 1000 generated mixed QF_UFLRA cases against Z3 and finds no wrong answers, crashes, timeouts, unsupported outcomes, parser/type errors, or reference disagreements. This is not a performance claim.",
       "evidence_status": "current-local"
-    }
+    },
+      {
+        "id": "2026-08-05-qfuflra-lra-euf-filter-local-sample-676b7af",
+        "started_at": "2026-08-05T20:20:00+02:00",
+        "recorded_at": "2026-08-05T20:30:00+02:00",
+        "kind": "benchmark",
+        "scope": "Local Release 20-file QF_UFLRA sample for consumer-aware LRA-to-EUF equality filtering, compared with pre-filter Primo and Z3",
+        "commit": "676b7af350a51e59d83c6b53a604c64d01a6c647",
+        "branch": "nelson-oppen-online-lazy-ipasir-up",
+        "environment": {
+          "type": "local",
+          "host": "/workspace",
+          "slurm_job_id": null
+        },
+        "command": "cmake --build build-lra-euf-filter-rel --target primo -j4; python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt --solver build-lra-euf-filter-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 5 --out results/qf_uflra-lra-euf-filter-local-current-release-676b7af/results.csv --summary results/qf_uflra-lra-euf-filter-local-current-release-676b7af/summary.csv --log-dir results/qf_uflra-lra-euf-filter-local-current-release-676b7af/logs",
+        "solver": {
+          "name": "Primo",
+          "argv": "build-lra-euf-filter-rel/primo --quiet --stats"
+        },
+        "references": [
+          {
+            "name": "z3",
+            "argv": "contrib/local/bin/z3",
+            "artifact": "results/qf_uflra-lra-euf-filter-local-z3/summary.csv"
+          }
+        ],
+        "inputs": {
+          "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+          "root": "tmp/QF_UFLRA",
+          "logic": "QF_UFLRA",
+          "count": 20,
+          "timeout_seconds": 5
+        },
+        "artifacts": {
+          "before_summary": "results/qf_uflra-lra-euf-filter-local-before-release-9ffbf0f/summary.csv",
+          "before_results": "results/qf_uflra-lra-euf-filter-local-before-release-9ffbf0f/results.csv",
+          "current_summary": "results/qf_uflra-lra-euf-filter-local-current-release-676b7af/summary.csv",
+          "current_results": "results/qf_uflra-lra-euf-filter-local-current-release-676b7af/results.csv",
+          "z3_summary": "results/qf_uflra-lra-euf-filter-local-z3/summary.csv",
+          "z3_results": "results/qf_uflra-lra-euf-filter-local-z3/results.csv"
+        },
+        "baseline": {
+          "commit": "9ffbf0f",
+          "solved": 16,
+          "timeout": 4,
+          "wrong": 0,
+          "par2": 41.266967,
+          "sat_equalities_forced": 42,
+          "lra_to_euf_rechecks": 8,
+          "lra_to_euf_equalities": 78,
+          "sat_solve_calls": 34,
+          "solve_us": 1211009
+        },
+        "summary": {
+          "current": {
+            "solved": 16,
+            "timeout": 4,
+            "wrong": 0,
+            "par2": 40.568299,
+            "sat_equalities_forced": 0,
+            "lra_to_euf_rechecks": 0,
+            "lra_to_euf_equalities": 36,
+            "lra_to_euf_mergeable_skipped": 26,
+            "lra_to_euf_forbidden_forced": 0,
+            "sat_solve_calls": 19,
+            "solve_us": 514084
+          },
+          "z3": {
+            "solved": 20,
+            "timeout": 0,
+            "wrong": 0,
+            "par2": 1.670959
+          },
+          "families": {
+            "FFT": {
+              "current_solved": 5,
+              "current_timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "current_solved": 3,
+              "current_timeout": 2,
+              "z3_solved": 5
+            },
+            "cpachecker-induction-svcomp14": {
+              "current_solved": 3,
+              "current_timeout": 2,
+              "z3_solved": 5
+            },
+            "mathsat": {
+              "current_solved": 5,
+              "current_timeout": 0,
+              "z3_solved": 5
+            }
+          }
+        },
+        "outcome": "Accepted as local performance smoke evidence for the consumer-aware LRA-to-EUF filter. The sample keeps the same solved count but eliminates SAT-forced LRA-to-EUF equality atoms and rechecks on this sample, reducing SAT solve calls. Z3 still solves all 20, so this is not a headline parity claim and needs SLURM revalidation on the broader opportunity set.",
+        "evidence_status": "current-local"
+      },
+      {
+        "id": "2026-08-05-qfuflra-lra-euf-filter-fuzz-676b7af",
+        "started_at": "2026-08-05T20:18:00+02:00",
+        "recorded_at": "2026-08-05T20:31:00+02:00",
+        "kind": "fuzz",
+        "scope": "QF_UFLRA mixed smoke cases after consumer-aware LRA-to-EUF equality filtering",
+        "commit": "676b7af350a51e59d83c6b53a604c64d01a6c647",
+        "branch": "nelson-oppen-online-lazy-ipasir-up",
+        "environment": {
+          "type": "local",
+          "host": "/workspace",
+          "slurm_job_id": null
+        },
+        "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref /workspace/contrib/local/bin/z3 --count 1000 --seed 20260806 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-lra-euf-filter-676b7af",
+        "solver": {
+          "name": "Primo",
+          "argv": "./build/primo --quiet"
+        },
+        "references": [
+          {
+            "name": "z3",
+            "argv": "/workspace/contrib/local/bin/z3"
+          }
+        ],
+        "inputs": {
+          "generator": "scripts/qf_uflra_smoke_fuzz.py",
+          "logic": "QF_UFLRA",
+          "shape": "mixed",
+          "seed": 20260806,
+          "count": 1000,
+          "timeout_seconds": 5,
+          "manifest": null
+        },
+        "artifacts": {
+          "summary": "fuzz-results/qf_uflra-lra-euf-filter-676b7af/summary.csv",
+          "results": "fuzz-results/qf_uflra-lra-euf-filter-676b7af/cases",
+          "logs": null,
+          "bugs": null
+        },
+        "summary": {
+          "total": 1000,
+          "pass": 1000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "parser_or_type_error": 0,
+          "reference_disagreement": 0,
+          "sat": 716,
+          "unsat": 284
+        },
+        "outcome": "Accepted local smoke evidence for the LRA-to-EUF filter. The run compares 1000 generated mixed QF_UFLRA cases against Z3 with no wrong answers, crashes, timeouts, unsupported outcomes, parser/type errors, or reference disagreements.",
+        "evidence_status": "current-local"
+      }
   ]
 }
