@@ -32,5 +32,6 @@ The generated HTML is written under `docs/_build/html`.
 - Lazy DPLL(T)
 - EUF/congruence closure
 - QF_UF preprocessing and finite-domain symmetry breaking
+- QF_UFLRA model-guided performance planning
 - Future arithmetic theories
 - Debugging, experiments, and literature

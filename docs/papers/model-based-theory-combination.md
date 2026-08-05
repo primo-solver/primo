@@ -185,6 +185,15 @@ theory implication, or a care-ranked relevance filter before creating SAT
 equality atoms. It should not start by materializing the full same-sort shared
 pair cross product.
 
+The concrete post-2026-08-05 performance plan is tracked in
+`docs/qf-uflra-model-guided-performance.md`. That note records the Z3-stat
+diagnosis from the current SLURM artifact and turns the paper mechanisms into a
+QF_UFLRA implementation checklist. Its first target is consumer-aware
+LRA-to-EUF equality handling: if EUF can absorb an LRA-implied shared Real
+equality without conflict, the final path should carry it internally for
+validation/model reconstruction instead of creating or forcing a SAT-visible
+equality literal.
+
 For the current CaDiCaL backend, the concrete rule is:
 
 1. Keep the online producer's paired-bound candidates separate from the full

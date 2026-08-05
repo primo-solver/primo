@@ -7,6 +7,7 @@ chapters:
   - file: euf
   - file: qfuf-disequality-propagation
   - file: preprocessing
+  - file: qf-uflra-model-guided-performance
   - file: arithmetic
   - file: qf-lra-heuristics
   - file: termid-order-sensitivity
