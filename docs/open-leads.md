@@ -23,6 +23,10 @@ notes it points to.
 - **Ranking is expected value per unit of work**, not expected value. A cheap
   partial win outranks an expensive whole one; [](qf-lra-heuristics.md)
   section 6.1a is the argument.
+- **Record what a configuration solves *uniquely*, not only how many it
+  solves.** See [](#complementarity) -- a lead that loses on the promotion bar
+  can still earn a place in a portfolio, and that information is destroyed by
+  reporting solved counts and PAR2 alone.
 
 ## At a glance
 
@@ -509,6 +513,49 @@ complete. Two families carry a real blind spot: `sc` (20.8% of atoms opaque)
 and `tta_startup` (12.1%), both from `ite` inside arithmetic terms, where the
 analyzer conservatively forces every variable two-sided. Their zeros therefore
 mean "could not tell", not "none". Every other family is at 0.0% opaque.
+
+(complementarity)=
+## Complementarity: losing on average is not the same as useless
+
+The promotion bar -- solved count and PAR2 on the 237-file stratified sample
+-- measures *average* quality, and that is the right gate for a **default**.
+It is the wrong gate for deciding whether a technique is worth keeping at all.
+
+Once there is a portfolio, a configuration earns its place by solving
+instances the others do not, however badly it scores on the mean. This project
+already reasons this way about *other solvers*: [](arithmetic.md) records that
+Primo and z3 are "complementary rather than one dominating" with 30 files only
+z3 solves against 11 only Primo does, and that "a portfolio of Primo and
+OpenSMT would solve more than either". The same reasoning has not been applied
+to Primo's **own** configurations, and it should be.
+
+**What this changes in practice.** Every A/B between Primo configurations
+should report, alongside solved count and PAR2:
+
+- instances solved by the new configuration and **not** by the baseline
+  ("gained"), and
+- instances solved by the baseline and not the new one ("lost").
+
+A lead with `gained > 0` is a portfolio candidate even when
+`solved_new < solved_baseline`. A lead with `gained == 0` is dominated on the
+sample and can be closed without further argument.
+
+**Today's rejections survive the stronger criterion**, which is worth stating
+so they are not reopened on this basis alone:
+
+| lead | solved | gained | verdict under the portfolio criterion |
+|---|---|---:|---|
+| T2 row propagation on tropical | 0/10 vs 1/10 | **0** | dominated; closure stands |
+| Monotone elimination | 173 vs 174 | **0** | dominated; closure stands |
+
+Both were measured file-by-file rather than only in aggregate, so the
+"gained" column is real rather than inferred. That is the habit to keep.
+
+**Caveat worth stating once.** Complementarity measured on one sample at one
+timeout is weak evidence -- a single uniquely-solved instance is often churn at
+the timeout boundary rather than a genuine capability, which is exactly what
+[](qf-lra-heuristics.md)'s D1 write-up found. Treat `gained == 1` as a
+prompt to look at the instance, not as a portfolio case on its own.
 
 (rejected)=
 ## Rejected and closed leads
