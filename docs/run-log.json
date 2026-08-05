@@ -18821,6 +18821,41 @@
         "falsifier_correction": "The lead's previously stated falsifier -- close it if rows/fill-in do not drop -- is the WRONG test and would have closed a lead that works. Judge on end-to-end time and :sat.clauses instead."
       },
       "follow_up": "Lead 9 in docs/open-leads.md updated with the measurements and a revised effort estimate. Detection and rewrite are small; model reconstruction for eliminated variables is the real work (Primo emits models, and an eliminated variable must be valued after the rest of the model from its discharged constraints, in dependency order). A Slurm fuzz gate is mandatory as this changes preprocessing."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-elimination-slurm-fuzz-gate",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "implementation-fuzz",
+      "scope": "Correctness gate for the opt-in --monotone-elimination preprocessing pass and its model reconstruction. QF_LRA answer fuzzing differentially against z3, plus Dolmen/z3 model validation of every produced model, plus opfuzz and YinYang mutation over real QF_LRA seeds.",
+      "commit": "c054811",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (node-head, compute partition, node-01) via SSH ProxyJump jump-data-ciirc",
+        "remote_dir": "/home/janotmik/primo-monotone-c054811",
+        "binary": "build-slurm-rel/primo, Release, no sanitizers; --version reported 'git: c054811' and cadical-3.0.0-7b99c07 at preflight",
+        "notes": "Remote had only cadical provisioned; fuzzsmt, z3 5.0.0 and the yinyang venv (opfuzz/typefuzz) were installed and smoke-run before submission. Dolmen is unavailable on this cluster, so model validation used the documented z3 fallback for Real-constant models; the fallback was verified locally first (pass=2 on crafted cases) rather than assumed."
+      },
+      "command": {
+        "job_id": "119430",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=<workdir>,PATH=<workdir>/contrib/local/bin:<workdir>/.venv-yinyang/bin:$PATH,PRIMO_FUZZ_SOLVER_EXTRA_ARGS=--monotone-elimination scripts/slurm_qf_lra_model_fuzz_gate.sbatch",
+        "layout": "array 0-8: 6 FuzzSMT shards x 500 cases (5s timeout) with model validation, 1 opfuzz task, 2 YinYang/typefuzz shards over benchmarks/seeds/qf_lra_real",
+        "prerequisite": "PRIMO_FUZZ_SOLVER_EXTRA_ARGS was added to the gate in commit c054811. Without it the flag reaches the answer fuzzer but is silently dropped by the Dolmen model validator, which takes --solver as a bare executable plus discrete --solver-arg entries -- the gate would have looked clean while testing nothing about model reconstruction."
+      },
+      "result": {
+        "answer_fuzzing": "3,000 generated cases: 2,977 PASS, 23 TIMEOUT, 0 wrong answers, 0 crashes, 0 parser/type errors.",
+        "model_validation": "2,594 pass, 0 invalid models, 389 not-sat (unsat input, no model expected), 17 solver-timeout.",
+        "mutation": "opfuzz task and 2 YinYang/typefuzz shards: 14 seeds each, 14 valid, 0 invalid, 0 bug triggers.",
+        "task_exit_status": "sacct reports the six FuzzSMT array tasks as FAILED with exit 1:0. This is fuzz_external.py exiting nonzero when any row is non-PASS; the only non-PASS rows are the 23 timeouts, and the bugs/ directories contain exactly those 23 files. Not a soundness failure.",
+        "timeout_triage": "Every saved timeout case re-run at a longer budget with and without --monotone-elimination produced the identical outcome (sat/sat where solvable, unknown/unknown otherwise), so the timeouts are inherent to the generated instances rather than introduced by the pass. Full 23-case triage recorded separately."
+      },
+      "artifacts": {
+        "remote_results": "/home/janotmik/primo-monotone-c054811/fuzz-results/qf-lra-model-gate-119430 (per-shard summary.csv, model-validation/, bugs/); cluster-local, not committed",
+        "logs": "logs/primo-qflra-model-fuzz-119430-*.out|.err on the same host"
+      },
+      "follow_up": "Correctness gate satisfied for the opt-in pass. Still outstanding before any default change: a benchmark evaluation on the stratified sample, since performance evidence is currently two locally prototyped files (-10% and -36%)."
     }
   ]
 }
