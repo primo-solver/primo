@@ -4062,46 +4062,14 @@ std::optional<bool> lit_value_in_backend(const sat::IpasirUpBackend& backend, sa
   return lit.value > 0 ? assignment.value() : !assignment.value();
 }
 
-bool is_lit_true_in_backend(const sat::IpasirUpBackend& backend, sat::Lit lit) {
-  return lit_value_in_backend(backend, lit).value_or(false);
-}
-
 std::size_t registered_interface_equality_atom_count(const TheoryCombinationManager& manager) {
-  std::size_t count = 0;
-  for (const InterfaceEqualityRegistryEntry& atom : manager.summary().equality_registry) {
-    if (atom.lit.value != 0) {
-      ++count;
-    }
-  }
-  return count;
+  return manager.registered_interface_equality_atom_count();
 }
 
-std::vector<InterfaceEqualityRegistryEntry> collect_true_interface_equalities(
-    const sat::IpasirUpBackend& backend, const TheoryCombinationManager& manager) {
-  std::vector<InterfaceEqualityRegistryEntry> true_atoms;
-  true_atoms.reserve(manager.summary().equality_registry.size());
-  for (const InterfaceEqualityRegistryEntry& atom : manager.summary().equality_registry) {
-    if (atom.lit.value != 0 && is_lit_true_in_backend(backend, atom.lit)) {
-      true_atoms.push_back(atom);
-    }
-  }
-  return true_atoms;
-}
-
-std::vector<InterfaceEqualityRegistryEntry> collect_false_interface_equalities(
-    const sat::IpasirUpBackend& backend, const TheoryCombinationManager& manager) {
-  std::vector<InterfaceEqualityRegistryEntry> false_atoms;
-  false_atoms.reserve(manager.summary().equality_registry.size());
-  for (const InterfaceEqualityRegistryEntry& atom : manager.summary().equality_registry) {
-    if (atom.lit.value == 0) {
-      continue;
-    }
-    const std::optional<bool> value = lit_value_in_backend(backend, atom.lit);
-    if (value.has_value() && !value.value()) {
-      false_atoms.push_back(atom);
-    }
-  }
-  return false_atoms;
+void refresh_interface_equality_assignment_state(const sat::IpasirUpBackend& backend,
+                                                 TheoryCombinationManager& manager) {
+  manager.refresh_interface_equality_assignments(
+      [&](sat::Lit lit) { return lit_value_in_backend(backend, lit); });
 }
 
 void append_interface_equalities(
@@ -4163,7 +4131,8 @@ void publish_interface_propagation_result(const InterfacePropagationResult& resu
 InterfacePropagationResult force_implied_interface_equalities(
     const core::TermManager& terms, BooleanClausifier& clausifier, sat::IpasirUpBackend& backend,
     TheoryCombinationManager& manager, const std::vector<core::TermId>& implied_equalities,
-    const std::vector<AssignedTheoryAtom>& reason_assignments, util::Statistics& statistics) {
+    const std::vector<AssignedTheoryAtom>& reason_assignments,
+    InterfaceEqualityClassification source_classification, util::Statistics& statistics) {
   InterfacePropagationResult result;
   result.candidates = implied_equalities.size();
   std::vector<sat::Clause> clauses_to_learn;
@@ -4183,6 +4152,7 @@ InterfacePropagationResult force_implied_interface_equalities(
     return clause;
   };
   for (const core::TermId equality : implied_equalities) {
+    manager.mark_interface_equality_classification(equality, source_classification);
     const std::optional<sat::Lit> lit = manager.interface_equality_lit(equality);
     if (!lit.has_value()) {
       ++result.missing_atoms;
@@ -4193,11 +4163,17 @@ InterfacePropagationResult force_implied_interface_equalities(
     const std::optional<bool> value = lit_value_in_backend(backend, lit.value());
     if (value.has_value() && value.value()) {
       ++result.already_true;
+      manager.mark_interface_equality_classification(equality,
+                                                     InterfaceEqualityClassification::AlreadyTrue);
       continue;
     }
     if (value.has_value() && !value.value()) {
       ++result.assigned_false;
+      manager.mark_interface_equality_classification(
+          equality, InterfaceEqualityClassification::AssignedFalse);
     }
+    manager.mark_interface_equality_classification(equality,
+                                                   InterfaceEqualityClassification::SatForced);
     clauses_to_learn.push_back(make_reason_clause(lit.value()));
   }
   for (const core::TermId equality : equalities_to_create) {
@@ -4207,6 +4183,8 @@ InterfacePropagationResult force_implied_interface_equalities(
       continue;
     }
     ++result.created_atoms;
+    manager.mark_interface_equality_classification(equality,
+                                                   InterfaceEqualityClassification::SatForced);
     clauses_to_learn.push_back(make_reason_clause(lit.value()));
   }
   for (const sat::Clause& clause : clauses_to_learn) {
@@ -4223,9 +4201,10 @@ InterfacePropagationResult force_implied_interface_equalities(
 InterfacePropagationResult force_implied_interface_equality_with_reason(
     const core::TermManager& terms, BooleanClausifier& clausifier, sat::IpasirUpBackend& backend,
     TheoryCombinationManager& manager, core::TermId equality, const sat::Clause& reason_lits,
-    util::Statistics& statistics) {
+    InterfaceEqualityClassification source_classification, util::Statistics& statistics) {
   InterfacePropagationResult result;
   result.candidates = 1;
+  manager.mark_interface_equality_classification(equality, source_classification);
 
   std::optional<sat::Lit> lit = manager.interface_equality_lit(equality);
   bool created = false;
@@ -4245,10 +4224,14 @@ InterfacePropagationResult force_implied_interface_equality_with_reason(
     const std::optional<bool> value = lit_value_in_backend(backend, lit.value());
     if (value.has_value() && value.value()) {
       ++result.already_true;
+      manager.mark_interface_equality_classification(equality,
+                                                     InterfaceEqualityClassification::AlreadyTrue);
       return result;
     }
     if (value.has_value() && !value.value()) {
       ++result.assigned_false;
+      manager.mark_interface_equality_classification(
+          equality, InterfaceEqualityClassification::AssignedFalse);
     }
   }
 
@@ -4257,6 +4240,8 @@ InterfacePropagationResult force_implied_interface_equality_with_reason(
   result.reason_lits = clause.size() > 0 ? clause.size() - 1U : 0U;
   backend.add_clause(clause);
   result.clauses = 1;
+  manager.mark_interface_equality_classification(equality,
+                                                 InterfaceEqualityClassification::SatForced);
   statistics.set(":no.interface.sat-equality-atoms",
                  registered_interface_equality_atom_count(manager));
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
@@ -6153,9 +6138,9 @@ ModelEqualityBranchChoice choose_lra_model_equality_branch(
           equality = terms.mk_eq(lhs, rhs);
         }
         const InterfacePropagationResult forced_propagation =
-            force_implied_interface_equality_with_reason(terms, clausifier, backend, manager,
-                                                         equality.value(), forced_reason.value(),
-                                                         statistics);
+            force_implied_interface_equality_with_reason(
+                terms, clausifier, backend, manager, equality.value(), forced_reason.value(),
+                InterfaceEqualityClassification::ModelInternal, statistics);
         publish_interface_propagation_result(forced_propagation,
                                              ":no.interface.model-equality-forced", statistics);
         statistics.increment(":no.interface.model-equality-forced-reason-lits",
@@ -7670,6 +7655,9 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
 
     const TermPairKey interface_pair = interface_pair_by_var_[static_cast<std::size_t>(var)];
     if (interface_pair.lhs != core::kInvalidTermId) {
+      manager_.set_interface_equality_assignment(
+          interface_pair.lhs, interface_pair.rhs,
+          lit > 0 ? InterfaceEqualityAssignment::True : InterfaceEqualityAssignment::False);
       manager_.set_interface_equality_value(
           interface_pair.lhs, interface_pair.rhs,
           lit > 0 ? InterfaceEqualityValue::Equal : InterfaceEqualityValue::Disequal);
@@ -8466,10 +8454,12 @@ CheckSatOutcome solve_qf_uf_lra(
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
 
+    no_manager.clear_interface_equality_classifications();
+    refresh_interface_equality_assignment_state(backend, no_manager);
     const std::vector<InterfaceEqualityRegistryEntry> true_interface_equalities =
-        collect_true_interface_equalities(backend, no_manager);
+        no_manager.interface_equalities_with_assignment(InterfaceEqualityAssignment::True);
     const std::vector<InterfaceEqualityRegistryEntry> false_interface_equalities =
-        collect_false_interface_equalities(backend, no_manager);
+        no_manager.interface_equalities_with_assignment(InterfaceEqualityAssignment::False);
     statistics.set(":no.interface.sat-equalities-true", true_interface_equalities.size());
     statistics.set(":no.interface.sat-equalities-false", false_interface_equalities.size());
 
@@ -8599,7 +8589,7 @@ CheckSatOutcome solve_qf_uf_lra(
       statistics.increment(":no.interface.euf-to-lra-equalities", implied_equalities.size());
       const InterfacePropagationResult propagation = force_implied_interface_equalities(
           terms, clausifier, backend, no_manager, implied_equalities, euf_assignments_for_check,
-          statistics);
+          InterfaceEqualityClassification::EufImplied, statistics);
 #if PRIMO_HAVE_IPASIR
       if (mixed_online_dispatcher.has_value()) {
         mixed_online_dispatcher->observe_registered_interface_equalities();
@@ -8640,7 +8630,7 @@ CheckSatOutcome solve_qf_uf_lra(
                              implied_equalities.equalities.size());
         const InterfacePropagationResult propagation = force_implied_interface_equalities(
             terms, clausifier, backend, no_manager, implied_equalities.equalities,
-            lra_assignments_for_check, statistics);
+            lra_assignments_for_check, InterfaceEqualityClassification::LraImplied, statistics);
 #if PRIMO_HAVE_IPASIR
         if (mixed_online_dispatcher.has_value()) {
           mixed_online_dispatcher->observe_registered_interface_equalities();
@@ -8670,7 +8660,7 @@ CheckSatOutcome solve_qf_uf_lra(
                              implied_equalities.equalities.size());
         const InterfacePropagationResult propagation = force_implied_interface_equalities(
             terms, clausifier, backend, no_manager, implied_equalities.equalities,
-            lra_assignments_for_check, statistics);
+            lra_assignments_for_check, InterfaceEqualityClassification::LraImplied, statistics);
 #if PRIMO_HAVE_IPASIR
         if (mixed_online_dispatcher.has_value()) {
           mixed_online_dispatcher->observe_registered_interface_equalities();
@@ -8764,7 +8754,7 @@ CheckSatOutcome solve_qf_uf_lra(
                                  lra_implied_equalities_for_euf.equalities.size());
             const InterfacePropagationResult propagation = force_implied_interface_equalities(
                 terms, clausifier, backend, no_manager, lra_implied_equalities_for_euf.equalities,
-                lra_assignments_for_check, statistics);
+                lra_assignments_for_check, InterfaceEqualityClassification::LraImplied, statistics);
 #if PRIMO_HAVE_IPASIR
             if (mixed_online_dispatcher.has_value()) {
               mixed_online_dispatcher->observe_registered_interface_equalities();
@@ -8865,7 +8855,7 @@ CheckSatOutcome solve_qf_uf_lra(
                                  lra_implied_scan.equalities.size());
             const InterfacePropagationResult propagation = force_implied_interface_equalities(
                 terms, clausifier, backend, no_manager, lra_implied_scan.equalities,
-                lra_assignments_for_check, statistics);
+                lra_assignments_for_check, InterfaceEqualityClassification::LraImplied, statistics);
 #if PRIMO_HAVE_IPASIR
             if (mixed_online_dispatcher.has_value()) {
               mixed_online_dispatcher->observe_registered_interface_equalities();

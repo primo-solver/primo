@@ -157,12 +157,19 @@ void TheoryCombinationManager::rebuild_equality_index() {
   }
 }
 
+std::uint32_t TheoryCombinationManager::classification_bit(
+    InterfaceEqualityClassification classification) {
+  return static_cast<std::uint32_t>(classification);
+}
+
 void TheoryCombinationManager::rebuild_from_interface_terms(
     const std::vector<core::TermId>& interface_terms) {
   summary_ = NelsonOppenInterfaceSummary{};
   equality_index_.clear();
   value_trail_.clear();
-  level_starts_.clear();
+  assignment_trail_.clear();
+  value_level_starts_.clear();
+  assignment_level_starts_.clear();
   std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
   for (const core::TermId term_id : interface_terms) {
     const core::Term& term = terms_.get(term_id);
@@ -205,7 +212,9 @@ void TheoryCombinationManager::rebuild_from_interface_terms(
 void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertions) {
   summary_ = NelsonOppenInterfaceSummary{};
   value_trail_.clear();
-  level_starts_.clear();
+  assignment_trail_.clear();
+  value_level_starts_.clear();
+  assignment_level_starts_.clear();
   std::vector<core::TermId> pending = assertions;
   std::unordered_set<core::TermId> visited;
   std::unordered_map<core::SortId, std::vector<core::TermId>> terms_by_sort;
@@ -362,6 +371,16 @@ bool TheoryCombinationManager::register_interface_equality_atom(core::TermId equ
   return true;
 }
 
+std::size_t TheoryCombinationManager::registered_interface_equality_atom_count() const {
+  std::size_t count = 0;
+  for (const InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
+    if (entry.lit.value != 0) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 InterfaceEqualityValue TheoryCombinationManager::interface_equality_value(core::TermId lhs,
                                                                           core::TermId rhs) const {
   const auto found = equality_index_.find(equality_key(lhs, rhs));
@@ -391,22 +410,137 @@ void TheoryCombinationManager::clear_interface_equality_values() {
     entry.value = InterfaceEqualityValue::Unknown;
   }
   value_trail_.clear();
-  level_starts_.clear();
+  value_level_starts_.clear();
 }
 
-void TheoryCombinationManager::push_level() { level_starts_.push_back(value_trail_.size()); }
+InterfaceEqualityAssignment TheoryCombinationManager::interface_equality_assignment(
+    core::TermId lhs, core::TermId rhs) const {
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return InterfaceEqualityAssignment::Unknown;
+  }
+  return summary_.equality_registry[found->second].assignment;
+}
+
+bool TheoryCombinationManager::set_interface_equality_assignment(
+    core::TermId lhs, core::TermId rhs, InterfaceEqualityAssignment assignment) {
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return false;
+  }
+  InterfaceEqualityRegistryEntry& entry = summary_.equality_registry[found->second];
+  if (entry.assignment == assignment) {
+    return true;
+  }
+  assignment_trail_.push_back(EqualityAssignmentTrailEntry{found->second, entry.assignment});
+  entry.assignment = assignment;
+  return true;
+}
+
+void TheoryCombinationManager::clear_interface_equality_assignments() {
+  for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
+    entry.assignment = InterfaceEqualityAssignment::Unknown;
+  }
+  assignment_trail_.clear();
+  assignment_level_starts_.clear();
+}
+
+void TheoryCombinationManager::refresh_interface_equality_assignments(
+    const std::function<std::optional<bool>(sat::Lit)>& lit_value) {
+  for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
+    if (entry.lit.value == 0) {
+      entry.assignment = InterfaceEqualityAssignment::Unknown;
+      continue;
+    }
+    const std::optional<bool> value = lit_value(entry.lit);
+    if (!value.has_value()) {
+      entry.assignment = InterfaceEqualityAssignment::Unknown;
+      continue;
+    }
+    entry.assignment =
+        value.value() ? InterfaceEqualityAssignment::True : InterfaceEqualityAssignment::False;
+  }
+  assignment_trail_.clear();
+  assignment_level_starts_.clear();
+}
+
+std::vector<InterfaceEqualityRegistryEntry>
+TheoryCombinationManager::interface_equalities_with_assignment(
+    InterfaceEqualityAssignment assignment) const {
+  std::vector<InterfaceEqualityRegistryEntry> entries;
+  entries.reserve(summary_.equality_registry.size());
+  for (const InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
+    if (entry.assignment == assignment) {
+      entries.push_back(entry);
+    }
+  }
+  return entries;
+}
+
+bool TheoryCombinationManager::mark_interface_equality_classification(
+    core::TermId lhs, core::TermId rhs, InterfaceEqualityClassification classification) {
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return false;
+  }
+  summary_.equality_registry[found->second].classifications |= classification_bit(classification);
+  return true;
+}
+
+bool TheoryCombinationManager::mark_interface_equality_classification(
+    core::TermId equality, InterfaceEqualityClassification classification) {
+  const core::Term& term = terms_.get(equality);
+  if (term.kind != core::TermKind::Equality || term.children.size() != 2) {
+    return false;
+  }
+  return mark_interface_equality_classification(term.children.at(0), term.children.at(1),
+                                                classification);
+}
+
+bool TheoryCombinationManager::has_interface_equality_classification(
+    core::TermId lhs, core::TermId rhs, InterfaceEqualityClassification classification) const {
+  const auto found = equality_index_.find(equality_key(lhs, rhs));
+  if (found == equality_index_.end()) {
+    return false;
+  }
+  return (summary_.equality_registry[found->second].classifications &
+          classification_bit(classification)) != 0;
+}
+
+void TheoryCombinationManager::clear_interface_equality_classifications() {
+  for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
+    entry.classifications = 0;
+  }
+}
+
+void TheoryCombinationManager::push_level() {
+  value_level_starts_.push_back(value_trail_.size());
+  assignment_level_starts_.push_back(assignment_trail_.size());
+}
 
 void TheoryCombinationManager::pop_to_level(std::size_t new_level) {
-  const std::size_t keep =
-      new_level < level_starts_.size() ? level_starts_[new_level] : std::size_t{0};
-  while (value_trail_.size() > keep) {
+  const std::size_t keep_values =
+      new_level < value_level_starts_.size() ? value_level_starts_[new_level] : std::size_t{0};
+  while (value_trail_.size() > keep_values) {
     const EqualityValueTrailEntry entry = value_trail_.back();
     value_trail_.pop_back();
     if (entry.index < summary_.equality_registry.size()) {
       summary_.equality_registry[entry.index].value = entry.old_value;
     }
   }
-  level_starts_.resize(std::min<std::size_t>(new_level, level_starts_.size()));
+  const std::size_t keep_assignments = new_level < assignment_level_starts_.size()
+                                           ? assignment_level_starts_[new_level]
+                                           : std::size_t{0};
+  while (assignment_trail_.size() > keep_assignments) {
+    const EqualityAssignmentTrailEntry entry = assignment_trail_.back();
+    assignment_trail_.pop_back();
+    if (entry.index < summary_.equality_registry.size()) {
+      summary_.equality_registry[entry.index].assignment = entry.old_assignment;
+    }
+  }
+  value_level_starts_.resize(std::min<std::size_t>(new_level, value_level_starts_.size()));
+  assignment_level_starts_.resize(
+      std::min<std::size_t>(new_level, assignment_level_starts_.size()));
 }
 
 }  // namespace primo::smt

@@ -63,13 +63,15 @@ first shared-equality ownership slice. `TheoryCombinationManager` scans the curr
 post-preprocessing assertions, records user-visible non-Boolean constants by
 sort, records already-visible equality atoms whose two sides are such
 constants, and builds a canonical same-sort interface equality registry. The
-registry can store the current combination-layer value of each registered pair:
-unknown, equal, or disequal. These values are backtrackable through
-`TheoryCombinationManager::push_level` and `pop_to_level`; the manager owns only
-the arrangement value, not theory-local closure/tableau state. For the mixed
-QF_UFLRA path, the manager is also rebuilt from shared Real interface terms and
-stores the SAT literal registered for each lazily generated or paired-bound
-precreated equality atom.
+registry stores the SAT literal registered for each lazily generated equality
+atom, a SAT assignment snapshot for registered equality literals, the current
+combination-layer value of each registered pair (unknown, equal, or disequal),
+and per-round classification flags such as EUF-implied, LRA-implied,
+SAT-forced, assigned-false, or model/internal. The trailed values and assignment
+state are backtrackable through `TheoryCombinationManager::push_level` and
+`pop_to_level`; the manager owns only combination-layer equality state, not
+theory-local closure/tableau state. For the mixed QF_UFLRA path, the manager is
+also rebuilt from shared Real interface terms.
 `analyze_nelson_oppen_interface` is a
 compatibility wrapper around this manager, and the diagnostic path reports the
 same information through `check_sat` statistics:
@@ -583,8 +585,9 @@ treating one theory's atoms as Boolean noise.
 
 - **Data structures:** `TheoryCombinationManager` owns the shared Real
   interface-pair registry, the generated equality atom `TermId`, the registered
-  SAT literal, and the current unknown/equal/disequal arrangement value for
-  each pair. The final-check loop still reuses
+  SAT literal, the current SAT assignment snapshot, the current
+  unknown/equal/disequal arrangement value, and per-round classification flags
+  for each pair. The final-check loop still reuses
   `BooleanClausifier::TheoryAtom`, `PreparedFlatTheory`, `PreparedLraTheory`,
   `AssignedTheoryAtom`, and ordinary SAT clauses. The purification pass uses
   SMT-local maps from original Real-valued UF application `TermId` values and

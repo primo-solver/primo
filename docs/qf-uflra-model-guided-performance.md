@@ -84,10 +84,16 @@ model-based theory-combination algorithm. The intended implementation is a
 QF_UFLRA subset that moves the expensive final equality scan toward the paper's
 candidate-first discipline.
 
-## Immediate Implementation Target
+## Immediate Performance Target
 
-The next accepted source change should make LRA-to-EUF equality handling
-consumer-aware before it creates or forces SAT equality literals.
+After the shared-equality ownership cleanup, the next accepted performance
+source change should make LRA-to-EUF equality handling consumer-aware before it
+creates or forces SAT equality literals. `TheoryCombinationManager` now owns the
+shared equality ledger: interface equality atom identity, SAT literal
+assignment snapshots, trailed arrangement values, and per-round classification
+flags. The QF_UFLRA coordinator should use that ledger as the single place where
+an equality is recorded as already true, assigned false, EUF-implied,
+LRA-implied, SAT-forced, or model/internal.
 
 Concrete rule:
 
@@ -117,12 +123,12 @@ Soundness obligation:
 
 Likely C++ ownership:
 
-- `src/smt/check_sat.cpp` remains the first owner because the current
-  QF_UFLRA coordinator already owns the SAT assignment, EUF flat closure, LRA
-  final checks, and model reconstruction.
-- `TheoryCombinationManager` in `src/smt/theory_combination.hpp` remains the
-  registry for interface equality atoms and generated shared-Real equality
-  variables. It should not be taught theory semantics.
+- `TheoryCombinationManager` in `src/smt/theory_combination.hpp` owns the
+  shared equality ledger and should be the only component that records
+  per-pair combination-layer classification.
+- `src/smt/check_sat.cpp` remains the orchestrator that asks SAT, EUF, and LRA
+  for their current facts, but it should not keep parallel ad hoc equality
+  state.
 - EUF mergeability should be queried through a helper like the existing
   final-arrangement EUF-forbidden check, using a temporary push/pop closure
   state. The helper must include current true equalities and false generated
@@ -190,14 +196,14 @@ Required tests:
 After the two narrow optimizations above, the larger architectural step is to
 move from final-check loops toward a QF_UFLRA model state.
 
-Primo already has shared combination bookkeeping in `TheoryCombinationManager`.
+Primo already has shared equality ownership in `TheoryCombinationManager`.
 That class owns the interface term list, visible or generated interface equality
-registry, SAT literals for equality atoms, and a trailed
-`InterfaceEqualityValue` field. This is necessary shared interface state, but it
-is not yet the model state meant here. It does not own an EUF model, an LRA
-model, a reconciled arrangement/model view, mutation classifications, or
-absorbed equalities used only for final/model validation. Those objects are
-currently rebuilt in `solve_qf_uf_lra` as local final-check data.
+registry, SAT literals for equality atoms, SAT assignment snapshots, trailed
+`InterfaceEqualityValue` entries, and per-round classification flags. This is
+necessary shared interface state, but it is not yet the model state meant here.
+It does not own an EUF model, an LRA model, a reconciled arrangement/model view,
+or mutable model values. Those objects are still rebuilt in `solve_qf_uf_lra` as
+local final-check data.
 
 The first useful state object should record:
 

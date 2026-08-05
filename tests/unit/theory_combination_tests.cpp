@@ -15,6 +15,8 @@
 using primo::core::SymbolTable;
 using primo::core::TermManager;
 using primo::smt::analyze_nelson_oppen_interface;
+using primo::smt::InterfaceEqualityAssignment;
+using primo::smt::InterfaceEqualityClassification;
 using primo::smt::InterfaceEqualityStatus;
 using primo::smt::InterfaceEqualityValue;
 using primo::smt::PurificationSiteKind;
@@ -295,6 +297,115 @@ void manager_rolls_back_interface_equality_values_by_decision_level() {
   assert(manager.interface_equality_value(a, c) == InterfaceEqualityValue::Unknown);
 }
 
+void manager_tracks_interface_equality_assignment_snapshots() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto b_symbol = symbols.declare_constant("b", sort_a);
+  const auto c_symbol = symbols.declare_constant("c", sort_a);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+  const auto eq_ab = terms.mk_eq(a, b);
+  const auto eq_bc = terms.mk_eq(b, c);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.register_interface_equality_atom(eq_ab, primo::sat::Lit{17}));
+  assert(manager.register_interface_equality_atom(eq_bc, primo::sat::Lit{19}));
+
+  manager.refresh_interface_equality_assignments([](primo::sat::Lit lit) -> std::optional<bool> {
+    if (lit.value == 17) {
+      return true;
+    }
+    if (lit.value == 19) {
+      return false;
+    }
+    return std::nullopt;
+  });
+
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::True);
+  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::False);
+  assert(manager.interface_equality_assignment(a, c) == InterfaceEqualityAssignment::Unknown);
+  assert(manager.interface_equalities_with_assignment(InterfaceEqualityAssignment::True).size() ==
+         1);
+  assert(manager.interface_equalities_with_assignment(InterfaceEqualityAssignment::False).size() ==
+         1);
+  assert(manager.registered_interface_equality_atom_count() == 2);
+
+  manager.clear_interface_equality_assignments();
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::Unknown);
+  assert(manager.interface_equality_lit(a, b)->value == 17);
+}
+
+void manager_rolls_back_interface_equality_assignments_by_decision_level() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto b_symbol = symbols.declare_constant("b", sort_a);
+  const auto c_symbol = symbols.declare_constant("c", sort_a);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+
+  assert(manager.set_interface_equality_assignment(a, b, InterfaceEqualityAssignment::True));
+  manager.push_level();
+  assert(manager.set_interface_equality_assignment(a, b, InterfaceEqualityAssignment::False));
+  assert(manager.set_interface_equality_assignment(b, c, InterfaceEqualityAssignment::True));
+  manager.push_level();
+  assert(manager.set_interface_equality_assignment(a, c, InterfaceEqualityAssignment::False));
+
+  manager.pop_to_level(1);
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::False);
+  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::True);
+  assert(manager.interface_equality_assignment(a, c) == InterfaceEqualityAssignment::Unknown);
+
+  manager.pop_to_level(0);
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::True);
+  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::Unknown);
+  assert(manager.interface_equality_assignment(a, c) == InterfaceEqualityAssignment::Unknown);
+}
+
+void manager_tracks_per_round_interface_equality_classifications() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto b_symbol = symbols.declare_constant("b", sort_a);
+  const auto c_symbol = symbols.declare_constant("c", sort_a);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+  const auto eq_ab = terms.mk_eq(a, b);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+
+  assert(manager.mark_interface_equality_classification(
+      eq_ab, InterfaceEqualityClassification::LraImplied));
+  assert(manager.mark_interface_equality_classification(
+      b, a, InterfaceEqualityClassification::SatForced));
+  assert(manager.has_interface_equality_classification(
+      a, b, InterfaceEqualityClassification::LraImplied));
+  assert(manager.has_interface_equality_classification(a, b,
+                                                       InterfaceEqualityClassification::SatForced));
+  assert(!manager.mark_interface_equality_classification(
+      terms.mk_eq(a, a), InterfaceEqualityClassification::EufImplied));
+
+  manager.clear_interface_equality_classifications();
+  assert(!manager.has_interface_equality_classification(
+      a, b, InterfaceEqualityClassification::LraImplied));
+  assert(manager.interface_equality(a, b).has_value());
+}
+
 void manager_rebuilds_registry_from_explicit_interface_terms() {
   SymbolTable symbols;
   const auto real_sort = symbols.real_sort();
@@ -389,6 +500,9 @@ int main() {
   manager_rejects_unregistered_or_cross_sort_equality_values();
   manager_rebuild_replaces_previous_arrangement();
   manager_rolls_back_interface_equality_values_by_decision_level();
+  manager_tracks_interface_equality_assignment_snapshots();
+  manager_rolls_back_interface_equality_assignments_by_decision_level();
+  manager_tracks_per_round_interface_equality_classifications();
   manager_rebuilds_registry_from_explicit_interface_terms();
   reports_real_terms_inside_euf_atoms_as_purification_sites();
   reports_uninterpreted_applications_inside_arithmetic_atoms();

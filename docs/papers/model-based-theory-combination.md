@@ -21,7 +21,9 @@ Primo does not yet implement full `DPLL(T^M)` or full model-based Nelson-Oppen
 combination. It has these related pieces:
 
 - conservative QF_UF, QF_LRA, and narrow QF_UFLRA `get-model` support;
-- `TheoryCombinationManager` bookkeeping for interface equality pairs;
+- `TheoryCombinationManager` ownership of the shared equality ledger for
+  interface terms, equality atoms, SAT assignment snapshots, trailed arrangement
+  values, and per-round equality classifications;
 - partial mixed QF_UFLRA final checks over EUF and Real LRA atoms;
 - lazy SAT-visible equality atoms for shared Real terms;
 - guarded equality clauses when EUF or LRA implies a shared Real equality;
@@ -45,10 +47,11 @@ combination. It has these related pieces:
   arguments.
 
 The missing parts are the paper's central mechanisms. `TheoryCombinationManager`
-already provides shared interface bookkeeping for terms, equality atoms, SAT
-literals, and trailed equality values, but it is not a shared model object in
-the paper's sense: it does not own component model fragments, mutation state, or
-the current reconciled arrangement.
+already provides shared equality ownership for interface terms, equality atoms,
+SAT literals, SAT assignment snapshots, trailed equality values, and per-round
+classification flags, but it is not a shared model object in the paper's sense:
+it does not own component model fragments, mutation state, or the current
+reconciled model.
 
 - no generic model object carried by the DPLL(T) state;
 - no full or generic `M-Propagate` transition;
@@ -100,7 +103,7 @@ The relevant implemented pieces are documented and tested here:
 - `docs/papers/nelson-oppen-closure-methods.md`: current design note for the
   branch and its limitations.
 - `src/smt/theory_combination.hpp`: `TheoryCombinationManager`, the current
-  interface-equality registry and diagnostic scaffold.
+  shared equality ledger and diagnostic scaffold.
 - `src/smt/check_sat.cpp`: `solve_qf_uf_lra`, lazy generated equality literals,
   mixed final checks, model reconstruction, and default-off model-equality
   branching.
