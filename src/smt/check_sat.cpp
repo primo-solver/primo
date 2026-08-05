@@ -4786,6 +4786,14 @@ bool assign_real_model_value(const core::TermManager& terms, RealModelValues& va
 
 // Gives every monotonically eliminated variable a value again.
 //
+// This is a *postsolve* in the LP sense (Andersen & Andersen,
+// "Presolving in linear programming", Math. Programming 71, 1995,
+// Section 4): the reduced problem's solution is not a solution to the
+// original, so the recorded reductions are walked back to recover one.
+// Their reductions must be undone in reverse order; ours need no order
+// at all -- see docs/preprocessing.md. The elimination rule itself is
+// NOT from that paper; see docs/papers/monotone-variable-elimination.md.
+//
 // Such a variable was removed because all of its constraints push it one
 // way, so no finite bound opposes it. Its constraints are re-derived here
 // against the model the solver produced: each yields a bound on the

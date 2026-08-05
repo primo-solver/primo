@@ -29,31 +29,60 @@ project's citation graph -- [](griggio-mathsat-thesis.md) cites the same book
 **Status: confident.** This is the part the implementation actually rests on,
 and it is a textbook fact rather than a result needing verification.
 
-## 2. The closest named technique: LP presolve
+## 2. LP presolve: read, and it is NOT this rule
 
-In linear-programming presolve the same observation appears as a **column**
-reduction. A column whose entries all have one sign, with no opposing bound,
-makes every row containing it redundant for feasibility. The standard
-vocabulary is *dominated columns*, *implied free variables*, and *forcing /
-redundant constraints*.
+The obvious guess was that this is a named LP-presolve reduction, and the
+foundational survey is:
 
-The foundational reference is:
+> Erling D. Andersen and Knud D. Andersen. "Presolving in linear
+> programming." *Mathematical Programming* 71(2):221-245, 1995.
+> Local copy `docs/papers/Presolving.pdf` (untracked).
 
-> Erling D. Andersen and Knud D. Andersen. "Presolving in linear programming."
-> *Mathematical Programming* 71(2):221-245, 1995.
+**Read 2026-08-05. It does not contain this rule, and an earlier draft of this
+note guessing that it did was wrong.** Recorded because the guess is a natural
+one and someone will make it again.
 
-**Status: NOT READ. Do not cite it as an implementation source.** It was
-identified through search, and its rule names are quoted here from secondary
-descriptions. Before this project describes its pass as implementing an
-Andersen-Andersen reduction, someone must fetch and read the paper and confirm
-which named rule -- if any -- this is. Per AGENTS.md, a secondary summary is
-not an acceptable substitute. Until then the honest description is "the same
-observation that LP presolve exploits", not "we implement rule X of [AA95]".
+What the paper's column reductions actually are:
 
-A caveat that matters for the comparison, and is a reason not to lean on this
-line too hard: LP presolve is stated for a *conjunctive* system. Primo's
-formulas are not conjunctions, so the polarity bookkeeping in section 4 has no
-counterpart there.
+- **(xi) A dominated column** (p. 228) is a *dual* reduction. It bounds the
+  optimal Lagrange multipliers `y*` from column singletons, uses them to sign
+  the reduced cost `z_j*`, and then fixes `x_j` at a bound. Its condition
+  `c_j - d_j > 0 ∨ c_j - e_j < 0` is stated in terms of the objective
+  coefficients. **(xii) weakly dominated** and **(xiii) forcing column** are
+  the same family. Primo has no objective -- this is a pure feasibility
+  problem -- so none of these apply.
+- **(vi) A free column singleton** (p. 225) is the closest in spirit: a
+  variable occurring in exactly one row and free of finite bounds is
+  *substituted out* via `x_j = (b_i - Σ a_ip x_p) / a_ik`. Two differences,
+  both essential: it needs a **singleton** column, whereas the variables this
+  pass eliminates occur in many rows; and it *substitutes*, keeping the
+  equation, whereas this pass *deletes* every constraint mentioning the
+  variable.
+- **(x) forcing / dominated constraints** (§3.3) are row-side: row activity
+  bounds `g_i, h_i` computed from the variables' simple bounds decide that a
+  constraint cannot be violated, so it is dropped. That is redundancy given
+  bounds. A constraint discharged by this pass is *not* redundant in that
+  sense -- it can be violated -- it is merely satisfiable by pushing one
+  variable far enough.
+
+So the paper is a survey of presolve for LP *optimization*, and every column
+rule in it is driven by the objective. The primal, objective-free observation
+this pass uses has no counterpart there.
+
+### What the paper is genuinely the right citation for
+
+The **presolve/postsolve framing** (§4). Reductions are recorded on a stack
+during presolve, and a "postsolve" (their term, credited to Tomlin and Welch)
+walks them back to recover a solution to the original problem, since "the
+optimal solution to the reduced problem is not feasible for the original
+problem" in general. Primo's `apply_monotone_eliminations` is a postsolve in
+exactly that sense, and this is the standard name for what it does.
+
+One instructive contrast. Their postsolve undoes reductions in **reverse
+order**, because their reductions are interdependent. Primo's need no order at
+all (see [](../preprocessing.md)), because a discharged constraint is repaired
+by whichever of its eliminated variables is valued last. That difference is
+worth knowing rather than assuming the LP machinery carries over.
 
 ## 3. The SMT line that looks like this and is not: unconstrained variables
 
@@ -132,9 +161,9 @@ The implemented subset, stated the way AGENTS.md asks:
 
 ## Open citation work
 
-1. **Fetch and read Andersen & Andersen (1995)** and settle whether this is a
-   named reduction there. Paywalled at Springer; a copy is needed.
-2. If it is, restate section 2 as a real citation with the rule's name, and
-   check whether their solution-retrieval ("postsolve") procedure matches
-   Primo's model reconstruction -- postsolve for a dominated column ought to be
-   the same computation, and if it differs that is worth understanding.
+Andersen & Andersen is now read and settled: it supplies the postsolve
+framing and nothing more. No further citation work is outstanding. If the rule
+does appear somewhere under a name, the remaining places to look are the
+constraint-programming literature on monotone/one-directional variables and
+Williams' presolve work ([24] in that paper), which is where its
+dominated-column procedure is credited.
