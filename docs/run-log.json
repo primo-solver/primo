@@ -19740,6 +19740,82 @@
         },
         "outcome": "Accepted local smoke evidence for the LRA-to-EUF filter. The run compares 1000 generated mixed QF_UFLRA cases against Z3 with no wrong answers, crashes, timeouts, unsupported outcomes, parser/type errors, or reference disagreements.",
         "evidence_status": "current-local"
+      },
+      {
+        "id": "2026-08-05-qfuflra-lra-euf-filter-slurm-sample-119506",
+        "started_at": "2026-08-05T20:20:00+02:00",
+        "recorded_at": "2026-08-05T20:27:00+02:00",
+        "kind": "benchmark",
+        "scope": "SLURM 20-file QF_UFLRA sample at 60s timeout for consumer-aware LRA-to-EUF equality filtering, default and candidate-final-scan profiles",
+        "commit": "5e7c24e",
+        "branch": "nelson-oppen-online-lazy-ipasir-up",
+        "environment": {
+          "type": "slurm",
+          "host": "cluster",
+          "remote_workspace": "primo-lra-euf-filter-5e7c24e",
+          "slurm_job_id": "119506"
+        },
+        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo_slurm_ssh_config --remote primo-slurm --remote-dir primo-lra-euf-filter-5e7c24e --local-dir . --target primo --check-only && ssh -F /tmp/primo_slurm_ssh_config primo-slurm 'cd primo-lra-euf-filter-5e7c24e && PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_SOLVERS=\"default=build-slurm-rel/primo --quiet --stats;candidate=build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan;z3=contrib/local/bin/z3\" sbatch scripts/slurm_qf_uflra_sample_compare.sbatch'",
+        "solver": {
+          "name": "Primo",
+          "argv": "default: build-slurm-rel/primo --quiet --stats; candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan"
+        },
+        "references": [
+          {
+            "name": "z3",
+            "argv": "contrib/local/bin/z3",
+            "status": "failed in this fresh remote workspace because contrib/local/bin/z3 was not installed"
+          }
+        ],
+        "inputs": {
+          "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+          "root": "tmp/QF_UFLRA",
+          "logic": "QF_UFLRA",
+          "count": 20,
+          "timeout_seconds": 60
+        },
+        "artifacts": {
+          "default_summary": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/default-summary.csv",
+          "default_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/default.csv",
+          "candidate_summary": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/candidate-summary.csv",
+          "candidate_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/candidate.csv",
+          "logs": "remote:primo-lra-euf-filter-5e7c24e/logs/primo-qfuflra-sample-119506-*.{out,err}"
+        },
+        "summary": {
+          "default": {
+            "solved": 16,
+            "timeout": 4,
+            "wrong": 0,
+            "par2": 481.388154,
+            "sat_equalities_forced": 0,
+            "lra_to_euf_rechecks": 0,
+            "lra_to_euf_equalities": 36,
+            "lra_to_euf_mergeable_skipped": 26,
+            "lra_to_euf_forbidden_forced": 0,
+            "sat_solve_calls": 19,
+            "solve_us": 1246554
+          },
+          "candidate_final_scan": {
+            "solved": 17,
+            "timeout": 3,
+            "wrong": 0,
+            "par2": 415.679421,
+            "sat_equalities_forced": 0,
+            "lra_to_euf_rechecks": 0,
+            "lra_to_euf_equalities": 29,
+            "lra_to_euf_mergeable_skipped": 27,
+            "lra_to_euf_forbidden_forced": 0,
+            "sat_solve_calls": 19,
+            "solve_us": 55498139
+          },
+          "z3_task": {
+            "state": "FAILED",
+            "exit_code": "1:0",
+            "reason": "contrib/local/bin/z3 missing in fresh remote workspace"
+          }
+        },
+        "outcome": "Accepted as SLURM smoke evidence for the committed filter on the deterministic 20-file QF_UFLRA sample. The default profile preserves the local solved count at a longer timeout and keeps LRA-to-EUF SAT forcing at zero; candidate-final-scan solves one additional cpachecker-induction row. The Z3 array task is not usable evidence for this remote run because Z3 was absent from the fresh workspace; use the local Z3 entry for reference on this milestone or rerun SLURM after provisioning Z3.",
+        "evidence_status": "current-slurm-partial-reference"
       }
   ]
 }
