@@ -18628,6 +18628,171 @@
         "known_limitation": "Several families still report opaque atoms (latendresse 899, miplib 248, clock_synchro 204, tta_startup 200, sc 50). Opaque forces the conservative classification, so conclusions stay sound, but those constructs are worth identifying before the analyzer is relied on for finer questions."
       },
       "follow_up": "Lead closed in docs/open-leads.md. The analyzer is committed at scripts/analyze_smt2.py with a --selftest covering both retracted grep errors."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-screen-corpus-wide-reopens-lead",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Corpus-wide one-sided (monotone) variable screen over the entire local QF_LRA benchmark set, run to check a lead that had been closed on a sample of one file per family. The corpus contradicts the sample: the lead is reopened.",
+      "commit": "328790c",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "python3 scripts/analyze_smt2.py via scripts/screen_qf_lra_corpus.py",
+        "notes": "14 cores, 30GB RAM. 6 parallel workers, 180s per-file timeout, 6144MB RSS cap per worker. Static analysis only; no solver was run."
+      },
+      "command": {
+        "screen": "python3 scripts/screen_qf_lra_corpus.py sandbox/non-incremental/QF_LRA --out results/qf-lra-corpus-screen --jobs 6 --timeout 180 --mem-mb 6144",
+        "selftest": "python3 scripts/analyze_smt2.py --selftest"
+      },
+      "result": {
+        "coverage": "1753 of 1753 files analyzed successfully. Zero timeouts, zero OOMs, zero parse failures. Slowest file 43.15s against the 180s cap, so no file was excluded and the denominator is complete.",
+        "headline": "86,126 one-sided reals out of 4,756,176 (1.8%) corpus-wide. This contradicts the earlier 8-file screen, which found essentially none and on which the lead had been closed.",
+        "per_family": {
+          "2017-Heizmann-UltimateInvariantSynthesis": {
+            "files": 58,
+            "analyzed": 58,
+            "failed": 0,
+            "reals": 22319,
+            "one_sided": 442,
+            "opaque_pct": 0.0
+          },
+          "2019-ezsmt": {
+            "files": 105,
+            "analyzed": 105,
+            "failed": 0,
+            "reals": 91853,
+            "one_sided": 10,
+            "opaque_pct": 0.0
+          },
+          "DTP-Scheduling": {
+            "files": 91,
+            "analyzed": 91,
+            "failed": 0,
+            "reals": 7650,
+            "one_sided": 52,
+            "opaque_pct": 0.0
+          },
+          "LassoRanker": {
+            "files": 419,
+            "analyzed": 419,
+            "failed": 0,
+            "reals": 4455966,
+            "one_sided": 85120,
+            "opaque_pct": 0.0
+          },
+          "TM": {
+            "files": 25,
+            "analyzed": 25,
+            "failed": 0,
+            "reals": 14531,
+            "one_sided": 41,
+            "opaque_pct": 0.0
+          },
+          "check": {
+            "files": 2,
+            "analyzed": 2,
+            "failed": 0,
+            "reals": 12,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "clock_synchro": {
+            "files": 36,
+            "analyzed": 36,
+            "failed": 0,
+            "reals": 3663,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "keymaera": {
+            "files": 21,
+            "analyzed": 21,
+            "failed": 0,
+            "reals": 89,
+            "one_sided": 29,
+            "opaque_pct": 0.0
+          },
+          "latendresse": {
+            "files": 18,
+            "analyzed": 18,
+            "failed": 0,
+            "reals": 30280,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "meti-tarski": {
+            "files": 488,
+            "analyzed": 488,
+            "failed": 0,
+            "reals": 1480,
+            "one_sided": 365,
+            "opaque_pct": 0.0
+          },
+          "miplib": {
+            "files": 42,
+            "analyzed": 42,
+            "failed": 0,
+            "reals": 26256,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "sal": {
+            "files": 107,
+            "analyzed": 107,
+            "failed": 0,
+            "reals": 7226,
+            "one_sided": 67,
+            "opaque_pct": 0.0
+          },
+          "sc": {
+            "files": 144,
+            "analyzed": 144,
+            "failed": 0,
+            "reals": 40356,
+            "one_sided": 0,
+            "opaque_pct": 20.8
+          },
+          "spider_benchmarks": {
+            "files": 42,
+            "analyzed": 42,
+            "failed": 0,
+            "reals": 1956,
+            "one_sided": 0,
+            "opaque_pct": 1.7
+          },
+          "tropical-matrix": {
+            "files": 10,
+            "analyzed": 10,
+            "failed": 0,
+            "reals": 18691,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "tta_startup": {
+            "files": 72,
+            "analyzed": 72,
+            "failed": 0,
+            "reals": 6768,
+            "one_sided": 0,
+            "opaque_pct": 12.1
+          },
+          "uart": {
+            "files": 73,
+            "analyzed": 73,
+            "failed": 0,
+            "reals": 27080,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          }
+        },
+        "mechanism": "The one-sided variables in 2017-Heizmann are named motzkin_*: Farkas/Motzkin multipliers from constraint-based invariant synthesis, non-negative by construction and therefore one-directional. LassoRanker is the same lineage (ranking-function synthesis via Farkas' lemma), consistent with its 85,120. This is a structural feature of how those benchmarks are generated, not incidental.",
+        "opaque_caveat": "Overall opaque-atom rate 0.2%, but concentrated: sc 20.8% (all 144 files) and tta_startup 12.1% (all 72 files), from ite inside arithmetic terms. For those two families a zero one-sided count means the analyzer could not tell, not that none exist. Every other family is at 0.0%.",
+        "analyzer_fixes_this_run": "Handling (* (- 1) x) via a new const_value() ground-term evaluator removed the great majority of opaque atoms corpus-wide (latendresse's first file: 899 opaque -> 0). Separately, ite_count was undercounting because the traversal stops at atom boundaries; sc actually has 380 ites per file and tta_startup 854, where the report previously said 0."
+      },
+      "follow_up": "Lead reopened as entry 9 in docs/open-leads.md with a falsifier: implement detection only, report :preprocessing.monotone-eliminable on LassoRanker and Heizmann, and check it against :lra.rows / :lra.row-nonzeros. If eliminating those columns does not reduce rows or fill-in, the lead closes on solver counters rather than on a syntactic census. Separate performance follow-up recorded in the analyzer docstring: inline_lets materialises the let-DAG into a tree, which is what makes the largest files slow (~43s, ~1GB); traversing the DAG directly needs a memo key of (node, polarity, guards), never node alone."
     }
   ]
 }

@@ -36,6 +36,7 @@ notes it points to.
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
 | [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | ~1.20x median in its source | small | open |
 | [8](#lead-dl6) | DL6: decide precision statically before search | unknown | small | blocked on a DL solver |
+| [9](#lead-monotone) | Monotone (one-sided) variable elimination | 86,126 one-sided reals corpus-wide | small-medium | **reopened** on corpus evidence |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -225,6 +226,75 @@ retrofitting a check-free path is harder than designing for one.
 benchmarks the pass is dead weight. Compute it over `DTP-Scheduling`,
 `clock_synchro` and `tta_startup` before writing solver code.
 
+(lead-monotone)=
+## 9. Monotone (one-sided) variable elimination
+
+**Claim.** If every constraint mentioning a real variable pushes it the same
+direction -- after accounting for Boolean polarity -- that variable can be sent
+to its extreme and those constraints discharged. This is the Fourier-Motzkin
+observation that eliminating a single-sign variable generates **zero** new
+constraints, and the LP-presolve notion of a dominated column.
+
+**This lead was closed on 2026-08-05 and reopened the same day.** The closure
+rested on a screen of *one file per family*, eight files, which found almost no
+one-sided variables. Running `scripts/analyze_smt2.py` over the **entire local
+QF_LRA corpus -- 1,753 files, all 17 families, zero analysis failures** --
+contradicts it:
+
+| family | files | reals | one-sided | share |
+|---|---:|---:|---:|---:|
+| keymaera | 21 | 89 | 29 | **32.6%** |
+| meti-tarski | 488 | 1,480 | 365 | **24.7%** |
+| 2017-Heizmann-UltimateInvariantSynthesis | 58 | 22,319 | 442 | 2.0% |
+| LassoRanker | 419 | 4,455,966 | **85,120** | 1.9% |
+| sal | 107 | 7,226 | 67 | 0.9% |
+| DTP-Scheduling | 91 | 7,650 | 52 | 0.7% |
+| TM | 25 | 14,531 | 41 | 0.3% |
+| 2019-ezsmt | 105 | 91,853 | 10 | 0.0% |
+| clock_synchro, latendresse, miplib, sc, tropical-matrix, uart, spider, check | 434 | 154,062 | 0 | 0% |
+| **total** | **1,753** | **4,756,176** | **86,126** | **1.8%** |
+
+**The population is real and has a mechanism.** The one-sided variables in the
+Heizmann family are named `motzkin_*`: they are Farkas/Motzkin multipliers from
+constraint-based invariant synthesis, which are non-negative by construction
+and therefore appear only with one-directional bounds. LassoRanker is the same
+lineage (ranking-function synthesis via Farkas' lemma), which is consistent with
+its 85,120. These are not incidental variables; they are a structural feature of
+how that whole class of benchmark is generated.
+
+**Why it is interesting.** `LassoRanker` and `2017-Heizmann` are gap families --
+[](qf-lra-heuristics.md) lists Heizmann/LassoRanker as "hard for everyone" --
+and 85,120 eliminable columns is a large absolute number even at 1.9%.
+
+**Cost.** Small-medium. The detection already exists in the analyzer; the work
+is a preprocessing pass in the solver plus the polarity bookkeeping to make it
+sound on non-NNF input.
+
+**Two caveats, both to check before building anything.**
+
+1. **The high-percentage families may not be where the time goes.**
+   `meti-tarski` and `keymaera` have the best ratios but are families Primo
+   already matches the reference solvers on, and `meti-tarski`'s files are tiny
+   (3 reals each in the 100% cases). The value, if any, is in LassoRanker and
+   Heizmann.
+2. **Eliminating a variable is not automatically a win.** These are columns in
+   an already-sparse tableau; removing them helps only if it removes rows or
+   reduces fill-in. Measure the tableau shape before and after, not just the
+   variable count.
+
+**Falsifier, stated in advance.** Implement detection only, report
+`:preprocessing.monotone-eliminable` on LassoRanker and Heizmann, and check it
+against `:lra.rows` / `:lra.row-nonzeros`. If eliminating those columns does not
+reduce rows or fill-in materially, the lead closes for real this time, and it
+closes on solver counters rather than on a syntactic census.
+
+**Coverage note.** The corpus screen analyzed 1,753 of 1,753 files with no
+timeouts and no memory failures, so no file was excluded and the denominator is
+complete. Two families carry a real blind spot: `sc` (20.8% of atoms opaque)
+and `tta_startup` (12.1%), both from `ite` inside arithmetic terms, where the
+analyzer conservatively forces every variable two-sided. Their zeros therefore
+mean "could not tell", not "none". Every other family is at 0.0% opaque.
+
 (rejected)=
 ## Rejected and closed leads
 
@@ -235,7 +305,7 @@ informative. Each names the evidence that closed it.
 |---|---|
 | **Unguarding tropical's guarded definitions** | Sound but **27x slower** (4.13s -> 112s, 68x pivots). The guards are load-bearing: setting the flag discharges the definition at the Boolean level, so the case split is cheaper than the tableau row it avoids. [](tropical-matrix-structure.md) |
 | **Row propagation on top of T1 (T2)** | 0/10 at every cap setting against the baseline's 1/10 -- a regression, not a wash. Well-controlled: the mechanism fired 2,088 times, and counters are *identical* at default/128/1024 caps because tropical never approaches even the default caps. [](qf-lra-heuristics.md) |
-| **Monotone / one-sided variable elimination** | Measured with `scripts/analyze_smt2.py` across 8 QF_LRA families: **0 one-sided reals in 7 of them**, and 1 of 11 in `DTP-Scheduling`. There is nothing to eliminate. The idea is sound (Fourier-Motzkin on a single-sign variable generates no new constraints); it simply does not apply to these benchmarks. |
+| ~~Monotone / one-sided variable elimination~~ | **Reopened 2026-08-05 on corpus-wide evidence -- see [](#lead-monotone). The 8-file screen that closed it was unrepresentative.** |
 | **The propositional pure-literal rule on theory atoms** | **Unsound.** Counterexample verified: `(or (>= x 10) d) AND (<= x 0)` is sat, but forcing the pure-positive atom makes it unsat. Syntactic purity is not semantic independence. [](preprocessing.md)'s [](#pure-literal-trap) |
 | **D1 row propagation, raised caps** (mid-band) | Rejected on a 59-file cluster sweep: no cap setting beat baseline on solved count. [](qf-lra-heuristics.md) |
 | **D3 offset-equality detection** | Closed by D1's sweep -- they are the same mechanism. |
