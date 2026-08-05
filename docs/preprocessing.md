@@ -462,7 +462,7 @@ In propositional SAT the pure-literal rule is free: if `p` occurs only
 positively, set `p := true` and delete every clause containing it. **The same
 move is unsound for theory atoms**, and turns sat into unsat:
 
-```smt
+```lisp
 (declare-fun x () Real) (declare-fun d () Bool)
 (assert (or (>= x 10) d))   ; A = (>= x 10) occurs ONLY positively
 (assert (<= x 0))           ; a clause that does not mention A at all
