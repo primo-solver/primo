@@ -19143,6 +19143,52 @@
       },
       "outcome": "Accepted as current SLURM evidence for the default-off candidate final scan at a 60s timeout. Candidate final scan improves the sample from 26/45 to 28/45 solved and improves PAR2 from 2673.602478 to 2338.964269 with no wrong answers. The gain is again on MathSAT, improving 18/25 to 20/25, while CPAchecker results are neutral at this timeout. Candidate mode reduces the number of temporary LRA probe calls but increases equality traffic and arrangement atoms probed, so the evidence supports keeping it default-off and using it to guide the next arrangement/preprocessing optimization rather than promoting it.",
       "evidence_status": "current-slurm"
+    },
+    {
+      "id": "2026-08-05-qf-uflra-interface-arrangement-local-gate",
+      "date": "2026-08-05",
+      "commit": "uncommitted-interface-arrangement-fix",
+      "host": "local-workspace",
+      "scope": "Local validation for restricting QF_UFLRA final arrangement/model reconstruction to shared Real interface terms",
+      "command": "cmake --build build --target primo_qf_lra_solver_tests primo -j4 && ./build/primo_qf_lra_solver_tests; make lint; make check; make docs; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260805 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-interface-arrangement-20260805; ./build/primo --quiet --stats --nelson-oppen-arrangement-probe-limit=1 <representative-cpachecker-kbfiltr-file>",
+      "parameters": {
+        "logic": "QF_UFLRA",
+        "fuzz_count": 1000,
+        "fuzz_seed": 20260805,
+        "fuzz_timeout_seconds": 5,
+        "fuzz_shape": "mixed",
+        "reference": "z3",
+        "probe_limit": 1
+      },
+      "artifacts": [
+        "fuzz-results/qf_uflra-interface-arrangement-20260805/summary.csv",
+        "fuzz-results/qf_uflra-interface-arrangement-20260805/cases/",
+        "local:/tmp/primo-cpa-cap.stats"
+      ],
+      "summary": {
+        "focused_tests": "primo_qf_lra_solver_tests passed",
+        "make_lint": "passed",
+        "make_check": "13/13 tests passed",
+        "make_docs": "passed",
+        "fuzz": {
+          "pass": 1000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0
+        },
+        "representative_cpachecker_probe": {
+          "result": "unknown due requested probe cap",
+          "sat_decisions": 1,
+          "lra_theory_checks": 1,
+          "shared_real_terms": 105,
+          "model_real_terms_before_interface_filter": 105,
+          "model_real_terms_filtered": 0,
+          "lra_extra_atom_probes": 1,
+          "arrangement_checks": 0
+        }
+      },
+      "outcome": "Accepted as a correctness and invariant gate for the source change, not as performance-win evidence. The new unit tests cover EUF-only Real constants being excluded from final arrangement and model reconstruction. The representative CPAchecker timeout still has 105 common EUF/LRA Real interface terms and filters none of them, so the remaining CPAchecker gap is genuine shared-interface explosion rather than broad EUF-only leakage.",
+      "evidence_status": "current-local"
     }
   ]
 }

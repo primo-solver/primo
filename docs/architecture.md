@@ -348,22 +348,25 @@ Implemented now:
   Ordinary SMT-LIB Real disequality is handled before LRA theory
   assertion by lowering Real equality to linear inequalities and letting the
   Boolean layer split negated equalities. Mixed model reconstruction uses a
-  bounded search over strict shared-Real separation orientations, with a greedy
-  fallback when the candidate set exceeds the current backtracking cap. The
-  optional `--nelson-oppen-arrangement-probe-limit` is a separate soft work
-  budget over temporary LRA consistency probes, including the conservative final
-  LRA-to-EUF equality scan that feeds arrangement validation; hitting it returns
-  `unknown` rather than using an incomplete equality/arrangement check. The same
-  bounded separation check is also run before returning a non-model QF_UFLRA
-  `sat` result, so the reported assignment has at least a checked Real-argument
-  arrangement for the documented purification subset.
+  bounded search over strict shared-Real interface separation orientations, with
+  a greedy fallback when the candidate set exceeds the current backtracking cap.
+  EUF-side Real constants that are not common EUF/LRA interface terms are
+  reported by diagnostics but are not arrangement variables. The optional
+  `--nelson-oppen-arrangement-probe-limit` is a separate soft work budget over
+  temporary LRA consistency probes, including the conservative final LRA-to-EUF
+  equality scan that feeds arrangement validation; hitting it returns `unknown`
+  rather than using an incomplete equality/arrangement check. The same bounded
+  separation check is also run before returning a non-model QF_UFLRA `sat`
+  result, so the reported assignment has at least a checked shared-interface
+  Real arrangement for the documented purification subset.
   When default-off model-equality branching is enabled, the mixed coordinator
   also computes EUF care-pair counters for shared Real arguments under flat EUF
   function prefixes that are equal in the current EUF closure. Default solving
   skips this scan because there is no active consumer for the care-pair ranking.
   Equality propagation and final arrangement validation still use the full
-  shared Real pair set unless `--qf-uflra-candidate-final-scan` is enabled for
-  the final LRA-to-EUF equality scan. The default `first` model-equality branch
+  shared Real interface pair set unless `--qf-uflra-candidate-final-scan` is
+  enabled for the final LRA-to-EUF equality scan. The default `first`
+  model-equality branch
   policy also uses the full pair order; the opt-in `ranked` and `adaptive`
   policies use care-pair diagnostics only to rank guesses, with full-pair
   fallback. The `care-queued` policy is the first pruning policy:

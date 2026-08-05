@@ -423,6 +423,8 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-conflict-lits`
 - `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-separations`
+- `:no.interface.model-real-terms-before-interface-filter`
+- `:no.interface.model-real-terms-filtered`
 - `:no.interface.model-separation-candidates`
 - `:no.interface.model-separation-search-capped`
 - `:no.interface.model-separation-search-branches`
@@ -550,9 +552,16 @@ replacement and remains zero in the current skip policy.
 the dispatcher could return them. Pure QF_UF and pure QF_LRA runs should leave
 `:no.online.enabled` at zero; that is the guard against single-theory overhead.
 `:no.interface.arrangement-checks` counts non-model `sat` results where the
-coordinator validated that the EUF arrangement over Real arguments can be
-separated consistently by LRA, with failures and accepted strict separations
-split into the corresponding arrangement counters.
+coordinator validated that the EUF arrangement over shared Real interface
+arguments can be separated consistently by LRA, with failures and accepted
+strict separations split into the corresponding arrangement counters.
+`:no.interface.model-real-terms-before-interface-filter` reports how many Real
+constants were present in EUF atoms before the final arrangement/model path was
+restricted to the Nelson-Oppen interface, and
+`:no.interface.model-real-terms-filtered` reports how many of those EUF-side
+Real constants were excluded because they are not common EUF/LRA interface
+terms. `:no.interface.model-separation-candidates` is the post-filter strict
+separation pair count.
 `:no.interface.lra-extra-atom-probes` counts LRA consistency checks that rebuild
 an augmented LRA theory with one or more temporary strict separation/equality
 atoms. `:no.interface.lra-extra-atoms-probed` sums the number of temporary atoms

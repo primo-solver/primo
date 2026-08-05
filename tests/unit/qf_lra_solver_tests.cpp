@@ -365,6 +365,71 @@ void qf_uf_lra_validates_final_arrangement_without_model() {
   assert(result.statistics.get(":no.interface.lra-extra-atoms-probed") >= 1);
 }
 
+void qf_uf_lra_final_arrangement_uses_shared_real_interface_terms_only() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun h (Real) U)
+    (assert (<= 0 x))
+    (assert (not (= (h x) (h y))))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-real-terms-before-interface-filter") == 2);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 1);
+  assert(result.statistics.get(":no.interface.model-real-terms-filtered") == 1);
+  assert(result.statistics.get(":no.interface.arrangement-checks") >= 1);
+  assert(result.statistics.get(":no.interface.model-separation-candidates") == 0);
+  assert(result.statistics.get(":no.interface.arrangement-separations") == 0);
+}
+
+void qf_uf_lra_model_reconstruction_uses_shared_real_interface_terms_only() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-sort U 0)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun h (Real) U)
+    (assert (<= 0 x))
+    (assert (not (= (h x) (h y))))
+    (check-sat)
+    (get-model)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(model") != std::string::npos);
+  assert(result.statistics.get(":no.interface.model-real-terms-before-interface-filter") == 2);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 1);
+  assert(result.statistics.get(":no.interface.model-real-terms-filtered") == 1);
+  assert(result.statistics.get(":no.interface.model-separation-candidates") == 0);
+  assert(result.statistics.get(":no.interface.model-separations") == 0);
+}
+
+void qf_uf_lra_final_arrangement_ignores_lra_only_real_terms() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= z 0))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       no_preprocessing_or_substitution());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.model-real-terms-before-interface-filter") == 2);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
+  assert(result.statistics.get(":no.interface.model-real-terms-filtered") == 0);
+  assert(result.statistics.get(":no.interface.model-separation-candidates") == 1);
+}
+
 void qf_uf_lra_prints_shared_real_equal_predicate_model() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -397,6 +462,8 @@ void qf_uf_lra_searches_multiple_shared_real_model_separations() {
     (declare-fun z () Real)
     (declare-fun h (Real) U)
     (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
     (assert (not (= (h x) (h y))))
     (assert (not (= (h x) (h z))))
     (assert (not (= (h y) (h z))))
@@ -477,6 +544,8 @@ void qf_uf_lra_arrangement_probe_limit_returns_unknown() {
     (declare-fun z () Real)
     (declare-fun h (Real) U)
     (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
     (assert (not (= (h x) (h y))))
     (assert (not (= (h x) (h z))))
     (assert (not (= (h y) (h z))))
@@ -486,7 +555,7 @@ void qf_uf_lra_arrangement_probe_limit_returns_unknown() {
   assert(result.result == CheckSatResult::Unknown);
   assert(result.message.find("probe limit") != std::string::npos);
   assert(result.statistics.get(":no.interface.lra-extra-atom-probe-limit-hit") == 1);
-  assert(result.statistics.get(":no.interface.arrangement-lra-extra-atom-probes") == 1);
+  assert(result.statistics.get(":no.interface.lra-extra-atom-probes") >= 1);
 }
 
 void qf_uf_lra_purifies_nonconstant_real_predicate_arguments() {
@@ -2711,6 +2780,9 @@ int main() {
   qf_uf_lra_model_reflects_real_valued_uf_equalities();
   qf_uf_lra_prints_shared_real_predicate_model();
   qf_uf_lra_validates_final_arrangement_without_model();
+  qf_uf_lra_final_arrangement_uses_shared_real_interface_terms_only();
+  qf_uf_lra_model_reconstruction_uses_shared_real_interface_terms_only();
+  qf_uf_lra_final_arrangement_ignores_lra_only_real_terms();
   qf_uf_lra_prints_shared_real_equal_predicate_model();
   qf_uf_lra_searches_multiple_shared_real_model_separations();
   qf_uf_lra_orients_capped_model_separations_from_lra_model();

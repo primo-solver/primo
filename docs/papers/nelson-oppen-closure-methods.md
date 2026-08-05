@@ -640,11 +640,13 @@ treating one theory's atoms as Boolean noise.
   clause found and continue. If both individual checks pass, learn guarded
   propagation clauses for any newly implied generated interface equality and
   continue. Before returning a non-model `sat`, validate that the final EUF
-  arrangement over Real argument constants can be separated consistently by the
-  LRA side using the same bounded strict-order search used for model
-  reconstruction. Return `sat` only when both theory checks accept the same
-  Boolean assignment, neither theory contributes a new shared equality clause,
-  and this final arrangement validation succeeds.
+  arrangement over common purified Real interface constants can be separated
+  consistently by the LRA side using the same bounded strict-order search used
+  for model reconstruction. Real constants that occur in EUF atoms but not in
+  LRA atoms are counted by the pre-filter diagnostic only; they are not
+  Nelson-Oppen arrangement variables. Return `sat` only when both theory checks
+  accept the same Boolean assignment, neither theory contributes a new shared
+  equality clause, and this final arrangement validation succeeds.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
   model and classifies candidate pairs through the LRA-backed
@@ -675,11 +677,11 @@ treating one theory's atoms as Boolean noise.
   `--model-equality-branch-budget`, and the selection policy by
   `--model-equality-branch-policy`.
 - **Model status:** mixed `get-model` composes the QF_UF body and nullary-Real
-  QF_LRA definitions. For Real constants used as UF arguments, reconstruction
-  first adds EUF-implied Real-constant equalities to the LRA model tableau, then
-  performs a bounded depth-first search over strict order atoms to separate Real
-  constants that are distinct in the EUF arrangement and not forced equal by
-  LRA. Each candidate orientation is accepted only if the augmented LRA
+  QF_LRA definitions. For common purified Real interface constants,
+  reconstruction first adds EUF-implied Real-constant equalities to the LRA
+  model tableau, then performs a bounded depth-first search over strict order
+  atoms to separate Real constants that are distinct in the EUF arrangement and
+  not forced equal by LRA. Each candidate orientation is accepted only if the augmented LRA
   assignment remains consistent. When the candidate set exceeds the current
   reconstruction cap, currently 18 candidate pairs, Primo records that fact and
   falls back to the former greedy orientation order instead of attempting
