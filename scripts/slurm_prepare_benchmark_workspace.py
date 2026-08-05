@@ -148,7 +148,10 @@ rm -rf "$snapshot"
         raise subprocess.CalledProcessError(ssh_proc.returncode, ssh_command)
 
 
-def build_command(workdir: str, cmake: str, target: str, jobs: int, git: str) -> str:
+def build_command(
+    workdir: str, cmake: str, target: str, jobs: int, git: str, contrib_targets: list[str]
+) -> str:
+    make_targets = " ".join(shlex.quote(contrib_target) for contrib_target in contrib_targets)
     return f"""
 set -eu
 cd {shlex.quote(workdir)}
@@ -164,7 +167,7 @@ esac
 rm -f contrib/local/.cadical.stamp contrib/local/lib/libcadical.a
 rm -rf contrib/src/cadical/build contrib/src/cadical/makefile \
   contrib/src/cadical/src/makefile build-slurm-rel
-make contrib-required
+make {make_targets}
 "$cmake_path" -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release \
   -DPRIMO_GIT_REVISION_OVERRIDE={shlex.quote(git)}
 "$cmake_path" --build build-slurm-rel --target {shlex.quote(target)} -j{jobs}
@@ -172,8 +175,12 @@ build-slurm-rel/{shlex.quote(target)} --version
 """.strip()
 
 
-def check_command(workdir: str, expected_git: str, target: str) -> str:
+def check_command(workdir: str, expected_git: str, target: str, required_tools: list[str]) -> str:
     expected_line = f"git: {expected_git}"
+    tool_checks = "\n".join(
+        f"test -x {shlex.quote(tool)}\n{shlex.quote(tool)} --version >/dev/null"
+        for tool in required_tools
+    )
     return f"""
 set -eu
 cd {shlex.quote(workdir)}
@@ -183,6 +190,7 @@ printf '%s\\n' "$version"
 printf '%s\\n' "$version" | grep -F {shlex.quote(expected_line)}
 printf '%s\\n' "$version" | grep -F 'cadical:'
 ldd build-slurm-rel/{shlex.quote(target)} >/dev/null
+{tool_checks}
 """.strip()
 
 
@@ -235,6 +243,28 @@ def main() -> int:
     parser.add_argument("--cmake", default=".venv-build/bin/cmake")
     parser.add_argument("--target", default="primo")
     parser.add_argument("--jobs", type=int, default=4)
+    parser.add_argument(
+        "--contrib-target",
+        action="append",
+        help=(
+            "Make target to run before configuring the remote build. Repeat to add "
+            "reference-tool targets such as contrib-z3. Defaults to contrib-required."
+        ),
+    )
+    parser.add_argument(
+        "--with-z3",
+        action="store_true",
+        help="Install and require contrib/local/bin/z3 in the remote workspace.",
+    )
+    parser.add_argument(
+        "--require-tool",
+        action="append",
+        default=[],
+        help=(
+            "Remote executable path that --check-only must find and run with --version, "
+            "for example contrib/local/bin/z3. Repeat for multiple tools."
+        ),
+    )
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--no-sync", action="store_true")
     parser.add_argument(
@@ -254,6 +284,14 @@ def main() -> int:
         raise SystemExit("--jobs must be positive")
     if not args.ssh_config.is_file():
         raise SystemExit(f"missing SSH config: {args.ssh_config}")
+
+    contrib_targets = args.contrib_target or ["contrib-required"]
+    required_tools = list(args.require_tool)
+    if args.with_z3:
+        if "contrib-z3" not in contrib_targets:
+            contrib_targets.append("contrib-z3")
+        if "contrib/local/bin/z3" not in required_tools:
+            required_tools.append("contrib/local/bin/z3")
 
     git = run(
         ["git", "-C", str(args.local_dir), "rev-parse", "--short", "HEAD"]
@@ -277,9 +315,15 @@ def main() -> int:
         ssh(
             args.ssh_config,
             args.remote,
-            build_command(args.remote_dir, args.cmake, args.target, args.jobs, git),
+            build_command(
+                args.remote_dir, args.cmake, args.target, args.jobs, git, contrib_targets
+            ),
         )
-    ssh(args.ssh_config, args.remote, check_command(args.remote_dir, git, args.target))
+    ssh(
+        args.ssh_config,
+        args.remote,
+        check_command(args.remote_dir, git, args.target, required_tools),
+    )
     return 0
 
 

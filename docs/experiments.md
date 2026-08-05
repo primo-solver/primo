@@ -95,6 +95,27 @@ outputs in a reused workspace cannot make benchmark binaries report a spurious
 `-dirty` suffix. Use `--sync-mode rsync` only for a deliberate legacy full-tree
 sync.
 
+`contrib-required` is only the dependency set needed to build and run Primo. A
+benchmark that names reference solvers under `contrib/local/bin` must either
+reuse an existing matching reference result, or prepare the workspace with the
+matching reference tool and require it in the preflight check. For Z3:
+
+```bash
+python3 scripts/slurm_prepare_benchmark_workspace.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote-dir <remote-home>/primo-cadical-profile \
+  --with-z3
+python3 scripts/slurm_prepare_benchmark_workspace.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote-dir <remote-home>/primo-cadical-profile \
+  --with-z3 \
+  --check-only
+```
+
+If the SMT-LIB corpus, timeout, and reference binary are unchanged, prefer the
+standing practice of reusing the existing reference CSV instead of rerunning Z3
+or cvc5 just because a Primo branch changed.
+
 The local CMake build refreshes a generated git-revision header on every `primo`
 build; uncommitted source changes are reported with a `-dirty` suffix. Use
 `--check-only` immediately before `sbatch` when the workspace was already
