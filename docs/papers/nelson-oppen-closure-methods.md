@@ -128,17 +128,15 @@ a false assignment by later entailing the corresponding equality, and mixed
 model reconstruction separately adds strict Real separation atoms for shared
 Real arguments whose equality is rejected by the current EUF closure.
 
-Default final-mode LRA-to-EUF sharing is now consumer-aware. When the LRA scan
-finds an entailed shared Real equality, `solve_qf_uf_lra` first tests the
-current EUF closure that already contains current true interface equalities and
-assigned-false generated interface equalities as disequalities. EUF-already-true
-equalities and equalities that EUF can absorb are not materialized as SAT
-equality atoms. Absorbed equalities are kept as internal model/final-validation
-equalities. The mergeability test is cumulative over the current LRA-implied
-batch: if two individually mergeable equalities jointly violate a disequality by
-congruence, the absorbed equalities are promoted to the guarded SAT-forced path
-together with the equality that exposed the conflict. This is still a
-QF_UFLRA-local filter, not a generic model-based `M-Propagate` transition.
+Default final-mode LRA-to-EUF sharing is now consumer-aware as a classifier.
+When the LRA scan finds an entailed shared Real equality, `solve_qf_uf_lra`
+first tests the current EUF closure that already contains current true
+interface equalities and assigned-false generated interface equalities as
+disequalities. EUF-already-true equalities are not materialized as SAT equality
+atoms. Equalities that EUF can absorb are counted separately as mergeable, but
+after the rejected 2026-08-05 full QF_UFLRA run they are conservatively forced
+through the guarded SAT equality-clause path. This is still a QF_UFLRA-local
+filter, not a generic model-based `M-Propagate` transition.
 
 `--nelson-oppen-prop=online` adds a deliberately narrow online combination
 path. In mixed QF_UFLRA only, `MixedTheoryPropagationDispatcher` is connected as
@@ -268,6 +266,12 @@ coordinator publishes:
 - `:no.interface.equalities-propagated`
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.lra-to-euf-equalities`
+- `:no.interface.lra-to-euf-equalities-euf-already-true`
+- `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped`
+- `:no.interface.lra-to-euf-equalities-euf-mergeable-forced`
+- `:no.interface.lra-to-euf-equalities-euf-forbidden-forced`
+- `:no.interface.lra-to-euf-internal-model-equalities`
+- `:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks`
 - `:no.interface.conflicts`
 - `:no.interface.euf-conflicts`
 - `:no.interface.lra-conflicts`

@@ -458,19 +458,22 @@ models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
-For LRA-to-EUF equality sharing, the default `final` path now queries the current
-EUF closure before creating or forcing an equality atom. The filter records
+For LRA-to-EUF equality sharing, the default `final` path classifies each
+LRA-implied shared Real equality through the current EUF closure before creating
+or forcing an equality atom. The filter records
 `:no.interface.lra-to-euf-equalities-euf-already-true` when EUF already has the
 pair equal, `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped` when EUF
-can absorb the LRA equality without conflict, and
-`:no.interface.lra-to-euf-equalities-euf-forbidden-forced` when the equality is
-needed to reject the current SAT arrangement. Mergeability is checked
-cumulatively: individually mergeable equalities may become jointly forbidden by
-congruence, and then the absorbed equalities are promoted to the forced set.
-Skipped equalities carried into final validation and model reconstruction are
-counted by `:no.interface.lra-to-euf-internal-model-equalities`; broad fallback
-after such a skip is counted by
-`:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks`.
+can absorb the LRA equality without conflict and the equality is skipped,
+`:no.interface.lra-to-euf-equalities-euf-mergeable-forced` when such a
+mergeable equality is conservatively sent through the guarded clause path, and
+`:no.interface.lra-to-euf-equalities-euf-forbidden-forced` when EUF rejects the
+equality immediately. The 2026-08-05 full QF_UFLRA run rejected the
+mergeable-skip optimization after wrong answers; the conservative path should
+therefore keep `mergeable-skipped` and
+`:no.interface.lra-to-euf-internal-model-equalities` at zero for LRA-to-EUF
+sharing. Broad fallback after an internal skip is counted by
+`:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks` and should also
+remain zero on the conservative path.
 When default-off `--model-equality-branching` is enabled, the EUF care counters
 compare the full shared-Real cross product with pairs that occur as arguments
 under flat EUF function prefixes equal in the current EUF closure. Default

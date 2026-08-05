@@ -19815,7 +19815,178 @@
           }
         },
         "outcome": "Accepted as SLURM smoke evidence for the committed filter on the deterministic 20-file QF_UFLRA sample. The default profile preserves the local solved count at a longer timeout and keeps LRA-to-EUF SAT forcing at zero; candidate-final-scan solves one additional cpachecker-induction row. The Z3 array task is not usable evidence for this remote run because Z3 was absent from the fresh workspace; use the local Z3 entry for reference on this milestone or rerun SLURM after provisioning Z3.",
-        "evidence_status": "current-slurm-partial-reference"
+        "evidence_status": "current-slurm-partial-reference-invalidated-by-2026-08-05-qfuflra-full-5s-rejected"
+      },
+      {
+        "id": "2026-08-05-qfuflra-full-5s-rejected-unsound-filter",
+        "started_at": "2026-08-05T21:05:00+02:00",
+        "recorded_at": "2026-08-05T21:25:00+02:00",
+        "kind": "benchmark-correctness-triage",
+        "scope": "Aborted full 1284-file QF_UFLRA SLURM evaluation after wrong answers in the LRA-to-EUF filtering path",
+        "commit": "f7c8bd7",
+        "branch": "nelson-oppen-online-lazy-ipasir-up",
+        "environment": {
+          "type": "slurm",
+          "host": "cluster",
+          "remote_workspace": "primo-lra-euf-filter-5e7c24e",
+          "slurm_job_ids": [
+            "119514",
+            "119515"
+          ]
+        },
+        "command": "Prepared remote workspace with scripts/slurm_prepare_benchmark_workspace.py --with-z3, then submitted Primo-only 5s full QF_UFLRA arrays reusing existing Z3 artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv. Job 119515 ran --qf-uflra-candidate-final-scan to completion; job 119514 default was canceled after wrong answers were found and the user approved stopping.",
+        "solver": {
+          "name": "Primo",
+          "argv": "candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan; default: build-slurm-rel/primo --quiet --stats"
+        },
+        "references": [
+          {
+            "name": "z3",
+            "argv": "existing artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
+            "status": "reused; benchmark set and timeout matched the Primo run"
+          }
+        ],
+        "inputs": {
+          "root": "tmp/QF_UFLRA",
+          "logic": "QF_UFLRA",
+          "count": 1284,
+          "timeout_seconds": 5,
+          "manifest": null
+        },
+        "artifacts": {
+          "candidate_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-full-lra-euf-filter-candidate-f7c8bd7-5s/shard-*.csv",
+          "candidate_logs": "remote:primo-lra-euf-filter-5e7c24e/logs/primo-qfuflra-mine-119515-*.{out,err}",
+          "z3_results": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
+          "default_partial_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-full-lra-euf-filter-default-f7c8bd7-5s/"
+        },
+        "summary": {
+          "candidate_final_scan": {
+            "total": 1284,
+            "solved": 1144,
+            "timeout": 140,
+            "error": 0,
+            "wrong": 3,
+            "par2": 1837.467774,
+            "lra_to_euf_equalities": 10173,
+            "lra_to_euf_mergeable_skipped": 9916,
+            "lra_to_euf_forbidden_forced": 0,
+            "candidate_final_scan_equalities": 10173,
+            "candidate_final_scan_fallbacks": 0
+          },
+          "z3_reused_baseline": {
+            "total": 1284,
+            "solved": 1234,
+            "timeout": 50,
+            "wrong": 0,
+            "par2": 758.708455
+          },
+          "wrong_rows": [
+            {
+              "file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_30_0600_10_18.smt2",
+              "primo_candidate": "sat",
+              "z3": "unsat",
+              "status": "unsat"
+            },
+            {
+              "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_01.smt2",
+              "primo_candidate": "sat",
+              "z3": "unsat",
+              "status": "unsat"
+            },
+            {
+              "file": "tmp/QF_UFLRA/FFT/smtlib.624916.smt2",
+              "primo_candidate": "sat",
+              "z3": "unsat",
+              "status": "unsat"
+            }
+          ],
+          "local_default_repro": {
+            "binary_git": "676b7af",
+            "note": "HEAD f7c8bd7 changes SLURM prep/docs only; local default returned sat on the same checked MathSAT/FFT unsat rows, so the default filter path is also under suspicion."
+          }
+        },
+        "outcome": "Rejected as performance evidence. The broad run found wrong answers after only the candidate-final array completed, and local repro showed the default filter path can also return sat for the same unsat benchmark rows. Stop performance work, preserve these rows as regressions, and fix or disable the unsound LRA-to-EUF mergeable-skipping path before rerunning benchmarks.",
+        "evidence_status": "rejected-wrong-answer"
+      },
+      {
+        "id": "2026-08-05-qfuflra-mergeable-forced-repair-local-gate",
+        "started_at": "2026-08-05T21:30:00+02:00",
+        "recorded_at": "2026-08-05T21:55:00+02:00",
+        "kind": "implementation-validation",
+        "scope": "Conservative repair for unsound LRA-to-EUF mergeable equality skipping",
+        "commit": "working-tree-after-f7c8bd7",
+        "branch": "nelson-oppen-online-lazy-ipasir-up",
+        "environment": {
+          "type": "local",
+          "host": "workspace",
+          "slurm_job_id": null
+        },
+        "command": "cmake --build build --target primo_qf_lra_solver_tests primo -j4 && ./build/primo_qf_lra_solver_tests; make lint; make docs; make check; make asan-test; clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp --quiet; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260807 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-mergeable-forced-default-20260807; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uflra-candidate-final-scan --ref z3 --count 1000 --seed 20260808 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-mergeable-forced-candidate-final-20260808; compared benchmarks/seeds/qf_uflra/*.smt2 with ./build/primo --quiet and contrib/local/bin/z3",
+        "solver": {
+          "name": "Primo",
+          "argv": "default and --qf-uflra-candidate-final-scan"
+        },
+        "references": [
+          {
+            "name": "z3",
+            "argv": "contrib/local/bin/z3"
+          }
+        ],
+        "inputs": {
+          "generator": "scripts/qf_uflra_smoke_fuzz.py",
+          "logic": "QF_UFLRA",
+          "shape": "mixed",
+          "count_per_profile": 1000,
+          "seeds": {
+            "default": 20260807,
+            "candidate_final_scan": 20260808
+          },
+          "timeout_seconds": 5,
+          "tracked_seed_corpus": "benchmarks/seeds/qf_uflra"
+        },
+        "artifacts": {
+          "default_fuzz_summary": "fuzz-results/qf_uflra-mergeable-forced-default-20260807/summary.csv",
+          "candidate_final_fuzz_summary": "fuzz-results/qf_uflra-mergeable-forced-candidate-final-20260808/summary.csv",
+          "tracked_seed": "benchmarks/seeds/qf_uflra/real_congruence_forced_unsat.smt2"
+        },
+        "summary": {
+          "focused_qf_uflra_unit_tests": "pass",
+          "make_lint": "pass",
+          "make_docs": "pass",
+          "make_check": "pass, 13/13 tests",
+          "make_asan_test": "pass, 13/13 tests",
+          "clang_tidy_scoped": "pass",
+          "tracked_seed_corpus": {
+            "total": 1,
+            "pass": 1,
+            "wrong": 0
+          },
+          "default_fuzz": {
+            "total": 1000,
+            "pass": 1000,
+            "wrong": 0,
+            "crash": 0,
+            "timeout": 0,
+            "sat": 721,
+            "unsat": 279
+          },
+          "candidate_final_scan_fuzz": {
+            "total": 1000,
+            "pass": 1000,
+            "wrong": 0,
+            "crash": 0,
+            "timeout": 0,
+            "sat": 719,
+            "unsat": 281
+          },
+          "wrong_row_spot_check_after_repair": {
+            "mathsat_random_coupled": "Primo unknown, Z3 unsat",
+            "mathsat_random_decoupled": "Primo unknown, Z3 unsat",
+            "fft": "Primo unsat, Z3 unsat"
+          }
+        },
+        "outcome": "Accepted as local correctness evidence for the conservative repair. EUF-mergeable LRA-implied equalities are no longer accepted as internal model equalities; they are counted by :no.interface.lra-to-euf-equalities-euf-mergeable-forced and routed through guarded SAT-visible equality clauses. This fixes the minimized regression and removes wrong answers on the three rejected full-run rows in local spot checks, but it is expected to lose the attempted performance gain and needs a fresh SLURM benchmark before any performance claim.",
+        "evidence_status": "current-local"
       }
   ]
 }

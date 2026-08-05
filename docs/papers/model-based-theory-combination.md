@@ -198,10 +198,12 @@ The concrete post-2026-08-05 performance plan is tracked in
 `docs/qf-uflra-model-guided-performance.md`. That note records the Z3-stat
 diagnosis from the current SLURM artifact and turns the paper mechanisms into a
 QF_UFLRA implementation checklist. Its first target is consumer-aware
-LRA-to-EUF equality handling: if EUF can absorb an LRA-implied shared Real
-equality without conflict, the final path should carry it internally for
-validation/model reconstruction instead of creating or forcing a SAT-visible
-equality literal.
+LRA-to-EUF equality handling. The attempted shortcut that carried EUF-mergeable
+LRA-implied equalities internally was rejected after the 2026-08-05 full
+QF_UFLRA run found wrong answers. The live conservative rule is to skip only
+EUF-already-true equalities; EUF-mergeable LRA equalities are classified but
+still forced through guarded SAT-visible equality clauses. A future internal
+carry path needs a separate proof and stronger real-seed fuzz coverage.
 
 For the current CaDiCaL backend, the concrete rule is:
 

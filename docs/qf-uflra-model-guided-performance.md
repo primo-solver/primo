@@ -18,6 +18,31 @@ The clean-room sources for the intended direction are:
 
 ## Current Evidence
 
+**Correctness blocker and repair, 2026-08-05.** The later full 1284-file QF_UFLRA
+5s SLURM run at commit `f7c8bd7`, recorded as
+`2026-08-05-qfuflra-full-5s-rejected-unsound-filter`, invalidates the
+consumer-aware LRA-to-EUF equality-skip experiment as performance evidence. The
+candidate-final array produced three wrong `sat` answers on benchmark rows whose
+SMT-LIB status and existing Z3 artifact both say `unsat`; local repro showed the
+default filter path returning `sat` on the same checked rows. The conservative
+repair disables the mergeable-skip optimization: LRA-implied equalities that EUF
+can merge are now still forced through the guarded interface-equality clause
+path unless EUF already has the pair equal. Performance work on this line is
+blocked until the repaired path passes the stronger gate below.
+
+The fuzz evidence that preceded this broad run was insufficient for this
+mechanism. The default filter had 1000 generated `mixed` cases from
+`scripts/qf_uflra_smoke_fuzz.py` with seed `20260806`, but that generator uses
+small synthetic formulas and there is no tracked `benchmarks/seeds/qf_uflra`
+real-benchmark seed corpus. The opt-in candidate-final path had only a 100-case
+smoke run with seed `20260804`. Future QF_UFLRA theory-combination benchmarks
+must run a merge-grade gate for the exact solver options being evaluated, and
+that gate must include real benchmark seeds or saved regressions for the
+arrangement/equality mechanism.
+
+The older evidence below is historical context only; it is not sufficient to
+claim the current filter is sound.
+
 The 2026-08-05 SLURM sample at commit `8b3bb4e`, recorded in
 `docs/run-log.json`, shows that EUF-forbidden final-arrangement pruning was the
 right first repair:
@@ -86,39 +111,39 @@ candidate-first discipline.
 
 ## Immediate Performance Target
 
-After the shared-equality ownership cleanup, the first accepted performance
-source change makes LRA-to-EUF equality handling consumer-aware before it
-creates or forces SAT equality literals. `TheoryCombinationManager` owns the
+After the shared-equality ownership cleanup, the current conservative source
+change keeps LRA-to-EUF equality handling consumer-aware only as a classifier.
+The broad 2026-08-05 rejected run shows that treating EUF-mergeable LRA
+equalities as internal model equalities is unsound as implemented, so the
+repaired path forces mergeable LRA equalities through SAT. `TheoryCombinationManager` owns the
 shared equality ledger: interface equality atom identity, SAT literal
 assignment snapshots, trailed arrangement values, and per-round classification
 flags. The QF_UFLRA coordinator uses that ledger as the single place where an
 equality is recorded as already true, assigned false, EUF-implied, LRA-implied,
 SAT-forced, EUF-already-true, EUF-mergeable, EUF-forbidden, or model/internal.
 
-Implemented rule:
+Implemented conservative rule:
 
 1. When LRA reports or proves a shared Real equality `a = b`, first query the
    current EUF closure under the current SAT assignment.
 2. If EUF already has `a` and `b` equal, do not create a new equality atom and
    do not add a guarded SAT equality clause.
-3. If EUF can merge `a` and `b` without conflicting with asserted disequalities
-   or an assigned-false generated interface equality, treat the equality as
-   internally absorbed for the current final/model validation step. Do not force
-   it through SAT.
-4. Mergeability is cumulative over the current batch of LRA-implied equalities.
-   If `a = b` is individually mergeable but later LRA equalities make the
-   absorbed set EUF-inconsistent by congruence, the absorbed equalities are
-   promoted to the forced set together with the current equality.
-5. If EUF forbids `a = b`, keep the existing guarded equality-clause path. This
+3. If EUF can merge `a` and `b` without an immediate conflict, record
+   `:no.interface.lra-to-euf-equalities-euf-mergeable-forced` and force the
+   equality through the guarded equality-clause path. The previous internal-skip
+   behavior is rejected until there is a sound model-construction proof and a
+   stronger fuzz/seed gate.
+4. If EUF forbids `a = b`, keep the existing guarded equality-clause path. This
    is the case where the equality is genuinely useful: it rejects the current
    SAT arrangement.
-6. If the equality atom is already assigned false, EUF must see that as a
+5. If the equality atom is already assigned false, EUF must see that as a
    disequality. The pair is then EUF-forbidden and must not be skipped.
 
 Soundness obligation:
 
-- Skipping a mergeable LRA equality is allowed only when final validation and
-  model reconstruction still account for the equality internally.
+- Skipping a mergeable LRA equality is currently disabled. It is allowed only
+  after final validation and model reconstruction account for the equality
+  internally and the real benchmark regressions stay clean.
 - A skipped equality must not allow a model where LRA gives the same Real value
   to `a` and `b` but EUF prints incompatible interpretations for UF applications
   that depend on separating those Real arguments.
@@ -135,8 +160,8 @@ Implemented C++ ownership:
   state.
 - EUF mergeability is queried with a temporary push/pop closure state. The
   closure includes current true equalities and false generated interface
-  equalities, and skipped equalities in the current batch are absorbed before
-  later equalities are checked.
+  equalities. Mergeable LRA equalities are classified but then routed through
+  guarded clauses for soundness.
 - LRA remains the producer of entailed equalities; the consumer-aware filter
   decides whether the SAT layer needs to see them.
 
@@ -144,14 +169,15 @@ Implemented counters:
 
 - `:no.interface.lra-to-euf-equalities-euf-already-true`;
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped`;
+- `:no.interface.lra-to-euf-equalities-euf-mergeable-forced`;
 - `:no.interface.lra-to-euf-equalities-euf-forbidden-forced`;
 - `:no.interface.lra-to-euf-internal-model-equalities`;
 - `:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks`.
 
-Expected benchmark movement:
+Expected benchmark movement after any future sound skip repair:
 
-- lower `:no.interface.sat-equalities-forced`;
-- lower `:no.interface.lra-to-euf-rechecks`;
+- lower `:no.interface.sat-equalities-forced` without increasing wrong answers;
+- lower `:no.interface.lra-to-euf-rechecks` without increasing wrong answers;
 - lower `:sat.solve-calls` on MathSAT RandomDecoupled timeouts;
 - lower wall time on CPAchecker solved-but-slow cases whose SAT search is
   already small but equality probing is large.
@@ -247,13 +273,17 @@ For any accepted implementation of the targets above:
 
 - add focused unit regressions for mergeable-skipped and forbidden-forced
   LRA-to-EUF equalities;
+- add the three rejected full-run wrong rows, or minimized forms derived from
+  them, to the QF_UFLRA regression/seed corpus before rerunning performance
+  evaluation;
 - run the focused QF_UFLRA unit tests;
 - run `make lint`;
 - run `make check` when feasible;
 - run `make docs`;
 - run `git diff --check`;
-- run a fresh QF_UFLRA fuzz gate against Z3, preferably at least 1000 generated
-  mixed cases for a merge-ready change;
+- run a fresh QF_UFLRA fuzz gate against Z3 for the exact option set under
+  evaluation, including at least 1000 generated mixed cases and real benchmark
+  seed or saved-regression mutation coverage for this equality/arrangement path;
 - rerun the 45-file SLURM sample from
   `benchmarks/qf_uflra-preprocessing-opportunity-sample.txt` with default,
   candidate final scan, and Z3;
