@@ -28,7 +28,7 @@ notes it points to.
 
 | # | lead | expected size | cost | status |
 |---|---|---|---|---|
-| [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | unknown, plausibly large on guarded families | **small** | open, top of queue |
+| [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | **likely ~0**; evidence was misread | tiny (2 lines) | **downgraded**, see entry |
 | [2](#lead-flag-first) | Flag-first decision ordering (invert `cb_decide`) | unknown | **small** | open |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 1.42x median in its source | **small** | open |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
@@ -44,44 +44,57 @@ notes it points to.
 (lead-pure-filter-lra)=
 ## 1. Extend `--pure-theory-filter` to LRA atoms
 
-**Claim.** Primo already computes, and already reports, that most theory atoms
-on guarded families occur with a single polarity -- then filters none of them,
-because the mechanism is implemented for QF_UF only.
+**Status: downgraded 2026-08-05 after reading the code. The original framing
+of this entry was wrong in two ways, both recorded below.**
 
-**Evidence.** On `tropical-matrix/constraint-199552.smt2`:
+**What the mechanism actually is.** `should_filter_assignment` omits a theory
+literal from the theory assignment when the atom occurs with only one polarity
+*and the SAT solver assigned it the opposite way* -- such an assignment cannot
+be what satisfies any clause, so the theory need not check its consistency
+([](euf.md), from Sebastiani's survey §6.10). It omits a constraint from a
+check rather than adding one, which is why it is sound where the pure-literal
+rule is not ([](preprocessing.md)'s [](#pure-literal-trap)).
 
-| counter | value |
-|---|---:|
-| `:euf.theory-atoms` | 3,846 |
-| `:euf.pure-atoms.positive` | **2,892 (75%)** |
-| `:euf.pure-atoms.negative` | 0 |
-| `:euf.pure-filter.enabled` | **0** |
-| `:euf.pure-literals.filtered` | **0** |
+**Correction 1: it is not "QF_UF only".** The rule is generic -- it needs only
+`occurs_positive`/`occurs_negative` -- and the LRA side already *consumes* it:
+five sites skip an atom on `!prepared_atom.is_arithmetic || atom.filtered`.
+What the QF_LRA path does is call the two-argument
+`assigned_atoms_from_backend` overload, which hardcodes
+`PureTheoryFilterMode::Off`, so `filtered` is never set. Passing
+`options.pure_theory_filter` at the two call sites in `solve_qf_lra_impl` (and
+one more for the LRA half of QF_UFLRA) is a two-line change. Note this is
+deliberate rather than a bug: [](euf.md) documents the implemented subset as
+QF_UF atoms.
 
-Ablation confirms inertness on this family: `--pure-theory-filter=on` 4.152s
-against `off` 4.150s. The analyzer independently agrees the atoms are
-single-polarity: 2,244 distinct atoms, all pure-positive.
+**Correction 2, and the reason this is downgraded: the evidence was
+misread.** This entry cited "2,892 of 3,846 theory atoms pure-positive (75%)"
+as the size of the prize. That is not what the counter means. A pure-positive
+atom is filtered **only when assigned false**. On a satisfiable guarded
+instance most such atoms are assigned *true*, so they are never candidates.
 
-**Why it is sound.** The same argument as the EUF case ([](euf.md), from
-Sebastiani's survey §6.10): an atom occurring only positively, assigned false,
-cannot be what satisfies any clause, so the theory need not check that
-assignment's consistency. It omits a constraint from a check rather than adding
-one -- which is exactly why it is sound where the pure-literal rule is not, see
-[](preprocessing.md)'s [](#pure-literal-trap).
+Measured: with the two-line change applied, `constraint-199552` produces
+**identical** counters with the filter on and off -- 7,679 pivots and 128.4M
+pivot term ops either way. The filter has nothing to do on the file that
+motivated the lead. The earlier ablation (4.152s vs 4.150s) was right, and my
+explanation of *why* was wrong: not "the mechanism does not reach LRA", but
+"the mechanism reaches LRA and finds nothing to filter".
 
-**Cost.** Small. The polarity analysis exists and runs; the gap is applying it
-to arithmetic atoms.
+**Where it could still pay, if anywhere.** Instances whose single-polarity
+atoms get assigned *against* their polarity -- which is a property of the
+search, not of the syntax. Nothing measured so far suggests the guarded
+families have that shape.
 
-**The trap to get right.** Filtered literals must never be used as
-theory-deduced premises -- they were deliberately not given to the theory
-solver. [](euf.md) already documents this for EUF; the LRA propagation path
-needs the same discipline, including propagation *candidates* whose literal
-would be filtered.
+**Falsifier, restated honestly.** Apply the two-line change, add a counter for
+filtered LRA assignments, and run the guarded families. If the counter is at or
+near zero -- as it is on the motivating instance -- the lead closes. The cheap
+diagnostic is the counter, not a timing run.
 
-**Falsifier.** If enabling it on the guarded families does not reduce
-`:lra.pivots` materially, then the irrelevant atoms were not reaching the
-tableau in the first place and the whole relevance line -- including lead 5 --
-is worth less than it looks. That is a cheap and highly informative negative.
+**Consequence for lead 5.** [](#lead-relevancy) was gated on this one as its
+"cheap static approximation". That gating still holds, but the reasoning
+inverts: this lead failing for *this* reason (nothing to filter statically)
+does not say dynamic relevancy is worthless, because relevancy filters on
+whether an atom is *reachable* under the current assignment, not on polarity.
+The two mechanisms would fire on different atoms.
 
 (lead-flag-first)=
 ## 2. Flag-first decision ordering
