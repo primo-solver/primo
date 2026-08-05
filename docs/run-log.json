@@ -19535,6 +19535,60 @@
       },
       "outcome": "Z3 statistics show very small search on the remaining fast-reference/slow-Primo cases: the sampled MathSAT timeouts use tens of conflicts, under 130 decisions, and one or two final checks in Z3, while Primo performs many SAT re-entry cycles and tens to hundreds of thousands of LRA extra-atom probes. The sampled CPAchecker solved-but-slow cases are especially diagnostic because Primo has only two SAT/LRA checks and few SAT decisions but still spends seconds in candidate equality probing. This supports prioritizing model-guided/equality-probe reduction before SAT-solver tuning.",
       "evidence_status": "current-slurm-derived"
+    },
+    {
+      "id": "2026-08-05-qfuflra-shared-equality-ledger-smoke-ca97c1d",
+      "started_at": "2026-08-05T18:59:00+02:00",
+      "recorded_at": "2026-08-05T19:02:35+02:00",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA mixed smoke cases for shared equality ledger ownership cleanup",
+      "commit": "ca97c1da9d558fe46eb65676f783cf1a10a398d6",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "local",
+        "host": "/workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260805 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-equality-ledger-cleanup-20260805",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "seed": 20260805,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uflra-equality-ledger-cleanup-20260805/summary.csv",
+        "results": "fuzz-results/qf_uflra-equality-ledger-cleanup-20260805/cases",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 703,
+        "unsat": 297
+      },
+      "outcome": "Accepted local smoke evidence for the behavior-neutral TheoryCombinationManager shared equality ledger cleanup. The run compares 1000 generated mixed QF_UFLRA cases against Z3 and finds no wrong answers, crashes, timeouts, unsupported outcomes, parser/type errors, or reference disagreements. This is not a performance claim.",
+      "evidence_status": "current-local"
     }
   ]
 }
