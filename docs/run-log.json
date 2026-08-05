@@ -18793,6 +18793,34 @@
         "analyzer_fixes_this_run": "Handling (* (- 1) x) via a new const_value() ground-term evaluator removed the great majority of opaque atoms corpus-wide (latendresse's first file: 899 opaque -> 0). Separately, ite_count was undercounting because the traversal stops at atom boundaries; sc actually has 380 ites per file and tta_startup 854, where the report previously said 0."
       },
       "follow_up": "Lead reopened as entry 9 in docs/open-leads.md with a falsifier: implement detection only, report :preprocessing.monotone-eliminable on LassoRanker and Heizmann, and check it against :lra.rows / :lra.row-nonzeros. If eliminating those columns does not reduce rows or fill-in, the lead closes on solver counters rather than on a syntactic census. Separate performance follow-up recorded in the analyzer docstring: inline_lets materialises the let-DAG into a tree, which is what makes the largest files slow (~43s, ~1GB); traversing the DAG directly needs a memo key of (node, polarity, guards), never node alone."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-elimination-prototype",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "External prototype of monotone (one-sided) variable elimination, to answer whether the reopened lead is worth implementing in the solver. Folds every atom mentioning a one-sided real to the constant its own polarity requires, then measures Primo before and after.",
+      "commit": "7afc623",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release; z3 from contrib/local/bin",
+        "notes": "Prototype transformer lives in the session scratchpad and is not committed; it inlines lets and does no model reconstruction, so it is a measurement device, not a candidate implementation."
+      },
+      "command": {
+        "transform": "scratchpad monotone_elim.py <in> <out>, built on scripts/analyze_smt2.py",
+        "soundness": "z3 on original vs transformed, 24 files with a one-sided population and zero opaque atoms, 20s cap",
+        "measurement": "build/primo --quiet --stats on original vs transformed, 90s cap"
+      },
+      "result": {
+        "soundness": "24 checked, 24 agree, 0 disagree.",
+        "heizmann_standard_copy4": "192 atoms folded; unsat both; :sat.clauses 2909->2507, :lra.rows 618->543, :lra.pivots 146833->147931, time 15.77s->14.15s (-10%).",
+        "lassoranker_ex3_20": "21 atoms folded; unsat both; :sat.clauses 1946->1925, :lra.rows 622->622 (unchanged), :lra.pivots 97777->69828, time 12.19s->7.84s (-36%).",
+        "interpretation": "The saving is mostly Boolean, not tableau. The LassoRanker file folds only 21 atoms and reduces no rows at all, yet is 36% faster -- a smaller Boolean structure yields a better search. Small meti-tarski files are discharged entirely (:sat.clauses to 0) but already solve instantly, so they are not evidence of value.",
+        "falsifier_correction": "The lead's previously stated falsifier -- close it if rows/fill-in do not drop -- is the WRONG test and would have closed a lead that works. Judge on end-to-end time and :sat.clauses instead."
+      },
+      "follow_up": "Lead 9 in docs/open-leads.md updated with the measurements and a revised effort estimate. Detection and rewrite are small; model reconstruction for eliminated variables is the real work (Primo emits models, and an eliminated variable must be valued after the rest of the model from its discharged constraints, in dependency order). A Slurm fuzz gate is mandatory as this changes preprocessing."
     }
   ]
 }

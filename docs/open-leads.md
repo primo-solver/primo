@@ -288,6 +288,60 @@ against `:lra.rows` / `:lra.row-nonzeros`. If eliminating those columns does not
 reduce rows or fill-in materially, the lead closes for real this time, and it
 closes on solver counters rather than on a syntactic census.
 
+### Prototype measurement, 2026-08-05
+
+Caveat 2 above has now been answered, and the answer corrects the framing that
+produced it. **The saving is mostly in the Boolean structure, not the tableau.**
+Replacing an atom by a constant removes it from the CNF and satisfies the
+clauses containing it; dropping tableau rows is the secondary effect.
+
+An external prototype (scratchpad, not committed) computes one-sidedness with
+polarity and coefficient signs, then replaces every atom mentioning a one-sided
+variable with the constant its own occurrence requires -- `true` at positive
+polarity, `false` at negative. That is Fourier-Motzkin on a single-sign
+variable: with no opposite bounds to pair against, every constraint mentioning
+it is discharged outright.
+
+**Soundness spot-check.** 24 files spanning the families with a population,
+z3 on the original against z3 on the transformed file: **24 agree, 0 disagree**.
+
+**Effect on files that take real time**, same binary, answers unchanged (both
+`unsat`):
+
+| file | atoms folded | clauses | rows | pivots | time |
+|---|---:|---|---|---|---|
+| Heizmann `_standard_copy4...bpl_7` | 192 | 2,909 -> **2,507** | 618 -> **543** | 146,833 -> 147,931 | 15.77s -> **14.15s** |
+| LassoRanker `2013POPL-BenAmGen-Ex3.20...pieceTemplate` | 21 | 1,946 -> 1,925 | 622 -> 622 | 97,777 -> **69,828** | 12.19s -> **7.84s** |
+
+The second row is the instructive one: **21** atoms folded, **no** row
+reduction at all, and still 36% faster. The win there is not tableau size, it
+is that a smaller Boolean structure produces a different and better search.
+That also means caveat 2's proposed falsifier -- "if it does not reduce rows or
+fill-in, close it" -- was the **wrong test**, and would have closed a lead that
+works. Judge it on end-to-end time and `:sat.clauses`, not on `:lra.rows`.
+
+On the smallest `meti-tarski` files the transformation discharges the problem
+completely (`:sat.clauses` to 0, tableau gone), but those solve instantly
+already, so they are not evidence of value.
+
+**Revised effort estimate.** Detection and rewrite are both small; the real
+cost is elsewhere and should not be discovered late:
+
+- **Model reconstruction is the actual work.** Primo emits models
+  (`(define-fun x () Real 0)`), and an eliminated variable is no longer in the
+  tableau, so its value must be computed *after* the rest of the model is
+  fixed, from the constraints that were discharged -- in dependency order,
+  since those bounds can mention other variables including other eliminated
+  ones.
+- **The fuzz gate is mandatory**, since this changes preprocessing: merge tier
+  at minimum, campaign tier if it is ever promoted to default. Per the standing
+  rule, on Slurm rather than locally.
+
+So: worth doing, tractable, and **not** a one-afternoon change. The honest
+summary is a real but moderate speedup (roughly 10-36% on the two timed files),
+available on maybe a quarter of the families, for a moderate implementation
+with a genuine model-reconstruction obligation.
+
 **Coverage note.** The corpus screen analyzed 1,753 of 1,753 files with no
 timeouts and no memory failures, so no file was excluded and the denominator is
 complete. Two families carry a real blind spot: `sc` (20.8% of atoms opaque)
