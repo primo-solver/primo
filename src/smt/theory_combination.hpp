@@ -53,6 +53,9 @@ enum class InterfaceEqualityClassification : std::uint32_t {
   SatForced = 1U << 3U,
   AlreadyTrue = 1U << 4U,
   AssignedFalse = 1U << 5U,
+  EufAlreadyTrue = 1U << 6U,
+  EufMergeable = 1U << 7U,
+  EufForbidden = 1U << 8U,
 };
 
 struct InterfaceEqualityRegistryEntry {

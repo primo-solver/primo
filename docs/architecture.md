@@ -262,6 +262,12 @@ Implemented now:
   equality learned in one Boolean branch does not leak into another. The
   default is `--nelson-oppen-prop=final`: equality propagation is performed
   after a complete SAT assignment and before the model is accepted.
+  In this final path, LRA-to-EUF equalities are filtered through the current EUF
+  closure before SAT-visible equality atoms are created. Equalities that are
+  already true in EUF or cumulatively mergeable with the current batch of
+  skipped LRA equalities are kept as internal final/model equalities. Equalities
+  that are individually or jointly EUF-forbidden still use the guarded clause
+  path.
   `--nelson-oppen-prop=off` disables these guarded interface-equality
   propagation clauses for ablation. `--nelson-oppen-prop=online` is an opt-in
   mixed-theory callback path: the SMT layer connects a single

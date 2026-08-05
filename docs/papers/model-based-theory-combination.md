@@ -27,6 +27,8 @@ combination. It has these related pieces:
 - partial mixed QF_UFLRA final checks over EUF and Real LRA atoms;
 - lazy SAT-visible equality atoms for shared Real terms;
 - guarded equality clauses when EUF or LRA implies a shared Real equality;
+- a QF_UFLRA-local LRA-to-EUF filter that skips SAT equality creation when the
+  current EUF closure can cumulatively absorb LRA-implied equalities;
 - bounded shared-Real separation for the documented model-printing subset;
 - default-off `--model-equality-branching`, which keeps surviving
   LRA-model-equal shared Real equality guesses on an active SAT-assumption trail;

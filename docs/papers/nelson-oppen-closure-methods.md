@@ -128,6 +128,18 @@ a false assignment by later entailing the corresponding equality, and mixed
 model reconstruction separately adds strict Real separation atoms for shared
 Real arguments whose equality is rejected by the current EUF closure.
 
+Default final-mode LRA-to-EUF sharing is now consumer-aware. When the LRA scan
+finds an entailed shared Real equality, `solve_qf_uf_lra` first tests the
+current EUF closure that already contains current true interface equalities and
+assigned-false generated interface equalities as disequalities. EUF-already-true
+equalities and equalities that EUF can absorb are not materialized as SAT
+equality atoms. Absorbed equalities are kept as internal model/final-validation
+equalities. The mergeability test is cumulative over the current LRA-implied
+batch: if two individually mergeable equalities jointly violate a disequality by
+congruence, the absorbed equalities are promoted to the guarded SAT-forced path
+together with the equality that exposed the conflict. This is still a
+QF_UFLRA-local filter, not a generic model-based `M-Propagate` transition.
+
 `--nelson-oppen-prop=online` adds a deliberately narrow online combination
 path. In mixed QF_UFLRA only, `MixedTheoryPropagationDispatcher` is connected as
 CaDiCaL's single external propagator and delegates ordinary LRA callbacks to

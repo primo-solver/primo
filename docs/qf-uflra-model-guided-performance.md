@@ -86,16 +86,16 @@ candidate-first discipline.
 
 ## Immediate Performance Target
 
-After the shared-equality ownership cleanup, the next accepted performance
-source change should make LRA-to-EUF equality handling consumer-aware before it
-creates or forces SAT equality literals. `TheoryCombinationManager` now owns the
+After the shared-equality ownership cleanup, the first accepted performance
+source change makes LRA-to-EUF equality handling consumer-aware before it
+creates or forces SAT equality literals. `TheoryCombinationManager` owns the
 shared equality ledger: interface equality atom identity, SAT literal
 assignment snapshots, trailed arrangement values, and per-round classification
-flags. The QF_UFLRA coordinator should use that ledger as the single place where
-an equality is recorded as already true, assigned false, EUF-implied,
-LRA-implied, SAT-forced, or model/internal.
+flags. The QF_UFLRA coordinator uses that ledger as the single place where an
+equality is recorded as already true, assigned false, EUF-implied, LRA-implied,
+SAT-forced, EUF-already-true, EUF-mergeable, EUF-forbidden, or model/internal.
 
-Concrete rule:
+Implemented rule:
 
 1. When LRA reports or proves a shared Real equality `a = b`, first query the
    current EUF closure under the current SAT assignment.
@@ -105,10 +105,14 @@ Concrete rule:
    or an assigned-false generated interface equality, treat the equality as
    internally absorbed for the current final/model validation step. Do not force
    it through SAT.
-4. If EUF forbids `a = b`, keep the existing guarded equality-clause path. This
+4. Mergeability is cumulative over the current batch of LRA-implied equalities.
+   If `a = b` is individually mergeable but later LRA equalities make the
+   absorbed set EUF-inconsistent by congruence, the absorbed equalities are
+   promoted to the forced set together with the current equality.
+5. If EUF forbids `a = b`, keep the existing guarded equality-clause path. This
    is the case where the equality is genuinely useful: it rejects the current
    SAT arrangement.
-5. If the equality atom is already assigned false, EUF must see that as a
+6. If the equality atom is already assigned false, EUF must see that as a
    disequality. The pair is then EUF-forbidden and must not be skipped.
 
 Soundness obligation:
@@ -121,7 +125,7 @@ Soundness obligation:
 - Any explicit or generated disequality already present in the SAT assignment
   must turn the pair into the forced/conflict path, not the skipped path.
 
-Likely C++ ownership:
+Implemented C++ ownership:
 
 - `TheoryCombinationManager` in `src/smt/theory_combination.hpp` owns the
   shared equality ledger and should be the only component that records
@@ -129,22 +133,20 @@ Likely C++ ownership:
 - `src/smt/check_sat.cpp` remains the orchestrator that asks SAT, EUF, and LRA
   for their current facts, but it should not keep parallel ad hoc equality
   state.
-- EUF mergeability should be queried through a helper like the existing
-  final-arrangement EUF-forbidden check, using a temporary push/pop closure
-  state. The helper must include current true equalities and false generated
-  interface equalities.
+- EUF mergeability is queried with a temporary push/pop closure state. The
+  closure includes current true equalities and false generated interface
+  equalities, and skipped equalities in the current batch are absorbed before
+  later equalities are checked.
 - LRA remains the producer of entailed equalities; the consumer-aware filter
   decides whether the SAT layer needs to see them.
 
-Counters to add:
+Implemented counters:
 
 - `:no.interface.lra-to-euf-equalities-euf-already-true`;
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped`;
 - `:no.interface.lra-to-euf-equalities-euf-forbidden-forced`;
-- `:no.interface.lra-to-euf-internal-model-equalities`, if skipped equalities
-  are carried into model reconstruction;
-- `:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks`, if a skipped
-  equality later forces the broad fallback.
+- `:no.interface.lra-to-euf-internal-model-equalities`;
+- `:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks`.
 
 Expected benchmark movement:
 
