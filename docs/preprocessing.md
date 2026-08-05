@@ -499,13 +499,26 @@ against the model and yields a bound; the variable takes one unit past the
 tightest of them, which clears strict and non-strict bounds alike.
 
 **No dependency ordering is needed**, which is worth stating because the
-obvious design is both more expensive and wrong. Two variables sharing one atom
+obvious design is both more expensive and wrong. Note first that this is not
+because such variables are symmetric -- they are not. In `x > y` the two are
+pushed *opposite* ways (`x` up, `y` down), and that asymmetry is exactly what
+makes the atom dischargeable. What order-independence says is only that
+valuing them in either order yields *a* satisfying model, not the *same* one. Two variables sharing one atom
 depend on each other, and a topological scheme would call that a cycle and
 discard sound eliminations. Instead: for any discharged atom, the eliminated
 variable valued *last* sees every other leaf already valued, so that atom
 yields a real bound on it, and going far enough satisfies all of its
 constraints including that one. Earlier variables may skip the atom; the last
 one repairs it.
+
+Verified rather than argued: temporarily reversing the valuation order and
+re-running model validation over 120 benchmark files gave **108 valid models
+and 0 invalid**, with some models differing in their values from the forward
+order. `x > y ∧ x > 10 ∧ y < 3`, for instance, yields `x = 11, y = 2` forward
+and `x = 11, y = -1` reversed -- both satisfying. The solver tests below assert
+exact values and so do encode the current (forward, TermId-sorted) order; that
+order is deterministic, so they are stable, but a value mismatch there means
+the order moved, not necessarily that soundness broke.
 
 One subtlety is load-bearing and has a regression test. Folding an atom
 discharges it for *every* variable in it, so a variable that was itself
