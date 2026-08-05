@@ -452,6 +452,60 @@ campaign-tier Slurm fuzz gate (3000 fuzzsmt cases plus opfuzz/yinyang
 mutation shards, 0 crashes/wrong-answers/bug triggers) -- see
 `docs/arithmetic.md`'s Milestone roadmap and `docs/run-log.json`.
 
+(pure-literal-trap)=
+## The pure-literal rule does not transfer to theory atoms
+
+Recorded 2026-08-05 because it is an inviting mistake, and because Primo has
+a mechanism (`--pure-theory-filter`) close enough to it to be misread as one.
+
+In propositional SAT the pure-literal rule is free: if `p` occurs only
+positively, set `p := true` and delete every clause containing it. **The same
+move is unsound for theory atoms**, and turns sat into unsat:
+
+```smt
+(declare-fun x () Real) (declare-fun d () Bool)
+(assert (or (>= x 10) d))   ; A = (>= x 10) occurs ONLY positively
+(assert (<= x 0))           ; a clause that does not mention A at all
+```
+
+This is `sat` -- take `d`, leave `A` false. Apply the rule (force `A`, delete
+its clause) and the result is `(>= x 10) AND (<= x 0)`, which is `unsat`.
+Verified with z3, 2026-08-05.
+
+The reason is worth stating precisely, because it is the whole distinction:
+`A` occurs nowhere else *syntactically*, but its *meaning* constrains `x`,
+which is shared with another constraint through the theory. **Syntactic purity
+is not semantic independence.** In SAT the two coincide, which is why the rule
+is free there.
+
+**What Primo does instead is sound, and is deliberately not this.**
+`--pure-theory-filter` ([](euf.md)) never forces a value and never deletes a
+clause. It only omits a literal from the *theory assignment* when that literal
+has the opposite polarity to all of the atom's occurrences -- because such an
+assignment cannot be what satisfies any clause, so the theory need not check
+its consistency. Dropping a constraint from a consistency check is safe in a
+way that adding one is not.
+
+**The sound preprocessing cousin is about variables, not atoms.** If a real
+variable `x` occurs only *one-sided* -- every constraint mentioning it pushes
+`x` the same direction, after accounting for Boolean polarity -- then `x` can
+be sent to its extreme and all those constraints discharged. This is the
+Fourier-Motzkin observation that eliminating a variable occurring with only
+one sign generates **zero** new constraints, and it is the LP-presolve notion
+of a dominated column. The counterexample above is correctly excluded: `x`
+there is pushed up by one constraint and down by another.
+
+**Not implemented, and it does not help the tropical family.** A screen over
+`constraint-199552` finds 927 of its 954 real variables pinned by the
+definitional equalities (`(= lKc (+ a b))`), which are two-sided by
+construction, leaving 27 one-sided candidates -- see
+[](tropical-matrix-structure.md). Whether it pays on the LP-shaped families
+(`latendresse`, `miplib`) is **unknown**: the quick screen used here matches
+only flat atoms and silently skips nested arithmetic such as
+`(<= (+ (* 2 x) y) 5)`, which is most of what those families contain, so its
+counts for them are artifacts and were discarded. A real evaluation needs a
+polarity-aware pass over the actual term structure, not a regex.
+
 ## Real-Equality Lowering
 
 Real is a total order, so `t1 = t2 <=> t1 <= t2 AND t2 <= t1`. Rather than
