@@ -19497,6 +19497,44 @@
       },
       "outcome": "Accepted as current SLURM performance evidence for the EUF-forbidden final-arrangement pruning change. The default profile improves from 26/45 to 33/45 solved and PAR2 improves from 2569.220419 to 1736.479228 with no wrong answers. Candidate final scan improves from 28/45 to 38/45 solved and PAR2 improves from 2218.235007 to 903.689026 with no wrong answers. The counters show that almost all previous strict separation candidates were EUF-mergeable rather than EUF-forbidden, reducing default model-separation candidates from 134245 to 60 and candidate-mode candidates from 204846 to 62. Z3 remains much faster at 45/45 solved, so remaining work should target equality traffic, candidate scan cost, and the remaining MathSAT/CPAchecker timeouts.",
       "evidence_status": "current-slurm"
+    },
+    {
+      "date": "2026-08-05",
+      "commit": "931598f",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "kind": "reference-stat-diagnosis",
+      "host": "SLURM login node via /tmp/primo_slurm_ssh_config",
+      "command": "cd primo-candidate-final-7a585fc && contrib/local/bin/z3 -smt2 -st <selected QF_UFLRA file>; compared with results/qf-uflra-candidate-final-119470/{candidate,z3}.csv",
+      "inputs": {
+        "source_artifact": "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-119470",
+        "selected_files": [
+          "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_31.smt2",
+          "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_36.smt2",
+          "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_96.smt2",
+          "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_30.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.Problem01_00_true-unreach-call.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.Problem14_60_false-unreach-call.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product29_false-unreach-call.cil.c.smt2",
+          "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product27_false-unreach-call.cil.c.smt2",
+          "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_91.smt2"
+        ]
+      },
+      "summary": {
+        "remaining_candidate_timeouts": [
+          {"file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_31.smt2", "z3_seconds": 0.023797, "z3_conflicts": 40, "z3_decisions": 72, "z3_final_checks": 1, "primo_lra_extra_atom_probes": 100144, "primo_lra_to_euf_equalities": 6807, "primo_lra_to_euf_rechecks": 422, "primo_sat_equalities_forced": 4069},
+          {"file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_36.smt2", "z3_seconds": 0.026763, "z3_conflicts": 60, "z3_decisions": 122, "z3_final_checks": 2, "z3_interface_eqs": 1, "primo_lra_extra_atom_probes": 60718, "primo_lra_to_euf_equalities": 2801, "primo_lra_to_euf_rechecks": 128, "primo_sat_equalities_forced": 1165},
+          {"file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_30.smt2", "z3_seconds": 0.036989, "z3_conflicts": 47, "z3_decisions": 86, "z3_final_checks": 2, "z3_interface_eqs": 1, "primo_lra_extra_atom_probes": 121045, "primo_lra_to_euf_equalities": 6210, "primo_lra_to_euf_rechecks": 414, "primo_sat_equalities_forced": 3313},
+          {"file": "tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2", "z3_seconds": 0.974501, "z3_conflicts": 150, "z3_decisions": 1699, "z3_final_checks": 6, "z3_interface_eqs": 5, "primo_lra_extra_atom_probes": 2759, "primo_candidate_final_scan_pairs": 3948}
+        ],
+        "solved_but_slow_candidate_cases": [
+          {"file": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product29_false-unreach-call.cil.c.smt2", "candidate_seconds": 11.625156, "z3_seconds": 0.046272, "z3_final_checks": 1, "primo_sat_solve_calls": 2, "primo_lra_extra_atom_probes": 17554, "primo_lra_to_euf_equalities": 262, "primo_sat_equalities_forced": 131},
+          {"file": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product27_false-unreach-call.cil.c.smt2", "candidate_seconds": 10.681640, "z3_seconds": 0.048901, "z3_final_checks": 1, "primo_sat_solve_calls": 2, "primo_lra_extra_atom_probes": 16510, "primo_lra_to_euf_equalities": 254, "primo_sat_equalities_forced": 127},
+          {"file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_91.smt2", "candidate_seconds": 5.428374, "z3_seconds": 0.048547, "z3_conflicts": 48, "z3_decisions": 80, "z3_final_checks": 1, "primo_sat_solve_calls": 14, "primo_lra_extra_atom_probes": 1011, "primo_lra_to_euf_equalities": 68, "primo_sat_equalities_forced": 37}
+        ]
+      },
+      "outcome": "Z3 statistics show very small search on the remaining fast-reference/slow-Primo cases: the sampled MathSAT timeouts use tens of conflicts, under 130 decisions, and one or two final checks in Z3, while Primo performs many SAT re-entry cycles and tens to hundreds of thousands of LRA extra-atom probes. The sampled CPAchecker solved-but-slow cases are especially diagnostic because Primo has only two SAT/LRA checks and few SAT decisions but still spends seconds in candidate equality probing. This supports prioritizing model-guided/equality-probe reduction before SAT-solver tuning.",
+      "evidence_status": "current-slurm-derived"
     }
   ]
 }
