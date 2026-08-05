@@ -19318,6 +19318,185 @@
       },
       "outcome": "Accepted as current SLURM evidence for the shared-interface final-arrangement fix at a 60s timeout. The invariant change produced no wrong answers and reduced broad arrangement probe work, but solved counts did not improve on this sample: default remains 26/45 and candidate final scan remains 28/45. Only 67 of 3840 EUF model Real terms were filtered out, so the MathSAT/CPAchecker gap is dominated by genuine shared-interface arrangement traffic rather than accidental EUF-only Real constants. Candidate mode remains default-off.",
       "evidence_status": "current-slurm"
+    },
+    {
+      "id": "2026-08-05-qf-uflra-euf-forbidden-arrangement-local-gate",
+      "date": "2026-08-05",
+      "commit": "8b3bb4e",
+      "host": "local-workspace",
+      "scope": "Local validation for pruning final QF_UFLRA strict Real arrangement candidates to pairs whose equality is EUF-forbidden",
+      "command": "cmake --build build --target primo_qf_lra_solver_tests primo -j4 && ./build/primo_qf_lra_solver_tests; make lint; make check; make docs; git diff --check; python3 -m json.tool docs/run-log.json; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260805 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-euf-forbidden-arrangement-20260805; make tidy; python3 /home/user/.codex/skills/solver-efficiency-review/scripts/solver_efficiency_snapshot.py --repo .",
+      "parameters": {
+        "logic": "QF_UFLRA",
+        "fuzz_count": 1000,
+        "fuzz_seed": 20260805,
+        "fuzz_timeout_seconds": 5,
+        "fuzz_shape": "mixed",
+        "reference": "z3"
+      },
+      "artifacts": [
+        "fuzz-results/qf_uflra-euf-forbidden-arrangement-20260805/summary.csv",
+        "fuzz-results/qf_uflra-euf-forbidden-arrangement-20260805/cases/"
+      ],
+      "summary": {
+        "focused_tests": "primo_qf_lra_solver_tests passed",
+        "make_lint": "passed",
+        "make_check": "13/13 tests passed",
+        "make_docs": "passed",
+        "json_tool": "docs/run-log.json validated",
+        "git_diff_check": "passed",
+        "make_tidy": "whole-tree clang-tidy over 63 tracked non-generated C++ files passed",
+        "efficiency_snapshot": "no added hot-path patterns detected",
+        "fuzz": {
+          "pass": 1000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0
+        }
+      },
+      "outcome": "Accepted as local correctness evidence for the default final-arrangement pruning change. Unit regressions cover EUF-mergeable shared Real pairs being skipped in non-model final arrangement, model reconstruction, and candidate-final fallback paths, while EUF-forbidden pairs still require strict LRA separation.",
+      "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-05-qf-uflra-euf-forbidden-arrangement-slurm-sample-60s",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "benchmark",
+      "scope": "QF_UFLRA preprocessing opportunity sample after pruning final strict arrangements to EUF-forbidden shared Real pairs, default vs candidate final scan vs Z3, 60s timeout",
+      "commit": "8b3bb4e",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "slurm_job_id": "omitted from committed run log per cluster privacy policy; recorded in the agent transcript"
+      },
+      "command": "PRIMO_COMPARE_TIMEOUT=60 sbatch scripts/primo_qfuflra_euf_forbidden_45m.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "default; --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 45,
+        "timeout_seconds": 60
+      },
+      "artifacts": [
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-iface-<job-id>-0.out",
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-iface-<job-id>-1.out",
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-iface-<job-id>-2.out",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/default-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/candidate-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/default.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/candidate.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3.csv"
+      ],
+      "summary": {
+        "default": {
+          "total": 45,
+          "solved": 33,
+          "timeout": 12,
+          "wrong": 0,
+          "par2": 1736.479228,
+          "families": {
+            "mathsat": {"solved": 18, "timeout": 7},
+            "cpachecker-induction-svcomp14": {"solved": 15, "timeout": 4},
+            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+          },
+          "selected_stats": {
+            "shared_real_terms": 3773,
+            "model_real_terms_before_interface_filter": 3840,
+            "model_real_terms_filtered": 67,
+            "model_separation_candidates": 60,
+            "model_separation_euf_forbidden_pairs": 60,
+            "model_separation_euf_mergeable_pairs": 134185,
+            "arrangement_separations": 60,
+            "arrangement_lra_extra_atom_probes": 54,
+            "arrangement_lra_extra_atoms_probed": 1170,
+            "lra_extra_atom_probes": 1159625,
+            "lra_extra_atoms_probed": 1160741,
+            "lra_to_euf_equalities": 6480,
+            "lra_to_euf_rechecks": 307,
+            "sat_equalities_forced": 3523,
+            "sat_decisions": 56085,
+            "sat_conflicts": 4898
+          }
+        },
+        "candidate_final_scan": {
+          "total": 45,
+          "solved": 38,
+          "timeout": 7,
+          "wrong": 0,
+          "par2": 903.689026,
+          "families": {
+            "mathsat": {"solved": 21, "timeout": 4},
+            "cpachecker-induction-svcomp14": {"solved": 17, "timeout": 2},
+            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+          },
+          "selected_stats": {
+            "shared_real_terms": 3696,
+            "model_real_terms_before_interface_filter": 3761,
+            "model_real_terms_filtered": 65,
+            "model_separation_candidates": 62,
+            "model_separation_euf_forbidden_pairs": 62,
+            "model_separation_euf_mergeable_pairs": 204916,
+            "candidate_final_scan_pairs": 48741,
+            "candidate_final_scan_skipped_pairs": 198081,
+            "candidate_final_scan_equalities": 17858,
+            "candidate_final_scan_fallbacks": 0,
+            "arrangement_separations": 62,
+            "arrangement_lra_extra_atom_probes": 95,
+            "arrangement_lra_extra_atoms_probed": 1737,
+            "lra_extra_atom_probes": 379468,
+            "lra_extra_atoms_probed": 381110,
+            "lra_to_euf_equalities": 17858,
+            "lra_to_euf_rechecks": 1013,
+            "sat_equalities_forced": 9601,
+            "sat_decisions": 78796,
+            "sat_conflicts": 4298
+          }
+        },
+        "z3": {
+          "total": 45,
+          "solved": 45,
+          "timeout": 0,
+          "wrong": 0,
+          "par2": 7.525657,
+          "families": {
+            "mathsat": {"solved": 25, "timeout": 0},
+            "cpachecker-induction-svcomp14": {"solved": 19, "timeout": 0},
+            "cpachecker-bmc-svcomp14": {"solved": 1, "timeout": 0}
+          }
+        },
+        "comparison_to_previous_sample": {
+          "baseline_commit": "494a915",
+          "default_solved_before": 26,
+          "default_solved_after": 33,
+          "candidate_solved_before": 28,
+          "candidate_solved_after": 38,
+          "default_par2_before": 2569.220419,
+          "default_par2_after": 1736.479228,
+          "candidate_par2_before": 2218.235007,
+          "candidate_par2_after": 903.689026,
+          "default_model_separation_candidates_before": 134245,
+          "default_model_separation_candidates_after": 60,
+          "candidate_model_separation_candidates_before": 204846,
+          "candidate_model_separation_candidates_after": 62,
+          "default_arrangement_atoms_probed_before": 14868387,
+          "default_arrangement_atoms_probed_after": 1170,
+          "candidate_arrangement_atoms_probed_before": 21974814,
+          "candidate_arrangement_atoms_probed_after": 1737
+        }
+      },
+      "outcome": "Accepted as current SLURM performance evidence for the EUF-forbidden final-arrangement pruning change. The default profile improves from 26/45 to 33/45 solved and PAR2 improves from 2569.220419 to 1736.479228 with no wrong answers. Candidate final scan improves from 28/45 to 38/45 solved and PAR2 improves from 2218.235007 to 903.689026 with no wrong answers. The counters show that almost all previous strict separation candidates were EUF-mergeable rather than EUF-forbidden, reducing default model-separation candidates from 134245 to 60 and candidate-mode candidates from 204846 to 62. Z3 remains much faster at 45/45 solved, so remaining work should target equality traffic, candidate scan cost, and the remaining MathSAT/CPAchecker timeouts.",
+      "evidence_status": "current-slurm"
     }
   ]
 }
