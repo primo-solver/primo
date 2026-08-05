@@ -268,6 +268,29 @@ class LraTableau {
   // without any record of having done so.
   void set_sparse_leaving(bool enabled) { sparse_leaving_ = enabled; }
 
+  // -- Leaving-variable policy (heuristics-note lead 3) --
+  //
+  // MathSAT's actual rule, from the primary source rather than from a
+  // secondary description of it: Griggio's thesis ("An Effective SMT Engine
+  // for Formal Verification", Trento 2009) Section 2.5.3, page 53, picks the
+  // violated basic variable whose beta is *closest* to its violated bound --
+  // the least-violated one -- and breaks ties on the row with fewer non-zero
+  // non-basic coefficients. Its stated aim is to minimise the change needed
+  // to the tableau and to beta.
+  //
+  // That is a third point in the design space, and neither of the two Primo
+  // already had. The default is most-violated-first (Dantzig-style), and
+  // set_sparse_leaving is shortest-row-first with violation as tie-break --
+  // each inverts one half of the rule above. See
+  // docs/papers/griggio-mathsat-thesis.md, which also records the caveat
+  // that the thesis describes MathSAT 4 while King (2014) attributes a
+  // most-violated rule to MathSAT5, so this is a candidate to measure rather
+  // than a correction to apply.
+  //
+  // Same gating as set_sparse_leaving: only meaningful under Sparse, and
+  // intended to be set before solving starts.
+  void set_least_violated_leaving(bool enabled) { least_violated_leaving_ = enabled; }
+
   // -- Fixed-variable elimination (heuristics-note item H7) --
   //
   // A basic variable whose lower and upper bounds coincide is *fixed*: its
@@ -578,6 +601,7 @@ class LraTableau {
 
   PivotingRule rule_;
   bool sparse_leaving_ = false;
+  bool least_violated_leaving_ = false;
   bool fixed_elimination_ = false;
   // Rotating start offset for Sparse's bounded candidate scan. pivot()
   // rebuilds rows in sorted-by-variable-id order, so always starting at the

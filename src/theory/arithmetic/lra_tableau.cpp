@@ -998,6 +998,22 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       // second Markowitz factor. Violation magnitude drops to a tie-break.
       // Unlike the entering-side rule this changes which infeasibility gets
       // repaired, which is why it is separately gated.
+      // MathSAT's rule (Griggio thesis Section 2.5.3, page 53): the
+      // least-violated basic variable first, tie-broken by the shorter row.
+      // The intent is to minimise how much the tableau and beta have to move
+      // to become feasible, which is the opposite intuition to Dantzig's
+      // "repair the worst infeasibility first".
+      if (least_violated_leaving_ && rule_ == PivotingRule::Sparse) {
+        const std::size_t row_size = rows_[id].size();
+        if (violated == vars_.size() || violation < best_violation ||
+            (violation == best_violation && row_size < best_row_size)) {
+          violated = id;
+          too_low = candidate_too_low;
+          best_violation = violation;
+          best_row_size = row_size;
+        }
+        continue;
+      }
       if (sparse_leaving_ && rule_ == PivotingRule::Sparse) {
         const std::size_t row_size = rows_[id].size();
         if (violated == vars_.size() || row_size < best_row_size ||

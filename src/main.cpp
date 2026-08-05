@@ -166,6 +166,7 @@ int main(int argc, char** argv) {
   std::string euf_explain_search = "one-sided";
   std::string lra_pivoting_rule = "sparse";
   bool no_lra_sparse_leaving = false;
+  bool lra_least_violated_leaving = false;
   bool euf_proof_forest_diagnostics = false;
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
@@ -267,6 +268,10 @@ int main(int argc, char** argv) {
                  "but bland fall back to bland selection after enough pivots within one "
                  "check(), which is what keeps termination proven")
       ->check(CLI::IsMember({"bland", "dantzig", "soi", "sparse"}));
+  app.add_flag("--lra-least-violated-leaving", lra_least_violated_leaving,
+               "Experimental leaving-variable rule from Griggio's thesis (2.5.3, p.53):\n"
+               "pick the LEAST-violated basic variable, tie-broken by the shorter row.\n"
+               "Only meaningful under --lra-pivoting-rule sparse [default: off]");
   app.add_flag("--no-lra-sparse-leaving", no_lra_sparse_leaving,
                "Disable the default-on leaving-side half of --lra-pivoting-rule sparse "
                "(prefer repairing a violated variable whose row is short, using "
@@ -471,7 +476,8 @@ int main(int argc, char** argv) {
   const auto group_for = [&starts_with](const std::string& name) -> std::string {
     if (starts_with(name, "--lra-") || starts_with(name, "--no-lra-") ||
         name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
-        name == "--guarded-real-equality-lowering" || name == "--monotone-elimination") {
+        name == "--guarded-real-equality-lowering" || name == "--monotone-elimination" ||
+        name == "--lra-least-violated-leaving") {
       return kGroupLra;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)
@@ -654,6 +660,9 @@ int main(int argc, char** argv) {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::OneSidedBfs;
   }
   solver_options.euf_proof_forest_diagnostics = euf_proof_forest_diagnostics;
+  if (lra_least_violated_leaving) {
+    solver_options.lra_least_violated_leaving = true;
+  }
   if (no_lra_sparse_leaving) {
     solver_options.lra_sparse_leaving = false;
   }

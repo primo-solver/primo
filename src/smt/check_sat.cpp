@@ -4550,7 +4550,8 @@ struct PreparedLraTheory {
   PreparedLraTheory(const core::TermManager& terms,
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule, bool sparse_leaving,
-                    bool fixed_elimination, bool collect_model_variables);
+                    bool fixed_elimination, bool collect_model_variables,
+                    bool least_violated_leaving = false);
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -4586,9 +4587,10 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                      theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
                                      bool sparse_leaving, bool fixed_elimination,
-                                     bool collect_model_variables)
+                                     bool collect_model_variables, bool least_violated_leaving)
     : base_tableau(pivoting_rule) {
   base_tableau.set_sparse_leaving(sparse_leaving);
+  base_tableau.set_least_violated_leaving(least_violated_leaving);
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
   auto get_var = [&](core::TermId term_id) {
     const auto found = var_ids.find(term_id);
@@ -7410,7 +7412,8 @@ CheckSatOutcome solve_qf_lra_impl(
 
   const PreparedLraTheory prepared_theory(
       terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
+      options.lra_least_violated_leaving);
   publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR
@@ -7988,7 +7991,8 @@ CheckSatOutcome solve_qf_uf_lra(
   const core::TermId false_term = terms.mk_bool(false);
   const PreparedLraTheory base_prepared_lra_theory(
       terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
+      options.lra_least_violated_leaving);
   if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online &&
       !options.nelson_oppen_model_equality_branching && !lra_atoms.empty()) {
     const std::vector<TermPairKey> paired_bound_pairs =
@@ -8184,7 +8188,8 @@ CheckSatOutcome solve_qf_uf_lra(
       } else {
         augmented_prepared_lra_theory.emplace(
             terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-            options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+            options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
+      options.lra_least_violated_leaving);
         prepared_lra_theory_for_check = &augmented_prepared_lra_theory.value();
         statistics.increment(":no.interface.lra-prepared-augmented");
       }

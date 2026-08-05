@@ -201,6 +201,7 @@ struct CheckSatOptions {
   // rule alone reaches 154/237, this takes it to 168, and it is the whole of
   // the latendresse result (0/15 -> 6/15, matching z3).
   bool lra_sparse_leaving = true;
+  bool lra_least_violated_leaving = false;
   // Heuristics-note item H7 -- see LraTableau::set_fixed_elimination.
   // Opt-in (--lra-fixed-elimination): on the 595-file scrambled competition
   // set it solves 374 against 373 with it off, a median 0.94x speedup over

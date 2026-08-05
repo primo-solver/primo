@@ -574,6 +574,70 @@ void sparse_bounded_pricing_still_finds_the_only_eligible_candidate() {
   assert(tableau.assignment(s) >= rat(1));
 }
 
+
+// The leaving rule from Griggio's thesis (Section 2.5.3, page 53): pick the
+// LEAST-violated basic variable, tie-broken by the shorter row. It is a cost
+// lever like the others, so it must not change any verdict -- and it must
+// actually select differently from the two policies Primo already had, or it
+// is not the rule it claims to be.
+void least_violated_leaving_matches_bland_on_multi_pivot_scenarios() {
+  const auto run = [](LraTableau::PivotingRule rule, bool sparse_leaving,
+                      bool least_violated) {
+    LraTableau tableau(rule);
+    tableau.set_sparse_leaving(sparse_leaving);
+    tableau.set_least_violated_leaving(least_violated);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    tableau.add_row(s1, {{x, Rational(2)}, {y, Rational(1)}});
+    tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(3)}});
+    assert(!tableau.assert_lower(x, rat(0), Lit{1}).has_value());
+    assert(!tableau.assert_lower(y, rat(0), Lit{2}).has_value());
+    assert(!tableau.assert_upper(s1, rat(4), Lit{3}).has_value());
+    assert(!tableau.assert_upper(s2, rat(9), Lit{4}).has_value());
+    assert(!tableau.assert_lower(y, rat(20), Lit{5}).has_value());
+    return tableau.check().has_value();
+  };
+  const bool bland = run(LraTableau::PivotingRule::Bland, false, false);
+  assert(run(LraTableau::PivotingRule::Sparse, false, true) == bland);
+  assert(run(LraTableau::PivotingRule::Sparse, true, true) == bland);
+}
+
+// Pins that the rule actually selects differently, rather than merely being
+// wired up. Two violated basic variables whose violations differ in
+// magnitude: the least-violated rule repairs the smaller one first while the
+// default (Dantzig-style) repairs the larger, and on this shape that changes
+// the resulting pivot sequence. Observed through pivot_count(), which is a
+// real consequence of selection rather than a restatement of the branch.
+void least_violated_leaving_selects_differently_from_most_violated() {
+  const auto pivots = [](bool least_violated) {
+    LraTableau tableau(LraTableau::PivotingRule::Sparse);
+    tableau.set_least_violated_leaving(least_violated);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    // Two rows over a shared variable, so repairing one disturbs the other
+    // and the order in which they are repaired is observable.
+    tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(1)}});
+    tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(-1)}});
+    assert(!tableau.assert_lower(x, rat(0), Lit{1}).has_value());
+    assert(!tableau.assert_lower(y, rat(0), Lit{2}).has_value());
+    // s1 is driven far below its bound, s2 only slightly.
+    assert(!tableau.assert_lower(s1, rat(50), Lit{3}).has_value());
+    assert(!tableau.assert_lower(s2, rat(1), Lit{4}).has_value());
+    tableau.check();
+    return tableau.pivot_count();
+  };
+  // Both must terminate; the point is that the selection differs, which on
+  // this shape shows up as a different amount of pivoting.
+  const std::size_t most = pivots(false);
+  const std::size_t least = pivots(true);
+  assert(most > 0 && least > 0);
+  assert(most != least);
+}
+
 void sparse_matches_bland_on_multi_pivot_scenarios() {
   // Same shape as soi_matches_bland_on_multi_pivot_scenarios: the rule is a
   // pure cost lever, so it must agree with Bland on every verdict.
@@ -1236,6 +1300,8 @@ int main() {
   sparse_prefers_a_unit_coefficient_when_occurrences_tie();
   sparse_bounded_pricing_still_finds_the_only_eligible_candidate();
   sparse_matches_bland_on_multi_pivot_scenarios();
+  least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
+  least_violated_leaving_selects_differently_from_most_violated();
   soi_reproduces_paper_fig6_worked_example();
   soi_matches_bland_on_multi_pivot_scenarios();
   soi_push_pop_restores_state_across_a_pivot();
