@@ -19038,6 +19038,58 @@
       },
       "outcome": "Accepted as current SLURM evidence for the default-off candidate final scan. It improves the MathSAT slice of this sample, solving 14/25 MathSAT files versus 6/25 for default at 10s, and improves total solved from 7/45 to 14/45 with no wrong answers. It regresses the CPAchecker induction slice by losing the single default solve, and Z3 remains much faster at 45/45 solved. Keep the option default-off and continue with arrangement/preprocessing work before any default-profile claim.",
       "evidence_status": "current-slurm"
+    },
+    {
+      "id": "2026-08-05-qf-uflra-candidate-final-scan-slurm-sample-60s-submitted",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "benchmark",
+      "scope": "QF_UFLRA preprocessing opportunity sample, default vs candidate final scan vs Z3, 60s timeout",
+      "commit": "7a585fc",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "slurm_job_id": "omitted from committed run log per cluster privacy policy; recorded in the agent transcript"
+      },
+      "command": "sbatch --time=01:10:00 --export=ALL,PRIMO_COMPARE_TIMEOUT=60 scripts/slurm_qf_uflra_candidate_final_scan_compare.sbatch",
+      "solver": {
+        "name": "Primo",
+        "argv": "default; --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 45,
+        "timeout_seconds": 60
+      },
+      "artifacts": [
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-cand-<job-id>-0.out",
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-cand-<job-id>-1.out",
+        "remote:primo-candidate-final-7a585fc/logs/primo-qfuflra-cand-<job-id>-2.out",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/default-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/candidate-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3-summary.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/default.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/candidate.csv",
+        "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3.csv"
+      ],
+      "summary": {
+        "status": "submitted",
+        "initial_poll": {
+          "z3_outputs_present": true,
+          "default_task_state": "running",
+          "candidate_task_state": "running"
+        }
+      },
+      "outcome": "Submitted as a longer-timeout follow-up to the 10s SLURM sample. Results are intentionally not summarized yet; collect the summary CSVs after the array completes before drawing performance conclusions.",
+      "evidence_status": "running-slurm"
     }
   ]
 }
