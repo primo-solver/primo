@@ -18849,7 +18849,7 @@
         "model_validation": "2,594 pass, 0 invalid models, 389 not-sat (unsat input, no model expected), 17 solver-timeout.",
         "mutation": "opfuzz task and 2 YinYang/typefuzz shards: 14 seeds each, 14 valid, 0 invalid, 0 bug triggers.",
         "task_exit_status": "sacct reports the six FuzzSMT array tasks as FAILED with exit 1:0. This is fuzz_external.py exiting nonzero when any row is non-PASS; the only non-PASS rows are the 23 timeouts, and the bugs/ directories contain exactly those 23 files. Not a soundness failure.",
-        "timeout_triage": "Every saved timeout case re-run at a longer budget with and without --monotone-elimination produced the identical outcome (sat/sat where solvable, unknown/unknown otherwise), so the timeouts are inherent to the generated instances rather than introduced by the pass. Full 23-case triage recorded separately."
+        "timeout_triage": "All 23 saved bug files cross-check as TIMEOUT rows in the shard summaries (23 files, 23 TIMEOUT rows, no bug file with any other outcome). Each was re-run at a 20s budget with and without --monotone-elimination: ZERO cases changed outcome. Pairs were sat/sat, unknown/unknown and unsat/unsat throughout, so the timeouts are inherent to the generated instances rather than introduced by the pass. (The raw triage log carries a few duplicate rows from a first attempt killed mid-loop before the detached rerun; the distinct case set is 23.)"
       },
       "artifacts": {
         "remote_results": "/home/janotmik/primo-monotone-c054811/fuzz-results/qf-lra-model-gate-119430 (per-shard summary.csv, model-validation/, bugs/); cluster-local, not committed",
