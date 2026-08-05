@@ -26,6 +26,7 @@ chapters:
   - file: papers/finite-model-finding-sorts
   - file: papers/fast-linear-arithmetic-dpllt
   - file: papers/lra-related-work
+  - file: papers/summaries
   - file: papers/griggio-mathsat-thesis
   - file: papers/monotone-variable-elimination
   - file: papers/difference-constraint-propagation
