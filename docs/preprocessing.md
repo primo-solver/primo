@@ -452,6 +452,73 @@ campaign-tier Slurm fuzz gate (3000 fuzzsmt cases plus opfuzz/yinyang
 mutation shards, 0 crashes/wrong-answers/bug triggers) -- see
 `docs/arithmetic.md`'s Milestone roadmap and `docs/run-log.json`.
 
+(monotone-elimination)=
+## Monotone (One-Sided) Variable Elimination
+
+`--monotone-elimination` (opt-in, default off) discharges real variables that
+every constraint pushes the same way.
+
+If, after accounting for Boolean polarity, every atom mentioning `x` bounds it
+in one direction only, then no finite bound opposes `x`, so some extreme value
+satisfies all of them at once. Each such atom is replaced by the constant its
+own occurrence needs -- `true` where it occurs positively, `false` where it
+occurs negatively. This is Fourier-Motzkin elimination of a single-sign
+variable: with no opposing bounds to pair against, the combination step is
+empty and every constraint mentioning the variable is simply dropped. See
+[](papers/monotone-variable-elimination.md) for what is and is not being cited.
+
+**The saving is mostly Boolean.** The atom leaves the CNF and the clauses it
+satisfies disappear; a smaller tableau is the secondary effect. On a
+LassoRanker instance the pass folded only 21 atoms and removed no tableau rows
+at all, yet cut runtime 12.19s to 7.84s -- the smaller Boolean structure
+produced a better search.
+
+The pass runs immediately after [](#real-equality-lowering), so equalities have
+already become Le/Lt pairs.
+
+### Preconditions, all conservative
+
+A variable is disqualified -- left entirely alone -- unless it is a 0-ary Real
+`Constant` whose every occurrence is a linear leaf of a `Le`/`Lt` atom.
+Specifically:
+
+- **Real equalities** pin both directions, so they disqualify.
+- **Uninterpreted applications** are opaque: a real under `f(...)` disqualifies.
+- **Mixed polarity** disqualifies. Input is not in NNF, so polarity is tracked
+  through `Not` and `Implies` rather than assumed; one atom reached at both
+  polarities forces its variables two-sided.
+- **An atom with any leaf model reconstruction could not evaluate** disqualifies
+  *every* variable in that atom, not just that leaf. Otherwise a discharged
+  constraint could be left unrepairable when the model is built.
+
+### Model reconstruction
+
+Eliminated variables are absent from the tableau, so they are valued after the
+solve, from the constraints that were discharged. Each constraint is re-derived
+against the model and yields a bound; the variable takes one unit past the
+tightest of them, which clears strict and non-strict bounds alike.
+
+**No dependency ordering is needed**, which is worth stating because the
+obvious design is both more expensive and wrong. Two variables sharing one atom
+depend on each other, and a topological scheme would call that a cycle and
+discard sound eliminations. Instead: for any discharged atom, the eliminated
+variable valued *last* sees every other leaf already valued, so that atom
+yields a real bound on it, and going far enough satisfies all of its
+constraints including that one. Earlier variables may skip the atom; the last
+one repairs it.
+
+One subtlety is load-bearing and has a regression test. Folding an atom
+discharges it for *every* variable in it, so a variable that was itself
+disqualified can lose its last constraint and vanish from the tableau. Such a
+variable is pinned to zero during reconstruction rather than left unvalued --
+skipping its bound instead produced models that violated the very constraint
+the pass had discharged.
+
+### Counters
+
+`:preprocessing.monotone-elimination.candidates`, `.variables`, and
+`.atoms-folded`.
+
 (pure-literal-trap)=
 ## The pure-literal rule does not transfer to theory atoms
 
@@ -506,6 +573,7 @@ only flat atoms and silently skips nested arithmetic such as
 counts for them are artifacts and were discarded. A real evaluation needs a
 polarity-aware pass over the actual term structure, not a regex.
 
+(real-equality-lowering)=
 ## Real-Equality Lowering
 
 Real is a total order, so `t1 = t2 <=> t1 <= t2 AND t2 <= t1`. Rather than

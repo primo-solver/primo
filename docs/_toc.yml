@@ -27,6 +27,7 @@ chapters:
   - file: papers/fast-linear-arithmetic-dpllt
   - file: papers/lra-related-work
   - file: papers/griggio-mathsat-thesis
+  - file: papers/monotone-variable-elimination
   - file: papers/difference-constraint-propagation
   - file: papers/model-based-theory-combination
   - file: papers/nelson-oppen-closure-methods

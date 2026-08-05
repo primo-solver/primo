@@ -77,6 +77,148 @@ struct RealFixture {
   primo::core::TermId rational(std::int64_t value) { return terms.mk_rational(value); }
 };
 
+
+// --- monotone (one-sided) variable elimination -------------------------
+//
+// Each test pins one soundness precondition. The pass is only correct
+// because a disqualified variable stays in the problem, so every negative
+// test here is load-bearing.
+
+void monotone_elimination_discharges_one_sided_variable() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  // x is only ever bounded above, so an arbitrarily small x satisfies both.
+  const primo::core::TermId first = fixture.terms.mk_le(x, fixture.rational(5));
+  const primo::core::TermId second = fixture.terms.mk_le(x, fixture.rational(3));
+
+  const primo::smt::MonotoneEliminationResult result =
+      primo::smt::eliminate_monotone_variables(fixture.terms, {first, second});
+
+  check(result.candidates == 1);
+  check(result.eliminated.size() == 1);
+  check(result.eliminated.front().variable == x);
+  check(result.eliminated.front().bounded_above);
+  check(result.eliminated.front().constraints.size() == 2);
+  check(result.atoms_folded == 2);
+  const primo::core::TermId truth = fixture.terms.mk_bool(true);
+  check(result.assertions.at(0) == truth);
+  check(result.assertions.at(1) == truth);
+}
+
+void monotone_elimination_respects_polarity() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  // (<= x 5) positively and (not (<= x 3)) negatively push x in opposite
+  // directions, so x is two-sided even though both atoms mention only x.
+  const primo::core::TermId positive = fixture.terms.mk_le(x, fixture.rational(5));
+  const primo::core::TermId negative = fixture.terms.mk_not(fixture.terms.mk_le(x, fixture.rational(3)));
+
+  const primo::smt::MonotoneEliminationResult result =
+      primo::smt::eliminate_monotone_variables(fixture.terms, {positive, negative});
+
+  check(result.candidates == 0);
+  check(result.eliminated.empty());
+  check(result.atoms_folded == 0);
+  check(result.assertions.at(0) == positive);
+  check(result.assertions.at(1) == negative);
+}
+
+void monotone_elimination_folds_negative_polarity_atom_to_false() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  // Only occurrence is negated, so the atom must become false, not true.
+  const primo::core::TermId negated =
+      fixture.terms.mk_not(fixture.terms.mk_le(x, fixture.rational(5)));
+
+  const primo::smt::MonotoneEliminationResult result =
+      primo::smt::eliminate_monotone_variables(fixture.terms, {negated});
+
+  check(result.eliminated.size() == 1);
+  check(!result.eliminated.front().bounded_above);
+  // mk_not folds the constant away, so the whole assertion collapses.
+  check(result.assertions.at(0) == fixture.terms.mk_bool(true));
+}
+
+void monotone_elimination_keeps_variable_pinned_by_equality() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  // An equality pins x from both sides even though the inequality alone
+  // would look one-sided.
+  const primo::core::TermId bound = fixture.terms.mk_le(x, fixture.rational(5));
+  const primo::core::TermId equality = fixture.terms.mk_eq(x, y);
+
+  const primo::smt::MonotoneEliminationResult result =
+      primo::smt::eliminate_monotone_variables(fixture.terms, {bound, equality});
+
+  check(result.eliminated.empty());
+  check(result.atoms_folded == 0);
+}
+
+void monotone_elimination_keeps_variable_under_uninterpreted_application() {
+  primo::core::SymbolTable symbols;
+  const primo::core::SortId real_sort = symbols.real_sort();
+  const primo::core::SortId u = symbols.declare_sort("U");
+  const primo::core::SymbolId x = symbols.declare_constant("x", real_sort);
+  const primo::core::SymbolId f = symbols.declare_function("f", {real_sort}, u);
+  const primo::core::SymbolId a = symbols.declare_constant("a", u);
+  primo::core::TermManager terms{symbols};
+  const primo::core::TermId xt = terms.mk_constant(x);
+  // f(x) constrains x in a way this pass cannot see, so x must survive.
+  const primo::core::TermId bound = terms.mk_le(xt, terms.mk_rational(5));
+  const primo::core::TermId application =
+      terms.mk_eq(terms.mk_app(f, {xt}), terms.mk_constant(a));
+
+  const primo::smt::MonotoneEliminationResult result =
+      primo::smt::eliminate_monotone_variables(terms, {bound, application});
+
+  check(result.eliminated.empty());
+  check(result.atoms_folded == 0);
+}
+
+void monotone_elimination_orders_dependent_variables() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  // x <= y bounds x above and y below; 1 <= y bounds y below again, so
+  // both stay one-sided. They share an atom and so depend on each other,
+  // which an ordering scheme would have called a cycle -- both must still
+  // be eliminated.
+  const primo::core::TermId first = fixture.terms.mk_le(x, y);
+  const primo::core::TermId second = fixture.terms.mk_le(fixture.rational(1), y);
+
+  const primo::smt::MonotoneEliminationResult result =
+      primo::smt::eliminate_monotone_variables(fixture.terms, {first, second});
+
+  check(result.eliminated.size() == 2);
+  std::size_t x_index = result.eliminated.size();
+  std::size_t y_index = result.eliminated.size();
+  for (std::size_t i = 0; i < result.eliminated.size(); ++i) {
+    if (result.eliminated[i].variable == x) {
+      x_index = i;
+    }
+    if (result.eliminated[i].variable == y) {
+      y_index = i;
+    }
+  }
+  check(x_index < result.eliminated.size() && y_index < result.eliminated.size());
+}
+
+void monotone_elimination_leaves_two_sided_variables_alone() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId lower = fixture.terms.mk_le(fixture.rational(1), x);
+  const primo::core::TermId upper = fixture.terms.mk_le(x, fixture.rational(5));
+
+  const primo::smt::MonotoneEliminationResult result =
+      primo::smt::eliminate_monotone_variables(fixture.terms, {lower, upper});
+
+  check(result.candidates == 0);
+  check(result.eliminated.empty());
+  check(result.assertions.at(0) == lower);
+  check(result.assertions.at(1) == upper);
+}
+
 void symmetric_fixed_terms_get_value_precedence() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -1101,5 +1243,12 @@ int main() {
   finite_domain_equality_definitions_respect_auto_guards();
   congruence_definitions_connect_same_symbol_applications();
   finite_domain_evaluator_simplifies_table_tautology();
+  monotone_elimination_discharges_one_sided_variable();
+  monotone_elimination_respects_polarity();
+  monotone_elimination_folds_negative_polarity_atom_to_false();
+  monotone_elimination_keeps_variable_pinned_by_equality();
+  monotone_elimination_keeps_variable_under_uninterpreted_application();
+  monotone_elimination_orders_dependent_variables();
+  monotone_elimination_leaves_two_sided_variables_alone();
   return 0;
 }

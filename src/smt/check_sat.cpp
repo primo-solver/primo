@@ -82,6 +82,12 @@ constexpr util::StatKey kStatSolvedConstantRejectedCycles =
 constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
 constexpr util::StatKey kStatRealEqualityLowered = util::StatKey::RealEqualityLowered;
+constexpr util::StatKey kStatMonotoneEliminationCandidates =
+    util::StatKey::MonotoneEliminationCandidates;
+constexpr util::StatKey kStatMonotoneEliminationVariables =
+    util::StatKey::MonotoneEliminationVariables;
+constexpr util::StatKey kStatMonotoneEliminationAtomsFolded =
+    util::StatKey::MonotoneEliminationAtomsFolded;
 constexpr util::StatKey kStatGuardedRealEqualityDistributed =
     util::StatKey::GuardedRealEqualityDistributed;
 constexpr util::StatKey kStatSolvedConstantGaussianCandidates =
@@ -4778,6 +4784,82 @@ bool assign_real_model_value(const core::TermManager& terms, RealModelValues& va
   return inserted;
 }
 
+// Gives every monotonically eliminated variable a value again.
+//
+// Such a variable was removed because all of its constraints push it one
+// way, so no finite bound opposes it. Its constraints are re-derived here
+// against the model the solver produced: each yields a bound on the
+// variable, and taking one unit past the tightest of them satisfies all of
+// them, strict and non-strict alike. `eliminated` is topologically
+// ordered, so a single forward pass suffices -- each entry's constraints
+// mention only variables the tableau valued or entries already handled.
+void apply_monotone_eliminations(const core::TermManager& terms, RealModelValues& values,
+                                 const std::vector<MonotoneEliminatedVariable>& eliminated) {
+  for (const MonotoneEliminatedVariable& entry : eliminated) {
+    std::optional<util::Rational> tightest;
+    for (const auto& [atom_id, required_truth] : entry.constraints) {
+      theory::arithmetic::LraAtom atom;
+      try {
+        atom = theory::arithmetic::normalize_atom(terms, atom_id);
+      } catch (const std::invalid_argument&) {
+        continue;
+      }
+      const auto coefficient_it = atom.polynomial.terms().find(entry.variable);
+      if (coefficient_it == atom.polynomial.terms().end() || coefficient_it->second.is_zero()) {
+        continue;
+      }
+      const util::Rational coefficient = coefficient_it->second;
+      // Sum the rest of the row at the model's values.
+      //
+      // A leaf can legitimately have no value yet. Folding an atom
+      // discharges it for *every* variable in it, so a variable that was
+      // itself disqualified can lose its last constraint and disappear
+      // from the tableau -- nothing else constrains it, and the model
+      // printer would default it to zero. Pin it to zero here instead of
+      // skipping the bound: skipping would leave this constraint to a
+      // later variable that may not exist, which is how an eliminated
+      // variable ends up violating a constraint it was supposed to
+      // satisfy.
+      util::Rational rest(0);
+      for (const auto& [leaf, leaf_coefficient] : atom.polynomial.terms()) {
+        if (leaf == entry.variable) {
+          continue;
+        }
+        std::optional<util::Rational> leaf_value =
+            evaluate_real_model_term(terms, leaf, values);
+        if (!leaf_value.has_value()) {
+          assign_real_model_value(terms, values, leaf, util::Rational(0));
+          leaf_value = evaluate_real_model_term(terms, leaf, values);
+        }
+        if (!leaf_value.has_value()) {
+          // Not a plain real constant, so this atom should never have been
+          // folded; leave the bound underived rather than guess.
+          rest = util::Rational(0);
+          break;
+        }
+        rest = rest + leaf_coefficient * leaf_value.value();
+      }
+      // coefficient * x  <=/<  rhs - rest, then divide, flipping the
+      // sense when the coefficient is negative. Strictness does not
+      // change the bound itself; the unit of slack below covers it.
+      const util::Rational bound = (atom.rhs - rest) / coefficient;
+      if (!tightest.has_value()) {
+        tightest = bound;
+      } else if (entry.bounded_above) {
+        tightest = bound < tightest.value() ? bound : tightest.value();
+      } else {
+        tightest = tightest.value() < bound ? bound : tightest.value();
+      }
+    }
+    const util::Rational one(1);
+    const util::Rational chosen =
+        tightest.has_value()
+            ? (entry.bounded_above ? tightest.value() - one : tightest.value() + one)
+            : util::Rational(0);
+    assign_real_model_value(terms, values, entry.variable, chosen);
+  }
+}
+
 void apply_real_preprocessing_model_assignments(
     const core::TermManager& terms, RealModelValues& values,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
@@ -4870,7 +4952,8 @@ RealModelValues real_model_values_from_lra(
     const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms) {
+    const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   const util::Rational concrete_delta = choose_concrete_delta(prepared, tableau, assigned_atoms);
   RealModelValues values;
   values.reserve(prepared.variables_by_term.size() + model_terms.size());
@@ -4879,6 +4962,9 @@ RealModelValues real_model_values_from_lra(
                    concretize_delta_rational(tableau.assignment(variable), concrete_delta));
   }
   apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
+  if (monotone_eliminated != nullptr) {
+    apply_monotone_eliminations(terms, values, *monotone_eliminated);
+  }
   return values;
 }
 
@@ -4886,18 +4972,24 @@ std::string build_qf_lra_model(
     core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms) {
-  const RealModelValues values = real_model_values_from_lra(
-      terms, model_terms, preprocessing_model_assignments, prepared, tableau, assigned_atoms);
+    const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
+  const RealModelValues values =
+      real_model_values_from_lra(terms, model_terms, preprocessing_model_assignments, prepared,
+                                 tableau, assigned_atoms, monotone_eliminated);
   return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
 }
 
 std::string build_qf_lra_preprocessing_only_model(
     core::TermManager& terms, const std::vector<core::TermId>& model_terms,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   RealModelValues values;
   values.reserve(model_terms.size());
   apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
+  if (monotone_eliminated != nullptr) {
+    apply_monotone_eliminations(terms, values, *monotone_eliminated);
+  }
   return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
 }
 
@@ -7295,7 +7387,8 @@ CheckSatOutcome solve_qf_lra_impl(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const CheckSatOptions& options, util::Statistics& statistics) {
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
@@ -7365,7 +7458,7 @@ CheckSatOutcome solve_qf_lra_impl(
       return CheckSatOutcome{
           CheckSatResult::Sat, "", statistics,
           build_qf_lra_model(terms, model_terms, preprocessing_model_assignments, prepared_theory,
-                             online_propagator.tableau(), assigned_atoms)};
+                             online_propagator.tableau(), assigned_atoms, monotone_eliminated)};
 #else
       theory::arithmetic::LraTableau model_tableau = prepared_theory.base_tableau;
       for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
@@ -7717,11 +7810,13 @@ CheckSatOutcome solve_qf_lra(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const CheckSatOptions& options, util::Statistics& statistics) {
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   const std::uint64_t promotions_before = util::Rational::promotion_count();
   const std::uint64_t big_operations_before = util::Rational::big_operation_count();
-  CheckSatOutcome outcome = solve_qf_lra_impl(terms, assertions, model_terms,
-                                              preprocessing_model_assignments, options, statistics);
+  CheckSatOutcome outcome =
+      solve_qf_lra_impl(terms, assertions, model_terms, preprocessing_model_assignments, options,
+                        statistics, monotone_eliminated);
   const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
   const std::uint64_t big_operations =
       util::Rational::big_operation_count() - big_operations_before;
@@ -8662,6 +8757,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                    reachable_term_count(frontend.terms(), assertions));
     const std::vector<core::TermId> symmetry_source_assertions = assertions;
     std::vector<TheoryModelAssignment> preprocessing_model_assignments;
+    std::vector<MonotoneEliminatedVariable> monotone_eliminated;
     std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
     std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
     if (use_finite_domain_amo) {
@@ -8812,6 +8908,18 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatGuardedRealEqualityDistributed,
                            lowered_equalities.guarded_distributed);
     }
+    if (options.monotone_elimination) {
+      // Runs after Real-equality lowering so that equalities have already
+      // become Le/Lt pairs -- a variable pinned by an equality is
+      // two-sided either way, but the pass only understands Le/Lt.
+      MonotoneEliminationResult monotone =
+          eliminate_monotone_variables(frontend.terms(), assertions);
+      statistics.increment(kStatMonotoneEliminationCandidates, monotone.candidates);
+      statistics.increment(kStatMonotoneEliminationAtomsFolded, monotone.atoms_folded);
+      statistics.increment(kStatMonotoneEliminationVariables, monotone.eliminated.size());
+      assertions = std::move(monotone.assertions);
+      monotone_eliminated = std::move(monotone.eliminated);
+    }
     if (use_symmetry_breaking) {
       if (!symmetry_result.has_value()) {
         UfSymmetryBreaker symmetry_breaker(frontend.terms());
@@ -8940,8 +9048,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       if (options.produce_model) {
         if (frontend.has_declared_real_constants()) {
           const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
-          outcome.model = build_qf_lra_preprocessing_only_model(frontend.terms(), model_terms,
-                                                                preprocessing_model_assignments);
+          outcome.model = build_qf_lra_preprocessing_only_model(
+              frontend.terms(), model_terms, preprocessing_model_assignments,
+              &monotone_eliminated);
         } else {
           outcome.model = build_qf_uf_model(frontend.terms(), preprocessing_model_assignments);
         }
@@ -9007,17 +9116,21 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           solve_options.produce_model ? frontend.declared_real_constant_terms()
                                       : std::vector<core::TermId>{};
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_lra(frontend.terms(), assertions, lra_model_terms,
-                                       preprocessing_model_assignments, solve_options, statistics),
-                          solve_start);
+      return finish_solve(
+          solve_qf_lra(frontend.terms(), assertions, lra_model_terms,
+                       preprocessing_model_assignments, solve_options, statistics,
+                       &monotone_eliminated),
+          solve_start);
     }
     if (options.produce_model && frontend.has_declared_real_constants() && !has_equality &&
         !has_euf_predicate) {
       const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_lra(frontend.terms(), assertions, model_terms,
-                                       preprocessing_model_assignments, solve_options, statistics),
-                          solve_start);
+      return finish_solve(
+          solve_qf_lra(frontend.terms(), assertions, model_terms,
+                       preprocessing_model_assignments, solve_options, statistics,
+                       &monotone_eliminated),
+          solve_start);
     }
     if (has_equality) {
       const PhaseClock::time_point solve_start = PhaseClock::now();

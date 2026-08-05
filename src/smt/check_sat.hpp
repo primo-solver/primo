@@ -218,6 +218,7 @@ struct CheckSatOptions {
   bool ground_unit_substitution = false;
   bool guarded_ground_unit_substitution = false;
   bool guarded_real_equality_lowering = false;
+  bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;
   bool top_level_or_tseitin = false;
