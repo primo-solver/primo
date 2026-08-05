@@ -29,7 +29,7 @@ notes it points to.
 | # | lead | expected size | cost | status |
 |---|---|---|---|---|
 | [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | zero as a wiring fix; the filter reaches only the once-called final check | large if done properly | **downgraded**; merge into lead 5 |
-| [2](#lead-flag-first) | Flag-first decision ordering (invert `cb_decide`) | unknown | **small** | open |
+| [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 1.42x median in its source | **small** | open |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
@@ -113,29 +113,52 @@ The two mechanisms would fire on different atoms.
 (lead-flag-first)=
 ## 2. Flag-first decision ordering
 
-**Claim.** On guarded families the Boolean layer is self-contained and decides
-which arithmetic is relevant; deciding arithmetic first is backwards.
+**Status: attempted 2026-08-05 and blocked. The stated mechanism does not
+exist, and the real one is owned by a different layer.** Kept open in
+principle; not actionable from the LRA propagator.
 
-**Evidence.** On tropical-matrix the Boolean layer is 468 unconditional
-definitions over 36 free inputs, referring to no arithmetic at all
-([](tropical-matrix-structure.md)). The solved run shows 15,766 decisions
-against **93 conflicts** -- the search is walking, not fighting, and doing
-tableau work along the way. Decisively, the existing `--lra-theory-decisions`
-does the *opposite* (its `cb_decide()` loop skips every atom where
-`!prepared_atom.is_arithmetic`) and is catastrophic here:
+**The claim.** On guarded families the Boolean layer is self-contained and
+determines which arithmetic is relevant, so settling it first should stop the
+search doing tableau work a better flag assignment would have made
+unnecessary. `constraint-199552` shows 15,766 decisions against only 93
+conflicts -- the search is walking, not fighting.
 
-| config on `constraint-199552` | result |
+**Why "invert the `cb_decide()` filter" is not implementable.** Measured, not
+inferred:
+
+| fact | evidence |
 |---|---|
-| `--guarded-real-equality-lowering` | **3.5s**, sat |
-| the same plus `--lra-theory-decisions` | **timeout at 90s**, 9,185,550 theory decisions |
+| These benchmarks do not run `solve_qf_lra` | `:solver.qf-uflra` 1, `:solver.qf-lra` 0 -- on tropical *and* uart |
+| `cb_decide`'s atom list is 100% arithmetic | probe: `lra_atoms=2892 non_arithmetic=0` (tropical), `1363 / 0` (uart) |
+| so inverting its `is_arithmetic` filter yields an **empty** candidate set | it would disable theory decisions, not reorder them |
+| the flags are elsewhere | they are the 954 `euf_atoms` -- Bool-sorted `Constant` terms, split off by `is_euf_theory_atom` |
+| the dispatcher does not help | `MixedTheoryPropagationDispatcher::cb_decide` just delegates to the LRA one, and is only built when `nelson_oppen_propagation == Online`, which is not the default |
 
-**Cost.** Small: the same `cb_decide()` hook with the filter inverted. The
-existing option is a ready-made control to A/B against.
+**The hard blocker.** Passing `euf_atoms` into `OnlineLraPropagator` and
+returning one of their literals from `cb_decide` aborts immediately:
 
-**Falsifier.** If inverting the filter does not beat both the default and
-`--lra-theory-decisions` on the guarded families, the ordering hypothesis is
-wrong and the 9.2M-decision result was only telling us that round-robin
-arithmetic decisions are bad -- which we would already know.
+```text
+cadical: fatal error: invalid API usage of 'ask_decision':
+external decisions are only allowed over observed variables.
+```
+
+A propagator may only decide variables it *observes*. Making the Boolean flags
+observed by the LRA propagator changes which callbacks CaDiCaL delivers to it
+and how much it is notified about -- that is a theory-combination decision,
+not an arithmetic one.
+
+**Design ownership, and why this was reverted rather than finished.** Deciding
+*which theory's atoms get decided first* belongs to the layer that owns which
+variables each theory observes -- the theory-combination/Nelson-Oppen layer,
+where `MixedTheoryPropagationDispatcher` already sits and already sees both
+atom sets. Bolting it into `OnlineLraPropagator` would have the LRA propagator
+reach into EUF's atom list, and would collide with in-flight Nelson-Oppen work
+in another branch. The prototype was reverted; nothing of it is committed.
+
+**What would make this actionable.** A decision hook on the combination layer
+that observes both theories' atoms and can order across them. That is a
+natural companion to whatever the Nelson-Oppen work settles on, and should be
+picked up there rather than re-attempted here.
 
 (lead-leaving-rule)=
 ## 3. MathSAT's actual leaving-variable rule

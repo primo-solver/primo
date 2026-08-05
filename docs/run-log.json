@@ -18956,6 +18956,34 @@
         "actual_reason": "':lra.theory-checks 1' against ':lra.online-check-calls 6528'. Wiring the filter at assigned_atoms_from_backend reaches only the final check, which runs once; all 7,679 pivots happen in the online propagator, which never consults 'filtered'. The cheap version of the lead is worthless by construction rather than by accident of this benchmark."
       },
       "follow_up": "Lead 2 (flag-first decision ordering) is top of docs/open-leads.md. Lead 1 merges into lead 5. Method note for future work: check which solve path a family actually takes (:solver.* counters) BEFORE patching one -- QF_LRA benchmarks in this corpus run solve_qf_uf_lra, not solve_qf_lra."
+    },
+    {
+      "id": "2026-08-05-qf-lra-flag-first-decisions-blocked",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Attempt at lead 2 in docs/open-leads.md: decide the non-arithmetic Boolean flags before any arithmetic atom on guarded families. Verified the code path first, per the method note from the previous entry. The stated mechanism does not exist and the real one is owned by the theory-combination layer; prototype reverted, nothing committed.",
+      "commit": "c63aa23",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release with a temporary prototype, reverted",
+        "notes": "Diagnostic only; no committed behaviour change."
+      },
+      "command": {
+        "path_check": ":solver.* counters on tropical-matrix/constraint-199552 and a uart file",
+        "atom_probe": "temporary probe counting non-arithmetic entries in lra_atoms and sampling euf_atoms",
+        "prototype": "passed euf_atoms into OnlineLraPropagator and returned their literals from cb_decide, behind --lra-flag-first-decisions"
+      },
+      "result": {
+        "path": "Both files run solve_qf_uf_lra (:solver.qf-uflra 1, :solver.qf-lra 0). OnlineLraPropagator is the live propagator and does receive options.lra_theory_decisions, so its cb_decide is the right hook.",
+        "atom_sets": "lra_atoms is built by is_lra_theory_atom and is 100% arithmetic: 2,892 atoms with 0 non-arithmetic on tropical, 1,363 with 0 on uart. Inverting cb_decide's is_arithmetic filter would therefore yield an EMPTY candidate set and disable theory decisions rather than reorder them. The flags are the 954 euf_atoms -- Bool-sorted Constant terms -- split off by is_euf_theory_atom.",
+        "dispatcher": "MixedTheoryPropagationDispatcher::cb_decide merely delegates to the LRA propagator, and is constructed only when nelson_oppen_propagation == Online, which is not the default (Final).",
+        "hard_blocker": "Returning a euf_atom literal from OnlineLraPropagator::cb_decide aborts: 'cadical: fatal error: invalid API usage of ask_decision(): external decisions are only allowed over observed variables.' A propagator may only decide variables it observes.",
+        "verdict": "Lead 2's stated mechanism ('invert the filter, a small change') is wrong on every count. Making the Boolean flags observed by the LRA propagator changes which callbacks CaDiCaL delivers and is a theory-combination decision, so the work belongs on the combination layer where MixedTheoryPropagationDispatcher already sees both atom sets."
+      },
+      "follow_up": "Reverted rather than finished, to avoid entrenching a layering violation and to avoid colliding with in-flight Nelson-Oppen work in another branch. Recorded as a design-ownership note: cross-theory decision ordering belongs to the theory-combination layer. Next actionable lead is 3 (MathSAT's actual leaving-variable rule), which is confined to LraTableau and touches no combination code."
     }
   ]
 }
