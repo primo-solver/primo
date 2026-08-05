@@ -18984,6 +18984,33 @@
         "verdict": "Lead 2's stated mechanism ('invert the filter, a small change') is wrong on every count. Making the Boolean flags observed by the LRA propagator changes which callbacks CaDiCaL delivers and is a theory-combination decision, so the work belongs on the combination layer where MixedTheoryPropagationDispatcher already sees both atom sets."
       },
       "follow_up": "Reverted rather than finished, to avoid entrenching a layering violation and to avoid colliding with in-flight Nelson-Oppen work in another branch. Recorded as a design-ownership note: cross-theory decision ordering belongs to the theory-combination layer. Next actionable lead is 3 (MathSAT's actual leaving-variable rule), which is confined to LraTableau and touches no combination code."
+    },
+    {
+      "id": "2026-08-05-qf-lra-boolean-constant-dispatch-finding",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Why pure QF_LRA benchmarks route through solve_qf_uf_lra, and what happens if they do not. Prompted by the observation that Nelson-Oppen should not fire at all on a formula with no uninterpreted content.",
+      "commit": "dd048dc",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release, with a temporary one-line experiment that was reverted"
+      },
+      "command": {
+        "root_cause_read": "summarize_formula_features in src/smt/check_sat.cpp",
+        "experiment": "restricted has_euf_predicate to TermKind::Application (dropping bare Bool Constant), rebuilt, re-ran tropical-matrix/constraint-199552",
+        "dispatch_census": "ran 40 files of benchmarks/qf-lra-stratified-sample.txt and read :solver.qf-lra / :solver.qf-uflra"
+      },
+      "result": {
+        "root_cause": "has_euf_predicate is set by `(kind == Application || kind == Constant) && sort == Bool`. A bare Boolean Constant -- an ordinary propositional variable -- therefore counts as an EUF predicate, and line 9108's `(has_equality || has_euf_predicate) && has_arithmetic` dispatches the formula to solve_qf_uf_lra. constraint-199552 declares no sorts and no uninterpreted functions at all: it is pure QF_LRA plus propositional variables.",
+        "cost_of_the_misclassification": "On tropical it builds a congruence closure over the 954 Boolean constants: :euf.incremental.terms 956, :euf.incremental.merges 954. Nelson-Oppen itself no-ops (no shared real terms, :no.purification.skipped-no-sites 1).",
+        "SURPRISE": "Routing the file to the pure QF_LRA solver instead is DRASTICALLY WORSE, not better. With has_euf_predicate restricted to Application: :solver.qf-lra 1, :euf.incremental.merges 0, and the file TIMES OUT at 180s having done 230,163 pivots. The default QF_UFLRA path solves it in 4.39s with 7,679 pivots. That is a 40x-plus regression from 'fixing' the classification.",
+        "dispatch_census": "14 of 40 sampled stratified-sample files (35%) take the QF_UFLRA path; 25 take the pure QF_LRA path.",
+        "interpretation": "The misclassification is not overhead being paid for nothing -- it is load-bearing on at least one family. The 954 merges are a trivial one-time cost, and something about the QF_UFLRA solve loop is worth far more than that on this shape. Why the leaner path is 40x worse is now the open question, and it is a question about Primo's own QF_LRA solver rather than about theory combination."
+      },
+      "follow_up": "Do NOT 'fix' the classifier without measuring: on this evidence it would be a large regression. The valuable follow-up is the inverse question -- what does solve_qf_uf_lra do that solve_qf_lra_impl does not, given identical input? Recorded as a new lead in docs/open-leads.md."
     }
   ]
 }
