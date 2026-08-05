@@ -19040,7 +19040,7 @@
       "evidence_status": "current-slurm"
     },
     {
-      "id": "2026-08-05-qf-uflra-candidate-final-scan-slurm-sample-60s-submitted",
+      "id": "2026-08-05-qf-uflra-candidate-final-scan-slurm-sample-60s",
       "started_at": "2026-08-05",
       "recorded_at": "2026-08-05",
       "kind": "benchmark",
@@ -19081,15 +19081,68 @@
         "remote:primo-candidate-final-7a585fc/results/qf-uflra-candidate-final-<job-id>/z3.csv"
       ],
       "summary": {
-        "status": "submitted",
-        "initial_poll": {
-          "z3_outputs_present": true,
-          "default_task_state": "running",
-          "candidate_task_state": "running"
+        "default": {
+          "total": 45,
+          "solved": 26,
+          "timeout": 19,
+          "wrong": 0,
+          "par2": 2673.602478,
+          "families": {
+            "mathsat": {"solved": 18, "timeout": 7},
+            "cpachecker-induction-svcomp14": {"solved": 8, "timeout": 11},
+            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+          },
+          "selected_stats": {
+            "lra_extra_atom_probes": 1182416,
+            "lra_extra_atoms_probed": 22488350,
+            "arrangement_lra_extra_atom_probes": 21127,
+            "arrangement_lra_extra_atoms_probed": 21327061,
+            "lra_to_euf_equalities": 6535,
+            "lra_to_euf_rechecks": 309,
+            "sat_equalities_forced": 3561
+          }
+        },
+        "candidate_final_scan": {
+          "total": 45,
+          "solved": 28,
+          "timeout": 17,
+          "wrong": 0,
+          "par2": 2338.964269,
+          "families": {
+            "mathsat": {"solved": 20, "timeout": 5},
+            "cpachecker-induction-svcomp14": {"solved": 8, "timeout": 11},
+            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+          },
+          "selected_stats": {
+            "candidate_final_scan_pairs": 49155,
+            "candidate_final_scan_skipped_pairs": 200593,
+            "candidate_final_scan_equalities": 21353,
+            "candidate_final_scan_fallbacks": 18,
+            "candidate_final_scan_fallback_equalities": 246,
+            "lra_extra_atom_probes": 510105,
+            "lra_extra_atoms_probed": 30601795,
+            "arrangement_lra_extra_atom_probes": 30339,
+            "arrangement_lra_extra_atoms_probed": 30122029,
+            "lra_to_euf_equalities": 21353,
+            "lra_to_euf_rechecks": 1163,
+            "sat_equalities_forced": 11335
+          }
+        },
+        "z3": {
+          "total": 45,
+          "solved": 45,
+          "timeout": 0,
+          "wrong": 0,
+          "par2": 8.192999,
+          "families": {
+            "mathsat": {"solved": 25, "timeout": 0},
+            "cpachecker-induction-svcomp14": {"solved": 19, "timeout": 0},
+            "cpachecker-bmc-svcomp14": {"solved": 1, "timeout": 0}
+          }
         }
       },
-      "outcome": "Submitted as a longer-timeout follow-up to the 10s SLURM sample. Results are intentionally not summarized yet; collect the summary CSVs after the array completes before drawing performance conclusions.",
-      "evidence_status": "running-slurm"
+      "outcome": "Accepted as current SLURM evidence for the default-off candidate final scan at a 60s timeout. Candidate final scan improves the sample from 26/45 to 28/45 solved and improves PAR2 from 2673.602478 to 2338.964269 with no wrong answers. The gain is again on MathSAT, improving 18/25 to 20/25, while CPAchecker results are neutral at this timeout. Candidate mode reduces the number of temporary LRA probe calls but increases equality traffic and arrangement atoms probed, so the evidence supports keeping it default-off and using it to guide the next arrangement/preprocessing optimization rather than promoting it.",
+      "evidence_status": "current-slurm"
     }
   ]
 }
