@@ -18894,6 +18894,66 @@
         "failed_first_attempt": "job 119463, no results, see environment note"
       },
       "follow_up": "The two prototype wins (-10% and -36% on single files) did not generalize. The pass stays opt-in and is not proposed for default. Lead 9 in docs/open-leads.md moves from reopened to evaluated-and-not-promoted."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-elimination-local-correctness",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "implementation-fuzz",
+      "scope": "Local correctness evidence gathered while implementing --monotone-elimination, recorded separately from the Slurm gate because it is local-only and because one item found a real bug the unit tests missed. Supports commit 4bed99c.",
+      "commit": "4bed99c",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release; z3 from contrib/local/bin",
+        "notes": "Supplementary to the Slurm gate (job 119430), not a substitute for it."
+      },
+      "command": {
+        "exhaustive_differential": "python3 scripts/check_monotone_elimination.py --max-size 2 and --max-size 3",
+        "benchmark_model_validation": "scratchpad validate_models.py over 600 corpus files with a one-sided population, 20s cap",
+        "reversed_order_experiment": "the same validation over 120 files with apply_monotone_eliminations temporarily iterating the eliminated list in reverse",
+        "soundness_batch": "z3 on original vs transformed for 24 files, using the external prototype"
+      },
+      "result": {
+        "exhaustive_size2": "756 formulas: no answer changes, no z3 disagreements, no invalid models.",
+        "exhaustive_size3": "4,116 formulas: no answer changes, no z3 disagreements, no invalid models.",
+        "benchmark_model_validation": "66 models validated, 0 invalid, 534 skipped as non-sat or timed out at the 20s cap. The high skip rate reflects how hard the one-sided-population files are, not a gap in checking.",
+        "reversed_order": "108 valid, 0 invalid, with some models differing in value from the forward order -- the evidence that reconstruction needs no dependency ordering.",
+        "bug_found": "This is where the reconstruction bug surfaced: folding an atom discharges it for every variable in it, so a disqualified variable can lose its last constraint and vanish from the tableau. Reconstruction skipped such bounds and emitted models violating the discharged constraint. Unit tests did not catch it; validating printed models against z3 on real benchmarks did. Fixed and pinned by monotone_elimination_values_variables_that_lost_all_constraints."
+      },
+      "artifacts": {
+        "committed": "scripts/check_monotone_elimination.py",
+        "scratchpad_only": "validate_models.py, monotone_elim.py -- measurement devices, not candidate implementations"
+      },
+      "follow_up": "Superseded for headline purposes by the Slurm gate (job 119430) and the stratified-sample A/B (job 119465)."
+    },
+    {
+      "id": "2026-08-05-qf-lra-pure-theory-filter-lra-downgraded",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Tests lead 1 in docs/open-leads.md -- extending --pure-theory-filter to LRA atoms -- by applying the change and measuring, rather than reasoning from counter names. Downgrades the lead and corrects two errors in its stated evidence.",
+      "commit": "c054811",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release, with a temporary two-line change reverted afterwards",
+        "notes": "Diagnostic only; no committed behaviour change."
+      },
+      "command": {
+        "code_reading": "src/smt/check_sat.cpp: should_filter_assignment, the two assigned_atoms_from_backend overloads, and the five LRA sites that skip on atom.filtered",
+        "experiment": "passed options.pure_theory_filter at the two solve_qf_lra_impl call sites, rebuilt, and compared --pure-theory-filter=off against =auto on tropical-matrix/constraint-199552.smt2"
+      },
+      "result": {
+        "correction_1": "The filter is NOT 'QF_UF only'. The rule needs only occurs_positive/occurs_negative and the LRA side already consumes it -- five sites skip on !prepared_atom.is_arithmetic || atom.filtered. The QF_LRA path calls the two-argument assigned_atoms_from_backend overload, which hardcodes PureTheoryFilterMode::Off. A documented scope decision, not a bug.",
+        "correction_2": "The cited evidence -- 2,892 of 3,846 atoms pure-positive -- does not measure the opportunity. A pure-positive atom is filtered only when assigned FALSE, and on a satisfiable guarded instance most are assigned true.",
+        "measurement": "With the two-line change applied, --pure-theory-filter=off and =auto give IDENTICAL counters on constraint-199552: 7,679 pivots and 128,402,240 pivot term ops. The filter finds nothing to do on the file that motivated the lead.",
+        "misleading_stats": "':euf.pure-filter.enabled' and ':euf.pure-literals.filtered' are set inside solve_qf_uf, so both read 0 on any QF_LRA file regardless of the mechanism's behaviour. That is what made the original reading look confirmed.",
+        "verdict": "Lead downgraded from top-of-queue to likely-zero. The correct cheap diagnostic is a counter of filtered LRA assignments, not a timing run."
+      },
+      "follow_up": "Lead 2 (flag-first decision ordering) moves to the top of docs/open-leads.md. Lead 5 (relevancy propagation) stays gated on lead 1, but the inference inverts: relevancy filters on reachability under the current assignment rather than polarity, so this negative does not carry over."
     }
   ]
 }
