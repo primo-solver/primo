@@ -9,6 +9,7 @@ chapters:
   - file: preprocessing
   - file: arithmetic
   - file: qf-lra-heuristics
+  - file: open-leads
   - file: tropical-matrix-structure
   - file: termid-order-sensitivity
   - file: difference_logic
