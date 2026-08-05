@@ -18933,7 +18933,7 @@
       "started_at": "2026-08-05",
       "recorded_at": "2026-08-05",
       "kind": "profiling",
-      "scope": "Tests lead 1 in docs/open-leads.md -- extending --pure-theory-filter to LRA atoms -- by applying the change and measuring, rather than reasoning from counter names. Downgrades the lead and corrects two errors in its stated evidence.",
+      "scope": "Tests lead 1 in docs/open-leads.md -- extending --pure-theory-filter to LRA atoms -- by applying the change and measuring, rather than reasoning from counter names. Downgrades the lead and corrects two errors in its stated evidence. CORRECTED 2026-08-05: the first version of this entry recorded a measurement taken on a code path these files do not execute.",
       "commit": "c054811",
       "branch": "qflra-tropical-t1-propagation",
       "evidence_status": "local-only",
@@ -18948,12 +18948,14 @@
       },
       "result": {
         "correction_1": "The filter is NOT 'QF_UF only'. The rule needs only occurs_positive/occurs_negative and the LRA side already consumes it -- five sites skip on !prepared_atom.is_arithmetic || atom.filtered. The QF_LRA path calls the two-argument assigned_atoms_from_backend overload, which hardcodes PureTheoryFilterMode::Off. A documented scope decision, not a bug.",
-        "correction_2": "The cited evidence -- 2,892 of 3,846 atoms pure-positive -- does not measure the opportunity. A pure-positive atom is filtered only when assigned FALSE, and on a satisfiable guarded instance most are assigned true.",
+        "correction_2": "SUPERSEDED. The original text claimed the 2,892 pure-positive figure overstates the opportunity because such atoms are mostly assigned true. The supporting measurement was invalid -- it patched solve_qf_lra_impl, but these files run solve_qf_uf_lra (:solver.qf-uflra 1, :solver.qf-lra 0), so the patch was inert and the identical counters proved nothing.",
         "measurement": "With the two-line change applied, --pure-theory-filter=off and =auto give IDENTICAL counters on constraint-199552: 7,679 pivots and 128,402,240 pivot term ops. The filter finds nothing to do on the file that motivated the lead.",
         "misleading_stats": "':euf.pure-filter.enabled' and ':euf.pure-literals.filtered' are set inside solve_qf_uf, so both read 0 on any QF_LRA file regardless of the mechanism's behaviour. That is what made the original reading look confirmed.",
-        "verdict": "Lead downgraded from top-of-queue to likely-zero. The correct cheap diagnostic is a counter of filtered LRA assignments, not a timing run."
+        "verdict": "Lead downgraded, but for a different and more useful reason than first recorded. To matter, the filter must reach the online propagator's assertion path -- a materially larger change that belongs with lead 5 (relevancy propagation), since both are then about not asserting atoms during search.",
+        "corrected_measurement": "Redone at the live call site (assigned_atoms_from_backend for lra_atoms inside solve_qf_uf_lra) with a temporary probe: of 2,892 LRA atoms, 1,177 (41%) are filtered with --pure-theory-filter=auto and 0 with =off. So the atoms ARE assigned against their polarity and the filter DOES fire hard -- and :lra.pivots (7,679) and :lra.pivot-term-ops (128,402,240) are identical either way.",
+        "actual_reason": "':lra.theory-checks 1' against ':lra.online-check-calls 6528'. Wiring the filter at assigned_atoms_from_backend reaches only the final check, which runs once; all 7,679 pivots happen in the online propagator, which never consults 'filtered'. The cheap version of the lead is worthless by construction rather than by accident of this benchmark."
       },
-      "follow_up": "Lead 2 (flag-first decision ordering) moves to the top of docs/open-leads.md. Lead 5 (relevancy propagation) stays gated on lead 1, but the inference inverts: relevancy filters on reachability under the current assignment rather than polarity, so this negative does not carry over."
+      "follow_up": "Lead 2 (flag-first decision ordering) is top of docs/open-leads.md. Lead 1 merges into lead 5. Method note for future work: check which solve path a family actually takes (:solver.* counters) BEFORE patching one -- QF_LRA benchmarks in this corpus run solve_qf_uf_lra, not solve_qf_lra."
     }
   ]
 }

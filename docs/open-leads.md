@@ -28,7 +28,7 @@ notes it points to.
 
 | # | lead | expected size | cost | status |
 |---|---|---|---|---|
-| [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | **likely ~0**; evidence was misread | tiny (2 lines) | **downgraded**, see entry |
+| [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | zero as a wiring fix; the filter reaches only the once-called final check | large if done properly | **downgraded**; merge into lead 5 |
 | [2](#lead-flag-first) | Flag-first decision ordering (invert `cb_decide`) | unknown | **small** | open |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 1.42x median in its source | **small** | open |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
@@ -66,28 +66,42 @@ one more for the LRA half of QF_UFLRA) is a two-line change. Note this is
 deliberate rather than a bug: [](euf.md) documents the implemented subset as
 QF_UF atoms.
 
-**Correction 2, and the reason this is downgraded: the evidence was
-misread.** This entry cited "2,892 of 3,846 theory atoms pure-positive (75%)"
-as the size of the prize. That is not what the counter means. A pure-positive
-atom is filtered **only when assigned false**. On a satisfiable guarded
-instance most such atoms are assigned *true*, so they are never candidates.
+**Correction 2, twice over -- the first downgrade was itself measured
+wrong.** This entry cited "2,892 of 3,846 theory atoms pure-positive (75%)" as
+the size of the prize, on the reasoning that a pure-positive atom is filtered
+only when assigned false and most would be assigned true. A first experiment
+appeared to confirm that. **That experiment was inert**: it patched
+`solve_qf_lra_impl`, and these files do not use it -- `:solver.qf-uflra` is 1
+and `:solver.qf-lra` is 0, so the live path is `solve_qf_uf_lra`. Identical
+counters proved nothing.
 
-Measured: with the two-line change applied, `constraint-199552` produces
-**identical** counters with the filter on and off -- 7,679 pivots and 128.4M
-pivot term ops either way. The filter has nothing to do on the file that
-motivated the lead. The earlier ablation (4.152s vs 4.150s) was right, and my
-explanation of *why* was wrong: not "the mechanism does not reach LRA", but
-"the mechanism reaches LRA and finds nothing to filter".
+Redone against the path that actually runs, the picture reverses and then
+lands somewhere more useful:
 
-**Where it could still pay, if anywhere.** Instances whose single-polarity
-atoms get assigned *against* their polarity -- which is a property of the
-search, not of the syntax. Nothing measured so far suggests the guarded
-families have that shape.
+| measurement on `constraint-199552` | value |
+|---|---:|
+| LRA atoms seen at the check | 2,892 |
+| **filtered with `--pure-theory-filter=auto`** | **1,177 (41%)** |
+| filtered with `=off` (control) | 0 |
+| `:lra.pivots`, either way | 7,679 |
+| `:lra.pivot-term-ops`, either way | 128,402,240 |
 
-**Falsifier, restated honestly.** Apply the two-line change, add a counter for
-filtered LRA assignments, and run the guarded families. If the counter is at or
-near zero -- as it is on the motivating instance -- the lead closes. The cheap
-diagnostic is the counter, not a timing run.
+So the reasoning was wrong in the other direction too: 41% of the atoms *are*
+assigned against their polarity and *are* filtered. The filter fires hard --
+and changes nothing at all.
+
+**The actual reason, and it is the useful finding.** The counters say
+`:lra.theory-checks 1` against `:lra.online-check-calls 6528`. Wiring the
+filter at `assigned_atoms_from_backend` reaches only the **final check, which
+runs once**. Every one of the 7,679 pivots happens inside the online
+propagator, which never consults `filtered`. The cheap version of this lead is
+therefore worthless by construction, not by accident of the benchmark.
+
+**What the lead becomes.** To matter, the filter has to reach the online
+propagator's assertion path. That is a materially larger change than two
+lines, and it sits much closer to [](#lead-relevancy) than to a wiring fix --
+both are then about *not asserting* atoms during search rather than about
+polarity bookkeeping at the end.
 
 **Consequence for lead 5.** [](#lead-relevancy) was gated on this one as its
 "cheap static approximation". That gating still holds, but the reasoning
