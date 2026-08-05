@@ -123,8 +123,8 @@ literals that are true are asserted to both EUF and LRA. Generated equality
 literals that are false are asserted to EUF as disequalities. They are not
 asserted to LRA as native Real disequalities; instead, LRA can still reject such
 a false assignment by later entailing the corresponding equality, and mixed
-model reconstruction separately adds strict Real separation atoms for
-EUF-distinct Real arguments.
+model reconstruction separately adds strict Real separation atoms for shared
+Real arguments whose equality is rejected by the current EUF closure.
 
 `--nelson-oppen-prop=online` adds a deliberately narrow online combination
 path. In mixed QF_UFLRA only, `MixedTheoryPropagationDispatcher` is connected as
@@ -312,6 +312,8 @@ coordinator publishes:
 - `:no.interface.lra-prepared-augmented`
 - `:no.interface.model-separations`
 - `:no.interface.model-separation-candidates`
+- `:no.interface.model-separation-euf-mergeable-pairs`
+- `:no.interface.model-separation-euf-forbidden-pairs`
 - `:no.interface.model-separation-search-capped`
 - `:no.interface.model-separation-search-branches`
 - `:no.interface.model-separation-search-backtracks`
@@ -641,12 +643,15 @@ treating one theory's atoms as Boolean noise.
   propagation clauses for any newly implied generated interface equality and
   continue. Before returning a non-model `sat`, validate that the final EUF
   arrangement over common purified Real interface constants can be separated
-  consistently by the LRA side using the same bounded strict-order search used
-  for model reconstruction. Real constants that occur in EUF atoms but not in
-  LRA atoms are counted by the pre-filter diagnostic only; they are not
-  Nelson-Oppen arrangement variables. Return `sat` only when both theory checks
-  accept the same Boolean assignment, neither theory contributes a new shared
-  equality clause, and this final arrangement validation succeeds.
+  consistently by the LRA side. The current implementation first tests whether
+  temporarily merging a shared Real pair would make the EUF closure inconsistent;
+  only such EUF-forbidden pairs enter the bounded strict-order search used for
+  model reconstruction. Shared Real pairs that are merely in different EUF
+  classes but are mergeable are not forced apart. Real constants that occur in
+  EUF atoms but not in LRA atoms are counted by the pre-filter diagnostic only;
+  they are not Nelson-Oppen arrangement variables. Return `sat` only when both
+  theory checks accept the same Boolean assignment, neither theory contributes a
+  new shared equality clause, and this final arrangement validation succeeds.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
   neither theory forces an equality, the coordinator builds the current LRA
   model and classifies candidate pairs through the LRA-backed
@@ -680,9 +685,10 @@ treating one theory's atoms as Boolean noise.
   QF_LRA definitions. For common purified Real interface constants,
   reconstruction first adds EUF-implied Real-constant equalities to the LRA
   model tableau, then performs a bounded depth-first search over strict order
-  atoms to separate Real constants that are distinct in the EUF arrangement and
-  not forced equal by LRA. Each candidate orientation is accepted only if the augmented LRA
-  assignment remains consistent. When the candidate set exceeds the current
+  atoms to separate Real constants whose equality is forbidden by the EUF
+  arrangement and not forced equal by LRA. Each candidate orientation is
+  accepted only if the augmented LRA assignment remains consistent. When the
+  candidate set exceeds the current
   reconstruction cap, currently 18 candidate pairs, Primo records that fact and
   falls back to the former greedy orientation order instead of attempting
   exponential backtracking. This candidate-count cap does not by itself bound

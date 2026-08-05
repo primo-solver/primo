@@ -5413,6 +5413,25 @@ bool flat_closure_equal_on_terms(const PreparedFlatTheory& prepared,
          closure.are_equal(lhs_flat.value(), rhs_flat.value());
 }
 
+bool flat_closure_forbids_equality_on_terms(const PreparedFlatTheory& prepared,
+                                            theory::equality::FlatCongruenceClosure& closure,
+                                            core::TermId lhs, core::TermId rhs) {
+  const std::optional<theory::equality::FlatTermId> lhs_flat =
+      prepared.flat.existing_flat_term(lhs);
+  const std::optional<theory::equality::FlatTermId> rhs_flat =
+      prepared.flat.existing_flat_term(rhs);
+  if (!lhs_flat.has_value() || !rhs_flat.has_value() ||
+      closure.are_equal(lhs_flat.value(), rhs_flat.value())) {
+    return false;
+  }
+
+  const std::size_t checkpoint = closure.push();
+  closure.assert_equal(lhs_flat.value(), rhs_flat.value());
+  const bool forbidden = closure.conflict().has_value();
+  closure.pop(checkpoint);
+  return forbidden;
+}
+
 bool equality_list_contains_pair(const core::TermManager& terms,
                                  const std::vector<core::TermId>& equalities, core::TermId lhs,
                                  core::TermId rhs) {
@@ -5612,6 +5631,8 @@ RealModelSeparationResult shared_real_model_separation_atoms(
     util::Statistics& statistics) {
   std::vector<RealSeparationCandidate> candidates;
   std::vector<core::TermId> accumulated = forced_equalities;
+  std::uint64_t euf_mergeable_pairs = 0;
+  std::uint64_t euf_forbidden_pairs = 0;
   for (std::size_t i = 0; i < shared_terms.size(); ++i) {
     for (std::size_t j = i + 1; j < shared_terms.size(); ++j) {
       const core::TermId lhs = shared_terms[i];
@@ -5620,11 +5641,18 @@ RealModelSeparationResult shared_real_model_separation_atoms(
           equality_list_contains_pair(terms, forced_equalities, lhs, rhs)) {
         continue;
       }
+      if (!flat_closure_forbids_equality_on_terms(prepared_euf, closure, lhs, rhs)) {
+        ++euf_mergeable_pairs;
+        continue;
+      }
+      ++euf_forbidden_pairs;
       candidates.push_back(RealSeparationCandidate{lhs, rhs});
     }
   }
 
   statistics.set(":no.interface.model-separation-candidates", candidates.size());
+  statistics.set(":no.interface.model-separation-euf-mergeable-pairs", euf_mergeable_pairs);
+  statistics.set(":no.interface.model-separation-euf-forbidden-pairs", euf_forbidden_pairs);
   statistics.set(":no.interface.model-separation-search-capped", 0);
   statistics.set(":no.interface.model-separation-search-branches", 0);
   statistics.set(":no.interface.model-separation-search-backtracks", 0);
@@ -8325,6 +8353,13 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.arrangement-checks", 0);
   statistics.set(":no.interface.arrangement-failures", 0);
   statistics.set(":no.interface.arrangement-separations", 0);
+  statistics.set(":no.interface.model-separation-candidates", 0);
+  statistics.set(":no.interface.model-separation-euf-mergeable-pairs", 0);
+  statistics.set(":no.interface.model-separation-euf-forbidden-pairs", 0);
+  statistics.set(":no.interface.model-separation-search-capped", 0);
+  statistics.set(":no.interface.model-separation-search-branches", 0);
+  statistics.set(":no.interface.model-separation-search-backtracks", 0);
+  statistics.set(":no.interface.model-separation-model-oriented", 0);
   statistics.set(":no.interface.arrangement-lra-extra-atom-probes", 0);
   statistics.set(":no.interface.arrangement-lra-extra-atoms-probed", 0);
   statistics.set(":no.interface.lra-extra-atom-probes", 0);
@@ -8872,9 +8907,12 @@ CheckSatOutcome solve_qf_uf_lra(
       } else {
         statistics.set(":no.interface.model-separations", 0);
         statistics.set(":no.interface.model-separation-candidates", 0);
+        statistics.set(":no.interface.model-separation-euf-mergeable-pairs", 0);
+        statistics.set(":no.interface.model-separation-euf-forbidden-pairs", 0);
         statistics.set(":no.interface.model-separation-search-capped", 0);
         statistics.set(":no.interface.model-separation-search-branches", 0);
         statistics.set(":no.interface.model-separation-search-backtracks", 0);
+        statistics.set(":no.interface.model-separation-model-oriented", 0);
       }
 
       std::optional<LraModelState> lra_model = build_lra_model_state(

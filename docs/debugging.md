@@ -426,6 +426,8 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-real-terms-before-interface-filter`
 - `:no.interface.model-real-terms-filtered`
 - `:no.interface.model-separation-candidates`
+- `:no.interface.model-separation-euf-mergeable-pairs`
+- `:no.interface.model-separation-euf-forbidden-pairs`
 - `:no.interface.model-separation-search-capped`
 - `:no.interface.model-separation-search-branches`
 - `:no.interface.model-separation-search-backtracks`
@@ -560,8 +562,14 @@ constants were present in EUF atoms before the final arrangement/model path was
 restricted to the Nelson-Oppen interface, and
 `:no.interface.model-real-terms-filtered` reports how many of those EUF-side
 Real constants were excluded because they are not common EUF/LRA interface
-terms. `:no.interface.model-separation-candidates` is the post-filter strict
-separation pair count.
+terms. The final arrangement path then probes the current EUF closure with a
+temporary equality for each remaining shared-Real pair. A pair counted by
+`:no.interface.model-separation-euf-mergeable-pairs` is in different EUF
+classes but can still be merged without an EUF conflict, so it does not require
+a strict LRA order. A pair counted by
+`:no.interface.model-separation-euf-forbidden-pairs` would make the EUF closure
+inconsistent if merged; only those pairs become
+`:no.interface.model-separation-candidates` for strict LRA separation.
 `:no.interface.lra-extra-atom-probes` counts LRA consistency checks that rebuild
 an augmented LRA theory with one or more temporary strict separation/equality
 atoms. `:no.interface.lra-extra-atoms-probed` sums the number of temporary atoms
