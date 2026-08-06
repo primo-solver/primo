@@ -19305,6 +19305,51 @@
         }
       },
       "conclusion": "Yes, it costs something, and the cost has one shape. 3 of the 7 regressions over 10% are latendresse/ecoli, the family with the longest rows in the corpus (691 terms). unlink_occurrence repairs the moved entry's back-index with a std::lower_bound over that entry's ROW, so long-row instances pay O(log row) where they previously paid a short column scan -- the exact mirror of tropical's long-column win. RowEntry growing 32->40 bytes is a second candidate cause predicting the same family; narrowing LraVarId to 32 bits separates them. The principled fix is to finish the cross-link (store the row slot in occurs_in_ too), making the fixup O(1). Net today: 0 lost, worst ~10% above 1s, against tropical 1/10 -> 2/10."
+    },
+    {
+      "id": "2026-08-06-qf-lra-tuning-knobs-slurm-fuzz-gate",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "implementation-fuzz-gate",
+      "scope": "Merge-tier gate for commit 705c4a6, which exposed kSparsePricingCandidateLimit and the two Bland-fallback coefficients as CLI options. Gated at NON-DEFAULT values deliberately: the defaults were already shown inert (bit-identical counters against main on 25 solved stratified files), so the untested surface is the new code paths a tuning campaign will actually drive.",
+      "commit": "9dadfa1 (tree containing 705c4a6; archive sync strips .git, so the binary reports 'git: unknown' -- source-equivalent worktree, verified by --help exposing the three new options)",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm via ProxyJump, node-09",
+        "remote_dir": "/home/janotmik/primo-tuning-9dadfa1",
+        "notes": "Direct route 10.35.125.63:22 was timing out this session while the data.ciirc.cvut.cz ProxyJump worked -- the reverse of the previous session, so neither route is dependable alone. Workspace built with an absolute cmake path (/home/janotmik/.local/bin/cmake): a non-interactive ssh shell has no cmake on PATH, and a first detached build died instantly on that. Fuzz toolchain (fuzzsmt, z3, .venv-yinyang, 14 QF_LRA seeds) copied from primo-crosslink-83afe14 rather than rebuilt."
+      },
+      "command": {
+        "job_a": "119949, scripts/slurm_qf_lra_model_fuzz_gate.sbatch, array 0-8, PRIMO_FUZZ_SOLVER_EXTRA_ARGS='--lra-sparse-pricing-candidates 1 --lra-bland-fallback-factor 0 --lra-bland-fallback-offset 0'",
+        "job_b": "119950, same script, PRIMO_FUZZ_SOLVER_EXTRA_ARGS='--lra-sparse-pricing-candidates 0'",
+        "reference": "z3",
+        "generator": "fuzzsmt, 6 shards x 500 cases, 5s timeout, plus 1 opfuzz and 2 yinyang/typefuzz tasks over real QF_LRA seeds"
+      },
+      "result": {
+        "job_a_aggressive_corner": {
+          "answer_pass": 2980,
+          "answer_timeout": 20,
+          "wrong": 0,
+          "model_pass": 2580,
+          "model_not_sat": 405,
+          "model_solver_timeout": 15,
+          "invalid_models": 0
+        },
+        "job_b_unbounded_pricing": {
+          "answer_pass": 2979,
+          "answer_timeout": 21,
+          "wrong": 0,
+          "model_pass": 2577,
+          "model_not_sat": 410,
+          "model_solver_timeout": 13,
+          "invalid_models": 0
+        },
+        "slurm_task_states": "tasks 0-5 FAILED 1:0 in both jobs, tasks 6-8 COMPLETED"
+      },
+      "conclusion": "PASS on substance: 0 wrong answers and 0 invalid models across 6000 FuzzSMT cases in two non-default configurations. The FAILED task states are NOT a correctness signal -- validate_qfuf_models_with_dolmen.py counts its own 10s solver timeouts as failures and returns 1, and the sbatch runs under `set -euo pipefail`, so the validator's exit code becomes the task's. Tasks 6-8 passed only because the opfuzz/yinyang branch does not invoke the model validator. Gate ergonomics finding worth acting on: a slow-but-correct configuration cannot pass this gate, which matters because exploring speed trade-offs is precisely what these knobs are for.",
+      "artifacts": "~/primo-tuning-9dadfa1/fuzz-results/{tuning-corner-aggressive,tuning-unbounded-pricing}/"
     }
   ]
 }

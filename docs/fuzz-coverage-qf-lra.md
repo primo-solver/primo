@@ -336,4 +336,41 @@ the reason in [](#sec-invalid-seeds); it is superseded, not evidence for the
 widened corpus. Job 118548's own mutation tasks still used z3 as the only
 reference, predating [](#sec-yices).
 
+(sec-failed-is-not-wrong)=
+## A `FAILED` task state is not a wrong answer either
+
+Same trap as the `bugs/` directory above, one level up, and it cost real time
+on jobs 119949/119950 (the tuning-knob gate, 2026-08-06). Tasks 0-5 came back
+`FAILED 1:0` in both arrays while 6-8 passed, which reads as a correctness
+failure and is not one: **0 wrong answers and 0 invalid models across 6,000
+FuzzSMT cases.**
+
+The mechanism:
+
+- `validate_qfuf_models_with_dolmen.py` counts its own **10-second solver
+  timeout** as a failure (`failures += 1`) and ends `return 1 if failures
+  else 0`.
+- `slurm_qf_lra_model_fuzz_gate.sbatch` runs under `set -euo pipefail`, and
+  the validator is the last command in the FuzzSMT branch, so the validator's
+  exit code becomes the task's.
+- Tasks 6-8 are the opfuzz/YinYang branch, which never invokes the validator.
+  Their passing is not independent corroboration; it is the absence of the
+  same check.
+
+So on this gate, read the outcome tallies rather than the Slurm state:
+`outcome` in `fuzzsmt/shard-*/summary.csv` (`PASS`/`TIMEOUT`, plus anything
+else) and in `model-validation/shard-*/summary.csv` (`pass`, `not-sat`,
+`solver-timeout`). Note `not-sat` is *not* a failure -- it means the instance
+was unsat so no model was expected.
+
+**Why this needs fixing rather than just documenting.** A configuration that
+is correct but slower cannot pass this gate. That was tolerable while every
+gated change was meant to be neutral-or-faster, but
+[](tuning-parameters.md) deliberately exposes knobs whose whole purpose is to
+explore speed trade-offs -- `--lra-sparse-pricing-candidates 1` is *known* to
+turn a 4.13s solve into a 300s timeout. Gating those means gating slow
+configurations by construction. The validator should separate "could not
+check within the budget" from "checked and wrong", and only the latter should
+fail the run.
+
 See `docs/run-log.json` for the per-run entries.
