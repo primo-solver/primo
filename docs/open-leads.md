@@ -596,9 +596,62 @@ Remaining caveats, stated plainly: n=10, one run, and 791s of a 1200s budget
 is close enough to the line that a rerun could lose it. The -36% on the file
 that *both* arms solve is the more robust half of this result.
 
-**Follow-up recorded:** `RowEntry` is 40 bytes against the old pair's 32.
-Narrowing `LraVarId` from `std::size_t` to 32 bits would restore it to 32 and
-make the change free in memory as well as faster.
+### Where it makes things worse, and why that is predictable
+
+"Does it cost us elsewhere?" is answerable unusually precisely here, because
+the change cannot perturb the search: every per-file time difference **is** the
+constant factor, with no trajectory noise mixed in. Paired per-file ratios from
+job 119555 (crosslink / baseline; below 1 is faster):
+
+| band | n | median | >10% slower | >10% faster | worst |
+|---|---:|---:|---:|---:|---:|
+| all commonly solved | 174 | 1.014 | 40 | 40 | 5.27x |
+| baseline > 0.2s | 83 | 0.985 | 7 | 22 | 1.58x |
+| baseline > 1.0s | 44 | 0.988 | **0** | 6 | 1.10x |
+
+**gained 0, lost 0** -- no file flipped in either direction. The all-files row
+is timer noise on sub-0.2s instances (the "biggest wins" there are 0.25s ->
+0.01s); the >1s band is the honest one, and there the worst regression is
+1.10x.
+
+**But the 7 regressions are not scattered, they are one shape.** Sorted by
+severity: `ecoliFBAyicesTest-500` (1.58x), `p6-zenonumeric_s5` (1.45x),
+`p50.56` (1.29x), `d50.9` (1.28x), `ecoliFBAyicesTest-750` (1.14x),
+`clocksynchro_6clocks` (1.13x), `ecoliFBAyicesTest-63875-64` (1.12x). Three of
+seven are latendresse/ecoli -- **the family this file already cites as having
+the longest rows in the corpus, 691 terms on `ecoliFBAyicesTest-500`.**
+
+That is the mechanism, and it is the mirror image of the win:
+
+| | row length | column length | effect |
+|---|---|---|---|
+| tropical `constraint-199552` | 2.44 initially, ~102 in search | **avg 679** | **wins** -- the removed scan was 679 long |
+| latendresse `ecoliFBAyicesTest-500` | **reaches 691** | short | **loses** -- see below |
+
+`unlink_occurrence` swap-pops the column and then repairs the moved entry's
+back-index with a `std::lower_bound` **over that entry's row**. That is
+O(log row) with poor locality -- roughly 10 scattered probes into a 691-entry,
+~27KB row -- and it replaces an old linear scan of a column that on this family
+is *short*. Long columns pay the old cost; long rows pay the new one.
+
+**Two candidate causes, and the experiment that separates them.** Besides the
+binary search, `RowEntry` grew from 32 to 40 bytes, which taxes every row walk
+in `pivot()`'s merge -- also proportional to row length, so both explanations
+predict exactly the family we see. Narrowing `LraVarId` from `std::size_t` to
+32 bits removes the memory half only: if the latendresse regression survives
+that, the binary search is the cause.
+
+**The principled fix is to finish the cross-link.** What is implemented is
+*half* of one -- rows point into columns, columns do not point back into rows.
+Storing the row slot alongside the basic variable in `occurs_in_` makes the
+fixup O(1) and deletes the `lower_bound` entirely, which is what King's
+doubly-linked form gets structurally. That would remove the mechanism rather
+than trade against it, and it is the natural next step if this family matters.
+
+Until then the trade is explicit and small: **0 files lost, worst case ~10% on
+instances over a second, in exchange for tropical 1/10 -> 2/10.** It is also a
+clean portfolio axis -- long-column instances want this on, long-row instances
+want it off.
 
 (lead-aep)=
 ## 4. Adaptive Early Pruning

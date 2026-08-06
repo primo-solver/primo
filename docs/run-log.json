@@ -19251,6 +19251,60 @@
       },
       "conclusion": "The change clears the bar on this family: +1 solved, 0 lost, PAR2 -1612. The gain is causally attributable rather than lucky search: the same day, the branch's default profile was verified search-identical to main on 25 solved stratified-sample files (identical :lra.pivots, :lra.pivot-term-ops, :sat.decisions, :sat.conflicts), so this change cannot perturb the search path -- the extra solve is the constant-factor speedup alone. Caveats: n=10, single run, and 791s of a 1200s budget is close enough to the line that a rerun could lose it.",
       "artifacts": "baseline.csv, crosslink.csv, baseline-summary.csv, crosslink-summary.csv in the results dir above"
+    },
+    {
+      "id": "2026-08-06-qf-lra-crosslink-regression-analysis",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "analysis",
+      "scope": "Per-file paired analysis of job 119555 (237-file stratified sample, crosslink vs pre-crosslink baseline) to answer whether the cross-link change costs anything outside the tropical family. Valid as a pure constant-factor measurement because the change was independently verified search-identical.",
+      "commit": "83afe14",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Analysis of CSVs produced by Slurm job 119555; no new solver runs except two --stats calls for row/nonzero shape."
+      },
+      "result": {
+        "gained": 0,
+        "lost": 0,
+        "wrong": 0,
+        "solved_by_both": 174,
+        "paired_ratio_all_174": {
+          "median": 1.014,
+          "p10": 0.428,
+          "p90": 1.374,
+          "max": 5.272,
+          "over_10pct_slower": 40,
+          "over_10pct_faster": 40
+        },
+        "paired_ratio_baseline_over_0_2s_n83": {
+          "median": 0.985,
+          "over_10pct_slower": 7,
+          "over_10pct_faster": 22,
+          "max": 1.584
+        },
+        "paired_ratio_baseline_over_1s_n44": {
+          "median": 0.988,
+          "over_10pct_slower": 0,
+          "over_10pct_faster": 6,
+          "max": 1.1
+        },
+        "regressions_over_10pct": [
+          "ecoliFBAyicesTest-500 1.58x",
+          "p6-zenonumeric_s5 1.45x",
+          "p50.56 1.29x",
+          "d50.9 1.28x",
+          "ecoliFBAyicesTest-750 1.14x",
+          "clocksynchro_6clocks 1.13x",
+          "ecoliFBAyicesTest-63875-64 1.12x"
+        ],
+        "shape": {
+          "ecoliFBAyicesTest-500": ":lra.rows 695, :lra.row-nonzeros 6142, rows reach 691 terms",
+          "constraint-199552": ":lra.rows 1440, :lra.row-nonzeros 3519, columns average 679"
+        }
+      },
+      "conclusion": "Yes, it costs something, and the cost has one shape. 3 of the 7 regressions over 10% are latendresse/ecoli, the family with the longest rows in the corpus (691 terms). unlink_occurrence repairs the moved entry's back-index with a std::lower_bound over that entry's ROW, so long-row instances pay O(log row) where they previously paid a short column scan -- the exact mirror of tropical's long-column win. RowEntry growing 32->40 bytes is a second candidate cause predicting the same family; narrowing LraVarId to 32 bits separates them. The principled fix is to finish the cross-link (store the row slot in occurs_in_ too), making the fixup O(1). Net today: 0 lost, worst ~10% above 1s, against tropical 1/10 -> 2/10."
     }
   ]
 }
