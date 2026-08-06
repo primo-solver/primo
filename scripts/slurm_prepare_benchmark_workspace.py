@@ -161,10 +161,24 @@ def build_command(
         shlex.quote(contrib_target) for contrib_target in contrib_targets
     )
     if reuse_dependencies:
-        dependency_setup = """
-if [ ! -d contrib/local/include ] || [ ! -d contrib/local/lib ]; then
-  echo 'cannot reuse dependencies: remote contrib/local is incomplete' >&2
-  exit 2
+        dependency_setup = f"""
+missing_dependency=0
+for required in \
+  contrib/local/include/CLI/CLI.hpp \
+  contrib/local/include/antlr4-runtime/antlr4-runtime.h \
+  contrib/local/include/ipasir_up.h \
+  contrib/local/lib/libantlr4-runtime.a \
+  contrib/local/lib/libcadical.a \
+  contrib/local/lib/libgmp.a \
+  contrib/local/lib/libgmpxx.a; do
+  if [ ! -e "$required" ]; then
+    echo "missing reusable dependency: $required"
+    missing_dependency=1
+  fi
+done
+if [ "$missing_dependency" -ne 0 ]; then
+  echo 'reusable dependency installation is incomplete; provisioning it now'
+  make MAKEFLAGS= {make_targets}
 fi
 rm -rf build-slurm-rel
 """.strip()
@@ -322,7 +336,7 @@ def main() -> int:
     contrib_targets = args.contrib_target or ["contrib-required"]
     required_tools = list(args.require_tool)
     if args.with_z3:
-        if not args.reuse_dependencies and "contrib-z3" not in contrib_targets:
+        if "contrib-z3" not in contrib_targets:
             contrib_targets.append("contrib-z3")
         if "contrib/local/bin/z3" not in required_tools:
             required_tools.append("contrib/local/bin/z3")

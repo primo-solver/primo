@@ -99,9 +99,11 @@ When a workspace already has a verified cluster-local dependency installation,
 pass `--reuse-dependencies`. The helper preserves `contrib/local`, installs the
 clean tracked source snapshot, removes `build-slurm-rel`, and rebuilds Primo from
 scratch. This avoids repeated CaDiCaL, GMP, ANTLR, and CLI11 provisioning without
-risking stale project objects from preserved source timestamps. The mode fails
-if the remote include or library directory is absent and cannot be combined with
-explicit `--contrib-target` requests.
+risking stale project objects from preserved source timestamps. Before reusing the
+installation, the helper checks the concrete CLI11, ANTLR4, IPASIR, CaDiCaL, and
+GMP headers/libraries required by CMake. If any are absent, it automatically runs
+the requested contribution targets instead of starting a doomed build. It cannot
+be combined with explicit `--contrib-target` requests.
 
 `contrib-required` is only the dependency set needed to build and run Primo. A
 benchmark that names reference solvers under `contrib/local/bin` must either
