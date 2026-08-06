@@ -20570,6 +20570,94 @@
       },
       "outcome": "Running, not accepted final benchmark evidence. The long runtime is explained by an unsharded temporary full-run script: each of the two profile tasks is running the full 1284-file manifest serially at a 60s timeout, and CSV summaries will appear only when tasks finish. Partial processed prefixes show no wrong answers so far.",
       "evidence_status": "current-slurm-running"
+    },
+    {
+      "id": "2026-08-06-qfuflra-full-60s-candidate-complete-119551",
+      "started_at": "2026-08-06T11:39:00+02:00",
+      "recorded_at": "2026-08-06T14:50:00+02:00",
+      "kind": "benchmark-progress",
+      "scope": "Completed candidate-final array and still-running default array for the full 1284-file QF_UFLRA 60s SLURM comparison",
+      "commit": "4631aef",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-qfuflra-overnight-4631aef",
+        "slurm_job_id": "119551"
+      },
+      "command": "Direct local-network SSH status check; read candidate-final-summary.csv after task 119551_1 completed and parsed durable stdout progress for still-running task 119551_0",
+      "solver": {
+        "name": "Primo",
+        "argv": "default: build-slurm-rel/primo --quiet --stats; candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan"
+      },
+      "references": [],
+      "inputs": {
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 1284,
+        "timeout_seconds": 60
+      },
+      "artifacts": {
+        "candidate_summary": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-full-60s-4631aef-fixed/candidate-final-summary.csv",
+        "candidate_results": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-full-60s-4631aef-fixed/candidate-final.csv",
+        "default_stdout": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-full2-119551-0.out"
+      },
+      "summary": {
+        "candidate_final_scan": {
+          "state": "COMPLETED",
+          "exit_code": "0:0",
+          "elapsed": "05:03:39",
+          "total": 1284,
+          "solved": 1013,
+          "timeout": 271,
+          "unsupported": 0,
+          "checked": 1282,
+          "wrong": 0,
+          "par2": 34267.899005,
+          "families": {
+            "FFT": {
+              "solved": 10,
+              "timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 4,
+              "timeout": 11
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 246,
+              "timeout": 113
+            },
+            "mathsat": {
+              "solved": 753,
+              "timeout": 147
+            }
+          },
+          "selected_stats": {
+            "candidate_final_scan_pairs": 4312141,
+            "candidate_final_scan_skipped_pairs": 29108941,
+            "candidate_final_scan_equalities": 398936,
+            "interface_equality_clauses": 228847,
+            "interface_equality_reason_lits": 34241886,
+            "interface_equality_rechecks": 24364,
+            "sat_solve_calls": 34974,
+            "euf_checks": 34514,
+            "shared_real_pairs": 34779350,
+            "online_propagations": 0,
+            "euf_diseq_ack_propagated": 0,
+            "euf_dynamic_ack_sat_visible_clauses": 0
+          }
+        },
+        "default": {
+          "state": "RUNNING",
+          "elapsed_at_recording": "05:09:56",
+          "processed_rows": 1037,
+          "ok": 794,
+          "timeout": 243,
+          "last_file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_52.smt2"
+        }
+      },
+      "outcome": "Candidate-final is accepted as completed current evidence for diagnosing its own equality traffic, not as a completed profile comparison or default-promotion result. Its 34.2 million interface reason literals, 24,364 equality rechecks, quadratic shared-pair count, and zero mixed online-EUF/dynamic-Ackermann activity motivate the documented non-LRA-first roadmap. The default array is still running and must complete before solved/PAR2 comparison.",
+      "evidence_status": "current-slurm-partial"
     }
   ]
 }

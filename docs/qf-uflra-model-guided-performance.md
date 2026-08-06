@@ -1,6 +1,6 @@
 # QF_UFLRA Model-Guided Performance Plan
 
-Status stamp: 2026-08-05, branch `nelson-oppen-online-lazy-ipasir-up`.
+Status stamp: 2026-08-06, branch `nelson-oppen-online-lazy-ipasir-up`.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -78,6 +78,147 @@ The important conclusion is that the next gap is not primarily SAT branching.
 The slow path is the mixed-theory equality-mining loop: Primo is still probing
 and forcing too many LRA-derived equalities through SAT instead of using a
 model-guided relevance/mutation decision.
+
+The repaired full 1284-file 60s SLURM evaluation at commit `4631aef` provides
+new partial evidence while its default array is still running. The
+candidate-final array completed with 1013 solved, 271 timeouts, zero wrong
+answers among 1282 checked rows, and PAR2 34267.899005. Its aggregate counters
+make several non-LRA integration costs explicit:
+
+- 4312141 candidate-final pairs were scanned and 29108941 full pairs were
+  skipped, but the coordinator still processed 398936 LRA-to-EUF equalities;
+- 228847 interface-equality clauses carried 34241886 reason literals, about 150
+  antecedents per clause on average;
+- 24364 equality rechecks led to 34974 SAT solve calls;
+- the full shared-pair diagnostic still counted 34779350 pairs;
+- mixed EUF online propagation and mixed dynamic-Ackermann counters remained
+  zero because those existing pure-QF_UF mechanisms are not connected to the
+  mixed dispatcher.
+
+These are current diagnosis numbers, not a completed default-versus-candidate
+comparison. The default array and final CSV comparison remain pending.
+
+## Non-LRA-First Roadmap
+
+The immediate implementation order must avoid overlapping the concurrent LRA
+work. In particular, this phase must not add fixed-variable detection,
+row-derived equality rules, one-sided-bound analysis, freedom intervals, or a
+second arithmetic model implementation. It can still remove substantial cost
+at the SMT/EUF/SAT integration layer.
+
+### 1. Preserve Existing Probe Explanations
+
+The two strict-orientation probes already return LRA conflict clauses. The
+coordinator currently reduces those results to booleans while mining implied
+equalities, then learns each equality through
+`force_implied_interface_equalities`, whose generic reason is every unfiltered
+assignment in the current theory view.
+
+Change the SMT-local result from a vector of equality `TermId` values to an
+explained result containing the equality pair and the union of the two existing
+strict-probe conflict reasons, with synthetic literal zero removed. Route each
+result through `force_implied_interface_equality_with_reason`. This changes no
+tableau invariant or arithmetic inference: it preserves explanations the LRA
+checker already computed instead of discarding them.
+
+Required counters:
+
+- mined equalities with probe-local reasons;
+- fallback equalities using a whole-assignment reason;
+- total and maximum reason literals before and after explanation narrowing;
+- duplicate explained clauses suppressed.
+
+### 2. Use EUF Equality Explanations
+
+`FlatCongruenceClosure` already exposes `explain_equal`. EUF-to-LRA interface
+equalities should carry that proof-local explanation instead of the complete
+EUF assignment. This is an SMT/EUF integration change using an existing theory
+API. It should share the explained interface-equality result shape from the
+first milestone.
+
+Tests must cover direct equality, congruence-derived equality, predicate/Boolean
+reasons, generated interface atoms, and backtracking. The propagated equality
+must remain implied by its recorded antecedents when unrelated assigned atoms
+are removed.
+
+### 3. Make The Equality Ledger Sparse
+
+Lazy IPASIR-UP atom creation removed SAT-variable preallocation, but the mixed
+path still creates `shared_real_pairs` unconditionally and
+`TheoryCombinationManager::rebuild_from_interface_terms` creates one missing
+registry entry for every shared pair. This is still quadratic metadata
+preallocation.
+
+Keep the shared term list and compute the full-pair count arithmetically for
+diagnostics. Store only visible pairs and pairs requested by a producer,
+consumer, SAT assignment, or final fallback. Add an on-demand manager operation
+such as `ensure_interface_pair(lhs, rhs)`; lazy SAT atom materialization must
+call it before registering the generated atom. Full-pair fallback iteration may
+remain available without materializing a full pair vector or registry.
+
+### 4. Reuse Incremental EUF In Mixed Search
+
+The pure QF_UF path already has `OnlineEufPropagator`, explained congruence
+closure, and optional dynamic Ackermann/disequality propagation. The mixed path
+currently rebuilds a flat EUF closure after SAT returns and the
+`MixedTheoryPropagationDispatcher` delegates only to `OnlineLraPropagator`.
+
+Refactor the dispatcher into a backend-neutral multiplexer that can delegate to
+the existing EUF and LRA propagators, route reasons and external clauses to the
+correct owner, and observe lazily generated interface equality variables. The
+EUF component should expose its current closure/model view to the final
+coordinator so care pairs, EUF-forbidden checks, and EUF equality explanations
+do not require another complete rebuild. This milestone must treat the LRA
+propagator as an unchanged child.
+
+Dynamic Ackermann propagation should then be measured as a separate mixed-mode
+ablation. It is likely relevant to UF-heavy CPAchecker rows, but it is not a
+prerequisite for the sparse ledger or explanation work and must not be promoted
+without family-level evidence.
+
+### 5. Tighten Candidate Scheduling And Preprocessing
+
+Keep care-pair and EUF-cooccurrence candidates ahead of any full fallback, cache
+pair classifications for the current SAT trail, and avoid reconsidering an
+already assigned or already explained pair in the same combination round.
+Positive-first model equality case splits remain default-off until model
+mutation is available.
+
+Preprocessing stays family-targeted. The representative MathSAT
+`pb_real_40_80_60_36.smt2` is one large conjunction of roughly 480 ternary
+mixed clauses, with no ITEs; its dominant evidence is equality traffic rather
+than missed finite-domain or ITE rewriting. Finite-domain, top-level LRA-unit,
+ITE, and proxy-definition improvements remain plausible for CPAchecker/BMC or
+other mined families, but they should not displace the four integration
+milestones above for RandomDecoupled.
+
+### Deferred LRA Work
+
+After the concurrent LRA work lands, re-audit its APIs before implementing the
+paper's Simplex-specific mechanisms:
+
+- `FixedEq`, `EqRow`, and `EqOffsetRows` opportunistic equality production;
+- linear expected-time bucketing of shared terms by the current `beta` value;
+- freedom-interval mutation of non-basic variables;
+- short bound/row explanations produced directly by the active tableau.
+
+The combination layer should consume these through a theory-owned explained
+candidate API. It must not reproduce bound or row analysis in `smt/`.
+
+### Non-LRA Milestone Gate
+
+Before accepting this phase:
+
+- pure QF_UF and pure QF_LRA answers and selected statistics must remain
+  unchanged on seconds-scale samples;
+- focused tests must check sparse creation, trail/backtrack behavior, and exact
+  EUF/probe-local reason validity;
+- aggregate interface reason literals and equality rechecks must decrease on
+  the 45-file sample without increasing forced equalities or wrong answers;
+- the exact option set must pass the existing 5000-case generated QF_UFLRA gate
+  and real-seed YinYang/typefuzz gate;
+- the sharded, durable-output full SLURM comparison must report family summaries,
+  wrong answers, timeouts, and PAR2 before any default-promotion claim.
 
 ## Paper Mechanism Still Missing
 
@@ -185,11 +326,12 @@ Expected benchmark movement after any future sound skip repair:
 - lower wall time on CPAchecker solved-but-slow cases whose SAT search is
   already small but equality probing is large.
 
-## Next Simplex-Side Target
+## Deferred Simplex-Side Target
 
 The consumer-aware skip only reduces SAT pollution after an equality has already
-been found. The next layer is to reduce how many temporary strict-bound probes
-are needed to find LRA equalities in the first place.
+been found. After the non-LRA-first roadmap and the concurrent LRA work are
+integrated, the next arithmetic layer is to reduce how many temporary
+strict-bound probes are needed to find LRA equalities in the first place.
 
 The first LRA-side prototype should expose a narrow equality source with clear
 limitations:

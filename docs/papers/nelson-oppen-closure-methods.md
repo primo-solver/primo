@@ -1029,7 +1029,11 @@ separately from lazy SAT atom creation. The opt-in online paired-bound path does
 not precreate the full shared-pair cross product. With the backend-neutral
 IPASIR-UP boundary, it also avoids the temporary paired-bound precreation
 fallback: the dispatcher creates and observes a SAT equality literal only for a
-selected published candidate.
+selected published candidate. This statement is about SAT equality atoms, not
+all pair metadata: the current mixed coordinator still constructs the
+`shared_real_pairs` vector, and `TheoryCombinationManager` still creates a
+missing registry entry for every shared pair. Removing that remaining quadratic
+metadata allocation is a separate non-LRA milestone.
 
 ### Primo Checklist Items
 
@@ -1039,8 +1043,13 @@ selected published candidate.
 - Keep eager all-pair equality creation out of both the default path and the
   opt-in online paired-bound path. Current `--nelson-oppen-prop=online`
   precreates no equality atoms; it lazily creates and observes equality atoms
-  only for selected paired-bound candidates. Model/care candidates remain future
-  work.
+  only for selected paired-bound candidates. Candidate-final and `care-queued`
+  consumers exist at final-check/branch-selection boundaries; broader online
+  model/care candidate materialization remains future work.
+- Keep the equality ledger sparse as well as the SAT layer: retain the
+  combinatorial full-pair count for diagnostics, but create a pair entry only
+  when an existing atom, theory producer, care consumer, SAT assignment, or
+  explicit fallback requests it. This is planned, not current behavior.
 - Keep a delayed strategy available as an ablation baseline against
   model-based closure.
 
@@ -1071,14 +1080,22 @@ distinguished from delivered, useful work.
 - Track care-pair pruning counters and compare them with full cross-product
   delayed-combination counters.
 
-Primo currently implements the last checklist item only. The mixed coordinator
-counts the full shared-Real cross product and the subset of pairs that appear as
-arguments below flat EUF function prefixes equal in the current EUF closure, but
-that subset is diagnostic. LRA-to-EUF equality checks, default-off
-LRA-model-equality branch candidates, final arrangement validation, and mixed
-model reconstruction all consider the full set of shared Real constants. A
-care-pair API should be added only after there is a theory-facing consumer with
-clear correctness and benchmark evidence.
+Primo currently computes the full shared-Real count and the subset of pairs that
+appear as arguments below flat EUF function prefixes equal in the current EUF
+closure. The default final LRA-to-EUF scan still considers all shared Real
+terms. The opt-in candidate-final scan now uses EUF care pairs together with EUF
+cooccurrence and true paired-bound candidates, and the default-off
+`care-queued` model-equality policy consumes care pairs without a full-pair
+branch-selection fallback. Final arrangement/model separation has a separate
+EUF-forbidden-pair filter. These are concrete consumers, but they do not yet
+make the manager sparse and do not establish full model-guided combination.
+
+The next non-LRA care-set work is therefore lifecycle-oriented: generate pair
+entries on demand, cache classifications only for the current SAT trail, and
+preserve a sound explicit fallback without allocating the cross product. Any
+additional pruning needs focused correctness evidence; the rejected
+EUF-mergeable equality skip demonstrates that care relevance alone is not a
+license to omit an equality required by final model reconciliation.
 
 ## Broader Combination-Property Context
 
