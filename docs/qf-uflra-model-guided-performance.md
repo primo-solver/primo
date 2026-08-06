@@ -174,8 +174,8 @@ flat assignment state before the fresh SAT variable is observed.
 This EUF child is enabled only by the explicit
 `--qf-uflra-online-euf` option together with
 `--nelson-oppen-prop=online`. It is default-off because the first 45-file,
-3-second local ablation solved the same 43/45 instances with zero wrong answers
-and changed PAR2 only from 20.978 to 20.648. On the representative MathSAT
+3-second local ablation at commit `cbe1cfc` solved the same 43/45 instances with
+zero wrong answers and changed PAR2 only from 20.660 to 20.639. On the representative MathSAT
 `pb_real_40_80_60_36.smt2`, both paths solve in about one tenth of a second in a
 Release build, while the EUF child performs no useful propagation. This is not
 evidence for default promotion.

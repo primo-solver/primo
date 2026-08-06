@@ -20658,6 +20658,112 @@
       },
       "outcome": "Candidate-final is accepted as completed current evidence for diagnosing its own equality traffic, not as a completed profile comparison or default-promotion result. Its 34.2 million interface reason literals, 24,364 equality rechecks, quadratic shared-pair count, and zero mixed online-EUF/dynamic-Ackermann activity motivate the documented non-LRA-first roadmap. The default array is still running and must complete before solved/PAR2 comparison.",
       "evidence_status": "current-slurm-partial"
+    },
+    {
+      "id": "2026-08-06-qfuflra-local-reasons-sparse-ledger-d22244d",
+      "date": "2026-08-06",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "d22244d",
+      "evidence_status": "current-local",
+      "scope": "Local representative-case check for proof-local interface equality explanations and the sparse TheoryCombinationManager equality ledger. This is implementation evidence, not a corpus-level performance claim.",
+      "commands": {
+        "verification": "make check; make lint; make docs; make asan-test; make tidy; git diff --check",
+        "representative": "build Release primo --quiet --stats --qf-uflra-candidate-final-scan tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_36.smt2"
+      },
+      "environment": {
+        "host": "local workspace",
+        "build": "Release for representative timing; Debug/ASan for correctness gates",
+        "sat_backend": "CaDiCaL 3.0.0 through IPASIR-UP"
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "count": 1,
+        "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_36.smt2"
+      },
+      "summary": {
+        "answer": "sat",
+        "wall_seconds": 5.104,
+        "shared_real_pairs": 3403,
+        "materialized_pairs": 28,
+        "interface_equality_clauses": 28,
+        "interface_equality_reason_lits": 57,
+        "interface_equality_fallback_reasons": 0,
+        "interface_equality_rechecks": 5,
+        "tests": "13/13 regular and 13/13 ASan"
+      },
+      "artifacts": {
+        "raw_output": "local terminal only",
+        "durable_evidence": "this run-log entry plus the committed benchmark path and command"
+      },
+      "outcome": "The manager retains the 3403-pair diagnostic count but materializes only 28 requested pairs. All 28 learned equality clauses use local EUF/LRA explanations and no whole-assignment fallback. Broader SLURM comparison remains separate."
+    },
+    {
+      "id": "2026-08-06-qfuflra-online-euf-cbe1cfc-local",
+      "date": "2026-08-06",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "cbe1cfc",
+      "evidence_status": "current-local-experimental",
+      "scope": "Local correctness, pure-theory regression, and 45-file on/off performance evaluation for the default-off mixed QF_UFLRA incremental EUF callback multiplexer.",
+      "commands": {
+        "verification": "make check; make lint; make docs; make asan-test; make tidy; make include-cleaner; clang-tidy -p build src/smt/check_sat.cpp; git diff --check",
+        "fuzz": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--nelson-oppen-prop=online --solver-arg=--qf-uflra-online-euf --ref /workspace/contrib/local/bin/z3 --count 1000 --seed 2026080601 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-mixed-online-euf-1000-post-review",
+        "benchmark_default": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-preprocessing-opportunity-sample.txt --repo /workspace --solver ./build-no-online-euf-rel/primo --solver-arg=--nelson-oppen-prop=online --timeout 3 --out results/qf_uflra-online-euf-ablation-cbe1cfc/default.csv --summary results/qf_uflra-online-euf-ablation-cbe1cfc/default-summary.csv --log-dir results/qf_uflra-online-euf-ablation-cbe1cfc/default-logs",
+        "benchmark_optin": "same command with --solver-arg=--qf-uflra-online-euf and optin output paths",
+        "pure_regression": "In-memory comparison script ran d22244d and cbe1cfc Release binaries with --quiet --stats, removed :time.* counters, and compared answers plus all remaining statistics on six QG-classification qg7 QF_UF files and five QF_LRA seeds."
+      },
+      "environment": {
+        "host": "local workspace",
+        "build": "Release benchmark binaries; Debug and ASan verification binaries",
+        "sat_backend": "CaDiCaL 3.0.0 through IPASIR-UP",
+        "reference": "Z3 from /workspace/contrib/local/bin/z3"
+      },
+      "inputs": {
+        "benchmark_manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "benchmark_count": 45,
+        "benchmark_timeout_seconds": 3,
+        "fuzz_generator": "scripts/qf_uflra_smoke_fuzz.py mixed shape",
+        "fuzz_seed": 2026080601,
+        "fuzz_count": 1000,
+        "fuzz_timeout_seconds": 5
+      },
+      "summary": {
+        "fuzz": {
+          "pass": 1000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0,
+          "sat": 712,
+          "unsat": 288
+        },
+        "benchmark_default": {
+          "solved": 43,
+          "timeout": 2,
+          "wrong": 0,
+          "par2": 20.660422
+        },
+        "benchmark_online_euf": {
+          "solved": 43,
+          "timeout": 2,
+          "wrong": 0,
+          "par2": 20.638966
+        },
+        "pure_regression": {
+          "qf_uf_cases": 6,
+          "qf_lra_cases": 5,
+          "answer_differences": 0,
+          "non_time_stat_differences": 0,
+          "qf_uf_parent_total_us_range": [1358819, 1594016],
+          "qf_uf_current_total_us_range": [1380498, 1601153]
+        },
+        "verification": "13/13 regular tests and 13/13 ASan tests; lint/docs/tidy passed. Advisory include-cleaner reported the existing whole-tree baseline, with no warning in changed check_sat.cpp, main.cpp, or qf_lra_solver_tests.cpp."
+      },
+      "artifacts": {
+        "fuzz": "local:fuzz-results/qf_uflra-mixed-online-euf-1000-post-review/summary.csv",
+        "benchmark_default": "local:results/qf_uflra-online-euf-ablation-cbe1cfc/default.csv",
+        "benchmark_optin": "local:results/qf_uflra-online-euf-ablation-cbe1cfc/optin.csv",
+        "benchmark_summaries": "local:results/qf_uflra-online-euf-ablation-cbe1cfc/{default,optin}-summary.csv"
+      },
+      "outcome": "The IPASIR-UP multiplexer, dynamic generated-equality registration, reason routing, and EUF external-clause routing are correctness-clean in this local gate. The 45-file solved count is unchanged and the PAR2 difference is negligible, so --qf-uflra-online-euf remains explicit, experimental, and default-off. A 5000-case SLURM generated gate plus real-seed mutation gate is still required before any promotion or headline performance claim."
     }
   ]
 }
