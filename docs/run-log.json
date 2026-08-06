@@ -20961,6 +20961,79 @@
       ],
       "diagnosis": "The online policy skipped the broad final LRA implied-equality scan after any paired-bound equality was materialized. That condition is unsound: model separation can succeed even when a different omitted LRA equality makes an EUF pair congruent and contradictory. The generated gate did not contain this shape, and the one-seed mutation corpus was too thin to qualify the profile for broad evaluation.",
       "outcome": "Rejected as performance evidence because of wrong answers. No solved-count, PAR2, decision, or propagation difference from these jobs may support promotion. Restore mandatory complete final equality validation, preserve both exact wrong rows as regression seeds, and require an exact original-seed differential gate before any future broad benchmark."
+    },
+    {
+      "id": "2026-08-06-qfuflra-online-final-scan-soundness-8b4af47-local",
+      "date": "2026-08-06",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "8b4af47",
+      "evidence_status": "current-local-merge-gate",
+      "scope": "Correctness repair for the unsound online final LRA equality-scan skip, plus a deterministic original-seed gate that fails before mutation on wrong answers, timeouts, crashes, unsupported results, or declared-status mismatches.",
+      "environment": {
+        "host": "local workstation",
+        "build": "Release for differential probes; Debug and ASan for repository tests",
+        "solver_version": "primo 0.1.0, git 8b4af47",
+        "sat_backend": "CaDiCaL 3.0.0-7b99c07 through IPASIR-UP",
+        "reference": "Z3 5.0.0"
+      },
+      "implementation": {
+        "final_validation": "Online mode again always runs the complete lra_implied_real_equalities scan unless the separate default-off candidate-final experiment is selected. The online skip/fallback/capped compatibility counters remain zero.",
+        "regressions": "Both exact MathSAT wrong-answer inputs from jobs 119933/119934 and a compact non-paired congruence case are tracked under benchmarks/seeds/qf_uflra.",
+        "gate": "scripts/check_solver_seed_corpus.py checks every original seed with the exact candidate options before scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch starts YinYang. Exact seeds use an independent 60-second default timeout."
+      },
+      "commands": {
+        "focused": "./build/primo_qf_lra_solver_tests",
+        "check": "make check",
+        "asan": "make asan-test",
+        "lint": "make lint",
+        "docs": "make docs",
+        "clang_tidy": "make tidy",
+        "include_cleaner": "make include-cleaner",
+        "sbatch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch && bash -n scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch",
+        "ordinary_seed_gate": "PATH=$PWD/contrib/local/bin:$PATH python3 scripts/check_solver_seed_corpus.py --seeds benchmarks/seeds/qf_uflra --solver ./build-stats-release/primo --solver-arg=--quiet --solver-arg=--nelson-oppen-prop=online --ref z3 --ref-arg=-smt2 --timeout 60 --out fuzz-results/online-soundness-8b4af47-seeds.csv",
+        "online_euf_seed_gate": "same command with --solver-arg=--qf-uflra-online-euf and output fuzz-results/online-euf-soundness-8b4af47-seeds.csv",
+        "ordinary_generated": "PATH=$PWD/contrib/local/bin:$PATH python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build-stats-release/primo --solver-arg=--nelson-oppen-prop=online --ref z3 --count 1000 --seed 2026080613 --timeout 5 --shape mixed --out fuzz-results/online-soundness-8b4af47-2026080613",
+        "online_euf_generated": "PATH=$PWD/contrib/local/bin:$PATH python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build-stats-release/primo --solver-arg=--nelson-oppen-prop=online --solver-arg=--qf-uflra-online-euf --ref z3 --count 1000 --seed 2026080614 --timeout 5 --shape mixed --out fuzz-results/online-euf-soundness-8b4af47-2026080614"
+      },
+      "results": {
+        "exact_seeds_each_profile": {
+          "pass": 4,
+          "wrong_answer": 0,
+          "timeout": 0,
+          "crash": 0,
+          "unsupported": 0,
+          "status_mismatch": 0
+        },
+        "ordinary_generated": {
+          "pass": 1000,
+          "sat": 697,
+          "unsat": 303,
+          "wrong_answer": 0,
+          "timeout": 0,
+          "crash": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        },
+        "online_euf_generated": {
+          "pass": 1000,
+          "sat": 679,
+          "unsat": 321,
+          "wrong_answer": 0,
+          "timeout": 0,
+          "crash": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        },
+        "old_binary_control": "The strict four-seed gate against Release commit cbe1cfc fails with two disagreements: both preserved MathSAT inputs are reported sat while Z3 and their declared status report unsat."
+      },
+      "artifacts": {
+        "ordinary_seed_summary": "local:fuzz-results/online-soundness-8b4af47-seeds.csv",
+        "online_euf_seed_summary": "local:fuzz-results/online-euf-soundness-8b4af47-seeds.csv",
+        "ordinary_generated": "local:fuzz-results/online-soundness-8b4af47-2026080613/summary.csv",
+        "online_euf_generated": "local:fuzz-results/online-euf-soundness-8b4af47-2026080614/summary.csv"
+      },
+      "review": "Whole-tree clang-tidy completed without findings. The advisory include-cleaner reported the existing baseline warnings but none in the changed check_sat.cpp path. The solver-efficiency snapshot found no newly added hot-path pattern; this repair deliberately restores the existing complete scan and makes no performance claim.",
+      "outcome": "Local correctness repair and merge-grade generated gate passed. A fresh SLURM generated and real-seed mutation gate for commit 8b4af47 remains required before rerunning broad performance evaluation."
     }
   ]
 }
