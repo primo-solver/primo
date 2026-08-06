@@ -19428,6 +19428,67 @@
       "conclusion": "Both families of division losses arrive with the Nelson-Oppen merge, but by two different mechanisms. 2019-ezsmt is the dispatch flip (ffaf9eb). LassoRanker is NOT: same solver path, less tableau work, ~6.5x slower per online check call. Mechanism unidentified. This is a main-branch regression either way -- HEAD tracks main closely (4,183 vs 3,793 pivots) while b6b8d55 solves in 13s -- so it is not caused by this branch.",
       "next_step": "Profile main on this instance. perf is blocked in this sandbox; use a -pg build (the repo already has a build-gprof workflow) or run perf on the cluster. The question to answer is what runs per online check call on the pure QF_LRA path after the merge that did not before.",
       "process_notes": "The first two LassoRanker bisections were invalid and both converged on a docs-only commit. Cause: main contains merge commits from the Nelson-Oppen branch, and that branch's own history predates QF_LRA support, so those commits answer 'unsupported logic: QF_LRA'. The script marked them bad instead of skipping. Fixed by skipping on 'unsupported'/no-answer AND bisecting with --first-parent so only mainline states are tested."
+    },
+    {
+      "id": "2026-08-07-qf-lra-division-three-way-branch-vs-main",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "benchmark",
+      "scope": "Full QF_LRA division (1753 files, 300s) run on main 0c0843d under conditions matched to the branch run, to separate this branch's effect from main's own regression.",
+      "commit": "9dadfa1 (branch) and 0c0843d (main)",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm via ProxyJump",
+        "notes": "Jobs 120072 (branch) and 120122 (main), both array 0-39, --cpus-per-task=3, both landing on node-01/03/07 with the same 28/28/24 split. Reference row is job 118904 at b6b8d55 (4 nodes). Corpus hard-linked into both workspaces."
+      },
+      "command": {
+        "job_main": "120122",
+        "job_branch": "120072",
+        "job_ref": "118904 (2026-08-03)",
+        "settings": "PRIMO_COMPARE_TIMEOUT=300, SHARDS=40, manifest benchmarks/qf-lra-full-division.txt, solver 'primo --quiet' (default profile)"
+      },
+      "result": {
+        "b6b8d55_ref": {
+          "solved": 1631,
+          "wrong": 0,
+          "par2": 95091
+        },
+        "main_0c0843d": {
+          "solved": 1572,
+          "wrong": 0,
+          "par2": 136330
+        },
+        "branch_HEAD": {
+          "solved": 1588,
+          "wrong": 0,
+          "par2": 127101
+        },
+        "main_vs_ref": {
+          "gained": 2,
+          "lost": 61,
+          "lost_by_family": {
+            "LassoRanker": 46,
+            "2019-ezsmt": 12,
+            "miplib": 2,
+            "tropical-matrix": 1
+          }
+        },
+        "branch_vs_main": {
+          "gained": 16,
+          "lost": 0,
+          "gained_by_family": {
+            "LassoRanker": 16
+          },
+          "paired_ratio_n573_over_1s": {
+            "p10": 0.69,
+            "median": 0.94,
+            "p90": 1.03
+          }
+        }
+      },
+      "conclusion": "The branch is strictly better than main on the full division: +16 solved, ZERO lost, PAR2 136330 -> 127101, median paired 0.94. All 16 gains are LassoRanker, the family main regressed hardest on. Separately confirmed: main has lost 59 net files against b6b8d55 (gained 2, lost 61), which is the regression bisected to the Nelson-Oppen merge (84336a2) and, for 2019-ezsmt, to ffaf9eb's dispatch flip. The earlier '1588 vs 1631' framing was comparing the branch against a pre-regression commit and wrongly implicated the branch; against the branch's actual merge base it gains and loses nothing. Zero wrong answers in all three runs, on a corpus that carries (set-info :status)."
     }
   ]
 }

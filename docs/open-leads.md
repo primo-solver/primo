@@ -242,6 +242,30 @@ What this does **not** explain: LassoRanker, 40 of the 55 lost files, which
 reports `:solver.qf-lra 1` -- the pure path -- on both sides. See
 [](#lead-2b-lassoranker).
 
+(lead-2b-corpus)=
+### Corpus-level: main lost 59 files, and this branch recovers 16 of them
+
+Settled 2026-08-07 by running the full division on **main itself** under
+conditions matched to the branch run (jobs 120072 and 120122: same 40 shards,
+same 300s, same `--cpus-per-task=3`, same three nodes with the same split).
+
+| | solved / 1753 | wrong | PAR2 |
+|---|---:|---:|---:|
+| `b6b8d55` (2026-08-03) | **1631** | 0 | 95,091 |
+| main `0c0843d` | **1572** | 0 | 136,330 |
+| branch HEAD | **1588** | 0 | 127,101 |
+
+- **main vs `b6b8d55`: gained 2, lost 61** -- LassoRanker 46, 2019-ezsmt 12,
+  miplib 2, tropical-matrix 1. That is the regression bisected above.
+- **branch vs main: gained 16, lost 0**, PAR2 -9,229, median paired 0.94.
+  All 16 gains are LassoRanker, the family main regressed hardest on.
+
+The lesson about how this was nearly misread is worth keeping: the first
+comparison was branch-vs-`b6b8d55`, a *pre-regression* commit rather than the
+branch's merge base, which made a main-side loss look like a branch-side one.
+**Compare against the merge base, not against the last number someone wrote
+down.**
+
 (lead-2b-lassoranker)=
 ### The other half: LassoRanker, same path and still 10x slower
 
