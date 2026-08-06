@@ -777,6 +777,13 @@ directories through `scripts/yinyang_fuzz.sh --logs ...`, because sharing the
 default `./logs` directory makes concurrent mutation shards a harness failure
 rather than fuzz evidence.
 
+For the mixed generated gate, `scripts/slurm_qf_uflra_fuzz_gate.sbatch`
+accepts space-free solver option tokens through `PRIMO_FUZZ_SOLVER_ARGS`; for
+example, the experimental mixed callback profile uses
+`--nelson-oppen-prop=online --qf-uflra-online-euf`. The mutation gate's task 2
+uses that same profile. Submit only array task 2 when the default and
+candidate-final mutation profiles are not part of the current experiment.
+
 ### The remote sanitizer build
 
 Building an ASAN/UBSan binary on the cluster needs the EasyBuild GCCcore

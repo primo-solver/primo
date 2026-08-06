@@ -6,7 +6,7 @@
 # It does not install Python packages from compute nodes.
 
 #SBATCH --job-name=primo-qfuflra-mut
-#SBATCH --array=0-1
+#SBATCH --array=0-2
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
 #SBATCH --time=08:00:00
@@ -57,8 +57,11 @@ if (( TASK_ID == 0 )); then
 elif (( TASK_ID == 1 )); then
   label=candidate-final
   option_args=(--qf-uflra-candidate-final-scan)
+elif (( TASK_ID == 2 )); then
+  label=online-euf
+  option_args=(--nelson-oppen-prop=online --qf-uflra-online-euf)
 else
-  echo "task $TASK_ID is outside the active 2-task range"
+  echo "task $TASK_ID is outside the active 3-task range"
   exit 0
 fi
 
