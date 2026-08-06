@@ -304,9 +304,15 @@ attributed to him -- independent support, on our own benchmarks, that the
 attribution corrected in [](papers/griggio-mathsat-thesis.md) was wrong.
 
 (lead-occurs-in)=
-## 3b. `occurs_in_` removal is a linear scan, and it dominates `pivot`
+## 3b. `occurs_in_` removal was a linear scan, and it dominated `pivot`
 
-**Found 2026-08-06 by asking why the removal is a linear scan at all. It is
+**Status: resolved 2026-08-06 -- implemented, default, and no longer a linear
+scan.** What ships is described in [](arithmetic.md)'s "Cross-linked
+`occurs_in_` index" entry; this entry is the investigation log, kept because
+the two rejected prototypes and the King design fork are the reusable part.
+Read it for *why*, not for *what*.
+
+**Found 2026-08-06 by asking why the removal was a linear scan at all. It was
 the largest measured single cost in the arithmetic layer.**
 
 `pivot()` maintains `occurs_in_`: variable -> the list of basic variables
@@ -652,6 +658,14 @@ rather than unit tests alone -- job 119566, clean.
 
 (lead-3b-outcome)=
 ### Outcome: implemented, and it clears the bar on the family it targets
+
+```{note}
+This entry is a chronological investigation log -- it records how the design
+was reached, including the wrong turns. **For what is actually implemented
+today, read [](arithmetic.md)'s "Cross-linked `occurs_in_` index" entry**,
+which states the representation and its current evidence in one place without
+the history.
+```
 
 Implemented as the array variant (`RowEntry::occ_slot`, `unlink_occurrence`),
 with the round-trip check added to `occurs_in_index_matches_full_rebuild`

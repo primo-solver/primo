@@ -571,6 +571,55 @@ alternatives considered before/while implementing it.
     tier, not campaign tier -- but it matters here specifically because H8
     rewrites the row loop and moves rows into the trail, which is where this
     class previously had a real heap-use-after-free.
+- **Cross-linked `occurs_in_` index** ([open-leads lead 3b](#lead-occurs-in), 2026-08-06, `lra_tableau.{hpp,cpp}`,
+  **unconditional**): each row entry carries a back-index into the column list
+  it appears in, so `pivot()` removes a dead occurrence without searching for
+  something it is already holding.
+  - **The representation, which is the thing to read if you only read one
+    bullet.** `Row`'s element changed from `std::pair<LraVarId, Rational>` to
+    `struct RowEntry { LraVarId var; Rational coeff; uint32_t occ_slot; }`,
+    where `occ_slot` is that term's index inside `occurs_in_[var]`. Removal is
+    then: read the slot (O(1)), swap-pop `occurs_in_[var]` at that slot (O(1)),
+    and repair the *moved* element's back-index with a `lower_bound` over its
+    row (O(log row)). Insertion sets `occ_slot` from
+    `occurs_in_[var].size()` before the `push_back`; the H8 merge copies slots
+    across unchanged, because rebuilding a row moves an entry within the row
+    but does not touch `occurs_in_[var]` for a surviving term. Rows stay
+    sorted and contiguous, so H8 and H10 are untouched.
+  - **What it replaced:** a linear scan of `occurs_in_[var]`. Measured at
+    12.0M removals scanning 8.17B elements on `constraint-199552`, where
+    occurrence lists average 679.
+  - **This is half a cross-linked sparse matrix, deliberately.** Rows point
+    into columns; columns do not point back into rows. King's thesis §2.2.7
+    specifies both directions via doubly linked lists, which would make the
+    repair step O(1) -- but his rows are *unsorted*, so adopting his form
+    wholesale means giving up the two-way merge and item H8. See
+    [](papers/summaries.md) for the source and
+    [open-leads](#lead-occurs-in) for the fork.
+  - **Correctness gate:** QF_LRA model fuzz gate on Slurm (job 119566, 9-task
+    array) -- 0 wrong answers, 0 invalid models. `verify_occurs_in_index` was
+    extended to check that every back-index round-trips
+    (`occurs_in_[var][entry.occ_slot] == basic_var`), which is what makes the
+    scheme falsifiable in a debug build.
+  - **Evidence, mixed and worth reading before relying on it.** Stratified
+    sample (237 files, 10s, job 119555): **neutral** -- gained 0, lost 0, and
+    the PAR2 gain of 8.00 is below the 12.22 run-to-run noise floor measured
+    from an identical baseline binary. Tropical-matrix (10 files, 1200s, job
+    119577): **1/10 -> 2/10 solved**, PAR2 21611 -> 19998, gained 1 / lost 0,
+    with `constraint-199552` at 10.65s -> 6.80s.
+  - **It cannot change the search**, which is unusual and is what makes the
+    above interpretable: on 25 solved stratified files the counters are
+    bit-identical to the parent commit (`:lra.pivots`,
+    `:lra.pivot-term-ops`, `:sat.decisions`, `:sat.conflicts`). Every per-file
+    time difference is therefore pure constant factor.
+  - **Known regression, with a known cause.** Long-*row* instances lose, the
+    mirror of the long-*column* instances that win: the O(log row) repair step
+    replaces a short column scan, and `RowEntry` grew 32 -> 40 bytes. Worst
+    measured is `ecoliFBAyicesTest-500` at 1.58x (rows there reach 691 terms);
+    on files the baseline takes over a second, no regression exceeds 1.10x.
+    Two open follow-ups: narrow `LraVarId` to 32 bits (restores 32 bytes, and
+    separates the two causes), and store the row slot in `occurs_in_` too,
+    which makes the repair O(1) and removes the mechanism.
 - **Fixed-variable elimination** ([heuristics-note item H7](#h7), 2026-07-30,
 
   `lra_tableau.{hpp,cpp}`, **opt-in**, `--lra-fixed-elimination`): a basic
@@ -699,12 +748,15 @@ recursion-removal pass -- QF_LRA is **supported**, not experimental.
 ### QF_LRA options and statistics reference
 
 Every QF_LRA option, its default, and where its evidence lives. Verified
-against `CheckSatOptions` and `--help` on 2026-08-04.
+against `CheckSatOptions` and `--help` on 2026-08-06 by diffing the table
+against `--help` output rather than by eye -- five options were missing.
 
 | option | default | what it does |
 |---|---|---|
 | `--lra-pivoting-rule {bland,dantzig,soi,sparse}` | `sparse` | Check/Pivot variable selection. `sparse` is item H3. |
 | `--no-lra-sparse-leaving` | leaving rule **on** | Ablates the leaving-side half of `sparse`. |
+| `--lra-least-violated-leaving` | **off** | MathSAT's leaving rule (Griggio thesis 2.5.3 p.53): least-violated first, shorter row as tie-break. Only under `sparse`. 167 vs 174 on the bar, but beats most-violated by 5 -- a complementarity candidate, not a win. |
+| `--monotone-elimination` | **off** | One-sided (monotone) variable elimination in preprocessing, with model reconstruction. 173 vs 174, gained 0 -- did not clear its bar. |
 | `--no-lra-propagation` | propagation **on** | Ablates same-slack propagation (Dutertre & de Moura 4.2). |
 | `--lra-row-propagation` | **off** | Row/interval implied bounds (roadmap item 2). |
 | `--lra-bidirectional-row-propagation` | **off** | Reverse direction: tighten a row term from the row's own bound (item 7). Requires `--lra-row-propagation`. |
@@ -716,6 +768,25 @@ against `CheckSatOptions` and `--help` on 2026-08-04.
 | `--lra-row-propagation-max-fanout` | 64 | Most rows one bound change may scan. |
 | `--lra-bidirectional-row-propagation-max-row-size` | 32 | Reverse direction's row-length cap. |
 | `--lra-bidirectional-row-propagation-max-fanout` | 32 | Reverse direction's fanout cap. |
+| `--lra-sparse-pricing-candidates` | 16 | How many eligible entering candidates `sparse` scores before taking the best seen; 0 scores all. See below. |
+| `--lra-bland-fallback-factor` | 4 | Per-variable coefficient of `check()`'s Bland's-rule fallback point, `factor * variables + offset` pivots. |
+| `--lra-bland-fallback-offset` | 64 | Constant term of the same threshold. |
+
+**The three Check/Pivot knobs** were hardcoded constants until 2026-08-06 and
+became options for the same reason the propagation caps did: so a tuning
+campaign can vary them per run rather than per build. None can change an
+answer, only how long it takes to reach one, and
+`tuning_knobs_never_change_a_verdict` pins that. Full rationale and the
+measured response surface are in [](tuning-parameters.md); the short version
+is that `--lra-sparse-pricing-candidates` has a >100x range in pivot term ops
+on a single file but a **spiky, non-monotone** profile, so it wants per-family
+or portfolio selection rather than a new global default.
+
+Related fix: `:lra.bland-fallbacks` incremented only under `PivotingRule::
+Dantzig`, so it read 0 under `sparse` -- the default -- whether or not the
+fallback fired. With that corrected the threshold turns out to bind on real
+input (counts of 1-12 across the Heizmann files), which means some pivoting
+attributed to `sparse` is actually running under Bland.
 
 **The four propagation caps** bound the per-bound-change cost of the two
 row-propagation directions. Their defaults are documented in the source as
