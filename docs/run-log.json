@@ -20508,6 +20508,68 @@
       },
       "outcome": "Running, not yet accepted evidence. The corrected benchmark should be summarized after completion and checked for wrong rows before performance claims.",
       "evidence_status": "current-slurm-running"
+    },
+    {
+      "id": "2026-08-06-qfuflra-full-60s-running-progress-119551",
+      "started_at": "2026-08-06T11:39:00+02:00",
+      "recorded_at": "2026-08-06T14:30:00+02:00",
+      "kind": "benchmark-progress",
+      "scope": "Partial progress check for corrected full 1284-file QF_UFLRA 60s SLURM comparison",
+      "commit": "4631aef",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-qfuflra-overnight-4631aef",
+        "slurm_job_id": "119551"
+      },
+      "command": "Direct SSH to local-network SLURM head node; parsed slurm_logs/primo-qfuflra-full2-119551-*.out for completed row lines and compared reported sat/unsat answers against SMT-LIB :status in tmp/QF_UFLRA. The job is still running and no CSV has been written yet because bench_qf_uf_full.py writes CSVs at process completion.",
+      "solver": {
+        "name": "Primo",
+        "argv": "default: build-slurm-rel/primo --quiet --stats; candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan"
+      },
+      "references": [],
+      "inputs": {
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 1284,
+        "timeout_seconds": 60
+      },
+      "artifacts": {
+        "stdout_logs": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-full2-119551-*.out",
+        "stderr_logs": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-full2-119551-*.err",
+        "expected_results": "SMT-LIB :status fields in remote tmp/QF_UFLRA files",
+        "csv_results": "not yet written at recording time"
+      },
+      "summary": {
+        "slurm_state": "119551_0 and 119551_1 RUNNING at elapsed 02:50:57 of 08:00:00",
+        "default": {
+          "processed_rows": 591,
+          "total_rows": 1284,
+          "ok": 451,
+          "timeout": 140,
+          "sat": 290,
+          "unsat": 161,
+          "unknown": 140,
+          "partial_elapsed_sum_seconds": 10159.902,
+          "partial_wrong": 0,
+          "last_file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_30_0300_10_16.smt2"
+        },
+        "candidate_final_scan": {
+          "processed_rows": 723,
+          "total_rows": 1284,
+          "ok": 574,
+          "timeout": 149,
+          "sat": 371,
+          "unsat": 203,
+          "unknown": 149,
+          "partial_elapsed_sum_seconds": 10128.08,
+          "partial_wrong": 0,
+          "last_file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_40_0600_10_28.smt2"
+        }
+      },
+      "outcome": "Running, not accepted final benchmark evidence. The long runtime is explained by an unsharded temporary full-run script: each of the two profile tasks is running the full 1284-file manifest serially at a 60s timeout, and CSV summaries will appear only when tasks finish. Partial processed prefixes show no wrong answers so far.",
+      "evidence_status": "current-slurm-running"
     }
   ]
 }
