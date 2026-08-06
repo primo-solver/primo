@@ -739,6 +739,13 @@ For QF_LRA and QF_UFLRA mutation campaigns, use the patched YinYang fork until
 the public package release includes the linear-Real mutation fix: older
 typefuzz builds can generate non-linear Real properties, so their arithmetic
 coverage is not acceptable fuzz-gate evidence.
+Provision the fork on the SLURM login node with `make contrib-yinyang` before
+submitting mutation jobs. The checked-in SLURM gates put `.venv-yinyang/bin` on
+`PATH` and fail if `typefuzz` or `opfuzz` is missing; they do not install Python
+packages from compute nodes. Array tasks must also use task-local YinYang log
+directories through `scripts/yinyang_fuzz.sh --logs ...`, because sharing the
+default `./logs` directory makes concurrent mutation shards a harness failure
+rather than fuzz evidence.
 
 ### The remote sanitizer build
 

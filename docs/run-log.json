@@ -18633,10 +18633,22 @@
           "timeout": 684,
           "par2": 6946.117713,
           "families": {
-            "FFT": {"solved": 10, "timeout": 0},
-            "cpachecker-bmc-svcomp14": {"solved": 4, "timeout": 11},
-            "cpachecker-induction-svcomp14": {"solved": 123, "timeout": 236},
-            "mathsat": {"solved": 463, "timeout": 437}
+            "FFT": {
+              "solved": 10,
+              "timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 4,
+              "timeout": 11
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 123,
+              "timeout": 236
+            },
+            "mathsat": {
+              "solved": 463,
+              "timeout": 437
+            }
           }
         },
         "model": {
@@ -18647,10 +18659,22 @@
           "timeout": 679,
           "par2": 6977.939077,
           "families": {
-            "FFT": {"solved": 10, "timeout": 0},
-            "cpachecker-bmc-svcomp14": {"solved": 4, "timeout": 11},
-            "cpachecker-induction-svcomp14": {"solved": 119, "timeout": 240},
-            "mathsat": {"solved": 472, "timeout": 428}
+            "FFT": {
+              "solved": 10,
+              "timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 4,
+              "timeout": 11
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 119,
+              "timeout": 240
+            },
+            "mathsat": {
+              "solved": 472,
+              "timeout": 428
+            }
           }
         },
         "z3stats": {
@@ -18661,10 +18685,22 @@
           "timeout": 50,
           "par2": 758.708455,
           "families": {
-            "FFT": {"solved": 10, "timeout": 0},
-            "cpachecker-bmc-svcomp14": {"solved": 7, "timeout": 8},
-            "cpachecker-induction-svcomp14": {"solved": 317, "timeout": 42},
-            "mathsat": {"solved": 900, "timeout": 0}
+            "FFT": {
+              "solved": 10,
+              "timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 7,
+              "timeout": 8
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 317,
+              "timeout": 42
+            },
+            "mathsat": {
+              "solved": 900,
+              "timeout": 0
+            }
           },
           "stats_totals": {
             ":conflicts": 290447,
@@ -19006,9 +19042,18 @@
           "wrong": 0,
           "par2": 814.425316,
           "families": {
-            "mathsat": {"solved": 6, "timeout": 19},
-            "cpachecker-induction-svcomp14": {"solved": 1, "timeout": 18},
-            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+            "mathsat": {
+              "solved": 6,
+              "timeout": 19
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 1,
+              "timeout": 18
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 0,
+              "timeout": 1
+            }
           }
         },
         "candidate_final_scan": {
@@ -19018,9 +19063,18 @@
           "wrong": 0,
           "par2": 695.106294,
           "families": {
-            "mathsat": {"solved": 14, "timeout": 11},
-            "cpachecker-induction-svcomp14": {"solved": 0, "timeout": 19},
-            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+            "mathsat": {
+              "solved": 14,
+              "timeout": 11
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 0,
+              "timeout": 19
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 0,
+              "timeout": 1
+            }
           }
         },
         "z3": {
@@ -19030,9 +19084,18 @@
           "wrong": 0,
           "par2": 5.834142,
           "families": {
-            "mathsat": {"solved": 25, "timeout": 0},
-            "cpachecker-induction-svcomp14": {"solved": 19, "timeout": 0},
-            "cpachecker-bmc-svcomp14": {"solved": 1, "timeout": 0}
+            "mathsat": {
+              "solved": 25,
+              "timeout": 0
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 19,
+              "timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 1,
+              "timeout": 0
+            }
           }
         }
       },
@@ -19088,9 +19151,18 @@
           "wrong": 0,
           "par2": 2673.602478,
           "families": {
-            "mathsat": {"solved": 18, "timeout": 7},
-            "cpachecker-induction-svcomp14": {"solved": 8, "timeout": 11},
-            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+            "mathsat": {
+              "solved": 18,
+              "timeout": 7
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 8,
+              "timeout": 11
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 0,
+              "timeout": 1
+            }
           },
           "selected_stats": {
             "lra_extra_atom_probes": 1182416,
@@ -19109,9 +19181,18 @@
           "wrong": 0,
           "par2": 2338.964269,
           "families": {
-            "mathsat": {"solved": 20, "timeout": 5},
-            "cpachecker-induction-svcomp14": {"solved": 8, "timeout": 11},
-            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+            "mathsat": {
+              "solved": 20,
+              "timeout": 5
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 8,
+              "timeout": 11
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 0,
+              "timeout": 1
+            }
           },
           "selected_stats": {
             "candidate_final_scan_pairs": 49155,
@@ -19135,9 +19216,18 @@
           "wrong": 0,
           "par2": 8.192999,
           "families": {
-            "mathsat": {"solved": 25, "timeout": 0},
-            "cpachecker-induction-svcomp14": {"solved": 19, "timeout": 0},
-            "cpachecker-bmc-svcomp14": {"solved": 1, "timeout": 0}
+            "mathsat": {
+              "solved": 25,
+              "timeout": 0
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 19,
+              "timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 1,
+              "timeout": 0
+            }
           }
         }
       },
@@ -19245,9 +19335,18 @@
           "wrong": 0,
           "par2": 2569.220419,
           "families": {
-            "mathsat": {"solved": 18, "timeout": 7},
-            "cpachecker-induction-svcomp14": {"solved": 8, "timeout": 11},
-            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+            "mathsat": {
+              "solved": 18,
+              "timeout": 7
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 8,
+              "timeout": 11
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 0,
+              "timeout": 1
+            }
           },
           "selected_stats": {
             "model_real_terms_before_interface_filter": 3840,
@@ -19270,9 +19369,18 @@
           "wrong": 0,
           "par2": 2218.235007,
           "families": {
-            "mathsat": {"solved": 20, "timeout": 5},
-            "cpachecker-induction-svcomp14": {"solved": 8, "timeout": 11},
-            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+            "mathsat": {
+              "solved": 20,
+              "timeout": 5
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 8,
+              "timeout": 11
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 0,
+              "timeout": 1
+            }
           },
           "selected_stats": {
             "model_real_terms_before_interface_filter": 3840,
@@ -19297,9 +19405,18 @@
           "wrong": 0,
           "par2": 5.65906,
           "families": {
-            "mathsat": {"solved": 25, "timeout": 0},
-            "cpachecker-induction-svcomp14": {"solved": 19, "timeout": 0},
-            "cpachecker-bmc-svcomp14": {"solved": 1, "timeout": 0}
+            "mathsat": {
+              "solved": 25,
+              "timeout": 0
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 19,
+              "timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 1,
+              "timeout": 0
+            }
           }
         },
         "comparison_to_previous_sample": {
@@ -19406,9 +19523,18 @@
           "wrong": 0,
           "par2": 1736.479228,
           "families": {
-            "mathsat": {"solved": 18, "timeout": 7},
-            "cpachecker-induction-svcomp14": {"solved": 15, "timeout": 4},
-            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+            "mathsat": {
+              "solved": 18,
+              "timeout": 7
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 15,
+              "timeout": 4
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 0,
+              "timeout": 1
+            }
           },
           "selected_stats": {
             "shared_real_terms": 3773,
@@ -19436,9 +19562,18 @@
           "wrong": 0,
           "par2": 903.689026,
           "families": {
-            "mathsat": {"solved": 21, "timeout": 4},
-            "cpachecker-induction-svcomp14": {"solved": 17, "timeout": 2},
-            "cpachecker-bmc-svcomp14": {"solved": 0, "timeout": 1}
+            "mathsat": {
+              "solved": 21,
+              "timeout": 4
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 17,
+              "timeout": 2
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 0,
+              "timeout": 1
+            }
           },
           "selected_stats": {
             "shared_real_terms": 3696,
@@ -19470,9 +19605,18 @@
           "wrong": 0,
           "par2": 7.525657,
           "families": {
-            "mathsat": {"solved": 25, "timeout": 0},
-            "cpachecker-induction-svcomp14": {"solved": 19, "timeout": 0},
-            "cpachecker-bmc-svcomp14": {"solved": 1, "timeout": 0}
+            "mathsat": {
+              "solved": 25,
+              "timeout": 0
+            },
+            "cpachecker-induction-svcomp14": {
+              "solved": 19,
+              "timeout": 0
+            },
+            "cpachecker-bmc-svcomp14": {
+              "solved": 1,
+              "timeout": 0
+            }
           }
         },
         "comparison_to_previous_sample": {
@@ -19522,15 +19666,85 @@
       },
       "summary": {
         "remaining_candidate_timeouts": [
-          {"file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_31.smt2", "z3_seconds": 0.023797, "z3_conflicts": 40, "z3_decisions": 72, "z3_final_checks": 1, "primo_lra_extra_atom_probes": 100144, "primo_lra_to_euf_equalities": 6807, "primo_lra_to_euf_rechecks": 422, "primo_sat_equalities_forced": 4069},
-          {"file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_36.smt2", "z3_seconds": 0.026763, "z3_conflicts": 60, "z3_decisions": 122, "z3_final_checks": 2, "z3_interface_eqs": 1, "primo_lra_extra_atom_probes": 60718, "primo_lra_to_euf_equalities": 2801, "primo_lra_to_euf_rechecks": 128, "primo_sat_equalities_forced": 1165},
-          {"file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_30.smt2", "z3_seconds": 0.036989, "z3_conflicts": 47, "z3_decisions": 86, "z3_final_checks": 2, "z3_interface_eqs": 1, "primo_lra_extra_atom_probes": 121045, "primo_lra_to_euf_equalities": 6210, "primo_lra_to_euf_rechecks": 414, "primo_sat_equalities_forced": 3313},
-          {"file": "tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2", "z3_seconds": 0.974501, "z3_conflicts": 150, "z3_decisions": 1699, "z3_final_checks": 6, "z3_interface_eqs": 5, "primo_lra_extra_atom_probes": 2759, "primo_candidate_final_scan_pairs": 3948}
+          {
+            "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_31.smt2",
+            "z3_seconds": 0.023797,
+            "z3_conflicts": 40,
+            "z3_decisions": 72,
+            "z3_final_checks": 1,
+            "primo_lra_extra_atom_probes": 100144,
+            "primo_lra_to_euf_equalities": 6807,
+            "primo_lra_to_euf_rechecks": 422,
+            "primo_sat_equalities_forced": 4069
+          },
+          {
+            "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_36.smt2",
+            "z3_seconds": 0.026763,
+            "z3_conflicts": 60,
+            "z3_decisions": 122,
+            "z3_final_checks": 2,
+            "z3_interface_eqs": 1,
+            "primo_lra_extra_atom_probes": 60718,
+            "primo_lra_to_euf_equalities": 2801,
+            "primo_lra_to_euf_rechecks": 128,
+            "primo_sat_equalities_forced": 1165
+          },
+          {
+            "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_30.smt2",
+            "z3_seconds": 0.036989,
+            "z3_conflicts": 47,
+            "z3_decisions": 86,
+            "z3_final_checks": 2,
+            "z3_interface_eqs": 1,
+            "primo_lra_extra_atom_probes": 121045,
+            "primo_lra_to_euf_equalities": 6210,
+            "primo_lra_to_euf_rechecks": 414,
+            "primo_sat_equalities_forced": 3313
+          },
+          {
+            "file": "tmp/QF_UFLRA/cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+            "z3_seconds": 0.974501,
+            "z3_conflicts": 150,
+            "z3_decisions": 1699,
+            "z3_final_checks": 6,
+            "z3_interface_eqs": 5,
+            "primo_lra_extra_atom_probes": 2759,
+            "primo_candidate_final_scan_pairs": 3948
+          }
         ],
         "solved_but_slow_candidate_cases": [
-          {"file": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product29_false-unreach-call.cil.c.smt2", "candidate_seconds": 11.625156, "z3_seconds": 0.046272, "z3_final_checks": 1, "primo_sat_solve_calls": 2, "primo_lra_extra_atom_probes": 17554, "primo_lra_to_euf_equalities": 262, "primo_sat_equalities_forced": 131},
-          {"file": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product27_false-unreach-call.cil.c.smt2", "candidate_seconds": 10.681640, "z3_seconds": 0.048901, "z3_final_checks": 1, "primo_sat_solve_calls": 2, "primo_lra_extra_atom_probes": 16510, "primo_lra_to_euf_equalities": 254, "primo_sat_equalities_forced": 127},
-          {"file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_91.smt2", "candidate_seconds": 5.428374, "z3_seconds": 0.048547, "z3_conflicts": 48, "z3_decisions": 80, "z3_final_checks": 1, "primo_sat_solve_calls": 14, "primo_lra_extra_atom_probes": 1011, "primo_lra_to_euf_equalities": 68, "primo_sat_equalities_forced": 37}
+          {
+            "file": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product29_false-unreach-call.cil.c.smt2",
+            "candidate_seconds": 11.625156,
+            "z3_seconds": 0.046272,
+            "z3_final_checks": 1,
+            "primo_sat_solve_calls": 2,
+            "primo_lra_extra_atom_probes": 17554,
+            "primo_lra_to_euf_equalities": 262,
+            "primo_sat_equalities_forced": 131
+          },
+          {
+            "file": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.email_spec3_product27_false-unreach-call.cil.c.smt2",
+            "candidate_seconds": 10.68164,
+            "z3_seconds": 0.048901,
+            "z3_final_checks": 1,
+            "primo_sat_solve_calls": 2,
+            "primo_lra_extra_atom_probes": 16510,
+            "primo_lra_to_euf_equalities": 254,
+            "primo_sat_equalities_forced": 127
+          },
+          {
+            "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_30_60_45_91.smt2",
+            "candidate_seconds": 5.428374,
+            "z3_seconds": 0.048547,
+            "z3_conflicts": 48,
+            "z3_decisions": 80,
+            "z3_final_checks": 1,
+            "primo_sat_solve_calls": 14,
+            "primo_lra_extra_atom_probes": 1011,
+            "primo_lra_to_euf_equalities": 68,
+            "primo_sat_equalities_forced": 37
+          }
         ]
       },
       "outcome": "Z3 statistics show very small search on the remaining fast-reference/slow-Primo cases: the sampled MathSAT timeouts use tens of conflicts, under 130 decisions, and one or two final checks in Z3, while Primo performs many SAT re-entry cycles and tens to hundreds of thousands of LRA extra-atom probes. The sampled CPAchecker solved-but-slow cases are especially diagnostic because Primo has only two SAT/LRA checks and few SAT decisions but still spends seconds in candidate equality probing. This supports prioritizing model-guided/equality-probe reduction before SAT-solver tuning.",
@@ -19590,403 +19804,561 @@
       "outcome": "Accepted local smoke evidence for the behavior-neutral TheoryCombinationManager shared equality ledger cleanup. The run compares 1000 generated mixed QF_UFLRA cases against Z3 and finds no wrong answers, crashes, timeouts, unsupported outcomes, parser/type errors, or reference disagreements. This is not a performance claim.",
       "evidence_status": "current-local"
     },
-      {
-        "id": "2026-08-05-qfuflra-lra-euf-filter-local-sample-676b7af",
-        "started_at": "2026-08-05T20:20:00+02:00",
-        "recorded_at": "2026-08-05T20:30:00+02:00",
-        "kind": "benchmark",
-        "scope": "Local Release 20-file QF_UFLRA sample for consumer-aware LRA-to-EUF equality filtering, compared with pre-filter Primo and Z3",
-        "commit": "676b7af350a51e59d83c6b53a604c64d01a6c647",
-        "branch": "nelson-oppen-online-lazy-ipasir-up",
-        "environment": {
-          "type": "local",
-          "host": "/workspace",
-          "slurm_job_id": null
-        },
-        "command": "cmake --build build-lra-euf-filter-rel --target primo -j4; python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt --solver build-lra-euf-filter-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 5 --out results/qf_uflra-lra-euf-filter-local-current-release-676b7af/results.csv --summary results/qf_uflra-lra-euf-filter-local-current-release-676b7af/summary.csv --log-dir results/qf_uflra-lra-euf-filter-local-current-release-676b7af/logs",
-        "solver": {
-          "name": "Primo",
-          "argv": "build-lra-euf-filter-rel/primo --quiet --stats"
-        },
-        "references": [
-          {
-            "name": "z3",
-            "argv": "contrib/local/bin/z3",
-            "artifact": "results/qf_uflra-lra-euf-filter-local-z3/summary.csv"
-          }
-        ],
-        "inputs": {
-          "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
-          "root": "tmp/QF_UFLRA",
-          "logic": "QF_UFLRA",
-          "count": 20,
-          "timeout_seconds": 5
-        },
-        "artifacts": {
-          "before_summary": "results/qf_uflra-lra-euf-filter-local-before-release-9ffbf0f/summary.csv",
-          "before_results": "results/qf_uflra-lra-euf-filter-local-before-release-9ffbf0f/results.csv",
-          "current_summary": "results/qf_uflra-lra-euf-filter-local-current-release-676b7af/summary.csv",
-          "current_results": "results/qf_uflra-lra-euf-filter-local-current-release-676b7af/results.csv",
-          "z3_summary": "results/qf_uflra-lra-euf-filter-local-z3/summary.csv",
-          "z3_results": "results/qf_uflra-lra-euf-filter-local-z3/results.csv"
-        },
-        "baseline": {
-          "commit": "9ffbf0f",
+    {
+      "id": "2026-08-05-qfuflra-lra-euf-filter-local-sample-676b7af",
+      "started_at": "2026-08-05T20:20:00+02:00",
+      "recorded_at": "2026-08-05T20:30:00+02:00",
+      "kind": "benchmark",
+      "scope": "Local Release 20-file QF_UFLRA sample for consumer-aware LRA-to-EUF equality filtering, compared with pre-filter Primo and Z3",
+      "commit": "676b7af350a51e59d83c6b53a604c64d01a6c647",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "local",
+        "host": "/workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build-lra-euf-filter-rel --target primo -j4; python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt --solver build-lra-euf-filter-rel/primo --solver-arg=--quiet --solver-arg=--stats --timeout 5 --out results/qf_uflra-lra-euf-filter-local-current-release-676b7af/results.csv --summary results/qf_uflra-lra-euf-filter-local-current-release-676b7af/summary.csv --log-dir results/qf_uflra-lra-euf-filter-local-current-release-676b7af/logs",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-lra-euf-filter-rel/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3",
+          "artifact": "results/qf_uflra-lra-euf-filter-local-z3/summary.csv"
+        }
+      ],
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 20,
+        "timeout_seconds": 5
+      },
+      "artifacts": {
+        "before_summary": "results/qf_uflra-lra-euf-filter-local-before-release-9ffbf0f/summary.csv",
+        "before_results": "results/qf_uflra-lra-euf-filter-local-before-release-9ffbf0f/results.csv",
+        "current_summary": "results/qf_uflra-lra-euf-filter-local-current-release-676b7af/summary.csv",
+        "current_results": "results/qf_uflra-lra-euf-filter-local-current-release-676b7af/results.csv",
+        "z3_summary": "results/qf_uflra-lra-euf-filter-local-z3/summary.csv",
+        "z3_results": "results/qf_uflra-lra-euf-filter-local-z3/results.csv"
+      },
+      "baseline": {
+        "commit": "9ffbf0f",
+        "solved": 16,
+        "timeout": 4,
+        "wrong": 0,
+        "par2": 41.266967,
+        "sat_equalities_forced": 42,
+        "lra_to_euf_rechecks": 8,
+        "lra_to_euf_equalities": 78,
+        "sat_solve_calls": 34,
+        "solve_us": 1211009
+      },
+      "summary": {
+        "current": {
           "solved": 16,
           "timeout": 4,
           "wrong": 0,
-          "par2": 41.266967,
-          "sat_equalities_forced": 42,
-          "lra_to_euf_rechecks": 8,
-          "lra_to_euf_equalities": 78,
-          "sat_solve_calls": 34,
-          "solve_us": 1211009
+          "par2": 40.568299,
+          "sat_equalities_forced": 0,
+          "lra_to_euf_rechecks": 0,
+          "lra_to_euf_equalities": 36,
+          "lra_to_euf_mergeable_skipped": 26,
+          "lra_to_euf_forbidden_forced": 0,
+          "sat_solve_calls": 19,
+          "solve_us": 514084
         },
-        "summary": {
-          "current": {
-            "solved": 16,
-            "timeout": 4,
-            "wrong": 0,
-            "par2": 40.568299,
-            "sat_equalities_forced": 0,
-            "lra_to_euf_rechecks": 0,
-            "lra_to_euf_equalities": 36,
-            "lra_to_euf_mergeable_skipped": 26,
-            "lra_to_euf_forbidden_forced": 0,
-            "sat_solve_calls": 19,
-            "solve_us": 514084
+        "z3": {
+          "solved": 20,
+          "timeout": 0,
+          "wrong": 0,
+          "par2": 1.670959
+        },
+        "families": {
+          "FFT": {
+            "current_solved": 5,
+            "current_timeout": 0
           },
-          "z3": {
-            "solved": 20,
-            "timeout": 0,
-            "wrong": 0,
-            "par2": 1.670959
+          "cpachecker-bmc-svcomp14": {
+            "current_solved": 3,
+            "current_timeout": 2,
+            "z3_solved": 5
           },
-          "families": {
-            "FFT": {
-              "current_solved": 5,
-              "current_timeout": 0
-            },
-            "cpachecker-bmc-svcomp14": {
-              "current_solved": 3,
-              "current_timeout": 2,
-              "z3_solved": 5
-            },
-            "cpachecker-induction-svcomp14": {
-              "current_solved": 3,
-              "current_timeout": 2,
-              "z3_solved": 5
-            },
-            "mathsat": {
-              "current_solved": 5,
-              "current_timeout": 0,
-              "z3_solved": 5
-            }
+          "cpachecker-induction-svcomp14": {
+            "current_solved": 3,
+            "current_timeout": 2,
+            "z3_solved": 5
+          },
+          "mathsat": {
+            "current_solved": 5,
+            "current_timeout": 0,
+            "z3_solved": 5
           }
-        },
-        "outcome": "Accepted as local performance smoke evidence for the consumer-aware LRA-to-EUF filter. The sample keeps the same solved count but eliminates SAT-forced LRA-to-EUF equality atoms and rechecks on this sample, reducing SAT solve calls. Z3 still solves all 20, so this is not a headline parity claim and needs SLURM revalidation on the broader opportunity set.",
-        "evidence_status": "current-local"
+        }
       },
-      {
-        "id": "2026-08-05-qfuflra-lra-euf-filter-fuzz-676b7af",
-        "started_at": "2026-08-05T20:18:00+02:00",
-        "recorded_at": "2026-08-05T20:31:00+02:00",
-        "kind": "fuzz",
-        "scope": "QF_UFLRA mixed smoke cases after consumer-aware LRA-to-EUF equality filtering",
-        "commit": "676b7af350a51e59d83c6b53a604c64d01a6c647",
-        "branch": "nelson-oppen-online-lazy-ipasir-up",
-        "environment": {
-          "type": "local",
-          "host": "/workspace",
-          "slurm_job_id": null
+      "outcome": "Accepted as local performance smoke evidence for the consumer-aware LRA-to-EUF filter. The sample keeps the same solved count but eliminates SAT-forced LRA-to-EUF equality atoms and rechecks on this sample, reducing SAT solve calls. Z3 still solves all 20, so this is not a headline parity claim and needs SLURM revalidation on the broader opportunity set.",
+      "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-05-qfuflra-lra-euf-filter-fuzz-676b7af",
+      "started_at": "2026-08-05T20:18:00+02:00",
+      "recorded_at": "2026-08-05T20:31:00+02:00",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA mixed smoke cases after consumer-aware LRA-to-EUF equality filtering",
+      "commit": "676b7af350a51e59d83c6b53a604c64d01a6c647",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "local",
+        "host": "/workspace",
+        "slurm_job_id": null
+      },
+      "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref /workspace/contrib/local/bin/z3 --count 1000 --seed 20260806 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-lra-euf-filter-676b7af",
+      "solver": {
+        "name": "Primo",
+        "argv": "./build/primo --quiet"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "/workspace/contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "seed": 20260806,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "summary": "fuzz-results/qf_uflra-lra-euf-filter-676b7af/summary.csv",
+        "results": "fuzz-results/qf_uflra-lra-euf-filter-676b7af/cases",
+        "logs": null,
+        "bugs": null
+      },
+      "summary": {
+        "total": 1000,
+        "pass": 1000,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "parser_or_type_error": 0,
+        "reference_disagreement": 0,
+        "sat": 716,
+        "unsat": 284
+      },
+      "outcome": "Accepted local smoke evidence for the LRA-to-EUF filter. The run compares 1000 generated mixed QF_UFLRA cases against Z3 with no wrong answers, crashes, timeouts, unsupported outcomes, parser/type errors, or reference disagreements.",
+      "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-05-qfuflra-lra-euf-filter-slurm-sample-119506",
+      "started_at": "2026-08-05T20:20:00+02:00",
+      "recorded_at": "2026-08-05T20:27:00+02:00",
+      "kind": "benchmark",
+      "scope": "SLURM 20-file QF_UFLRA sample at 60s timeout for consumer-aware LRA-to-EUF equality filtering, default and candidate-final-scan profiles",
+      "commit": "5e7c24e",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-lra-euf-filter-5e7c24e",
+        "slurm_job_id": "119506"
+      },
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo_slurm_ssh_config --remote primo-slurm --remote-dir primo-lra-euf-filter-5e7c24e --local-dir . --target primo --check-only && ssh -F /tmp/primo_slurm_ssh_config primo-slurm 'cd primo-lra-euf-filter-5e7c24e && PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_SOLVERS=\"default=build-slurm-rel/primo --quiet --stats;candidate=build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan;z3=contrib/local/bin/z3\" sbatch scripts/slurm_qf_uflra_sample_compare.sbatch'",
+      "solver": {
+        "name": "Primo",
+        "argv": "default: build-slurm-rel/primo --quiet --stats; candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3",
+          "status": "failed in this fresh remote workspace because contrib/local/bin/z3 was not installed"
+        }
+      ],
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 20,
+        "timeout_seconds": 60
+      },
+      "artifacts": {
+        "default_summary": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/default-summary.csv",
+        "default_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/default.csv",
+        "candidate_summary": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/candidate-summary.csv",
+        "candidate_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/candidate.csv",
+        "logs": "remote:primo-lra-euf-filter-5e7c24e/logs/primo-qfuflra-sample-119506-*.{out,err}"
+      },
+      "summary": {
+        "default": {
+          "solved": 16,
+          "timeout": 4,
+          "wrong": 0,
+          "par2": 481.388154,
+          "sat_equalities_forced": 0,
+          "lra_to_euf_rechecks": 0,
+          "lra_to_euf_equalities": 36,
+          "lra_to_euf_mergeable_skipped": 26,
+          "lra_to_euf_forbidden_forced": 0,
+          "sat_solve_calls": 19,
+          "solve_us": 1246554
         },
-        "command": "PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref /workspace/contrib/local/bin/z3 --count 1000 --seed 20260806 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-lra-euf-filter-676b7af",
-        "solver": {
-          "name": "Primo",
-          "argv": "./build/primo --quiet"
+        "candidate_final_scan": {
+          "solved": 17,
+          "timeout": 3,
+          "wrong": 0,
+          "par2": 415.679421,
+          "sat_equalities_forced": 0,
+          "lra_to_euf_rechecks": 0,
+          "lra_to_euf_equalities": 29,
+          "lra_to_euf_mergeable_skipped": 27,
+          "lra_to_euf_forbidden_forced": 0,
+          "sat_solve_calls": 19,
+          "solve_us": 55498139
         },
-        "references": [
+        "z3_task": {
+          "state": "FAILED",
+          "exit_code": "1:0",
+          "reason": "contrib/local/bin/z3 missing in fresh remote workspace"
+        }
+      },
+      "outcome": "Accepted as SLURM smoke evidence for the committed filter on the deterministic 20-file QF_UFLRA sample. The default profile preserves the local solved count at a longer timeout and keeps LRA-to-EUF SAT forcing at zero; candidate-final-scan solves one additional cpachecker-induction row. The Z3 array task is not usable evidence for this remote run because Z3 was absent from the fresh workspace; use the local Z3 entry for reference on this milestone or rerun SLURM after provisioning Z3.",
+      "evidence_status": "current-slurm-partial-reference-invalidated-by-2026-08-05-qfuflra-full-5s-rejected"
+    },
+    {
+      "id": "2026-08-05-qfuflra-full-5s-rejected-unsound-filter",
+      "started_at": "2026-08-05T21:05:00+02:00",
+      "recorded_at": "2026-08-05T21:25:00+02:00",
+      "kind": "benchmark-correctness-triage",
+      "scope": "Aborted full 1284-file QF_UFLRA SLURM evaluation after wrong answers in the LRA-to-EUF filtering path",
+      "commit": "f7c8bd7",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-lra-euf-filter-5e7c24e",
+        "slurm_job_ids": [
+          "119514",
+          "119515"
+        ]
+      },
+      "command": "Prepared remote workspace with scripts/slurm_prepare_benchmark_workspace.py --with-z3, then submitted Primo-only 5s full QF_UFLRA arrays reusing existing Z3 artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv. Job 119515 ran --qf-uflra-candidate-final-scan to completion; job 119514 default was canceled after wrong answers were found and the user approved stopping.",
+      "solver": {
+        "name": "Primo",
+        "argv": "candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan; default: build-slurm-rel/primo --quiet --stats"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "existing artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
+          "status": "reused; benchmark set and timeout matched the Primo run"
+        }
+      ],
+      "inputs": {
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 1284,
+        "timeout_seconds": 5,
+        "manifest": null
+      },
+      "artifacts": {
+        "candidate_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-full-lra-euf-filter-candidate-f7c8bd7-5s/shard-*.csv",
+        "candidate_logs": "remote:primo-lra-euf-filter-5e7c24e/logs/primo-qfuflra-mine-119515-*.{out,err}",
+        "z3_results": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
+        "default_partial_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-full-lra-euf-filter-default-f7c8bd7-5s/"
+      },
+      "summary": {
+        "candidate_final_scan": {
+          "total": 1284,
+          "solved": 1144,
+          "timeout": 140,
+          "error": 0,
+          "wrong": 3,
+          "par2": 1837.467774,
+          "lra_to_euf_equalities": 10173,
+          "lra_to_euf_mergeable_skipped": 9916,
+          "lra_to_euf_forbidden_forced": 0,
+          "candidate_final_scan_equalities": 10173,
+          "candidate_final_scan_fallbacks": 0
+        },
+        "z3_reused_baseline": {
+          "total": 1284,
+          "solved": 1234,
+          "timeout": 50,
+          "wrong": 0,
+          "par2": 758.708455
+        },
+        "wrong_rows": [
           {
-            "name": "z3",
-            "argv": "/workspace/contrib/local/bin/z3"
+            "file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_30_0600_10_18.smt2",
+            "primo_candidate": "sat",
+            "z3": "unsat",
+            "status": "unsat"
+          },
+          {
+            "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_01.smt2",
+            "primo_candidate": "sat",
+            "z3": "unsat",
+            "status": "unsat"
+          },
+          {
+            "file": "tmp/QF_UFLRA/FFT/smtlib.624916.smt2",
+            "primo_candidate": "sat",
+            "z3": "unsat",
+            "status": "unsat"
           }
         ],
-        "inputs": {
-          "generator": "scripts/qf_uflra_smoke_fuzz.py",
-          "logic": "QF_UFLRA",
-          "shape": "mixed",
-          "seed": 20260806,
-          "count": 1000,
-          "timeout_seconds": 5,
-          "manifest": null
+        "local_default_repro": {
+          "binary_git": "676b7af",
+          "note": "HEAD f7c8bd7 changes SLURM prep/docs only; local default returned sat on the same checked MathSAT/FFT unsat rows, so the default filter path is also under suspicion."
+        }
+      },
+      "outcome": "Rejected as performance evidence. The broad run found wrong answers after only the candidate-final array completed, and local repro showed the default filter path can also return sat for the same unsat benchmark rows. Stop performance work, preserve these rows as regressions, and fix or disable the unsound LRA-to-EUF mergeable-skipping path before rerunning benchmarks.",
+      "evidence_status": "rejected-wrong-answer"
+    },
+    {
+      "id": "2026-08-05-qfuflra-mergeable-forced-repair-local-gate",
+      "started_at": "2026-08-05T21:30:00+02:00",
+      "recorded_at": "2026-08-05T21:55:00+02:00",
+      "kind": "implementation-validation",
+      "scope": "Conservative repair for unsound LRA-to-EUF mergeable equality skipping",
+      "commit": "working-tree-after-f7c8bd7",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "slurm_job_id": null
+      },
+      "command": "cmake --build build --target primo_qf_lra_solver_tests primo -j4 && ./build/primo_qf_lra_solver_tests; make lint; make docs; make check; make asan-test; clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp --quiet; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260807 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-mergeable-forced-default-20260807; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uflra-candidate-final-scan --ref z3 --count 1000 --seed 20260808 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-mergeable-forced-candidate-final-20260808; compared benchmarks/seeds/qf_uflra/*.smt2 with ./build/primo --quiet and contrib/local/bin/z3",
+      "solver": {
+        "name": "Primo",
+        "argv": "default and --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "count_per_profile": 1000,
+        "seeds": {
+          "default": 20260807,
+          "candidate_final_scan": 20260808
         },
-        "artifacts": {
-          "summary": "fuzz-results/qf_uflra-lra-euf-filter-676b7af/summary.csv",
-          "results": "fuzz-results/qf_uflra-lra-euf-filter-676b7af/cases",
-          "logs": null,
-          "bugs": null
+        "timeout_seconds": 5,
+        "tracked_seed_corpus": "benchmarks/seeds/qf_uflra"
+      },
+      "artifacts": {
+        "default_fuzz_summary": "fuzz-results/qf_uflra-mergeable-forced-default-20260807/summary.csv",
+        "candidate_final_fuzz_summary": "fuzz-results/qf_uflra-mergeable-forced-candidate-final-20260808/summary.csv",
+        "tracked_seed": "benchmarks/seeds/qf_uflra/real_congruence_forced_unsat.smt2"
+      },
+      "summary": {
+        "focused_qf_uflra_unit_tests": "pass",
+        "make_lint": "pass",
+        "make_docs": "pass",
+        "make_check": "pass, 13/13 tests",
+        "make_asan_test": "pass, 13/13 tests",
+        "clang_tidy_scoped": "pass",
+        "tracked_seed_corpus": {
+          "total": 1,
+          "pass": 1,
+          "wrong": 0
         },
-        "summary": {
+        "default_fuzz": {
           "total": 1000,
           "pass": 1000,
           "wrong": 0,
           "crash": 0,
           "timeout": 0,
+          "sat": 721,
+          "unsat": 279
+        },
+        "candidate_final_scan_fuzz": {
+          "total": 1000,
+          "pass": 1000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0,
+          "sat": 719,
+          "unsat": 281
+        },
+        "wrong_row_spot_check_after_repair": {
+          "mathsat_random_coupled": "Primo unknown, Z3 unsat",
+          "mathsat_random_decoupled": "Primo unknown, Z3 unsat",
+          "fft": "Primo unsat, Z3 unsat"
+        }
+      },
+      "outcome": "Accepted as local correctness evidence for the conservative repair. EUF-mergeable LRA-implied equalities are no longer accepted as internal model equalities; they are counted by :no.interface.lra-to-euf-equalities-euf-mergeable-forced and routed through guarded SAT-visible equality clauses. This fixes the minimized regression and removes wrong answers on the three rejected full-run rows in local spot checks, but it is expected to lose the attempted performance gain and needs a fresh SLURM benchmark before any performance claim.",
+      "evidence_status": "current-local"
+    },
+    {
+      "id": "2026-08-06-qfuflra-generated-fuzz-slurm-119533",
+      "started_at": "2026-08-05T22:55:00+02:00",
+      "recorded_at": "2026-08-06T07:45:00+02:00",
+      "kind": "fuzz",
+      "scope": "SLURM generated mixed QF_UFLRA fuzz gate for default and candidate-final profiles after mergeable-forced repair",
+      "commit": "4631aef",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-qfuflra-overnight-4631aef",
+        "slurm_job_id": "119533"
+      },
+      "command": "sbatch --array=0-7 qfuflra-overnight-generated-4631aef.sbatch with PRIMO_FUZZ_COUNT=1250, PRIMO_FUZZ_SEED_BASE=202608090; tasks 0-3 ran default, tasks 4-7 ran --qf-uflra-candidate-final-scan; reference contrib/local/bin/z3",
+      "solver": {
+        "name": "Primo",
+        "argv": "build-slurm-rel/primo; candidate tasks add --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3"
+        }
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflra_smoke_fuzz.py",
+        "logic": "QF_UFLRA",
+        "shape": "mixed",
+        "seed_range": "202608090..202608097",
+        "count_per_task": 1250,
+        "tasks_per_profile": 4,
+        "count_per_profile": 5000,
+        "timeout_seconds": 5
+      },
+      "artifacts": {
+        "summary": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-generated-gate-4631aef/{default,candidate-final}/task-*/summary.csv",
+        "logs": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-gen-119533-*.{out,err}",
+        "bugs": null
+      },
+      "summary": {
+        "default": {
+          "total": 5000,
+          "pass": 5000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0,
           "unsupported": 0,
-          "parser_or_type_error": 0,
-          "reference_disagreement": 0,
-          "sat": 716,
-          "unsat": 284
+          "reference_disagreement": 0
         },
-        "outcome": "Accepted local smoke evidence for the LRA-to-EUF filter. The run compares 1000 generated mixed QF_UFLRA cases against Z3 with no wrong answers, crashes, timeouts, unsupported outcomes, parser/type errors, or reference disagreements.",
-        "evidence_status": "current-local"
+        "candidate_final_scan": {
+          "total": 5000,
+          "pass": 5000,
+          "wrong": 0,
+          "crash": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        }
       },
-      {
-        "id": "2026-08-05-qfuflra-lra-euf-filter-slurm-sample-119506",
-        "started_at": "2026-08-05T20:20:00+02:00",
-        "recorded_at": "2026-08-05T20:27:00+02:00",
-        "kind": "benchmark",
-        "scope": "SLURM 20-file QF_UFLRA sample at 60s timeout for consumer-aware LRA-to-EUF equality filtering, default and candidate-final-scan profiles",
-        "commit": "5e7c24e",
-        "branch": "nelson-oppen-online-lazy-ipasir-up",
-        "environment": {
-          "type": "slurm",
-          "host": "cluster",
-          "remote_workspace": "primo-lra-euf-filter-5e7c24e",
-          "slurm_job_id": "119506"
-        },
-        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo_slurm_ssh_config --remote primo-slurm --remote-dir primo-lra-euf-filter-5e7c24e --local-dir . --target primo --check-only && ssh -F /tmp/primo_slurm_ssh_config primo-slurm 'cd primo-lra-euf-filter-5e7c24e && PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_SOLVERS=\"default=build-slurm-rel/primo --quiet --stats;candidate=build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan;z3=contrib/local/bin/z3\" sbatch scripts/slurm_qf_uflra_sample_compare.sbatch'",
-        "solver": {
-          "name": "Primo",
-          "argv": "default: build-slurm-rel/primo --quiet --stats; candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan"
-        },
-        "references": [
-          {
-            "name": "z3",
-            "argv": "contrib/local/bin/z3",
-            "status": "failed in this fresh remote workspace because contrib/local/bin/z3 was not installed"
-          }
-        ],
-        "inputs": {
-          "manifest": "benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
-          "root": "tmp/QF_UFLRA",
-          "logic": "QF_UFLRA",
-          "count": 20,
-          "timeout_seconds": 60
-        },
-        "artifacts": {
-          "default_summary": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/default-summary.csv",
-          "default_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/default.csv",
-          "candidate_summary": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/candidate-summary.csv",
-          "candidate_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-sample-119506/candidate.csv",
-          "logs": "remote:primo-lra-euf-filter-5e7c24e/logs/primo-qfuflra-sample-119506-*.{out,err}"
-        },
-        "summary": {
-          "default": {
-            "solved": 16,
-            "timeout": 4,
-            "wrong": 0,
-            "par2": 481.388154,
-            "sat_equalities_forced": 0,
-            "lra_to_euf_rechecks": 0,
-            "lra_to_euf_equalities": 36,
-            "lra_to_euf_mergeable_skipped": 26,
-            "lra_to_euf_forbidden_forced": 0,
-            "sat_solve_calls": 19,
-            "solve_us": 1246554
-          },
-          "candidate_final_scan": {
-            "solved": 17,
-            "timeout": 3,
-            "wrong": 0,
-            "par2": 415.679421,
-            "sat_equalities_forced": 0,
-            "lra_to_euf_rechecks": 0,
-            "lra_to_euf_equalities": 29,
-            "lra_to_euf_mergeable_skipped": 27,
-            "lra_to_euf_forbidden_forced": 0,
-            "sat_solve_calls": 19,
-            "solve_us": 55498139
-          },
-          "z3_task": {
-            "state": "FAILED",
-            "exit_code": "1:0",
-            "reason": "contrib/local/bin/z3 missing in fresh remote workspace"
-          }
-        },
-        "outcome": "Accepted as SLURM smoke evidence for the committed filter on the deterministic 20-file QF_UFLRA sample. The default profile preserves the local solved count at a longer timeout and keeps LRA-to-EUF SAT forcing at zero; candidate-final-scan solves one additional cpachecker-induction row. The Z3 array task is not usable evidence for this remote run because Z3 was absent from the fresh workspace; use the local Z3 entry for reference on this milestone or rerun SLURM after provisioning Z3.",
-        "evidence_status": "current-slurm-partial-reference-invalidated-by-2026-08-05-qfuflra-full-5s-rejected"
+      "outcome": "Accepted generated-fuzz evidence for the exact default and candidate-final option sets at commit 4631aef. This does not by itself validate real benchmark mutation coverage.",
+      "evidence_status": "current-slurm"
+    },
+    {
+      "id": "2026-08-06-qfuflra-yinyang-infra-failures-119534-119544",
+      "started_at": "2026-08-05T22:55:00+02:00",
+      "recorded_at": "2026-08-06T07:55:00+02:00",
+      "kind": "fuzz-infrastructure-triage",
+      "scope": "Failed QF_UFLRA YinYang/typefuzz SLURM attempts before solver mutation fuzzing completed",
+      "commit": "4631aef",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-qfuflra-overnight-4631aef",
+        "slurm_job_ids": [
+          "119534",
+          "119544"
+        ]
       },
-      {
-        "id": "2026-08-05-qfuflra-full-5s-rejected-unsound-filter",
-        "started_at": "2026-08-05T21:05:00+02:00",
-        "recorded_at": "2026-08-05T21:25:00+02:00",
-        "kind": "benchmark-correctness-triage",
-        "scope": "Aborted full 1284-file QF_UFLRA SLURM evaluation after wrong answers in the LRA-to-EUF filtering path",
-        "commit": "f7c8bd7",
-        "branch": "nelson-oppen-online-lazy-ipasir-up",
-        "environment": {
-          "type": "slurm",
-          "host": "cluster",
-          "remote_workspace": "primo-lra-euf-filter-5e7c24e",
-          "slurm_job_ids": [
-            "119514",
-            "119515"
-          ]
-        },
-        "command": "Prepared remote workspace with scripts/slurm_prepare_benchmark_workspace.py --with-z3, then submitted Primo-only 5s full QF_UFLRA arrays reusing existing Z3 artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv. Job 119515 ran --qf-uflra-candidate-final-scan to completion; job 119514 default was canceled after wrong answers were found and the user approved stopping.",
-        "solver": {
-          "name": "Primo",
-          "argv": "candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan; default: build-slurm-rel/primo --quiet --stats"
-        },
-        "references": [
-          {
-            "name": "z3",
-            "argv": "existing artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
-            "status": "reused; benchmark set and timeout matched the Primo run"
-          }
-        ],
-        "inputs": {
-          "root": "tmp/QF_UFLRA",
-          "logic": "QF_UFLRA",
-          "count": 1284,
-          "timeout_seconds": 5,
-          "manifest": null
-        },
-        "artifacts": {
-          "candidate_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-full-lra-euf-filter-candidate-f7c8bd7-5s/shard-*.csv",
-          "candidate_logs": "remote:primo-lra-euf-filter-5e7c24e/logs/primo-qfuflra-mine-119515-*.{out,err}",
-          "z3_results": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
-          "default_partial_results": "remote:primo-lra-euf-filter-5e7c24e/results/qf-uflra-full-lra-euf-filter-default-f7c8bd7-5s/"
-        },
-        "summary": {
-          "candidate_final_scan": {
-            "total": 1284,
-            "solved": 1144,
-            "timeout": 140,
-            "error": 0,
-            "wrong": 3,
-            "par2": 1837.467774,
-            "lra_to_euf_equalities": 10173,
-            "lra_to_euf_mergeable_skipped": 9916,
-            "lra_to_euf_forbidden_forced": 0,
-            "candidate_final_scan_equalities": 10173,
-            "candidate_final_scan_fallbacks": 0
-          },
-          "z3_reused_baseline": {
-            "total": 1284,
-            "solved": 1234,
-            "timeout": 50,
-            "wrong": 0,
-            "par2": 758.708455
-          },
-          "wrong_rows": [
-            {
-              "file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_30_0600_10_18.smt2",
-              "primo_candidate": "sat",
-              "z3": "unsat",
-              "status": "unsat"
-            },
-            {
-              "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_01.smt2",
-              "primo_candidate": "sat",
-              "z3": "unsat",
-              "status": "unsat"
-            },
-            {
-              "file": "tmp/QF_UFLRA/FFT/smtlib.624916.smt2",
-              "primo_candidate": "sat",
-              "z3": "unsat",
-              "status": "unsat"
-            }
-          ],
-          "local_default_repro": {
-            "binary_git": "676b7af",
-            "note": "HEAD f7c8bd7 changes SLURM prep/docs only; local default returned sat on the same checked MathSAT/FFT unsat rows, so the default filter path is also under suspicion."
-          }
-        },
-        "outcome": "Rejected as performance evidence. The broad run found wrong answers after only the candidate-final array completed, and local repro showed the default filter path can also return sat for the same unsat benchmark rows. Stop performance work, preserve these rows as regressions, and fix or disable the unsound LRA-to-EUF mergeable-skipping path before rerunning benchmarks.",
-        "evidence_status": "rejected-wrong-answer"
+      "command": "119534 used an sbatch that tried to pip install git+https://github.com/MikolasJanota/yinyang.git from compute nodes; 119544 used a preinstalled venv but called scripts/yinyang_fuzz.sh without a task-local YinYang log directory. Both failed before yielding correctness evidence. Full benchmark jobs 119535 and 119545 were dependency-cancelled.",
+      "solver": {
+        "name": "Primo",
+        "argv": "default and --qf-uflra-candidate-final-scan, not reached for 119534; 119544 failed in harness before useful coverage"
       },
-      {
-        "id": "2026-08-05-qfuflra-mergeable-forced-repair-local-gate",
-        "started_at": "2026-08-05T21:30:00+02:00",
-        "recorded_at": "2026-08-05T21:55:00+02:00",
-        "kind": "implementation-validation",
-        "scope": "Conservative repair for unsound LRA-to-EUF mergeable equality skipping",
-        "commit": "working-tree-after-f7c8bd7",
-        "branch": "nelson-oppen-online-lazy-ipasir-up",
-        "environment": {
-          "type": "local",
-          "host": "workspace",
-          "slurm_job_id": null
-        },
-        "command": "cmake --build build --target primo_qf_lra_solver_tests primo -j4 && ./build/primo_qf_lra_solver_tests; make lint; make docs; make check; make asan-test; clang-tidy -p build src/smt/check_sat.cpp tests/unit/qf_lra_solver_tests.cpp --quiet; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 20260807 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-mergeable-forced-default-20260807; PATH=\"$PWD/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--qf-uflra-candidate-final-scan --ref z3 --count 1000 --seed 20260808 --timeout 5 --shape mixed --out fuzz-results/qf_uflra-mergeable-forced-candidate-final-20260808; compared benchmarks/seeds/qf_uflra/*.smt2 with ./build/primo --quiet and contrib/local/bin/z3",
-        "solver": {
-          "name": "Primo",
-          "argv": "default and --qf-uflra-candidate-final-scan"
-        },
-        "references": [
-          {
-            "name": "z3",
-            "argv": "contrib/local/bin/z3"
-          }
-        ],
-        "inputs": {
-          "generator": "scripts/qf_uflra_smoke_fuzz.py",
-          "logic": "QF_UFLRA",
-          "shape": "mixed",
-          "count_per_profile": 1000,
-          "seeds": {
-            "default": 20260807,
-            "candidate_final_scan": 20260808
-          },
-          "timeout_seconds": 5,
-          "tracked_seed_corpus": "benchmarks/seeds/qf_uflra"
-        },
-        "artifacts": {
-          "default_fuzz_summary": "fuzz-results/qf_uflra-mergeable-forced-default-20260807/summary.csv",
-          "candidate_final_fuzz_summary": "fuzz-results/qf_uflra-mergeable-forced-candidate-final-20260808/summary.csv",
-          "tracked_seed": "benchmarks/seeds/qf_uflra/real_congruence_forced_unsat.smt2"
-        },
-        "summary": {
-          "focused_qf_uflra_unit_tests": "pass",
-          "make_lint": "pass",
-          "make_docs": "pass",
-          "make_check": "pass, 13/13 tests",
-          "make_asan_test": "pass, 13/13 tests",
-          "clang_tidy_scoped": "pass",
-          "tracked_seed_corpus": {
-            "total": 1,
-            "pass": 1,
-            "wrong": 0
-          },
-          "default_fuzz": {
-            "total": 1000,
-            "pass": 1000,
-            "wrong": 0,
-            "crash": 0,
-            "timeout": 0,
-            "sat": 721,
-            "unsat": 279
-          },
-          "candidate_final_scan_fuzz": {
-            "total": 1000,
-            "pass": 1000,
-            "wrong": 0,
-            "crash": 0,
-            "timeout": 0,
-            "sat": 719,
-            "unsat": 281
-          },
-          "wrong_row_spot_check_after_repair": {
-            "mathsat_random_coupled": "Primo unknown, Z3 unsat",
-            "mathsat_random_decoupled": "Primo unknown, Z3 unsat",
-            "fft": "Primo unsat, Z3 unsat"
-          }
-        },
-        "outcome": "Accepted as local correctness evidence for the conservative repair. EUF-mergeable LRA-implied equalities are no longer accepted as internal model equalities; they are counted by :no.interface.lra-to-euf-equalities-euf-mergeable-forced and routed through guarded SAT-visible equality clauses. This fixes the minimized regression and removes wrong answers on the three rejected full-run rows in local spot checks, but it is expected to lose the attempted performance gain and needs a fresh SLURM benchmark before any performance claim.",
-        "evidence_status": "current-local"
-      }
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3 model_validate=true"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "seed_corpus": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-leaf-and-regression-seeds",
+        "seed_count": 19,
+        "iterations": 200,
+        "timeout_seconds": 8
+      },
+      "artifacts": {
+        "logs": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-yy-119534-*.{out,err}; remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-yy2-119544-*.{out,err}",
+        "bugs": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-yinyang-4631aef* (empty or absent)",
+        "dependent_benchmarks": "119535 and 119545 cancelled by dependency"
+      },
+      "summary": {
+        "job_119534": "failed installing yinyang from compute nodes with network unreachable / github timeout; no bug files",
+        "job_119544": "one task failed immediately with typefuzz 'log folder cannot be created'; no bug files from failed task",
+        "generated_fuzz_job_119533": "clean and recorded separately",
+        "full_benchmark": "not run because mutation gate did not pass"
+      },
+      "outcome": "Rejected as correctness evidence. Root cause was harness misuse: the QF_UFLRA run did not use the existing login-node make contrib-yinyang provisioning and did not isolate YinYang log directories per task. scripts/yinyang_fuzz.sh and checked-in SLURM templates were updated after this triage.",
+      "evidence_status": "rejected-infrastructure"
+    },
+    {
+      "id": "2026-08-06-qfuflra-yinyang-rerun-submitted-119547",
+      "started_at": "2026-08-06T07:48:00+02:00",
+      "recorded_at": "2026-08-06T07:55:00+02:00",
+      "kind": "fuzz",
+      "scope": "Replacement QF_UFLRA YinYang/typefuzz real-seed mutation gate currently running after preinstalling the pinned fork",
+      "commit": "4631aef",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-qfuflra-overnight-4631aef",
+        "slurm_job_id": "119547",
+        "dependent_job_id": "119548"
+      },
+      "command": "Preinstalled .venv-yinyang on the login node from MikolasJanota/yinyang commit 04c8618, then submitted qfuflra-overnight-yinyang-direct-4631aef.sbatch. Task 0 runs build-slurm-rel/primo --quiet; task 1 runs build-slurm-rel/primo --quiet --qf-uflra-candidate-final-scan; reference contrib/local/bin/z3 model_validate=true. Dependent full 60s QF_UFLRA benchmark job 119548 waits on afterok:119547.",
+      "solver": {
+        "name": "Primo",
+        "argv": "default and --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3 model_validate=true"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "seed_corpus": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-leaf-and-regression-seeds",
+        "seed_count": 19,
+        "iterations": 200,
+        "timeout_seconds": 8,
+        "wall_seconds": 27000
+      },
+      "artifacts": {
+        "logs": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-yy3-119547-*.{out,err}",
+        "bugs": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-yinyang-4631aef-direct/{default,candidate-final}/bugs",
+        "dependent_benchmark": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-full-60s-4631aef-direct, job 119548"
+      },
+      "summary": {
+        "status_at_recording": "119547_0 and 119547_1 running; 119548 pending on dependency",
+        "observed_progress": "both tasks started typefuzz over 19 seeds; no final pass/fail result yet"
+      },
+      "outcome": "Running, not yet accepted evidence. Do not use the dependent full benchmark as performance evidence unless this mutation gate exits cleanly with zero bug triggers.",
+      "evidence_status": "current-slurm-running"
+    }
   ]
 }

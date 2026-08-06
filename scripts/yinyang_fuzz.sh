@@ -11,6 +11,7 @@ ITERATIONS=50
 SOLVER_TIMEOUT=8
 BUGS="yinyang_bugs"
 SCRATCH="yinyang_scratch"
+LOGS=""
 FILE_SIZE_LIMIT=20000
 CONFIG=""
 KEEP_LOGIC=0
@@ -34,6 +35,7 @@ Options:
   --solver-timeout N       per-solver timeout in seconds
   --bugs DIR               bug output directory
   --scratch DIR            scratch directory
+  --logs DIR               rolling log directory; useful for SLURM array tasks
   --file-size-limit N      max seed size in bytes
   --config PATH            operator/signature config restricting mutations
   --keep-logic             keep the seed's (set-logic ...) in mutants
@@ -69,6 +71,7 @@ while (($#)); do
         --solver-timeout) SOLVER_TIMEOUT="$2"; shift 2 ;;
         --bugs) BUGS="$2"; shift 2 ;;
         --scratch) SCRATCH="$2"; shift 2 ;;
+        --logs) LOGS="$2"; shift 2 ;;
         --file-size-limit) FILE_SIZE_LIMIT="$2"; shift 2 ;;
         --config) CONFIG="$2"; shift 2 ;;
         --keep-logic) KEEP_LOGIC=1; shift ;;
@@ -99,7 +102,10 @@ if [[ ! -e "$SEEDS" ]]; then
     exit 1
 fi
 
-mkdir -p "$BUGS" "$SCRATCH"
+mkdir -p "$(dirname "$BUGS")" "$(dirname "$SCRATCH")"
+if [[ -n $LOGS ]]; then
+    mkdir -p "$(dirname "$LOGS")"
+fi
 
 # typefuzz's -L silently drops any seed larger than the limit; it reports the
 # loss only as "N valid, M invalid" in its summary, which reads like a
@@ -126,6 +132,9 @@ cmd=(
     -L "$FILE_SIZE_LIMIT"
 )
 
+if [[ -n $LOGS ]]; then
+    cmd+=(-l "$LOGS")
+fi
 if ((DIAGNOSE)); then
     cmd+=(-d)
 fi

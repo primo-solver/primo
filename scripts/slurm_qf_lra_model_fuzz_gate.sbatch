@@ -57,6 +57,14 @@ for required in fuzzsmt z3; do
     exit 2
   fi
 done
+if (( OPFUZZ_TASKS > 0 )) && ! command -v opfuzz >/dev/null 2>&1; then
+  echo "required tool 'opfuzz' not found on PATH; run make contrib-yinyang before sbatch" >&2
+  exit 2
+fi
+if (( YINYANG_SHARDS > 0 )) && ! command -v typefuzz >/dev/null 2>&1; then
+  echo "required tool 'typefuzz' not found on PATH; run make contrib-yinyang before sbatch" >&2
+  exit 2
+fi
 
 opfuzz_start=$FUZZSMT_SHARDS
 yinyang_start=$((opfuzz_start + OPFUZZ_TASKS))
@@ -107,7 +115,8 @@ elif (( TASK_ID < yinyang_start )); then
     --iterations "$OPFUZZ_ITERATIONS" \
     --solver-timeout "$OPFUZZ_TIMEOUT" \
     --bugs "$out/bugs" \
-    --scratch "$out/scratch"
+    --scratch "$out/scratch" \
+    --logs "$out/logs"
 else
   out="$OUT_ROOT/yinyang/task-$TASK_ID"
   mkdir -p "$out"
@@ -120,5 +129,6 @@ else
     --iterations "$YINYANG_ITERATIONS" \
     --solver-timeout "$YINYANG_TIMEOUT" \
     --bugs "$out/bugs" \
-    --scratch "$out/scratch"
+    --scratch "$out/scratch" \
+    --logs "$out/logs"
 fi
