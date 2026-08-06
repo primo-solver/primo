@@ -276,6 +276,21 @@ int main(int argc, char** argv) {
                "Disable the default-on leaving-side half of --lra-pivoting-rule sparse "
                "(prefer repairing a violated variable whose row is short, using "
                "violation magnitude only as a tie-break), for ablation [default: on]");
+  app.add_option("--lra-sparse-pricing-candidates",
+                 solver_options.lra_tuning.sparse_pricing_candidates,
+                 "How many eligible entering candidates --lra-pivoting-rule sparse scores "
+                 "before taking the best seen so far (default 16; 0 means score every "
+                 "eligible candidate). 1 is the cheapest possible pricing. Never cuts short "
+                 "the search for whether an eligible candidate exists, so any value is sound")
+      ->check(CLI::Range(0, 1000000));
+  app.add_option("--lra-bland-fallback-factor", solver_options.lra_tuning.bland_fallback_factor,
+                 "Per-variable coefficient of check()'s Bland's-rule fallback point, which is "
+                 "factor * variables + offset pivots within one check (default 4). Smaller "
+                 "switches to Bland's rule sooner: slower but anti-cycling-proven")
+      ->check(CLI::Range(0, 1000000));
+  app.add_option("--lra-bland-fallback-offset", solver_options.lra_tuning.bland_fallback_offset,
+                 "Constant term of the Bland's-rule fallback point (default 64)")
+      ->check(CLI::Range(0, 1000000000));
   app.add_flag("--lra-fixed-elimination", solver_options.lra_fixed_elimination,
                "Pivot a basic LRA variable out of the basis as soon as its bounds coincide "
                "(heuristics item H7). Off by default: it nets to nothing on the scrambled "

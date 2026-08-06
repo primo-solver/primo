@@ -397,6 +397,14 @@ theory::arithmetic::LraTableau::PivotingRule lra_pivoting_rule_from_options(LraP
   return theory::arithmetic::LraTableau::PivotingRule::Bland;
 }
 
+// Same wiring-point translation as above, for the numeric Check/Pivot knobs
+// (LraTuning mirrors LraTableau::Tuning field for field).
+theory::arithmetic::LraTableau::Tuning lra_tuning_from_options(const LraTuning& tuning) {
+  return theory::arithmetic::LraTableau::Tuning{tuning.sparse_pricing_candidates,
+                                                tuning.bland_fallback_factor,
+                                                tuning.bland_fallback_offset};
+}
+
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
 constexpr std::size_t kAutoBasicMultiTermLimit = 20000;
 constexpr std::size_t kAutoBasicSingleTermLimit = 15000;
@@ -4551,7 +4559,8 @@ struct PreparedLraTheory {
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule, bool sparse_leaving,
                     bool fixed_elimination, bool collect_model_variables,
-                    bool least_violated_leaving = false);
+                    bool least_violated_leaving = false,
+                    theory::arithmetic::LraTableau::Tuning tuning = {});
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -4587,10 +4596,12 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                      theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
                                      bool sparse_leaving, bool fixed_elimination,
-                                     bool collect_model_variables, bool least_violated_leaving)
+                                     bool collect_model_variables, bool least_violated_leaving,
+                                     theory::arithmetic::LraTableau::Tuning tuning)
     : base_tableau(pivoting_rule) {
   base_tableau.set_sparse_leaving(sparse_leaving);
   base_tableau.set_least_violated_leaving(least_violated_leaving);
+  base_tableau.set_tuning(tuning);
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
   auto get_var = [&](core::TermId term_id) {
     const auto found = var_ids.find(term_id);
@@ -5207,7 +5218,8 @@ bool lra_assignment_conflicts_with_extra_atom(
   augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, extra_atom, false});
   const PreparedLraTheory augmented_lra_theory(
       terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, false);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, false,
+      /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments)
       .has_value();
 }
@@ -5277,7 +5289,8 @@ bool lra_assignment_conflicts_with_extra_atoms(
   }
   const PreparedLraTheory augmented_lra_theory(
       terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, false);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, false,
+      /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments)
       .has_value();
 }
@@ -5385,7 +5398,8 @@ std::optional<std::vector<core::TermId>> greedy_shared_real_model_separation_ato
     }
     const PreparedLraTheory prepared(
         terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-        options.lra_sparse_leaving, options.lra_fixed_elimination, true);
+        options.lra_sparse_leaving, options.lra_fixed_elimination, true,
+        /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
     theory::arithmetic::LraTableau tableau = prepared.base_tableau;
     bool consistent = true;
     for (std::size_t i = 0; i < augmented_lra_assignments.size(); ++i) {
@@ -5528,7 +5542,9 @@ std::optional<LraModelState> build_lra_model_state(
 
   PreparedLraTheory prepared(terms, augmented_lra_atoms,
                              lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-                             options.lra_sparse_leaving, options.lra_fixed_elimination, true);
+                             options.lra_sparse_leaving, options.lra_fixed_elimination, true,
+                             /*least_violated_leaving=*/false,
+                             lra_tuning_from_options(options.lra_tuning));
   theory::arithmetic::LraTableau tableau = prepared.base_tableau;
   for (std::size_t i = 0; i < augmented_lra_assignments.size(); ++i) {
     const AssignedTheoryAtom& atom = augmented_lra_assignments[i];
@@ -7413,7 +7429,7 @@ CheckSatOutcome solve_qf_lra_impl(
   const PreparedLraTheory prepared_theory(
       terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
       options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
-      options.lra_least_violated_leaving);
+      options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
   publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR
@@ -7992,7 +8008,7 @@ CheckSatOutcome solve_qf_uf_lra(
   const PreparedLraTheory base_prepared_lra_theory(
       terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
       options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
-      options.lra_least_violated_leaving);
+      options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
   if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online &&
       !options.nelson_oppen_model_equality_branching && !lra_atoms.empty()) {
     const std::vector<TermPairKey> paired_bound_pairs =
@@ -8189,7 +8205,7 @@ CheckSatOutcome solve_qf_uf_lra(
         augmented_prepared_lra_theory.emplace(
             terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
             options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
-      options.lra_least_violated_leaving);
+            options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
         prepared_lra_theory_for_check = &augmented_prepared_lra_theory.value();
         statistics.increment(":no.interface.lra-prepared-augmented");
       }

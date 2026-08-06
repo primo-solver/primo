@@ -863,7 +863,7 @@ LraVarId LraTableau::select_entering_variable(LraVarId violated, bool too_low, b
 // eligible candidates, the one occurring in the fewest rows, because pivot()
 // rewrites exactly those rows.
 //
-// The scan is bounded (kSparsePricingCandidateLimit) but only in how many
+// The scan is bounded (Tuning::sparse_pricing_candidates) but only in how many
 // *eligible* candidates it scores -- never in how much of the row it reads
 // before concluding there are none. Returning "none" is what check() turns
 // into a conflict, so an early exit before finding one would be unsound, not
@@ -896,7 +896,8 @@ LraVarId LraTableau::select_sparse_entering_variable(const Row& row, bool too_lo
       best_occurrences = occurrences;
       best_has_unit_coeff = has_unit_coeff;
     }
-    if (++scored >= kSparsePricingCandidateLimit) {
+    ++scored;
+    if (tuning_.sparse_pricing_candidates != 0 && scored >= tuning_.sparse_pricing_candidates) {
       break;
     }
   }
@@ -912,10 +913,13 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
   // class comment): once more than this many pivots have happened within
   // this call, switch to Bland's-rule selection (both loops below) for
   // the remainder. A heuristic threshold, not a formally derived bound --
-  // generous relative to the tableau size, not tuned. Reset every call
-  // (cycling risk is per Check/Pivot episode, not global across the
-  // tableau's lifetime).
-  const std::size_t bland_fallback_threshold = 4 * vars_.size() + 64;
+  // generous relative to the tableau size. Reset every call (cycling risk
+  // is per Check/Pivot episode, not global across the tableau's lifetime).
+  // Both coefficients are tunable (Tuning); termination needs the fallback
+  // to happen after finitely many pivots, not after this particular count,
+  // so any value is sound.
+  const std::size_t bland_fallback_threshold =
+      tuning_.bland_fallback_factor * vars_.size() + tuning_.bland_fallback_offset;
   std::size_t pivot_count = 0;
   bool fallback_counted = false;
 
@@ -978,10 +982,19 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
     // changes needed to that loop itself. f_var_ is never violated (no
     // bounds), so its ordinary violated-variable scan stays correct too.
     ++bland_fallback_count_;
+    // Already counted for this call; the loop below must not count it again.
+    fallback_counted = true;
   }
 
   while (true) {
-    if (rule_ == PivotingRule::Dantzig && !fallback_counted &&
+    // Counted for every rule that can fall back, not just Dantzig. It read
+    // `rule_ == PivotingRule::Dantzig` until 2026-08-06, which meant the
+    // counter stayed at 0 under Sparse -- the solver's *default* rule -- even
+    // on calls that did switch to Bland selection. That made
+    // :lra.bland-fallbacks useless for the one question it exists to answer,
+    // namely whether the threshold ever binds. Bland itself is excluded
+    // because it never "falls back": it is already the rule.
+    if (rule_ != PivotingRule::Bland && !fallback_counted &&
         pivot_count > bland_fallback_threshold) {
       ++bland_fallback_count_;
       fallback_counted = true;

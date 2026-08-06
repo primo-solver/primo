@@ -159,6 +159,34 @@ class LraTableau {
   // sets the solver's.
   enum class PivotingRule { Bland, Dantzig, Soi, Sparse };
 
+  // Numeric pricing/anti-cycling knobs, grouped so they can be set in one
+  // call and searched as a block -- see docs/tuning-parameters.md. Every
+  // default here reproduces the constant the value was hardcoded to before
+  // it became a parameter, so an untuned run behaves exactly as before.
+  //
+  // None of these can change an answer, only how long it takes to reach
+  // one: the pricing limit restricts which of several equally-repairing
+  // candidates is chosen, and the fallback threshold only moves *when*
+  // Bland's rule takes over, which termination needs to happen after
+  // finitely many pivots but not after any particular count. Every value
+  // in range is therefore sound, including zero.
+  struct Tuning {
+    // How many *eligible* entering candidates PivotingRule::Sparse scores
+    // before settling for the best seen so far; 0 means unbounded (score
+    // every eligible candidate in the row).
+    std::size_t sparse_pricing_candidates = 16;
+    // check()'s per-call Bland's-rule fallback point, as
+    // `factor * variables + offset` pivots.
+    std::size_t bland_fallback_factor = 4;
+    std::size_t bland_fallback_offset = 64;
+  };
+
+  // Intended to be set before solving starts, like set_sparse_leaving():
+  // not trailed, so changing it mid-search would alter selection with no
+  // record of having done so.
+  void set_tuning(const Tuning& tuning) { tuning_ = tuning; }
+  const Tuning& tuning() const { return tuning_; }
+
   explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {
     if (rule_ == PivotingRule::Soi) {
       // The objective row (Section V): a real extra variable/row so
@@ -615,19 +643,22 @@ class LraTableau {
   std::vector<LraVarId> quickxplain(const std::vector<LraVarId>& background,
                                     const std::vector<LraVarId>& candidates) const;
 
-  // PivotingRule::Sparse: how many *eligible* entering candidates to score
-  // before settling for the best seen so far. Rows reach several hundred
-  // terms on real instances (691 on latendresse/ecoliFBAyicesTest-500), and
-  // scoring all of them would spend on selection what the rule is trying to
-  // save on the pivot. Not precisely derived; small enough to bound the scan,
-  // large enough that the sparsest candidate is usually among those seen.
+  // PivotingRule::Sparse's bounded scan and check()'s Bland fallback point.
+  // Both were hardcoded constants until 2026-08-06; the rationale for the
+  // defaults, unchanged, is on Tuning above.
   //
-  // This caps only how many eligible candidates are *scored*. It must never
-  // cut the scan short of establishing that at least one exists: "no eligible
-  // entering candidate" is exactly what check() reports as a conflict, so
-  // giving up early without having found one would manufacture an unsound
-  // conflict rather than merely a worse pivot. See select_entering_variable.
-  static constexpr std::size_t kSparsePricingCandidateLimit = 16;
+  // Rows reach several hundred terms on real instances (691 on
+  // latendresse/ecoliFBAyicesTest-500), and scoring all of them would spend
+  // on selection what the rule is trying to save on the pivot -- which is
+  // why the scan is bounded at all.
+  //
+  // The pricing limit caps only how many eligible candidates are *scored*.
+  // It must never cut the scan short of establishing that at least one
+  // exists: "no eligible entering candidate" is exactly what check() reports
+  // as a conflict, so giving up early without having found one would
+  // manufacture an unsound conflict rather than merely a worse pivot. See
+  // select_entering_variable.
+  Tuning tuning_;
 
   PivotingRule rule_;
   bool sparse_leaving_ = false;

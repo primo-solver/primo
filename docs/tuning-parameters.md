@@ -61,55 +61,84 @@ management is irrelevant. Caveat to check first: CaDiCaL disables several
 inprocessing options while an external propagator is attached, so confirm an
 option actually takes effect before spending a search dimension on it.
 
-## Tier 1 -- hardcoded constants to expose (small, local diffs)
+(implemented)=
+## Implemented 2026-08-06: the three Check/Pivot knobs
 
-Each of these is a `constexpr` or a literal in an expression. Exposing means
-routing it through `SolverOptions` and adding one `add_option` -- no new
-mechanism, no new invariant.
+`LraTableau::Tuning` now carries what were three hardcoded constants, wired
+through `CheckSatOptions::lra_tuning` and exposed on the CLI. Defaults are the
+former constants, so an untuned run is unchanged -- verified on
+`constraint-199552`, which still reports exactly the recorded 7,679 pivots and
+128,402,240 pivot term ops.
+
+A unit test (`tuning_knobs_never_change_a_verdict`) pins the property the
+whole campaign rests on: these are cost levers, and no value of them may
+change a verdict.
 
 (sparse-pricing)=
-### 1. Sparse pricing candidate limit -- the highest-leverage one
-
-`src/theory/arithmetic/lra_tableau.hpp:630`
-
-```cpp
-static constexpr std::size_t kSparsePricingCandidateLimit = 16;
-```
+### `--lra-sparse-pricing-candidates` (default 16, 0 = unbounded)
 
 How many *eligible* entering candidates `select_sparse_entering_variable`
-scores before taking the best so far. Suggested
-`--lra-sparse-pricing-candidates`, range 1..1024 (plus an "unbounded" value):
-1 means "first eligible", i.e. the cheapest possible pricing; large means a
-full Markowitz-style scan of the row.
-
-**It is known to bind, hard, on the family we care about.** Rows on the
-tropical family start at 2.44 nonzeros and run to ~102 terms during search
-([](tropical-matrix-structure.md)), so 16 caps the scan at roughly a sixth of
-the row. Cheap-vs-thorough pricing is also the classic portfolio axis: the two
-ends genuinely solve different instances.
+scores before taking the best so far. 1 is the cheapest possible pricing;
+0 scores every eligible candidate in the row.
 
 Safety: the limit only ever restricts *scoring*, never the search for whether
-an eligible candidate exists -- the loop breaks only after the counter has been
-incremented. Any positive value is sound.
+an eligible candidate exists -- "no eligible candidate" is what `check()`
+reports as a conflict, so an early exit before finding one would manufacture
+an unsound conflict. Any value is sound.
 
-### 2. Bland fallback threshold -- two parameters in one expression
+**Measured range on `constraint-199552`** (local, diagnostic, 60s budget,
+`--guarded-real-equality-lowering`):
 
-`src/theory/arithmetic/lra_tableau.cpp:918`
+| candidates | result | pivots | pivot term ops | time |
+|---:|---|---:|---:|---:|
+| 1 | timeout (300s budget) | 180,958 | 16,534,507,811 | >300s |
+| 4 | timeout | 61,588 | 3,321,322,628 | >60s |
+| 8 | sat | 92,386 | 1,873,731,376 | 38.2s |
+| **16 (default)** | **sat** | **7,679** | **128,402,240** | **2.8s** |
+| 32 | timeout | 179,984 | 2,872,889,041 | >60s |
+| 64 | timeout | 163,719 | 2,862,388,347 | >60s |
+| 0 (unbounded) | timeout | 184,633 | 2,926,390,362 | >60s |
 
-```cpp
-const std::size_t bland_fallback_threshold = 4 * vars_.size() + 64;
-```
+Two things follow, and the second matters more than the first. The knob has a
+**>100x dynamic range in pivot term ops** on a single file, so it is a real
+dimension rather than a rounding-error one. But the profile is a **spike, not a
+plateau** -- 16 wins and both neighbours lose badly, non-monotonically. Since
+this value was never tuned, that is not evidence that 16 is right; it is
+evidence that the surface is chaotic, which is the same "search perturbation
+changes everything" effect already noted for the leaving rule. A single global
+default is the wrong shape of answer here; per-family or portfolio selection
+is.
 
-The comment is explicit: *"A heuristic threshold, not a formally derived
-bound -- generous relative to the tableau size, not tuned."* Two knobs,
-`--lra-bland-fallback-factor` (4) and `--lra-bland-fallback-offset` (64).
+### `--lra-bland-fallback-factor` / `--lra-bland-fallback-offset` (4 / 64)
 
-A small factor means switching to Bland's rule early: anti-cycling-safe,
-slower, a robustness arm. A large factor keeps the good rule longer. Both
-directions are sound for any positive value -- termination only needs the
-fallback to happen after *finitely* many pivots, not after this particular
-count. Worth checking `:lra.bland-fallbacks` first: if it reads 0 across the
-corpus, the parameter is inert and should not consume a dimension.
+`check()`'s per-call fallback point, `factor * variables + offset` pivots.
+The comment on it was explicit that it was never tuned. Small factor means
+switching to Bland's rule early: anti-cycling-safe, slower, a robustness arm.
+
+Termination only needs the fallback to happen after *finitely* many pivots,
+not after this particular count, so **every value including 0 is sound** --
+0/0 falls back to Bland selection from the second pivot of each call.
+
+**A counter bug found while checking whether this knob is inert.**
+`:lra.bland-fallbacks` incremented only under `PivotingRule::Dantzig`, so
+under `Sparse` -- the solver's *default* -- it read 0 whether or not the
+fallback fired. That made the counter useless for the one question it is
+consulted for. Fixed the same day, with a regression test
+(`bland_fallback_is_counted_under_the_sparse_rule`). With the fix,
+`constraint-199552` reports 0 fallbacks at the defaults and 622 when forced
+with `0 0` -- so the default zero is now a *meaningful* zero, and on this file
+the threshold genuinely never binds.
+
+That is worth knowing before spending a search dimension: **check
+`:lra.bland-fallbacks` across the corpus first.** If it is zero everywhere, the
+knob only does anything in its aggressive direction, which is a robustness arm
+rather than a tuning dimension.
+
+## Tier 1 -- hardcoded constants still to expose (small, local diffs)
+
+Each of these is a `constexpr` or a literal in an expression. Exposing means
+routing it through `CheckSatOptions` and adding one `add_option` -- no new
+mechanism, no new invariant.
 
 ### 3. Gaussian-elimination size caps
 
@@ -248,9 +277,17 @@ off by default and its cost has not been shown to bind.
 
 ## Suggested order
 
-1. `qflra_parameters.txt` over Tier 0 only -- no code change, and it
-   calibrates how much a search can move QF_LRA at all before any diff.
-2. [](#sparse-pricing) and [](#lra-check-interval) -- the two with measured
-   evidence that the current fixed value binds.
+1. `qflra_parameters.txt` over Tier 0 plus the three knobs in
+   [](#implemented) -- no further code change, and it calibrates how much a
+   search can move QF_LRA at all.
+2. [](#lra-check-interval) -- the remaining item with measured evidence that
+   the current fixed behaviour binds.
 3. The remaining Tier 1 constants, each gated on its counter being non-zero.
 4. Tier 2 items 8-11.
+
+A warning the pricing sweep has already earned: the response surface is
+non-monotone and spiky, so a search that reports a single best value has
+probably fitted noise on whichever instances dominated its training set.
+Validate on a held-out set, and prefer reporting a *set* of complementary
+configurations over a new default -- which is the framing
+[](open-leads.md) already argues for.

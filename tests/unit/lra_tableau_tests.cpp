@@ -638,6 +638,77 @@ void least_violated_leaving_selects_differently_from_most_violated() {
   assert(most != least);
 }
 
+// The numeric Tuning knobs are cost levers only: they choose among candidates
+// that all repair the violation equally, and they move when Bland's rule takes
+// over. Neither may change a verdict. This is the property a tuning campaign
+// relies on -- without it, searching the space would be a correctness risk
+// rather than a performance one.
+void tuning_knobs_never_change_a_verdict() {
+  const auto run = [](LraTableau::Tuning tuning) {
+    LraTableau tableau(LraTableau::PivotingRule::Sparse);
+    tableau.set_tuning(tuning);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId z = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    tableau.add_row(s1, {{x, Rational(2)}, {y, Rational(1)}, {z, Rational(1)}});
+    tableau.add_row(s2, {{x, Rational(1)}, {y, Rational(3)}, {z, Rational(-1)}});
+    assert(!tableau.assert_lower(x, rat(0), Lit{1}).has_value());
+    assert(!tableau.assert_lower(y, rat(0), Lit{2}).has_value());
+    assert(!tableau.assert_lower(z, rat(0), Lit{3}).has_value());
+    assert(!tableau.assert_upper(s1, rat(4), Lit{4}).has_value());
+    assert(!tableau.assert_upper(s2, rat(9), Lit{5}).has_value());
+    assert(!tableau.assert_lower(y, rat(20), Lit{6}).has_value());
+    return tableau.check().has_value();
+  };
+  const bool expected = run(LraTableau::Tuning{});
+  // 1 is the cheapest pricing (first eligible candidate), 0 the most thorough
+  // (score every one); both ends and a mid value must agree.
+  assert(run(LraTableau::Tuning{1, 4, 64}) == expected);
+  assert(run(LraTableau::Tuning{2, 4, 64}) == expected);
+  assert(run(LraTableau::Tuning{0, 4, 64}) == expected);
+  // A zero threshold falls back to Bland selection almost immediately, which
+  // is the slowest but most conservative end of that knob.
+  assert(run(LraTableau::Tuning{16, 0, 0}) == expected);
+  assert(run(LraTableau::Tuning{0, 0, 0}) == expected);
+}
+
+// Pins the fallback counter for the *default* rule. Until 2026-08-06 the
+// increment was guarded by `rule_ == Dantzig`, so under Sparse the counter
+// stayed at 0 even on calls that genuinely switched to Bland selection --
+// which made :lra.bland-fallbacks unable to answer the only question it is
+// consulted for, namely whether the threshold ever binds.
+void bland_fallback_is_counted_under_the_sparse_rule() {
+  const auto fallbacks = [](LraTableau::Tuning tuning) {
+    LraTableau tableau(LraTableau::PivotingRule::Sparse);
+    tableau.set_tuning(tuning);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId z = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    const LraVarId s3 = tableau.add_variable();
+    // A cyclic system: s1+s2+s3 is identically 0, so requiring each to be at
+    // least 1 is infeasible -- and discovering that takes more than one pivot
+    // round, which is what the threshold is compared against.
+    tableau.add_row(s1, {{x, Rational(1)}, {y, Rational(-1)}});
+    tableau.add_row(s2, {{y, Rational(1)}, {z, Rational(-1)}});
+    tableau.add_row(s3, {{z, Rational(1)}, {x, Rational(-1)}});
+    assert(!tableau.assert_lower(s1, rat(1), Lit{1}).has_value());
+    assert(!tableau.assert_lower(s2, rat(1), Lit{2}).has_value());
+    assert(!tableau.assert_lower(s3, rat(1), Lit{3}).has_value());
+    assert(tableau.check().has_value());
+    assert(tableau.pivot_count() > 1);
+    return tableau.bland_fallback_count();
+  };
+  // A zero threshold forces the fallback on any call that pivots at all.
+  assert(fallbacks(LraTableau::Tuning{16, 0, 0}) > 0);
+  // The generous default must not trip it on a problem this small, so the
+  // assertion above is testing the fallback and not merely the counter.
+  assert(fallbacks(LraTableau::Tuning{}) == 0);
+}
+
 void sparse_matches_bland_on_multi_pivot_scenarios() {
   // Same shape as soi_matches_bland_on_multi_pivot_scenarios: the rule is a
   // pure cost lever, so it must agree with Bland on every verdict.
@@ -1299,6 +1370,8 @@ int main() {
   sparse_picks_the_column_occurring_in_fewest_rows();
   sparse_prefers_a_unit_coefficient_when_occurrences_tie();
   sparse_bounded_pricing_still_finds_the_only_eligible_candidate();
+  tuning_knobs_never_change_a_verdict();
+  bland_fallback_is_counted_under_the_sparse_rule();
   sparse_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();

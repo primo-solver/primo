@@ -94,6 +94,22 @@ enum class LraPivotingRule {
 // at 60s by default -- solve in about 58s. See docs/qf-lra-heuristics.md
 // section 6.5 (direction D1); the sweep that settles the defaults needs to
 // vary them per run, not per build.
+// Mirrors theory::arithmetic::LraTableau::Tuning, translated at the same
+// wiring point as LraPivotingRule and for the same reason -- this header
+// stays free of theory-layer includes. That header documents the defaults
+// and the argument that every value in range is sound (these knobs change
+// how long an answer takes, never which answer it is).
+//
+// Hardcoded constants until 2026-08-06. Exposed so the parameter-tuning
+// campaign can vary them per run rather than per build; the defaults are
+// exactly the constants they replaced, so an untuned run is unchanged.
+// See docs/tuning-parameters.md.
+struct LraTuning {
+  std::size_t sparse_pricing_candidates = 16;
+  std::size_t bland_fallback_factor = 4;
+  std::size_t bland_fallback_offset = 64;
+};
+
 struct LraRowPropagationLimits {
   std::size_t max_row_size = 64;
   std::size_t max_fanout = 64;
@@ -202,6 +218,8 @@ struct CheckSatOptions {
   // the latendresse result (0/15 -> 6/15, matching z3).
   bool lra_sparse_leaving = true;
   bool lra_least_violated_leaving = false;
+  // Numeric Check/Pivot knobs -- see LraTuning.
+  LraTuning lra_tuning;
   // Heuristics-note item H7 -- see LraTableau::set_fixed_elimination.
   // Opt-in (--lra-fixed-elimination): on the 595-file scrambled competition
   // set it solves 374 against 373 with it off, a median 0.94x speedup over
