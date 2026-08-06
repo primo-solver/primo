@@ -19071,6 +19071,33 @@
         "cross_check": "rand_80_340_1159656267_18.lp and 0051-labyrinth-12-0 each appear as large swings both here and in the lead 3 leaving-rule comparison, on opposite sides -- instances that swing hard swing hard under any perturbation."
       },
       "follow_up": "Design decision recorded in docs/open-leads.md: KEEP the dedicated LRA-only solver without Nelson-Oppen, since on a single theory the combination layer has nothing to do. What is recorded instead is the hazard -- dispatch is a nondeterminism trigger. Adding one (declare-fun p () Bool) to a pure QF_LRA problem changes which solver runs and can change runtime by an order of magnitude either way, so benchmark results are not comparable across an edit that adds or removes a Boolean constant, performance reports should name :solver.qf-lra vs :solver.qf-uflra, and mutation-fuzzer timing data is not meaningful (answers still are)."
+    },
+    {
+      "id": "2026-08-06-qf-lra-pivot-gprof-profile",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "profiling",
+      "scope": "Where LRA time actually goes, to settle lead 7 (row representation: sorted arrays of pairs versus hash tables, per Griggio thesis 2.5.2) with a profile rather than a transplanted benchmark number.",
+      "commit": "2f17f35",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build-gprof/primo, RelWithDebInfo with -pg -O2 -g",
+        "notes": "perf is unavailable in this sandbox (kernel.perf_event_paranoid = 4, 'Failure to open any events'); callgrind was started and abandoned once gprof answered the question."
+      },
+      "command": {
+        "build": "cmake -S . -B build-gprof -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS='-pg -O2 -g' -DCMAKE_EXE_LINKER_FLAGS=-pg",
+        "run": "build-gprof/primo --quiet --guarded-real-equality-lowering tropical-matrix/constraint-199552.smt2; gprof over gmon.out",
+        "instance": "tropical-matrix/constraint-199552.smt2: 7,679 pivots, 1,260,035 pivot row updates, 128.4M pivot term ops"
+      },
+      "result": {
+        "flat_profile": "LraTableau::pivot 74.08% self (2.83s of 3.82s, 7,679 calls, 0.37ms/call); Rational::operator* 12.04% (48.1M calls); Rational::from_int128_reduced 3.93% (83.0M calls); Rational::operator+ 2.88% (34.8M calls); LraTableau::update 2.09%; Rational copy constructor 1.05% (53.6M calls); CaDiCaL internals about 2% in total.",
+        "aggregate": "pivot plus rational arithmetic is roughly 94% of runtime: 74% in pivot's own merge loop and 20% in rational operations.",
+        "answers_lead_7": "There is NO hash or map cost in the LRA hot path at all. The only hashtable entries in the profile are TermPairKey lookups (Nelson-Oppen interface equalities) at 0.00%. Primo's Row is already std::vector<std::pair<LraVarId, Rational>> kept ordered by var id -- the sorted-array-of-pairs design the thesis endorses -- with lower_bound for coefficient lookup and a linear two-way merge for combination (item H8). The thesis's 1.20x for choosing wrongly is therefore already banked, and the class comment records that rows_ WAS std::unordered_map and was migrated away for exactly this reason.",
+        "what_the_profile_points_at_instead": "Term-operation volume and rational cost, not the container. 83.0M from_int128_reduced calls against 48.1M multiplies means roughly 1.7 normalisations per multiply, and 53.6M Rational copies is a large number for 1.26M row updates. Reducing fill-in (fewer terms) or making the small-rational path cheaper are the levers this profile supports."
+      },
+      "follow_up": "Lead 7 closed as already-implemented, on profile evidence rather than on a code read alone. Also fixed a stale comment in select_entering_variable that claimed 'Row isn't sorted by var id', contradicting the Row invariant that pivot()'s merge depends on."
     }
   ]
 }

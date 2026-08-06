@@ -820,9 +820,11 @@ LraVarId LraTableau::select_entering_variable(LraVarId violated, bool too_low, b
   }
 
   // Dantzig-style: pick the largest |coefficient| among eligible entering
-  // candidates, tie-breaking by smallest index -- Row isn't sorted by var id,
-  // so the index comparison has to be explicit (can't rely on scan order the
-  // way the Bland branch above does).
+  // candidates, tie-breaking by smallest index. The tie-break is an explicit
+  // comparison because the scan is ordered by |coefficient|, not by var id --
+  // the Bland branch above compares explicitly for the same reason. (Rows
+  // *are* ordered by var id; that is the Row invariant pivot() relies on for
+  // its two-way merge. An earlier version of this comment claimed otherwise.)
   LraVarId entering = vars_.size();
   util::Rational best_abs_coeff(0);
   for (const auto& [var, coeff] : row) {

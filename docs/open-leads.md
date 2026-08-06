@@ -39,7 +39,7 @@ notes it points to.
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
-| [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | ~1.20x median in its source | small | open |
+| [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | already the endorsed design; 0.00% map cost in the profile | done | **closed: already implemented** |
 | [8](#lead-dl6) | DL6: decide precision statically before search | unknown | small | blocked on a DL solver |
 | [9](#lead-monotone) | Monotone (one-sided) variable elimination | neutral on the promotion bar | done | **implemented, opt-in; did not clear its bar** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
@@ -374,6 +374,40 @@ Unusual in reporting the losing alternative, which is what makes it useful.
 
 **Falsifier.** If Primo already stores rows as contiguous sorted pairs, this
 closes immediately as already-done.
+
+### Outcome: closed, already implemented
+
+The falsifier fired. `Row` is `std::vector<std::pair<LraVarId, Rational>>`
+kept ordered by var id -- the Row invariant `pivot()`'s two-way merge depends
+on -- with `lower_bound` for coefficient lookup. That is the thesis's design
+including its log-time-lookup trade, and the class comment records that
+`rows_` *was* `std::unordered_map` and was migrated away for exactly the
+reason the thesis gives. Item H8 went further than the thesis describes,
+replacing the post-concatenation sort with a linear merge.
+
+A gprof profile confirms it rather than resting on the code read
+(`perf` is blocked in this sandbox; `kernel.perf_event_paranoid` is 4):
+
+| symbol | self time |
+|---|---:|
+| `LraTableau::pivot` | **74.1%** |
+| `Rational::operator*` | 12.0% |
+| `Rational::from_int128_reduced` | 3.9% |
+| `Rational::operator+` | 2.9% |
+| `LraTableau::update` | 2.1% |
+| `Rational` copy constructor | 1.1% |
+| **hash/map in the LRA path** | **0.00%** |
+
+The only hashtable symbols in the profile are `TermPairKey` lookups --
+Nelson-Oppen interface equalities -- at 0.00%. There is no container overhead
+left to win here; the thesis's 1.20x is already banked.
+
+**What the profile points at instead**, for whoever picks up the next
+arithmetic lead: term-operation volume and rational cost, not the container.
+83.0M `from_int128_reduced` calls against 48.1M multiplies is roughly 1.7
+normalisations per multiply, and 53.6M `Rational` copies against 1.26M row
+updates is a lot of copying. Fewer terms (fill-in) or a cheaper small-rational
+path are the levers this profile supports.
 
 (lead-dl6)=
 ## 8. DL6 -- decide precision statically, before search
