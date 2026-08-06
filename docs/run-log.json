@@ -20359,6 +20359,155 @@
       },
       "outcome": "Running, not yet accepted evidence. Do not use the dependent full benchmark as performance evidence unless this mutation gate exits cleanly with zero bug triggers.",
       "evidence_status": "current-slurm-running"
+    },
+    {
+      "id": "2026-08-06-qfuflra-yinyang-rerun-complete-119547",
+      "started_at": "2026-08-06T07:48:00+02:00",
+      "recorded_at": "2026-08-06T11:40:00+02:00",
+      "kind": "fuzz",
+      "scope": "Completed QF_UFLRA YinYang/typefuzz real-seed mutation gate after preinstalling the pinned fork",
+      "commit": "4631aef",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-qfuflra-overnight-4631aef",
+        "slurm_job_id": "119547"
+      },
+      "command": "qfuflra-overnight-yinyang-direct-4631aef.sbatch; task 0: build-slurm-rel/primo --quiet; task 1: build-slurm-rel/primo --quiet --qf-uflra-candidate-final-scan; reference contrib/local/bin/z3 model_validate=true; typefuzz from .venv-yinyang installed from MikolasJanota/yinyang commit 04c8618; -kl and -hd enabled",
+      "solver": {
+        "name": "Primo",
+        "argv": "default and --qf-uflra-candidate-final-scan"
+      },
+      "references": [
+        {
+          "name": "z3",
+          "argv": "contrib/local/bin/z3 model_validate=true"
+        }
+      ],
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "seed_corpus": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-leaf-and-regression-seeds",
+        "seed_count": 19,
+        "iterations": 200,
+        "timeout_seconds": 8,
+        "wall_seconds": 27000,
+        "seed_coverage": "5 leaf families plus the committed regression and three previous wrong-answer rows"
+      },
+      "artifacts": {
+        "logs": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-yy3-119547-*.{out,err}",
+        "bugs": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-yinyang-4631aef-direct/{default,candidate-final}/bugs"
+      },
+      "summary": {
+        "default": {
+          "state": "COMPLETED",
+          "exit_code": "0:0",
+          "elapsed": "01:44:29",
+          "seeds_processed": 19,
+          "valid_seeds": 19,
+          "invalid_seeds": 0,
+          "bug_triggers": 0,
+          "bug_files": 0
+        },
+        "candidate_final_scan": {
+          "state": "COMPLETED",
+          "exit_code": "0:0",
+          "elapsed": "01:28:07",
+          "seeds_processed": 19,
+          "valid_seeds": 19,
+          "invalid_seeds": 0,
+          "bug_triggers": 0,
+          "bug_files": 0
+        }
+      },
+      "outcome": "Accepted real-seed mutation evidence for the exact default and candidate-final option sets at commit 4631aef. Together with job 119533, this clears the intended QF_UFLRA fuzz gate for running the dependent full benchmark.",
+      "evidence_status": "current-slurm"
+    },
+    {
+      "id": "2026-08-06-qfuflra-full-60s-infra-fail-119548",
+      "started_at": "2026-08-06T09:32:00+02:00",
+      "recorded_at": "2026-08-06T11:40:00+02:00",
+      "kind": "benchmark-infrastructure-triage",
+      "scope": "Dependent full 60s QF_UFLRA comparison failed before running benchmark rows due to temporary sbatch argument passing",
+      "commit": "4631aef",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-qfuflra-overnight-4631aef",
+        "slurm_job_id": "119548"
+      },
+      "command": "qfuflra-overnight-full-compare-4631aef.sbatch attempted to pass --quiet --stats as part of bench_qf_uf_full.py --solver nargs, causing argparse to reject them as harness options. Both array tasks exited 2 in about one second.",
+      "solver": {
+        "name": "Primo",
+        "argv": "default and --qf-uflra-candidate-final-scan, not reached for benchmark rows"
+      },
+      "references": [],
+      "inputs": {
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 1284,
+        "timeout_seconds": 60
+      },
+      "artifacts": {
+        "logs": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-full-119548-*.{out,err}",
+        "results": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-full-60s-4631aef-direct (empty)"
+      },
+      "summary": {
+        "default": {
+          "state": "FAILED",
+          "exit_code": "2:0",
+          "elapsed": "00:00:01",
+          "benchmark_rows_run": 0
+        },
+        "candidate_final_scan": {
+          "state": "FAILED",
+          "exit_code": "2:0",
+          "elapsed": "00:00:01",
+          "benchmark_rows_run": 0
+        }
+      },
+      "outcome": "Rejected as benchmark evidence. A corrected full comparison was submitted as job 119551 using --solver-arg for Primo options.",
+      "evidence_status": "rejected-infrastructure"
+    },
+    {
+      "id": "2026-08-06-qfuflra-full-60s-rerun-submitted-119551",
+      "started_at": "2026-08-06T11:39:00+02:00",
+      "recorded_at": "2026-08-06T11:40:00+02:00",
+      "kind": "benchmark",
+      "scope": "Corrected full 1284-file QF_UFLRA 60s SLURM comparison, default and candidate-final profiles",
+      "commit": "4631aef",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "environment": {
+        "type": "slurm",
+        "host": "cluster",
+        "remote_workspace": "primo-qfuflra-overnight-4631aef",
+        "slurm_job_id": "119551"
+      },
+      "command": "qfuflra-full-compare-fixed-4631aef.sbatch; task 0 default uses build-slurm-rel/primo --quiet --stats; task 1 candidate uses build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan; options are passed to bench_qf_uf_full.py through --solver-arg; timeout 60s",
+      "solver": {
+        "name": "Primo",
+        "argv": "default: build-slurm-rel/primo --quiet --stats; candidate: build-slurm-rel/primo --quiet --stats --qf-uflra-candidate-final-scan"
+      },
+      "references": [],
+      "inputs": {
+        "root": "tmp/QF_UFLRA",
+        "logic": "QF_UFLRA",
+        "count": 1284,
+        "timeout_seconds": 60
+      },
+      "artifacts": {
+        "default_summary": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-full-60s-4631aef-fixed/default-summary.csv",
+        "default_results": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-full-60s-4631aef-fixed/default.csv",
+        "candidate_summary": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-full-60s-4631aef-fixed/candidate-final-summary.csv",
+        "candidate_results": "remote:primo-qfuflra-overnight-4631aef/slurm-results/qf_uflra-full-60s-4631aef-fixed/candidate-final.csv",
+        "logs": "remote:primo-qfuflra-overnight-4631aef/slurm_logs/primo-qfuflra-full2-119551-*.{out,err}"
+      },
+      "summary": {
+        "status_at_recording": "119551_0 and 119551_1 running after about 14 seconds; no final benchmark result yet"
+      },
+      "outcome": "Running, not yet accepted evidence. The corrected benchmark should be summarized after completion and checked for wrong rows before performance claims.",
+      "evidence_status": "current-slurm-running"
     }
   ]
 }
