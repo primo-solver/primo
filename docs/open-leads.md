@@ -359,6 +359,45 @@ removal the loop performs", which is true and describes *which* removal it is
 rare", which the measurement contradicts. Site 1 is outside that loop, which
 is why the comment is not wrong, only easy to misread.
 
+### How this was found, and why that matters
+
+Worth recording, because the finding did not come from pursuing a lead. It
+came from *closing* one, and four intermediate claims along the way were
+wrong.
+
+1. **Lead 7 was opened from a paper number** -- Griggio's thesis measures 1.20x
+   for choosing hash tables over sorted arrays of pairs. Checking it closed it
+   immediately: Primo already uses the sorted-array design, and item H8 went
+   further than the thesis by replacing the sort with a merge.
+2. **The profile taken to close it was the actual payload.** `perf` is blocked
+   in this sandbox, so it is gprof over a `-pg` build. It put
+   `LraTableau::pivot` at 74% self time with `Rational` arithmetic separately
+   and correctly attributed (those operators are defined out-of-line in
+   `rational.cpp`, so they are not folded into `pivot`).
+3. **Wrong claim #1: "53.6M Rational copies is a lot".** Stated while reading
+   the profile. It is 1.05% of runtime. Chasing "trivial engineering to avoid
+   the copies" would have won about one percent.
+4. **Correcting that pointed at the right thing.** If the copies are 1% and
+   the arithmetic is separately accounted for at ~20%, then `pivot`'s 74% is
+   genuinely its own loop -- comparisons, vector writes, and `occurs_in_`
+   maintenance.
+5. **Wrong claim #2: "removals are rare".** Taken from the comment "This is
+   the *only* removal the loop performs", which says *which* removal, not how
+   often.
+6. **Wrong claim #3: a general principle beat the data.** Asked why not a hash
+   set, the first answer was that `occurs_in(entering)` is iterated in full
+   every pivot and vectors iterate better than hash sets. True, and irrelevant:
+   iteration touches 1.26M entries against 8.17 billion for the removal scans.
+7. **Wrong claim #4: one erase site.** The first probe instrumented only the
+   cancellation branch. Asking precisely *when* the erase happens surfaced a
+   second, structural site in the same function that the probe had silently
+   skipped.
+
+The transferable lesson is narrow and practical: **the profile that closes a
+lead is worth reading for what else it says.** Four of the six items above are
+corrections to statements made confidently from code reading, and every one of
+them was settled by a counter rather than by an argument.
+
 ### Why a hash set is now the obvious question, and what the data says
 
 The standard objection to `unordered_set` here is that `occurs_in(entering)`
