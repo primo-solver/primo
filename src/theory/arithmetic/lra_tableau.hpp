@@ -197,6 +197,12 @@ class LraTableau {
   // `occurs_in_[var]` untouched for a surviving term, so the merge carries
   // `occ_slot` across unchanged. Slots are only rewritten when the column
   // list itself changes.
+  // sizeof is 40 against the old pair's 32, because LraVarId is size_t and
+  // the 32-bit slot cannot pack into its padding. That 25% growth in row
+  // memory is measurable on merge-heavy instances (about +4% on
+  // miplib/danoint-166, which merges 1.07G terms); narrowing LraVarId to
+  // 32 bits would put the entry back at 32 bytes and is the obvious
+  // follow-up, but it is a wider change than this one.
   struct RowEntry {
     LraVarId var = 0;
     util::Rational coeff;
@@ -526,6 +532,12 @@ class LraTableau {
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
   void undo(const TrailEntry& entry);
   void rebuild_occurs_in_index();
+
+  // Removes `occurs_in_[var][slot]` in O(log |row|), given the slot from the
+  // row entry that is going away. Swap-and-pop rather than erase/remove: an
+  // erase shifts every later element and would invalidate their back-indices,
+  // whereas a swap moves exactly one, whose row entry is then repaired.
+  void unlink_occurrence(LraVarId var, std::uint32_t slot);
 
   // Keeps violated_vars_ (see its own comment) in sync going *forward*:
   // checks `var`'s current is_basic/assignment/bounds and inserts/erases

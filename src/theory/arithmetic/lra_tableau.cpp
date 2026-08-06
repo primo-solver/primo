@@ -26,7 +26,7 @@ void LraTableau::add_row(LraVarId basic_var,
     if (coefficient.is_zero()) {
       continue;
     }
-    row.emplace_back(var, coefficient);
+    row.emplace_back(var, coefficient, static_cast<std::uint32_t>(occurs_in_[var].size()));
     occurs_in_[var].push_back(basic_var);
     assignment = assignment + vars_.at(var).assignment.scaled(coefficient);
   }
@@ -196,9 +196,7 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     // tropical-matrix/constraint-199552: 264,081 calls, 181M elements
     // scanned. See docs/open-leads.md lead 3b for the other site, which is
     // 45x more expensive.
-    auto& occurrences = occurs_in_[var];
-    occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), basic_var),
-                      occurrences.end());
+    unlink_occurrence(var, var_slot);
   }
 
   const util::Rational inv = util::Rational(1) / entering_coeff;
@@ -272,13 +270,15 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
         break;
       }
       if (have_other && (!have_entering || other_row[i].var < new_entering_row[j].var)) {
-        // Carried over unchanged, and nonzero by the Row invariant.
-        rebuilt.emplace_back(other_row[i].var, other_row[i].coeff);
+        // Carried over unchanged, and nonzero by the Row invariant. The
+        // occurrence entry does not move, so the slot carries across.
+        rebuilt.emplace_back(other_row[i].var, other_row[i].coeff, other_row[i].occ_slot);
         ++i;
       } else if (have_entering && (!have_other || new_entering_row[j].var < other_row[i].var)) {
         // A product of two nonzero rationals, so it cannot be zero either.
         rebuilt.emplace_back(new_entering_row[j].var,
-                             entering_in_other * new_entering_row[j].coeff);
+                             entering_in_other * new_entering_row[j].coeff,
+                             static_cast<std::uint32_t>(occurs_in_[new_entering_row[j].var].size()));
         occurs_in_[new_entering_row[j].var].push_back(other_basic);
         ++j;
       } else {
@@ -304,13 +304,11 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
           // while Rational copies hold 1.05%. The linear scan below is the
           // single largest measured cost in the arithmetic layer;
           // docs/open-leads.md lead 3b records the candidate fixes.
-          std::vector<LraVarId>& occurrences = occurs_in_[var];
-          occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
-                            occurrences.end());
+          unlink_occurrence(var, other_row[i].occ_slot);
         } else {
           // Present before and after: the coefficient changed, the
-          // occurrence entry did not.
-          rebuilt.emplace_back(var, std::move(sum));
+          // occurrence entry did not, so the slot carries across.
+          rebuilt.emplace_back(var, std::move(sum), other_row[i].occ_slot);
         }
         ++i;
         ++j;
@@ -322,8 +320,9 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     rows_[other_basic] = std::move(rebuilt);
   }
 
-  for (const auto& [var, coeff, var_slot] : new_entering_row) {
-    occurs_in_[var].push_back(entering_var);
+  for (auto& entry : new_entering_row) {
+    entry.occ_slot = static_cast<std::uint32_t>(occurs_in_[entry.var].size());
+    occurs_in_[entry.var].push_back(entering_var);
   }
   rows_[entering_var] = std::move(new_entering_row);
 
@@ -477,9 +476,7 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
 
   Row& f_row = rows_.at(*f_var_);
   for (const auto& [term_var, coeff, term_var_slot] : f_row) {
-    auto& occurrences = occurs_in_[term_var];
-    occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), *f_var_),
-                      occurrences.end());
+    unlink_occurrence(term_var, term_var_slot);
   }
   Row rebuilt;
   rebuilt.reserve(combine_scratch_.size());
@@ -496,7 +493,8 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
     if (sum.is_zero()) {
       continue;
     }
-    rebuilt.emplace_back(term_var, sum);
+    rebuilt.emplace_back(term_var, sum,
+                         static_cast<std::uint32_t>(occurs_in_[term_var].size()));
     occurs_in_[term_var].push_back(*f_var_);
   }
   f_row = std::move(rebuilt);
@@ -1161,7 +1159,43 @@ bool LraTableau::occurs_in_index_matches_full_rebuild() const {
       return false;
     }
   }
+  // Every row entry's back-index must round-trip: the occurrence slot it
+  // names has to be the very row it belongs to. This is what makes the
+  // O(log row) removal in pivot() falsifiable rather than merely plausible
+  // -- without it a wrong slot silently unlinks the wrong occurrence, and
+  // the set comparison above would still pass on the very next rebuild.
+  for (LraVarId basic_var = 0; basic_var < vars_.size(); ++basic_var) {
+    if (!vars_[basic_var].is_basic) {
+      continue;
+    }
+    for (const RowEntry& entry : rows_[basic_var]) {
+      const std::vector<LraVarId>& column = occurs_in_[entry.var];
+      if (entry.occ_slot >= column.size() || column[entry.occ_slot] != basic_var) {
+        return false;
+      }
+    }
+  }
   return true;
+}
+
+void LraTableau::unlink_occurrence(LraVarId var, std::uint32_t slot) {
+  std::vector<LraVarId>& column = occurs_in_[var];
+  const LraVarId moved = column.back();
+  column[slot] = moved;
+  column.pop_back();
+  if (slot >= column.size()) {
+    // The removed entry was the last one: nothing moved, nothing to repair.
+    return;
+  }
+  // `moved` now sits at `slot`, so its own row entry for `var` must say so.
+  // rows_[moved] is ordered by var id (the Row invariant), so this is a
+  // binary search over one row rather than a scan of the column.
+  Row& row = rows_[moved];
+  const auto it = std::lower_bound(row.begin(), row.end(), var,
+                                   [](const RowEntry& e, LraVarId v) { return e.var < v; });
+  if (it != row.end() && it->var == var) {
+    it->occ_slot = slot;
+  }
 }
 
 void LraTableau::rebuild_occurs_in_index() {
@@ -1176,8 +1210,9 @@ void LraTableau::rebuild_occurs_in_index() {
     if (!vars_[basic_var].is_basic) {
       continue;
     }
-    for (const auto& [var, coefficient, var_slot] : rows_[basic_var]) {
-      occurs_in_[var].push_back(basic_var);
+    for (auto& entry : rows_[basic_var]) {
+      entry.occ_slot = static_cast<std::uint32_t>(occurs_in_[entry.var].size());
+      occurs_in_[entry.var].push_back(basic_var);
     }
   }
 }
