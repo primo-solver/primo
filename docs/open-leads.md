@@ -473,6 +473,73 @@ suggests a fourth option it did not previously contain: switch representation
 per variable once its list crosses a length threshold, since the two regimes
 are cleanly separated by exactly that quantity.
 
+### The cost is concentrated in a few very long lists, and that may be predictable
+
+Histogram of occurrence-list length at each cancellation erase, tropical
+`constraint-199552` (12.0M calls, 8.17B elements):
+
+| list length | calls | share of all scanning |
+|---|---:|---:|
+| < 256 | 1.9M | 2.9% |
+| 256-511 | 2.2M | 10.5% |
+| **512-1023** | **5.4M** | **51.6%** |
+| **>= 1024** | **2.5M** | **34.9%** |
+
+**86.5% of the scanning happens on lists of 512 or more.** The mean of 679 is
+not describing a uniform population; the cost lives in a small number of very
+long occurrence lists.
+
+That is consistent with what [](tropical-matrix-structure.md) found about the
+family: it is a DAG of definitions over **36 free `f*` variables**, so pivoting
+composes rows back toward those few variables and they end up occurring in
+enormous numbers of rows. The long lists are a direct consequence of the
+formula's shape.
+
+**Which suggests this is predictable statically.** `scripts/analyze_smt2.py`
+already recovers exactly that structure -- free versus derived variables, the
+definition DAG, occurrence counts -- from the formula alone, without solving.
+If occurrence-length distribution can be estimated from the input, then the
+representation choice below stops being a guess: pick per instance, or per
+variable, before search starts. **Not attempted, and not established** -- the
+correlation between any static measure and the observed list lengths has not
+been checked, and that check is the prerequisite for any adaptive scheme.
+
+### Prototype 2: swap-and-pop is worse than the hash set
+
+Built 2026-08-06. Keeps `occurs_in_` a contiguous vector and replaces the
+scan with a side index giving each member's position, so removal swaps in the
+back element and pops.
+
+| instance | baseline | hash set | **swap-pop** |
+|---|---:|---:|---:|
+| tropical `constraint-199552` | 4.11s | **3.25s** | 3.70s |
+| sc-21 | 0.46s | 0.46s | 0.50s |
+| uart-16 | 0.23s | 0.25s | 0.27s |
+| latendresse ecoli | 0.25s | 0.32s | **0.37s** |
+
+Worse than the hash set everywhere, and the reason is structural rather than
+an implementation detail: the position index is *itself* a hash map, so each
+erase costs a hash find, a hash erase, and a hash write to repair the moved
+element's position -- roughly two to three hash operations where
+`unordered_set::erase` costs one, plus the swap bookkeeping on top.
+
+Swap-and-pop only wins with a **non-hash** position index, and a dense
+`pos_[var][basic]` is O(vars^2): 23 MB for tropical's 2,394 tableau variables,
+but 34 GB for a LassoRanker instance with 92,937 reals. Not viable as written.
+
+**What that leaves.** The principled version of this idea is the standard
+sparse-matrix representation -- each nonzero linked into both a row list and a
+column list, so the position is carried *in the row entry itself* and no
+separate index exists. King's thesis Section 2.2.7 records exactly that
+structure. It is a materially larger change than any prototype here.
+
+A prototype bug worth recording: the first version cleared `occurs_in_`'s
+vectors in `rebuild_occurs_in_index` without clearing the position index,
+leaving stale positions that a later erase would act on. **All 13 unit suites
+passed with that bug present**, so nothing in the current tests exercises a
+rebuild followed by a removal. Any real implementation of this needs a test
+that does.
+
 **Falsifier.** If a prototype does not materially reduce `pivot`'s share in a
 fresh profile on this instance, the scan was not where the time went and the
 8.17B figure is being misread.

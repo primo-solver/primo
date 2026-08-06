@@ -19151,6 +19151,29 @@
         "model_correction": "The framing that '8.17 billion scanned elements must be the bottleneck' was too simple. Removing the scans entirely on tropical wins 25%, not the ~45% a 2.0s-of-4.4s estimate implied, which means contiguous scanning is substantially faster per element than that estimate assumed."
       },
       "follow_up": "Candidate 3 (unordered_set) is rejected as a blanket change: it is a regression on three of five instances including the largest. What survives is the diagnosis -- long occurrence lists are expensive to maintain -- and the two untried candidates, tombstone/superset and swap-and-pop with a position index, both of which keep contiguous iteration. A length-triggered hybrid is also now suggested by the data."
+    },
+    {
+      "id": "2026-08-06-qf-lra-occurs-in-swappop-and-histogram",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "profiling",
+      "scope": "Second prototype for lead 3b (swap-and-pop with a position index), plus the occurrence-list length histogram that explains where the scan cost actually lives and suggests it may be predictable from the formula.",
+      "commit": "aa76386",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "builds from the same tree: baseline, unordered_set, swap-and-pop with an unordered_map position index. All prototypes reverted; nothing committed."
+      },
+      "result": {
+        "histogram": "At each cancellation erase on tropical constraint-199552 (12.0M calls, 8.17B elements): lists under 256 account for 2.9% of scanning, 256-511 for 10.5%, 512-1023 for 51.6%, and 1024+ for 34.9%. So 86.5% of all scanning happens on lists of 512 or more -- the mean of 679 hides a heavily skewed population.",
+        "why": "Consistent with docs/tropical-matrix-structure.md: the family is a DAG of definitions over 36 free f* variables, so pivoting composes rows back toward those few variables and their occurrence lists become enormous. The long lists follow from the formula's shape.",
+        "predictability_hypothesis": "UNTESTED. scripts/analyze_smt2.py already recovers free-versus-derived structure and occurrence counts statically. If occurrence-length distribution correlates with a static measure, representation could be chosen per instance or per variable before search. The correlation has not been checked and that check gates any adaptive scheme.",
+        "swappop": "tropical 4.11s -> 3.70s; sc-21 0.46 -> 0.50; uart-16 0.23 -> 0.27; latendresse 0.25 -> 0.37. Worse than the unordered_set prototype on every instance.",
+        "why_swappop_loses": "Structural, not an implementation detail: the position index is itself a hash map, so each erase costs a hash find, a hash erase, and a hash write to repair the moved element -- two to three hash operations against unordered_set::erase's one, plus swap bookkeeping. It only wins with a non-hash index, and a dense pos_[var][basic] is O(vars^2): 23MB for tropical's 2,394 tableau variables but about 34GB for a LassoRanker instance with 92,937 reals.",
+        "test_gap_found": "The first swap-pop version cleared occurs_in_'s vectors in rebuild_occurs_in_index without clearing the position index, leaving stale positions for a later erase to act on. All 13 unit suites passed with that bug present, so nothing currently exercises a rebuild followed by a removal."
+      },
+      "follow_up": "Two of three candidates now rejected by measurement. What remains is the tombstone/superset variant, and the principled version of swap-and-pop -- the standard sparse-matrix representation with each nonzero linked into both a row and a column list, carrying its position in the row entry so no separate index exists (King's thesis Section 2.2.7). Also recorded as a prerequisite for any adaptive scheme: check whether occurrence-length distribution is predictable from static formula structure."
     }
   ]
 }
