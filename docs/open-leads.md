@@ -218,9 +218,66 @@ Second, **this is a main-branch regression, not a branch-local one** -- main
 at `0c0843d` reproduces the timeout (1.09M pivots) in the same regime as this
 branch's HEAD (1.14M), while `b6b8d55` solves in 0.20s.
 
-What it does **not** explain: LassoRanker, which is 40 of the 55 lost files
-and reports `:solver.qf-lra 1` -- the pure path. That is a separate
-investigation and must not be folded into this one.
+**Why the mixed path is slower here, since "NO should no-op" is correct.**
+It does no-op -- `:no.interface.conflicts 0`, every purification counter zero.
+The cost is that the mixed path also starts the **incremental EUF engine** and
+hands it the propositional variables:
+
+| counter | pure path (`4d4a185`) | mixed path (`ffaf9eb`) |
+|---|---:|---:|
+| `:euf.checks` | 0 | 5,364 |
+| `:euf.incremental.merges` | 0 | **39,436,128** |
+| `:euf.incremental.terms` | 0 | 39,446,856 |
+| `:no.mixed.euf-atoms` | -- | **7,352** |
+| `:sat.clauses` | 26,117 | 31,481 |
+
+The file declares **7,352 Bool-sorted nullary `declare-fun`s, zero sorts and
+zero functions with arguments** -- and `:no.mixed.euf-atoms` is exactly 7,352.
+Every propositional variable is being routed to congruence closure, which
+performs 39.4M merges to decide nothing the SAT solver does not already own.
+So the defect is not "NO costs something"; it is that a formula with no EUF
+content is given an EUF solver.
+
+What this does **not** explain: LassoRanker, 40 of the 55 lost files, which
+reports `:solver.qf-lra 1` -- the pure path -- on both sides. See
+[](#lead-2b-lassoranker).
+
+(lead-2b-lassoranker)=
+### The other half: LassoRanker, same path and still 10x slower
+
+Separate mechanism, same origin. On
+`dropbuf.t2.c_Iteration3_Loop_4-pieceTemplate` (3.4MB):
+
+| | answer | dispatch | pivots | decisions |
+|---|---|---|---:|---:|
+| `b6b8d55` | **sat, 13.0s** | `:solver.qf-lra 1` | 10,217 | 256,688 |
+| main `0c0843d` | timeout 150s | `:solver.qf-lra 1` | 3,793 | 190,089 |
+| branch HEAD | timeout 150s | `:solver.qf-lra 1` | 4,183 | 198,695 |
+
+The dispatch never flips, so [](#lead-two-lra-paths)'s mechanism is not at
+work. Preprocessing is not it either (`--preprocess-only` 1.35s vs 1.42s).
+And **the time is not in the tableau**: at a 45s cap main does 1,472 pivots
+and 1.66M pivot-term-ops against b6b8d55's 10,217 and 76.1M in 13s. The
+online check-call rate falls from 13,976/s to 2,143/s *while the LRA work per
+call shrinks*, so something outside the simplex is being paid per call.
+
+Bisected (first-parent, so only mainline states are tested) to **`84336a2`
+"Merge remote-tracking branch 'origin/main'"** -- the merge that brought
+`theory_combination.{cpp,hpp}` and the Nelson-Oppen closure work into main,
+46 files and 14,392 insertions. Its first parent `38be7fd` is good.
+
+**Open: the mechanism.** The next step is a profile of main on this instance
+answering "what runs per online check call on the pure QF_LRA path after the
+merge that did not before". `perf` is unavailable in the current sandbox, so
+use a `-pg` build or profile on the cluster.
+
+**Bisection hazard worth reusing.** Two earlier attempts at this bisect were
+invalid and both converged on a *docs-only* commit. Main contains merge
+commits from the Nelson-Oppen branch, and that branch's own history predates
+QF_LRA support, so those commits answer `unsupported logic: QF_LRA`; the
+script marked them **bad** rather than skipping. Any bisect across this merge
+needs `--first-parent` plus an explicit skip on unsupported-logic and
+no-answer outcomes.
 
 ### It is not a performance bug at 15s -- the original measurement
 
