@@ -21034,6 +21034,94 @@
       },
       "review": "Whole-tree clang-tidy completed without findings. The advisory include-cleaner reported the existing baseline warnings but none in the changed check_sat.cpp path. The solver-efficiency snapshot found no newly added hot-path pattern; this repair deliberately restores the existing complete scan and makes no performance claim.",
       "outcome": "Local correctness repair and merge-grade generated gate passed. A fresh SLURM generated and real-seed mutation gate for commit 8b4af47 remains required before rerunning broad performance evaluation."
+    },
+    {
+      "id": "2026-08-07-qfuflra-online-soundness-slurm-120112-120121",
+      "date": "2026-08-07",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "aa81e02",
+      "evidence_status": "current-slurm-mutation-running",
+      "scope": "Fresh SLURM correctness gate after restoring mandatory online final LRA equality validation. The generated arrays cover ordinary online and online+EUF; the mutation task checks every original regression seed before mutating compact seeds.",
+      "environment": {
+        "host": "cluster",
+        "remote_workspace": "primo-online-euf-9bf9fc1",
+        "build": "Release",
+        "sat_backend": "CaDiCaL 3.0.0-7b99c07 through IPASIR-UP",
+        "reference": "Z3 5.0.0",
+        "yinyang": "editable pinned installation described by contrib/install_yinyang.py"
+      },
+      "preflight": "Both sbatch files passed scripts/slurm_validate_sbatch.py and bash -n. scripts/slurm_prepare_benchmark_workspace.py --check-only verified the exact binary revision, CaDiCaL, Z3, and typefuzz immediately before submission. A stale-object binary produced by a manual timestamp-preserving sync failed the new exact-seed gate before submission; it was not evaluated. The workspace was subsequently prepared at 0b9b2cd with the helper's --reuse-dependencies mode, which preserved contrib/local and rebuilt Primo from a clean build-slurm-rel tree.",
+      "jobs": {
+        "ordinary_generated": {
+          "slurm_job_id": "120116",
+          "array": "0-3",
+          "commit": "aa81e02",
+          "count_per_task": 1250,
+          "total_count": 5000,
+          "seed_base": 2026080615,
+          "options": "--nelson-oppen-prop=online",
+          "artifact": "remote:primo-online-euf-9bf9fc1/slurm-results/qf_uflra-online-soundness-aa81e02/task-*/summary.csv"
+        },
+        "online_euf_generated": {
+          "slurm_job_id": "120112",
+          "array": "0-3",
+          "commit": "aa81e02",
+          "count_per_task": 1250,
+          "total_count": 5000,
+          "seed_base": 2026080619,
+          "options": "--nelson-oppen-prop=online --qf-uflra-online-euf",
+          "artifact": "remote:primo-online-euf-9bf9fc1/slurm-results/qf_uflra-online-euf-soundness-aa81e02/task-*/summary.csv"
+        },
+        "rejected_mutation_setup": {
+          "slurm_job_id": "120120_2",
+          "commit": "aa81e02",
+          "state": "cancelled after 00:09:53",
+          "reason": "The 200000-byte mutation limit caused typefuzz to spend most of the allocation on a 25017-byte exact regression seed. Exact checking passed 4/4, but mutation throughput made this setup unsuitable as a bounded gate."
+        },
+        "compact_mutation": {
+          "slurm_job_id": "120121_2",
+          "commit": "0b9b2cd",
+          "state": "running",
+          "iterations_per_accepted_seed": 1000,
+          "solver_timeout_seconds": 8,
+          "exact_seed_timeout_seconds": 60,
+          "mutation_file_size_limit_bytes": 1000,
+          "options": "--nelson-oppen-prop=online --qf-uflra-online-euf",
+          "artifact": "remote:primo-online-euf-9bf9fc1/fuzz-results/qf-uflra-online-euf-compact-0b9b2cd/online-euf",
+          "note": "The exact pre-mutation gate passed all four original seeds. The mutation wrapper explicitly excludes the two 25-33 KB MathSAT inputs and mutates the two compact mechanism seeds."
+        }
+      },
+      "completed_results": {
+        "ordinary_generated": {
+          "pass": 5000,
+          "sat": 3508,
+          "unsat": 1492,
+          "wrong_answer": 0,
+          "timeout": 0,
+          "crash": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        },
+        "online_euf_generated": {
+          "pass": 5000,
+          "sat": 3553,
+          "unsat": 1447,
+          "wrong_answer": 0,
+          "timeout": 0,
+          "crash": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        },
+        "compact_mutation_exact_seed_gate": {
+          "pass": 4,
+          "wrong_answer": 0,
+          "timeout": 0,
+          "crash": 0,
+          "unsupported": 0,
+          "status_mismatch": 0
+        }
+      },
+      "outcome": "Both 5000-case generated SLURM gates passed. The replacement compact-seed mutation job is still running, so this entry is not yet complete evidence and no broad performance benchmark may start."
     }
   ]
 }
