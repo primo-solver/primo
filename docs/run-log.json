@@ -21133,6 +21133,55 @@
         }
       },
       "outcome": "The repaired profiles passed both 5000-case generated SLURM gates. The online+EUF mutation task first passed all four exact regression seeds, then completed 2000 successful mutations across the two compact seeds with zero bug triggers. The correctness gate is complete; no replacement broad performance benchmark has been submitted yet."
-    }
+    },
+  {
+    "id": "2026-08-07-qf-uflra-opportunity-45-3451af9",
+    "date": "2026-08-07",
+    "kind": "benchmark",
+    "scope": "45-file QF_UFLRA preprocessing-opportunity comparison after the repaired online soundness gate",
+    "commit": "3451af9",
+    "host": "SLURM primo-slurm",
+    "job_id": "120165",
+    "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+    "count": 45,
+    "timeout_seconds": 60,
+    "command": "scripts/slurm_stage_manifest_files.py --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-preprocessing-opportunity-sample.txt; PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_MANIFEST=benchmarks/qf_uflra-preprocessing-opportunity-sample.txt sbatch scripts/slurm_qf_uflra_candidate_final_scan_compare.sbatch",
+    "artifact": "results/qf-uflra-opportunity-45-3451af9-rerun/{default,candidate,z3}{,-summary}.csv",
+    "results": {
+      "default": {
+        "solved": 42,
+        "timeouts": 3,
+        "wrong_answers": 0,
+        "sum_seconds": 533.59,
+        "par2_seconds": 533.33
+      },
+      "candidate_final_scan": {
+        "solved": 42,
+        "timeouts": 3,
+        "wrong_answers": 0,
+        "sum_seconds": 246.20,
+        "par2_seconds": 245.86,
+        "arrangement_separations": 67,
+        "arrangement_extra_atom_probes": 94,
+        "candidate_pairs": 49150,
+        "skipped_pairs": 200598,
+        "candidate_equalities": 2133
+      },
+      "z3": {
+        "solved": 45,
+        "timeouts": 0,
+        "wrong_answers": 0,
+        "sum_seconds": 10.94,
+        "par2_seconds": 10.94
+      }
+    },
+    "remaining_timeout_rows": [
+      "cpachecker-induction.Problem01_00_true-unreach-call.c.smt2",
+      "cpachecker-induction.Problem14_60_false-unreach-call.c.smt2",
+      "cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2"
+    ],
+    "evidence_status": "current",
+    "outcome": "Candidate-final scan is a substantial targeted improvement in wall time and arrangement work, with identical solved count and no wrong answers. It does not solve the three CPAchecker timeout rows; the next performance investigation should focus on those rows rather than broadening this scan claim."
+  }
   ]
 }
