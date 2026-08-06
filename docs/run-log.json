@@ -19174,6 +19174,38 @@
         "test_gap_found": "The first swap-pop version cleared occurs_in_'s vectors in rebuild_occurs_in_index without clearing the position index, leaving stale positions for a later erase to act on. All 13 unit suites passed with that bug present, so nothing currently exercises a rebuild followed by a removal."
       },
       "follow_up": "Two of three candidates now rejected by measurement. What remains is the tombstone/superset variant, and the principled version of swap-and-pop -- the standard sparse-matrix representation with each nonzero linked into both a row and a column list, carrying its position in the row entry so no separate index exists (King's thesis Section 2.2.7). Also recorded as a prerequisite for any adaptive scheme: check whether occurrence-length distribution is predictable from static formula structure."
+    },
+    {
+      "id": "2026-08-06-qf-lra-crosslink-occurs-in-gates",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "benchmark",
+      "scope": "Correctness gate and promotion-bar A/B for the cross-linked occurs_in_ change (lead 3b): row entries carry a back-index into the column list so pivot() unlinks an occurrence in O(log row) instead of scanning it.",
+      "commit": "83afe14",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm, node-01",
+        "remote_dir": "/home/janotmik/primo-crosslink-83afe14",
+        "notes": "Both A/B arms ran in ONE job on ONE node to avoid cross-node confounds; task logs confirm git: dfb83f8 for the baseline arm (binary from the primo-leaving-dfb83f8 workspace) and git: 83afe14 for the crosslink arm. Connectivity note: the ProxyJump host's sshd went down mid-session while answering on 443; the SSH config now prefers the direct route on the local network."
+      },
+      "command": {
+        "ab_job": "119555, array 0-1, benchmarks/qf-lra-stratified-sample.txt, 10s",
+        "fuzz_job": "119566, scripts/slurm_qf_lra_model_fuzz_gate.sbatch, array 0-8",
+        "failed_first_fuzz_attempt": "119556 failed in 0s with exit 2:0 -- 'required tool fuzzsmt not found on PATH'. slurm_prepare_benchmark_workspace.py builds primo but not the fuzzers, and this workspace had no contrib/. Provisioned it and resubmitted. The gate's explicit tool check turned a documented SILENT no-op into a loud failure."
+      },
+      "result": {
+        "fuzz_answers": "3,000 FuzzSMT cases: 2,983 PASS, 17 TIMEOUT, 0 wrong answers, 0 crashes.",
+        "fuzz_models": "2,593 models validated, 0 invalid, 397 not-sat (unsat input), 10 solver-timeout.",
+        "fuzz_mutation": "opfuzz and 2 YinYang shards: 0 bug triggers.",
+        "fuzz_task_status": "4 of 9 tasks report FAILED with exit 1:0; as in the earlier gate this is fuzz_external.py exiting nonzero on any non-PASS row, and the only non-PASS rows are the 17 timeouts.",
+        "ab": "baseline 174 solved / PAR2 1428.194 / 0 wrong; crosslink 174 solved / PAR2 1420.189 / 0 wrong. gained 0, lost 0.",
+        "ab_paired": "Over the 75 instances both solve in more than 0.2s: median baseline/crosslink ratio 1.008, p10 0.913, p90 1.181, crosslink more than 10% faster on 15 and more than 10% slower on 7, total 160.9s against 155.8s (-3.2%).",
+        "NOISE_FLOOR": "The identical baseline binary and configuration measured PAR2 1415.974 in job 119530 and 1428.194 in job 119555 -- a 12.22 spread run to run. The crosslink's PAR2 improvement is 8.00, so the aggregate gain is SMALLER THAN THE NOISE FLOOR and must not be reported as an improvement.",
+        "why_the_bar_misses_it": "The local wins are concentrated where occurrence lists are long: -41% on tropical-matrix/constraint-199552 (avg list 679) and -12% on sc-21 (176). tropical-matrix is not in the stratified sample at all -- qf-lra-heuristics.md excludes it as a family all three reference solvers fail -- and the sample is dominated by short-list instances where the change is neutral to slightly negative."
+      },
+      "follow_up": "Correctness gate passes. On the promotion bar the change is NEUTRAL, not an improvement: same solved count, PAR2 gain inside run-to-run noise, nothing gained or lost. The measured wins are real but sit on instances the bar does not contain. Keeping it therefore needs a different justification than the bar -- either a manifest that includes long-list families, or the argument that a 41% win on an open family at no cost elsewhere is worth the added invariant. Recorded for that decision rather than presented as a win."
     }
   ]
 }
