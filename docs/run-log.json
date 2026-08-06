@@ -19098,6 +19098,32 @@
         "what_the_profile_points_at_instead": "Term-operation volume and rational cost, not the container. 83.0M from_int128_reduced calls against 48.1M multiplies means roughly 1.7 normalisations per multiply, and 53.6M Rational copies is a large number for 1.26M row updates. Reducing fill-in (fewer terms) or making the small-rational path cheaper are the levers this profile supports."
       },
       "follow_up": "Lead 7 closed as already-implemented, on profile evidence rather than on a code read alone. Also fixed a stale comment in select_entering_variable that claimed 'Row isn't sorted by var id', contradicting the Row invariant that pivot()'s merge depends on."
+    },
+    {
+      "id": "2026-08-06-qf-lra-occurs-in-removal-scan-cost",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "profiling",
+      "scope": "Measures the cost of the linear occurs_in_ removal inside LraTableau::pivot, after a gprof profile put pivot at 74% self time with rational arithmetic separately accounted for. Answers whether the erase/remove scan is rare bookkeeping or a dominant cost.",
+      "commit": "10b894c",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release with three temporary counters, reverted afterwards"
+      },
+      "command": {
+        "instance": "tropical-matrix/constraint-199552.smt2 with --guarded-real-equality-lowering",
+        "probe": "counted occurs_in entries iterated per pivot, calls to the erase/remove in the cancellation branch, and the total elements those scans touched"
+      },
+      "result": {
+        "iterated": "1,260,035 occurs_in entries iterated in total (this is the Markowitz factor, |occurs_in(entering)| summed over pivots)",
+        "erase_calls": "12,033,307 -- about 9.5 removals per pivot row update, i.e. roughly TEN TIMES more removals than iterations",
+        "erase_scanned": "8,174,083,067 elements scanned by those removals; average occurrence-list length 679",
+        "magnitude": "8.17 billion scanned elements against 128.4M pivot term ops -- 64x more work in the bookkeeping than in the arithmetic it maintains. At a generous 4 elements/ns that is about 2.0s of pure scanning in a 4.4s solve, consistent with pivot's 74% self time and with Rational copies being only 1.05%.",
+        "correction": "An earlier reading of this code claimed removals were rare, taken from the comment 'This is the *only* removal the loop performs' -- which says WHICH removal, not how often. The measurement says the opposite."
+      },
+      "follow_up": "Filed as a lead in docs/open-leads.md. The container question is now settled by data rather than by the general principle that vectors iterate better than hash sets: iteration is 6,500x cheaper than the removal scans here, so almost any structure with sub-linear removal wins, even one with slower iteration."
     }
   ]
 }

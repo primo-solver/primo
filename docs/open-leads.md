@@ -36,6 +36,7 @@ notes it points to.
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
 | [2b](#lead-two-lra-paths) | Dispatch is a **nondeterminism trigger**, not a performance bug | neither path dominates (2-2 at the timeout) | -- | **measured; design kept, hazard recorded** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
+| [3b](#lead-occurs-in) | **`occurs_in_` removal is a linear scan dominating `pivot`** | 8.17B elements scanned, ~2.0s of a 4.4s solve | small-medium | **new, top of queue** |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
@@ -301,6 +302,77 @@ by 5 solved and 110 PAR2, gaining 12 files against it. Griggio's actual rule
 really is better than the most-violated rule this project's docs had
 attributed to him -- independent support, on our own benchmarks, that the
 attribution corrected in [](papers/griggio-mathsat-thesis.md) was wrong.
+
+(lead-occurs-in)=
+## 3b. `occurs_in_` removal is a linear scan, and it dominates `pivot`
+
+**Found 2026-08-06 by asking why the removal is a linear scan at all. It is
+the largest measured single cost in the arithmetic layer.**
+
+`pivot()` maintains `occurs_in_` -- variable to the list of basic variables
+whose rows mention it. When a coefficient cancels to zero the variable leaves
+that row, and the entry is removed with
+
+```cpp
+occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
+                  occurrences.end());
+```
+
+which scans the whole occurrence list. Measured on
+`tropical-matrix/constraint-199552`:
+
+| quantity | value |
+|---|---:|
+| `occurs_in` entries iterated (the Markowitz factor) | 1,260,035 |
+| **erase calls** | **12,033,307** |
+| **elements scanned by those erases** | **8,174,083,067** |
+| average occurrence-list length | 679 |
+| scan elements vs pivot term ops (128.4M) | **64x** |
+
+At a generous 4 elements/ns that is roughly **2.0s of pure scanning in a 4.4s
+solve**, which is consistent with `pivot` holding 74% self time in the gprof
+profile while `Rational` copies hold 1.05%.
+
+**The reading that delayed this.** The code comment says "This is the *only*
+removal the loop performs", which describes *which* removal, not how often --
+and it was taken as "removals are rare". They are not: there are about **ten
+times more removals than iterations**.
+
+### Why a hash set is now the obvious question, and what the data says
+
+The standard objection to `unordered_set` here is that `occurs_in(entering)`
+is *iterated in full* on every pivot, and a vector iterates contiguously while
+a hash set chases nodes. That objection is real but the magnitudes settle it:
+iteration touches 1.26M entries while removal scans touch 8.17 **billion**.
+Iteration is 6,500x cheaper, so almost any structure with sub-linear removal
+wins even if its iteration is several times slower.
+
+Three candidate shapes, cheapest first:
+
+1. **Tombstones / superset invariant.** Stop removing eagerly and let
+   `occurs_in_` be a conservative *superset*. The consumer already does
+   `lower_bound(other_row, entering_var)`, so a stale entry is detected for
+   free by checking that the found position actually holds `entering_var`,
+   and skipped. Removal cost becomes zero; iteration cost grows with
+   staleness, so it needs a compaction policy. Relaxes
+   `verify_occurs_in_index` from equality to superset.
+2. **Swap-and-pop with a position index.** Keeps contiguous iteration and
+   makes removal O(1), at the cost of maintaining `position_of[var][basic]`
+   through every insert and swap.
+3. **`unordered_set` per variable.** Simplest to write, O(1) removal, but
+   pays a node allocation per insert -- and the class comment records that
+   `rows_`/`occurs_in_` were migrated *away* from `std::unordered_map`
+   precisely because of "per-call heap-allocated map-node churn". That was
+   the outer container rather than the inner list, so it is not the same
+   change, but it is the same hazard.
+
+**Falsifier.** If a prototype does not materially reduce `pivot`'s share in a
+fresh profile on this instance, the scan was not where the time went and the
+8.17B figure is being misread.
+
+**Note before implementing.** This touches the core tableau invariant and
+`verify_occurs_in_index`, so it needs the QF_LRA model fuzz gate on Slurm, not
+just unit tests -- the same gate monotone elimination went through.
 
 (lead-aep)=
 ## 4. Adaptive Early Pruning
