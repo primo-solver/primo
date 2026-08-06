@@ -304,6 +304,53 @@ with far less risk than a full incremental rewrite.
 `checks * atoms`. If it still divides exactly, the base theory is still being
 rebuilt.
 
+(boolean-test-cases)=
+### Booleans have more shapes than "a propositional variable" -- test all of them
+
+Any fix here is a change to *how Booleans are classified*, and Booleans appear
+in SMT in several forms that behave differently. A test suite that only covers
+`(declare-fun p () Bool)` will pass while the fix is broken. The cases, with
+what each one must do:
+
+| shape | `TermKind` | must route / classify as | why |
+|---|---|---|---|
+| `(declare-fun p () Bool)` | `Constant` | **not** EUF | nullary: no congruence rule can apply |
+| `true` / `false` | `BoolValue` | **not** EUF | a literal, distinct kind -- verified, never matched `has_euf_predicate` |
+| `(declare-fun f (Real) Bool)`, used as `(f x)` | `Application` | **EUF** | congruence applies: `x = y` implies `f(x) = f(y)` |
+| `(declare-fun g (Bool) Bool)`, used as `(g p)` | `Application` | **EUF** | same, and note `p` is now an *argument*, so it is congruence-relevant here even though it is not on its own |
+| `(= p q)` over Bool | `Equality` | today: EUF, via `has_equality` | this is the **second over-trigger**; a fix to `has_euf_predicate` alone leaves it |
+| `(= a b)` over an uninterpreted sort | `Equality` | **EUF** | genuine congruence content |
+| `(= x y)` over Real | `Equality` | LRA, unless it contains an application | already handled correctly |
+
+**The trap that matters most, and it is on the Mechanism B side.** The truth
+value of a Bool-sorted term is represented in the EUF engine by *merging it
+with `true` or `false`* -- that is why `PreparedFlatTheory` is constructed with
+`true_term` and `false_term`, and why the terms count came to
+`checks x (atoms + 2)`. So the true/false machinery is **load-bearing for
+genuine predicates**: `(f x)` still needs to be merged with `true`/`false` to
+have a truth value at all.
+
+The fix must therefore remove *propositional variables* from the EUF atom set
+**without** removing the true/false handling that Bool-sorted applications
+depend on. "Stop merging Booleans with true/false" would be a
+correctness bug, not an optimisation. Concretely, the discriminator is
+**arity**, not sort: a Bool-sorted term with zero arguments carries no
+congruence obligation, and one with arguments does.
+
+**Minimum regression tests to add alongside the fix**, each asserting both the
+answer and the dispatch/classification counter:
+
+1. Pure QF_LRA plus propositional variables -- must stay on `:solver.qf-lra`.
+2. The same plus one `(declare-fun f (Real) Bool)` application -- must go mixed.
+3. Pure QF_LRA plus `(= p q)` over Bool -- states the current behaviour, and is
+   the test that changes if the second over-trigger is also fixed.
+4. A Bool-sorted predicate whose truth value is forced both ways, checking the
+   true/false merge still happens (guards against over-pruning the EUF atoms).
+5. Uninterpreted-sort equalities with arithmetic -- must stay mixed
+   (the unsoundness direction).
+6. `true`/`false` appearing literally in an otherwise pure QF_LRA formula --
+   must not flip the dispatch.
+
 ### What not to do
 
 - **Do not "fix" this by disabling NO on single-theory problems.** NO is
