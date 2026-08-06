@@ -19124,6 +19124,33 @@
         "correction": "An earlier reading of this code claimed removals were rare, taken from the comment 'This is the *only* removal the loop performs' -- which says WHICH removal, not how often. The measurement says the opposite."
       },
       "follow_up": "Filed as a lead in docs/open-leads.md. The container question is now settled by data rather than by the general principle that vectors iterate better than hash sets: iteration is 6,500x cheaper than the removal scans here, so almost any structure with sub-linear removal wins, even one with slower iteration."
+    },
+    {
+      "id": "2026-08-06-qf-lra-occurs-in-hashset-prototype",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "profiling",
+      "scope": "Prototype of lead 3b candidate 3: replace occurs_in_'s per-variable std::vector with std::unordered_set so removal is O(1), including the requested initial-capacity (reserve) variants. Also establishes that the cancellation rate generalises beyond tropical-matrix.",
+      "commit": "5385cf0",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "four builds from the same tree: baseline, unordered_set with no reserve, and with per-variable reserve(8) and reserve(32). All prototypes reverted; nothing committed."
+      },
+      "command": {
+        "cancellation_census": "temporary counters on both occurs_in_ erase sites, across five families",
+        "ab": "same instance through each build, comparing wall time and :lra.pivots"
+      },
+      "result": {
+        "cancellation_generalises": "Cancellation is NOT tropical-specific: 9.4% of merged terms on tropical constraint-199552, 13.8% latendresse ecoli, 18.0% miplib danoint-166, 12.1% uart-16, 9.5% sc-21. Scanned-elements-per-merged-term ranges 6x to 64x.",
+        "search_unchanged": ":lra.pivots is IDENTICAL between baseline and prototype on every instance measured (7,679 / 3,654 / 847 / 282,354), so unordered_set's different iteration order does not perturb pivot selection and the timings measure container cost cleanly rather than a search change.",
+        "ab_results": "tropical constraint-199552 4.24s -> 3.20s (-25%); sc-21 0.48 -> 0.47 (-2%); uart-16 0.26 -> 0.25 (-4%); latendresse ecoli 0.26 -> 0.34 (+31%); miplib danoint-166 65.19s -> 77.52s (+19%).",
+        "the_deciding_factor": "AVERAGE OCCURRENCE-LIST LENGTH, not total elements scanned. danoint-166 scans 1.8x MORE elements in total than tropical (14.6B vs 8.2B) and gets 19% WORSE, because its average list is 76 against tropical's 679. The vector scan is contiguous, vectorisable and cache-friendly, so it is very cheap per element; a hash erase costs a hash plus a probe plus a likely cache miss regardless of list length. Hashing only wins once the list is long enough to amortise that. Crossover is somewhere between 76 and 679.",
+        "reserve_result": "The requested initial-capacity setting makes things WORSE, not better: on tropical, no-reserve 3.20s against reserve(8) 3.50s and reserve(32) 3.38s. Reserving per variable pays allocation and memory for every variable, and most occurrence lists are short.",
+        "model_correction": "The framing that '8.17 billion scanned elements must be the bottleneck' was too simple. Removing the scans entirely on tropical wins 25%, not the ~45% a 2.0s-of-4.4s estimate implied, which means contiguous scanning is substantially faster per element than that estimate assumed."
+      },
+      "follow_up": "Candidate 3 (unordered_set) is rejected as a blanket change: it is a regression on three of five instances including the largest. What survives is the diagnosis -- long occurrence lists are expensive to maintain -- and the two untried candidates, tombstone/superset and swap-and-pop with a position index, both of which keep contiguous iteration. A length-triggered hybrid is also now suggested by the data."
     }
   ]
 }

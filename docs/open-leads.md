@@ -36,7 +36,7 @@ notes it points to.
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
 | [2b](#lead-two-lra-paths) | Dispatch is a **nondeterminism trigger**, not a performance bug | neither path dominates (2-2 at the timeout) | -- | **measured; design kept, hazard recorded** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
-| [3b](#lead-occurs-in) | **`occurs_in_` removal is a linear scan dominating `pivot`** | 8.17B elements scanned, ~2.0s of a 4.4s solve | small-medium | **new, top of queue** |
+| [3b](#lead-occurs-in) | `occurs_in_` removal scan | -25% where lists are long, +19% where short | small-medium | **open**; hash set rejected, 3 candidates left |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
@@ -425,6 +425,53 @@ Three candidate shapes, cheapest first:
    precisely because of "per-call heap-allocated map-node churn". That was
    the outer container rather than the inner list, so it is not the same
    change, but it is the same hazard.
+
+### Prototype result: the hash set is a regression, and the reason is instructive
+
+Built and measured 2026-08-06, including the initial-capacity variants.
+Cancellation first: it is **not** tropical-specific -- 9.4% of merged terms
+there, 13.8% latendresse, **18.0% miplib danoint-166**, 12.1% uart, 9.5% sc.
+So the lead generalises.
+
+`:lra.pivots` is **identical** between baseline and prototype on every
+instance (7,679 / 3,654 / 847 / 282,354), so the hash set's different
+iteration order does not perturb pivot selection: these timings measure
+container cost, not a search change.
+
+| instance | erase calls | avg list | baseline | unordered_set | change |
+|---|---:|---:|---:|---:|---:|
+| tropical `constraint-199552` | 12.0M | **679** | 4.24s | 3.20s | **-25%** |
+| sc-21 | 1.3M | 176 | 0.48s | 0.47s | -2% |
+| uart-16 | 0.35M | 86 | 0.26s | 0.25s | -4% |
+| **miplib `danoint-166`** | 192.8M | **76** | 65.19s | 77.52s | **+19%** |
+| latendresse ecoli | 1.2M | **43** | 0.26s | 0.34s | **+31%** |
+
+**The deciding factor is average occurrence-list length, not total elements
+scanned.** `danoint-166` scans **1.8x more** elements in total than tropical
+(14.6B against 8.2B) and gets *worse*, because its lists average 76 against
+tropical's 679. A `std::vector<LraVarId>` scan is contiguous, vectorisable and
+cache-friendly -- very cheap per element -- while a hash erase costs a hash, a
+probe and a likely cache miss whatever the length. Hashing only pays once the
+list is long enough to amortise that. The crossover is somewhere between 76
+and 679.
+
+**The requested initial capacity makes it worse, not better**: on tropical,
+no reserve 3.20s against `reserve(8)` 3.50s and `reserve(32)` 3.38s.
+Reserving per variable pays allocation and memory for *every* variable, and
+most occurrence lists are short.
+
+**This also corrects the lead's own framing.** "8.17 billion scanned elements
+must be the bottleneck" was too simple: removing the scans entirely wins 25%
+on tropical, not the ~45% that a 2.0s-of-4.4s estimate implied. Contiguous
+scanning is much cheaper per element than that estimate assumed.
+
+**Where this leaves the lead.** Candidate 3 is rejected as a blanket change.
+The diagnosis survives -- long occurrence lists are expensive to maintain --
+and the two candidates that keep contiguous iteration are untried:
+tombstone/superset, and swap-and-pop with a position index. The data also
+suggests a fourth option it did not previously contain: switch representation
+per variable once its list crosses a length threshold, since the two regimes
+are cleanly separated by exactly that quantity.
 
 **Falsifier.** If a prototype does not materially reduce `pivot`'s share in a
 fresh profile on this instance, the scan was not where the time went and the
