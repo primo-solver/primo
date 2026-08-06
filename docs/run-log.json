@@ -20836,6 +20836,63 @@
       },
       "limitations": "The generated gate is the merge-grade correctness evidence. The mutation gate is supplementary and thin because the checked-in QF_UFLRA mutation corpus contains one seed; its log also reports many ignore-list classifications even though typefuzz completed all 1000 requested generations.",
       "outcome": "Correctness gate passed for the explicit mixed online-EUF profile: 5000/5000 generated QF_UFLRA cases matched Z3 and the real-seed mutation task found no bug trigger. This establishes gate correctness evidence, not a performance win or readiness to enable the option by default."
+    },
+    {
+      "id": "2026-08-06-qfuflra-online-euf-full-submitted-119933-119934",
+      "date": "2026-08-06",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "9bf9fc1",
+      "evidence_status": "current-slurm-running",
+      "scope": "Sharded full-corpus 60-second comparison of ordinary online Nelson-Oppen propagation against the explicit mixed online-EUF callback profile. Z3 is not rerun because the corpus and reference solver have not changed.",
+      "environment": {
+        "host": "cluster",
+        "remote_workspace": "primo-online-euf-9bf9fc1",
+        "build": "Release",
+        "sat_backend": "CaDiCaL 3.0.0-7b99c07 through IPASIR-UP"
+      },
+      "preflight": "scripts/slurm_qf_uflra_model_mine.sbatch passed scripts/slurm_validate_sbatch.py and bash -n. Immediately before submission, scripts/slurm_prepare_benchmark_workspace.py --check-only used a detached local 9bf9fc1 worktree and verified the remote binary revision, CaDiCaL version, linkage, and available Z3 installation. The already-staged historical corpus was copied within the cluster and its 1284 SMT-LIB file count was verified.",
+      "jobs": {
+        "ordinary_online": {
+          "slurm_job_id": "119933",
+          "array": "0-7",
+          "solver": "build-slurm-rel/primo --quiet --stats --nelson-oppen-prop=online",
+          "artifact": "remote:primo-online-euf-9bf9fc1/results/qf-uflra-online-full-60s-9bf9fc1/shard-{0..7}.csv",
+          "logs": "remote:primo-online-euf-9bf9fc1/logs/primo-qfuflra-online-119933-*.{out,err}"
+        },
+        "online_euf": {
+          "slurm_job_id": "119934",
+          "array": "0-7",
+          "solver": "build-slurm-rel/primo --quiet --stats --nelson-oppen-prop=online --qf-uflra-online-euf",
+          "artifact": "remote:primo-online-euf-9bf9fc1/results/qf-uflra-online-euf-full-60s-9bf9fc1/shard-{0..7}.csv",
+          "logs": "remote:primo-online-euf-9bf9fc1/logs/primo-qfuflra-online-euf-119934-*.{out,err}"
+        }
+      },
+      "inputs": {
+        "logic": "QF_UFLRA",
+        "root": "tmp/QF_UFLRA",
+        "count": 1284,
+        "families": [
+          "FFT",
+          "cpachecker-bmc-svcomp14",
+          "cpachecker-induction-svcomp14",
+          "mathsat"
+        ],
+        "timeout_seconds": 60,
+        "shards_per_profile": 8,
+        "task_time_limit": "04:00:00"
+      },
+      "baseline_context": {
+        "historical_default_commit": "4631aef",
+        "historical_default_solved": 959,
+        "historical_default_timeout": 325,
+        "historical_default_wrong": 0,
+        "historical_candidate_final_solved": 1013,
+        "historical_candidate_final_timeout": 271,
+        "historical_candidate_final_wrong": 0,
+        "note": "These historical results are context only. The direct decision is between the two concurrently submitted current profiles; existing run-log Z3 evidence will be reused rather than recomputed."
+      },
+      "observed_start": "All sixteen shards entered RUNNING state. Initial stdout from task 0 of each profile records git 9bf9fc1, the exact solver command, and completed FFT rows; both corresponding stderr files were empty.",
+      "outcome": "Running. Do not claim a performance result or promote --qf-uflra-online-euf until all shard CSVs are complete, merged, checked for wrong answers, and summarized by family and PAR2."
     }
   ]
 }
