@@ -2,8 +2,9 @@
 
 ## Status
 
-This is a literature and design-intake note for the
-`nelson-oppen-closure-methods` branch. It now also records the implemented
+This began as a literature and design-intake note for the
+`nelson-oppen-closure-methods` branch. It now records the current
+`nelson-oppen-online-lazy-ipasir-up` implementation state and the implemented
 scaffolds: an SMT-owned `TheoryCombinationManager` for interface equality
 bookkeeping, a compatibility read-only analyzer, and a partial mixed QF_UFLRA
 coordinator with Real-valued UF-application purification, EUF-to-LRA proxy
@@ -136,7 +137,11 @@ disequalities. EUF-already-true equalities are not materialized as SAT equality
 atoms. Equalities that EUF can absorb are counted separately as mergeable, but
 after the rejected 2026-08-05 full QF_UFLRA run they are conservatively forced
 through the guarded SAT equality-clause path. This is still a QF_UFLRA-local
-filter, not a generic model-based `M-Propagate` transition.
+classifier, not a generic model-based `M-Propagate` transition. The
+`:no.interface.lra-to-euf-equalities-euf-mergeable-skipped` and
+`:no.interface.lra-to-euf-internal-model-equalities` counters are retained as
+diagnostics from the rejected internal-skip experiment and should remain zero in
+the repaired conservative path.
 
 `--nelson-oppen-prop=online` adds a deliberately narrow online combination
 path. In mixed QF_UFLRA only, `MixedTheoryPropagationDispatcher` is connected as
@@ -259,13 +264,36 @@ coordinator publishes:
 - `:no.purification.memoized-euf-rewrites`
 - `:no.purification.skipped-no-sites`
 - `:no.interface.shared-real-terms`
+- `:no.interface.model-real-terms-before-interface-filter`
+- `:no.interface.model-real-terms-filtered`
 - `:no.interface.sat-equality-atoms`
 - `:no.interface.sat-equalities-true`
 - `:no.interface.sat-equalities-false`
 - `:no.interface.sat-equalities-forced`
 - `:no.interface.equalities-propagated`
+- `:no.interface.equality-candidates`
+- `:no.interface.equality-existing-atoms`
+- `:no.interface.equality-missing-atoms`
+- `:no.interface.equality-created-atoms`
+- `:no.interface.equality-already-true`
+- `:no.interface.equality-assigned-false`
+- `:no.interface.equality-clauses`
+- `:no.interface.equality-reason-lits`
+- `:no.interface.equality-rechecks`
 - `:no.interface.euf-to-lra-equalities`
+- `:no.interface.euf-to-lra-candidates`
+- `:no.interface.euf-to-lra-existing-atoms`
+- `:no.interface.euf-to-lra-missing-atoms`
+- `:no.interface.euf-to-lra-created-atoms`
+- `:no.interface.euf-to-lra-clauses`
+- `:no.interface.euf-to-lra-rechecks`
 - `:no.interface.lra-to-euf-equalities`
+- `:no.interface.lra-to-euf-candidates`
+- `:no.interface.lra-to-euf-existing-atoms`
+- `:no.interface.lra-to-euf-missing-atoms`
+- `:no.interface.lra-to-euf-created-atoms`
+- `:no.interface.lra-to-euf-clauses`
+- `:no.interface.lra-to-euf-rechecks`
 - `:no.interface.lra-to-euf-equalities-euf-already-true`
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped`
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-forced`
@@ -275,6 +303,8 @@ coordinator publishes:
 - `:no.interface.conflicts`
 - `:no.interface.euf-conflicts`
 - `:no.interface.lra-conflicts`
+- `:no.interface.lra-conflict-lits`
+- `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-equality-candidates`
 - `:no.interface.model-equality-created`
 - `:no.interface.model-equality-pending`
@@ -291,9 +321,26 @@ coordinator publishes:
 - `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
+- `:no.interface.model-equality-api-builds`
+- `:no.interface.model-equality-api-queries`
+- `:no.interface.model-equality-api-not-equal`
+- `:no.interface.model-equality-api-equal`
+- `:no.interface.model-equality-api-mutation-unqueried`
+- `:no.interface.model-equality-api-mutation-avoidable`
+- `:no.interface.model-equality-api-mutation-forced`
 - `:no.interface.model-equality-mutation-checks`
 - `:no.interface.model-equality-mutated`
 - `:no.interface.model-equality-mutation-forced`
+- `:no.interface.model-equality-forced-candidates`
+- `:no.interface.model-equality-forced-existing-atoms`
+- `:no.interface.model-equality-forced-missing-atoms`
+- `:no.interface.model-equality-forced-created-atoms`
+- `:no.interface.model-equality-forced-clauses`
+- `:no.interface.model-equality-forced-rechecks`
+- `:no.interface.model-equality-forced-reason-lits`
+- `:no.interface.model-equality-forced-already-true`
+- `:no.interface.model-equality-forced-assigned-false`
+- `:no.interface.model-equality-forced-propagations`
 - `:no.interface.model-equality-selected-care`
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
@@ -328,6 +375,8 @@ coordinator publishes:
 - `:no.interface.candidate-final-scan-fallback-equalities`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
+- `:no.interface.lra-online-enabled`
+- `:no.interface.lra-online-final-checks`
 - `:no.interface.model-separations`
 - `:no.interface.model-separation-candidates`
 - `:no.interface.model-separation-euf-mergeable-pairs`
@@ -336,6 +385,24 @@ coordinator publishes:
 - `:no.interface.model-separation-search-branches`
 - `:no.interface.model-separation-search-backtracks`
 - `:no.interface.model-separation-model-oriented`
+- `:no.online.enabled`
+- `:no.online.shared-real-pairs`
+- `:no.online.precreated-equality-atoms`
+- `:no.online.paired-bound-precreate-candidates`
+- `:no.online.assignments`
+- `:no.online.backtracks`
+- `:no.online.lra-published-equalities`
+- `:no.online.lra-bound-equality-candidates`
+- `:no.online.lra-bound-equality-missing-atoms`
+- `:no.online.lra-bound-equality-materialized`
+- `:no.online.lazy-equality-atoms-created`
+- `:no.online.lazy-equality-vars-observed`
+- `:no.online.propagations`
+- `:no.online.reason-lits`
+- `:no.online.skipped-assigned`
+- `:no.online.final-lra-equality-scan-skipped`
+- `:no.online.final-lra-equality-scan-capped`
+- `:no.online.final-lra-equality-scan-fallbacks`
 
 ## Primary Base Paper
 
@@ -551,15 +618,15 @@ to make those future mechanisms measurable:
   this registry without guessing whether an equality atom already exists.
 - **Arrangement values:** the manager stores `Unknown`, `Equal`, or `Disequal`
   for registered pairs. This is the first explicit combination-layer equality
-  state. Current solver behavior only uses it in tests; future propagation code
-  must connect these values to SAT assignment, theory explanations, and
-  backtracking before relying on them for search.
+  state. The diagnostic analyzer only reports this state, while the mixed online
+  dispatcher now updates assignment/value entries on the SAT trail and backtracks
+  them through `TheoryCombinationManager::push_level` and `pop_to_level`.
 - **Purification sites:** the analyzer records Real-sorted subterms that occur
   inside EUF atoms, and uninterpreted applications that occur inside arithmetic
-  atoms. These sites are the places where a future purification pass would need
-  to introduce owned proxy constants and equality-sharing obligations before the
-  mixed atom can be delegated to one theory. The analyzer only reports the term,
-  containing atom, site kind, and sort; it does not create those proxies.
+  atoms. These sites are the places where the live mixed QF_UFLRA
+  proxy-purification pass introduces owned proxy constants before the mixed atom
+  can be delegated to one theory. The analyzer only reports the term, containing
+  atom, site kind, and sort; it does not create those proxies.
 - **Complexity:** when diagnostics are enabled, one traversal over reachable
   assertion terms plus per-sort sorting of discovered constants, followed by
   materializing the same-sort interface-pair registry and a hash index for
@@ -584,12 +651,16 @@ to make those future mechanisms measurable:
   clearing, Real terms inside EUF atoms, and uninterpreted applications inside
   arithmetic atoms as purification sites.
 
-Limitations:
+Limitations of this diagnostic analyzer:
 
-- no purification ownership or proxy-term creation yet;
+- no purification ownership or proxy-term creation in the analyzer itself; the
+  live mixed QF_UFLRA solver has a separate proxy-purification pass described
+  below;
 - no theory ownership labels beyond sort partitioning;
 - no manager-level care-pair API;
-- no SAT-backtracked arrangement trail;
+- no search use of arrangement values through this diagnostic path; the live
+  mixed online dispatcher uses `TheoryCombinationManager::push_level` and
+  `pop_to_level` for SAT-tracked assignment/value state;
 - no explanations or learned clauses;
 - no mixed-theory model object.
 
@@ -756,7 +827,8 @@ Limitations:
 
 - purification is limited to Real-valued UF applications in arithmetic atoms
   and non-constant Real arguments in EUF atoms;
-- shared-variable equality propagation is final-check only;
+- shared-variable equality propagation is default-final-check only except for
+  the opt-in online paired-bound LRA-to-EUF propagation path;
 - generated interface equalities are lazy: unentailed shared pairs do not create
   SAT atoms, and false generated equality literals are asserted only to EUF, not
   as native false-`Eq` LRA atoms;
