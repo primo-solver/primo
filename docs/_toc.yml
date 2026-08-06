@@ -1,36 +1,64 @@
 format: jb-book
 root: index
-chapters:
-  - file: architecture
-  - file: sat-ipasir-up
-  - file: dpllt
-  - file: euf
-  - file: qfuf-disequality-propagation
-  - file: preprocessing
-  - file: arithmetic
-  - file: qf-lra-heuristics
-  - file: open-leads
-  - file: tuning-parameters
-  - file: tropical-matrix-structure
-  - file: termid-order-sensitivity
-  - file: difference_logic
-  - file: debugging
-  - file: fuzz-coverage-qf-lra
-  - file: experiments
-  - file: run-log
-  - file: literature
-  - file: papers/ipasir-up
-  - file: papers/cvc4-architecture
-  - file: papers/fast-congruence-closure
-  - file: papers/fast-congruence-closure-implementation
-  - file: papers/smt-symmetry-breaking
-  - file: papers/finite-model-finding-sorts
-  - file: papers/fast-linear-arithmetic-dpllt
-  - file: papers/lra-related-work
-  - file: papers/summaries
-  - file: papers/griggio-mathsat-thesis
-  - file: papers/monotone-variable-elimination
-  - file: papers/difference-constraint-propagation
-  - file: papers/model-based-theory-combination
-  - file: papers/nelson-oppen-closure-methods
-  - file: reference/llm2smt-retrospective
+
+# Grouped into parts 2026-08-06. The book had grown to 33 flat chapters and
+# ~15k lines, with no signal about which documents belong together -- the
+# arithmetic cluster alone is six siblings and ~39% of the text. Parts give
+# the grouping; `sections` nest the notes that only make sense underneath a
+# parent document, so a theory chapter is the entry point to its own detail.
+parts:
+  - caption: Core architecture
+    chapters:
+      - file: architecture
+      - file: sat-ipasir-up
+      - file: dpllt
+      - file: preprocessing
+
+  - caption: Theories
+    chapters:
+      - file: euf
+        sections:
+          - file: qfuf-disequality-propagation
+      # arithmetic.md is the entry point: what is implemented, its options and
+      # its statistics. Everything nested under it is evidence or open work.
+      - file: arithmetic
+        sections:
+          - file: qf-lra-heuristics
+          - file: tuning-parameters
+          - file: open-leads
+          - file: tropical-matrix-structure
+          - file: fuzz-coverage-qf-lra
+      - file: difference_logic
+
+  - caption: Evidence and practice
+    chapters:
+      - file: experiments
+      - file: run-log
+      - file: debugging
+      - file: termid-order-sensitivity
+
+  - caption: Paper notes
+    chapters:
+      # literature.md states the policy and the template; the two files nested
+      # under it are the lower-confidence tiers it defines -- read-in-brief and
+      # abstracts-only. The deep notes follow as chapters of their own.
+      - file: literature
+        sections:
+          - file: papers/summaries
+          - file: papers/lra-related-work
+      - file: papers/ipasir-up
+      - file: papers/cvc4-architecture
+      - file: papers/fast-congruence-closure
+      - file: papers/fast-congruence-closure-implementation
+      - file: papers/smt-symmetry-breaking
+      - file: papers/finite-model-finding-sorts
+      - file: papers/nelson-oppen-closure-methods
+      - file: papers/model-based-theory-combination
+      - file: papers/fast-linear-arithmetic-dpllt
+      - file: papers/griggio-mathsat-thesis
+      - file: papers/monotone-variable-elimination
+      - file: papers/difference-constraint-propagation
+
+  - caption: Reference
+    chapters:
+      - file: reference/llm2smt-retrospective
