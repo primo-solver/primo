@@ -322,7 +322,7 @@ def main() -> int:
                 "outcome": outcome,
             }
         )
-        print(f"{case_path}: {outcome} ours={ours} ref={reference}")
+        print(f"{case_path}: {outcome} ours={ours} ref={reference}", flush=True)
 
     summary_path = args.out / "summary.csv"
     with summary_path.open("w", newline="") as handle:
@@ -333,9 +333,9 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"summary: {summary_path}")
+    print(f"summary: {summary_path}", flush=True)
     for outcome in sorted(counts):
-        print(f"{outcome}: {counts[outcome]}")
+        print(f"{outcome}: {counts[outcome]}", flush=True)
 
     bad = {
         "UNSUPPORTED_INPUT",

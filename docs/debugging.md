@@ -783,6 +783,9 @@ example, the experimental mixed callback profile uses
 `--nelson-oppen-prop=online --qf-uflra-online-euf`. The mutation gate's task 2
 uses that same profile. Submit only array task 2 when the default and
 candidate-final mutation profiles are not part of the current experiment.
+`scripts/qf_uflra_smoke_fuzz.py` flushes each case result immediately so SLURM
+stdout is a durable progress record even before the final `summary.csv` is
+written.
 
 ### The remote sanitizer build
 
