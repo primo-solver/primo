@@ -386,8 +386,14 @@ wrong.
    often.
 6. **Wrong claim #3: a general principle beat the data.** Asked why not a hash
    set, the first answer was that `occurs_in(entering)` is iterated in full
-   every pivot and vectors iterate better than hash sets. True, and irrelevant:
-   iteration touches 1.26M entries against 8.17 billion for the removal scans.
+   every pivot and vectors iterate better than hash sets. True, and irrelevant
+   *as stated*: iteration touches 1.26M entries against 8.17 billion for the
+   removal scans, so it cannot be the reason. **Worth reading with hindsight**
+   -- when the hash set was actually built it lost on 3 of 5 instances, and the
+   reason was cache behaviour after all, just on the *removal* path rather than
+   the iteration path ([](#occurs-in-prototypes)). The instinct was sound and
+   the justification offered for it was not, which is a different failure from
+   simply being wrong.
 7. **Wrong claim #4: one erase site.** The first probe instrumented only the
    cancellation branch. Asking precisely *when* the erase happens surfaced a
    second, structural site in the same function that the probe had silently
@@ -421,10 +427,14 @@ removes the problem rather than working around it. Removal becomes an unlink
 in place: O(1), no search, no hash, no tombstones, no live counter, and
 `occurs_in_[var].size()` stays exact for Markowitz pricing at no cost.
 
-**What Primo has today is half of that structure**: row-wise contiguous
-storage (`Row = std::vector<std::pair<LraVarId, Rational>>`) plus a column
-index (`occurs_in_`), without the cross-links that make maintaining the column
-index cheap.
+**What Primo had at the time this was written was half of that structure**:
+row-wise contiguous storage (`Row = std::vector<std::pair<LraVarId,
+Rational>>`) plus a column index (`occurs_in_`), without the cross-links that
+make maintaining the column index cheap. *Superseded 2026-08-06:* `Row` is now
+`std::vector<RowEntry>` with an `occ_slot` back-index, so the row-to-column
+link exists. The column-to-row link still does not -- see
+[](#lead-3b-cost-elsewhere), where that missing second half turns out to be
+the cause of the measured regressions.
 
 **And the missing half is not free to add**, which is why this is a real
 design question rather than an oversight. The current speed comes from rows
@@ -524,7 +534,9 @@ stores whole `Row`s (`old_basic_row`, `old_other_rows`), and `check_sat.cpp`
 has 6 external uses of `row()`/`occurs_in()`. Real but bounded -- a day's work
 plus tests, not a rewrite.
 
-**Three things that would need care, and are where a bug would hide:**
+**Three things that needed care, and were where a bug would hide** (all three
+were handled in the implementation; kept because they are the checklist for
+the remaining column-to-row half):
 
 - **Backtracking.** `pop()` restores rows from the trail, and those rows carry
   `occ_slot` values from when they were saved. `occurs_in_` is rebuilt on that
@@ -539,23 +551,106 @@ plus tests, not a rewrite.
 - **`add_row`'s public signature** takes `pair`s. Either it keeps doing so and
   fills slots internally, or every caller changes. Keeping it is clearly right.
 
-**Expected payoff, stated honestly.** Replacing the removal *entirely* with a
-hash bought 25% on tropical and lost on three other instances. This design
-should keep tropical's win (long lists, where scanning dominates) without the
-short-list losses (no hashing, contiguity preserved) -- but that is a
-prediction, and today's record on predictions of this kind is poor. The
-falsifier stays as written below.
+**Expected payoff, stated as a prediction before it was measured.** Replacing
+the removal *entirely* with a hash bought 25% on tropical and lost on three
+other instances (data in [](#occurs-in-prototypes)). This design should keep
+tropical's win without the short-list losses -- but that is a prediction, and
+this project's record on predictions of this kind is poor. See
+[](#lead-3b-outcome) for what actually happened.
 
-### Why a hash set is now the obvious question, and what the data says
+(occurs-in-prototypes)=
+### The two rejected prototypes, and exactly why they were rejected
 
-**Falsifier.** If a prototype does not materially reduce `pivot`'s share in a
-fresh profile on this instance, the scan was not where the time went and the
-8.17B figure is being misread.
+Both were built, measured and reverted on 2026-08-06; nothing of either is
+committed. **This section exists because the rest of this entry cited their
+conclusions in three places without ever giving the data, which made the
+rejection impossible to check or remember.**
 
-**Note before implementing.** This touches the core tableau invariant and
-`verify_occurs_in_index`, so it needs the QF_LRA model fuzz gate on Slurm, not
-just unit tests -- the same gate monotone elimination went through.
+#### Prototype 1: `occurs_in_` as `std::unordered_set`
 
+`:lra.pivots` was identical between baseline and prototype everywhere
+measured, so the hash set's iteration order does not perturb pivot selection --
+the timings measure container cost, not a search change.
+
+| instance | avg list length | baseline | hash set | change |
+|---|---:|---:|---:|---:|
+| tropical `constraint-199552` | 679 | 4.24s | 3.20s | **-25%** |
+| `sc-21` | 176 | 0.48s | 0.47s | -2% |
+| `uart-16` | 86 | 0.26s | 0.25s | -4% |
+| miplib `danoint-166` | 76 | 65.19s | 77.52s | **+19%** |
+| latendresse `ecoli` | 43 | 0.26s | 0.34s | **+31%** |
+
+**The deciding factor is average occurrence-list length, not total elements
+scanned** -- and that distinction is the whole reason for the rejection.
+`danoint-166` scans **1.8x more elements in total** than tropical and still
+gets *worse*, because a vector scan is contiguous and vectorisable while a hash
+erase pays a hash, a probe and a likely cache miss whatever the length. A
+structure that is better asymptotically loses on the constant everywhere except
+where lists are enormous.
+
+**The initial-capacity setting made it worse, not better.** Asked for
+explicitly, and measured: no reserve 3.20s, `reserve(8)` 3.50s, `reserve(32)`
+3.38s. Reserving pays allocation and memory for *every* variable when most
+lists are short, which is the same short-list penalty in another form.
+
+#### Prototype 2: swap-and-pop with a position index
+
+Loses to the hash set everywhere: tropical 4.11s -> 3.70s against the set's
+3.25s, and worse than baseline on the other three.
+
+The reason is structural rather than tunable: **the position index is itself a
+hash map**, so each erase costs a hash find, a hash erase, and a hash write to
+repair the moved element -- two to three hash operations where
+`unordered_set::erase` costs one. It only wins with a *non-hash* index, and a
+dense `pos_[var][basic]` is O(vars^2): 23MB for tropical, about **34GB** for a
+LassoRanker instance with 92,937 reals.
+
+That is what forced the reframing above: both prototypes work around a missing
+back-link instead of adding one, and the swap-pop result is the proof, because
+swap-pop *is* the right removal once the position is known for free. The
+implemented design is exactly this prototype with the hash index replaced by
+`RowEntry::occ_slot`.
+
+(occurs-in-histogram)=
+#### Where the scan cost actually lives, and a static-prediction lead
+
+Histogram of occurrence-list length at each cancellation erase on tropical
+`constraint-199552` (12.0M calls, 8.17B elements scanned):
+
+| list length at erase | share of all scanning |
+|---|---:|
+| < 256 | 2.9% |
+| 256-511 | 10.5% |
+| 512-1023 | **51.6%** |
+| >= 1024 | **34.9%** |
+
+**86.5% of the scanning happens on lists of 512 or more**, so the mean of 679
+hides a heavily skewed population -- which is why an average-case argument
+about "long lists" was the wrong frame and the histogram was needed.
+
+This follows from the formula's shape: tropical-matrix is a DAG of definitions
+over 36 free `f*` variables ([](tropical-matrix-structure.md)), so pivoting
+composes rows back toward those few variables and their occurrence lists grow
+enormous.
+
+**Recorded but NOT tested: this may be predictable statically.**
+`scripts/analyze_smt2.py` already recovers free-versus-derived structure and
+occurrence counts without solving. If those correlate with observed list
+lengths, the representation could be chosen per instance -- or per variable --
+*before* search rather than guessed. Checking that correlation gates any
+adaptive scheme, and is the cheap first step.
+
+**Falsifier for the whole lead, and its answer.** Stated before the work: if a
+prototype does not materially reduce `pivot`'s share in a fresh profile, the
+scan was not where the time went and the 8.17B figure is being misread. The
+hash prototype cut tropical 25% with pivot counts unchanged, so the figure was
+read correctly and the falsifier did not fire.
+
+**Gate applied.** This touches the core tableau invariant and
+`verify_occurs_in_index`, so it needed the QF_LRA model fuzz gate on Slurm
+rather than unit tests alone -- job 119566, clean.
+
+(lead-3b-outcome)=
 ### Outcome: implemented, and it clears the bar on the family it targets
 
 Implemented as the array variant (`RowEntry::occ_slot`, `unlink_occurrence`),
@@ -596,6 +691,7 @@ Remaining caveats, stated plainly: n=10, one run, and 791s of a 1200s budget
 is close enough to the line that a rerun could lose it. The -36% on the file
 that *both* arms solve is the more robust half of this result.
 
+(lead-3b-cost-elsewhere)=
 ### Where it makes things worse, and why that is predictable
 
 "Does it cost us elsewhere?" is answerable unusually precisely here, because
@@ -633,6 +729,18 @@ back-index with a `std::lower_bound` **over that entry's row**. That is
 O(log row) with poor locality -- roughly 10 scattered probes into a 691-entry,
 ~27KB row -- and it replaces an old linear scan of a column that on this family
 is *short*. Long columns pay the old cost; long rows pay the new one.
+
+**The prediction this entry made was wrong, and it is worth saying so.**
+[](#occurs-in-prototypes)'s "expected payoff" argued the array design would
+"keep tropical's win without the short-list losses", because it removes the
+hashing and preserves contiguity. It did keep the tropical win. It did **not**
+avoid the latendresse loss: the hash set made that family ~31% slower and the
+array form makes `ecoliFBAyicesTest-500` **58%** slower. (Different runs and
+hosts, so the two percentages are not directly comparable -- the direction is.)
+The reasoning had identified hashing and contiguity as the causes of the
+short-list penalty and missed that the fixup introduces a *row*-length term,
+which is precisely what that family maximises. The entry's own warning that
+"this project's record on predictions of this kind is poor" held.
 
 **Two candidate causes, and the experiment that separates them.** Besides the
 binary search, `RowEntry` grew from 32 to 40 bytes, which taxes every row walk
