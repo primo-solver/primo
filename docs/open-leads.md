@@ -34,7 +34,7 @@ notes it points to.
 |---|---|---|---|---|
 | [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | zero as a wiring fix; the filter reaches only the once-called final check | large if done properly | **downgraded**; merge into lead 5 |
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
-| [2b](#lead-two-lra-paths) | Dispatch is a **nondeterminism trigger**, not a performance bug | neither path dominates (2-2 at the timeout) | -- | **measured; design kept, hazard recorded** |
+| [2b](#lead-two-lra-paths) | Dispatch trigger: propositional variables route pure QF_LRA to the NO path | neutral at 15s, but **costs solved files at 300s**; bisected to `ffaf9eb` on main | -- | **reopened 2026-08-07: a main-branch regression** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
 | [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | tropical 1/10 -> **2/10** at 1200s, gained 1 / lost 0; bar-neutral on the stratified sample | **large** (representation change) | **implemented, default**; 2 earlier prototypes rejected |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
@@ -189,7 +189,40 @@ so nothing unsound or expensive happens -- but which of two solvers runs is
 decided by something semantically unrelated to whether theory combination is
 needed.
 
-### It is not a performance bug -- that claim was wrong
+### Upgraded again 2026-08-07: on the full division it *is* a performance bug
+
+**The "not a performance bug" verdict below was measured on the 237-file
+stratified sample at a 15s cap. It does not survive the full division at
+300s, and the section after it should be read with that limit in mind.**
+
+The full QF_LRA division (1,753 files, 300s) came back **1,588 solved against
+the 1,631 recorded at `b6b8d55`**, and bisecting one of the lost files landed
+exactly here. `2019-ezsmt/travellingSalesperson/tsp_rand_70_300_1155482584_7`
+is pure QF_LRA plus propositional variables -- no sorts, no uninterpreted
+functions:
+
+| commit | `:solver.qf-lra` | `:solver.qf-uflra` | result |
+|---|---:|---:|---|
+| `4d4a185` (parent) | **1** | -- | **sat, 0.93s**, 11,735 pivots |
+| `ffaf9eb` | 0 | **1** | **timeout**, deterministic over repeated runs |
+
+`ffaf9eb` ("Add separable QF_UFLRA final checks", 2026-07-30) is the commit
+that *introduced* `contains_euf_predicate_atom` -- the classifier described
+below. So this entry documents the consequence of a specific commit, not a
+long-standing quirk, and that commit costs at least this file outright.
+
+Two things follow. First, **the cost is not symmetric at long timeouts.** The
+even 2-2 timeout split below was a 15s measurement; a 0.93s-to-timeout flip
+does not show up at 15s because the file is fast on both sides of nothing.
+Second, **this is a main-branch regression, not a branch-local one** -- main
+at `0c0843d` reproduces the timeout (1.09M pivots) in the same regime as this
+branch's HEAD (1.14M), while `b6b8d55` solves in 0.20s.
+
+What it does **not** explain: LassoRanker, which is 40 of the 55 lost files
+and reports `:solver.qf-lra 1` -- the pure path. That is a separate
+investigation and must not be folded into this one.
+
+### It is not a performance bug at 15s -- the original measurement
 
 An earlier version of this entry called the divergence a behaviour bug, on the
 strength of a single instance where the mixed path was 40x faster. Measured

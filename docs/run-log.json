@@ -19350,6 +19350,55 @@
       },
       "conclusion": "PASS on substance: 0 wrong answers and 0 invalid models across 6000 FuzzSMT cases in two non-default configurations. The FAILED task states are NOT a correctness signal -- validate_qfuf_models_with_dolmen.py counts its own 10s solver timeouts as failures and returns 1, and the sbatch runs under `set -euo pipefail`, so the validator's exit code becomes the task's. Tasks 6-8 passed only because the opfuzz/yinyang branch does not invoke the model validator. Gate ergonomics finding worth acting on: a slow-but-correct configuration cannot pass this gate, which matters because exploring speed trade-offs is precisely what these knobs are for.",
       "artifacts": "~/primo-tuning-9dadfa1/fuzz-results/{tuning-corner-aggressive,tuning-unbounded-pricing}/"
+    },
+    {
+      "id": "2026-08-07-qf-lra-division-regression-bisected-to-dispatch",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-07",
+      "kind": "analysis",
+      "scope": "Full QF_LRA division (1753 files, 300s) on this branch came back 1588 solved against the 1631 recorded at b6b8d55. Established where the loss comes from: not this branch.",
+      "commit": "9dadfa1 (branch HEAD); culprit identified as ffaf9eb on main",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "mixed",
+        "notes": "Division runs on Slurm (119970 contended, 120072 spread over node-01/03/07 with --cpus-per-task=3); per-instance bisection local on the workstation, Release builds, deterministic across repeated runs."
+      },
+      "result": {
+        "division_runs": {
+          "ref_b6b8d55_job_118904": {
+            "solved": 1631,
+            "wrong": 0
+          },
+          "HEAD_job_119970_contended": {
+            "solved": 1584,
+            "wrong": 0
+          },
+          "HEAD_job_120072_spread": {
+            "solved": 1588,
+            "wrong": 0,
+            "gained": 12,
+            "lost": 55
+          }
+        },
+        "lost_by_family": {
+          "LassoRanker": 40,
+          "2019-ezsmt": 12,
+          "miplib": 2,
+          "tropical-matrix": 1
+        },
+        "instance_bisected": "2019-ezsmt/travellingSalesperson/tsp_rand_70_300_1155482584_7.lp.smt2",
+        "three_way_local": {
+          "b6b8d55": "sat 0.20s, 879 pivots, 30 conflicts",
+          "main 0c0843d": "unknown at 90s, 1,092,680 pivots",
+          "HEAD": "unknown at 90s, 1,142,628 pivots"
+        },
+        "first_bad_commit": "ffaf9eb 'Add separable QF_UFLRA final checks' (2026-07-30)",
+        "parent_good": "4d4a185 'Add QF_LRA model printing': sat 0.93s, 11,735 pivots, twice",
+        "mechanism": "ffaf9eb added contains_euf_predicate_atom, which counts any Bool-sorted Application OR Constant as an EUF predicate. A plain propositional variable qualifies, so the dispatch (has_equality || has_euf_predicate) && has_arithmetic flips this pure-QF_LRA file from :solver.qf-lra 1 to :solver.qf-uflra 1. Verified directly: the counters flip across exactly that commit pair."
+      },
+      "conclusion": "The division regression predates this branch and belongs to main. main at 0c0843d reproduces the timeout with pivot counts in the same regime as HEAD (1.09M vs 1.14M) while b6b8d55 solves in 0.20s, so the branch is not the cause. The mechanism is the dispatch trigger already recorded as open-leads lead 2b, whose 'performance-neutral' verdict was measured on the stratified sample at 15s and does NOT hold on the full division at 300s. CAVEAT: this explains the 12 2019-ezsmt losses; LassoRanker (40 losses) reports :solver.qf-lra 1, the pure path, and is NOT explained by this -- tracked separately.",
+      "process_notes": "Two wrong turns worth recording. (1) The first division run put 67 tasks on one 56-core node; the contention hypothesis was stated too confidently and re-running with --cpus-per-task=3 moved the result by only 4 files, so contention was not the cause. (2) The first bisect script omitted --quiet and read the version banner instead of the answer, so every commit tested 'bad' and it converged on a docs-only commit. Both were caught before being reported as conclusions, but each was the first draft."
     }
   ]
 }
