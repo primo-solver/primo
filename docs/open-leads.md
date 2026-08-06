@@ -416,7 +416,7 @@ holding.
 | tombstone + live counter | avoids the removal, defers the cost to iteration |
 
 A **cross-linked sparse matrix** -- each nonzero linked into both its row and
-its column, which King's thesis Section 2.2.7 records as standard practice --
+its column, as King's thesis Section 2.2.7 specifies --
 removes the problem rather than working around it. Removal becomes an unlink
 in place: O(1), no search, no hash, no tombstones, no live counter, and
 `occurs_in_[var].size()` stays exact for Markowitz pricing at no cost.
@@ -458,14 +458,33 @@ Asked whether the cross-linked form is doable. Investigated 2026-08-06; the
 short answer is **yes, in array form, and it is smaller than it first looked**
 -- because a claim made earlier in this entry was wrong.
 
-**Source note.** King's thesis is *not* in `docs/papers/`; the only description
-this project has is [](papers/lra-related-work.md)'s one-line summary of
-Section 2.2.7 ("a sparse matrix with each nonzero entry linked into both a row
-list and a column list"). Nothing below is taken from the thesis -- a
-cross-linked sparse matrix is textbook (Duff, Erisman and Reid, *Direct
-Methods for Sparse Matrices*, is the standard reference), and the design below
-is derived from Primo's own code. **Before citing King for this, fetch and
-read it.**
+**Source note, updated 2026-08-06.** King's thesis is now available at
+`docs/papers/king_tim.pdf` and Section 2.2.7 has been read -- summary in
+[](papers/summaries.md). Reading it confirmed the direction and exposed a fork
+this entry had not accounted for, recorded below. The array design further
+down is a *variant*, not King's design, and should not be attributed to him.
+
+**What King actually specifies, now that the source has been read.** Each
+non-zero is a member of two doubly linked lists, row and column, with forward
+and backward pointers for both; setting an entry to zero is an O(1) unlink
+"given a pointer to the entry". That is precisely the missing capability. But
+one clause changes the comparison:
+
+> "(Note that these lists are not sorted. The elements may appear in any
+> order.)"
+
+**King's rows are unsorted.** Primo's are sorted by variable id, which is the
+invariant `pivot()`'s two-way merge depends on and which item H8 was built
+around. Because his lists are unsorted King cannot merge them, so row addition
+loads one row into a **temporary dense map** of O(n) entries and walks the
+other against it (Fig. 2.9). Both reach O(||Ti|| + ||Tk||); they pay for it
+differently.
+
+So adopting King's form wholesale means giving up sortedness, the two-way
+merge, contiguity *and* item H8, and taking on an O(n) scratch map -- in
+exchange for O(1) removal. That is a much larger and less obviously good trade
+than "add cross-links". The array variant below keeps Primo's side of the fork
+and buys most of the removal win.
 
 **The correction.** This entry previously claimed the array form would need
 "roughly 128M scattered writes" because `pivot()` rebuilds `other_row`

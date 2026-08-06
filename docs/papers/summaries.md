@@ -72,6 +72,83 @@ elimination was this paper's "dominated column" was **wrong**; see
 legitimately supplies is the presolve/postsolve vocabulary and the observation
 that reduction order matters when reductions are interdependent.
 
+(king-thesis)=
+## King, "Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic" (NYU, 2014)
+
+> Tim King. PhD thesis, New York University, 2014. Local copy
+> `docs/papers/king_tim.pdf` (untracked).
+> **Read 2026-08-06**: Section 2.2.7 (Tableau) in full, including 2.2.7.1 Row
+> Addition, its Figures 2.9 and 2.10, and 2.2.7.3 Complexity. The rest is
+> cited elsewhere in this project from summaries only.
+
+### Section 2.2.7 -- the tableau representation
+
+The tableau is a sparse matrix storing only non-zero coefficients. Each entry
+is labelled with both its row and its column variable, and is **a member of
+two doubly linked lists** -- one for the non-zeros of its row, one for the
+non-zeros of its column -- carrying forward and backward pointers for both.
+Two arrays of size n hold the list heads. Iterating a row or a column costs
+time proportional to its number of non-zeros.
+
+King states three constant-time operations explicitly: maintaining each row's
+and column's non-zero count; adding an entry known to be currently zero; and
+**setting an entry to zero by unlinking it, "given a pointer to the entry"**.
+That last clause is the whole point of the structure and the thing Primo
+currently lacks.
+
+**The detail that matters most when comparing to Primo, and is easy to miss:**
+
+> "(Note that these lists are not sorted. The elements may appear in any
+> order.)"
+
+King's rows are **unsorted**. Primo's `Row` is sorted by variable id -- an
+invariant `pivot()`'s two-way merge depends on. These are two different,
+internally consistent designs, not one design and a degraded version of it.
+
+### How row addition works without sortedness
+
+`Tk <- Tk + a*Ti` is the core operation (Fig. 2.9). Because the lists are
+unsorted, King cannot merge them; instead he loads row `k` into a **temporary
+dense partial map** of O(n) entries, then walks row `i`'s non-zeros looking
+each up. Cost is O(||Ti||s + ||Tk||s). Crucially, when the sum becomes zero
+the algorithm already holds the entry (via the map) and unlinks it in O(1) --
+which is exactly the removal Primo currently performs with a linear scan.
+
+Pivot (Fig. 2.10) is then one row addition to build the new row, followed by a
+row addition for every `k` with `Tk,j != 0` -- iterating the column list.
+
+A footnote records a refinement: a slightly more involved RowAddition can load
+the *added-from* row into the map instead, so `Ti` is loaded only once per
+pivot rather than once per affected row. Not asymptotically better, but it is
+the version to implement.
+
+### The design fork this exposes
+
+| | King | Primo today |
+|---|---|---|
+| row storage | unsorted doubly linked list | sorted contiguous `vector<pair>` |
+| row addition | dense scratch map | two-way merge (item H8) |
+| entry removal | **O(1) unlink, pointer in hand** | **linear scan of the column list** |
+| column size | maintained O(1) | `occurs_in_[var].size()` |
+
+Both reach O(||Ti|| + ||Tk||) row addition. King pays an O(n) scratch map and
+loses contiguity; Primo pays sortedness maintenance and gets cache-friendly
+merges -- and then pays for removal, because without cross-links it cannot
+unlink an entry it is already holding.
+
+### Also read
+
+2.2.7.3 argues the pivot is strongly polynomial: tableau form is Gaussian
+elimination under a variable order, a pivot is a re-elimination under a new
+order, and Schrijver's Theorem 3.3 bounds the coefficient sizes. Lemma 2.19
+and Theorem 2.20 carry that through. This is a complexity argument, not an
+implementation technique, and does not bear on the representation choice.
+
+**Not established by this section:** anything about fill-in. Searching the
+thesis for fill-in, density, Markowitz or refactorization turns up only the
+sparse format itself, so the densification measured in
+[](../qf-lra-heuristics.md) section 6 is not a problem this source answers.
+
 (jonas-strejcek-unconstrained)=
 ## Jonáš & Strejček, "On Simplification of Formulas with Unconstrained Variables and Quantifiers" (SAT 2017)
 
