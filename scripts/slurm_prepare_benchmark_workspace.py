@@ -149,9 +149,32 @@ rm -rf "$snapshot"
 
 
 def build_command(
-    workdir: str, cmake: str, target: str, jobs: int, git: str, contrib_targets: list[str]
+    workdir: str,
+    cmake: str,
+    target: str,
+    jobs: int,
+    git: str,
+    contrib_targets: list[str],
+    reuse_dependencies: bool,
 ) -> str:
-    make_targets = " ".join(shlex.quote(contrib_target) for contrib_target in contrib_targets)
+    make_targets = " ".join(
+        shlex.quote(contrib_target) for contrib_target in contrib_targets
+    )
+    if reuse_dependencies:
+        dependency_setup = """
+if [ ! -d contrib/local/include ] || [ ! -d contrib/local/lib ]; then
+  echo 'cannot reuse dependencies: remote contrib/local is incomplete' >&2
+  exit 2
+fi
+rm -rf build-slurm-rel
+""".strip()
+    else:
+        dependency_setup = f"""
+rm -f contrib/local/.cadical.stamp contrib/local/lib/libcadical.a
+rm -rf contrib/src/cadical/build contrib/src/cadical/makefile \\
+  contrib/src/cadical/src/makefile build-slurm-rel
+make {make_targets}
+""".strip()
     return f"""
 set -eu
 cd {shlex.quote(workdir)}
@@ -164,10 +187,7 @@ fi
 case "$cmake_path" in
   */*) cmake_dir=$(dirname "$cmake_path"); export PATH="$PWD/$cmake_dir:$PATH" ;;
 esac
-rm -f contrib/local/.cadical.stamp contrib/local/lib/libcadical.a
-rm -rf contrib/src/cadical/build contrib/src/cadical/makefile \
-  contrib/src/cadical/src/makefile build-slurm-rel
-make {make_targets}
+{dependency_setup}
 "$cmake_path" -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release \
   -DPRIMO_GIT_REVISION_OVERRIDE={shlex.quote(git)}
 "$cmake_path" --build build-slurm-rel --target {shlex.quote(target)} -j{jobs}
@@ -175,7 +195,9 @@ build-slurm-rel/{shlex.quote(target)} --version
 """.strip()
 
 
-def check_command(workdir: str, expected_git: str, target: str, required_tools: list[str]) -> str:
+def check_command(
+    workdir: str, expected_git: str, target: str, required_tools: list[str]
+) -> str:
     expected_line = f"git: {expected_git}"
     tool_checks = "\n".join(
         f"test -x {shlex.quote(tool)}\n{shlex.quote(tool)} --version >/dev/null"
@@ -274,6 +296,14 @@ def main() -> int:
         help="archive sends only tracked HEAD files; rsync preserves the legacy full-tree sync",
     )
     parser.add_argument(
+        "--reuse-dependencies",
+        action="store_true",
+        help=(
+            "Reuse the remote contrib/local installation while replacing the tracked source "
+            "snapshot and rebuilding Primo from a clean build-slurm-rel directory"
+        ),
+    )
+    parser.add_argument(
         "--allow-active-jobs",
         action="store_true",
         help="Allow sync/rebuild even if active SLURM jobs with Primo job names exist",
@@ -282,13 +312,17 @@ def main() -> int:
 
     if args.jobs < 1:
         raise SystemExit("--jobs must be positive")
+    if args.reuse_dependencies and args.contrib_target:
+        raise SystemExit(
+            "--reuse-dependencies cannot be combined with --contrib-target"
+        )
     if not args.ssh_config.is_file():
         raise SystemExit(f"missing SSH config: {args.ssh_config}")
 
     contrib_targets = args.contrib_target or ["contrib-required"]
     required_tools = list(args.require_tool)
     if args.with_z3:
-        if "contrib-z3" not in contrib_targets:
+        if not args.reuse_dependencies and "contrib-z3" not in contrib_targets:
             contrib_targets.append("contrib-z3")
         if "contrib/local/bin/z3" not in required_tools:
             required_tools.append("contrib/local/bin/z3")
@@ -316,7 +350,13 @@ def main() -> int:
             args.ssh_config,
             args.remote,
             build_command(
-                args.remote_dir, args.cmake, args.target, args.jobs, git, contrib_targets
+                args.remote_dir,
+                args.cmake,
+                args.target,
+                args.jobs,
+                git,
+                contrib_targets,
+                args.reuse_dependencies,
             ),
         )
     ssh(

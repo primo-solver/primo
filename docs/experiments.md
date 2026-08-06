@@ -95,6 +95,14 @@ outputs in a reused workspace cannot make benchmark binaries report a spurious
 `-dirty` suffix. Use `--sync-mode rsync` only for a deliberate legacy full-tree
 sync.
 
+When a workspace already has a verified cluster-local dependency installation,
+pass `--reuse-dependencies`. The helper preserves `contrib/local`, installs the
+clean tracked source snapshot, removes `build-slurm-rel`, and rebuilds Primo from
+scratch. This avoids repeated CaDiCaL, GMP, ANTLR, and CLI11 provisioning without
+risking stale project objects from preserved source timestamps. The mode fails
+if the remote include or library directory is absent and cannot be combined with
+explicit `--contrib-target` requests.
+
 `contrib-required` is only the dependency set needed to build and run Primo. A
 benchmark that names reference solvers under `contrib/local/bin` must either
 reuse an existing matching reference result, or prepare the workspace with the
