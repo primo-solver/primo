@@ -21040,7 +21040,7 @@
       "date": "2026-08-07",
       "branch": "nelson-oppen-online-lazy-ipasir-up",
       "commit": "aa81e02",
-      "evidence_status": "current-slurm-mutation-running",
+      "evidence_status": "current-slurm-complete",
       "scope": "Fresh SLURM correctness gate after restoring mandatory online final LRA equality validation. The generated arrays cover ordinary online and online+EUF; the mutation task checks every original regression seed before mutating compact seeds.",
       "environment": {
         "host": "cluster",
@@ -21081,7 +21081,7 @@
         "compact_mutation": {
           "slurm_job_id": "120121_2",
           "commit": "0b9b2cd",
-          "state": "running",
+          "state": "completed, exit code 0, elapsed 00:05:25",
           "iterations_per_accepted_seed": 1000,
           "solver_timeout_seconds": 8,
           "exact_seed_timeout_seconds": 60,
@@ -21119,9 +21119,20 @@
           "crash": 0,
           "unsupported": 0,
           "status_mismatch": 0
+        },
+        "compact_mutation": {
+          "seeds_found": 4,
+          "seeds_valid_for_mutation": 2,
+          "seeds_intentionally_excluded_by_size": 2,
+          "requested_mutants_per_valid_seed": 1000,
+          "successful_generations": 2000,
+          "unsuccessful_generations": 0,
+          "solver_calls": 3828,
+          "bug_triggers": 0,
+          "bug_files": 0
         }
       },
-      "outcome": "Both 5000-case generated SLURM gates passed. The replacement compact-seed mutation job is still running, so this entry is not yet complete evidence and no broad performance benchmark may start."
+      "outcome": "The repaired profiles passed both 5000-case generated SLURM gates. The online+EUF mutation task first passed all four exact regression seeds, then completed 2000 successful mutations across the two compact seeds with zero bug triggers. The correctness gate is complete; no replacement broad performance benchmark has been submitted yet."
     }
   ]
 }
