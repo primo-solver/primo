@@ -126,6 +126,61 @@ The pure QF_LRA path faces the same atoms and is fine, because it marks them
 `is_arithmetic = false` and skips them. The mixed path has no equivalent
 "neither theory owns this" bucket.
 
+**Are the merges really on Booleans, and is `p = q` the cause?** Yes to the
+first; the second is only part of it. `is_euf_theory_atom` returns true for
+*any* equality whose children are not Real -- so `(= p q)` between propositional
+variables is an EUF atom -- but the dominant contribution is the **bare**
+Boolean atoms. Each one's truth assignment is realised as a merge with `true`
+or `false`, so 7,352 propositional variables mean 7,352 merges per check
+regardless of whether any equality is involved.
+
+(mechanism-rebuild)=
+## Mechanism B2: the EUF theory is rebuilt from scratch on every check
+
+This is the part that matters beyond misclassified Booleans, and it was found
+by noticing the counters are *exactly* divisible:
+
+```text
+:euf.incremental.merges 39,436,128 = 5,364 checks x 7,352 atoms   (exact)
+:euf.incremental.terms  39,446,856 = 5,364 checks x 7,354 atoms   (exact, +2 = true/false)
+```
+
+Not approximately -- exactly. Every check merges every atom. The code says why
+(`solve_qf_uf_lra`, inside the check loop):
+
+```cpp
+std::vector<BooleanClausifier::TheoryAtom> euf_atoms_for_check = euf_atoms;  // full copy
+...
+prepared_flat_theory.emplace(terms, euf_atoms_for_check, true_term, false_term, ...);
+euf_check = check_incremental_euf_closure(prepared_flat_theory.value(), ...);
+```
+
+`check_incremental_euf_closure` is incremental *within* one closure, but the
+`PreparedFlatTheory` it works on is **constructed fresh on every check**, so
+nothing is reused across checks. The cost is O(checks x euf_atoms) by
+construction.
+
+**Verified as general, not specific to one instance.** On four further
+mixed-path files the identity holds exactly:
+
+| file | checks | euf atoms | merges | `merges == checks * atoms` |
+|---|---:|---:|---:|---|
+| `rand_70_300_1155482584_4.lp` | 1 | 7,332 | 7,332 | yes |
+| `rand_70_300_1155482584_12.lp` | 1 | 7,352 | 7,352 | yes |
+| `rand_80_340_1159656267_13.lp` | 1 | 8,262 | 8,262 | yes |
+| `3.smt2` | 1 | 288 | 288 | yes |
+
+Those files are cheap only because they need one check. The blow-up needs
+*both* many atoms and many checks, which `tsp_rand_70_300_1155482584_7` has
+(5,364).
+
+**Why this is the more important finding.** Mechanisms A and B are about
+formulas that should never have reached the mixed path. B2 is not: **a genuine
+QF_UFLRA problem pays O(checks x atoms) too.** Fixing A and B removes the
+Boolean atoms from the multiplication but leaves the multiplication. Any
+mixed-theory problem with many EUF atoms and a search that needs many final
+checks will hit this, and no amount of classifier tightening helps.
+
 (mechanism-unknown)=
 ## Mechanism C: LassoRanker -- 46 of the 61 losses, still unexplained
 
@@ -166,14 +221,18 @@ once**. The two layers have different risk profiles.
 
 ### The asymmetry that decides the order
 
-| | Mechanism A (dispatch) | Mechanism B (atom split) |
-|---|---|---|
-| what it decides | *which solver runs* | which theory owns an atom |
-| failure mode if too narrow | **unsoundness** -- a formula needing EUF is sent to a solver that cannot do EUF | none: SAT already owns a propositional variable |
-| failure mode if too wide | slow (today's bug) | slow (today's bug) |
-| perturbs search on other files | **yes, massively** | only on already-mixed files |
+| | A (dispatch) | B (atom split) | B2 (rebuild per check) |
+|---|---|---|---|
+| what it decides | *which solver runs* | which theory owns an atom | how often EUF state is rebuilt |
+| if too narrow | **unsoundness** | none: SAT owns it anyway | n/a |
+| if left as is | slow | slow | **slow on genuine QF_UFLRA too** |
+| perturbs search elsewhere | **yes, massively** | only already-mixed files | no -- pure performance |
+| fixes the regression | 12 of 61 files | with A | none of it directly |
 
-**So fix B first.** It is where the 39.4M merges are, it cannot introduce
+**So fix B first**, and treat **B2 as the one that matters for the NO work
+going forward** even though it does not by itself recover a single lost file:
+it is the only one of the three that a correctly-classified QF_UFLRA problem
+still pays. It is where the 39.4M merges are, it cannot introduce
 unsoundness, and it does not change which solver runs on any file -- which
 means the change is measurable against a stable baseline. Fixing A first
 changes the dispatch for a large fraction of the corpus and makes every
@@ -221,6 +280,30 @@ direction. Consequences for the fix:
   fuzz gate on Slurm is the minimum; mutation fuzzers add and remove
   declarations, so they exercise exactly this classifier.
 
+### Fixing B2: reuse the prepared theory across checks
+
+The atom set does **not** change between checks -- `euf_atoms` is built once
+before the loop, and `euf_atoms_for_check` is a copy of it plus whatever
+interface equalities the round appends. So the rebuild is not required by
+anything; it is incidental.
+
+The shape of the fix is to construct `PreparedFlatTheory` once outside the
+loop and push/pop the per-check assignment, mirroring what the LRA side
+already does (`OnlineLraPropagator` copies `base_tableau` once and uses
+`push()`/`pop()`, see [](arithmetic.md)).
+
+**The complication to respect**: `euf_atoms_for_check` is not always identical
+to `euf_atoms` -- `append_true_interface_equalities` and
+`append_interface_equalities` extend it during the round. So the reusable part
+is the base theory over `euf_atoms`, with the round's interface equalities
+layered on top and retracted afterwards. A first version that reuses the base
+and rebuilds only when the interface set changes would capture most of the win
+with far less risk than a full incremental rewrite.
+
+**Falsifier:** `:euf.incremental.merges` must stop being exactly
+`checks * atoms`. If it still divides exactly, the base theory is still being
+rebuilt.
+
 ### What not to do
 
 - **Do not "fix" this by disabling NO on single-theory problems.** NO is
@@ -229,6 +312,10 @@ direction. Consequences for the fix:
 - **Do not declare the regression fixed when A and B are done.** They account
   for 12 of 61 lost files. [](#mechanism-unknown) is the larger half and is
   independent.
+- **Do not stop at A and B because the regression numbers recover.**
+  [](#mechanism-rebuild) recovers no lost file on this corpus and is still the
+  defect most likely to bite genuine QF_UFLRA work, because it is the only one
+  that survives a correct classifier.
 - **Do not benchmark a fix against `b6b8d55`.** That is a pre-regression
   commit, not the merge base. Compare against the commit the fix is built on;
   this note exists partly because that mistake was made once already and made a
