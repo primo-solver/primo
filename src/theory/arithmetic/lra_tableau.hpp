@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <set>
 #include <unordered_map>
@@ -184,7 +185,24 @@ class LraTableau {
   // of runtime on scrambled339450 (see docs/qf-lra-heuristics.md section
   // 6.2a). Anything that constructs a Row must preserve it; the unit tests
   // check it directly rather than trusting comments.
-  using Row = std::vector<std::pair<LraVarId, util::Rational>>;
+  // A row entry carries a back-index into the column list as well as the
+  // coefficient: `occ_slot` is this term's position inside
+  // `occurs_in_[var]`. That is what lets pivot() remove an occurrence in
+  // O(log row) instead of scanning the column list, since the code already
+  // holds the row entry at the point it decides the term is gone -- see
+  // docs/open-leads.md lead 3b, and King's thesis Section 2.2.7 for the
+  // linked-list form this is an array variant of.
+  //
+  // Rebuilding a row moves the entry within the *row*, but leaves
+  // `occurs_in_[var]` untouched for a surviving term, so the merge carries
+  // `occ_slot` across unchanged. Slots are only rewritten when the column
+  // list itself changes.
+  struct RowEntry {
+    LraVarId var = 0;
+    util::Rational coeff;
+    std::uint32_t occ_slot = 0;
+  };
+  using Row = std::vector<RowEntry>;
 
   // Allocates a fresh non-basic variable with assignment 0 and no bounds.
   LraVarId add_variable();

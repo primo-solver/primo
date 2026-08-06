@@ -6214,7 +6214,7 @@ compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
       theory::arithmetic::DeltaRational::from_rational(util::Rational(0));
   std::vector<sat::Lit> reasons;
   reasons.reserve(row.size());
-  for (const auto& [var, coeff] : row) {
+  for (const auto& [var, coeff, var_slot] : row) {
     const bool need_upper_of_var = want_upper == (coeff.sign() > 0);
     const auto bound = need_upper_of_var ? tableau.upper_bound(var) : tableau.lower_bound(var);
     if (!bound.has_value()) {
@@ -6260,7 +6260,7 @@ compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
   std::vector<sat::Lit> reasons;
   reasons.reserve(row.size());
   reasons.push_back(basic_bound->reason);
-  for (const auto& [var, coeff] : row) {
+  for (const auto& [var, coeff, var_slot] : row) {
     if (var == target_var) {
       continue;
     }
@@ -7008,7 +7008,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
       return;
     }
-    for (const auto& [target_var, target_coeff] : row) {
+    for (const auto& [target_var, target_coeff, target_var_slot] : row) {
       if (target_var == exclude_var) {
         continue;
       }
