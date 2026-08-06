@@ -712,16 +712,62 @@ this came from a flat profile rather than a design argument, so its
 measurement and the profile that found it are written up in [](#sec-6-2b);
 this entry is the definition the rest of the docs refer to.
 
-**What it is.** `pivot()` combines each affected row with the scaled
-entering row. It used to concatenate the two into a scratch buffer and
-`std::sort` the result, once per affected row per pivot. Both halves are
-already ordered by variable id, so this is a *merge*. The change makes that
-ordering an invariant on `Row` -- strictly ascending, never a zero
-coefficient -- which `add_row` establishes by sorting and `pivot` preserves
-by splicing `basic_var` into `new_entering_row` at its ordered position.
-Two smaller wins follow: the zero check is needed only in the equal-var-id
-branch, and the affected row is taken by reference and *moved* into the
-trail rather than copied twice.
+**First, what "sorted" refers to -- because the tableau has two levels of
+container and only one of them is indexed by variable.**
+
+The *outer* containers are dense and indexed by `LraVarId` exactly as one
+would expect: `vars_[v]` is v's bounds and assignment, `rows_[v]` is v's row
+if v is basic, `occurs_in_[v]` is the list of rows v appears in. Nothing about
+those is sorted; the index *is* the variable.
+
+A `Row` itself is **not** indexed by variable. It is a sparse list of only the
+non-zero terms:
+
+```cpp
+struct RowEntry {
+  LraVarId var;         // which variable this term is for
+  util::Rational coeff;
+  std::uint32_t occ_slot;
+};
+using Row = std::vector<RowEntry>;
+```
+
+Position `i` in a `Row` has no relation to variable `i` -- you have to read
+`entry.var`. That is the whole point of the representation, and the numbers
+say why: on `constraint-199552` the tableau has 1,440 rows over ~1,900
+variables but only 3,519 non-zeros in total, an average row length of **2.44**
+([](tropical-matrix-structure.md)). Storing each row as a dense array indexed
+by variable would cost ~2.7M slots to hold 3,519 real ones, and every row
+operation would be O(variables) instead of O(non-zeros).
+
+So "sorted" means: **the entries of a `Row` are kept in strictly ascending
+order of their `.var` field** (and never carry a zero coefficient). It is an
+ordering over the row's *contents*, which only exists because those contents
+are a sparse list rather than a dense index.
+
+**What H8 is.** `pivot()` combines each affected row with the scaled entering
+row -- and because both are sparse lists, combining them means pairing up the
+entries that refer to the same variable, which a dense representation would
+get for free from the index. It used to concatenate the two into a scratch
+buffer and `std::sort` the result, once per affected row per pivot. But both
+halves already arrive ordered by variable id, so sorting re-establishes
+something that was never lost: the correct operation is a linear two-way
+*merge*, walking both lists in step and adding coefficients where the var ids
+coincide.
+
+The change makes that ordering an explicit invariant on `Row`, which
+`add_row()` establishes by sorting and `pivot()` preserves by splicing
+`basic_var` into `new_entering_row` at its ordered position. Two smaller wins
+follow: the zero check is needed only in the equal-var-id branch, and the
+affected row is taken by reference and *moved* into the trail rather than
+copied twice.
+
+Sortedness is a *choice*, not a necessity, and the alternative is a real
+design: King's tableau (thesis §2.2.7, see [](papers/summaries.md)) keeps rows
+as explicitly **unsorted** linked lists and pays for a dense O(n) scratch map
+per row addition instead of a merge. Both reach O(‖Ti‖ + ‖Tk‖); Primo's
+version buys cache-friendly contiguous rows and pays by having to maintain the
+order.
 
 **Result.** Scrambled competition set (595 files, 60s) 369 -> 378 solved with
 churn **+9/-0**; stratified sample 189 -> 192, +3/-0; mid-band gap 37 -> 38,
