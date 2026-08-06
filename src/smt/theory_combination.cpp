@@ -165,6 +165,7 @@ std::uint32_t TheoryCombinationManager::classification_bit(
 void TheoryCombinationManager::rebuild_from_interface_terms(
     const std::vector<core::TermId>& interface_terms) {
   summary_ = NelsonOppenInterfaceSummary{};
+  interface_sort_by_term_.clear();
   equality_index_.clear();
   value_trail_.clear();
   assignment_trail_.clear();
@@ -186,15 +187,7 @@ void TheoryCombinationManager::rebuild_from_interface_terms(
     summary_.candidate_pairs += sort_terms.size() * (sort_terms.size() - 1U) / 2U;
     for (const core::TermId term_id : sort_terms) {
       summary_.terms.push_back(InterfaceTerm{term_id, sort});
-    }
-    for (std::size_t i = 0; i < sort_terms.size(); ++i) {
-      for (std::size_t j = i + 1; j < sort_terms.size(); ++j) {
-        const TermPair pair = canonical_pair(sort_terms[i], sort_terms[j]);
-        summary_.equality_registry.push_back(
-            InterfaceEqualityRegistryEntry{core::kInvalidTermId, pair.lhs, pair.rhs, sort,
-                                           sat::Lit{0}, InterfaceEqualityStatus::Missing});
-        ++summary_.missing_equalities;
-      }
+      interface_sort_by_term_.emplace(term_id, sort);
     }
   }
   std::sort(summary_.terms.begin(), summary_.terms.end(),
@@ -211,6 +204,8 @@ void TheoryCombinationManager::rebuild_from_interface_terms(
 
 void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertions) {
   summary_ = NelsonOppenInterfaceSummary{};
+  interface_sort_by_term_.clear();
+  equality_index_.clear();
   value_trail_.clear();
   assignment_trail_.clear();
   value_level_starts_.clear();
@@ -262,23 +257,16 @@ void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertio
     summary_.candidate_pairs += sort_terms.size() * (sort_terms.size() - 1U) / 2U;
     for (const core::TermId term_id : sort_terms) {
       summary_.terms.push_back(InterfaceTerm{term_id, sort});
+      interface_sort_by_term_.emplace(term_id, sort);
     }
-    for (std::size_t i = 0; i < sort_terms.size(); ++i) {
-      for (std::size_t j = i + 1; j < sort_terms.size(); ++j) {
-        const TermPair pair = canonical_pair(sort_terms[i], sort_terms[j]);
-        const auto visible = visible_pairs.find(pair);
-        if (visible == visible_pairs.end()) {
-          summary_.equality_registry.push_back(
-              InterfaceEqualityRegistryEntry{core::kInvalidTermId, pair.lhs, pair.rhs, sort,
-                                             sat::Lit{0}, InterfaceEqualityStatus::Missing});
-          ++summary_.missing_equalities;
-          continue;
-        }
-        summary_.equality_registry.push_back(
-            InterfaceEqualityRegistryEntry{visible->second, pair.lhs, pair.rhs, sort, sat::Lit{0},
-                                           InterfaceEqualityStatus::Visible});
-      }
+  }
+  for (const auto& [pair, equality] : visible_pairs) {
+    const auto sort = interface_sort_by_term_.find(pair.lhs);
+    if (sort == interface_sort_by_term_.end()) {
+      continue;
     }
+    summary_.equality_registry.push_back(InterfaceEqualityRegistryEntry{
+        equality, pair.lhs, pair.rhs, sort->second, sat::Lit{0}, InterfaceEqualityStatus::Visible});
   }
   std::sort(summary_.terms.begin(), summary_.terms.end(),
             [](const InterfaceTerm& lhs, const InterfaceTerm& rhs) {
@@ -308,6 +296,30 @@ std::optional<InterfaceEqualityRegistryEntry> TheoryCombinationManager::interfac
     return std::nullopt;
   }
   return summary_.equality_registry[found->second];
+}
+
+std::optional<InterfaceEqualityRegistryEntry> TheoryCombinationManager::ensure_interface_pair(
+    core::TermId lhs, core::TermId rhs) {
+  if (lhs == rhs) {
+    return std::nullopt;
+  }
+  const TermPair pair = canonical_pair(lhs, rhs);
+  if (const auto existing = interface_equality(pair.lhs, pair.rhs); existing.has_value()) {
+    return existing;
+  }
+  const auto lhs_sort = interface_sort_by_term_.find(pair.lhs);
+  const auto rhs_sort = interface_sort_by_term_.find(pair.rhs);
+  if (lhs_sort == interface_sort_by_term_.end() || rhs_sort == interface_sort_by_term_.end() ||
+      lhs_sort->second != rhs_sort->second) {
+    return std::nullopt;
+  }
+  const std::size_t index = summary_.equality_registry.size();
+  summary_.equality_registry.push_back(
+      InterfaceEqualityRegistryEntry{core::kInvalidTermId, pair.lhs, pair.rhs, lhs_sort->second,
+                                     sat::Lit{0}, InterfaceEqualityStatus::Missing});
+  equality_index_.emplace(equality_key(pair.lhs, pair.rhs), index);
+  ++summary_.missing_equalities;
+  return summary_.equality_registry.back();
 }
 
 std::optional<InterfaceEqualityRegistryEntry> TheoryCombinationManager::interface_equality(

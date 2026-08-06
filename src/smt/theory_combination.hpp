@@ -106,6 +106,8 @@ class TheoryCombinationManager {
   std::optional<InterfaceEqualityRegistryEntry> interface_equality(core::TermId lhs,
                                                                    core::TermId rhs) const;
   std::optional<InterfaceEqualityRegistryEntry> interface_equality(core::TermId equality) const;
+  std::optional<InterfaceEqualityRegistryEntry> ensure_interface_pair(core::TermId lhs,
+                                                                      core::TermId rhs);
   std::optional<sat::Lit> interface_equality_lit(core::TermId lhs, core::TermId rhs) const;
   std::optional<sat::Lit> interface_equality_lit(core::TermId equality) const;
   bool register_interface_equality_atom(core::TermId equality, sat::Lit lit);
@@ -150,6 +152,7 @@ class TheoryCombinationManager {
 
   const core::TermManager& terms_;
   NelsonOppenInterfaceSummary summary_;
+  std::unordered_map<core::TermId, core::SortId> interface_sort_by_term_;
   std::unordered_map<std::uint64_t, std::size_t> equality_index_;
   std::vector<EqualityValueTrailEntry> value_trail_;
   std::vector<EqualityAssignmentTrailEntry> assignment_trail_;

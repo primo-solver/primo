@@ -106,7 +106,7 @@ row-derived equality rules, one-sided-bound analysis, freedom intervals, or a
 second arithmetic model implementation. It can still remove substantial cost
 at the SMT/EUF/SAT integration layer.
 
-### 1. Preserve Existing Probe Explanations
+### 1. Preserve Existing Probe Explanations (Implemented)
 
 The two strict-orientation probes already return LRA conflict clauses. The
 coordinator currently reduces those results to booleans while mining implied
@@ -114,47 +114,51 @@ equalities, then learns each equality through
 `force_implied_interface_equalities`, whose generic reason is every unfiltered
 assignment in the current theory view.
 
-Change the SMT-local result from a vector of equality `TermId` values to an
+The SMT-local result now carries an
 explained result containing the equality pair and the union of the two existing
 strict-probe conflict reasons, with synthetic literal zero removed. Route each
-result through `force_implied_interface_equality_with_reason`. This changes no
+result through the reason-specific interface forcing path. This changes no
 tableau invariant or arithmetic inference: it preserves explanations the LRA
 checker already computed instead of discarding them.
 
-Required counters:
+The implementation publishes:
 
 - mined equalities with probe-local reasons;
 - fallback equalities using a whole-assignment reason;
-- total and maximum reason literals before and after explanation narrowing;
-- duplicate explained clauses suppressed.
+- `:no.interface.equality-local-reasons` and
+  `:no.interface.equality-local-reason-lits`;
+- `:no.interface.equality-fallback-reasons` for the defensive whole-assignment
+  fallback.
 
-### 2. Use EUF Equality Explanations
+### 2. Use EUF Equality Explanations (Implemented)
 
 `FlatCongruenceClosure` already exposes `explain_equal`. EUF-to-LRA interface
-equalities should carry that proof-local explanation instead of the complete
+equalities carry that proof-local explanation instead of the complete
 EUF assignment. This is an SMT/EUF integration change using an existing theory
-API. It should share the explained interface-equality result shape from the
-first milestone.
+API and shares the explained interface-equality result shape from the first
+milestone. `:no.interface.euf-explanation-missing` identifies any violation of
+the expected `are_equal`/`explain_equal` invariant before the defensive reason
+fallback is used.
 
 Tests must cover direct equality, congruence-derived equality, predicate/Boolean
 reasons, generated interface atoms, and backtracking. The propagated equality
 must remain implied by its recorded antecedents when unrelated assigned atoms
 are removed.
 
-### 3. Make The Equality Ledger Sparse
+### 3. Make The Equality Ledger Sparse (Implemented)
 
-Lazy IPASIR-UP atom creation removed SAT-variable preallocation, but the mixed
-path still creates `shared_real_pairs` unconditionally and
-`TheoryCombinationManager::rebuild_from_interface_terms` creates one missing
-registry entry for every shared pair. This is still quadratic metadata
-preallocation.
+Lazy IPASIR-UP atom creation and the combination manager now both avoid
+preallocation. `TheoryCombinationManager::rebuild_from_interface_terms` keeps
+the shared term set and arithmetic full-pair count but starts with an empty
+pair ledger. The assertion analyzer stores visible pairs only.
 
-Keep the shared term list and compute the full-pair count arithmetically for
-diagnostics. Store only visible pairs and pairs requested by a producer,
-consumer, SAT assignment, or final fallback. Add an on-demand manager operation
-such as `ensure_interface_pair(lhs, rhs)`; lazy SAT atom materialization must
-call it before registering the generated atom. Full-pair fallback iteration may
-remain available without materializing a full pair vector or registry.
+`ensure_interface_pair(lhs, rhs)` validates registered interface membership and
+same-sort ownership before creating a missing entry. Producers and lazy SAT atom
+materialization call it explicitly. The mixed path constructs the old full pair
+vector only when full-pair model-equality branching is requested. The statistics
+`:no.interface.materialized-pairs` and
+`:no.interface.materialized-missing-pairs` distinguish the sparse ledger from
+the theoretical `:no.online.shared-real-pairs` count.
 
 ### 4. Reuse Incremental EUF In Mixed Search
 

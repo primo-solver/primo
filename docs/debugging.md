@@ -321,6 +321,12 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.equality-assigned-false`
 - `:no.interface.equality-clauses`
 - `:no.interface.equality-reason-lits`
+- `:no.interface.equality-local-reasons`
+- `:no.interface.equality-local-reason-lits`
+- `:no.interface.equality-fallback-reasons`
+- `:no.interface.euf-explanation-missing`
+- `:no.interface.materialized-pairs`
+- `:no.interface.materialized-missing-pairs`
 - `:no.interface.equality-rechecks`
 - `:no.interface.euf-to-lra-candidates`
 - `:no.interface.euf-to-lra-existing-atoms`

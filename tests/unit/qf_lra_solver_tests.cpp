@@ -691,6 +691,9 @@ void qf_uf_lra_shares_purified_real_argument_equalities_with_euf() {
   assert(result.statistics.get(":no.interface.lra-to-euf-created-atoms") >= 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-clauses") >= 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-rechecks") >= 1);
+  assert(result.statistics.get(":no.interface.equality-local-reasons") >= 1);
+  assert(result.statistics.get(":no.interface.equality-local-reason-lits") >= 2);
+  assert(result.statistics.get(":no.interface.equality-fallback-reasons") == 0);
 }
 
 void qf_uf_lra_prints_model_with_purified_real_predicate_argument() {
@@ -1418,6 +1421,10 @@ void qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra() {
   assert(result.statistics.get(":no.interface.euf-to-lra-created-atoms") >= 1);
   assert(result.statistics.get(":no.interface.euf-to-lra-clauses") >= 1);
   assert(result.statistics.get(":no.interface.euf-to-lra-rechecks") >= 1);
+  assert(result.statistics.get(":no.interface.equality-local-reasons") >= 1);
+  assert(result.statistics.get(":no.interface.equality-local-reason-lits") >= 1);
+  assert(result.statistics.get(":no.interface.equality-fallback-reasons") == 0);
+  assert(result.statistics.get(":no.interface.euf-explanation-missing") == 0);
   assert(result.statistics.get(":no.interface.conflicts") >= 1);
   assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
 

@@ -1029,11 +1029,11 @@ separately from lazy SAT atom creation. The opt-in online paired-bound path does
 not precreate the full shared-pair cross product. With the backend-neutral
 IPASIR-UP boundary, it also avoids the temporary paired-bound precreation
 fallback: the dispatcher creates and observes a SAT equality literal only for a
-selected published candidate. This statement is about SAT equality atoms, not
-all pair metadata: the current mixed coordinator still constructs the
-`shared_real_pairs` vector, and `TheoryCombinationManager` still creates a
-missing registry entry for every shared pair. Removing that remaining quadratic
-metadata allocation is a separate non-LRA milestone.
+selected published candidate. The manager also avoids the full metadata cross
+product: it retains the arithmetic full-pair count, stores visible pairs, and
+creates missing entries through `ensure_interface_pair` only when a producer or
+consumer requests one. The mixed coordinator constructs a full pair vector only
+for explicit full-pair model-equality branching.
 
 ### Primo Checklist Items
 
@@ -1049,7 +1049,7 @@ metadata allocation is a separate non-LRA milestone.
 - Keep the equality ledger sparse as well as the SAT layer: retain the
   combinatorial full-pair count for diagnostics, but create a pair entry only
   when an existing atom, theory producer, care consumer, SAT assignment, or
-  explicit fallback requests it. This is planned, not current behavior.
+  explicit fallback requests it. This is current behavior.
 - Keep a delayed strategy available as an ablation baseline against
   model-based closure.
 

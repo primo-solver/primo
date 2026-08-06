@@ -68,8 +68,8 @@ void finds_visible_interface_constants_and_equalities_by_sort() {
   assert(summary.terms.size() == 4);
   assert(summary.sort_count == 2);
   assert(summary.candidate_pairs == 3);
-  assert(summary.equality_registry.size() == 3);
-  assert(summary.missing_equalities == 1);
+  assert(summary.equality_registry.size() == 2);
+  assert(summary.missing_equalities == 0);
   assert(summary.visible_equalities.size() == 2);
   assert(summary.visible_equalities[0].lhs == a);
   assert(summary.visible_equalities[0].rhs == b);
@@ -78,12 +78,9 @@ void finds_visible_interface_constants_and_equalities_by_sort() {
   assert(summary.equality_registry[0].lhs == a);
   assert(summary.equality_registry[0].rhs == b);
   assert(summary.equality_registry[0].status == InterfaceEqualityStatus::Visible);
-  assert(summary.equality_registry[1].lhs == a);
+  assert(summary.equality_registry[1].lhs == b);
   assert(summary.equality_registry[1].rhs == c);
-  assert(summary.equality_registry[1].status == InterfaceEqualityStatus::Missing);
-  assert(summary.equality_registry[2].lhs == b);
-  assert(summary.equality_registry[2].rhs == c);
-  assert(summary.equality_registry[2].status == InterfaceEqualityStatus::Visible);
+  assert(summary.equality_registry[1].status == InterfaceEqualityStatus::Visible);
 }
 
 void ignores_boolean_and_internal_constants() {
@@ -165,9 +162,9 @@ void registry_supports_mock_theory_dispatch_without_creating_atoms() {
   mock.inspect(summary);
 
   assert(summary.candidate_pairs == 3);
-  assert(summary.equality_registry.size() == 3);
+  assert(summary.equality_registry.size() == 2);
   assert(mock.visible_pairs == 2);
-  assert(mock.missing_pairs == 1);
+  assert(mock.missing_pairs == 0);
   const std::vector expected_visible_atoms{eq_ab, terms.mk_eq(a, c)};
   assert(mock.visible_atoms == expected_visible_atoms);
 }
@@ -205,6 +202,7 @@ void manager_tracks_canonical_interface_equality_values() {
   assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Equal);
   assert(manager.interface_equality_value(b, a) == InterfaceEqualityValue::Equal);
 
+  assert(manager.ensure_interface_pair(b, c).has_value());
   assert(manager.set_interface_equality_value(b, c, InterfaceEqualityValue::Disequal));
   const auto missing = manager.interface_equality(c, b);
   assert(missing.has_value());
@@ -278,6 +276,9 @@ void manager_rolls_back_interface_equality_values_by_decision_level() {
 
   TheoryCombinationManager manager(terms);
   manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.ensure_interface_pair(a, b).has_value());
+  assert(manager.ensure_interface_pair(b, c).has_value());
+  assert(manager.ensure_interface_pair(a, c).has_value());
 
   assert(manager.set_interface_equality_value(a, b, InterfaceEqualityValue::Equal));
   manager.push_level();
@@ -313,6 +314,8 @@ void manager_tracks_interface_equality_assignment_snapshots() {
 
   TheoryCombinationManager manager(terms);
   manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.ensure_interface_pair(a, b).has_value());
+  assert(manager.ensure_interface_pair(b, c).has_value());
   assert(manager.register_interface_equality_atom(eq_ab, primo::sat::Lit{17}));
   assert(manager.register_interface_equality_atom(eq_bc, primo::sat::Lit{19}));
 
@@ -354,6 +357,9 @@ void manager_rolls_back_interface_equality_assignments_by_decision_level() {
 
   TheoryCombinationManager manager(terms);
   manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.ensure_interface_pair(a, b).has_value());
+  assert(manager.ensure_interface_pair(b, c).has_value());
+  assert(manager.ensure_interface_pair(a, c).has_value());
 
   assert(manager.set_interface_equality_assignment(a, b, InterfaceEqualityAssignment::True));
   manager.push_level();
@@ -388,6 +394,7 @@ void manager_tracks_per_round_interface_equality_classifications() {
 
   TheoryCombinationManager manager(terms);
   manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.ensure_interface_pair(a, b).has_value());
 
   assert(manager.mark_interface_equality_classification(
       eq_ab, InterfaceEqualityClassification::LraImplied));
@@ -427,14 +434,15 @@ void manager_rebuilds_registry_from_explicit_interface_terms() {
   assert(manager.summary().terms.size() == 3);
   assert(manager.summary().sort_count == 1);
   assert(manager.summary().candidate_pairs == 3);
-  assert(manager.summary().equality_registry.size() == 3);
-  assert(manager.summary().missing_equalities == 3);
-  assert(manager.interface_equality(y, x).has_value());
+  assert(manager.summary().equality_registry.empty());
+  assert(manager.summary().missing_equalities == 0);
+  assert(!manager.interface_equality(y, x).has_value());
+  assert(manager.ensure_interface_pair(y, x).has_value());
   assert(!manager.interface_equality_lit(x, y).has_value());
   assert(!manager.register_interface_equality_atom(eq_xy, primo::sat::Lit{0}));
   assert(manager.register_interface_equality_atom(eq_xy, primo::sat::Lit{23}));
   assert(manager.interface_equality_lit(y, x)->value == 23);
-  assert(manager.summary().missing_equalities == 2);
+  assert(manager.summary().missing_equalities == 0);
 }
 
 void reports_real_terms_inside_euf_atoms_as_purification_sites() {

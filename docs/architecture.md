@@ -233,8 +233,9 @@ Implemented now:
   `smt::analyze_nelson_oppen_interface`: the SMT layer counts user-visible,
   non-Boolean constants by sort and already-visible equality atoms over those
   constants after preprocessing when `--nelson-oppen-diagnostics` is enabled.
-  It also materializes an opt-in registry of same-sort interface pairs marked
-  as `Visible` or `Missing`, and reports purification sites for Real terms in
+  It also records visible same-sort interface pairs in a sparse registry and
+  reports the full theoretical pair count arithmetically. Missing entries are
+  created only by an explicit `ensure_interface_pair` request. It reports purification sites for Real terms in
   EUF atoms and uninterpreted applications in arithmetic atoms. This is
   bookkeeping only; it does not create proxy terms or equality atoms, propagate
   interface equalities, combine theories, or inspect theory-local models.
