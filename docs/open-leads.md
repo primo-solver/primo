@@ -435,10 +435,10 @@ exactly why the hash set *lost* on short lists. Cross-linking costs one of:
   stay valid, but the contiguous merge that items H8 and H10 were built around
   is gone.
 - **Array form with back-indices.** Rows stay contiguous and each entry stores
-  its slot in `occurs_in_[var]` -- but `pivot()` rebuilds `other_row` wholesale
-  on every merge, so every term's position changes and every back-link needs
-  refreshing. On tropical that is roughly 128M scattered writes, potentially as
-  expensive as what it replaces.
+  its slot in `occurs_in_[var]`. An earlier version of this entry rejected this
+  as needing ~128M scattered writes to refresh back-links on every rebuild;
+  that was wrong, and the investigation below explains why. It is the
+  recommended shape.
 
 **So the question to answer is not "tombstone or hash set".** It is whether
 the representation is right, and the two sub-questions are: does the
@@ -451,6 +451,81 @@ wholesale bought 25% on the best case and lost on three others.
 **Scope, measured rather than guessed.** `Row`'s element type has 19 uses in
 `lra_tableau.cpp`, 12 structured bindings over rows, and 6 external users via
 `row()`/`occurs_in()` in `check_sat.cpp`. This is not a contained change.
+
+### Investigation: what King's form would actually cost here
+
+Asked whether the cross-linked form is doable. Investigated 2026-08-06; the
+short answer is **yes, in array form, and it is smaller than it first looked**
+-- because a claim made earlier in this entry was wrong.
+
+**Source note.** King's thesis is *not* in `docs/papers/`; the only description
+this project has is [](papers/lra-related-work.md)'s one-line summary of
+Section 2.2.7 ("a sparse matrix with each nonzero entry linked into both a row
+list and a column list"). Nothing below is taken from the thesis -- a
+cross-linked sparse matrix is textbook (Duff, Erisman and Reid, *Direct
+Methods for Sparse Matrices*, is the standard reference), and the design below
+is derived from Primo's own code. **Before citing King for this, fetch and
+read it.**
+
+**The correction.** This entry previously claimed the array form would need
+"roughly 128M scattered writes" because `pivot()` rebuilds `other_row`
+wholesale so every back-link would need refreshing. That conflates two
+different positions. The back-link points from a row entry *into*
+`occurs_in_[var]`. Rebuilding the row moves the entry within the **row**, but
+does not touch `occurs_in_[var]` at all for a surviving term -- so the merge
+simply **copies the slot along** with the variable and coefficient. No refresh.
+
+**The resulting design.** `Row`'s element becomes
+`(LraVarId var, Rational coeff, uint32 occ_slot)`, where `occ_slot` is that
+term's index inside `occurs_in_[var]`. Removal, at a point where `pivot()`
+already holds the row entry:
+
+1. `slot = other_row[i].occ_slot` -- O(1)
+2. swap-pop `occurs_in_[var]` at `slot` -- O(1)
+3. repair the moved element's back-link:
+   `b = occurs_in_[var][slot]`, then `lower_bound(rows_[b], var).occ_slot = slot`
+   -- **O(log |row_b|)**
+
+| | steps per removal |
+|---|---:|
+| today | scan ~679 elements |
+| this design | ~7 comparisons (log2 of a ~102-term row) |
+| | **~97x fewer** |
+
+Insertion is O(1) (`occ_slot = occurs_in_[var].size()` before the `push_back`),
+and the merge carries slots over free. **Rows stay contiguous**, so the
+two-way merge, item H8 and the cache behaviour that made the hash set lose on
+short lists are all preserved -- which is what makes this different from the
+linked-list form.
+
+**Scope, from the code rather than estimated.** `Row`'s element type appears
+in 4 declarations, there are 22 structured bindings over rows that would need
+a third field or `_`, `add_row`'s public signature takes pairs, the trail
+stores whole `Row`s (`old_basic_row`, `old_other_rows`), and `check_sat.cpp`
+has 6 external uses of `row()`/`occurs_in()`. Real but bounded -- a day's work
+plus tests, not a rewrite.
+
+**Three things that would need care, and are where a bug would hide:**
+
+- **Backtracking.** `pop()` restores rows from the trail, and those rows carry
+  `occ_slot` values from when they were saved. `occurs_in_` is rebuilt on that
+  path (`occurs_in_index_stale` -> `rebuild_occurs_in_index`), so the rebuild
+  must reassign every slot. The prototype bug found earlier -- stale index
+  after a rebuild, with all 13 suites passing -- was exactly this class, and
+  nothing currently tests rebuild-then-remove.
+- **`verify_occurs_in_index`** must additionally check that every back-link
+  round-trips: `occurs_in_[var][row_entry.occ_slot] == basic_var`. That check
+  is what makes the whole scheme falsifiable in a debug build, and is worth
+  writing before the optimisation rather than after.
+- **`add_row`'s public signature** takes `pair`s. Either it keeps doing so and
+  fills slots internally, or every caller changes. Keeping it is clearly right.
+
+**Expected payoff, stated honestly.** Replacing the removal *entirely* with a
+hash bought 25% on tropical and lost on three other instances. This design
+should keep tropical's win (long lists, where scanning dominates) without the
+short-list losses (no hashing, contiguity preserved) -- but that is a
+prediction, and today's record on predictions of this kind is poor. The
+falsifier stays as written below.
 
 ### Why a hash set is now the obvious question, and what the data says
 
