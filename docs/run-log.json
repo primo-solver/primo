@@ -19045,6 +19045,32 @@
         "corroborates_the_primary_source": "least-violated beats most-violated by 5 solved and 110 PAR2, gaining 12 files against it. Griggio's actual rule really is better than the most-violated rule Primo's docs had attributed to him -- which is independent support for that attribution having been wrong, on this project's own benchmarks rather than on the thesis's numbers."
       },
       "follow_up": "Lead 3 closed for default promotion; kept as an option. The attribution correction in docs/papers/griggio-mathsat-thesis.md and docs/papers/lra-related-work.md now has local empirical support, not only the primary source."
+    },
+    {
+      "id": "2026-08-06-qf-lra-dispatch-path-comparison",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-06",
+      "kind": "benchmark",
+      "scope": "Whether the two QF_LRA solve paths differ systematically or just chaotically. Settles the claim in an earlier entry that their divergence is a behaviour bug -- it is not.",
+      "commit": "dfb83f8",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "two builds differing only in the has_euf_predicate line: /tmp/primo-mixed (Bool Constant counts, current default) and /tmp/primo-pure (Application only). Both from dfb83f8; neither change is committed.",
+        "notes": "15s per file. Local because the question is a direction check across many small runs, not a headline benchmark claim."
+      },
+      "command": {
+        "selection": "every stratified-sample file whose dispatch actually differs: has a Bool 0-ary constant, no uninterpreted function, no declared sort -- 130 of 237",
+        "driver": "scratchpad pathcmp.sh, timing both builds per file"
+      },
+      "result": {
+        "tally": "comparable 80 (62%), both timeout 21, pure faster 19 (1.5-7.6x), mixed faster 6 (2.2-55.2x), pure solves where mixed times out 2, mixed solves where pure times out 2.",
+        "verdict": "Neither path dominates. Timeout wins are exactly even at 2-2, and where the paths differ the pure path is faster more often. The divergence is chaotic, as expected from a search perturbation in CDCL(T), not systematic.",
+        "supersedes": "The earlier entry 2026-08-05-qf-lra-boolean-constant-dispatch-finding called this a behaviour bug on the strength of a single 40x instance. That framing was an overclaim from n=1 and is retracted; the 40x is one draw from a two-tailed distribution.",
+        "cross_check": "rand_80_340_1159656267_18.lp and 0051-labyrinth-12-0 each appear as large swings both here and in the lead 3 leaving-rule comparison, on opposite sides -- instances that swing hard swing hard under any perturbation."
+      },
+      "follow_up": "Design decision recorded in docs/open-leads.md: KEEP the dedicated LRA-only solver without Nelson-Oppen, since on a single theory the combination layer has nothing to do. What is recorded instead is the hazard -- dispatch is a nondeterminism trigger. Adding one (declare-fun p () Bool) to a pure QF_LRA problem changes which solver runs and can change runtime by an order of magnitude either way, so benchmark results are not comparable across an edit that adds or removes a Boolean constant, performance reports should name :solver.qf-lra vs :solver.qf-uflra, and mutation-fuzzer timing data is not meaningful (answers still are)."
     }
   ]
 }
