@@ -191,6 +191,14 @@ needed.
 
 ### Upgraded again 2026-08-07: on the full division it *is* a performance bug
 
+```{note}
+The full evidence, both mechanisms, the still-unexplained LassoRanker half and
+**the argument for what order to fix them in** are in
+[](nelson-oppen-qf-lra-regression.md). That note is the one to read before
+touching the dispatch classifier; this entry keeps only the lead-level summary.
+```
+
+
 **The "not a performance bug" verdict below was measured on the 237-file
 stratified sample at a 15s cap. It does not survive the full division at
 300s, and the section after it should be read with that limit in mind.**

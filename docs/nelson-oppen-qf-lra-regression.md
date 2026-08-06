@@ -1,0 +1,260 @@
+# The Nelson-Oppen QF_LRA regression: evidence, mechanisms, and how to fix it safely
+
+Written 2026-08-07. Main has lost **59 net files** on the full SMT-LIB QF_LRA
+division against a commit from four days earlier, and the loss traces to the
+merge that brought the Nelson-Oppen / theory-combination work into main. This
+note collects the evidence, the two mechanisms identified so far, the one still
+unexplained, and -- the part that matters most -- **why the obvious fix is
+riskier than it looks**.
+
+It is deliberately separate from [](open-leads.md) (a register of *ideas*) and
+from [](arithmetic.md) (a description of what is *implemented*). This is a
+defect report about main.
+
+## What was measured
+
+Full division, 1,753 files, 300s, 40 shards, `--cpus-per-task=3`, all three
+runs on the same three nodes with the same split (jobs 118904, 120122, 120072).
+
+| | solved / 1753 | wrong | PAR2 |
+|---|---:|---:|---:|
+| `b6b8d55` (2026-08-03) | **1631** | 0 | 95,091 |
+| main `0c0843d` | **1572** | 0 | 136,330 |
+| branch `qflra-tropical-t1-propagation` | **1588** | 0 | 127,101 |
+
+- **main vs `b6b8d55`: gained 2, lost 61.** LassoRanker 46, 2019-ezsmt 12,
+  miplib 2, tropical-matrix 1.
+- **branch vs main: gained 16, lost 0**, PAR2 -9,229, median paired 0.94. All
+  16 gains are LassoRanker.
+
+**Zero wrong answers in all three runs.** This corpus carries
+`(set-info :status)`, so that is a real soundness check, not just cross-solver
+agreement. The regression is performance-only.
+
+Bisected (first-parent) to **`84336a2` "Merge remote-tracking branch
+'origin/main'"** -- 46 files, 14,392 insertions, introducing
+`src/smt/theory_combination.{cpp,hpp}`. Its first parent `38be7fd` is good.
+
+(mechanism-dispatch)=
+## Mechanism A: a propositional variable is treated as an EUF predicate
+
+`summarize_formula_features` (`src/smt/check_sat.cpp`):
+
+```cpp
+summary.has_euf_predicate =
+    (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
+    term.sort == terms.symbols().bool_sort();
+```
+
+and the dispatch:
+
+```cpp
+if ((has_equality || has_euf_predicate) && has_arithmetic) { ... solve_qf_uf_lra ... }
+```
+
+A `Constant` of sort `Bool` is **a plain propositional variable**. It has no
+arguments, so it can never participate in a congruence rule -- there is nothing
+for EUF to do with it. But it sets `has_euf_predicate`, and any QF_LRA formula
+containing one is routed to the mixed solver.
+
+Introduced by `ffaf9eb` "Add separable QF_UFLRA final checks" (2026-07-30),
+which added `contains_euf_predicate_atom` alongside this.
+
+**Measured, on `2019-ezsmt/travellingSalesperson/tsp_rand_70_300_1155482584_7`
+-- a file with zero sorts and zero functions with arguments:**
+
+| commit | `:solver.qf-lra` | `:solver.qf-uflra` | result |
+|---|---:|---:|---|
+| `4d4a185` (parent) | **1** | -- | **sat, 0.93s**, 11,735 pivots |
+| `ffaf9eb` | 0 | **1** | **timeout**, deterministic |
+
+**A second over-trigger in the same function**, not yet measured but visible in
+the code: `has_equality` is already refined so a plain *Real* equality does not
+set it, but a **Bool** equality does --
+
+```cpp
+if (!real_equality || summary.has_application_term) { summary.has_equality = true; }
+```
+
+so `(= p q)` between two propositional variables also routes a QF_LRA formula
+to the mixed path. Any fix to `has_euf_predicate` that ignores this leaves an
+equivalent trigger in place.
+
+(mechanism-euf-atoms)=
+## Mechanism B: those variables are then handed to congruence closure
+
+Routing to the mixed path would be merely wasteful if the mixed path treated
+propositional variables as propositional. It does not. `is_euf_theory_atom`
+repeats the same predicate:
+
+```cpp
+return (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
+       term.sort == terms.symbols().bool_sort();
+```
+
+and `solve_qf_uf_lra` splits every clausifier theory atom into exactly two
+buckets on it:
+
+```cpp
+if (is_euf_theory_atom(terms, atom.term))      { euf_atoms.push_back(atom); }
+else if (is_lra_theory_atom(terms, atom.term)) { lra_atoms.push_back(atom); }
+else { throw UnsupportedInput("unsupported mixed-theory atom"); }
+```
+
+**Consequence, measured on the same file:**
+
+| counter | pure path `4d4a185` | mixed path `ffaf9eb` |
+|---|---:|---:|
+| `:euf.checks` | 0 | 5,364 |
+| `:euf.incremental.merges` | 0 | **39,436,128** |
+| `:euf.incremental.terms` | 0 | 39,446,856 |
+| `:no.mixed.euf-atoms` | -- | **7,352** |
+| `:no.interface.conflicts` | -- | **0** |
+| `:sat.clauses` | 26,117 | 31,481 |
+
+The file declares **7,352 Bool-sorted nullary `declare-fun`s** -- and
+`:no.mixed.euf-atoms` is exactly 7,352. Every propositional variable goes to
+congruence closure, producing **39.4 million merges to decide nothing the SAT
+solver does not already own**.
+
+**This is the important framing.** Nelson-Oppen itself is not slow here and is
+not at fault: `:no.interface.conflicts` is 0 and every purification counter is
+zero. NO correctly no-ops, exactly as it should on a single-theory problem. The
+cost comes from starting an EUF engine for a formula with no EUF content.
+
+The pure QF_LRA path faces the same atoms and is fine, because it marks them
+`is_arithmetic = false` and skips them. The mixed path has no equivalent
+"neither theory owns this" bucket.
+
+(mechanism-unknown)=
+## Mechanism C: LassoRanker -- 46 of the 61 losses, still unexplained
+
+**Do not assume A and B explain the regression.** They explain the 12
+2019-ezsmt losses. The largest family does not fit them at all.
+
+On `LassoRanker/CooperatingT2/dropbuf.t2.c_Iteration3_Loop_4-pieceTemplate`
+(3.4 MB):
+
+| | answer | dispatch | pivots | decisions |
+|---|---|---|---:|---:|
+| `b6b8d55` | **sat, 13.0s** | `:solver.qf-lra 1` | 10,217 | 256,688 |
+| main `0c0843d` | timeout 150s | `:solver.qf-lra 1` | 3,793 | 190,089 |
+| branch HEAD | timeout 150s | `:solver.qf-lra 1` | 4,183 | 198,695 |
+
+- **The dispatch never flips** -- both sides run the pure LRA solver, so
+  Mechanism A is not involved and Mechanism B cannot be either.
+- **Not preprocessing**: `--preprocess-only` is 1.35s vs 1.42s.
+- **Not the tableau**: at a 45s cap main does 1,472 pivots and 1.66M
+  pivot-term-ops against `b6b8d55`'s 10,217 and 76.1M in 13s. The online
+  check-call rate falls from 13,976/s to 2,143/s *while the LRA work per call
+  shrinks*. Something outside the simplex is paid per check call.
+
+**Open question to answer next:** what runs per online check call on the *pure*
+QF_LRA path after `84336a2` that did not before? `perf` is unavailable in the
+current sandbox; use a `-pg` build or profile on the cluster.
+
+Interesting and unexplained: the `qflra-tropical-t1-propagation` branch
+recovers **16 LassoRanker files** relative to main without targeting any of
+this. Whatever the mechanism is, it interacts with tableau cost.
+
+(how-to-fix)=
+## How to fix this safely
+
+The obvious fix -- "stop treating a Bool `Constant` as an EUF predicate" --
+is correct in substance and **wrong to apply as a single edit in both places at
+once**. The two layers have different risk profiles.
+
+### The asymmetry that decides the order
+
+| | Mechanism A (dispatch) | Mechanism B (atom split) |
+|---|---|---|
+| what it decides | *which solver runs* | which theory owns an atom |
+| failure mode if too narrow | **unsoundness** -- a formula needing EUF is sent to a solver that cannot do EUF | none: SAT already owns a propositional variable |
+| failure mode if too wide | slow (today's bug) | slow (today's bug) |
+| perturbs search on other files | **yes, massively** | only on already-mixed files |
+
+**So fix B first.** It is where the 39.4M merges are, it cannot introduce
+unsoundness, and it does not change which solver runs on any file -- which
+means the change is measurable against a stable baseline. Fixing A first
+changes the dispatch for a large fraction of the corpus and makes every
+before/after comparison a comparison of two different solvers.
+
+### Fixing B: add the missing third bucket
+
+The trap is the `else` branch: it **throws**. Removing propositional variables
+from `euf_atoms` without adding somewhere for them to go turns a performance
+bug into `UnsupportedInput` on every affected file. The change is therefore:
+
+1. Recognise atoms that neither theory owns -- Bool-sorted `Constant`s with no
+   arguments, and Bool-sorted equalities over Bool -- as *propositional*.
+2. Give them a third bucket that is neither `euf_atoms` nor `lra_atoms`, and
+   confirm every downstream consumer tolerates an atom in neither list.
+   `shared_real_constants`, the interface-equality registry and the model
+   builder all iterate these vectors; each needs checking, not assuming.
+3. Mirror what the pure path already does (`is_arithmetic = false` and skip)
+   rather than inventing a new convention.
+
+**Falsifier, stated in advance:** on
+`tsp_rand_70_300_1155482584_7`, `:euf.incremental.merges` must drop from 39.4M
+to ~0 and `:no.mixed.euf-atoms` from 7,352 to ~0, with the answer unchanged. If
+merges stay high, the classification is not where the atoms are entering EUF
+and this analysis is wrong.
+
+### Fixing A: only after B, and measure it as a dispatch change
+
+Restrict `has_euf_predicate` to `Application` (arity >= 1) of sort Bool, and
+handle the Bool-equality trigger noted in [](#mechanism-dispatch) at the same
+time -- fixing one and leaving the other achieves little.
+
+**Before doing so, re-read [](open-leads.md)'s lead 2b.** The dispatch is a
+known nondeterminism trigger: a semantically irrelevant edit already flips
+which solver runs, and the flip is worth up to an order of magnitude in either
+direction. Consequences for the fix:
+
+- **The A/B is not a normal A/B.** Files that change path are being solved by a
+  different program, not a faster one. Report gained/lost per family, not just
+  PAR2.
+- **Err toward the mixed path when unsure.** A missed EUF obligation is a wrong
+  answer; an unnecessary mixed dispatch is only slow. If B is fixed first, the
+  cost of erring wide is much lower, which is another reason for that order.
+- **Fuzz it as a soundness change, not a performance change.** The QF_LRA model
+  fuzz gate on Slurm is the minimum; mutation fuzzers add and remove
+  declarations, so they exercise exactly this classifier.
+
+### What not to do
+
+- **Do not "fix" this by disabling NO on single-theory problems.** NO is
+  already inert here (`:no.interface.conflicts 0`). That would treat the
+  symptom's neighbour and leave the EUF engine running.
+- **Do not declare the regression fixed when A and B are done.** They account
+  for 12 of 61 lost files. [](#mechanism-unknown) is the larger half and is
+  independent.
+- **Do not benchmark a fix against `b6b8d55`.** That is a pre-regression
+  commit, not the merge base. Compare against the commit the fix is built on;
+  this note exists partly because that mistake was made once already and made a
+  main-side loss look branch-side.
+- **Do not merge a fix on one instance's evidence.** Both mechanisms here were
+  found on single files and confirmed on the corpus afterwards. The corpus step
+  is what turned "1588 vs 1631, we regressed" into "+16 / -0 against the merge
+  base".
+
+## Measurement traps hit while producing this note
+
+Recorded because each cost real time and each would recur.
+
+- **Task density on the cluster.** The first division run put 67 tasks on one
+  56-core node alongside another user's array, giving a 1.31x median slowdown
+  that looked like a code regression. Re-running spread over three nodes with
+  `--cpus-per-task=3` moved the result by 4 files -- so contention was *not*
+  the cause, but the run was uninterpretable until it was excluded. Match task
+  density to the baseline run.
+- **Bisecting across a branch merge.** Main contains merge commits from the
+  Nelson-Oppen branch whose own history predates QF_LRA support; those commits
+  answer `unsupported logic: QF_LRA`. A bisect script that treats "no answer"
+  as *bad* converges on nonsense -- twice, here, both times onto a docs-only
+  commit. Use `git bisect --first-parent` **and** exit 125 on unsupported /
+  no-answer.
+- **Reading the version banner as the answer.** Without `--quiet` the first
+  line of output is `primo git <sha> ...`, not `sat`. A test script using
+  `head -1` marks every commit bad.
+- **Comparing against the wrong baseline.** See "what not to do" above.

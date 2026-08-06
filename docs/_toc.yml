@@ -28,6 +28,7 @@ parts:
           - file: open-leads
           - file: tropical-matrix-structure
           - file: fuzz-coverage-qf-lra
+      - file: nelson-oppen-qf-lra-regression
       - file: difference_logic
 
   - caption: Evidence and practice
