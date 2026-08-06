@@ -162,13 +162,16 @@ Implemented C++ ownership:
   closure includes current true equalities and false generated interface
   equalities. Mergeable LRA equalities are classified but then routed through
   guarded clauses for soundness.
-- LRA remains the producer of entailed equalities; the consumer-aware filter
-  decides whether the SAT layer needs to see them.
+- LRA remains the producer of entailed equalities; the current consumer-aware
+  classifier decides whether EUF already has the equality, or whether the SAT
+  layer must still see it through a guarded clause.
 
 Implemented counters:
 
 - `:no.interface.lra-to-euf-equalities-euf-already-true`;
-- `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped`;
+- `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped` remains a
+  diagnostic counter from the rejected skip experiment and should stay zero in
+  the repaired conservative path;
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-forced`;
 - `:no.interface.lra-to-euf-equalities-euf-forbidden-forced`;
 - `:no.interface.lra-to-euf-internal-model-equalities`;
@@ -271,8 +274,10 @@ from equality-probe reduction even before new preprocessing is added.
 
 For any accepted implementation of the targets above:
 
-- add focused unit regressions for mergeable-skipped and forbidden-forced
-  LRA-to-EUF equalities;
+- add focused unit regressions for EUF-already-true, mergeable-forced, and
+  forbidden-forced LRA-to-EUF equalities; any future reintroduction of
+  mergeable-skipped behavior needs separate regression coverage for model
+  reconstruction and false generated equality assignments;
 - add the three rejected full-run wrong rows, or minimized forms derived from
   them, to the QF_UFLRA regression/seed corpus before rerunning performance
   evaluation;
