@@ -160,25 +160,33 @@ vector only when full-pair model-equality branching is requested. The statistics
 `:no.interface.materialized-missing-pairs` distinguish the sparse ledger from
 the theoretical `:no.online.shared-real-pairs` count.
 
-### 4. Reuse Incremental EUF In Mixed Search
+### 4. Reuse Incremental EUF In Mixed Search (Partial, Experimental)
 
 The pure QF_UF path already has `OnlineEufPropagator`, explained congruence
-closure, and optional dynamic Ackermann/disequality propagation. The mixed path
-currently rebuilds a flat EUF closure after SAT returns and the
-`MixedTheoryPropagationDispatcher` delegates only to `OnlineLraPropagator`.
+closure, and optional dynamic Ackermann/disequality propagation. The mixed
+`MixedTheoryPropagationDispatcher` is now a backend-neutral IPASIR-UP
+multiplexer: it broadcasts assignment, decision-level, backtrack, and model
+callbacks to optional EUF and LRA children and routes each propagated reason or
+external clause back to the child that produced it. Lazily generated interface
+equality atoms are appended to the EUF child's atom table and registered in its
+flat assignment state before the fresh SAT variable is observed.
 
-Refactor the dispatcher into a backend-neutral multiplexer that can delegate to
-the existing EUF and LRA propagators, route reasons and external clauses to the
-correct owner, and observe lazily generated interface equality variables. The
-EUF component should expose its current closure/model view to the final
-coordinator so care pairs, EUF-forbidden checks, and EUF equality explanations
-do not require another complete rebuild. This milestone must treat the LRA
-propagator as an unchanged child.
+This EUF child is enabled only by the explicit
+`--qf-uflra-online-euf` option together with
+`--nelson-oppen-prop=online`. It is default-off because the first 45-file,
+3-second local ablation solved the same 43/45 instances with zero wrong answers
+and changed PAR2 only from 20.978 to 20.648. On the representative MathSAT
+`pb_real_40_80_60_36.smt2`, both paths solve in about one tenth of a second in a
+Release build, while the EUF child performs no useful propagation. This is not
+evidence for default promotion.
 
-Dynamic Ackermann propagation should then be measured as a separate mixed-mode
-ablation. It is likely relevant to UF-heavy CPAchecker rows, but it is not a
-prerequisite for the sparse ledger or explanation work and must not be promoted
-without family-level evidence.
+The final coordinator still rebuilds a flat EUF closure after SAT returns. The
+EUF component does not yet expose a safe live closure/model view, so care pairs,
+EUF-forbidden checks, and final equality explanations do not reuse callback
+state. Generated equality registration also does not extend the optional
+dynamic Ackermann indexes. Dynamic Ackermann propagation therefore remains a
+separate mixed-mode ablation, and live closure reuse is the unfinished part of
+this milestone.
 
 ### 5. Tighten Candidate Scheduling And Preprocessing
 

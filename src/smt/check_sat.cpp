@@ -2837,6 +2837,30 @@ class IncrementalFlatAssignmentState {
     }
   }
 
+  std::optional<std::size_t> register_existing_equality_atom(
+      const BooleanClausifier::TheoryAtom& atom) {
+    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+    if (flat_atom_by_var_.contains(var)) {
+      return flat_atom_by_var_.at(var);
+    }
+    const core::Term& term = terms_.get(atom.term);
+    if (term.kind != core::TermKind::Equality || term.children.size() != 2) {
+      return std::nullopt;
+    }
+    const std::optional<theory::equality::FlatTermId> lhs =
+        flat_.existing_flat_term(term.children.at(0));
+    const std::optional<theory::equality::FlatTermId> rhs =
+        flat_.existing_flat_term(term.children.at(1));
+    if (!lhs.has_value() || !rhs.has_value()) {
+      return std::nullopt;
+    }
+    const std::size_t index = flat_atoms_.size();
+    flat_atom_by_var_.emplace(var, index);
+    flat_atoms_.push_back(FlatAssignedTheoryAtom{
+        AssignedTheoryAtom{atom.lit.value, false, atom.term}, true, lhs.value(), rhs.value()});
+    return index;
+  }
+
   std::optional<sat::Clause> explain_candidate(const BooleanClausifier::TheoryAtom& atom,
                                                bool value) {
     if (should_filter_assignment(pure_theory_filter_, atom, value)) {
@@ -3047,15 +3071,16 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
           std::max(max_theory_var, atom.lit.value > 0 ? atom.lit.value : -atom.lit.value);
     }
     observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
-    atom_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, nullptr);
+    atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, std::nullopt);
     assignment_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     pending_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     queued_candidate_indices_.assign(theory_atoms_.size(), 0);
-    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+    for (std::size_t atom_index = 0; atom_index < theory_atoms_.size(); ++atom_index) {
+      const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
       const std::size_t index = static_cast<std::size_t>(var);
       observed_vars_[index] = 1;
-      atom_by_var_[index] = &atom;
+      atom_index_by_var_[index] = atom_index;
     }
     if (options_.euf_dynamic_ackermann_shadow || options_.euf_diseq_ackermann) {
       dynamic_ackermann_candidates_ =
@@ -3071,6 +3096,44 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
                                  options_.live_statistics != nullptr);
       build_candidate_index();
     }
+  }
+
+  bool observe_generated_interface_equality(const BooleanClausifier::TheoryAtom& generated_atom) {
+    const int var =
+        generated_atom.lit.value > 0 ? generated_atom.lit.value : -generated_atom.lit.value;
+    ensure_var_capacity(var);
+    const std::size_t var_index = static_cast<std::size_t>(var);
+    if (atom_index_by_var_[var_index].has_value()) {
+      const BooleanClausifier::TheoryAtom& existing =
+          atom_at(atom_index_by_var_[var_index].value());
+      return existing.term == generated_atom.term && existing.lit.value == generated_atom.lit.value;
+    }
+    std::optional<std::size_t> flat_atom_index;
+    if (incremental_state_.has_value()) {
+      flat_atom_index = incremental_state_->register_existing_equality_atom(generated_atom);
+      if (!flat_atom_index.has_value()) {
+        statistics_.increment(":no.online.euf-generated-equality-registration-failures");
+        return false;
+      }
+    }
+    const std::size_t atom_index = atom_count();
+    generated_theory_atoms_.push_back(generated_atom);
+    atom_index_by_var_[var_index] = atom_index;
+    observed_vars_[var_index] = 1;
+    queued_candidate_indices_.push_back(0);
+    if (flat_atom_index.has_value()) {
+      const FlatAssignedTheoryAtom& flat_atom =
+          incremental_state_->flat_atoms()[flat_atom_index.value()];
+      if (candidate_indices_by_flat_term_.size() < incremental_state_->flat_term_count()) {
+        candidate_indices_by_flat_term_.resize(incremental_state_->flat_term_count());
+      }
+      candidate_indices_by_flat_term_[flat_atom.lhs].push_back(atom_index);
+      if (flat_atom.rhs != flat_atom.lhs) {
+        candidate_indices_by_flat_term_[flat_atom.rhs].push_back(atom_index);
+      }
+    }
+    statistics_.increment(":no.online.euf-generated-equalities-registered");
+    return true;
   }
 
   void notify_assignment(const std::vector<int>& lits) override {
@@ -3234,10 +3297,32 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   };
 
   const BooleanClausifier::TheoryAtom* atom_for_var(int var) const {
-    if (var < 0 || static_cast<std::size_t>(var) >= atom_by_var_.size()) {
+    if (var < 0 || static_cast<std::size_t>(var) >= atom_index_by_var_.size()) {
       return nullptr;
     }
-    return atom_by_var_[static_cast<std::size_t>(var)];
+    const std::optional<std::size_t> atom_index = atom_index_by_var_[static_cast<std::size_t>(var)];
+    return atom_index.has_value() ? &atom_at(atom_index.value()) : nullptr;
+  }
+
+  std::size_t atom_count() const { return theory_atoms_.size() + generated_theory_atoms_.size(); }
+
+  const BooleanClausifier::TheoryAtom& atom_at(std::size_t index) const {
+    if (index < theory_atoms_.size()) {
+      return theory_atoms_[index];
+    }
+    return generated_theory_atoms_[index - theory_atoms_.size()];
+  }
+
+  void ensure_var_capacity(int var) {
+    if (var < 0) {
+      return;
+    }
+    const std::size_t size = static_cast<std::size_t>(var) + 1U;
+    observed_vars_.resize(std::max(observed_vars_.size(), size), 0);
+    atom_index_by_var_.resize(std::max(atom_index_by_var_.size(), size), std::nullopt);
+    assignment_by_var_.resize(std::max(assignment_by_var_.size(), size), 0);
+    pending_vars_.resize(std::max(pending_vars_.size(), size), 0);
+    diseq_ackermann_indices_by_var_.resize(std::max(diseq_ackermann_indices_by_var_.size(), size));
   }
 
   bool is_observed_var(int var) const {
@@ -3356,7 +3441,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   }
 
   void enqueue_candidate(std::size_t atom_index) {
-    if (atom_index >= theory_atoms_.size()) {
+    if (atom_index >= atom_count()) {
       return;
     }
     if (queued_candidate_indices_[atom_index] == 0) {
@@ -3445,7 +3530,8 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   std::vector<AssignedTheoryAtom> current_assigned_atoms() const {
     std::vector<AssignedTheoryAtom> atoms;
     atoms.reserve(assigned_var_count_);
-    for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
+    for (std::size_t atom_index = 0; atom_index < atom_count(); ++atom_index) {
+      const BooleanClausifier::TheoryAtom& atom = atom_at(atom_index);
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
       if (!is_assigned_var(var)) {
         continue;
@@ -3548,7 +3634,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
       return;
     }
     const std::vector<AssignedTheoryAtom> assigned = current_assigned_atoms();
-    const std::size_t theory_atoms = theory_atoms_.size();
+    const std::size_t theory_atoms = atom_count();
     if (theory_atoms > 0 &&
         static_cast<double>(assigned.size()) / static_cast<double>(theory_atoms) >
             options_.euf_propagation_assign_threshold) {
@@ -3600,14 +3686,14 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
       const std::size_t atom_index = candidate_queue_.front();
       candidate_queue_.pop_front();
       queued_candidate_indices_[atom_index] = 0;
-      if (!try_atom(theory_atoms_[atom_index])) {
+      if (!try_atom(atom_at(atom_index))) {
         break;
       }
     }
 
     if (!had_indexed_candidates || (delivered == 0 && candidate_queue_.empty())) {
-      for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
-        if (!try_atom(atom)) {
+      for (std::size_t atom_index = 0; atom_index < atom_count(); ++atom_index) {
+        if (!try_atom(atom_at(atom_index))) {
           break;
         }
       }
@@ -3725,9 +3811,8 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
       return;
     }
 
-    const std::optional<std::size_t> delivery_limit =
-        resolve_delivery_budget(options_.euf_propagation_delivery,
-                                options_.euf_diseq_ackermann_queue_budget, theory_atoms_.size());
+    const std::optional<std::size_t> delivery_limit = resolve_delivery_budget(
+        options_.euf_propagation_delivery, options_.euf_diseq_ackermann_queue_budget, atom_count());
     std::size_t inspected = 0;
     std::size_t delivered = 0;
     while (!diseq_ackermann_queue_.empty()) {
@@ -3841,13 +3926,14 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
 
   const core::TermManager& terms_;
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
+  std::vector<BooleanClausifier::TheoryAtom> generated_theory_atoms_;
   core::TermId true_term_ = core::kInvalidTermId;
   core::TermId false_term_ = core::kInvalidTermId;
   const CheckSatOptions& options_;
   bool adaptive_propagation_ = false;
   util::Statistics& statistics_;
   std::vector<unsigned char> observed_vars_;
-  std::vector<const BooleanClausifier::TheoryAtom*> atom_by_var_;
+  std::vector<std::optional<std::size_t>> atom_index_by_var_;
   std::vector<signed char> assignment_by_var_;
   std::size_t assigned_var_count_ = 0;
   std::vector<int> trail_;
@@ -7653,6 +7739,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
  public:
   MixedTheoryPropagationDispatcher(core::TermManager& terms, BooleanClausifier& clausifier,
                                    sat::IpasirUpBackend& backend, TheoryCombinationManager& manager,
+                                   OnlineEufPropagator* euf_propagator,
                                    OnlineLraPropagator* lra_propagator,
                                    const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
                                    util::Statistics& statistics)
@@ -7660,6 +7747,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
         clausifier_(clausifier),
         backend_(backend),
         manager_(manager),
+        euf_propagator_(euf_propagator),
         lra_propagator_(lra_propagator),
         statistics_(statistics) {
     int max_var = 0;
@@ -7685,6 +7773,9 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   }
 
   void notify_assignment(const std::vector<int>& lits) override {
+    if (euf_propagator_ != nullptr) {
+      euf_propagator_->notify_assignment(lits);
+    }
     if (lra_propagator_ != nullptr) {
       lra_propagator_->notify_assignment(lits);
       drain_lra_interface_equalities();
@@ -7695,6 +7786,9 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   }
 
   void notify_new_decision_level() override {
+    if (euf_propagator_ != nullptr) {
+      euf_propagator_->notify_new_decision_level();
+    }
     if (lra_propagator_ != nullptr) {
       lra_propagator_->notify_new_decision_level();
     }
@@ -7703,6 +7797,9 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   }
 
   void notify_backtrack(size_t new_level) override {
+    if (euf_propagator_ != nullptr) {
+      euf_propagator_->notify_backtrack(new_level);
+    }
     if (lra_propagator_ != nullptr) {
       lra_propagator_->notify_backtrack(new_level);
     }
@@ -7724,6 +7821,9 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   }
 
   bool cb_check_found_model(const std::vector<int>& model) override {
+    if (euf_propagator_ != nullptr && !euf_propagator_->cb_check_found_model(model)) {
+      return false;
+    }
     if (lra_propagator_ != nullptr && !lra_propagator_->cb_check_found_model(model)) {
       return false;
     }
@@ -7733,6 +7833,14 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   int cb_decide() override { return lra_propagator_ != nullptr ? lra_propagator_->cb_decide() : 0; }
 
   int cb_propagate() override {
+    if (euf_propagator_ != nullptr) {
+      const int lit = euf_propagator_->cb_propagate();
+      if (lit != 0) {
+        propagated_owner_[lit] = PropagationOwner::Euf;
+        statistics_.increment(":no.online.euf-propagations");
+        return lit;
+      }
+    }
     if (lra_propagator_ != nullptr) {
       const int lit = lra_propagator_->cb_propagate();
       if (lit != 0) {
@@ -7768,6 +7876,10 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
 
   int cb_add_reason_clause_lit(int propagated_lit) override {
     const auto owner = propagated_owner_.find(propagated_lit);
+    if (owner != propagated_owner_.end() && owner->second == PropagationOwner::Euf &&
+        euf_propagator_ != nullptr) {
+      return euf_propagator_->cb_add_reason_clause_lit(propagated_lit);
+    }
     if (owner != propagated_owner_.end() && owner->second == PropagationOwner::Lra &&
         lra_propagator_ != nullptr) {
       return lra_propagator_->cb_add_reason_clause_lit(propagated_lit);
@@ -7795,6 +7907,11 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   }
 
   bool cb_has_external_clause(bool& is_forgettable) override {
+    if (euf_propagator_ != nullptr && euf_propagator_->cb_has_external_clause(is_forgettable)) {
+      active_external_owner_ = PropagationOwner::Euf;
+      statistics_.increment(":no.online.euf-external-clauses");
+      return true;
+    }
     if (lra_propagator_ != nullptr && lra_propagator_->cb_has_external_clause(is_forgettable)) {
       active_external_owner_ = PropagationOwner::Lra;
       return true;
@@ -7803,6 +7920,11 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   }
 
   bool cb_has_external_clause() override {
+    if (euf_propagator_ != nullptr && euf_propagator_->cb_has_external_clause()) {
+      active_external_owner_ = PropagationOwner::Euf;
+      statistics_.increment(":no.online.euf-external-clauses");
+      return true;
+    }
     if (lra_propagator_ != nullptr && lra_propagator_->cb_has_external_clause()) {
       active_external_owner_ = PropagationOwner::Lra;
       return true;
@@ -7811,6 +7933,13 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   }
 
   int cb_add_external_clause_lit() override {
+    if (active_external_owner_ == PropagationOwner::Euf && euf_propagator_ != nullptr) {
+      const int lit = euf_propagator_->cb_add_external_clause_lit();
+      if (lit == 0) {
+        active_external_owner_ = PropagationOwner::None;
+      }
+      return lit;
+    }
     if (active_external_owner_ == PropagationOwner::Lra && lra_propagator_ != nullptr) {
       const int lit = lra_propagator_->cb_add_external_clause_lit();
       if (lit == 0) {
@@ -7824,6 +7953,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
  private:
   enum class PropagationOwner {
     None,
+    Euf,
     Lra,
     NelsonOppen,
   };
@@ -7937,6 +8067,11 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
     if (entry.lit.value == 0) {
       return;
     }
+    if (euf_propagator_ != nullptr && entry.atom != core::kInvalidTermId &&
+        !euf_propagator_->observe_generated_interface_equality(
+            BooleanClausifier::TheoryAtom{entry.lit, entry.atom, false, false})) {
+      statistics_.increment(":no.online.euf-generated-equality-observation-failures");
+    }
     const int var = sat_var(entry.lit);
     ensure_var_capacity(var);
     interface_pair_by_var_[static_cast<std::size_t>(var)] = TermPairKey{entry.lhs, entry.rhs};
@@ -7955,6 +8090,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   BooleanClausifier& clausifier_;
   sat::IpasirUpBackend& backend_;
   TheoryCombinationManager& manager_;
+  OnlineEufPropagator* euf_propagator_ = nullptr;
   OnlineLraPropagator* lra_propagator_ = nullptr;
   util::Statistics& statistics_;
   std::vector<int> assignment_by_var_;
@@ -8578,6 +8714,7 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-prepared-reused", 0);
   statistics.set(":no.interface.lra-prepared-augmented", 0);
   statistics.set(":no.interface.lra-online-enabled", 0);
+  statistics.set(":no.interface.euf-online-enabled", 0);
   statistics.set(":no.interface.lra-online-final-checks", 0);
   statistics.set(":no.online.enabled", 0);
   statistics.set(":no.online.precreated-equality-atoms", 0);
@@ -8592,6 +8729,11 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.online.lazy-equality-vars-observed", 0);
   statistics.set(":no.online.propagations", 0);
   statistics.set(":no.online.reason-lits", 0);
+  statistics.set(":no.online.euf-propagations", 0);
+  statistics.set(":no.online.euf-external-clauses", 0);
+  statistics.set(":no.online.euf-generated-equalities-registered", 0);
+  statistics.set(":no.online.euf-generated-equality-registration-failures", 0);
+  statistics.set(":no.online.euf-generated-equality-observation-failures", 0);
   statistics.set(":no.online.skipped-assigned", 0);
   statistics.set(":no.online.final-lra-equality-scan-skipped", 0);
   statistics.set(":no.online.final-lra-equality-scan-capped", 0);
@@ -8625,6 +8767,12 @@ CheckSatOutcome solve_qf_uf_lra(
       options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
   publish_lra_tableau_shape_stats(base_prepared_lra_theory.base_tableau, statistics);
 #if PRIMO_HAVE_IPASIR
+  CheckSatOptions mixed_euf_options = options;
+  if (options.qf_uflra_online_euf) {
+    mixed_euf_options.euf_propagation =
+        resolve_euf_propagation_mode(options, euf_atoms.size(), statistics);
+  }
+  std::optional<OnlineEufPropagator> online_euf_propagator;
   std::optional<OnlineLraPropagator> online_lra_propagator;
   std::optional<MixedTheoryPropagationDispatcher> mixed_online_dispatcher;
   if (!lra_atoms.empty() && !options.nelson_oppen_model_equality_branching) {
@@ -8632,11 +8780,24 @@ CheckSatOutcome solve_qf_uf_lra(
         base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions, statistics);
     if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online) {
-      mixed_online_dispatcher.emplace(terms, clausifier, backend, no_manager,
-                                      &online_lra_propagator.value(), lra_atoms, statistics);
+      if (options.qf_uflra_online_euf) {
+        online_euf_propagator.emplace(terms, euf_atoms, true_term, false_term, mixed_euf_options,
+                                      options.euf_propagation == EufPropagationMode::Auto,
+                                      statistics);
+      }
+      mixed_online_dispatcher.emplace(
+          terms, clausifier, backend, no_manager,
+          online_euf_propagator ? &online_euf_propagator.value() : nullptr,
+          &online_lra_propagator.value(), lra_atoms, statistics);
       backend.connect_external_propagator(&mixed_online_dispatcher.value());
       mixed_online_dispatcher->observe_registered_interface_equalities(
           /*count_observation=*/false);
+      if (online_euf_propagator) {
+        for (const BooleanClausifier::TheoryAtom& atom : euf_atoms) {
+          backend.add_observed_var(sat_var(atom.lit));
+        }
+        statistics.set(":no.interface.euf-online-enabled", 1);
+      }
     } else {
       backend.connect_external_propagator(&online_lra_propagator.value());
     }

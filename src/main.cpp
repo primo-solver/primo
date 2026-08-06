@@ -149,6 +149,7 @@ int main(int argc, char** argv) {
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
   bool qf_uflra_candidate_final_scan = false;
+  bool qf_uflra_online_euf = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
   bool no_auto_top_level_or_tseitin = false;
@@ -291,6 +292,9 @@ int main(int argc, char** argv) {
   app.add_flag("--qf-uflra-candidate-final-scan", qf_uflra_candidate_final_scan,
                "Enable experimental mixed QF_UFLRA candidate-first final LRA equality scans before "
                "falling back to the full shared-Real pair scan [default: off]");
+  app.add_flag("--qf-uflra-online-euf", qf_uflra_online_euf,
+               "Enable experimental incremental EUF callbacks in online mixed QF_UFLRA solving "
+               "[default: off]");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Always encode top-level disjunctions with Tseitin support clauses [default: only "
                "when the automatic rule fires]");
@@ -474,8 +478,8 @@ int main(int argc, char** argv) {
     // boundary: initial phase for theory atoms, T-pure filtering, the
     // theory-conflict budget, and how top-level disjunctions get clausified.
     if (name == "--cadical-option" || name == "--max-theory-conflicts" ||
-        name == "--pure-theory-filter" || name == "--theory-phase" ||
-        starts_with(name, "--top-level-or-tseitin") ||
+        name == "--qf-uflra-online-euf" || name == "--pure-theory-filter" ||
+        name == "--theory-phase" || starts_with(name, "--top-level-or-tseitin") ||
         starts_with(name, "--no-top-level-or-tseitin") ||
         starts_with(name, "--no-auto-top-level-or-tseitin")) {
       return kGroupSat;
@@ -589,6 +593,7 @@ int main(int argc, char** argv) {
     solver_options.gaussian_elimination = false;
   }
   solver_options.qf_uflra_candidate_final_scan = qf_uflra_candidate_final_scan;
+  solver_options.qf_uflra_online_euf = qf_uflra_online_euf;
   if (top_level_or_tseitin) {
     solver_options.top_level_or_tseitin = true;
   }

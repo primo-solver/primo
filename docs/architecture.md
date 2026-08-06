@@ -287,6 +287,16 @@ Implemented now:
   is still a candidate-first path, not all-pairs Delayed Theory Combination:
   the full shared Real pair count remains diagnostic, while only published
   paired-bound candidates become observed SAT variables.
+  With the additional default-off `--qf-uflra-online-euf` option, the same
+  dispatcher also owns the existing `OnlineEufPropagator` as a second child.
+  It broadcasts SAT trail callbacks to both children and records which child
+  owns each propagation reason or external clause stream. A lazily created
+  interface equality is registered in the EUF child's flat assignment state
+  before the backend observes its SAT variable, provided both endpoint terms
+  already exist in that state. Registration failures are counted and prevent
+  the EUF child from observing the atom. This is an experimental IPASIR-UP
+  integration scaffold, not a new EUF algorithm and not full model-based theory
+  combination.
   After online mode has materialized at least one paired-bound equality
   candidate, the coordinator skips the older final all-pairs
   `lra_implied_real_equalities` strict-bound mining pass because profiling
@@ -314,6 +324,13 @@ Implemented now:
   SAT-visible equality traffic. The paired-bound rule is therefore the stable
   online LRA-to-EUF propagation subset for now; this is not yet the full
   model-guided Nelson-Oppen algorithm.
+  The optional online EUF child does not replace the final EUF check: after SAT
+  returns, the coordinator still constructs the assignment-local flat closure
+  used for final consistency, care-pair classification, and model validation.
+  Exposing callback-owned closure state safely across that boundary, including
+  its backtracking lifetime, remains unimplemented. The option is default-off;
+  a 45-file local ablation solved the same 43/45 rows as online LRA alone and
+  produced only a small PAR2 change, which is insufficient for promotion.
 - **Single-theory invariant:** the combination dispatcher is used only by the
   mixed QF_UFLRA solver when `--nelson-oppen-prop=online` is selected. Pure
   QF_UF keeps its direct EUF propagator path, and pure QF_LRA keeps its direct

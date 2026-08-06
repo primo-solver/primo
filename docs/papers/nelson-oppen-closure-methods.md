@@ -205,6 +205,25 @@ separate design note and benchmark plan covering trigger conditions, duplicate
 suppression, explanation construction, backtracking, and caps on the number of
 candidate interface equalities created per SAT branch.
 
+The default-off `--qf-uflra-online-euf` option extends only the callback
+plumbing around this subset. `MixedTheoryPropagationDispatcher` acts as the
+single IPASIR-UP external propagator and multiplexes the existing incremental
+EUF and LRA children. It records the owner of each propagated literal or
+external clause so the corresponding child supplies the explanation. When the
+LRA child lazily materializes an interface equality, the dispatcher registers
+that atom with the EUF child's existing flat terms before observing the new SAT
+variable. The statistics `:no.online.euf-generated-equalities-registered`,
+`:no.online.euf-generated-equality-registration-failures`, and
+`:no.online.euf-generated-equality-observation-failures` make this dynamic path
+auditable.
+
+This is still not the paper's shared model state or an implementation of its
+transition system. The final mixed check rebuilds EUF closure from the SAT
+assignment instead of consuming the callback-owned closure, and generated
+equality registration does not update optional dynamic Ackermann indexes. The
+option remains experimental and default-off: the first 45-file local ablation
+had identical solved and wrong-answer counts and only a small PAR2 difference.
+
 **Single-theory invariant.** `MixedTheoryPropagationDispatcher` is never used
 for pure QF_UF or pure QF_LRA. Pure QF_UF keeps its direct EUF callback path;
 pure QF_LRA keeps its direct `OnlineLraPropagator` path. The CVC-like
@@ -399,6 +418,12 @@ coordinator publishes:
 - `:no.online.lazy-equality-vars-observed`
 - `:no.online.propagations`
 - `:no.online.reason-lits`
+- `:no.interface.euf-online-enabled`
+- `:no.online.euf-propagations`
+- `:no.online.euf-external-clauses`
+- `:no.online.euf-generated-equalities-registered`
+- `:no.online.euf-generated-equality-registration-failures`
+- `:no.online.euf-generated-equality-observation-failures`
 - `:no.online.skipped-assigned`
 - `:no.online.final-lra-equality-scan-skipped`
 - `:no.online.final-lra-equality-scan-capped`

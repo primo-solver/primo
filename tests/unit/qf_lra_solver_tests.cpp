@@ -1453,6 +1453,7 @@ void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
 
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  options.qf_uflra_online_euf = true;
   const auto result = check_sat_smtlib(input, options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":solver.qf-uflra") == 1);
@@ -1467,6 +1468,11 @@ void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
   assert(result.statistics.get(":no.online.lazy-equality-vars-observed") >= 1);
   assert(result.statistics.get(":no.online.propagations") >= 1);
   assert(result.statistics.get(":no.online.reason-lits") >= 2);
+  assert(result.statistics.get(":no.interface.euf-online-enabled") == 1);
+  assert(result.statistics.get(":no.online.euf-external-clauses") >= 1);
+  assert(result.statistics.get(":no.online.euf-generated-equalities-registered") >= 1);
+  assert(result.statistics.get(":no.online.euf-generated-equality-registration-failures") == 0);
+  assert(result.statistics.get(":no.online.euf-generated-equality-observation-failures") == 0);
 }
 
 void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {
@@ -1493,9 +1499,11 @@ void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {
   assert(result.statistics.get(":no.online.enabled") == 1);
   assert(result.statistics.get(":no.online.shared-real-pairs") == 3);
   assert(result.statistics.get(":no.online.precreated-equality-atoms") == 0);
+  assert(result.statistics.get(":no.interface.euf-online-enabled") == 0);
   assert(result.statistics.get(":no.online.paired-bound-precreate-candidates") == 0);
   assert(result.statistics.get(":no.online.lazy-equality-atoms-created") == 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") == 1);
+  assert(result.statistics.get(":no.interface.materialized-pairs") == 1);
 }
 
 void qf_uf_lra_online_skips_final_lra_all_pairs_scan() {

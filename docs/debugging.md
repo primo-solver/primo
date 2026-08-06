@@ -573,7 +573,31 @@ replacement and remains zero in the current skip policy.
 `:no.online.propagations` counts returned equality literals, and
 `:no.online.reason-lits` counts the two bound literals used as the SAT reason.
 `:no.online.skipped-assigned` counts candidates already assigned by SAT before
-the dispatcher could return them. Pure QF_UF and pure QF_LRA runs should leave
+delivery.
+
+`--qf-uflra-online-euf` additionally attaches the existing incremental EUF
+propagator as a second child of the mixed dispatcher. It has no effect unless
+`--nelson-oppen-prop=online` is also selected and is default-off. Use these
+counters to distinguish useful mixed EUF work from callback overhead:
+
+- `:no.interface.euf-online-enabled` is one only when the mixed EUF child is
+  attached;
+- `:no.online.euf-propagations` counts literals returned by that child;
+- `:no.online.euf-external-clauses` counts EUF external-clause callbacks
+  selected by the dispatcher;
+- `:no.online.euf-generated-equalities-registered` counts lazily created
+  interface equality atoms appended to the EUF child;
+- `:no.online.euf-generated-equality-registration-failures` counts atoms whose
+  endpoints were not already representable in its flat term state;
+- `:no.online.euf-generated-equality-observation-failures` counts dispatcher
+  attempts that could not be handed to the EUF child.
+
+A high `:euf.propagation.rounds` value with zero
+`:no.online.euf-propagations` and zero
+`:no.online.euf-external-clauses` means the option is adding callback work
+without helping the mixed search. Final EUF checking still rebuilds a closure;
+these counters do not imply that callback state was reused by final validation.
+Pure QF_UF and pure QF_LRA runs should leave
 `:no.online.enabled` at zero; that is the guard against single-theory overhead.
 `:no.interface.arrangement-checks` counts non-model `sat` results where the
 coordinator validated that the EUF arrangement over shared Real interface
