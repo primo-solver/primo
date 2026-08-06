@@ -10,6 +10,7 @@ chapters:
   - file: arithmetic
   - file: qf-lra-heuristics
   - file: termid-order-sensitivity
+  - file: nelson-oppen-qf-lra-regression
   - file: difference_logic
   - file: debugging
   - file: fuzz-coverage-qf-lra
