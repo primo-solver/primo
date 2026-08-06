@@ -36,7 +36,7 @@ notes it points to.
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
 | [2b](#lead-two-lra-paths) | Dispatch is a **nondeterminism trigger**, not a performance bug | neither path dominates (2-2 at the timeout) | -- | **measured; design kept, hazard recorded** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
-| [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | -25% best case from removing the scan entirely | **large** (representation change) | **open**; 2 prototypes rejected, reframed |
+| [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | tropical 1/10 -> **2/10** at 1200s, gained 1 / lost 0; bar-neutral on the stratified sample | **large** (representation change) | **implemented, default**; 2 earlier prototypes rejected |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
@@ -555,6 +555,50 @@ fresh profile on this instance, the scan was not where the time went and the
 **Note before implementing.** This touches the core tableau invariant and
 `verify_occurs_in_index`, so it needs the QF_LRA model fuzz gate on Slurm, not
 just unit tests -- the same gate monotone elimination went through.
+
+### Outcome: implemented, and it clears the bar on the family it targets
+
+Implemented as the array variant (`RowEntry::occ_slot`, `unlink_occurrence`),
+with the round-trip check added to `occurs_in_index_matches_full_rebuild`
+exactly as the "would need care" list above demanded.
+
+**Correctness gate** (job 119566, 9-task Slurm array): clean -- 0 wrong
+answers, 0 invalid models.
+
+**Promotion bar** (job 119555, 237-file stratified sample, 10s): **neutral**.
+The PAR2 gain of 8.00 is smaller than the 12.22 run-to-run noise floor
+measured from the *identical baseline binary* across jobs 119530 and 119555,
+so it is not a result. That is expected rather than disappointing: the
+stratified sample excludes tropical-matrix as a family, every reference
+solver failing it, and the change acts on long occurrence lists.
+
+**The family it targets** (job 119577, 10 tropical files, 1200s):
+
+| | baseline `dfb83f8` | crosslink `83afe14` |
+|---|---:|---:|
+| solved | 1/10 | **2/10** |
+| PAR2 | 21610.65 | **19998.33** |
+| wrong | 0 | 0 |
+| `constraint-199552` | 10.65s | **6.80s** (-36%) |
+| `constraint-223827` | timeout | **sat in 791.53s** |
+
+**gained 1, lost 0.** [](#complementarity) rightly warns that `gained == 1` is
+usually churn at the timeout boundary rather than capability -- but that
+warning does not apply here, and the reason is worth stating because it is the
+unusual part. This change **cannot perturb the search**: on 25 solved
+stratified-sample files the branch reports counters bit-identical to `main`
+(`:lra.pivots`, `:lra.pivot-term-ops`, `:sat.decisions`, `:sat.conflicts`), so
+it is a pure constant factor on an unchanged search path. The extra solve is
+therefore causally the speedup, not a lucky trajectory -- the one case where a
+single gained instance is real evidence.
+
+Remaining caveats, stated plainly: n=10, one run, and 791s of a 1200s budget
+is close enough to the line that a rerun could lose it. The -36% on the file
+that *both* arms solve is the more robust half of this result.
+
+**Follow-up recorded:** `RowEntry` is 40 bytes against the old pair's 32.
+Narrowing `LraVarId` from `std::size_t` to 32 bits would restore it to 32 and
+make the change free in memory as well as faster.
 
 (lead-aep)=
 ## 4. Adaptive Early Pruning

@@ -19206,6 +19206,51 @@
         "why_the_bar_misses_it": "The local wins are concentrated where occurrence lists are long: -41% on tropical-matrix/constraint-199552 (avg list 679) and -12% on sc-21 (176). tropical-matrix is not in the stratified sample at all -- qf-lra-heuristics.md excludes it as a family all three reference solvers fail -- and the sample is dominated by short-list instances where the change is neutral to slightly negative."
       },
       "follow_up": "Correctness gate passes. On the promotion bar the change is NEUTRAL, not an improvement: same solved count, PAR2 gain inside run-to-run noise, nothing gained or lost. The measured wins are real but sit on instances the bar does not contain. Keeping it therefore needs a different justification than the bar -- either a manifest that includes long-list families, or the argument that a 41% win on an open family at no cost elsewhere is worth the added invariant. Recorded for that decision rather than presented as a win."
+    },
+    {
+      "id": "2026-08-06-qf-lra-crosslink-tropical-1200s",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "benchmark",
+      "scope": "Cross-linked occurs_in_ (lead 3b) vs baseline on the 10-file tropical-matrix family at a 1200s budget. Run because the family is 1/10 at 60s, so the stratified sample -- which excludes tropical-matrix entirely, every reference solver failing it -- cannot see whether the change's constant-factor gain converts into solves.",
+      "commit": "83afe14",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm, node-01",
+        "remote_dir": "/home/janotmik/primo-crosslink-83afe14",
+        "notes": "Both arms in one job array (119577_0 baseline dfb83f8, 119577_1 crosslink 83afe14) on one node. COMPLETED 0:0 after 03:00:16 and 02:53:26."
+      },
+      "command": {
+        "job": "119577, array 0-1, benchmarks/qf-lra-tropical-matrix.txt, 1200s",
+        "solver_args": "--guarded-real-equality-lowering (both arms)",
+        "results_dir": "~/primo-crosslink-83afe14/results/qf-lra-solver-compare-119577"
+      },
+      "result": {
+        "baseline": {
+          "solved": 1,
+          "total": 10,
+          "par2": 21610.650982,
+          "wrong": 0
+        },
+        "crosslink": {
+          "solved": 2,
+          "total": 10,
+          "par2": 19998.333974,
+          "wrong": 0
+        },
+        "gained": [
+          "constraint-223827.smt2: timeout(1200s) -> sat in 791.53s"
+        ],
+        "lost": [],
+        "per_file": {
+          "constraint-199552.smt2": "10.65s -> 6.80s (-36%)"
+        },
+        "par2_gain": 1612.317008
+      },
+      "conclusion": "The change clears the bar on this family: +1 solved, 0 lost, PAR2 -1612. The gain is causally attributable rather than lucky search: the same day, the branch's default profile was verified search-identical to main on 25 solved stratified-sample files (identical :lra.pivots, :lra.pivot-term-ops, :sat.decisions, :sat.conflicts), so this change cannot perturb the search path -- the extra solve is the constant-factor speedup alone. Caveats: n=10, single run, and 791s of a 1200s budget is close enough to the line that a rerun could lose it.",
+      "artifacts": "baseline.csv, crosslink.csv, baseline-summary.csv, crosslink-summary.csv in the results dir above"
     }
   ]
 }
