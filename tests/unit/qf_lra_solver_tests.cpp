@@ -826,7 +826,7 @@ void qf_uf_lra_candidate_final_scan_keeps_noncare_mergeable_pair_in_fallback() {
 }
 
 void qf_uf_lra_forces_mergeable_lra_equality_needed_for_congruence() {
-  const auto result = check_sat_smtlib(R"(
+  constexpr std::string_view input = R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
     (declare-fun y () Real)
@@ -835,8 +835,9 @@ void qf_uf_lra_forces_mergeable_lra_equality_needed_for_congruence() {
     (assert (= (f x) 0))
     (assert (= (f y) 1))
     (check-sat)
-  )",
-                                       no_preprocessing_or_substitution());
+  )";
+
+  const auto result = check_sat_smtlib(input, no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-forced") >= 1);
@@ -844,6 +845,13 @@ void qf_uf_lra_forces_mergeable_lra_equality_needed_for_congruence() {
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
   assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
   assert(result.statistics.get(":no.interface.conflicts") >= 1);
+
+  CheckSatOptions online_options = no_preprocessing_or_substitution();
+  online_options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto online_result = check_sat_smtlib(input, online_options);
+  assert(online_result.result == CheckSatResult::Unsat);
+  assert(online_result.statistics.get(":no.online.final-lra-equality-scan-skipped") == 0);
+  assert(online_result.statistics.get(":no.online.propagations") >= 1);
 }
 
 void qf_uf_lra_guards_interface_equality_propagation_by_assignment() {
@@ -1506,7 +1514,7 @@ void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {
   assert(result.statistics.get(":no.interface.materialized-pairs") == 1);
 }
 
-void qf_uf_lra_online_skips_final_lra_all_pairs_scan() {
+void qf_uf_lra_online_retains_final_lra_all_pairs_scan() {
   constexpr std::string_view input = R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -1527,11 +1535,11 @@ void qf_uf_lra_online_skips_final_lra_all_pairs_scan() {
   assert(result.statistics.get(":no.online.enabled") == 1);
   assert(result.statistics.get(":no.online.precreated-equality-atoms") == 0);
   assert(result.statistics.get(":no.online.paired-bound-precreate-candidates") == 0);
-  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") >= 1);
-  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
 }
 
-void qf_uf_lra_online_falls_back_for_final_arrangement() {
+void qf_uf_lra_online_scans_non_paired_final_equalities() {
   constexpr std::string_view input = R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -1553,13 +1561,14 @@ void qf_uf_lra_online_falls_back_for_final_arrangement() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
   const auto result = check_sat_smtlib(input, options);
-  assert(result.result == CheckSatResult::Sat);
+  assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.online.enabled") == 1);
   assert(result.statistics.get(":no.online.lra-bound-equality-materialized") >= 1);
-  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") >= 1);
-  assert(result.statistics.get(":no.online.final-lra-equality-scan-fallbacks") == 1);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") == 0);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-fallbacks") == 0);
   assert(result.statistics.get(":no.interface.arrangement-failures") == 0);
-  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.conflicts") >= 1);
 }
 
 void nelson_oppen_online_option_does_not_wrap_single_theory_lra() {
@@ -2950,8 +2959,8 @@ int main() {
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   qf_uf_lra_online_propagates_simple_lra_shared_equalities();
   qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs();
-  qf_uf_lra_online_skips_final_lra_all_pairs_scan();
-  qf_uf_lra_online_falls_back_for_final_arrangement();
+  qf_uf_lra_online_retains_final_lra_all_pairs_scan();
+  qf_uf_lra_online_scans_non_paired_final_equalities();
   nelson_oppen_online_option_does_not_wrap_single_theory_lra();
   nelson_oppen_online_option_does_not_wrap_single_theory_euf();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();

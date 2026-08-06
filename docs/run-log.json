@@ -20842,7 +20842,7 @@
       "date": "2026-08-06",
       "branch": "nelson-oppen-online-lazy-ipasir-up",
       "commit": "9bf9fc1",
-      "evidence_status": "current-slurm-running",
+      "evidence_status": "rejected-wrong-answer",
       "scope": "Sharded full-corpus 60-second comparison of ordinary online Nelson-Oppen propagation against the explicit mixed online-EUF callback profile. Z3 is not rerun because the corpus and reference solver have not changed.",
       "environment": {
         "host": "cluster",
@@ -20891,8 +20891,76 @@
         "historical_candidate_final_wrong": 0,
         "note": "These historical results are context only. The direct decision is between the two concurrently submitted current profiles; existing run-log Z3 evidence will be reused rather than recomputed."
       },
-      "observed_start": "All sixteen shards entered RUNNING state. Initial stdout from task 0 of each profile records git 9bf9fc1, the exact solver command, and completed FFT rows; both corresponding stderr files were empty.",
-      "outcome": "Running. Do not claim a performance result or promote --qf-uflra-online-euf until all shard CSVs are complete, merged, checked for wrong answers, and summarized by family and PAR2."
+      "completion": {
+        "scheduler": "All sixteen shards completed with exit code 0 and empty stderr files.",
+        "ordinary_online": {
+          "rows": 1284,
+          "solved": 1216,
+          "timeout": 66,
+          "unsupported": 2,
+          "wrong_answer": 2,
+          "par2": 8790.864115,
+          "families": {
+            "FFT": "10 solved / 10",
+            "cpachecker-bmc-svcomp14": "7 solved / 15",
+            "cpachecker-induction-svcomp14": "299 solved, 58 timeout, 2 unsupported / 359",
+            "mathsat": "900 solved / 900"
+          },
+          "statistics": {
+            "no.online.precreated-equality-atoms": 0,
+            "no.online.lazy-equality-atoms-created": 32418,
+            "no.online.propagations": 1434257,
+            "sat.decisions": 12884088,
+            "sat.solve-calls": 24045
+          }
+        },
+        "online_euf": {
+          "rows": 1284,
+          "solved": 1216,
+          "timeout": 66,
+          "unsupported": 2,
+          "wrong_answer": 1,
+          "par2": 8751.370907,
+          "families": {
+            "FFT": "10 solved / 10",
+            "cpachecker-bmc-svcomp14": "7 solved / 15",
+            "cpachecker-induction-svcomp14": "299 solved, 58 timeout, 2 unsupported / 359",
+            "mathsat": "900 solved / 900"
+          },
+          "statistics": {
+            "no.online.euf-enabled-files": 1179,
+            "no.online.euf-propagations": 456,
+            "no.online.euf-propagation-files": 47,
+            "no.online.euf-external-clauses": 601,
+            "no.online.euf-external-clause-files": 127,
+            "no.online.euf-generated-equalities-registered": 43196,
+            "no.online.euf-generated-equality-registration-failures": 0,
+            "no.online.euf-generated-equality-observation-failures": 0,
+            "sat.decisions": 12615967,
+            "sat.solve-calls": 23308
+          }
+        }
+      },
+      "wrong_answers": [
+        {
+          "file": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_30_0600_10_18.smt2",
+          "sha256": "3b922f3b52029b8fb11691f792349b9502d0d3d73c798dc7ad8dc830c7c13802",
+          "expected": "unsat",
+          "z3": "unsat",
+          "ordinary_online": "sat",
+          "online_euf": "sat"
+        },
+        {
+          "file": "tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_01.smt2",
+          "sha256": "de25cbe4e8ba7db7c5377b9652cde01dc95b32df1c44dfb6c82d33ab174c1d3d",
+          "expected": "unsat",
+          "z3": "unsat",
+          "ordinary_online": "sat",
+          "online_euf": "unsat"
+        }
+      ],
+      "diagnosis": "The online policy skipped the broad final LRA implied-equality scan after any paired-bound equality was materialized. That condition is unsound: model separation can succeed even when a different omitted LRA equality makes an EUF pair congruent and contradictory. The generated gate did not contain this shape, and the one-seed mutation corpus was too thin to qualify the profile for broad evaluation.",
+      "outcome": "Rejected as performance evidence because of wrong answers. No solved-count, PAR2, decision, or propagation difference from these jobs may support promotion. Restore mandatory complete final equality validation, preserve both exact wrong rows as regression seeds, and require an exact original-seed differential gate before any future broad benchmark."
     }
   ]
 }

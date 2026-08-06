@@ -558,18 +558,12 @@ by lazy creation. `:no.online.lazy-equality-atoms-created` counts equality atoms
 created by the dispatcher from `cb_propagate()`, and
 `:no.online.lazy-equality-vars-observed` counts the corresponding fresh observed
 SAT variables.
-`:no.online.final-lra-equality-scan-skipped` counts online final checks where at
-least one paired-bound equality candidate was materialized and the broad
-all-pairs `lra_implied_real_equalities` strict-bound scan was skipped; if no
-candidate was materialized, the broad scan still runs as the final-check
-completeness fallback. If final arrangement validation or model reconstruction
-cannot separate shared Real arguments after such a skip,
-`:no.online.final-lra-equality-scan-fallbacks` increments and Primo runs the
-broad scan once to classify additional LRA-implied equalities for that final
-validation step. Those fallback equalities are not reported as online theory
-propagations.
-`:no.online.final-lra-equality-scan-capped` is reserved for a future capped
-replacement and remains zero in the current skip policy.
+`:no.online.final-lra-equality-scan-skipped`,
+`:no.online.final-lra-equality-scan-fallbacks`, and
+`:no.online.final-lra-equality-scan-capped` remain compatibility counters and
+must be zero. Online mode retains the broad all-pairs final scan because a
+successful separation check is not sufficient to prove that omitted
+LRA-implied equalities are irrelevant to EUF congruence.
 `:no.online.propagations` counts returned equality literals, and
 `:no.online.reason-lits` counts the two bound literals used as the SAT reason.
 `:no.online.skipped-assigned` counts candidates already assigned by SAT before
@@ -783,6 +777,13 @@ example, the experimental mixed callback profile uses
 `--nelson-oppen-prop=online --qf-uflra-online-euf`. The mutation gate's task 2
 uses that same profile. Submit only array task 2 when the default and
 candidate-final mutation profiles are not part of the current experiment.
+Before mutation, `scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch` runs
+`scripts/check_solver_seed_corpus.py` on every original QF_UFLRA regression
+seed with the exact task options and Z3 reference. Any disagreement, timeout,
+unsupported result, crash, or mismatch with a declared status fails the task.
+The exact-seed timeout defaults to 60 seconds and can be changed with
+`PRIMO_FUZZ_SEED_TIMEOUT`; the shorter mutation timeout remains independent.
+Mutation counts do not replace this deterministic regression check.
 `scripts/qf_uflra_smoke_fuzz.py` flushes each case result immediately so SLURM
 stdout is a durable progress record even before the final `summary.csv` is
 written.

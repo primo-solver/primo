@@ -167,20 +167,15 @@ fallback have both been removed from this path:
 materialization. `:no.online.shared-real-pairs` is only a diagnostic
 cross-product count.
 
-Online mode also skips the older final `lra_implied_real_equalities`
-strict-bound scan over all shared Real pairs after it has materialized at least
-one paired-bound equality candidate. If no candidate was materialized, the broad
-scan still runs as the final-check completeness fallback. Default `final` mode
-keeps that broad scan unchanged. If final arrangement validation or model
-reconstruction fails after the skip, online mode runs the broad scan once as a
-validation fallback and records
-`:no.online.final-lra-equality-scan-fallbacks`. Those equalities are local to
-the final validation/model step and are not reported as online LRA-to-EUF theory
-propagations. This is a measured cost cap, not a more complete LRA equality
-producer: arbitrary tableau-implied equalities remain unsupported by the online
-producer, and cases that repeatedly need those equalities after paired-bound
-materialization may still need the default final mode or a future capped/reused
-equality check.
+Online mode retains the older final `lra_implied_real_equalities` strict-bound
+scan over all shared Real pairs. The rejected candidate-only experiment skipped
+it after materializing a paired-bound candidate and reran it only if final
+separation failed. Two full-corpus MathSAT rows demonstrated that this is
+unsound: separation may succeed even though an omitted LRA equality later
+forces an EUF congruence conflict. The paired-bound online producer remains
+narrow and lazy, but it is not a completeness replacement for the final scan.
+Eliminating that scan requires a complete shared-model validation operation of
+the kind still missing from the model-based paper checklist.
 
 Default `final` propagation keeps the broad all-pairs scan unless the
 experimental `--qf-uflra-candidate-final-scan` option is enabled. That option
@@ -523,14 +518,11 @@ current profiling result:
    or a care-ranked equality source to the same candidate-first path.
 5. Keep the full shared-pair cross product as a counter and fallback
    diagnostic, not as the set of observed SAT variables.
-6. Online mode now skips the final `lra_implied_real_equalities` all-pairs
-   strict-bound scan only after a paired-bound equality candidate has been
-   materialized, because profiling showed this final scan can dominate after the
-   online path adds more arrangement traffic. If the resulting final
-   arrangement or model separation attempt fails, the broad scan runs once as a
-   validation fallback and increments
-   `:no.online.final-lra-equality-scan-fallbacks`. The reserved capped-scan
-   counter remains zero until a capped replacement is implemented.
+6. Online mode retains the final `lra_implied_real_equalities` all-pairs scan.
+   The attempted skip-on-materialization policy was rejected after full-corpus
+   wrong answers showed that successful separation is not a complete shared
+   model check. The skip, fallback, and capped-scan counters remain zero until a
+   paper-grounded shared-model validator supports a sound replacement.
 7. The default-off `--qf-uflra-candidate-final-scan` option applies the same
    candidate-first discipline to final-mode LRA-to-EUF equality sharing without
    changing default behavior. Its fallback broad scan is a validation escape

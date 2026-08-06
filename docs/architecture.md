@@ -297,20 +297,15 @@ Implemented now:
   the EUF child from observing the atom. This is an experimental IPASIR-UP
   integration scaffold, not a new EUF algorithm and not full model-based theory
   combination.
-  After online mode has materialized at least one paired-bound equality
-  candidate, the coordinator skips the older final all-pairs
-  `lra_implied_real_equalities` strict-bound mining pass because profiling
-  showed that scan can dominate after online propagation adds arrangement
-  traffic. If no online equality candidate is materialized, the broad final scan
-  is still available to preserve the current final-check completeness fallback.
-  If the skip leaves final arrangement validation or model reconstruction unable
-  to separate Real arguments, online mode runs that broad scan once as a
-  last-mile validation fallback and records
-  `:no.online.final-lra-equality-scan-fallbacks`; the resulting equalities are
-  used only for the final validation/model step, not as online propagated theory
-  consequences.
-  The default `final` mode keeps that broad final scan unchanged. The
-  experimental `--qf-uflra-candidate-final-scan` mode is the first opt-in
+  Online mode retains the final all-pairs `lra_implied_real_equalities`
+  strict-bound mining pass. A previous optimization skipped it after the online
+  producer materialized a paired-bound candidate and reran it only when final
+  separation failed. Full-corpus evaluation found that criterion unsound:
+  separation can succeed while an unscanned LRA-implied equality exposes a
+  congruence conflict in EUF. Lazy online atom creation remains enabled, but the
+  broad final scan is required until a complete shared-model validator can
+  certify the candidate-only path.
+  The experimental `--qf-uflra-candidate-final-scan` mode is the first opt-in
   pruning step for that path: after an LRA check it probes only current EUF care
   pairs, shared Real constants co-occurring in one EUF atom, and pairs whose
   two non-strict LRA bounds are both true. If final arrangement validation or

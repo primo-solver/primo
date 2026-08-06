@@ -21,6 +21,7 @@ OUT_ROOT=${PRIMO_FUZZ_OUT_ROOT:-"$WORKDIR/fuzz-results/qf-uflra-mutation-gate-${
 YINYANG_SEEDS=${PRIMO_FUZZ_YINYANG_SEEDS:-"$WORKDIR/benchmarks/seeds/qf_uflra"}
 YINYANG_ITERATIONS=${PRIMO_FUZZ_YINYANG_ITERATIONS:-200}
 YINYANG_TIMEOUT=${PRIMO_FUZZ_YINYANG_TIMEOUT:-8}
+SEED_TIMEOUT=${PRIMO_FUZZ_SEED_TIMEOUT:-60}
 YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-27000}
 FILE_SIZE_LIMIT=${PRIMO_FUZZ_FILE_SIZE_LIMIT:-200000}
 MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
@@ -71,6 +72,24 @@ solver_command="$SOLVER_BIN --quiet"
 for arg in "${option_args[@]}"; do
   solver_command+=" $arg"
 done
+
+IFS=' ' read -r -a reference_words <<< "$MUTATION_REF"
+seed_gate=(
+  python3 scripts/check_solver_seed_corpus.py
+  --seeds "$YINYANG_SEEDS"
+  --solver "${solver_words[0]}"
+  --ref "${reference_words[0]}"
+  --timeout "$SEED_TIMEOUT"
+  --out "$out/seed-summary.csv"
+)
+for arg in "${solver_words[@]:1}" --quiet "${option_args[@]}"; do
+  seed_gate+=(--solver-arg="$arg")
+done
+for arg in "${reference_words[@]:1}"; do
+  seed_gate+=(--ref-arg="$arg")
+done
+echo "checking original regression seeds before mutation"
+"${seed_gate[@]}"
 
 echo "task $TASK_ID: QF_UFLRA $label typefuzz over $YINYANG_SEEDS"
 scripts/yinyang_fuzz.sh \

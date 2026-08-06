@@ -8586,11 +8586,6 @@ CheckSatOutcome solve_qf_uf_lra(
   ModelEqualityArrangementState model_equality_arrangement;
   ModelEqualityCandidateQueue model_equality_candidate_queue;
   std::unordered_set<std::string> seen_lra_conflict_clauses;
-  const auto skip_online_final_lra_equality_scan = [&statistics, &options]() {
-    return options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online &&
-           statistics.get(":no.online.lra-bound-equality-materialized") > 0;
-  };
-
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
   statistics.set(":no.mixed.lra-atoms", lra_atoms.size());
@@ -8735,6 +8730,7 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.online.euf-generated-equality-registration-failures", 0);
   statistics.set(":no.online.euf-generated-equality-observation-failures", 0);
   statistics.set(":no.online.skipped-assigned", 0);
+  // These compatibility counters stay zero while the complete final equality scan is mandatory.
   statistics.set(":no.online.final-lra-equality-scan-skipped", 0);
   statistics.set(":no.online.final-lra-equality-scan-capped", 0);
   statistics.set(":no.online.final-lra-equality-scan-fallbacks", 0);
@@ -8983,9 +8979,7 @@ CheckSatOutcome solve_qf_uf_lra(
 
     if (options.nelson_oppen_propagation != NelsonOppenPropagationMode::Off &&
         euf_check.has_value() && !shared_real_terms.empty()) {
-      if (skip_online_final_lra_equality_scan()) {
-        statistics.increment(":no.online.final-lra-equality-scan-skipped");
-      } else if (options.qf_uflra_candidate_final_scan) {
+      if (options.qf_uflra_candidate_final_scan) {
         const LraImpliedRealEqualitiesResult implied_equalities =
             lra_implied_real_equalities_for_pairs(terms, lra_atoms_for_check,
                                                   lra_assignments_for_check,
@@ -9091,13 +9085,9 @@ CheckSatOutcome solve_qf_uf_lra(
                                         shared_real_terms, statistics);
         std::vector<core::TermId> forced_model_equalities =
             interface_equality_terms(explained_euf_equalities);
-        bool skipped_online_lra_implied_equalities_for_model = false;
         bool deferred_candidate_lra_implied_equalities_for_model = false;
         if (!shared_real_terms.empty()) {
-          if (skip_online_final_lra_equality_scan()) {
-            statistics.increment(":no.online.final-lra-equality-scan-skipped");
-            skipped_online_lra_implied_equalities_for_model = true;
-          } else if (options.qf_uflra_candidate_final_scan) {
+          if (options.qf_uflra_candidate_final_scan) {
             forced_model_equalities.insert(forced_model_equalities.end(),
                                            candidate_lra_implied_equalities.begin(),
                                            candidate_lra_implied_equalities.end());
@@ -9127,15 +9117,10 @@ CheckSatOutcome solve_qf_uf_lra(
             terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
             shared_real_terms, forced_model_equalities, options, statistics);
         if (separation_atoms.status == RealModelSeparationStatus::Inconsistent &&
-            (skipped_online_lra_implied_equalities_for_model ||
-             deferred_candidate_lra_implied_equalities_for_model)) {
-          if (deferred_candidate_lra_implied_equalities_for_model) {
-            statistics.increment(":no.interface.candidate-final-scan-fallbacks");
-            if (candidate_lra_implied_equalities_had_internal_model_equalities) {
-              statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
-            }
-          } else {
-            statistics.increment(":no.online.final-lra-equality-scan-fallbacks");
+            deferred_candidate_lra_implied_equalities_for_model) {
+          statistics.increment(":no.interface.candidate-final-scan-fallbacks");
+          if (candidate_lra_implied_equalities_had_internal_model_equalities) {
+            statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
           }
           const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
               lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
@@ -9207,13 +9192,9 @@ CheckSatOutcome solve_qf_uf_lra(
             euf_implied_real_equalities(terms, prepared_flat_theory.value(), euf_check->closure,
                                         shared_real_terms, statistics);
         euf_implied_equalities = interface_equality_terms(explained_euf_equalities);
-        bool skipped_online_lra_implied_equalities_for_model = false;
         bool deferred_candidate_lra_implied_equalities_for_model = false;
         if (!shared_real_terms.empty()) {
-          if (skip_online_final_lra_equality_scan()) {
-            statistics.increment(":no.online.final-lra-equality-scan-skipped");
-            skipped_online_lra_implied_equalities_for_model = true;
-          } else if (options.qf_uflra_candidate_final_scan) {
+          if (options.qf_uflra_candidate_final_scan) {
             lra_implied_equalities_for_euf = candidate_lra_implied_equalities;
             deferred_candidate_lra_implied_equalities_for_model = true;
           } else if (lra_implied_equalities_for_model_complete) {
@@ -9241,15 +9222,10 @@ CheckSatOutcome solve_qf_uf_lra(
             terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
             shared_real_terms, forced_model_equalities, options, statistics);
         if (separation_atoms.status == RealModelSeparationStatus::Inconsistent &&
-            (skipped_online_lra_implied_equalities_for_model ||
-             deferred_candidate_lra_implied_equalities_for_model)) {
-          if (deferred_candidate_lra_implied_equalities_for_model) {
-            statistics.increment(":no.interface.candidate-final-scan-fallbacks");
-            if (candidate_lra_implied_equalities_had_internal_model_equalities) {
-              statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
-            }
-          } else {
-            statistics.increment(":no.online.final-lra-equality-scan-fallbacks");
+            deferred_candidate_lra_implied_equalities_for_model) {
+          statistics.increment(":no.interface.candidate-final-scan-fallbacks");
+          if (candidate_lra_implied_equalities_had_internal_model_equalities) {
+            statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
           }
           const LraImpliedRealEqualitiesResult lra_implied_scan =
               lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,

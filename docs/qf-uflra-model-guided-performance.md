@@ -175,10 +175,21 @@ This EUF child is enabled only by the explicit
 `--qf-uflra-online-euf` option together with
 `--nelson-oppen-prop=online`. It is default-off because the first 45-file,
 3-second local ablation at commit `cbe1cfc` solved the same 43/45 instances with
-zero wrong answers and changed PAR2 only from 20.660 to 20.639. On the representative MathSAT
-`pb_real_40_80_60_36.smt2`, both paths solve in about one tenth of a second in a
-Release build, while the EUF child performs no useful propagation. This is not
-evidence for default promotion.
+zero wrong answers and changed PAR2 only from 20.660 to 20.639. On the
+representative MathSAT `pb_real_40_80_60_36.smt2`, both paths solve in about one
+tenth of a second in a Release build, while the EUF child performs no useful
+propagation. This is not evidence for default promotion.
+
+The later 1284-file SLURM run at commit `9bf9fc1` invalidated the online final
+scan shortcut before it established any performance result. Ordinary online
+mode returned two wrong `sat` answers on expected-`unsat` MathSAT inputs; the
+online-EUF profile returned one. In each case, online paired bounds had produced
+some equality, but a different LRA-implied equality was still needed for an EUF
+congruence conflict. Successful model separation did not prove that omitted
+equality was irrelevant. The run is rejected, the broad final LRA equality scan is
+again mandatory, and both exact inputs are tracked as regression seeds. Removing
+that scan now requires a complete shared-model validation invariant rather than
+another activity-based skip condition.
 
 The final coordinator still rebuilds a flat EUF closure after SAT returns. The
 EUF component does not yet expose a safe live closure/model view, so care pairs,

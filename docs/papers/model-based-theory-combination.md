@@ -45,10 +45,11 @@ combination. It has these related pieces:
   experiment that avoids all-pairs equality precreation. The mixed dispatcher
   now creates and observes a fresh SAT equality variable from `cb_propagate()`
   only for a selected paired-bound candidate published by `OnlineLraPropagator`.
-  Online mode normally skips the broad final all-pairs LRA equality scan after
-  materializing a paired-bound candidate, but reruns that scan once if final
-  arrangement/model validation otherwise cannot separate shared Real
-  arguments.
+  The broad final all-pairs LRA equality scan remains mandatory. A previous
+  candidate-only experiment reran it only after separation failure, but that
+  validation condition missed congruence conflicts caused by EUF-mergeable
+  pairs. Removing this scan requires the paper's missing shared-model
+  validation mechanism, not only a successful pair-separation search.
 
 The missing parts are the paper's central mechanisms. `TheoryCombinationManager`
 already provides shared equality ownership for interface terms, equality atoms,
