@@ -309,34 +309,55 @@ attribution corrected in [](papers/griggio-mathsat-thesis.md) was wrong.
 **Found 2026-08-06 by asking why the removal is a linear scan at all. It is
 the largest measured single cost in the arithmetic layer.**
 
-`pivot()` maintains `occurs_in_` -- variable to the list of basic variables
-whose rows mention it. When a coefficient cancels to zero the variable leaves
-that row, and the entry is removed with
+`pivot()` maintains `occurs_in_`: variable -> the list of basic variables
+whose rows mention it. It is the first Markowitz factor, so it has to be
+right, and `pivot()` is the only place it changes during search.
 
-```cpp
-occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
-                  occurrences.end());
-```
+### When the erase actually happens
 
-which scans the whole occurrence list. Measured on
-`tropical-matrix/constraint-199552`:
+There are **two** removal sites, and they are unrelated in both cause and
+frequency. Measured on `tropical-matrix/constraint-199552` (7,679 pivots,
+128.4M merged terms):
 
-| quantity | value |
-|---|---:|
-| `occurs_in` entries iterated (the Markowitz factor) | 1,260,035 |
-| **erase calls** | **12,033,307** |
-| **elements scanned by those erases** | **8,174,083,067** |
-| average occurrence-list length | 679 |
-| scan elements vs pivot term ops (128.4M) | **64x** |
+| site | when it runs | calls | elements scanned |
+|---|---|---:|---:|
+| **1. dissolving the leaving row** | once per term of the leaving basic variable's old row, on **every** pivot | 264,081 | 180,921,747 |
+| **2. cancellation during the merge** | only when a coefficient sums to **exactly zero** | **12,033,307** | **8,174,083,067** |
+| | | | **8,355,004,814 total** |
 
-At a generous 4 elements/ns that is roughly **2.0s of pure scanning in a 4.4s
-solve**, which is consistent with `pivot` holding 74% self time in the gprof
-profile while `Rational` copies hold 1.05%.
+**Site 1 is structural and unconditional.** When `basic_var` stops being
+basic, its row is dissolved and rewritten in terms of the entering variable.
+Every variable that appeared in that row therefore no longer has `basic_var`
+among the rows mentioning it, so each gets one removal. The count is exactly
+`sum over pivots of |row(leaving)|` -- 34 per pivot here. It is bounded by row
+length and is *not* the problem.
 
-**The reading that delayed this.** The code comment says "This is the *only*
-removal the loop performs", which describes *which* removal, not how often --
-and it was taken as "removals are rare". They are not: there are about **ten
-times more removals than iterations**.
+**Site 2 is arithmetic and data-dependent, and it is the problem.** During the
+two-way merge, a variable present in both the affected row and the scaled
+entering row has its coefficients added. If they cancel to exactly zero the
+variable genuinely leaves that row, so `other_basic` must leave
+`occurs_in_[var]`. This fires on **9.4% of all merged terms** -- 12.0M times,
+each scanning an occurrence list averaging **679** entries.
+
+So the ratio that matters is not "removals are rare". Site 2 alone performs
+**ten times more removals than there are `occurs_in` entries iterated**
+(1,260,035), and its scans touch **65x more elements than there are pivot term
+ops**. At a generous 4 elements/ns that is roughly **2.0s of pure scanning in
+a 4.4s solve**, consistent with gprof putting `pivot` at 74% self time while
+`Rational` copies sit at 1.05%.
+
+**Why cancellation is this common here** is legible from the encoding rather
+than mysterious: [](tropical-matrix-structure.md) shows the family is a DAG of
+definitions over 36 free variables, so rows composed from the same handful of
+`f*` variables cancel against each other systematically. Whether 9.4% is
+typical of other families is **not established** -- it was measured on one
+instance, and that is the first thing a prototype should check.
+
+**The comment that hid this.** Site 2 carries the note "This is the *only*
+removal the loop performs", which is true and describes *which* removal it is
+-- there is no second removal inside the merge. It was read as "removals are
+rare", which the measurement contradicts. Site 1 is outside that loop, which
+is why the comment is not wrong, only easy to misread.
 
 ### Why a hash set is now the obvious question, and what the data says
 

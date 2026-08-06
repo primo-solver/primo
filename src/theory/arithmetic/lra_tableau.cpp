@@ -188,6 +188,14 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     } else {
       remainder.emplace_back(var, coeff);
     }
+    // occurs_in_ removal, site 1 of 2: dissolving the leaving row.
+    // basic_var stops being basic, so every variable that appeared in its
+    // row loses basic_var from its occurrence list. Unconditional, once per
+    // term -- the count is exactly sum(|row(leaving)|) over pivots, which is
+    // bounded by row length and is the cheap site. Measured on
+    // tropical-matrix/constraint-199552: 264,081 calls, 181M elements
+    // scanned. See docs/open-leads.md lead 3b for the other site, which is
+    // 45x more expensive.
     auto& occurrences = occurs_in_[var];
     occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), basic_var),
                       occurrences.end());
@@ -280,10 +288,22 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
         util::Rational sum = other_row[i].second + entering_in_other * new_entering_row[j].second;
         const LraVarId var = other_row[i].first;
         if (sum.is_zero()) {
+          // occurs_in_ removal, site 2 of 2: exact cancellation.
           // The variable leaves this row, so its occurrence entry goes with
-          // it. This is the *only* removal the loop performs: entering_var
-          // needs none (its whole list was cleared when it became basic),
-          // and every other term either stays put or is new.
+          // it. This is the only removal *this loop* performs -- entering_var
+          // needs none (its whole list was cleared when it became basic), and
+          // every other term either stays put or is new. Site 1, above in
+          // this same function, dissolves the leaving row unconditionally.
+          //
+          // Do not read "the only removal" as "rare". This fires whenever two
+          // coefficients sum to exactly zero, which on a definition-DAG
+          // formula is common: measured at 9.4% of all merged terms on
+          // tropical-matrix/constraint-199552 -- 12.0M calls scanning 8.17
+          // BILLION elements, against 128.4M merged terms in total. That is
+          // ~2.0s of a 4.4s solve and is why pivot() holds 74% self time
+          // while Rational copies hold 1.05%. The linear scan below is the
+          // single largest measured cost in the arithmetic layer;
+          // docs/open-leads.md lead 3b records the candidate fixes.
           std::vector<LraVarId>& occurrences = occurs_in_[var];
           occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
                             occurrences.end());
