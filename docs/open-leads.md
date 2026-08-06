@@ -36,7 +36,7 @@ notes it points to.
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
 | [2b](#lead-two-lra-paths) | Dispatch is a **nondeterminism trigger**, not a performance bug | neither path dominates (2-2 at the timeout) | -- | **measured; design kept, hazard recorded** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
-| [3b](#lead-occurs-in) | `occurs_in_` removal scan | -25% where lists are long, +19% where short | small-medium | **open**; hash set rejected, 3 candidates left |
+| [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | -25% best case from removing the scan entirely | **large** (representation change) | **open**; 2 prototypes rejected, reframed |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
@@ -398,147 +398,61 @@ lead is worth reading for what else it says.** Four of the six items above are
 corrections to statements made confidently from code reading, and every one of
 them was settled by a counter rather than by an argument.
 
+### The real shape of this lead: the representation is half a sparse matrix
+
+The three prototypes below are all workarounds for one missing thing, and it
+is worth stating that before anyone writes a fourth.
+
+**At the cancellation site, `pivot()` already holds the dying entry.** It has
+`other_row[i]` and `var`, and it knows this occurrence is dead. The entire
+expense is that `occurs_in_[var]` is a *separate structure with no link back
+to the row entry*, so the code must **search** for something it is already
+holding.
+
+| candidate | what it does about the missing link |
+|---|---|
+| hash set | replaces the search with a hash |
+| swap-pop + hash position index | replaces the search with a hash, and pays for two |
+| tombstone + live counter | avoids the removal, defers the cost to iteration |
+
+A **cross-linked sparse matrix** -- each nonzero linked into both its row and
+its column, which King's thesis Section 2.2.7 records as standard practice --
+removes the problem rather than working around it. Removal becomes an unlink
+in place: O(1), no search, no hash, no tombstones, no live counter, and
+`occurs_in_[var].size()` stays exact for Markowitz pricing at no cost.
+
+**What Primo has today is half of that structure**: row-wise contiguous
+storage (`Row = std::vector<std::pair<LraVarId, Rational>>`) plus a column
+index (`occurs_in_`), without the cross-links that make maintaining the column
+index cheap.
+
+**And the missing half is not free to add**, which is why this is a real
+design question rather than an oversight. The current speed comes from rows
+being contiguous and rebuilt by a linear two-way merge -- that contiguity is
+exactly why the hash set *lost* on short lists. Cross-linking costs one of:
+
+- **Linked-list rows** (the classical form). Nodes never move, so back-links
+  stay valid, but the contiguous merge that items H8 and H10 were built around
+  is gone.
+- **Array form with back-indices.** Rows stay contiguous and each entry stores
+  its slot in `occurs_in_[var]` -- but `pivot()` rebuilds `other_row` wholesale
+  on every merge, so every term's position changes and every back-link needs
+  refreshing. On tropical that is roughly 128M scattered writes, potentially as
+  expensive as what it replaces.
+
+**So the question to answer is not "tombstone or hash set".** It is whether
+the representation is right, and the two sub-questions are: does the
+cross-linked form's O(1) removal outweigh losing contiguous rows, and is there
+a form that keeps both. Neither is answerable by another micro-prototype of
+the removal alone -- the two rejected prototypes already showed that the
+removal mechanism is not where the remaining headroom is, since replacing it
+wholesale bought 25% on the best case and lost on three others.
+
+**Scope, measured rather than guessed.** `Row`'s element type has 19 uses in
+`lra_tableau.cpp`, 12 structured bindings over rows, and 6 external users via
+`row()`/`occurs_in()` in `check_sat.cpp`. This is not a contained change.
+
 ### Why a hash set is now the obvious question, and what the data says
-
-The standard objection to `unordered_set` here is that `occurs_in(entering)`
-is *iterated in full* on every pivot, and a vector iterates contiguously while
-a hash set chases nodes. That objection is real but the magnitudes settle it:
-iteration touches 1.26M entries while removal scans touch 8.17 **billion**.
-Iteration is 6,500x cheaper, so almost any structure with sub-linear removal
-wins even if its iteration is several times slower.
-
-Three candidate shapes, cheapest first:
-
-1. **Tombstones / superset invariant.** Stop removing eagerly and let
-   `occurs_in_` be a conservative *superset*. The consumer already does
-   `lower_bound(other_row, entering_var)`, so a stale entry is detected for
-   free by checking that the found position actually holds `entering_var`,
-   and skipped. Removal cost becomes zero; iteration cost grows with
-   staleness, so it needs a compaction policy. Relaxes
-   `verify_occurs_in_index` from equality to superset.
-2. **Swap-and-pop with a position index.** Keeps contiguous iteration and
-   makes removal O(1), at the cost of maintaining `position_of[var][basic]`
-   through every insert and swap.
-3. **`unordered_set` per variable.** Simplest to write, O(1) removal, but
-   pays a node allocation per insert -- and the class comment records that
-   `rows_`/`occurs_in_` were migrated *away* from `std::unordered_map`
-   precisely because of "per-call heap-allocated map-node churn". That was
-   the outer container rather than the inner list, so it is not the same
-   change, but it is the same hazard.
-
-### Prototype result: the hash set is a regression, and the reason is instructive
-
-Built and measured 2026-08-06, including the initial-capacity variants.
-Cancellation first: it is **not** tropical-specific -- 9.4% of merged terms
-there, 13.8% latendresse, **18.0% miplib danoint-166**, 12.1% uart, 9.5% sc.
-So the lead generalises.
-
-`:lra.pivots` is **identical** between baseline and prototype on every
-instance (7,679 / 3,654 / 847 / 282,354), so the hash set's different
-iteration order does not perturb pivot selection: these timings measure
-container cost, not a search change.
-
-| instance | erase calls | avg list | baseline | unordered_set | change |
-|---|---:|---:|---:|---:|---:|
-| tropical `constraint-199552` | 12.0M | **679** | 4.24s | 3.20s | **-25%** |
-| sc-21 | 1.3M | 176 | 0.48s | 0.47s | -2% |
-| uart-16 | 0.35M | 86 | 0.26s | 0.25s | -4% |
-| **miplib `danoint-166`** | 192.8M | **76** | 65.19s | 77.52s | **+19%** |
-| latendresse ecoli | 1.2M | **43** | 0.26s | 0.34s | **+31%** |
-
-**The deciding factor is average occurrence-list length, not total elements
-scanned.** `danoint-166` scans **1.8x more** elements in total than tropical
-(14.6B against 8.2B) and gets *worse*, because its lists average 76 against
-tropical's 679. A `std::vector<LraVarId>` scan is contiguous, vectorisable and
-cache-friendly -- very cheap per element -- while a hash erase costs a hash, a
-probe and a likely cache miss whatever the length. Hashing only pays once the
-list is long enough to amortise that. The crossover is somewhere between 76
-and 679.
-
-**The requested initial capacity makes it worse, not better**: on tropical,
-no reserve 3.20s against `reserve(8)` 3.50s and `reserve(32)` 3.38s.
-Reserving per variable pays allocation and memory for *every* variable, and
-most occurrence lists are short.
-
-**This also corrects the lead's own framing.** "8.17 billion scanned elements
-must be the bottleneck" was too simple: removing the scans entirely wins 25%
-on tropical, not the ~45% that a 2.0s-of-4.4s estimate implied. Contiguous
-scanning is much cheaper per element than that estimate assumed.
-
-**Where this leaves the lead.** Candidate 3 is rejected as a blanket change.
-The diagnosis survives -- long occurrence lists are expensive to maintain --
-and the two candidates that keep contiguous iteration are untried:
-tombstone/superset, and swap-and-pop with a position index. The data also
-suggests a fourth option it did not previously contain: switch representation
-per variable once its list crosses a length threshold, since the two regimes
-are cleanly separated by exactly that quantity.
-
-### The cost is concentrated in a few very long lists, and that may be predictable
-
-Histogram of occurrence-list length at each cancellation erase, tropical
-`constraint-199552` (12.0M calls, 8.17B elements):
-
-| list length | calls | share of all scanning |
-|---|---:|---:|
-| < 256 | 1.9M | 2.9% |
-| 256-511 | 2.2M | 10.5% |
-| **512-1023** | **5.4M** | **51.6%** |
-| **>= 1024** | **2.5M** | **34.9%** |
-
-**86.5% of the scanning happens on lists of 512 or more.** The mean of 679 is
-not describing a uniform population; the cost lives in a small number of very
-long occurrence lists.
-
-That is consistent with what [](tropical-matrix-structure.md) found about the
-family: it is a DAG of definitions over **36 free `f*` variables**, so pivoting
-composes rows back toward those few variables and they end up occurring in
-enormous numbers of rows. The long lists are a direct consequence of the
-formula's shape.
-
-**Which suggests this is predictable statically.** `scripts/analyze_smt2.py`
-already recovers exactly that structure -- free versus derived variables, the
-definition DAG, occurrence counts -- from the formula alone, without solving.
-If occurrence-length distribution can be estimated from the input, then the
-representation choice below stops being a guess: pick per instance, or per
-variable, before search starts. **Not attempted, and not established** -- the
-correlation between any static measure and the observed list lengths has not
-been checked, and that check is the prerequisite for any adaptive scheme.
-
-### Prototype 2: swap-and-pop is worse than the hash set
-
-Built 2026-08-06. Keeps `occurs_in_` a contiguous vector and replaces the
-scan with a side index giving each member's position, so removal swaps in the
-back element and pops.
-
-| instance | baseline | hash set | **swap-pop** |
-|---|---:|---:|---:|
-| tropical `constraint-199552` | 4.11s | **3.25s** | 3.70s |
-| sc-21 | 0.46s | 0.46s | 0.50s |
-| uart-16 | 0.23s | 0.25s | 0.27s |
-| latendresse ecoli | 0.25s | 0.32s | **0.37s** |
-
-Worse than the hash set everywhere, and the reason is structural rather than
-an implementation detail: the position index is *itself* a hash map, so each
-erase costs a hash find, a hash erase, and a hash write to repair the moved
-element's position -- roughly two to three hash operations where
-`unordered_set::erase` costs one, plus the swap bookkeeping on top.
-
-Swap-and-pop only wins with a **non-hash** position index, and a dense
-`pos_[var][basic]` is O(vars^2): 23 MB for tropical's 2,394 tableau variables,
-but 34 GB for a LassoRanker instance with 92,937 reals. Not viable as written.
-
-**What that leaves.** The principled version of this idea is the standard
-sparse-matrix representation -- each nonzero linked into both a row list and a
-column list, so the position is carried *in the row entry itself* and no
-separate index exists. King's thesis Section 2.2.7 records exactly that
-structure. It is a materially larger change than any prototype here.
-
-A prototype bug worth recording: the first version cleared `occurs_in_`'s
-vectors in `rebuild_occurs_in_index` without clearing the position index,
-leaving stale positions that a later erase would act on. **All 13 unit suites
-passed with that bug present**, so nothing in the current tests exercises a
-rebuild followed by a removal. Any real implementation of this needs a test
-that does.
 
 **Falsifier.** If a prototype does not materially reduce `pivot`'s share in a
 fresh profile on this instance, the scan was not where the time went and the
