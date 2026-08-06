@@ -129,10 +129,23 @@ consulted for. Fixed the same day, with a regression test
 with `0 0` -- so the default zero is now a *meaningful* zero, and on this file
 the threshold genuinely never binds.
 
-That is worth knowing before spending a search dimension: **check
-`:lra.bland-fallbacks` across the corpus first.** If it is zero everywhere, the
-knob only does anything in its aggressive direction, which is a robustness arm
-rather than a tuning dimension.
+**And with the counter fixed, the threshold turns out to bind on real
+input.** An earlier draft of this section guessed the knob might be inert
+because `constraint-199552` reports 0. It is not: across the
+2017-Heizmann-UltimateInvariantSynthesis files in the stratified sample, the
+default configuration reports fallback counts of 1, 2, 4, 7, 8 and 12 on
+different instances. So `check()` really does exhaust `4 * variables + 64`
+pivots within a single call on ordinary QF_LRA benchmarks, and the rule in
+force for the remainder of those calls is Bland's -- not the Sparse rule the
+solver is nominally configured with.
+
+That makes both coefficients a live tuning dimension rather than a robustness
+arm, and it raises a question worth answering before tuning them: on
+instances where the fallback fires, how much of the pivoting is happening
+under Bland? If it is a large fraction, the measured performance of
+`--lra-pivoting-rule sparse` on those files is partly the performance of
+Bland, which would matter for interpreting every pivoting-rule comparison in
+[](qf-lra-heuristics.md).
 
 ## Tier 1 -- hardcoded constants still to expose (small, local diffs)
 
