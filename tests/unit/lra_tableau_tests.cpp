@@ -31,7 +31,7 @@ void assert_tableau_invariants(const LraTableau& tableau) {
   for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
     if (tableau.is_basic(var)) {
       DeltaRational sum = rat(0);
-      for (const auto& [term_var, coeff] : tableau.row(var)) {
+      for (const auto& [term_var, coeff, term_slot] : tableau.row(var)) {
         sum = sum + tableau.assignment(term_var).scaled(coeff);
       }
       assert(sum == tableau.assignment(var));
@@ -1079,7 +1079,7 @@ void elimination_agrees_with_the_ablation_on_multi_pivot_scenarios() {
               continue;
             }
             DeltaRational sum = rat(0);
-            for (const auto& [term_var, coeff] : tableau.row(var)) {
+            for (const auto& [term_var, coeff, term_slot] : tableau.row(var)) {
               sum = sum + tableau.assignment(term_var).scaled(coeff);
             }
             assert(sum == tableau.assignment(var));
@@ -1110,9 +1110,9 @@ void rows_stay_ordered_and_nonzero_through_pivoting() {
       }
       const auto& row = tableau.row(var);
       for (std::size_t i = 0; i < row.size(); ++i) {
-        assert(!row[i].second.is_zero() && where != nullptr);
+        assert(!row[i].coeff.is_zero() && where != nullptr);
         if (i > 0) {
-          assert(row[i - 1].first < row[i].first);
+          assert(row[i - 1].var < row[i].var);
         }
       }
     }
@@ -1180,7 +1180,7 @@ void merge_and_sort_rebuilds_agree_on_a_cancelling_pivot() {
       continue;
     }
     DeltaRational sum = rat(0);
-    for (const auto& [term_var, coeff] : tableau.row(var)) {
+    for (const auto& [term_var, coeff, term_slot] : tableau.row(var)) {
       assert(!coeff.is_zero());
       sum = sum + tableau.assignment(term_var).scaled(coeff);
     }
@@ -1269,7 +1269,7 @@ void cancelling_pivot_drops_the_occurrence_entry() {
     if (!tableau.is_basic(var)) {
       continue;
     }
-    for (const auto& [term_var, coeff] : tableau.row(var)) {
+    for (const auto& [term_var, coeff, term_slot] : tableau.row(var)) {
       assert(!coeff.is_zero());
       (void)term_var;
     }
