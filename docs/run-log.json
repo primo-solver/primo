@@ -20764,6 +20764,49 @@
         "benchmark_summaries": "local:results/qf_uflra-online-euf-ablation-cbe1cfc/{default,optin}-summary.csv"
       },
       "outcome": "The IPASIR-UP multiplexer, dynamic generated-equality registration, reason routing, and EUF external-clause routing are correctness-clean in this local gate. The 45-file solved count is unchanged and the PAR2 difference is negligible, so --qf-uflra-online-euf remains explicit, experimental, and default-off. A 5000-case SLURM generated gate plus real-seed mutation gate is still required before any promotion or headline performance claim."
+    },
+    {
+      "id": "2026-08-06-qfuflra-online-euf-slurm-submitted-119928-119932",
+      "date": "2026-08-06",
+      "branch": "nelson-oppen-online-lazy-ipasir-up",
+      "commit": "9bf9fc1",
+      "evidence_status": "submitted-running",
+      "scope": "SLURM merge-grade generated and real-seed mutation correctness gates for the exact default-off mixed online-EUF option set.",
+      "environment": {
+        "host": "cluster",
+        "remote_workspace": "primo-online-euf-9bf9fc1",
+        "build": "Release",
+        "sat_backend": "CaDiCaL 3.0.0-7b99c07 through IPASIR-UP",
+        "reference": "Z3 5.0.0",
+        "yinyang": "editable install from the pinned repository revision provisioned by contrib/install_yinyang.py"
+      },
+      "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified git 9bf9fc1, the CaDiCaL version, Z3, typefuzz, and the linked Release binary immediately before sbatch. Both checked-in sbatch files passed scripts/slurm_validate_sbatch.py and bash -n locally.",
+      "jobs": {
+        "generated": {
+          "slurm_job_id": "119928",
+          "array": "0-3",
+          "count_per_task": 1250,
+          "total_count": 5000,
+          "seed_base": 2026080607,
+          "timeout_seconds": 5,
+          "options": "--nelson-oppen-prop=online --qf-uflra-online-euf",
+          "artifact": "remote:primo-online-euf-9bf9fc1/slurm-results/qf_uflra-online-euf-generated-5000/task-*/summary.csv",
+          "logs": "remote:primo-online-euf-9bf9fc1/slurm_logs/primo-qf-uflra-fuzz-119928_*.{out,err}"
+        },
+        "mutation": {
+          "slurm_job_id": "119932_2",
+          "array_task": 2,
+          "iterations": 1000,
+          "wall_seconds": 27000,
+          "solver_timeout_seconds": 8,
+          "options": "--nelson-oppen-prop=online --qf-uflra-online-euf",
+          "seeds": "benchmarks/seeds/qf_uflra",
+          "artifact": "remote:primo-online-euf-9bf9fc1/fuzz-results/qf-uflra-online-euf-mutation/online-euf",
+          "rolling_logs": "remote:primo-online-euf-9bf9fc1/fuzz-results/qf-uflra-online-euf-mutation/online-euf/logs"
+        }
+      },
+      "observed_start": "All four generated tasks and mutation task 2 entered RUNNING state. Initial durable stdout records git 9bf9fc1 and the exact solver options; the mutation command records --keep-logic, --hoist-declarations, task-local logs, and the Z3 reference.",
+      "outcome": "Pending. Do not use these jobs as passing evidence until all generated summaries are merged and the mutation bugs/logs are classified. Broader performance evaluation remains blocked on these correctness gates."
     }
   ]
 }
