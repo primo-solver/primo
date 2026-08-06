@@ -712,16 +712,32 @@ this came from a flat profile rather than a design argument, so its
 measurement and the profile that found it are written up in [](#sec-6-2b);
 this entry is the definition the rest of the docs refer to.
 
-**First, what "sorted" refers to -- because the tableau has two levels of
-container and only one of them is indexed by variable.**
+**First, what "sorted" refers to.** The tableau is a `vector` of `vector`s,
+and the two levels are indexed by completely different things -- which is the
+single most confusing thing about the representation, so it is worth being
+concrete. A real 8-variable tableau with three basic variables, dumped from
+the actual structures:
 
-The *outer* containers are dense and indexed by `LraVarId` exactly as one
-would expect: `vars_[v]` is v's bounds and assignment, `rows_[v]` is v's row
-if v is basic, `occurs_in_[v]` is the list of rows v appears in. Nothing about
-those is sorted; the index *is* the variable.
+```text
+rows_ : indexed by variable id                        <- LEVEL 1
+  rows_[0..4] = (x0..x4 are not basic, slot unused)
+  rows_[5] = [ {var=x0, coeff=2}, {var=x3, coeff=-1} ]          <- 2 entries, NOT 8
+  rows_[6] = [ {var=x3, coeff=1}, {var=x4, coeff=7} ]           <- 2 entries, NOT 8
+  rows_[7] = [ {var=x0, coeff=1}, {var=x1, coeff=1}, {var=x4, coeff=-3} ]
+                    ^--------------- LEVEL 2 ---------------^
 
-A `Row` itself is **not** indexed by variable. It is a sparse list of only the
-non-zero terms:
+occurs_in_ : also indexed by variable id
+  occurs_in_[0] = [ x5, x7 ]      occurs_in_[3] = [ x5, x6 ]
+  occurs_in_[1] = [ x7 ]          occurs_in_[4] = [ x6, x7 ]
+```
+
+**Level 1** -- `vars_`, `rows_`, `occurs_in_` -- is dense, one slot per
+variable, and the index *is* the variable: `rows_[5]` means "x5's row". No
+ordering question arises here.
+
+**Level 2** -- the `Row` inside one of those slots -- is **not** indexed by
+variable. It is a sparse list holding one entry per *non-zero term*, each
+entry labelled with the variable it concerns:
 
 ```cpp
 struct RowEntry {
@@ -732,18 +748,29 @@ struct RowEntry {
 using Row = std::vector<RowEntry>;
 ```
 
-Position `i` in a `Row` has no relation to variable `i` -- you have to read
-`entry.var`. That is the whole point of the representation, and the numbers
-say why: on `constraint-199552` the tableau has 1,440 rows over ~1,900
-variables but only 3,519 non-zeros in total, an average row length of **2.44**
-([](tropical-matrix-structure.md)). Storing each row as a dense array indexed
-by variable would cost ~2.7M slots to hold 3,519 real ones, and every row
-operation would be O(variables) instead of O(non-zeros).
+`rows_[7][0]` is therefore not "x0's coefficient in row 7"; it is "the first
+stored term of row 7", and only reading its `.var` reveals it concerns x0. The
+row's length is its non-zero count (2, 2, 3 above), never the variable count.
 
-So "sorted" means: **the entries of a `Row` are kept in strictly ascending
-order of their `.var` field** (and never carry a zero coefficient). It is an
-ordering over the row's *contents*, which only exists because those contents
-are a sparse list rather than a dense index.
+Mathematically `rows_[5]` is the vector `(2, 0, 0, -1, 0, 0, 0, 0)`. Dense
+storage would be 8 slots indexed by variable; sparse storage is 2 entries
+carrying their own labels. The numbers force the sparse form: on
+`constraint-199552` the tableau has 1,440 rows over ~1,900 variables holding
+only 3,519 non-zeros, an average row length of **2.44**
+([](tropical-matrix-structure.md)). Dense rows would be ~2.7M slots for 3,519
+real values, and every row operation would cost O(variables) rather than
+O(non-zeros).
+
+So **"sorted" is a statement about level 2 only**: within a single row, the
+entries are kept in strictly ascending order of their `.var` field (and never
+carry a zero coefficient) -- x0, x1, x4 in `rows_[7]`. It is an ordering over
+a row's *contents*, which only exists because those contents are a sparse
+labelled list instead of a dense index.
+
+Sortedness is also decided per container, not globally: `occurs_in_`'s inner
+lists have the same two-level shape but are deliberately **not** ordered,
+since removal there is a swap-pop that destroys any order (see
+[](open-leads.md) lead 3b).
 
 **What H8 is.** `pivot()` combines each affected row with the scaled entering
 row -- and because both are sparse lists, combining them means pairing up the
