@@ -19636,6 +19636,41 @@
       },
       "conclusion": "The LassoRanker regression is Nelson-Oppen interface-equality bookkeeping running on the pure QF_LRA path, where nothing consumes it. Gating it on the one consumer recovers the instance exactly (identical search counters to b6b8d55) and gains 6 files with 0 lost on a 120-file sample, never slower than baseline (max paired ratio 1.01). All six gains are LassoRanker. This is the third and largest of the three mechanisms in docs/nelson-oppen-qf-lra-regression.md and the one that accounts for 46 of main's 61 lost files.",
       "still_open": "The full-division re-run has not been done on the fixed tree, so the corpus-level recovery is projected from a 120-file sample rather than measured."
+    },
+    {
+      "id": "2026-08-07-qf-lra-merged-tree-asan",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "implementation-fuzz-gate",
+      "scope": "Local ASAN coverage for the merged tree. The cross-linked occurs_in_ change rewrites row memory, and docs/arithmetic.md records a prior heap-use-after-free in exactly that loop (H8, which moves rows into the trail), so the representation change warrants sanitizer coverage beyond unit tests.",
+      "commit": "d52799c",
+      "branch": "main",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "make asan-build (Debug + -DPRIMO_SANITIZERS=address); ASAN_OPTIONS=detect_leaks=1:strict_init_order=1. Remote ASAN toolchain is documented broken (docs/arithmetic.md), so this is local by necessity."
+      },
+      "result": {
+        "unit_suites": "13/13 pass under ASAN, 28.1s",
+        "real_instances": {
+          "files": 30,
+          "sanitizer_reports": 0,
+          "timeout_per_file": "60s"
+        },
+        "family_coverage": {
+          "LassoRanker": 6,
+          "tta_startup": 4,
+          "latendresse": 4,
+          "2019-ezsmt": 4,
+          "meti-tarski": 3,
+          "tropical-matrix": 2,
+          "sc": 2,
+          "clock_synchro": 2
+        },
+        "selection": "deliberately weighted to latendresse, LassoRanker and tropical-matrix -- the families where the cross-link change is known to act (long rows and long columns respectively) -- plus a random spread."
+      },
+      "conclusion": "Clean: 0 sanitizer reports across 30 real instances and 13/13 unit suites. Covers the representation change on the families that stress it hardest. Not a substitute for the Slurm fuzz gate, which tests answers rather than memory.",
+      "caveat": "Smoke-to-merge tier, not campaign tier: 30 instances is coverage of the hot path, not of the input space."
     }
   ]
 }
