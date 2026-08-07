@@ -18745,6 +18745,854 @@
       },
       "conclusion": "Gate PASSES on the fix: 3000/3000 FuzzSMT cases and all three mutation tasks clean. The control run is the load-bearing part: the identical seeds and iterations against the PRE-FIX binary produce 7 incorrect-answer cases, every one derived from a newly added Bool-argument seed and NONE from the three pre-existing QF_UF seeds. So the added coverage is real rather than nominal -- the old corpus provably could not catch this bug, and the new one does. Note that a satisfiable seed (seed_bool_argument_predicate) also yielded 2 bug cases once mutated, so sat seeds are not useless here even though a sat seed cannot expose the bug unmutated.",
       "still_open": "qf_uflra_smoke_fuzz.py emits Bool-returning but never Bool-argument functions, so the MIXED path retains the same blind spot; and FuzzSMT's parameters have not been checked for whether Bool-sorted arguments can be requested at all."
+    },
+    {
+      "id": "2026-08-04-qf-lra-tropical-matrix-structure-analysis",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "profiling",
+      "scope": "Structural analysis of the tropical-matrix QF_LRA family read from the benchmark source, plus a local A/B testing whether the 468 guarded arithmetic definitions can be soundly unguarded. Establishes the encoding (tropical/arctic semiring, paired Bool -infinity flag and Real value), verifies the don't-care precondition, and measures fill-in on the one instance Primo solves. Diagnostic only; no solver change is proposed as promoted on this evidence.",
+      "commit": "058929d",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo, Release",
+        "notes": "14 cores, load average ~2.1 during both A/B runs; the concurrent tropical propagation sweep was running but single-threaded, so contention is not a plausible explanation for a 27x gap. Local diagnostic, not a SLURM benchmark claim."
+      },
+      "command": {
+        "structure_census": "grep/regex census over sandbox/non-incremental/QF_LRA/tropical-matrix/constraint-199552.smt2: 954 m/c variable pairs (36 f*, 918 l*), 468 unconditional Boolean definitions (= lKm (or lIm lJm)), 468 guarded arithmetic definitions (or lKm (= lKc (+ a b))), 0 ite, 0 multiplications.",
+        "dont_care_check": "scratchpad guard_check2.py: inlines let bindings and walks the term with an explicit stack, treating both guard polarities (positive sibling disjunct in an or, negative sibling conjunct in an and).",
+        "baseline": "build/primo --quiet --stats --guarded-real-equality-lowering constraint-199552.smt2",
+        "unguarded": "same binary on a rewritten copy with all 468 (or lKm (= lKc (+ a b))) replaced by (= lKc (+ a b))"
+      },
+      "result": {
+        "dont_care_precondition": "All 468 guarded arithmetic definitions have every occurrence of their c-variable protected by their own m-flag, so unguarding is satisfiability-preserving. 774 of 954 c-variables are fully protected; 3,774 of 5,106 occurrences (73.9%). Checking only one guard polarity reports 0 of 468 and is wrong.",
+        "baseline": "sat in 4.13s; 15,766 decisions, 93 conflicts, 7,679 pivots, 128.4M pivot term ops.",
+        "unguarded": "sat in 112s; 125,603 decisions, 13,359 conflicts, 526,566 pivots, 3,831M pivot term ops.",
+        "conclusion": "Unguarding is sound (both answer sat) but 27x slower with 68x the pivots. The guards are load-bearing: setting lKm true discharges the definition at the Boolean level, so the case split is cheaper than the tableau row it avoids. This rejects the family of guard-simplifying preprocessing ideas and explains why T1 helps only because it keeps the guard.",
+        "fill_in": "On the solved baseline run: 1,440 rows, 3,519 row-nonzeros (initial average row length 2.44), 164 rows touched per pivot, ~102 terms per row update -- roughly 42x fill-in. :lra.fixed-variables and :lra.elimination-pivots are both 0, so existing elimination machinery does nothing on this family."
+      },
+      "artifacts": {
+        "analysis_note": "docs/tropical-matrix-structure.md",
+        "scripts": "scratchpad only (guard_check2.py, unguard.py); not committed -- the note records the method and the counts, and the rewrite is a four-line regex substitution reproducible from the note."
+      },
+      "follow_up": "Two leads recorded in docs/tropical-matrix-structure.md: L1, prefer m-flag variables in decision order (cheap, the Boolean layer is self-contained over 36 free inputs and the solved run shows 15,766 decisions against 93 conflicts); L2, relevancy propagation to avoid asserting theory atoms under already-satisfied guards (literature-backed, absent from Primo, needs a paper note first). Neither is implemented."
+    },
+    {
+      "id": "2026-08-04-qf-lra-tropical-t1-row-propagation-rejected",
+      "started_at": "2026-08-04",
+      "recorded_at": "2026-08-04",
+      "kind": "parameter-tuning",
+      "scope": "Local A/B of row and bidirectional row propagation layered on top of T1 (--guarded-real-equality-lowering) over all 10 tropical-matrix files, sweeping the four propagation caps. Tests whether T1's leaner CNF makes propagation pay off on the out = a + b cost rows, a combination never measured before: propagation had only been tried on the pre-T1 encoding. Rejected.",
+      "commit": "a83243a",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo, Release",
+        "notes": "14 cores; sweep ran one solver process at a time. Local diagnostic screen, not a SLURM benchmark claim. No SLURM A/B and no fuzz gate were run because nothing is promoted by this result."
+      },
+      "command": {
+        "manifest": "benchmarks/qf-lra-tropical-matrix.txt (all 10 sandbox/non-incremental/QF_LRA/tropical-matrix files)",
+        "timeout_seconds": 60,
+        "baseline": "build/primo --quiet --stats --guarded-real-equality-lowering <file>",
+        "propagation": "same plus --lra-row-propagation --lra-bidirectional-row-propagation, with the four cap options at default, 128 and 1024",
+        "driver": "scripts/bench_tropical_matrix_sweep.py"
+      },
+      "result": {
+        "solved": {
+          "t1_only": "1/10 (constraint-199552, 4.214s)",
+          "t1_rowprop_default_caps": "0/10",
+          "t1_rowprop_128": "0/10",
+          "t1_rowprop_1024": "0/10"
+        },
+        "mechanism_fired": "Yes: 2,088 :lra.row-propagations and 128 :lra.bidirectional-row-propagations on constraint-199552. Not a null result from code that never ran.",
+        "caps_not_binding": "Pivots, term ops and both propagation counters are IDENTICAL at default, 128 and 1024 caps (64,272 pivots / 1,012,810,802 term ops / 2,088 / 128). Unlike the mid-band files behind D1 (fanout 521, rows of 91 terms), tropical never approaches even the default caps, so the caps were never the binding constraint.",
+        "cost": "Against T1 alone on constraint-199552 (7,679 pivots, 128.4M term ops), propagation gives 64,272 pivots and 1,013M term ops -- 8.4x the pivots and 7.9x the term ops -- and loses the file.",
+        "conclusion": "Rejected at every cap setting tested. Propagation is not neutral on this family, it is a regression: it loses the single file the baseline solves. Combined with the separate finding that unguarding the definitions is 27x slower (see 2026-08-04-qf-lra-tropical-matrix-structure-analysis), the encoding needs neither more propagation nor fewer guards."
+      },
+      "artifacts": {
+        "results_dir": "results/tropical-t1-propagation/ (CSV per config plus fired-*.err counter dumps); local-only, not committed",
+        "write_up": "docs/qf-lra-heuristics.md section T2, and docs/tropical-matrix-structure.md for the structural half"
+      },
+      "follow_up": "Not a pivoting-rule or propagation-cap question. Live leads are recorded in docs/tropical-matrix-structure.md: m-flag-first decision ordering (cheap) and relevancy propagation (larger, absent from Primo, needs a paper note first)."
+    },
+    {
+      "id": "2026-08-05-qf-lra-tropical-lead-triage",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Triage of the two leads recorded in docs/tropical-matrix-structure.md, checking whether either is already implemented before proposing work. Establishes that both are untried, that the existing --lra-theory-decisions does the opposite of L1 and is catastrophic here, and that a third and cheaper lead (L3) exists because the pure-theory-filter machinery already computes what it needs but is gated to QF_UF.",
+      "commit": "c3748c0",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo, Release",
+        "notes": "Single-file diagnostic on constraint-199552.smt2. Local only."
+      },
+      "command": {
+        "l1_control": "build/primo --quiet --stats --guarded-real-equality-lowering [--lra-theory-decisions] constraint-199552.smt2",
+        "l3_ablation": "build/primo --quiet --guarded-real-equality-lowering --pure-theory-filter=on|off constraint-199552.smt2",
+        "code_check": "src/smt/check_sat.cpp cb_decide(): skips atoms where !prepared_atom.is_arithmetic"
+      },
+      "result": {
+        "l1_status": "Untried. --lra-theory-decisions is the nearest existing mechanism and does the inverse: cb_decide() decides arithmetic atoms first and defers Boolean flags to VSIDS.",
+        "l1_measurement": "Baseline 3.5s sat; with --lra-theory-decisions, timeout at 90s after 9,185,550 theory decisions. A falsification test of the structural reading that came out as predicted: deciding arithmetic before the flags that make it relevant is the pathological order.",
+        "l2_status": "Untried and genuinely absent -- no relevancy machinery in src/. The only adjacent thing is the polarity-based pure-theory-filter, which is L3.",
+        "l3_finding": "On constraint-199552: :euf.theory-atoms 3846, :euf.pure-atoms.positive 2892 (75%), :euf.pure-atoms.negative 0, :euf.pure-filter.enabled 0, :euf.pure-literals.filtered 0. The polarity analysis runs and finds three quarters of theory atoms pure-positive, then filters none, because the mechanism is implemented for QF_UF only. Ablation confirms inertness: --pure-theory-filter=on 4.152s vs off 4.150s."
+      },
+      "follow_up": "Ranked L3 (extend pure-theory-filter to LRA; cheapest, machinery already computes the answer), then L1 (invert the cb_decide filter; small, with --lra-theory-decisions as a ready-made control), then L2 (dynamic relevancy propagation; largest, needs a paper note first and should follow L3's outcome)."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-variable-elimination-rejected",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Applicability screen for monotone (one-sided) real-variable elimination across eight QF_LRA families, using the new scripts/analyze_smt2.py. Supersedes an earlier regex screen whose counts were artifacts.",
+      "commit": "953f058",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "python3 scripts/analyze_smt2.py",
+        "notes": "Static analysis of benchmark files; no solver run involved."
+      },
+      "command": {
+        "analysis": "python3 scripts/analyze_smt2.py --json <one file per family>",
+        "selftest": "python3 scripts/analyze_smt2.py --selftest"
+      },
+      "result": {
+        "one_sided_reals": "latendresse 0/1708, miplib 0/996, uart 0/171, sc 0/128, DTP-Scheduling 1/11, clock_synchro 0/210, tta_startup 0/104, tropical-matrix 0/4552.",
+        "conclusion": "Rejected on applicability. Monotone elimination is sound -- Fourier-Motzkin on a single-sign variable generates no new constraints -- but there is essentially nothing to eliminate in these families.",
+        "supersedes": "An earlier regex screen reported 456 of 996 danoint-166 reals as one-sided. That was an artifact of matching only flat atoms and skipping nested arithmetic such as (<= (+ (* 2 x) y) 5); the correct answer is 0. The retraction is why the analyzer was written.",
+        "incidental_validation": "The analyzer independently reproduces two previously hand-derived figures: 774 guard-protected reals on tropical-matrix/constraint-199552, and the recorded 70-72% unary/two-variable census (1,611 of 2,250, 71.6%). It also confirms the tropical don't-care structure is family-wide, not instance-specific: 3,972 of 4,552 reals guard-protected on a second, larger file.",
+        "known_limitation": "Several families still report opaque atoms (latendresse 899, miplib 248, clock_synchro 204, tta_startup 200, sc 50). Opaque forces the conservative classification, so conclusions stay sound, but those constructs are worth identifying before the analyzer is relied on for finer questions."
+      },
+      "follow_up": "Lead closed in docs/open-leads.md. The analyzer is committed at scripts/analyze_smt2.py with a --selftest covering both retracted grep errors."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-screen-corpus-wide-reopens-lead",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Corpus-wide one-sided (monotone) variable screen over the entire local QF_LRA benchmark set, run to check a lead that had been closed on a sample of one file per family. The corpus contradicts the sample: the lead is reopened.",
+      "commit": "328790c",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "python3 scripts/analyze_smt2.py via scripts/screen_qf_lra_corpus.py",
+        "notes": "14 cores, 30GB RAM. 6 parallel workers, 180s per-file timeout, 6144MB RSS cap per worker. Static analysis only; no solver was run."
+      },
+      "command": {
+        "screen": "python3 scripts/screen_qf_lra_corpus.py sandbox/non-incremental/QF_LRA --out results/qf-lra-corpus-screen --jobs 6 --timeout 180 --mem-mb 6144",
+        "selftest": "python3 scripts/analyze_smt2.py --selftest"
+      },
+      "result": {
+        "coverage": "1753 of 1753 files analyzed successfully. Zero timeouts, zero OOMs, zero parse failures. Slowest file 43.15s against the 180s cap, so no file was excluded and the denominator is complete.",
+        "headline": "86,126 one-sided reals out of 4,756,176 (1.8%) corpus-wide. This contradicts the earlier 8-file screen, which found essentially none and on which the lead had been closed.",
+        "per_family": {
+          "2017-Heizmann-UltimateInvariantSynthesis": {
+            "files": 58,
+            "analyzed": 58,
+            "failed": 0,
+            "reals": 22319,
+            "one_sided": 442,
+            "opaque_pct": 0.0
+          },
+          "2019-ezsmt": {
+            "files": 105,
+            "analyzed": 105,
+            "failed": 0,
+            "reals": 91853,
+            "one_sided": 10,
+            "opaque_pct": 0.0
+          },
+          "DTP-Scheduling": {
+            "files": 91,
+            "analyzed": 91,
+            "failed": 0,
+            "reals": 7650,
+            "one_sided": 52,
+            "opaque_pct": 0.0
+          },
+          "LassoRanker": {
+            "files": 419,
+            "analyzed": 419,
+            "failed": 0,
+            "reals": 4455966,
+            "one_sided": 85120,
+            "opaque_pct": 0.0
+          },
+          "TM": {
+            "files": 25,
+            "analyzed": 25,
+            "failed": 0,
+            "reals": 14531,
+            "one_sided": 41,
+            "opaque_pct": 0.0
+          },
+          "check": {
+            "files": 2,
+            "analyzed": 2,
+            "failed": 0,
+            "reals": 12,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "clock_synchro": {
+            "files": 36,
+            "analyzed": 36,
+            "failed": 0,
+            "reals": 3663,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "keymaera": {
+            "files": 21,
+            "analyzed": 21,
+            "failed": 0,
+            "reals": 89,
+            "one_sided": 29,
+            "opaque_pct": 0.0
+          },
+          "latendresse": {
+            "files": 18,
+            "analyzed": 18,
+            "failed": 0,
+            "reals": 30280,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "meti-tarski": {
+            "files": 488,
+            "analyzed": 488,
+            "failed": 0,
+            "reals": 1480,
+            "one_sided": 365,
+            "opaque_pct": 0.0
+          },
+          "miplib": {
+            "files": 42,
+            "analyzed": 42,
+            "failed": 0,
+            "reals": 26256,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "sal": {
+            "files": 107,
+            "analyzed": 107,
+            "failed": 0,
+            "reals": 7226,
+            "one_sided": 67,
+            "opaque_pct": 0.0
+          },
+          "sc": {
+            "files": 144,
+            "analyzed": 144,
+            "failed": 0,
+            "reals": 40356,
+            "one_sided": 0,
+            "opaque_pct": 20.8
+          },
+          "spider_benchmarks": {
+            "files": 42,
+            "analyzed": 42,
+            "failed": 0,
+            "reals": 1956,
+            "one_sided": 0,
+            "opaque_pct": 1.7
+          },
+          "tropical-matrix": {
+            "files": 10,
+            "analyzed": 10,
+            "failed": 0,
+            "reals": 18691,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          },
+          "tta_startup": {
+            "files": 72,
+            "analyzed": 72,
+            "failed": 0,
+            "reals": 6768,
+            "one_sided": 0,
+            "opaque_pct": 12.1
+          },
+          "uart": {
+            "files": 73,
+            "analyzed": 73,
+            "failed": 0,
+            "reals": 27080,
+            "one_sided": 0,
+            "opaque_pct": 0.0
+          }
+        },
+        "mechanism": "The one-sided variables in 2017-Heizmann are named motzkin_*: Farkas/Motzkin multipliers from constraint-based invariant synthesis, non-negative by construction and therefore one-directional. LassoRanker is the same lineage (ranking-function synthesis via Farkas' lemma), consistent with its 85,120. This is a structural feature of how those benchmarks are generated, not incidental.",
+        "opaque_caveat": "Overall opaque-atom rate 0.2%, but concentrated: sc 20.8% (all 144 files) and tta_startup 12.1% (all 72 files), from ite inside arithmetic terms. For those two families a zero one-sided count means the analyzer could not tell, not that none exist. Every other family is at 0.0%.",
+        "analyzer_fixes_this_run": "Handling (* (- 1) x) via a new const_value() ground-term evaluator removed the great majority of opaque atoms corpus-wide (latendresse's first file: 899 opaque -> 0). Separately, ite_count was undercounting because the traversal stops at atom boundaries; sc actually has 380 ites per file and tta_startup 854, where the report previously said 0."
+      },
+      "follow_up": "Lead reopened as entry 9 in docs/open-leads.md with a falsifier: implement detection only, report :preprocessing.monotone-eliminable on LassoRanker and Heizmann, and check it against :lra.rows / :lra.row-nonzeros. If eliminating those columns does not reduce rows or fill-in, the lead closes on solver counters rather than on a syntactic census. Separate performance follow-up recorded in the analyzer docstring: inline_lets materialises the let-DAG into a tree, which is what makes the largest files slow (~43s, ~1GB); traversing the DAG directly needs a memo key of (node, polarity, guards), never node alone."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-elimination-prototype",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "External prototype of monotone (one-sided) variable elimination, to answer whether the reopened lead is worth implementing in the solver. Folds every atom mentioning a one-sided real to the constant its own polarity requires, then measures Primo before and after.",
+      "commit": "7afc623",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release; z3 from contrib/local/bin",
+        "notes": "Prototype transformer lives in the session scratchpad and is not committed; it inlines lets and does no model reconstruction, so it is a measurement device, not a candidate implementation."
+      },
+      "command": {
+        "transform": "scratchpad monotone_elim.py <in> <out>, built on scripts/analyze_smt2.py",
+        "soundness": "z3 on original vs transformed, 24 files with a one-sided population and zero opaque atoms, 20s cap",
+        "measurement": "build/primo --quiet --stats on original vs transformed, 90s cap"
+      },
+      "result": {
+        "soundness": "24 checked, 24 agree, 0 disagree.",
+        "heizmann_standard_copy4": "192 atoms folded; unsat both; :sat.clauses 2909->2507, :lra.rows 618->543, :lra.pivots 146833->147931, time 15.77s->14.15s (-10%).",
+        "lassoranker_ex3_20": "21 atoms folded; unsat both; :sat.clauses 1946->1925, :lra.rows 622->622 (unchanged), :lra.pivots 97777->69828, time 12.19s->7.84s (-36%).",
+        "interpretation": "The saving is mostly Boolean, not tableau. The LassoRanker file folds only 21 atoms and reduces no rows at all, yet is 36% faster -- a smaller Boolean structure yields a better search. Small meti-tarski files are discharged entirely (:sat.clauses to 0) but already solve instantly, so they are not evidence of value.",
+        "falsifier_correction": "The lead's previously stated falsifier -- close it if rows/fill-in do not drop -- is the WRONG test and would have closed a lead that works. Judge on end-to-end time and :sat.clauses instead."
+      },
+      "follow_up": "Lead 9 in docs/open-leads.md updated with the measurements and a revised effort estimate. Detection and rewrite are small; model reconstruction for eliminated variables is the real work (Primo emits models, and an eliminated variable must be valued after the rest of the model from its discharged constraints, in dependency order). A Slurm fuzz gate is mandatory as this changes preprocessing."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-elimination-slurm-fuzz-gate",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "implementation-fuzz",
+      "scope": "Correctness gate for the opt-in --monotone-elimination preprocessing pass and its model reconstruction. QF_LRA answer fuzzing differentially against z3, plus Dolmen/z3 model validation of every produced model, plus opfuzz and YinYang mutation over real QF_LRA seeds.",
+      "commit": "c054811",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (node-head, compute partition, node-01) via SSH ProxyJump jump-data-ciirc",
+        "remote_dir": "/home/janotmik/primo-monotone-c054811",
+        "binary": "build-slurm-rel/primo, Release, no sanitizers; --version reported 'git: c054811' and cadical-3.0.0-7b99c07 at preflight",
+        "notes": "Remote had only cadical provisioned; fuzzsmt, z3 5.0.0 and the yinyang venv (opfuzz/typefuzz) were installed and smoke-run before submission. Dolmen is unavailable on this cluster, so model validation used the documented z3 fallback for Real-constant models; the fallback was verified locally first (pass=2 on crafted cases) rather than assumed."
+      },
+      "command": {
+        "job_id": "119430",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=<workdir>,PATH=<workdir>/contrib/local/bin:<workdir>/.venv-yinyang/bin:$PATH,PRIMO_FUZZ_SOLVER_EXTRA_ARGS=--monotone-elimination scripts/slurm_qf_lra_model_fuzz_gate.sbatch",
+        "layout": "array 0-8: 6 FuzzSMT shards x 500 cases (5s timeout) with model validation, 1 opfuzz task, 2 YinYang/typefuzz shards over benchmarks/seeds/qf_lra_real",
+        "prerequisite": "PRIMO_FUZZ_SOLVER_EXTRA_ARGS was added to the gate in commit c054811. Without it the flag reaches the answer fuzzer but is silently dropped by the Dolmen model validator, which takes --solver as a bare executable plus discrete --solver-arg entries -- the gate would have looked clean while testing nothing about model reconstruction."
+      },
+      "result": {
+        "answer_fuzzing": "3,000 generated cases: 2,977 PASS, 23 TIMEOUT, 0 wrong answers, 0 crashes, 0 parser/type errors.",
+        "model_validation": "2,594 pass, 0 invalid models, 389 not-sat (unsat input, no model expected), 17 solver-timeout.",
+        "mutation": "opfuzz task and 2 YinYang/typefuzz shards: 14 seeds each, 14 valid, 0 invalid, 0 bug triggers.",
+        "task_exit_status": "sacct reports the six FuzzSMT array tasks as FAILED with exit 1:0. This is fuzz_external.py exiting nonzero when any row is non-PASS; the only non-PASS rows are the 23 timeouts, and the bugs/ directories contain exactly those 23 files. Not a soundness failure.",
+        "timeout_triage": "All 23 saved bug files cross-check as TIMEOUT rows in the shard summaries (23 files, 23 TIMEOUT rows, no bug file with any other outcome). Each was re-run at a 20s budget with and without --monotone-elimination: ZERO cases changed outcome. Pairs were sat/sat, unknown/unknown and unsat/unsat throughout, so the timeouts are inherent to the generated instances rather than introduced by the pass. (The raw triage log carries a few duplicate rows from a first attempt killed mid-loop before the detached rerun; the distinct case set is 23.)"
+      },
+      "artifacts": {
+        "remote_results": "/home/janotmik/primo-monotone-c054811/fuzz-results/qf-lra-model-gate-119430 (per-shard summary.csv, model-validation/, bugs/); cluster-local, not committed",
+        "logs": "logs/primo-qflra-model-fuzz-119430-*.out|.err on the same host"
+      },
+      "follow_up": "Correctness gate satisfied for the opt-in pass. Still outstanding before any default change: a benchmark evaluation on the stratified sample, since performance evidence is currently two locally prototyped files (-10% and -36%)."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-elimination-stratified-sample",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "benchmark",
+      "scope": "Promotion-bar A/B for the opt-in --monotone-elimination pass: default Primo against the same binary with the flag, over the 237-file QF_LRA stratified sample at the standing 10s bar. Reference solvers deliberately not re-run; z3/cvc5 CSVs from job 114200 are unchanged.",
+      "commit": "c054811",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm, compute partition, node-01",
+        "remote_dir": "/home/janotmik/primo-monotone-c054811",
+        "binary": "build-slurm-rel/primo Release; both tasks logged 'git: c054811' and cadical-3.0.0-7b99c07",
+        "notes": "First submission (job 119463) failed in 11s: bench_qf_uf_full.py calls path.relative_to(repo), so benchmarks must live inside the workspace and a symlink to another checkout resolves outside it. Re-run after copying the 237 manifest files (344MB) into tmp/QF_LRA."
+      },
+      "command": {
+        "job_id": "119465",
+        "submit": "sbatch --array=0-1 --export=ALL,PRIMO_WORKDIR=<w>,PRIMO_COMPARE_TIMEOUT=10,'PRIMO_COMPARE_SOLVERS=primo-default=build-slurm-rel/primo --quiet;primo-monotone=build-slurm-rel/primo --quiet --monotone-elimination' scripts/slurm_qf_lra_solver_compare.sbatch",
+        "manifest": "benchmarks/qf-lra-stratified-sample.txt (237 files)",
+        "timeout_seconds": 10
+      },
+      "result": {
+        "default": "solved 174/237, PAR2 1415.098, wrong 0, unsupported 0",
+        "monotone": "solved 173/237, PAR2 1432.843, wrong 0, unsupported 0",
+        "verdict": "Does NOT clear the promotion bar: -1 solved and worse PAR2.",
+        "lost_file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2, default sat in 3.19s, monotone timed out. Re-run at a 120s budget it is a real 3.5x slowdown (3.14s vs 10.91s), not churn at the timeout boundary. Nothing was gained anywhere.",
+        "paired_effect": "Over the 71 files both configurations solve in more than 0.2s: median default/monotone ratio 0.997, p10 0.986, p90 1.014, monotone more than 10% faster on 5 and more than 10% slower on 1, total 147.9s against 149.1s. The effect is neutral, not positive.",
+        "par2_accounting": "PAR2 delta 17.75, of which the single lost file accounts for 16.81 -- essentially the whole regression.",
+        "correctness": "Zero wrong answers in both configurations, confirming the fuzz gate's result at benchmark scale.",
+        "retracted_intermediate": "A first cut of this analysis reported 'monotone faster on 57 files, slower on 1'. That counted files taking well under a second, where the ratio is noise. Restricted to non-trivial instances the effect disappears. The figure is recorded as retracted so it is not quoted from an intermediate log."
+      },
+      "artifacts": {
+        "remote_results": "/home/janotmik/primo-monotone-c054811/results/qf-lra-solver-compare-119465/{primo-default,primo-monotone}{,-summary}.csv; cluster-local",
+        "failed_first_attempt": "job 119463, no results, see environment note"
+      },
+      "follow_up": "The two prototype wins (-10% and -36% on single files) did not generalize. The pass stays opt-in and is not proposed for default. Lead 9 in docs/open-leads.md moves from reopened to evaluated-and-not-promoted."
+    },
+    {
+      "id": "2026-08-05-qf-lra-monotone-elimination-local-correctness",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "implementation-fuzz",
+      "scope": "Local correctness evidence gathered while implementing --monotone-elimination, recorded separately from the Slurm gate because it is local-only and because one item found a real bug the unit tests missed. Supports commit 4bed99c.",
+      "commit": "4bed99c",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release; z3 from contrib/local/bin",
+        "notes": "Supplementary to the Slurm gate (job 119430), not a substitute for it."
+      },
+      "command": {
+        "exhaustive_differential": "python3 scripts/check_monotone_elimination.py --max-size 2 and --max-size 3",
+        "benchmark_model_validation": "scratchpad validate_models.py over 600 corpus files with a one-sided population, 20s cap",
+        "reversed_order_experiment": "the same validation over 120 files with apply_monotone_eliminations temporarily iterating the eliminated list in reverse",
+        "soundness_batch": "z3 on original vs transformed for 24 files, using the external prototype"
+      },
+      "result": {
+        "exhaustive_size2": "756 formulas: no answer changes, no z3 disagreements, no invalid models.",
+        "exhaustive_size3": "4,116 formulas: no answer changes, no z3 disagreements, no invalid models.",
+        "benchmark_model_validation": "66 models validated, 0 invalid, 534 skipped as non-sat or timed out at the 20s cap. The high skip rate reflects how hard the one-sided-population files are, not a gap in checking.",
+        "reversed_order": "108 valid, 0 invalid, with some models differing in value from the forward order -- the evidence that reconstruction needs no dependency ordering.",
+        "bug_found": "This is where the reconstruction bug surfaced: folding an atom discharges it for every variable in it, so a disqualified variable can lose its last constraint and vanish from the tableau. Reconstruction skipped such bounds and emitted models violating the discharged constraint. Unit tests did not catch it; validating printed models against z3 on real benchmarks did. Fixed and pinned by monotone_elimination_values_variables_that_lost_all_constraints."
+      },
+      "artifacts": {
+        "committed": "scripts/check_monotone_elimination.py",
+        "scratchpad_only": "validate_models.py, monotone_elim.py -- measurement devices, not candidate implementations"
+      },
+      "follow_up": "Superseded for headline purposes by the Slurm gate (job 119430) and the stratified-sample A/B (job 119465)."
+    },
+    {
+      "id": "2026-08-05-qf-lra-pure-theory-filter-lra-downgraded",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Tests lead 1 in docs/open-leads.md -- extending --pure-theory-filter to LRA atoms -- by applying the change and measuring, rather than reasoning from counter names. Downgrades the lead and corrects two errors in its stated evidence. CORRECTED 2026-08-05: the first version of this entry recorded a measurement taken on a code path these files do not execute.",
+      "commit": "c054811",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release, with a temporary two-line change reverted afterwards",
+        "notes": "Diagnostic only; no committed behaviour change."
+      },
+      "command": {
+        "code_reading": "src/smt/check_sat.cpp: should_filter_assignment, the two assigned_atoms_from_backend overloads, and the five LRA sites that skip on atom.filtered",
+        "experiment": "passed options.pure_theory_filter at the two solve_qf_lra_impl call sites, rebuilt, and compared --pure-theory-filter=off against =auto on tropical-matrix/constraint-199552.smt2"
+      },
+      "result": {
+        "correction_1": "The filter is NOT 'QF_UF only'. The rule needs only occurs_positive/occurs_negative and the LRA side already consumes it -- five sites skip on !prepared_atom.is_arithmetic || atom.filtered. The QF_LRA path calls the two-argument assigned_atoms_from_backend overload, which hardcodes PureTheoryFilterMode::Off. A documented scope decision, not a bug.",
+        "correction_2": "SUPERSEDED. The original text claimed the 2,892 pure-positive figure overstates the opportunity because such atoms are mostly assigned true. The supporting measurement was invalid -- it patched solve_qf_lra_impl, but these files run solve_qf_uf_lra (:solver.qf-uflra 1, :solver.qf-lra 0), so the patch was inert and the identical counters proved nothing.",
+        "measurement": "With the two-line change applied, --pure-theory-filter=off and =auto give IDENTICAL counters on constraint-199552: 7,679 pivots and 128,402,240 pivot term ops. The filter finds nothing to do on the file that motivated the lead.",
+        "misleading_stats": "':euf.pure-filter.enabled' and ':euf.pure-literals.filtered' are set inside solve_qf_uf, so both read 0 on any QF_LRA file regardless of the mechanism's behaviour. That is what made the original reading look confirmed.",
+        "verdict": "Lead downgraded, but for a different and more useful reason than first recorded. To matter, the filter must reach the online propagator's assertion path -- a materially larger change that belongs with lead 5 (relevancy propagation), since both are then about not asserting atoms during search.",
+        "corrected_measurement": "Redone at the live call site (assigned_atoms_from_backend for lra_atoms inside solve_qf_uf_lra) with a temporary probe: of 2,892 LRA atoms, 1,177 (41%) are filtered with --pure-theory-filter=auto and 0 with =off. So the atoms ARE assigned against their polarity and the filter DOES fire hard -- and :lra.pivots (7,679) and :lra.pivot-term-ops (128,402,240) are identical either way.",
+        "actual_reason": "':lra.theory-checks 1' against ':lra.online-check-calls 6528'. Wiring the filter at assigned_atoms_from_backend reaches only the final check, which runs once; all 7,679 pivots happen in the online propagator, which never consults 'filtered'. The cheap version of the lead is worthless by construction rather than by accident of this benchmark."
+      },
+      "follow_up": "Lead 2 (flag-first decision ordering) is top of docs/open-leads.md. Lead 1 merges into lead 5. Method note for future work: check which solve path a family actually takes (:solver.* counters) BEFORE patching one -- QF_LRA benchmarks in this corpus run solve_qf_uf_lra, not solve_qf_lra."
+    },
+    {
+      "id": "2026-08-05-qf-lra-flag-first-decisions-blocked",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Attempt at lead 2 in docs/open-leads.md: decide the non-arithmetic Boolean flags before any arithmetic atom on guarded families. Verified the code path first, per the method note from the previous entry. The stated mechanism does not exist and the real one is owned by the theory-combination layer; prototype reverted, nothing committed.",
+      "commit": "c63aa23",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release with a temporary prototype, reverted",
+        "notes": "Diagnostic only; no committed behaviour change."
+      },
+      "command": {
+        "path_check": ":solver.* counters on tropical-matrix/constraint-199552 and a uart file",
+        "atom_probe": "temporary probe counting non-arithmetic entries in lra_atoms and sampling euf_atoms",
+        "prototype": "passed euf_atoms into OnlineLraPropagator and returned their literals from cb_decide, behind --lra-flag-first-decisions"
+      },
+      "result": {
+        "path": "Both files run solve_qf_uf_lra (:solver.qf-uflra 1, :solver.qf-lra 0). OnlineLraPropagator is the live propagator and does receive options.lra_theory_decisions, so its cb_decide is the right hook.",
+        "atom_sets": "lra_atoms is built by is_lra_theory_atom and is 100% arithmetic: 2,892 atoms with 0 non-arithmetic on tropical, 1,363 with 0 on uart. Inverting cb_decide's is_arithmetic filter would therefore yield an EMPTY candidate set and disable theory decisions rather than reorder them. The flags are the 954 euf_atoms -- Bool-sorted Constant terms -- split off by is_euf_theory_atom.",
+        "dispatcher": "MixedTheoryPropagationDispatcher::cb_decide merely delegates to the LRA propagator, and is constructed only when nelson_oppen_propagation == Online, which is not the default (Final).",
+        "hard_blocker": "Returning a euf_atom literal from OnlineLraPropagator::cb_decide aborts: 'cadical: fatal error: invalid API usage of ask_decision(): external decisions are only allowed over observed variables.' A propagator may only decide variables it observes.",
+        "verdict": "Lead 2's stated mechanism ('invert the filter, a small change') is wrong on every count. Making the Boolean flags observed by the LRA propagator changes which callbacks CaDiCaL delivers and is a theory-combination decision, so the work belongs on the combination layer where MixedTheoryPropagationDispatcher already sees both atom sets."
+      },
+      "follow_up": "Reverted rather than finished, to avoid entrenching a layering violation and to avoid colliding with in-flight Nelson-Oppen work in another branch. Recorded as a design-ownership note: cross-theory decision ordering belongs to the theory-combination layer. Next actionable lead is 3 (MathSAT's actual leaving-variable rule), which is confined to LraTableau and touches no combination code."
+    },
+    {
+      "id": "2026-08-05-qf-lra-boolean-constant-dispatch-finding",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "profiling",
+      "scope": "Why pure QF_LRA benchmarks route through solve_qf_uf_lra, and what happens if they do not. Prompted by the observation that Nelson-Oppen should not fire at all on a formula with no uninterpreted content.",
+      "commit": "dd048dc",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release, with a temporary one-line experiment that was reverted"
+      },
+      "command": {
+        "root_cause_read": "summarize_formula_features in src/smt/check_sat.cpp",
+        "experiment": "restricted has_euf_predicate to TermKind::Application (dropping bare Bool Constant), rebuilt, re-ran tropical-matrix/constraint-199552",
+        "dispatch_census": "ran 40 files of benchmarks/qf-lra-stratified-sample.txt and read :solver.qf-lra / :solver.qf-uflra"
+      },
+      "result": {
+        "root_cause": "has_euf_predicate is set by `(kind == Application || kind == Constant) && sort == Bool`. A bare Boolean Constant -- an ordinary propositional variable -- therefore counts as an EUF predicate, and line 9108's `(has_equality || has_euf_predicate) && has_arithmetic` dispatches the formula to solve_qf_uf_lra. constraint-199552 declares no sorts and no uninterpreted functions at all: it is pure QF_LRA plus propositional variables.",
+        "cost_of_the_misclassification": "On tropical it builds a congruence closure over the 954 Boolean constants: :euf.incremental.terms 956, :euf.incremental.merges 954. Nelson-Oppen itself no-ops (no shared real terms, :no.purification.skipped-no-sites 1).",
+        "SURPRISE": "Routing the file to the pure QF_LRA solver instead is DRASTICALLY WORSE, not better. With has_euf_predicate restricted to Application: :solver.qf-lra 1, :euf.incremental.merges 0, and the file TIMES OUT at 180s having done 230,163 pivots. The default QF_UFLRA path solves it in 4.39s with 7,679 pivots. That is a 40x-plus regression from 'fixing' the classification.",
+        "dispatch_census": "14 of 40 sampled stratified-sample files (35%) take the QF_UFLRA path; 25 take the pure QF_LRA path.",
+        "interpretation": "The misclassification is not overhead being paid for nothing -- it is load-bearing on at least one family. The 954 merges are a trivial one-time cost, and something about the QF_UFLRA solve loop is worth far more than that on this shape. Why the leaner path is 40x worse is now the open question, and it is a question about Primo's own QF_LRA solver rather than about theory combination.",
+        "localisation": "Localised at a 60s budget, same file and options. Identical: :sat.clauses 10,059, :lra.rows 1,440, :lra.tableau-vars 2,394. Divergent: :sat.conflicts 5,256 vs 93, :sat.decisions 59,388 vs 15,766, :lra.online-check-calls 58,146 vs 6,528, :lra.pivots 98,191 vs 7,679. Preprocessing, clausification and tableau construction agree exactly; the entire divergence is in search.",
+        "ruled_out": "NOT the observed-variable set. solve_qf_lra observes all 3,846 theory atoms while solve_qf_uf_lra observes only the 2,892 arithmetic ones, which looked like the obvious cause. Restricting the pure path to observe only arithmetic atoms does not help: still a 180s timeout, at 307,336 pivots, slightly worse. Also NOT Nelson-Oppen doing useful work -- it no-ops for lack of shared real terms."
+      },
+      "follow_up": "Filed as a TODO in docs/open-leads.md rather than fixed, on instruction: Nelson-Oppen is heavily under construction in another branch and this sits in solve_qf_uf_lra and the dispatch, both of which that work touches. Two paths producing identical encodings and wildly different searches is a behaviour bug regardless of which is faster; the goal is convergence, and 'always assume NO' is a legitimate route since on a single theory the combination layer should reduce to nothing. The remaining check is to diff the two solve LOOPS, not their setup, which is already known to agree."
+    },
+    {
+      "id": "2026-08-05-qf-lra-least-violated-leaving-rule",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-05",
+      "kind": "benchmark",
+      "scope": "Promotion-bar three-way for lead 3: MathSAT's actual leaving-variable rule (Griggio thesis 2.5.3 p.53, least-violated first with short-row tie-break) against both leaving policies Primo already had. First evaluation to apply the complementarity criterion from docs/open-leads.md.",
+      "commit": "dfb83f8",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm, compute partition, node-07",
+        "remote_dir": "/home/janotmik/primo-leaving-dfb83f8",
+        "binary": "build-slurm-rel/primo Release; all three tasks logged 'git: dfb83f8'"
+      },
+      "command": {
+        "job_id": "119530",
+        "manifest": "benchmarks/qf-lra-stratified-sample.txt (237 files)",
+        "timeout_seconds": 10,
+        "solvers": "shortrow-default (current default); most-violated (--no-lra-sparse-leaving); least-violated (--lra-least-violated-leaving)"
+      },
+      "result": {
+        "shortrow_default": "solved 174/237, PAR2 1415.974, wrong 0",
+        "most_violated": "solved 162/237, PAR2 1653.456, wrong 0",
+        "least_violated": "solved 167/237, PAR2 1543.921, wrong 0",
+        "verdict": "Does NOT clear the promotion bar. The new rule sits between the two existing policies: 7 solved behind the shortest-row default, 5 ahead of Dantzig-style most-violated.",
+        "complementarity": "least-violated vs default: gained 2, lost 9. least-violated vs most-violated: gained 12, lost 7. Virtual best of all three 177/237; of default+least-violated 176/237 against the default's 174.",
+        "churn_check": "The two gained files are boundary effects, not capability, per the caveat in docs/open-leads.md. Re-run at 120s the default solves both: rand_80_340_1159656267_18.lp in 14.73s (against 2.99s) and 0051-labyrinth-12-0 in 10.10s (against 6.60s). So the portfolio case is weak -- though the first is a genuine 5x per-instance speedup.",
+        "corroborates_the_primary_source": "least-violated beats most-violated by 5 solved and 110 PAR2, gaining 12 files against it. Griggio's actual rule really is better than the most-violated rule Primo's docs had attributed to him -- which is independent support for that attribution having been wrong, on this project's own benchmarks rather than on the thesis's numbers."
+      },
+      "follow_up": "Lead 3 closed for default promotion; kept as an option. The attribution correction in docs/papers/griggio-mathsat-thesis.md and docs/papers/lra-related-work.md now has local empirical support, not only the primary source."
+    },
+    {
+      "id": "2026-08-06-qf-lra-dispatch-path-comparison",
+      "started_at": "2026-08-05",
+      "recorded_at": "2026-08-06",
+      "kind": "benchmark",
+      "scope": "Whether the two QF_LRA solve paths differ systematically or just chaotically. Settles the claim in an earlier entry that their divergence is a behaviour bug -- it is not.",
+      "commit": "dfb83f8",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "two builds differing only in the has_euf_predicate line: /tmp/primo-mixed (Bool Constant counts, current default) and /tmp/primo-pure (Application only). Both from dfb83f8; neither change is committed.",
+        "notes": "15s per file. Local because the question is a direction check across many small runs, not a headline benchmark claim."
+      },
+      "command": {
+        "selection": "every stratified-sample file whose dispatch actually differs: has a Bool 0-ary constant, no uninterpreted function, no declared sort -- 130 of 237",
+        "driver": "scratchpad pathcmp.sh, timing both builds per file"
+      },
+      "result": {
+        "tally": "comparable 80 (62%), both timeout 21, pure faster 19 (1.5-7.6x), mixed faster 6 (2.2-55.2x), pure solves where mixed times out 2, mixed solves where pure times out 2.",
+        "verdict": "Neither path dominates. Timeout wins are exactly even at 2-2, and where the paths differ the pure path is faster more often. The divergence is chaotic, as expected from a search perturbation in CDCL(T), not systematic.",
+        "supersedes": "The earlier entry 2026-08-05-qf-lra-boolean-constant-dispatch-finding called this a behaviour bug on the strength of a single 40x instance. That framing was an overclaim from n=1 and is retracted; the 40x is one draw from a two-tailed distribution.",
+        "cross_check": "rand_80_340_1159656267_18.lp and 0051-labyrinth-12-0 each appear as large swings both here and in the lead 3 leaving-rule comparison, on opposite sides -- instances that swing hard swing hard under any perturbation."
+      },
+      "follow_up": "Design decision recorded in docs/open-leads.md: KEEP the dedicated LRA-only solver without Nelson-Oppen, since on a single theory the combination layer has nothing to do. What is recorded instead is the hazard -- dispatch is a nondeterminism trigger. Adding one (declare-fun p () Bool) to a pure QF_LRA problem changes which solver runs and can change runtime by an order of magnitude either way, so benchmark results are not comparable across an edit that adds or removes a Boolean constant, performance reports should name :solver.qf-lra vs :solver.qf-uflra, and mutation-fuzzer timing data is not meaningful (answers still are)."
+    },
+    {
+      "id": "2026-08-06-qf-lra-pivot-gprof-profile",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "profiling",
+      "scope": "Where LRA time actually goes, to settle lead 7 (row representation: sorted arrays of pairs versus hash tables, per Griggio thesis 2.5.2) with a profile rather than a transplanted benchmark number.",
+      "commit": "2f17f35",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build-gprof/primo, RelWithDebInfo with -pg -O2 -g",
+        "notes": "perf is unavailable in this sandbox (kernel.perf_event_paranoid = 4, 'Failure to open any events'); callgrind was started and abandoned once gprof answered the question."
+      },
+      "command": {
+        "build": "cmake -S . -B build-gprof -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS='-pg -O2 -g' -DCMAKE_EXE_LINKER_FLAGS=-pg",
+        "run": "build-gprof/primo --quiet --guarded-real-equality-lowering tropical-matrix/constraint-199552.smt2; gprof over gmon.out",
+        "instance": "tropical-matrix/constraint-199552.smt2: 7,679 pivots, 1,260,035 pivot row updates, 128.4M pivot term ops"
+      },
+      "result": {
+        "flat_profile": "LraTableau::pivot 74.08% self (2.83s of 3.82s, 7,679 calls, 0.37ms/call); Rational::operator* 12.04% (48.1M calls); Rational::from_int128_reduced 3.93% (83.0M calls); Rational::operator+ 2.88% (34.8M calls); LraTableau::update 2.09%; Rational copy constructor 1.05% (53.6M calls); CaDiCaL internals about 2% in total.",
+        "aggregate": "pivot plus rational arithmetic is roughly 94% of runtime: 74% in pivot's own merge loop and 20% in rational operations.",
+        "answers_lead_7": "There is NO hash or map cost in the LRA hot path at all. The only hashtable entries in the profile are TermPairKey lookups (Nelson-Oppen interface equalities) at 0.00%. Primo's Row is already std::vector<std::pair<LraVarId, Rational>> kept ordered by var id -- the sorted-array-of-pairs design the thesis endorses -- with lower_bound for coefficient lookup and a linear two-way merge for combination (item H8). The thesis's 1.20x for choosing wrongly is therefore already banked, and the class comment records that rows_ WAS std::unordered_map and was migrated away for exactly this reason.",
+        "what_the_profile_points_at_instead": "Term-operation volume and rational cost, not the container. 83.0M from_int128_reduced calls against 48.1M multiplies means roughly 1.7 normalisations per multiply, and 53.6M Rational copies is a large number for 1.26M row updates. Reducing fill-in (fewer terms) or making the small-rational path cheaper are the levers this profile supports."
+      },
+      "follow_up": "Lead 7 closed as already-implemented, on profile evidence rather than on a code read alone. Also fixed a stale comment in select_entering_variable that claimed 'Row isn't sorted by var id', contradicting the Row invariant that pivot()'s merge depends on."
+    },
+    {
+      "id": "2026-08-06-qf-lra-occurs-in-removal-scan-cost",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "profiling",
+      "scope": "Measures the cost of the linear occurs_in_ removal inside LraTableau::pivot, after a gprof profile put pivot at 74% self time with rational arithmetic separately accounted for. Answers whether the erase/remove scan is rare bookkeeping or a dominant cost.",
+      "commit": "10b894c",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "build/primo Release with three temporary counters, reverted afterwards"
+      },
+      "command": {
+        "instance": "tropical-matrix/constraint-199552.smt2 with --guarded-real-equality-lowering",
+        "probe": "counted occurs_in entries iterated per pivot, calls to the erase/remove in the cancellation branch, and the total elements those scans touched"
+      },
+      "result": {
+        "iterated": "1,260,035 occurs_in entries iterated in total (this is the Markowitz factor, |occurs_in(entering)| summed over pivots)",
+        "erase_calls": "12,033,307 -- about 9.5 removals per pivot row update, i.e. roughly TEN TIMES more removals than iterations",
+        "erase_scanned": "8,174,083,067 elements scanned by those removals; average occurrence-list length 679",
+        "magnitude": "8.17 billion scanned elements against 128.4M pivot term ops -- 64x more work in the bookkeeping than in the arithmetic it maintains. At a generous 4 elements/ns that is about 2.0s of pure scanning in a 4.4s solve, consistent with pivot's 74% self time and with Rational copies being only 1.05%.",
+        "correction": "An earlier reading of this code claimed removals were rare, taken from the comment 'This is the *only* removal the loop performs' -- which says WHICH removal, not how often. The measurement says the opposite."
+      },
+      "follow_up": "Filed as a lead in docs/open-leads.md. The container question is now settled by data rather than by the general principle that vectors iterate better than hash sets: iteration is 6,500x cheaper than the removal scans here, so almost any structure with sub-linear removal wins, even one with slower iteration."
+    },
+    {
+      "id": "2026-08-06-qf-lra-occurs-in-hashset-prototype",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "profiling",
+      "scope": "Prototype of lead 3b candidate 3: replace occurs_in_'s per-variable std::vector with std::unordered_set so removal is O(1), including the requested initial-capacity (reserve) variants. Also establishes that the cancellation rate generalises beyond tropical-matrix.",
+      "commit": "5385cf0",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "four builds from the same tree: baseline, unordered_set with no reserve, and with per-variable reserve(8) and reserve(32). All prototypes reverted; nothing committed."
+      },
+      "command": {
+        "cancellation_census": "temporary counters on both occurs_in_ erase sites, across five families",
+        "ab": "same instance through each build, comparing wall time and :lra.pivots"
+      },
+      "result": {
+        "cancellation_generalises": "Cancellation is NOT tropical-specific: 9.4% of merged terms on tropical constraint-199552, 13.8% latendresse ecoli, 18.0% miplib danoint-166, 12.1% uart-16, 9.5% sc-21. Scanned-elements-per-merged-term ranges 6x to 64x.",
+        "search_unchanged": ":lra.pivots is IDENTICAL between baseline and prototype on every instance measured (7,679 / 3,654 / 847 / 282,354), so unordered_set's different iteration order does not perturb pivot selection and the timings measure container cost cleanly rather than a search change.",
+        "ab_results": "tropical constraint-199552 4.24s -> 3.20s (-25%); sc-21 0.48 -> 0.47 (-2%); uart-16 0.26 -> 0.25 (-4%); latendresse ecoli 0.26 -> 0.34 (+31%); miplib danoint-166 65.19s -> 77.52s (+19%).",
+        "the_deciding_factor": "AVERAGE OCCURRENCE-LIST LENGTH, not total elements scanned. danoint-166 scans 1.8x MORE elements in total than tropical (14.6B vs 8.2B) and gets 19% WORSE, because its average list is 76 against tropical's 679. The vector scan is contiguous, vectorisable and cache-friendly, so it is very cheap per element; a hash erase costs a hash plus a probe plus a likely cache miss regardless of list length. Hashing only wins once the list is long enough to amortise that. Crossover is somewhere between 76 and 679.",
+        "reserve_result": "The requested initial-capacity setting makes things WORSE, not better: on tropical, no-reserve 3.20s against reserve(8) 3.50s and reserve(32) 3.38s. Reserving per variable pays allocation and memory for every variable, and most occurrence lists are short.",
+        "model_correction": "The framing that '8.17 billion scanned elements must be the bottleneck' was too simple. Removing the scans entirely on tropical wins 25%, not the ~45% a 2.0s-of-4.4s estimate implied, which means contiguous scanning is substantially faster per element than that estimate assumed."
+      },
+      "follow_up": "Candidate 3 (unordered_set) is rejected as a blanket change: it is a regression on three of five instances including the largest. What survives is the diagnosis -- long occurrence lists are expensive to maintain -- and the two untried candidates, tombstone/superset and swap-and-pop with a position index, both of which keep contiguous iteration. A length-triggered hybrid is also now suggested by the data."
+    },
+    {
+      "id": "2026-08-06-qf-lra-occurs-in-swappop-and-histogram",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "profiling",
+      "scope": "Second prototype for lead 3b (swap-and-pop with a position index), plus the occurrence-list length histogram that explains where the scan cost actually lives and suggests it may be predictable from the formula.",
+      "commit": "aa76386",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "local-only",
+      "environment": {
+        "type": "workstation",
+        "binary": "builds from the same tree: baseline, unordered_set, swap-and-pop with an unordered_map position index. All prototypes reverted; nothing committed."
+      },
+      "result": {
+        "histogram": "At each cancellation erase on tropical constraint-199552 (12.0M calls, 8.17B elements): lists under 256 account for 2.9% of scanning, 256-511 for 10.5%, 512-1023 for 51.6%, and 1024+ for 34.9%. So 86.5% of all scanning happens on lists of 512 or more -- the mean of 679 hides a heavily skewed population.",
+        "why": "Consistent with docs/tropical-matrix-structure.md: the family is a DAG of definitions over 36 free f* variables, so pivoting composes rows back toward those few variables and their occurrence lists become enormous. The long lists follow from the formula's shape.",
+        "predictability_hypothesis": "UNTESTED. scripts/analyze_smt2.py already recovers free-versus-derived structure and occurrence counts statically. If occurrence-length distribution correlates with a static measure, representation could be chosen per instance or per variable before search. The correlation has not been checked and that check gates any adaptive scheme.",
+        "swappop": "tropical 4.11s -> 3.70s; sc-21 0.46 -> 0.50; uart-16 0.23 -> 0.27; latendresse 0.25 -> 0.37. Worse than the unordered_set prototype on every instance.",
+        "why_swappop_loses": "Structural, not an implementation detail: the position index is itself a hash map, so each erase costs a hash find, a hash erase, and a hash write to repair the moved element -- two to three hash operations against unordered_set::erase's one, plus swap bookkeeping. It only wins with a non-hash index, and a dense pos_[var][basic] is O(vars^2): 23MB for tropical's 2,394 tableau variables but about 34GB for a LassoRanker instance with 92,937 reals.",
+        "test_gap_found": "The first swap-pop version cleared occurs_in_'s vectors in rebuild_occurs_in_index without clearing the position index, leaving stale positions for a later erase to act on. All 13 unit suites passed with that bug present, so nothing currently exercises a rebuild followed by a removal."
+      },
+      "follow_up": "Two of three candidates now rejected by measurement. What remains is the tombstone/superset variant, and the principled version of swap-and-pop -- the standard sparse-matrix representation with each nonzero linked into both a row and a column list, carrying its position in the row entry so no separate index exists (King's thesis Section 2.2.7). Also recorded as a prerequisite for any adaptive scheme: check whether occurrence-length distribution is predictable from static formula structure."
+    },
+    {
+      "id": "2026-08-06-qf-lra-crosslink-occurs-in-gates",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "benchmark",
+      "scope": "Correctness gate and promotion-bar A/B for the cross-linked occurs_in_ change (lead 3b): row entries carry a back-index into the column list so pivot() unlinks an occurrence in O(log row) instead of scanning it.",
+      "commit": "83afe14",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm, node-01",
+        "remote_dir": "/home/janotmik/primo-crosslink-83afe14",
+        "notes": "Both A/B arms ran in ONE job on ONE node to avoid cross-node confounds; task logs confirm git: dfb83f8 for the baseline arm (binary from the primo-leaving-dfb83f8 workspace) and git: 83afe14 for the crosslink arm. Connectivity note: the ProxyJump host's sshd went down mid-session while answering on 443; the SSH config now prefers the direct route on the local network."
+      },
+      "command": {
+        "ab_job": "119555, array 0-1, benchmarks/qf-lra-stratified-sample.txt, 10s",
+        "fuzz_job": "119566, scripts/slurm_qf_lra_model_fuzz_gate.sbatch, array 0-8",
+        "failed_first_fuzz_attempt": "119556 failed in 0s with exit 2:0 -- 'required tool fuzzsmt not found on PATH'. slurm_prepare_benchmark_workspace.py builds primo but not the fuzzers, and this workspace had no contrib/. Provisioned it and resubmitted. The gate's explicit tool check turned a documented SILENT no-op into a loud failure."
+      },
+      "result": {
+        "fuzz_answers": "3,000 FuzzSMT cases: 2,983 PASS, 17 TIMEOUT, 0 wrong answers, 0 crashes.",
+        "fuzz_models": "2,593 models validated, 0 invalid, 397 not-sat (unsat input), 10 solver-timeout.",
+        "fuzz_mutation": "opfuzz and 2 YinYang shards: 0 bug triggers.",
+        "fuzz_task_status": "4 of 9 tasks report FAILED with exit 1:0; as in the earlier gate this is fuzz_external.py exiting nonzero on any non-PASS row, and the only non-PASS rows are the 17 timeouts.",
+        "ab": "baseline 174 solved / PAR2 1428.194 / 0 wrong; crosslink 174 solved / PAR2 1420.189 / 0 wrong. gained 0, lost 0.",
+        "ab_paired": "Over the 75 instances both solve in more than 0.2s: median baseline/crosslink ratio 1.008, p10 0.913, p90 1.181, crosslink more than 10% faster on 15 and more than 10% slower on 7, total 160.9s against 155.8s (-3.2%).",
+        "NOISE_FLOOR": "The identical baseline binary and configuration measured PAR2 1415.974 in job 119530 and 1428.194 in job 119555 -- a 12.22 spread run to run. The crosslink's PAR2 improvement is 8.00, so the aggregate gain is SMALLER THAN THE NOISE FLOOR and must not be reported as an improvement.",
+        "why_the_bar_misses_it": "The local wins are concentrated where occurrence lists are long: -41% on tropical-matrix/constraint-199552 (avg list 679) and -12% on sc-21 (176). tropical-matrix is not in the stratified sample at all -- qf-lra-heuristics.md excludes it as a family all three reference solvers fail -- and the sample is dominated by short-list instances where the change is neutral to slightly negative."
+      },
+      "follow_up": "Correctness gate passes. On the promotion bar the change is NEUTRAL, not an improvement: same solved count, PAR2 gain inside run-to-run noise, nothing gained or lost. The measured wins are real but sit on instances the bar does not contain. Keeping it therefore needs a different justification than the bar -- either a manifest that includes long-list families, or the argument that a 41% win on an open family at no cost elsewhere is worth the added invariant. Recorded for that decision rather than presented as a win."
+    },
+    {
+      "id": "2026-08-06-qf-lra-crosslink-tropical-1200s",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "benchmark",
+      "scope": "Cross-linked occurs_in_ (lead 3b) vs baseline on the 10-file tropical-matrix family at a 1200s budget. Run because the family is 1/10 at 60s, so the stratified sample -- which excludes tropical-matrix entirely, every reference solver failing it -- cannot see whether the change's constant-factor gain converts into solves.",
+      "commit": "83afe14",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm, node-01",
+        "remote_dir": "/home/janotmik/primo-crosslink-83afe14",
+        "notes": "Both arms in one job array (119577_0 baseline dfb83f8, 119577_1 crosslink 83afe14) on one node. COMPLETED 0:0 after 03:00:16 and 02:53:26."
+      },
+      "command": {
+        "job": "119577, array 0-1, benchmarks/qf-lra-tropical-matrix.txt, 1200s",
+        "solver_args": "--guarded-real-equality-lowering (both arms)",
+        "results_dir": "~/primo-crosslink-83afe14/results/qf-lra-solver-compare-119577"
+      },
+      "result": {
+        "baseline": {
+          "solved": 1,
+          "total": 10,
+          "par2": 21610.650982,
+          "wrong": 0
+        },
+        "crosslink": {
+          "solved": 2,
+          "total": 10,
+          "par2": 19998.333974,
+          "wrong": 0
+        },
+        "gained": [
+          "constraint-223827.smt2: timeout(1200s) -> sat in 791.53s"
+        ],
+        "lost": [],
+        "per_file": {
+          "constraint-199552.smt2": "10.65s -> 6.80s (-36%)"
+        },
+        "par2_gain": 1612.317008
+      },
+      "conclusion": "The change clears the bar on this family: +1 solved, 0 lost, PAR2 -1612. The gain is causally attributable rather than lucky search: the same day, the branch's default profile was verified search-identical to main on 25 solved stratified-sample files (identical :lra.pivots, :lra.pivot-term-ops, :sat.decisions, :sat.conflicts), so this change cannot perturb the search path -- the extra solve is the constant-factor speedup alone. Caveats: n=10, single run, and 791s of a 1200s budget is close enough to the line that a rerun could lose it.",
+      "artifacts": "baseline.csv, crosslink.csv, baseline-summary.csv, crosslink-summary.csv in the results dir above"
+    },
+    {
+      "id": "2026-08-06-qf-lra-crosslink-regression-analysis",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "analysis",
+      "scope": "Per-file paired analysis of job 119555 (237-file stratified sample, crosslink vs pre-crosslink baseline) to answer whether the cross-link change costs anything outside the tropical family. Valid as a pure constant-factor measurement because the change was independently verified search-identical.",
+      "commit": "83afe14",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Analysis of CSVs produced by Slurm job 119555; no new solver runs except two --stats calls for row/nonzero shape."
+      },
+      "result": {
+        "gained": 0,
+        "lost": 0,
+        "wrong": 0,
+        "solved_by_both": 174,
+        "paired_ratio_all_174": {
+          "median": 1.014,
+          "p10": 0.428,
+          "p90": 1.374,
+          "max": 5.272,
+          "over_10pct_slower": 40,
+          "over_10pct_faster": 40
+        },
+        "paired_ratio_baseline_over_0_2s_n83": {
+          "median": 0.985,
+          "over_10pct_slower": 7,
+          "over_10pct_faster": 22,
+          "max": 1.584
+        },
+        "paired_ratio_baseline_over_1s_n44": {
+          "median": 0.988,
+          "over_10pct_slower": 0,
+          "over_10pct_faster": 6,
+          "max": 1.1
+        },
+        "regressions_over_10pct": [
+          "ecoliFBAyicesTest-500 1.58x",
+          "p6-zenonumeric_s5 1.45x",
+          "p50.56 1.29x",
+          "d50.9 1.28x",
+          "ecoliFBAyicesTest-750 1.14x",
+          "clocksynchro_6clocks 1.13x",
+          "ecoliFBAyicesTest-63875-64 1.12x"
+        ],
+        "shape": {
+          "ecoliFBAyicesTest-500": ":lra.rows 695, :lra.row-nonzeros 6142, rows reach 691 terms",
+          "constraint-199552": ":lra.rows 1440, :lra.row-nonzeros 3519, columns average 679"
+        }
+      },
+      "conclusion": "Yes, it costs something, and the cost has one shape. 3 of the 7 regressions over 10% are latendresse/ecoli, the family with the longest rows in the corpus (691 terms). unlink_occurrence repairs the moved entry's back-index with a std::lower_bound over that entry's ROW, so long-row instances pay O(log row) where they previously paid a short column scan -- the exact mirror of tropical's long-column win. RowEntry growing 32->40 bytes is a second candidate cause predicting the same family; narrowing LraVarId to 32 bits separates them. The principled fix is to finish the cross-link (store the row slot in occurs_in_ too), making the fixup O(1). Net today: 0 lost, worst ~10% above 1s, against tropical 1/10 -> 2/10."
+    },
+    {
+      "id": "2026-08-06-qf-lra-tuning-knobs-slurm-fuzz-gate",
+      "started_at": "2026-08-06",
+      "recorded_at": "2026-08-06",
+      "kind": "implementation-fuzz-gate",
+      "scope": "Merge-tier gate for commit 705c4a6, which exposed kSparsePricingCandidateLimit and the two Bland-fallback coefficients as CLI options. Gated at NON-DEFAULT values deliberately: the defaults were already shown inert (bit-identical counters against main on 25 solved stratified files), so the untested surface is the new code paths a tuning campaign will actually drive.",
+      "commit": "9dadfa1 (tree containing 705c4a6; archive sync strips .git, so the binary reports 'git: unknown' -- source-equivalent worktree, verified by --help exposing the three new options)",
+      "branch": "qflra-tropical-t1-propagation",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm via ProxyJump, node-09",
+        "remote_dir": "/home/janotmik/primo-tuning-9dadfa1",
+        "notes": "Direct route 10.35.125.63:22 was timing out this session while the data.ciirc.cvut.cz ProxyJump worked -- the reverse of the previous session, so neither route is dependable alone. Workspace built with an absolute cmake path (/home/janotmik/.local/bin/cmake): a non-interactive ssh shell has no cmake on PATH, and a first detached build died instantly on that. Fuzz toolchain (fuzzsmt, z3, .venv-yinyang, 14 QF_LRA seeds) copied from primo-crosslink-83afe14 rather than rebuilt."
+      },
+      "command": {
+        "job_a": "119949, scripts/slurm_qf_lra_model_fuzz_gate.sbatch, array 0-8, PRIMO_FUZZ_SOLVER_EXTRA_ARGS='--lra-sparse-pricing-candidates 1 --lra-bland-fallback-factor 0 --lra-bland-fallback-offset 0'",
+        "job_b": "119950, same script, PRIMO_FUZZ_SOLVER_EXTRA_ARGS='--lra-sparse-pricing-candidates 0'",
+        "reference": "z3",
+        "generator": "fuzzsmt, 6 shards x 500 cases, 5s timeout, plus 1 opfuzz and 2 yinyang/typefuzz tasks over real QF_LRA seeds"
+      },
+      "result": {
+        "job_a_aggressive_corner": {
+          "answer_pass": 2980,
+          "answer_timeout": 20,
+          "wrong": 0,
+          "model_pass": 2580,
+          "model_not_sat": 405,
+          "model_solver_timeout": 15,
+          "invalid_models": 0
+        },
+        "job_b_unbounded_pricing": {
+          "answer_pass": 2979,
+          "answer_timeout": 21,
+          "wrong": 0,
+          "model_pass": 2577,
+          "model_not_sat": 410,
+          "model_solver_timeout": 13,
+          "invalid_models": 0
+        },
+        "slurm_task_states": "tasks 0-5 FAILED 1:0 in both jobs, tasks 6-8 COMPLETED"
+      },
+      "conclusion": "PASS on substance: 0 wrong answers and 0 invalid models across 6000 FuzzSMT cases in two non-default configurations. The FAILED task states are NOT a correctness signal -- validate_qfuf_models_with_dolmen.py counts its own 10s solver timeouts as failures and returns 1, and the sbatch runs under `set -euo pipefail`, so the validator's exit code becomes the task's. Tasks 6-8 passed only because the opfuzz/yinyang branch does not invoke the model validator. Gate ergonomics finding worth acting on: a slow-but-correct configuration cannot pass this gate, which matters because exploring speed trade-offs is precisely what these knobs are for.",
+      "artifacts": "~/primo-tuning-9dadfa1/fuzz-results/{tuning-corner-aggressive,tuning-unbounded-pricing}/"
     }
   ]
 }

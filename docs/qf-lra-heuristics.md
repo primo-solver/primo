@@ -712,16 +712,89 @@ this came from a flat profile rather than a design argument, so its
 measurement and the profile that found it are written up in [](#sec-6-2b);
 this entry is the definition the rest of the docs refer to.
 
-**What it is.** `pivot()` combines each affected row with the scaled
-entering row. It used to concatenate the two into a scratch buffer and
-`std::sort` the result, once per affected row per pivot. Both halves are
-already ordered by variable id, so this is a *merge*. The change makes that
-ordering an invariant on `Row` -- strictly ascending, never a zero
-coefficient -- which `add_row` establishes by sorting and `pivot` preserves
-by splicing `basic_var` into `new_entering_row` at its ordered position.
-Two smaller wins follow: the zero check is needed only in the equal-var-id
-branch, and the affected row is taken by reference and *moved* into the
-trail rather than copied twice.
+**First, what "sorted" refers to.** The tableau is a `vector` of `vector`s,
+and the two levels are indexed by completely different things -- which is the
+single most confusing thing about the representation, so it is worth being
+concrete. A real 8-variable tableau with three basic variables, dumped from
+the actual structures:
+
+```text
+rows_ : indexed by variable id                        <- LEVEL 1
+  rows_[0..4] = (x0..x4 are not basic, slot unused)
+  rows_[5] = [ {var=x0, coeff=2}, {var=x3, coeff=-1} ]          <- 2 entries, NOT 8
+  rows_[6] = [ {var=x3, coeff=1}, {var=x4, coeff=7} ]           <- 2 entries, NOT 8
+  rows_[7] = [ {var=x0, coeff=1}, {var=x1, coeff=1}, {var=x4, coeff=-3} ]
+                    ^--------------- LEVEL 2 ---------------^
+
+occurs_in_ : also indexed by variable id
+  occurs_in_[0] = [ x5, x7 ]      occurs_in_[3] = [ x5, x6 ]
+  occurs_in_[1] = [ x7 ]          occurs_in_[4] = [ x6, x7 ]
+```
+
+**Level 1** -- `vars_`, `rows_`, `occurs_in_` -- is dense, one slot per
+variable, and the index *is* the variable: `rows_[5]` means "x5's row". No
+ordering question arises here.
+
+**Level 2** -- the `Row` inside one of those slots -- is **not** indexed by
+variable. It is a sparse list holding one entry per *non-zero term*, each
+entry labelled with the variable it concerns:
+
+```cpp
+struct RowEntry {
+  LraVarId var;         // which variable this term is for
+  util::Rational coeff;
+  std::uint32_t occ_slot;
+};
+using Row = std::vector<RowEntry>;
+```
+
+`rows_[7][0]` is therefore not "x0's coefficient in row 7"; it is "the first
+stored term of row 7", and only reading its `.var` reveals it concerns x0. The
+row's length is its non-zero count (2, 2, 3 above), never the variable count.
+
+Mathematically `rows_[5]` is the vector `(2, 0, 0, -1, 0, 0, 0, 0)`. Dense
+storage would be 8 slots indexed by variable; sparse storage is 2 entries
+carrying their own labels. The numbers force the sparse form: on
+`constraint-199552` the tableau has 1,440 rows over ~1,900 variables holding
+only 3,519 non-zeros, an average row length of **2.44**
+([](tropical-matrix-structure.md)). Dense rows would be ~2.7M slots for 3,519
+real values, and every row operation would cost O(variables) rather than
+O(non-zeros).
+
+So **"sorted" is a statement about level 2 only**: within a single row, the
+entries are kept in strictly ascending order of their `.var` field (and never
+carry a zero coefficient) -- x0, x1, x4 in `rows_[7]`. It is an ordering over
+a row's *contents*, which only exists because those contents are a sparse
+labelled list instead of a dense index.
+
+Sortedness is also decided per container, not globally: `occurs_in_`'s inner
+lists have the same two-level shape but are deliberately **not** ordered,
+since removal there is a swap-pop that destroys any order (see
+[](open-leads.md) lead 3b).
+
+**What H8 is.** `pivot()` combines each affected row with the scaled entering
+row -- and because both are sparse lists, combining them means pairing up the
+entries that refer to the same variable, which a dense representation would
+get for free from the index. It used to concatenate the two into a scratch
+buffer and `std::sort` the result, once per affected row per pivot. But both
+halves already arrive ordered by variable id, so sorting re-establishes
+something that was never lost: the correct operation is a linear two-way
+*merge*, walking both lists in step and adding coefficients where the var ids
+coincide.
+
+The change makes that ordering an explicit invariant on `Row`, which
+`add_row()` establishes by sorting and `pivot()` preserves by splicing
+`basic_var` into `new_entering_row` at its ordered position. Two smaller wins
+follow: the zero check is needed only in the equal-var-id branch, and the
+affected row is taken by reference and *moved* into the trail rather than
+copied twice.
+
+Sortedness is a *choice*, not a necessity, and the alternative is a real
+design: King's tableau (thesis §2.2.7, see [](papers/summaries.md)) keeps rows
+as explicitly **unsorted** linked lists and pays for a dense O(n) scratch map
+per row addition instead of a merge. Both reach O(‖Ti‖ + ‖Tk‖); Primo's
+version buys cache-friendly contiguous rows and pays by having to maintain the
+order.
 
 **Result.** Scrambled competition set (595 files, 60s) 369 -> 378 solved with
 churn **+9/-0**; stratified sample 189 -> 192, +3/-0; mid-band gap 37 -> 38,
@@ -1053,9 +1126,62 @@ cost definitions present in this family, and can materially change search on a
 single instance. It does not solve the tropical family, and the mixed local
 evidence is why it remains an option rather than a default. Before using it as
 performance evidence, run a SLURM A/B over all 10 tropical files and the full
-QF_LRA division for regressions. The next tropical work should still focus on
-the mixed Boolean/arithmetic search shape or a hybrid treatment of the
-difference-logic subgraph plus sum-definition layer.
+QF_LRA division for regressions.
+
+#### T2 -- Row propagation on top of T1: rejected, 2026-08-04
+
+The obvious follow-up, and the one this branch was opened for: T1 leaves a
+leaner CNF (5,460 vars / 10,059 clauses against the pre-T1 6,108 / 11,355), and
+the family's census is 70-72% unary/binary atoms whose residue is exactly the
+`out = a + b` cost rows that `compute_implied_child_bound` is built to exploit.
+Row propagation had only ever been tried on the pre-T1 encoding. **Measured on
+all 10 files at 60s, it rejects at every cap setting.**
+
+| config | solved / 10 at 60s |
+|---|---:|
+| `--guarded-real-equality-lowering` (baseline) | **1** |
+| + row/bidirectional propagation, default caps | **0** |
+| + both at 128 | **0** |
+| + both at 1024 | **0** |
+
+Not neutral -- a regression. Every propagation configuration *loses*
+`constraint-199552`, the one file the baseline solves.
+
+**The experiment is well-controlled, and the counters explain it.** On
+`constraint-199552` at a short diagnostic cap:
+
+| config | pivots | pivot term ops | row props | bidi props |
+|---|---:|---:|---:|---:|
+| T1 only | **7,679** | **128M** | -- | -- |
+| + propagation, default caps | 64,272 | 1,013M | 2,088 | 128 |
+| + propagation at 128 | 64,272 | 1,013M | 2,088 | 128 |
+| + propagation at 1024 | 64,272 | 1,013M | 2,088 | 128 |
+
+Two things follow. First, the mechanism definitely ran -- 2,088 row
+propagations, so this is not a null result from code that never fired. Second,
+and decisively, **the counters are identical across all three cap settings**:
+unlike the mid-band files that motivated D1 (fanout reaching 521, rows of 91
+terms), tropical's fanout and row sizes never approach even the default caps,
+so raising them changes nothing. The caps were never the binding constraint
+here. What propagation does instead is *hurt*: 8.4x the pivots and 7.9x the
+term ops against T1 alone, perturbing the search away from the cheap branch T1
+finds.
+
+No SLURM A/B and no fuzz gate were run, because nothing is being promoted; this
+is a local diagnostic recorded as such in `docs/run-log.json`.
+
+**Where this leaves the family.** T2's rejection and the independent structural
+result in [](tropical-matrix-structure.md) bound the same conclusion from
+opposite sides. That note reads the actual encoding -- a tropical/arctic
+semiring where each quantity is a paired Boolean `-infinity` flag and Real value
+-- and shows by measurement that *removing* the guards is 27x slower, because
+the guard is what lets the solver skip the arithmetic entirely. So the encoding
+is already close to the right shape for a lazy solver: it needs neither more
+propagation (T2) nor fewer guards. The residual cost is structural fill-in
+(rows going from 2.44 to ~102 terms, ~42x), with `:lra.fixed-variables` and
+`:lra.elimination-pivots` both zero. The two live leads are recorded there --
+`m`-flag-first decision ordering, and relevancy propagation -- and neither is
+a pivoting-rule or propagation-cap question.
 
 (h6)=
 ### H6 -- A difference-logic fast path

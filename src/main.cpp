@@ -149,6 +149,7 @@ int main(int argc, char** argv) {
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
   bool guarded_real_equality_lowering = false;
+  bool monotone_elimination = false;
   bool top_level_or_tseitin = false;
   bool no_top_level_or_tseitin = false;
   bool no_auto_top_level_or_tseitin = false;
@@ -165,6 +166,7 @@ int main(int argc, char** argv) {
   std::string euf_explain_search = "one-sided";
   std::string lra_pivoting_rule = "sparse";
   bool no_lra_sparse_leaving = false;
+  bool lra_least_violated_leaving = false;
   bool euf_proof_forest_diagnostics = false;
   bool euf_diseq_propagation_diagnostics = false;
   bool euf_ackermann_diagnostics = false;
@@ -266,10 +268,29 @@ int main(int argc, char** argv) {
                  "but bland fall back to bland selection after enough pivots within one "
                  "check(), which is what keeps termination proven")
       ->check(CLI::IsMember({"bland", "dantzig", "soi", "sparse"}));
+  app.add_flag("--lra-least-violated-leaving", lra_least_violated_leaving,
+               "Experimental leaving-variable rule from Griggio's thesis (2.5.3, p.53):\n"
+               "pick the LEAST-violated basic variable, tie-broken by the shorter row.\n"
+               "Only meaningful under --lra-pivoting-rule sparse [default: off]");
   app.add_flag("--no-lra-sparse-leaving", no_lra_sparse_leaving,
                "Disable the default-on leaving-side half of --lra-pivoting-rule sparse "
                "(prefer repairing a violated variable whose row is short, using "
                "violation magnitude only as a tie-break), for ablation [default: on]");
+  app.add_option("--lra-sparse-pricing-candidates",
+                 solver_options.lra_tuning.sparse_pricing_candidates,
+                 "How many eligible entering candidates --lra-pivoting-rule sparse scores "
+                 "before taking the best seen so far (default 16; 0 means score every "
+                 "eligible candidate). 1 is the cheapest possible pricing. Never cuts short "
+                 "the search for whether an eligible candidate exists, so any value is sound")
+      ->check(CLI::Range(0, 1000000));
+  app.add_option("--lra-bland-fallback-factor", solver_options.lra_tuning.bland_fallback_factor,
+                 "Per-variable coefficient of check()'s Bland's-rule fallback point, which is "
+                 "factor * variables + offset pivots within one check (default 4). Smaller "
+                 "switches to Bland's rule sooner: slower but anti-cycling-proven")
+      ->check(CLI::Range(0, 1000000));
+  app.add_option("--lra-bland-fallback-offset", solver_options.lra_tuning.bland_fallback_offset,
+                 "Constant term of the Bland's-rule fallback point (default 64)")
+      ->check(CLI::Range(0, 1000000000));
   app.add_flag("--lra-fixed-elimination", solver_options.lra_fixed_elimination,
                "Pivot a basic LRA variable out of the basis as soon as its bounds coincide "
                "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
@@ -291,6 +312,11 @@ int main(int argc, char** argv) {
                "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25) [default: on]");
   app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
                "Disable QF_LRA Gauss-Jordan equality-system elimination [default: on]");
+  app.add_flag("--monotone-elimination", monotone_elimination,
+               "Enable experimental monotone (one-sided) real-variable elimination: a\n"
+               "variable every constraint pushes the same way is discharged and its\n"
+               "atoms folded to constants, shrinking the Boolean structure. Models are\n"
+               "reconstructed for eliminated variables [default: off]");
   app.add_flag("--guarded-real-equality-lowering", guarded_real_equality_lowering,
                "Enable experimental guarded Real equality lowering: rewrite a disjunction "
                "with one Real equality child directly to two guarded inequalities, avoiding "
@@ -465,7 +491,8 @@ int main(int argc, char** argv) {
   const auto group_for = [&starts_with](const std::string& name) -> std::string {
     if (starts_with(name, "--lra-") || starts_with(name, "--no-lra-") ||
         name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
-        name == "--guarded-real-equality-lowering") {
+        name == "--guarded-real-equality-lowering" || name == "--monotone-elimination" ||
+        name == "--lra-least-violated-leaving") {
       return kGroupLra;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)
@@ -586,6 +613,9 @@ int main(int argc, char** argv) {
   if (no_gaussian_elimination) {
     solver_options.gaussian_elimination = false;
   }
+  if (monotone_elimination) {
+    solver_options.monotone_elimination = true;
+  }
   if (guarded_real_equality_lowering) {
     solver_options.guarded_real_equality_lowering = true;
   }
@@ -645,6 +675,9 @@ int main(int argc, char** argv) {
     solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::OneSidedBfs;
   }
   solver_options.euf_proof_forest_diagnostics = euf_proof_forest_diagnostics;
+  if (lra_least_violated_leaving) {
+    solver_options.lra_least_violated_leaving = true;
+  }
   if (no_lra_sparse_leaving) {
     solver_options.lra_sparse_leaving = false;
   }

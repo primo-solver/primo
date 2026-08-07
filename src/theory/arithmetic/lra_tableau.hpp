@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <set>
 #include <unordered_map>
@@ -158,6 +159,34 @@ class LraTableau {
   // sets the solver's.
   enum class PivotingRule { Bland, Dantzig, Soi, Sparse };
 
+  // Numeric pricing/anti-cycling knobs, grouped so they can be set in one
+  // call and searched as a block -- see docs/tuning-parameters.md. Every
+  // default here reproduces the constant the value was hardcoded to before
+  // it became a parameter, so an untuned run behaves exactly as before.
+  //
+  // None of these can change an answer, only how long it takes to reach
+  // one: the pricing limit restricts which of several equally-repairing
+  // candidates is chosen, and the fallback threshold only moves *when*
+  // Bland's rule takes over, which termination needs to happen after
+  // finitely many pivots but not after any particular count. Every value
+  // in range is therefore sound, including zero.
+  struct Tuning {
+    // How many *eligible* entering candidates PivotingRule::Sparse scores
+    // before settling for the best seen so far; 0 means unbounded (score
+    // every eligible candidate in the row).
+    std::size_t sparse_pricing_candidates = 16;
+    // check()'s per-call Bland's-rule fallback point, as
+    // `factor * variables + offset` pivots.
+    std::size_t bland_fallback_factor = 4;
+    std::size_t bland_fallback_offset = 64;
+  };
+
+  // Intended to be set before solving starts, like set_sparse_leaving():
+  // not trailed, so changing it mid-search would alter selection with no
+  // record of having done so.
+  void set_tuning(const Tuning& tuning) { tuning_ = tuning; }
+  const Tuning& tuning() const { return tuning_; }
+
   explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {
     if (rule_ == PivotingRule::Soi) {
       // The objective row (Section V): a real extra variable/row so
@@ -184,7 +213,30 @@ class LraTableau {
   // of runtime on scrambled339450 (see docs/qf-lra-heuristics.md section
   // 6.2a). Anything that constructs a Row must preserve it; the unit tests
   // check it directly rather than trusting comments.
-  using Row = std::vector<std::pair<LraVarId, util::Rational>>;
+  // A row entry carries a back-index into the column list as well as the
+  // coefficient: `occ_slot` is this term's position inside
+  // `occurs_in_[var]`. That is what lets pivot() remove an occurrence in
+  // O(log row) instead of scanning the column list, since the code already
+  // holds the row entry at the point it decides the term is gone -- see
+  // docs/open-leads.md lead 3b, and King's thesis Section 2.2.7 for the
+  // linked-list form this is an array variant of.
+  //
+  // Rebuilding a row moves the entry within the *row*, but leaves
+  // `occurs_in_[var]` untouched for a surviving term, so the merge carries
+  // `occ_slot` across unchanged. Slots are only rewritten when the column
+  // list itself changes.
+  // sizeof is 40 against the old pair's 32, because LraVarId is size_t and
+  // the 32-bit slot cannot pack into its padding. That 25% growth in row
+  // memory is measurable on merge-heavy instances (about +4% on
+  // miplib/danoint-166, which merges 1.07G terms); narrowing LraVarId to
+  // 32 bits would put the entry back at 32 bytes and is the obvious
+  // follow-up, but it is a wider change than this one.
+  struct RowEntry {
+    LraVarId var = 0;
+    util::Rational coeff;
+    std::uint32_t occ_slot = 0;
+  };
+  using Row = std::vector<RowEntry>;
 
   // Allocates a fresh non-basic variable with assignment 0 and no bounds.
   LraVarId add_variable();
@@ -267,6 +319,29 @@ class LraTableau {
   // it is not trailed, so flipping it mid-search would change selection
   // without any record of having done so.
   void set_sparse_leaving(bool enabled) { sparse_leaving_ = enabled; }
+
+  // -- Leaving-variable policy (heuristics-note lead 3) --
+  //
+  // MathSAT's actual rule, from the primary source rather than from a
+  // secondary description of it: Griggio's thesis ("An Effective SMT Engine
+  // for Formal Verification", Trento 2009) Section 2.5.3, page 53, picks the
+  // violated basic variable whose beta is *closest* to its violated bound --
+  // the least-violated one -- and breaks ties on the row with fewer non-zero
+  // non-basic coefficients. Its stated aim is to minimise the change needed
+  // to the tableau and to beta.
+  //
+  // That is a third point in the design space, and neither of the two Primo
+  // already had. The default is most-violated-first (Dantzig-style), and
+  // set_sparse_leaving is shortest-row-first with violation as tie-break --
+  // each inverts one half of the rule above. See
+  // docs/papers/griggio-mathsat-thesis.md, which also records the caveat
+  // that the thesis describes MathSAT 4 while King (2014) attributes a
+  // most-violated rule to MathSAT5, so this is a candidate to measure rather
+  // than a correction to apply.
+  //
+  // Same gating as set_sparse_leaving: only meaningful under Sparse, and
+  // intended to be set before solving starts.
+  void set_least_violated_leaving(bool enabled) { least_violated_leaving_ = enabled; }
 
   // -- Fixed-variable elimination (heuristics-note item H7) --
   //
@@ -486,6 +561,12 @@ class LraTableau {
   void undo(const TrailEntry& entry);
   void rebuild_occurs_in_index();
 
+  // Removes `occurs_in_[var][slot]` in O(log |row|), given the slot from the
+  // row entry that is going away. Swap-and-pop rather than erase/remove: an
+  // erase shifts every later element and would invalidate their back-indices,
+  // whereas a swap moves exactly one, whose row entry is then repaired.
+  void unlink_occurrence(LraVarId var, std::uint32_t slot);
+
   // Keeps violated_vars_ (see its own comment) in sync going *forward*:
   // checks `var`'s current is_basic/assignment/bounds and inserts/erases
   // it from the set accordingly. Called from the two places a basic
@@ -562,22 +643,26 @@ class LraTableau {
   std::vector<LraVarId> quickxplain(const std::vector<LraVarId>& background,
                                     const std::vector<LraVarId>& candidates) const;
 
-  // PivotingRule::Sparse: how many *eligible* entering candidates to score
-  // before settling for the best seen so far. Rows reach several hundred
-  // terms on real instances (691 on latendresse/ecoliFBAyicesTest-500), and
-  // scoring all of them would spend on selection what the rule is trying to
-  // save on the pivot. Not precisely derived; small enough to bound the scan,
-  // large enough that the sparsest candidate is usually among those seen.
+  // PivotingRule::Sparse's bounded scan and check()'s Bland fallback point.
+  // Both were hardcoded constants until 2026-08-06; the rationale for the
+  // defaults, unchanged, is on Tuning above.
   //
-  // This caps only how many eligible candidates are *scored*. It must never
-  // cut the scan short of establishing that at least one exists: "no eligible
-  // entering candidate" is exactly what check() reports as a conflict, so
-  // giving up early without having found one would manufacture an unsound
-  // conflict rather than merely a worse pivot. See select_entering_variable.
-  static constexpr std::size_t kSparsePricingCandidateLimit = 16;
+  // Rows reach several hundred terms on real instances (691 on
+  // latendresse/ecoliFBAyicesTest-500), and scoring all of them would spend
+  // on selection what the rule is trying to save on the pivot -- which is
+  // why the scan is bounded at all.
+  //
+  // The pricing limit caps only how many eligible candidates are *scored*.
+  // It must never cut the scan short of establishing that at least one
+  // exists: "no eligible entering candidate" is exactly what check() reports
+  // as a conflict, so giving up early without having found one would
+  // manufacture an unsound conflict rather than merely a worse pivot. See
+  // select_entering_variable.
+  Tuning tuning_;
 
   PivotingRule rule_;
   bool sparse_leaving_ = false;
+  bool least_violated_leaving_ = false;
   bool fixed_elimination_ = false;
   // Rotating start offset for Sparse's bounded candidate scan. pivot()
   // rebuilds rows in sorted-by-variable-id order, so always starting at the

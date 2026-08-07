@@ -38,6 +38,197 @@ CheckSatOptions guarded_real_equality_lowering_options() {
   return options;
 }
 
+
+CheckSatOptions monotone_elimination_options() {
+  CheckSatOptions options;
+  options.monotone_elimination = true;
+  return options;
+}
+
+// The model must satisfy the ORIGINAL constraints, which is the only thing
+// that makes discharging them legitimate.
+void monotone_elimination_reconstructs_a_satisfying_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p () Bool)
+    (assert (or (>= x 10) p))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  // x occurs only as a lower bound, so it is discharged -- and must come
+  // back with a value that actually satisfies the bound it was carrying.
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) >= 1);
+  assert(result.model.find("(define-fun x () Real 11)") != std::string::npos);
+}
+
+// Regression: folding an atom discharges it for *every* variable in it, so
+// a variable that was itself disqualified (here y, pinned two-sided) can
+// lose its last constraint and vanish from the tableau. Reconstruction
+// used to skip such bounds as unevaluable and default the eliminated
+// variable to zero, producing a model that violated the very constraint
+// the pass had discharged.
+void monotone_elimination_values_variables_that_lost_all_constraints() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun a () Real)
+    (declare-fun b () Real)
+    (assert (and (not (<= b (* a (- 1)))) (not (<= b a))))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  // b is one-sided (pushed up by both); a is two-sided and disqualified,
+  // yet both of its constraints are folded away with b's.
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 1);
+  // a defaults to 0, so b must exceed it rather than tie with it.
+  assert(result.model.find("(define-fun a () Real 0)") != std::string::npos);
+  assert(result.model.find("(define-fun b () Real 0)") == std::string::npos);
+}
+
+// A variable pinned from both sides must survive the pass untouched.
+void monotone_elimination_keeps_two_sided_variables() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (and (>= x 1) (<= x 5)))
+    (check-sat)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+  assert(result.statistics.get(StatKey::MonotoneEliminationAtomsFolded) == 0);
+}
+
+// The pass must not change any answer; unsat has to stay unsat.
+void monotone_elimination_preserves_unsat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and (<= x y) (and (<= y 3) (>= x 10))))
+    (check-sat)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+
+// Two variables pushed apart by the same atoms. Both are one-sided, both
+// are discharged, and each shares every atom with the other -- the case a
+// dependency-ordering scheme would have mistaken for a cycle. The model
+// must still satisfy the strict inequality.
+void monotone_elimination_handles_mutually_bounded_variables() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and (> x y) (<= y x)))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 2);
+  // Verified against z3: x = 1, y = 0 satisfies both x > y and y <= x.
+  assert(result.model.find("(define-fun x () Real 1)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real 0)") != std::string::npos);
+}
+
+// (> x y) and (< y x) desugar to the *same* Lt atom, so one atom carries
+// two variables and is discharged once.
+void monotone_elimination_handles_duplicated_atom() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and (> x y) (< y x)))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 2);
+  assert(result.model.find("(define-fun x () Real 1)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real 0)") != std::string::npos);
+}
+
+// Opposed strict bounds leave both variables two-sided, so nothing is
+// discharged and the contradiction survives.
+void monotone_elimination_preserves_opposed_strict_bounds() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and (> x y) (< x y)))
+    (check-sat)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+}
+
+// A strict and a non-strict bound in the same direction: the reconstructed
+// value has to clear the strict one, not merely meet it.
+void monotone_elimination_respects_strict_bounds() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (and (< x 5) (<= x 5)))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 1);
+  assert(result.model.find("(define-fun x () Real 4)") != std::string::npos);
+}
+
+// The core term language has no ITE node, so a Real ITE becomes a fresh
+// constant plus guarded equalities. Those equalities pin the fresh constant
+// two-sided, while the bounded variable itself stays eliminable -- and its
+// reconstructed value must be derived from the fresh constant's model value.
+void monotone_elimination_handles_bounds_under_ite() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p () Bool)
+    (assert (<= x (ite p 1 2)))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  // Verified against z3: the printed model satisfies the original bound.
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+}
+
+// One atom reached at both polarities forces its variables two-sided, even
+// though each occurrence on its own would look one-sided.
+void monotone_elimination_rejects_atom_shared_across_polarities() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (and (or (<= x 5) p) (or (not (<= x 5)) q)))
+    (check-sat)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+  assert(result.statistics.get(StatKey::MonotoneEliminationAtomsFolded) == 0);
+}
+
 void accepts_set_logic_and_real_declarations() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -2559,6 +2750,16 @@ int main() {
   qf_uf_lra_mix_learns_euf_conflicts();
   qf_uf_lra_mix_learns_lra_conflicts();
   qf_uf_lra_prints_separable_mixed_model();
+  monotone_elimination_reconstructs_a_satisfying_model();
+  monotone_elimination_values_variables_that_lost_all_constraints();
+  monotone_elimination_keeps_two_sided_variables();
+  monotone_elimination_preserves_unsat();
+  monotone_elimination_handles_mutually_bounded_variables();
+  monotone_elimination_handles_duplicated_atom();
+  monotone_elimination_preserves_opposed_strict_bounds();
+  monotone_elimination_respects_strict_bounds();
+  monotone_elimination_handles_bounds_under_ite();
+  monotone_elimination_rejects_atom_shared_across_polarities();
   qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities();
   qf_uf_lra_prints_real_valued_uf_application_model();
   qf_uf_lra_model_reflects_real_valued_uf_equalities();
