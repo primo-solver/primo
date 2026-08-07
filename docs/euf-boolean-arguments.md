@@ -94,9 +94,10 @@ for `true` and `false` by SAT clauses. The bridge creates the two equality atoms
 enforces mutual exclusion, and asserts that the canonical values are distinct.
 Ordinary congruence closure then handles applications, including Boolean UF
 results, nested Boolean arguments, and transitive CNF equivalences. General
-Boolean formula terms are not eagerly bridged unless they occur as UF
-arguments, which keeps SAT-only Boolean formulas out of the EUF trail. No model
-coincidence is promoted to an equality.
+Nested Boolean formula terms used as UF arguments or equality operands are
+represented as opaque EUF proxy nodes and linked to their SAT literals and the
+canonical Boolean values. Unrelated SAT-only Boolean formulas remain outside
+the EUF trail. No model coincidence is promoted to an equality.
 
 The required regression suite includes explicit equality, CNF equality, the
 transitive CNF case `a = b = c = d` with `f(a) != f(d)`, and nested Boolean

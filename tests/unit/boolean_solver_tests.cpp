@@ -2498,6 +2498,20 @@ void bool_result_and_complement_congruence_preserves_boolean_domain() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
+void nested_boolean_formula_equality_uses_euf_proxies() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (declare-fun x () Real)
+    (assert (= (or p (ite q r p)) (and p p)))
+    (assert (<= 0 x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
 }  // namespace
 
 int main() {
@@ -2613,5 +2627,6 @@ int main() {
   boolean_unit_simplification_handles_nested_rewrites();
   bool_argument_congruence_preserves_boolean_domain();
   bool_result_and_complement_congruence_preserves_boolean_domain();
+  nested_boolean_formula_equality_uses_euf_proxies();
   return 0;
 }

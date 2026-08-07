@@ -46,7 +46,14 @@ FlatTermId FlatTermIndex::flatten(core::TermId term) {
     case core::TermKind::And:
     case core::TermKind::Or:
     case core::TermKind::Implies:
-      throw std::invalid_argument("Boolean formula nodes are not EUF flat terms");
+      if (node.sort != terms_.symbols().bool_sort()) {
+        throw std::invalid_argument("non-Boolean formula node is not an EUF flat term");
+      }
+      // Boolean formulas used as UF arguments or equality operands are
+      // opaque EUF proxies. The SAT-to-true/false bridge is asserted by the
+      // SMT clausifier for each such term.
+      flat = original_constant(term);
+      break;
     case core::TermKind::Rational:
     case core::TermKind::Plus:
     case core::TermKind::Times:

@@ -1613,6 +1613,12 @@ class BooleanClausifier {
             ensure_boolean_domain_bridge(child);
           }
         }
+      } else if (kind == core::TermKind::Equality) {
+        for (const core::TermId child : children) {
+          if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
+            ensure_boolean_domain_bridge(child);
+          }
+        }
       }
       for (const core::TermId child : children) {
         visit(child);

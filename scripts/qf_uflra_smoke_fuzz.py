@@ -301,6 +301,93 @@ def generate_bool_argument_case(rng: random.Random, index: int) -> str:
 """
 
 
+def recursive_bool_term(rng: random.Random, depth: int) -> str:
+    variables = ["b1", "b2", "b3", "b4", "b5"]
+    if depth <= 0 or rng.randrange(4) == 0:
+        return rng.choice(variables)
+
+    choice = rng.randrange(8)
+    if choice == 0:
+        return f"(not {recursive_bool_term(rng, depth - 1)})"
+    if choice == 1:
+        lhs = recursive_bool_term(rng, depth - 1)
+        rhs = recursive_bool_term(rng, depth - 1)
+        return f"(and {lhs} {rhs})"
+    if choice == 2:
+        lhs = recursive_bool_term(rng, depth - 1)
+        rhs = recursive_bool_term(rng, depth - 1)
+        return f"(or {lhs} {rhs})"
+    if choice == 3:
+        lhs = recursive_bool_term(rng, depth - 1)
+        rhs = recursive_bool_term(rng, depth - 1)
+        return f"(=> {lhs} {rhs})"
+    if choice == 4:
+        lhs = recursive_bool_term(rng, depth - 1)
+        rhs = recursive_bool_term(rng, depth - 1)
+        return f"(xor {lhs} {rhs})"
+    if choice == 5:
+        return f"(f {recursive_bool_term(rng, depth - 1)})"
+    if choice == 6:
+        lhs = recursive_bool_term(rng, depth - 1)
+        rhs = recursive_bool_term(rng, depth - 1)
+        return f"(g {lhs} {rhs})"
+    condition = recursive_bool_term(rng, depth - 1)
+    then_term = recursive_bool_term(rng, depth - 1)
+    else_term = recursive_bool_term(rng, depth - 1)
+    return f"(ite {condition} {then_term} {else_term})"
+
+
+def generate_recursive_bool_case(rng: random.Random, index: int) -> str:
+    terms = [recursive_bool_term(rng, 3) for _ in range(6)]
+    assertions = [
+        f"(= (f {terms[0]}) (f {terms[1]}))",
+        f"(not (= (f {terms[2]}) (f {terms[3]})))",
+        f"(g {terms[4]} {terms[5]})",
+        f"(or (not (f {terms[0]})) (f {terms[2]}))",
+        f"(= (f (ite b1 {terms[1]} {terms[2]})) (f (ite b1 {terms[1]} {terms[2]})))",
+    ]
+    if index % 3 == 0:
+        assertions.extend(
+            [
+                "(or (not b1) b2)",
+                "(or (not b2) b3)",
+                "(or (not b3) b4)",
+                "(or (not b4) b1)",
+                "(not (= (f b1) (f b4)))",
+            ]
+        )
+    if index % 5 == 0:
+        assertions.extend(
+            [
+                "(= b1 b2)",
+                "(= b2 b3)",
+                "(= b3 b4)",
+                "(not (= (g b1 b5) (g b4 b5)))",
+            ]
+        )
+    assertions.extend(
+        [
+            atom_with_polarity(rng, "(< 0 x)"),
+            atom_with_polarity(rng, "(< y 4)"),
+            atom_with_polarity(rng, "(< (+ x y) 5)"),
+        ]
+    )
+    body = "\n".join(f"  (assert {assertion})" for assertion in assertions)
+    return f"""(set-logic QF_UFLRA)
+(declare-fun b1 () Bool)
+(declare-fun b2 () Bool)
+(declare-fun b3 () Bool)
+(declare-fun b4 () Bool)
+(declare-fun b5 () Bool)
+(declare-fun f (Bool) Bool)
+(declare-fun g (Bool Bool) Bool)
+(declare-fun x () Real)
+(declare-fun y () Real)
+{body}
+(check-sat)
+"""
+
+
 def generate_case(rng: random.Random, index: int, shape: str) -> str:
     if shape == "separable":
         return generate_separable_case(rng, index)
@@ -312,7 +399,9 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
         return generate_nonconstant_real_case(rng, index)
     if shape == "bool-arguments":
         return generate_bool_argument_case(rng, index)
-    choice = rng.randrange(5)
+    if shape == "recursive-bool":
+        return generate_recursive_bool_case(rng, index)
+    choice = rng.randrange(6)
     if choice == 0:
         return generate_separable_case(rng, index)
     if choice == 1:
@@ -321,7 +410,9 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
         return generate_shared_real_case(rng, index)
     if choice == 3:
         return generate_nonconstant_real_case(rng, index)
-    return generate_bool_argument_case(rng, index)
+    if choice == 4:
+        return generate_bool_argument_case(rng, index)
+    return generate_recursive_bool_case(rng, index)
 
 
 def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
@@ -385,6 +476,7 @@ def main() -> int:
             "shared-real",
             "nonconstant-real",
             "bool-arguments",
+            "recursive-bool",
             "mixed",
         ],
         default="separable",

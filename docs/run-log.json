@@ -21310,6 +21310,43 @@
       ],
       "evidence_status": "local-only",
       "outcome": "The narrow bridge extension fixed the discovered Boolean-result/complement disagreement. The extended Boolean generator and broader mixed generator both passed with zero disagreements."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-recursive-boolean-proxies",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "Recursive nested Boolean formulas as UF arguments and equality operands",
+      "commit": "working tree",
+      "host": "local workspace",
+      "commands": [
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 300 --seed 20260819 --timeout 5 --shape recursive-bool --out /tmp/qf-uflra-recursive-bool-proxy-300",
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 3000 --seed 20260820 --timeout 5 --shape recursive-bool --out /tmp/qf-uflra-recursive-bool-proxy-3000",
+        "make check"
+      ],
+      "results": {
+        "recursive_bool_300": {"count": 300, "pass": 300, "wrong_answer": 0, "unsupported": 0},
+        "recursive_bool_3000": {"count": 3000, "pass": 3000, "wrong_answer": 0, "unsupported": 0},
+        "ctest": {"tests": 13, "passed": 13}
+      },
+      "artifacts": [
+        "/tmp/qf-uflra-recursive-bool-proxy-300/summary.csv",
+        "/tmp/qf-uflra-recursive-bool-proxy-3000/summary.csv"
+      ],
+      "evidence_status": "local-only",
+      "outcome": "Nested Boolean formulas are now accepted as opaque EUF proxy terms when used as equality operands or UF arguments. Both recursive differential gates passed with zero disagreements and zero unsupported cases."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-boolean-proxy-mixed-regression",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "Mixed QF_UFLRA regression after Boolean proxy flat-term support",
+      "commit": "working tree",
+      "host": "local workspace",
+      "command": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 20260821 --timeout 5 --shape mixed --out /tmp/qf-uflra-mixed-proxy-1000",
+      "results": {"count": 1000, "pass": 1000, "wrong_answer": 0, "timeout": 0, "crash": 0, "unsupported": 0},
+      "artifact": "/tmp/qf-uflra-mixed-proxy-1000/summary.csv",
+      "evidence_status": "local-only",
+      "outcome": "The Boolean proxy support introduced no disagreement or unsupported case in the broader mixed generator."
     }
   ]
 }
