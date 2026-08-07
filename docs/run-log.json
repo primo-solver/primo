@@ -21461,6 +21461,20 @@
       "artifact": "/home/janotmik/primo-online-lazy-7838c2e/fuzz-results/qf-uflra-mutation-gate-121020/",
       "evidence_status": "slurm-running",
       "outcome": "The deterministic seed gate failed before mutation because existing MathSAT seeds timed out under the configured 60-second seed timeout. No wrong answers or crashes were observed, but this is incomplete fuzz evidence and does not pass the promotion gate."
+    },
+    {
+      "id": "2026-08-07-prepared-euf-reuse-qf-uflra-slurm-gate-300s",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA prepared EUF reuse mutation gate with extended seed timeout",
+      "commit": "3139470",
+      "host": "llm2smt-slurm",
+      "job_id": "121023",
+      "command": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0-2 with PRIMO_FUZZ_SEED_TIMEOUT=300",
+      "results": "pending",
+      "artifact": "/home/janotmik/primo-online-lazy-7838c2e/fuzz-results/qf-uflra-mutation-gate-121023/",
+      "evidence_status": "slurm-running",
+      "outcome": "Rerun of the same default, candidate-final, and online-euf configurations after job 121020 stopped at the 60-second deterministic seed timeout."
     }
   ]
 }
