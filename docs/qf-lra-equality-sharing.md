@@ -136,6 +136,35 @@ should be stated to whoever owns the NO branch: *their* benefit was never in
 those measurements, so if MBTC lands, both options need re-measuring **with the
 equality propagation switched on**, and the answer may differ.
 
+(measured-gap)=
+## The completeness gap, measured rather than assumed
+
+`entailed_equalities` (FixedEq + EqRow) is deliberately incomplete. A
+differential test in `tests/unit/lra_tableau_tests.cpp` pins *how* incomplete by
+checking every reported equality against an independent oracle built from the
+tableau itself: given a slack `s = x - y`, the equality `x ≃ y` holds in every
+model iff neither `s > 0` nor `s < 0` is satisfiable. Same idea as
+`lra_implied_real_equalities`, expressed against a tableau we already have
+rather than a fresh one per pair.
+
+**Soundness holds** — everything the rules report survives the oracle.
+
+**The shape of what they miss is now concrete.** Pinning `s = x - y` to 0
+entails `x ≃ y`, and neither rule finds it:
+
+- **FixedEq** needs `x` and `y` themselves fixed. Here only their *difference*
+  is.
+- **EqRow** only inspects rows of shared **basic** variables. Here the basic
+  variable is `s`, which is not shared at all — the two shared variables are
+  both non-basic.
+
+So the gap is not random: it is **equalities between two non-basic shared
+variables, mediated by a row whose basic variable is not shared.** That is
+exactly the shape the paper's `EqOffsetRows` and `EqRows` cover, which is a
+concrete argument for implementing them rather than a general appeal to
+completeness. Until they exist, this is what the combination layer must
+case-split on.
+
 ## Proposed order of work on our side
 
 1. **Model-implied equality partition** (§5). Small, self-contained, no

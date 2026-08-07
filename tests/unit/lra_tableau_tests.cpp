@@ -2,6 +2,7 @@
 #undef NDEBUG
 #endif
 
+#include <functional>
 #include <algorithm>
 #include <cassert>
 #include <utility>
@@ -1522,6 +1523,146 @@ void entailed_equalities_emits_a_spanning_set_not_all_pairs() {
   assert(has_equality(eqs, x, z));
 }
 
+// -- Differential oracle for entailed_equalities --
+//
+// entailed_equalities applies deliberately incomplete rules. To test it we need
+// an independent, COMPLETE notion of "x = y is entailed", and we have one: the
+// tableau itself. Given a slack s = x - y, the equality x = y holds in every
+// model iff neither s > 0 nor s < 0 is satisfiable. That is the same idea as
+// lra_implied_real_equalities in check_sat.cpp -- which is complete but costs a
+// whole fresh tableau per pair -- expressed against a tableau we already have.
+//
+// Soundness is the property under test: everything the cheap rules report MUST
+// be entailed. The converse is not expected to hold, and the gap is reported
+// rather than asserted, because what the rules miss is exactly what the
+// combination layer has to case-split on.
+
+// Requires a slack row `s = x - y` to already exist. Uses push/pop, so the
+// tableau is left exactly as it was found.
+bool equality_is_entailed(LraTableau& tableau, LraVarId slack, int probe_lit) {
+  const DeltaRational positive{Rational(0), Rational(1)};   // s >= +delta, i.e. s > 0
+  const DeltaRational negative{Rational(0), Rational(-1)};  // s <= -delta, i.e. s < 0
+
+  const std::size_t mark_hi = tableau.push();
+  bool cannot_be_positive = tableau.assert_lower(slack, positive, Lit{probe_lit}).has_value();
+  if (!cannot_be_positive) {
+    cannot_be_positive = tableau.check().has_value();
+  }
+  tableau.pop(mark_hi);
+
+  const std::size_t mark_lo = tableau.push();
+  bool cannot_be_negative = tableau.assert_upper(slack, negative, Lit{probe_lit + 1}).has_value();
+  if (!cannot_be_negative) {
+    cannot_be_negative = tableau.check().has_value();
+  }
+  tableau.pop(mark_lo);
+
+  return cannot_be_positive && cannot_be_negative;
+}
+
+// Every equality the cheap rules report must be genuinely entailed, on a
+// handful of deliberately varied shapes. Also counts what the rules miss, so
+// the completeness gap is a number rather than an assumption.
+void entailed_equalities_agree_with_the_entailment_oracle() {
+  std::size_t reported_total = 0;
+  std::size_t missed_total = 0;
+
+  // Each case builds x, y, two helper variables, and the slack s = x - y used
+  // only by the oracle. `setup` applies the bounds that make the case.
+  const auto run_case = [&](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId)>&
+                                setup) {
+    LraTableau tableau(LraTableau::PivotingRule::Sparse);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId d = tableau.add_variable();
+    const LraVarId slack = tableau.add_variable();
+    tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
+    setup(tableau, x, y, d);
+    assert(!tableau.check().has_value());  // cases are satisfiable by construction
+
+    // Each case has exactly one candidate pair, {x, y}, so the single slack
+    // s = x - y is the right oracle for whatever comes back.
+    const auto reported = tableau.entailed_equalities({x, y});
+    for (const auto& eq : reported) {
+      assert((eq.lhs == x && eq.rhs == y) || (eq.lhs == y && eq.rhs == x));
+      // SOUNDNESS: anything reported must survive the independent oracle.
+      assert(equality_is_entailed(tableau, slack, 900));
+    }
+    reported_total += reported.size();
+    if (reported.empty() && equality_is_entailed(tableau, slack, 950)) {
+      ++missed_total;  // entailed but not deduced -- the completeness gap
+    }
+  };
+
+  // 1. Both pinned to the same value: FixedEq should fire.
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+    assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
+    assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
+    assert(!t.assert_lower(y, rat(3), Lit{3}).has_value());
+    assert(!t.assert_upper(y, rat(3), Lit{4}).has_value());
+  });
+  // 2. Pinned to different values: nothing entailed, nothing reported.
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+    assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
+    assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
+    assert(!t.assert_lower(y, rat(8), Lit{3}).has_value());
+    assert(!t.assert_upper(y, rat(8), Lit{4}).has_value());
+  });
+  // 3. Only one side pinned: not entailed.
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+    assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
+    assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
+    assert(!t.assert_lower(y, rat(0), Lit{3}).has_value());
+  });
+  // 4. THE COMPLETENESS GAP, made concrete. Pinning the slack s = x - y to 0
+  //    entails x = y, but neither rule finds it: FixedEq needs x and y
+  //    themselves fixed (they are not -- only their difference is), and EqRow
+  //    only inspects rows of shared BASIC variables, while here the basic
+  //    variable is s, which is not shared. This is the shape the paper's
+  //    EqRows/EqOffsetRows would cover, and until they exist the combination
+  //    layer must case-split on it. The oracle sees it; we do not.
+  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId) {
+    // slack is variable 3 in run_case's construction: x=0, y=1, d=2, slack=3.
+    const LraVarId slack = 3;
+    assert(!t.assert_lower(slack, rat(0), Lit{11}).has_value());
+    assert(!t.assert_upper(slack, rat(0), Lit{12}).has_value());
+  });
+  // 5. Unconstrained: not entailed.
+  run_case([](LraTableau&, LraVarId, LraVarId, LraVarId) {});
+
+  // The rules fired where they should have, and nothing unsound came back.
+  assert(reported_total >= 1);
+  // And case 4 is genuinely missed -- if this ever becomes 0, either a rule got
+  // stronger (good: update this test) or the oracle stopped working (bad).
+  assert(missed_total == 1);
+}
+
+// The oracle itself must be trustworthy, so pin it on cases with a known
+// answer -- a test whose oracle is untested proves nothing.
+void the_entailment_oracle_is_itself_correct() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId slack = tableau.add_variable();
+  tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
+  assert(!tableau.check().has_value());
+
+  // Unconstrained: x and y are free, so equality is NOT entailed.
+  assert(!equality_is_entailed(tableau, slack, 100));
+
+  // Pin both to 7: now it is.
+  assert(!tableau.assert_lower(x, rat(7), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(7), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(7), Lit{3}).has_value());
+  assert(!tableau.assert_upper(y, rat(7), Lit{4}).has_value());
+  assert(!tableau.check().has_value());
+  assert(equality_is_entailed(tableau, slack, 200));
+
+  // And the oracle must leave the tableau usable afterwards.
+  assert(!tableau.check().has_value());
+  assert(tableau.entailed_equalities({x, y}).size() == 1);
+}
+
 }  // namespace
 
 int main() {
@@ -1576,5 +1717,7 @@ int main() {
   eqrow_declines_on_a_negated_coefficient();
   entailed_equalities_respects_the_shared_set();
   entailed_equalities_emits_a_spanning_set_not_all_pairs();
+  the_entailment_oracle_is_itself_correct();
+  entailed_equalities_agree_with_the_entailment_oracle();
   return 0;
 }
