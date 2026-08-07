@@ -834,25 +834,32 @@ item H7's elimination pivots -- which happen inside
 `:lra.pivot-row-updates` / `:lra.pivot-term-ops`, which count every pivot's
 work wherever it was triggered.
 
-### Where QF_LRA work stands, and what is open (2026-08-03)
+### Where QF_LRA work stands, and what is open (2026-08-07)
 
 **The complete non-incremental QF_LRA division, 1,753 files, 300s**
-(jobs 118382, 118904 and 119045):
+(primo from job 120784; references not re-run -- z3 and cvc5 from 118382,
+Yices from 118904, OpenSMT from 119045):
 
 | solver | solved | PAR2 | wrong |
 |---|---|---|---|
 | **OpenSMT 2.9.2** | **1670** (95.3%) | **68068** | **0** |
+| **primo** | **1657** (94.5%) | **79646** | **0** |
 | Yices 2.7.0 | 1645 (93.8%) | 80585 | 0 |
-| primo | 1631 (93.0%) | 95091 | 0 |
 | z3 5.0.0 | 1584 (90.4%) | 128079 | 0 |
 | cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
 
+primo moved from third to second on 2026-08-07, overtaking Yices on both
+solved count and PAR2. The previous figure was 1631; the change is the three
+Nelson-Oppen regression fixes plus the merged QF_LRA arithmetic work, measured
+in [](nelson-oppen-qf-lra-regression.md). Against the pre-regression commit it
+gained 26 files and lost none.
+
 ```{figure} _static/qf-lra-cactus.svg
-:alt: Instances solved against per-instance time budget for OpenSMT, Yices, primo, z3 and cvc5, over the 656 instances not solved by every solver within 10s.
+:alt: Instances solved against per-instance time budget for OpenSMT, primo, Yices, z3 and cvc5, over the 654 instances not solved by every solver within 10s.
 :width: 100%
 
-Instances solved against the per-instance time budget, over the **656
-instances that at least one solver did not finish within 10s**. The 1,097
+Instances solved against the per-instance time budget, over the **654
+instances that at least one solver did not finish within 10s**. The 1,099
 instances every solver finished quickly are omitted: each contributed one
 point to all five curves, so removing them subtracts the same constant from
 every series and leaves every gap between curves intact, while the vertical
@@ -862,22 +869,30 @@ numbers. Regenerate with `--drop-solved-by-all-under 10`; omit that flag for
 the unfiltered version.
 ```
 
-**The plot shows a crossover the table cannot.** Yices is the fastest solver
-at every budget up to 10s and OpenSMT is the strongest by 300s; they trade
-places between 10s and 30s:
+**The plot shows two crossovers the table cannot.** Yices is the fastest
+solver at every budget up to 10s and OpenSMT is the strongest by 300s; they
+trade places between 10s and 30s. primo is slowest of the three at short
+budgets and overtakes Yices only between 60s and 300s:
 
 | solved within | 0.1s | 1s | 10s | 30s | 60s | 300s |
 |---|---|---|---|---|---|---|
-| OpenSMT | 868 | 1103 | 1370 | **1527** | **1595** | **1670** |
-| Yices | **1003** | **1173** | **1428** | 1525 | 1575 | 1645 |
-| primo | 832 | 1066 | 1286 | 1440 | 1515 | 1631 |
+| OpenSMT | 868 | 1103 | **1370** | **1527** | **1595** | **1670** |
+| Yices | **1003** | **1173** | 1428 | 1525 | 1575 | 1645 |
+| primo | 768 | 1063 | 1305 | 1470 | 1543 | **1657** |
 | z3 | 861 | 1028 | 1227 | 1346 | 1430 | 1584 |
 | cvc5 | 711 | 945 | 1118 | 1209 | 1296 | 1511 |
 
-At a 10s budget Yices would lead this division by 58 files and OpenSMT would
-be second. **Which reference is "strongest" is a function of the timeout**,
-which is worth remembering whenever a single 300s number is quoted as the
-standing.
+At a 10s budget Yices leads this division by 58 files, OpenSMT is second and
+primo is **third by 123**. **Which solver is "strongest" is a function of the
+timeout**, which is worth remembering whenever the 300s standing is quoted --
+primo's second place exists at 300s and nowhere below 60s.
+
+Worth noting against the previous run: primo improved at every budget from 1s
+up (1066 -> 1063 is flat, 1286 -> 1305, 1440 -> 1470, 1515 -> 1543, 1631 ->
+1657) but *regressed* at 0.1s, from 832 to 768. The fixes removed per-backtrack
+and per-dispatch overhead that dominates long searches; on instances that
+finish in under a tenth of a second there is nothing to recover and the
+cross-link change's larger `RowEntry` is the visible term.
 
 **OpenSMT leads and primo is third**, 39 behind OpenSMT and 14 behind Yices.
 The reference set was built in that order -- z3 and cvc5 first, Yices on
