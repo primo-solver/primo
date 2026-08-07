@@ -756,6 +756,7 @@ against `--help` output rather than by eye -- five options were missing.
 | `--lra-pivoting-rule {bland,dantzig,soi,sparse}` | `sparse` | Check/Pivot variable selection. `sparse` is item H3. |
 | `--no-lra-sparse-leaving` | leaving rule **on** | Ablates the leaving-side half of `sparse`. |
 | `--lra-least-violated-leaving` | **off** | MathSAT's leaving rule (Griggio thesis 2.5.3 p.53): least-violated first, shorter row as tie-break. Only under `sparse`. 167 vs 174 on the bar, but beats most-violated by 5 -- a complementarity candidate, not a win. |
+| `--mixed-dispatch {narrow,wide}` | `narrow` | Which formulas reach the mixed EUF/LRA solver. `wide` counts a Bool-sorted *constant* as an EUF predicate (pre-2026-08-07 behaviour), routing pure QF_LRA plus propositional variables to the mixed path. Usually much worse, but recovers `tropical-matrix/constraint-199552` under `--guarded-real-equality-lowering` (2.2s against a timeout). Portfolio dimension and fuzzing reach; see [](nelson-oppen-qf-lra-regression.md). |
 | `--monotone-elimination` | **off** | One-sided (monotone) variable elimination in preprocessing, with model reconstruction. 173 vs 174, gained 0 -- did not clear its bar. |
 | `--no-lra-propagation` | propagation **on** | Ablates same-slack propagation (Dutertre & de Moura 4.2). |
 | `--lra-row-propagation` | **off** | Row/interval implied bounds (roadmap item 2). |
