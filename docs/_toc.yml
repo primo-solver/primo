@@ -29,6 +29,7 @@ parts:
           - file: tropical-matrix-structure
           - file: fuzz-coverage-qf-lra
       - file: nelson-oppen-qf-lra-regression
+      - file: qf-lra-equality-sharing
       - file: bool-argument-congruence-bug
       - file: difference_logic
 
