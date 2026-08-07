@@ -225,6 +225,14 @@ mkdir -p logs "$OUT_ROOT"
 # SKIPPED_MISSING_FUZZER as its only summary row -- a green gate that tested
 # nothing.
 PATH="$WORKDIR/contrib/local/bin:$PATH"
+# YinYang's opfuzz/typefuzz are installed into a workspace-local venv, not
+# contrib/local/bin. Without this the mutation tasks fail with "'opfuzz' not
+# found" while the FuzzSMT shards pass, so the gate reports six clean shards
+# and three failures rather than a missing capability -- observed on job
+# 120180. The QF_LRA gate has always done this; this one had not.
+if [ -d "$WORKDIR/.venv-yinyang/bin" ]; then
+  PATH="$WORKDIR/.venv-yinyang/bin:$PATH"
+fi
 export PATH
 
 # A sanitizer build made by scripts/build_slurm_fuzz.sh links against the
