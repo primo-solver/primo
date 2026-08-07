@@ -21575,6 +21575,49 @@
       "artifact": "remote:fuzz-results/qf-uflra-mutation-gate-121098/",
       "evidence_status": "slurm-smoke",
       "outcome": "The compact corpus allows mutation to complete quickly and found no disagreement, but typefuzz filtered most generated mutants. This is smoke evidence only; the merge-grade rerun needs a larger iteration count and explicit random seeds."
+    },
+    {
+      "id": "2026-08-07-slurm-reuse-ipasir-header-cfe7e0c",
+      "date": "2026-08-07",
+      "kind": "build-workflow",
+      "scope": "SLURM reusable-dependency preflight accepts either supported IPASIR header",
+      "commit": "cfe7e0c",
+      "host": "SLURM",
+      "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --with-z3 --reuse-dependencies --sync-mode archive --jobs 4",
+      "results": {
+        "dependency_reprovisioning": false,
+        "clean_primo_rebuild": "passed",
+        "binary_revision": "cfe7e0c",
+        "cadical": "cadical-3.0.0-7b99c07",
+        "z3_preflight": "passed"
+      },
+      "artifact": "remote build-slurm-rel/primo",
+      "evidence_status": "slurm-complete",
+      "outcome": "The helper recognized the existing ipasir.h installation and skipped repeated ANTLR, CaDiCaL, GMP, CLI11, and Z3 provisioning. It rebuilt only the clean Primo build tree and verified the expected revision."
+    },
+    {
+      "id": "2026-08-07-qfuflra-compact-mutation-slurm-121108",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "Reproducible merge-grade QF_UFLRA compact-seed mutation gate",
+      "commit": "cfe7e0c",
+      "host": "SLURM",
+      "job_id": "121108",
+      "generator": "typefuzz from YinYang fork commit 04c8618",
+      "reference": "Z3 5.0.0 with model_validate=true",
+      "inputs": {
+        "profiles": ["default", "candidate-final", "online-euf"],
+        "compact_seeds": 8,
+        "mutations_per_seed": 2000,
+        "generated_mutants_per_profile": 16000,
+        "random_seed_base": 2026080700,
+        "random_seeds": [2026080700, 2026080701, 2026080702],
+        "solver_timeout_seconds": 8,
+        "source_seed_timeout_seconds": 60
+      },
+      "artifact": "remote:fuzz-results/qf-uflra-mutation-gate-121108/",
+      "evidence_status": "slurm-pending",
+      "outcome": "Submitted after exact binary, CaDiCaL, Z3, pinned typefuzz, compact seed size, and batch-script preflight. Result collection is pending."
     }
   ]
 }
