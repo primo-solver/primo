@@ -1,8 +1,11 @@
 # Convex Nelson-Oppen Merge Plan
 
-This note records how to bring the QF_LRA equality-sharing work from
-`origin/qflra-no-equality-sharing` into the Nelson-Oppen branch without merging
-the branch's unrelated QF_LRA experiments and tableau rewrites.
+This note records how the QF_LRA equality-sharing work from
+`origin/qflra-no-equality-sharing` was selectively merged into the Nelson-Oppen
+branch without merging the source branch's unrelated QF_LRA experiments and
+tableau rewrites. The selective merge and convex fixpoint wiring are now
+implemented; fuzzing and the mixed fixed-elimination ablation remain acceptance
+gates.
 
 The scope is deliberately limited to **convex QF_UFLRA**: rational linear
 arithmetic combined with EUF over the purified shared Real terms. Integer
@@ -35,10 +38,8 @@ The branch also contains broad QF_LRA preprocessing, tableau, benchmark, and
 documentation changes, many of which overlap work already present here. It
 must not be merged wholesale into the Nelson-Oppen branch.
 
-The `11cc884` implementation cannot be cherry-picked unchanged: it relies on
-the branch's later row/occurrence representation, while the Nelson-Oppen
-branch still uses pair-based rows. Port the equality-producer algorithm to the
-existing representation instead.
+The original `11cc884` commit was resolved selectively: its entailed equality
+API and rules were retained, while model-equality partition code was excluded.
 
 ## Convexity Contract
 
@@ -58,31 +59,32 @@ This requires a strict distinction:
 `entailed_equalities()` and must not be used as an unconditional propagation
 source.
 
-## Selective Merge Sequence
+## Selective Merge Status
 
-1. Port `EntailedEquality` to the current `LraTableau` row representation.
-2. Implement and test `FixedEq` and `EqRow`, preserving shared-term filtering,
+1. **Complete:** port `EntailedEquality` to the current `LraTableau` row representation.
+2. **Complete:** implement and test `FixedEq` and `EqRow`, preserving shared-term filtering,
    complete `DeltaRational` values including infinitesimals, deterministic
    spanning output, and SAT reason literals.
-3. Keep the existing exact pairwise strict-bound check as a correctness oracle
-   and fallback while the optimized rules remain incomplete.
-4. Add an adapter from LRA/EUF producer results to the lazy equality-atom
+3. **Complete:** keep the existing exact pairwise strict-bound check as a correctness oracle
+   and unresolved-pair fallback while the optimized rules remain incomplete.
+4. **Complete:** add an adapter from LRA/EUF producer results to the lazy equality-atom
    creation owned by `TheoryCombinationManager`.
-5. Change the mixed coordinator into an equality-sharing fixpoint:
+5. **Complete:** change the mixed coordinator into an equality-sharing fixpoint:
    - query LRA entailed equalities;
    - query EUF entailed equalities;
    - lazily register the shared equality atom;
    - assert true equalities into both theories;
    - learn a guarded clause from the producer explanation;
    - repeat until no new equality is produced.
-6. Keep false generated equalities out of the LRA assignment. Native LRA
+6. **Complete:** keep false generated equalities out of the LRA assignment. Native LRA
    disequality arrangements are a later, non-convex extension.
-7. Re-measure `--lra-fixed-elimination` and row-bound propagation **with
+7. **Pending evaluation:** re-measure `--lra-fixed-elimination` and row-bound propagation **with
    equality sharing enabled** before changing either default. Their previous
    QF_LRA measurements did not consume entailed equalities and are not decisive
    for the mixed path.
-8. Add model-equality classes only after entailed propagation is complete and
-   validated; they are an optimization, not a correctness prerequisite.
+8. **Deliberately excluded:** do not merge model-equality classes into the
+   entailed producer. Any future model partition belongs to the paper's shared
+   model/assumption mechanism, not this convex correctness path.
 
 ## Ownership and Invariants
 

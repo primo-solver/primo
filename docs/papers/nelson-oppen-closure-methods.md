@@ -2,18 +2,18 @@
 
 ## Status
 
-This began as a literature and design-intake note for the
-`nelson-oppen-closure-methods` branch. It now records the current
-`nelson-oppen-online-lazy-ipasir-up` implementation state and the implemented
-scaffolds: an SMT-owned `TheoryCombinationManager` for interface equality
-bookkeeping, a compatibility read-only analyzer, and a partial mixed QF_UFLRA
-coordinator with Real-valued UF-application purification, EUF-to-LRA proxy
-equality checks, LRA-to-EUF equality checks over shared Real constants, and
-model reconstruction for the supported Real-argument subset. It also records
-the first SAT-callback combination slice: an opt-in
+This began as a literature and design-intake note. It now records Primo's
+implemented convex EUF+LRA combination subset: an SMT-owned
+`TheoryCombinationManager` for interface equality bookkeeping, a compatibility
+read-only analyzer, and a mixed QF_UFLRA coordinator with Real-valued
+UF-application purification, a bidirectional equality fixpoint, and model
+reconstruction for the supported Real-argument subset. It also records the
+SAT-callback combination slice: an opt-in
 `MixedTheoryPropagationDispatcher` for `--nelson-oppen-prop=online` that
-propagates shared Real equality from paired non-strict LRA bounds. It does not
-claim that Primo implements the full Nelson-Oppen procedure yet.
+propagates shared Real equality from paired non-strict LRA bounds. This is a
+complete convex Nelson-Oppen equality fixpoint for the documented purified
+QF_UFLRA subset, not a generic implementation for arbitrary theories and not
+the full model-based transition system.
 
 The intended project is to add theory-combination closure mechanisms based on
 Nelson-Oppen-style equality sharing, with de Moura and Bjorner's
@@ -24,10 +24,10 @@ C++ types, invariants, tests, and counters.
 
 ## Current Primo Baseline
 
-Primo currently has QF_UF and QF_LRA DPLL(T) paths, EUF congruence closure, and
-an LRA Simplex tableau. There is no general Nelson-Oppen combination layer yet.
-The current branch adds a small mixed-theory coordinator for formulas that
-remain separable after preprocessing, plus a first purified subset where
+Primo has QF_UF and QF_LRA DPLL(T) paths, EUF congruence closure, an LRA Simplex
+tableau, and a QF_UFLRA-specific convex coordinator. There is no generic
+multi-theory Nelson-Oppen framework. The mixed coordinator handles formulas
+that remain separable after preprocessing plus the purified subset where
 Real-valued UF applications occur inside arithmetic atoms.
 
 Primo now has conservative pure-theory SMT-LIB `get-model` paths: QF_UF prints
@@ -129,6 +129,18 @@ a false assignment by later entailing the corresponding equality, and mixed
 model reconstruction separately adds strict Real separation atoms for shared
 Real arguments whose equality is rejected by the current EUF closure.
 
+For each SAT-consistent assignment, the coordinator repeats equality sharing
+until no guarded clause is added. EUF returns a deterministic spanning set for
+each shared equality class, which is sufficient because equality is transitive.
+LRA first polls the feasible tableau's sound `FixedEq` and `EqRow` rules; each
+result carries its bound-blocking literals. The equality atom is created only
+when one of these producers reports it. The default path then tests both strict
+orders for every still-unresolved shared Real pair. Those exact probes make the
+LRA producer complete even though the two cheap tableau rules are not. A new
+clause restarts SAT, and the next round asserts the equality to both theories.
+This is the standard convex closure argument for the supported EUF+LRA subset;
+model-equal conjectures and arrangement guesses are not part of it.
+
 Default final-mode LRA-to-EUF sharing is now consumer-aware as a classifier.
 When the LRA scan finds an entailed shared Real equality, `solve_qf_uf_lra`
 first tests the current EUF closure that already contains current true
@@ -167,18 +179,20 @@ fallback have both been removed from this path:
 materialization. `:no.online.shared-real-pairs` is only a diagnostic
 cross-product count.
 
-Online mode retains the older final `lra_implied_real_equalities` strict-bound
-scan over all shared Real pairs. The rejected candidate-only experiment skipped
-it after materializing a paired-bound candidate and reran it only if final
+Online mode retains the exact final `lra_implied_real_equalities` strict-bound
+fallback over pairs not already resolved by EUF or cheap LRA entailment. The
+rejected candidate-only experiment skipped the complete fallback after
+materializing a paired-bound candidate and reran it only if final
 separation failed. Two full-corpus MathSAT rows demonstrated that this is
 unsound: separation may succeed even though an omitted LRA equality later
 forces an EUF congruence conflict. The paired-bound online producer remains
-narrow and lazy, but it is not a completeness replacement for the final scan.
-Eliminating that scan requires a complete shared-model validation operation of
-the kind still missing from the model-based paper checklist.
+narrow and lazy, but it is not a completeness replacement for the exact
+fallback. Eliminating that fallback requires a complete shared-model validation
+operation of the kind still missing from the model-based paper checklist.
 
-Default `final` propagation keeps the broad all-pairs scan unless the
-experimental `--qf-uflra-candidate-final-scan` option is enabled. That option
+Default `final` propagation enumerates all shared pairs but sends only
+unresolved pairs to the exact probe fallback. The experimental
+`--qf-uflra-candidate-final-scan` option narrows this first fallback. That option
 builds a SAT-assignment-local candidate set from EUF care pairs, shared Real
 constants that co-occur inside one EUF atom, and pairs whose two non-strict LRA
 bounds are both true. Only those pairs are probed before LRA-to-EUF propagation.
@@ -189,16 +203,12 @@ accepting the arrangement. This is still a conservative implementation-local
 pruning heuristic over entailed equalities, not the full paper transition system
 with a mutable shared model object.
 
-The paired-bound producer is deliberately the stable online LRA-to-EUF subset
-for now. It is sound, has a compact two-literal explanation, and exercises the
-combination path without making every LRA bound change search the tableau for
-new shared equalities. A broader producer could look for tableau-implied
-equalities, fixed offset rows, or other linear combinations that force two
-shared Real terms to the same value, but that is an opportunity rather than a
-current implementation target. Before such a producer is built, it needs a
-separate design note and benchmark plan covering trigger conditions, duplicate
-suppression, explanation construction, backtracking, and caps on the number of
-candidate interface equalities created per SAT branch.
+The paired-bound producer is deliberately the stable online LRA-to-EUF subset.
+It is sound, has a compact two-literal explanation, and avoids searching the
+tableau on every LRA bound change. At final-check quiescence, the broader
+`LraTableau::entailed_equalities()` producer implements `FixedEq` and `EqRow`
+with explanations. `EqOffsetRows` and `EqRows` remain future work and must add
+soundness-oracle tests and counters before they can reduce the exact fallback.
 
 The default-off `--qf-uflra-online-euf` option extends only the callback
 plumbing around this subset. `MixedTheoryPropagationDispatcher` acts as the
@@ -294,6 +304,22 @@ coordinator publishes:
 - `:no.interface.equality-clauses`
 - `:no.interface.equality-reason-lits`
 - `:no.interface.equality-rechecks`
+- `:no.interface.convex-rounds`
+- `:no.interface.euf-spanning-equalities`
+- `:no.interface.lra-opportunistic-candidates`
+- `:no.interface.lra-opportunistic-fixed-eq`
+- `:no.interface.lra-opportunistic-eq-row`
+- `:no.interface.lra-opportunistic-reason-lits`
+- `:no.interface.lra-opportunistic-unmapped-terms`
+- `:no.interface.lra-opportunistic-unmapped-equalities`
+- `:no.interface.lra-opportunistic-existing-atoms`
+- `:no.interface.lra-opportunistic-missing-atoms`
+- `:no.interface.lra-opportunistic-created-atoms`
+- `:no.interface.lra-opportunistic-clauses`
+- `:no.interface.lra-opportunistic-rechecks`
+- `:no.interface.lra-exact-fallback-pairs`
+- `:no.interface.lra-exact-fallback-skipped-pairs`
+- `:no.interface.lra-exact-fallback-equalities`
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.euf-to-lra-candidates`
 - `:no.interface.euf-to-lra-existing-atoms`
@@ -478,7 +504,7 @@ still not the de Moura/Bjorner model-based combination algorithm. Primo does not
 yet have a mutable model object shared by the theory solvers, complete
 non-convex arrangement enumeration, or minimal paper-style explanations.
 
-The first implementable subset should be split into two tracks. Track A is a
+The implementation status remains organized into separate tracks. Track A is a
 prerequisite for any model-guided closure claim:
 
 1. Keep expanding explicit model construction beyond the current QF_UF subset.
@@ -489,21 +515,20 @@ prerequisite for any model-guided closure claim:
 4. Continue expanding reconstruction state for satisfiability-preserving
    rewrites beyond the current QF_UF unit and substitution subset.
 
-Track B is the first closure scaffold, deliberately narrower than the full
-paper. Experimental model-equality generation should remain default-off; the
-implemented proxy-purification subset below is part of the default QF_UFLRA
-path because rejecting those arithmetic atoms was the previous user-visible
-gap:
+Track B is the convex closure path, deliberately narrower than the full paper.
+Experimental model-equality generation remains default-off; the implemented
+proxy-purification subset is part of default QF_UFLRA:
 
-1. Add a documented combination-interface skeleton that can list shared terms by
-   sort and identify equality atoms over those terms.
-2. For convex theories, support entailed equality propagation over existing
-   SAT-visible interface equalities only.
-3. Add counters and traces before adding model-equality guesses.
-4. Add model-equality generation only for a theory solver that can provide a
-   stable candidate model and a sound disagreement response.
-5. Keep atom creation for missing interface equalities as a separate milestone,
-   because it changes the Boolean abstraction contract.
+1. **Implemented:** the combination manager lists shared terms and owns sparse
+   equality entries.
+2. **Implemented:** EUF spanning equalities plus LRA `FixedEq`/`EqRow` and an
+   exact unresolved-pair fallback reach a convex fixpoint.
+3. **Implemented:** directional, rule, reason, lazy-atom, recheck, and exact
+   fallback counters expose the mechanism.
+4. **Separate experiment:** model-equality assumptions remain outside entailed
+   propagation and are not required for convex completeness.
+5. **Implemented:** missing interface equality atoms are created lazily only
+   after a producer reports an equality.
 
 Track C is the callback-safe model-based online refinement prompted by the
 current profiling result:
@@ -518,10 +543,11 @@ current profiling result:
    or a care-ranked equality source to the same candidate-first path.
 5. Keep the full shared-pair cross product as a counter and fallback
    diagnostic, not as the set of observed SAT variables.
-6. Online mode retains the final `lra_implied_real_equalities` all-pairs scan.
-   The attempted skip-on-materialization policy was rejected after full-corpus
-   wrong answers showed that successful separation is not a complete shared
-   model check. The skip, fallback, and capped-scan counters remain zero until a
+6. Online mode retains the complete final `lra_implied_real_equalities` fallback
+   over pairs unresolved by EUF and the cheap LRA rules. The attempted
+   skip-on-materialization policy was rejected after full-corpus wrong answers
+   showed that successful separation is not a complete shared model check. The
+   skip, fallback, and capped-scan compatibility counters remain zero until a
    paper-grounded shared-model validator supports a sound replacement.
 7. The default-off `--qf-uflra-candidate-final-scan` option applies the same
    candidate-first discipline to final-mode LRA-to-EUF equality sharing without
@@ -610,10 +636,12 @@ claiming default readiness.
 
 ### Implemented Subset: Interface Bookkeeping
 
-The implemented subset is intentionally below the algorithmic level of the
-papers above. It is not de Moura/Bjorner model-based combination and not classic
-Nelson-Oppen equality propagation. It provides the common data extraction needed
-to make those future mechanisms measurable:
+The diagnostic analyzer described in this subsection is intentionally below the
+algorithmic level of the papers above. It is not itself de Moura/Bjorner
+model-based combination or classic Nelson-Oppen propagation. The live mixed
+solver consumes the same manager in the convex fixpoint described separately.
+The analyzer provides the common data extraction needed to make those
+mechanisms measurable:
 
 - **Data structures:** `TheoryCombinationManager`, `InterfaceTerm`,
   `InterfaceEquality`, `InterfaceEqualityRegistryEntry`,
@@ -681,11 +709,12 @@ Limitations of this diagnostic analyzer:
 - no explanations or learned clauses;
 - no mixed-theory model object.
 
-### Implemented Subset: Partial Mixed QF_UFLRA Final Checks
+### Implemented Subset: Convex Mixed QF_UFLRA Checks
 
-This subset is a conservative bridge, not the full Nelson-Oppen algorithm. It
-exists so the branch can execute simple QF_UFLRA scripts without silently
-treating one theory's atoms as Boolean noise.
+This subset implements classic convex equality sharing for Primo's documented
+purified EUF+LRA fragment. It is not the generic model-based algorithm, and its
+accepted syntax/model-reconstruction boundary remains narrower than all of
+QF_UFLRA.
 
 - **Data structures:** `TheoryCombinationManager` owns the shared Real
   interface-pair registry, the generated equality atom `TermId`, the registered
@@ -693,7 +722,11 @@ treating one theory's atoms as Boolean noise.
   unknown/equal/disequal arrangement value, and per-round classification flags
   for each pair. The final-check loop still reuses
   `BooleanClausifier::TheoryAtom`, `PreparedFlatTheory`, `PreparedLraTheory`,
-  `AssignedTheoryAtom`, and ordinary SAT clauses. The purification pass uses
+  `AssignedTheoryAtom`, and ordinary SAT clauses. `PreparedFlatTheory` keeps an
+  append-only map from `(signed SAT literal, TermId)` to cached flat-atom index;
+  each round realigns its assignment vector through this map instead of
+  assuming the round-local true/false grouping matches preparation order. The
+  purification pass uses
   SMT-local maps from original Real-valued UF application `TermId` values and
   non-constant Real argument `TermId` values to internal proxy `TermId` values.
   A memoized pre-scan detects when no such purification sites exist, in which
@@ -728,13 +761,15 @@ treating one theory's atoms as Boolean noise.
   disequality is asserted into EUF only; LRA disequality is still represented
   indirectly by the fact that LRA will force the equality if both strict
   orientations conflict. After both theory checks accept the current assignment,
-  the EUF closure is inspected for implied equalities between Real proxy
-  constants that also occur in LRA atoms. The reverse direction checks every
-  same-sort shared Real pair by adding `x < y` and `y < x` to the current LRA
-  assignment; if both conflict, LRA entails `x = y`. Either direction learns a
-  guarded clause from the current theory assignment to the corresponding
-  generated equality literal, and the next SAT iteration lets the receiving
-  theory produce any ordinary conflict with that equality literal in its reason.
+  the EUF closure emits one spanning set of implied equalities between Real
+  proxy constants that also occur in LRA atoms. In the reverse direction, the
+  feasible LRA tableau first emits `FixedEq` and `EqRow` equalities with their
+  bound reasons. The exact fallback then considers every unresolved same-sort
+  shared Real pair by adding `x < y` and `y < x` to the current LRA assignment;
+  if both conflict, LRA entails `x = y`. Either direction learns a guarded
+  clause from the producing theory's explanation to the corresponding generated
+  equality literal, and the next SAT iteration lets the receiving theory
+  produce any ordinary conflict with that equality literal in its reason.
 - **Reasoning loop:** in the default path, the original LRA atoms are also
   attached to CaDiCaL through Primo's existing trail-synced online LRA
   propagator, based on Dutertre and de Moura's simplex-style DPLL(T)
@@ -748,7 +783,8 @@ treating one theory's atoms as Boolean noise.
   augmented by true generated equalities only. Add the first per-theory conflict
   clause found and continue. If both individual checks pass, learn guarded
   propagation clauses for any newly implied generated interface equality and
-  continue. Before returning a non-model `sat`, validate that the final EUF
+  continue until the convex equality fixpoint is quiescent. Before returning a
+  non-model `sat`, validate that the final EUF
   arrangement over common purified Real interface constants can be separated
   consistently by the LRA side. The current implementation first tests whether
   temporarily merging a shared Real pair would make the EUF closure inconsistent;
@@ -825,10 +861,14 @@ treating one theory's atoms as Boolean noise.
   EUF-implied proxy equality that makes the LRA side inconsistent, an
   EUF-implied proxy equality combined with a lowered input Real disequality,
   LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
+  zero-probe `FixedEq` and `EqRow` fast paths with local reasons, deterministic
+  EUF spanning output for a three-term class, a multi-round
+  EUF-to-LRA-to-EUF contradiction, and a non-optimizer equality that remains
+  covered by the exact fallback,
   source-split interface conflict counters for those receiving-theory conflicts,
   closure-aware EUF care-pair counters over shared Real arguments, use of the
-  full shared Real pair set for LRA-to-EUF equality propagation even when the
-  EUF care diagnostic reports a pair as pruned, default-off model-equality
+  full shared Real pair set as the source of unresolved exact fallback pairs
+  even when the EUF care diagnostic reports a pair as pruned, default-off model-equality
   guessing with both the historical full-pair order and the ranked care-first
   policy, adaptive model-equality backoff, query-layer counters for
   mutation-disabled and mutation-filtered model equalities, a non-unary

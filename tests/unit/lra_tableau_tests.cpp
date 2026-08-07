@@ -2,9 +2,9 @@
 #undef NDEBUG
 #endif
 
-#include <functional>
 #include <algorithm>
 #include <cassert>
+#include <functional>
 #include <utility>
 #include <vector>
 
@@ -1569,30 +1569,30 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
 
   // Each case builds x, y, two helper variables, and the slack s = x - y used
   // only by the oracle. `setup` applies the bounds that make the case.
-  const auto run_case = [&](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId)>&
-                                setup) {
-    LraTableau tableau(LraTableau::PivotingRule::Sparse);
-    const LraVarId x = tableau.add_variable();
-    const LraVarId y = tableau.add_variable();
-    const LraVarId d = tableau.add_variable();
-    const LraVarId slack = tableau.add_variable();
-    tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
-    setup(tableau, x, y, d);
-    assert(!tableau.check().has_value());  // cases are satisfiable by construction
+  const auto run_case =
+      [&](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId)>& setup) {
+        LraTableau tableau(LraTableau::PivotingRule::Sparse);
+        const LraVarId x = tableau.add_variable();
+        const LraVarId y = tableau.add_variable();
+        const LraVarId d = tableau.add_variable();
+        const LraVarId slack = tableau.add_variable();
+        tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
+        setup(tableau, x, y, d);
+        assert(!tableau.check().has_value());  // cases are satisfiable by construction
 
-    // Each case has exactly one candidate pair, {x, y}, so the single slack
-    // s = x - y is the right oracle for whatever comes back.
-    const auto reported = tableau.entailed_equalities({x, y});
-    for (const auto& eq : reported) {
-      assert((eq.lhs == x && eq.rhs == y) || (eq.lhs == y && eq.rhs == x));
-      // SOUNDNESS: anything reported must survive the independent oracle.
-      assert(equality_is_entailed(tableau, slack, 900));
-    }
-    reported_total += reported.size();
-    if (reported.empty() && equality_is_entailed(tableau, slack, 950)) {
-      ++missed_total;  // entailed but not deduced -- the completeness gap
-    }
-  };
+        // Each case has exactly one candidate pair, {x, y}, so the single slack
+        // s = x - y is the right oracle for whatever comes back.
+        const auto reported = tableau.entailed_equalities({x, y});
+        for (const auto& eq : reported) {
+          assert((eq.lhs == x && eq.rhs == y) || (eq.lhs == y && eq.rhs == x));
+          // SOUNDNESS: anything reported must survive the independent oracle.
+          assert(equality_is_entailed(tableau, slack, 900));
+        }
+        reported_total += reported.size();
+        if (reported.empty() && equality_is_entailed(tableau, slack, 950)) {
+          ++missed_total;  // entailed but not deduced -- the completeness gap
+        }
+      };
 
   // 1. Both pinned to the same value: FixedEq should fire.
   run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {

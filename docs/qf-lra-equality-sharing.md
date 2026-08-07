@@ -1,15 +1,16 @@
 # What QF_LRA owes Nelson-Oppen: convexity and equality sharing
 
-Written 2026-08-07 for the Nelson-Oppen work on
-`nelson-oppen-online-lazy-ipasir-up`, which is implementing de Moura and
+Written 2026-08-07 for Primo's convex Nelson-Oppen work, based on de Moura and
 Bjørner's *Model-based Theory Combination* (`docs/papers/model-guided-no.pdf`,
 ENTCS 198:37-49, 2008; see also [](papers/model-based-theory-combination.md)
 and [](papers/nelson-oppen-closure-methods.md)).
 
-This note is about **our side of the interface**. The paper's §5 is titled
+This note is about **the arithmetic side of the interface**. The paper's §5 is titled
 "Simplex: an example model-producing theory solver" and is almost entirely a
-specification of what the arithmetic solver must provide. Most of it we do not
-provide yet.
+specification of what the arithmetic solver must provide. Primo now implements
+the sound `FixedEq` and `EqRow` entailment rules with explanations and consumes
+them in its mixed QF_UFLRA fixpoint. It does not implement the paper's full
+model-producing transition system.
 
 ## Why convexity is the whole point
 
@@ -33,21 +34,27 @@ case split the NO layer has to make instead.
 
 That is the trade to put on the table before the interface is fixed.
 
-## What we provide today: almost nothing
+## What Primo provides today
 
-The only equality-sharing mechanism is
-`enqueue_lra_interface_equality_if_forced` in `src/smt/check_sat.cpp`. It is
-**purely syntactic**: it fires when both `x ≤ y` and `y ≤ x` exist *as atoms in
-the formula* and both are currently assigned true.
+`theory::arithmetic::LraTableau::entailed_equalities()` implements `FixedEq`
+and `EqRow` over a caller-supplied set of shared variables. Every result carries
+the blocking SAT literals for the bounds that establish it. Results form a
+deterministic spanning set rather than all pairwise equalities in one class.
 
-It therefore cannot see an equality that the tableau entails but the input did
-not spell out as a pair of opposing non-strict inequalities — which is most of
-them. `x ≃ y` following from `x - y + z = 0 ∧ z = 0` is invisible to it.
+After a feasible mixed-theory LRA check, `smt::solve_qf_uf_lra` maps shared Real
+terms to their tableau variables, requests these cheap entailments, and routes
+them through `TheoryCombinationManager` and guarded SAT clauses. No equality
+atom is preallocated: `force_implied_interface_equalities()` creates and
+observes only an equality that a producer reports. If either cheap rule adds a
+clause, SAT is re-entered and both theories see the equality on the next round.
 
-What the tableau does expose (`src/theory/arithmetic/lra_tableau.hpp`):
-`assignment(var)` (that is β), `upper_bound`/`lower_bound`, `is_basic`,
-`row(var)`, `occurs_in(var)`. The raw material is there; none of the equality
-machinery is.
+These rules are deliberately incomplete. Once they and the EUF spanning
+equalities reach quiescence for the current SAT assignment, the default
+`final` path proves every still-unresolved shared Real pair by testing both
+strict separations. This exact fallback preserves completeness of the convex
+EUF+LRA combination while avoiding probes for equalities already established
+by EUF or the cheap LRA rules. The online paired-bound producer remains an
+additional early source; it is not the completeness mechanism.
 
 ## What the paper asks of the Simplex solver
 
@@ -57,8 +64,11 @@ machinery is.
 > equalities implied by β is simple: enumerate all the values of β(xᵢ),
 > inserting each value into a hash table. The expected time is O(|B ∪ N|).
 
-**Proposed API**: given the shared real terms, return the partition of them
-induced by equal β. One hash pass, no pivoting, no entailment check.
+The paper's proposed operation is to return the partition of shared Real terms
+induced by equal β in one hash pass. Primo intentionally does **not** expose
+that partition as entailed equality propagation: equality in one feasible LRA
+model is a conjecture, not a logical consequence. The existing default-off
+model-equality branch remains a separate SAT-assumption experiment.
 
 Note for implementation: β values are `DeltaRational` (rational + infinitesimal
 for strict bounds), and `operator==` already compares both components. Two
@@ -67,7 +77,9 @@ the concrete model, so the delta component must participate in the key — using
 only the rational part would over-report equalities and hand the NO layer
 unsound propagations.
 
-This is cheap and is the single highest-value thing we can add.
+This operation is cheap, but it is useful only inside the paper's explicit
+model-transition machinery. It is not the next convex-combination step and must
+not be substituted for entailment.
 
 ### 2. Opportunistic equality propagation (§5.1)
 
@@ -132,9 +144,9 @@ again, measured with nothing downstream that consumed fixedness.
 
 **Neither default should be flipped on this reasoning alone.** Both were
 measured and both are off for good empirical reasons. The point is narrower and
-should be stated to whoever owns the NO branch: *their* benefit was never in
-those measurements, so if MBTC lands, both options need re-measuring **with the
-equality propagation switched on**, and the answer may differ.
+matters to the mixed coordinator: their equality-sharing benefit was absent
+from those measurements, so both options need re-measuring **with equality
+propagation switched on**, and the answer may differ.
 
 (fixed-elimination-for-no)=
 ### Should `--lra-fixed-elimination` be on by default for Nelson-Oppen?
@@ -162,10 +174,13 @@ Flipping it globally is defensible on its own merits — but doing it *as part o
 the NO work would confound two changes, and the QF_LRA measurement above would
 then have to be redone anyway.
 
-**Why not now.** Nothing consumes `entailed_equalities` yet, so enabling it
-today buys no deduction and changes mixed-path search unmeasured. And the
-QF_UFLRA corpus is **not staged on the cluster**, so neither the cost nor the
-benefit is currently measurable. Stage it first.
+**Current decision.** The mixed solver now consumes `entailed_equalities`, but
+fixed elimination remains off unless explicitly selected. `FixedEq` therefore
+helps by default, while the basis-sensitive `EqRow` opportunity is partly
+hidden. The mixed-path default must be decided by the committed 45-file
+on/off ablation after fuzzing; the mechanism test pins that enabling fixed
+elimination exposes the intended `EqRow` fast path without making completeness
+depend on it.
 
 (measured-gap)=
 ## The completeness gap, measured rather than assumed
@@ -212,33 +227,27 @@ fixedness, and that measurement does not transfer.
 Pinned by `fixed_elimination_closes_the_eqrow_basis_gap` in
 `tests/unit/lra_tableau_tests.cpp`.
 
-## Proposed order of work on our side
+## Remaining order of work
 
-1. **Model-implied equality partition** (§5). Small, self-contained, no
-   behaviour change when unused, and it unblocks `M-Propagate` on their side.
-   Falsifier: on a QF_UFLRA instance with shared reals, the partition must
-   refine as bounds tighten, and must never merge two variables whose
-   `DeltaRational` values differ in the δ component alone.
-2. **Explanations for propagated equalities.** Anything we propagate needs a
-   reason set for conflict analysis, in the same shape as `build_conflict`'s
-   Farkas-style reasons. Without this the NO layer can propagate but not
-   explain, and every equality becomes a decision rather than an implication.
-   *This is the piece most likely to be underestimated.*
-3. **FixedEq, EqRow, EqOffsetRows** eagerly; **EqRows** before `M-Propagate`.
-4. **Freedom-interval diversification**, last — it is an optimisation of the
-   number of case splits, not a correctness obligation.
+1. **Evaluate mixed-only fixed elimination.** Fuzz first, then compare the
+   committed 45-file QF_UFLRA sample with the option on and off. Promote it only
+   if solved count, wrong answers, and PAR2 justify the extra pivots.
+2. **Add `EqOffsetRows`, then `EqRows`.** Each rule needs its own explanation
+   invariant, soundness-oracle tests, counters, and a case where it removes
+   exact strict-separation probes.
+3. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
+   is newly exposed fixedness and fewer exact fallback probes, not pure-QF_LRA
+   solved count alone.
+4. **Implement model partition and freedom-interval mutation only with the
+   paper's shared model transition state.** Model equality must remain distinct
+   from entailed propagation.
 
-## What we should ask the NO branch for
+## Combination contract
 
-- **The interface shape**: do they want a partition of shared terms, a stream
-  of `(x, y, reason)` propagations, or both? (1) and (3) produce different
-  things — a model-induced partition is a *conjecture* needing a case split;
-  an opportunistic rule firing is an *entailment* needing an explanation. The
-  distinction matters and the API should keep them apart rather than blur them.
-- **Whether they intend to rely on convexity.** If yes, the value of completing
-  our equality deduction is high and arrangement search can go. If they keep
-  arrangement search for QF_UFLIA-style non-convex reasons later, the calculus
-  is different and (1) alone may be enough.
-- **A shared benchmark**: none of this can be evaluated on QF_LRA alone. The
-  QF_UFLRA corpus is **not staged on the cluster** — worth fixing before either
-  side claims a measurement.
+The current contract is a stream of `(lhs, rhs, blocking reasons)` entailments.
+`TheoryCombinationManager` owns their canonical shared-pair identity, current
+SAT assignment, and lazily registered equality literal; the LRA tableau owns
+the arithmetic proof state. This is enough for convex EUF+LRA because the exact
+fallback makes the stream complete at quiescence. It is not an interface for
+non-convex arithmetic, integer arithmetic, or the paper's generic mutable model
+state.

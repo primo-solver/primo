@@ -259,7 +259,8 @@ can be much smaller than `rounds * theory-atoms`.
 
 For difficult instances, `--max-theory-conflicts N` returns `unknown` after at
 least `N` learned theory conflicts. In lazy mode this is checked after each
-post-model theory conflict. In online/conflict callback mode Primo also installs
+post-model theory conflict, including EUF conflicts discovered by the mixed
+QF_UFLRA final-check loop. In online/conflict callback mode Primo also installs
 a CaDiCaL terminator, so a long in-progress SAT call can stop soon after the
 callback reaches the limit. This is intended for profiling and stats snapshots
 on timeout-prone benchmarks; it is not a solving heuristic.
@@ -327,6 +328,22 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.equality-local-reason-lits`
 - `:no.interface.equality-fallback-reasons`
 - `:no.interface.euf-explanation-missing`
+- `:no.interface.convex-rounds`
+- `:no.interface.euf-spanning-equalities`
+- `:no.interface.lra-opportunistic-candidates`
+- `:no.interface.lra-opportunistic-fixed-eq`
+- `:no.interface.lra-opportunistic-eq-row`
+- `:no.interface.lra-opportunistic-reason-lits`
+- `:no.interface.lra-opportunistic-unmapped-terms`
+- `:no.interface.lra-opportunistic-unmapped-equalities`
+- `:no.interface.lra-opportunistic-existing-atoms`
+- `:no.interface.lra-opportunistic-missing-atoms`
+- `:no.interface.lra-opportunistic-created-atoms`
+- `:no.interface.lra-opportunistic-clauses`
+- `:no.interface.lra-opportunistic-rechecks`
+- `:no.interface.lra-exact-fallback-pairs`
+- `:no.interface.lra-exact-fallback-skipped-pairs`
+- `:no.interface.lra-exact-fallback-equalities`
 - `:no.interface.materialized-pairs`
 - `:no.interface.materialized-missing-pairs`
 - `:no.interface.equality-rechecks`
@@ -466,6 +483,20 @@ models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
+`:no.interface.convex-rounds` counts SAT-consistent mixed rounds that reach
+bidirectional equality sharing. EUF reports one spanning set per shared
+equality class, counted by `:no.interface.euf-spanning-equalities`; it does not
+materialize every pair in a class. LRA first polls the checked tableau's
+`FixedEq` and `EqRow` rules. The `:no.interface.lra-opportunistic-*` counters
+split rule hits, reason literals, unmapped shared terms, lazy SAT atom delivery,
+clauses, and rechecks. After these cheap producers are quiescent,
+`:no.interface.lra-exact-fallback-pairs` counts unresolved pairs sent to both
+strict-separation probes, `:no.interface.lra-exact-fallback-skipped-pairs`
+counts pairs already resolved by SAT/EUF, and
+`:no.interface.lra-exact-fallback-equalities` counts exact entailments found.
+These counters are cumulative across fixpoint rounds. A FixedEq/EqRow test with
+zero fallback pairs is the direct evidence that the cheap producer removed
+probe work; a zero fallback count on arbitrary inputs is not expected.
 For LRA-to-EUF equality sharing, the default `final` path classifies each
 LRA-implied shared Real equality through the current EUF closure before creating
 or forcing an equality atom. The filter records
@@ -544,7 +575,13 @@ each SAT round still copies the definition-only congruence closure and asserts
 its own assignments, so explanations and backtracking remain round-local.
 The preparation is append-only during one mixed solve because lazy interface
 equality atoms and Boolean EUF proxies can appear after the initial
-preparation.
+preparation. Each cached atom is keyed by its signed SAT literal and `TermId`.
+Before a closure check, current assignments are realigned through that key;
+their input order is not stable because generated equalities are gathered as
+true atoms followed by false atoms in each SAT round. A large
+`:sat.solve-calls` count on a small model-equality example can indicate a broken
+alignment: a conflict clause may then describe a different cached equality and
+already be satisfied by the assignment that produced it.
 
 `--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
@@ -558,9 +595,10 @@ only, not as an observed SAT variable count. `:no.online.assignments` and
 `:no.online.lra-published-equalities` counts equality candidates produced by
 `OnlineLraPropagator`; today those are exactly the implemented paired-bound
 rule where both `(<= a b)` and `(<= b a)` are true for a shared Real pair.
-Broader LRA-derived equalities are intentionally not part of this counter yet:
-mining arbitrary tableau rows for equal shared terms is a future opportunity
-with explicit cost risk, not a stable online propagation mode.
+Broader LRA-derived equalities are intentionally not part of this **online
+callback** counter. `FixedEq` and `EqRow` are polled after the final feasible
+LRA check and reported through `:no.interface.lra-opportunistic-*`; they do not
+run on each callback bound update.
 `:no.online.lra-bound-equality-candidates` counts published candidates whose
 pair is known to the mixed-theory interface registry.
 `:no.online.lra-bound-equality-missing-atoms` counts published candidates outside
@@ -575,9 +613,9 @@ SAT variables.
 `:no.online.final-lra-equality-scan-skipped`,
 `:no.online.final-lra-equality-scan-fallbacks`, and
 `:no.online.final-lra-equality-scan-capped` remain compatibility counters and
-must be zero. Online mode retains the broad all-pairs final scan because a
-successful separation check is not sufficient to prove that omitted
-LRA-implied equalities are irrelevant to EUF congruence.
+must be zero. Online mode retains the complete exact final fallback over
+unresolved pairs because a successful separation check is not sufficient to
+prove that omitted LRA-implied equalities are irrelevant to EUF congruence.
 `:no.online.propagations` counts returned equality literals, and
 `:no.online.reason-lits` counts the two bound literals used as the SAT reason.
 `:no.online.skipped-assigned` counts candidates already assigned by SAT before

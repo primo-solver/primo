@@ -263,6 +263,15 @@ Implemented now:
   equality learned in one Boolean branch does not leak into another. The
   default is `--nelson-oppen-prop=final`: equality propagation is performed
   after a complete SAT assignment and before the model is accepted.
+  The coordinator repeats this process to a convex equality fixpoint. EUF emits
+  a deterministic spanning set for each equality class of shared Real terms.
+  LRA first asks the feasible tableau for explanation-carrying `FixedEq` and
+  `EqRow` entailments. If either direction learns a guarded clause, SAT is
+  re-entered so both theories see the equality on the next round. Once these
+  cheap producers are quiescent, the default path tests both strict orders only
+  for still-unresolved shared Real pairs. This exact fallback is the
+  completeness mechanism for the supported convex EUF+LRA fragment; it does
+  not preallocate the pair cross product as SAT variables.
   In this final path, LRA-to-EUF equalities are classified through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already
   true in EUF can be ignored. Equalities that EUF can merge, or that EUF
@@ -297,13 +306,14 @@ Implemented now:
   the EUF child from observing the atom. This is an experimental IPASIR-UP
   integration scaffold, not a new EUF algorithm and not full model-based theory
   combination.
-  Online mode retains the final all-pairs `lra_implied_real_equalities`
-  strict-bound mining pass. A previous optimization skipped it after the online
+  Online mode retains a complete final `lra_implied_real_equalities`
+  strict-bound fallback over pairs not already resolved by EUF or lazy
+  entailment. A previous optimization skipped the complete fallback after the online
   producer materialized a paired-bound candidate and reran it only when final
   separation failed. Full-corpus evaluation found that criterion unsound:
   separation can succeed while an unscanned LRA-implied equality exposes a
   congruence conflict in EUF. Lazy online atom creation remains enabled, but the
-  broad final scan is required until a complete shared-model validator can
+  exact final fallback is required until a complete shared-model validator can
   certify the candidate-only path.
   The experimental `--qf-uflra-candidate-final-scan` mode is the first opt-in
   pruning step for that path: after an LRA check it probes only current EUF care
@@ -312,13 +322,14 @@ Implemented now:
   model reconstruction later shows that the candidate set missed an
   LRA-implied equality, Primo runs the broad scan once and forces any equality
   found by that fallback through the existing interface-equality SAT clause
-  machinery before accepting the final arrangement. More general LRA-implied
-  shared equalities remain a documented opportunity, not the next committed
-  online extension: discovering them from arbitrary tableau rows could add a
-  wider per-bound-change scan, more explanation bookkeeping, and more
-  SAT-visible equality traffic. The paired-bound rule is therefore the stable
-  online LRA-to-EUF propagation subset for now; this is not yet the full
-  model-guided Nelson-Oppen algorithm.
+  machinery before accepting the final arrangement. Final-check LRA sharing
+  additionally consumes `FixedEq` and `EqRow` entailments from the checked
+  tableau. These rules are deliberately polled at quiescence rather than on
+  every bound change, keeping their map/vector work off the SAT callback hot
+  path. `EqOffsetRows`, `EqRows`, model partitioning, and freedom-interval
+  mutation remain unimplemented. The paired-bound rule is therefore still the
+  stable online LRA-to-EUF propagation subset; this is not the full model-guided
+  transition system.
   The optional online EUF child does not replace the final EUF check: after SAT
   returns, the coordinator still constructs the assignment-local flat closure
   used for final consistency, care-pair classification, and model validation.
@@ -387,9 +398,11 @@ Implemented now:
   also computes EUF care-pair counters for shared Real arguments under flat EUF
   function prefixes that are equal in the current EUF closure. Default solving
   skips this scan because there is no active consumer for the care-pair ranking.
-  Equality propagation still uses the full shared Real interface pair set
-  unless `--qf-uflra-candidate-final-scan` is enabled for the final LRA-to-EUF
-  equality scan. Final arrangement validation scans the shared Real interface
+  Default equality propagation enumerates the shared Real pair set after the
+  EUF spanning and LRA `FixedEq`/`EqRow` producers, but strict LRA probes are
+  issued only for pairs that remain unresolved. The
+  `--qf-uflra-candidate-final-scan` option narrows that exact fallback further.
+  Final arrangement validation scans the shared Real interface
   pair set to classify pairs as EUF-mergeable or EUF-forbidden, and only the
   forbidden pairs are passed to the strict LRA separation search. The default
   `first`
@@ -416,6 +429,11 @@ Implemented now:
   interface equalities must be included. The experimental
   `--model-equality-branching` path keeps the older final-check-only LRA path so
   its branch-ranking diagnostics remain comparable.
+  Mixed EUF preparation is also append-only. `PreparedFlatTheory` owns a stable
+  map from `(signed SAT literal, TermId)` to each cached flat atom and uses it to
+  realign the current round's assignments before checking a copied closure.
+  This avoids coupling persistent preparation order to the round-dependent
+  true-then-false ordering of generated interface equalities.
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
@@ -427,13 +445,13 @@ Not implemented yet:
   QF_UFLRA subset, arithmetic functions beyond nullary `Real` constants and
   Real-valued UF tables, and reconstruction through future
   satisfiability-preserving rewrites outside the current preprocessing trail.
-- Full Nelson-Oppen theory combination with a mutable shared equality model,
-  unbounded arrangement enumeration, generic model-equality propagation,
-  care-set-driven default search, and fine-grained minimal cross-theory
-  explanations. The current QF_UFLRA path has guarded bidirectional shared-Real
-  equality propagation for equalities reported by EUF/LRA final checks, plus a
-  default-off guarded clause for LRA model-equal pairs whose strict separations
-  both conflict.
+- Generic model-based theory combination with a mutable shared model,
+  non-convex arrangement enumeration, generic model-equality propagation,
+  care-set-driven default search, `EqOffsetRows`/`EqRows`, freedom-interval
+  mutation, and fine-grained minimal cross-theory explanations. The supported
+  EUF+LRA subset now has a complete convex shared-Real equality fixpoint, while
+  the default-off model-equality branch remains an experiment rather than part
+  of that completeness argument.
 - explanation-producing congruence closure with proof forests.
 
 ## Paper Traceability
@@ -442,7 +460,11 @@ Not implemented yet:
   backend-neutral propagator/terminator contracts and adapts them to CaDiCaL's
   concrete C++ API.
 - Congruence-closure papers motivate the EUF direction. The current implementation has congruence closure and disequality checking, but it does not yet implement explanation-producing union-find or the full fast algorithms described in the literature notes.
-- DPLL(T) papers motivate the lazy SAT/theory loop. Primo currently implements a simple lazy loop that rebuilds/checks theory consistency from each SAT assignment rather than an incremental propagating theory solver.
+- DPLL(T) papers motivate the SAT/theory loop. Primo has IPASIR-UP callback
+  propagation for its pure EUF and LRA paths and for the documented mixed
+  online subset. Mixed final checks reuse prepared EUF/LRA structure but still
+  rebuild round-local closure state when generated interface equalities change;
+  this is not a generic persistent multi-theory transition system.
 - SMT symmetry-breaking papers motivate the default-on QF_UF preprocessing pass.
   Primo implements the conservative constant-permutation subset described in
   `docs/preprocessing.md`; finite-model value precedence remains background

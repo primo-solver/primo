@@ -416,9 +416,13 @@ local final-check data.
 The current implementation now reuses the structural EUF preparation across
 mixed SAT rounds. `PreparedFlatTheory` owns the flattened terms, definition
 closure, and deduplicated theory-atom mapping; newly materialized interface
-equalities are appended before the next check. The closure itself remains a
-per-round copy, so this is a preparation optimization, not the general model
-state or a persistent DPLL(T^M) transition system.
+equalities are appended before the next check. The deduplication map also gives
+each cached atom a stable `(signed SAT literal, TermId)` identity. Every round
+uses that identity to realign assignment values because generated equalities
+can change polarity and therefore move between the true and false portions of
+the round-local input. The closure itself remains a per-round copy, so this is
+a preparation optimization, not the general model state or a persistent
+DPLL(T^M) transition system.
 
 The first useful state object should record:
 
