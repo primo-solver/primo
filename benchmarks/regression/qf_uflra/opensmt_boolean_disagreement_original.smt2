@@ -12,7 +12,7 @@
 (declare-fun y () Real)
 (assert (= (f (=> b2 b)) (f (f (not b)))))
 (assert (not (= (f (not (not (or b2 b)))) (f b2))))
-(assert (g (f b2) (g (or (or b1 b5) (f b3)) b3)))
+(assert (g (f b2) (g (or (or a b5) (f b3)) b3)))
 (assert (or (not (f (=> b2 b))) (f (not (not (or b2 b))))))
 (assert (= (f (ite a (f (not b)) (not (not (or b2 b)))))
              (f (ite a (f (not b)) (not (not (or b2 b)))))))
