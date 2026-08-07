@@ -1848,7 +1848,35 @@ struct FormulaFeatureSummary {
   bool has_equality = false;
   bool has_arithmetic = false;
   bool has_euf_predicate = false;
+
+  // The single place that enumerates the fields. Both the per-child recursion
+  // in summarize_formula_features and the per-assertion loop at the dispatch
+  // go through this, so a field cannot be aggregated in one and forgotten in
+  // the other.
+  //
+  // That is not hypothetical. has_application_term was aggregated in the
+  // recursion and omitted from the per-assertion loop, so it read as its
+  // default `false` at the dispatch -- which meant a formula whose only
+  // equalities are over Bool (and are therefore rewritten away in
+  // preprocessing before this runs) reached solve_boolean_conjunction with an
+  // uninterpreted function in it, and congruence was silently dropped. That
+  // was a wrong answer, not a slowdown; see
+  // docs/bool-argument-congruence-bug.md. No compiler warning can catch it --
+  // the field is used, just not propagated.
+  FormulaFeatureSummary& operator|=(const FormulaFeatureSummary& other) {
+    has_application_term |= other.has_application_term;
+    has_equality |= other.has_equality;
+    has_arithmetic |= other.has_arithmetic;
+    has_euf_predicate |= other.has_euf_predicate;
+    return *this;
+  }
 };
+
+// Tripwire: adding a field forces a visit to operator|= above, which is the
+// only defence against repeating the bug described there. Four bools, no
+// padding.
+static_assert(sizeof(FormulaFeatureSummary) == 4,
+              "FormulaFeatureSummary gained a field -- add it to operator|=");
 
 FormulaFeatureSummary summarize_formula_features(
     const core::TermManager& terms, core::TermId term_id,
@@ -1868,10 +1896,7 @@ FormulaFeatureSummary summarize_formula_features(
 
   for (const core::TermId child : term.children) {
     const FormulaFeatureSummary child_summary = summarize_formula_features(terms, child, memo);
-    summary.has_application_term |= child_summary.has_application_term;
-    summary.has_equality |= child_summary.has_equality;
-    summary.has_arithmetic |= child_summary.has_arithmetic;
-    summary.has_euf_predicate |= child_summary.has_euf_predicate;
+    summary |= child_summary;
   }
 
   // `(= a b)` is built by the sort-agnostic mk_eq for any sort, including Real.
@@ -8975,13 +9000,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     for (const core::TermId assertion : assertions) {
       const FormulaFeatureSummary assertion_features =
           summarize_formula_features(frontend.terms(), assertion, formula_feature_memo);
-      formula_features.has_equality |= assertion_features.has_equality;
-      formula_features.has_arithmetic |= assertion_features.has_arithmetic;
-      formula_features.has_euf_predicate |= assertion_features.has_euf_predicate;
+      formula_features |= assertion_features;
     }
     const bool has_equality = formula_features.has_equality;
     const bool has_arithmetic = formula_features.has_arithmetic;
     const bool has_euf_predicate = formula_features.has_euf_predicate;
+    const bool has_application_term = formula_features.has_application_term;
     const auto finish_solve = [&](CheckSatOutcome outcome, PhaseClock::time_point solve_start) {
       statistics.set(kStatTimeSolveUs, elapsed_microseconds(solve_start, PhaseClock::now()));
       statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
@@ -9019,7 +9043,14 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                        preprocessing_model_assignments, solve_options, statistics),
                           solve_start);
     }
-    if (has_equality) {
+    // has_application_term, not has_equality alone: preprocessing rewrites
+    // Bool-sorted equalities into Boolean structure before this runs, so a
+    // formula whose equalities are all over Bool has has_equality == false
+    // even when it contains uninterpreted functions. Routing that to
+    // solve_boolean_conjunction abstracts the applications to independent
+    // propositional variables and drops congruence -- a wrong answer. See
+    // docs/bool-argument-congruence-bug.md.
+    if (has_equality || has_application_term) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics,
                                       preprocessing_model_assignments),

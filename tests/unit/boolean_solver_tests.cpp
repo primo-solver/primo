@@ -2465,6 +2465,94 @@ void boolean_unit_simplification_handles_nested_rewrites() {
 
 }  // namespace
 
+// Congruence must not be dropped for Bool-sorted function arguments.
+//
+// These assert the DISPATCH as well as the answer, which is the assertion that
+// was missing: the wrong answer arose because a formula whose equalities are
+// all over Bool has has_equality == false (preprocessing rewrites them) and
+// the QF_UF dispatch keyed only on that, so an uninterpreted function reached
+// solve_boolean_conjunction and its applications were abstracted to
+// independent propositional variables. See
+// docs/bool-argument-congruence-bug.md.
+void bool_argument_congruence_is_not_dropped() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (assert (= p q))
+    (assert (not (= (f p) (f q))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uf") == 1);
+  assert(result.statistics.get(":solver.boolean") == 0);
+}
+
+// The fix must not simply force unsat: without p = q the two applications are
+// unrelated and the formula is satisfiable.
+void bool_argument_applications_stay_satisfiable_when_unrelated() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (assert (not (= (f p) (f q))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-uf") == 1);
+}
+
+// Congruence through two applications, so the chain is exercised rather than a
+// single merge.
+void bool_argument_congruence_chains_through_two_applications() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (assert (= p q))
+    (assert (not (= (f (f p)) (f (f q)))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uf") == 1);
+}
+
+// A compound Boolean argument, which the frontend normalizes with a fresh
+// constant plus a propositional equivalence (see docs/architecture.md). That
+// path needs its own coverage.
+void compound_bool_argument_congruence_is_not_dropped() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (assert (= p q))
+    (assert (not (= (f (and p q)) (f (and q p)))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uf") == 1);
+}
+
+// The widening must not be total: a formula with no uninterpreted function
+// applications still belongs to the Boolean solver.
+void purely_propositional_input_still_uses_the_boolean_solver() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (or p q))
+    (assert (or (not p) q))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.boolean") == 1);
+  assert(result.statistics.get(":solver.qf-uf") == 0);
+}
+
 int main() {
   pure_boolean_sat();
   get_model_requires_produce_models();
@@ -2576,5 +2664,10 @@ int main() {
   online_euf_propagation_accepts_already_assigned_implications();
   online_euf_reason_cache_survives_backtracking();
   boolean_unit_simplification_handles_nested_rewrites();
+  bool_argument_congruence_is_not_dropped();
+  bool_argument_applications_stay_satisfiable_when_unrelated();
+  bool_argument_congruence_chains_through_two_applications();
+  compound_bool_argument_congruence_is_not_dropped();
+  purely_propositional_input_still_uses_the_boolean_solver();
   return 0;
 }

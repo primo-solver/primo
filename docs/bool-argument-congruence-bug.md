@@ -83,102 +83,48 @@ which is exactly the unsoundness direction flagged in
 [](nelson-oppen-qf-lra-regression.md)'s fix-ordering table. It is already
 happening, before any change.
 
-## Why the fuzzers did not catch it
+## Why the fuzzers did not catch it, and what was added
 
-Neither gate generates this shape. FuzzSMT is driven by its parameters and the
-QF_UF/QF_LRA invocations do not request Bool-sorted function arguments;
-mutation fuzzing (opfuzz/typefuzz) can only produce what its seed corpus
-contains, and the QF_LRA seeds have no uninterpreted functions at all. So a
-documented-as-supported feature has no differential coverage. See
-[](fuzz-coverage-qf-lra.md) -- the same "a fuzzer covers only what it is told
-to cover" failure that note already records for seed families, in a new place.
+The shape has **no coverage in any of the three fuzzing entry points**, which
+is why 6,000 gated cases missed a wrong answer.
 
-(why-no-linter)=
-## Could a linter or a standard test have caught this?
+| entry point | why it cannot produce the shape |
+|---|---|
+| **FuzzSMT** (generator) | driven by its parameters; the QF_UF/QF_LRA invocations never request Bool-sorted function arguments |
+| **YinYang opfuzz/typefuzz** (mutation) | can only mutate what the seeds contain -- and **0 of 200** sampled SMT-LIB QF_UF files declare a function with a `Bool` argument, so the corpus never had one |
+| **`qf_uflra_smoke_fuzz.py`** (generator) | emits Bool-*returning* functions (`p (Real) Bool`) but never Bool-*argument* ones |
 
-**No standard diagnostic could.** The build already runs `-Wall -Wextra
--Wpedantic -Wunused -Werror`, and none of them applies, because
-`has_application_term` **is** used -- it is read inside
-`summarize_formula_features` to refine the Equality case. Nothing is unused,
-nothing is dead, nothing is uninitialised.
+That the SMT-LIB division itself contains none of these is the root cause: a
+mutation corpus built from real benchmarks inherits the corpus's blind spots,
+and this is a second instance of the failure
+[](fuzz-coverage-qf-lra.md) already records for seed *families*.
 
-The actual defect is subtler than "declared and never used": the struct has
-four fields and **two** places that aggregate them, and the two disagree.
+### Seeds added
 
-```cpp
-// inside the recursion -- all four fields
-summary.has_application_term |= child_summary.has_application_term;
-summary.has_equality        |= child_summary.has_equality;
-summary.has_arithmetic      |= child_summary.has_arithmetic;
-summary.has_euf_predicate   |= child_summary.has_euf_predicate;
+Four seeds in `benchmarks/seeds/qf_uf/`, which both the QF_UF gate and
+`yinyang_fuzz.sh` read **by default**, so no gate configuration changes:
 
-// the per-assertion loop -- three fields; has_application_term omitted
-formula_features.has_equality        |= assertion_features.has_equality;
-formula_features.has_arithmetic      |= assertion_features.has_arithmetic;
-formula_features.has_euf_predicate   |= assertion_features.has_euf_predicate;
-```
+| seed | shape |
+|---|---|
+| `seed_bool_argument_predicate.smt2` | unary and binary Bool-argument predicates, satisfiable |
+| `seed_bool_argument_compound.smt2` | *compound* Boolean arguments (`(f (and p q))`), exercising the fresh-constant normalization |
+| `seed_bool_argument_mixed_sort.smt2` | Bool arguments alongside an uninterpreted sort, congruence across both |
+| `seed_bool_argument_congruence_unsat.smt2` | **unsat purely by Bool-argument congruence** |
 
-So at the dispatch the field silently held its default `false`. A compiler
-cannot flag "this field is always its default at this point" -- that needs
-whole-program value analysis, and no check in clang-tidy or the GCC/Clang
-warning set does it. (The repository also has no `.clang-tidy` at all, but
-adding one would not have helped here.)
+The last one is the important one, and the reason it exists is worth stating:
+**dropping congruence can only ever produce a spurious `sat`**, so a
+satisfiable seed cannot expose this class of bug. Verified -- the pre-fix
+binary answers `sat` on it against z3's `unsat`, and the post-fix binary
+answers `unsat`. The other three agree with z3 both before and after, which
+is exactly why they were not sufficient on their own.
 
-### What does prevent it: make the enumeration happen once
+All four are well-sorted (z3 parses and solves each) and far below the
+`typefuzz -L` seed-size limit that [](fuzz-coverage-qf-lra.md) records as
+having silently dropped 12 seeds once already.
 
-Give the struct an `operator|=` that ORs every field, and route **both**
-aggregation sites through it, so the field list exists in exactly one place:
-
-```cpp
-FormulaFeatureSummary& operator|=(const FormulaFeatureSummary& other) {
-  has_application_term |= other.has_application_term;
-  has_equality        |= other.has_equality;
-  has_arithmetic      |= other.has_arithmetic;
-  has_euf_predicate   |= other.has_euf_predicate;
-  return *this;
-}
-```
-
-with a compile-time tripwire so a future field cannot be forgotten:
-
-```cpp
-static_assert(sizeof(FormulaFeatureSummary) == 4,
-              "FormulaFeatureSummary gained a field -- add it to operator|=");
-```
-
-**Verified**: adding a fifth field makes the build fail with exactly that
-message. The bug class is turned off rather than fixed once.
-
-### And the test that was missing
-
-A unit test asserting the **dispatch** -- not just the answer -- for a formula
-containing an uninterpreted function whose equalities are all over Bool. That
-is the assertion nobody wrote, and it is cheap. Answer-only tests would not
-have caught this either, since the wrong answer requires the specific shape in
-the reproducer.
-
-(prototype)=
-## Prototype: measured 2026-08-07
-
-Three lines (aggregate the field, expose it, use it), plus the structural
-refactor above:
-
-```cpp
-if (has_equality || has_application_term) { ... solve_qf_uf(...) ... }
-```
-
-| check | before | after |
-|---|---|---|
-| reproducer | **`sat`** (wrong) | **`unsat`**, on `:solver.qf-uf` |
-| `f(p)`, `f(q)` with `p`, `q` not equal | `sat` | `sat` (matches z3) |
-| purely propositional formula | `:solver.boolean` | `:solver.boolean` -- widening is not total |
-| uninterpreted-sort congruence | `unsat` | `unsat` |
-| unit suites (boolean, euf, qf_lra, preprocessing, theory_combination) | -- | **all pass** |
-| 60 QF_UF benchmarks, differential vs main | -- | **0 answer disagreements, 0 path changes** |
-
-The zero path changes on real QF_UF input is the reassuring part: those files
-all contain surviving non-Bool equalities, so `has_equality` already routed
-them and the widening reaches only the shape that was previously mis-routed.
+**Still open:** `qf_uflra_smoke_fuzz.py` needs a template with a Bool-argument
+function so the *mixed* path gets the same coverage, and FuzzSMT's parameters
+should be checked for whether Bool-sorted arguments can be requested at all.
 
 ## Fix direction, and the trap in it
 
