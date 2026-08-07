@@ -680,6 +680,19 @@ class Frontend {
  public:
   friend class TermBuilder;
 
+  static bool contains_application(const core::TermManager& terms, core::TermId term) {
+    const core::Term& node = terms.get(term);
+    if (node.kind == core::TermKind::Application) {
+      return true;
+    }
+    for (const core::TermId child : node.children) {
+      if (contains_application(terms, child)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   core::TermId build_term(const smtlib::SExpr& expr) {
     TermBuilder builder(*this);
     return builder.run(expr);
@@ -803,6 +816,9 @@ class Frontend {
       throw UnsupportedInput("equality sort mismatch");
     }
     if (lhs_sort == symbols_.bool_sort()) {
+      if (contains_application(terms_, lhs) || contains_application(terms_, rhs)) {
+        return terms_.mk_eq(lhs, rhs);
+      }
       return terms_.mk_and({terms_.mk_implies(lhs, rhs), terms_.mk_implies(rhs, lhs)});
     }
     return terms_.mk_eq(lhs, rhs);
@@ -814,6 +830,9 @@ class Frontend {
       throw UnsupportedInput("distinct sort mismatch");
     }
     if (lhs_sort == symbols_.bool_sort()) {
+      if (contains_application(terms_, lhs) || contains_application(terms_, rhs)) {
+        return terms_.mk_not(terms_.mk_eq(lhs, rhs));
+      }
       return terms_.mk_or(
           {terms_.mk_and({lhs, terms_.mk_not(rhs)}), terms_.mk_and({terms_.mk_not(lhs), rhs})});
     }
@@ -1581,6 +1600,32 @@ class BooleanClausifier {
 
   const std::vector<TheoryAtom>& theory_atoms() const { return theory_atoms_; }
 
+  void materialize_boolean_argument_literals() {
+    std::function<void(core::TermId)> visit = [&](core::TermId term_id) {
+      const core::Term& term = terms_.get(term_id);
+      if (term.kind == core::TermKind::Application && term.sort == terms_.symbols().bool_sort()) {
+        for (const core::TermId child : term.children) {
+          if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
+            encode(child);
+          }
+        }
+      }
+      for (const core::TermId child : term.children) {
+        visit(child);
+      }
+    };
+    for (std::size_t index = 0; index < theory_atoms_.size(); ++index) {
+      visit(theory_atoms_[index].term);
+    }
+  }
+
+  std::optional<sat::Lit> existing_literal(core::TermId term) const {
+    if (term >= lit_by_term_.size() || lit_by_term_[term].value == 0) {
+      return std::nullopt;
+    }
+    return lit_by_term_[term];
+  }
+
  private:
   void collect_theory_atom_polarities(core::TermId term_id, bool positive) {
     ensure_term_index(term_id);
@@ -1642,6 +1687,17 @@ class BooleanClausifier {
     const std::size_t existing = theory_atom_by_term_[term_id];
     if (existing != kNoTheoryAtom) {
       return theory_atoms_[existing];
+    }
+    const core::Term& term = terms_.get(term_id);
+    if (term.kind == core::TermKind::Application && term.sort == terms_.symbols().bool_sort()) {
+      for (const core::TermId child : term.children) {
+        if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
+          const sat::Lit child_lit = encode(child);
+          const sat::Lit witness{backend_.new_var()};
+          backend_.add_clause(sat::Clause{child_lit, witness});
+          backend_.add_clause(sat::Clause{negate(child_lit), negate(witness)});
+        }
+      }
     }
     const sat::Lit lit = encode_theory_atom_lit(term_id);
     theory_atom_by_term_[term_id] = theory_atoms_.size();
@@ -1739,6 +1795,20 @@ class BooleanClausifier {
       case core::TermKind::Application:
         if (term.sort != terms_.symbols().bool_sort()) {
           throw UnsupportedInput("non-Boolean function application in Boolean context");
+        }
+        for (const core::TermId child : term.children) {
+          if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
+            const sat::Lit child_lit = encode(child);
+            // Boolean UF arguments are semantic terms even when they do not
+            // occur as standalone assertions. Keep their SAT variables in
+            // the backend assignment so the finite-domain bridge can explain
+            // their current truth values.
+            const sat::Lit witness{backend_.new_var()};
+            // Force both the argument and a private complement witness into
+            // the SAT model without constraining the argument's value.
+            backend_.add_clause(sat::Clause{child_lit, witness});
+            backend_.add_clause(sat::Clause{negate(child_lit), negate(witness)});
+          }
         }
         return theory_atom_for_term(term_id).lit;
       case core::TermKind::Equality:
@@ -1869,6 +1939,14 @@ struct FormulaFeatureSummary {
   bool has_equality = false;
   bool has_arithmetic = false;
   bool has_euf_predicate = false;
+
+  FormulaFeatureSummary& operator|=(const FormulaFeatureSummary& other) {
+    has_application_term |= other.has_application_term;
+    has_equality |= other.has_equality;
+    has_arithmetic |= other.has_arithmetic;
+    has_euf_predicate |= other.has_euf_predicate;
+    return *this;
+  }
 };
 
 FormulaFeatureSummary summarize_formula_features(
@@ -1889,10 +1967,7 @@ FormulaFeatureSummary summarize_formula_features(
 
   for (const core::TermId child : term.children) {
     const FormulaFeatureSummary child_summary = summarize_formula_features(terms, child, memo);
-    summary.has_application_term |= child_summary.has_application_term;
-    summary.has_equality |= child_summary.has_equality;
-    summary.has_arithmetic |= child_summary.has_arithmetic;
-    summary.has_euf_predicate |= child_summary.has_euf_predicate;
+    summary |= child_summary;
   }
 
   // `(= a b)` is built by the sort-agnostic mk_eq for any sort, including Real.
@@ -2040,10 +2115,19 @@ CheckSatOutcome solve_boolean_conjunction(
 }
 
 struct AssignedTheoryAtom {
+  AssignedTheoryAtom(int literal = 0, bool atom_value = false, core::TermId atom_term = 0,
+                     bool is_filtered = false, std::vector<sat::Lit> atom_reason = {})
+      : lit(literal),
+        value(atom_value),
+        term(atom_term),
+        filtered(is_filtered),
+        reason(std::move(atom_reason)) {}
+
   int lit = 0;
   bool value = false;
   core::TermId term = 0;
   bool filtered = false;
+  std::vector<sat::Lit> reason;
 };
 
 sat::Lit blocking_lit(const AssignedTheoryAtom& atom) {
@@ -2684,16 +2768,18 @@ void assert_flat_assigned_atom(theory::equality::FlatCongruenceClosure& closure,
                                const FlatAssignedTheoryAtom& atom,
                                theory::equality::FlatTermId true_flat,
                                theory::equality::FlatTermId false_flat) {
+  const std::vector<sat::Lit> reason = atom.source.reason.empty()
+                                           ? std::vector<sat::Lit>{blocking_lit(atom.source)}
+                                           : atom.source.reason;
   if (atom.equality) {
     if (atom.source.value) {
-      closure.assert_equal(atom.lhs, atom.rhs, {blocking_lit(atom.source)});
+      closure.assert_equal(atom.lhs, atom.rhs, reason);
     } else {
-      closure.assert_distinct(atom.lhs, atom.rhs, {blocking_lit(atom.source)});
+      closure.assert_distinct(atom.lhs, atom.rhs, reason);
     }
     return;
   }
-  closure.assert_equal(atom.lhs, atom.source.value ? true_flat : false_flat,
-                       {blocking_lit(atom.source)});
+  closure.assert_equal(atom.lhs, atom.source.value ? true_flat : false_flat, reason);
 }
 
 std::optional<std::vector<sat::Lit>> flat_candidate_explanation(
@@ -4062,6 +4148,7 @@ std::optional<sat::Clause> find_incremental_theory_conflict(
     FlatAssignedTheoryAtom atom = prepared.flat_atoms[i];
     atom.source.value = atoms[i].value;
     atom.source.filtered = atoms[i].filtered;
+    atom.source.reason = atoms[i].reason;
     if (atom.source.filtered) {
       continue;
     }
@@ -4095,6 +4182,7 @@ EufClosureCheckResult check_incremental_euf_closure(const PreparedFlatTheory& pr
     FlatAssignedTheoryAtom atom = prepared.flat_atoms[i];
     atom.source.value = atoms[i].value;
     atom.source.filtered = atoms[i].filtered;
+    atom.source.reason = atoms[i].reason;
     if (atom.source.filtered) {
       continue;
     }
@@ -5338,6 +5426,121 @@ std::vector<core::TermId> real_constants_in_atoms(
   }
   std::vector<core::TermId> result(real_terms.begin(), real_terms.end());
   std::sort(result.begin(), result.end());
+  return result;
+}
+
+struct BooleanBridgeEquality {
+  core::TermId equality = core::kInvalidTermId;
+  bool value = true;
+  std::vector<sat::Lit> reason;
+};
+
+void collect_boolean_applications(
+    const core::TermManager& terms, core::TermId term,
+    std::unordered_map<core::SymbolId, std::vector<core::TermId>>& by_symbol) {
+  const core::Term& node = terms.get(term);
+  if (node.kind == core::TermKind::Application && node.sort == terms.symbols().bool_sort()) {
+    by_symbol[node.symbol].push_back(term);
+  }
+  for (const core::TermId child : node.children) {
+    collect_boolean_applications(terms, child, by_symbol);
+  }
+}
+
+std::vector<BooleanBridgeEquality> boolean_bridge_equalities(
+    core::TermManager& terms, const BooleanClausifier& clausifier,
+    const sat::IpasirUpBackend& backend,
+    const std::vector<BooleanClausifier::TheoryAtom>& euf_atoms,
+    const std::vector<AssignedTheoryAtom>& euf_assignments, util::Statistics& statistics) {
+  std::unordered_map<core::TermId, AssignedTheoryAtom> values;
+  for (const AssignedTheoryAtom& atom : euf_assignments) {
+    values.emplace(atom.term, atom);
+  }
+
+  std::unordered_map<core::SymbolId, std::vector<core::TermId>> applications;
+  for (const BooleanClausifier::TheoryAtom& atom : euf_atoms) {
+    collect_boolean_applications(terms, atom.term, applications);
+  }
+
+  std::unordered_set<TermPairKey, TermPairKeyHash> seen;
+  std::vector<BooleanBridgeEquality> result;
+  for (const auto& [symbol, apps] : applications) {
+    (void)symbol;
+    for (std::size_t i = 0; i < apps.size(); ++i) {
+      const std::vector<core::TermId> lhs_children = terms.get(apps[i]).children;
+      for (std::size_t j = i + 1; j < apps.size(); ++j) {
+        const std::vector<core::TermId> rhs_children = terms.get(apps[j]).children;
+        if (lhs_children.size() != rhs_children.size()) {
+          continue;
+        }
+        for (std::size_t arg = 0; arg < lhs_children.size(); ++arg) {
+          const core::TermId lhs = lhs_children[arg];
+          const core::TermId rhs = rhs_children[arg];
+          if (lhs == rhs) {
+            continue;
+          }
+          if (terms.get(lhs).sort != terms.symbols().bool_sort() ||
+              terms.get(rhs).sort != terms.symbols().bool_sort()) {
+            continue;
+          }
+          const TermPairKey pair = canonical_term_pair(lhs, rhs);
+          if (!seen.insert(pair).second) {
+            continue;
+          }
+          auto lhs_value = values.find(lhs);
+          auto rhs_value = values.find(rhs);
+          if (lhs_value == values.end()) {
+            if (const auto literal = clausifier.existing_literal(lhs); literal.has_value()) {
+              const auto assignment = backend.value(std::abs(literal->value));
+              if (assignment.has_value()) {
+                const bool value = literal->value > 0 ? assignment.value() : !assignment.value();
+                lhs_value =
+                    values.emplace(lhs, AssignedTheoryAtom{literal->value, value, lhs, false})
+                        .first;
+              } else {
+                statistics.increment(":no.boolean-bridge.unassigned-lhs-literal");
+              }
+            } else {
+              statistics.increment(":no.boolean-bridge.missing-lhs-literal");
+            }
+          }
+          if (rhs_value == values.end()) {
+            if (const auto literal = clausifier.existing_literal(rhs); literal.has_value()) {
+              const auto assignment = backend.value(std::abs(literal->value));
+              if (assignment.has_value()) {
+                const bool value = literal->value > 0 ? assignment.value() : !assignment.value();
+                rhs_value =
+                    values.emplace(rhs, AssignedTheoryAtom{literal->value, value, rhs, false})
+                        .first;
+              } else {
+                statistics.increment(":no.boolean-bridge.unassigned-rhs-literal");
+              }
+            } else {
+              statistics.increment(":no.boolean-bridge.missing-rhs-literal");
+            }
+          }
+          if (lhs_value == values.end() || rhs_value == values.end()) {
+            continue;
+          }
+          std::vector<sat::Lit> reason;
+          if (lhs_value->second.lit != 0) {
+            reason.push_back(assigned_lit(lhs_value->second));
+          }
+          if (rhs_value->second.lit != 0 && rhs_value->second.lit != lhs_value->second.lit) {
+            reason.push_back(assigned_lit(rhs_value->second));
+          }
+          if (reason.empty()) {
+            continue;
+          }
+          result.push_back(BooleanBridgeEquality{terms.mk_eq(lhs, rhs),
+                                                 lhs_value->second.value == rhs_value->second.value,
+                                                 std::move(reason)});
+        }
+      }
+    }
+  }
+  statistics.increment(":no.boolean-bridge.candidates", seen.size());
+  statistics.increment(":no.boolean-bridge.equalities", result.size());
   return result;
 }
 
@@ -8559,6 +8762,7 @@ CheckSatOutcome solve_qf_uf_lra(
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
+  clausifier.materialize_boolean_argument_literals();
 
   std::vector<BooleanClausifier::TheoryAtom> euf_atoms;
   std::vector<BooleanClausifier::TheoryAtom> lra_atoms;
@@ -8734,6 +8938,12 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.online.final-lra-equality-scan-skipped", 0);
   statistics.set(":no.online.final-lra-equality-scan-capped", 0);
   statistics.set(":no.online.final-lra-equality-scan-fallbacks", 0);
+  statistics.set(":no.boolean-bridge.candidates", 0);
+  statistics.set(":no.boolean-bridge.equalities", 0);
+  statistics.set(":no.boolean-bridge.missing-lhs-literal", 0);
+  statistics.set(":no.boolean-bridge.missing-rhs-literal", 0);
+  statistics.set(":no.boolean-bridge.unassigned-lhs-literal", 0);
+  statistics.set(":no.boolean-bridge.unassigned-rhs-literal", 0);
   statistics.set(":no.interface.lra-conflict-lits", 0);
   statistics.set(":no.interface.lra-conflict-duplicates", 0);
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
@@ -8845,6 +9055,14 @@ CheckSatOutcome solve_qf_uf_lra(
         count_filtered_assignment(atom, statistics);
       }
       euf_assignments_for_check = euf_assignments;
+      const std::vector<BooleanBridgeEquality> boolean_bridge = boolean_bridge_equalities(
+          terms, clausifier, backend, euf_atoms, euf_assignments, statistics);
+      for (const BooleanBridgeEquality& bridge : boolean_bridge) {
+        euf_atoms_for_check.push_back(
+            BooleanClausifier::TheoryAtom{sat::Lit{0}, bridge.equality, false, false});
+        euf_assignments_for_check.push_back(
+            AssignedTheoryAtom{0, bridge.value, bridge.equality, false, bridge.reason});
+      }
       append_true_interface_equalities(true_interface_equalities, euf_atoms_for_check,
                                        euf_assignments_for_check);
       append_interface_equalities(false_interface_equalities, false, euf_atoms_for_check,
@@ -9978,13 +10196,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     for (const core::TermId assertion : assertions) {
       const FormulaFeatureSummary assertion_features =
           summarize_formula_features(frontend.terms(), assertion, formula_feature_memo);
-      formula_features.has_equality |= assertion_features.has_equality;
-      formula_features.has_arithmetic |= assertion_features.has_arithmetic;
-      formula_features.has_euf_predicate |= assertion_features.has_euf_predicate;
+      formula_features |= assertion_features;
     }
     const bool has_equality = formula_features.has_equality;
     const bool has_arithmetic = formula_features.has_arithmetic;
     const bool has_euf_predicate = formula_features.has_euf_predicate;
+    const bool has_application_term = formula_features.has_application_term;
     const auto finish_solve = [&](CheckSatOutcome outcome, PhaseClock::time_point solve_start) {
       statistics.set(kStatTimeSolveUs, elapsed_microseconds(solve_start, PhaseClock::now()));
       statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
@@ -10022,7 +10239,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                        preprocessing_model_assignments, solve_options, statistics),
                           solve_start);
     }
-    if (has_equality) {
+    if (has_equality || has_application_term) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics,
                                       preprocessing_model_assignments),

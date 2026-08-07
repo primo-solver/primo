@@ -78,6 +78,19 @@ Boolean arguments, Boolean arguments mixed with an uninterpreted sort, and an
 UNSAT case whose contradiction is purely Boolean congruence. Each seed also
 contains a Real constraint so that the QF_UFLRA dispatch path is exercised.
 
+The QF_UFLRA smoke generator has a dedicated `bool-arguments` shape as well.
+It generates unary and binary Boolean-argument applications, compound Boolean
+arguments, explicit and transitive Boolean equalities, and Real constraints.
+The `mixed` mode includes this shape with the same seeded pseudo-random
+selection as the existing EUF/LRA shapes.
+
+Mixed solving now uses a finite-domain Boolean bridge. Boolean arguments of
+UF applications receive SAT literals even when they are not standalone
+assertions. For relevant same-symbol application pairs, equal or unequal SAT
+truth values produce an explained Boolean equality or disequality for the
+EUF closure. The bridge is model-time and care-pair based; it does not create
+all Boolean pairs or treat an unexplained model coincidence as equality.
+
 The required regression suite includes explicit equality, CNF equality, the
 transitive CNF case `a = b = c = d` with `f(a) != f(d)`, and nested Boolean
 equalities. Any future pruning change must prove these cases with independent

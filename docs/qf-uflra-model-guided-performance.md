@@ -33,12 +33,19 @@ blocked until the repaired path passes the stronger gate below.
 The fuzz evidence that preceded this broad run was insufficient for this
 mechanism. The default filter had 1000 generated `mixed` cases from
 `scripts/qf_uflra_smoke_fuzz.py` with seed `20260806`, but that generator uses
-small synthetic formulas and there is no tracked `benchmarks/seeds/qf_uflra`
-real-benchmark seed corpus. The opt-in candidate-final path had only a 100-case
+small synthetic formulas. The generator now includes a dedicated
+`bool-arguments` shape and the mixed mode samples it alongside the other
+QF_UFLRA shapes. The tracked `benchmarks/seeds/qf_uflra` corpus also contains
+Boolean-argument regressions. The opt-in candidate-final path had only a 100-case
 smoke run with seed `20260804`. Future QF_UFLRA theory-combination benchmarks
 must run a merge-grade gate for the exact solver options being evaluated, and
 that gate must include real benchmark seeds or saved regressions for the
 arrangement/equality mechanism.
+
+The Boolean-argument bridge is deliberately separate from the arithmetic
+model-guided scan. It uses SAT's finite Boolean domain and explained care-pair
+equalities to make Boolean UF congruence available to mixed EUF without adding
+an all-pairs SAT workload.
 
 The older evidence below is historical context only; it is not sufficient to
 claim the current filter is sound.

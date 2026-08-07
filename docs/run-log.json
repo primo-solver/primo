@@ -21182,6 +21182,60 @@
     ],
     "evidence_status": "current",
     "outcome": "Candidate-final scan is a substantial targeted improvement in wall time and arrangement work, with identical solved count and no wrong answers. It does not solve the three CPAchecker timeout rows; the next performance investigation should focus on those rows rather than broadening this scan claim."
-  }
+  },
+    {
+      "id": "2026-08-07-qf-uflra-bool-argument-generator-bc2acfc",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA Boolean-argument generator differential smoke",
+      "commit": "working tree after bc2acfc",
+      "host": "local workspace",
+      "command": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 100 --seed 20260807 --timeout 5 --shape bool-arguments; python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 100 --seed 20260808 --timeout 5 --shape mixed",
+      "results": {
+        "bool_arguments": {
+          "count": 100,
+          "pass": 100,
+          "wrong_answer": 0,
+          "timeout": 0,
+          "crash": 0,
+          "unsupported": 0
+        },
+        "mixed": {
+          "count": 100,
+          "pass": 100,
+          "wrong_answer": 0,
+          "timeout": 0,
+          "crash": 0,
+          "unsupported": 0
+        }
+      },
+      "artifact": "/tmp/qf-uflra-{bool-generator-3,mixed-generator-3}",
+      "evidence_status": "local-only",
+      "outcome": "The new dedicated and mixed generator shapes agree with Z3 on all 200 cases. A fresh SLURM merge gate is still required before campaign-level coverage claims."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-bool-bridge-local-verified",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "Boolean-domain EUF bridge regression and generator gate",
+      "commit": "working tree",
+      "host": "local workspace",
+      "commands": [
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 20260809 --timeout 5 --shape bool-arguments",
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 20260810 --timeout 5 --shape mixed",
+        "make check"
+      ],
+      "results": {
+        "bool_arguments": {"count": 1000, "pass": 1000, "wrong_answer": 0, "unsupported": 0},
+        "mixed": {"count": 1000, "pass": 1000, "wrong_answer": 0, "unsupported": 0},
+        "ctest": {"tests": 13, "passed": 13}
+      },
+      "artifacts": [
+        "/tmp/qf-uflra-bool-generator-fixed-4/summary.csv",
+        "/tmp/qf-uflra-mixed-generator-fixed/summary.csv"
+      ],
+      "evidence_status": "local-only",
+      "outcome": "The finite-domain Boolean bridge fixed the three minimized wrong-answer reproducers and passed both 1000-case differential gates. SLURM campaign validation remains required before promotion claims."
+    }
   ]
 }

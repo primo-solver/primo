@@ -2463,6 +2463,25 @@ void boolean_unit_simplification_handles_nested_rewrites() {
   assert(result.statistics.get(":preprocessing.boolean-units.rewrites") >= 1);
 }
 
+void bool_argument_congruence_preserves_boolean_domain() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (declare-fun g (Bool Bool) Bool)
+    (declare-fun x () Real)
+    (assert (= (f p) (f q)))
+    (assert (not (g q q)))
+    (assert (distinct (f false) (f true)))
+    (assert (g p q))
+    (assert (< 0 x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.boolean-bridge.equalities") >= 1);
+}
+
 }  // namespace
 
 int main() {
@@ -2576,5 +2595,6 @@ int main() {
   online_euf_propagation_accepts_already_assigned_implications();
   online_euf_reason_cache_survives_backtracking();
   boolean_unit_simplification_handles_nested_rewrites();
+  bool_argument_congruence_preserves_boolean_domain();
   return 0;
 }

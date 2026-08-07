@@ -101,6 +101,24 @@ NONCONSTANT_REAL_LRA_ATOMS = [
     "(<= (+ (* 2 x) y) 7)",
 ]
 
+BOOL_ARGUMENT_EUF_ATOMS = [
+    "(= (f p) (f q))",
+    "(= (f q) (f r))",
+    "(g p q)",
+    "(g q p)",
+    "(f (and p q))",
+    "(f (or q r))",
+    "(= (f (not p)) (f (not q)))",
+]
+
+BOOL_ARGUMENT_LRA_ATOMS = [
+    "(< 0 x)",
+    "(< x 4)",
+    "(<= (- x y) 2)",
+    "(< (+ x y) 5)",
+    "(< y 3)",
+]
+
 
 def generate_separable_case(rng: random.Random, index: int) -> str:
     euf_count = 1 + rng.randrange(4)
@@ -218,6 +236,41 @@ def generate_nonconstant_real_case(rng: random.Random, index: int) -> str:
 """
 
 
+def generate_bool_argument_case(rng: random.Random, index: int) -> str:
+    euf_count = 1 + rng.randrange(4)
+    lra_count = 1 + rng.randrange(3)
+    euf_atoms = rng.sample(BOOL_ARGUMENT_EUF_ATOMS, euf_count)
+    lra_atoms = rng.sample(BOOL_ARGUMENT_LRA_ATOMS, lra_count)
+
+    # Keep every case in the supported mixed-EUF fragment, even when the
+    # random sample happens to select only equality atoms.
+    assertions = ["(f p)"]
+    assertions.extend(atom_with_polarity(rng, atom) for atom in euf_atoms)
+    assertions.extend(atom_with_polarity(rng, atom) for atom in lra_atoms)
+
+    # Force congruence and transitive Boolean-equality shapes regularly enough
+    # that a random smoke run cannot accidentally omit the critical cases.
+    if index % 5 == 0:
+        assertions.extend(["(= p q)", "(not (= (f p) (f q)))"])
+    if index % 7 == 0:
+        assertions.extend(["(= p q)", "(= q r)", "(not (= (g p p) (g r r)))"])
+    if index % 11 == 0:
+        assertions.extend(["(= (and p q) (and q p))", "(f (and p q))"])
+
+    body = "\n".join(f"  (assert {assertion})" for assertion in assertions)
+    return f"""(set-logic QF_UFLRA)
+(declare-fun p () Bool)
+(declare-fun q () Bool)
+(declare-fun r () Bool)
+(declare-fun f (Bool) Bool)
+(declare-fun g (Bool Bool) Bool)
+(declare-fun x () Real)
+(declare-fun y () Real)
+{body}
+(check-sat)
+"""
+
+
 def generate_case(rng: random.Random, index: int, shape: str) -> str:
     if shape == "separable":
         return generate_separable_case(rng, index)
@@ -227,14 +280,18 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
         return generate_shared_real_case(rng, index)
     if shape == "nonconstant-real":
         return generate_nonconstant_real_case(rng, index)
-    choice = rng.randrange(4)
+    if shape == "bool-arguments":
+        return generate_bool_argument_case(rng, index)
+    choice = rng.randrange(5)
     if choice == 0:
         return generate_separable_case(rng, index)
     if choice == 1:
         return generate_purified_case(rng, index)
     if choice == 2:
         return generate_shared_real_case(rng, index)
-    return generate_nonconstant_real_case(rng, index)
+    if choice == 3:
+        return generate_nonconstant_real_case(rng, index)
+    return generate_bool_argument_case(rng, index)
 
 
 def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
@@ -292,7 +349,14 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=Path("fuzz-results/qf_uflra-smoke"))
     parser.add_argument(
         "--shape",
-        choices=["separable", "purified", "shared-real", "nonconstant-real", "mixed"],
+        choices=[
+            "separable",
+            "purified",
+            "shared-real",
+            "nonconstant-real",
+            "bool-arguments",
+            "mixed",
+        ],
         default="separable",
     )
     parser.add_argument("--solver-arg", action="append", default=[])
