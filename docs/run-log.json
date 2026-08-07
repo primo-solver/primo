@@ -21256,6 +21256,32 @@
       "artifact": "/tmp/qf-uflra-bool-generator-campaign-3000/summary.csv",
       "evidence_status": "local-only",
       "outcome": "All 3000 generated Boolean-argument QF_UFLRA cases agreed with Z3. Direct cluster campaign remains unavailable because 10.35.125.63 timed out on direct SSH."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-bool-canonical-bridge-verified",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "Canonical SAT-linked Boolean-domain bridge regression gate",
+      "commit": "working tree after 6de46b8",
+      "host": "local workspace",
+      "commands": [
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 20260812 --timeout 5 --shape bool-arguments",
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 20260813 --timeout 5 --shape mixed",
+        "make check",
+        "make asan-test"
+      ],
+      "results": {
+        "bool_arguments": {"count": 1000, "pass": 1000, "wrong_answer": 0, "timeout": 0, "crash": 0, "unsupported": 0},
+        "mixed": {"count": 1000, "pass": 1000, "wrong_answer": 0, "timeout": 0, "crash": 0, "unsupported": 0},
+        "ctest": {"tests": 13, "passed": 13},
+        "asan_ctest": {"tests": 13, "passed": 13}
+      },
+      "artifacts": [
+        "/tmp/qf-uflra-bool-canonical-fixed-1000/summary.csv",
+        "/tmp/qf-uflra-mixed-canonical-fixed-1000/summary.csv"
+      ],
+      "evidence_status": "local-only",
+      "outcome": "The persistent true/false EUF bridge passed both differential gates and all regular and ASAN tests. An initial use-after-free in the term traversal was caught by ASAN on the first campaign attempt and fixed before these final results."
     }
   ]
 }

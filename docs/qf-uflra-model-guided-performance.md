@@ -43,9 +43,10 @@ that gate must include real benchmark seeds or saved regressions for the
 arrangement/equality mechanism.
 
 The Boolean-argument bridge is deliberately separate from the arithmetic
-model-guided scan. It uses SAT's finite Boolean domain and explained care-pair
-equalities to make Boolean UF congruence available to mixed EUF without adding
-an all-pairs SAT workload.
+model-guided scan. It uses canonical EUF `true`/`false` terms and SAT clauses
+linking each Boolean UF argument to exactly one of them. This makes Boolean UF
+congruence available to mixed EUF through ordinary explained closure, without
+promoting model coincidences or adding an all-pairs SAT workload.
 
 The older evidence below is historical context only; it is not sufficient to
 claim the current filter is sound.

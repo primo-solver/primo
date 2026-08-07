@@ -2479,7 +2479,7 @@ void bool_argument_congruence_preserves_boolean_domain() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
-  assert(result.statistics.get(":no.boolean-bridge.equalities") >= 1);
+  assert(result.statistics.get(":no.boolean-domain.bridged-terms") >= 1);
 }
 
 }  // namespace

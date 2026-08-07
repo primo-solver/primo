@@ -74,8 +74,9 @@ this EUF shape.
 
 The mixed-theory seed corpus mirrors these shapes under
 `benchmarks/seeds/qf_uflra/`: direct Boolean-argument predicates, compound
-Boolean arguments, Boolean arguments mixed with an uninterpreted sort, and an
-UNSAT case whose contradiction is purely Boolean congruence. Each seed also
+Boolean arguments, Boolean arguments mixed with an uninterpreted sort, a
+Boolean-valued argument whose result is compared in EUF, and an UNSAT case
+whose contradiction is purely Boolean congruence. Each seed also
 contains a Real constraint so that the QF_UFLRA dispatch path is exercised.
 
 The QF_UFLRA smoke generator has a dedicated `bool-arguments` shape as well.
@@ -84,12 +85,14 @@ arguments, explicit and transitive Boolean equalities, and Real constraints.
 The `mixed` mode includes this shape with the same seeded pseudo-random
 selection as the existing EUF/LRA shapes.
 
-Mixed solving now uses a finite-domain Boolean bridge. Boolean arguments of
-UF applications receive SAT literals even when they are not standalone
-assertions. For relevant same-symbol application pairs, equal or unequal SAT
-truth values produce an explained Boolean equality or disequality for the
-EUF closure. The bridge is model-time and care-pair based; it does not create
-all Boolean pairs or treat an unexplained model coincidence as equality.
+Mixed solving now uses a persistent finite-domain Boolean bridge. Boolean
+arguments of UF applications are linked to canonical EUF terms for `true` and
+`false` by SAT clauses. The bridge creates the two equality atoms
+`(= argument true)` and `(= argument false)`, selects them from the argument's
+SAT literal, enforces mutual exclusion, and asserts that the canonical values
+are distinct. Ordinary congruence closure then handles all applications,
+including different application symbols, nested Boolean arguments, and
+transitive CNF equivalences. No model coincidence is promoted to an equality.
 
 The required regression suite includes explicit equality, CNF equality, the
 transitive CNF case `a = b = c = d` with `f(a) != f(d)`, and nested Boolean
