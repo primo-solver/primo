@@ -149,21 +149,37 @@ rather than a fresh one per pair.
 
 **Soundness holds** — everything the rules report survives the oracle.
 
-**The shape of what they miss is now concrete.** Pinning `s = x - y` to 0
-entails `x ≃ y`, and neither rule finds it:
+**The shape of what they miss is now concrete, and it is not what I first
+assumed.** Pinning `s = x - y` to 0 entails `x ≃ y`, and neither rule finds it:
 
 - **FixedEq** needs `x` and `y` themselves fixed. Here only their *difference*
   is.
 - **EqRow** only inspects rows of shared **basic** variables. Here the basic
-  variable is `s`, which is not shared at all — the two shared variables are
-  both non-basic.
+  variable is `s`, which is not shared at all.
 
-So the gap is not random: it is **equalities between two non-basic shared
-variables, mediated by a row whose basic variable is not shared.** That is
-exactly the shape the paper's `EqOffsetRows` and `EqRows` cover, which is a
-concrete argument for implementing them rather than a general appeal to
-completeness. Until they exist, this is what the combination layer must
-case-split on.
+The first reading of that was "this is the shape `EqOffsetRows`/`EqRows`
+cover". **Measured, that is wrong** -- those two rules also relate *basic*
+variables, so they do not reach it either. The gap is a property of the
+**basis**, not of the constraints:
+
+| | `s` basic? | `x` basic? | equalities deduced |
+|---|---|---|---:|
+| `--lra-fixed-elimination` off | yes | no | **0** |
+| `--lra-fixed-elimination` on | no | **yes** | **1** |
+
+Identical constraints both times. Pivot the fixed slack out of the basis and
+the row becomes `x = y + s` with `s` fixed at 0 -- exactly EqRow's premise, so
+it fires.
+
+This is the paper's own remark in §5.1, *"We also aggressively remove fixed
+variables from the basis"*, demonstrated rather than quoted. It also sharpens
+the argument two sections above: **`--lra-fixed-elimination` is not merely a
+pivoting economy under theory combination -- it decides what we can deduce at
+all.** It was measured off on grounds that had nothing downstream consuming
+fixedness, and that measurement does not transfer.
+
+Pinned by `fixed_elimination_closes_the_eqrow_basis_gap` in
+`tests/unit/lra_tableau_tests.cpp`.
 
 ## Proposed order of work on our side
 
