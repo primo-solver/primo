@@ -21236,6 +21236,26 @@
       ],
       "evidence_status": "local-only",
       "outcome": "The finite-domain Boolean bridge fixed the three minimized wrong-answer reproducers and passed both 1000-case differential gates. SLURM campaign validation remains required before promotion claims."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-bool-bridge-local-campaign",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA Boolean-argument campaign gate",
+      "commit": "47fd382",
+      "host": "local workspace",
+      "command": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 3000 --seed 20260811 --timeout 5 --shape bool-arguments --out /tmp/qf-uflra-bool-generator-campaign-3000",
+      "results": {
+        "count": 3000,
+        "pass": 3000,
+        "wrong_answer": 0,
+        "timeout": 0,
+        "crash": 0,
+        "unsupported": 0
+      },
+      "artifact": "/tmp/qf-uflra-bool-generator-campaign-3000/summary.csv",
+      "evidence_status": "local-only",
+      "outcome": "All 3000 generated Boolean-argument QF_UFLRA cases agreed with Z3. Direct cluster campaign remains unavailable because 10.35.125.63 timed out on direct SSH."
     }
   ]
 }
