@@ -266,7 +266,10 @@ Implemented now:
   The coordinator repeats this process to a convex equality fixpoint. EUF emits
   a deterministic spanning set for each equality class of shared Real terms.
   LRA first asks the feasible tableau for explanation-carrying `FixedEq` and
-  `EqRow` entailments. If either direction learns a guarded clause, SAT is
+  `EqRow` entailments. Mixed QF_UFLRA enables fixed-variable elimination by
+  default so fixed basic rows are pivoted into the shape consumed by `EqRow`;
+  `--no-qf-uflra-fixed-elimination` is the ablation switch. The global pure-LRA
+  `--lra-fixed-elimination` option remains off by default. If either direction learns a guarded clause, SAT is
   re-entered so both theories see the equality on the next round. Once these
   cheap producers are quiescent, the default path tests both strict orders only
   for still-unresolved shared Real pairs. This exact fallback is the

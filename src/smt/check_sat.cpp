@@ -5727,6 +5727,10 @@ LraTheoryCheckResult check_incremental_lra_theory(const PreparedLraTheory& prepa
 std::optional<sat::Clause> find_incremental_lra_theory_conflict(
     const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& atoms);
 
+bool lra_fixed_elimination_for_mixed(const CheckSatOptions& options) {
+  return options.lra_fixed_elimination || options.qf_uflra_fixed_elimination;
+}
+
 std::optional<sat::Clause> lra_assignment_conflict_with_extra_atom(
     const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId extra_atom,
@@ -5741,7 +5745,7 @@ std::optional<sat::Clause> lra_assignment_conflict_with_extra_atom(
   augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, extra_atom, false});
   const PreparedLraTheory augmented_lra_theory(
       terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, false,
+      options.lra_sparse_leaving, lra_fixed_elimination_for_mixed(options), false,
       /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments);
 }
@@ -5905,7 +5909,7 @@ bool lra_assignment_conflicts_with_extra_atoms(
   }
   const PreparedLraTheory augmented_lra_theory(
       terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, false,
+      options.lra_sparse_leaving, lra_fixed_elimination_for_mixed(options), false,
       /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments)
       .has_value();
@@ -6169,7 +6173,7 @@ RealModelSeparationResult greedy_shared_real_model_separation_atoms(
     }
     const PreparedLraTheory prepared(
         terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-        options.lra_sparse_leaving, options.lra_fixed_elimination, true,
+        options.lra_sparse_leaving, lra_fixed_elimination_for_mixed(options), true,
         /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
     theory::arithmetic::LraTableau tableau = prepared.base_tableau;
     bool consistent = true;
@@ -6329,7 +6333,7 @@ std::optional<LraModelState> build_lra_model_state(
 
   PreparedLraTheory prepared(
       terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, true,
+      options.lra_sparse_leaving, lra_fixed_elimination_for_mixed(options), true,
       /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   theory::arithmetic::LraTableau tableau = prepared.base_tableau;
   for (std::size_t i = 0; i < augmented_lra_assignments.size(); ++i) {
@@ -9073,6 +9077,7 @@ CheckSatOutcome solve_qf_uf_lra(
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(":solver.qf-uflra");
+  const bool mixed_fixed_elimination = lra_fixed_elimination_for_mixed(options);
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
@@ -9155,6 +9160,7 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-opportunistic-created-atoms", 0);
   statistics.set(":no.interface.lra-opportunistic-clauses", 0);
   statistics.set(":no.interface.lra-opportunistic-rechecks", 0);
+  statistics.set(":no.interface.lra-fixed-elimination-enabled", mixed_fixed_elimination ? 1 : 0);
   statistics.set(":no.interface.lra-exact-fallback-pairs", 0);
   statistics.set(":no.interface.lra-exact-fallback-skipped-pairs", 0);
   statistics.set(":no.interface.lra-exact-fallback-equalities", 0);
@@ -9304,7 +9310,7 @@ CheckSatOutcome solve_qf_uf_lra(
   const core::TermId false_term = terms.mk_bool(false);
   const PreparedLraTheory base_prepared_lra_theory(
       terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination,
+      options.lra_sparse_leaving, mixed_fixed_elimination,
       options.produce_model || !shared_real_terms.empty(), options.lra_least_violated_leaving,
       lra_tuning_from_options(options.lra_tuning));
   publish_lra_tableau_shape_stats(base_prepared_lra_theory.base_tableau, statistics);
@@ -9330,7 +9336,7 @@ CheckSatOutcome solve_qf_uf_lra(
         base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
         options.lra_model_phase,
-        options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination, backend,
+        options.lra_pivoting_rule == LraPivotingRule::Soi || mixed_fixed_elimination, backend,
         statistics);
     if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online) {
       if (options.qf_uflra_online_euf) {
@@ -9476,7 +9482,7 @@ CheckSatOutcome solve_qf_uf_lra(
       } else {
         augmented_prepared_lra_theory.emplace(
             terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-            options.lra_sparse_leaving, options.lra_fixed_elimination,
+            options.lra_sparse_leaving, mixed_fixed_elimination,
             options.produce_model || !shared_real_terms.empty(), options.lra_least_violated_leaving,
             lra_tuning_from_options(options.lra_tuning));
         prepared_lra_theory_for_check = &augmented_prepared_lra_theory.value();

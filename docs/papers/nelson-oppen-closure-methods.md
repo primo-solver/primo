@@ -317,6 +317,7 @@ coordinator publishes:
 - `:no.interface.lra-opportunistic-created-atoms`
 - `:no.interface.lra-opportunistic-clauses`
 - `:no.interface.lra-opportunistic-rechecks`
+- `:no.interface.lra-fixed-elimination-enabled`
 - `:no.interface.lra-exact-fallback-pairs`
 - `:no.interface.lra-exact-fallback-skipped-pairs`
 - `:no.interface.lra-exact-fallback-equalities`
@@ -715,6 +716,13 @@ This subset implements classic convex equality sharing for Primo's documented
 purified EUF+LRA fragment. It is not the generic model-based algorithm, and its
 accepted syntax/model-reconstruction boundary remains narrower than all of
 QF_UFLRA.
+
+The mixed path enables fixed-variable elimination by default before polling
+`FixedEq` and `EqRow`. This implements the basis preparation described in de
+Moura and Bjorner, Section 5.1, for the two opportunistic rules Primo currently
+supports. It does not implement `EqOffsetRows`, `EqRows`, or the paper's model
+mutation rules. Pure QF_LRA retains its independently measured default-off
+setting; `--no-qf-uflra-fixed-elimination` disables only the mixed default.
 
 - **Data structures:** `TheoryCombinationManager` owns the shared Real
   interface-pair registry, the generated equality atom `TermId`, the registered

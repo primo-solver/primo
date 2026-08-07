@@ -1001,7 +1001,6 @@ void qf_uf_lra_uses_fixed_equalities_before_exact_pair_probes() {
 
 void qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them() {
   CheckSatOptions options = no_preprocessing_or_substitution();
-  options.lra_fixed_elimination = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun s () Real)
@@ -1017,11 +1016,36 @@ void qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.lra-fixed-elimination-enabled") == 1);
   assert(result.statistics.get(":no.interface.lra-opportunistic-eq-row") >= 1);
   assert(result.statistics.get(":no.interface.lra-opportunistic-created-atoms") >= 1);
   assert(result.statistics.get(":no.interface.lra-opportunistic-reason-lits") >= 2);
   assert(result.statistics.get(":no.interface.lra-exact-fallback-pairs") == 0);
   assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") == 0);
+}
+
+void qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_fixed_elimination = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun s () Real)
+    (declare-fun x () Real)
+    (declare-fun d () Real)
+    (declare-fun p (Real) Bool)
+    (assert (= s (+ x d)))
+    (assert (<= d 0))
+    (assert (>= d 0))
+    (assert (p s))
+    (assert (not (p x)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.lra-fixed-elimination-enabled") == 0);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-eq-row") == 0);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-pairs") >= 1);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
 }
 
 void qf_uf_lra_euf_publishes_a_spanning_set_per_shared_class() {
@@ -1068,13 +1092,14 @@ void qf_uf_lra_reaches_a_convex_equality_fixpoint_across_theories() {
   assert(result.statistics.get(":no.interface.euf-to-lra-equalities") >= 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
   assert(result.statistics.get(":no.interface.euf-to-lra-rechecks") >= 1);
-  assert(result.statistics.get(":no.interface.lra-to-euf-rechecks") >= 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-rechecks") >= 1);
   assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
 }
 
 void qf_uf_lra_candidate_final_scan_propagates_paired_bound_equality() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.qf_uflra_candidate_final_scan = true;
+  options.qf_uflra_fixed_elimination = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -1881,6 +1906,7 @@ void qf_uf_lra_online_scans_non_paired_final_equalities() {
 
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  options.qf_uflra_fixed_elimination = false;
   const auto result = check_sat_smtlib(input, options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.online.enabled") == 1);
@@ -3486,6 +3512,7 @@ int main() {
   qf_uf_lra_shares_lra_implied_real_equalities_with_euf();
   qf_uf_lra_uses_fixed_equalities_before_exact_pair_probes();
   qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them();
+  qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation();
   qf_uf_lra_euf_publishes_a_spanning_set_per_shared_class();
   qf_uf_lra_reaches_a_convex_equality_fixpoint_across_theories();
   qf_uf_lra_candidate_final_scan_propagates_paired_bound_equality();

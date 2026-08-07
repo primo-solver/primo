@@ -152,7 +152,7 @@ propagation switched on**, and the answer may differ.
 ### Should `--lra-fixed-elimination` be on by default for Nelson-Oppen?
 
 Asked directly, and the evidence assembled 2026-08-07 says **yes, scoped to the
-mixed path, and as part of the wiring rather than now**.
+mixed path**. That scoped default is now implemented.
 
 **Why yes.** Under theory combination it is not an optimisation. Same
 constraints, basis differs, 0 equalities against 1 — see [](#measured-gap). It
@@ -174,13 +174,21 @@ Flipping it globally is defensible on its own merits — but doing it *as part o
 the NO work would confound two changes, and the QF_LRA measurement above would
 then have to be redone anyway.
 
-**Current decision.** The mixed solver now consumes `entailed_equalities`, but
-fixed elimination remains off unless explicitly selected. `FixedEq` therefore
-helps by default, while the basis-sensitive `EqRow` opportunity is partly
-hidden. The mixed-path default must be decided by the committed 45-file
-on/off ablation after fuzzing; the mechanism test pins that enabling fixed
-elimination exposes the intended `EqRow` fast path without making completeness
-depend on it.
+**Measured decision.** On the committed 45-file QF_UFLRA opportunity sample at
+60 seconds per row, mixed fixed elimination preserved 42/45 solved with zero
+wrong answers and reduced PAR2 from 685.07s to 596.13s. It increased
+opportunistic candidates from 131 to 1,000, increased `EqRow` detections from
+233 to 2,163, reduced exact fallback pair probes from 464,994 to 295,539,
+reduced SAT decisions from 33,230 to 29,187, and reduced SAT propagations from
+250,721 to 208,421. The candidate-final profile showed the same direction:
+PAR2 422.89s to 403.34s and exact fallback pairs 94,763 to 54,147.
+
+`CheckSatOptions::qf_uflra_fixed_elimination` is therefore on by default only
+inside `solve_qf_uf_lra`. `--no-qf-uflra-fixed-elimination` preserves the
+measured ablation. The existing `--lra-fixed-elimination` remains a global
+opt-in and the pure QF_LRA default remains off. Completeness still comes from
+the exact unresolved-pair fallback; fixed elimination only exposes the cheaper
+`EqRow` consequence earlier.
 
 (measured-gap)=
 ## The completeness gap, measured rather than assumed
@@ -229,16 +237,13 @@ Pinned by `fixed_elimination_closes_the_eqrow_basis_gap` in
 
 ## Remaining order of work
 
-1. **Evaluate mixed-only fixed elimination.** Fuzz first, then compare the
-   committed 45-file QF_UFLRA sample with the option on and off. Promote it only
-   if solved count, wrong answers, and PAR2 justify the extra pivots.
+1. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
+   is newly exposed fixedness and fewer exact fallback probes, not pure-QF_LRA
+   solved count alone.
 2. **Add `EqOffsetRows`, then `EqRows`.** Each rule needs its own explanation
    invariant, soundness-oracle tests, counters, and a case where it removes
    exact strict-separation probes.
-3. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
-   is newly exposed fixedness and fewer exact fallback probes, not pure-QF_LRA
-   solved count alone.
-4. **Implement model partition and freedom-interval mutation only with the
+3. **Implement model partition and freedom-interval mutation only with the
    paper's shared model transition state.** Model equality must remain distinct
    from entailed propagation.
 

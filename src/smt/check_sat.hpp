@@ -228,6 +228,11 @@ struct CheckSatOptions {
   // real effect is on the largest instances (>5MB: 7 -> 14 of 50), paid for
   // in the 50-500KB band. Worth enabling on equality-dominated input.
   bool lra_fixed_elimination = false;
+  // Fixed-variable elimination is part of the mixed convex equality-sharing
+  // path by default. It exposes EqRow consequences and reduces exact fallback
+  // probes without changing the pure QF_LRA default above. The mixed setting
+  // remains independently disableable for ablation.
+  bool qf_uflra_fixed_elimination = true;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;

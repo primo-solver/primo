@@ -3,9 +3,8 @@
 This note records how the QF_LRA equality-sharing work from
 `origin/qflra-no-equality-sharing` was selectively merged into the Nelson-Oppen
 branch without merging the source branch's unrelated QF_LRA experiments and
-tableau rewrites. The selective merge and convex fixpoint wiring are now
-implemented; fuzzing and the mixed fixed-elimination ablation remain acceptance
-gates.
+tableau rewrites. The selective merge, convex fixpoint wiring, and mixed
+fixed-elimination decision are now implemented.
 
 The scope is deliberately limited to **convex QF_UFLRA**: rational linear
 arithmetic combined with EUF over the purified shared Real terms. Integer
@@ -78,10 +77,13 @@ source.
    - repeat until no new equality is produced.
 6. **Complete:** keep false generated equalities out of the LRA assignment. Native LRA
    disequality arrangements are a later, non-convex extension.
-7. **Pending evaluation:** re-measure `--lra-fixed-elimination` and row-bound propagation **with
-   equality sharing enabled** before changing either default. Their previous
-   QF_LRA measurements did not consume entailed equalities and are not decisive
-   for the mixed path.
+7. **Complete for fixed elimination:** a 45-file, 60-second QF_UFLRA ablation
+   preserved 42/45 solved with zero wrong answers and improved PAR2 from
+   685.07s to 596.13s. Fixed elimination is now default-on only for mixed
+   QF_UFLRA and can be disabled with
+   `--no-qf-uflra-fixed-elimination`; pure QF_LRA remains unchanged. Row-bound
+   propagation still requires its own mixed-path evaluation before any default
+   change.
 8. **Deliberately excluded:** do not merge model-equality classes into the
    entailed producer. Any future model partition belongs to the paper's shared
    model/assumption mechanism, not this convex correctness path.

@@ -148,6 +148,7 @@ int main(int argc, char** argv) {
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
+  bool no_qf_uflra_fixed_elimination = false;
   bool qf_uflra_candidate_final_scan = false;
   bool qf_uflra_online_euf = false;
   bool guarded_real_equality_lowering = false;
@@ -299,6 +300,9 @@ int main(int argc, char** argv) {
                "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
                "competition set, but doubles the >5MB band, so it is worth enabling on "
                "equality-dominated input [default: off]");
+  app.add_flag("--no-qf-uflra-fixed-elimination", no_qf_uflra_fixed_elimination,
+               "Disable default mixed QF_UFLRA fixed-variable elimination, which exposes "
+               "EqRow interface equalities before the exact pair fallback [default: on]");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses [default: off]");
   app.add_flag(
@@ -506,8 +510,9 @@ int main(int argc, char** argv) {
   const auto group_for = [&starts_with](const std::string& name) -> std::string {
     if (starts_with(name, "--lra-") || starts_with(name, "--no-lra-") ||
         name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
-        name == "--qf-uflra-candidate-final-scan" || name == "--guarded-real-equality-lowering" ||
-        name == "--monotone-elimination" || name == "--lra-least-violated-leaving") {
+        name == "--qf-uflra-candidate-final-scan" || name == "--no-qf-uflra-fixed-elimination" ||
+        name == "--guarded-real-equality-lowering" || name == "--monotone-elimination" ||
+        name == "--lra-least-violated-leaving") {
       return kGroupLra;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)
@@ -627,6 +632,9 @@ int main(int argc, char** argv) {
   }
   if (no_gaussian_elimination) {
     solver_options.gaussian_elimination = false;
+  }
+  if (no_qf_uflra_fixed_elimination) {
+    solver_options.qf_uflra_fixed_elimination = false;
   }
   solver_options.qf_uflra_candidate_final_scan = qf_uflra_candidate_final_scan;
   solver_options.qf_uflra_online_euf = qf_uflra_online_euf;

@@ -36,6 +36,7 @@ dimensions today.
 | `--lra-least-violated-leaving` | off | MathSAT's rule; measured 167 vs 174 overall but **beats most-violated by 5**, i.e. a complementarity candidate, not a loss |
 | `--no-lra-sparse-leaving` | on | ablation of the leaving-side half |
 | `--lra-fixed-elimination` | off | nets to nothing overall, doubles the >5MB band -- textbook portfolio arm |
+| `--no-qf-uflra-fixed-elimination` | mixed elimination on | ablation of the mixed-only default that exposes `EqRow`; pure QF_LRA remains off |
 | `--lra-propagation`, `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | on/off/off | |
 | `--lra-model-phase`, `--lra-theory-decisions` | off/off | see [](#theory-decision-share) before enabling |
 | `--theory-phase` | auto | `positive` is known to help the tropical family by firing guards |

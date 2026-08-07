@@ -556,7 +556,11 @@ in that model.
 the base prepared LRA theory because no SAT-visible interface equality is true
 in the current assignment. `:no.interface.lra-prepared-augmented` counts checks
 that rebuild an augmented prepared LRA theory to include true generated
-interface equality atoms. `:no.interface.lra-online-enabled` records whether the
+interface equality atoms.
+`:no.interface.lra-fixed-elimination-enabled` is one when fixed-variable
+elimination is active in the mixed tableau. It is on by default in QF_UFLRA,
+can be disabled with `--no-qf-uflra-fixed-elimination`, and does not describe
+the separate pure-QF_LRA default. `:no.interface.lra-online-enabled` records whether the
 default mixed coordinator attached the pure-QF_LRA trail-synced online
 propagator for original arithmetic atoms, and
 `:no.interface.lra-online-final-checks` counts final SAT assignments whose base
