@@ -2526,11 +2526,17 @@ struct PreparedFlatTheory {
                      core::TermId true_term, core::TermId false_term,
                      EufExplainSearchMode explain_search_mode, bool proof_forest_diagnostics);
 
+  // Extend the structural preparation without adding round-specific facts.
+  std::size_t ensure_theory_atoms(const core::TermManager& terms,
+                                  const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms);
+
   theory::equality::FlatTermIndex flat;
   theory::equality::FlatCongruenceClosure base_closure;
   theory::equality::FlatTermId true_flat = theory::equality::kInvalidFlatTermId;
   theory::equality::FlatTermId false_flat = theory::equality::kInvalidFlatTermId;
   std::vector<FlatAssignedTheoryAtom> flat_atoms;
+  std::unordered_set<std::uint64_t> atom_keys;
+  std::size_t installed_definition_count = 0;
 };
 
 struct TermPairKey {
@@ -2758,16 +2764,32 @@ PreparedFlatTheory::PreparedFlatTheory(
   true_flat = flat.flatten(true_term);
   false_flat = flat.flatten(false_term);
   flat_atoms.reserve(theory_atoms.size());
+  base_closure.assert_distinct(true_flat, false_flat);
+  ensure_theory_atoms(terms, theory_atoms);
+}
+
+std::size_t PreparedFlatTheory::ensure_theory_atoms(
+    const core::TermManager& terms,
+    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms) {
+  std::size_t appended = 0;
   for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
+    const std::uint64_t key =
+        (static_cast<std::uint64_t>(static_cast<std::uint32_t>(atom.lit.value)) << 32U) ^
+        static_cast<std::uint32_t>(atom.term);
+    if (!atom_keys.insert(key).second) {
+      continue;
+    }
     flat_atoms.push_back(flatten_assigned_atom(
         flat, terms, AssignedTheoryAtom{atom.lit.value, false, atom.term}, false_flat));
+    ++appended;
   }
 
   base_closure.ensure_node_count(flat.size());
-  for (const theory::equality::FlatDefinition& definition : flat.definitions()) {
-    base_closure.add_definition(definition);
+  const std::vector<theory::equality::FlatDefinition>& definitions = flat.definitions();
+  for (; installed_definition_count < definitions.size(); ++installed_definition_count) {
+    base_closure.add_definition(definitions[installed_definition_count]);
   }
-  base_closure.assert_distinct(true_flat, false_flat);
+  return appended;
 }
 
 void assert_flat_assigned_atom(theory::equality::FlatCongruenceClosure& closure,
@@ -8802,6 +8824,10 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.candidate-final-scan-fallback-equalities", 0);
   statistics.set(":no.interface.lra-prepared-reused", 0);
   statistics.set(":no.interface.lra-prepared-augmented", 0);
+  statistics.set(":no.interface.euf-prepared-reused", 0);
+  statistics.set(":no.interface.euf-prepared-augmented", 0);
+  statistics.set(":no.interface.euf-prepared-atoms", 0);
+  statistics.set(":no.interface.euf-prepared-definitions", 0);
   statistics.set(":no.interface.lra-online-enabled", 0);
   statistics.set(":no.interface.euf-online-enabled", 0);
   statistics.set(":no.interface.lra-online-final-checks", 0);
@@ -8856,6 +8882,14 @@ CheckSatOutcome solve_qf_uf_lra(
       terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
       options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
   publish_lra_tableau_shape_stats(base_prepared_lra_theory.base_tableau, statistics);
+  std::optional<PreparedFlatTheory> prepared_euf_theory;
+  if (!euf_atoms.empty()) {
+    prepared_euf_theory.emplace(terms, euf_atoms, true_term, false_term, options.euf_explain_search,
+                                options.euf_proof_forest_diagnostics);
+    statistics.set(":no.interface.euf-prepared-atoms", prepared_euf_theory->flat_atoms.size());
+    statistics.set(":no.interface.euf-prepared-definitions",
+                   prepared_euf_theory->installed_definition_count);
+  }
 #if PRIMO_HAVE_IPASIR
   CheckSatOptions mixed_euf_options = options;
   if (options.qf_uflra_online_euf) {
@@ -8930,7 +8964,6 @@ CheckSatOutcome solve_qf_uf_lra(
     std::vector<AssignedTheoryAtom> euf_assignments;
     std::vector<BooleanClausifier::TheoryAtom> euf_atoms_for_check = euf_atoms;
     std::vector<AssignedTheoryAtom> euf_assignments_for_check;
-    std::optional<PreparedFlatTheory> prepared_flat_theory;
     EufCarePairDiagnostics euf_care;
     if (!euf_atoms.empty()) {
       statistics.increment(kStatTheoryChecks);
@@ -8943,18 +8976,26 @@ CheckSatOutcome solve_qf_uf_lra(
                                        euf_assignments_for_check);
       append_interface_equalities(false_interface_equalities, false, euf_atoms_for_check,
                                   euf_assignments_for_check);
-      prepared_flat_theory.emplace(terms, euf_atoms_for_check, true_term, false_term,
-                                   options.euf_explain_search,
-                                   options.euf_proof_forest_diagnostics);
-      euf_check = check_incremental_euf_closure(prepared_flat_theory.value(),
+      const std::size_t appended_atoms =
+          prepared_euf_theory->ensure_theory_atoms(terms, euf_atoms_for_check);
+      if (appended_atoms == 0) {
+        statistics.increment(":no.interface.euf-prepared-reused");
+      } else {
+        statistics.increment(":no.interface.euf-prepared-augmented");
+        statistics.set(":no.interface.euf-prepared-atoms", prepared_euf_theory->flat_atoms.size());
+        statistics.set(":no.interface.euf-prepared-definitions",
+                       prepared_euf_theory->installed_definition_count);
+      }
+      euf_check = check_incremental_euf_closure(prepared_euf_theory.value(),
                                                 euf_assignments_for_check, statistics);
       if (options.nelson_oppen_model_equality_branching || options.qf_uflra_candidate_final_scan) {
-        euf_care = euf_care_pair_diagnostics(prepared_flat_theory.value(), euf_check->closure,
+        euf_care = euf_care_pair_diagnostics(prepared_euf_theory.value(), euf_check->closure,
                                              shared_real_terms);
         publish_euf_care_pair_diagnostics(euf_care, statistics);
       }
       euf_conflict = euf_check->conflict;
     }
+    const std::optional<PreparedFlatTheory>& prepared_flat_theory = prepared_euf_theory;
     if (euf_conflict.has_value()) {
       statistics.increment(kStatTheoryConflicts);
       record_interface_conflict(euf_conflict, no_manager, ":no.interface.euf-conflicts",

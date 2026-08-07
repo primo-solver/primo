@@ -1481,6 +1481,10 @@ void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
   assert(result.statistics.get(":no.online.euf-generated-equalities-registered") >= 1);
   assert(result.statistics.get(":no.online.euf-generated-equality-registration-failures") == 0);
   assert(result.statistics.get(":no.online.euf-generated-equality-observation-failures") == 0);
+  assert(result.statistics.get(":no.interface.euf-prepared-reused") >= 1);
+  assert(result.statistics.get(":no.interface.euf-prepared-augmented") >= 1);
+  assert(result.statistics.get(":no.interface.euf-prepared-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.euf-prepared-definitions") >= 1);
 }
 
 void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {

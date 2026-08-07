@@ -409,6 +409,13 @@ It does not own an EUF model, an LRA model, a reconciled arrangement/model view,
 or mutable model values. Those objects are still rebuilt in `solve_qf_uf_lra` as
 local final-check data.
 
+The current implementation now reuses the structural EUF preparation across
+mixed SAT rounds. `PreparedFlatTheory` owns the flattened terms, definition
+closure, and deduplicated theory-atom mapping; newly materialized interface
+equalities are appended before the next check. The closure itself remains a
+per-round copy, so this is a preparation optimization, not the general model
+state or a persistent DPLL(T^M) transition system.
+
 The first useful state object should record:
 
 - current shared Real terms;

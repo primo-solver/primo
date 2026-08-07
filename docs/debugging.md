@@ -532,6 +532,18 @@ disabled for the experimental `--model-equality-branching` mode; when generated
 interface equalities are true, the coordinator still rebuilds the augmented LRA
 theory and performs an ordinary final check.
 
+EUF preparation follows the same reuse boundary. `:no.interface.euf-prepared-reused`
+counts rounds whose existing `PreparedFlatTheory` was sufficient, while
+`:no.interface.euf-prepared-augmented` counts rounds that appended newly
+materialized interface equality atoms or their flat definitions. The
+`:no.interface.euf-prepared-atoms` and `:no.interface.euf-prepared-definitions`
+counters report the cumulative prepared sizes. This is structural reuse only:
+each SAT round still copies the definition-only congruence closure and asserts
+its own assignments, so explanations and backtracking remain round-local.
+The preparation is append-only during one mixed solve because lazy interface
+equality atoms and Boolean EUF proxies can appear after the initial
+preparation.
+
 `--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
 callback, was connected. `:no.online.precreated-equality-atoms` counts the
