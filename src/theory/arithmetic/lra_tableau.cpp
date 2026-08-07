@@ -1,10 +1,13 @@
 #include "theory/arithmetic/lra_tableau.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace primo::theory::arithmetic {
 
@@ -906,6 +909,54 @@ LraVarId LraTableau::select_sparse_entering_variable(const Row& row, bool too_lo
     ++sparse_pricing_cursor_;
   }
   return entering;
+}
+
+namespace {
+
+// Hashes a DeltaRational by both components. Combining with the same mix
+// constant used elsewhere in the codebase; correctness needs only that equal
+// DeltaRationals hash equal, which follows from Rational's canonical-form
+// invariant (see util/rational.hpp) applied to each component.
+struct DeltaRationalHash {
+  std::size_t operator()(const DeltaRational& value) const {
+    const util::RationalHash hash;
+    const std::size_t a = hash(value.rational);
+    const std::size_t b = hash(value.infinitesimal);
+    return a ^ (b + 0x9e3779b97f4a7c15ULL + (a << 6U) + (a >> 2U));
+  }
+};
+
+}  // namespace
+
+std::vector<std::vector<LraVarId>> LraTableau::model_equal_classes(
+    const std::vector<LraVarId>& shared) const {
+  // Group by model value. Insertion order is preserved inside each class, and
+  // classes come out in first-appearance order, so the result is deterministic
+  // for a given `shared` -- an unordered_map iteration would not be, and a
+  // combination layer that case-splits on this must not depend on hash order.
+  std::unordered_map<DeltaRational, std::size_t, DeltaRationalHash> class_of_value;
+  std::vector<std::vector<LraVarId>> classes;
+  std::set<LraVarId> seen;
+
+  for (const LraVarId var : shared) {
+    if (!seen.insert(var).second) {
+      continue;  // duplicates in `shared` are the caller's business, not ours
+    }
+    const DeltaRational& value = vars_.at(var).assignment;
+    const auto [it, inserted] = class_of_value.emplace(value, classes.size());
+    if (inserted) {
+      classes.push_back({var});
+    } else {
+      classes[it->second].push_back(var);
+    }
+  }
+
+  // Singletons carry no information for the combination layer: a variable equal
+  // to nothing else proposes no equality. Dropping them here keeps the caller
+  // from having to filter, and keeps the common case (nothing coincides) cheap
+  // to test -- an empty result means "no candidates".
+  std::erase_if(classes, [](const std::vector<LraVarId>& c) { return c.size() < 2; });
+  return classes;
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::check() {

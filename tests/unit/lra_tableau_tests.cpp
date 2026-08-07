@@ -1347,6 +1347,117 @@ void cancelling_pivot_drops_the_occurrence_entry() {
   }
 }
 
+// -- Nelson-Oppen equality sharing: model_equal_classes --
+//
+// These pin the M-Propagate trigger from docs/qf-lra-equality-sharing.md. The
+// contract is deliberately narrow: partition ONLY the shared variables, by the
+// current model, returning candidates for the combination layer to branch on.
+
+void model_equal_classes_groups_shared_variables_by_model_value() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  // x and y pinned to 5, z to 7.
+  assert(!tableau.assert_lower(x, rat(5), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(5), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(5), Lit{3}).has_value());
+  assert(!tableau.assert_upper(y, rat(5), Lit{4}).has_value());
+  assert(!tableau.assert_lower(z, rat(7), Lit{5}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto classes = tableau.model_equal_classes({x, y, z});
+  // One class {x, y}; z is a singleton and must not be reported.
+  assert(classes.size() == 1);
+  assert(classes[0].size() == 2);
+  assert(classes[0][0] == x && classes[0][1] == y);
+}
+
+// Scoping is the point: a variable that coincides in value but is NOT shared
+// must not appear. The combination layer only cares about interface variables,
+// and returning others would be noise it has to filter.
+void model_equal_classes_ignores_variables_outside_the_shared_set() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId hidden = tableau.add_variable();
+  for (const LraVarId v : {x, y, hidden}) {
+    assert(!tableau.assert_lower(v, rat(3), Lit{static_cast<int>(v) + 1}).has_value());
+    assert(!tableau.assert_upper(v, rat(3), Lit{static_cast<int>(v) + 10}).has_value());
+  }
+  assert(!tableau.check().has_value());
+
+  const auto classes = tableau.model_equal_classes({x, y});
+  assert(classes.size() == 1);
+  assert(classes[0].size() == 2);  // hidden shares the value but is not shared
+}
+
+// The delta trap. A strict bound gives a variable an infinitesimal component,
+// and two variables agreeing on the rational part while differing in delta are
+// NOT equal in the concrete model the delta encoding stands for. Keying the
+// partition on the rational part alone would report an equality that does not
+// hold -- an unsound propagation handed to the combination layer.
+void model_equal_classes_separates_values_differing_only_in_delta() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  // x = 4 exactly; y > 4, which the delta encoding represents as the lower
+  // bound 4 + delta (the same idiom as
+  // strict_inequality_conflicts_with_touching_nonstrict_bound above).
+  const DeltaRational strict_lower{Rational(4), Rational(1)};
+  assert(!tableau.assert_lower(x, rat(4), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(4), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, strict_lower, Lit{3}).has_value());
+  assert(!tableau.check().has_value());
+
+  assert(tableau.assignment(x).rational == tableau.assignment(y).rational);
+  assert(tableau.assignment(x) != tableau.assignment(y));
+  assert(tableau.model_equal_classes({x, y}).empty());
+}
+
+void model_equal_classes_is_empty_when_nothing_coincides() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.assert_lower(x, rat(1), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(1), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(2), Lit{3}).has_value());
+  assert(!tableau.assert_upper(y, rat(2), Lit{4}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.model_equal_classes({x, y}).empty());
+  assert(tableau.model_equal_classes({}).empty());
+}
+
+// Duplicates are the caller's business; each variable appears once.
+void model_equal_classes_deduplicates_the_shared_set() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  for (const LraVarId v : {x, y}) {
+    assert(!tableau.assert_lower(v, rat(9), Lit{static_cast<int>(v) + 1}).has_value());
+    assert(!tableau.assert_upper(v, rat(9), Lit{static_cast<int>(v) + 10}).has_value());
+  }
+  assert(!tableau.check().has_value());
+  const auto classes = tableau.model_equal_classes({x, y, x, y, x});
+  assert(classes.size() == 1);
+  assert(classes[0].size() == 2);
+}
+
+// The classes track the MODEL, so they must refine as bounds tighten. This is
+// what makes them a live trigger rather than a one-shot computation.
+void model_equal_classes_track_the_model_across_assertions() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.check().has_value());
+  // Both start at 0, so they coincide.
+  assert(tableau.model_equal_classes({x, y}).size() == 1);
+  // Push y away; the candidate must disappear.
+  assert(!tableau.assert_lower(y, rat(6), Lit{1}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.model_equal_classes({x, y}).empty());
+}
+
 }  // namespace
 
 int main() {
@@ -1391,5 +1502,11 @@ int main() {
   merge_and_sort_rebuilds_agree_on_a_cancelling_pivot();
   delta_maintained_occurs_in_matches_a_full_rebuild();
   cancelling_pivot_drops_the_occurrence_entry();
+  model_equal_classes_groups_shared_variables_by_model_value();
+  model_equal_classes_ignores_variables_outside_the_shared_set();
+  model_equal_classes_separates_values_differing_only_in_delta();
+  model_equal_classes_is_empty_when_nothing_coincides();
+  model_equal_classes_deduplicates_the_shared_set();
+  model_equal_classes_track_the_model_across_assertions();
   return 0;
 }

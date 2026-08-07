@@ -277,6 +277,37 @@ class LraTableau {
 
   const DeltaRational& assignment(LraVarId var) const { return vars_.at(var).assignment; }
 
+  // -- Nelson-Oppen equality sharing (docs/qf-lra-equality-sharing.md) --
+  //
+  // Partitions `shared` by its current model value, returning only the classes
+  // with more than one member. This is the `M-Propagate` trigger from de Moura
+  // and Bjorner's Model-based Theory Combination (docs/papers/model-guided-no.pdf,
+  // Section 5): the theories exchange candidate equalities implied by the
+  // *current model*, not by the constraint set, and the combination layer turns
+  // each candidate into a case split.
+  //
+  // Scoped to `shared` on purpose. The combination layer only ever cares about
+  // variables occurring in more than one theory, so partitioning the whole
+  // tableau would compute a partition of thousands of variables to use a
+  // handful of it. Cost is O(|shared|) expected, independent of tableau size.
+  //
+  // **These are conjectures, not entailments.** Two variables sharing a model
+  // value need not be equal in every model; that is exactly why the paper's
+  // rule creates a case split rather than a propagation. Anything this returns
+  // must be checked or branched on, never asserted. Entailed equalities are a
+  // separate obligation with a separate return type, because they carry a
+  // reason -- see the note above.
+  //
+  // Keying on DeltaRational and not on its rational part is load-bearing: a
+  // strict bound gives a variable an infinitesimal component, and two variables
+  // agreeing rationally while differing in delta are NOT equal in the concrete
+  // model the delta encoding stands for. Keying on the rational part alone
+  // would hand the combination layer equalities that do not hold.
+  //
+  // Duplicates in `shared` are ignored; the result contains each variable once.
+  std::vector<std::vector<LraVarId>> model_equal_classes(
+      const std::vector<LraVarId>& shared) const;
+
   // Read-only access to a variable's current upper/lower bound (if any) and
   // the literal that established it -- used by OnlineLraPropagator's
   // same-slack "deriving satisfied atoms" propagation (Dutertre & de
