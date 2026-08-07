@@ -452,6 +452,141 @@ campaign-tier Slurm fuzz gate (3000 fuzzsmt cases plus opfuzz/yinyang
 mutation shards, 0 crashes/wrong-answers/bug triggers) -- see
 `docs/arithmetic.md`'s Milestone roadmap and `docs/run-log.json`.
 
+(monotone-elimination)=
+## Monotone (One-Sided) Variable Elimination
+
+`--monotone-elimination` (opt-in, default off) discharges real variables that
+every constraint pushes the same way.
+
+If, after accounting for Boolean polarity, every atom mentioning `x` bounds it
+in one direction only, then no finite bound opposes `x`, so some extreme value
+satisfies all of them at once. Each such atom is replaced by the constant its
+own occurrence needs -- `true` where it occurs positively, `false` where it
+occurs negatively. This is Fourier-Motzkin elimination of a single-sign
+variable: with no opposing bounds to pair against, the combination step is
+empty and every constraint mentioning the variable is simply dropped. See
+[](papers/monotone-variable-elimination.md) for what is and is not being cited.
+
+**The saving is mostly Boolean.** The atom leaves the CNF and the clauses it
+satisfies disappear; a smaller tableau is the secondary effect. On a
+LassoRanker instance the pass folded only 21 atoms and removed no tableau rows
+at all, yet cut runtime 12.19s to 7.84s -- the smaller Boolean structure
+produced a better search.
+
+The pass runs immediately after [](#real-equality-lowering), so equalities have
+already become Le/Lt pairs.
+
+### Preconditions, all conservative
+
+A variable is disqualified -- left entirely alone -- unless it is a 0-ary Real
+`Constant` whose every occurrence is a linear leaf of a `Le`/`Lt` atom.
+Specifically:
+
+- **Real equalities** pin both directions, so they disqualify.
+- **Uninterpreted applications** are opaque: a real under `f(...)` disqualifies.
+- **Mixed polarity** disqualifies. Input is not in NNF, so polarity is tracked
+  through `Not` and `Implies` rather than assumed; one atom reached at both
+  polarities forces its variables two-sided.
+- **An atom with any leaf model reconstruction could not evaluate** disqualifies
+  *every* variable in that atom, not just that leaf. Otherwise a discharged
+  constraint could be left unrepairable when the model is built.
+
+### Model reconstruction
+
+Eliminated variables are absent from the tableau, so they are valued after the
+solve, from the constraints that were discharged. Each constraint is re-derived
+against the model and yields a bound; the variable takes one unit past the
+tightest of them, which clears strict and non-strict bounds alike.
+
+**No dependency ordering is needed**, which is worth stating because the
+obvious design is both more expensive and wrong. Note first that this is not
+because such variables are symmetric -- they are not. In `x > y` the two are
+pushed *opposite* ways (`x` up, `y` down), and that asymmetry is exactly what
+makes the atom dischargeable. What order-independence says is only that
+valuing them in either order yields *a* satisfying model, not the *same* one. Two variables sharing one atom
+depend on each other, and a topological scheme would call that a cycle and
+discard sound eliminations. Instead: for any discharged atom, the eliminated
+variable valued *last* sees every other leaf already valued, so that atom
+yields a real bound on it, and going far enough satisfies all of its
+constraints including that one. Earlier variables may skip the atom; the last
+one repairs it.
+
+Verified rather than argued: temporarily reversing the valuation order and
+re-running model validation over 120 benchmark files gave **108 valid models
+and 0 invalid**, with some models differing in their values from the forward
+order. `x > y ∧ x > 10 ∧ y < 3`, for instance, yields `x = 11, y = 2` forward
+and `x = 11, y = -1` reversed -- both satisfying. The solver tests below assert
+exact values and so do encode the current (forward, TermId-sorted) order; that
+order is deterministic, so they are stable, but a value mismatch there means
+the order moved, not necessarily that soundness broke.
+
+One subtlety is load-bearing and has a regression test. Folding an atom
+discharges it for *every* variable in it, so a variable that was itself
+disqualified can lose its last constraint and vanish from the tableau. Such a
+variable is pinned to zero during reconstruction rather than left unvalued --
+skipping its bound instead produced models that violated the very constraint
+the pass had discharged.
+
+### Counters
+
+`:preprocessing.monotone-elimination.candidates`, `.variables`, and
+`.atoms-folded`.
+
+(pure-literal-trap)=
+## The pure-literal rule does not transfer to theory atoms
+
+Recorded 2026-08-05 because it is an inviting mistake, and because Primo has
+a mechanism (`--pure-theory-filter`) close enough to it to be misread as one.
+
+In propositional SAT the pure-literal rule is free: if `p` occurs only
+positively, set `p := true` and delete every clause containing it. **The same
+move is unsound for theory atoms**, and turns sat into unsat:
+
+```lisp
+(declare-fun x () Real) (declare-fun d () Bool)
+(assert (or (>= x 10) d))   ; A = (>= x 10) occurs ONLY positively
+(assert (<= x 0))           ; a clause that does not mention A at all
+```
+
+This is `sat` -- take `d`, leave `A` false. Apply the rule (force `A`, delete
+its clause) and the result is `(>= x 10) AND (<= x 0)`, which is `unsat`.
+Verified with z3, 2026-08-05.
+
+The reason is worth stating precisely, because it is the whole distinction:
+`A` occurs nowhere else *syntactically*, but its *meaning* constrains `x`,
+which is shared with another constraint through the theory. **Syntactic purity
+is not semantic independence.** In SAT the two coincide, which is why the rule
+is free there.
+
+**What Primo does instead is sound, and is deliberately not this.**
+`--pure-theory-filter` ([](euf.md)) never forces a value and never deletes a
+clause. It only omits a literal from the *theory assignment* when that literal
+has the opposite polarity to all of the atom's occurrences -- because such an
+assignment cannot be what satisfies any clause, so the theory need not check
+its consistency. Dropping a constraint from a consistency check is safe in a
+way that adding one is not.
+
+**The sound preprocessing cousin is about variables, not atoms.** If a real
+variable `x` occurs only *one-sided* -- every constraint mentioning it pushes
+`x` the same direction, after accounting for Boolean polarity -- then `x` can
+be sent to its extreme and all those constraints discharged. This is the
+Fourier-Motzkin observation that eliminating a variable occurring with only
+one sign generates **zero** new constraints, and it is the LP-presolve notion
+of a dominated column. The counterexample above is correctly excluded: `x`
+there is pushed up by one constraint and down by another.
+
+**Not implemented, and it does not help the tropical family.** A screen over
+`constraint-199552` finds 927 of its 954 real variables pinned by the
+definitional equalities (`(= lKc (+ a b))`), which are two-sided by
+construction, leaving 27 one-sided candidates -- see
+[](tropical-matrix-structure.md). Whether it pays on the LP-shaped families
+(`latendresse`, `miplib`) is **unknown**: the quick screen used here matches
+only flat atoms and silently skips nested arithmetic such as
+`(<= (+ (* 2 x) y) 5)`, which is most of what those families contain, so its
+counts for them are artifacts and were discarded. A real evaluation needs a
+polarity-aware pass over the actual term structure, not a regex.
+
+(real-equality-lowering)=
 ## Real-Equality Lowering
 
 Real is a total order, so `t1 = t2 <=> t1 <= t2 AND t2 <= t1`. Rather than
@@ -472,9 +607,29 @@ to see and reason about genuine Real `Equality` nodes, instead of a second,
 parallel `And(Le,Le)` representation those passes would otherwise need to
 special-case. It must still run before `BooleanClausifier`/theory dispatch,
 or QF_LRA disequality would regress to needing the case-split machinery this
-design avoids. Reported by `:preprocessing.real-equality-lowering.lowered`.
-Not optional (no CLI flag) -- it is load-bearing for correctness, not a
-heuristic.
+design avoids.
+
+When `--guarded-real-equality-lowering` is enabled, a guarded disjunction with
+exactly one Real equality child lowers by distributing the guard directly:
+
+```text
+(or G (= x y))  ==>  (and (or G (<= x y))
+                          (or G (<= y x)))
+```
+
+This is a local Boolean rewrite, not a separate arithmetic propagator. It keeps
+LRA as the only arithmetic checker while avoiding the extra Tseitin variable
+that would be introduced by first rewriting the equality to an inner
+`And(Le,Le)` under the `Or`. The option deliberately does not distribute
+disjunctions with multiple Real equality children, where the direct CNF
+expansion would either blow up or require a more careful clausification
+strategy.
+
+Reported by `:preprocessing.real-equality-lowering.lowered` and
+`:preprocessing.real-equality-lowering.guarded-distributed`. The basic Real
+equality lowering is not optional -- it is load-bearing for correctness -- but
+the guarded distribution shortcut is opt-in (`--guarded-real-equality-lowering`)
+because the first tropical-matrix measurement was mixed.
 
 ## ITE Lowering
 

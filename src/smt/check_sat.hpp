@@ -95,6 +95,22 @@ enum class LraPivotingRule {
 // at 60s by default -- solve in about 58s. See docs/qf-lra-heuristics.md
 // section 6.5 (direction D1); the sweep that settles the defaults needs to
 // vary them per run, not per build.
+// Mirrors theory::arithmetic::LraTableau::Tuning, translated at the same
+// wiring point as LraPivotingRule and for the same reason -- this header
+// stays free of theory-layer includes. That header documents the defaults
+// and the argument that every value in range is sound (these knobs change
+// how long an answer takes, never which answer it is).
+//
+// Hardcoded constants until 2026-08-06. Exposed so the parameter-tuning
+// campaign can vary them per run rather than per build; the defaults are
+// exactly the constants they replaced, so an untuned run is unchanged.
+// See docs/tuning-parameters.md.
+struct LraTuning {
+  std::size_t sparse_pricing_candidates = 16;
+  std::size_t bland_fallback_factor = 4;
+  std::size_t bland_fallback_offset = 64;
+};
+
 struct LraRowPropagationLimits {
   std::size_t max_row_size = 64;
   std::size_t max_fanout = 64;
@@ -185,6 +201,11 @@ struct CheckSatOptions {
   // so it has its own flag rather than depending on either -- see
   // docs/arithmetic.md's Milestone roadmap.
   bool lra_theory_decisions = false;
+  // H5 model-based phase selection: keep CaDiCaL's VSIDS variable choice
+  // but refresh arithmetic atom polarities from the online tableau's current
+  // assignment at quiescence points. Pure performance hint; default off until
+  // tropical/sc/uart and broad-regression measurements justify promotion.
+  bool lra_model_phase = false;
   // Default since 2026-07-29 (heuristics-note item H3). On the 237-file
   // stratified sample this solves 168 against Bland's 144, PAR2 1538.9s
   // against 1962.4s, with zero regressions and zero wrong answers -- see
@@ -197,6 +218,9 @@ struct CheckSatOptions {
   // rule alone reaches 154/237, this takes it to 168, and it is the whole of
   // the latendresse result (0/15 -> 6/15, matching z3).
   bool lra_sparse_leaving = true;
+  bool lra_least_violated_leaving = false;
+  // Numeric Check/Pivot knobs -- see LraTuning.
+  LraTuning lra_tuning;
   // Heuristics-note item H7 -- see LraTableau::set_fixed_elimination.
   // Opt-in (--lra-fixed-elimination): on the 595-file scrambled competition
   // set it solves 374 against 373 with it off, a median 0.94x speedup over
@@ -213,6 +237,8 @@ struct CheckSatOptions {
   bool ground_congruence = false;
   bool ground_unit_substitution = false;
   bool guarded_ground_unit_substitution = false;
+  bool guarded_real_equality_lowering = false;
+  bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;
   bool qf_uflra_candidate_final_scan = false;

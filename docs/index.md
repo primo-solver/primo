@@ -3,14 +3,8 @@
 Primo is a clean-room, paper-grounded SMT solver developed with LLM assistance.
 
 This documentation is authored in MyST Markdown and built with Jupyter Book.
-
-Build it from the repository root with:
-
-```bash
-scripts/build_docs.sh
-```
-
-The generated HTML is written under `docs/_build/html`.
+Build it from the repository root with `scripts/build_docs.sh`; generated HTML
+is written under `docs/_build/html`.
 
 ## Documentation policy
 
@@ -20,18 +14,25 @@ The generated HTML is written under `docs/_build/html`.
 - Cite the paper or design note behind each nontrivial algorithmic component.
 - Keep dependency integration notes separate from algorithm descriptions.
 - Link to an explicit target such as `(h8)=` by its label alone -- `[H8](#h8)`
-  -- not by path and fragment. The path form (`qf-lra-heuristics.md#h8`) makes
-  MyST look up an HTML id in a document that may not have been rendered yet, so
-  it emits `xref_missing` warnings that depend on build order while still
-  producing a working link. Labels resolve globally and do not.
+  -- rather than by path and fragment, which produces build-order-dependent
+  `xref_missing` warnings.
 
-## Main sections
+## How the book is organised
 
-- Architecture and invariants
-- IPASIR-UP/CaDiCaL SAT backend integration
-- Lazy DPLL(T)
-- EUF/congruence closure
-- QF_UF preprocessing and finite-domain symmetry breaking
-- QF_UFLRA model-guided performance planning
-- Future arithmetic theories
-- Debugging, experiments, and literature
+Five parts, in the order they are normally needed:
+
+- **Core architecture** covers invariants, IPASIR-UP, lazy DPLL(T), and preprocessing.
+- **Theories** gives each implemented theory an entry point. [](euf.md) covers
+  congruence closure and Boolean arguments. [](arithmetic.md) is the QF_LRA
+  reference, with its heuristics, tuning, open investigations, and fuzz evidence
+  nested below it. [](qf-uflra-model-guided-performance.md) and its convex
+  Nelson-Oppen merge note describe the mixed-theory path.
+- **Evidence and practice** explains experiments, the canonical run log, debugging,
+  and TermId order sensitivity.
+- **Paper notes** starts with [](literature.md), which defines the reading and
+  confidence policy, followed by the deeply read algorithm papers.
+- **Reference** contains retrospectives that do not describe Primo itself.
+
+For current behavior and flags, start with the relevant theory chapter. For
+design rationale and rejected experiments, read its nested notes. For measured
+results tied to exact commits and commands, use [](run-log.md).

@@ -1,0 +1,15 @@
+# The 10 tropical-matrix QF_LRA files (sandbox/non-incremental/QF_LRA/tropical-matrix).
+# All three of Primo, z3, and cvc5 fail this family at the stratified-sample
+# 10s budget; OpenSMT solves 5/10 at 300s (docs/qf-lra-heuristics.md, T1 and
+# the tropical-matrix polarity follow-up). Used for the local T1 +
+# row/bidirectional propagation diagnostic and any SLURM follow-up.
+constraint-1007893.smt2
+constraint-199552.smt2
+constraint-223827.smt2
+constraint-251380.smt2
+constraint-269735.smt2
+constraint-330061.smt2
+constraint-343414.smt2
+constraint-413064.smt2
+constraint-436218.smt2
+constraint-556101.smt2

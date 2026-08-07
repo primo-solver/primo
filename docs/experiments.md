@@ -7,6 +7,44 @@ Record every nontrivial benchmark, fuzzing, profiling, tuning, dependency-profil
 or reference-comparison run in `docs/run-log.json`; see [](run-log.md) for the
 schema and evidence policy.
 
+(formula-analyzer)=
+## Analyzing benchmark shape: use the analyzer, not grep
+
+`scripts/analyze_smt2.py` reports the structure of an SMT-LIB file: what is
+declared, the atom census classified by shape (unary bound / difference /
+two-variable / general linear), per-atom Boolean polarity computed through
+`not`/`=>`/`ite`/`xor`, per-variable one-sidedness, and guard protection (the
+"this value is a don't-care under that flag" shape from
+[](tropical-matrix-structure.md)).
+
+```bash
+python3 scripts/analyze_smt2.py FILE...        # human-readable
+python3 scripts/analyze_smt2.py --json FILE    # machine-readable
+python3 scripts/analyze_smt2.py --selftest     # verify the analyzer itself
+```
+
+**Prefer it over `grep` for any structural claim.** Two real errors motivated
+writing it, and both are now regression cases in `--selftest`:
+
+- `grep -o "(*" file` reported ~12,000 multiplications in a file containing
+  none -- in a basic regular expression `*` is a quantifier, so the pattern
+  matches "zero or more open parens" everywhere.
+- A regex matching only *flat* atoms silently skipped every nested constraint
+  such as `(<= (+ (* 2 x) y) 5)`, which is most of what `miplib` and
+  `latendresse` contain. It reported 456 of 996 `danoint-166` reals as
+  one-sided; the analyzer reports **0**, which is correct.
+
+The design rule that follows: **the analyzer never silently ignores what it
+cannot parse.** Unsupported constructs are counted as `opaque` and their
+variables are forced to the conservative classification (two-sided, mixed
+polarity), so an unhandled construct weakens a claim instead of falsifying
+it. A nonzero `OPAQUE atoms` line in a report is a signal to look, not noise.
+
+Validation: on `tropical-matrix/constraint-199552.smt2` it independently
+reproduces both the previously hand-derived 774 guard-protected variables and
+the separately recorded "70-72% of arithmetic atoms are unary or
+two-variable" census figure (1,611 of 2,250, 71.6%).
+
 ## Non-standard unsolved benchmarks
 
 A benchmark left unsolved because the solver ran out of time is an honest

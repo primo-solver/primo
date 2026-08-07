@@ -32,6 +32,201 @@ CheckSatOptions no_preprocessing_or_substitution() {
   return options;
 }
 
+CheckSatOptions guarded_real_equality_lowering_options() {
+  CheckSatOptions options = no_preprocessing();
+  options.guarded_real_equality_lowering = true;
+  return options;
+}
+
+CheckSatOptions monotone_elimination_options() {
+  CheckSatOptions options;
+  options.monotone_elimination = true;
+  return options;
+}
+
+// The model must satisfy the ORIGINAL constraints, which is the only thing
+// that makes discharging them legitimate.
+void monotone_elimination_reconstructs_a_satisfying_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p () Bool)
+    (assert (or (>= x 10) p))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  // x occurs only as a lower bound, so it is discharged -- and must come
+  // back with a value that actually satisfies the bound it was carrying.
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) >= 1);
+  assert(result.model.find("(define-fun x () Real 11)") != std::string::npos);
+}
+
+// Regression: folding an atom discharges it for *every* variable in it, so
+// a variable that was itself disqualified (here y, pinned two-sided) can
+// lose its last constraint and vanish from the tableau. Reconstruction
+// used to skip such bounds as unevaluable and default the eliminated
+// variable to zero, producing a model that violated the very constraint
+// the pass had discharged.
+void monotone_elimination_values_variables_that_lost_all_constraints() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun a () Real)
+    (declare-fun b () Real)
+    (assert (and (not (<= b (* a (- 1)))) (not (<= b a))))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  // b is one-sided (pushed up by both); a is two-sided and disqualified,
+  // yet both of its constraints are folded away with b's.
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 1);
+  // a defaults to 0, so b must exceed it rather than tie with it.
+  assert(result.model.find("(define-fun a () Real 0)") != std::string::npos);
+  assert(result.model.find("(define-fun b () Real 0)") == std::string::npos);
+}
+
+// A variable pinned from both sides must survive the pass untouched.
+void monotone_elimination_keeps_two_sided_variables() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (and (>= x 1) (<= x 5)))
+    (check-sat)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+  assert(result.statistics.get(StatKey::MonotoneEliminationAtomsFolded) == 0);
+}
+
+// The pass must not change any answer; unsat has to stay unsat.
+void monotone_elimination_preserves_unsat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and (<= x y) (and (<= y 3) (>= x 10))))
+    (check-sat)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+// Two variables pushed apart by the same atoms. Both are one-sided, both
+// are discharged, and each shares every atom with the other -- the case a
+// dependency-ordering scheme would have mistaken for a cycle. The model
+// must still satisfy the strict inequality.
+void monotone_elimination_handles_mutually_bounded_variables() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and (> x y) (<= y x)))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 2);
+  // Verified against z3: x = 1, y = 0 satisfies both x > y and y <= x.
+  assert(result.model.find("(define-fun x () Real 1)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real 0)") != std::string::npos);
+}
+
+// (> x y) and (< y x) desugar to the *same* Lt atom, so one atom carries
+// two variables and is discharged once.
+void monotone_elimination_handles_duplicated_atom() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and (> x y) (< y x)))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 2);
+  assert(result.model.find("(define-fun x () Real 1)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real 0)") != std::string::npos);
+}
+
+// Opposed strict bounds leave both variables two-sided, so nothing is
+// discharged and the contradiction survives.
+void monotone_elimination_preserves_opposed_strict_bounds() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and (> x y) (< x y)))
+    (check-sat)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+}
+
+// A strict and a non-strict bound in the same direction: the reconstructed
+// value has to clear the strict one, not merely meet it.
+void monotone_elimination_respects_strict_bounds() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (and (< x 5) (<= x 5)))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 1);
+  assert(result.model.find("(define-fun x () Real 4)") != std::string::npos);
+}
+
+// The core term language has no ITE node, so a Real ITE becomes a fresh
+// constant plus guarded equalities. Those equalities pin the fresh constant
+// two-sided, while the bounded variable itself stays eliminable -- and its
+// reconstructed value must be derived from the fresh constant's model value.
+void monotone_elimination_handles_bounds_under_ite() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p () Bool)
+    (assert (<= x (ite p 1 2)))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  // Verified against z3: the printed model satisfies the original bound.
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+}
+
+// One atom reached at both polarities forces its variables two-sided, even
+// though each occurrence on its own would look one-sided.
+void monotone_elimination_rejects_atom_shared_across_polarities() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (and (or (<= x 5) p) (or (not (<= x 5)) q)))
+    (check-sat)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+  assert(result.statistics.get(StatKey::MonotoneEliminationAtomsFolded) == 0);
+}
+
 void accepts_set_logic_and_real_declarations() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -2037,6 +2232,36 @@ void theory_decisions_can_reach_a_conflict() {
   assert(undecided.statistics.get(StatKey::LraTheoryDecisions) == 0);
 }
 
+void model_phase_refreshes_from_tableau_assignment() {
+  // H5 model-based phase selection is deliberately weaker than
+  // --lra-theory-decisions: it never chooses the variable, only the SAT
+  // phase. The initial tableau assignment beta is x=0, so the two x <= ...
+  // atoms below start FALSE. The unit x <= -2 then moves beta(x) to -2,
+  // and the next quiescence point must refresh those phases to TRUE.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (<= x (- 2)))
+    (assert (or (<= x (- 1)) (<= y 0)))
+    (check-sat)
+  )";
+
+  CheckSatOptions with_model_phase;
+  with_model_phase.lra_model_phase = true;
+  const auto hinted = check_sat_smtlib(formula, with_model_phase);
+  assert(hinted.result == CheckSatResult::Sat);
+  assert(hinted.statistics.get(StatKey::LraModelPhaseRefreshes) >= 2);
+  assert(hinted.statistics.get(StatKey::LraModelPhaseHints) >
+         hinted.statistics.get(StatKey::TheoryAtoms));
+
+  CheckSatOptions without_model_phase;
+  const auto unhinted = check_sat_smtlib(formula, without_model_phase);
+  assert(unhinted.result == CheckSatResult::Sat);
+  assert(unhinted.statistics.get(StatKey::LraModelPhaseRefreshes) == 0);
+  assert(unhinted.statistics.get(StatKey::LraModelPhaseHints) == 0);
+}
+
 void row_based_propagation_can_reach_a_conflict() {
   // Same row (+ x y) as above, but the disjunction's other branch is also
   // ruled out (< w 1000), and the shared-polynomial atom is negated --
@@ -2901,9 +3126,194 @@ void fixed_variable_elimination_fires_and_preserves_the_verdict() {
   }
 }
 
+void guarded_real_equality_lowering_fires_end_to_end() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun guard () Bool)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or guard (= z (+ x y))))
+    (check-sat)
+  )",
+                                       guarded_real_equality_lowering_options());
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::RealEqualityLowered) == 1);
+  assert(result.statistics.get(StatKey::GuardedRealEqualityDistributed) == 1);
+}
+
+void guarded_real_equality_lowering_does_not_strengthen_guarded_sat_branch() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun guard () Bool)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or guard (= z (+ x y))))
+    (assert (not (= z (+ x y))))
+    (check-sat)
+  )",
+                                       guarded_real_equality_lowering_options());
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::RealEqualityLowered) == 2);
+  assert(result.statistics.get(StatKey::GuardedRealEqualityDistributed) == 1);
+}
+
+void multiple_guarded_real_equalities_use_generic_lowering_end_to_end() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun guard () Bool)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or guard (= x y) (= y z)))
+    (check-sat)
+  )",
+                                       guarded_real_equality_lowering_options());
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::RealEqualityLowered) == 2);
+  assert(result.statistics.get(StatKey::GuardedRealEqualityDistributed) == 0);
+}
+
+void guarded_real_equality_lowering_is_default_off_end_to_end() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun guard () Bool)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (or guard (= z (+ x y))))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::RealEqualityLowered) == 1);
+  assert(result.statistics.get(StatKey::GuardedRealEqualityDistributed) == 0);
+}
+
 }  // namespace
 
+// Interface-equality publishing is Nelson-Oppen machinery and must stay on for
+// the mixed path, where the dispatcher enables it. This pins that direction:
+// the pure QF_LRA path gets it for free (nothing consumes it there), but
+// turning it off for QF_UFLRA would silently lose LRA-to-EUF equality
+// propagation. See docs/nelson-oppen-qf-lra-regression.md.
+void online_nelson_oppen_still_publishes_lra_interface_equalities() {
+  CheckSatOptions options;
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun f (Real) Real)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (not (= (f x) (f y))))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  // x <= y and y <= x force x = y, and only the LRA side can observe that, so
+  // a zero here means the publishing path went dead.
+  assert(result.statistics.get(":no.online.lra-published-equalities") >= 1);
+}
+
+// Dispatch tests for the EUF-predicate classifier (mechanism A of
+// docs/nelson-oppen-qf-lra-regression.md). These assert the DISPATCH COUNTER,
+// not just the answer: the regression they guard was a formula being solved by
+// the wrong solver, which an answer-only test cannot see.
+
+// A propositional variable is not an EUF predicate: no arguments, so no
+// congruence rule can apply. Pure QF_LRA plus Booleans must stay on the pure
+// path.
+void propositional_variables_do_not_force_the_mixed_solver() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (and (or p q) (<= (+ x y) 3) (>= x 1) (>= y 1)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-lra") == 1);
+  assert(result.statistics.get(":solver.qf-uflra") == 0);
+}
+
+// A Bool-sorted *application* genuinely is an EUF predicate -- congruence
+// applies to it -- so it must still reach the mixed solver.
+void bool_sorted_application_still_forces_the_mixed_solver() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun f (Real) Bool)
+    (assert (and (f x) (not (f y)) (<= x y) (>= x y)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+}
+
+// The unsoundness direction: an uninterpreted sort with arithmetic must reach
+// the mixed solver. Narrowing the classifier too far would send this to a
+// solver that cannot do congruence.
+//
+// The equality is deliberately nested under disjunctions. Asserted at top
+// level it is a solved-constant candidate, and preprocessing substitutes
+// b := a and refutes the formula outright -- no solver runs at all, so the
+// dispatch assertion would be vacuous. Verified: that version reports every
+// :solver.* counter at 0 with :preprocessing.solve-eqs.accepted 1.
+void uninterpreted_sort_with_arithmetic_still_forces_the_mixed_solver() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort S 0)
+    (declare-fun a () S)
+    (declare-fun b () S)
+    (declare-fun g (S) S)
+    (declare-fun x () Real)
+    (assert (or (= a b) (< x 0)))
+    (assert (or (not (= a b)) (not (= (g a) (g b)))))
+    (assert (<= 0 x))
+    (assert (<= x 1))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+}
+
+// The case the narrowing could get wrong and nothing else covers: an
+// uninterpreted function with a Bool ARGUMENT and a Real result. It sets
+// neither has_euf_predicate (the application is Real-sorted) nor, on its own,
+// has_equality -- yet the pure LRA solver cannot own the symbol. Whatever the
+// dispatch decides, the answer must be right.
+void bool_argument_real_result_application_is_not_mis_dispatched() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun k (Bool) Real)
+    (assert (= p q))
+    (assert (< (k p) 0))
+    (assert (< 1 (k q)))
+    (check-sat)
+  )");
+  // k(p) = k(q) by congruence, so k(p) < 0 and k(q) > 1 cannot both hold.
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-lra") == 0);
+}
+
 int main() {
+  propositional_variables_do_not_force_the_mixed_solver();
+  bool_sorted_application_still_forces_the_mixed_solver();
+  uninterpreted_sort_with_arithmetic_still_forces_the_mixed_solver();
+  bool_argument_real_result_application_is_not_mis_dispatched();
+  online_nelson_oppen_still_publishes_lra_interface_equalities();
   accepts_set_logic_and_real_declarations();
   accepts_chained_comparisons_and_decimal_literals();
   accepts_nary_minus_and_ratio_literal_coefficient();
@@ -2918,6 +3328,16 @@ int main() {
   qf_uf_lra_mix_learns_euf_conflicts();
   qf_uf_lra_mix_learns_lra_conflicts();
   qf_uf_lra_prints_separable_mixed_model();
+  monotone_elimination_reconstructs_a_satisfying_model();
+  monotone_elimination_values_variables_that_lost_all_constraints();
+  monotone_elimination_keeps_two_sided_variables();
+  monotone_elimination_preserves_unsat();
+  monotone_elimination_handles_mutually_bounded_variables();
+  monotone_elimination_handles_duplicated_atom();
+  monotone_elimination_preserves_opposed_strict_bounds();
+  monotone_elimination_respects_strict_bounds();
+  monotone_elimination_handles_bounds_under_ite();
+  monotone_elimination_rejects_atom_shared_across_polarities();
   qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities();
   qf_uf_lra_prints_real_valued_uf_application_model();
   qf_uf_lra_model_reflects_real_valued_uf_equalities();
@@ -2985,6 +3405,7 @@ int main() {
   bidirectional_row_propagation_can_reach_a_conflict();
   theory_decisions_drive_boolean_structure();
   theory_decisions_can_reach_a_conflict();
+  model_phase_refreshes_from_tableau_assignment();
   deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
   prints_lra_model_when_requested();
@@ -3012,5 +3433,9 @@ int main() {
   handles_pathologically_deep_arithmetic_nesting();
   distinct_on_reals_works();
   fixed_variable_elimination_fires_and_preserves_the_verdict();
+  guarded_real_equality_lowering_fires_end_to_end();
+  guarded_real_equality_lowering_does_not_strengthen_guarded_sat_branch();
+  multiple_guarded_real_equalities_use_generic_lowering_end_to_end();
+  guarded_real_equality_lowering_is_default_off_end_to_end();
   return 0;
 }

@@ -50,8 +50,13 @@ fetch a copy:
 - SOI-Simplex's own related-work section (Section I) points to **Alberto
   Griggio's PhD thesis** for "a number of details on implementation and
   additional pivoting heuristics" for QF_LRA — likely a strong practical
-  reference given MathSAT's QF_LRA solver is Simplex-for-DPLL(T)-based; not
-  yet located/fetched.
+  reference given MathSAT's QF_LRA solver is Simplex-for-DPLL(T)-based.
+  **Located and read 2026-08-04**; supplied by the user as
+  `docs/papers/griggio.pdf` (untracked). The lead was correct: its §2.5
+  (pp. 47-56) is exactly the promised material. Chapter map and findings are in
+  [](griggio-mathsat-thesis.md). **It also contradicts the most-violated
+  leaving-rule attribution recorded below** — see that note and the entry's own
+  discrepancy section.
 
 ## Direct extensions of Simplex-for-DPLL(T)
 
@@ -286,6 +291,18 @@ the reference that settles two questions for us.
   MathSAT5), which is our Dantzig-style leaving choice; our opt-in
   *shortest-row* leaving rule (`--lra-sparse-leaving`) is the part with no
   counterpart described here.
+
+  **Corrected 2026-08-04, on reading Griggio's thesis itself.** The primary
+  source states the *opposite* rule: §2.5.3 (p. 53) picks the violated basic
+  variable **closest** to its violated bound -- least-violated, not most --
+  and uses the short-row criterion only as a tie-break. So neither of Primo's
+  two leaving policies is MathSAT's: our default inverts its primary key and
+  our opt-in promotes its tie-break. Note the version caveat before treating
+  King as simply wrong: the thesis is Dec 2009 and describes MathSAT **4**,
+  while King (2014) attributes most-violated to MathSAT**5**, so the rule may
+  have changed between them and the error may be only in our conflating the
+  two. Details, and the resulting experiment, in
+  [](griggio-mathsat-thesis.md).
 - **The tableau is stored explicitly, and fill-in growth is not addressed.**
   Section 2.2.7 describes a sparse matrix with each nonzero entry linked into
   both a row list and a column list. Searching the thesis for fill-in, density,

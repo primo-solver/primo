@@ -17,13 +17,14 @@ order they were proposed, not the order they were implemented.
 | [H2](#h2) | Small-rational fast path in `util::Rational` | implemented, default |
 | [H3](#h3) | Fill-in-aware (Markowitz-style) entering-variable selection | implemented, default |
 | [H4](#h4) | Batched bound assertion (deferred `update()`) | design only |
-| [H5](#h5) | Model-based phase selection | design only |
+| [H5](#h5) | Model-based phase selection | implemented, **opt-in** -- needs measurement |
 | [H6](#h6) | A difference-logic fast path | design only |
 | [H7](#h7) | Fixed-variable elimination (equality slacks) | implemented, **opt-in** -- did not clear its bar |
 | [H8](#h8) | Merge instead of sort in `pivot`'s affected-row loop | implemented, default; **zero regressions** |
 | [H9](#h9) | Bounds-only backtracking (the paper's own scheme) | implemented, default except SOI; largest single gain |
 | [H10](#h10) | Delta-maintained `occurs_in_` (no round trip per pivot) | implemented, default; **+41/-0**, took Primo past z3 (Yices and OpenSMT, both added 2026-08-03, are ahead of both) |
 | [H11](#h11) | Fill-in-aware pivoting in *preprocessing* Gaussian elimination | proposed, opt-in when built |
+| [T1](#t1) | Guarded Real equality distribution for tropical cost definitions | implemented, opt-in; local tropical evidence is mixed |
 
 Where the remaining gap is, and what has been ruled out, is [](#sec-6). Its
 ranked list of open directions is [](#sec-6-5): [D2](#d2) and [D4](#d4)
@@ -694,13 +695,14 @@ negative in the table above -- four files lost in the 500KB-5MB band (41
 against 45) for one gained elsewhere -- while carrying every bit of H7's
 wrong-answer risk. 352 lines removed against 106 added.
 
-**What this says about the remaining gap.** The 56-file deficit against z3 is
-*not* mostly the fixed-equality effect, even though that effect is real and
-large per-instance. Two candidates remain, and the honest position is that
-neither has been tested: offset equalities (`x - y = c` as a column merge,
-z3's other counter, 855-68,937 per instance) and the possibility that the
-mid-range cost here is the elimination pivots' own price on tableaus where
-fixed rows were never the bottleneck. Recorded rather than chased.
+**What this said about the remaining gap at the time.** The 56-file deficit
+against z3 was *not* mostly the fixed-equality effect, even though that effect
+was real and large per-instance. At the time, two candidates remained:
+offset equalities (`x - y = c` as a column merge, z3's other counter,
+855-68,937 per instance) and the possibility that the mid-range cost here was
+the elimination pivots' own price on tableaus where fixed rows were never the
+bottleneck. The offset-equality branch is now closed by the D1/D3 sweep below;
+the sentence is kept as history, not as an open task.
 
 (h8)=
 ### H8 -- Merge instead of sort in `pivot`'s affected-row loop
@@ -710,16 +712,89 @@ this came from a flat profile rather than a design argument, so its
 measurement and the profile that found it are written up in [](#sec-6-2b);
 this entry is the definition the rest of the docs refer to.
 
-**What it is.** `pivot()` combines each affected row with the scaled
-entering row. It used to concatenate the two into a scratch buffer and
-`std::sort` the result, once per affected row per pivot. Both halves are
-already ordered by variable id, so this is a *merge*. The change makes that
-ordering an invariant on `Row` -- strictly ascending, never a zero
-coefficient -- which `add_row` establishes by sorting and `pivot` preserves
-by splicing `basic_var` into `new_entering_row` at its ordered position.
-Two smaller wins follow: the zero check is needed only in the equal-var-id
-branch, and the affected row is taken by reference and *moved* into the
-trail rather than copied twice.
+**First, what "sorted" refers to.** The tableau is a `vector` of `vector`s,
+and the two levels are indexed by completely different things -- which is the
+single most confusing thing about the representation, so it is worth being
+concrete. A real 8-variable tableau with three basic variables, dumped from
+the actual structures:
+
+```text
+rows_ : indexed by variable id                        <- LEVEL 1
+  rows_[0..4] = (x0..x4 are not basic, slot unused)
+  rows_[5] = [ {var=x0, coeff=2}, {var=x3, coeff=-1} ]          <- 2 entries, NOT 8
+  rows_[6] = [ {var=x3, coeff=1}, {var=x4, coeff=7} ]           <- 2 entries, NOT 8
+  rows_[7] = [ {var=x0, coeff=1}, {var=x1, coeff=1}, {var=x4, coeff=-3} ]
+                    ^--------------- LEVEL 2 ---------------^
+
+occurs_in_ : also indexed by variable id
+  occurs_in_[0] = [ x5, x7 ]      occurs_in_[3] = [ x5, x6 ]
+  occurs_in_[1] = [ x7 ]          occurs_in_[4] = [ x6, x7 ]
+```
+
+**Level 1** -- `vars_`, `rows_`, `occurs_in_` -- is dense, one slot per
+variable, and the index *is* the variable: `rows_[5]` means "x5's row". No
+ordering question arises here.
+
+**Level 2** -- the `Row` inside one of those slots -- is **not** indexed by
+variable. It is a sparse list holding one entry per *non-zero term*, each
+entry labelled with the variable it concerns:
+
+```cpp
+struct RowEntry {
+  LraVarId var;         // which variable this term is for
+  util::Rational coeff;
+  std::uint32_t occ_slot;
+};
+using Row = std::vector<RowEntry>;
+```
+
+`rows_[7][0]` is therefore not "x0's coefficient in row 7"; it is "the first
+stored term of row 7", and only reading its `.var` reveals it concerns x0. The
+row's length is its non-zero count (2, 2, 3 above), never the variable count.
+
+Mathematically `rows_[5]` is the vector `(2, 0, 0, -1, 0, 0, 0, 0)`. Dense
+storage would be 8 slots indexed by variable; sparse storage is 2 entries
+carrying their own labels. The numbers force the sparse form: on
+`constraint-199552` the tableau has 1,440 rows over ~1,900 variables holding
+only 3,519 non-zeros, an average row length of **2.44**
+([](tropical-matrix-structure.md)). Dense rows would be ~2.7M slots for 3,519
+real values, and every row operation would cost O(variables) rather than
+O(non-zeros).
+
+So **"sorted" is a statement about level 2 only**: within a single row, the
+entries are kept in strictly ascending order of their `.var` field (and never
+carry a zero coefficient) -- x0, x1, x4 in `rows_[7]`. It is an ordering over
+a row's *contents*, which only exists because those contents are a sparse
+labelled list instead of a dense index.
+
+Sortedness is also decided per container, not globally: `occurs_in_`'s inner
+lists have the same two-level shape but are deliberately **not** ordered,
+since removal there is a swap-pop that destroys any order (see
+[](open-leads.md) lead 3b).
+
+**What H8 is.** `pivot()` combines each affected row with the scaled entering
+row -- and because both are sparse lists, combining them means pairing up the
+entries that refer to the same variable, which a dense representation would
+get for free from the index. It used to concatenate the two into a scratch
+buffer and `std::sort` the result, once per affected row per pivot. But both
+halves already arrive ordered by variable id, so sorting re-establishes
+something that was never lost: the correct operation is a linear two-way
+*merge*, walking both lists in step and adding coefficients where the var ids
+coincide.
+
+The change makes that ordering an explicit invariant on `Row`, which
+`add_row()` establishes by sorting and `pivot()` preserves by splicing
+`basic_var` into `new_entering_row` at its ordered position. Two smaller wins
+follow: the zero check is needed only in the equal-var-id branch, and the
+affected row is taken by reference and *moved* into the trail rather than
+copied twice.
+
+Sortedness is a *choice*, not a necessity, and the alternative is a real
+design: King's tableau (thesis §2.2.7, see [](papers/summaries.md)) keeps rows
+as explicitly **unsorted** linked lists and pays for a dense O(n) scratch map
+per row addition instead of a merge. Both reach O(‖Ti‖ + ‖Tk‖); Primo's
+version buys cache-friendly contiguous rows and pays by having to maintain the
+order.
 
 **Result.** Scrambled competition set (595 files, 60s) 369 -> 378 solved with
 churn **+9/-0**; stratified sample 189 -> 192, +3/-0; mid-band gap 37 -> 38,
@@ -892,11 +967,23 @@ all** -- the bound is already satisfied. That is a genuine
 override: VSIDS keeps its ordering, so a family whose search needs VSIDS
 focus loses nothing.
 
-Mechanism: CaDiCaL's `phase(lit)`/`unphase(lit)` forced-phase API, already
-exposed by the adapter as `CadicalBackend::phase(Lit)`
-(`src/sat/cadical_backend.cpp`). Refresh phases lazily for the atoms whose
-truth under β changed, at the same quiescence point item 6 uses -- not per
-assignment.
+Mechanism: the IPASIR-UP backend's `phase(lit)` hook, exposed through
+`sat::IpasirUpBackend::phase(Lit)`.
+Implemented behind `--lra-model-phase` in `OnlineLraPropagator`: it stores a
+reference to the SAT backend, keeps the last phase literal per observed
+arithmetic atom, and refreshes phase literals at the same quiescence point
+item 6 uses -- not per assignment. Refreshes are dirty-variable scoped after
+ordinary non-basic Assert-Bound moves (the moved variable plus basic rows
+that mention it), and fall back to a full scan after a successful
+`LraTableau::check()` performs pivots, since pivots may change many β values
+at once. They also fall back to a full scan after backtracking in the two
+modes whose pop can restore pivot/assignment state (`PivotingRule::Soi` and
+`--lra-fixed-elimination`); ordinary bounds-only backtracking does not change
+β and so does not dirty phases by itself. The truth test is over
+`LraTableau::assignment(bound_var)` and the
+same `DeltaRational` `bound_assertion()` encoding used by assertion and
+propagation, so strict inequalities are handled in the symbolic-delta
+ordering rather than by rounding.
 
 **Interpretation to test:** the hypothesis is that item 8's win came mostly
 from "decide atoms that need no theory work", and only incidentally from
@@ -908,8 +995,193 @@ informative negative result either way.
 
 **Risk: low.** Phase hints cannot affect soundness; the worst case is a
 worse search order. Keep `--lra-theory-decisions` as-is (it stays a useful
-lever for its file shape) and add this as a separate flag rather than
-replacing it.
+lever for its file shape) and keep this as a separate opt-in flag unless the
+tropical/sc/uart target set and a broad-regression bar both clear. The
+implementation is observable through `:lra.model-phase.refreshes` and
+`:lra.model-phase.hints`.
+
+**First local measurement (2026-08-04, diagnostic only).** The focused
+manifest `benchmarks/qf-lra-h5-evaluation.txt` has three slices: the old
+item-8 TM/sc/uart dramatic-gap rows, rows verified locally where default
+Primo is slower than both OpenSMT and Yices (`sc-21`, `uart-25`,
+`tta_startup/simple_startup_12nodes.missing` under a 1.5x/50ms rule), and
+one tropical sentinel. At 10s on the workstation, default and
+`--lra-model-phase` both solve 12/13 with the tropical sentinel timing out;
+PAR2 moves 24.08s to 23.36s. The direction is mixed: H5 helps the sc rows
+and the added `tta_startup` reference-slower row, but hurts two added uart
+rows (`uart-15`, `uart-25`). This is enough to keep the opt-in experiment,
+not enough to promote it.
+
+#### Tropical-matrix polarity follow-up, 2026-08-04
+
+The OpenSMT comparison makes `tropical-matrix` the open family in
+[](arithmetic.md): OpenSMT solves 5/10 at 300s where Primo, Yices and z3 each
+solve 1/10. A local follow-up on branch `qflra-tropical-investigation`
+checked whether the earlier "all solvers struggle" reading was hiding a cheap
+phase heuristic.
+
+The family shape is unusual but regular: each file is one huge assertion,
+contains thousands of ORs/equalities, no ITEs, and pairs Boolean markers
+`fNm` with Real costs `fNc`. On the smallest status-sat file,
+`constraint-199552.smt2`, OpenSMT with `:verbosity 1` solves in 29.39s after
+about 56k conflicts; Yices times out at 90s. OpenSMT's public help does not
+advertise detailed LRA counters, and `:produce-stats`/`:stats-out` produced no
+useful final stats file in this build, so the behavioral signal is only the
+search trace: many conflicts, low memory, no evidence of an instant
+preprocessing shortcut.
+
+A follow-up arithmetic-shape census shows that the family is close to, but not
+inside, difference logic. Across the 10 files, about 70-72% of arithmetic atoms
+are unary or two-variable bounds/equalities such as `l3c <= l0c`,
+`l105c >= l258c`, or `f0c >= 0`. The systematic non-difference-logic residue is
+almost entirely the tropical multiplication/cost-composition encoding:
+definitions such as `l1c = f13c + f15c` and `l0c = f12c + f12c`, which become
+three-variable or non-unit-coefficient rows after normalization. A pure RDL
+solver therefore cannot take the whole instance. The exploitable shape would
+need to be a hybrid: either recognize these `out = a + b` cost definitions as a
+separate acyclic layer, or feed only the guarded min/comparison subgraph to a
+difference-logic engine while the sum definitions remain in LRA.
+
+Primo's own option matrix on the same file is more informative. Default,
+negative phase, model phase, row+bidirectional propagation at 1024 caps,
+fixed-elimination, top-level-OR Tseitin, and disabling sparse leaving all ran
+past a 45s diagnostic cap. `--theory-phase positive` solved `sat` in about
+19-26s. The solved run still spent real time in the tableau -- 40,504 pivots,
+5.88M row updates, 478M pivot term ops -- but it found the satisfying branch.
+The default/negative 45s partial runs accumulated roughly 1.36-1.38B pivot
+term ops without solving. In other words: pivot cost is still the local
+expense, but polarity decides whether we burn that cost on the useful part of
+the search.
+
+A 60s local two-solver probe over all 10 tropical files is diagnostic only
+(not SLURM), but it supports the same lead:
+
+| solver/config | solved / 10 at 60s | solved files |
+|---|---:|---|
+| Primo `--theory-phase positive` | 2 | `constraint-199552`, `constraint-223827` |
+| OpenSMT `:verbosity 1` | 2 | `constraint-199552`, `constraint-223827` |
+
+This does **not** promote positive phase globally. It says the next cheap
+tropical-specific experiment should be an auto phase rule for this shape:
+single huge assertion, many top-level ORs, many positive theory atoms, no ITEs,
+and `:status sat` on the known solved cases. The bar is a SLURM A/B over all
+10 tropical files, with the full QF_LRA division checked for regressions
+before any default change. Offset equalities remain closed by D1/D3; they are
+not the tropical lead from this probe.
+
+(t1)=
+### T1 -- Guarded Real equality distribution for tropical cost definitions
+
+**Status: implemented behind `--guarded-real-equality-lowering`; local
+tropical evidence is mixed.** The rewrite is deliberately not a portfolio
+branch and not a second difference-logic propagator. It stays inside the
+existing preprocessing pipeline and keeps LRA as the only arithmetic checker.
+
+The common tropical shape is a guarded equality:
+
+```text
+(or G (= out (+ a b)))
+```
+
+The old Real-equality lowering first produced:
+
+```text
+(or G (and (<= out (+ a b)) (<= (+ a b) out)))
+```
+
+Boolean clausification then had to represent the inner conjunction explicitly.
+The new lowering distributes the single equality under the existing guard:
+
+```text
+(and (or G (<= out (+ a b)))
+     (or G (<= (+ a b) out)))
+```
+
+This is just the Boolean identity `G or (A and B) = (G or A) and (G or B)`,
+restricted to disjunctions with exactly one Real equality child. Disjunctions
+with multiple Real equality children still use the old non-distributed lowering
+to avoid an exponential CNF expansion. The counter
+`:preprocessing.real-equality-lowering.guarded-distributed` records the
+specialized case.
+
+**Focused local result (2026-08-04, branch
+`qflra-tropical-investigation`).** With this option enabled on
+`constraint-199552.smt2`, Primo solved `sat` in 5.3-5.8s at a 60s cap. The run
+distributed 648 guarded equalities, encoded 5,460 SAT variables and 10,059
+clauses, and spent 7,679 pivots / 128M pivot term ops. That is a clear
+improvement over the earlier same-branch default probe, which timed out at 45s
+after about 1.36B pivot term ops, and over the earlier `--theory-phase
+positive` run on the old encoding (about 19.8s, 6,108 vars, 11,355 clauses,
+40,504 pivots, 478M term ops).
+
+The 10-file tropical probe is not a win yet:
+
+| config | solved / 10 at 60s | note |
+|---|---:|---|
+| Primo with `--guarded-real-equality-lowering` | 1 | `constraint-199552` only |
+| Primo `--theory-phase positive --guarded-real-equality-lowering` | 1 | `constraint-199552` only; `constraint-223827` regressed from the earlier positive-phase diagnostic |
+
+Interpretation: T1 removes real Boolean/SAT overhead for exactly the guarded
+cost definitions present in this family, and can materially change search on a
+single instance. It does not solve the tropical family, and the mixed local
+evidence is why it remains an option rather than a default. Before using it as
+performance evidence, run a SLURM A/B over all 10 tropical files and the full
+QF_LRA division for regressions.
+
+#### T2 -- Row propagation on top of T1: rejected, 2026-08-04
+
+The obvious follow-up, and the one this branch was opened for: T1 leaves a
+leaner CNF (5,460 vars / 10,059 clauses against the pre-T1 6,108 / 11,355), and
+the family's census is 70-72% unary/binary atoms whose residue is exactly the
+`out = a + b` cost rows that `compute_implied_child_bound` is built to exploit.
+Row propagation had only ever been tried on the pre-T1 encoding. **Measured on
+all 10 files at 60s, it rejects at every cap setting.**
+
+| config | solved / 10 at 60s |
+|---|---:|
+| `--guarded-real-equality-lowering` (baseline) | **1** |
+| + row/bidirectional propagation, default caps | **0** |
+| + both at 128 | **0** |
+| + both at 1024 | **0** |
+
+Not neutral -- a regression. Every propagation configuration *loses*
+`constraint-199552`, the one file the baseline solves.
+
+**The experiment is well-controlled, and the counters explain it.** On
+`constraint-199552` at a short diagnostic cap:
+
+| config | pivots | pivot term ops | row props | bidi props |
+|---|---:|---:|---:|---:|
+| T1 only | **7,679** | **128M** | -- | -- |
+| + propagation, default caps | 64,272 | 1,013M | 2,088 | 128 |
+| + propagation at 128 | 64,272 | 1,013M | 2,088 | 128 |
+| + propagation at 1024 | 64,272 | 1,013M | 2,088 | 128 |
+
+Two things follow. First, the mechanism definitely ran -- 2,088 row
+propagations, so this is not a null result from code that never fired. Second,
+and decisively, **the counters are identical across all three cap settings**:
+unlike the mid-band files that motivated D1 (fanout reaching 521, rows of 91
+terms), tropical's fanout and row sizes never approach even the default caps,
+so raising them changes nothing. The caps were never the binding constraint
+here. What propagation does instead is *hurt*: 8.4x the pivots and 7.9x the
+term ops against T1 alone, perturbing the search away from the cheap branch T1
+finds.
+
+No SLURM A/B and no fuzz gate were run, because nothing is being promoted; this
+is a local diagnostic recorded as such in `docs/run-log.json`.
+
+**Where this leaves the family.** T2's rejection and the independent structural
+result in [](tropical-matrix-structure.md) bound the same conclusion from
+opposite sides. That note reads the actual encoding -- a tropical/arctic
+semiring where each quantity is a paired Boolean `-infinity` flag and Real value
+-- and shows by measurement that *removing* the guards is 27x slower, because
+the guard is what lets the solver skip the arithmetic entirely. So the encoding
+is already close to the right shape for a lazy solver: it needs neither more
+propagation (T2) nor fewer guards. The residual cost is structural fill-in
+(rows going from 2.44 to ~102 terms, ~42x), with `:lra.fixed-variables` and
+`:lra.elimination-pivots` both zero. The two live leads are recorded there --
+`m`-flag-first decision ordering, and relevancy propagation -- and neither is
+a pivoting-rule or propagation-cap question.
 
 (h6)=
 ### H6 -- A difference-logic fast path
@@ -1440,7 +1712,7 @@ whole one.
 | # | direction | expected size | cost | status |
 |---|---|---|---|---|
 | D2 | Floating-point-guided basis selection (Monniaux) | **~14% in the literature** | medium | open, but **much smaller than first scoped** |
-| D4 | Revised simplex with an LU-factored basis | unknown | largest | open |
+| D4 | Revised simplex with an LU-factored basis | unknown | largest | open; CSR/library subdirection tabled |
 | D5 | Replace the hand-written small-rational form with a library that has one | **unknown, plausibly ~0** | small | open, **not a priority** |
 | -- | ~~D1: row-based bound propagation, raised caps~~ | -- | -- | **rejected 2026-07-31** |
 | -- | ~~D3: offset-equality detection + bound propagation~~ | -- | -- | **closed 2026-07-31, by D1's sweep** |
@@ -1806,6 +2078,37 @@ studied is evidenced by integer-preserving (Bareiss-style) factorization and
 SPEX existing at all -- see "Expediting exact linear programming solvers via
 integer preserving factorization" (Operations Research Letters, 2025). This,
 rather than oversight, is the plausible reason nobody in SMT does it.
+
+*CSR/library note, tabled 2026-08-04.* The tempting smaller version of D4 is
+"replace `rows_` / `occurs_in_` with a respectable sparse-matrix library".
+The respectable candidates exist, but they do not make this a local change.
+Eigen's `SparseMatrix` is a compressed row/column sparse container with
+compressed and insertion modes, and its own documentation explicitly prices
+random insertion and sparse write access as special cases rather than the
+normal fast path. SuiteSparse is the standard sparse linear-algebra suite, but
+it is aimed at sparse factorizations and graph/sparse kernels, not at a
+mutable exact DPLL(T) tableau that must emit explanations after every pivot.
+HiGHS and COIN-OR CLP are the respectable LP/simplex libraries, but using
+them would be a theory-solver architecture change rather than a container
+swap: they are numerical optimization engines, not exact SMT theory solvers
+with Primo's bound trail, strict-delta arithmetic, and Farkas reasons.
+
+Plain CSR is therefore tabled as an implementation shortcut. It makes the
+wrong operations hard for the current explicit tableau: each pivot changes row
+lengths, inserts new coefficients, deletes zeros after cancellation, updates
+the transpose `occurs_in_` view, and has to be undoable on the SOI path.
+Keeping both row-major and column-major compressed mirrors would move the
+complexity into synchronization; keeping only row-major CSR would make the
+current sparse-pricing and update paths lose their cheap column access. The
+2026-08-04 vector-capacity prototype already falsified the simplest
+allocation-level version of this idea. Any worthwhile sparse-layout work
+should be scoped as D4 proper -- revised/simplex-style representation or a
+custom row+column entry structure -- not as "use CSR".
+
+References checked for this note: Eigen sparse-matrix documentation
+(`https://libeigen.gitlab.io/eigen/docs-nightly/group__TutorialSparse.html`),
+SuiteSparse (`https://github.com/DrTimothyAldenDavis/SuiteSparse`), HiGHS
+(`https://highs.dev/`), and COIN-OR CLP (`https://github.com/coin-or/Clp`).
 
 *Cheap first step, which is not building it.* Take a prepared tableau from one
 of the four profiled instances, compute an exact LU with a Markowitz ordering

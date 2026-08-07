@@ -1,0 +1,15 @@
+; Bool-sorted arguments alongside an uninterpreted sort, so congruence has to
+; hold across both at once.
+(set-logic QF_UF)
+(declare-sort S 0)
+(declare-fun a () S)
+(declare-fun b () S)
+(declare-fun p () Bool)
+(declare-fun q () Bool)
+(declare-fun h (S Bool) S)
+(declare-fun k (Bool) S)
+(assert (= a b))
+(assert (= p q))
+(assert (or (= (h a p) (k q)) (not (= (h b q) (k p)))))
+(assert (not (= (k p) a)))
+(check-sat)

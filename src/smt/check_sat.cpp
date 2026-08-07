@@ -83,6 +83,14 @@ constexpr util::StatKey kStatSolvedConstantRejectedCycles =
 constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
 constexpr util::StatKey kStatRealEqualityLowered = util::StatKey::RealEqualityLowered;
+constexpr util::StatKey kStatMonotoneEliminationCandidates =
+    util::StatKey::MonotoneEliminationCandidates;
+constexpr util::StatKey kStatMonotoneEliminationVariables =
+    util::StatKey::MonotoneEliminationVariables;
+constexpr util::StatKey kStatMonotoneEliminationAtomsFolded =
+    util::StatKey::MonotoneEliminationAtomsFolded;
+constexpr util::StatKey kStatGuardedRealEqualityDistributed =
+    util::StatKey::GuardedRealEqualityDistributed;
 constexpr util::StatKey kStatSolvedConstantGaussianCandidates =
     util::StatKey::SolvedConstantGaussianCandidates;
 constexpr util::StatKey kStatFiniteDomainDomains = util::StatKey::FiniteDomainDomains;
@@ -165,6 +173,8 @@ constexpr util::StatKey kStatLraRowPropagations = util::StatKey::LraRowPropagati
 constexpr util::StatKey kStatLraBidirectionalRowPropagations =
     util::StatKey::LraBidirectionalRowPropagations;
 constexpr util::StatKey kStatLraTheoryDecisions = util::StatKey::LraTheoryDecisions;
+constexpr util::StatKey kStatLraModelPhaseRefreshes = util::StatKey::LraModelPhaseRefreshes;
+constexpr util::StatKey kStatLraModelPhaseHints = util::StatKey::LraModelPhaseHints;
 constexpr util::StatKey kStatSatSolveCalls = util::StatKey::SatSolveCalls;
 constexpr util::StatKey kStatTheoryAtoms = util::StatKey::TheoryAtoms;
 constexpr util::StatKey kStatEufPredicateAtoms = util::StatKey::EufPredicateAtoms;
@@ -386,6 +396,13 @@ theory::arithmetic::LraTableau::PivotingRule lra_pivoting_rule_from_options(LraP
       return theory::arithmetic::LraTableau::PivotingRule::Sparse;
   }
   return theory::arithmetic::LraTableau::PivotingRule::Bland;
+}
+
+// Same wiring-point translation as above, for the numeric Check/Pivot knobs
+// (LraTuning mirrors LraTableau::Tuning field for field).
+theory::arithmetic::LraTableau::Tuning lra_tuning_from_options(const LraTuning& tuning) {
+  return theory::arithmetic::LraTableau::Tuning{
+      tuning.sparse_pricing_candidates, tuning.bland_fallback_factor, tuning.bland_fallback_offset};
 }
 
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
@@ -1938,6 +1955,20 @@ struct FormulaFeatureSummary {
   bool has_arithmetic = false;
   bool has_euf_predicate = false;
 
+  // The single place that enumerates the fields. Both the per-child recursion
+  // in summarize_formula_features and the per-assertion loop at the dispatch
+  // go through this, so a field cannot be aggregated in one and forgotten in
+  // the other.
+  //
+  // That is not hypothetical. has_application_term was aggregated in the
+  // recursion and omitted from the per-assertion loop, so it read as its
+  // default `false` at the dispatch -- which meant a formula whose only
+  // equalities are over Bool (and are therefore rewritten away in
+  // preprocessing before this runs) reached solve_boolean_conjunction with an
+  // uninterpreted function in it, and congruence was silently dropped. That
+  // was a wrong answer, not a slowdown; see
+  // docs/bool-argument-congruence-bug.md. No compiler warning can catch it --
+  // the field is used, just not propagated.
   FormulaFeatureSummary& operator|=(const FormulaFeatureSummary& other) {
     has_application_term |= other.has_application_term;
     has_equality |= other.has_equality;
@@ -1946,6 +1977,12 @@ struct FormulaFeatureSummary {
     return *this;
   }
 };
+
+// Tripwire: adding a field forces a visit to operator|= above, which is the
+// only defence against repeating the bug described there. Four bools, no
+// padding.
+static_assert(sizeof(FormulaFeatureSummary) == 4,
+              "FormulaFeatureSummary gained a field -- add it to operator|=");
 
 FormulaFeatureSummary summarize_formula_features(
     const core::TermManager& terms, core::TermId term_id,
@@ -1958,9 +1995,22 @@ FormulaFeatureSummary summarize_formula_features(
   const core::Term& term = terms.get(term_id);
   FormulaFeatureSummary summary;
   summary.has_application_term = term.kind == core::TermKind::Application;
+  // Only a Bool-sorted *Application* is an EUF predicate. A Bool-sorted
+  // Constant is a plain propositional variable: it has no arguments, so no
+  // congruence rule can ever apply to it, and there is nothing for EUF to do
+  // with it.
+  //
+  // This read `Application || Constant` until 2026-08-07, which meant any
+  // QF_LRA formula containing a single propositional variable dispatched to
+  // solve_qf_uf_lra. On 2019-ezsmt that cost a file outright -- 0.93s to a
+  // deterministic timeout -- because the mixed path then hands those variables
+  // to congruence closure. See docs/nelson-oppen-qf-lra-regression.md.
+  //
+  // Consumed only by the mixed dispatch `(has_equality || has_euf_predicate)
+  // && has_arithmetic`; the QF_UF dispatch keys on has_application_term, so
+  // narrowing this cannot affect it.
   summary.has_euf_predicate =
-      (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
-      term.sort == terms.symbols().bool_sort();
+      term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort();
   summary.has_arithmetic = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
 
   for (const core::TermId child : term.children) {
@@ -4819,7 +4869,9 @@ struct PreparedLraTheory {
   PreparedLraTheory(const core::TermManager& terms,
                     const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                     theory::arithmetic::LraTableau::PivotingRule pivoting_rule, bool sparse_leaving,
-                    bool fixed_elimination, bool collect_model_variables);
+                    bool fixed_elimination, bool collect_model_variables,
+                    bool least_violated_leaving = false,
+                    theory::arithmetic::LraTableau::Tuning tuning = {});
 
   struct PreparedAtom {
     bool is_arithmetic = false;
@@ -4855,9 +4907,12 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                                      theory::arithmetic::LraTableau::PivotingRule pivoting_rule,
                                      bool sparse_leaving, bool fixed_elimination,
-                                     bool collect_model_variables)
+                                     bool collect_model_variables, bool least_violated_leaving,
+                                     theory::arithmetic::LraTableau::Tuning tuning)
     : base_tableau(pivoting_rule) {
   base_tableau.set_sparse_leaving(sparse_leaving);
+  base_tableau.set_least_violated_leaving(least_violated_leaving);
+  base_tableau.set_tuning(tuning);
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
   auto get_var = [&](core::TermId term_id) {
     const auto found = var_ids.find(term_id);
@@ -5053,6 +5108,89 @@ bool assign_real_model_value(const core::TermManager& terms, RealModelValues& va
   return inserted;
 }
 
+// Gives every monotonically eliminated variable a value again.
+//
+// This is a *postsolve* in the LP sense (Andersen & Andersen,
+// "Presolving in linear programming", Math. Programming 71, 1995,
+// Section 4): the reduced problem's solution is not a solution to the
+// original, so the recorded reductions are walked back to recover one.
+// Their reductions must be undone in reverse order; ours need no order
+// at all -- see docs/preprocessing.md. The elimination rule itself is
+// NOT from that paper; see docs/papers/monotone-variable-elimination.md.
+//
+// Such a variable was removed because all of its constraints push it one
+// way, so no finite bound opposes it. Its constraints are re-derived here
+// against the model the solver produced: each yields a bound on the
+// variable, and taking one unit past the tightest of them satisfies all of
+// them, strict and non-strict alike. `eliminated` is topologically
+// ordered, so a single forward pass suffices -- each entry's constraints
+// mention only variables the tableau valued or entries already handled.
+void apply_monotone_eliminations(const core::TermManager& terms, RealModelValues& values,
+                                 const std::vector<MonotoneEliminatedVariable>& eliminated) {
+  for (const MonotoneEliminatedVariable& entry : eliminated) {
+    std::optional<util::Rational> tightest;
+    for (const auto& [atom_id, required_truth] : entry.constraints) {
+      theory::arithmetic::LraAtom atom;
+      try {
+        atom = theory::arithmetic::normalize_atom(terms, atom_id);
+      } catch (const std::invalid_argument&) {
+        continue;
+      }
+      const auto coefficient_it = atom.polynomial.terms().find(entry.variable);
+      if (coefficient_it == atom.polynomial.terms().end() || coefficient_it->second.is_zero()) {
+        continue;
+      }
+      const util::Rational coefficient = coefficient_it->second;
+      // Sum the rest of the row at the model's values.
+      //
+      // A leaf can legitimately have no value yet. Folding an atom
+      // discharges it for *every* variable in it, so a variable that was
+      // itself disqualified can lose its last constraint and disappear
+      // from the tableau -- nothing else constrains it, and the model
+      // printer would default it to zero. Pin it to zero here instead of
+      // skipping the bound: skipping would leave this constraint to a
+      // later variable that may not exist, which is how an eliminated
+      // variable ends up violating a constraint it was supposed to
+      // satisfy.
+      util::Rational rest(0);
+      for (const auto& [leaf, leaf_coefficient] : atom.polynomial.terms()) {
+        if (leaf == entry.variable) {
+          continue;
+        }
+        std::optional<util::Rational> leaf_value = evaluate_real_model_term(terms, leaf, values);
+        if (!leaf_value.has_value()) {
+          assign_real_model_value(terms, values, leaf, util::Rational(0));
+          leaf_value = evaluate_real_model_term(terms, leaf, values);
+        }
+        if (!leaf_value.has_value()) {
+          // Not a plain real constant, so this atom should never have been
+          // folded; leave the bound underived rather than guess.
+          rest = util::Rational(0);
+          break;
+        }
+        rest = rest + leaf_coefficient * leaf_value.value();
+      }
+      // coefficient * x  <=/<  rhs - rest, then divide, flipping the
+      // sense when the coefficient is negative. Strictness does not
+      // change the bound itself; the unit of slack below covers it.
+      const util::Rational bound = (atom.rhs - rest) / coefficient;
+      if (!tightest.has_value()) {
+        tightest = bound;
+      } else if (entry.bounded_above) {
+        tightest = bound < tightest.value() ? bound : tightest.value();
+      } else {
+        tightest = tightest.value() < bound ? bound : tightest.value();
+      }
+    }
+    const util::Rational one(1);
+    const util::Rational chosen =
+        tightest.has_value()
+            ? (entry.bounded_above ? tightest.value() - one : tightest.value() + one)
+            : util::Rational(0);
+    assign_real_model_value(terms, values, entry.variable, chosen);
+  }
+}
+
 void apply_real_preprocessing_model_assignments(
     const core::TermManager& terms, RealModelValues& values,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
@@ -5145,7 +5283,8 @@ RealModelValues real_model_values_from_lra(
     const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms) {
+    const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   const util::Rational concrete_delta = choose_concrete_delta(prepared, tableau, assigned_atoms);
   RealModelValues values;
   values.reserve(prepared.variables_by_term.size() + model_terms.size());
@@ -5154,6 +5293,9 @@ RealModelValues real_model_values_from_lra(
                    concretize_delta_rational(tableau.assignment(variable), concrete_delta));
   }
   apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
+  if (monotone_eliminated != nullptr) {
+    apply_monotone_eliminations(terms, values, *monotone_eliminated);
+  }
   return values;
 }
 
@@ -5161,18 +5303,24 @@ std::string build_qf_lra_model(
     core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
     const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms) {
-  const RealModelValues values = real_model_values_from_lra(
-      terms, model_terms, preprocessing_model_assignments, prepared, tableau, assigned_atoms);
+    const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
+  const RealModelValues values =
+      real_model_values_from_lra(terms, model_terms, preprocessing_model_assignments, prepared,
+                                 tableau, assigned_atoms, monotone_eliminated);
   return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
 }
 
 std::string build_qf_lra_preprocessing_only_model(
     core::TermManager& terms, const std::vector<core::TermId>& model_terms,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
+    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   RealModelValues values;
   values.reserve(model_terms.size());
   apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
+  if (monotone_eliminated != nullptr) {
+    apply_monotone_eliminations(terms, values, *monotone_eliminated);
+  }
   return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
 }
 
@@ -5484,7 +5632,8 @@ std::optional<sat::Clause> lra_assignment_conflict_with_extra_atom(
   augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, extra_atom, false});
   const PreparedLraTheory augmented_lra_theory(
       terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, false);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, false,
+      /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments);
 }
 
@@ -5647,7 +5796,8 @@ bool lra_assignment_conflicts_with_extra_atoms(
   }
   const PreparedLraTheory augmented_lra_theory(
       terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, false);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, false,
+      /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments)
       .has_value();
 }
@@ -5910,7 +6060,8 @@ RealModelSeparationResult greedy_shared_real_model_separation_atoms(
     }
     const PreparedLraTheory prepared(
         terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-        options.lra_sparse_leaving, options.lra_fixed_elimination, true);
+        options.lra_sparse_leaving, options.lra_fixed_elimination, true,
+        /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
     theory::arithmetic::LraTableau tableau = prepared.base_tableau;
     bool consistent = true;
     for (std::size_t i = 0; i < augmented_lra_assignments.size(); ++i) {
@@ -6067,9 +6218,10 @@ std::optional<LraModelState> build_lra_model_state(
     augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, atom, false});
   }
 
-  PreparedLraTheory prepared(terms, augmented_lra_atoms,
-                             lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-                             options.lra_sparse_leaving, options.lra_fixed_elimination, true);
+  PreparedLraTheory prepared(
+      terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination, true,
+      /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   theory::arithmetic::LraTableau tableau = prepared.base_tableau;
   for (std::size_t i = 0; i < augmented_lra_assignments.size(); ++i) {
     const AssignedTheoryAtom& atom = augmented_lra_assignments[i];
@@ -7052,7 +7204,7 @@ compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
       theory::arithmetic::DeltaRational::from_rational(util::Rational(0));
   std::vector<sat::Lit> reasons;
   reasons.reserve(row.size());
-  for (const auto& [var, coeff] : row) {
+  for (const auto& [var, coeff, var_slot] : row) {
     const bool need_upper_of_var = want_upper == (coeff.sign() > 0);
     const auto bound = need_upper_of_var ? tableau.upper_bound(var) : tableau.lower_bound(var);
     if (!bound.has_value()) {
@@ -7098,7 +7250,7 @@ compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
   std::vector<sat::Lit> reasons;
   reasons.reserve(row.size());
   reasons.push_back(basic_bound->reason);
-  for (const auto& [var, coeff] : row) {
+  for (const auto& [var, coeff, var_slot] : row) {
     if (var == target_var) {
       continue;
     }
@@ -7162,7 +7314,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                       bool propagation_enabled, bool row_propagation_enabled,
                       bool bidirectional_row_propagation_enabled, bool theory_decisions_enabled,
-                      util::Statistics& statistics)
+                      bool model_phase_enabled, bool model_phase_backtrack_may_change_beta,
+                      sat::IpasirUpBackend& backend, util::Statistics& statistics)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
@@ -7170,6 +7323,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         row_propagation_enabled_(row_propagation_enabled),
         bidirectional_row_propagation_enabled_(bidirectional_row_propagation_enabled),
         theory_decisions_enabled_(theory_decisions_enabled),
+        model_phase_enabled_(model_phase_enabled),
+        model_phase_backtrack_may_change_beta_(model_phase_backtrack_may_change_beta),
+        backend_(backend),
         statistics_(statistics) {
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
@@ -7179,6 +7335,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     assigned_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     assigned_lit_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    model_phase_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
+    model_phase_dirty_bound_vars_.assign(prepared_.base_tableau.variable_count(), 0);
     atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, theory_atoms_.size());
     for (std::size_t i = 0; i < theory_atoms_.size(); ++i) {
       const BooleanClausifier::TheoryAtom& atom = theory_atoms_[i];
@@ -7186,6 +7344,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       observed_vars_[static_cast<std::size_t>(var)] = 1;
       atom_index_by_var_[static_cast<std::size_t>(var)] = i;
     }
+    refresh_model_phases();
   }
 
   void notify_assignment(const std::vector<int>& lits) override {
@@ -7241,6 +7400,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     pending_interface_equalities_.clear();
     reason_stream_active_lit_ = 0;
     reason_stream_index_ = 0;
+    if (model_phase_backtrack_may_change_beta_) {
+      mark_all_model_phases_dirty();
+    }
   }
 
   // Unconditional `true` is sound, but only because this propagator runs in
@@ -7386,6 +7548,25 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   std::optional<sat::Clause> conflict() const { return conflict_; }
   const theory::arithmetic::LraTableau& tableau() const { return tableau_; }
 
+  // Interface-equality publishing is Nelson-Oppen machinery, and only
+  // MixedTheoryPropagationDispatcher ever drains it (see
+  // take_interface_equality_propagations). On the pure QF_LRA path nothing
+  // consumes it, yet it was maintained anyway: observe_true_interface_bound
+  // ran on every true assignment, and rebuild_true_interface_bounds() rescanned
+  // EVERY theory atom on EVERY backtrack.
+  //
+  // That was the LassoRanker half of the division regression. On
+  // dropbuf.t2.c_Iteration3_Loop_4-pieceTemplate a gprof profile put 62% of
+  // runtime in notify_backtrack and 29% in 1.4 BILLION lookups into
+  // true_lra_le_reasons_ -- about 150k lookups per backtrack, all discarded.
+  // Gating it recovers the file: 200s timeout -> 12.2s, with the pivot and
+  // conflict counts identical to the pre-regression commit. See
+  // docs/nelson-oppen-qf-lra-regression.md.
+  //
+  // Defaults to false so the pure path pays nothing; the dispatcher turns it
+  // on, which is precisely the path that consumes it.
+  void set_interface_equalities_enabled(bool enabled) { interface_equalities_enabled_ = enabled; }
+
   struct InterfaceEqualityPropagation {
     TermPairKey pair;
     std::vector<sat::Lit> reasons;
@@ -7403,6 +7584,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
 
   bool cb_has_external_clause(bool& is_forgettable) override {
     run_deferred_check_if_needed();
+    refresh_model_phases_if_ready();
     if (!conflict_.has_value()) {
       return false;
     }
@@ -7414,6 +7596,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
 
   bool cb_has_external_clause() override {
     run_deferred_check_if_needed();
+    refresh_model_phases_if_ready();
     if (!conflict_.has_value()) {
       return false;
     }
@@ -7467,6 +7650,10 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     if (!prepared_atom.is_arithmetic) {
       return;
     }
+    const bool bound_var_was_basic = tableau_.is_basic(prepared_atom.bound_var);
+    const theory::arithmetic::DeltaRational bound_var_assignment_before =
+        tableau_.assignment(prepared_atom.bound_var);
+    const std::size_t elimination_pivots_before = tableau_.elimination_pivot_count();
     const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
     const bool atom_value = atom.lit.value > 0 ? lit > 0 : lit < 0;
     const AssignedTheoryAtom assigned =
@@ -7491,6 +7678,16 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       // conflict branch, so check() alone wouldn't even rediscover it.)
       needs_check_ = false;
       return;
+    }
+    if (tableau_.elimination_pivot_count() != elimination_pivots_before) {
+      mark_all_model_phases_dirty();
+    } else if (!bound_var_was_basic &&
+               tableau_.assignment(prepared_atom.bound_var) != bound_var_assignment_before) {
+      mark_model_phase_bound_var_dirty(prepared_atom.bound_var);
+      for (const theory::arithmetic::LraVarId affected_row :
+           tableau_.occurs_in(prepared_atom.bound_var)) {
+        mark_model_phase_bound_var_dirty(affected_row);
+      }
     }
     if (propagation_enabled_) {
       scan_for_propagations(atom_index, prepared_atom.bound_var);
@@ -7546,19 +7743,113 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
     conflict_ = tableau_.check();
+    const std::size_t pivot_delta = tableau_.pivot_count() - pivots_before;
     statistics_.increment(kStatLraBlandFallbacks,
                           tableau_.bland_fallback_count() - fallbacks_before);
     statistics_.increment(kStatLraSoiMultiRowConflicts,
                           tableau_.soi_multi_row_conflict_count() - multi_row_conflicts_before);
     statistics_.increment(kStatLraSoiQuickxplainCalls,
                           tableau_.soi_quickxplain_call_count() - quickxplain_calls_before);
-    statistics_.increment(kStatLraPivots, tableau_.pivot_count() - pivots_before);
+    statistics_.increment(kStatLraPivots, pivot_delta);
     statistics_.increment(kStatLraPivotRowUpdates,
                           tableau_.row_update_count() - row_updates_before);
     statistics_.increment(kStatLraPivotTermOps, tableau_.row_term_op_count() - term_ops_before);
+    if (!conflict_.has_value() && pivot_delta != 0) {
+      mark_all_model_phases_dirty();
+    }
+  }
+
+  std::optional<sat::Lit> model_phase_literal(std::size_t atom_index) const {
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
+    if (!prepared_atom.is_arithmetic ||
+        prepared_atom.relation == theory::arithmetic::LraRelation::Eq) {
+      return std::nullopt;
+    }
+    const BoundAssertion true_assertion =
+        bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                        prepared_atom.asserts_lower_when_true, /*atom_value=*/true);
+    const theory::arithmetic::DeltaRational& beta = tableau_.assignment(prepared_atom.bound_var);
+    const bool atom_holds =
+        true_assertion.is_upper ? beta <= true_assertion.value : beta >= true_assertion.value;
+    const BooleanClausifier::TheoryAtom& atom = theory_atoms_[atom_index];
+    return sat::Lit{atom_holds ? atom.lit.value : -atom.lit.value};
+  }
+
+  void refresh_model_phases_if_ready() {
+    if (conflict_.has_value() || !model_phase_enabled_ ||
+        (!model_phase_all_dirty_ && model_phase_dirty_bound_var_list_.empty())) {
+      return;
+    }
+    refresh_model_phases();
+  }
+
+  void refresh_model_phases() {
+    if (!model_phase_enabled_) {
+      return;
+    }
+    statistics_.increment(kStatLraModelPhaseRefreshes);
+    if (model_phase_all_dirty_) {
+      for (std::size_t atom_index = 0; atom_index < theory_atoms_.size(); ++atom_index) {
+        refresh_model_phase_atom(atom_index);
+      }
+    } else {
+      for (const theory::arithmetic::LraVarId bound_var : model_phase_dirty_bound_var_list_) {
+        const auto found = prepared_.atoms_by_bound_var.find(bound_var);
+        if (found == prepared_.atoms_by_bound_var.end()) {
+          continue;
+        }
+        for (const std::size_t atom_index : found->second) {
+          refresh_model_phase_atom(atom_index);
+        }
+      }
+    }
+    clear_model_phase_dirty_vars();
+  }
+
+  void refresh_model_phase_atom(std::size_t atom_index) {
+    const std::optional<sat::Lit> phase_lit = model_phase_literal(atom_index);
+    if (!phase_lit.has_value()) {
+      return;
+    }
+    const int var = phase_lit->value > 0 ? phase_lit->value : -phase_lit->value;
+    if (model_phase_by_var_[static_cast<std::size_t>(var)] == phase_lit->value) {
+      return;
+    }
+    model_phase_by_var_[static_cast<std::size_t>(var)] = phase_lit->value;
+    backend_.phase(*phase_lit);
+    statistics_.increment(kStatLraModelPhaseHints);
+  }
+
+  void mark_model_phase_bound_var_dirty(theory::arithmetic::LraVarId bound_var) {
+    if (!model_phase_enabled_ || model_phase_all_dirty_ ||
+        bound_var >= model_phase_dirty_bound_vars_.size() ||
+        model_phase_dirty_bound_vars_[bound_var] != 0) {
+      return;
+    }
+    model_phase_dirty_bound_vars_[bound_var] = 1;
+    model_phase_dirty_bound_var_list_.push_back(bound_var);
+  }
+
+  void mark_all_model_phases_dirty() {
+    if (!model_phase_enabled_) {
+      return;
+    }
+    clear_model_phase_dirty_vars();
+    model_phase_all_dirty_ = true;
+  }
+
+  void clear_model_phase_dirty_vars() {
+    for (const theory::arithmetic::LraVarId bound_var : model_phase_dirty_bound_var_list_) {
+      model_phase_dirty_bound_vars_[bound_var] = 0;
+    }
+    model_phase_dirty_bound_var_list_.clear();
+    model_phase_all_dirty_ = false;
   }
 
   void observe_true_interface_bound(std::size_t atom_index, sat::Lit reason) {
+    if (!interface_equalities_enabled_) {
+      return;
+    }
     const TermPairKey pair = prepared_.atoms[atom_index].non_strict_le_pair;
     if (pair.lhs == core::kInvalidTermId) {
       return;
@@ -7568,6 +7859,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   }
 
   void rebuild_true_interface_bounds() {
+    if (!interface_equalities_enabled_) {
+      return;
+    }
     true_lra_le_reasons_.clear();
     for (std::size_t atom_index = 0; atom_index < theory_atoms_.size(); ++atom_index) {
       const TermPairKey pair = prepared_.atoms[atom_index].non_strict_le_pair;
@@ -7729,7 +8023,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
       return;
     }
-    for (const auto& [target_var, target_coeff] : row) {
+    for (const auto& [target_var, target_coeff, target_var_slot] : row) {
       if (target_var == exclude_var) {
         continue;
       }
@@ -7799,16 +8093,23 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   bool row_propagation_enabled_;
   bool bidirectional_row_propagation_enabled_;
   bool theory_decisions_enabled_;
+  bool model_phase_enabled_;
+  bool model_phase_backtrack_may_change_beta_;
+  sat::IpasirUpBackend& backend_;
   util::Statistics& statistics_;
   std::vector<char> observed_vars_;
   std::vector<char> assigned_;
   std::vector<int> assigned_lit_by_var_;
+  std::vector<int> model_phase_by_var_;
+  std::vector<char> model_phase_dirty_bound_vars_;
+  std::vector<theory::arithmetic::LraVarId> model_phase_dirty_bound_var_list_;
   std::vector<int> var_trail_;
   std::vector<std::size_t> atom_index_by_var_;
   std::vector<std::size_t> checkpoints_;
   std::vector<std::size_t> level_starts_;
   std::deque<PendingPropagation> pending_;
   std::deque<InterfaceEqualityPropagation> pending_interface_equalities_;
+  bool interface_equalities_enabled_ = false;
   std::unordered_map<TermPairKey, sat::Lit, TermPairKeyHash> true_lra_le_reasons_;
   std::unordered_set<TermPairKey, TermPairKeyHash> published_interface_pairs_;
   std::unordered_map<int, std::vector<sat::Lit>> reasons_;
@@ -7821,6 +8122,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   // tableau_.check() eagerly per literal, resolved lazily by
   // run_deferred_check_if_needed() (called from cb_has_external_clause()).
   bool needs_check_ = false;
+  bool model_phase_all_dirty_ = true;
   // cb_decide()'s rotating position (competitiveness-roadmap item 8):
   // gives cb_decide() a stable, persistent round-robin order over
   // arithmetic atoms across calls, rather than always restarting from
@@ -7845,6 +8147,11 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
         euf_propagator_(euf_propagator),
         lra_propagator_(lra_propagator),
         statistics_(statistics) {
+    // The only consumer of interface-equality publishing; see
+    // OnlineLraPropagator::set_interface_equalities_enabled.
+    if (lra_propagator_ != nullptr) {
+      lra_propagator_->set_interface_equalities_enabled(true);
+    }
     int max_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
       max_var = std::max(max_var, sat_var(atom.lit));
@@ -8207,7 +8514,8 @@ CheckSatOutcome solve_qf_lra_impl(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const CheckSatOptions& options, util::Statistics& statistics) {
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
@@ -8221,7 +8529,8 @@ CheckSatOutcome solve_qf_lra_impl(
 
   const PreparedLraTheory prepared_theory(
       terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
+      options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
   publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
 
 #if PRIMO_HAVE_IPASIR
@@ -8231,10 +8540,12 @@ CheckSatOutcome solve_qf_lra_impl(
   // via LraTableau::push/pop instead of reasserting everything from
   // scratch every SAT round), and correctness has already been verified
   // against it via the fuzz gate (see docs/run-log.json).
-  OnlineLraPropagator online_propagator(prepared_theory, clausifier.theory_atoms(),
-                                        options.lra_propagation, options.lra_row_propagation,
-                                        options.lra_bidirectional_row_propagation,
-                                        options.lra_theory_decisions, statistics);
+  OnlineLraPropagator online_propagator(
+      prepared_theory, clausifier.theory_atoms(), options.lra_propagation,
+      options.lra_row_propagation, options.lra_bidirectional_row_propagation,
+      options.lra_theory_decisions, options.lra_model_phase,
+      options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination, backend,
+      statistics);
   backend.connect_external_propagator(&online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -8275,7 +8586,7 @@ CheckSatOutcome solve_qf_lra_impl(
       return CheckSatOutcome{
           CheckSatResult::Sat, "", statistics,
           build_qf_lra_model(terms, model_terms, preprocessing_model_assignments, prepared_theory,
-                             online_propagator.tableau(), assigned_atoms)};
+                             online_propagator.tableau(), assigned_atoms, monotone_eliminated)};
 #else
       theory::arithmetic::LraTableau model_tableau = prepared_theory.base_tableau;
       for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
@@ -8627,11 +8938,13 @@ CheckSatOutcome solve_qf_lra(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const CheckSatOptions& options, util::Statistics& statistics) {
+    const CheckSatOptions& options, util::Statistics& statistics,
+    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   const std::uint64_t promotions_before = util::Rational::promotion_count();
   const std::uint64_t big_operations_before = util::Rational::big_operation_count();
-  CheckSatOutcome outcome = solve_qf_lra_impl(terms, assertions, model_terms,
-                                              preprocessing_model_assignments, options, statistics);
+  CheckSatOutcome outcome =
+      solve_qf_lra_impl(terms, assertions, model_terms, preprocessing_model_assignments, options,
+                        statistics, monotone_eliminated);
   const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
   const std::uint64_t big_operations =
       util::Rational::big_operation_count() - big_operations_before;
@@ -8863,7 +9176,8 @@ CheckSatOutcome solve_qf_uf_lra(
   const core::TermId false_term = terms.mk_bool(false);
   const PreparedLraTheory base_prepared_lra_theory(
       terms, lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+      options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
+      options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
   publish_lra_tableau_shape_stats(base_prepared_lra_theory.base_tableau, statistics);
   std::optional<PreparedFlatTheory> prepared_euf_theory;
   if (!euf_atoms.empty()) {
@@ -8885,7 +9199,10 @@ CheckSatOutcome solve_qf_uf_lra(
   if (!lra_atoms.empty() && !options.nelson_oppen_model_equality_branching) {
     online_lra_propagator.emplace(
         base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
-        options.lra_bidirectional_row_propagation, options.lra_theory_decisions, statistics);
+        options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
+        options.lra_model_phase,
+        options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination, backend,
+        statistics);
     if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online) {
       if (options.qf_uflra_online_euf) {
         online_euf_propagator.emplace(terms, euf_atoms, true_term, false_term, mixed_euf_options,
@@ -9017,7 +9334,8 @@ CheckSatOutcome solve_qf_uf_lra(
       } else {
         augmented_prepared_lra_theory.emplace(
             terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-            options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model);
+            options.lra_sparse_leaving, options.lra_fixed_elimination, options.produce_model,
+            options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
         prepared_lra_theory_for_check = &augmented_prepared_lra_theory.value();
         statistics.increment(":no.interface.lra-prepared-augmented");
       }
@@ -9785,6 +10103,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                    reachable_term_count(frontend.terms(), assertions));
     const std::vector<core::TermId> symmetry_source_assertions = assertions;
     std::vector<TheoryModelAssignment> preprocessing_model_assignments;
+    std::vector<MonotoneEliminatedVariable> monotone_eliminated;
     std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
     std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
     if (use_finite_domain_amo) {
@@ -9928,10 +10247,24 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       // generation below and the has_equality/has_arithmetic dispatch, so
       // downstream passes/the tableau see the same Le/Lt-pair shape they
       // always have.
-      RealEqualityLoweringResult lowered_equalities =
-          lower_real_equalities(frontend.terms(), assertions);
+      RealEqualityLoweringResult lowered_equalities = lower_real_equalities(
+          frontend.terms(), assertions, options.guarded_real_equality_lowering);
       assertions = std::move(lowered_equalities.assertions);
       statistics.increment(kStatRealEqualityLowered, lowered_equalities.lowered);
+      statistics.increment(kStatGuardedRealEqualityDistributed,
+                           lowered_equalities.guarded_distributed);
+    }
+    if (options.monotone_elimination) {
+      // Runs after Real-equality lowering so that equalities have already
+      // become Le/Lt pairs -- a variable pinned by an equality is
+      // two-sided either way, but the pass only understands Le/Lt.
+      MonotoneEliminationResult monotone =
+          eliminate_monotone_variables(frontend.terms(), assertions);
+      statistics.increment(kStatMonotoneEliminationCandidates, monotone.candidates);
+      statistics.increment(kStatMonotoneEliminationAtomsFolded, monotone.atoms_folded);
+      statistics.increment(kStatMonotoneEliminationVariables, monotone.eliminated.size());
+      assertions = std::move(monotone.assertions);
+      monotone_eliminated = std::move(monotone.eliminated);
     }
     if (use_symmetry_breaking) {
       if (!symmetry_result.has_value()) {
@@ -10061,8 +10394,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       if (options.produce_model) {
         if (frontend.has_declared_real_constants()) {
           const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
-          outcome.model = build_qf_lra_preprocessing_only_model(frontend.terms(), model_terms,
-                                                                preprocessing_model_assignments);
+          outcome.model = build_qf_lra_preprocessing_only_model(
+              frontend.terms(), model_terms, preprocessing_model_assignments, &monotone_eliminated);
         } else {
           outcome.model = build_qf_uf_model(frontend.terms(), preprocessing_model_assignments);
         }
@@ -10128,17 +10461,26 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                       : std::vector<core::TermId>{};
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(solve_qf_lra(frontend.terms(), assertions, lra_model_terms,
-                                       preprocessing_model_assignments, solve_options, statistics),
+                                       preprocessing_model_assignments, solve_options, statistics,
+                                       &monotone_eliminated),
                           solve_start);
     }
     if (options.produce_model && frontend.has_declared_real_constants() && !has_equality &&
         !has_euf_predicate) {
       const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(solve_qf_lra(frontend.terms(), assertions, model_terms,
-                                       preprocessing_model_assignments, solve_options, statistics),
-                          solve_start);
+      return finish_solve(
+          solve_qf_lra(frontend.terms(), assertions, model_terms, preprocessing_model_assignments,
+                       solve_options, statistics, &monotone_eliminated),
+          solve_start);
     }
+    // has_application_term, not has_equality alone: preprocessing rewrites
+    // Bool-sorted equalities into Boolean structure before this runs, so a
+    // formula whose equalities are all over Bool has has_equality == false
+    // even when it contains uninterpreted functions. Routing that to
+    // solve_boolean_conjunction abstracts the applications to independent
+    // propositional variables and drops congruence -- a wrong answer. See
+    // docs/bool-argument-congruence-bug.md.
     if (has_equality || has_application_term) {
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(solve_qf_uf(frontend.terms(), assertions, solve_options, statistics,

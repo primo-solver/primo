@@ -43,6 +43,7 @@ GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
 struct RealEqualityLoweringResult {
   std::vector<core::TermId> assertions;
   std::size_t lowered = 0;
+  std::size_t guarded_distributed = 0;
 };
 
 // Rewrites every Equality node whose operands are Real-sorted into
@@ -55,8 +56,9 @@ struct RealEqualityLoweringResult {
 // what lets QF_LRA disequality avoid needing case-split machinery in
 // LraTableau/OnlineLraPropagator. Non-Real equalities are left
 // untouched.
-RealEqualityLoweringResult lower_real_equalities(core::TermManager& terms,
-                                                 const std::vector<core::TermId>& assertions);
+RealEqualityLoweringResult lower_real_equalities(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    bool enable_guarded_real_equality_distribution = false);
 
 struct SolvedConstantSubstitutionResult {
   std::vector<core::TermId> assertions;
@@ -79,6 +81,52 @@ struct SolvedConstantSubstitutionResult {
 SolvedConstantSubstitutionResult substitute_solved_constants(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     bool enable_gaussian_elimination = false);
+
+// One real variable removed by monotone (one-sided) elimination, together
+// with everything needed to give it a value again when a model is printed.
+struct MonotoneEliminatedVariable {
+  core::TermId variable = core::kInvalidTermId;
+  // True when every discharged constraint bounds the variable from above,
+  // so an arbitrarily small value satisfies all of them; false for the
+  // mirror case.
+  bool bounded_above = false;
+  // The atoms discharged for this variable, each paired with the truth
+  // value that occurrence has to take. Model reconstruction re-derives a
+  // satisfying value from exactly these.
+  std::vector<std::pair<core::TermId, bool>> constraints;
+};
+
+struct MonotoneEliminationResult {
+  std::vector<core::TermId> assertions;
+  // Sorted by TermId for reproducibility. No dependency order is needed:
+  // whichever eliminated variable of a discharged atom is valued last sees
+  // every other leaf already valued, and repairs that atom.
+  std::vector<MonotoneEliminatedVariable> eliminated;
+  std::size_t candidates = 0;
+  std::size_t atoms_folded = 0;
+};
+
+// Eliminates real variables that occur *one-sidedly*: if, after accounting
+// for Boolean polarity, every atom mentioning `x` pushes it the same
+// direction, then some extreme value of `x` satisfies all of them at once,
+// and each such atom can be replaced by the constant its own occurrence
+// needs (true at positive polarity, false at negative).
+//
+// This is Fourier-Motzkin elimination of a single-sign variable: with no
+// opposite bounds to pair against, the pairwise combination step is empty
+// and every constraint mentioning the variable is simply discharged. The
+// saving is mostly Boolean -- the atom leaves the CNF and the clauses it
+// satisfies disappear -- and only secondarily a smaller tableau.
+//
+// Deliberately conservative. A variable is disqualified unless it is a
+// 0-ary Real `Constant` whose every occurrence is a linear leaf of a
+// Le/Lt atom: appearing under an uninterpreted application, inside a Real
+// equality, or at mixed polarity all force it two-sided. An atom carrying
+// any leaf that model reconstruction could not evaluate disqualifies
+// every variable in it, so a discharged constraint can always be repaired
+// when the model is built.
+MonotoneEliminationResult eliminate_monotone_variables(core::TermManager& terms,
+                                                       const std::vector<core::TermId>& assertions);
 
 struct BooleanUnitPropagationResult {
   std::vector<core::TermId> assertions;

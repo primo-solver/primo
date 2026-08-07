@@ -102,3 +102,4 @@ contrib/cadical-versions*/
 # it still has to exist on disk before a cluster sync, since
 # slurm_prepare_benchmark_workspace.py rsyncs with --delete.
 benchmarks/seeds/qf_lra_division/
+build-gprof/

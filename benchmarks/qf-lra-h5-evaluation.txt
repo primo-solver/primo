@@ -1,0 +1,24 @@
+# Focused QF_LRA H5 evaluation set.
+#
+# Slice 1: item-8 dramatic-gap rows where --lra-theory-decisions previously
+# showed whether arithmetic-guided search can move TM/sc/uart.
+TM/p-DepotsNum_s8.msat.smt2
+TM/p6-zenonumeric_s5.smt2
+sc/sc-17.induction3.cvc.smt2
+sc/sc-19.induction3.cvc.smt2
+sc/sc-21.induction3.cvc.smt2
+sc/sc-27.induction3.cvc.smt2
+uart/uart-16.induction.cvc.smt2
+uart/uart-17.induction.cvc.smt2
+uart/uart-18.induction.cvc.smt2
+
+# Slice 2: rows verified locally on 2026-08-04 where current Primo is slower
+# than both OpenSMT and Yices on the same workstation.
+uart/uart-15.base.cvc.smt2
+uart/uart-25.induction.cvc.smt2
+tta_startup/simple_startup_12nodes.missing.induct.smt2
+
+# Slice 3: tropical-matrix sentinel. This is hard for every solver at short
+# local budgets, but OpenSMT's full-division result says the family is not
+# intrinsically hopeless.
+tropical-matrix/constraint-199552.smt2

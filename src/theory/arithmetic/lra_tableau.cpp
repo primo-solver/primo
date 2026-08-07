@@ -26,7 +26,7 @@ void LraTableau::add_row(LraVarId basic_var,
     if (coefficient.is_zero()) {
       continue;
     }
-    row.emplace_back(var, coefficient);
+    row.emplace_back(var, coefficient, static_cast<std::uint32_t>(occurs_in_[var].size()));
     occurs_in_[var].push_back(basic_var);
     assignment = assignment + vars_.at(var).assignment.scaled(coefficient);
   }
@@ -35,7 +35,7 @@ void LraTableau::add_row(LraVarId basic_var,
   // paid once per row at construction, and is what lets pivot()'s hot
   // affected-row loop merge rather than sort.
   std::sort(row.begin(), row.end(),
-            [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+            [](const RowEntry& lhs, const RowEntry& rhs) { return lhs.var < rhs.var; });
   vars_.at(basic_var).is_basic = true;
   vars_.at(basic_var).assignment = assignment;
   rows_[basic_var] = std::move(row);
@@ -116,7 +116,7 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
   // testing this round, not just theorized).
   const std::vector<LraVarId> affected = occurs_in_.at(nonbasic_var);
   for (const LraVarId basic_var : affected) {
-    for (const auto& [var, coefficient] : rows_.at(basic_var)) {
+    for (const auto& [var, coefficient, var_slot] : rows_.at(basic_var)) {
       if (var == nonbasic_var) {
         VarState& basic_state = vars_.at(basic_var);
         if (trails_assignments_and_pivots()) {
@@ -182,15 +182,21 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   util::Rational entering_coeff(0);
   Row remainder;
   remainder.reserve(old_row.size());
-  for (const auto& [var, coeff] : old_row) {
+  for (const auto& [var, coeff, var_slot] : old_row) {
     if (var == entering_var) {
       entering_coeff = coeff;
     } else {
       remainder.emplace_back(var, coeff);
     }
-    auto& occurrences = occurs_in_[var];
-    occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), basic_var),
-                      occurrences.end());
+    // occurs_in_ removal, site 1 of 2: dissolving the leaving row.
+    // basic_var stops being basic, so every variable that appeared in its
+    // row loses basic_var from its occurrence list. Unconditional, once per
+    // term -- the count is exactly sum(|row(leaving)|) over pivots, which is
+    // bounded by row length and is the cheap site. Measured on
+    // tropical-matrix/constraint-199552: 264,081 calls, 181M elements
+    // scanned. See docs/open-leads.md lead 3b for the other site, which is
+    // 45x more expensive.
+    unlink_occurrence(var, var_slot);
   }
 
   const util::Rational inv = util::Rational(1) / entering_coeff;
@@ -202,7 +208,7 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   // the affected-row merge below silently produces garbage. `remainder` is
   // ordered already, being a filtered copy of an ordered row.
   bool basic_var_placed = false;
-  for (const auto& [var, coeff] : remainder) {
+  for (const auto& [var, coeff, var_slot] : remainder) {
     if (!basic_var_placed && basic_var < var) {
       new_entering_row.emplace_back(basic_var, inv);
       basic_var_placed = true;
@@ -239,8 +245,8 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
 
     const auto entering_pos =
         std::lower_bound(other_row.begin(), other_row.end(), entering_var,
-                         [](const auto& term, LraVarId var) { return term.first < var; });
-    const util::Rational entering_in_other = entering_pos->second;
+                         [](const RowEntry& term, LraVarId v) { return term.var < v; });
+    const util::Rational entering_in_other = entering_pos->coeff;
 
     // Both inputs are ordered by var id (the Row invariant), so combining
     // them is a linear two-way merge -- heuristics-note item H8. This used to concatenate them into
@@ -254,7 +260,7 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     while (true) {
       // entering_var leaves this row entirely: its contribution is the
       // `entering_in_other` factor the new row is scaled by.
-      if (i < other_row.size() && other_row[i].first == entering_var) {
+      if (i < other_row.size() && other_row[i].var == entering_var) {
         ++i;
         continue;
       }
@@ -263,34 +269,46 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
       if (!have_other && !have_entering) {
         break;
       }
-      if (have_other && (!have_entering || other_row[i].first < new_entering_row[j].first)) {
-        // Carried over unchanged, and nonzero by the Row invariant.
-        rebuilt.emplace_back(other_row[i].first, other_row[i].second);
+      if (have_other && (!have_entering || other_row[i].var < new_entering_row[j].var)) {
+        // Carried over unchanged, and nonzero by the Row invariant. The
+        // occurrence entry does not move, so the slot carries across.
+        rebuilt.emplace_back(other_row[i].var, other_row[i].coeff, other_row[i].occ_slot);
         ++i;
-      } else if (have_entering && (!have_other || new_entering_row[j].first < other_row[i].first)) {
+      } else if (have_entering && (!have_other || new_entering_row[j].var < other_row[i].var)) {
         // A product of two nonzero rationals, so it cannot be zero either.
-        rebuilt.emplace_back(new_entering_row[j].first,
-                             entering_in_other * new_entering_row[j].second);
-        occurs_in_[new_entering_row[j].first].push_back(other_basic);
+        rebuilt.emplace_back(
+            new_entering_row[j].var, entering_in_other * new_entering_row[j].coeff,
+            static_cast<std::uint32_t>(occurs_in_[new_entering_row[j].var].size()));
+        occurs_in_[new_entering_row[j].var].push_back(other_basic);
         ++j;
       } else {
         // Present on both sides. The coefficients add, and this is the only
         // place one can cancel to zero -- the Row invariant says a stored
         // coefficient never is.
-        util::Rational sum = other_row[i].second + entering_in_other * new_entering_row[j].second;
-        const LraVarId var = other_row[i].first;
+        util::Rational sum = other_row[i].coeff + entering_in_other * new_entering_row[j].coeff;
+        const LraVarId var = other_row[i].var;
         if (sum.is_zero()) {
+          // occurs_in_ removal, site 2 of 2: exact cancellation.
           // The variable leaves this row, so its occurrence entry goes with
-          // it. This is the *only* removal the loop performs: entering_var
-          // needs none (its whole list was cleared when it became basic),
-          // and every other term either stays put or is new.
-          std::vector<LraVarId>& occurrences = occurs_in_[var];
-          occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), other_basic),
-                            occurrences.end());
+          // it. This is the only removal *this loop* performs -- entering_var
+          // needs none (its whole list was cleared when it became basic), and
+          // every other term either stays put or is new. Site 1, above in
+          // this same function, dissolves the leaving row unconditionally.
+          //
+          // Do not read "the only removal" as "rare". This fires whenever two
+          // coefficients sum to exactly zero, which on a definition-DAG
+          // formula is common: measured at 9.4% of all merged terms on
+          // tropical-matrix/constraint-199552 -- 12.0M calls scanning 8.17
+          // BILLION elements, against 128.4M merged terms in total. That is
+          // ~2.0s of a 4.4s solve and is why pivot() holds 74% self time
+          // while Rational copies hold 1.05%. The linear scan below is the
+          // single largest measured cost in the arithmetic layer;
+          // docs/open-leads.md lead 3b records the candidate fixes.
+          unlink_occurrence(var, other_row[i].occ_slot);
         } else {
           // Present before and after: the coefficient changed, the
-          // occurrence entry did not.
-          rebuilt.emplace_back(var, std::move(sum));
+          // occurrence entry did not, so the slot carries across.
+          rebuilt.emplace_back(var, std::move(sum), other_row[i].occ_slot);
         }
         ++i;
         ++j;
@@ -302,8 +320,9 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     rows_[other_basic] = std::move(rebuilt);
   }
 
-  for (const auto& [var, coeff] : new_entering_row) {
-    occurs_in_[var].push_back(entering_var);
+  for (auto& entry : new_entering_row) {
+    entry.occ_slot = static_cast<std::uint32_t>(occurs_in_[entry.var].size());
+    occurs_in_[entry.var].push_back(entering_var);
   }
   rows_[entering_var] = std::move(new_entering_row);
 
@@ -329,7 +348,7 @@ LraVarId LraTableau::select_elimination_entering_variable(const Row& row) const 
   std::size_t best_occurrences = 0;
   bool best_unit = false;
 
-  for (const auto& [var, coeff] : row) {
+  for (const auto& [var, coeff, var_slot] : row) {
     // Never pivot a fixed variable *into* the basis -- that is precisely the
     // state this whole mechanism exists to get out of, and it would trade one
     // permanently-repair-demanding row for another. check()'s own can_enter()
@@ -412,7 +431,7 @@ std::vector<sat::Lit> LraTableau::build_conflict(LraVarId violated, bool too_low
   const VarState& violated_state = vars_.at(violated);
   std::vector<sat::Lit> reasons;
   reasons.push_back(too_low ? violated_state.lower->reason : violated_state.upper->reason);
-  for (const auto& [var, coeff] : rows_.at(violated)) {
+  for (const auto& [var, coeff, var_slot] : rows_.at(violated)) {
     const VarState& var_state = vars_.at(var);
     const bool positive = coeff.sign() > 0;
     const bool want_upper = (too_low && positive) || (!too_low && !positive);
@@ -445,21 +464,19 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
 
   // Reused member -- see combine_scratch_'s own comment.
   combine_scratch_.clear();
-  for (const auto& [term_var, coeff] : rows_.at(*f_var_)) {
+  for (const auto& [term_var, coeff, term_var_slot] : rows_.at(*f_var_)) {
     combine_scratch_.emplace_back(term_var, coeff);
   }
   const util::Rational delta_rational(delta);
-  for (const auto& [term_var, coeff] : var_row) {
+  for (const auto& [term_var, coeff, term_var_slot] : var_row) {
     combine_scratch_.emplace_back(term_var, coeff * delta_rational);
   }
   std::sort(combine_scratch_.begin(), combine_scratch_.end(),
             [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
   Row& f_row = rows_.at(*f_var_);
-  for (const auto& [term_var, coeff] : f_row) {
-    auto& occurrences = occurs_in_[term_var];
-    occurrences.erase(std::remove(occurrences.begin(), occurrences.end(), *f_var_),
-                      occurrences.end());
+  for (const auto& [term_var, coeff, term_var_slot] : f_row) {
+    unlink_occurrence(term_var, term_var_slot);
   }
   Row rebuilt;
   rebuilt.reserve(combine_scratch_.size());
@@ -476,7 +493,7 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
     if (sum.is_zero()) {
       continue;
     }
-    rebuilt.emplace_back(term_var, sum);
+    rebuilt.emplace_back(term_var, sum, static_cast<std::uint32_t>(occurs_in_[term_var].size()));
     occurs_in_[term_var].push_back(*f_var_);
   }
   f_row = std::move(rebuilt);
@@ -503,7 +520,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
   LraVarId best_j = 0;
   SoiSelection best_selection{0, 0, kZero};
 
-  for (const auto& [j, t0j] : f_row) {
+  for (const auto& [j, t0j, j_slot] : f_row) {
     if (t0j.is_zero()) {
       continue;
     }
@@ -540,7 +557,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
         continue;
       }
       util::Rational coeff(0);
-      for (const auto& [var, c] : rows_.at(k)) {
+      for (const auto& [var, c, var_slot] : rows_.at(k)) {
         if (var == j) {
           coeff = c;
           break;
@@ -627,7 +644,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
           continue;
         }
         util::Rational coeff(0);
-        for (const auto& [var, c] : rows_.at(k)) {
+        for (const auto& [var, c, var_slot] : rows_.at(k)) {
           if (var == j) {
             coeff = c;
             break;
@@ -682,7 +699,7 @@ std::unordered_map<LraVarId, util::Rational> LraTableau::restricted_soi_row(
       continue;
     }
     const util::Rational d(direction);
-    for (const auto& [var, coeff] : rows_.at(basic_var)) {
+    for (const auto& [var, coeff, var_slot] : rows_.at(basic_var)) {
       restricted[var] += coeff * d;
     }
   }
@@ -807,7 +824,7 @@ LraVarId LraTableau::select_entering_variable(LraVarId violated, bool too_low, b
   if (use_bland) {
     // Bland's rule: smallest index among the eligible candidates.
     LraVarId entering = vars_.size();
-    for (const auto& [var, coeff] : row) {
+    for (const auto& [var, coeff, var_slot] : row) {
       if (can_enter(coeff, vars_.at(var), too_low) && var < entering) {
         entering = var;
       }
@@ -820,12 +837,14 @@ LraVarId LraTableau::select_entering_variable(LraVarId violated, bool too_low, b
   }
 
   // Dantzig-style: pick the largest |coefficient| among eligible entering
-  // candidates, tie-breaking by smallest index -- Row isn't sorted by var id,
-  // so the index comparison has to be explicit (can't rely on scan order the
-  // way the Bland branch above does).
+  // candidates, tie-breaking by smallest index. The tie-break is an explicit
+  // comparison because the scan is ordered by |coefficient|, not by var id --
+  // the Bland branch above compares explicitly for the same reason. (Rows
+  // *are* ordered by var id; that is the Row invariant pivot() relies on for
+  // its two-way merge. An earlier version of this comment claimed otherwise.)
   LraVarId entering = vars_.size();
   util::Rational best_abs_coeff(0);
-  for (const auto& [var, coeff] : row) {
+  for (const auto& [var, coeff, var_slot] : row) {
     if (!can_enter(coeff, vars_.at(var), too_low)) {
       continue;
     }
@@ -843,7 +862,7 @@ LraVarId LraTableau::select_entering_variable(LraVarId violated, bool too_low, b
 // eligible candidates, the one occurring in the fewest rows, because pivot()
 // rewrites exactly those rows.
 //
-// The scan is bounded (kSparsePricingCandidateLimit) but only in how many
+// The scan is bounded (Tuning::sparse_pricing_candidates) but only in how many
 // *eligible* candidates it scores -- never in how much of the row it reads
 // before concluding there are none. Returning "none" is what check() turns
 // into a conflict, so an early exit before finding one would be unsound, not
@@ -858,7 +877,7 @@ LraVarId LraTableau::select_sparse_entering_variable(const Row& row, bool too_lo
   const std::size_t size = row.size();
   const std::size_t start = size == 0 ? 0 : sparse_pricing_cursor_ % size;
   for (std::size_t offset = 0; offset < size; ++offset) {
-    const auto& [var, coeff] = row[(start + offset) % size];
+    const auto& [var, coeff, var_slot] = row[(start + offset) % size];
     if (!can_enter(coeff, vars_.at(var), too_low)) {
       continue;
     }
@@ -876,7 +895,8 @@ LraVarId LraTableau::select_sparse_entering_variable(const Row& row, bool too_lo
       best_occurrences = occurrences;
       best_has_unit_coeff = has_unit_coeff;
     }
-    if (++scored >= kSparsePricingCandidateLimit) {
+    ++scored;
+    if (tuning_.sparse_pricing_candidates != 0 && scored >= tuning_.sparse_pricing_candidates) {
       break;
     }
   }
@@ -892,10 +912,13 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
   // class comment): once more than this many pivots have happened within
   // this call, switch to Bland's-rule selection (both loops below) for
   // the remainder. A heuristic threshold, not a formally derived bound --
-  // generous relative to the tableau size, not tuned. Reset every call
-  // (cycling risk is per Check/Pivot episode, not global across the
-  // tableau's lifetime).
-  const std::size_t bland_fallback_threshold = 4 * vars_.size() + 64;
+  // generous relative to the tableau size. Reset every call (cycling risk
+  // is per Check/Pivot episode, not global across the tableau's lifetime).
+  // Both coefficients are tunable (Tuning); termination needs the fallback
+  // to happen after finitely many pivots, not after this particular count,
+  // so any value is sound.
+  const std::size_t bland_fallback_threshold =
+      tuning_.bland_fallback_factor * vars_.size() + tuning_.bland_fallback_offset;
   std::size_t pivot_count = 0;
   bool fallback_counted = false;
 
@@ -935,7 +958,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         // update the now-nonbasic leaving variable; its occurs_in_ entry
         // post-pivot correctly includes the new entering row).
         util::Rational coeff(0);
-        for (const auto& [var, c] : rows_.at(selection->leaving)) {
+        for (const auto& [var, c, var_slot] : rows_.at(selection->leaving)) {
           if (var == selection->entering) {
             coeff = c;
             break;
@@ -958,10 +981,19 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
     // changes needed to that loop itself. f_var_ is never violated (no
     // bounds), so its ordinary violated-variable scan stays correct too.
     ++bland_fallback_count_;
+    // Already counted for this call; the loop below must not count it again.
+    fallback_counted = true;
   }
 
   while (true) {
-    if (rule_ == PivotingRule::Dantzig && !fallback_counted &&
+    // Counted for every rule that can fall back, not just Dantzig. It read
+    // `rule_ == PivotingRule::Dantzig` until 2026-08-06, which meant the
+    // counter stayed at 0 under Sparse -- the solver's *default* rule -- even
+    // on calls that did switch to Bland selection. That made
+    // :lra.bland-fallbacks useless for the one question it exists to answer,
+    // namely whether the threshold ever binds. Bland itself is excluded
+    // because it never "falls back": it is already the rule.
+    if (rule_ != PivotingRule::Bland && !fallback_counted &&
         pivot_count > bland_fallback_threshold) {
       ++bland_fallback_count_;
       fallback_counted = true;
@@ -998,6 +1030,22 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       // second Markowitz factor. Violation magnitude drops to a tie-break.
       // Unlike the entering-side rule this changes which infeasibility gets
       // repaired, which is why it is separately gated.
+      // MathSAT's rule (Griggio thesis Section 2.5.3, page 53): the
+      // least-violated basic variable first, tie-broken by the shorter row.
+      // The intent is to minimise how much the tableau and beta have to move
+      // to become feasible, which is the opposite intuition to Dantzig's
+      // "repair the worst infeasibility first".
+      if (least_violated_leaving_ && rule_ == PivotingRule::Sparse) {
+        const std::size_t row_size = rows_[id].size();
+        if (violated == vars_.size() || violation < best_violation ||
+            (violation == best_violation && row_size < best_row_size)) {
+          violated = id;
+          too_low = candidate_too_low;
+          best_violation = violation;
+          best_row_size = row_size;
+        }
+        continue;
+      }
       if (sparse_leaving_ && rule_ == PivotingRule::Sparse) {
         const std::size_t row_size = rows_[id].size();
         if (violated == vars_.size() || row_size < best_row_size ||
@@ -1111,7 +1159,7 @@ bool LraTableau::occurs_in_index_matches_full_rebuild() const {
     if (!vars_[basic_var].is_basic) {
       continue;
     }
-    for (const auto& [var, coefficient] : rows_[basic_var]) {
+    for (const auto& [var, coefficient, var_slot] : rows_[basic_var]) {
       expected[var].push_back(basic_var);
     }
   }
@@ -1123,7 +1171,43 @@ bool LraTableau::occurs_in_index_matches_full_rebuild() const {
       return false;
     }
   }
+  // Every row entry's back-index must round-trip: the occurrence slot it
+  // names has to be the very row it belongs to. This is what makes the
+  // O(log row) removal in pivot() falsifiable rather than merely plausible
+  // -- without it a wrong slot silently unlinks the wrong occurrence, and
+  // the set comparison above would still pass on the very next rebuild.
+  for (LraVarId basic_var = 0; basic_var < vars_.size(); ++basic_var) {
+    if (!vars_[basic_var].is_basic) {
+      continue;
+    }
+    for (const RowEntry& entry : rows_[basic_var]) {
+      const std::vector<LraVarId>& column = occurs_in_[entry.var];
+      if (entry.occ_slot >= column.size() || column[entry.occ_slot] != basic_var) {
+        return false;
+      }
+    }
+  }
   return true;
+}
+
+void LraTableau::unlink_occurrence(LraVarId var, std::uint32_t slot) {
+  std::vector<LraVarId>& column = occurs_in_[var];
+  const LraVarId moved = column.back();
+  column[slot] = moved;
+  column.pop_back();
+  if (slot >= column.size()) {
+    // The removed entry was the last one: nothing moved, nothing to repair.
+    return;
+  }
+  // `moved` now sits at `slot`, so its own row entry for `var` must say so.
+  // rows_[moved] is ordered by var id (the Row invariant), so this is a
+  // binary search over one row rather than a scan of the column.
+  Row& row = rows_[moved];
+  const auto it = std::lower_bound(row.begin(), row.end(), var,
+                                   [](const RowEntry& e, LraVarId v) { return e.var < v; });
+  if (it != row.end() && it->var == var) {
+    it->occ_slot = slot;
+  }
 }
 
 void LraTableau::rebuild_occurs_in_index() {
@@ -1138,8 +1222,9 @@ void LraTableau::rebuild_occurs_in_index() {
     if (!vars_[basic_var].is_basic) {
       continue;
     }
-    for (const auto& [var, coefficient] : rows_[basic_var]) {
-      occurs_in_[var].push_back(basic_var);
+    for (auto& entry : rows_[basic_var]) {
+      entry.occ_slot = static_cast<std::uint32_t>(occurs_in_[entry.var].size());
+      occurs_in_[entry.var].push_back(basic_var);
     }
   }
 }

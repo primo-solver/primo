@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <iterator>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -1951,9 +1953,16 @@ core::TermId rewrite_with_solved_constants(
   return rewritten;
 }
 
+bool is_real_equality(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  return term.kind == core::TermKind::Equality &&
+         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+}
+
 core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermId term_id,
                                            std::unordered_map<core::TermId, core::TermId>& memo,
-                                           std::size_t& lowered) {
+                                           RealEqualityLoweringResult& result,
+                                           bool enable_guarded_real_equality_distribution) {
   if (const auto found = memo.find(term_id); found != memo.end()) {
     return found->second;
   }
@@ -1975,8 +1984,8 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
       rewritten_children.reserve(children.size());
       bool changed = false;
       for (const core::TermId child : children) {
-        const core::TermId rewritten_child =
-            lower_real_equalities_rewrite(terms, child, memo, lowered);
+        const core::TermId rewritten_child = lower_real_equalities_rewrite(
+            terms, child, memo, result, enable_guarded_real_equality_distribution);
         changed = changed || rewritten_child != child;
         rewritten_children.push_back(rewritten_child);
       }
@@ -1986,41 +1995,91 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
       break;
     }
     case core::TermKind::Equality: {
-      const core::TermId lhs = lower_real_equalities_rewrite(terms, children.at(0), memo, lowered);
-      const core::TermId rhs = lower_real_equalities_rewrite(terms, children.at(1), memo, lowered);
+      const core::TermId lhs = lower_real_equalities_rewrite(
+          terms, children.at(0), memo, result, enable_guarded_real_equality_distribution);
+      const core::TermId rhs = lower_real_equalities_rewrite(
+          terms, children.at(1), memo, result, enable_guarded_real_equality_distribution);
       if (terms.get(lhs).sort == terms.symbols().real_sort()) {
         rewritten = terms.mk_and({terms.mk_le(lhs, rhs), terms.mk_le(rhs, lhs)});
-        ++lowered;
+        ++result.lowered;
       } else {
         rewritten = terms.mk_eq(lhs, rhs);
       }
       break;
     }
     case core::TermKind::Not:
-      rewritten = terms.mk_not(lower_real_equalities_rewrite(terms, children.at(0), memo, lowered));
+      rewritten = terms.mk_not(lower_real_equalities_rewrite(
+          terms, children.at(0), memo, result, enable_guarded_real_equality_distribution));
       break;
     case core::TermKind::And: {
       std::vector<core::TermId> rewritten_children;
       rewritten_children.reserve(children.size());
       for (const core::TermId child : children) {
-        rewritten_children.push_back(lower_real_equalities_rewrite(terms, child, memo, lowered));
+        rewritten_children.push_back(lower_real_equalities_rewrite(
+            terms, child, memo, result, enable_guarded_real_equality_distribution));
       }
       rewritten = terms.mk_and(std::move(rewritten_children));
       break;
     }
     case core::TermKind::Or: {
+      std::optional<core::TermId> equality_child;
+      if (enable_guarded_real_equality_distribution) {
+        for (const core::TermId child : children) {
+          if (!is_real_equality(terms, child)) {
+            continue;
+          }
+          if (equality_child.has_value()) {
+            equality_child.reset();
+            break;
+          }
+          equality_child = child;
+        }
+      }
+      if (equality_child.has_value() && children.size() > 1) {
+        const core::Term& equality = terms.get(*equality_child);
+        const core::TermId lhs =
+            lower_real_equalities_rewrite(terms, equality.children.at(0), memo, result,
+                                          enable_guarded_real_equality_distribution);
+        const core::TermId rhs =
+            lower_real_equalities_rewrite(terms, equality.children.at(1), memo, result,
+                                          enable_guarded_real_equality_distribution);
+
+        std::vector<core::TermId> le_children;
+        std::vector<core::TermId> ge_children;
+        le_children.reserve(children.size());
+        ge_children.reserve(children.size());
+        for (const core::TermId child : children) {
+          if (child == *equality_child) {
+            continue;
+          }
+          const core::TermId rewritten_child = lower_real_equalities_rewrite(
+              terms, child, memo, result, enable_guarded_real_equality_distribution);
+          le_children.push_back(rewritten_child);
+          ge_children.push_back(rewritten_child);
+        }
+        le_children.push_back(terms.mk_le(lhs, rhs));
+        ge_children.push_back(terms.mk_le(rhs, lhs));
+        rewritten = terms.mk_and(
+            {terms.mk_or(std::move(le_children)), terms.mk_or(std::move(ge_children))});
+        ++result.lowered;
+        ++result.guarded_distributed;
+        break;
+      }
       std::vector<core::TermId> rewritten_children;
       rewritten_children.reserve(children.size());
       for (const core::TermId child : children) {
-        rewritten_children.push_back(lower_real_equalities_rewrite(terms, child, memo, lowered));
+        rewritten_children.push_back(lower_real_equalities_rewrite(
+            terms, child, memo, result, enable_guarded_real_equality_distribution));
       }
       rewritten = terms.mk_or(std::move(rewritten_children));
       break;
     }
     case core::TermKind::Implies:
-      rewritten =
-          terms.mk_implies(lower_real_equalities_rewrite(terms, children.at(0), memo, lowered),
-                           lower_real_equalities_rewrite(terms, children.at(1), memo, lowered));
+      rewritten = terms.mk_implies(
+          lower_real_equalities_rewrite(terms, children.at(0), memo, result,
+                                        enable_guarded_real_equality_distribution),
+          lower_real_equalities_rewrite(terms, children.at(1), memo, result,
+                                        enable_guarded_real_equality_distribution));
       break;
   }
   memo.emplace(term_id, rewritten);
@@ -2446,13 +2505,14 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
 }
 
 RealEqualityLoweringResult lower_real_equalities(core::TermManager& terms,
-                                                 const std::vector<core::TermId>& assertions) {
+                                                 const std::vector<core::TermId>& assertions,
+                                                 bool enable_guarded_real_equality_distribution) {
   RealEqualityLoweringResult result;
   result.assertions.reserve(assertions.size());
   std::unordered_map<core::TermId, core::TermId> memo;
   for (const core::TermId assertion : assertions) {
-    result.assertions.push_back(
-        lower_real_equalities_rewrite(terms, assertion, memo, result.lowered));
+    result.assertions.push_back(lower_real_equalities_rewrite(
+        terms, assertion, memo, result, enable_guarded_real_equality_distribution));
   }
   return result;
 }
@@ -2997,6 +3057,314 @@ UfSymmetryBreakingResult UfSymmetryBreaker::break_symmetries(
     add_paper_symmetry_constraints(terms_, group, fixed_terms, emitted, result);
   }
 
+  return result;
+}
+
+namespace {
+
+// Which way a variable is pushed. `Hi` means every constraint bounds it
+// from above, so making it small satisfies them all.
+enum class MonotoneSide : unsigned char { Hi = 1, Lo = 2, Both = 3 };
+
+struct MonotoneState {
+  // Side bits accumulated per candidate variable; `Both` disqualifies.
+  std::unordered_map<core::TermId, unsigned char> sides;
+  // Polarity each atom is seen at: +1, -1, or 0 once it is seen both ways.
+  std::unordered_map<core::TermId, int> atom_polarity;
+  // Atoms mentioning each candidate variable.
+  std::unordered_map<core::TermId, std::vector<core::TermId>> atoms_of;
+};
+
+bool is_real_constant(const core::TermManager& terms, core::TermId id) {
+  const core::Term& term = terms.get(id);
+  return term.kind == core::TermKind::Constant && term.sort == terms.symbols().real_sort();
+}
+
+void mark_side(MonotoneState& state, core::TermId variable, MonotoneSide side) {
+  state.sides[variable] |= static_cast<unsigned char>(side);
+}
+
+// Disqualifies every Real constant beneath `root`: reaching one outside a
+// recognized linear atom means we cannot reason about which way it is
+// pushed there (uninterpreted-function arguments are the motivating case).
+void disqualify_reals_under(const core::TermManager& terms, core::TermId root,
+                            MonotoneState& state) {
+  std::vector<core::TermId> stack{root};
+  std::unordered_set<core::TermId> seen;
+  while (!stack.empty()) {
+    const core::TermId id = stack.back();
+    stack.pop_back();
+    if (!seen.insert(id).second) {
+      continue;
+    }
+    if (is_real_constant(terms, id)) {
+      mark_side(state, id, MonotoneSide::Both);
+    }
+    for (const core::TermId child : terms.get(id).children) {
+      stack.push_back(child);
+    }
+  }
+}
+
+// Records the direction each variable of one Le/Lt atom is pushed, given
+// the polarity the atom occurs at. `polarity` is +1 or -1; the caller
+// handles the ambiguous case.
+void record_atom_sides(const core::TermManager& terms, core::TermId atom_id, int polarity,
+                       MonotoneState& state) {
+  theory::arithmetic::LraAtom atom;
+  try {
+    atom = theory::arithmetic::normalize_atom(terms, atom_id);
+  } catch (const std::invalid_argument&) {
+    disqualify_reals_under(terms, atom_id, state);
+    return;
+  }
+  if (atom.relation == theory::arithmetic::LraRelation::Eq) {
+    // An equality pins both directions at once.
+    disqualify_reals_under(terms, atom_id, state);
+    return;
+  }
+  // An atom with a leaf we cannot evaluate at model-construction time
+  // must never be folded, or the discharged constraint could end up
+  // unsatisfied in the printed model. Disqualify the whole atom, not just
+  // that leaf.
+  for (const auto& [leaf, coefficient] : atom.polynomial.terms()) {
+    if (!coefficient.is_zero() && !is_real_constant(terms, leaf)) {
+      disqualify_reals_under(terms, atom_id, state);
+      return;
+    }
+  }
+  for (const auto& [leaf, coefficient] : atom.polynomial.terms()) {
+    if (coefficient.is_zero()) {
+      continue;
+    }
+    // `poly <= rhs` at positive polarity bounds a positive-coefficient
+    // variable from above; negative polarity asserts `poly > rhs` and
+    // flips every direction.
+    const bool positive_coefficient = util::Rational(0) < coefficient;
+    const bool bounds_above = (polarity > 0) == positive_coefficient;
+    mark_side(state, leaf, bounds_above ? MonotoneSide::Hi : MonotoneSide::Lo);
+    state.atoms_of[leaf].push_back(atom_id);
+  }
+}
+
+// Single polarity-aware pass over the assertion DAG. Memoized on
+// (term, polarity) so a hash-consed node reached many times is walked
+// once per polarity rather than once per path.
+void collect_monotone_sides(const core::TermManager& terms,
+                            const std::vector<core::TermId>& assertions, MonotoneState& state) {
+  std::vector<std::pair<core::TermId, int>> stack;
+  std::unordered_set<std::uint64_t> seen;
+  const auto key = [](core::TermId id, int polarity) {
+    return (static_cast<std::uint64_t>(id) << 2) | static_cast<std::uint64_t>(polarity + 1);
+  };
+  for (const core::TermId assertion : assertions) {
+    stack.emplace_back(assertion, 1);
+  }
+  while (!stack.empty()) {
+    const auto [id, polarity] = stack.back();
+    stack.pop_back();
+    if (!seen.insert(key(id, polarity)).second) {
+      continue;
+    }
+    const core::Term& term = terms.get(id);
+    switch (term.kind) {
+      case core::TermKind::Not:
+        stack.emplace_back(term.children.at(0), -polarity);
+        break;
+      case core::TermKind::And:
+      case core::TermKind::Or:
+        for (const core::TermId child : term.children) {
+          stack.emplace_back(child, polarity);
+        }
+        break;
+      case core::TermKind::Implies:
+        for (std::size_t i = 0; i + 1 < term.children.size(); ++i) {
+          stack.emplace_back(term.children.at(i), -polarity);
+        }
+        stack.emplace_back(term.children.back(), polarity);
+        break;
+      case core::TermKind::Le:
+      case core::TermKind::Lt: {
+        auto [it, inserted] = state.atom_polarity.emplace(id, polarity);
+        if (!inserted && it->second != polarity) {
+          it->second = 0;
+        }
+        if (polarity == 0) {
+          disqualify_reals_under(terms, id, state);
+        } else {
+          record_atom_sides(terms, id, polarity, state);
+        }
+        break;
+      }
+      case core::TermKind::Equality:
+        // Real equalities pin both directions; Boolean equivalences give
+        // their operands no definite polarity. Both are handled by
+        // refusing to reason about anything beneath.
+        disqualify_reals_under(terms, id, state);
+        break;
+      default:
+        // Applications, bare constants, and arithmetic terms reached
+        // outside an atom: conservatively opaque.
+        disqualify_reals_under(terms, id, state);
+        break;
+    }
+  }
+}
+
+}  // namespace
+
+MonotoneEliminationResult eliminate_monotone_variables(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  MonotoneEliminationResult result;
+  result.assertions = assertions;
+
+  MonotoneState state;
+  collect_monotone_sides(terms, assertions, state);
+
+  std::vector<core::TermId> candidates;
+  for (const auto& [variable, side] : state.sides) {
+    if (side != static_cast<unsigned char>(MonotoneSide::Hi) &&
+        side != static_cast<unsigned char>(MonotoneSide::Lo)) {
+      continue;
+    }
+    if (state.atoms_of.count(variable) == 0) {
+      continue;
+    }
+    candidates.push_back(variable);
+  }
+  std::sort(candidates.begin(), candidates.end());
+  result.candidates = candidates.size();
+  if (candidates.empty()) {
+    return result;
+  }
+
+  // No dependency ordering is needed, which is worth stating because the
+  // obvious design (topologically sort by "whose bound mentions whom")
+  // both costs more and is wrong: two variables sharing one atom depend on
+  // each other, and rejecting that cycle would discard eliminations that
+  // are perfectly sound.
+  //
+  // Any order works. Take any discharged atom and the eliminated variable
+  // of it valued *last*: every other leaf is then already valued -- either
+  // by the tableau or by an earlier entry -- so that atom yields a real
+  // bound on it, and its chosen value is past the tightest of all its
+  // bounds. Since every constraint pushes it the same way, going far
+  // enough satisfies all of them, that atom included. Earlier variables
+  // may skip the atom as unevaluable; the last one still repairs it.
+  const std::vector<core::TermId>& ordered = candidates;
+  const std::unordered_set<core::TermId> eliminated(ordered.begin(), ordered.end());
+
+  // Every atom mentioning an eliminated variable is discharged. Its
+  // polarity is necessarily uniform: an atom seen both ways would have
+  // marked its variables `Both` and disqualified them.
+  std::unordered_map<core::TermId, bool> folded;
+  for (const core::TermId variable : ordered) {
+    for (const core::TermId atom_id : state.atoms_of.at(variable)) {
+      const int polarity = state.atom_polarity.at(atom_id);
+      if (polarity == 0) {
+        continue;
+      }
+      folded.emplace(atom_id, polarity > 0);
+    }
+  }
+  if (folded.empty()) {
+    return result;
+  }
+  result.atoms_folded = folded.size();
+
+  for (const core::TermId variable : ordered) {
+    MonotoneEliminatedVariable entry;
+    entry.variable = variable;
+    entry.bounded_above = state.sides.at(variable) == static_cast<unsigned char>(MonotoneSide::Hi);
+    std::vector<core::TermId> atom_ids = state.atoms_of.at(variable);
+    std::sort(atom_ids.begin(), atom_ids.end());
+    atom_ids.erase(std::unique(atom_ids.begin(), atom_ids.end()), atom_ids.end());
+    for (const core::TermId atom_id : atom_ids) {
+      const auto found = folded.find(atom_id);
+      if (found == folded.end()) {
+        continue;
+      }
+      entry.constraints.emplace_back(atom_id, found->second);
+    }
+    if (!entry.constraints.empty()) {
+      result.eliminated.push_back(std::move(entry));
+    }
+  }
+
+  // Rebuild the assertions with the discharged atoms replaced by
+  // constants. Post-order over the DAG with an explicit stack; each node
+  // is rebuilt once.
+  std::unordered_map<core::TermId, core::TermId> rewritten;
+  const auto rebuild = [&](core::TermId root) {
+    std::vector<std::pair<core::TermId, bool>> stack{{root, false}};
+    while (!stack.empty()) {
+      const auto [id, expanded] = stack.back();
+      stack.pop_back();
+      if (rewritten.count(id) != 0) {
+        continue;
+      }
+      const auto fold = folded.find(id);
+      if (fold != folded.end()) {
+        rewritten.emplace(id, terms.mk_bool(fold->second));
+        continue;
+      }
+      const core::Term& term = terms.get(id);
+      if (term.children.empty()) {
+        rewritten.emplace(id, id);
+        continue;
+      }
+      if (!expanded) {
+        stack.emplace_back(id, true);
+        for (const core::TermId child : term.children) {
+          stack.emplace_back(child, false);
+        }
+        continue;
+      }
+      std::vector<core::TermId> children;
+      children.reserve(term.children.size());
+      bool changed = false;
+      for (const core::TermId child : term.children) {
+        const core::TermId replacement = rewritten.at(child);
+        changed |= replacement != child;
+        children.push_back(replacement);
+      }
+      if (!changed) {
+        rewritten.emplace(id, id);
+        continue;
+      }
+      core::TermId replacement = id;
+      switch (term.kind) {
+        case core::TermKind::Not:
+          replacement = terms.mk_not(children.at(0));
+          break;
+        case core::TermKind::And:
+          replacement = terms.mk_and(std::move(children));
+          break;
+        case core::TermKind::Or:
+          replacement = terms.mk_or(std::move(children));
+          break;
+        case core::TermKind::Implies:
+          replacement = terms.mk_implies(children.at(0), children.at(1));
+          break;
+        case core::TermKind::Equality:
+          replacement = terms.mk_eq(children.at(0), children.at(1));
+          break;
+        default:
+          // Arithmetic and application nodes never contain a folded
+          // Boolean atom, so they are returned unchanged.
+          replacement = id;
+          break;
+      }
+      rewritten.emplace(id, replacement);
+    }
+    return rewritten.at(root);
+  };
+
+  result.assertions.clear();
+  result.assertions.reserve(assertions.size());
+  for (const core::TermId assertion : assertions) {
+    result.assertions.push_back(rebuild(assertion));
+  }
   return result;
 }
 
