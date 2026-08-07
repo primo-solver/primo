@@ -19810,6 +19810,37 @@
       },
       "conclusion": "The regression is not merely repaired, it is overtaken. 1657 solved against the pre-regression 1631 -- gained 26, LOST 0 against that commit, so nothing it solved was given up. Against the merge base: +87/-2 and PAR2 nearly halved (135691 -> 79646), with paired median 0.56 on files over a second. Zero wrong answers in every arm, on the one QF_LRA corpus that carries (set-info :status) and therefore checks answers rather than only cross-solver agreement. Competitively primo now sits second of five, ahead of yices (1645), z3 (1584) and cvc5 (1511), and 13 behind opensmt (1670). The 2019-ezsmt gains are the routing fix, the LassoRanker gains the interface-equality gate, and the single tropical-matrix gain is the cross-link change showing at 300s.",
       "caveat": "The two miplib losses (pp08a-4000 at 129s, fixnet-1000 at 90s, both to timeout) are real, not boundary churn -- miplib is a known trade for the cross-link change on long-row instances. Reference rows come from other jobs, so reference TIMINGS carry a cross-job caveat that the two primo arms do not."
+    },
+    {
+      "id": "2026-08-07-qf-lra-equality-sharing-branch-preserves-behaviour",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "analysis",
+      "scope": "Confirm the qflra-no-equality-sharing branch leaves pure QF_LRA behaviour untouched. The branch adds Nelson-Oppen equality machinery, and the last time NO work touched the LRA path it cost 59 division files.",
+      "commit": "7aee79e vs main 19fa3a0",
+      "branch": "qflra-no-equality-sharing",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Both binaries Release, built from the same toolchain; main built into a scratch worktree."
+      },
+      "result": {
+        "by_inspection": "Of three src/ commits, two add const methods with NO caller (model_equal_classes, entailed_equalities). The third threads MixedDispatchMode through summarize_formula_features; under the default Narrow the expression reduces to `Application && bool_sort`, character-for-character what main computes.",
+        "first_sweep": {
+          "files": 100,
+          "answer_diffs": 0,
+          "counter_diffs": 17
+        },
+        "first_sweep_explained": "16 of the 17 were files that TIME OUT, whose counters record progress-at-cutoff and vary run to run regardless of code. The 17th solves in 9.90s against the sweep's 10s cap -- straddling the cutoff. Run three times per binary at a 60s budget it is identical and deterministic on both: 29,081 pivots, 840,202 decisions, 1,451 conflicts.",
+        "clean_rerun": {
+          "solved_by_both": 89,
+          "bit_identical": 89,
+          "differing": 0,
+          "counters_compared": ":lra.pivots, :lra.pivot-term-ops, :lra.theory-propagations, :sat.decisions, :sat.conflicts, :solver.*"
+        }
+      },
+      "conclusion": "Pure QF_LRA behaviour is preserved exactly: 89 of 89 commonly-solved files bit-identical on search counters, 0 answer differences anywhere. Consistent with the code, which has no path doing anything main does not.",
+      "method_note": "Counter comparisons across runs are only meaningful on instances that COMPLETE. A timeout is not a measurement, it is a snapshot of wherever the search had reached. This is the second time in one session that artifact produced a false alarm -- the first was the supposed node-contention regression on the full division. Restricting to completed runs is the fix; explaining the difference away is not."
     }
   ]
 }
