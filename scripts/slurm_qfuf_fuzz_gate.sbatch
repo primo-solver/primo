@@ -285,6 +285,34 @@ for required in "${required_tools[@]}"; do
   fi
 done
 
+# The family-complete QF_LRA corpus is GENERATED, not committed -- .gitignore
+# excludes benchmarks/seeds/qf_lra_division/ deliberately, to avoid carrying
+# ~1.2MB of benchmarks in the repo. So a freshly synced workspace will not have
+# it, and a gate that quietly fell back to a narrower corpus would be exactly
+# the silent-coverage-loss failure this default exists to prevent. Build it, or
+# fail loudly saying what to do.
+SEED_CORPUS_ROOT=${PRIMO_FUZZ_SEED_CORPUS_ROOT:-"$WORKDIR/tmp/QF_LRA"}
+ensure_seed_corpus() {
+  local dir=$1
+  if compgen -G "$dir/*.smt2" > /dev/null 2>&1; then
+    echo "seed corpus $dir: $(ls "$dir"/*.smt2 | wc -l) files"
+    return 0
+  fi
+  if [ ! -d "$SEED_CORPUS_ROOT" ]; then
+    echo "seed corpus '$dir' is empty or missing, and the benchmark root '$SEED_CORPUS_ROOT' is not present." >&2
+    echo "Stage the corpus, set PRIMO_FUZZ_SEED_CORPUS_ROOT, or pass PRIMO_FUZZ_{OPFUZZ,YINYANG}_SEEDS explicitly." >&2
+    echo "Refusing to report a gate that fuzzed a narrower corpus than configured." >&2
+    exit 2
+  fi
+  echo "building family-complete seed corpus in $dir from $SEED_CORPUS_ROOT"
+  python3 scripts/build_fuzz_seed_corpus.py --root "$SEED_CORPUS_ROOT" \
+    --out "$dir" --per-family 2 --max-bytes "$MUTATION_FILE_SIZE_LIMIT"
+}
+ensure_seed_corpus "$OPFUZZ_SEEDS"
+if [ "$YINYANG_SEEDS" != "$OPFUZZ_SEEDS" ]; then
+  ensure_seed_corpus "$YINYANG_SEEDS"
+fi
+
 opfuzz_start=$FUZZSMT_SHARDS
 yinyang_start=$((opfuzz_start + OPFUZZ_TASKS))
 total_tasks=$((yinyang_start + YINYANG_SHARDS))
