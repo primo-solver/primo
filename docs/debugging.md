@@ -790,12 +790,25 @@ example, the experimental mixed callback profile uses
 uses that same profile. Submit only array task 2 when the default and
 candidate-final mutation profiles are not part of the current experiment.
 Before mutation, `scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch` runs
-`scripts/check_solver_seed_corpus.py` on every original QF_UFLRA regression
-seed with the exact task options and Z3 reference. Any disagreement, timeout,
+`scripts/check_solver_seed_corpus.py` on every compact QF_UFLRA mutation seed
+with the exact task options and Z3 reference. Any disagreement, timeout,
 unsupported result, crash, or mismatch with a declared status fails the task.
-The exact-seed timeout defaults to 60 seconds and can be changed with
+The seed timeout defaults to 60 seconds and can be changed with
 `PRIMO_FUZZ_SEED_TIMEOUT`; the shorter mutation timeout remains independent.
-Mutation counts do not replace this deterministic regression check.
+Mutation counts do not replace this deterministic regression check. The gate
+also rejects seeds larger than 4096 bytes by default; use
+`PRIMO_FUZZ_SEED_SIZE_LIMIT` only when a deliberately larger mutation seed has
+been shown to retain useful throughput.
+
+Large source benchmarks are not mutation seeds. In particular, the two full
+MathSAT witnesses under `benchmarks/performance/qf_uflra/` exposed the unsound
+online final-scan shortcut, but they are expensive search benchmarks and make
+poor YinYang inputs. The compact
+`benchmarks/seeds/qf_uflra/online_nonpaired_congruence_forced_unsat.smt2`
+witness and focused unit tests preserve that correctness obligation. Keep the
+full witnesses in the deferred performance manifest and evaluate them
+separately after material changes to convex QF_UFLRA combination; their current
+runtime must not prevent the mutation campaign from starting.
 `scripts/qf_uflra_smoke_fuzz.py` flushes each case result immediately so SLURM
 stdout is a durable progress record even before the final `summary.csv` is
 written.

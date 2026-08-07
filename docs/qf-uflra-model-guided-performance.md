@@ -194,10 +194,14 @@ mode returned two wrong `sat` answers on expected-`unsat` MathSAT inputs; the
 online-EUF profile returned one. In each case, online paired bounds had produced
 some equality, but a different LRA-implied equality was still needed for an EUF
 congruence conflict. Successful model separation did not prove that omitted
-equality was irrelevant. The run is rejected, the broad final LRA equality scan is
-again mandatory, and both exact inputs are tracked as regression seeds. Removing
-that scan now requires a complete shared-model validation invariant rather than
-another activity-based skip condition.
+equality was irrelevant. The run is rejected and the broad final LRA equality
+scan is again mandatory. The compact
+`benchmarks/seeds/qf_uflra/online_nonpaired_congruence_forced_unsat.smt2`
+witness and focused unit tests gate this correctness property. The two full
+MathSAT inputs remain under `benchmarks/performance/qf_uflra/` as deferred
+performance regressions, not mutation seeds. Removing the scan requires a
+complete shared-model validation invariant rather than another activity-based
+skip condition.
 
 The final coordinator still rebuilds a flat EUF closure after SAT returns. The
 EUF component does not yet expose a safe live closure/model view, so care pairs,

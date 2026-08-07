@@ -21459,7 +21459,7 @@
         "mutation_started": false
       },
       "artifact": "/home/janotmik/primo-online-lazy-7838c2e/fuzz-results/qf-uflra-mutation-gate-121020/",
-      "evidence_status": "slurm-running",
+      "evidence_status": "slurm-complete-failed",
       "outcome": "The deterministic seed gate failed before mutation because existing MathSAT seeds timed out under the configured 60-second seed timeout. No wrong answers or crashes were observed, but this is incomplete fuzz evidence and does not pass the promotion gate."
     },
     {
@@ -21483,8 +21483,46 @@
         "mutation_started": false
       },
       "artifact": "/home/janotmik/primo-online-lazy-7838c2e/fuzz-results/qf-uflra-mutation-gate-121023/",
-      "evidence_status": "slurm-running",
+      "evidence_status": "slurm-complete-failed",
       "outcome": "The 300-second rerun still stopped before mutation on the same slow MathSAT seeds. No wrong answers or crashes were observed, but the deterministic seed gate remains incomplete."
+    },
+    {
+      "id": "2026-08-07-qfuflra-compact-mutation-seeds-local",
+      "date": "2026-08-07",
+      "kind": "fuzz-harness-validation",
+      "scope": "Separate compact QF_UFLRA mutation seeds from deferred full-size performance regressions",
+      "commit": "working tree",
+      "host": "local workspace",
+      "commands": [
+        "cmake --build build -j4",
+        "python3 scripts/check_solver_seed_corpus.py --seeds benchmarks/seeds/qf_uflra --solver ./build/primo --solver-arg=--quiet [profile args] --ref contrib/local/bin/z3 --timeout 60 --out /tmp/primo-compact-seed-check/<profile>.csv",
+        "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch",
+        "bash -n scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch",
+        "make lint",
+        "make docs",
+        "ctest --test-dir build --output-on-failure -R primo_(theory_combination|qf_lra_solver)_tests"
+      ],
+      "results": {
+        "compact_seed_count": 8,
+        "default": "8 PASS, 0 disagreement, 0 timeout, 0 crash",
+        "candidate_final": "8 PASS, 0 disagreement, 0 timeout, 0 crash",
+        "online_euf": "8 PASS, 0 disagreement, 0 timeout, 0 crash",
+        "deferred_performance_inputs": 2,
+        "compact_seed_size_limit_bytes": 4096,
+        "theory_combination_test": "passed",
+        "qf_lra_test_binary": "interrupted after more than 16 minutes of CPU-bound execution with no failure output",
+        "lint": "passed",
+        "docs": "passed",
+        "sbatch_validation": "passed"
+      },
+      "artifacts": [
+        "/tmp/primo-compact-seed-check/default.csv",
+        "/tmp/primo-compact-seed-check/candidate-final.csv",
+        "/tmp/primo-compact-seed-check/online-euf.csv",
+        "benchmarks/qf_uflra-deferred-performance-regressions.txt"
+      ],
+      "evidence_status": "local-only",
+      "outcome": "All compact seeds pass the bounded deterministic check under all three mutation-gate profiles. The two full MathSAT witnesses remain tracked as deferred convex QF_UFLRA performance regressions and no longer prevent YinYang from starting. Fresh SLURM mutation evidence remains required."
     }
   ]
 }

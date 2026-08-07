@@ -22,6 +22,7 @@ YINYANG_SEEDS=${PRIMO_FUZZ_YINYANG_SEEDS:-"$WORKDIR/benchmarks/seeds/qf_uflra"}
 YINYANG_ITERATIONS=${PRIMO_FUZZ_YINYANG_ITERATIONS:-200}
 YINYANG_TIMEOUT=${PRIMO_FUZZ_YINYANG_TIMEOUT:-8}
 SEED_TIMEOUT=${PRIMO_FUZZ_SEED_TIMEOUT:-60}
+SEED_SIZE_LIMIT=${PRIMO_FUZZ_SEED_SIZE_LIMIT:-4096}
 YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-27000}
 FILE_SIZE_LIMIT=${PRIMO_FUZZ_FILE_SIZE_LIMIT:-200000}
 MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
@@ -45,6 +46,14 @@ done
 
 if [[ ! -e "$YINYANG_SEEDS" ]]; then
   echo "QF_UFLRA mutation seed path does not exist: $YINYANG_SEEDS" >&2
+  exit 1
+fi
+
+oversized_seed=$(find "$YINYANG_SEEDS" -type f -name '*.smt2' -size "+${SEED_SIZE_LIMIT}c" \
+  -print -quit)
+if [[ -n "$oversized_seed" ]]; then
+  echo "QF_UFLRA mutation seed exceeds the ${SEED_SIZE_LIMIT}-byte compact-seed limit: $oversized_seed" >&2
+  echo "move large source inputs to benchmarks/performance/qf_uflra" >&2
   exit 1
 fi
 
@@ -88,7 +97,7 @@ done
 for arg in "${reference_words[@]:1}"; do
   seed_gate+=(--ref-arg="$arg")
 done
-echo "checking original regression seeds before mutation"
+echo "checking compact QF_UFLRA mutation seeds before mutation"
 "${seed_gate[@]}"
 
 echo "task $TASK_ID: QF_UFLRA $label typefuzz over $YINYANG_SEEDS"
