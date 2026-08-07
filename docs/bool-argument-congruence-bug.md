@@ -126,6 +126,53 @@ having silently dropped 12 seeds once already.
 function so the *mixed* path gets the same coverage, and FuzzSMT's parameters
 should be checked for whether Bool-sorted arguments can be requested at all.
 
+(gate-result)=
+## Gate result, and the control run that makes it mean something
+
+**Job 120192** (Slurm, `scripts/slurm_qfuf_fuzz_gate.sbatch`, array 0-8) on the
+fixed binary: **3,000 FuzzSMT cases, 3,000 PASS, 0 wrong**, and all three
+mutation tasks reporting *7 seeds, 7 valid, 0 invalid, 0 bug triggers*. The
+"7 valid" matters -- it confirms the four new seeds were accepted rather than
+silently dropped by the `typefuzz -L` limit. Six `summary.csv` files were
+counted against six shards, per this repository's own rule that a shard killed
+by the wall clock vanishes and leaves the gate looking clean.
+
+**A clean gate on fixed code shows the fix broke nothing. It does not show the
+new coverage can catch anything.** So the identical mutation tasks, same seeds,
+same iteration counts, were re-run against the **pre-fix** binary (job 120201):
+
+| task | fixed binary | pre-fix binary |
+|---|---:|---:|
+| opfuzz | 0 bug triggers | **3** |
+| typefuzz | 0 | **1** |
+| typefuzz | 0 | **3** |
+
+Seven `incorrect-*` cases, and every one derives from a newly added
+Bool-argument seed:
+
+| originating seed | bug cases |
+|---|---:|
+| `seed_bool_argument_compound` | 3 |
+| `seed_bool_argument_congruence_unsat` | 2 |
+| `seed_bool_argument_predicate` | 2 |
+| **the three pre-existing QF_UF seeds** | **0** |
+
+A representative mutant:
+
+```lisp
+(assert (f (and p q)))
+(assert (and (not (f (or q p))) (f (or p q))))
+```
+
+`(or q p)` and `(or p q)` are the same term, so this is unsat; the pre-fix
+binary answered `sat`.
+
+So the corpus that existed before **provably could not** catch this, and the
+one that exists now does. Worth noting for future seed design: the satisfiable
+`seed_bool_argument_predicate` yielded 2 bug cases *once mutated*, so sat seeds
+are not useless here even though a sat seed cannot expose this bug class
+unmutated.
+
 ## Fix direction, and the trap in it
 
 The dispatch must send a formula containing uninterpreted function

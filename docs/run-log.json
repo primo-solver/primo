@@ -18701,6 +18701,50 @@
       },
       "conclusion": "A documented-as-supported feature (architecture.md: 'QF_UF inputs may pass Boolean formulas as arguments to uninterpreted functions') returns a wrong answer. Independent of the Nelson-Oppen regression and older than it. The classifier is too NARROW here -- the unsoundness direction. Fix direction: dispatch on has_application_term rather than has_equality alone, which widens what reaches solve_qf_uf and is therefore a dispatch change needing gained/lost measurement.",
       "coverage_gap": "Neither fuzz gate generates this shape: FuzzSMT's QF_UF/QF_LRA invocations do not request Bool-sorted function arguments, and mutation fuzzing can only produce what the seed corpus contains -- the QF_LRA seeds have no uninterpreted functions at all."
+    },
+    {
+      "id": "2026-08-07-qf-uf-bool-argument-congruence-fix-gate",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "implementation-fuzz-gate",
+      "scope": "Merge gate for the Bool-argument congruence fix (f96834c) plus a pre-fix CONTROL run establishing that the new mutation seeds actually catch the bug rather than merely existing.",
+      "commit": "f96834c (fixed) and 0c0843d (pre-fix control)",
+      "branch": "main",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm via ProxyJump, node-01",
+        "remote_dir": "/home/janotmik/primo-uffix",
+        "notes": "Remote binary verified as git f96834c AND verified to answer unsat on the bug seed before submitting, so the gate could not be testing a stale build. Pre-fix control used the already-built /home/janotmik/primo-main-0c0843d/build-slurm-rel/primo, verified to answer sat on the same seed."
+      },
+      "command": {
+        "gate_job": "120192, scripts/slurm_qfuf_fuzz_gate.sbatch, array 0-8, PRIMO_FUZZ_SOLVER=build-slurm-rel/primo",
+        "control_job": "120201, same script, array 6-8 (mutation only), PRIMO_FUZZ_SOLVER=pre-fix binary",
+        "failed_attempts": "120180 mutation tasks failed with \"'opfuzz' not found\" -- the QF_UF gate never put the workspace-local .venv-yinyang/bin on PATH while the QF_LRA gate always had; fixed in 6ecd73d. 120189 then failed on build-slurm-fuzz/primo not existing -- this gate defaults to a different build dir than the QF_LRA one; fixed by passing PRIMO_FUZZ_SOLVER."
+      },
+      "result": {
+        "fixed_binary_job_120192": {
+          "fuzzsmt": "6 shards, 3000 cases, 3000 PASS, 0 wrong; 6 summary.csv files confirmed against 6 shards so no shard was silently lost to the wall clock",
+          "opfuzz_task_6": "7 seeds, 7 valid, 0 invalid, 0 bug triggers",
+          "typefuzz_tasks_7_8": "7 seeds, 7 valid, 0 invalid, 0 bug triggers each",
+          "all_tasks": "COMPLETED"
+        },
+        "prefix_control_job_120201": {
+          "opfuzz_task_6": "3 bug triggers",
+          "typefuzz_task_7": "1 bug trigger",
+          "typefuzz_task_8": "3 bug triggers",
+          "total_bug_smt2_files": 7,
+          "by_originating_seed": {
+            "seed_bool_argument_compound": 3,
+            "seed_bool_argument_congruence_unsat": 2,
+            "seed_bool_argument_predicate": 2
+          },
+          "from_the_three_pre_existing_qf_uf_seeds": 0,
+          "example": "(assert (f (and p q))) (assert (and (not (f (or q p))) (f (or p q)))) -- (or q p) and (or p q) are the same term, so this is unsat; the pre-fix binary answered sat."
+        }
+      },
+      "conclusion": "Gate PASSES on the fix: 3000/3000 FuzzSMT cases and all three mutation tasks clean. The control run is the load-bearing part: the identical seeds and iterations against the PRE-FIX binary produce 7 incorrect-answer cases, every one derived from a newly added Bool-argument seed and NONE from the three pre-existing QF_UF seeds. So the added coverage is real rather than nominal -- the old corpus provably could not catch this bug, and the new one does. Note that a satisfiable seed (seed_bool_argument_predicate) also yielded 2 bug cases once mutated, so sat seeds are not useless here even though a sat seed cannot expose the bug unmutated.",
+      "still_open": "qf_uflra_smoke_fuzz.py emits Bool-returning but never Bool-argument functions, so the MIXED path retains the same blind spot; and FuzzSMT's parameters have not been checked for whether Bool-sorted arguments can be requested at all."
     }
   ]
 }
