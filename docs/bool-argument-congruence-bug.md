@@ -34,7 +34,7 @@ Nelson-Oppen merge, so it is not a regression from that work.
   EUF solver actually runs. Adding an uninterpreted sort to the same formula,
   which forces the QF_UF path, gives the right answer:
 
-  ```smt2
+  ```lisp
   (declare-sort S 0) (declare-fun z () S) (declare-fun g (S) S)
   (assert (= (g z) z))          ; forces :solver.qf-uf
   (assert (= p q))
