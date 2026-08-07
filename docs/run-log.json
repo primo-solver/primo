@@ -21523,6 +21523,58 @@
       ],
       "evidence_status": "local-only",
       "outcome": "All compact seeds pass the bounded deterministic check under all three mutation-gate profiles. The two full MathSAT witnesses remain tracked as deferred convex QF_UFLRA performance regressions and no longer prevent YinYang from starting. Fresh SLURM mutation evidence remains required."
+    },
+    {
+      "id": "2026-08-07-qfuflra-compact-mutation-slurm-121092-rejected",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "First SLURM attempt after separating compact QF_UFLRA mutation seeds",
+      "commit": "e6dddd4",
+      "host": "SLURM",
+      "job_id": "121092",
+      "results": {
+        "tasks": "3 FAILED with exit code 2",
+        "deterministic_seed_gate": "8 PASS in each profile",
+        "mutation_started": false,
+        "wrong_answers": 0,
+        "crashes": 0
+      },
+      "artifact": "remote:fuzz-results/qf-uflra-mutation-gate-121092/",
+      "evidence_status": "rejected-harness",
+      "outcome": "The inherited user-level typefuzz package did not support --hoist-declarations. All compact source seeds passed, but mutation did not start; this run is harness diagnosis only."
+    },
+    {
+      "id": "2026-08-07-qfuflra-compact-mutation-slurm-121098-smoke",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA compact-seed mutation smoke with the pinned YinYang fork",
+      "commit": "e6dddd4",
+      "host": "SLURM",
+      "job_id": "121098",
+      "generator": "typefuzz from YinYang fork commit 04c8618",
+      "reference": "Z3 5.0.0 with model_validate=true",
+      "results": {
+        "tasks": "3 COMPLETED",
+        "elapsed_seconds": [45, 43, 45],
+        "deterministic_seed_gate": "8 PASS in each profile",
+        "generated_mutants_per_profile": 1600,
+        "source_seeds": "8 processed, 8 valid, 0 invalid in each profile",
+        "final_reported_solver_calls": {
+          "default": 3048,
+          "candidate_final": 3078,
+          "online_euf": 3022
+        },
+        "final_reported_effective_call_rate": {
+          "default": "9.5%",
+          "candidate_final": "12.3%",
+          "online_euf": "6.4%"
+        },
+        "bug_triggers": 0,
+        "bug_files": 0
+      },
+      "artifact": "remote:fuzz-results/qf-uflra-mutation-gate-121098/",
+      "evidence_status": "slurm-smoke",
+      "outcome": "The compact corpus allows mutation to complete quickly and found no disagreement, but typefuzz filtered most generated mutants. This is smoke evidence only; the merge-grade rerun needs a larger iteration count and explicit random seeds."
     }
   ]
 }

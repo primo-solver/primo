@@ -800,6 +800,12 @@ also rejects seeds larger than 4096 bytes by default; use
 `PRIMO_FUZZ_SEED_SIZE_LIMIT` only when a deliberately larger mutation seed has
 been shown to retain useful throughput.
 
+The mutation phase defaults to 2000 mutations per compact seed and records a
+reproducible typefuzz seed derived from `PRIMO_FUZZ_MUTATION_SEED_BASE` plus the
+SLURM task id. `PRIMO_FUZZ_YINYANG_ITERATIONS` may reduce the count for a smoke
+run, but such a run is not merge-grade evidence when typefuzz filters most
+generated mutants before obtaining comparable solver answers.
+
 Large source benchmarks are not mutation seeds. In particular, the two full
 MathSAT witnesses under `benchmarks/performance/qf_uflra/` exposed the unsound
 online final-scan shortcut, but they are expensive search benchmarks and make

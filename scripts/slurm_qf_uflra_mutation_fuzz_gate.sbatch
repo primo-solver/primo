@@ -19,14 +19,16 @@ WORKDIR=${PRIMO_WORKDIR:?PRIMO_WORKDIR must name the fresh remote workspace}
 SOLVER_BIN=${PRIMO_FUZZ_SOLVER:-"$WORKDIR/build-slurm-rel/primo"}
 OUT_ROOT=${PRIMO_FUZZ_OUT_ROOT:-"$WORKDIR/fuzz-results/qf-uflra-mutation-gate-${SLURM_ARRAY_JOB_ID:-manual}"}
 YINYANG_SEEDS=${PRIMO_FUZZ_YINYANG_SEEDS:-"$WORKDIR/benchmarks/seeds/qf_uflra"}
-YINYANG_ITERATIONS=${PRIMO_FUZZ_YINYANG_ITERATIONS:-200}
+YINYANG_ITERATIONS=${PRIMO_FUZZ_YINYANG_ITERATIONS:-2000}
 YINYANG_TIMEOUT=${PRIMO_FUZZ_YINYANG_TIMEOUT:-8}
+MUTATION_SEED_BASE=${PRIMO_FUZZ_MUTATION_SEED_BASE:-2026080700}
 SEED_TIMEOUT=${PRIMO_FUZZ_SEED_TIMEOUT:-60}
 SEED_SIZE_LIMIT=${PRIMO_FUZZ_SEED_SIZE_LIMIT:-4096}
 YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-27000}
 FILE_SIZE_LIMIT=${PRIMO_FUZZ_FILE_SIZE_LIMIT:-200000}
 MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
+mutation_seed=$((MUTATION_SEED_BASE + TASK_ID))
 
 cd "$WORKDIR"
 mkdir -p slurm_logs "$OUT_ROOT"
@@ -112,5 +114,6 @@ scripts/yinyang_fuzz.sh \
   --scratch "$out/scratch" \
   --logs "$out/logs" \
   --file-size-limit "$FILE_SIZE_LIMIT" \
+  --random-seed "$mutation_seed" \
   --keep-logic \
   --hoist-declarations

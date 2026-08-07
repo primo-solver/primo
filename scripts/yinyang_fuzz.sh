@@ -20,6 +20,7 @@ TYPEFUZZ="${TYPEFUZZ:-typefuzz}"
 YINYANG_INSTALL_SPEC="${YINYANG_INSTALL_SPEC:-yinyang}"
 DIAGNOSE=0
 KEEP_MUTANTS=0
+RANDOM_SEED=""
 EXTRA_ARGS=()
 
 usage() {
@@ -43,6 +44,7 @@ Options:
   --typefuzz PATH          typefuzz executable
   --diagnose               forward solver output to stdout
   --keep-mutants           keep generated mutants in scratch
+  --random-seed N          reproducible typefuzz random seed
   -h, --help               show this help
 
 Install:
@@ -79,6 +81,7 @@ while (($#)); do
         --typefuzz) TYPEFUZZ="$2"; shift 2 ;;
         --diagnose) DIAGNOSE=1; shift ;;
         --keep-mutants) KEEP_MUTANTS=1; shift ;;
+        --random-seed) RANDOM_SEED="$2"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         --) shift; EXTRA_ARGS=("$@"); break ;;
         *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -153,6 +156,9 @@ if ((HOIST_DECLARATIONS)); then
 fi
 if ((KEEP_MUTANTS)); then
     cmd+=(-k)
+fi
+if [[ -n $RANDOM_SEED ]]; then
+    cmd+=(--seed "$RANDOM_SEED")
 fi
 cmd+=("${EXTRA_ARGS[@]}")
 cmd+=("$SOLVER;$REF" "$SEEDS")
