@@ -109,6 +109,13 @@ BOOL_ARGUMENT_EUF_ATOMS = [
     "(f (and p q))",
     "(f (or q r))",
     "(= (f (not p)) (f (not q)))",
+    "(= (f (g p q)) (f (g q p)))",
+    "(= (f (ite p q r)) (f (ite q q r)))",
+    "(= (k (f p) q) (k (f q) q))",
+    "(= (rr p) (rr q))",
+    "(= (f p) true)",
+    "(= (f q) false)",
+    "(or (= p q) (not (= (f p) (f q))))",
 ]
 
 BOOL_ARGUMENT_LRA_ATOMS = [
@@ -256,6 +263,26 @@ def generate_bool_argument_case(rng: random.Random, index: int) -> str:
         assertions.extend(["(= p q)", "(= q r)", "(not (= (g p p) (g r r)))"])
     if index % 11 == 0:
         assertions.extend(["(= (and p q) (and q p))", "(f (and p q))"])
+    if index % 13 == 0:
+        assertions.extend(
+            [
+                "(= p q)",
+                "(= q r)",
+                "(not (= (f p) (f r)))",
+                "(or (not p) q)",
+                "(or (not q) r)",
+                "(or (not r) p)",
+            ]
+        )
+    if index % 17 == 0:
+        assertions.extend(
+            [
+                "(or (not p) q)",
+                "(or (not q) r)",
+                "(or (not r) p)",
+                "(not (= (f p) (f r)))",
+            ]
+        )
 
     body = "\n".join(f"  (assert {assertion})" for assertion in assertions)
     return f"""(set-logic QF_UFLRA)
@@ -264,6 +291,9 @@ def generate_bool_argument_case(rng: random.Random, index: int) -> str:
 (declare-fun r () Bool)
 (declare-fun f (Bool) Bool)
 (declare-fun g (Bool Bool) Bool)
+(declare-sort U 0)
+(declare-fun k (Bool Bool) U)
+(declare-fun rr (Bool) Real)
 (declare-fun x () Real)
 (declare-fun y () Real)
 {body}

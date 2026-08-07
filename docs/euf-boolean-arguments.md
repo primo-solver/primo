@@ -80,19 +80,23 @@ whose contradiction is purely Boolean congruence. Each seed also
 contains a Real constraint so that the QF_UFLRA dispatch path is exercised.
 
 The QF_UFLRA smoke generator has a dedicated `bool-arguments` shape as well.
-It generates unary and binary Boolean-argument applications, compound Boolean
-arguments, explicit and transitive Boolean equalities, and Real constraints.
+It generates unary and binary Boolean-argument applications, Boolean-valued UF
+results, nested Boolean UF arguments, Boolean-to-Real applications, compound
+arguments including `ite`, explicit and transitive Boolean equalities, CNF
+cycles, and Real constraints.
 The `mixed` mode includes this shape with the same seeded pseudo-random
 selection as the existing EUF/LRA shapes.
 
 Mixed solving now uses a persistent finite-domain Boolean bridge. Boolean
-arguments of UF applications are linked to canonical EUF terms for `true` and
-`false` by SAT clauses. The bridge creates the two equality atoms
-`(= argument true)` and `(= argument false)`, selects them from the argument's
-SAT literal, enforces mutual exclusion, and asserts that the canonical values
-are distinct. Ordinary congruence closure then handles all applications,
-including different application symbols, nested Boolean arguments, and
-transitive CNF equivalences. No model coincidence is promoted to an equality.
+arguments and Boolean-valued UF applications are linked to canonical EUF terms
+for `true` and `false` by SAT clauses. The bridge creates the two equality atoms
+`(= term true)` and `(= term false)`, selects them from the term's SAT literal,
+enforces mutual exclusion, and asserts that the canonical values are distinct.
+Ordinary congruence closure then handles applications, including Boolean UF
+results, nested Boolean arguments, and transitive CNF equivalences. General
+Boolean formula terms are not eagerly bridged unless they occur as UF
+arguments, which keeps SAT-only Boolean formulas out of the EUF trail. No model
+coincidence is promoted to an equality.
 
 The required regression suite includes explicit equality, CNF equality, the
 transitive CNF case `a = b = c = d` with `f(a) != f(d)`, and nested Boolean

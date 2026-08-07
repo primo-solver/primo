@@ -21282,6 +21282,34 @@
       ],
       "evidence_status": "local-only",
       "outcome": "The persistent true/false EUF bridge passed both differential gates and all regular and ASAN tests. An initial use-after-free in the term traversal was caught by ASAN on the first campaign attempt and fixed before these final results."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-bool-result-bridge-fixed",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "Boolean-valued UF result and nested/complement argument bridge regression",
+      "commit": "working tree",
+      "host": "local workspace",
+      "commands": [
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 300 --seed 20260816 --timeout 5 --shape bool-arguments --out /tmp/qf-uflra-bool-extended-fixed-300",
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 3000 --seed 20260817 --timeout 5 --shape bool-arguments --out /tmp/qf-uflra-bool-extended-fixed-3000",
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 3000 --seed 20260818 --timeout 5 --shape mixed --out /tmp/qf-uflra-mixed-extended-fixed-3000",
+        "make check"
+      ],
+      "results": {
+        "focused_regression": {"count": 1, "pass": 1, "wrong_answer": 0},
+        "bool_arguments_300": {"count": 300, "pass": 300, "wrong_answer": 0, "timeout": 0, "crash": 0},
+        "bool_arguments_3000": {"count": 3000, "pass": 3000, "wrong_answer": 0, "timeout": 0, "crash": 0},
+        "mixed_3000": {"count": 3000, "pass": 3000, "wrong_answer": 0, "timeout": 0, "crash": 0},
+        "ctest": {"tests": 13, "passed": 13}
+      },
+      "artifacts": [
+        "/tmp/qf-uflra-bool-extended-fixed-300/summary.csv",
+        "/tmp/qf-uflra-bool-extended-fixed-3000/summary.csv",
+        "/tmp/qf-uflra-mixed-extended-fixed-3000/summary.csv"
+      ],
+      "evidence_status": "local-only",
+      "outcome": "The narrow bridge extension fixed the discovered Boolean-result/complement disagreement. The extended Boolean generator and broader mixed generator both passed with zero disagreements."
     }
   ]
 }

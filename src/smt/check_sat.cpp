@@ -1605,6 +1605,9 @@ class BooleanClausifier {
       const std::vector<core::TermId> children = terms_.get(term_id).children;
       const core::TermKind kind = terms_.get(term_id).kind;
       if (kind == core::TermKind::Application) {
+        if (terms_.get(term_id).sort == terms_.symbols().bool_sort()) {
+          ensure_boolean_domain_bridge(term_id);
+        }
         for (const core::TermId child : children) {
           if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
             ensure_boolean_domain_bridge(child);
