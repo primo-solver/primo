@@ -161,6 +161,15 @@ def build_command(
         shlex.quote(contrib_target) for contrib_target in contrib_targets
     )
     if reuse_dependencies:
+        extra_targets = [
+            target for target in contrib_targets if target != "contrib-required"
+        ]
+        extra_setup = ""
+        if extra_targets:
+            quoted_extra_targets = " ".join(
+                shlex.quote(target) for target in extra_targets
+            )
+            extra_setup = f"make MAKEFLAGS= {quoted_extra_targets}"
         dependency_setup = f"""
 missing_dependency=0
 for required in \
@@ -182,8 +191,9 @@ if [ ! -e contrib/local/include/ipasir_up.h ] && \
 fi
 if [ "$missing_dependency" -ne 0 ]; then
   echo 'reusable dependency installation is incomplete; provisioning it now'
-  make MAKEFLAGS= {make_targets}
+  make MAKEFLAGS= contrib-required
 fi
+{extra_setup}
 rm -rf build-slurm-rel
 """.strip()
     else:
@@ -330,10 +340,6 @@ def main() -> int:
 
     if args.jobs < 1:
         raise SystemExit("--jobs must be positive")
-    if args.reuse_dependencies and args.contrib_target:
-        raise SystemExit(
-            "--reuse-dependencies cannot be combined with --contrib-target"
-        )
     if not args.ssh_config.is_file():
         raise SystemExit(f"missing SSH config: {args.ssh_config}")
 

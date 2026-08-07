@@ -140,11 +140,24 @@ scratch. This avoids repeated CaDiCaL, GMP, ANTLR, and CLI11 provisioning withou
 risking stale project objects from preserved source timestamps. Before reusing the
 installation, the helper checks the concrete CLI11, ANTLR4, IPASIR, CaDiCaL, and
 GMP headers/libraries required by CMake. If any are absent, it automatically runs
-the requested contribution targets instead of starting a doomed build. It cannot
-be combined with explicit `--contrib-target` requests. The IPASIR check accepts
-either `ipasir_up.h` or the compatible `ipasir.h`, matching the alternatives in
-CMake; requiring only the former would falsely reprovision a valid CaDiCaL
-installation on every synchronization.
+`contrib-required` instead of starting a doomed build. Explicit
+`--contrib-target` requests can be combined with reuse mode for independent,
+idempotent tools such as `contrib-yinyang`; those targets run after the core
+artifact check without rebuilding valid native dependencies. The IPASIR check
+accepts either `ipasir_up.h` or the compatible `ipasir.h`, matching the
+alternatives in CMake; requiring only the former would falsely reprovision a
+valid CaDiCaL installation on every synchronization.
+
+For example, a fuzz workspace that already has the native build dependencies
+and Z3 but lacks the pinned YinYang environment can be prepared with:
+
+```bash
+python3 scripts/slurm_prepare_benchmark_workspace.py \
+  --reuse-dependencies \
+  --contrib-target contrib-yinyang \
+  --require-tool .venv-yinyang/bin/typefuzz \
+  --require-tool contrib/local/bin/z3
+```
 
 `contrib-required` is only the dependency set needed to build and run Primo. A
 benchmark that names reference solvers under `contrib/local/bin` must either
