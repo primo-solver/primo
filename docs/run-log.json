@@ -21671,6 +21671,53 @@
       ],
       "evidence_status": "local-merge-gate",
       "outcome": "The saved disagreement is fixed by lowering every source-level Bool equality to bidirectional implication and every Bool disequality to XOR, independent of UF applications in the operands. Fresh SLURM mutation evidence against the fixing commit remains required."
+    },
+    {
+      "id": "2026-08-07-boolean-uf-application-equality-slurm-gate-121115",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "Merge-grade QF_UFLRA mutation rerun after uniform Boolean equality lowering",
+      "commit": "cf13025",
+      "host": "SLURM",
+      "job_id": "121115",
+      "generator": "typefuzz from YinYang fork commit 04c8618",
+      "reference": "Z3 5.0.0 with model_validate=true",
+      "inputs": {
+        "profiles": ["default", "candidate-final", "online-euf"],
+        "compact_seeds": 10,
+        "mutations_per_seed": 2000,
+        "generated_mutants_per_profile": 20000,
+        "random_seeds": [2026080700, 2026080701, 2026080702],
+        "solver_timeout_seconds": 8,
+        "source_seed_timeout_seconds": 60
+      },
+      "results": {
+        "slurm_state": "all three tasks COMPLETED with exit code 0",
+        "elapsed": {
+          "default": "00:12:54",
+          "candidate_final": "00:13:00",
+          "online_euf": "00:13:52"
+        },
+        "deterministic_seed_gate": "10 PASS in each profile",
+        "source_seeds": "10 processed, 10 valid, 0 invalid in each profile",
+        "final_reported_solver_calls": {
+          "default": 39930,
+          "candidate_final": 39978,
+          "online_euf": 39904
+        },
+        "final_reported_effective_call_rate": {
+          "default": "7.9%",
+          "candidate_final": "8.0%",
+          "online_euf": "8.0%"
+        },
+        "wrong_answers": 0,
+        "crashes": 0,
+        "bug_triggers": 0,
+        "bug_files": 0
+      },
+      "artifact": "remote:fuzz-results/qf-uflra-mutation-gate-121115/; local ignored copy fuzz-results/collected-121115/",
+      "evidence_status": "slurm-complete",
+      "outcome": "The exact candidate mutation stream that exposed the old Boolean-equality bug completed past the prior trigger and through all 20,000 mutations without disagreement. Default and online-euf completed the same gate without disagreement or crash."
     }
   ]
 }
