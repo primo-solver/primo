@@ -12,4 +12,7 @@ sat
 contrib/local/bin/cvc5 witness.smt2
 unsat
 
-Z3, Primo, and cvc5 agree on `unsat`; OpenSMT reports `sat`.
+contrib/local/bin/yices-smt2 witness.smt2
+unsat
+
+Z3, Primo, cvc5, and Yices agree on `unsat`; OpenSMT reports `sat`.

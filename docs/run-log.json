@@ -21377,7 +21377,20 @@
       "results": {"primo": "unsat", "z3": "unsat", "opensmt": "sat", "cvc5": "unsat"},
       "artifact": "bugs/opensmt-qf-uflra-boolean-disagreement/",
       "evidence_status": "local-only",
-      "outcome": "The witness is confirmed as an OpenSMT disagreement: Primo, Z3, and cvc5 agree on unsat, while OpenSMT reports sat."
+      "outcome": "The witness is confirmed as an OpenSMT disagreement: Primo, Z3, cvc5, and Yices agree on unsat, while OpenSMT reports sat."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-opensmt-witness-yices-triage",
+      "date": "2026-08-07",
+      "kind": "reference-solver",
+      "scope": "OpenSMT disagreement witness checked against Yices 2.7.0",
+      "commit": "f6b7925",
+      "host": "local workspace",
+      "command": "contrib/local/bin/yices-smt2 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+      "results": {"yices": "unsat"},
+      "artifact": "bugs/opensmt-qf-uflra-boolean-disagreement/",
+      "evidence_status": "local-only",
+      "outcome": "Yices 2.7.0 agrees with Primo, Z3, and cvc5 on unsat, strengthening the classification as an OpenSMT disagreement."
     }
   ]
 }

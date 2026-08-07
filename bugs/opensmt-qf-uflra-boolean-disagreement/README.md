@@ -14,6 +14,7 @@ contrib/local/bin/z3 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2
 ./build/primo bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2
 contrib/local/bin/opensmt bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2
 contrib/local/bin/cvc5 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2
+contrib/local/bin/yices-smt2 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2
 ```
 
 Expected observed results with the recorded local binaries:
@@ -23,6 +24,7 @@ z3      unsat
 primo   unsat
 opensmt sat
 cvc5    unsat
+yices   unsat
 ```
 
 The witness is one of the 20 OpenSMT disagreements found in a 100-case
