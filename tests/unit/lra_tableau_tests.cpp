@@ -1728,12 +1728,15 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
     assert(!t.assert_lower(y, rat(0), Lit{3}).has_value());
   });
   // 4. THE COMPLETENESS GAP, made concrete. Pinning the slack s = x - y to 0
-  //    entails x = y, but neither rule finds it: FixedEq needs x and y
-  //    themselves fixed (they are not -- only their difference is), and EqRow
-  //    only inspects rows of shared BASIC variables, while here the basic
-  //    variable is s, which is not shared. This is the shape the paper's
-  //    EqRows/EqOffsetRows would cover, and until they exist the combination
-  //    layer must case-split on it. The oracle sees it; we do not.
+  //    entails x = y, but neither rule finds it *in this basis*: FixedEq needs
+  //    x and y themselves fixed (they are not -- only their difference is),
+  //    and EqRow only inspects rows of shared BASIC variables, while here the
+  //    basic variable is the slack, which is not shared.
+  //
+  //    The gap is therefore a property of the BASIS, not of the constraints --
+  //    see fixed_elimination_closes_the_eqrow_basis_gap below, which shows the
+  //    same constraints yielding the equality once the fixed slack is pivoted
+  //    out of the basis.
   run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId) {
     // slack is variable 3 in run_case's construction: x=0, y=1, d=2, slack=3.
     const LraVarId slack = 3;
@@ -1748,6 +1751,38 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
   // And case 4 is genuinely missed -- if this ever becomes 0, either a rule got
   // stronger (good: update this test) or the oracle stopped working (bad).
   assert(missed_total == 1);
+}
+
+// The missed case above is missed because of WHERE the fixed variable sits, not
+// because the constraints hide the equality. This is the paper's own remark in
+// section 5.1 -- "We also aggressively remove fixed variables from the basis" --
+// demonstrated rather than quoted.
+//
+// Same constraints both times: s = x - y with s pinned to 0, so x = y is
+// entailed and x, y are individually free. With the fixed slack left in the
+// basis, EqRow has no shared basic variable to inspect and finds nothing. Pivot
+// it out and the row becomes x = y + s with s fixed at 0, which is exactly
+// EqRow's premise.
+//
+// The practical consequence is recorded in docs/qf-lra-equality-sharing.md:
+// --lra-fixed-elimination is OFF by default, and it was measured off on grounds
+// that had nothing downstream consuming fixedness. Under theory combination it
+// is not merely a pivoting economy -- it decides what we can deduce at all.
+void fixed_elimination_closes_the_eqrow_basis_gap() {
+  const auto equalities_found = [](bool fixed_elimination) {
+    LraTableau tableau(LraTableau::PivotingRule::Sparse);
+    tableau.set_fixed_elimination(fixed_elimination);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId slack = tableau.add_variable();
+    tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
+    assert(!tableau.assert_lower(slack, rat(0), Lit{1}).has_value());
+    assert(!tableau.assert_upper(slack, rat(0), Lit{2}).has_value());
+    assert(!tableau.check().has_value());
+    return tableau.entailed_equalities({x, y}).size();
+  };
+  assert(equalities_found(false) == 0);  // fixed slack stuck in the basis
+  assert(equalities_found(true) == 1);   // pivoted out, EqRow fires
 }
 
 // The oracle itself must be trustworthy, so pin it on cases with a known
@@ -1836,6 +1871,7 @@ int main() {
   eqrow_declines_on_a_negated_coefficient();
   entailed_equalities_respects_the_shared_set();
   entailed_equalities_emits_a_spanning_set_not_all_pairs();
+  fixed_elimination_closes_the_eqrow_basis_gap();
   the_entailment_oracle_is_itself_correct();
   entailed_equalities_agree_with_the_entailment_oracle();
   return 0;
