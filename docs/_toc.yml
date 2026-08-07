@@ -5,6 +5,7 @@ chapters:
   - file: sat-ipasir-up
   - file: dpllt
   - file: euf
+  - file: euf-boolean-arguments
   - file: qfuf-disequality-propagation
   - file: preprocessing
   - file: qf-uflra-model-guided-performance

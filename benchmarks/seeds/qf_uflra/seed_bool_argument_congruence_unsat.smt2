@@ -1,0 +1,13 @@
+; UNSAT by Boolean-argument congruence in a mixed QF_UFLRA problem.
+(set-logic QF_UFLRA)
+(declare-fun p () Bool)
+(declare-fun q () Bool)
+(declare-fun r () Bool)
+(declare-fun f (Bool) Bool)
+(declare-fun g (Bool Bool) Bool)
+(declare-fun x () Real)
+(assert (= p q))
+(assert (or r (not (= (f p) (f q)))))
+(assert (or (not r) (not (= (g p r) (g q r)))))
+(assert (<= x 1))
+(check-sat)
