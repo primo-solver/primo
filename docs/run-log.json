@@ -21447,10 +21447,20 @@
       "host": "llm2smt-slurm",
       "job_id": "121020",
       "command": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0-2 with PRIMO_WORKDIR=/home/janotmik/primo-online-lazy-7838c2e and PATH including the existing remote typefuzz and Z3 installations",
-      "results": "pending",
+      "results": {
+        "slurm_state": "FAILED",
+        "tasks": {
+          "default": "9 PASS, 1 INCOMPLETE timeout",
+          "candidate-final": "9 PASS, 1 INCOMPLETE timeout",
+          "online-euf": "8 PASS, 2 INCOMPLETE timeouts"
+        },
+        "wrong_answers": 0,
+        "crashes": 0,
+        "mutation_started": false
+      },
       "artifact": "/home/janotmik/primo-online-lazy-7838c2e/fuzz-results/qf-uflra-mutation-gate-121020/",
       "evidence_status": "slurm-running",
-      "outcome": "Submitted after remote Release binary verification reported git 3139470 and CaDiCaL cadical-3.0.0-7b99c07."
+      "outcome": "The deterministic seed gate failed before mutation because existing MathSAT seeds timed out under the configured 60-second seed timeout. No wrong answers or crashes were observed, but this is incomplete fuzz evidence and does not pass the promotion gate."
     }
   ]
 }
