@@ -192,7 +192,7 @@ mixed-theory problem with many EUF atoms and a search that needs many final
 checks will hit this, and no amount of classifier tightening helps.
 
 (mechanism-unknown)=
-## Mechanism C: LassoRanker -- 46 of the 61 losses, still unexplained
+## Mechanism C: LassoRanker -- NO bookkeeping on the pure QF_LRA path (SOLVED)
 
 **Do not assume A and B explain the regression.** They explain the 12
 2019-ezsmt losses. The largest family does not fit them at all.
@@ -214,9 +214,55 @@ On `LassoRanker/CooperatingT2/dropbuf.t2.c_Iteration3_Loop_4-pieceTemplate`
   check-call rate falls from 13,976/s to 2,143/s *while the LRA work per call
   shrinks*. Something outside the simplex is paid per check call.
 
-**Open question to answer next:** what runs per online check call on the *pure*
-QF_LRA path after `84336a2` that did not before? `perf` is unavailable in the
-current sandbox; use a `-pg` build or profile on the cluster.
+### Solved 2026-08-07
+
+**Method, which is the reusable part.** Both commits were run under
+`--max-theory-conflicts 2000` so each stopped after the *same logical work*:
+both answered `sat` with **884 conflicts and 10,217 pivots** -- byte-identical
+search. That makes the flat profiles directly comparable as pure constant
+factor, with no trajectory noise to argue about. Under gprof the good commit
+took 43.2s and main 329.3s: a **7.6x slowdown on identical work**.
+
+| | `b6b8d55` | main |
+|---|---|---|
+| top | `LraTableau::pivot` 19.7% | **`OnlineLraPropagator::notify_backtrack` 62.1%** (94.97s / 9,348 calls) |
+| 2nd | `update_violation_status` 17.0% | **`_Hashtable<TermPairKey,...>::_M_find_before_node` 28.9%, 1,404,326,272 calls** |
+
+**1.4 billion hash lookups -- about 150,000 per backtrack -- into the
+Nelson-Oppen interface-equality registry, on a pure QF_LRA problem.**
+
+`notify_backtrack` calls `rebuild_true_interface_bounds()` unconditionally,
+and that rescans **every** theory atom, hash-inserting each true one into
+`true_lra_le_reasons_`. Meanwhile `pending_interface_equalities_` is drained
+only by `MixedTheoryPropagationDispatcher`. So on the pure QF_LRA path
+**nothing consumes any of it**: filled on every assignment, rebuilt on every
+backtrack, discarded.
+
+**Fix:** `interface_equalities_enabled_`, defaulting to `false`, turned on by
+the dispatcher -- the one path that consumes it. It guards both
+`rebuild_true_interface_bounds` and `observe_true_interface_bound`.
+
+| | answer | wall | pivots | conflicts |
+|---|---|---:|---:|---:|
+| `b6b8d55` | sat | 13.44s | 10,217 | 884 |
+| main | **timeout 200s** | -- | 7,776 | 716 |
+| **main + fix** | **sat** | **12.16s** | **10,217** | **884** |
+
+Identical search counters to the pre-regression commit, and marginally faster.
+
+**The NO side is verified unaffected**, which was the risk of gating it: with
+`--nelson-oppen-prop online` on a formula where `x <= y` and `y <= x` must
+publish `x = y` to EUF, both builds answer `unsat` with
+`:no.online.lra-published-equalities 1` and `precreated 2`. A regression test
+asserts `>= 1`, so disabling the gate for the mixed path fails loudly rather
+than silently losing LRA-to-EUF propagation.
+
+**120-file QF_LRA differential at 20s:** 0 disagreements, **gained 6, lost 0**,
+paired median 0.79 with max 1.01 -- faster nearly everywhere and never slower.
+All six gains are LassoRanker.
+
+**Not yet measured:** a full-division re-run on the fixed tree. The
+corpus-level recovery is projected from a sample.
 
 Interesting and unexplained: the `qflra-tropical-t1-propagation` branch
 recovers **16 LassoRanker files** relative to main without targeting any of
