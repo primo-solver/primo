@@ -1,0 +1,15 @@
+Local reproduction, 2026-08-07, current proxy binary:
+
+contrib/local/bin/z3 witness.smt2
+unsat
+
+./build/primo witness.smt2
+unsat
+
+contrib/local/bin/opensmt witness.smt2
+sat
+
+contrib/local/bin/cvc5 witness.smt2
+unsat
+
+Z3, Primo, and cvc5 agree on `unsat`; OpenSMT reports `sat`.

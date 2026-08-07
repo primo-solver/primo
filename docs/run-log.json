@@ -21360,6 +21360,24 @@
       "artifact": "/tmp/qf-uflra-recursive-opensmt-100/summary.csv",
       "evidence_status": "local-only",
       "outcome": "OpenSMT is installed and usable as an optional executable reference, but it disagreed with both Primo and Z3 on 20/100 recursive Boolean cases. It is therefore not treated as an authoritative oracle for this QF_UFLRA Boolean campaign without per-case triage."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-opensmt-witness-cvc5-triage",
+      "date": "2026-08-07",
+      "kind": "reference-solver",
+      "scope": "OpenSMT disagreement witness checked against current Primo, Z3, and cvc5",
+      "commit": "ee03539",
+      "host": "local workspace",
+      "commands": [
+        "./build/primo bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+        "contrib/local/bin/z3 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+        "contrib/local/bin/opensmt bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+        "contrib/local/bin/cvc5 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2"
+      ],
+      "results": {"primo": "unsat", "z3": "unsat", "opensmt": "sat", "cvc5": "unsat"},
+      "artifact": "bugs/opensmt-qf-uflra-boolean-disagreement/",
+      "evidence_status": "local-only",
+      "outcome": "The witness is confirmed as an OpenSMT disagreement: Primo, Z3, and cvc5 agree on unsat, while OpenSMT reports sat."
     }
   ]
 }
