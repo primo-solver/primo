@@ -136,6 +136,37 @@ should be stated to whoever owns the NO branch: *their* benefit was never in
 those measurements, so if MBTC lands, both options need re-measuring **with the
 equality propagation switched on**, and the answer may differ.
 
+(fixed-elimination-for-no)=
+### Should `--lra-fixed-elimination` be on by default for Nelson-Oppen?
+
+Asked directly, and the evidence assembled 2026-08-07 says **yes, scoped to the
+mixed path, and as part of the wiring rather than now**.
+
+**Why yes.** Under theory combination it is not an optimisation. Same
+constraints, basis differs, 0 equalities against 1 — see [](#measured-gap). It
+decides what we can deduce.
+
+**Why scoped to the mixed path is close to free.** After the dispatch narrowing
+(`--mixed-dispatch narrow`, the default), the mixed path is essentially unused
+on pure QF_LRA: **0 of 60 sampled division files** dispatch to
+`:solver.qf-uflra`. So switching H7 on *when the mixed solver runs* changes
+nothing on the QF_LRA division by construction, and only affects genuine
+QF_UFLRA input.
+
+**Why not flip the global default instead.** That is a separate question with
+its own evidence, and the evidence is mildly *positive* rather than negative:
+374 against 373 solved on the 595-file scrambled set, median 0.94x, the >5MB
+band going 7 → 14 of 50, and mid-band median 0.64x. H7 is opt-in because it
+"nets to nothing" on headline solved count, not because it costs anything.
+Flipping it globally is defensible on its own merits — but doing it *as part of*
+the NO work would confound two changes, and the QF_LRA measurement above would
+then have to be redone anyway.
+
+**Why not now.** Nothing consumes `entailed_equalities` yet, so enabling it
+today buys no deduction and changes mixed-path search unmeasured. And the
+QF_UFLRA corpus is **not staged on the cluster**, so neither the cost nor the
+benefit is currently measurable. Stage it first.
+
 (measured-gap)=
 ## The completeness gap, measured rather than assumed
 
