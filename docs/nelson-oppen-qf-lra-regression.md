@@ -67,17 +67,28 @@ which added `contains_euf_predicate_atom` alongside this.
 | `4d4a185` (parent) | **1** | -- | **sat, 0.93s**, 11,735 pivots |
 | `ffaf9eb` | 0 | **1** | **timeout**, deterministic |
 
-**A second over-trigger in the same function**, not yet measured but visible in
-the code: `has_equality` is already refined so a plain *Real* equality does not
-set it, but a **Bool** equality does --
+**A second over-trigger was suspected here and does not exist.** Reading the
+code suggests one: `has_equality` is refined so a plain *Real* equality does
+not set it, but the `!real_equality` branch appears to fire for a **Bool**
+equality --
 
 ```cpp
 if (!real_equality || summary.has_application_term) { summary.has_equality = true; }
 ```
 
-so `(= p q)` between two propositional variables also routes a QF_LRA formula
-to the mixed path. Any fix to `has_euf_predicate` that ignores this leaves an
-equivalent trigger in place.
+**Measured, it does not.** A formula whose only candidate trigger is
+`(= p q)` between propositional variables dispatches to `:solver.boolean`, and
+with arithmetic added it moves to `:solver.qf-lra` as soon as the
+`has_euf_predicate` trigger is removed. The reason is that Bool-sorted
+equalities are rewritten during preprocessing (`preprocessing.cpp`, the
+bool-sorted equality branch) *before* `summarize_formula_features` runs, so no
+`Equality` node over Bool ever reaches the dispatch.
+
+This matters for scoping the fix: for these files `has_euf_predicate` on a
+Bool `Constant` is the **single** trigger, so narrowing it to `Application` is
+sufficient rather than partial. Verify this rather than trusting it if the
+preprocessing pipeline changes -- the code still reads as though the second
+trigger were live.
 
 (mechanism-euf-atoms)=
 ## Mechanism B: those variables are then handed to congruence closure
@@ -322,7 +333,7 @@ what each one must do:
 | `true` / `false` | `BoolValue` | **not** EUF | a literal, distinct kind -- verified, never matched `has_euf_predicate` |
 | `(declare-fun f (Real) Bool)`, used as `(f x)` | `Application` | **EUF** | congruence applies: `x = y` implies `f(x) = f(y)` |
 | `(declare-fun g (Bool) Bool)`, used as `(g p)` | `Application` | **EUF** | same, and note `p` is now an *argument*, so it is congruence-relevant here even though it is not on its own |
-| `(= p q)` over Bool | `Equality` | today: EUF, via `has_equality` | this is the **second over-trigger**; a fix to `has_euf_predicate` alone leaves it |
+| `(= p q)` over Bool | rewritten before dispatch | **not** a trigger (measured) | preprocessing rewrites Bool equalities, so no `Equality` node reaches the classifier -- confirm this still holds if preprocessing changes |
 | `(= a b)` over an uninterpreted sort | `Equality` | **EUF** | genuine congruence content |
 | `(= x y)` over Real | `Equality` | LRA, unless it contains an application | already handled correctly |
 
