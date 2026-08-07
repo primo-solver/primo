@@ -79,7 +79,8 @@ source.
    disequality arrangements are a later, non-convex extension.
 7. **Complete for fixed elimination:** a 45-file, 60-second QF_UFLRA ablation
    preserved 42/45 solved with zero wrong answers and improved PAR2 from
-   685.07s to 596.13s. Fixed elimination is now default-on only for mixed
+   687.11s to 596.81s in the exact promotion run (SLURM job 121509). Fixed
+   elimination is now default-on only for mixed
    QF_UFLRA and can be disabled with
    `--no-qf-uflra-fixed-elimination`; pure QF_LRA remains unchanged. Row-bound
    propagation still requires its own mixed-path evaluation before any default

@@ -115,12 +115,14 @@ reports the average number of shared equalities actually propagated by Z3 as
 We already have the ingredients: `update()` exists in the tableau, and
 `can_enter` already reasons about how far a non-basic variable may move.
 
-## Two things we own that are already implemented — and switched off
+## Two implemented equality-enabling LRA mechanisms
 
 This is the immediately actionable part, and it needs deciding on our side
 rather than theirs.
 
-**`--lra-fixed-elimination` (item H7) is off by default.** The paper, §5.1:
+**The global `--lra-fixed-elimination` default (item H7) is off.** The mixed
+QF_UFLRA path now has a separately measured scoped default, described below.
+The paper, §5.1:
 "We also aggressively remove fixed variables from the basis." Fixed variables
 are the premise of three of the four opportunistic rules, and a fixed variable
 sitting in the basis is one the rules cannot use. Our own note in
@@ -142,11 +144,11 @@ the opportunistic rules fire. Its own evaluation
 ([](qf-lra-heuristics.md)'s D1) found it neutral-to-negative on solved count —
 again, measured with nothing downstream that consumed fixedness.
 
-**Neither default should be flipped on this reasoning alone.** Both were
-measured and both are off for good empirical reasons. The point is narrower and
-matters to the mixed coordinator: their equality-sharing benefit was absent
-from those measurements, so both options need re-measuring **with equality
-propagation switched on**, and the answer may differ.
+**Neither the global fixed-elimination default nor row propagation should be
+flipped on this reasoning alone.** Their original measurements did not consume
+newly exposed fixedness. The mixed fixed-elimination exception below was
+therefore measured with equality propagation before being enabled. Row
+propagation still needs that mixed-path evaluation and remains off.
 
 (fixed-elimination-for-no)=
 ### Should `--lra-fixed-elimination` be on by default for Nelson-Oppen?
@@ -175,13 +177,14 @@ the NO work would confound two changes, and the QF_LRA measurement above would
 then have to be redone anyway.
 
 **Measured decision.** On the committed 45-file QF_UFLRA opportunity sample at
-60 seconds per row, mixed fixed elimination preserved 42/45 solved with zero
-wrong answers and reduced PAR2 from 685.07s to 596.13s. It increased
-opportunistic candidates from 131 to 1,000, increased `EqRow` detections from
-233 to 2,163, reduced exact fallback pair probes from 464,994 to 295,539,
-reduced SAT decisions from 33,230 to 29,187, and reduced SAT propagations from
-250,721 to 208,421. The candidate-final profile showed the same direction:
-PAR2 422.89s to 403.34s and exact fallback pairs 94,763 to 54,147.
+60 seconds per row, the exact promotion run (SLURM job 121509) preserved 42/45
+solved with zero wrong answers and reduced PAR2 from 687.11s to 596.81s. It
+increased opportunistic candidates from 131 to 1,000, increased `EqRow`
+detections from 233 to 2,163, reduced exact fallback pair probes from 464,994
+to 295,539, reduced SAT decisions from 33,230 to 29,187, and reduced SAT
+propagations from 250,721 to 208,421. The candidate-final profile showed the
+same direction: PAR2 423.28s to 403.66s and exact fallback pairs 94,763 to
+54,147.
 
 `CheckSatOptions::qf_uflra_fixed_elimination` is therefore on by default only
 inside `solve_qf_uf_lra`. `--no-qf-uflra-fixed-elimination` preserves the

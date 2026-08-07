@@ -23571,6 +23571,333 @@
       "artifact": "remote:fuzz-results/qf-uflra-mutation-gate-121115/; local ignored copy fuzz-results/collected-121115/",
       "evidence_status": "slurm-complete",
       "outcome": "The exact candidate mutation stream that exposed the old Boolean-equality bug completed past the prior trigger and through all 20,000 mutations without disagreement. Default and online-euf completed the same gate without disagreement or crash."
+    },
+    {
+      "id": "2026-08-08-convex-no-local-validation-9481bfb",
+      "date": "2026-08-08",
+      "kind": "implementation-validation",
+      "scope": "Convex EUF-LRA equality fixpoint and mixed-only fixed-elimination default",
+      "commit": "9481bfb",
+      "host": "local workspace",
+      "commands": [
+        "ctest --test-dir build --output-on-failure -R ^primo_qf_lra_solver_tests$",
+        "make check",
+        "make asan-test",
+        "make lint",
+        "make docs",
+        "make tidy",
+        "make include-cleaner",
+        "git diff --check"
+      ],
+      "results": {
+        "focused_qf_uflra": "passed",
+        "make_check": "13/13 passed",
+        "asan": "13/13 passed",
+        "lint": "passed",
+        "docs": "passed",
+        "clang_tidy": "63 tracked non-generated translation units passed with only suppressed non-user diagnostics",
+        "include_cleaner": "advisory repository-baseline diagnostics; no diagnostics in the changed C++ files",
+        "diff_check": "passed"
+      },
+      "evidence_status": "local-complete",
+      "outcome": "The mixed coordinator reaches a convex EUF/LRA equality fixpoint, consumes explained LRA FixedEq/EqRow consequences, and retains exact unresolved-pair separation as the completeness fallback. Pure QF_UF and pure QF_LRA dispatch remain outside this path."
+    },
+    {
+      "id": "2026-08-08-convex-no-generated-ablation-121391-121392",
+      "date": "2026-08-08",
+      "kind": "fuzz-ablation",
+      "scope": "Generated QF_UFLRA comparison before promoting mixed fixed elimination",
+      "commit": "8626669",
+      "host": "SLURM",
+      "job_ids": [
+        "121391",
+        "121392"
+      ],
+      "command": "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FUZZ_SEED_BASE=2026080710, separate default/fixed PRIMO_FUZZ_SOLVER_ARGS, and separate PRIMO_FUZZ_OUT_DIR values scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+      "generator": "scripts/qf_uflra_smoke_fuzz.py",
+      "reference": "Z3 5.0.0",
+      "inputs": {
+        "profiles": [
+          "default",
+          "--lra-fixed-elimination"
+        ],
+        "cases_per_profile": 3000,
+        "shards": 4,
+        "cases_per_shard": 750,
+        "random_seeds": [
+          2026080710,
+          2026080711,
+          2026080712,
+          2026080713
+        ]
+      },
+      "results": {
+        "default": "3000 PASS, 0 wrong answer, 0 crash, 0 timeout",
+        "fixed_elimination": "3000 PASS, 0 wrong answer, 0 crash, 0 timeout",
+        "slurm_state": "all eight tasks COMPLETED with exit code 0"
+      },
+      "artifacts": "remote:slurm_logs/primo-qf-uflra-fuzz-121391_*.out and 121392_*.out; generated case directories were superseded by the exact-promotion workspace sync",
+      "evidence_status": "slurm-complete-logs-retained",
+      "outcome": "Both sides of the fixed-elimination ablation agreed with Z3 on all generated cases."
+    },
+    {
+      "id": "2026-08-08-convex-no-mutation-ablation-121393",
+      "date": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA seed mutation after convex fixpoint integration",
+      "commit": "8626669",
+      "host": "SLURM",
+      "job_id": "121393",
+      "command": "sbatch --array=0-2 with PRIMO_FUZZ_YINYANG_ITERATIONS=2000, PRIMO_FUZZ_YINYANG_TIMEOUT=8, PRIMO_FUZZ_MUTATION_SEED_BASE=2026080700, and PRIMO_FUZZ_OUT_ROOT=fuzz-results/qf-uflra-mutation-gate-121393 scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch",
+      "generator": "typefuzz from YinYang fork commit 04c8618",
+      "reference": "Z3 5.0.0 with model_validate=true",
+      "inputs": {
+        "profiles": [
+          "default",
+          "candidate-final",
+          "online-euf"
+        ],
+        "compact_seeds": 10,
+        "mutations_per_seed": 2000,
+        "generated_mutants_per_profile": 20000,
+        "random_seeds": [
+          2026080700,
+          2026080701,
+          2026080702
+        ],
+        "solver_timeout_seconds": 8
+      },
+      "results": {
+        "deterministic_seed_gate": "10 PASS in each profile",
+        "final_reported_solver_calls": {
+          "default": 39958,
+          "candidate_final": 39946,
+          "online_euf": 39900
+        },
+        "wrong_answers": 0,
+        "crashes": 0,
+        "bug_files": 0,
+        "slurm_state": "all three tasks COMPLETED with exit code 0"
+      },
+      "artifact": "remote:fuzz-results/qf-uflra-mutation-gate-121393/; local ignored copy fuzz-results/collected-121393/",
+      "evidence_status": "slurm-complete",
+      "outcome": "All three profiles completed the 20,000-mutation campaign without a disagreement or crash."
+    },
+    {
+      "id": "2026-08-08-convex-no-exact-generated-ablation-121426-121427",
+      "date": "2026-08-08",
+      "kind": "fuzz-ablation",
+      "scope": "Exact-commit generated sanity check before the 45-file fixed-elimination benchmark",
+      "commit": "3fbd2ce",
+      "host": "SLURM",
+      "job_ids": [
+        "121426",
+        "121427"
+      ],
+      "command": "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=250, separate exact-default/exact-fixed solver arguments and output roots scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+      "generator": "scripts/qf_uflra_smoke_fuzz.py",
+      "reference": "Z3 5.0.0",
+      "inputs": {
+        "profiles": [
+          "default",
+          "--lra-fixed-elimination"
+        ],
+        "cases_per_profile": 1000,
+        "shards": 4,
+        "cases_per_shard": 250
+      },
+      "results": {
+        "default": "1000 PASS",
+        "fixed_elimination": "1000 PASS",
+        "wrong_answers": 0,
+        "crashes": 0,
+        "timeouts": 0,
+        "slurm_state": "all eight tasks COMPLETED with exit code 0"
+      },
+      "artifacts": "remote:slurm_logs/primo-qf-uflra-fuzz-121426_*.out and 121427_*.out",
+      "evidence_status": "slurm-complete-logs-retained",
+      "outcome": "The exact benchmark harness commit passed both generated ablation profiles before performance measurement."
+    },
+    {
+      "id": "2026-08-08-convex-no-fixed-elimination-ablation-121439",
+      "date": "2026-08-08",
+      "kind": "benchmark",
+      "scope": "45-file QF_UFLRA preprocessing-opportunity sample, fixed elimination and candidate-final ablation",
+      "commit": "3fbd2ce",
+      "host": "SLURM",
+      "job_id": "121439",
+      "command": "sbatch --array=0-3 --time=01:10:00 with PRIMO_COMPARE_TIMEOUT=60 and default/fixed/candidate/candidate-fixed solver specs scripts/slurm_qf_uflra_sample_compare.sbatch",
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "files": 45,
+        "timeout_seconds": 60,
+        "families": {
+          "mathsat": 25,
+          "cpachecker_induction": 19,
+          "cpachecker_bmc": 1
+        },
+        "profiles": [
+          "default",
+          "fixed",
+          "candidate",
+          "candidate-fixed"
+        ]
+      },
+      "results": {
+        "default": "42 solved, 3 timeout, 0 wrong, PAR2 685.074817",
+        "fixed": "42 solved, 3 timeout, 0 wrong, PAR2 596.128110",
+        "candidate": "42 solved, 3 timeout, 0 wrong, PAR2 422.894464",
+        "candidate_fixed": "42 solved, 3 timeout, 0 wrong, PAR2 403.335129",
+        "family_solved": "MathSAT 25/25, CPA induction 17/19, CPA BMC 0/1 in every profile",
+        "fixed_effect": "EqRow 233 to 2163; exact fallback pairs 464994 to 295539; SAT decisions 33230 to 29187; SAT propagations 250721 to 208421"
+      },
+      "artifact": "local ignored results/qf-uflra-convex-no-fixed-ablation-3fbd2ce/; remote:results/qf-uflra-convex-no-fixed-ablation-3fbd2ce/",
+      "evidence_status": "slurm-complete",
+      "outcome": "Mixed fixed elimination preserved solved and correctness counts while reducing fallback work and PAR2 in both final-scan profiles; this justified the scoped default implemented in 9481bfb."
+    },
+    {
+      "id": "2026-08-08-convex-no-promoted-generated-121495",
+      "date": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "Exact promoted-default generated QF_UFLRA gate",
+      "commit": "9481bfb",
+      "host": "SLURM",
+      "job_id": "121495",
+      "command": "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FUZZ_SEED_BASE=2026081100, and PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-promoted-default-9481bfb scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+      "generator": "scripts/qf_uflra_smoke_fuzz.py",
+      "reference": "Z3 5.0.0",
+      "inputs": {
+        "cases": 3000,
+        "shards": 4,
+        "cases_per_shard": 750,
+        "random_seeds": [
+          2026081100,
+          2026081101,
+          2026081102,
+          2026081103
+        ]
+      },
+      "results": {
+        "pass": 3000,
+        "sat": 1907,
+        "unsat": 1093,
+        "wrong_answers": 0,
+        "crashes": 0,
+        "timeouts": 0,
+        "slurm_state": "all four tasks COMPLETED with exit code 0 in 17-18 seconds"
+      },
+      "artifact": "remote:slurm-results/qf_uflra-promoted-default-9481bfb/; local ignored copy fuzz-results/promoted-default-9481bfb/",
+      "evidence_status": "slurm-complete",
+      "outcome": "The exact promoted default agreed with Z3 on all 3,000 generated cases before the promotion benchmark was submitted."
+    },
+    {
+      "id": "2026-08-08-convex-no-promotion-benchmark-121509",
+      "date": "2026-08-08",
+      "kind": "benchmark",
+      "scope": "Exact promoted-commit 45-file QF_UFLRA fixed-elimination ablation",
+      "commit": "9481bfb",
+      "host": "SLURM",
+      "job_id": "121509",
+      "command": "sbatch --array=0-3 --time=01:10:00 with PRIMO_COMPARE_TIMEOUT=60 and default/ablation/candidate/candidate-ablation solver specs scripts/slurm_qf_uflra_sample_compare.sbatch",
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "files": 45,
+        "timeout_seconds": 60,
+        "profiles": [
+          "default",
+          "ablation --no-qf-uflra-fixed-elimination",
+          "candidate",
+          "candidate-ablation"
+        ],
+        "reference_reuse": "Z3 was not rerun; unchanged artifact results/qf-uflra-opportunity-45-3451af9-rerun/z3.csv"
+      },
+      "results": {
+        "default": "42 solved, 3 timeout, 0 wrong, PAR2 596.809750",
+        "ablation": "42 solved, 3 timeout, 0 wrong, PAR2 687.106589",
+        "candidate": "42 solved, 3 timeout, 0 wrong, PAR2 403.662678",
+        "candidate_ablation": "42 solved, 3 timeout, 0 wrong, PAR2 423.283779",
+        "z3_reused": "45 solved, 0 timeout, 0 wrong, PAR2 10.936763",
+        "family_solved": "Primo: MathSAT 25/25, CPA induction 17/19, CPA BMC 0/1 in every profile; Z3: 45/45",
+        "default_fixed_effect": "EqRow 233 to 2163; exact fallback pairs 464994 to 295539; extra-atom probes 445466 to 274252; SAT decisions 33230 to 29187; SAT propagations 250721 to 208421",
+        "candidate_fixed_effect": "exact fallback pairs 94763 to 54147; PAR2 423.283779 to 403.662678",
+        "slurm_state": "all four tasks COMPLETED with exit code 0"
+      },
+      "artifact": "remote:results/qf-uflra-convex-no-promoted-9481bfb/; local ignored copy results/qf-uflra-convex-no-promoted-9481bfb/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact promotion run reproduced the ablation improvement with unchanged solved/family counts and zero wrong answers. The remaining gap to Z3 is large and is not claimed solved by this milestone."
+    },
+    {
+      "id": "2026-08-08-convex-no-promoted-mutation-121496",
+      "date": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "Exact promoted-commit QF_UFLRA seed mutation gate",
+      "commit": "9481bfb",
+      "host": "SLURM",
+      "job_id": "121496",
+      "command": "sbatch --array=0-2 --time=00:30:00 with PRIMO_FUZZ_YINYANG_ITERATIONS=2000, PRIMO_FUZZ_YINYANG_TIMEOUT=8, PRIMO_FUZZ_MUTATION_SEED_BASE=2026081200, and PRIMO_FUZZ_OUT_ROOT=fuzz-results/qf-uflra-promoted-mutation-9481bfb scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch",
+      "generator": "typefuzz from YinYang fork commit 04c8618",
+      "reference": "Z3 5.0.0 with model_validate=true",
+      "inputs": {
+        "profiles": [
+          "default",
+          "candidate-final",
+          "online-euf"
+        ],
+        "compact_seeds": 10,
+        "mutations_per_seed_target": 2000,
+        "target_mutants_per_profile": 20000,
+        "random_seeds": [
+          2026081200,
+          2026081201,
+          2026081202
+        ],
+        "solver_timeout_seconds": 8,
+        "slurm_time_limit_seconds": 1800
+      },
+      "results": {
+        "deterministic_seed_gate": "10 PASS in each profile",
+        "default": "completed all seeds and the 20,000-mutation target; 39,822 reported solver calls; 0 bug files",
+        "candidate_final": "partial at the SLURM wall; 28,914 reported solver calls; timeout-heavy while mutating online_nonpaired_congruence_forced_unsat.smt2; 0 bug files",
+        "online_euf": "partial at the SLURM wall; 32,239 reported solver calls; timeout-heavy while mutating seed_bool_argument_mixed_sort.smt2; 0 bug files",
+        "wrong_answers": 0,
+        "crashes": 0,
+        "bug_files": 0,
+        "slurm_state": "default COMPLETED in 00:11:43; candidate-final and online-euf TIMEOUT at 00:30:19"
+      },
+      "artifact": "remote:fuzz-results/qf-uflra-promoted-mutation-9481bfb/; local ignored copy fuzz-results/collected-121496/",
+      "evidence_status": "slurm-default-complete-optional-profiles-timeboxed",
+      "outcome": "The promoted default completed the full mutation campaign without disagreement or crash. The two optional profiles found no bug but do not establish full seed-mutation coverage because timeout-heavy mutants exhausted the SLURM allocation; their complete pre-promotion counterparts are recorded in job 121393."
+    },
+    {
+      "id": "2026-08-08-convex-no-promoted-optional-generated-121545-121549",
+      "date": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "Exact promoted-commit generated gates for optional candidate-final and online-euf profiles",
+      "commit": "9481bfb",
+      "host": "SLURM",
+      "job_ids": [
+        "121545",
+        "121549"
+      ],
+      "commands": [
+        "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=250, PRIMO_FUZZ_SEED_BASE=2026081300, and PRIMO_FUZZ_SOLVER_ARGS=--qf-uflra-candidate-final-scan scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=250, PRIMO_FUZZ_SEED_BASE=2026081400, and PRIMO_FUZZ_SOLVER_ARGS='--nelson-oppen-prop=online --qf-uflra-online-euf' scripts/slurm_qf_uflra_fuzz_gate.sbatch"
+      ],
+      "generator": "scripts/qf_uflra_smoke_fuzz.py",
+      "reference": "Z3 5.0.0",
+      "inputs": {
+        "cases_per_profile": 1000,
+        "shards": 4,
+        "cases_per_shard": 250
+      },
+      "results": {
+        "candidate_final": "1000 PASS, 0 wrong answer, 0 crash, 0 timeout",
+        "online_euf": "1000 PASS, 0 wrong answer, 0 crash, 0 timeout",
+        "slurm_state": "all eight tasks COMPLETED with exit code 0 in 6-7 seconds"
+      },
+      "artifacts": "remote:slurm-results/qf_uflra-promoted-candidate-9481bfb/ and qf_uflra-promoted-online-euf-9481bfb/; local ignored summary copies fuzz-results/collected-121545/ and collected-121549/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Both optional profiles have a fresh exact-commit 1,000-case generated merge gate. This complements, but does not turn into complete coverage, the time-boxed mutation profiles from job 121496."
     }
   ]
 }
