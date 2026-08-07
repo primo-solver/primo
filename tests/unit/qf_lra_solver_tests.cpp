@@ -2735,7 +2735,32 @@ void guarded_real_equality_lowering_is_default_off_end_to_end() {
 
 }  // namespace
 
+// Interface-equality publishing is Nelson-Oppen machinery and must stay on for
+// the mixed path, where the dispatcher enables it. This pins that direction:
+// the pure QF_LRA path gets it for free (nothing consumes it there), but
+// turning it off for QF_UFLRA would silently lose LRA-to-EUF equality
+// propagation. See docs/nelson-oppen-qf-lra-regression.md.
+void online_nelson_oppen_still_publishes_lra_interface_equalities() {
+  CheckSatOptions options;
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun f (Real) Real)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (not (= (f x) (f y))))
+    (check-sat)
+  )", options);
+  assert(result.result == CheckSatResult::Unsat);
+  // x <= y and y <= x force x = y, and only the LRA side can observe that, so
+  // a zero here means the publishing path went dead.
+  assert(result.statistics.get(":no.online.lra-published-equalities") >= 1);
+}
+
 int main() {
+  online_nelson_oppen_still_publishes_lra_interface_equalities();
   accepts_set_logic_and_real_declarations();
   accepts_chained_comparisons_and_decimal_literals();
   accepts_nary_minus_and_ratio_literal_coefficient();

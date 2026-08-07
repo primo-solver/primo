@@ -6599,6 +6599,27 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   std::optional<sat::Clause> conflict() const { return conflict_; }
   const theory::arithmetic::LraTableau& tableau() const { return tableau_; }
 
+  // Interface-equality publishing is Nelson-Oppen machinery, and only
+  // MixedTheoryPropagationDispatcher ever drains it (see
+  // take_interface_equality_propagations). On the pure QF_LRA path nothing
+  // consumes it, yet it was maintained anyway: observe_true_interface_bound
+  // ran on every true assignment, and rebuild_true_interface_bounds() rescanned
+  // EVERY theory atom on EVERY backtrack.
+  //
+  // That was the LassoRanker half of the division regression. On
+  // dropbuf.t2.c_Iteration3_Loop_4-pieceTemplate a gprof profile put 62% of
+  // runtime in notify_backtrack and 29% in 1.4 BILLION lookups into
+  // true_lra_le_reasons_ -- about 150k lookups per backtrack, all discarded.
+  // Gating it recovers the file: 200s timeout -> 12.2s, with the pivot and
+  // conflict counts identical to the pre-regression commit. See
+  // docs/nelson-oppen-qf-lra-regression.md.
+  //
+  // Defaults to false so the pure path pays nothing; the dispatcher turns it
+  // on, which is precisely the path that consumes it.
+  void set_interface_equalities_enabled(bool enabled) {
+    interface_equalities_enabled_ = enabled;
+  }
+
   struct InterfaceEqualityPropagation {
     TermPairKey pair;
     std::vector<sat::Lit> reasons;
@@ -6879,6 +6900,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   }
 
   void observe_true_interface_bound(std::size_t atom_index, sat::Lit reason) {
+    if (!interface_equalities_enabled_) {
+      return;
+    }
     const TermPairKey pair = prepared_.atoms[atom_index].non_strict_le_pair;
     if (pair.lhs == core::kInvalidTermId) {
       return;
@@ -6888,6 +6912,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   }
 
   void rebuild_true_interface_bounds() {
+    if (!interface_equalities_enabled_) {
+      return;
+    }
     true_lra_le_reasons_.clear();
     for (std::size_t atom_index = 0; atom_index < theory_atoms_.size(); ++atom_index) {
       const TermPairKey pair = prepared_.atoms[atom_index].non_strict_le_pair;
@@ -7135,6 +7162,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   std::vector<std::size_t> level_starts_;
   std::deque<PendingPropagation> pending_;
   std::deque<InterfaceEqualityPropagation> pending_interface_equalities_;
+  bool interface_equalities_enabled_ = false;
   std::unordered_map<TermPairKey, sat::Lit, TermPairKeyHash> true_lra_le_reasons_;
   std::unordered_set<TermPairKey, TermPairKeyHash> published_interface_pairs_;
   std::unordered_map<int, std::vector<sat::Lit>> reasons_;
@@ -7167,6 +7195,11 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
         manager_(manager),
         lra_propagator_(lra_propagator),
         statistics_(statistics) {
+    // The only consumer of interface-equality publishing; see
+    // OnlineLraPropagator::set_interface_equalities_enabled.
+    if (lra_propagator_ != nullptr) {
+      lra_propagator_->set_interface_equalities_enabled(true);
+    }
     int max_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
       max_var = std::max(max_var, sat_var(atom.lit));

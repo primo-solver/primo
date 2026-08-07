@@ -19593,6 +19593,49 @@
       },
       "conclusion": "PASS on substance: 0 wrong answers and 0 invalid models across 6000 FuzzSMT cases in two non-default configurations. The FAILED task states are NOT a correctness signal -- validate_qfuf_models_with_dolmen.py counts its own 10s solver timeouts as failures and returns 1, and the sbatch runs under `set -euo pipefail`, so the validator's exit code becomes the task's. Tasks 6-8 passed only because the opfuzz/yinyang branch does not invoke the model validator. Gate ergonomics finding worth acting on: a slow-but-correct configuration cannot pass this gate, which matters because exploring speed trade-offs is precisely what these knobs are for.",
       "artifacts": "~/primo-tuning-9dadfa1/fuzz-results/{tuning-corner-aggressive,tuning-unbounded-pricing}/"
+    },
+    {
+      "id": "2026-08-07-lassoranker-regression-found-and-fixed",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "profiling",
+      "scope": "Identify and fix the LassoRanker half of main's division regression -- 46 of the 61 lost files, which the dispatch mechanisms did not explain.",
+      "commit": "fb3c875 (merged main) + fix",
+      "branch": "main",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "gprof builds (-pg -O2 -g, PRIMO_WARNINGS_AS_ERRORS=OFF -- the default -Werror trips a libstdc++ false positive under these flags). perf is unavailable in this sandbox."
+      },
+      "method": "Ran both commits under --max-theory-conflicts 2000 so each stopped after the SAME logical work: both answered sat with 884 conflicts and 10,217 pivots, byte-identical search. That made the flat profiles directly comparable as pure constant factor, with no trajectory noise.",
+      "result": {
+        "instance": "LassoRanker/CooperatingT2/dropbuf.t2.c_Iteration3_Loop_4-pieceTemplate.smt2",
+        "matched_work_runs": {
+          "b6b8d55": "sat 43.2s under gprof",
+          "main": "sat 329.3s under gprof",
+          "slowdown": "7.6x with identical conflicts and pivots"
+        },
+        "profile_b6b8d55": "LraTableau::pivot 19.7%, update_violation_status 17.0%, Rational comparisons -- ordinary simplex",
+        "profile_main": "OnlineLraPropagator::notify_backtrack 62.1% (94.97s over 9,348 calls), _Hashtable<TermPairKey,...>::_M_find_before_node 28.9% with 1,404,326,272 calls (~150k lookups per backtrack)",
+        "mechanism": "notify_backtrack calls rebuild_true_interface_bounds() unconditionally, which rescans EVERY theory atom and hash-inserts each true one into true_lra_le_reasons_. pending_interface_equalities_ is drained only by MixedTheoryPropagationDispatcher, so on the pure QF_LRA path nothing consumes any of it -- filled on every assignment, rebuilt on every backtrack, discarded.",
+        "fix": "interface_equalities_enabled_ defaults to false; MixedTheoryPropagationDispatcher (the only consumer) turns it on. Guards both rebuild_true_interface_bounds and observe_true_interface_bound.",
+        "instance_after_fix": "200s timeout -> sat in 12.16s, with 10,217 pivots and 884 conflicts -- identical to the pre-regression commit, and marginally faster than its 13.44s",
+        "no_path_unaffected": "With --nelson-oppen-prop online on a formula where x<=y and y<=x must publish x=y to EUF, both builds give unsat with :no.online.lra-published-equalities 1 and precreated 2. Pinned by a new regression test asserting >= 1.",
+        "differential_120_qf_lra_files_20s": {
+          "disagreements": 0,
+          "gained": 6,
+          "lost": 0,
+          "paired_n23_over_0_5s": {
+            "p10": 0.32,
+            "median": 0.79,
+            "p90": 0.98,
+            "max": 1.01
+          }
+        },
+        "unit_tests": "13/13 pass"
+      },
+      "conclusion": "The LassoRanker regression is Nelson-Oppen interface-equality bookkeeping running on the pure QF_LRA path, where nothing consumes it. Gating it on the one consumer recovers the instance exactly (identical search counters to b6b8d55) and gains 6 files with 0 lost on a 120-file sample, never slower than baseline (max paired ratio 1.01). All six gains are LassoRanker. This is the third and largest of the three mechanisms in docs/nelson-oppen-qf-lra-regression.md and the one that accounts for 46 of main's 61 lost files.",
+      "still_open": "The full-division re-run has not been done on the fixed tree, so the corpus-level recovery is projected from a 120-file sample rather than measured."
     }
   ]
 }
