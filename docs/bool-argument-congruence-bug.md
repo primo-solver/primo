@@ -93,6 +93,93 @@ documented-as-supported feature has no differential coverage. See
 [](fuzz-coverage-qf-lra.md) -- the same "a fuzzer covers only what it is told
 to cover" failure that note already records for seed families, in a new place.
 
+(why-no-linter)=
+## Could a linter or a standard test have caught this?
+
+**No standard diagnostic could.** The build already runs `-Wall -Wextra
+-Wpedantic -Wunused -Werror`, and none of them applies, because
+`has_application_term` **is** used -- it is read inside
+`summarize_formula_features` to refine the Equality case. Nothing is unused,
+nothing is dead, nothing is uninitialised.
+
+The actual defect is subtler than "declared and never used": the struct has
+four fields and **two** places that aggregate them, and the two disagree.
+
+```cpp
+// inside the recursion -- all four fields
+summary.has_application_term |= child_summary.has_application_term;
+summary.has_equality        |= child_summary.has_equality;
+summary.has_arithmetic      |= child_summary.has_arithmetic;
+summary.has_euf_predicate   |= child_summary.has_euf_predicate;
+
+// the per-assertion loop -- three fields; has_application_term omitted
+formula_features.has_equality        |= assertion_features.has_equality;
+formula_features.has_arithmetic      |= assertion_features.has_arithmetic;
+formula_features.has_euf_predicate   |= assertion_features.has_euf_predicate;
+```
+
+So at the dispatch the field silently held its default `false`. A compiler
+cannot flag "this field is always its default at this point" -- that needs
+whole-program value analysis, and no check in clang-tidy or the GCC/Clang
+warning set does it. (The repository also has no `.clang-tidy` at all, but
+adding one would not have helped here.)
+
+### What does prevent it: make the enumeration happen once
+
+Give the struct an `operator|=` that ORs every field, and route **both**
+aggregation sites through it, so the field list exists in exactly one place:
+
+```cpp
+FormulaFeatureSummary& operator|=(const FormulaFeatureSummary& other) {
+  has_application_term |= other.has_application_term;
+  has_equality        |= other.has_equality;
+  has_arithmetic      |= other.has_arithmetic;
+  has_euf_predicate   |= other.has_euf_predicate;
+  return *this;
+}
+```
+
+with a compile-time tripwire so a future field cannot be forgotten:
+
+```cpp
+static_assert(sizeof(FormulaFeatureSummary) == 4,
+              "FormulaFeatureSummary gained a field -- add it to operator|=");
+```
+
+**Verified**: adding a fifth field makes the build fail with exactly that
+message. The bug class is turned off rather than fixed once.
+
+### And the test that was missing
+
+A unit test asserting the **dispatch** -- not just the answer -- for a formula
+containing an uninterpreted function whose equalities are all over Bool. That
+is the assertion nobody wrote, and it is cheap. Answer-only tests would not
+have caught this either, since the wrong answer requires the specific shape in
+the reproducer.
+
+(prototype)=
+## Prototype: measured 2026-08-07
+
+Three lines (aggregate the field, expose it, use it), plus the structural
+refactor above:
+
+```cpp
+if (has_equality || has_application_term) { ... solve_qf_uf(...) ... }
+```
+
+| check | before | after |
+|---|---|---|
+| reproducer | **`sat`** (wrong) | **`unsat`**, on `:solver.qf-uf` |
+| `f(p)`, `f(q)` with `p`, `q` not equal | `sat` | `sat` (matches z3) |
+| purely propositional formula | `:solver.boolean` | `:solver.boolean` -- widening is not total |
+| uninterpreted-sort congruence | `unsat` | `unsat` |
+| unit suites (boolean, euf, qf_lra, preprocessing, theory_combination) | -- | **all pass** |
+| 60 QF_UF benchmarks, differential vs main | -- | **0 answer disagreements, 0 path changes** |
+
+The zero path changes on real QF_UF input is the reassuring part: those files
+all contain surviving non-Bool equalities, so `has_equality` already routed
+them and the widening reaches only the shape that was previously mis-routed.
+
 ## Fix direction, and the trap in it
 
 The dispatch must send a formula containing uninterpreted function
