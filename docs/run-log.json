@@ -18676,6 +18676,31 @@
       },
       "conclusion": "The routing fix is one line and sound on this sample (0 disagreements of 150), and it removes the pathological case worth 39.4M merges. It is NOT an unambiguous speedup: 43% of files change solver, the distribution is two-tailed (p10 0.46, p90 1.04), and one file is 56x slower on the pure path -- which is lead 2b's 'neither path dominates' showing up again. A 150-file random sample at 10s is the wrong instrument; promote only on a full-division run reporting gained/lost per family.",
       "correction": "A 'second over-trigger' claimed in an earlier version of the note -- that a Bool equality sets has_equality and routes the same way -- was measured and does NOT exist. Bool-sorted equalities are rewritten during preprocessing before summarize_formula_features runs, so no Equality node over Bool reaches the dispatch. has_euf_predicate on a Bool Constant is therefore the single trigger."
+    },
+    {
+      "id": "2026-08-07-qf-uf-bool-argument-congruence-wrong-answer",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "defect",
+      "scope": "WRONG ANSWER found while checking the proposed dispatch change: congruence is dropped for Bool-sorted uninterpreted function arguments.",
+      "commit": "0c0843d (main) and b6b8d55 -- present in both, long-standing",
+      "branch": "main",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Release builds; deterministic over repeated runs; z3 from contrib/local as reference."
+      },
+      "result": {
+        "reproducer": "(set-logic QF_UF)(declare-fun p () Bool)(declare-fun q () Bool)(declare-fun f (Bool) Bool)(assert (= p q))(assert (not (= (f p) (f q))))(check-sat)",
+        "expected": "unsat (congruence: p=q implies f(p)=f(q))",
+        "z3": "unsat",
+        "primo_main": "sat",
+        "primo_b6b8d55": "sat",
+        "not_an_euf_bug": "Adding an uninterpreted sort to force :solver.qf-uf gives the correct unsat, so EUF handles Bool arguments correctly when it runs.",
+        "cause": "Two behaviours compose. (1) Bool-sorted equalities are rewritten during preprocessing before summarize_formula_features, so has_equality is false when every equality is over Bool. (2) The QF_UF dispatch keys ONLY on has_equality; has_euf_predicate is computed but not consulted there. The formula therefore reaches solve_boolean_conjunction, which abstracts (f p) and (f q) to independent propositional variables with no congruence rule."
+      },
+      "conclusion": "A documented-as-supported feature (architecture.md: 'QF_UF inputs may pass Boolean formulas as arguments to uninterpreted functions') returns a wrong answer. Independent of the Nelson-Oppen regression and older than it. The classifier is too NARROW here -- the unsoundness direction. Fix direction: dispatch on has_application_term rather than has_equality alone, which widens what reaches solve_qf_uf and is therefore a dispatch change needing gained/lost measurement.",
+      "coverage_gap": "Neither fuzz gate generates this shape: FuzzSMT's QF_UF/QF_LRA invocations do not request Bool-sorted function arguments, and mutation fuzzing can only produce what the seed corpus contains -- the QF_LRA seeds have no uninterpreted functions at all."
     }
   ]
 }
