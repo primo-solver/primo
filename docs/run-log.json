@@ -21391,6 +21391,25 @@
       "artifact": "bugs/opensmt-qf-uflra-boolean-disagreement/",
       "evidence_status": "local-only",
       "outcome": "Yices 2.7.0 agrees with Primo, Z3, and cvc5 on unsat, strengthening the classification as an OpenSMT disagreement."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-opensmt-witness-minimized",
+      "date": "2026-08-07",
+      "kind": "reference-solver",
+      "scope": "Delta-minimized OpenSMT disagreement witness",
+      "commit": "working tree",
+      "host": "local workspace",
+      "commands": [
+        "./build/primo bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+        "contrib/local/bin/z3 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+        "contrib/local/bin/opensmt bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+        "contrib/local/bin/cvc5 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+        "contrib/local/bin/yices-smt2 bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2"
+      ],
+      "results": {"primo": "unsat", "z3": "unsat", "opensmt": "sat", "cvc5": "unsat", "yices": "unsat"},
+      "artifact": "bugs/opensmt-qf-uflra-boolean-disagreement/witness.smt2",
+      "evidence_status": "local-only",
+      "outcome": "Removed all nested UF, ite, and double-negation assertions while preserving the same solver results. The remaining four assertions are the minimized disagreement core."
     }
   ]
 }

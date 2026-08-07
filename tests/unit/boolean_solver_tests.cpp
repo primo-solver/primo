@@ -2512,6 +2512,20 @@ void nested_boolean_formula_equality_uses_euf_proxies() {
   assert(result.result == CheckSatResult::Sat);
 }
 
+void opensmt_boolean_disagreement_is_unsat() {
+  const std::string input =
+      read_text_file("../benchmarks/regression/qf_uflra/opensmt_boolean_disagreement.smt2");
+  const auto result = check_sat_smtlib(input);
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void opensmt_boolean_disagreement_original_is_unsat() {
+  const std::string input = read_text_file(
+      "../benchmarks/regression/qf_uflra/opensmt_boolean_disagreement_original.smt2");
+  const auto result = check_sat_smtlib(input);
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 }  // namespace
 
 int main() {
@@ -2628,5 +2642,7 @@ int main() {
   bool_argument_congruence_preserves_boolean_domain();
   bool_result_and_complement_congruence_preserves_boolean_domain();
   nested_boolean_formula_equality_uses_euf_proxies();
+  opensmt_boolean_disagreement_is_unsat();
+  opensmt_boolean_disagreement_original_is_unsat();
   return 0;
 }

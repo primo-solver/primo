@@ -27,21 +27,19 @@ cvc5    unsat
 yices   unsat
 ```
 
-The witness is one of the 20 OpenSMT disagreements found in a 100-case
-recursive Boolean QF_UFLRA probe (seed `20260822`, timeout five seconds).
+The witness was delta-minimized from one of the 20 OpenSMT disagreements found
+in a 100-case recursive Boolean QF_UFLRA probe (seed `20260822`, timeout five
+seconds).
 The full probe is recorded in `docs/run-log.json` as
 `2026-08-07-qf-uflra-opensmt-reference-probe`.
 
 ## Shape
 
-The input combines:
+The minimized input contains only:
 
-- nested Boolean UF arguments;
-- Boolean UF results;
-- `not`, `or`, and `ite` nesting;
-- Boolean implication-cycle constraints;
-- a Boolean congruence disequality; and
-- independent QF_LRA constraints.
+- two clauses forcing `b1 = b4`;
+- a disequality between `f(b1)` and `f(b4)`; and
+- one independent QF_LRA constraint to retain the mixed logic.
 
 The same input is accepted by Primo and Z3 and is classified `unsat` by both.
 OpenSMT's result should therefore be independently triaged before OpenSMT is
