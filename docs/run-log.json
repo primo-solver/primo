@@ -19716,6 +19716,100 @@
       },
       "conclusion": "PASS. 0 wrong answers and 0 invalid models. The FAILED task states are the known artifact, not a correctness signal: validate_qfuf_models_with_dolmen.py counts its own 10s solver timeouts as failures and returns 1, and the sbatch runs under `set -euo pipefail`, so that becomes the task's exit code. Summaries counted 6 against 6 shards, so no shard was lost to the wall clock.",
       "coverage_milestone": "First gate run over the family-complete corpus: 34 seeds across all 17 division families, against the previous default of 14 seeds covering 3 families plus gasburner (not in the division at all). '34 valid, 0 invalid' confirms the 200000-byte limit change worked -- at typefuzz's own 20000-byte default the 12 largest seeds, including both latendresse and LassoRanker, would have dropped silently as they did in job 118543."
+    },
+    {
+      "id": "2026-08-07-qf-lra-full-division-recovery-measured",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "benchmark",
+      "scope": "Full SMT-LIB QF_LRA division on the fixed tree, measuring the corpus-level outcome of the three regression fixes plus the merged arithmetic work. Replaces the projection from a 120-file sample.",
+      "commit": "d52799c",
+      "branch": "main",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm via ProxyJump",
+        "remote_dir": "/home/janotmik/primo-eval-23bd391",
+        "notes": "Job 120784, array 0-79 = 2 primo arms x 40 shards, --cpus-per-task=3, spread across node-01/03/07/08/09. BOTH ARMS IN ONE JOB on the same nodes, which is what makes the comparison free of the cross-job contention that produced a false alarm earlier in the session. All 160 task rows COMPLETED, 40/40 shard CSVs per arm. Binary verified before submission on three probes."
+      },
+      "command": {
+        "job": "120784",
+        "settings": "PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt (1753 files, carries :status), TIMEOUT=300, SHARDS=40",
+        "arms": "new=d52799c ; base=0c0843d (the merge base)",
+        "references": "NOT re-run -- z3/cvc5 from job 118382, yices from 118904, opensmt from 119045, all at 300s on this manifest"
+      },
+      "result": {
+        "table": {
+          "opensmt 2.9.2": {
+            "solved": 1670,
+            "wrong": 0,
+            "par2": 68068
+          },
+          "primo NEW d52799c": {
+            "solved": 1657,
+            "wrong": 0,
+            "par2": 79646
+          },
+          "yices 2.7.0": {
+            "solved": 1645,
+            "wrong": 0,
+            "par2": 80585
+          },
+          "primo b6b8d55 pre-regression": {
+            "solved": 1631,
+            "wrong": 0,
+            "par2": 95091
+          },
+          "z3 5.0.0": {
+            "solved": 1584,
+            "wrong": 0,
+            "par2": 128079
+          },
+          "primo 0c0843d pre-fix": {
+            "solved": 1572,
+            "wrong": 0,
+            "par2": 135691
+          },
+          "cvc5 1.3.4": {
+            "solved": 1511,
+            "wrong": 0,
+            "par2": 181248
+          }
+        },
+        "vs_merge_base_0c0843d": {
+          "gained": 87,
+          "lost": 2,
+          "net": "+85",
+          "par2": "135691 -> 79646",
+          "gained_by_family": {
+            "LassoRanker": 71,
+            "2019-ezsmt": 12,
+            "miplib": 2,
+            "2017-Heizmann": 1,
+            "tropical-matrix": 1
+          },
+          "lost_by_family": {
+            "miplib": 2
+          },
+          "the_two_losses": "pp08a-4000 129.2s -> timeout; fixnet-1000 90.0s -> timeout",
+          "paired_n552_over_1s": {
+            "p10": 0.18,
+            "median": 0.56,
+            "p90": 0.96
+          }
+        },
+        "vs_pre_regression_b6b8d55": {
+          "gained": 26,
+          "lost": 0,
+          "net": "+26",
+          "gained_by_family": {
+            "LassoRanker": 25,
+            "2017-Heizmann": 1
+          }
+        }
+      },
+      "conclusion": "The regression is not merely repaired, it is overtaken. 1657 solved against the pre-regression 1631 -- gained 26, LOST 0 against that commit, so nothing it solved was given up. Against the merge base: +87/-2 and PAR2 nearly halved (135691 -> 79646), with paired median 0.56 on files over a second. Zero wrong answers in every arm, on the one QF_LRA corpus that carries (set-info :status) and therefore checks answers rather than only cross-solver agreement. Competitively primo now sits second of five, ahead of yices (1645), z3 (1584) and cvc5 (1511), and 13 behind opensmt (1670). The 2019-ezsmt gains are the routing fix, the LassoRanker gains the interface-equality gate, and the single tropical-matrix gain is the cross-link change showing at 300s.",
+      "caveat": "The two miplib losses (pp08a-4000 at 129s, fixnet-1000 at 90s, both to timeout) are real, not boundary churn -- miplib is a known trade for the cross-link change on long-row instances. Reference rows come from other jobs, so reference TIMINGS carry a cross-job caveat that the two primo arms do not."
     }
   ]
 }

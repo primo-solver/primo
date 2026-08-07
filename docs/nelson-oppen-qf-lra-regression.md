@@ -10,7 +10,38 @@ riskier than it looks**.
 It is deliberately separate from [](arithmetic.md), which describes what is
 *implemented*. This is a defect report about main.
 
-## What was measured
+## Outcome: fixed, and past where it started
+
+**Measured 2026-08-07 on the full division** (job 120784, both arms in one job on
+the same nodes, 1,753 files at 300s), after landing all three mechanisms:
+
+| solver | solved / 1753 | wrong | PAR2 |
+|---|---:|---:|---:|
+| opensmt 2.9.2 | 1670 | 0 | 68,068 |
+| **primo, fixed (`d52799c`)** | **1657** | **0** | **79,646** |
+| yices 2.7.0 | 1645 | 0 | 80,585 |
+| primo `b6b8d55` (pre-regression) | 1631 | 0 | 95,091 |
+| z3 5.0.0 | 1584 | 0 | 128,079 |
+| primo `0c0843d` (the regression) | 1572 | 0 | 135,691 |
+| cvc5 1.3.4 | 1511 | 0 | 181,248 |
+
+- **vs the merge base `0c0843d`: gained 87, lost 2**, PAR2 nearly halved. Gains
+  are LassoRanker 71 (the interface-equality gate), 2019-ezsmt 12 (the dispatch
+  fix), miplib 2, Heizmann 1, tropical-matrix 1. Paired median on files over a
+  second is **0.56**, p10 0.18, p90 0.96 -- faster nearly everywhere.
+- **vs the pre-regression `b6b8d55`: gained 26, lost 0.** Nothing that commit
+  solved was given up, and 25 of the 26 are LassoRanker.
+
+The two losses are both miplib (`pp08a-4000` 129s and `fixnet-1000` 90s, each to
+timeout). Those are real rather than boundary churn, and miplib is the known
+trade for the cross-link change on long-row instances -- see
+[](open-leads.md)'s lead 3b.
+
+Zero wrong answers in every arm, on the one QF_LRA corpus that carries
+`(set-info :status)` and therefore checks answers rather than only cross-solver
+agreement.
+
+## How the regression was measured
 
 Full division, 1,753 files, 300s, 40 shards, `--cpus-per-task=3`, all three
 runs on the same three nodes with the same split (jobs 118904, 120122, 120072).
