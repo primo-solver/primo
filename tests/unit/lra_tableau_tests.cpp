@@ -1458,6 +1458,183 @@ void model_equal_classes_track_the_model_across_assertions() {
   assert(tableau.model_equal_classes({x, y}).empty());
 }
 
+// -- entailed_equalities: FixedEq and EqRow --
+//
+// Unlike model_equal_classes these are ENTAILMENTS carrying reasons, so the
+// tests assert the reason literals, not just that a pair came back.
+
+bool has_equality(const std::vector<LraTableau::EntailedEquality>& eqs, LraVarId a, LraVarId b) {
+  for (const auto& e : eqs) {
+    if ((e.lhs == a && e.rhs == b) || (e.lhs == b && e.rhs == a)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const std::vector<Lit>* reasons_for(const std::vector<LraTableau::EntailedEquality>& eqs,
+                                    LraVarId a, LraVarId b) {
+  for (const auto& e : eqs) {
+    if ((e.lhs == a && e.rhs == b) || (e.lhs == b && e.rhs == a)) {
+      return &e.reasons;
+    }
+  }
+  return nullptr;
+}
+
+void fixedeq_reports_variables_pinned_to_the_same_value() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const Lit xl{1};
+  const Lit xu{2};
+  const Lit yl{3};
+  const Lit yu{4};
+  assert(!tableau.assert_lower(x, rat(5), xl).has_value());
+  assert(!tableau.assert_upper(x, rat(5), xu).has_value());
+  assert(!tableau.assert_lower(y, rat(5), yl).has_value());
+  assert(!tableau.assert_upper(y, rat(5), yu).has_value());
+
+  const auto eqs = tableau.entailed_equalities({x, y});
+  assert(eqs.size() == 1);
+  assert(has_equality(eqs, x, y));
+  // All four bounds are what force it, and all four must appear.
+  const std::vector<Lit>* reasons = reasons_for(eqs, x, y);
+  assert(reasons != nullptr);
+  assert(reasons->size() == 4);
+  assert(has_reason(*reasons, xl) && has_reason(*reasons, xu));
+  assert(has_reason(*reasons, yl) && has_reason(*reasons, yu));
+}
+
+// Pinned to DIFFERENT values: no equality, however close.
+void fixedeq_does_not_report_different_fixed_values() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.assert_lower(x, rat(5), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(5), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(6), Lit{3}).has_value());
+  assert(!tableau.assert_upper(y, rat(6), Lit{4}).has_value());
+  assert(tableau.entailed_equalities({x, y}).empty());
+}
+
+// THE HAZARD the plan named: a variable with only one bound is ordinary, not a
+// precondition violation. build_conflict may dereference ->reason blind because
+// its caller established that no entering candidate exists; this runs
+// speculatively and must simply decline.
+void entailed_equalities_tolerates_variables_with_one_or_no_bound() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  // x fully pinned; y only lower-bounded at the same value; z unbounded.
+  assert(!tableau.assert_lower(x, rat(2), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(2), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(2), Lit{3}).has_value());
+  // Must not crash, and must not claim x = y: y may still exceed 2.
+  const auto eqs = tableau.entailed_equalities({x, y, z});
+  assert(eqs.empty());
+}
+
+// EqRow: s = x with nothing else in the row. P is empty, so the equality holds
+// unconditionally and the reason set is legitimately EMPTY.
+void eqrow_reports_a_bare_defining_row_with_no_reasons() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}});
+
+  const auto eqs = tableau.entailed_equalities({s, x});
+  assert(eqs.size() == 1);
+  assert(has_equality(eqs, s, x));
+  const std::vector<Lit>* reasons = reasons_for(eqs, s, x);
+  assert(reasons != nullptr);
+  assert(reasons->empty());  // no asserted bound is involved
+}
+
+// EqRow with a genuine P: s = x + d, d pinned to 0, so s = x and the reason is
+// exactly the pair of bounds pinning d.
+void eqrow_reports_when_the_remainder_is_fixed_at_zero() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId d = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {d, Rational(1)}});
+  const Lit dl{7};
+  const Lit du{8};
+  assert(!tableau.assert_lower(d, rat(0), dl).has_value());
+  assert(!tableau.assert_upper(d, rat(0), du).has_value());
+
+  const auto eqs = tableau.entailed_equalities({s, x});
+  assert(has_equality(eqs, s, x));
+  const std::vector<Lit>* reasons = reasons_for(eqs, s, x);
+  assert(reasons != nullptr);
+  assert(reasons->size() == 2);
+  assert(has_reason(*reasons, dl) && has_reason(*reasons, du));
+}
+
+// The same row with d pinned to a NON-zero value entails s = x + 3, not s = x.
+void eqrow_declines_when_the_remainder_is_fixed_nonzero() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId d = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {d, Rational(1)}});
+  assert(!tableau.assert_lower(d, rat(3), Lit{1}).has_value());
+  assert(!tableau.assert_upper(d, rat(3), Lit{2}).has_value());
+  assert(tableau.entailed_equalities({s, x}).empty());
+}
+
+// d unpinned: nothing is entailed even though beta might currently agree.
+void eqrow_declines_when_the_remainder_is_not_fixed() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId d = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {d, Rational(1)}});
+  assert(!tableau.assert_lower(d, rat(0), Lit{1}).has_value());  // lower only
+  assert(tableau.entailed_equalities({s, x}).empty());
+}
+
+// Coefficient -1 gives s = -x + P, which is not an equality between s and x.
+void eqrow_declines_on_a_negated_coefficient() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(-1)}});
+  assert(tableau.entailed_equalities({s, x}).empty());
+}
+
+// Scoping again: an entailed equality involving a non-shared variable is not
+// the combination layer's business and must not be reported.
+void entailed_equalities_respects_the_shared_set() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}});
+  assert(tableau.entailed_equalities({s}).empty());   // x not shared
+  assert(tableau.entailed_equalities({x}).empty());   // s not shared
+  assert(tableau.entailed_equalities({s, x}).size() == 1);
+}
+
+// A spanning set, not all pairs: three mutually equal variables give two
+// equalities, and transitivity on the other side recovers the third.
+void entailed_equalities_emits_a_spanning_set_not_all_pairs() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  int lit = 1;
+  for (const LraVarId v : {x, y, z}) {
+    assert(!tableau.assert_lower(v, rat(4), Lit{lit++}).has_value());
+    assert(!tableau.assert_upper(v, rat(4), Lit{lit++}).has_value());
+  }
+  const auto eqs = tableau.entailed_equalities({x, y, z});
+  assert(eqs.size() == 2);  // not 3
+  assert(has_equality(eqs, x, y));
+  assert(has_equality(eqs, x, z));
+}
+
 }  // namespace
 
 int main() {
@@ -1508,5 +1685,15 @@ int main() {
   model_equal_classes_is_empty_when_nothing_coincides();
   model_equal_classes_deduplicates_the_shared_set();
   model_equal_classes_track_the_model_across_assertions();
+  fixedeq_reports_variables_pinned_to_the_same_value();
+  fixedeq_does_not_report_different_fixed_values();
+  entailed_equalities_tolerates_variables_with_one_or_no_bound();
+  eqrow_reports_a_bare_defining_row_with_no_reasons();
+  eqrow_reports_when_the_remainder_is_fixed_at_zero();
+  eqrow_declines_when_the_remainder_is_fixed_nonzero();
+  eqrow_declines_when_the_remainder_is_not_fixed();
+  eqrow_declines_on_a_negated_coefficient();
+  entailed_equalities_respects_the_shared_set();
+  entailed_equalities_emits_a_spanning_set_not_all_pairs();
   return 0;
 }

@@ -308,6 +308,50 @@ class LraTableau {
   std::vector<std::vector<LraVarId>> model_equal_classes(
       const std::vector<LraVarId>& shared) const;
 
+  // An equality between shared variables that holds in EVERY model of the
+  // current bounds, together with the reason literals that force it.
+  //
+  // Unlike model_equal_classes this is an ENTAILMENT, not a conjecture: the
+  // combination layer may propagate it rather than branch on it, which is why
+  // it carries a reason and the partition does not.
+  //
+  // `reasons` follows the codebase-wide convention -- already-negated
+  // ("blocking") literals, exactly as build_conflict returns and as
+  // cb_add_reason_clause_lit expects, so it needs no translation on the way to
+  // the SAT solver. An EMPTY reason set is meaningful and legal: it means the
+  // equality follows from the tableau's own row structure with no asserted
+  // bound involved, so it holds unconditionally.
+  struct EntailedEquality {
+    LraVarId lhs = 0;
+    LraVarId rhs = 0;
+    std::vector<sat::Lit> reasons;
+  };
+
+  // Applies the cheap entailment rules from de Moura and Bjorner's
+  // Model-based Theory Combination, Section 5.1 (docs/papers/model-guided-no.pdf,
+  // and docs/qf-lra-equality-sharing.md for why we care):
+  //
+  //   FixedEq   l_i = u_i = l_j = u_j                      ==> x_i = x_j
+  //   EqRow     x_i = x_j + P, P fixed, beta(P) = 0        ==> x_i = x_j
+  //
+  // Deliberately INCOMPLETE -- the paper's own EqOffsetRows and EqRows are not
+  // implemented, and even all four together miss equalities. What they miss is
+  // what the combination layer must case-split on. For a complete but very
+  // expensive reference, see lra_implied_real_equalities in check_sat.cpp,
+  // which is used as the test oracle.
+  //
+  // Emits a SPANNING set, not all pairs: within a group of mutually equal
+  // variables each is linked to the group's first member, giving n-1
+  // equalities rather than n(n-1)/2. Congruence closure on the other side
+  // recovers the rest by transitivity, and a quadratic blow-up here would be
+  // paid on every call.
+  //
+  // Const and allocation-light: this is polled at check points, never hooked
+  // into pivot() or assert_*. Keeping Nelson-Oppen work off the LRA hot path is
+  // deliberate -- see docs/nelson-oppen-qf-lra-regression.md for what happened
+  // last time it was not.
+  std::vector<EntailedEquality> entailed_equalities(const std::vector<LraVarId>& shared) const;
+
   // Read-only access to a variable's current upper/lower bound (if any) and
   // the literal that established it -- used by OnlineLraPropagator's
   // same-slack "deriving satisfied atoms" propagation (Dutertre & de
