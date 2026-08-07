@@ -37,8 +37,8 @@ The full probe is recorded in `docs/run-log.json` as
 
 The minimized input contains only:
 
-- two clauses forcing `b1 = b4`;
-- a disequality between `f(b1)` and `f(b4)`; and
+- two clauses forcing `a = b`;
+- a disequality between `f(a)` and `f(b)`; and
 - one independent QF_LRA constraint to retain the mixed logic.
 
 The same input is accepted by Primo and Z3 and is classified `unsat` by both.
