@@ -680,19 +680,6 @@ class Frontend {
  public:
   friend class TermBuilder;
 
-  static bool contains_application(const core::TermManager& terms, core::TermId term) {
-    const core::Term& node = terms.get(term);
-    if (node.kind == core::TermKind::Application) {
-      return true;
-    }
-    for (const core::TermId child : node.children) {
-      if (contains_application(terms, child)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   core::TermId build_term(const smtlib::SExpr& expr) {
     TermBuilder builder(*this);
     return builder.run(expr);
@@ -816,9 +803,8 @@ class Frontend {
       throw UnsupportedInput("equality sort mismatch");
     }
     if (lhs_sort == symbols_.bool_sort()) {
-      if (contains_application(terms_, lhs) || contains_application(terms_, rhs)) {
-        return terms_.mk_eq(lhs, rhs);
-      }
+      // UF applications do not change Bool equality into an independent theory atom: EUF
+      // receives each Boolean application's SAT-selected canonical value separately.
       return terms_.mk_and({terms_.mk_implies(lhs, rhs), terms_.mk_implies(rhs, lhs)});
     }
     return terms_.mk_eq(lhs, rhs);
@@ -830,9 +816,6 @@ class Frontend {
       throw UnsupportedInput("distinct sort mismatch");
     }
     if (lhs_sort == symbols_.bool_sort()) {
-      if (contains_application(terms_, lhs) || contains_application(terms_, rhs)) {
-        return terms_.mk_not(terms_.mk_eq(lhs, rhs));
-      }
       return terms_.mk_or(
           {terms_.mk_and({lhs, terms_.mk_not(rhs)}), terms_.mk_and({terms_.mk_not(lhs), rhs})});
     }

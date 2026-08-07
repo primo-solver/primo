@@ -21615,9 +21615,62 @@
         "solver_timeout_seconds": 8,
         "source_seed_timeout_seconds": 60
       },
+      "results": {
+        "slurm_state": "all three tasks cancelled after first disagreement",
+        "deterministic_seed_gate": "8 PASS in each profile",
+        "wrong_answers": 1,
+        "wrong_answer_profile": "candidate-final",
+        "primo_result": "sat",
+        "reference_result": "unsat",
+        "crashes": 0,
+        "regression_seed": "benchmarks/seeds/qf_uflra/seed_bool_application_formula_equality_unsat.smt2"
+      },
       "artifact": "remote:fuzz-results/qf-uflra-mutation-gate-121108/",
-      "evidence_status": "slurm-pending",
-      "outcome": "Submitted after exact binary, CaDiCaL, Z3, pinned typefuzz, compact seed size, and batch-script preflight. Result collection is pending."
+      "evidence_status": "slurm-cancelled-correctness-failure",
+      "outcome": "The candidate-final task found a SAT/UNSAT disagreement after about 165 seconds. The array was cancelled immediately. The minimized cause is source-level Boolean equality with a UF application operand being represented as an independently assignable EUF equality instead of propositional equivalence. The witness also fails the default profile and pure QF_UF after arithmetic tautologies are preprocessed away."
+    },
+    {
+      "id": "2026-08-07-boolean-uf-application-equality-local-fix",
+      "date": "2026-08-07",
+      "kind": "correctness-fix-validation",
+      "scope": "Uniform propositional lowering of source-level Boolean equality and disequality with UF application operands",
+      "commit": "working tree",
+      "host": "local workspace",
+      "commands": [
+        "ctest --test-dir build --output-on-failure -R ^primo_boolean_solver_tests$",
+        "python3 scripts/check_solver_seed_corpus.py --seeds benchmarks/seeds/qf_uflra --solver ./build/primo --solver-arg=--quiet [default, candidate-final, online-euf] --ref contrib/local/bin/z3 --timeout 60",
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 20260823 --timeout 5 --shape bool-arguments --out /tmp/qf-uflra-bool-equality-fix-1000",
+        "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 20260824 --timeout 5 --shape mixed --out /tmp/qf-uflra-bool-equality-mixed-1000",
+        "make check",
+        "make asan-build && ASAN_OPTIONS=detect_leaks=1:strict_init_order=1 ctest --test-dir build-asan --output-on-failure -R ^primo_boolean_solver_tests$",
+        "make tidy",
+        "make include-cleaner",
+        "make lint",
+        "make docs"
+      ],
+      "results": {
+        "focused_unit_tests": "passed",
+        "compact_seed_gate": "10 PASS in each of three profiles",
+        "bool_argument_generated": {"count": 1000, "pass": 1000, "wrong_answer": 0, "timeout": 0, "crash": 0},
+        "mixed_generated": {"count": 1000, "pass": 1000, "wrong_answer": 0, "timeout": 0, "crash": 0},
+        "original_fuzz_witness": "unsat in default, candidate-final, and online-euf profiles, matching Z3",
+        "old_binary_regression_check": "cfe7e0c returns sat on the preprocessing-to-QF_UF seed and unsat on the mixed companion; the fixed binary returns unsat on both",
+        "make_check": "tests 1-9 passed; interrupted the known CPU-bound primo_qf_lra_solver_tests after 20 minutes with no failure output",
+        "asan_focused": "passed",
+        "clang_tidy": "all 63 tracked non-generated C++ translation units passed",
+        "include_cleaner": "advisory baseline diagnostics only in unrelated files; no diagnostics in changed C++ files",
+        "lint": "passed",
+        "docs": "passed"
+      },
+      "artifacts": [
+        "/tmp/qf-uflra-bool-equality-fix-1000/summary.csv",
+        "/tmp/qf-uflra-bool-equality-mixed-1000/summary.csv",
+        "/tmp/primo-bool-equality-default.csv",
+        "/tmp/primo-bool-equality-candidate.csv",
+        "/tmp/primo-bool-equality-online.csv"
+      ],
+      "evidence_status": "local-merge-gate",
+      "outcome": "The saved disagreement is fixed by lowering every source-level Bool equality to bidirectional implication and every Bool disequality to XOR, independent of UF applications in the operands. Fresh SLURM mutation evidence against the fixing commit remains required."
     }
   ]
 }

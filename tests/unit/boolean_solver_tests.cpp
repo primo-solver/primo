@@ -10,6 +10,7 @@
 #include "smt/check_sat.hpp"
 
 using primo::smt::check_sat_smtlib;
+using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
 
 namespace {
@@ -2512,6 +2513,47 @@ void nested_boolean_formula_equality_uses_euf_proxies() {
   assert(result.result == CheckSatResult::Sat);
 }
 
+void boolean_application_formula_equality_is_propositional() {
+  const std::string input = read_text_file(
+      "../benchmarks/seeds/qf_uflra/seed_bool_application_formula_equality_mixed_unsat.smt2");
+
+  const auto default_result = check_sat_smtlib(input);
+  assert(default_result.result == CheckSatResult::Unsat);
+  assert(default_result.statistics.get(":solver.qf-uflra") == 1);
+
+  CheckSatOptions candidate_options;
+  candidate_options.qf_uflra_candidate_final_scan = true;
+  assert(check_sat_smtlib(input, candidate_options).result == CheckSatResult::Unsat);
+
+  CheckSatOptions online_options;
+  online_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Online;
+  online_options.qf_uflra_online_euf = true;
+  assert(check_sat_smtlib(input, online_options).result == CheckSatResult::Unsat);
+}
+
+void boolean_application_formula_equality_is_propositional_in_qf_uf() {
+  const std::string input = read_text_file(
+      "../benchmarks/seeds/qf_uflra/seed_bool_application_formula_equality_unsat.smt2");
+  const auto result = check_sat_smtlib(input);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uf") == 1);
+}
+
+void boolean_application_formula_disequality_is_propositional() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun g (Bool Bool) Bool)
+    (declare-fun x () Real)
+    (assert (< 0 x))
+    (assert (g q p))
+    (assert (distinct (<= x x) (or (g q p) (g q p))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void opensmt_boolean_disagreement_is_unsat() {
   const std::string input =
       read_text_file("../benchmarks/regression/qf_uflra/opensmt_boolean_disagreement.smt2");
@@ -2642,6 +2684,9 @@ int main() {
   bool_argument_congruence_preserves_boolean_domain();
   bool_result_and_complement_congruence_preserves_boolean_domain();
   nested_boolean_formula_equality_uses_euf_proxies();
+  boolean_application_formula_equality_is_propositional();
+  boolean_application_formula_equality_is_propositional_in_qf_uf();
+  boolean_application_formula_disequality_is_propositional();
   opensmt_boolean_disagreement_is_unsat();
   opensmt_boolean_disagreement_original_is_unsat();
   return 0;
