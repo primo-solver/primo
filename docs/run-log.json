@@ -21471,10 +21471,20 @@
       "host": "llm2smt-slurm",
       "job_id": "121023",
       "command": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0-2 with PRIMO_FUZZ_SEED_TIMEOUT=300",
-      "results": "pending",
+      "results": {
+        "slurm_state": "FAILED",
+        "tasks": {
+          "default": "9 PASS, 1 INCOMPLETE timeout",
+          "candidate-final": "9 PASS, 1 INCOMPLETE timeout",
+          "online-euf": "8 PASS, 2 INCOMPLETE timeouts"
+        },
+        "wrong_answers": 0,
+        "crashes": 0,
+        "mutation_started": false
+      },
       "artifact": "/home/janotmik/primo-online-lazy-7838c2e/fuzz-results/qf-uflra-mutation-gate-121023/",
       "evidence_status": "slurm-running",
-      "outcome": "Rerun of the same default, candidate-final, and online-euf configurations after job 121020 stopped at the 60-second deterministic seed timeout."
+      "outcome": "The 300-second rerun still stopped before mutation on the same slow MathSAT seeds. No wrong answers or crashes were observed, but the deterministic seed gate remains incomplete."
     }
   ]
 }
