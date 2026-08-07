@@ -153,13 +153,31 @@ fi
 
 IFS=';' read -r -a fuzzsmt_profiles <<< "$FUZZSMT_PROFILES"
 
+# The mutation seed corpus must follow the logic, like the mutation config,
+# reference and keep-logic flags below already do. Until 2026-08-07 these two
+# defaults were unconditional, so a gate submitted with
+# PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA mutated the QF_UF seeds under the QF_LRA
+# operator-mutation config and the yices reference -- it ran clean and tested
+# the wrong corpus, which is the exact failure family this file's preamble is
+# about.
+#
+# QF_LRA defaults to the family-complete qf_lra_division corpus (34 seeds, 2
+# per division family) rather than qf_lra_real (14 seeds covering 3 of 17
+# families, plus gasburner which is not in the division at all). See
+# docs/fuzz-coverage-qf-lra.md.
+if [[ $FUZZSMT_LOGIC == QF_LRA ]]; then
+  DEFAULT_SEEDS="$WORKDIR/benchmarks/seeds/qf_lra_division"
+else
+  DEFAULT_SEEDS="$WORKDIR/benchmarks/seeds/qf_uf"
+fi
+
 OPFUZZ_TASKS=${PRIMO_FUZZ_OPFUZZ_TASKS:-1}
-OPFUZZ_SEEDS=${PRIMO_FUZZ_OPFUZZ_SEEDS:-"$WORKDIR/benchmarks/seeds/qf_uf"}
+OPFUZZ_SEEDS=${PRIMO_FUZZ_OPFUZZ_SEEDS:-"$DEFAULT_SEEDS"}
 OPFUZZ_ITERATIONS=${PRIMO_FUZZ_OPFUZZ_ITERATIONS:-200}
 OPFUZZ_TIMEOUT=${PRIMO_FUZZ_OPFUZZ_TIMEOUT:-5}
 
 YINYANG_SHARDS=${PRIMO_FUZZ_YINYANG_SHARDS:-2}
-YINYANG_SEEDS=${PRIMO_FUZZ_YINYANG_SEEDS:-"$WORKDIR/benchmarks/seeds/qf_uf"}
+YINYANG_SEEDS=${PRIMO_FUZZ_YINYANG_SEEDS:-"$DEFAULT_SEEDS"}
 YINYANG_ITERATIONS=${PRIMO_FUZZ_YINYANG_ITERATIONS:-100}
 YINYANG_TIMEOUT=${PRIMO_FUZZ_YINYANG_TIMEOUT:-5}
 YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-1500}
