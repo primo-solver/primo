@@ -166,7 +166,6 @@ missing_dependency=0
 for required in \
   contrib/local/include/CLI/CLI.hpp \
   contrib/local/include/antlr4-runtime/antlr4-runtime.h \
-  contrib/local/include/ipasir_up.h \
   contrib/local/lib/libantlr4-runtime.a \
   contrib/local/lib/libcadical.a \
   contrib/local/lib/libgmp.a \
@@ -176,6 +175,11 @@ for required in \
     missing_dependency=1
   fi
 done
+if [ ! -e contrib/local/include/ipasir_up.h ] && \
+   [ ! -e contrib/local/include/ipasir.h ]; then
+  echo "missing reusable dependency: IPASIR header (ipasir_up.h or ipasir.h)"
+  missing_dependency=1
+fi
 if [ "$missing_dependency" -ne 0 ]; then
   echo 'reusable dependency installation is incomplete; provisioning it now'
   make MAKEFLAGS= {make_targets}
