@@ -19671,6 +19671,51 @@
       },
       "conclusion": "Clean: 0 sanitizer reports across 30 real instances and 13/13 unit suites. Covers the representation change on the families that stress it hardest. Not a substitute for the Slurm fuzz gate, which tests answers rather than memory.",
       "caveat": "Smoke-to-merge tier, not campaign tier: 30 instances is coverage of the hot path, not of the input space."
+    },
+    {
+      "id": "2026-08-07-qf-lra-routing-and-interface-gate-fuzz",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "implementation-fuzz-gate",
+      "scope": "Merge gate for the two ungated QF_LRA changes: 0c553e8 (interface-equality publishing gated on its one consumer) and 54e0ade (a propositional variable is no longer an EUF predicate). Also the FIRST gate run over the family-complete seed corpus.",
+      "commit": "d52799c",
+      "branch": "main",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm via ProxyJump",
+        "remote_dir": "/home/janotmik/primo-eval-23bd391",
+        "notes": "Binary verified as git 23bd391 AND verified on three probes before submission: the congruence reproducer answers unsat, the uninterpreted-sort case reaches :solver.qf-uflra, and the bisected 2019-ezsmt instance solves on :solver.qf-lra. yices-smt2 provisioned from primo-qflra to satisfy the second mutation reference."
+      },
+      "command": {
+        "job": "120855, scripts/slurm_qf_lra_model_fuzz_gate.sbatch, array 0-8",
+        "seeds": "benchmarks/seeds/qf_lra_division, BUILT BY THE GATE from tmp/QF_LRA (the corpus is gitignored, so a synced workspace does not carry it)",
+        "references": "z3 model_validate=true and scripts/yices_smt2_ref.sh"
+      },
+      "result": {
+        "fuzzsmt": {
+          "summaries": 6,
+          "expected_shards": 6,
+          "pass": 2977,
+          "timeout": 23,
+          "wrong": 0
+        },
+        "model_validation": {
+          "pass": 2610,
+          "not_sat": 375,
+          "solver_timeout": 15,
+          "invalid": 0
+        },
+        "mutation": {
+          "seeds_processed": 34,
+          "valid": 34,
+          "invalid": 0,
+          "bug_triggers": 0
+        },
+        "slurm_task_states": "tasks 0-5 FAILED 1:0, tasks 6-8 COMPLETED"
+      },
+      "conclusion": "PASS. 0 wrong answers and 0 invalid models. The FAILED task states are the known artifact, not a correctness signal: validate_qfuf_models_with_dolmen.py counts its own 10s solver timeouts as failures and returns 1, and the sbatch runs under `set -euo pipefail`, so that becomes the task's exit code. Summaries counted 6 against 6 shards, so no shard was lost to the wall clock.",
+      "coverage_milestone": "First gate run over the family-complete corpus: 34 seeds across all 17 division families, against the previous default of 14 seeds covering 3 families plus gasburner (not in the division at all). '34 valid, 0 invalid' confirms the 200000-byte limit change worked -- at typefuzz's own 20000-byte default the 12 largest seeds, including both latendresse and LassoRanker, would have dropped silently as they did in job 118543."
     }
   ]
 }
