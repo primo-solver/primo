@@ -21437,6 +21437,20 @@
       "artifact": "docs/run-log.json",
       "evidence_status": "local-only",
       "outcome": "PreparedFlatTheory is now reused across mixed SAT rounds and append-only augmented for lazy interface equality atoms; the per-round closure remains copied. The required QF_UFLRA fuzz gate remains incomplete because yinyang is unavailable locally."
+    },
+    {
+      "id": "2026-08-07-prepared-euf-reuse-qf-uflra-slurm-gate",
+      "date": "2026-08-07",
+      "kind": "fuzz",
+      "scope": "QF_UFLRA prepared EUF reuse mutation gate",
+      "commit": "3139470",
+      "host": "llm2smt-slurm",
+      "job_id": "121020",
+      "command": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0-2 with PRIMO_WORKDIR=/home/janotmik/primo-online-lazy-7838c2e and PATH including the existing remote typefuzz and Z3 installations",
+      "results": "pending",
+      "artifact": "/home/janotmik/primo-online-lazy-7838c2e/fuzz-results/qf-uflra-mutation-gate-121020/",
+      "evidence_status": "slurm-running",
+      "outcome": "Submitted after remote Release binary verification reported git 3139470 and CaDiCaL cadical-3.0.0-7b99c07."
     }
   ]
 }
