@@ -907,6 +907,154 @@ LraVarId LraTableau::select_sparse_entering_variable(const Row& row, bool too_lo
   return entering;
 }
 
+namespace {
+
+// Hashes a DeltaRational by both components. Combining with the same mix
+// constant used elsewhere in the codebase; correctness needs only that equal
+// DeltaRationals hash equal, which follows from Rational's canonical-form
+// invariant (see util/rational.hpp) applied to each component.
+struct DeltaRationalHash {
+  std::size_t operator()(const DeltaRational& value) const {
+    const util::RationalHash hash;
+    const std::size_t a = hash(value.rational);
+    const std::size_t b = hash(value.infinitesimal);
+    return a ^ (b + 0x9e3779b97f4a7c15ULL + (a << 6U) + (a >> 2U));
+  }
+};
+
+}  // namespace
+
+std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
+    const std::vector<LraVarId>& shared) const {
+  std::vector<EntailedEquality> result;
+  if (shared.empty()) {
+    return result;
+  }
+
+  // Deduplicated, and in the caller's order so the output is deterministic.
+  std::vector<LraVarId> vars;
+  std::set<LraVarId> in_shared;
+  for (const LraVarId var : shared) {
+    if (in_shared.insert(var).second) {
+      vars.push_back(var);
+    }
+  }
+
+  // A variable is *fixed* when both bounds exist and coincide. Every rule here
+  // rests on this, and note the bounds are checked for presence rather than
+  // dereferenced blind: unlike build_conflict, which may assume its caller
+  // established that no entering candidate exists, this runs speculatively and
+  // a variable with only one bound is ordinary, not a bug.
+  const auto fixed_value = [this](LraVarId var) -> std::optional<DeltaRational> {
+    const VarState& state = vars_.at(var);
+    if (!state.lower.has_value() || !state.upper.has_value()) {
+      return std::nullopt;
+    }
+    if (state.lower->value != state.upper->value) {
+      return std::nullopt;
+    }
+    return state.lower->value;
+  };
+  const auto append_fixing_reasons = [this](LraVarId var, std::vector<sat::Lit>& into) {
+    const VarState& state = vars_.at(var);
+    into.push_back(state.lower->reason);
+    into.push_back(state.upper->reason);
+  };
+
+  std::set<std::pair<LraVarId, LraVarId>> emitted;
+  const auto emit = [&emitted, &result](LraVarId a, LraVarId b, std::vector<sat::Lit> reasons,
+                                        EntailedEqualityRule rule) {
+    const std::pair<LraVarId, LraVarId> key = a < b ? std::pair{a, b} : std::pair{b, a};
+    if (!emitted.insert(key).second) {
+      return;
+    }
+    result.push_back(EntailedEquality{key.first, key.second, std::move(reasons), rule});
+  };
+
+  // -- FixedEq -------------------------------------------------------------
+  // Group the fixed shared variables by their fixed value, linking each to the
+  // first variable seen with that value.
+  std::unordered_map<DeltaRational, LraVarId, DeltaRationalHash> representative;
+  for (const LraVarId var : vars) {
+    const std::optional<DeltaRational> value = fixed_value(var);
+    if (!value.has_value()) {
+      continue;
+    }
+    const auto [it, inserted] = representative.emplace(*value, var);
+    if (inserted) {
+      continue;
+    }
+    std::vector<sat::Lit> reasons;
+    reasons.reserve(4);
+    append_fixing_reasons(it->second, reasons);
+    append_fixing_reasons(var, reasons);
+    emit(it->second, var, std::move(reasons), EntailedEqualityRule::FixedEq);
+  }
+
+  // -- EqRow ---------------------------------------------------------------
+  // For a basic shared x_i with row x_i = sum a_k x_k, a shared term x_j whose
+  // coefficient is exactly 1 splits the row as x_i = x_j + P. If every other
+  // variable is fixed then P is fixed, and if beta(P) = 0 then x_i - x_j = 0 in
+  // every model.
+  //
+  // Only coefficient 1 qualifies: at -1 the row says x_i = -x_j + P, which is
+  // not an equality between them.
+  for (const LraVarId basic : vars) {
+    if (!vars_.at(basic).is_basic) {
+      continue;
+    }
+    const Row& row = rows_.at(basic);
+
+    // P is the whole row minus the candidate term, so its fixedness and value
+    // do not depend on which candidate is chosen: compute once.
+    DeltaRational row_value_of_fixed;
+    std::vector<LraVarId> fixed_vars;
+    std::vector<LraVarId> unfixed_vars;
+    for (const auto& [var, coeff, slot] : row) {
+      const std::optional<DeltaRational> value = fixed_value(var);
+      if (value.has_value()) {
+        fixed_vars.push_back(var);
+        row_value_of_fixed = row_value_of_fixed + value->scaled(coeff);
+      } else {
+        unfixed_vars.push_back(var);
+      }
+    }
+    // At most one non-fixed term may remain, and it must be the candidate x_j.
+    if (unfixed_vars.size() > 1) {
+      continue;
+    }
+
+    for (const auto& [var, coeff, slot] : row) {
+      if (var == basic || !in_shared.contains(var) || coeff != util::Rational(1)) {
+        continue;
+      }
+      if (!unfixed_vars.empty() && unfixed_vars.front() != var) {
+        continue;  // some *other* term is unfixed, so P is not fixed
+      }
+      // beta(P) = (sum over fixed terms) minus this term's contribution when it
+      // is itself fixed; a fixed candidate contributes to row_value_of_fixed.
+      DeltaRational p_value = row_value_of_fixed;
+      const std::optional<DeltaRational> candidate_fixed = fixed_value(var);
+      if (candidate_fixed.has_value()) {
+        p_value = p_value - candidate_fixed->scaled(coeff);
+      }
+      if (p_value != DeltaRational{}) {
+        continue;
+      }
+      std::vector<sat::Lit> reasons;
+      for (const LraVarId fixed : fixed_vars) {
+        if (fixed == var) {
+          continue;  // the candidate is not part of P
+        }
+        append_fixing_reasons(fixed, reasons);
+      }
+      emit(basic, var, std::move(reasons), EntailedEqualityRule::EqRow);
+    }
+  }
+
+  return result;
+}
+
 std::optional<std::vector<sat::Lit>> LraTableau::check() {
   // Anti-cycling fallback for PivotingRule::Dantzig (see the PivotingRule
   // class comment): once more than this many pivots have happened within
