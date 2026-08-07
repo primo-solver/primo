@@ -21347,6 +21347,19 @@
       "artifact": "/tmp/qf-uflra-mixed-proxy-1000/summary.csv",
       "evidence_status": "local-only",
       "outcome": "The Boolean proxy support introduced no disagreement or unsupported case in the broader mixed generator."
+    },
+    {
+      "id": "2026-08-07-qf-uflra-opensmt-reference-probe",
+      "date": "2026-08-07",
+      "kind": "reference-solver",
+      "scope": "OpenSMT v2.9.2 probe on recursive Boolean QF_UFLRA cases",
+      "commit": "ee03539",
+      "host": "local workspace",
+      "command": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/opensmt --count 100 --seed 20260822 --timeout 5 --shape recursive-bool --out /tmp/qf-uflra-recursive-opensmt-100",
+      "results": {"count": 100, "pass": 80, "reference_disagreement": 20, "wrong_answer": 0, "unsupported": 0},
+      "artifact": "/tmp/qf-uflra-recursive-opensmt-100/summary.csv",
+      "evidence_status": "local-only",
+      "outcome": "OpenSMT is installed and usable as an optional executable reference, but it disagreed with both Primo and Z3 on 20/100 recursive Boolean cases. It is therefore not treated as an authoritative oracle for this QF_UFLRA Boolean campaign without per-case triage."
     }
   ]
 }
