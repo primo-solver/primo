@@ -269,6 +269,47 @@ to ~0 and `:no.mixed.euf-atoms` from 7,352 to ~0, with the answer unchanged. If
 merges stay high, the classification is not where the atoms are entering EUF
 and this analysis is wrong.
 
+(routing-prototype)=
+### Prototype measured 2026-08-07: one line, sound, and two-tailed
+
+The A-side fix was built and measured, so the difficulty question is answered
+rather than estimated. The change is **one line** -- restrict
+`has_euf_predicate` to a Bool-sorted `Application`:
+
+```cpp
+summary.has_euf_predicate =
+    term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort();
+```
+
+Baseline and prototype built from the same commit, differing only in that
+predicate. Results over 150 random division files at a 10s cap:
+
+| | value |
+|---|---|
+| **answer disagreements** | **0 of 150** |
+| files changing path | **65 (43%)**, every one `qf-uflra -> qf-lra` |
+| solved | 114 -> 115 |
+| gained / lost | 2 / 1 |
+| paired ratio (n=26, >0.5s) | p10 0.46, median 0.96, p90 1.04 |
+
+And on the instance the regression was bisected on: **timeout -> sat in
+0.28s**.
+
+**It is not free, and the shape of the cost is the same one lead 2b found.**
+The single "lost" file, `2019-ezsmt/routingMax/SCC_strong/p50.56`, is not a
+capability loss -- it still solves, in **13.0s against 0.23s**, a 56x
+slowdown on the pure path. So the mixed path is genuinely better on some
+instances, and narrowing the dispatch gives those up. The distribution is
+two-tailed in exactly the way a solver swap is: p10 0.46 against p90 1.04.
+
+**What this means for the decision.** The fix is *safe* (zero disagreements,
+and the Boolean-shape cases in [](#boolean-test-cases) all behave), and it
+removes a pathological case worth 39.4M merges. It is not an unambiguous
+speedup, and a 150-file random sample at 10s is the wrong instrument to settle
+that -- the files it targets are a specific 12 on the division. **Evaluate it
+on the full division before promoting it**, reporting gained/lost per family
+rather than PAR2 alone.
+
 ### Fixing A: only after B, and measure it as a dispatch change
 
 Restrict `has_euf_predicate` to `Application` (arity >= 1) of sort Bool, and

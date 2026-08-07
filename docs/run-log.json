@@ -18641,6 +18641,41 @@
         }
       },
       "conclusion": "The branch is strictly better than main on the full division: +16 solved, ZERO lost, PAR2 136330 -> 127101, median paired 0.94. All 16 gains are LassoRanker, the family main regressed hardest on. Separately confirmed: main has lost 59 net files against b6b8d55 (gained 2, lost 61), which is the regression bisected to the Nelson-Oppen merge (84336a2) and, for 2019-ezsmt, to ffaf9eb's dispatch flip. The earlier '1588 vs 1631' framing was comparing the branch against a pre-regression commit and wrongly implicated the branch; against the branch's actual merge base it gains and loses nothing. Zero wrong answers in all three runs, on a corpus that carries (set-info :status)."
+    },
+    {
+      "id": "2026-08-07-qf-lra-euf-dispatch-routing-prototype",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "profiling",
+      "scope": "Prototype and measure the Mechanism A fix from docs/nelson-oppen-qf-lra-regression.md: restrict has_euf_predicate to a Bool-sorted Application so a plain propositional variable no longer routes a QF_LRA formula to solve_qf_uf_lra.",
+      "commit": "ac7acce plus a one-line prototype patch (not committed)",
+      "branch": "qflra-tropical-t1-propagation (prototype in a scratch worktree)",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Baseline and prototype built from the SAME commit in separate worktrees, differing only in that predicate -- verified by diff. Earlier binaries could not be trusted for this because their baked git revision strings were stale and '-dirty'."
+      },
+      "result": {
+        "sample": "150 random files from tmp/QF_LRA, 10s cap",
+        "answer_disagreements": 0,
+        "path_changed": "65 of 150 (43%), all qf-uflra -> qf-lra",
+        "solved": {
+          "base": 114,
+          "prototype": 115
+        },
+        "gained": 2,
+        "lost": 1,
+        "paired_ratio_n26_over_0_5s": {
+          "p10": 0.46,
+          "median": 0.96,
+          "p90": 1.04
+        },
+        "target_instance": "tsp_rand_70_300_1155482584_7: timeout -> sat 0.28s",
+        "worst_regression": "2019-ezsmt/routingMax/SCC_strong/p50.56: 0.23s (mixed) -> 13.01s (pure). Still SAT, so a slowdown rather than a capability loss.",
+        "boolean_shape_cases": "propositional vars and a nested Bool equality both move to qf-lra with unchanged answers; a genuine Bool-sorted application (f x) correctly stays on qf-uflra; true/false literals unaffected (TermKind::BoolValue is distinct from Constant)."
+      },
+      "conclusion": "The routing fix is one line and sound on this sample (0 disagreements of 150), and it removes the pathological case worth 39.4M merges. It is NOT an unambiguous speedup: 43% of files change solver, the distribution is two-tailed (p10 0.46, p90 1.04), and one file is 56x slower on the pure path -- which is lead 2b's 'neither path dominates' showing up again. A 150-file random sample at 10s is the wrong instrument; promote only on a full-division run reporting gained/lost per family.",
+      "correction": "A 'second over-trigger' claimed in an earlier version of the note -- that a Bool equality sets has_equality and routes the same way -- was measured and does NOT exist. Bool-sorted equalities are rewritten during preprocessing before summarize_formula_features runs, so no Equality node over Bool reaches the dispatch. has_euf_predicate on a Bool Constant is therefore the single trigger."
     }
   ]
 }
