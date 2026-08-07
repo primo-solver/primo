@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import json
 import subprocess
 import time
 from collections import Counter
@@ -254,6 +255,11 @@ def main() -> int:
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--out", type=Path, default=Path("results/qf-uf-full.csv"))
     parser.add_argument(
+        "--journal",
+        type=Path,
+        help="append-only per-row JSONL journal; defaults to <out>.jsonl",
+    )
+    parser.add_argument(
         "--summary", type=Path, default=Path("results/qf-uf-full-summary.csv")
     )
     parser.add_argument("--log-dir", type=Path)
@@ -279,6 +285,9 @@ def main() -> int:
         if offset % args.shards == args.shard_index
     ]
     solver_command = [*args.solver, *args.solver_arg]
+    journal = args.journal or Path(f"{args.out}.jsonl")
+    journal.parent.mkdir(parents=True, exist_ok=True)
+    journal.write_text("")
 
     rows: list[dict[str, object]] = []
     for index, path in enumerate(files, start=1):
@@ -320,6 +329,10 @@ def main() -> int:
         }
         row.update(result["stats"])
         rows.append(row)
+        with journal.open("a") as handle:
+            handle.write(json.dumps(row, sort_keys=True))
+            handle.write("\n")
+            handle.flush()
         print(
             f"[{index}/{len(files)}] {row['family']} {row['file']}: "
             f"{row['status']} {row['answer']} {row['seconds']}s",
@@ -359,6 +372,7 @@ def main() -> int:
     write_summary(rows, args.summary, args.timeout)
     print(f"wrote {args.out}")
     print(f"wrote {args.summary}")
+    print(f"wrote {journal}")
     return 0
 
 

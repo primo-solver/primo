@@ -180,6 +180,13 @@ If the SMT-LIB corpus, timeout, and reference binary are unchanged, prefer the
 standing practice of reusing the existing reference CSV instead of rerunning Z3
 or cvc5 just because a Primo branch changed.
 
+`scripts/bench_qf_uf_full.py` writes an append-only JSONL journal after every
+completed instance, defaulting to `<out>.jsonl`, in addition to its final CSV
+and summary. SLURM result collection should retain this journal: it preserves
+all completed rows if a task is cancelled, times out at the scheduler level, or
+loses its node before the final aggregate files are written. `--journal` can
+select a different path when a wrapper has a fixed artifact layout.
+
 The local CMake build refreshes a generated git-revision header on every `primo`
 build; uncommitted source changes are reported with a `-dirty` suffix. Use
 `--check-only` immediately before `sbatch` when the workspace was already
