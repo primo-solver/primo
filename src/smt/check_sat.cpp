@@ -1903,9 +1903,22 @@ FormulaFeatureSummary summarize_formula_features(
   const core::Term& term = terms.get(term_id);
   FormulaFeatureSummary summary;
   summary.has_application_term = term.kind == core::TermKind::Application;
+  // Only a Bool-sorted *Application* is an EUF predicate. A Bool-sorted
+  // Constant is a plain propositional variable: it has no arguments, so no
+  // congruence rule can ever apply to it, and there is nothing for EUF to do
+  // with it.
+  //
+  // This read `Application || Constant` until 2026-08-07, which meant any
+  // QF_LRA formula containing a single propositional variable dispatched to
+  // solve_qf_uf_lra. On 2019-ezsmt that cost a file outright -- 0.93s to a
+  // deterministic timeout -- because the mixed path then hands those variables
+  // to congruence closure. See docs/nelson-oppen-qf-lra-regression.md.
+  //
+  // Consumed only by the mixed dispatch `(has_equality || has_euf_predicate)
+  // && has_arithmetic`; the QF_UF dispatch keys on has_application_term, so
+  // narrowing this cannot affect it.
   summary.has_euf_predicate =
-      (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
-      term.sort == terms.symbols().bool_sort();
+      term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort();
   summary.has_arithmetic = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
 
   for (const core::TermId child : term.children) {

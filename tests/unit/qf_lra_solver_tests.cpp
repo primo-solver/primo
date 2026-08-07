@@ -2759,7 +2759,97 @@ void online_nelson_oppen_still_publishes_lra_interface_equalities() {
   assert(result.statistics.get(":no.online.lra-published-equalities") >= 1);
 }
 
+// Dispatch tests for the EUF-predicate classifier (mechanism A of
+// docs/nelson-oppen-qf-lra-regression.md). These assert the DISPATCH COUNTER,
+// not just the answer: the regression they guard was a formula being solved by
+// the wrong solver, which an answer-only test cannot see.
+
+// A propositional variable is not an EUF predicate: no arguments, so no
+// congruence rule can apply. Pure QF_LRA plus Booleans must stay on the pure
+// path.
+void propositional_variables_do_not_force_the_mixed_solver() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (and (or p q) (<= (+ x y) 3) (>= x 1) (>= y 1)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-lra") == 1);
+  assert(result.statistics.get(":solver.qf-uflra") == 0);
+}
+
+// A Bool-sorted *application* genuinely is an EUF predicate -- congruence
+// applies to it -- so it must still reach the mixed solver.
+void bool_sorted_application_still_forces_the_mixed_solver() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun f (Real) Bool)
+    (assert (and (f x) (not (f y)) (<= x y) (>= x y)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+}
+
+// The unsoundness direction: an uninterpreted sort with arithmetic must reach
+// the mixed solver. Narrowing the classifier too far would send this to a
+// solver that cannot do congruence.
+//
+// The equality is deliberately nested under disjunctions. Asserted at top
+// level it is a solved-constant candidate, and preprocessing substitutes
+// b := a and refutes the formula outright -- no solver runs at all, so the
+// dispatch assertion would be vacuous. Verified: that version reports every
+// :solver.* counter at 0 with :preprocessing.solve-eqs.accepted 1.
+void uninterpreted_sort_with_arithmetic_still_forces_the_mixed_solver() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-sort S 0)
+    (declare-fun a () S)
+    (declare-fun b () S)
+    (declare-fun g (S) S)
+    (declare-fun x () Real)
+    (assert (or (= a b) (< x 0)))
+    (assert (or (not (= a b)) (not (= (g a) (g b)))))
+    (assert (<= 0 x))
+    (assert (<= x 1))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+}
+
+// The case the narrowing could get wrong and nothing else covers: an
+// uninterpreted function with a Bool ARGUMENT and a Real result. It sets
+// neither has_euf_predicate (the application is Real-sorted) nor, on its own,
+// has_equality -- yet the pure LRA solver cannot own the symbol. Whatever the
+// dispatch decides, the answer must be right.
+void bool_argument_real_result_application_is_not_mis_dispatched() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun k (Bool) Real)
+    (assert (= p q))
+    (assert (< (k p) 0))
+    (assert (< 1 (k q)))
+    (check-sat)
+  )");
+  // k(p) = k(q) by congruence, so k(p) < 0 and k(q) > 1 cannot both hold.
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-lra") == 0);
+}
+
 int main() {
+  propositional_variables_do_not_force_the_mixed_solver();
+  bool_sorted_application_still_forces_the_mixed_solver();
+  uninterpreted_sort_with_arithmetic_still_forces_the_mixed_solver();
+  bool_argument_real_result_application_is_not_mis_dispatched();
   online_nelson_oppen_still_publishes_lra_interface_equalities();
   accepts_set_logic_and_real_declarations();
   accepts_chained_comparisons_and_decimal_literals();
