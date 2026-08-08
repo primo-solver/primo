@@ -329,7 +329,10 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.equality-fallback-reasons`
 - `:no.interface.euf-explanation-missing`
 - `:no.interface.convex-rounds`
+- `:no.interface.exact-only`
 - `:no.interface.euf-spanning-equalities`
+- `:no.interface.lra-opportunistic-enabled`
+- `:no.interface.lra-opportunistic-skipped-rounds`
 - `:no.interface.lra-opportunistic-candidates`
 - `:no.interface.lra-opportunistic-fixed-eq`
 - `:no.interface.lra-opportunistic-eq-row`
@@ -486,7 +489,12 @@ lowering and Boolean-level case splitting before prepared LRA atoms are asserted
 `:no.interface.convex-rounds` counts SAT-consistent mixed rounds that reach
 bidirectional equality sharing. EUF reports one spanning set per shared
 equality class, counted by `:no.interface.euf-spanning-equalities`; it does not
-materialize every pair in a class. LRA first polls the checked tableau's
+materialize every pair in a class. `:no.interface.exact-only` is one for
+`--nelson-oppen-prop=exact` and its legacy `off` alias. In that mode mandatory
+EUF spanning and exact LRA fallback sharing remain active, while
+`:no.interface.lra-opportunistic-enabled` is zero and
+`:no.interface.lra-opportunistic-skipped-rounds` counts rounds that omit the
+optional `FixedEq`/`EqRow` poll. LRA otherwise first polls the checked tableau's
 `FixedEq` and `EqRow` rules. The `:no.interface.lra-opportunistic-*` counters
 split rule hits, reason literals, unmapped shared terms, lazy SAT atom delivery,
 clauses, and rechecks. After these cheap producers are quiescent,

@@ -119,10 +119,12 @@ the current assignment of the theory that implied it. This is intentionally less
 minimal than a theory-local explanation, but it is sound for lazy final checks:
 an equality discovered in one Boolean branch cannot become an unconditional
 fact in another branch. `--nelson-oppen-prop=final` is this default guarded
-final-check mode. `--nelson-oppen-prop=off` disables those guarded
-equality-propagation clauses for ablations, while leaving ordinary per-theory
-conflict checks and model reconstruction checks intact. Generated equality
-literals that are true are asserted to both EUF and LRA. Generated equality
+final-check mode. `--nelson-oppen-prop=exact` retains the mandatory EUF-to-LRA
+spanning equalities and the exact LRA-to-EUF fallback, but disables the optional
+LRA `FixedEq`/`EqRow` producer. The legacy `off` spelling is an alias for
+`exact`: disabling the closure itself is unsound because separate satisfiable
+EUF and LRA assignments need not agree on the shared equality arrangement.
+Generated equality literals that are true are asserted to both EUF and LRA. Generated equality
 literals that are false are asserted to EUF as disequalities. They are not
 asserted to LRA as native Real disequalities; instead, LRA can still reject such
 a false assignment by later entailing the corresponding equality, and mixed
@@ -1097,8 +1099,11 @@ fallback: the dispatcher creates and observes a SAT equality literal only for a
 selected published candidate. The manager also avoids the full metadata cross
 product: it retains the arithmetic full-pair count, stores visible pairs, and
 creates missing entries through `ensure_interface_pair` only when a producer or
-consumer requests one. The mixed coordinator constructs a full pair vector only
-for explicit full-pair model-equality branching.
+consumer requests one. The mixed coordinator still constructs a full pair
+vector for the exact LRA fallback and final arrangement checks, as well as for
+explicit full-pair model-equality branching. Those vectors do not by themselves
+materialize SAT equality atoms, but their quadratic scan and repeated LRA probes
+remain a measured performance target.
 
 ### Primo Checklist Items
 
@@ -1115,8 +1120,9 @@ for explicit full-pair model-equality branching.
   combinatorial full-pair count for diagnostics, but create a pair entry only
   when an existing atom, theory producer, care consumer, SAT assignment, or
   explicit fallback requests it. This is current behavior.
-- Keep a delayed strategy available as an ablation baseline against
-  model-based closure.
+- Keep an exact-only strategy available as an ablation baseline against
+  opportunistic and model-based closure. This ablation must retain mandatory
+  convex equality sharing.
 
 ## Care Sets And Reduced Equality Sharing
 

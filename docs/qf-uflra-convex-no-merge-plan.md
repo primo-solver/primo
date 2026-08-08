@@ -80,11 +80,12 @@ source.
 
 These are ordered by correctness first, then performance.
 
-1. **Blocker: repair or remove `--nelson-oppen-prop=off` for mixed QF_UFLRA.**
-   The option currently skips mandatory equality sharing and returns `sat` for
-   `x = y`, `p(x)`, `not p(y)`. An ablation may disable opportunistic or online
-   propagation, but it must retain the final convex combination check. Add
-   plain check-sat and model-validation regressions before keeping the option.
+1. **Complete on the integration branch: repair `--nelson-oppen-prop=off`.**
+   The internal mode is now named `exact`, and the old `off` spelling is a
+   compatibility alias. Both retain mandatory EUF spanning equalities and the
+   exact LRA fallback while disabling only the optional LRA `FixedEq`/`EqRow`
+   producer. Plain check-sat and model-request regressions cover `x = y`,
+   `p(x)`, `not p(y)` and the paired-bound form of the same disagreement.
 2. **Replace the exact fallback's per-pair LRA reconstruction.** The current
    default constructs every unresolved shared pair and builds a fresh prepared
    LRA theory for one or two strict-orientation probes per pair. Streaming pairs
@@ -95,9 +96,10 @@ These are ordered by correctness first, then performance.
    streaming a reason can turn bookkeeping loss into an empty or malformed
    IPASIR-UP reason. Assert the ownership/reason invariant and add a lazy fresh
    equality backtrack/repropagation test.
-4. **Correct stale option and allocation claims.** Documentation must not claim
-   that `off` preserves model reconstruction or that full pair vectors are used
-   only by explicit model-equality branching.
+4. **Complete on the integration branch: correct stale option and allocation
+   claims.** The architecture and paper notes describe `off` as the legacy
+   alias for exact mandatory closure and record the exact fallback and final
+   arrangement as additional full-pair-vector consumers.
 5. **Complete for integration commit `3dee8ca`:** lint, `make check`, ASan,
    documentation, whole-tree `clang-tidy`, 10 tracked QF_UFLRA seeds, and a
    3,000-case generated mixed gate all passed. SLURM job 121874 completed four

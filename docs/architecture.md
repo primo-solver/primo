@@ -281,8 +281,11 @@ Implemented now:
   forbids, use the guarded clause path; the attempted mergeable-skip
   optimization was rejected after the 2026-08-05 full QF_UFLRA run found wrong
   answers.
-  `--nelson-oppen-prop=off` disables these guarded interface-equality
-  propagation clauses for ablation. `--nelson-oppen-prop=online` is an opt-in
+  `--nelson-oppen-prop=exact` retains this mandatory bidirectional closure and
+  exact fallback, but disables the optional LRA `FixedEq`/`EqRow` producer.
+  The older spelling `--nelson-oppen-prop=off` is retained as an alias for
+  `exact`; it does not disable combination because doing so is unsound for
+  mixed QF_UFLRA. `--nelson-oppen-prop=online` is an opt-in
   mixed-theory callback path: the SMT layer connects a single
   `MixedTheoryPropagationDispatcher` through the SAT backend's
   `sat::ExternalPropagator` interface, delegates ordinary arithmetic

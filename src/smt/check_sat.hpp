@@ -159,7 +159,7 @@ enum class CheckSatResult {
 };
 
 enum class NelsonOppenPropagationMode {
-  Off,
+  Exact,
   Final,
   Online,
 };

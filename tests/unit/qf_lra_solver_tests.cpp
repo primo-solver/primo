@@ -1050,6 +1050,8 @@ void qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation() {
 }
 
 void qf_uf_lra_euf_publishes_a_spanning_set_per_shared_class() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-sort U 0)
@@ -1064,8 +1066,10 @@ void qf_uf_lra_euf_publishes_a_spanning_set_per_shared_class() {
     (assert (> (f c) 1))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       options);
   assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.exact-only") == 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-enabled") == 0);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 3);
   assert(result.statistics.get(":no.interface.euf-spanning-equalities") == 2);
   assert(result.statistics.get(":no.interface.euf-to-lra-created-atoms") == 2);
@@ -1300,10 +1304,9 @@ void qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess() {
   assert(result.statistics.get(":no.interface.model-equality-conflicts") == 0);
 }
 
-void qf_uf_lra_model_equality_forced_by_lra_gets_explained_clause() {
+void qf_uf_lra_exact_mode_keeps_mandatory_convex_closure() {
   CheckSatOptions options = no_preprocessing_or_substitution();
-  options.nelson_oppen_model_equality_branching = true;
-  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Off;
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -1317,17 +1320,37 @@ void qf_uf_lra_model_equality_forced_by_lra_gets_explained_clause() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Unsat);
-  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-mutation-forced") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-mutation-forced") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-forced-propagations") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-forced-clauses") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-forced-created-atoms") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-forced-reason-lits") >= 2);
-  assert(result.statistics.get(":no.interface.model-equality-pending") == 0);
-  assert(result.statistics.get(":no.interface.model-equality-activated") == 0);
-  assert(result.statistics.get(":no.interface.model-equality-assumptions") == 0);
-  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") == 0);
+  assert(result.statistics.get(":no.interface.exact-only") == 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-enabled") == 0);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-skipped-rounds") >= 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-candidates") == 0);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-clauses") >= 1);
+}
+
+void qf_uf_lra_exact_mode_rejects_inconsistent_model_request() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (= x y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+    (get-model)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.model.empty());
+  assert(result.statistics.get(":no.interface.exact-only") == 1);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-clauses") >= 1);
 }
 
 void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
@@ -3552,7 +3575,8 @@ int main() {
   qf_uf_lra_does_not_share_unentailed_lra_equalities();
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
   qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess();
-  qf_uf_lra_model_equality_forced_by_lra_gets_explained_clause();
+  qf_uf_lra_exact_mode_keeps_mandatory_convex_closure();
+  qf_uf_lra_exact_mode_rejects_inconsistent_model_request();
   qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
   qf_uf_lra_model_equality_branching_accumulates_active_assumptions();
   qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs();

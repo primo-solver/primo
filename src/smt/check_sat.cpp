@@ -9151,7 +9151,12 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.equality-fallback-reasons", 0);
   statistics.set(":no.interface.euf-explanation-missing", 0);
   statistics.set(":no.interface.convex-rounds", 0);
+  statistics.set(":no.interface.exact-only",
+                 options.nelson_oppen_propagation == NelsonOppenPropagationMode::Exact ? 1 : 0);
   statistics.set(":no.interface.euf-spanning-equalities", 0);
+  statistics.set(":no.interface.lra-opportunistic-enabled",
+                 options.nelson_oppen_propagation != NelsonOppenPropagationMode::Exact ? 1 : 0);
+  statistics.set(":no.interface.lra-opportunistic-skipped-rounds", 0);
   statistics.set(":no.interface.lra-opportunistic-candidates", 0);
   statistics.set(":no.interface.lra-opportunistic-fixed-eq", 0);
   statistics.set(":no.interface.lra-opportunistic-eq-row", 0);
@@ -9542,8 +9547,7 @@ CheckSatOutcome solve_qf_uf_lra(
                          : 0);
     }
 
-    if (options.nelson_oppen_propagation != NelsonOppenPropagationMode::Off &&
-        euf_check.has_value() && !shared_real_terms.empty()) {
+    if (euf_check.has_value() && !shared_real_terms.empty()) {
       statistics.increment(":no.interface.convex-rounds");
       const std::vector<ExplainedInterfaceEquality> implied_equalities =
           euf_implied_real_equalities(terms, prepared_flat_theory.value(), euf_check->closure,
@@ -9569,34 +9573,39 @@ CheckSatOutcome solve_qf_uf_lra(
       }
     }
 
-    if (options.nelson_oppen_propagation != NelsonOppenPropagationMode::Off &&
-        euf_check.has_value() && !shared_real_terms.empty()) {
-      const std::vector<ExplainedInterfaceEquality> opportunistic_equalities =
-          lra_entailed_shared_equalities(terms, *prepared_lra_theory_for_check,
-                                         *checked_lra_tableau, shared_real_terms, statistics);
-      statistics.increment(":no.interface.equalities-propagated", opportunistic_equalities.size());
-      statistics.increment(":no.interface.lra-to-euf-equalities", opportunistic_equalities.size());
-      const LraToEufEqualityFilterResult opportunistic_filtered =
-          filter_lra_implied_equalities_for_euf(terms, no_manager, prepared_flat_theory.value(),
-                                                euf_check->closure, opportunistic_equalities,
-                                                statistics);
-      const InterfacePropagationResult opportunistic_propagation =
-          force_implied_interface_equalities(
-              terms, clausifier, backend, no_manager, opportunistic_filtered.forced_equalities,
-              lra_assignments_for_check, InterfaceEqualityClassification::LraImplied, statistics);
+    if (euf_check.has_value() && !shared_real_terms.empty()) {
+      if (options.nelson_oppen_propagation != NelsonOppenPropagationMode::Exact) {
+        const std::vector<ExplainedInterfaceEquality> opportunistic_equalities =
+            lra_entailed_shared_equalities(terms, *prepared_lra_theory_for_check,
+                                           *checked_lra_tableau, shared_real_terms, statistics);
+        statistics.increment(":no.interface.equalities-propagated",
+                             opportunistic_equalities.size());
+        statistics.increment(":no.interface.lra-to-euf-equalities",
+                             opportunistic_equalities.size());
+        const LraToEufEqualityFilterResult opportunistic_filtered =
+            filter_lra_implied_equalities_for_euf(terms, no_manager, prepared_flat_theory.value(),
+                                                  euf_check->closure, opportunistic_equalities,
+                                                  statistics);
+        const InterfacePropagationResult opportunistic_propagation =
+            force_implied_interface_equalities(
+                terms, clausifier, backend, no_manager, opportunistic_filtered.forced_equalities,
+                lra_assignments_for_check, InterfaceEqualityClassification::LraImplied, statistics);
 #if PRIMO_HAVE_IPASIR
-      if (mixed_online_dispatcher.has_value()) {
-        mixed_online_dispatcher->observe_registered_interface_equalities();
-      }
-#endif
-      publish_interface_propagation_result(opportunistic_propagation,
-                                           ":no.interface.lra-opportunistic", statistics);
-      if (opportunistic_propagation.triggered_recheck()) {
-        if (model_equality_arrangement.has_active_branch()) {
-          model_equality_arrangement.record_rejection(std::nullopt, statistics);
+        if (mixed_online_dispatcher.has_value()) {
+          mixed_online_dispatcher->observe_registered_interface_equalities();
         }
-        publish_sat_stats(backend.statistics(), statistics);
-        continue;
+#endif
+        publish_interface_propagation_result(opportunistic_propagation,
+                                             ":no.interface.lra-opportunistic", statistics);
+        if (opportunistic_propagation.triggered_recheck()) {
+          if (model_equality_arrangement.has_active_branch()) {
+            model_equality_arrangement.record_rejection(std::nullopt, statistics);
+          }
+          publish_sat_stats(backend.statistics(), statistics);
+          continue;
+        }
+      } else {
+        statistics.increment(":no.interface.lra-opportunistic-skipped-rounds");
       }
 
       if (options.qf_uflra_candidate_final_scan) {

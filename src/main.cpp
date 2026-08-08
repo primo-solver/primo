@@ -408,10 +408,11 @@ int main(int argc, char** argv) {
                "Disable the experimental QF_UFLRA LRA model-mutation filter inside "
                "--model-equality-branching [default: on]");
   app.add_option("--nelson-oppen-prop", nelson_oppen_propagation,
-                 "QF_UFLRA Nelson-Oppen interface equality propagation mode: off, final, or "
-                 "online. Pure QF_UF and QF_LRA keep their direct theory propagators [default: "
-                 "final]")
-      ->check(CLI::IsMember({"off", "final", "online"}))
+                 "QF_UFLRA Nelson-Oppen interface equality propagation mode: exact, final, or "
+                 "online. Exact keeps the mandatory convex closure but disables opportunistic "
+                 "LRA producers; off is a backward-compatible alias for exact. Pure QF_UF and "
+                 "QF_LRA keep their direct theory propagators [default: final]")
+      ->check(CLI::IsMember({"off", "exact", "final", "online"}))
       ->default_val("final");
   app.add_option("--model-equality-branch-budget",
                  solver_options.nelson_oppen_model_equality_branch_budget,
@@ -733,8 +734,8 @@ int main(int argc, char** argv) {
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
   solver_options.nelson_oppen_model_equality_branching = nelson_oppen_model_equality_branching;
-  if (nelson_oppen_propagation == "off") {
-    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Off;
+  if (nelson_oppen_propagation == "off" || nelson_oppen_propagation == "exact") {
+    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Exact;
   } else if (nelson_oppen_propagation == "online") {
     solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Online;
   } else {
