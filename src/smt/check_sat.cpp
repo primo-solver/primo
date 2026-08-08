@@ -8,6 +8,7 @@
 #include <deque>
 #include <exception>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -5695,6 +5696,90 @@ std::vector<ExplainedInterfaceEquality> lra_entailed_shared_equalities(
   return equalities;
 }
 
+// de Moura-Bjorner MBTC Sections 4 and 5 use equal-value model classes as
+// equality candidates. Here they are only a necessary-condition filter for the
+// exact convex oracle: every retained pair still needs both strict conflicts.
+std::vector<TermPairKey> lra_model_equal_candidate_pairs(
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
+    const std::vector<core::TermId>& shared_terms, util::Statistics& statistics) {
+  using theory::arithmetic::LraVarId;
+
+  std::vector<LraVarId> shared_variables;
+  std::unordered_map<LraVarId, std::vector<core::TermId>> terms_by_variable;
+  std::vector<core::TermId> unmapped_terms;
+  shared_variables.reserve(shared_terms.size());
+  terms_by_variable.reserve(shared_terms.size());
+  unmapped_terms.reserve(shared_terms.size());
+  for (const core::TermId term : shared_terms) {
+    const auto variable = prepared.variables_by_term.find(term);
+    if (variable == prepared.variables_by_term.end()) {
+      unmapped_terms.push_back(term);
+      continue;
+    }
+    auto [mapped_terms, inserted] = terms_by_variable.try_emplace(variable->second);
+    mapped_terms->second.push_back(term);
+    if (inserted) {
+      shared_variables.push_back(variable->second);
+    }
+  }
+
+  std::unordered_set<TermPairKey, TermPairKeyHash> candidates;
+  candidates.reserve(shared_terms.size());
+  const auto add_pairs = [&candidates](const std::vector<core::TermId>& class_terms) {
+    for (std::size_t i = 0; i < class_terms.size(); ++i) {
+      for (std::size_t j = i + 1; j < class_terms.size(); ++j) {
+        candidates.insert(canonical_term_pair(class_terms[i], class_terms[j]));
+      }
+    }
+  };
+
+  // Several terms may exceptionally map to one tableau variable. Such terms
+  // are model-equal even though model_equal_classes() deduplicates variables.
+  for (const auto& [variable, mapped_terms] : terms_by_variable) {
+    (void)variable;
+    add_pairs(mapped_terms);
+  }
+  for (const std::vector<LraVarId>& equal_class : tableau.model_equal_classes(shared_variables)) {
+    std::vector<core::TermId> class_terms;
+    for (const LraVarId variable : equal_class) {
+      const std::vector<core::TermId>& mapped_terms = terms_by_variable.at(variable);
+      class_terms.insert(class_terms.end(), mapped_terms.begin(), mapped_terms.end());
+    }
+    add_pairs(class_terms);
+  }
+
+  const std::size_t before_conservative_pairs = candidates.size();
+  for (const core::TermId unmapped : unmapped_terms) {
+    for (const core::TermId term : shared_terms) {
+      if (unmapped != term) {
+        candidates.insert(canonical_term_pair(unmapped, term));
+      }
+    }
+  }
+
+  std::vector<TermPairKey> result(candidates.begin(), candidates.end());
+  std::sort(result.begin(), result.end(), less_term_pair);
+  const std::size_t full_pair_count = unordered_pair_count(shared_terms.size());
+  statistics.increment(":no.interface.lra-model-filter-builds");
+  statistics.increment(":no.interface.lra-model-filter-full-pairs", full_pair_count);
+  statistics.increment(":no.interface.lra-model-filter-candidate-pairs", result.size());
+  statistics.increment(":no.interface.lra-model-filter-pruned-pairs",
+                       full_pair_count - result.size());
+  statistics.increment(":no.interface.lra-model-filter-unmapped-terms", unmapped_terms.size());
+  statistics.increment(":no.interface.lra-model-filter-conservative-pairs",
+                       candidates.size() - before_conservative_pairs);
+  return result;
+}
+
+std::vector<TermPairKey> intersect_sorted_term_pairs(const std::vector<TermPairKey>& lhs,
+                                                     const std::vector<TermPairKey>& rhs) {
+  std::vector<TermPairKey> intersection;
+  intersection.reserve(std::min(lhs.size(), rhs.size()));
+  std::set_intersection(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
+                        std::back_inserter(intersection), less_term_pair);
+  return intersection;
+}
+
 bool flat_closure_equal_on_terms(const PreparedFlatTheory& prepared,
                                  theory::equality::FlatCongruenceClosure& closure, core::TermId lhs,
                                  core::TermId rhs);
@@ -5945,28 +6030,6 @@ LraImpliedRealEqualityProbeResult probe_lra_implied_real_equality(
   }
   return LraImpliedRealEqualityProbeResult{
       ExplainedInterfaceEquality{terms.mk_eq(pair.lhs, pair.rhs), std::move(reason)}, false};
-}
-
-LraImpliedRealEqualitiesResult lra_implied_real_equalities(
-    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& lra_assignments,
-    const std::vector<core::TermId>& shared_terms, const CheckSatOptions& options,
-    util::Statistics* statistics = nullptr) {
-  std::vector<ExplainedInterfaceEquality> equalities;
-  for (std::size_t i = 0; i < shared_terms.size(); ++i) {
-    for (std::size_t j = i + 1; j < shared_terms.size(); ++j) {
-      LraImpliedRealEqualityProbeResult probe = probe_lra_implied_real_equality(
-          terms, lra_atoms, prepared, lra_assignments,
-          TermPairKey{shared_terms[i], shared_terms[j]}, options, statistics);
-      if (probe.probe_limit_hit) {
-        return LraImpliedRealEqualitiesResult{std::move(equalities), true};
-      }
-      if (probe.equality.has_value()) {
-        equalities.push_back(std::move(probe.equality.value()));
-      }
-    }
-  }
-  return LraImpliedRealEqualitiesResult{std::move(equalities), false};
 }
 
 LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_pairs(
@@ -9268,6 +9331,12 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-exact-fallback-pairs", 0);
   statistics.set(":no.interface.lra-exact-fallback-skipped-pairs", 0);
   statistics.set(":no.interface.lra-exact-fallback-equalities", 0);
+  statistics.set(":no.interface.lra-model-filter-builds", 0);
+  statistics.set(":no.interface.lra-model-filter-full-pairs", 0);
+  statistics.set(":no.interface.lra-model-filter-candidate-pairs", 0);
+  statistics.set(":no.interface.lra-model-filter-pruned-pairs", 0);
+  statistics.set(":no.interface.lra-model-filter-unmapped-terms", 0);
+  statistics.set(":no.interface.lra-model-filter-conservative-pairs", 0);
   statistics.set(":no.interface.equality-rechecks", 0);
   statistics.set(":no.interface.euf-to-lra-candidates", 0);
   statistics.set(":no.interface.euf-to-lra-existing-atoms", 0);
@@ -9633,6 +9702,7 @@ CheckSatOutcome solve_qf_uf_lra(
     }
 
     std::vector<TermPairKey> candidate_final_scan_pairs;
+    std::vector<TermPairKey> lra_exact_candidate_pairs;
     std::vector<core::TermId> candidate_lra_implied_equalities;
     bool candidate_lra_implied_equalities_had_internal_model_equalities = false;
     std::vector<core::TermId> lra_implied_equalities_for_model;
@@ -9709,10 +9779,15 @@ CheckSatOutcome solve_qf_uf_lra(
         statistics.increment(":no.interface.lra-opportunistic-skipped-rounds");
       }
 
+      lra_exact_candidate_pairs = lra_model_equal_candidate_pairs(
+          *prepared_lra_theory_for_check, *checked_lra_tableau, shared_real_terms, statistics);
+
       if (options.qf_uflra_candidate_final_scan) {
+        const std::vector<TermPairKey> model_filtered_candidate_pairs =
+            intersect_sorted_term_pairs(candidate_final_scan_pairs, lra_exact_candidate_pairs);
         const std::vector<TermPairKey> fallback_pairs =
             unresolved_interface_pairs(prepared_flat_theory.value(), euf_check->closure, no_manager,
-                                       candidate_final_scan_pairs, statistics);
+                                       model_filtered_candidate_pairs, statistics);
         const LraImpliedRealEqualitiesResult implied_equalities =
             lra_implied_real_equalities_for_pairs(
                 terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
@@ -9759,7 +9834,7 @@ CheckSatOutcome solve_qf_uf_lra(
       } else {
         const std::vector<TermPairKey> fallback_pairs =
             unresolved_interface_pairs(prepared_flat_theory.value(), euf_check->closure, no_manager,
-                                       all_term_pairs(shared_real_terms), statistics);
+                                       lra_exact_candidate_pairs, statistics);
         const LraImpliedRealEqualitiesResult implied_equalities =
             lra_implied_real_equalities_for_pairs(
                 terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
@@ -9838,9 +9913,9 @@ CheckSatOutcome solve_qf_uf_lra(
                                              lra_implied_equalities_for_model);
           } else {
             const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
-                lra_implied_real_equalities(
+                lra_implied_real_equalities_for_pairs(
                     terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
-                    lra_assignments_for_check, shared_real_terms, options, &statistics);
+                    lra_assignments_for_check, lra_exact_candidate_pairs, options, &statistics);
             if (lra_implied_equalities_for_euf.probe_limit_hit) {
               statistics.increment(":no.interface.arrangement-failures");
               return CheckSatOutcome{
@@ -9865,9 +9940,9 @@ CheckSatOutcome solve_qf_uf_lra(
             statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
           }
           const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
-              lra_implied_real_equalities(terms, lra_atoms_for_check,
-                                          *prepared_lra_theory_for_check, lra_assignments_for_check,
-                                          shared_real_terms, options, &statistics);
+              lra_implied_real_equalities_for_pairs(
+                  terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                  lra_assignments_for_check, lra_exact_candidate_pairs, options, &statistics);
           if (lra_implied_equalities_for_euf.probe_limit_hit) {
             statistics.increment(":no.interface.arrangement-failures");
             return CheckSatOutcome{
@@ -9943,9 +10018,10 @@ CheckSatOutcome solve_qf_uf_lra(
           } else if (lra_implied_equalities_for_model_complete) {
             lra_implied_equalities_for_euf = lra_implied_equalities_for_model;
           } else {
-            const LraImpliedRealEqualitiesResult lra_implied_scan = lra_implied_real_equalities(
-                terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
-                lra_assignments_for_check, shared_real_terms, options, &statistics);
+            const LraImpliedRealEqualitiesResult lra_implied_scan =
+                lra_implied_real_equalities_for_pairs(
+                    terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                    lra_assignments_for_check, lra_exact_candidate_pairs, options, &statistics);
             if (lra_implied_scan.probe_limit_hit) {
               return CheckSatOutcome{
                   CheckSatResult::Unknown,
@@ -9970,9 +10046,10 @@ CheckSatOutcome solve_qf_uf_lra(
           if (candidate_lra_implied_equalities_had_internal_model_equalities) {
             statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
           }
-          const LraImpliedRealEqualitiesResult lra_implied_scan = lra_implied_real_equalities(
-              terms, lra_atoms_for_check, *prepared_lra_theory_for_check, lra_assignments_for_check,
-              shared_real_terms, options, &statistics);
+          const LraImpliedRealEqualitiesResult lra_implied_scan =
+              lra_implied_real_equalities_for_pairs(
+                  terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                  lra_assignments_for_check, lra_exact_candidate_pairs, options, &statistics);
           if (lra_implied_scan.probe_limit_hit) {
             return CheckSatOutcome{
                 CheckSatResult::Unknown,

@@ -347,6 +347,12 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-exact-fallback-pairs`
 - `:no.interface.lra-exact-fallback-skipped-pairs`
 - `:no.interface.lra-exact-fallback-equalities`
+- `:no.interface.lra-model-filter-builds`
+- `:no.interface.lra-model-filter-full-pairs`
+- `:no.interface.lra-model-filter-candidate-pairs`
+- `:no.interface.lra-model-filter-pruned-pairs`
+- `:no.interface.lra-model-filter-unmapped-terms`
+- `:no.interface.lra-model-filter-conservative-pairs`
 - `:no.interface.materialized-pairs`
 - `:no.interface.materialized-missing-pairs`
 - `:no.interface.equality-rechecks`
@@ -497,10 +503,15 @@ EUF spanning and exact LRA fallback sharing remain active, while
 optional `FixedEq`/`EqRow` poll. LRA otherwise first polls the checked tableau's
 `FixedEq` and `EqRow` rules. The `:no.interface.lra-opportunistic-*` counters
 split rule hits, reason literals, unmapped shared terms, lazy SAT atom delivery,
-clauses, and rechecks. After these cheap producers are quiescent,
-`:no.interface.lra-exact-fallback-pairs` counts unresolved pairs sent to both
-strict-separation probes, `:no.interface.lra-exact-fallback-skipped-pairs`
-counts pairs already resolved by SAT/EUF, and
+clauses, and rechecks. After these cheap producers are quiescent, the feasible
+tableau's `model_equal_classes()` partition removes cross-value pairs, which
+cannot be LRA-entailed. The `:no.interface.lra-model-filter-*` counters report
+partition builds, the unfiltered cross product, retained and pruned pairs, and
+conservative fallbacks for unmapped terms. Equal-value pairs are only candidates
+and still require exact proof. `:no.interface.lra-exact-fallback-pairs` counts
+unresolved retained pairs sent to strict-separation probes,
+`:no.interface.lra-exact-fallback-skipped-pairs` counts retained pairs already
+resolved by SAT/EUF, and
 `:no.interface.lra-exact-fallback-equalities` counts exact entailments found.
 These counters are cumulative across fixpoint rounds. A FixedEq/EqRow test with
 zero fallback pairs is the direct evidence that the cheap producer removed

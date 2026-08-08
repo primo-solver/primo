@@ -44,10 +44,11 @@ deterministic spanning set rather than all pairwise equalities in one class.
 `LraTableau::model_equal_classes()` separately implements the paper's linear
 model-value partition over caller-supplied shared variables. It hashes the full
 `DeltaRational` value, drops singleton classes, and returns deterministic
-candidate classes. The mixed coordinator does not currently consume this API:
-the existing model-equality experiment has its own query and mutation path.
-Keeping the API separate from `entailed_equalities()` is load-bearing because
-model coincidence is a conjecture, not a theory consequence.
+candidate classes. The mixed coordinator consumes this API as a
+necessary-condition filter before exact entailment probes; the separate
+model-equality experiment still has its own query and mutation path. Keeping
+the API separate from `entailed_equalities()` is load-bearing because model
+coincidence is a conjecture, not a theory consequence.
 
 After a feasible mixed-theory LRA check, `smt::solve_qf_uf_lra` maps shared Real
 terms to their tableau variables, requests these cheap entailments, and routes
@@ -58,11 +59,13 @@ clause, SAT is re-entered and both theories see the equality on the next round.
 
 These rules are deliberately incomplete. Once they and the EUF spanning
 equalities reach quiescence for the current SAT assignment, the default
-`final` path proves every still-unresolved shared Real pair by testing both
-strict separations. This exact fallback preserves completeness of the convex
-EUF+LRA combination while avoiding probes for equalities already established
-by EUF or the cheap LRA rules. The online paired-bound producer remains an
-additional early source; it is not the completeness mechanism.
+`final` path first removes pairs whose values differ in the current feasible
+LRA model, then proves every still-unresolved model-equal pair by testing both
+strict separations. An entailed equality must hold in the current model, so this
+filter preserves completeness while avoiding probes for cross-value pairs and
+equalities already established by EUF or the cheap LRA rules. The online
+paired-bound producer remains an additional early source; it is not the
+completeness mechanism.
 
 ## What the paper asks of the Simplex solver
 
@@ -85,9 +88,11 @@ the concrete model, so the delta component must participate in the key — using
 only the rational part would over-report equalities and hand the NO layer
 unsound propagations.
 
-This operation is cheap, but it is useful only inside the paper's explicit
-model-transition machinery. It is not the next convex-combination step and must
-not be substituted for entailment.
+This operation is cheap, but its result must not be substituted for entailment.
+Primo uses unequal model values only to reject impossible entailment candidates
+and still proves both strict orientations for every retained pair. Using equal
+model values as propagations belongs to the paper's explicit model-transition
+machinery and remains unimplemented.
 
 ### 2. Opportunistic equality propagation (§5.1)
 
@@ -312,6 +317,59 @@ path with zero mapping fallbacks and zero context conflicts. This accepts the
 constant-factor repair; it does not close the remaining Z3 gap or remove the
 pair cross product.
 
+## Model-value filtering of the exact fallback
+
+The next exact-scan optimization uses de Moura and Bjørner, *Model-based Theory
+Combination*, Sections 4 and 5. Section 4 restricts model-guided equality case
+splits to shared terms equal in a current component model. Section 5 observes
+that a Simplex model is the tableau assignment `beta` and builds its equal-value
+classes by hashing values in expected linear time.
+
+**Implemented subset.** Primo uses the current feasible LRA model only as a
+necessary-condition filter for its existing complete convex entailment scan. If
+the current LRA constraints entail `lhs = rhs`, then `lhs` and `rhs` have the
+same value in every feasible LRA model, including the checked tableau model.
+Pairs with different current values therefore cannot be LRA-entailed and need
+no strict-separation probe. Every retained pair still has to make both
+`lhs < rhs` and `rhs < lhs` conflict before Primo publishes an equality. This is
+not `M-Propagate`: accidental model equality remains a candidate, never a
+theory consequence.
+
+**Ownership and data structures.** The mixed SMT coordinator maps shared Real
+`TermId`s through `PreparedLraTheory::variables_by_term`, asks the already
+checked `LraTableau` for `model_equal_classes()`, and expands only those classes
+into canonical `TermPairKey`s. It computes the partition once per convex round
+and reuses it for the normal exact fallback and any later model-reconstruction
+fallback. A shared term missing from the prepared map is paired conservatively
+with every other shared term; missing metadata may cost time but cannot remove
+an entailment probe.
+
+**Invariants and proof obligations.** The tableau must already have accepted
+the complete current arithmetic assignment, including true shared equalities.
+The full `DeltaRational` value, including its infinitesimal component, defines a
+model class. Candidate-final care filtering may intersect this set but the
+default complete path may not remove any model-equal pair. The strict-probe
+oracle and its reason construction are unchanged. The candidate partition is
+recomputed after every SAT re-entry because the accepted assignment and model
+may have changed.
+
+**Complexity expectation.** Partition construction is expected linear in the
+number of mapped shared variables. Pair expansion is proportional to the sum of
+the squares of model-class sizes instead of the square of all shared terms. The
+worst case remains quadratic when all shared values coincide; Section 5.2's
+model diversification is still needed for that case. Each retained pair still
+copies and replays one tableau probe context, so this step reduces the number of
+copies rather than changing their individual cost.
+
+**Tests and counters.** A focused exact-mode regression fixes three shared Real
+terms to different values and requires all three cross-class pairs to be pruned
+without a probe. Existing paired-bound and one-sided-bound regressions require,
+respectively, that an entailed model-equal pair is proved and that an accidental
+model-equal pair is probed but not propagated. The
+`:no.interface.lra-model-filter-*` counters expose builds, full pairs,
+candidates, pruned pairs, unmapped terms, and conservative pairs. Differential
+QF_UFLRA fuzzing remains mandatory before benchmark evaluation.
+
 ## Remaining order of work
 
 1. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
@@ -320,9 +378,10 @@ pair cross product.
 2. **Add `EqOffsetRows`, then `EqRows`.** Each rule needs its own explanation
    invariant, soundness-oracle tests, counters, and a case where it removes
    exact strict-separation probes.
-3. **Integrate the implemented model partition only with the paper's shared
-   model transition state, then add freedom-interval mutation.** Model equality
-   must remain distinct from entailed propagation.
+3. **Add the paper's shared model transition state, then freedom-interval
+   mutation.** The partition is already safe as an exact-candidate filter, but
+   using equal classes to drive SAT choices still requires this state. Model
+   equality must remain distinct from entailed propagation.
 
 ## Combination contract
 

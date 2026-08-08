@@ -320,9 +320,12 @@ Implemented now:
   the EUF child from observing the atom. This is an experimental IPASIR-UP
   integration scaffold, not a new EUF algorithm and not full model-based theory
   combination.
-  Online mode retains a complete final `lra_implied_real_equalities`
-  strict-bound fallback over pairs not already resolved by EUF or lazy
-  entailment. A previous optimization skipped the complete fallback after the online
+  Online mode retains a complete final strict-bound fallback over candidate
+  pairs not already resolved by EUF or lazy entailment. The checked LRA
+  tableau's model-value partition first removes pairs with unequal current
+  values: an LRA-entailed equality must hold in that feasible model. Retained
+  model-equal pairs still require both strict probes. A previous optimization
+  skipped the complete fallback after the online
   producer materialized a paired-bound candidate and reran it only when final
   separation failed. Full-corpus evaluation found that criterion unsound:
   separation can succeed while an unscanned LRA-implied equality exposes a
@@ -338,10 +341,11 @@ Implemented now:
   found by that fallback through the existing interface-equality SAT clause
   machinery before accepting the final arrangement. Final-check LRA sharing
   additionally consumes `FixedEq` and `EqRow` entailments from the checked
-  tableau. These rules are deliberately polled at quiescence rather than on
+  tableau. These rules and the model-value filter are deliberately polled at
+  quiescence rather than on
   every bound change, keeping their map/vector work off the SAT callback hot
-  path. `EqOffsetRows`, `EqRows`, model partitioning, and freedom-interval
-  mutation remain unimplemented. The paired-bound rule is therefore still the
+  path. `EqOffsetRows`, `EqRows`, and freedom-interval mutation remain
+  unimplemented. The paired-bound rule is therefore still the
   stable online LRA-to-EUF propagation subset; this is not the full model-guided
   transition system.
   The optional online EUF child does not replace the final EUF check: after SAT

@@ -72,9 +72,11 @@ source.
    `--no-qf-uflra-fixed-elimination`; pure QF_LRA remains unchanged. Row-bound
    propagation still requires its own mixed-path evaluation before any default
    change.
-8. **Complete at the API boundary:** retain `model_equal_classes()` as a
-   separate, currently unconsumed LRA API. Any future use belongs to the paper's
-   shared model/assumption mechanism, not this convex entailment path.
+8. **Complete as an exact-candidate filter:** retain `model_equal_classes()` as
+   a separate LRA model API and use cross-value inequality only to prune exact
+   entailment candidates. Equal-value pairs still require both strict probes;
+   sharing them directly belongs to the paper's shared model/assumption
+   mechanism and remains unimplemented.
 
 ## Post-Merge Review Status
 

@@ -136,10 +136,13 @@ until no guarded clause is added. EUF returns a deterministic spanning set for
 each shared equality class, which is sufficient because equality is transitive.
 LRA first polls the feasible tableau's sound `FixedEq` and `EqRow` rules; each
 result carries its bound-blocking literals. The equality atom is created only
-when one of these producers reports it. The default path then tests both strict
-orders for every still-unresolved shared Real pair. Those exact probes make the
-LRA producer complete even though the two cheap tableau rules are not. A new
-clause restarts SAT, and the next round asserts the equality to both theories.
+when one of these producers reports it. The default path then partitions shared
+Real terms by value in the current feasible LRA model and tests both strict
+orders for every still-unresolved pair inside one model class. Cross-value
+pairs cannot be LRA-entailed. Those exact probes make the LRA producer complete
+even though the two cheap tableau rules are not; model-equal pairs are still
+candidates rather than consequences. A new clause restarts SAT, and the next
+round asserts the equality to both theories.
 This is the standard convex closure argument for the supported EUF+LRA subset;
 model-equal conjectures and arrangement guesses are not part of it.
 
@@ -150,8 +153,9 @@ tableau, adds one row for `lhs - rhs` before the first checkpoint, and replays t
 current assignment once. It then checks `lhs - rhs < 0` and `lhs - rhs > 0` as
 separate checkpointed bounds on that context. Both checks must conflict, and the
 synthetic bound literal is removed from their combined explanation. This is a
-local constant-factor improvement to the complete convex oracle, not the shared
-model state or transition system of de Moura and Bjorner.
+local constant-factor improvement to the complete convex oracle. The subsequent
+model-value filter reduces how many such contexts are needed, but neither
+change is the shared model state or transition system of de Moura and Bjorner.
 
 Default final-mode LRA-to-EUF sharing is now consumer-aware as a classifier.
 When the LRA scan finds an entailed shared Real equality, `solve_qf_uf_lra`
@@ -191,8 +195,11 @@ fallback have both been removed from this path:
 materialization. `:no.online.shared-real-pairs` is only a diagnostic
 cross-product count.
 
-Online mode retains the exact final `lra_implied_real_equalities` strict-bound
-fallback over pairs not already resolved by EUF or cheap LRA entailment. The
+Online mode retains the exact final strict-bound fallback over model-equal pairs
+not already resolved by EUF or cheap LRA entailment. The model partition is a
+sound necessary-condition filter because every LRA entailment holds in the
+checked feasible model; each retained pair still needs both strict conflicts.
+The
 rejected candidate-only experiment skipped the complete fallback after
 materializing a paired-bound candidate and reran it only if final
 separation failed. Two full-corpus MathSAT rows demonstrated that this is
@@ -202,8 +209,10 @@ narrow and lazy, but it is not a completeness replacement for the exact
 fallback. Eliminating that fallback requires a complete shared-model validation
 operation of the kind still missing from the model-based paper checklist.
 
-Default `final` propagation enumerates all shared pairs but sends only
-unresolved pairs to the exact probe fallback. The experimental
+Default `final` propagation builds the checked LRA model partition in expected
+linear time and expands only equal-value classes before removing pairs already
+resolved by EUF. The worst case remains quadratic when every value coincides.
+The experimental
 `--qf-uflra-candidate-final-scan` option narrows this first fallback. That option
 builds a SAT-assignment-local candidate set from EUF care pairs, shared Real
 constants that co-occur inside one EUF atom, and pairs whose two non-strict LRA
@@ -333,6 +342,12 @@ coordinator publishes:
 - `:no.interface.lra-exact-fallback-pairs`
 - `:no.interface.lra-exact-fallback-skipped-pairs`
 - `:no.interface.lra-exact-fallback-equalities`
+- `:no.interface.lra-model-filter-builds`
+- `:no.interface.lra-model-filter-full-pairs`
+- `:no.interface.lra-model-filter-candidate-pairs`
+- `:no.interface.lra-model-filter-pruned-pairs`
+- `:no.interface.lra-model-filter-unmapped-terms`
+- `:no.interface.lra-model-filter-conservative-pairs`
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.euf-to-lra-candidates`
 - `:no.interface.euf-to-lra-existing-atoms`
@@ -559,10 +574,12 @@ current profiling result:
    selected candidate.
 4. Future slices may add model-equality guesses that survive the mutation filter
    or a care-ranked equality source to the same candidate-first path.
-5. Keep the full shared-pair cross product as a counter and fallback
-   diagnostic, not as the set of observed SAT variables.
-6. Online mode retains the complete final `lra_implied_real_equalities` fallback
-   over pairs unresolved by EUF and the cheap LRA rules. The attempted
+5. Keep the full shared-pair cross product as a counter, not as the set of
+   observed SAT variables or exact probe contexts.
+6. Online mode retains the complete final exact fallback over model-equal pairs
+   unresolved by EUF and the cheap LRA rules. Cross-value pairs are rejected by
+   the checked feasible LRA model; retained pairs still require both strict
+   probes. The attempted
    skip-on-materialization policy was rejected after full-corpus wrong answers
    showed that successful separation is not a complete shared model check. The
    skip, fallback, and capped-scan compatibility counters remain zero until a
