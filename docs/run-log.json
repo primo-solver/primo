@@ -24023,7 +24023,7 @@
       "recorded_at": "2026-08-08",
       "kind": "profile",
       "scope": "Local before/after profile of per-pair prepared-tableau reuse in the complete convex QF_UFLRA equality fallback",
-      "commit": "working tree based on dc5c99a; exact implementation commit pending local gates",
+      "commit": "6ffc19b",
       "branch": "convex-no-qflra-integration",
       "environment": {
         "type": "local",
@@ -24048,7 +24048,16 @@
         "candidate_gprof": "LraTableau::pivot 16.67% self over 15104 calls; LraTableau::check 1479 calls; the previous per-orientation PreparedLraTheory reconstruction no longer appears as the exact-pair probe path"
       },
       "artifacts": "/tmp/primo-gprof-exact-dc5c99a/gmon.out and /tmp/primo-gprof-after-probe-reuse/gmon.out (local, ephemeral)",
-      "evidence_status": "local-prototype-needs-slurm-fuzz-and-sample",
+      "local_verification": {
+        "make_check": "13/13 tests passed",
+        "make_asan_test": "13/13 tests passed; focused ASan QF_LRA/QF_UFLRA test rerun after final fail-loud policy change",
+        "make_lint": "passed",
+        "make_docs": "passed",
+        "clang_tidy": "whole-tree non-generated C++ pass completed without actionable diagnostics",
+        "include_cleaner": "whole-tree advisory pass reported existing baseline debt and no diagnostic in either changed C++ file",
+        "code_review": "no blocking issue after changing an impossible accepted-assignment replay conflict from reconstruction fallback to fail-loud behavior"
+      },
+      "evidence_status": "local-validated-needs-slurm-fuzz-and-sample",
       "outcome": "The narrow reuse prototype halves this representative profiled runtime without changing the answer, SAT search, pair count, probe count, or equality count. It addresses repeated normalization and orientation setup only; quadratic pair enumeration and per-pair tableau work remain."
     }
   ]
