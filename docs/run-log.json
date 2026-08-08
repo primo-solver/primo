@@ -23929,6 +23929,42 @@
       },
       "conclusion": "Pure QF_LRA behaviour is preserved exactly: 89 of 89 commonly-solved files bit-identical on search counters, 0 answer differences anywhere. Consistent with the code, which has no path doing anything main does not.",
       "method_note": "Counter comparisons across runs are only meaningful on instances that COMPLETE. A timeout is not a measurement, it is a snapshot of wherever the search had reached. This is the second time in one session that artifact produced a false alarm -- the first was the supposed node-contention regression on the full division. Restricting to completed runs is the fix; explaining the difference away is not."
+    },
+    {
+      "id": "2026-08-08-convex-no-main-integration-gate-121874",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "Exact-commit correctness gate after merging the QF_LRA equality-sharing mainline into the convex QF_UFLRA Nelson-Oppen branch",
+      "commit": "3dee8ca",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_id": "121874",
+        "binary": "Release, git 3dee8ca, CaDiCaL cadical-3.0.0-7b99c07",
+        "workspace": "Prepared with scripts/slurm_prepare_benchmark_workspace.py in archive/reuse-dependencies mode; --check-only verified the exact revision, linkage, CaDiCaL, and Z3 immediately before submission"
+      },
+      "commands": {
+        "seed_preflight": "python3 scripts/check_solver_seed_corpus.py --seeds benchmarks/seeds/qf_uflra --solver ./build-slurm-rel/primo --ref z3 --timeout 10 --out <artifact>/summary.csv",
+        "generated_gate": "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FUZZ_SEED_BASE=2026081500, and PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-integration-default-3dee8ca scripts/slurm_qf_uflra_fuzz_gate.sbatch"
+      },
+      "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+      "reference": "Z3 5.0.0",
+      "inputs": {
+        "tracked_seeds": 10,
+        "generated_cases": 3000,
+        "shards": 4,
+        "cases_per_shard": 750,
+        "solver_timeout_seconds": 5
+      },
+      "results": {
+        "tracked_seeds": "10 PASS, 0 disagreement, 0 timeout, 0 crash, 0 unsupported",
+        "generated": "3000 PASS, 0 wrong answer, 0 timeout, 0 crash, 0 unsupported",
+        "slurm_state": "all four array tasks COMPLETED with exit code 0 in 18 seconds"
+      },
+      "artifacts": "remote:slurm-results/qf_uflra-integration-seeds-3dee8ca/ and remote:slurm-results/qf_uflra-integration-default-3dee8ca/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The integrated default convex profile passed its exact-commit deterministic seed and generated merge gates. The known-unsound --nelson-oppen-prop=off ablation was intentionally excluded and remains a merge blocker recorded in docs/qf-uflra-convex-no-merge-plan.md."
     }
   ]
 }

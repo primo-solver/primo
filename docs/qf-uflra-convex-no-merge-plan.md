@@ -76,7 +76,7 @@ source.
    separate, currently unconsumed LRA API. Any future use belongs to the paper's
    shared model/assumption mechanism, not this convex entailment path.
 
-## Post-Merge Review TODOs
+## Post-Merge Review Status
 
 These are ordered by correctness first, then performance.
 
@@ -98,10 +98,12 @@ These are ordered by correctness first, then performance.
 4. **Correct stale option and allocation claims.** Documentation must not claim
    that `off` preserves model reconstruction or that full pair vectors are used
    only by explicit model-equality branching.
-5. **Revalidate the integrated commit.** Run focused mixed and pure-theory
-   tests, `make check`, ASan, lint, docs, and a fresh QF_UFLRA merge fuzz gate.
-   Existing jobs validate the pre-integration commits and remain historical
-   evidence rather than validation of this merge.
+5. **Complete for integration commit `3dee8ca`:** lint, `make check`, ASan,
+   documentation, whole-tree `clang-tidy`, 10 tracked QF_UFLRA seeds, and a
+   3,000-case generated mixed gate all passed. SLURM job 121874 completed four
+   750-case shards with zero wrong answers, crashes, or timeouts. This validates
+   the default convex profile; it does not validate the known-unsound `off`
+   ablation.
 
 ## Ownership and Invariants
 
