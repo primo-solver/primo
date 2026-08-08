@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <set>
+#include <unordered_set>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -936,7 +937,7 @@ std::vector<std::vector<LraVarId>> LraTableau::model_equal_classes(
   // combination layer that case-splits on this must not depend on hash order.
   std::unordered_map<DeltaRational, std::size_t, DeltaRationalHash> class_of_value;
   std::vector<std::vector<LraVarId>> classes;
-  std::set<LraVarId> seen;
+  std::unordered_set<LraVarId> seen;
 
   for (const LraVarId var : shared) {
     if (!seen.insert(var).second) {
@@ -968,7 +969,7 @@ std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
 
   // Deduplicated, and in the caller's order so the output is deterministic.
   std::vector<LraVarId> vars;
-  std::set<LraVarId> in_shared;
+  std::unordered_set<LraVarId> in_shared;
   for (const LraVarId var : shared) {
     if (in_shared.insert(var).second) {
       vars.push_back(var);

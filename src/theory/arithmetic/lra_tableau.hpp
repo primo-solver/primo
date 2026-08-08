@@ -289,7 +289,8 @@ class LraTableau {
   // Scoped to `shared` on purpose. The combination layer only ever cares about
   // variables occurring in more than one theory, so partitioning the whole
   // tableau would compute a partition of thousands of variables to use a
-  // handful of it. Cost is O(|shared|) expected, independent of tableau size.
+  // handful of it. Cost is O(|shared|) expected -- hashed on the delta-rational
+  // model value and on the variable id -- independent of tableau size.
   //
   // **These are conjectures, not entailments.** Two variables sharing a model
   // value need not be equal in every model; that is exactly why the paper's
@@ -346,8 +347,10 @@ class LraTableau {
   // recovers the rest by transitivity, and a quadratic blow-up here would be
   // paid on every call.
   //
-  // Const and allocation-light: this is polled at check points, never hooked
-  // into pivot() or assert_*. Keeping Nelson-Oppen work off the LRA hot path is
+  // Const, and polled at check points -- never hooked into pivot() or
+  // assert_*. It is not allocation-free: each candidate row builds two small
+  // variable vectors plus a reason vector, so the cost is O(shared candidates
+  // x row length), paid per check rather than per pivot. Keeping Nelson-Oppen work off the LRA hot path is
   // deliberate -- see docs/nelson-oppen-qf-lra-regression.md for what happened
   // last time it was not.
   std::vector<EntailedEquality> entailed_equalities(const std::vector<LraVarId>& shared) const;

@@ -64,12 +64,6 @@ enum class ModelEqualityBranchPolicy {
   Adaptive,
 };
 
-// Mirrors theory::arithmetic::LraTableau::PivotingRule -- kept as a
-// separate check_sat.hpp-local enum (translated at the wiring point, see
-// lra_pivoting_rule_from_options in check_sat.cpp) rather than reused
-// directly, the same way EufExplainSearchMode is distinct from
-// theory::equality::FlatExplanationSearchMode -- keeps this header free
-// of theory-layer includes.
 // Which formulas reach the mixed EUF/LRA solver rather than the pure QF_LRA
 // one. This is a *dispatch* policy, not a theory setting.
 //
@@ -92,6 +86,12 @@ enum class MixedDispatchMode {
   Wide,
 };
 
+// Mirrors theory::arithmetic::LraTableau::PivotingRule -- kept as a
+// separate check_sat.hpp-local enum (translated at the wiring point, see
+// lra_pivoting_rule_from_options in check_sat.cpp) rather than reused
+// directly, the same way EufExplainSearchMode is distinct from
+// theory::equality::FlatExplanationSearchMode -- keeps this header free
+// of theory-layer includes.
 enum class LraPivotingRule {
   Bland,
   Dantzig,
