@@ -104,7 +104,13 @@ These are ordered by correctness first, then performance.
    model-equal pairs still require both strict conflicts. Job 121888 passed the
    tracked seeds and 3,000 generated exact-mode cases. Job 121892 preserved the
    45-file result matrix and reduced default PAR2 from 503.99 to 416.44 and
-   exact fallback pairs from 295,539 to 173,801.
+   exact fallback pairs from 295,539 to 173,801. Full 1,284-file jobs 121894 and
+   121902 then found zero wrong answers or solved-solved Z3 disagreements:
+   default solved 1,123 with 160 timeouts, while candidate-final solved 1,153
+   with 130 timeouts. Both profiles reported the same one unsupported negated
+   Real equality. Candidate-final's exact current option set subsequently
+   passed 10 tracked seeds and 3,000 generated mixed cases against Z3 in job
+   121910 with no disagreement, timeout, crash, or unsupported case.
 4. **Fail loudly on a missing mixed-dispatcher reason.** Returning `0` before
    streaming a reason can turn bookkeeping loss into an empty or malformed
    IPASIR-UP reason. Assert the ownership/reason invariant and add a lazy fresh

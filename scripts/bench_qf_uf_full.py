@@ -91,7 +91,9 @@ def run_solver(command: list[str], path: Path, timeout: float) -> dict[str, obje
     answer = first_line if first_line in ANSWERS else ""
     if timed_out:
         status = "timeout"
-    elif exit_code != 0 and not answer:
+    elif answer == "unsupported":
+        status = "unsupported"
+    elif exit_code != 0 or not answer:
         status = "error"
     else:
         status = "ok"

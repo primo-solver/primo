@@ -384,6 +384,25 @@ seconds. The candidate-final profile also preserved all rows and improved PAR2
 from 386.682985 to 374.066642. Both profiles reported zero unmapped terms,
 conservative pairs, probe mapping fallbacks, or probe-context conflicts.
 
+The subsequent full `sandbox/non-incremental/QF_UFLRA` sanity run used all
+1,284 files at five seconds per row in SLURM jobs 121894 and 121902. Default
+solved 1,123 files, timed out on 160, and reported one unsupported negated Real
+equality; candidate-final solved 1,153, timed out on 130, and reported the same
+unsupported row. Their PAR2 totals were 2043.045990 and 1486.812553. Neither
+profile had an error, crash, wrong declared-status answer, or disagreement on
+any row also solved by the reused Z3 run. The unsupported row also timed out in
+Z3 at five seconds and is a supported-fragment limitation, not evidence about
+the model-value filter. This accepts the filter as full-corpus sanity checked;
+it does not make candidate-final the default or close the remaining performance
+gap to Z3's 1,234 solved rows.
+
+Because job 121888 exercised the exact/default option rather than
+candidate-final, the option-specific prerequisite was closed separately before
+finalizing this evidence. SLURM job 121910 passed the same 10 tracked seeds and
+3,000 fresh mixed generated cases with
+`--qf-uflra-candidate-final-scan`: 1,852 SAT and 1,148 UNSAT, all matching Z3,
+with no timeout, crash, unsupported result, disagreement, or bug artifact.
+
 ## Remaining order of work
 
 1. **Evaluate row-bound propagation in the mixed path.** Its relevant measure

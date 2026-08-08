@@ -256,6 +256,14 @@ report based on this archive must include the SLURM job id, timeout, commit,
 merged CSV path, family summary, unsupported count, wrong-answer count, and
 comparison against the previous full-archive Primo run.
 
+Harness status is stricter than recognized stdout. An explicit `unsupported`
+answer has status `unsupported`, including Primo's normal exit code 2 for an
+unsupported fragment. A nonzero exit with any other answer, or a zero exit
+without a recognized answer, has status `error`. Only a recognized answer from
+a normal exit has status `ok`. The same classification is used by
+`scripts/bench_interesting_qf_uf.py` and is covered by the Python tests run by
+`make check`.
+
 Use `scripts/render_benchmark_matrix_html.py` to turn one or more merged
 benchmark CSVs into the compact detailed-results table used for solver/config
 comparisons:
