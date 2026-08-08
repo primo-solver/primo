@@ -2,9 +2,9 @@
 #undef NDEBUG
 #endif
 
-#include <functional>
 #include <algorithm>
 #include <cassert>
+#include <functional>
 #include <utility>
 #include <vector>
 
@@ -1650,8 +1650,16 @@ void entailed_equalities_emits_a_spanning_set_not_all_pairs() {
 // rather than asserted, because what the rules miss is exactly what the
 // combination layer has to case-split on.
 
-// Requires a slack row `s = x - y` to already exist. Uses push/pop, so the
-// tableau is left exactly as it was found.
+// Requires a slack row `s = x - y` to already exist.
+//
+// push/pop restores BOUNDS ONLY -- not the assignment and not the basis (see
+// LraTableau's class comment on bounds-only backtracking; pivots are trailed
+// only under PivotingRule::Soi). Verified: on the s = x - y tableau the probe
+// moves the slack out of the basis and x into it. So the tableau is left
+// bound-equivalent but with an arbitrary basis, and since entailed_equalities
+// is basis-DEPENDENT -- which is the whole point of
+// fixed_elimination_closes_the_eqrow_basis_gap below -- a caller must not
+// assume a later query sees the basis it started with.
 bool equality_is_entailed(LraTableau& tableau, LraVarId slack, int probe_lit) {
   const DeltaRational positive{Rational(0), Rational(1)};   // s >= +delta, i.e. s > 0
   const DeltaRational negative{Rational(0), Rational(-1)};  // s <= -delta, i.e. s < 0
@@ -1682,15 +1690,15 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
 
   // Each case builds x, y, two helper variables, and the slack s = x - y used
   // only by the oracle. `setup` applies the bounds that make the case.
-  const auto run_case = [&](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId)>&
-                                setup) {
+  const auto run_case =
+      [&](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId, LraVarId)>& setup) {
     LraTableau tableau(LraTableau::PivotingRule::Sparse);
     const LraVarId x = tableau.add_variable();
     const LraVarId y = tableau.add_variable();
     const LraVarId d = tableau.add_variable();
     const LraVarId slack = tableau.add_variable();
     tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
-    setup(tableau, x, y, d);
+    setup(tableau, x, y, d, slack);
     assert(!tableau.check().has_value());  // cases are satisfiable by construction
 
     // Each case has exactly one candidate pair, {x, y}, so the single slack
@@ -1708,21 +1716,21 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
   };
 
   // 1. Both pinned to the same value: FixedEq should fire.
-  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId, LraVarId) {
     assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
     assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
     assert(!t.assert_lower(y, rat(3), Lit{3}).has_value());
     assert(!t.assert_upper(y, rat(3), Lit{4}).has_value());
   });
   // 2. Pinned to different values: nothing entailed, nothing reported.
-  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId, LraVarId) {
     assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
     assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
     assert(!t.assert_lower(y, rat(8), Lit{3}).has_value());
     assert(!t.assert_upper(y, rat(8), Lit{4}).has_value());
   });
   // 3. Only one side pinned: not entailed.
-  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId, LraVarId) {
     assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
     assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
     assert(!t.assert_lower(y, rat(0), Lit{3}).has_value());
@@ -1737,14 +1745,12 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
   //    see fixed_elimination_closes_the_eqrow_basis_gap below, which shows the
   //    same constraints yielding the equality once the fixed slack is pivoted
   //    out of the basis.
-  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId) {
-    // slack is variable 3 in run_case's construction: x=0, y=1, d=2, slack=3.
-    const LraVarId slack = 3;
+  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId, LraVarId slack) {
     assert(!t.assert_lower(slack, rat(0), Lit{11}).has_value());
     assert(!t.assert_upper(slack, rat(0), Lit{12}).has_value());
   });
   // 5. Unconstrained: not entailed.
-  run_case([](LraTableau&, LraVarId, LraVarId, LraVarId) {});
+  run_case([](LraTableau&, LraVarId, LraVarId, LraVarId, LraVarId) {});
 
   // The rules fired where they should have, and nothing unsound came back.
   assert(reported_total >= 1);
@@ -1806,9 +1812,10 @@ void the_entailment_oracle_is_itself_correct() {
   assert(!tableau.check().has_value());
   assert(equality_is_entailed(tableau, slack, 200));
 
-  // And the oracle must leave the tableau usable afterwards.
+  // The oracle must leave the tableau usable -- bound-equivalent, so the same
+  // queries still answer, even though the basis may have moved under it.
   assert(!tableau.check().has_value());
-  assert(tableau.entailed_equalities({x, y}).size() == 1);
+  assert(equality_is_entailed(tableau, slack, 300));
 }
 
 }  // namespace
