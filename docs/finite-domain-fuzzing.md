@@ -1,0 +1,58 @@
+# Finite-Domain Fuzzing
+
+Primo has a dedicated finite-domain differential fuzzer because general random
+QF_UFLRA generation does not reliably construct finite-domain choices together
+with pairwise value disequalities. A 3,000-case mixed campaign missed a valid
+CPAchecker input where raw finite-domain AMO clauses reintroduced Real equality
+after the lowering pass. Counting generated formulas without checking mechanism
+activation was therefore insufficient evidence.
+
+## Generator contract
+
+`scripts/finite_domain_fuzz.py` allocates cases deterministically across QF_UF
+and QF_UFLRA, seven scenarios, and SAT/UNSAT verdicts. The scenarios cover flat
+and nested choices, residual choices, observed value equalities, nullary
+`define-fun` aliases, shared domains, and transitive domain equalities. A seed
+randomizes domain size and presentation within each slot; it cannot remove a
+scenario from a sufficiently large campaign.
+
+Each verdict is known from construction. Primo is checked against that verdict
+and external references. QF_UFLRA cases contain both Real arithmetic and
+uninterpreted applications. The fuzzer runs Primo with `--stats` and requires
+positive finite-domain AMO activation for every solved case. QF_UFLRA cases
+also require Real-equality lowering and mixed-solver dispatch. Strong/default
+profiles may additionally require nonzero aggregate post-AMO activation;
+raw-only profiles intentionally do not.
+
+The result directory contains generated cases, copied failures, `metadata.json`,
+and `summary.csv`. Metadata is written with status `running` before solver
+execution. Every CSV row is appended, flushed, and synced immediately, so a
+terminated SLURM task leaves a countable prefix rather than an apparently clean
+empty result. `scripts/summarize_fuzz_results.py` reports expected versus
+completed rows, scenario counts, and aggregate activation counters.
+
+## Permanent gates
+
+`make fuzz-finite-domain` runs a bounded local smoke against Z3. It is useful for
+development but is not merge-grade evidence.
+
+The standard `scripts/slurm_qf_uflra_fuzz_gate.sbatch` keeps its 3,000 general
+mixed cases and adds 1,000 finite-domain cases: 500 strong-profile QF_UF and 500
+default-profile QF_UFLRA. Both finite-domain portions compare against Z3 and
+cvc5. `scripts/slurm_finite_domain_fuzz_gate.sbatch` is the focused profile
+matrix for finite-domain or preprocessing changes; it covers QF_UF strong and
+raw-only profiles plus QF_UFLRA default, strong, and raw-only profiles.
+
+The compact seed
+`benchmarks/seeds/qf_uflra/finite_real_domain_amo_unsat.smt2` keeps the escaped
+Real-domain/AMO interaction in YinYang mutation campaigns. Large industrial
+witnesses remain benchmark inputs rather than mutation seeds.
+
+## Acceptance
+
+Unsupported valid input, crashes, wrong answers, reference disagreements,
+missing scenarios, incomplete metadata, missing rows, or absent required
+activation fail the gate. Solver timeouts are counted separately and do not by
+themselves establish a correctness defect. Every merge-grade run must record
+the exact commit, commands, seeds, references, counts, SLURM job IDs, and
+artifact paths in `docs/run-log.json`.

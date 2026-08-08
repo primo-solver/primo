@@ -864,6 +864,12 @@ example, the experimental mixed callback profile uses
 `--nelson-oppen-prop=online --qf-uflra-online-euf`. The mutation gate's task 2
 uses that same profile. Submit only array task 2 when the default and
 candidate-final mutation profiles are not part of the current experiment.
+Every standard mixed gate also runs dedicated finite-domain shards: 500 QF_UF
+cases under strong preprocessing and 500 default-profile QF_UFLRA cases. These
+cases have construction-known answers, compare with Z3 and cvc5, and fail when
+the expected finite-domain, Real-equality-lowering, or mixed-dispatch counters
+do not fire. `scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
+default/strong/raw-only profile matrix. See [](finite-domain-fuzzing.md).
 Before mutation, `scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch` runs
 `scripts/check_solver_seed_corpus.py` on every compact QF_UFLRA mutation seed
 with the exact task options and Z3 reference. Any disagreement, timeout,
@@ -892,7 +898,8 @@ separately after material changes to convex QF_UFLRA combination; their current
 runtime must not prevent the mutation campaign from starting.
 `scripts/qf_uflra_smoke_fuzz.py` flushes each case result immediately so SLURM
 stdout is a durable progress record even before the final `summary.csv` is
-written.
+written. The dedicated finite-domain fuzzer is stricter: it appends and fsyncs
+each CSV row and writes a running metadata record before invoking any solver.
 
 ### The remote sanitizer build
 

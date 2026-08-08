@@ -107,10 +107,14 @@ These are ordered by correctness first, then performance.
    exact fallback pairs from 295,539 to 173,801. Full 1,284-file jobs 121894 and
    121902 then found zero wrong answers or solved-solved Z3 disagreements:
    default solved 1,123 with 160 timeouts, while candidate-final solved 1,153
-   with 130 timeouts. Both profiles reported the same one unsupported negated
-   Real equality. Candidate-final's exact current option set subsequently
+   with 130 timeouts. Both profiles reported the same one unsupported row.
+   Subsequent investigation showed that row is valid QF_UFLRA: finite-domain
+   AMO clauses were appended after Real-equality lowering. The full-corpus
+   result is therefore marked for revalidation, not accepted correctness
+   evidence. Candidate-final's exact current option set subsequently
    passed 10 tracked seeds and 3,000 generated mixed cases against Z3 in job
-   121910 with no disagreement, timeout, crash, or unsupported case.
+   121910 with no disagreement, timeout, crash, or unsupported case, but that
+   generator had no finite-Real-domain scenario or activation requirement.
 4. **Fail loudly on a missing mixed-dispatcher reason.** Returning `0` before
    streaming a reason can turn bookkeeping loss into an empty or malformed
    IPASIR-UP reason. Assert the ownership/reason invariant and add a lazy fresh
@@ -123,8 +127,10 @@ These are ordered by correctness first, then performance.
    documentation, whole-tree `clang-tidy`, 10 tracked QF_UFLRA seeds, and a
    3,000-case generated mixed gate all passed. SLURM job 121874 completed four
    750-case shards with zero wrong answers, crashes, or timeouts. That run
-   validated the default convex profile but excluded the then-unsound `off`
-   ablation; the repaired exact/`off` profile has separate evidence in item 1.
+   exercised the default convex profile but did not cover the later-discovered
+   finite-domain/Real-lowering interaction; it excluded the then-unsound `off`
+   ablation, whose repaired exact profile has separate historical evidence in
+   item 1.
 
 ## Ownership and Invariants
 

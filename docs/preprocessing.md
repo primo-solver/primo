@@ -598,16 +598,21 @@ machinery already handles, and CDCL branching over the two `Le` atoms
 explores `t1<t2` vs `t1>t2` for free, with no bespoke case-split code
 anywhere.
 
-This lowering runs once, as the very last step of the preprocessing
-pipeline, immediately before the `has_equality`/`has_arithmetic` theory
-dispatch. Running it *last* (rather than at parse time, where it used to
-happen) means every other preprocessing pass -- solve-eqs, equality
-bridging, forced-atom propagation, unit-equality congruence closure -- gets
-to see and reason about genuine Real `Equality` nodes, instead of a second,
-parallel `And(Le,Le)` representation those passes would otherwise need to
-special-case. It must still run before `BooleanClausifier`/theory dispatch,
-or QF_LRA disequality would regress to needing the case-split machinery this
-design avoids.
+This lowering runs once, at the final equality-producing boundary of the
+preprocessing pipeline. Solve-eqs, equality bridging, forced-atom propagation,
+unit-equality congruence closure, symmetry breaking, finite-domain AMO, and
+finite-domain equality definitions all run first. This ordering matters in both
+directions: those passes need genuine Real `Equality` nodes as input, and the
+symmetry/finite-domain passes may produce new equality clauses of their own.
+Lowering therefore rewrites the complete generated assertion set before
+monotone elimination, mixed purification, `BooleanClausifier`, or theory
+dispatch. No native Real equality is allowed to reach the LRA atom layer.
+
+An earlier ordering lowered the input assertions before appending raw
+finite-domain AMO clauses. A Real-domain choice could consequently reintroduce
+`(not (= x v))` after lowering and reach LRA as an unsupported native
+disequality. The end-to-end finite-Real-domain regressions and the permanent
+finite-domain fuzz gate protect this composition invariant.
 
 When `--guarded-real-equality-lowering` is enabled, a guarded disjunction with
 exactly one Real equality child lowers by distributing the guard directly:

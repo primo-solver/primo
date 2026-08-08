@@ -24340,15 +24340,15 @@
         "cross_solver": "default and Z3 agreed on all 1123 jointly solved rows; candidate-final and Z3 agreed on all 1153 jointly solved rows; default and candidate-final agreed on all 1123 jointly solved rows",
         "default_families": "FFT 10/10; CPA BMC 4/15 with 11 timeout; CPA induction 216/359 with 142 timeout and 1 unsupported; MathSAT 893/900 with 7 timeout",
         "candidate_final_families": "FFT 10/10; CPA BMC 4/15 with 11 timeout; CPA induction 241/359 with 117 timeout and 1 unsupported; MathSAT 898/900 with 2 timeout",
-        "unsupported": "cpachecker-induction.rekh_ctm_true-unreach-call.1.c.smt2 prints unsupported and exits 2 because QF_LRA disequality (a negated Real equality) is not yet supported; Z3 timed out on this row at five seconds",
+        "unsupported": "cpachecker-induction.rekh_ctm_true-unreach-call.1.c.smt2 is valid QF_UFLRA. Raw finite-domain AMO clauses were generated before Real-equality lowering but appended afterward, reintroducing a native negated Real equality at LRA dispatch; Z3 timed out on this row at five seconds",
         "default_filter_stats": "1211 builds; 28572490 full pairs; 7687127 model-equal candidates; 20885363 pruned; 2 unmapped terms; 188 conservative pairs; 7656771 exact fallback pairs; 896602 reusable pair contexts; 310738852 assignment bounds replayed; 188 mapping fallbacks; 0 context conflicts",
         "candidate_filter_stats": "1179 builds; 28499837 full pairs; 7680820 model-equal candidates; 20819017 pruned; 2 unmapped terms; 188 conservative pairs; 1122296 exact fallback pairs; 226621 reusable pair contexts; 128841457 assignment bounds replayed; 74 mapping fallbacks; 0 context conflicts",
         "sat_stats": "default 2668619 decisions and 41739446 propagations; candidate-final 2455493 decisions and 40783258 propagations",
         "slurm_state": "all 16 shard jobs completed with exit code 0; default shards took 2:27-3:00 and candidate-final shards 1:33-2:07"
       },
       "artifacts": "remote:primo-cadical-profile/results/qf-uflra-full-model-filter-{default,candidate}-84d5e8a-5s/; local ignored copies under results/ with the same names; reused reference results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
-      "evidence_status": "slurm-complete-current-with-one-supported-fragment-gap",
-      "outcome": "Accepted as full-corpus correctness and sanity evidence for the exact model-value candidate filter. No solved answer changed incorrectly. Candidate-final solves 30 more rows than default at this cap, but remains optional; both profiles expose one pre-existing unsupported QF_LRA disequality. The benchmark harness status-classification repair records that row as unsupported instead of ok without changing the durable solver result."
+      "evidence_status": "needs_revalidation-valid-input-preprocessing-bug",
+      "outcome": "Rejected as full-corpus correctness evidence after investigation of the unsupported row. The solved-row comparisons remain historical performance data, but the valid-input preprocessing-order bug must be fixed and the complete corpus rerun before this profile is accepted."
     },
     {
       "id": "2026-08-08-qf-uflra-lra-model-value-candidate-final-fuzz-121910",
@@ -24394,8 +24394,38 @@
         "slurm_state": "all four array tasks COMPLETED with exit code 0 in 17 seconds"
       },
       "artifacts": "remote:primo-cadical-profile/slurm-results/qf_uflra-model-filter-candidate-84d5e8a/; remote:primo-cadical-profile/slurm-results/qf_uflra-model-filter-candidate-84d5e8a-seeds/; remote:primo-cadical-profile/slurm_logs/primo-qf-uflra-fuzz-121910_*.out",
-      "evidence_status": "slurm-complete-current",
-      "outcome": "Accepted as the option-specific candidate-final prerequisite for the full-corpus sanity evidence. It closes the review gap left by job 121888, which validated the exact/default path but did not enable candidate-final scan."
+      "evidence_status": "historical-insufficient-finite-domain-coverage",
+      "outcome": "The 3,000 generated cases passed the paths they exercised, but this is not sufficient merge-grade evidence for the full preprocessing pipeline. The generator produced no finite-Real-domain choice cases and recorded no mechanism-activation counters, so it could not expose the valid-input AMO/lowering-order bug found by the subsequent full-corpus run."
+    },
+    {
+      "id": "2026-08-08-finite-domain-fuzzer-local-smoke",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "Local smoke for the finite-domain preprocessing-order fix and dedicated QF_UF/QF_UFLRA generator",
+      "commit": "c1ffd82 plus the uncommitted finite-domain fix and fuzzer",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binary": "build/primo",
+        "references": "Z3 5.0.0"
+      },
+      "command": "make fuzz-finite-domain; python3 scripts/summarize_fuzz_results.py fuzz-results/finite-domain-qf-uf fuzz-results/finite-domain-qf-uflra",
+      "inputs": {
+        "qf_uf_cases": 56,
+        "qf_uflra_cases": 56,
+        "seed": 2026080801,
+        "scenarios": "flat-choice, nested-choice, residual-choice, observed-equalities, define-fun-aliases, shared-domain, transitive-domain",
+        "solver_timeout_seconds": 5
+      },
+      "results": {
+        "answers": "112 PASS, 0 timeout, 0 wrong answer, 0 crash, 0 unsupported, 0 activation failure",
+        "qf_uf_activation": "518 raw AMO clauses, 138 post AMO clauses, 518 emitted AMO clauses",
+        "qf_uflra_activation": "518 raw AMO clauses, 138 post AMO clauses, 518 emitted AMO clauses, 772 lowered Real equalities"
+      },
+      "artifacts": "local ignored: fuzz-results/finite-domain-qf-uf and fuzz-results/finite-domain-qf-uflra",
+      "evidence_status": "local-smoke-preliminary",
+      "outcome": "Accepted as local development evidence only. Merge-grade SLURM generated, mutation, and full-corpus validation remain required."
     }
   ]
 }

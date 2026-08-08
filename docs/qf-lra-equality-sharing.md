@@ -390,18 +390,20 @@ solved 1,123 files, timed out on 160, and reported one unsupported negated Real
 equality; candidate-final solved 1,153, timed out on 130, and reported the same
 unsupported row. Their PAR2 totals were 2043.045990 and 1486.812553. Neither
 profile had an error, crash, wrong declared-status answer, or disagreement on
-any row also solved by the reused Z3 run. The unsupported row also timed out in
-Z3 at five seconds and is a supported-fragment limitation, not evidence about
-the model-value filter. This accepts the filter as full-corpus sanity checked;
-it does not make candidate-final the default or close the remaining performance
-gap to Z3's 1,234 solved rows.
+any jointly solved row. The unsupported CPAchecker row is nevertheless valid
+QF_UFLRA: raw finite-domain AMO clauses reintroduced Real equality after the
+lowering boundary. The full-corpus result is historical performance data and
+requires revalidation after that preprocessing-order fix; it is not accepted
+correctness evidence for the filter.
 
 Because job 121888 exercised the exact/default option rather than
 candidate-final, the option-specific prerequisite was closed separately before
 finalizing this evidence. SLURM job 121910 passed the same 10 tracked seeds and
 3,000 fresh mixed generated cases with
 `--qf-uflra-candidate-final-scan`: 1,852 SAT and 1,148 UNSAT, all matching Z3,
-with no timeout, crash, unsupported result, disagreement, or bug artifact.
+with no timeout, crash, unsupported result, disagreement, or bug artifact. That
+generator did not contain finite-Real-domain choices and did not assert
+preprocessing activation, so it does not close the revalidation requirement.
 
 ## Remaining order of work
 

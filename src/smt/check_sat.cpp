@@ -10623,33 +10623,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         statistics.increment(kStatPreprocessingAdaptivePasses);
       }
     }
-    {
-      // Runs once, after every pass above that reasons about genuine
-      // Equality nodes (solve-eqs, eq-bridging, forced-atom/unit-equality
-      // propagation), so Real equalities are visible to all of them. Must
-      // still land before symmetry breaking/finite-domain clause
-      // generation below and the has_equality/has_arithmetic dispatch, so
-      // downstream passes/the tableau see the same Le/Lt-pair shape they
-      // always have.
-      RealEqualityLoweringResult lowered_equalities = lower_real_equalities(
-          frontend.terms(), assertions, options.guarded_real_equality_lowering);
-      assertions = std::move(lowered_equalities.assertions);
-      statistics.increment(kStatRealEqualityLowered, lowered_equalities.lowered);
-      statistics.increment(kStatGuardedRealEqualityDistributed,
-                           lowered_equalities.guarded_distributed);
-    }
-    if (options.monotone_elimination) {
-      // Runs after Real-equality lowering so that equalities have already
-      // become Le/Lt pairs -- a variable pinned by an equality is
-      // two-sided either way, but the pass only understands Le/Lt.
-      MonotoneEliminationResult monotone =
-          eliminate_monotone_variables(frontend.terms(), assertions);
-      statistics.increment(kStatMonotoneEliminationCandidates, monotone.candidates);
-      statistics.increment(kStatMonotoneEliminationAtomsFolded, monotone.atoms_folded);
-      statistics.increment(kStatMonotoneEliminationVariables, monotone.eliminated.size());
-      assertions = std::move(monotone.assertions);
-      monotone_eliminated = std::move(monotone.eliminated);
-    }
     if (use_symmetry_breaking) {
       if (!symmetry_result.has_value()) {
         UfSymmetryBreaker symmetry_breaker(frontend.terms());
@@ -10722,6 +10695,31 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                            equality_definition_result.rejected_domain_size);
       statistics.increment(kStatEqualityDefinitionRejectedClauseLimit,
                            equality_definition_result.rejected_clause_limit);
+    }
+    {
+      // This is the final equality-producing preprocessing boundary. Earlier
+      // passes reason about genuine Equality nodes, and symmetry/finite-domain
+      // passes above may add new ones. Lower the complete assertion set before
+      // any arithmetic-only pass or theory dispatch so native Real equality
+      // never reaches the LRA atom layer.
+      RealEqualityLoweringResult lowered_equalities = lower_real_equalities(
+          frontend.terms(), assertions, options.guarded_real_equality_lowering);
+      assertions = std::move(lowered_equalities.assertions);
+      statistics.increment(kStatRealEqualityLowered, lowered_equalities.lowered);
+      statistics.increment(kStatGuardedRealEqualityDistributed,
+                           lowered_equalities.guarded_distributed);
+    }
+    if (options.monotone_elimination) {
+      // Runs after Real-equality lowering so that equalities have already
+      // become Le/Lt pairs -- a variable pinned by an equality is
+      // two-sided either way, but the pass only understands Le/Lt.
+      MonotoneEliminationResult monotone =
+          eliminate_monotone_variables(frontend.terms(), assertions);
+      statistics.increment(kStatMonotoneEliminationCandidates, monotone.candidates);
+      statistics.increment(kStatMonotoneEliminationAtomsFolded, monotone.atoms_folded);
+      statistics.increment(kStatMonotoneEliminationVariables, monotone.eliminated.size());
+      assertions = std::move(monotone.assertions);
+      monotone_eliminated = std::move(monotone.eliminated);
     }
     {
       MixedTheoryPurificationResult purification =

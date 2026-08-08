@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reusable SLURM gate for the mixed QF_UFLRA smoke fuzzer.
+# Reusable SLURM gate for general and finite-domain QF_UFLRA fuzzing.
 #
 # Submit from a prepared remote workspace, for example:
 #   sbatch scripts/slurm_qf_uflra_fuzz_gate.sbatch
@@ -21,6 +21,7 @@ set -euo pipefail
 
 WORKDIR=${PRIMO_WORKDIR:-$PWD}
 COUNT=${PRIMO_FUZZ_COUNT:-750}
+FINITE_COUNT=${PRIMO_FINITE_DOMAIN_FUZZ_COUNT:-125}
 SEED_BASE=${PRIMO_FUZZ_SEED_BASE:-202607390}
 OUT_ROOT=${PRIMO_FUZZ_OUT_DIR:-slurm-results/qf_uflra-fuzz-gate}
 SOLVER_ARGS_TEXT=${PRIMO_FUZZ_SOLVER_ARGS:-}
@@ -33,6 +34,12 @@ SEED=$((SEED_BASE + TASK_ID))
 OUT="$OUT_ROOT/task-${TASK_ID}"
 
 ./build-slurm-rel/primo --version
+for required in z3 cvc5; do
+  if ! PATH="$WORKDIR/contrib/local/bin:$PATH" command -v "$required" >/dev/null 2>&1; then
+    echo "required reference '$required' not found; prepare contrib-z3 and contrib-cvc5" >&2
+    exit 2
+  fi
+done
 solver_args=()
 solver_arg_words=()
 if [[ -n $SOLVER_ARGS_TEXT ]]; then
@@ -53,4 +60,31 @@ PATH="$WORKDIR/contrib/local/bin:$PATH" \
     --seed "$SEED" \
     --timeout 5 \
     --shape mixed \
-    --out "$OUT"
+    --out "$OUT/general"
+
+PATH="$WORKDIR/contrib/local/bin:$PATH" \
+  python3 scripts/finite_domain_fuzz.py \
+    --solver ./build-slurm-rel/primo \
+    "${solver_args[@]}" \
+    --solver-arg=--qf-uf-preprocess=strong \
+    --ref z3 \
+    --ref cvc5 \
+    --logic QF_UF \
+    --count "$FINITE_COUNT" \
+    --seed "$((SEED + 100000))" \
+    --timeout 5 \
+    --require-post-amo \
+    --out "$OUT/finite-qf-uf"
+
+PATH="$WORKDIR/contrib/local/bin:$PATH" \
+  python3 scripts/finite_domain_fuzz.py \
+    --solver ./build-slurm-rel/primo \
+    "${solver_args[@]}" \
+    --ref z3 \
+    --ref cvc5 \
+    --logic QF_UFLRA \
+    --count "$FINITE_COUNT" \
+    --seed "$((SEED + 200000))" \
+    --timeout 5 \
+    --require-post-amo \
+    --out "$OUT/finite-qf-uflra"

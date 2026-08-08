@@ -2057,6 +2057,51 @@ void qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality() {
   assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
 }
 
+void qf_uf_lra_lowers_finite_domain_amo_equalities_before_dispatch() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun a () Real)
+    (declare-fun b () Real)
+    (declare-fun c () Real)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (and
+      (distinct a b c)
+      (or (= x a) (= x b) (= x c))
+      (p x)
+      (not (p b))
+      (= x b)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uflra") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 6);
+}
+
+void qf_uf_lra_finite_domain_amo_sat_control_remains_sat() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun a () Real)
+    (declare-fun b () Real)
+    (declare-fun c () Real)
+    (declare-fun x () Real)
+    (declare-fun p (Real) Bool)
+    (assert (and
+      (distinct a b c)
+      (or (= x a) (= x b) (= x c))
+      (= x b)
+      (p x)
+      (p b)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 6);
+}
+
 void qf_uf_lra_purifies_real_valued_application_arithmetic_arguments() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -3658,6 +3703,8 @@ int main() {
   nelson_oppen_online_option_does_not_wrap_single_theory_lra();
   nelson_oppen_online_option_does_not_wrap_single_theory_euf();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();
+  qf_uf_lra_lowers_finite_domain_amo_equalities_before_dispatch();
+  qf_uf_lra_finite_domain_amo_sat_control_remains_sat();
   qf_uf_lra_purifies_real_valued_application_arithmetic_arguments();
   qf_uf_lra_purifies_nested_real_valued_application_arguments();
   qf_uf_lra_purifies_real_valued_application_disequality_arguments();

@@ -37,6 +37,8 @@ parts:
       - file: experiments
       - file: run-log
       - file: debugging
+        sections:
+          - file: finite-domain-fuzzing
       - file: termid-order-sensitivity
 
   - caption: Paper notes
