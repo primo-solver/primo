@@ -23964,7 +23964,58 @@
       },
       "artifacts": "remote:slurm-results/qf_uflra-integration-seeds-3dee8ca/ and remote:slurm-results/qf_uflra-integration-default-3dee8ca/",
       "evidence_status": "slurm-complete-current",
-      "outcome": "The integrated default convex profile passed its exact-commit deterministic seed and generated merge gates. The known-unsound --nelson-oppen-prop=off ablation was intentionally excluded and remains a merge blocker recorded in docs/qf-uflra-convex-no-merge-plan.md."
+      "outcome": "The integrated default convex profile passed its exact-commit deterministic seed and generated merge gates. The known-unsound --nelson-oppen-prop=off ablation was intentionally excluded and remained a merge blocker at this historical commit; it was repaired later by c28531b."
+    },
+    {
+      "id": "2026-08-08-convex-no-exact-closure-repair-121878",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "Exact-mode correctness gate after making mandatory convex QF_UFLRA equality closure independent of optional propagation producers",
+      "commit": "c28531b",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_id": "121878",
+        "binary": "Release, git c28531b, CaDiCaL cadical-3.0.0-7b99c07",
+        "workspace": "Prepared with scripts/slurm_prepare_benchmark_workspace.py in archive/reuse-dependencies mode; --check-only verified the exact revision, linkage, CaDiCaL, and Z3 immediately before submission"
+      },
+      "commands": {
+        "seed_preflight": "python3 scripts/check_solver_seed_corpus.py --seeds benchmarks/seeds/qf_uflra --solver ./build-slurm-rel/primo --solver-arg=--nelson-oppen-prop=exact --ref z3 --timeout 10 --out <artifact>/seeds.csv",
+        "generated_gate": "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FUZZ_SEED_BASE=2026080800, PRIMO_FUZZ_SOLVER_ARGS=--nelson-oppen-prop=exact, and PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-exact-closure-c28531b scripts/slurm_qf_uflra_fuzz_gate.sbatch"
+      },
+      "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+      "reference": "Z3 5.0.0",
+      "inputs": {
+        "tracked_seeds": 10,
+        "generated_cases": 3000,
+        "shards": 4,
+        "cases_per_shard": 750,
+        "random_seeds": [
+          2026080800,
+          2026080801,
+          2026080802,
+          2026080803
+        ],
+        "solver_timeout_seconds": 5
+      },
+      "results": {
+        "tracked_seeds": "10 PASS, 0 disagreement, 0 timeout, 0 crash, 0 unsupported",
+        "generated": "3000 PASS: 1885 sat and 1115 unsat; 0 wrong answer, 0 timeout, 0 crash, 0 unsupported",
+        "bug_files": 0,
+        "slurm_state": "all four array tasks COMPLETED with exit code 0 in 18 seconds"
+      },
+      "local_verification": {
+        "make_check": "13/13 tests passed",
+        "make_asan_test": "13/13 tests passed",
+        "make_lint": "passed",
+        "make_docs": "passed",
+        "clang_tidy": "whole-tree non-generated C++ pass completed without actionable diagnostics",
+        "include_cleaner": "whole-tree advisory pass reported existing baseline debt and no warning in the changed implementation or test files"
+      },
+      "artifacts": "remote:slurm-results/qf_uflra-exact-closure-c28531b/ and remote:slurm_logs/primo-qf-uflra-fuzz-121878_*.out",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The repaired exact mode and legacy off alias retain mandatory EUF-to-LRA spanning equalities and exact LRA-to-EUF fallback while omitting only opportunistic FixedEq/EqRow polling. Exact-commit regressions cover both sharing directions and the invalid-model witness, and the exact profile passed deterministic and generated differential gates."
     }
   ]
 }

@@ -80,12 +80,14 @@ source.
 
 These are ordered by correctness first, then performance.
 
-1. **Complete on the integration branch: repair `--nelson-oppen-prop=off`.**
+1. **Complete in `c28531b`: repair `--nelson-oppen-prop=off`.**
    The internal mode is now named `exact`, and the old `off` spelling is a
    compatibility alias. Both retain mandatory EUF spanning equalities and the
    exact LRA fallback while disabling only the optional LRA `FixedEq`/`EqRow`
    producer. Plain check-sat and model-request regressions cover `x = y`,
-   `p(x)`, `not p(y)` and the paired-bound form of the same disagreement.
+   `p(x)`, `not p(y)` and the paired-bound form of the same disagreement. The
+   exact profile passed all 10 tracked seeds and 3,000 generated mixed cases on
+   SLURM job 121878.
 2. **Replace the exact fallback's per-pair LRA reconstruction.** The current
    default constructs every unresolved shared pair and builds a fresh prepared
    LRA theory for one or two strict-orientation probes per pair. Streaming pairs
@@ -103,9 +105,9 @@ These are ordered by correctness first, then performance.
 5. **Complete for integration commit `3dee8ca`:** lint, `make check`, ASan,
    documentation, whole-tree `clang-tidy`, 10 tracked QF_UFLRA seeds, and a
    3,000-case generated mixed gate all passed. SLURM job 121874 completed four
-   750-case shards with zero wrong answers, crashes, or timeouts. This validates
-   the default convex profile; it does not validate the known-unsound `off`
-   ablation.
+   750-case shards with zero wrong answers, crashes, or timeouts. That run
+   validated the default convex profile but excluded the then-unsound `off`
+   ablation; the repaired exact/`off` profile has separate evidence in item 1.
 
 ## Ownership and Invariants
 
