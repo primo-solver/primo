@@ -1325,8 +1325,35 @@ void qf_uf_lra_exact_mode_keeps_mandatory_convex_closure() {
   assert(result.statistics.get(":no.interface.lra-opportunistic-skipped-rounds") >= 1);
   assert(result.statistics.get(":no.interface.lra-opportunistic-candidates") == 0);
   assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-pairs") >= 1);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-orientations") >= 2);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-mapping-fallbacks") == 0);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-context-conflicts") == 0);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-clauses") >= 1);
+}
+
+void qf_uf_lra_exact_probe_reuse_does_not_prove_one_sided_bound() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-pairs") >= 1);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") == 0);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-pairs") >= 1);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-orientations") >= 1);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-mapping-fallbacks") == 0);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-context-conflicts") == 0);
 }
 
 void qf_uf_lra_exact_mode_rejects_inconsistent_model_request() {
@@ -3576,6 +3603,7 @@ int main() {
   qf_uf_lra_model_equality_branching_backs_off_from_bad_guess();
   qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess();
   qf_uf_lra_exact_mode_keeps_mandatory_convex_closure();
+  qf_uf_lra_exact_probe_reuse_does_not_prove_one_sided_bound();
   qf_uf_lra_exact_mode_rejects_inconsistent_model_request();
   qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
   qf_uf_lra_model_equality_branching_accumulates_active_assumptions();

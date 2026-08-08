@@ -674,12 +674,24 @@ a strict LRA order. A pair counted by
 `:no.interface.model-separation-euf-forbidden-pairs` would make the EUF closure
 inconsistent if merged; only those pairs become
 `:no.interface.model-separation-candidates` for strict LRA separation.
-`:no.interface.lra-extra-atom-probes` counts LRA consistency checks that rebuild
-an augmented LRA theory with one or more temporary strict separation/equality
-atoms. `:no.interface.lra-extra-atoms-probed` sums the number of temporary atoms
-included across those checks. These live counters expose arrangement exploration
-cost even if the final arrangement search does not finish before a profiling
-timeout.
+`:no.interface.lra-extra-atom-probes` counts LRA consistency checks with one or
+more temporary strict separation/equality atoms.
+`:no.interface.lra-extra-atoms-probed` sums the number of temporary atoms across
+those checks. Exact single-pair equality scans normally use a check-local copy of
+the prepared tableau, replay the current bounds once, and probe both strict
+orientations with `push()`/`pop()`. The corresponding work is split into
+`:no.interface.lra-probe-reuse-pairs`,
+`:no.interface.lra-probe-reuse-orientations`, and
+`:no.interface.lra-probe-reuse-assignment-bounds`. A nonzero
+`:no.interface.lra-probe-reuse-mapping-fallbacks` means a shared endpoint was
+absent from the prepared term map and the old augmented-theory reconstruction
+oracle was used. A nonzero
+`:no.interface.lra-probe-reuse-context-conflicts` means replaying an assignment
+already accepted by the main LRA check conflicted in the local context. This is
+an internal-consistency violation: the solver records it and fails loudly rather
+than treating a base conflict as evidence for the candidate equality. These live
+counters expose arrangement exploration cost even if the final search does not
+finish before a profiling timeout.
 `:no.interface.arrangement-lra-extra-atom-probes` and
 `:no.interface.arrangement-lra-extra-atoms-probed` are the subset spent while
 choosing strict separations for final mixed QF_UFLRA arrangement validation or

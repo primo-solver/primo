@@ -143,6 +143,16 @@ clause restarts SAT, and the next round asserts the equality to both theories.
 This is the standard convex closure argument for the supported EUF+LRA subset;
 model-equal conjectures and arrangement guesses are not part of it.
 
+The exact fallback reuses structural LRA preparation within each candidate pair.
+Following the bound-checkpoint discipline of Dutertre and de Moura, technical
+report SRI-CSL-06-01, Sections 3.1, 3.2.3, and 3.2.4, it copies the prepared base
+tableau, adds one row for `lhs - rhs` before the first checkpoint, and replays the
+current assignment once. It then checks `lhs - rhs < 0` and `lhs - rhs > 0` as
+separate checkpointed bounds on that context. Both checks must conflict, and the
+synthetic bound literal is removed from their combined explanation. This is a
+local constant-factor improvement to the complete convex oracle, not the shared
+model state or transition system of de Moura and Bjorner.
+
 Default final-mode LRA-to-EUF sharing is now consumer-aware as a classifier.
 When the LRA scan finds an entailed shared Real equality, `solve_qf_uf_lra`
 first tests the current EUF closure that already contains current true
@@ -406,6 +416,11 @@ coordinator publishes:
 - `:no.interface.lra-extra-atom-probes`
 - `:no.interface.lra-extra-atoms-probed`
 - `:no.interface.lra-extra-atom-probe-limit-hit`
+- `:no.interface.lra-probe-reuse-pairs`
+- `:no.interface.lra-probe-reuse-orientations`
+- `:no.interface.lra-probe-reuse-assignment-bounds`
+- `:no.interface.lra-probe-reuse-mapping-fallbacks`
+- `:no.interface.lra-probe-reuse-context-conflicts`
 - `:no.interface.euf-care-checks`
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`

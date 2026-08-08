@@ -274,7 +274,15 @@ Implemented now:
   cheap producers are quiescent, the default path tests both strict orders only
   for still-unresolved shared Real pairs. This exact fallback is the
   completeness mechanism for the supported convex EUF+LRA fragment; it does
-  not preallocate the pair cross product as SAT variables.
+  not preallocate the pair cross product as SAT variables. For each pair, a
+  check-local context copies the prepared LRA base tableau, adds an unbounded
+  difference row before asserting bounds, replays the current assignment once,
+  and tests the two strict orientations with tableau checkpoints. The context is
+  discarded after the pair. Missing endpoint mappings conservatively use the
+  older augmented-theory reconstruction oracle. This avoids repeated atom
+  normalization and shares setup between orientations, but still performs
+  quadratic pair enumeration, a tableau copy and assignment replay per pair,
+  and any required simplex work.
   In this final path, LRA-to-EUF equalities are classified through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already
   true in EUF can be ignored. Equalities that EUF can merge, or that EUF

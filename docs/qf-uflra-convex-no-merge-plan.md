@@ -88,12 +88,14 @@ These are ordered by correctness first, then performance.
    `p(x)`, `not p(y)` and the paired-bound form of the same disagreement. The
    exact profile passed all 10 tracked seeds and 3,000 generated mixed cases on
    SLURM job 121878.
-2. **Replace the exact fallback's per-pair LRA reconstruction.** The current
-   default constructs every unresolved shared pair and builds a fresh prepared
-   LRA theory for one or two strict-orientation probes per pair. Streaming pairs
-   removes only the vector allocation; the substantive target is a reversible
-   or incremental probe context. Job 121509 still recorded 295,539 fallback
-   pairs and 274,252 extra-atom probes on 45 files.
+2. **Implemented pending merge-gate evidence: replace the exact fallback's
+   repeated LRA preparation.** Each unresolved pair now gets one check-local
+   copy of the prepared base tableau and one difference row. The current bounds
+   are replayed once, then one or two strict orientations use reversible
+   checkpoints. Job 121509 recorded the motivating 295,539 fallback pairs and
+   274,252 extra-atom probes on 45 files. This change removes normalization and
+   duplicate orientation setup, but intentionally does not solve the quadratic
+   pair count or per-pair tableau copy/replay.
 3. **Fail loudly on a missing mixed-dispatcher reason.** Returning `0` before
    streaming a reason can turn bookkeeping loss into an empty or malformed
    IPASIR-UP reason. Assert the ownership/reason invariant and add a lazy fresh

@@ -5796,6 +5796,90 @@ struct LraImpliedRealEqualitiesResult {
   bool probe_limit_hit = false;
 };
 
+struct LraEqualityProbeContext {
+  theory::arithmetic::LraTableau tableau;
+  theory::arithmetic::LraVarId difference_var = 0;
+};
+
+// Per-pair exact convex-equality oracle. Following Dutertre and de Moura,
+// SRI-CSL-06-01 Sections 3.1, 3.2.3, and 3.2.4, structural rows are installed
+// before checkpoints and temporary assertions are reversible bounds. One
+// context shares assignment replay between the two strict orientations; it is
+// discarded before moving to another pair.
+std::optional<LraEqualityProbeContext> prepare_lra_equality_probe_context(
+    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& lra_assignments,
+    core::TermId lhs, core::TermId rhs, util::Statistics* statistics) {
+  const auto lhs_var = prepared.variables_by_term.find(lhs);
+  const auto rhs_var = prepared.variables_by_term.find(rhs);
+  if (lhs_var == prepared.variables_by_term.end() || rhs_var == prepared.variables_by_term.end()) {
+    if (statistics != nullptr) {
+      statistics->increment(":no.interface.lra-probe-reuse-mapping-fallbacks");
+    }
+    return std::nullopt;
+  }
+  if (lra_assignments.size() != prepared.atoms.size()) {
+    throw UnsupportedInput("internal theory atom mapping mismatch in LRA equality probe");
+  }
+
+  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
+  const theory::arithmetic::LraVarId difference_var = tableau.add_variable();
+  tableau.add_row(difference_var,
+                  {{lhs_var->second, util::Rational(1)}, {rhs_var->second, util::Rational(-1)}});
+  for (std::size_t i = 0; i < lra_assignments.size(); ++i) {
+    const AssignedTheoryAtom& assignment = lra_assignments[i];
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
+    if (!prepared_atom.is_arithmetic || assignment.filtered) {
+      continue;
+    }
+    if (statistics != nullptr) {
+      statistics->increment(":no.interface.lra-probe-reuse-assignment-bounds");
+    }
+    const std::optional<sat::Clause> conflict = assert_lra_atom_bound(
+        tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs,
+        assignment.value, prepared_atom.asserts_lower_when_true, blocking_lit(assignment));
+    if (conflict.has_value()) {
+      if (statistics != nullptr) {
+        statistics->increment(":no.interface.lra-probe-reuse-context-conflicts");
+      }
+      throw std::logic_error(
+          "internal LRA equality probe context conflicts after an accepted assignment");
+    }
+  }
+  if (tableau.check().has_value()) {
+    if (statistics != nullptr) {
+      statistics->increment(":no.interface.lra-probe-reuse-context-conflicts");
+    }
+    throw std::logic_error(
+        "internal LRA equality probe context conflicts after an accepted assignment");
+  }
+  if (statistics != nullptr) {
+    statistics->increment(":no.interface.lra-probe-reuse-pairs");
+  }
+  return LraEqualityProbeContext{std::move(tableau), difference_var};
+}
+
+std::optional<sat::Clause> probe_lra_equality_orientation(LraEqualityProbeContext& context,
+                                                          bool lhs_less_than_rhs,
+                                                          util::Statistics* statistics) {
+  if (statistics != nullptr) {
+    statistics->increment(":no.interface.lra-extra-atom-probes");
+    statistics->increment(":no.interface.lra-extra-atoms-probed");
+    statistics->increment(":no.interface.lra-probe-reuse-orientations");
+  }
+  const std::size_t checkpoint = context.tableau.push();
+  const theory::arithmetic::DeltaRational strict_zero{util::Rational(0),
+                                                      util::Rational(lhs_less_than_rhs ? -1 : 1)};
+  std::optional<sat::Clause> conflict =
+      lhs_less_than_rhs
+          ? context.tableau.assert_upper(context.difference_var, strict_zero, sat::Lit{0})
+          : context.tableau.assert_lower(context.difference_var, strict_zero, sat::Lit{0});
+  if (!conflict.has_value()) {
+    conflict = context.tableau.check();
+  }
+  context.tableau.pop(checkpoint);
+  return conflict;
+}
+
 bool consume_no_extra_atom_probe_budget(const CheckSatOptions& options,
                                         util::Statistics& statistics, std::size_t extra_atom_count,
                                         bool arrangement_probe) {
@@ -5812,42 +5896,73 @@ bool consume_no_extra_atom_probe_budget(const CheckSatOptions& options,
   return true;
 }
 
+struct LraImpliedRealEqualityProbeResult {
+  std::optional<ExplainedInterfaceEquality> equality;
+  bool probe_limit_hit = false;
+};
+
+LraImpliedRealEqualityProbeResult probe_lra_implied_real_equality(
+    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const TermPairKey& pair, const CheckSatOptions& options, util::Statistics* statistics) {
+  if (statistics != nullptr &&
+      !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
+    return LraImpliedRealEqualityProbeResult{std::nullopt, true};
+  }
+  std::optional<LraEqualityProbeContext> reusable_context =
+      prepare_lra_equality_probe_context(prepared, lra_assignments, pair.lhs, pair.rhs, statistics);
+  const auto probe_orientation = [&](bool lhs_less_than_rhs) {
+    if (reusable_context.has_value()) {
+      return probe_lra_equality_orientation(reusable_context.value(), lhs_less_than_rhs,
+                                            statistics);
+    }
+    return lra_assignment_conflict_with_extra_atom(
+        terms, lra_atoms, lra_assignments,
+        lhs_less_than_rhs ? terms.mk_lt(pair.lhs, pair.rhs) : terms.mk_lt(pair.rhs, pair.lhs),
+        options, statistics);
+  };
+
+  std::optional<sat::Clause> lhs_lt_rhs_conflict = probe_orientation(true);
+  if (!lhs_lt_rhs_conflict.has_value()) {
+    return {};
+  }
+  if (statistics != nullptr &&
+      !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
+    return LraImpliedRealEqualityProbeResult{std::nullopt, true};
+  }
+  std::optional<sat::Clause> rhs_lt_lhs_conflict = probe_orientation(false);
+  if (!rhs_lt_lhs_conflict.has_value()) {
+    return {};
+  }
+
+  sat::Clause reason;
+  for (const sat::Clause* conflict : {&lhs_lt_rhs_conflict.value(), &rhs_lt_lhs_conflict.value()}) {
+    for (const sat::Lit lit : *conflict) {
+      if (lit.value != 0) {
+        append_lit_once(reason, lit);
+      }
+    }
+  }
+  return LraImpliedRealEqualityProbeResult{
+      ExplainedInterfaceEquality{terms.mk_eq(pair.lhs, pair.rhs), std::move(reason)}, false};
+}
+
 LraImpliedRealEqualitiesResult lra_implied_real_equalities(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& lra_assignments,
     const std::vector<core::TermId>& shared_terms, const CheckSatOptions& options,
     util::Statistics* statistics = nullptr) {
   std::vector<ExplainedInterfaceEquality> equalities;
   for (std::size_t i = 0; i < shared_terms.size(); ++i) {
     for (std::size_t j = i + 1; j < shared_terms.size(); ++j) {
-      const core::TermId lhs = shared_terms[i];
-      const core::TermId rhs = shared_terms[j];
-      if (statistics != nullptr &&
-          !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
+      LraImpliedRealEqualityProbeResult probe = probe_lra_implied_real_equality(
+          terms, lra_atoms, prepared, lra_assignments,
+          TermPairKey{shared_terms[i], shared_terms[j]}, options, statistics);
+      if (probe.probe_limit_hit) {
         return LraImpliedRealEqualitiesResult{std::move(equalities), true};
       }
-      std::optional<sat::Clause> lhs_lt_rhs_conflict = lra_assignment_conflict_with_extra_atom(
-          terms, lra_atoms, lra_assignments, terms.mk_lt(lhs, rhs), options, statistics);
-      if (!lhs_lt_rhs_conflict.has_value()) {
-        continue;
-      }
-      if (statistics != nullptr &&
-          !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
-        return LraImpliedRealEqualitiesResult{std::move(equalities), true};
-      }
-      std::optional<sat::Clause> rhs_lt_lhs_conflict = lra_assignment_conflict_with_extra_atom(
-          terms, lra_atoms, lra_assignments, terms.mk_lt(rhs, lhs), options, statistics);
-      if (rhs_lt_lhs_conflict.has_value()) {
-        sat::Clause reason;
-        for (const sat::Clause* conflict :
-             {&lhs_lt_rhs_conflict.value(), &rhs_lt_lhs_conflict.value()}) {
-          for (const sat::Lit lit : *conflict) {
-            if (lit.value != 0) {
-              append_lit_once(reason, lit);
-            }
-          }
-        }
-        equalities.push_back(ExplainedInterfaceEquality{terms.mk_eq(lhs, rhs), std::move(reason)});
+      if (probe.equality.has_value()) {
+        equalities.push_back(std::move(probe.equality.value()));
       }
     }
   }
@@ -5856,38 +5971,19 @@ LraImpliedRealEqualitiesResult lra_implied_real_equalities(
 
 LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_pairs(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const std::vector<AssignedTheoryAtom>& lra_assignments, const std::vector<TermPairKey>& pairs,
-    const CheckSatOptions& options, util::Statistics* statistics = nullptr) {
+    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const std::vector<TermPairKey>& pairs, const CheckSatOptions& options,
+    util::Statistics* statistics = nullptr) {
   std::vector<ExplainedInterfaceEquality> equalities;
   equalities.reserve(pairs.size());
   for (const TermPairKey& pair : pairs) {
-    if (statistics != nullptr &&
-        !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
+    LraImpliedRealEqualityProbeResult probe = probe_lra_implied_real_equality(
+        terms, lra_atoms, prepared, lra_assignments, pair, options, statistics);
+    if (probe.probe_limit_hit) {
       return LraImpliedRealEqualitiesResult{std::move(equalities), true};
     }
-    std::optional<sat::Clause> lhs_lt_rhs_conflict = lra_assignment_conflict_with_extra_atom(
-        terms, lra_atoms, lra_assignments, terms.mk_lt(pair.lhs, pair.rhs), options, statistics);
-    if (!lhs_lt_rhs_conflict.has_value()) {
-      continue;
-    }
-    if (statistics != nullptr &&
-        !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
-      return LraImpliedRealEqualitiesResult{std::move(equalities), true};
-    }
-    std::optional<sat::Clause> rhs_lt_lhs_conflict = lra_assignment_conflict_with_extra_atom(
-        terms, lra_atoms, lra_assignments, terms.mk_lt(pair.rhs, pair.lhs), options, statistics);
-    if (rhs_lt_lhs_conflict.has_value()) {
-      sat::Clause reason;
-      for (const sat::Clause* conflict :
-           {&lhs_lt_rhs_conflict.value(), &rhs_lt_lhs_conflict.value()}) {
-        for (const sat::Lit lit : *conflict) {
-          if (lit.value != 0) {
-            append_lit_once(reason, lit);
-          }
-        }
-      }
-      equalities.push_back(
-          ExplainedInterfaceEquality{terms.mk_eq(pair.lhs, pair.rhs), std::move(reason)});
+    if (probe.equality.has_value()) {
+      equalities.push_back(std::move(probe.equality.value()));
     }
   }
   return LraImpliedRealEqualitiesResult{std::move(equalities), false};
@@ -9249,6 +9345,11 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-extra-atom-probes", 0);
   statistics.set(":no.interface.lra-extra-atoms-probed", 0);
   statistics.set(":no.interface.lra-extra-atom-probe-limit-hit", 0);
+  statistics.set(":no.interface.lra-probe-reuse-pairs", 0);
+  statistics.set(":no.interface.lra-probe-reuse-orientations", 0);
+  statistics.set(":no.interface.lra-probe-reuse-assignment-bounds", 0);
+  statistics.set(":no.interface.lra-probe-reuse-mapping-fallbacks", 0);
+  statistics.set(":no.interface.lra-probe-reuse-context-conflicts", 0);
   statistics.set(":no.interface.euf-care-checks", 0);
   statistics.set(":no.interface.euf-care-full-pairs", 0);
   statistics.set(":no.interface.euf-care-pairs", 0);
@@ -9613,9 +9714,9 @@ CheckSatOutcome solve_qf_uf_lra(
             unresolved_interface_pairs(prepared_flat_theory.value(), euf_check->closure, no_manager,
                                        candidate_final_scan_pairs, statistics);
         const LraImpliedRealEqualitiesResult implied_equalities =
-            lra_implied_real_equalities_for_pairs(terms, lra_atoms_for_check,
-                                                  lra_assignments_for_check, fallback_pairs,
-                                                  options, &statistics);
+            lra_implied_real_equalities_for_pairs(
+                terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                lra_assignments_for_check, fallback_pairs, options, &statistics);
         if (implied_equalities.probe_limit_hit) {
           return CheckSatOutcome{
               CheckSatResult::Unknown,
@@ -9660,9 +9761,9 @@ CheckSatOutcome solve_qf_uf_lra(
             unresolved_interface_pairs(prepared_flat_theory.value(), euf_check->closure, no_manager,
                                        all_term_pairs(shared_real_terms), statistics);
         const LraImpliedRealEqualitiesResult implied_equalities =
-            lra_implied_real_equalities_for_pairs(terms, lra_atoms_for_check,
-                                                  lra_assignments_for_check, fallback_pairs,
-                                                  options, &statistics);
+            lra_implied_real_equalities_for_pairs(
+                terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                lra_assignments_for_check, fallback_pairs, options, &statistics);
         if (implied_equalities.probe_limit_hit) {
           return CheckSatOutcome{
               CheckSatResult::Unknown,
@@ -9737,8 +9838,9 @@ CheckSatOutcome solve_qf_uf_lra(
                                              lra_implied_equalities_for_model);
           } else {
             const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
-                lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
-                                            shared_real_terms, options, &statistics);
+                lra_implied_real_equalities(
+                    terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                    lra_assignments_for_check, shared_real_terms, options, &statistics);
             if (lra_implied_equalities_for_euf.probe_limit_hit) {
               statistics.increment(":no.interface.arrangement-failures");
               return CheckSatOutcome{
@@ -9763,7 +9865,8 @@ CheckSatOutcome solve_qf_uf_lra(
             statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
           }
           const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
-              lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
+              lra_implied_real_equalities(terms, lra_atoms_for_check,
+                                          *prepared_lra_theory_for_check, lra_assignments_for_check,
                                           shared_real_terms, options, &statistics);
           if (lra_implied_equalities_for_euf.probe_limit_hit) {
             statistics.increment(":no.interface.arrangement-failures");
@@ -9840,9 +9943,9 @@ CheckSatOutcome solve_qf_uf_lra(
           } else if (lra_implied_equalities_for_model_complete) {
             lra_implied_equalities_for_euf = lra_implied_equalities_for_model;
           } else {
-            const LraImpliedRealEqualitiesResult lra_implied_scan =
-                lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
-                                            shared_real_terms, options, &statistics);
+            const LraImpliedRealEqualitiesResult lra_implied_scan = lra_implied_real_equalities(
+                terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                lra_assignments_for_check, shared_real_terms, options, &statistics);
             if (lra_implied_scan.probe_limit_hit) {
               return CheckSatOutcome{
                   CheckSatResult::Unknown,
@@ -9867,9 +9970,9 @@ CheckSatOutcome solve_qf_uf_lra(
           if (candidate_lra_implied_equalities_had_internal_model_equalities) {
             statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
           }
-          const LraImpliedRealEqualitiesResult lra_implied_scan =
-              lra_implied_real_equalities(terms, lra_atoms_for_check, lra_assignments_for_check,
-                                          shared_real_terms, options, &statistics);
+          const LraImpliedRealEqualitiesResult lra_implied_scan = lra_implied_real_equalities(
+              terms, lra_atoms_for_check, *prepared_lra_theory_for_check, lra_assignments_for_check,
+              shared_real_terms, options, &statistics);
           if (lra_implied_scan.probe_limit_hit) {
             return CheckSatOutcome{
                 CheckSatResult::Unknown,

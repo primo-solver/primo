@@ -24016,6 +24016,40 @@
       "artifacts": "remote:slurm-results/qf_uflra-exact-closure-c28531b/ and remote:slurm_logs/primo-qf-uflra-fuzz-121878_*.out",
       "evidence_status": "slurm-complete-current",
       "outcome": "The repaired exact mode and legacy off alias retain mandatory EUF-to-LRA spanning equalities and exact LRA-to-EUF fallback while omitting only opportunistic FixedEq/EqRow polling. Exact-commit regressions cover both sharing directions and the invalid-model witness, and the exact profile passed deterministic and generated differential gates."
+    },
+    {
+      "id": "2026-08-08-qf-uflra-exact-probe-reuse-local-profile",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "profile",
+      "scope": "Local before/after profile of per-pair prepared-tableau reuse in the complete convex QF_UFLRA equality fallback",
+      "commit": "working tree based on dc5c99a; exact implementation commit pending local gates",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "build": "RelWithDebInfo, -O2 -g -DNDEBUG -pg"
+      },
+      "commands": {
+        "baseline": "/usr/bin/time -f 'wall=%e user=%U rss=%M' /tmp/primo-gprof-before-probe-reuse --quiet --stats --max-theory-conflicts=1000000 tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2",
+        "candidate": "/usr/bin/time -f 'wall=%e user=%U rss=%M' build-gprof/primo --quiet --stats --max-theory-conflicts=1000000 tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2",
+        "profile": "gprof build-gprof/primo /tmp/primo-gprof-after-probe-reuse/gmon.out"
+      },
+      "inputs": {
+        "benchmark": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2",
+        "logic": "QF_UFLRA"
+      },
+      "results": {
+        "answer": "sat before and after",
+        "baseline": "0.28 s wall, 0.27 s user, 275967 total-us, 274189 solve-us",
+        "candidate": "0.14 s wall, 0.13 s user, 135776 total-us, 133432 solve-us",
+        "stable_search": "171 SAT decisions, 515 SAT propagations, 596 exact fallback pairs, 753 strict probes, and 4 exact fallback equalities before and after",
+        "reuse": "596 reusable pair contexts, 753 reusable orientations, 42904 assignment bounds replayed, 0 mapping fallbacks, 0 context conflicts",
+        "candidate_gprof": "LraTableau::pivot 16.67% self over 15104 calls; LraTableau::check 1479 calls; the previous per-orientation PreparedLraTheory reconstruction no longer appears as the exact-pair probe path"
+      },
+      "artifacts": "/tmp/primo-gprof-exact-dc5c99a/gmon.out and /tmp/primo-gprof-after-probe-reuse/gmon.out (local, ephemeral)",
+      "evidence_status": "local-prototype-needs-slurm-fuzz-and-sample",
+      "outcome": "The narrow reuse prototype halves this representative profiled runtime without changing the answer, SAT search, pair count, probe count, or equality count. It addresses repeated normalization and orientation setup only; quadratic pair enumeration and per-pair tableau work remain."
     }
   ]
 }

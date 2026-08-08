@@ -246,6 +246,57 @@ fixedness, and that measurement does not transfer.
 Pinned by `fixed_elimination_closes_the_eqrow_basis_gap` in
 `tests/unit/lra_tableau_tests.cpp`.
 
+## Exact fallback probe-reuse checklist
+
+Before this change, the complete fallback constructed a new
+`PreparedLraTheory` for each strict orientation of each unresolved shared pair.
+That repeated atom normalization, structural row construction, and bound replay
+even though only one temporary strict bound changed. The replacement is based on
+Dutertre and de Moura, *Integrating Simplex with DPLL(T)*, technical report
+SRI-CSL-06-01, Sections 3.1, 3.2.3, and 3.2.4: equations are prepared before
+search, assertions tighten variable bounds, and a checkpoint restores those
+bounds without reconstructing the equation system.
+
+**Implemented subset.** This is probe reuse inside Primo's existing
+complete convex fallback, not the model-guided paper's transition system. For
+one candidate pair, copy `PreparedLraTheory::base_tableau`, add one unbounded
+difference slack row `s = lhs - rhs` before any bound assertion, replay the
+current arithmetic assignment once, and reach a feasible tableau. Then test
+`s < 0` and `s > 0` as two checkpointed strict bounds on that same tableau. If
+both extensions conflict, `lhs = rhs` is entailed.
+
+**Ownership and data structures.** `PreparedLraTheory` continues to own the
+structural tableau and the `TermId` to `LraVarId` map. A check-local probe
+context owns its tableau copy and difference slack. `LraTableau` remains
+unchanged; the mixed SMT coordinator owns pair enumeration, probe budgeting,
+reason combination, and statistics.
+
+**Invariants and proof obligations.** The difference row is added before the
+first probe-context `push()`, while the endpoint variables still have the
+prepared base basis. Replaying the already checked assignment must be
+consistent. Each orientation uses a fresh checkpoint and is popped before the
+next orientation. The synthetic probe literal is `Lit{0}` and must be removed
+from the returned conflict; all remaining literals are the original blocking
+reasons. An equality is published only after both strict orientations return
+conflicts. A missing endpoint mapping uses the old reconstruction path rather
+than weakening completeness.
+
+**Complexity expectation.** The change removes repeated normalization and
+structural preparation and shares setup between two orientations of an
+entailed pair. It does not remove the quadratic shared-pair enumeration, the
+per-pair base-tableau copy and assignment replay, or the simplex work required
+by a genuinely new strict constraint. Counters must therefore separate reused
+pair contexts, reused orientation probes, and mapping fallbacks. Acceptance
+requires fewer `PreparedLraTheory` constructions and lower wall time on the
+profiled MathSAT shape; unchanged answers alone are insufficient.
+
+**Tests derived from the design.** The focused mixed-theory tests pin an entailed
+equality that requires both orientations and a non-entailed one-sided pair. They
+also require that the normal shared-term path uses reusable contexts without a
+mapping fallback or a context-build conflict. The old reconstruction oracle is
+retained as the defensive missing-map fallback. Differential QF_UFLRA fuzzing is
+required before benchmark evaluation.
+
 ## Remaining order of work
 
 1. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
