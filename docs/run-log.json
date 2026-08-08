@@ -24203,8 +24203,101 @@
         "include_cleaner": "whole-tree advisory baseline debt; the one new changed-file diagnostic identified the missing standard iterator include, which was added",
         "code_review": "no blocking correctness, explanation, backtracking, model, layering, or efficiency issue"
       },
-      "evidence_status": "local-current-awaiting-slurm-fuzz-and-sample",
+      "evidence_status": "accepted-slurm-validated-by-121888-and-121892",
       "outcome": "The model partition removes 577 of 600 round-local cross-value pairs on the representative case while preserving the SAT answer and search counts. Exact proof remains mandatory for all 23 model-equal candidates, and the worst case remains quadratic until model diversification is implemented."
+    },
+    {
+      "id": "2026-08-08-qf-uflra-lra-model-value-exact-filter-fuzz-121888",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "Merge-grade exact-mode differential gate for the LRA model-value filter on complete convex equality probes",
+      "commit": "84d5e8a",
+      "implementation_commit": "9c7e11f",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_id": "121888",
+        "binary": "Release, git 84d5e8a, CaDiCaL cadical-3.0.0-7b99c07",
+        "workspace": "Prepared in archive/reuse-dependencies mode and verified with scripts/slurm_prepare_benchmark_workspace.py --check-only immediately before submission"
+      },
+      "commands": {
+        "seed_preflight": "python3 scripts/check_solver_seed_corpus.py --seeds benchmarks/seeds/qf_uflra --solver ./build-slurm-rel/primo --solver-arg=--nelson-oppen-prop=exact --ref ./contrib/local/bin/z3 --timeout 10 --out <artifact>/summary.csv",
+        "generated_gate": "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FUZZ_SEED_BASE=2026080812, PRIMO_FUZZ_SOLVER_ARGS=--nelson-oppen-prop=exact, and PRIMO_FUZZ_OUT_DIR=slurm-results/qf-uflra-model-filter-84d5e8a scripts/slurm_qf_uflra_fuzz_gate.sbatch"
+      },
+      "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+      "reference": "Z3 5.0.0",
+      "inputs": {
+        "tracked_seeds": 10,
+        "generated_cases": 3000,
+        "shards": 4,
+        "cases_per_shard": 750,
+        "random_seeds": [
+          2026080812,
+          2026080813,
+          2026080814,
+          2026080815
+        ],
+        "solver_timeout_seconds": 5
+      },
+      "results": {
+        "tracked_seeds": "10 PASS, 0 disagreement, 0 timeout, 0 crash, 0 unsupported",
+        "generated": "3000 PASS: 1869 sat and 1131 unsat; 0 wrong answer, 0 timeout, 0 crash, 0 unsupported",
+        "bug_files": 0,
+        "slurm_state": "all four array tasks COMPLETED with exit code 0 in 18 seconds"
+      },
+      "artifacts": "remote:slurm-results/qf-uflra-model-filter-84d5e8a/, remote:slurm-results/qf-uflra-model-filter-84d5e8a-seeds/, and remote:slurm_logs/primo-qf-uflra-fuzz-121888_*.out",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact model-value filter passed the deterministic mixed regression corpus and 3,000 fresh generated cases before performance evaluation."
+    },
+    {
+      "id": "2026-08-08-qf-uflra-lra-model-value-exact-filter-benchmark-121892",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "benchmark",
+      "scope": "45-file QF_UFLRA before/after comparison for filtering exact LRA equality probes by the checked model partition",
+      "commit": "84d5e8a",
+      "implementation_commit": "9c7e11f",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_id": "121892",
+        "binary": "Release, git 84d5e8a, CaDiCaL cadical-3.0.0-7b99c07",
+        "workspace": "Prepared and checked with scripts/slurm_prepare_benchmark_workspace.py; manifest inputs staged with scripts/slurm_stage_manifest_files.py"
+      },
+      "command": "sbatch --array=0-1 --time=00:20:00 with PRIMO_COMPARE_TIMEOUT=60, PRIMO_COMPARE_MANIFEST=benchmarks/qf_uflra-preprocessing-opportunity-sample.txt, and default/candidate-final solver specs scripts/slurm_qf_uflra_sample_compare.sbatch",
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "files": 45,
+        "timeout_seconds": 60,
+        "families": {
+          "mathsat": 25,
+          "cpachecker_induction": 19,
+          "cpachecker_bmc": 1
+        },
+        "profiles": [
+          "default",
+          "candidate-final --qf-uflra-candidate-final-scan"
+        ],
+        "baseline": "SLURM job 121886, commit 0b6aa62, results/qf-uflra-probe-reuse-0b6aa62/",
+        "reference_reuse": "Z3 was not rerun; unchanged artifact results/qf-uflra-opportunity-45-3451af9-rerun/z3.csv"
+      },
+      "results": {
+        "default": "42 solved, 3 timeout, 0 wrong, PAR2 416.435444 versus 503.986808 baseline",
+        "candidate_final": "42 solved, 3 timeout, 0 wrong, PAR2 374.066642 versus 386.682985 baseline",
+        "family_solved": "MathSAT 25/25, CPA induction 17/19, CPA BMC 0/1 in both profiles, unchanged from baseline",
+        "row_parity": "all 45 status/answer/wrong triples unchanged in each profile",
+        "solved_row_time": "default 143.986808 to 56.435444 seconds; candidate-final 26.682985 to 14.066642 seconds; 37/42 solved rows faster in each profile",
+        "default_search": "SAT decisions and propagations unchanged at 29187 and 208421",
+        "default_filter": "296981 full round-local pairs, 175243 model-equal candidates, 121738 pruned; exact fallback pairs 295539 to 173801; reusable contexts 264934 to 167432; assignment bounds replayed 82998708 to 65583791",
+        "candidate_filter": "331172 full round-local pairs, 185094 model-equal candidates, 146078 pruned; exact fallback pairs 54147 to 42596; reusable contexts 53468 to 42251; assignment bounds replayed 22413290 to 20669459",
+        "failure_counters": "0 unmapped terms, conservative pairs, probe mapping fallbacks, or probe context conflicts in both profiles",
+        "family_time": "default MathSAT solved-row time 91.850499 to 8.549319 seconds and CPA induction 52.136309 to 47.886125; candidate-final MathSAT 13.895247 to 1.504914 and CPA induction 12.787738 to 12.561728",
+        "slurm_state": "both array tasks COMPLETED with exit code 0; default elapsed 00:03:58, candidate-final elapsed 00:03:15"
+      },
+      "artifacts": "remote:results/qf-uflra-model-filter-84d5e8a/; local ignored copy results/qf-uflra-model-filter-84d5e8a/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The optimization is accepted: it preserves every sampled answer and solved count, materially reduces exact pair contexts, improves default PAR2 by 17 percent, and cuts solved-row time by 61 percent. The remaining 167432 default contexts show that equal-value classes and per-pair tableau copies remain significant work."
     }
   ]
 }

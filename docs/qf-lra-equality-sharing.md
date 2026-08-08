@@ -370,6 +370,20 @@ model-equal pair is probed but not propagated. The
 candidates, pruned pairs, unmapped terms, and conservative pairs. Differential
 QF_UFLRA fuzzing remains mandatory before benchmark evaluation.
 
+**Measured acceptance.** Commit `84d5e8a` passed all 10 tracked QF_UFLRA seeds
+and 3,000 fresh exact-mode generated cases against Z3 on SLURM job 121888, with
+zero disagreements, timeouts, crashes, unsupported cases, or bug artifacts. On
+the established 45-file, 60-second sample, job 121892 preserved every row and
+42/45 solved with zero wrong answers. Relative to probe-reuse job 121886, the
+default profile reduced PAR2 from 503.986808 to 416.435444 and solved-row time
+from 143.986808 to 56.435444 seconds. Exact fallback pairs fell from 295,539 to
+173,801, reusable contexts from 264,934 to 167,432, and replayed assignment
+bounds from 82,998,708 to 65,583,791, while SAT decisions and propagations stayed
+at 29,187 and 208,421. The 25 MathSAT rows fell from 91.850499 to 8.549319
+seconds. The candidate-final profile also preserved all rows and improved PAR2
+from 386.682985 to 374.066642. Both profiles reported zero unmapped terms,
+conservative pairs, probe mapping fallbacks, or probe-context conflicts.
+
 ## Remaining order of work
 
 1. **Evaluate row-bound propagation in the mixed path.** Its relevant measure

@@ -99,15 +99,21 @@ These are ordered by correctness first, then performance.
    change removes normalization and duplicate orientation setup, but
    intentionally does not solve the quadratic pair count or per-pair tableau
    copy/replay.
-3. **Fail loudly on a missing mixed-dispatcher reason.** Returning `0` before
+3. **Complete in `9c7e11f`: filter exact probes by the checked LRA model.**
+   Cross-value pairs cannot be entailed and are removed before exact probing;
+   model-equal pairs still require both strict conflicts. Job 121888 passed the
+   tracked seeds and 3,000 generated exact-mode cases. Job 121892 preserved the
+   45-file result matrix and reduced default PAR2 from 503.99 to 416.44 and
+   exact fallback pairs from 295,539 to 173,801.
+4. **Fail loudly on a missing mixed-dispatcher reason.** Returning `0` before
    streaming a reason can turn bookkeeping loss into an empty or malformed
    IPASIR-UP reason. Assert the ownership/reason invariant and add a lazy fresh
    equality backtrack/repropagation test.
-4. **Complete on the integration branch: correct stale option and allocation
+5. **Complete on the integration branch: correct stale option and allocation
    claims.** The architecture and paper notes describe `off` as the legacy
    alias for exact mandatory closure and record the exact fallback and final
-   arrangement as additional full-pair-vector consumers.
-5. **Complete for integration commit `3dee8ca`:** lint, `make check`, ASan,
+   arrangement as additional exact-candidate consumers.
+6. **Complete for integration commit `3dee8ca`:** lint, `make check`, ASan,
    documentation, whole-tree `clang-tidy`, 10 tracked QF_UFLRA seeds, and a
    3,000-case generated mixed gate all passed. SLURM job 121874 completed four
    750-case shards with zero wrong answers, crashes, or timeouts. That run
