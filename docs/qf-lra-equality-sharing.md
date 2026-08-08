@@ -297,6 +297,21 @@ mapping fallback or a context-build conflict. The old reconstruction oracle is
 retained as the defensive missing-map fallback. Differential QF_UFLRA fuzzing is
 required before benchmark evaluation.
 
+**Measured acceptance.** Commit `0b6aa62` passed the 10 tracked mixed seeds and
+3,000 generated exact-mode cases against Z3 on SLURM job 121882. On the same
+45-file, 60-second sample as the fixed-elimination promotion run, job 121886
+preserved all row answers, 42/45 solved, and the same three timeouts. Default
+PAR2 fell from 596.809750 to 503.986808; excluding the unchanged timeout
+penalties, solved-row time fell from 236.809750 seconds to 143.986808 seconds.
+The candidate-final profile fell from 403.662678 to 386.682985 PAR2 and from
+43.662678 to 26.682985 solved-row time. In both profiles 41 of 42 solved rows
+became faster. Default SAT decisions, SAT propagations, and exact fallback pairs
+remained 29,187, 208,421, and 295,539, respectively, isolating the measured gain
+from search changes. All 264,934 completed default pair contexts used the reuse
+path with zero mapping fallbacks and zero context conflicts. This accepts the
+constant-factor repair; it does not close the remaining Z3 gap or remove the
+pair cross product.
+
 ## Remaining order of work
 
 1. **Evaluate row-bound propagation in the mixed path.** Its relevant measure

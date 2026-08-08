@@ -24057,8 +24057,97 @@
         "include_cleaner": "whole-tree advisory pass reported existing baseline debt and no diagnostic in either changed C++ file",
         "code_review": "no blocking issue after changing an impossible accepted-assignment replay conflict from reconstruction fallback to fail-loud behavior"
       },
-      "evidence_status": "local-validated-needs-slurm-fuzz-and-sample",
+      "evidence_status": "accepted-slurm-validated-by-121882-and-121886",
       "outcome": "The narrow reuse prototype halves this representative profiled runtime without changing the answer, SAT search, pair count, probe count, or equality count. It addresses repeated normalization and orientation setup only; quadratic pair enumeration and per-pair tableau work remain."
+    },
+    {
+      "id": "2026-08-08-qf-uflra-exact-probe-reuse-fuzz-121882",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "fuzz",
+      "scope": "Merge-grade exact-mode differential gate for reusable complete-convex LRA equality probe contexts",
+      "commit": "0b6aa62",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_id": "121882",
+        "binary": "Release, git 0b6aa62, CaDiCaL cadical-3.0.0-7b99c07",
+        "workspace": "Prepared with scripts/slurm_prepare_benchmark_workspace.py in archive/reuse-dependencies mode; --check-only verified the revision, linkage, CaDiCaL, Z3, and typefuzz immediately before submission"
+      },
+      "commands": {
+        "seed_preflight": "python3 scripts/check_solver_seed_corpus.py --seeds benchmarks/seeds/qf_uflra --solver ./build-slurm-rel/primo --solver-arg=--nelson-oppen-prop=exact --ref ./contrib/local/bin/z3 --timeout 10 --out <artifact>/summary.csv",
+        "generated_gate": "sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FUZZ_SEED_BASE=2026080804, PRIMO_FUZZ_SOLVER_ARGS=--nelson-oppen-prop=exact, and PRIMO_FUZZ_OUT_DIR=slurm-results/qf_uflra-probe-reuse-0b6aa62 scripts/slurm_qf_uflra_fuzz_gate.sbatch"
+      },
+      "generator": "scripts/qf_uflra_smoke_fuzz.py --shape mixed",
+      "reference": "Z3 5.0.0",
+      "inputs": {
+        "tracked_seeds": 10,
+        "generated_cases": 3000,
+        "shards": 4,
+        "cases_per_shard": 750,
+        "random_seeds": [
+          2026080804,
+          2026080805,
+          2026080806,
+          2026080807
+        ],
+        "solver_timeout_seconds": 5
+      },
+      "results": {
+        "tracked_seeds": "10 PASS, 0 disagreement, 0 timeout, 0 crash, 0 unsupported",
+        "generated": "3000 PASS: 1869 sat and 1131 unsat; 0 wrong answer, 0 timeout, 0 crash, 0 unsupported",
+        "bug_files": 0,
+        "slurm_state": "all four array tasks COMPLETED with exit code 0 in 18 seconds"
+      },
+      "artifacts": "remote:slurm-results/qf_uflra-probe-reuse-0b6aa62/, remote:slurm-results/qf_uflra-probe-reuse-0b6aa62-seeds/, and remote:slurm_logs/primo-qf-uflra-fuzz-121882_*.out",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact revision passed deterministic regressions and 3,000 fresh generated mixed cases after replacing per-orientation LRA reconstruction with per-pair reversible probe contexts."
+    },
+    {
+      "id": "2026-08-08-qf-uflra-exact-probe-reuse-benchmark-121886",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "benchmark",
+      "scope": "45-file QF_UFLRA before/after comparison for reusable complete-convex LRA equality probe contexts",
+      "commit": "0b6aa62",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_id": "121886",
+        "binary": "Release, git 0b6aa62, CaDiCaL cadical-3.0.0-7b99c07",
+        "workspace": "Prepared and checked with scripts/slurm_prepare_benchmark_workspace.py; the manifest corpus was staged with scripts/slurm_stage_manifest_files.py"
+      },
+      "command": "sbatch --array=0-1 --time=00:20:00 with PRIMO_COMPARE_TIMEOUT=60, PRIMO_COMPARE_MANIFEST=benchmarks/qf_uflra-preprocessing-opportunity-sample.txt, and default/candidate-final solver specs scripts/slurm_qf_uflra_sample_compare.sbatch",
+      "inputs": {
+        "manifest": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt",
+        "files": 45,
+        "timeout_seconds": 60,
+        "families": {
+          "mathsat": 25,
+          "cpachecker_induction": 19,
+          "cpachecker_bmc": 1
+        },
+        "profiles": [
+          "default",
+          "candidate-final --qf-uflra-candidate-final-scan"
+        ],
+        "baseline": "SLURM job 121509, commit 9481bfb, results/qf-uflra-convex-no-promoted-9481bfb/",
+        "reference_reuse": "Z3 was not rerun; unchanged artifact results/qf-uflra-opportunity-45-3451af9-rerun/z3.csv"
+      },
+      "results": {
+        "default": "42 solved, 3 timeout, 0 wrong, PAR2 503.986808 versus 596.809750 baseline",
+        "candidate_final": "42 solved, 3 timeout, 0 wrong, PAR2 386.682985 versus 403.662678 baseline",
+        "family_solved": "MathSAT 25/25, CPA induction 17/19, CPA BMC 0/1 in both profiles, unchanged from baseline",
+        "row_parity": "all 45 status/answer pairs unchanged in each profile",
+        "solved_row_time": "default 236.809750 to 143.986808 seconds; candidate-final 43.662678 to 26.682985 seconds; 41/42 solved rows faster in each profile",
+        "stable_default_search": "29187 SAT decisions, 208421 SAT propagations, and 295539 exact fallback pairs before and after",
+        "default_reuse": "264934 reusable pair contexts, 274929 reusable orientations, 82998708 assignment bounds replayed, 0 mapping fallbacks, 0 context conflicts",
+        "candidate_reuse": "53468 reusable pair contexts, 54628 reusable orientations, 22413290 assignment bounds replayed, 0 mapping fallbacks, 0 context conflicts",
+        "slurm_state": "both array tasks COMPLETED with exit code 0; default elapsed 00:05:25, candidate-final elapsed 00:03:28"
+      },
+      "artifacts": "remote:results/qf-uflra-probe-reuse-0b6aa62/; local ignored copy results/qf-uflra-probe-reuse-0b6aa62/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The optimization is accepted: it preserves the 45-file result matrix and search counts while reducing solved-row runtime by about 39% in both tested profiles. The unchanged timeouts and exact pair counts confirm that quadratic pair enumeration remains the next bottleneck."
     }
   ]
 }
