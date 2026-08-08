@@ -888,27 +888,45 @@ primo is **third by 123**. **Which solver is "strongest" is a function of the
 timeout**, which is worth remembering whenever the 300s standing is quoted --
 primo's second place exists at 300s and nowhere below 60s.
 
-Worth noting against the previous run: primo improved at every budget from 1s
-up (1066 -> 1063 is flat, 1286 -> 1305, 1440 -> 1470, 1515 -> 1543, 1631 ->
-1657) but *regressed* at 0.1s, from 832 to 768. The fixes removed per-backtrack
+Worth noting against the previous run: primo improved at every budget from
+**10s** up (1286 -> 1305, 1440 -> 1470, 1515 -> 1543, 1631 -> 1657) and
+regressed at both short budgets -- 0.1s from 832 to 768, and 1s slightly, 1066
+-> 1063. The fixes removed per-backtrack
 and per-dispatch overhead that dominates long searches; on instances that
 finish in under a tenth of a second there is nothing to recover and the
 cross-link change's larger `RowEntry` is the visible term.
 
-**OpenSMT leads and primo is third**, 39 behind OpenSMT and 14 behind Yices.
-The reference set was built in that order -- z3 and cvc5 first, Yices on
-2026-08-03, OpenSMT the same day -- and Primo's apparent standing fell at
-each addition: ahead by 47, then second, now third. **The movement is
-entirely in the reference set; Primo's own score has not changed.** That is
-the honest reading of a three-reference comparison being extended to five,
-and it is why "Primo leads QF_LRA" was never a safe claim to make from three.
+**OpenSMT still leads at 300s; primo is second, 13 behind it and 12 ahead of
+Yices.** Two separate lessons sit in that sentence, and they are worth keeping
+apart.
 
-**Two families carry OpenSMT's margin.** LassoRanker, the division's largest
-at 419, goes 385 to Primo's 347, and 2017-Heizmann 48 to 41. `tropical-matrix`
-is the sharpest single result on the board: OpenSMT 5 of 10 where every other
-solver manages 1 or 0. Primo takes `2019-ezsmt` 103 to 95, `latendresse` 15 to
-11 and `tta_startup` 72 to 72-with-z3-at-68; eleven of seventeen families tie
-exactly, ten of them saturated.
+The first is about the *reference set*. It was built incrementally -- z3 and
+cvc5 first, Yices on 2026-08-03, OpenSMT the same day -- and primo's apparent
+standing fell at each addition: ahead by 47, then second, then third, **with
+its own score unchanged throughout**. That is the honest reading of a
+three-reference comparison extended to five, and it is why "primo leads
+QF_LRA" was never a safe claim to make from three. It is also why the recovery
+to second on 2026-08-07 is a real result and the earlier slide was not a real
+regression: this time the score moved, 1631 -> 1657.
+
+**One family carries most of OpenSMT's remaining margin.** LassoRanker, the
+division's largest at 419, is where the gap lives; `tropical-matrix` is the
+sharpest single result on the board, OpenSMT 5 of 10 where every other solver
+manages 1 or 0. Primo takes `2019-ezsmt`, `latendresse` and `tta_startup`, and
+eleven of seventeen families tie exactly, ten of them saturated.
+
+```{warning}
+The per-family *counts* previously given here (LassoRanker 385 to 347,
+2017-Heizmann 48 to 41, `2019-ezsmt` 103 to 95) were measured when primo
+scored **1631** and are superseded. The run-log entry
+`2026-08-07-qf-lra-full-division-recovery-measured` records the deltas that
+supersede them -- LassoRanker **+25** and 2017-Heizmann **+1** against that
+same 1631 baseline, with nothing lost -- so primo's current LassoRanker figure
+is 372 rather than 347. That is *derived* from two recorded numbers, not
+measured directly, which is why it is flagged here instead of being written
+into the prose above: a fresh per-family breakdown of job 120784 has not been
+computed.
+```
 
 **They are still complementary, not ranked.** 29 instances Primo solves and
 OpenSMT does not, against 68 the other way; 23 fall only to OpenSMT, 8 only to
