@@ -24148,6 +24148,63 @@
       "artifacts": "remote:results/qf-uflra-probe-reuse-0b6aa62/; local ignored copy results/qf-uflra-probe-reuse-0b6aa62/",
       "evidence_status": "slurm-complete-current",
       "outcome": "The optimization is accepted: it preserves the 45-file result matrix and search counts while reducing solved-row runtime by about 39% in both tested profiles. The unchanged timeouts and exact pair counts confirm that quadratic pair enumeration remains the next bottleneck."
+    },
+    {
+      "id": "2026-08-08-qf-uflra-lra-model-value-exact-filter-local",
+      "started_at": "2026-08-08",
+      "recorded_at": "2026-08-08",
+      "kind": "profile",
+      "scope": "Local focused profile and correctness validation for filtering exact convex LRA equality probes by the checked tableau model partition",
+      "commit": "9c7e11f",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local workstation",
+        "binary": "build/primo with CaDiCaL from contrib/local",
+        "benchmark": "tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2"
+      },
+      "commands": {
+        "profile": "/usr/bin/time -f 'wall=%e user=%U rss=%M' ./build/primo --quiet --stats --max-theory-conflicts=1000000 tmp/QF_UFLRA/mathsat/RandomCoupled/pb_real_10_0100_10_14.smt2",
+        "validation": "./build/primo_qf_lra_solver_tests; make check; make asan-test; make lint; make docs; make tidy; make include-cleaner; git diff --check"
+      },
+      "baseline": {
+        "revision": "e61291e",
+        "answer": "sat",
+        "wall_seconds": 0.72,
+        "sat_decisions": 171,
+        "sat_propagations": 515,
+        "exact_fallback_pairs": 596,
+        "probe_contexts": 596,
+        "probe_orientations": 753,
+        "assignment_bounds_replayed": 42904
+      },
+      "results": {
+        "answer": "sat",
+        "wall_seconds": 0.04,
+        "sat_decisions": 171,
+        "sat_propagations": 515,
+        "model_filter_builds": 2,
+        "model_filter_full_pairs": 600,
+        "model_filter_candidate_pairs": 23,
+        "model_filter_pruned_pairs": 577,
+        "exact_fallback_pairs": 19,
+        "probe_contexts": 19,
+        "probe_orientations": 23,
+        "assignment_bounds_replayed": 1386,
+        "unmapped_terms": 0,
+        "conservative_pairs": 0
+      },
+      "validation": {
+        "focused_qf_uflra": "passed",
+        "make_check": "13/13 passed",
+        "asan": "13/13 passed",
+        "lint": "passed",
+        "docs": "passed",
+        "clang_tidy": "whole-tree run completed; changed-file rerun reported only suppressed non-user-header warnings",
+        "include_cleaner": "whole-tree advisory baseline debt; the one new changed-file diagnostic identified the missing standard iterator include, which was added",
+        "code_review": "no blocking correctness, explanation, backtracking, model, layering, or efficiency issue"
+      },
+      "evidence_status": "local-current-awaiting-slurm-fuzz-and-sample",
+      "outcome": "The model partition removes 577 of 600 round-local cross-value pairs on the representative case while preserving the SAT answer and search counts. Exact proof remains mandatory for all 23 model-equal candidates, and the worst case remains quadratic until model diversification is implemented."
     }
   ]
 }
