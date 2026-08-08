@@ -15,6 +15,7 @@ using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
 using primo::smt::EufEngine;
 using primo::smt::LraPivotingRule;
+using primo::smt::MixedDispatchMode;
 using primo::smt::NelsonOppenPropagationMode;
 using primo::util::StatKey;
 
@@ -3458,7 +3459,36 @@ void bool_argument_real_result_application_is_not_mis_dispatched() {
   assert(result.statistics.get(":solver.qf-lra") == 0);
 }
 
+// --mixed-dispatch wide restores the pre-2026-08-07 classifier, under which a
+// Bool-sorted Constant counts as an EUF predicate and a QF_LRA formula
+// containing one propositional variable goes to the mixed solver. Kept as a
+// portfolio dimension and so differential fuzzing can reach that path; see
+// docs/nelson-oppen-qf-lra-regression.md.
+void mixed_dispatch_wide_routes_propositional_variables_to_the_mixed_solver() {
+  const char* input = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p () Bool)
+    (assert (and (or p (<= x 0)) (<= (+ x y) 3) (>= x 1) (>= y 1)))
+    (check-sat)
+  )";
+  CheckSatOptions narrow;
+  const auto narrow_result = check_sat_smtlib(input, narrow);
+  assert(narrow_result.result == CheckSatResult::Sat);
+  assert(narrow_result.statistics.get(":solver.qf-lra") == 1);
+
+  CheckSatOptions wide;
+  wide.mixed_dispatch = MixedDispatchMode::Wide;
+  const auto wide_result = check_sat_smtlib(input, wide);
+  // Same answer, different solver -- that is the whole point of the option.
+  assert(wide_result.result == CheckSatResult::Sat);
+  assert(wide_result.statistics.get(":solver.qf-lra") == 0);
+  assert(wide_result.statistics.get(":solver.qf-uflra") == 1);
+}
+
 int main() {
+  mixed_dispatch_wide_routes_propositional_variables_to_the_mixed_solver();
   propositional_variables_do_not_force_the_mixed_solver();
   bool_sorted_application_still_forces_the_mixed_solver();
   uninterpreted_sort_with_arithmetic_still_forces_the_mixed_solver();

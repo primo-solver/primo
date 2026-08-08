@@ -65,6 +65,28 @@ enum class ModelEqualityBranchPolicy {
   CareQueued,
 };
 
+// Which formulas reach the mixed EUF/LRA solver rather than the pure QF_LRA
+// one. This is a *dispatch* policy, not a theory setting.
+//
+// `Narrow` (default): only a Bool-sorted Application counts as an EUF
+// predicate, so a formula that is pure QF_LRA apart from propositional
+// variables stays on the pure path.
+//
+// `Wide`: a Bool-sorted Constant counts too -- the behaviour before
+// 2026-08-07. That sends any QF_LRA formula containing a single propositional
+// variable to the mixed solver, which is usually much worse (it hands those
+// variables to congruence closure) but is genuinely better on some instances.
+// See docs/nelson-oppen-qf-lra-regression.md and open-leads lead 2b: neither
+// path dominates.
+//
+// Kept reachable for two reasons beyond curiosity: it is a portfolio dimension,
+// and it lets differential fuzzing exercise the mixed path on inputs that would
+// otherwise never reach it.
+enum class MixedDispatchMode {
+  Narrow,
+  Wide,
+};
+
 // Mirrors theory::arithmetic::LraTableau::PivotingRule -- kept as a
 // separate check_sat.hpp-local enum (translated at the wiring point, see
 // lra_pivoting_rule_from_options in check_sat.cpp) rather than reused
@@ -221,6 +243,8 @@ struct CheckSatOptions {
   bool lra_least_violated_leaving = false;
   // Numeric Check/Pivot knobs -- see LraTuning.
   LraTuning lra_tuning;
+  // See MixedDispatchMode. Narrow keeps pure QF_LRA on the pure path.
+  MixedDispatchMode mixed_dispatch = MixedDispatchMode::Narrow;
   // Heuristics-note item H7 -- see LraTableau::set_fixed_elimination.
   // Opt-in (--lra-fixed-elimination): on the 595-file scrambled competition
   // set it solves 374 against 373 with it off, a median 0.94x speedup over

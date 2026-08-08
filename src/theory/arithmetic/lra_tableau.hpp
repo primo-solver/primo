@@ -278,9 +278,42 @@ class LraTableau {
   const DeltaRational& assignment(LraVarId var) const { return vars_.at(var).assignment; }
 
   // -- Nelson-Oppen equality sharing (docs/qf-lra-equality-sharing.md) --
+  //
+  // Partitions `shared` by its current model value, returning only the classes
+  // with more than one member. This is the `M-Propagate` trigger from de Moura
+  // and Bjorner's Model-based Theory Combination (docs/papers/model-guided-no.pdf,
+  // Section 5): the theories exchange candidate equalities implied by the
+  // *current model*, not by the constraint set, and the combination layer turns
+  // each candidate into a case split.
+  //
+  // Scoped to `shared` on purpose. The combination layer only ever cares about
+  // variables occurring in more than one theory, so partitioning the whole
+  // tableau would compute a partition of thousands of variables to use a
+  // handful of it. Cost is O(|shared|) expected -- hashed on the delta-rational
+  // model value and on the variable id -- independent of tableau size.
+  //
+  // **These are conjectures, not entailments.** Two variables sharing a model
+  // value need not be equal in every model; that is exactly why the paper's
+  // rule creates a case split rather than a propagation. Anything this returns
+  // must be checked or branched on, never asserted. Entailed equalities are a
+  // separate obligation with a separate return type, because they carry a
+  // reason -- see the note above.
+  //
+  // Keying on DeltaRational and not on its rational part is load-bearing: a
+  // strict bound gives a variable an infinitesimal component, and two variables
+  // agreeing rationally while differing in delta are NOT equal in the concrete
+  // model the delta encoding stands for. Keying on the rational part alone
+  // would hand the combination layer equalities that do not hold.
+  //
+  // Duplicates in `shared` are ignored; the result contains each variable once.
+  std::vector<std::vector<LraVarId>> model_equal_classes(const std::vector<LraVarId>& shared) const;
 
   // An equality between shared variables that holds in EVERY model of the
   // current bounds, together with the reason literals that force it.
+  //
+  // Unlike model_equal_classes this is an ENTAILMENT, not a conjecture: the
+  // combination layer may propagate it rather than branch on it, which is why
+  // it carries a reason and the partition does not.
   //
   // `reasons` follows the codebase-wide convention -- already-negated
   // ("blocking") literals, exactly as build_conflict returns and as
@@ -316,11 +349,14 @@ class LraTableau {
   // recovers the rest by transitivity, and a quadratic blow-up here would be
   // paid on every call.
   //
-  // Const and allocation-light: this is polled at check points, never hooked
-  // into pivot() or assert_*. Keeping Nelson-Oppen work off the LRA hot path is
-  // deliberate -- see docs/nelson-oppen-qf-lra-regression.md for what happened
-  // last time it was not.
+  // Const, and polled at check points -- never hooked into pivot() or
+  // assert_*. It is not allocation-free: each candidate row builds two small
+  // variable vectors plus a reason vector, so the cost is O(shared candidates
+  // x row length), paid per check rather than per pivot. Keeping Nelson-Oppen work off the LRA hot
+  // path is deliberate -- see docs/nelson-oppen-qf-lra-regression.md for what happened last time it
+  // was not.
   std::vector<EntailedEquality> entailed_equalities(const std::vector<LraVarId>& shared) const;
+
   // Read-only access to a variable's current upper/lower bound (if any) and
   // the literal that established it -- used by OnlineLraPropagator's
   // same-slack "deriving satisfied atoms" propagation (Dutertre & de

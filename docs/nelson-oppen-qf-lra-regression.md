@@ -346,6 +346,39 @@ to ~0 and `:no.mixed.euf-atoms` from 7,352 to ~0, with the answer unchanged. If
 merges stay high, the classification is not where the atoms are entering EUF
 and this analysis is wrong.
 
+(routing-cost)=
+### The routing fix has a real cost, and `--mixed-dispatch wide` recovers it
+
+Measured 2026-08-07 after landing the fix, on `tropical-matrix/constraint-199552`
+**under `--guarded-real-equality-lowering`**:
+
+| dispatch | answer | wall | path | pivots |
+|---|---|---:|---|---:|
+| `wide` (pre-fix behaviour) | **sat** | **2.2s** | `:solver.qf-uflra` | 7,679 |
+| `narrow` (the fix, default) | unknown | >90s | `:solver.qf-lra` | 306,333 |
+
+A **>40x regression on one instance**, isolated to this commit. Scope, checked
+rather than assumed:
+
+- **The division result is unaffected.** Without that flag both paths time out,
+  and the division runs plain `primo --quiet`; `constraint-199552` times out in
+  *both* arms there. The +87/-2 and 1657 solved stand.
+- **It is this file plus that flag.** The other tropical instances time out
+  either way.
+
+**Why it matters anyway.** `constraint-199552` is the reference instance for
+essentially all the tropical work in [](open-leads.md)'s lead 3b and
+[](tropical-matrix-structure.md) -- the 4.13s baseline, the -41% cross-link
+measurement, job 119577, the 1.4-billion-lookup profile. **Every one of those
+numbers was taken on the mixed path.** With `narrow` as the default they no
+longer reproduce; add `--mixed-dispatch wide` to reproduce them.
+
+`--mixed-dispatch {narrow,wide}` exists for exactly this. It is deliberately
+exotic, and it earns its place three ways: it keeps those measurements
+reproducible, it is a portfolio dimension on a corpus where *neither path
+dominates* (lead 2b), and it lets differential fuzzing reach the mixed path on
+inputs that would otherwise never dispatch there.
+
 (routing-prototype)=
 ### Prototype measured 2026-08-07: one line, sound, and two-tailed
 

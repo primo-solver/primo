@@ -1986,7 +1986,7 @@ static_assert(sizeof(FormulaFeatureSummary) == 4,
 
 FormulaFeatureSummary summarize_formula_features(
     const core::TermManager& terms, core::TermId term_id,
-    std::unordered_map<core::TermId, FormulaFeatureSummary>& memo) {
+    std::unordered_map<core::TermId, FormulaFeatureSummary>& memo, MixedDispatchMode dispatch) {
   const auto found = memo.find(term_id);
   if (found != memo.end()) {
     return found->second;
@@ -2010,11 +2010,14 @@ FormulaFeatureSummary summarize_formula_features(
   // && has_arithmetic`; the QF_UF dispatch keys on has_application_term, so
   // narrowing this cannot affect it.
   summary.has_euf_predicate =
-      term.kind == core::TermKind::Application && term.sort == terms.symbols().bool_sort();
+      (term.kind == core::TermKind::Application ||
+       (dispatch == MixedDispatchMode::Wide && term.kind == core::TermKind::Constant)) &&
+      term.sort == terms.symbols().bool_sort();
   summary.has_arithmetic = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
 
   for (const core::TermId child : term.children) {
-    const FormulaFeatureSummary child_summary = summarize_formula_features(terms, child, memo);
+    const FormulaFeatureSummary child_summary =
+        summarize_formula_features(terms, child, memo, dispatch);
     summary |= child_summary;
   }
 
@@ -10619,8 +10622,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     FormulaFeatureSummary formula_features;
     std::unordered_map<core::TermId, FormulaFeatureSummary> formula_feature_memo;
     for (const core::TermId assertion : assertions) {
-      const FormulaFeatureSummary assertion_features =
-          summarize_formula_features(frontend.terms(), assertion, formula_feature_memo);
+      const FormulaFeatureSummary assertion_features = summarize_formula_features(
+          frontend.terms(), assertion, formula_feature_memo, options.mixed_dispatch);
       formula_features |= assertion_features;
     }
     const bool has_equality = formula_features.has_equality;

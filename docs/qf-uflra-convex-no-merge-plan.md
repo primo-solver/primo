@@ -1,44 +1,31 @@
 # Convex Nelson-Oppen Merge Plan
 
-This note records how the QF_LRA equality-sharing work from
-`origin/qflra-no-equality-sharing` was selectively merged into the Nelson-Oppen
-branch without merging the source branch's unrelated QF_LRA experiments and
-tableau rewrites. The selective merge, convex fixpoint wiring, and mixed
-fixed-elimination decision are now implemented.
+This note is the live integration checklist for merging the convex
+Nelson-Oppen work with the QF_LRA equality-sharing mainline. Local `main` was
+fast-forwarded to `dd58707` and merged into `convex-no-qflra-integration` with
+the mainline LRA implementation, API, tests, and pure-QF_LRA evidence treated
+as authoritative. The NO branch contributes the mixed fixpoint, lazy equality
+registry, producer-rule statistics, and QF_UFLRA evidence.
 
 The scope is deliberately limited to **convex QF_UFLRA**: rational linear
 arithmetic combined with EUF over the purified shared Real terms. Integer
 arithmetic, finite domains, Boolean equality sharing, and non-convex
 arrangement enumeration are outside this milestone.
 
-## Branch Findings
+## Integrated Mainline LRA Surface
 
-The branch was forked from an older point. Its full diff is therefore
-misleading: many commits are already represented on the current Nelson-Oppen
-branch, including the shared equality ledger, lazy equality atoms, Boolean EUF
-proxy work, online IPASIR-UP support, and prepared EUF/LRA state reuse. Compare
-with `git log --left-right --cherry-pick HEAD...origin/qflra-no-equality-sharing`
-before selecting commits.
-
-The genuinely relevant branch-only commits are:
-
-- `a5307b8`: model-equality classes for conjectures used by `M-Propagate`;
-- `11cc884`: LRA `FixedEq` and `EqRow` entailed equalities with reasons;
-- `640ddc7`: independent entailment-oracle tests and a measured completeness
-  gap;
-- `b51f20c`: correction that the remaining gap is caused by the LRA basis, not merely by
-   missing paper rules.
-
-The branch-only `f3e7022` mixed-dispatch work is also separate from equality
-sharing. It should be evaluated independently rather than pulled into the
-convex NO merge.
-
-The branch also contains broad QF_LRA preprocessing, tableau, benchmark, and
-documentation changes, many of which overlap work already present here. It
-must not be merged wholesale into the Nelson-Oppen branch.
-
-The original `11cc884` commit was resolved selectively: its entailed equality
-API and rules were retained, while model-equality partition code was excluded.
+- `LraTableau::model_equal_classes()` returns model-coincident shared-variable
+  classes. They are conjectures for `M-Propagate`, never entailments.
+- `LraTableau::entailed_equalities()` returns `FixedEq` and `EqRow`
+  consequences with blocking reasons. The merged NO branch retains a narrow
+  rule tag so statistics can distinguish the two producers.
+- The entailment oracle is bounds-equivalent after push/pop but may change the
+  basis. Tests do not assume basis restoration.
+- Mixed dispatch remains a separate routing decision. Its mainline default and
+  pure-QF_LRA preservation evidence are retained unchanged.
+- Mainline documentation and run-log evidence are retained. NO-only run-log
+  entries are merged by stable entry ID rather than by textual conflict
+  resolution.
 
 ## Convexity Contract
 
@@ -58,7 +45,7 @@ This requires a strict distinction:
 `entailed_equalities()` and must not be used as an unconditional propagation
 source.
 
-## Selective Merge Status
+## Convex Integration Status
 
 1. **Complete:** port `EntailedEquality` to the current `LraTableau` row representation.
 2. **Complete:** implement and test `FixedEq` and `EqRow`, preserving shared-term filtering,
@@ -85,15 +72,42 @@ source.
    `--no-qf-uflra-fixed-elimination`; pure QF_LRA remains unchanged. Row-bound
    propagation still requires its own mixed-path evaluation before any default
    change.
-8. **Deliberately excluded:** do not merge model-equality classes into the
-   entailed producer. Any future model partition belongs to the paper's shared
-   model/assumption mechanism, not this convex correctness path.
+8. **Complete at the API boundary:** retain `model_equal_classes()` as a
+   separate, currently unconsumed LRA API. Any future use belongs to the paper's
+   shared model/assumption mechanism, not this convex entailment path.
+
+## Post-Merge Review TODOs
+
+These are ordered by correctness first, then performance.
+
+1. **Blocker: repair or remove `--nelson-oppen-prop=off` for mixed QF_UFLRA.**
+   The option currently skips mandatory equality sharing and returns `sat` for
+   `x = y`, `p(x)`, `not p(y)`. An ablation may disable opportunistic or online
+   propagation, but it must retain the final convex combination check. Add
+   plain check-sat and model-validation regressions before keeping the option.
+2. **Replace the exact fallback's per-pair LRA reconstruction.** The current
+   default constructs every unresolved shared pair and builds a fresh prepared
+   LRA theory for one or two strict-orientation probes per pair. Streaming pairs
+   removes only the vector allocation; the substantive target is a reversible
+   or incremental probe context. Job 121509 still recorded 295,539 fallback
+   pairs and 274,252 extra-atom probes on 45 files.
+3. **Fail loudly on a missing mixed-dispatcher reason.** Returning `0` before
+   streaming a reason can turn bookkeeping loss into an empty or malformed
+   IPASIR-UP reason. Assert the ownership/reason invariant and add a lazy fresh
+   equality backtrack/repropagation test.
+4. **Correct stale option and allocation claims.** Documentation must not claim
+   that `off` preserves model reconstruction or that full pair vectors are used
+   only by explicit model-equality branching.
+5. **Revalidate the integrated commit.** Run focused mixed and pure-theory
+   tests, `make check`, ASan, lint, docs, and a fresh QF_UFLRA merge fuzz gate.
+   Existing jobs validate the pre-integration commits and remain historical
+   evidence rather than validation of this merge.
 
 ## Ownership and Invariants
 
 - `LraTableau` and EUF produce consequences and reason literals.
-- `TheoryCombinationManager` owns shared-term identity and SAT-visible equality
-  atoms.
+- `TheoryCombinationManager` owns shared-term identity and the canonical
+  equality registry; the clausifier owns term-to-SAT atom materialization.
 - The SMT coordinator owns the propagation fixpoint and installs guarded SAT
   clauses.
 - SAT sees only literals and clauses, never terms or tableau objects.

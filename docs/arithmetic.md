@@ -756,6 +756,7 @@ against `--help` output rather than by eye -- five options were missing.
 | `--lra-pivoting-rule {bland,dantzig,soi,sparse}` | `sparse` | Check/Pivot variable selection. `sparse` is item H3. |
 | `--no-lra-sparse-leaving` | leaving rule **on** | Ablates the leaving-side half of `sparse`. |
 | `--lra-least-violated-leaving` | **off** | MathSAT's leaving rule (Griggio thesis 2.5.3 p.53): least-violated first, shorter row as tie-break. Only under `sparse`. 167 vs 174 on the bar, but beats most-violated by 5 -- a complementarity candidate, not a win. |
+| `--mixed-dispatch {narrow,wide}` | `narrow` | Which formulas reach the mixed EUF/LRA solver. `wide` counts a Bool-sorted *constant* as an EUF predicate (pre-2026-08-07 behaviour), routing pure QF_LRA plus propositional variables to the mixed path. Usually much worse, but recovers `tropical-matrix/constraint-199552` under `--guarded-real-equality-lowering` (2.2s against a timeout). Portfolio dimension and fuzzing reach; see [](nelson-oppen-qf-lra-regression.md). |
 | `--monotone-elimination` | **off** | One-sided (monotone) variable elimination in preprocessing, with model reconstruction. 173 vs 174, gained 0 -- did not clear its bar. |
 | `--no-lra-propagation` | propagation **on** | Ablates same-slack propagation (Dutertre & de Moura 4.2). |
 | `--lra-row-propagation` | **off** | Row/interval implied bounds (roadmap item 2). |
@@ -834,25 +835,32 @@ item H7's elimination pivots -- which happen inside
 `:lra.pivot-row-updates` / `:lra.pivot-term-ops`, which count every pivot's
 work wherever it was triggered.
 
-### Where QF_LRA work stands, and what is open (2026-08-03)
+### Where QF_LRA work stands, and what is open (2026-08-07)
 
 **The complete non-incremental QF_LRA division, 1,753 files, 300s**
-(jobs 118382, 118904 and 119045):
+(primo from job 120784; references not re-run -- z3 and cvc5 from 118382,
+Yices from 118904, OpenSMT from 119045):
 
 | solver | solved | PAR2 | wrong |
 |---|---|---|---|
 | **OpenSMT 2.9.2** | **1670** (95.3%) | **68068** | **0** |
+| **primo** | **1657** (94.5%) | **79646** | **0** |
 | Yices 2.7.0 | 1645 (93.8%) | 80585 | 0 |
-| primo | 1631 (93.0%) | 95091 | 0 |
 | z3 5.0.0 | 1584 (90.4%) | 128079 | 0 |
 | cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
 
+primo moved from third to second on 2026-08-07, overtaking Yices on both
+solved count and PAR2. The previous figure was 1631; the change is the three
+Nelson-Oppen regression fixes plus the merged QF_LRA arithmetic work, measured
+in [](nelson-oppen-qf-lra-regression.md). Against the pre-regression commit it
+gained 26 files and lost none.
+
 ```{figure} _static/qf-lra-cactus.svg
-:alt: Instances solved against per-instance time budget for OpenSMT, Yices, primo, z3 and cvc5, over the 656 instances not solved by every solver within 10s.
+:alt: Instances solved against per-instance time budget for OpenSMT, primo, Yices, z3 and cvc5, over the 654 instances not solved by every solver within 10s.
 :width: 100%
 
-Instances solved against the per-instance time budget, over the **656
-instances that at least one solver did not finish within 10s**. The 1,097
+Instances solved against the per-instance time budget, over the **654
+instances that at least one solver did not finish within 10s**. The 1,099
 instances every solver finished quickly are omitted: each contributed one
 point to all five curves, so removing them subtracts the same constant from
 every series and leaves every gap between curves intact, while the vertical
@@ -862,37 +870,63 @@ numbers. Regenerate with `--drop-solved-by-all-under 10`; omit that flag for
 the unfiltered version.
 ```
 
-**The plot shows a crossover the table cannot.** Yices is the fastest solver
-at every budget up to 10s and OpenSMT is the strongest by 300s; they trade
-places between 10s and 30s:
+**The plot shows two crossovers the table cannot.** Yices is the fastest
+solver at every budget up to 10s and OpenSMT is the strongest by 300s; they
+trade places between 10s and 30s. primo is slowest of the three at short
+budgets and overtakes Yices only between 60s and 300s:
 
 | solved within | 0.1s | 1s | 10s | 30s | 60s | 300s |
 |---|---|---|---|---|---|---|
-| OpenSMT | 868 | 1103 | 1370 | **1527** | **1595** | **1670** |
-| Yices | **1003** | **1173** | **1428** | 1525 | 1575 | 1645 |
-| primo | 832 | 1066 | 1286 | 1440 | 1515 | 1631 |
+| OpenSMT | 868 | 1103 | **1370** | **1527** | **1595** | **1670** |
+| Yices | **1003** | **1173** | 1428 | 1525 | 1575 | 1645 |
+| primo | 768 | 1063 | 1305 | 1470 | 1543 | **1657** |
 | z3 | 861 | 1028 | 1227 | 1346 | 1430 | 1584 |
 | cvc5 | 711 | 945 | 1118 | 1209 | 1296 | 1511 |
 
-At a 10s budget Yices would lead this division by 58 files and OpenSMT would
-be second. **Which reference is "strongest" is a function of the timeout**,
-which is worth remembering whenever a single 300s number is quoted as the
-standing.
+At a 10s budget Yices leads this division by 58 files, OpenSMT is second and
+primo is **third by 123**. **Which solver is "strongest" is a function of the
+timeout**, which is worth remembering whenever the 300s standing is quoted --
+primo's second place exists at 300s and nowhere below 60s.
 
-**OpenSMT leads and primo is third**, 39 behind OpenSMT and 14 behind Yices.
-The reference set was built in that order -- z3 and cvc5 first, Yices on
-2026-08-03, OpenSMT the same day -- and Primo's apparent standing fell at
-each addition: ahead by 47, then second, now third. **The movement is
-entirely in the reference set; Primo's own score has not changed.** That is
-the honest reading of a three-reference comparison being extended to five,
-and it is why "Primo leads QF_LRA" was never a safe claim to make from three.
+Worth noting against the previous run: primo improved at every budget from
+**10s** up (1286 -> 1305, 1440 -> 1470, 1515 -> 1543, 1631 -> 1657) and
+regressed at both short budgets -- 0.1s from 832 to 768, and 1s slightly, 1066
+-> 1063. The fixes removed per-backtrack
+and per-dispatch overhead that dominates long searches; on instances that
+finish in under a tenth of a second there is nothing to recover and the
+cross-link change's larger `RowEntry` is the visible term.
 
-**Two families carry OpenSMT's margin.** LassoRanker, the division's largest
-at 419, goes 385 to Primo's 347, and 2017-Heizmann 48 to 41. `tropical-matrix`
-is the sharpest single result on the board: OpenSMT 5 of 10 where every other
-solver manages 1 or 0. Primo takes `2019-ezsmt` 103 to 95, `latendresse` 15 to
-11 and `tta_startup` 72 to 72-with-z3-at-68; eleven of seventeen families tie
-exactly, ten of them saturated.
+**OpenSMT still leads at 300s; primo is second, 13 behind it and 12 ahead of
+Yices.** Two separate lessons sit in that sentence, and they are worth keeping
+apart.
+
+The first is about the *reference set*. It was built incrementally -- z3 and
+cvc5 first, Yices on 2026-08-03, OpenSMT the same day -- and primo's apparent
+standing fell at each addition: ahead by 47, then second, then third, **with
+its own score unchanged throughout**. That is the honest reading of a
+three-reference comparison extended to five, and it is why "primo leads
+QF_LRA" was never a safe claim to make from three. It is also why the recovery
+to second on 2026-08-07 is a real result and the earlier slide was not a real
+regression: this time the score moved, 1631 -> 1657.
+
+**One family carries most of OpenSMT's remaining margin.** LassoRanker, the
+division's largest at 419, is where the gap lives; `tropical-matrix` is the
+sharpest single result on the board, OpenSMT 5 of 10 where every other solver
+manages 1 or 0. Primo takes `2019-ezsmt`, `latendresse` and `tta_startup`, and
+eleven of seventeen families tie exactly, ten of them saturated.
+
+```{warning}
+The per-family *counts* previously given here (LassoRanker 385 to 347,
+2017-Heizmann 48 to 41, `2019-ezsmt` 103 to 95) were measured when primo
+scored **1631** and are superseded. The run-log entry
+`2026-08-07-qf-lra-full-division-recovery-measured` records the deltas that
+supersede them -- LassoRanker **+25** and 2017-Heizmann **+1** against that
+same 1631 baseline, with nothing lost -- so primo's current LassoRanker figure
+is 372 rather than 347. That is *derived* from two recorded numbers, not
+measured directly, which is why it is flagged here instead of being written
+into the prose above: a fresh per-family breakdown of job 120784 has not been
+computed.
+```
 
 **They are still complementary, not ranked.** 29 instances Primo solves and
 OpenSMT does not, against 68 the other way; 23 fall only to OpenSMT, 8 only to

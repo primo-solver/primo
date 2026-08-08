@@ -41,6 +41,14 @@ and `EqRow` over a caller-supplied set of shared variables. Every result carries
 the blocking SAT literals for the bounds that establish it. Results form a
 deterministic spanning set rather than all pairwise equalities in one class.
 
+`LraTableau::model_equal_classes()` separately implements the paper's linear
+model-value partition over caller-supplied shared variables. It hashes the full
+`DeltaRational` value, drops singleton classes, and returns deterministic
+candidate classes. The mixed coordinator does not currently consume this API:
+the existing model-equality experiment has its own query and mutation path.
+Keeping the API separate from `entailed_equalities()` is load-bearing because
+model coincidence is a conjecture, not a theory consequence.
+
 After a feasible mixed-theory LRA check, `smt::solve_qf_uf_lra` maps shared Real
 terms to their tableau variables, requests these cheap entailments, and routes
 them through `TheoryCombinationManager` and guarded SAT clauses. No equality
@@ -64,11 +72,11 @@ additional early source; it is not the completeness mechanism.
 > equalities implied by β is simple: enumerate all the values of β(xᵢ),
 > inserting each value into a hash table. The expected time is O(|B ∪ N|).
 
-The paper's proposed operation is to return the partition of shared Real terms
-induced by equal β in one hash pass. Primo intentionally does **not** expose
-that partition as entailed equality propagation: equality in one feasible LRA
-model is a conjecture, not a logical consequence. The existing default-off
-model-equality branch remains a separate SAT-assumption experiment.
+Primo now implements this operation as `model_equal_classes()`, but intentionally
+does **not** expose its result as entailed equality propagation: equality in one
+feasible LRA model is a conjecture, not a logical consequence. The existing
+default-off model-equality branch remains a separate SAT-assumption experiment
+and does not yet use the partition API.
 
 Note for implementation: β values are `DeltaRational` (rational + infinitesimal
 for strict bounds), and `operator==` already compares both components. Two
@@ -246,9 +254,9 @@ Pinned by `fixed_elimination_closes_the_eqrow_basis_gap` in
 2. **Add `EqOffsetRows`, then `EqRows`.** Each rule needs its own explanation
    invariant, soundness-oracle tests, counters, and a case where it removes
    exact strict-separation probes.
-3. **Implement model partition and freedom-interval mutation only with the
-   paper's shared model transition state.** Model equality must remain distinct
-   from entailed propagation.
+3. **Integrate the implemented model partition only with the paper's shared
+   model transition state, then add freedom-interval mutation.** Model equality
+   must remain distinct from entailed propagation.
 
 ## Combination contract
 

@@ -168,6 +168,7 @@ int main(int argc, char** argv) {
   std::string euf_prop = "auto";
   std::string euf_explain_search = "one-sided";
   std::string lra_pivoting_rule = "sparse";
+  std::string mixed_dispatch = "narrow";
   bool no_lra_sparse_leaving = false;
   bool lra_least_violated_leaving = false;
   bool euf_proof_forest_diagnostics = false;
@@ -295,6 +296,16 @@ int main(int argc, char** argv) {
   app.add_option("--lra-bland-fallback-offset", solver_options.lra_tuning.bland_fallback_offset,
                  "Constant term of the Bland's-rule fallback point (default 64)")
       ->check(CLI::Range(0, 1000000000));
+  app.add_option("--mixed-dispatch", mixed_dispatch,
+                 "Which formulas reach the mixed EUF/LRA solver: narrow (default -- only a "
+                 "Bool-sorted function APPLICATION counts as an EUF predicate, so a formula "
+                 "that is pure QF_LRA apart from propositional variables stays on the pure "
+                 "path) or wide (a Bool-sorted constant counts too -- the pre-2026-08-07 "
+                 "behaviour, routing any QF_LRA formula containing one propositional variable "
+                 "to the mixed solver). Usually much worse, but genuinely better on some "
+                 "instances; kept as a portfolio dimension and so differential fuzzing can "
+                 "reach the mixed path [default: narrow]")
+      ->check(CLI::IsMember({"narrow", "wide"}));
   app.add_flag("--lra-fixed-elimination", solver_options.lra_fixed_elimination,
                "Pivot a basic LRA variable out of the basis as soon as its bounds coincide "
                "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
@@ -512,7 +523,7 @@ int main(int argc, char** argv) {
         name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
         name == "--qf-uflra-candidate-final-scan" || name == "--no-qf-uflra-fixed-elimination" ||
         name == "--guarded-real-equality-lowering" || name == "--monotone-elimination" ||
-        name == "--lra-least-violated-leaving") {
+        name == "--lra-least-violated-leaving" || name == "--mixed-dispatch") {
       return kGroupLra;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)
@@ -705,6 +716,9 @@ int main(int argc, char** argv) {
   }
   if (no_lra_sparse_leaving) {
     solver_options.lra_sparse_leaving = false;
+  }
+  if (mixed_dispatch == "wide") {
+    solver_options.mixed_dispatch = primo::smt::MixedDispatchMode::Wide;
   }
   if (lra_pivoting_rule == "dantzig") {
     solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Dantzig;

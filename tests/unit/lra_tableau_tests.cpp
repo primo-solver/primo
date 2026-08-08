@@ -1346,9 +1346,120 @@ void cancelling_pivot_drops_the_occurrence_entry() {
   }
 }
 
+// -- Nelson-Oppen equality sharing: model_equal_classes --
+//
+// These pin the M-Propagate trigger from docs/qf-lra-equality-sharing.md. The
+// contract is deliberately narrow: partition ONLY the shared variables, by the
+// current model, returning candidates for the combination layer to branch on.
+
+void model_equal_classes_groups_shared_variables_by_model_value() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  // x and y pinned to 5, z to 7.
+  assert(!tableau.assert_lower(x, rat(5), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(5), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(5), Lit{3}).has_value());
+  assert(!tableau.assert_upper(y, rat(5), Lit{4}).has_value());
+  assert(!tableau.assert_lower(z, rat(7), Lit{5}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto classes = tableau.model_equal_classes({x, y, z});
+  // One class {x, y}; z is a singleton and must not be reported.
+  assert(classes.size() == 1);
+  assert(classes[0].size() == 2);
+  assert(classes[0][0] == x && classes[0][1] == y);
+}
+
+// Scoping is the point: a variable that coincides in value but is NOT shared
+// must not appear. The combination layer only cares about interface variables,
+// and returning others would be noise it has to filter.
+void model_equal_classes_ignores_variables_outside_the_shared_set() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId hidden = tableau.add_variable();
+  for (const LraVarId v : {x, y, hidden}) {
+    assert(!tableau.assert_lower(v, rat(3), Lit{static_cast<int>(v) + 1}).has_value());
+    assert(!tableau.assert_upper(v, rat(3), Lit{static_cast<int>(v) + 10}).has_value());
+  }
+  assert(!tableau.check().has_value());
+
+  const auto classes = tableau.model_equal_classes({x, y});
+  assert(classes.size() == 1);
+  assert(classes[0].size() == 2);  // hidden shares the value but is not shared
+}
+
+// The delta trap. A strict bound gives a variable an infinitesimal component,
+// and two variables agreeing on the rational part while differing in delta are
+// NOT equal in the concrete model the delta encoding stands for. Keying the
+// partition on the rational part alone would report an equality that does not
+// hold -- an unsound propagation handed to the combination layer.
+void model_equal_classes_separates_values_differing_only_in_delta() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  // x = 4 exactly; y > 4, which the delta encoding represents as the lower
+  // bound 4 + delta (the same idiom as
+  // strict_inequality_conflicts_with_touching_nonstrict_bound above).
+  const DeltaRational strict_lower{Rational(4), Rational(1)};
+  assert(!tableau.assert_lower(x, rat(4), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(4), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, strict_lower, Lit{3}).has_value());
+  assert(!tableau.check().has_value());
+
+  assert(tableau.assignment(x).rational == tableau.assignment(y).rational);
+  assert(tableau.assignment(x) != tableau.assignment(y));
+  assert(tableau.model_equal_classes({x, y}).empty());
+}
+
+void model_equal_classes_is_empty_when_nothing_coincides() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.assert_lower(x, rat(1), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(1), Lit{2}).has_value());
+  assert(!tableau.assert_lower(y, rat(2), Lit{3}).has_value());
+  assert(!tableau.assert_upper(y, rat(2), Lit{4}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.model_equal_classes({x, y}).empty());
+  assert(tableau.model_equal_classes({}).empty());
+}
+
+// Duplicates are the caller's business; each variable appears once.
+void model_equal_classes_deduplicates_the_shared_set() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  for (const LraVarId v : {x, y}) {
+    assert(!tableau.assert_lower(v, rat(9), Lit{static_cast<int>(v) + 1}).has_value());
+    assert(!tableau.assert_upper(v, rat(9), Lit{static_cast<int>(v) + 10}).has_value());
+  }
+  assert(!tableau.check().has_value());
+  const auto classes = tableau.model_equal_classes({x, y, x, y, x});
+  assert(classes.size() == 1);
+  assert(classes[0].size() == 2);
+}
+
+// The classes track the MODEL, so they must refine as bounds tighten. This is
+// what makes them a live trigger rather than a one-shot computation.
+void model_equal_classes_track_the_model_across_assertions() {
+  LraTableau tableau(LraTableau::PivotingRule::Sparse);
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.check().has_value());
+  // Both start at 0, so they coincide.
+  assert(tableau.model_equal_classes({x, y}).size() == 1);
+  // Push y away; the candidate must disappear.
+  assert(!tableau.assert_lower(y, rat(6), Lit{1}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.model_equal_classes({x, y}).empty());
+}
+
 // -- entailed_equalities: FixedEq and EqRow --
 //
-// These are entailments carrying reasons, so the
+// Unlike model_equal_classes these are ENTAILMENTS carrying reasons, so the
 // tests assert the reason literals, not just that a pair came back.
 
 bool has_equality(const std::vector<LraTableau::EntailedEquality>& eqs, LraVarId a, LraVarId b) {
@@ -1537,8 +1648,16 @@ void entailed_equalities_emits_a_spanning_set_not_all_pairs() {
 // rather than asserted, because what the rules miss is exactly what the
 // combination layer has to case-split on.
 
-// Requires a slack row `s = x - y` to already exist. Uses push/pop, so the
-// tableau is left exactly as it was found.
+// Requires a slack row `s = x - y` to already exist.
+//
+// push/pop restores BOUNDS ONLY -- not the assignment and not the basis (see
+// LraTableau's class comment on bounds-only backtracking; pivots are trailed
+// only under PivotingRule::Soi). Verified: on the s = x - y tableau the probe
+// moves the slack out of the basis and x into it. So the tableau is left
+// bound-equivalent but with an arbitrary basis, and since entailed_equalities
+// is basis-DEPENDENT -- which is the whole point of
+// fixed_elimination_closes_the_eqrow_basis_gap below -- a caller must not
+// assume a later query sees the basis it started with.
 bool equality_is_entailed(LraTableau& tableau, LraVarId slack, int probe_lit) {
   const DeltaRational positive{Rational(0), Rational(1)};   // s >= +delta, i.e. s > 0
   const DeltaRational negative{Rational(0), Rational(-1)};  // s <= -delta, i.e. s < 0
@@ -1570,14 +1689,14 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
   // Each case builds x, y, two helper variables, and the slack s = x - y used
   // only by the oracle. `setup` applies the bounds that make the case.
   const auto run_case =
-      [&](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId)>& setup) {
+      [&](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId, LraVarId)>& setup) {
         LraTableau tableau(LraTableau::PivotingRule::Sparse);
         const LraVarId x = tableau.add_variable();
         const LraVarId y = tableau.add_variable();
         const LraVarId d = tableau.add_variable();
         const LraVarId slack = tableau.add_variable();
         tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
-        setup(tableau, x, y, d);
+        setup(tableau, x, y, d, slack);
         assert(!tableau.check().has_value());  // cases are satisfiable by construction
 
         // Each case has exactly one candidate pair, {x, y}, so the single slack
@@ -1595,21 +1714,21 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
       };
 
   // 1. Both pinned to the same value: FixedEq should fire.
-  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId, LraVarId) {
     assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
     assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
     assert(!t.assert_lower(y, rat(3), Lit{3}).has_value());
     assert(!t.assert_upper(y, rat(3), Lit{4}).has_value());
   });
   // 2. Pinned to different values: nothing entailed, nothing reported.
-  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId, LraVarId) {
     assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
     assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
     assert(!t.assert_lower(y, rat(8), Lit{3}).has_value());
     assert(!t.assert_upper(y, rat(8), Lit{4}).has_value());
   });
   // 3. Only one side pinned: not entailed.
-  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId, LraVarId) {
     assert(!t.assert_lower(x, rat(3), Lit{1}).has_value());
     assert(!t.assert_upper(x, rat(3), Lit{2}).has_value());
     assert(!t.assert_lower(y, rat(0), Lit{3}).has_value());
@@ -1624,14 +1743,12 @@ void entailed_equalities_agree_with_the_entailment_oracle() {
   //    see fixed_elimination_closes_the_eqrow_basis_gap below, which shows the
   //    same constraints yielding the equality once the fixed slack is pivoted
   //    out of the basis.
-  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId) {
-    // slack is variable 3 in run_case's construction: x=0, y=1, d=2, slack=3.
-    const LraVarId slack = 3;
+  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId, LraVarId slack) {
     assert(!t.assert_lower(slack, rat(0), Lit{11}).has_value());
     assert(!t.assert_upper(slack, rat(0), Lit{12}).has_value());
   });
   // 5. Unconstrained: not entailed.
-  run_case([](LraTableau&, LraVarId, LraVarId, LraVarId) {});
+  run_case([](LraTableau&, LraVarId, LraVarId, LraVarId, LraVarId) {});
 
   // The rules fired where they should have, and nothing unsound came back.
   assert(reported_total >= 1);
@@ -1693,9 +1810,10 @@ void the_entailment_oracle_is_itself_correct() {
   assert(!tableau.check().has_value());
   assert(equality_is_entailed(tableau, slack, 200));
 
-  // And the oracle must leave the tableau usable afterwards.
+  // The oracle must leave the tableau usable -- bound-equivalent, so the same
+  // queries still answer, even though the basis may have moved under it.
   assert(!tableau.check().has_value());
-  assert(tableau.entailed_equalities({x, y}).size() == 1);
+  assert(equality_is_entailed(tableau, slack, 300));
 }
 
 }  // namespace
@@ -1742,6 +1860,12 @@ int main() {
   merge_and_sort_rebuilds_agree_on_a_cancelling_pivot();
   delta_maintained_occurs_in_matches_a_full_rebuild();
   cancelling_pivot_drops_the_occurrence_entry();
+  model_equal_classes_groups_shared_variables_by_model_value();
+  model_equal_classes_ignores_variables_outside_the_shared_set();
+  model_equal_classes_separates_values_differing_only_in_delta();
+  model_equal_classes_is_empty_when_nothing_coincides();
+  model_equal_classes_deduplicates_the_shared_set();
+  model_equal_classes_track_the_model_across_assertions();
   fixedeq_reports_variables_pinned_to_the_same_value();
   fixedeq_does_not_report_different_fixed_values();
   entailed_equalities_tolerates_variables_with_one_or_no_bound();

@@ -1,10 +1,12 @@
 #include "theory/arithmetic/lra_tableau.hpp"
 
 #include <algorithm>
-#include <stdexcept>
-#include <string>
+#include <cstddef>
+#include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace primo::theory::arithmetic {
 
@@ -924,6 +926,37 @@ struct DeltaRationalHash {
 
 }  // namespace
 
+std::vector<std::vector<LraVarId>> LraTableau::model_equal_classes(
+    const std::vector<LraVarId>& shared) const {
+  // Group by model value. Insertion order is preserved inside each class, and
+  // classes come out in first-appearance order, so the result is deterministic
+  // for a given `shared` -- an unordered_map iteration would not be, and a
+  // combination layer that case-splits on this must not depend on hash order.
+  std::unordered_map<DeltaRational, std::size_t, DeltaRationalHash> class_of_value;
+  std::vector<std::vector<LraVarId>> classes;
+  std::unordered_set<LraVarId> seen;
+
+  for (const LraVarId var : shared) {
+    if (!seen.insert(var).second) {
+      continue;  // duplicates in `shared` are the caller's business, not ours
+    }
+    const DeltaRational& value = vars_.at(var).assignment;
+    const auto [it, inserted] = class_of_value.emplace(value, classes.size());
+    if (inserted) {
+      classes.push_back({var});
+    } else {
+      classes[it->second].push_back(var);
+    }
+  }
+
+  // Singletons carry no information for the combination layer: a variable equal
+  // to nothing else proposes no equality. Dropping them here keeps the caller
+  // from having to filter, and keeps the common case (nothing coincides) cheap
+  // to test -- an empty result means "no candidates".
+  std::erase_if(classes, [](const std::vector<LraVarId>& c) { return c.size() < 2; });
+  return classes;
+}
+
 std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
     const std::vector<LraVarId>& shared) const {
   std::vector<EntailedEquality> result;
@@ -933,7 +966,7 @@ std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
 
   // Deduplicated, and in the caller's order so the output is deterministic.
   std::vector<LraVarId> vars;
-  std::set<LraVarId> in_shared;
+  std::unordered_set<LraVarId> in_shared;
   for (const LraVarId var : shared) {
     if (in_shared.insert(var).second) {
       vars.push_back(var);

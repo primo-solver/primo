@@ -23898,6 +23898,37 @@
       "artifacts": "remote:slurm-results/qf_uflra-promoted-candidate-9481bfb/ and qf_uflra-promoted-online-euf-9481bfb/; local ignored summary copies fuzz-results/collected-121545/ and collected-121549/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Both optional profiles have a fresh exact-commit 1,000-case generated merge gate. This complements, but does not turn into complete coverage, the time-boxed mutation profiles from job 121496."
+    },
+    {
+      "id": "2026-08-07-qf-lra-equality-sharing-branch-preserves-behaviour",
+      "started_at": "2026-08-07",
+      "recorded_at": "2026-08-07",
+      "kind": "analysis",
+      "scope": "Confirm the qflra-no-equality-sharing branch leaves pure QF_LRA behaviour untouched. The branch adds Nelson-Oppen equality machinery, and the last time NO work touched the LRA path it cost 59 division files.",
+      "commit": "7aee79e vs main 19fa3a0",
+      "branch": "qflra-no-equality-sharing",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Both binaries Release, built from the same toolchain; main built into a scratch worktree. Provenance note: 19fa3a0 was main's tip when this ran (reflog main@{1}); it and the branch commits were later fast-forwarded into main, so `git branch --contains 19fa3a0` now lists the branch too. That is an artifact of the fast-forward, not evidence the baseline was a branch commit. Neither was on origin/main (5cdde03) at the time -- both were unpushed local main."
+      },
+      "result": {
+        "by_inspection": "Of three src/ commits, two add const methods with NO caller (model_equal_classes, entailed_equalities). The third threads MixedDispatchMode through summarize_formula_features; under the default Narrow the expression reduces to `Application && bool_sort`, character-for-character what main computes.",
+        "first_sweep": {
+          "files": 100,
+          "answer_diffs": 0,
+          "counter_diffs": 17
+        },
+        "first_sweep_explained": "16 of the 17 were files that TIME OUT, whose counters record progress-at-cutoff and vary run to run regardless of code. The 17th solves in 9.90s against the sweep's 10s cap -- straddling the cutoff. Run three times per binary at a 60s budget it is identical and deterministic on both: 29,081 pivots, 840,202 decisions, 1,451 conflicts.",
+        "clean_rerun": {
+          "solved_by_both": 89,
+          "bit_identical": 89,
+          "differing": 0,
+          "counters_compared": ":lra.pivots, :lra.pivot-term-ops, :lra.theory-propagations, :sat.decisions, :sat.conflicts, :solver.*"
+        }
+      },
+      "conclusion": "Pure QF_LRA behaviour is preserved exactly: 89 of 89 commonly-solved files bit-identical on search counters, 0 answer differences anywhere. Consistent with the code, which has no path doing anything main does not.",
+      "method_note": "Counter comparisons across runs are only meaningful on instances that COMPLETE. A timeout is not a measurement, it is a snapshot of wherever the search had reached. This is the second time in one session that artifact produced a false alarm -- the first was the supposed node-contention regression on the full division. Restricting to completed runs is the fix; explaining the difference away is not."
     }
   ]
 }
