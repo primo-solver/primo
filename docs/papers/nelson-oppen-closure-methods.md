@@ -538,8 +538,12 @@ onto their eager EUF representatives before and after the merge. The intended
 direct join reduces the distinct-class count by exactly one; any other delta is
 conservative fallback evidence. This replaces the earlier quadratic pair
 comparison with two expected-linear scans. The summary-check and visited-term
-counters expose the remaining work. The profile stays opt-in while the missing
-second reconciliation direction is addressed.
+counters expose the remaining work. Commit `4a93256` supersedes this per-merge
+guard with a manager-owned explained-equality worklist: it batches the LRA
+equalities, projects the resulting shared EUF classes once, retains model-agree
+consequences internally, and exposes actual model disagreement to SAT. The
+profile stays opt-in while generic component-model transitions remain
+unimplemented.
 
 At commit `2d1ecf8`, 3,000 generated mixed QF_UFLRA cases, 1,000 generated
 finite-domain cases, and the 11-seed mutation preflight passed; the YinYang task
@@ -550,6 +554,17 @@ non-timeout failures, or disagreements on jointly solved rows. It avoided
 19,600 SAT materializations and used 584 congruence fallbacks. These results
 support the profile as an opt-in convex QF_UFLRA experiment. They do not support
 a full `DPLL(T^M)` claim or remove the need for the exact fallback.
+
+Fresh validation at `4a93256` passed the same 3,000 mixed and 1,000
+finite-domain generated cases, all 11 tracked seeds, and a 2,000-iteration
+YinYang campaign. The full corpus again solved 1,156 files with 128 timeouts
+and no wrong answer or status change; PAR2 improved from 1412.285 to 1407.514
+seconds relative to `4937d3c`. The new path drained 20,022 explained
+equalities, projected 1,605 shared EUF class snapshots, kept 20,400 consequences
+internal, exposed 663 model disagreements, and returned 15 direct combined
+conflicts. A prior 746,510-pair profile case physically enumerated zero complete
+pairs under the class cursor. This validates the structural replacement, not a
+promotion to the default profile.
 
 ## Primary Base Paper
 

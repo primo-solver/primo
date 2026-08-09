@@ -25001,6 +25001,107 @@
       "artifacts": "remote:<prepared-workspace>/results/qf-uflra-model-mutation-full-recon-{mut,nomut}-4937d3c-5s/; local ignored CSV copies under /tmp/primo-model-mutation-full/; reused Z3 CSV under results/qf-uflra-full-mine-z3stats-77599f4-5s/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted as a modest implementation-level search improvement inside the opt-in reconciliation profile. It does not change solved count and remains far behind reused Z3, so it does not justify promoting reconciliation or model-equality branching to the ordinary default."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-class-reconciliation-local-profile-4a93256",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "profile",
+      "scope": "Bounded gprof diagnosis of the class-based convex reconciliation path before full evaluation",
+      "commit": "4a93256",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binary": "gprof RelWithDebInfo build at git 4a93256",
+        "boundary": "The successful representative completed naturally in 3.06 seconds with --max-theory-conflicts=1000. Two earlier probes of the highest-pair timeout were stopped after 226.01 and 65.30 seconds because neither reached the theory-conflict cap; no process survived."
+      },
+      "command": "build-gprof/primo --quiet --stats --qf-uflra-model-reconciliation --max-theory-conflicts 1000 <representative-cpachecker-induction-instance>; gprof build-gprof/primo gmon.out",
+      "results": {
+        "successful_profile": "sat in 3.06 seconds, 12.6 MB maximum RSS, normal exit",
+        "top_samples": "Rational addition 19.70%; reduced int128 construction 9.09%; Rational negation 9.09%; LraTableau::check 7.58%; Rational multiplication 6.06%.",
+        "mechanism": "The run made 4,130 LRA checks and 1,982 exact equality probes. The new class projection and reconciliation routines were not sampled as dominant functions.",
+        "aborted_probe_lesson": "--max-theory-conflicts does not bound SAT work before the theory-conflict counter advances. The two interrupted attempts are recorded as aborted diagnostics, not timing evidence."
+      },
+      "artifacts": "local-only:/tmp/primo-class-reconcile-profile-4a93256-solved/; aborted local-only probes under /tmp/primo-class-reconcile-profile-4a93256*/",
+      "evidence_status": "local-complete-current",
+      "outcome": "Proceed with the structural reconciliation evaluation without changing LRA internals. Future profiling of pre-conflict SAT paths needs a targeted internal work budget rather than relying only on --max-theory-conflicts."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-class-reconciliation-slurm-fuzz-4a93256",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "fuzz",
+      "scope": "Merge-grade generated, finite-domain, tracked-seed, and YinYang validation for class-based convex model reconciliation",
+      "commit": "4a93256",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 4a93256, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 4a93256, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "scheduler_state": "All four generated shards completed with exit code 0 in 27 seconds; the mutation task completed with exit code 0 in 9 minutes 37 seconds. Scheduler identifiers are intentionally not stored in the repository."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, seed base 2026080910, and --qf-uflra-model-reconciliation",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with 2000 configured iterations per seed, seed base 2026080920, an 8-second solver timeout, and --qf-uflra-model-reconciliation"
+      },
+      "inputs": {
+        "generated_mixed": 3000,
+        "generated_finite_qf_uf": 500,
+        "generated_finite_qf_uflra": 500,
+        "tracked_seeds": 11,
+        "mutation_iterations_per_seed": 2000
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS against Z3",
+        "finite_domain": "1000/1000 PASS against Z3 and cvc5",
+        "tracked_seeds": "11/11 PASS, including the congruence-forced mixed regression",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, and 0 bug triggers",
+        "failures": "The generated gates had 0 wrong answer, crash, parser/type error, timeout, unsupported result, or reference disagreement; the mutation campaign had 0 invalid seed or bug trigger."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-class-reconcile-4a93256/ and fuzz-results/qf-uflra-class-reconcile-4a93256/; local ignored summaries under /tmp/primo-class-reconcile-fuzz-4a93256/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as merge-grade correctness evidence for the exact opt-in profile and commit used by the full benchmark."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-class-reconciliation-slurm-full-4a93256",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "benchmark",
+      "scope": "Full 1,284-file QF_UFLRA comparison of class/worklist reconciliation against the model-mutation reconciliation baseline",
+      "commit": "4a93256",
+      "baseline_commit": "4937d3c",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 4a93256, CaDiCaL 3.0.0",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 4a93256, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "baseline_reuse": "The 4937d3c reconciliation-with-mutation CSVs used the identical corpus, option, and five-second timeout.",
+        "reference_reuse": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv; Z3 5.0.0, identical corpus and timeout",
+        "scheduler_state": "All eight candidate shards completed with exit code 0 in 1 minute 25 seconds to 2 minutes. Baseline and Z3 were not rerun. Scheduler identifiers are intentionally not stored in the repository."
+      },
+      "command": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, a five-second timeout, and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation",
+      "inputs": {
+        "files": 1284,
+        "timeout_seconds": 5,
+        "families": "FFT 10, CPAchecker BMC 15, CPAchecker induction 359, MathSAT 900"
+      },
+      "results": {
+        "baseline": "1156 solved (675 sat, 481 unsat), 128 timeout, 0 unsupported/error/wrong, PAR2 1412.285038.",
+        "candidate": "1156 solved (675 sat, 481 unsat), 128 timeout, 0 unsupported/error/wrong, PAR2 1407.513830.",
+        "families": "Both versions: FFT 10/10; CPAchecker BMC 4/15; CPAchecker induction 242/359; MathSAT 900/900.",
+        "cross_version": "All 1284 paths common, zero status changes, and zero decisive-answer disagreements.",
+        "overall_search": "SAT equality atoms fell from 1139 to 731, solve calls from 2169 to 1795, decisions from 1281729 to 1210460, propagations from 24718750 to 23684780, and conflicts from 564081 to 543846.",
+        "prior_fallback_rows": "On the 241 baseline rows with congruence fallback, SAT equality atoms fell from 1139 to 728, solve calls from 1220 to 845, decisions from 582833 to 506065, and propagations from 7827815 to 6775357.",
+        "reconciliation_activity": "The manager enqueued and drained 20022 explained equalities with zero missing reasons, projected 1605 shared EUF class snapshots over 172621 terms, retained 20400 model-agree consequences, exposed 663 model disagreements to SAT, and returned 15 direct combined conflicts with 101 reason literals.",
+        "pair_representation": "Across the corpus, sparse filters inspected 1365471 pairs and retained 778460; complete-cursor physical enumeration was zero. On the prior top case, the old implementation retained 746510 candidate pairs while the new physical-pair counter was zero, a 100 percent reduction.",
+        "timing": "Aggregate solved-row time fell from 132.285038 to 127.513830 seconds; PAR2 improved by 0.34 percent.",
+        "z3_reused": "1234 solved (736 sat, 498 unsat), 50 timeout, 0 error/wrong, PAR2 758.708455."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-class-reconcile-4a93256-5s/; local ignored CSV and JSONL copies under /tmp/primo-class-reconcile-full-4a93256/; baseline under /tmp/primo-model-mutation-full/recon-mut/; reused Z3 CSV under results/qf-uflra-full-mine-z3stats-77599f4-5s/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as the opt-in convex reconciliation implementation. It meets the correctness, structural pair-reduction, solved-count, PAR2, and prior-fallback search gates. It does not improve solved count or close the Z3 gap, so it does not justify promotion to the ordinary default."
     }
   ]
 }

@@ -1,7 +1,8 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
 Status stamp: 2026-08-09, branch `convex-no-qflra-integration`, after the
-class/worklist implementation and before its fresh SLURM revalidation.
+class/worklist implementation and its fresh SLURM fuzz and full-corpus
+revalidation at commit `4a93256`.
 
 Reference:
 
@@ -370,6 +371,10 @@ Complexity expectations and measurements:
   conservativeness, explanation composition through congruence, direct
   conflicts, transitive/nested EUF consequences, and lazy SAT exposure on LRA
   model disagreement.
+- At commit `4a93256`, the 746,510-candidate-pair CPAchecker profile case
+  physically enumerated zero complete-fallback pairs. Across the full corpus,
+  sparse filters inspected 1,365,471 pairs and retained 778,460 without
+  constructing a full candidate-pair container.
 
 Deviations and limitations:
 
@@ -379,24 +384,38 @@ Deviations and limitations:
   not change LRA freedom intervals, pivoting, or reason storage.
 - Non-convex theories and finite shared sorts remain out of scope.
 
+Fresh validation at commit `4a93256` passed 3,000 generated mixed cases, 1,000
+finite-domain cases, all 11 tracked seeds, and a 2,000-iteration-per-seed
+YinYang campaign without a wrong answer or bug trigger. On the 1,284-file
+five-second QF_UFLRA corpus, the new implementation preserved 1,156 solved
+files and 128 timeouts with no status or answer change relative to `4937d3c`.
+PAR2 improved from 1412.285 to 1407.514 seconds. On the 241 rows that had used
+the old congruence fallback, SAT equality atoms fell from 1,139 to 728, solve
+calls from 1,220 to 845, decisions from 582,833 to 506,065, and propagations
+from 7,827,815 to 6,775,357. The profile remains opt-in because these results
+do not establish the paper's generic transition system or close the remaining
+gap to Z3.
+
 ## Next Implementation Direction
 
-The next Nelson-Oppen online design should follow the paper's model-based
-principle: generate equality candidates from a current theory model, a cheap
-theory implication, or a care-ranked relevance filter before creating SAT
-equality atoms. It should not start by materializing the full same-sort shared
-pair cross product.
+The implemented convex path now follows the paper's candidate-first principle:
+it gets equality candidates from a current theory model, a cheap theory
+implication, or a care-ranked relevance filter before creating SAT equality
+atoms. It does not materialize the full same-sort shared-pair cross product.
+The next paper-level step is persistent component-model state and explicit
+generic `M-Propagate`/`M-Mutate` transitions, not another pair container.
 
 The concrete post-2026-08-05 performance plan is tracked in
 `docs/qf-uflra-model-guided-performance.md`. That note records the Z3-stat
 diagnosis from the current SLURM artifact and turns the paper mechanisms into a
-QF_UFLRA implementation checklist. Its first target is consumer-aware
-LRA-to-EUF equality handling. The attempted shortcut that carried EUF-mergeable
-LRA-implied equalities internally was rejected after the 2026-08-05 full
-QF_UFLRA run found wrong answers. The live conservative rule is to skip only
-EUF-already-true equalities; EUF-mergeable LRA equalities are classified but
-still forced through guarded SAT-visible equality clauses. A future internal
-carry path needs a separate proof and stronger real-seed fuzz coverage.
+QF_UFLRA implementation checklist. Its first consumer-aware target and the
+later guarded per-merge experiment are historical milestones. The rejected
+shortcut carried an LRA-implied equality internally without reconciling all
+EUF congruence consequences. The current worklist path instead asserts the
+explained equality into EUF, composes conflicts from the retained reason, and
+keeps only consequences accepted by the diversified LRA model. Its focused
+tests and fresh fuzz gate provide the separate proof and regression coverage
+that the earlier shortcut lacked.
 
 For the current CaDiCaL backend, the concrete rule is:
 

@@ -307,8 +307,12 @@ Implemented now:
   validation and model construction consume the internal equalities. The
   profile also enables the candidate-first final scan and retains its complete
   exact fallback. This is a convex QF_UFLRA reconciliation subset, not generic
-  `DPLL(T^M)`; the Section 5.2 mutation remains scratch-only.
-  In this final path, LRA-to-EUF equalities are classified through the current
+  `DPLL(T^M)`; the Section 5.2 mutation remains scratch-only. The fresh
+  `4a93256` SLURM gate found no wrong answer in 4,000 generated cases or the
+  tracked-seed mutation campaign, and the full 1,284-file run preserved all
+  1,156 baseline solves while reducing PAR2 from 1412.285 to 1407.514 seconds.
+  Outside this opt-in reconciliation profile, the default final path classifies
+  LRA-to-EUF equalities through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already
   true in EUF can be ignored. Equalities that EUF can merge, or that EUF
   forbids, use the guarded clause path; the attempted mergeable-skip

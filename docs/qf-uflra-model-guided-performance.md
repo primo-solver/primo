@@ -1,6 +1,7 @@
 # QF_UFLRA Model-Guided Performance Plan
 
-Status stamp: 2026-08-09, branch `convex-no-qflra-integration`.
+Status stamp: 2026-08-09, branch `convex-no-qflra-integration`, through the
+class/worklist reconciliation validation at commit `4a93256`.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -82,14 +83,17 @@ profile reduced SAT decisions from 2,646,397 to 1,322,558, propagations from
 42,195,478 to 24,815,243, solve calls from 8,348 to 2,177, and SAT-visible
 interface equality atoms from 17,730 to 1,161. It absorbed 19,600 explained
 equalities internally and used 584 guarded congruence fallbacks with zero
-validation or exact-fallback failures. Exact commands, job IDs, corpus hashes,
-and artifacts are in `docs/run-log.json`.
+validation or exact-fallback failures. Exact commands, corpus hashes,
+scheduler state, and artifacts are in `docs/run-log.json`.
 
 This accepts the profile as a measured QF_UFLRA experiment, not as the default
-or as a full implementation of the paper. A second EUF-to-LRA reconciliation
-iteration, generic component-model state, and broader logic coverage remain
-missing. The later Section 5.2 scratch model-mutation integration described
-below has not yet been included in this historical benchmark result.
+or as a full implementation of the paper. At that historical commit, a second
+EUF-to-LRA reconciliation iteration, generic component-model state, and broader
+logic coverage were missing. The class/worklist milestone below now addresses
+the round-local congruence-consequence step; generic component-model state and
+broader logic coverage remain absent. The later Section 5.2 scratch
+model-mutation integration described below was not included in this historical
+benchmark result.
 
 **Correctness blocker and repair, 2026-08-05.** The later full 1284-file QF_UFLRA
 5s SLURM run at commit `f7c8bd7`, recorded as
@@ -391,8 +395,10 @@ fallback. This is expected linear in the shared-interface size per attempt and
 replaces the earlier quadratic shared-pair comparison. Counters
 `:no.shared-model.congruence-summary-checks` and
 `:no.shared-model.congruence-summary-terms` expose its invocation count and
-total representative visits. The profile remains opt-in while the missing
-second reconciliation direction is addressed.
+total representative visits. That older guard is superseded by the manager's
+explained-equality worklist and one-shot shared EUF class projection. The
+profile remains opt-in while component models and the generic paper transition
+system remain absent.
 
 The 2026-08-09 validation at commit `2f9113b` accepts this linear summary as an
 implementation improvement, not as a profile promotion. A fresh SLURM gate
@@ -408,17 +414,32 @@ increased from 1,322,558 to 1,390,745 even though aggregate solved-row time fell
 from 144.154 to 141.232 seconds. The new scan performed 21,036 checks and
 13,653,597 representative visits. If this scan becomes dominant, reuse of the
 representative-set scratch storage or an incremental shared projection is the
-next optimization. The freedom-interval integration is a later, separately
-validated milestone.
+next optimization. The subsequently integrated scratch freedom-interval sweep
+was validated separately and was not modified by the class/worklist milestone.
 
-## Immediate Performance Target
+The next milestone at commit `4a93256` replaced the guarded per-merge summary
+with class-based, same-round reconciliation. Its fresh gate passed 3,000 mixed
+generated cases, 1,000 finite-domain cases, 11 tracked seeds, and 2,000
+configured YinYang iterations per seed without a discrepancy. The full
+1,284-file run preserved 1,156 solved files, 128 timeouts, and every decisive
+answer; PAR2 improved from 1412.285 to 1407.514 seconds. It enqueued and drained
+20,022 explained LRA equalities, projected 1,605 EUF class snapshots, retained
+20,400 model-agree consequences internally, exposed 663 actual model
+disagreements to SAT, and returned 15 direct combined conflicts. On the 241
+rows that previously used congruence fallback, SAT equality atoms fell 36%,
+solve calls 31%, decisions 13%, and propagations 13%. The profile remains
+opt-in: solved count did not improve and reused Z3 still solves 1,234 files.
 
-After the shared-equality ownership cleanup, the current conservative source
-change keeps LRA-to-EUF equality handling consumer-aware and adds one scratch
-model-diversification pass before candidate expansion.
+## Historical Consumer-Aware Target
+
+After the shared-equality ownership cleanup, the first conservative source
+change kept LRA-to-EUF equality handling consumer-aware and added one scratch
+model-diversification pass before candidate expansion. The rules below describe
+that historical pre-worklist milestone.
 The broad 2026-08-05 rejected run shows that treating EUF-mergeable LRA
 equalities as internal model equalities is unsound as implemented, so the
-repaired path forces mergeable LRA equalities through SAT. `TheoryCombinationManager` owns the
+repair at that milestone forced mergeable LRA equalities through SAT.
+`TheoryCombinationManager` owns the
 shared equality ledger: interface equality atom identity, SAT literal
 assignment snapshots, trailed arrangement values, and per-round classification
 flags. The QF_UFLRA coordinator uses that ledger as the single place where an
@@ -559,7 +580,8 @@ The current projection records:
 
 The next extension should record or expose:
 
-- current EUF closure classes and forbidden equalities under the SAT assignment;
+- persistent, incrementally updated EUF class state across SAT rounds rather
+  than the current round-local projection;
 - component-model ownership rather than only an LRA value projection;
 - LRA equality candidates with an explicit distinction between independently
   explained entailments and unexplained post-mutation model equalities;
