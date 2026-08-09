@@ -72,7 +72,12 @@ lint:
 	@if command -v clang-format >/dev/null 2>&1; then \
 		clang-format --dry-run --Werror $(CPP_FORMAT_FILES); \
 	else \
-		echo "clang-format is not installed; skipping C++ format check."; \
+		echo "error: clang-format is not installed, and the C++ format check is not optional."; \
+		echo "       It used to be skipped here, which let unformatted code reach main"; \
+		echo "       unnoticed -- a lint gate that passes when the linter is absent is not"; \
+		echo "       a gate. Install it (apt-get install clang-format) and re-run;"; \
+		echo "       'make format' applies the repository .clang-format in place."; \
+		exit 1; \
 	fi
 	@if $(RUFF) --version >/dev/null 2>&1; then \
 		$(RUFF) check scripts contrib; \
