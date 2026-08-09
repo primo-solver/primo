@@ -24426,6 +24426,41 @@
       "artifacts": "local ignored: fuzz-results/finite-domain-qf-uf and fuzz-results/finite-domain-qf-uflra",
       "evidence_status": "local-smoke-preliminary",
       "outcome": "Accepted as local development evidence only. Merge-grade SLURM generated, mutation, and full-corpus validation remain required."
+    },
+    {
+      "id": "2026-08-09-finite-domain-first-slurm-harness-failures-121914-121923",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "fuzz",
+      "scope": "First SLURM attempt at the focused and standard finite-domain gates plus QF_UFLRA seed mutation",
+      "commit": "1a5b0c0",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_ids": {
+          "focused_finite_domain": "121914 (array tasks 121914-121918)",
+          "standard_qf_uflra": "121915 (array tasks 121915-121918)",
+          "mutation": "121923 (array tasks 121923-121925)"
+        },
+        "binary": "Release, git 1a5b0c0, CaDiCaL 3.0.0",
+        "python": "3.9.18 on login and compute environments"
+      },
+      "commands": {
+        "focused": "scripts/slurm_finite_domain_fuzz_gate.sbatch",
+        "standard": "scripts/slurm_qf_uflra_fuzz_gate.sbatch with 750 general plus 125 QF_UF and 125 QF_UFLRA finite-domain cases per task",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch over benchmarks/seeds/qf_uflra"
+      },
+      "results": {
+        "focused": "All five tasks failed before generating a case because Python 3.9 rejected a PEP 701 f-string in scripts/finite_domain_fuzz.py.",
+        "standard": "All four tasks completed their existing 750-case general portions, for 3000 PASS with no reported disagreement, then failed before their finite-domain portions on the same Python syntax error.",
+        "mutation": "All three profiles passed all 11 tracked-seed preflights. Mutation did not start because the stale remote typefuzz parsed the required -hd option as -h=d and exited 2.",
+        "wrong_answers": 0,
+        "usable_complete_gates": 0,
+        "slurm_state": "Every array task reached FAILED; the queue was empty when inspected."
+      },
+      "artifacts": "remote:primo-cadical-profile/slurm_logs/*121914*, *121915*, and *121923*; corresponding partial result directories under remote fuzz-results/",
+      "evidence_status": "rejected-harness-failure",
+      "outcome": "These jobs are not finite-domain or mutation correctness evidence. The generator was rewritten to Python 3.9-compatible syntax and given a grammar regression test; the mutation batch now verifies the installed YinYang API before seed checking. Both gates require a fresh run after workspace preparation reinstalls the pinned YinYang fork."
     }
   ]
 }

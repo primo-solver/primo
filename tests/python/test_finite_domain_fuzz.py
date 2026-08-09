@@ -1,3 +1,4 @@
+import ast
 import csv
 import importlib.util
 import random
@@ -18,6 +19,10 @@ SPEC.loader.exec_module(finite_domain_fuzz)
 
 
 class FiniteDomainFuzzTests(unittest.TestCase):
+    def test_script_parses_with_cluster_python_grammar(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        ast.parse(source, filename=str(SCRIPT), feature_version=(3, 9))
+
     def make_solver(self, directory: Path, with_stats: bool = True) -> Path:
         solver = directory / (
             "solver-with-stats" if with_stats else "solver-without-stats"

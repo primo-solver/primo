@@ -148,7 +148,8 @@ def generate_case(
     if is_real:
         facts.append("(< (+ (f x) 1) (+ (f x) 2))")
 
-    assertion = f"(assert (and\n    {'\n    '.join(facts)}))"
+    fact_text = "\n    ".join(facts)
+    assertion = f"(assert (and\n    {fact_text}))"
     text = "\n".join(
         [
             f"; finite-domain scenario: {scenario}",

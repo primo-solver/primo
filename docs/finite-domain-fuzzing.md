@@ -16,6 +16,10 @@ and nested choices, residual choices, observed value equalities, nullary
 randomizes domain size and presentation within each slot; it cannot remove a
 scenario from a sufficiently large campaign.
 
+The generator supports the cluster's Python 3.9 runtime. Its Python tests parse
+the complete script using the Python 3.9 grammar so newer local interpreters
+cannot silently admit syntax that fails before a SLURM case is generated.
+
 Each verdict is known from construction. Primo is checked against that verdict
 and external references. QF_UFLRA cases contain both Real arithmetic and
 uninterpreted applications. The fuzzer runs Primo with `--stats` and requires

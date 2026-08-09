@@ -46,6 +46,20 @@ for required in z3 typefuzz; do
   fi
 done
 
+yinyang_python="$(dirname "$(command -v typefuzz)")/python"
+if ! "$yinyang_python" - <<'PY'
+import inspect
+
+from yinyang.src.parsing.Parse import hoist_declarations, prepare_seed
+
+del hoist_declarations
+raise SystemExit(0 if "keep_logic" in inspect.signature(prepare_seed).parameters else 1)
+PY
+then
+  echo "installed YinYang lacks the required keep-logic/hoist-declarations API; run make contrib-yinyang before sbatch" >&2
+  exit 2
+fi
+
 if [[ ! -e "$YINYANG_SEEDS" ]]; then
   echo "QF_UFLRA mutation seed path does not exist: $YINYANG_SEEDS" >&2
   exit 1
