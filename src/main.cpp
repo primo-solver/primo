@@ -409,8 +409,9 @@ int main(int argc, char** argv) {
                "Enable experimental QF_UFLRA model-equality branching over shared Real terms; "
                "not a full Nelson-Oppen model-equality implementation [default: off]");
   app.add_flag("--no-model-equality-mutation", no_nelson_oppen_model_equality_mutation,
-               "Disable the experimental QF_UFLRA LRA model-mutation filter inside "
-               "--model-equality-branching [default: on]");
+               "Disable the Section 5.2 greedy LRA model-diversification sweep used by the "
+               "experimental QF_UFLRA shared-model and model-equality branching paths "
+               "[default: on when either path is enabled]");
   app.add_option("--nelson-oppen-prop", nelson_oppen_propagation,
                  "QF_UFLRA Nelson-Oppen interface equality propagation mode: exact, final, or "
                  "online. Exact keeps the mandatory convex closure but disables opportunistic "

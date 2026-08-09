@@ -134,15 +134,14 @@ propagating removes coincidental equalities and shrinks that set. The paper
 reports the average number of shared equalities actually propagated by Z3 as
 **2.46**, maximum 57 — small, because of exactly this.
 
-**Implemented on the LRA side** (branch `qflra-model-mutation`), still with no
-caller:
+**Implemented on the LRA side and consumed by mixed QF_UFLRA:**
 
 | method | what it is |
 |---|---|
 | `LraTableau::freedom_interval(nonbasic)` | `[Lⱼ, Uⱼ]`, `nullopt` endpoint = unbounded |
 | `LraTableau::diversify_shared_model(shared)` | the greedy sweep, returning the post-mutation classes, the updates taken, and the class count before/after |
 
-Three properties are worth knowing before wiring it up:
+Three properties govern the integration:
 
 - **Nonbasic only, and that is the paper's choice, not a shortcut.** §5.2
   diversifies "without performing any pivoting operation", so a basic
@@ -158,11 +157,21 @@ Three properties are worth knowing before wiring it up:
   model — a stronger guarantee than the current `check_sat.cpp` proxy, which
   is sound only because a solver call said so.
 
-The proxy it is meant to replace is `lra_model_equality_can_be_mutated` on the
-NO branch, which builds a fresh `PreparedLraTheory` and solves **twice per
-candidate pair**, and then does not actually mutate anything — it suppresses
-the guess and leaves β with `x = y`. Swapping it is deferred to that branch,
-since it lives in the file where the two trees diverge hardest.
+`solve_qf_uf_lra()` now calls `diversify_shared_model()` once for each feasible
+mixed round when either `--qf-uflra-model-reconciliation` or
+`--model-equality-branching` is enabled and mutation has not been disabled.
+The coordinator projects the returned variable classes back to shared
+`TermId`s. The post-mutation classes feed `TheoryCombinationManager`'s
+round-scoped shared model, the exact convex scan's necessary-condition filter,
+and optional model-equality branch candidates. It computes the pre-mutation
+pair count from class sizes and materializes only post-mutation pairs.
+
+This replaces the former `lra_model_equality_can_be_mutated` proxy, which built
+and solved two fresh LRA instances per coincident pair without updating a
+model. Failure of the greedy sweep to separate a pair is **not** an entailment
+proof. Such a pair remains a model-equality candidate; only
+`entailed_equalities()` or the exact two-orientation convex scan may publish it
+as a theory consequence with an explanation.
 
 ## Two implemented equality-enabling LRA mechanisms
 
@@ -361,24 +370,26 @@ splits to shared terms equal in a current component model. Section 5 observes
 that a Simplex model is the tableau assignment `beta` and builds its equal-value
 classes by hashing values in expected linear time.
 
-**Implemented subset.** Primo uses the current feasible LRA model only as a
-necessary-condition filter for its existing complete convex entailment scan. If
-the current LRA constraints entail `lhs = rhs`, then `lhs` and `rhs` have the
-same value in every feasible LRA model, including the checked tableau model.
-Pairs with different current values therefore cannot be LRA-entailed and need
-no strict-separation probe. Every retained pair still has to make both
-`lhs < rhs` and `rhs < lhs` conflict before Primo publishes an equality. This is
-not `M-Propagate`: accidental model equality remains a candidate, never a
-theory consequence.
+**Implemented subset.** Primo uses a current feasible LRA model only as a
+necessary-condition filter for its existing complete convex entailment scan. In
+the two opt-in model-guided profiles, that model is first diversified by the
+Section 5.2 scratch sweep. If the current LRA constraints entail `lhs = rhs`,
+then `lhs` and `rhs` have the same value in every feasible LRA model, including
+the diversified model. Pairs with different diversified values therefore
+cannot be LRA-entailed and need no strict-separation probe. Every retained pair
+still has to make both `lhs < rhs` and `rhs < lhs` conflict before Primo
+publishes an equality. This is not `M-Propagate`: accidental model equality
+remains a candidate, never a theory consequence.
 
 **Ownership and data structures.** The mixed SMT coordinator maps shared Real
 `TermId`s through `PreparedLraTheory::variables_by_term`, asks the already
-checked `LraTableau` for `model_equal_classes()`, and expands only those classes
-into canonical `TermPairKey`s. It computes the partition once per convex round
-and reuses it for the normal exact fallback and any later model-reconstruction
-fallback. A shared term missing from the prepared map is paired conservatively
-with every other shared term; missing metadata may cost time but cannot remove
-an entailment probe.
+checked `LraTableau` for `model_equal_classes()` or
+`diversify_shared_model()`, and expands only the selected classes into canonical
+`TermPairKey`s. It computes the partition once per convex round and reuses it
+for shared-model reconciliation, optional model-equality branching, the normal
+exact fallback, and later model-reconstruction fallback. A shared term missing
+from the prepared map is paired conservatively with every other shared term;
+missing metadata may cost time but cannot remove an entailment probe.
 
 **Invariants and proof obligations.** The tableau must already have accepted
 the complete current arithmetic assignment, including true shared equalities.

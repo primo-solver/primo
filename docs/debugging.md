@@ -383,30 +383,21 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-retained-assumptions`
 - `:no.interface.model-equality-conflicts`
 - `:no.interface.model-equality-full-pairs`
+- `:no.interface.model-equality-filtered-pairs`
 - `:no.interface.model-equality-care-pairs`
 - `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
-- `:no.interface.model-equality-api-builds`
-- `:no.interface.model-equality-api-queries`
-- `:no.interface.model-equality-api-not-equal`
-- `:no.interface.model-equality-api-equal`
-- `:no.interface.model-equality-api-mutation-unqueried`
-- `:no.interface.model-equality-api-mutation-avoidable`
-- `:no.interface.model-equality-api-mutation-forced`
+- `:no.interface.lra-model-mutation-enabled`
+- `:no.interface.lra-model-mutation-calls`
+- `:no.interface.lra-model-mutation-updates`
+- `:no.interface.lra-model-mutation-value-classes-before`
+- `:no.interface.lra-model-mutation-value-classes-after`
+- `:no.interface.lra-model-mutation-candidate-pairs-before`
+- `:no.interface.lra-model-mutation-candidate-pairs-after`
+- `:no.interface.lra-model-mutation-pruned-pairs`
 - `:no.interface.model-equality-mutation-checks`
 - `:no.interface.model-equality-mutated`
-- `:no.interface.model-equality-mutation-forced`
-- `:no.interface.model-equality-forced-propagations`
-- `:no.interface.model-equality-forced-candidates`
-- `:no.interface.model-equality-forced-existing-atoms`
-- `:no.interface.model-equality-forced-missing-atoms`
-- `:no.interface.model-equality-forced-created-atoms`
-- `:no.interface.model-equality-forced-clauses`
-- `:no.interface.model-equality-forced-rechecks`
-- `:no.interface.model-equality-forced-reason-lits`
-- `:no.interface.model-equality-forced-already-true`
-- `:no.interface.model-equality-forced-assigned-false`
 - `:no.interface.model-equality-selected-care`
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
@@ -416,7 +407,6 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-queue-pops`
 - `:no.interface.model-equality-queue-skipped-tried`
 - `:no.interface.model-equality-queue-skipped-assigned`
-- `:no.interface.model-equality-queue-skipped-mutation`
 - `:no.interface.model-equality-queue-empty`
 - `:no.interface.model-equality-adaptive-stops`
 - `:no.interface.model-equality-active-assumptions`
@@ -713,11 +703,9 @@ consistency check would exceed the budget.
 `:no.interface.lra-extra-atom-probe-limit-hit` marks that soft stop. The cap is
 opt-in and does not limit SAT solving or ordinary LRA theory conflicts.
 When `--model-equality-branching` is enabled, the model-equality counters record
-full shared Real pairs scanned, how many were equal in the current LRA model,
-how many such equalities were checked by the model-mutation filter, how many
-were skipped because either strict separation is still LRA-consistent, how many
-were not separated by that filter, optional SAT equality atoms created for those
-pairs, guesses queued for the next SAT call, guesses activated onto the IPASIR
+full shared Real pairs, how many remain after the one scratch model-mutation
+sweep, how many are scanned by the branch selector, optional SAT equality atoms
+created for those pairs, guesses queued for the next SAT call, guesses activated onto the IPASIR
 assumption trail, duplicate queued guesses that were already active, active
 assumption attempts over those atoms, SAT-level failed-assumption blocking
 clauses, dropped failed assumptions, the active assumptions retained after the
@@ -725,29 +713,23 @@ last SAT rejection, assigned or already-tried equality literals skipped, whether
 the selected guess came from the care-ranked prefix or the full-pair fallback,
 care-queued queue builds, queued candidates, queue pops, queued candidates
 skipped because their existing equality atom was already tried or assigned,
-queued candidates skipped by the mutation filter before optional atom creation,
 adaptive stops, the current and maximum active model-equality assumption-trail
 size, and ordinary theory conflicts reached while at least one guessed equality
 was active. A surviving model-equality guess is re-applied as an IPASIR
 assumption on later SAT calls while the coordinator tries additional model-equal
 pairs; it is still not a permanent unit clause.
-`:no.interface.model-equality-api-builds` counts LRA theory-model views built
-for this optional branch path, and `:no.interface.model-equality-api-*` counters
-split the per-pair query result into unequal, equal without a mutation query,
-equal but mutation-avoidable, and equal but not avoided by the mutation filter.
-These counters are a guard that the branch heuristic is using the generic
-`theory::ModelEqualityEvaluation` result object rather than directly peeking at
-LRA values at the branch-selection site. When mutation is enabled and both strict
-separations of a model-equal Real pair conflict with the current LRA assignment,
-the pair is no longer queued as a branch assumption: Primo learns a guarded
-equality clause using the two strict-separation conflict reasons, excluding the
-synthetic temporary probe literal. The `:no.interface.model-equality-forced-*`
-counters report that narrow path: whether an equality atom already existed or had
-to be created, whether the equality was already true or assigned false, the
-learned clause/recheck count, and the antecedent size. This also contributes to
-`:no.interface.sat-equalities-forced`, which counts guarded propagation clauses
-from the current theory assignment to an interface equality literal, and then
-ordinary EUF/LRA theory-conflict counters if the forced equality is inconsistent.
+`:no.interface.lra-model-mutation-*` reports the one Section 5.2 scratch sweep
+performed per feasible mixed round: whether the path is enabled, calls, accepted
+updates, distinct value classes before/after, candidate pairs before/after, and
+pairs pruned. The pre-mutation pair count is computed from class sizes; Primo
+does not materialize that pair set. `:no.interface.model-equality-filtered-pairs`
+is the post-mutation candidate count presented to the optional branch selector.
+The legacy `model-equality-mutation-checks` and `model-equality-mutated` counters
+remain aggregate branch diagnostics for pairs considered and removed by the
+sweep. A pair that remains equal after mutation is only a branch candidate, not
+an entailed equality. Guarded equality clauses and
+`:no.interface.sat-equalities-forced` continue to require an independent LRA or
+EUF explanation.
 Compare it with `:no.interface.equality-candidates`: a large gap means the
 producer is rediscovering equalities that are already true, missing from the
 current interface registry, or not useful enough to force a SAT recheck.

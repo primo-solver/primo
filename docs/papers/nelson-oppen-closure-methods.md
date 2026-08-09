@@ -281,11 +281,10 @@ the LRA model. This is a default-off branching scaffold, not a unit propagation
 rule: the equality atom is created as an optional SAT-visible atom, then kept on
 an active IPASIR assumption trail while the coordinator tries further
 model-equal pairs. Before creating the optional equality atom, the default-on
-mutation filter for this branch mode checks whether adding either strict
-separation, `x < y` or `y < x`, is still LRA-consistent under the current Boolean
-assignment. If so, the current equality is treated as avoidable model choice and
-the branch candidate is skipped. This is only a conservative instantiation of
-the paper's mutation idea; Primo does not mutate the stored LRA tableau model.
+mutation path runs the Section 5.2 greedy freedom-interval sweep once on a
+scratch assignment and expands only the post-mutation equal-value classes. This
+implements the paper's LRA diversification subset without mutating the stored
+tableau model.
 If SAT rejects the active assumption set, Primo learns a blocking clause over the
 failed assumptions reported by the SAT backend and drops those assumptions from
 the active trail. If the receiving theory rejects an active equality, the
@@ -301,9 +300,10 @@ remaining full-pair fallback. `adaptive` uses the same ranking but stops adding
 model-equality assumptions after repeated failed assumptions or theory conflicts
 that did not produce interface equality propagation. `care-queued` is a
 default-off pruning policy: it rebuilds a bounded candidate queue from the
-current EUF care pairs only, filters already-tried, assigned, formula-occurring,
-and mutation-avoidable candidates before creating a fresh equality atom, and
-does not fall back to the full shared Real cross product.
+intersection of current EUF care pairs and post-mutation LRA equal-value pairs,
+filters already-tried, assigned, and formula-occurring candidates before
+creating a fresh equality atom, and does not fall back to the full shared Real
+cross product.
 
 This is sound only for the implemented partial subset. It rejects EUF atoms that
 would require unsupported theories. Mixed `:produce-models true` supports UF
@@ -404,30 +404,21 @@ coordinator publishes:
 - `:no.interface.model-equality-retained-assumptions`
 - `:no.interface.model-equality-conflicts`
 - `:no.interface.model-equality-full-pairs`
+- `:no.interface.model-equality-filtered-pairs`
 - `:no.interface.model-equality-care-pairs`
 - `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
-- `:no.interface.model-equality-api-builds`
-- `:no.interface.model-equality-api-queries`
-- `:no.interface.model-equality-api-not-equal`
-- `:no.interface.model-equality-api-equal`
-- `:no.interface.model-equality-api-mutation-unqueried`
-- `:no.interface.model-equality-api-mutation-avoidable`
-- `:no.interface.model-equality-api-mutation-forced`
+- `:no.interface.lra-model-mutation-enabled`
+- `:no.interface.lra-model-mutation-calls`
+- `:no.interface.lra-model-mutation-updates`
+- `:no.interface.lra-model-mutation-value-classes-before`
+- `:no.interface.lra-model-mutation-value-classes-after`
+- `:no.interface.lra-model-mutation-candidate-pairs-before`
+- `:no.interface.lra-model-mutation-candidate-pairs-after`
+- `:no.interface.lra-model-mutation-pruned-pairs`
 - `:no.interface.model-equality-mutation-checks`
 - `:no.interface.model-equality-mutated`
-- `:no.interface.model-equality-mutation-forced`
-- `:no.interface.model-equality-forced-candidates`
-- `:no.interface.model-equality-forced-existing-atoms`
-- `:no.interface.model-equality-forced-missing-atoms`
-- `:no.interface.model-equality-forced-created-atoms`
-- `:no.interface.model-equality-forced-clauses`
-- `:no.interface.model-equality-forced-rechecks`
-- `:no.interface.model-equality-forced-reason-lits`
-- `:no.interface.model-equality-forced-already-true`
-- `:no.interface.model-equality-forced-assigned-false`
-- `:no.interface.model-equality-forced-propagations`
 - `:no.interface.model-equality-selected-care`
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
@@ -437,7 +428,6 @@ coordinator publishes:
 - `:no.interface.model-equality-queue-pops`
 - `:no.interface.model-equality-queue-skipped-tried`
 - `:no.interface.model-equality-queue-skipped-assigned`
-- `:no.interface.model-equality-queue-skipped-mutation`
 - `:no.interface.model-equality-queue-empty`
 - `:no.interface.model-equality-adaptive-stops`
 - `:no.interface.model-equality-active-assumptions`
@@ -593,7 +583,7 @@ For Primo this is relevant because:
 Historical note: this was the original staging plan. The current branch has
 moved past part of it: the partial QF_UFLRA coordinator now runs in the default
 final check, creates interface equality atoms lazily, and has an opt-in
-model-equality branching mode with a strict-separation mutation filter. This is
+model-equality branching mode with an LRA-only Section 5.2 scratch mutation sweep. This is
 still not the de Moura/Bjorner model-based combination algorithm. Primo does not
 yet have a mutable model object shared by the theory solvers, complete
 non-convex arrangement enumeration, or minimal paper-style explanations.
@@ -633,8 +623,9 @@ current profiling result:
    `cb_propagate()` only after the LRA producer publishes a candidate pair.
 3. The dispatcher then returns only the observed equality literal for that
    selected candidate.
-4. Future slices may add model-equality guesses that survive the mutation filter
-   or a care-ranked equality source to the same candidate-first path.
+4. The final-check branch path now filters model-equality guesses through one
+   Section 5.2 scratch mutation sweep. Connecting those guesses to the online
+   callback remains future work.
 5. Keep the full shared-pair cross product as a counter, not as the set of
    observed SAT variables or exact probe contexts.
 6. Online mode retains the complete final exact fallback over model-equal pairs
@@ -655,21 +646,23 @@ current profiling result:
 
 **Bibliographic basis.** The branch lifecycle is based on de Moura and
 Bjorner, "Model-based Theory Combination", Section 4, where a theory model may
-suggest `u = v` for shared terms and the positive case is tried first, plus the
-Section 5 observation that Simplex model values can be used to find equal
-arithmetic terms. Section 5.2 motivates model mutation, but Primo currently
-implements only the strict-separation consistency filter described below.
+suggest `u = v` for shared terms and the positive case is tried first, plus
+Sections 5 and 5.2 for the Simplex model, freedom intervals, and greedy model
+diversification without pivoting.
 
 **Implemented subset.** `--model-equality-branching` remains default-off. In
 mixed QF_UFLRA, `choose_lra_model_equality_branch` scans shared Real pairs for
 the legacy `first`, `ranked`, and `adaptive` policies. The `care-queued` policy
-uses `ModelEqualityCandidateQueue` instead: it rebuilds a queue from the current
-EUF care pairs, caps it by the remaining branch budget, and consumes those
-candidates without full-pair fallback. Both paths keep only pairs equal in the
-current LRA model, apply the optional strict-separation mutation filter, create a
-SAT-visible equality atom only for the selected pair, and set the SAT phase so
-the positive equality is tried first. `ModelEqualityArrangementState` owns the
-resulting assumption lifecycle:
+uses `ModelEqualityCandidateQueue` instead: it rebuilds a queue from the
+intersection of current EUF care pairs and post-mutation LRA model pairs, caps
+it by the remaining branch budget, and consumes those candidates without
+full-pair fallback. Once per feasible mixed round,
+`LraTableau::diversify_shared_model()` runs on a scratch assignment and returns
+the non-singleton post-mutation value classes. The coordinator reuses that one
+partition for shared-model reconciliation, exact convex candidate filtering,
+and branch selection. The paths create a SAT-visible equality atom only for a
+selected surviving pair and set the SAT phase so the positive equality is tried
+first. `ModelEqualityArrangementState` owns the resulting assumption lifecycle:
 one selected equality literal is queued, activated as an IPASIR assumption on
 the next SAT call, retained across later SAT calls when it survives, and removed
 when the SAT backend reports it as a failed assumption. SAT-level rejections
@@ -696,12 +689,16 @@ still see ordinary theory atoms and explanations.
 4. The same SAT variable is not activated twice on the assumption trail.
 5. Optional equality atoms are created lazily after the LRA model and mutation
    filter select a pair; shared Real pairs are not preallocated for this mode.
+6. Failure of the greedy sweep to separate a pair does not prove equality. Only
+   an explained LRA producer or the exact convex oracle may force it.
 
-**Complexity expectation.** Candidate enumeration is still bounded by
-`--model-equality-branch-budget` and the shared Real pair list for the legacy
-policies. The `care-queued` policy avoids the broad candidate scan for branch
-selection and rebuilds only from EUF care pairs. This is still a final-check
-branching scaffold, not a generic model-propagation transition.
+**Complexity expectation.** The coordinator performs one scratch mutation
+sweep instead of two fresh LRA solves per coincident pair. The pre-mutation pair
+count is computed from class sizes; only post-mutation classes are expanded.
+Candidate enumeration is still bounded by `--model-equality-branch-budget` and
+the surviving model-equal pair list for the legacy policies. The `care-queued`
+policy further intersects that list with EUF care pairs. This is still a
+final-check branching scaffold, not a generic model-propagation transition.
 
 **Proof obligations.** The only clauses introduced by this subset are ordinary
 theory conflicts, guarded interface-equality clauses from the existing
@@ -710,17 +707,20 @@ equalities. Because the guessed equality is an assumption, not a permanent unit,
 the solver may backtrack and explore the negated arrangement.
 
 **Deviations and limitations.** Primo does not implement the paper's full
-`DPLL(T^M)` transition system, generic theory model object, paper-style
-`M-Propagate` state, or real model mutation. The strict-separation mutation
-filter asks whether either `x < y` or `y < x` is LRA-consistent under the
-current assignment; when one is consistent, the model equality is treated as an
-avoidable model choice and skipped. This is conservative and incomplete.
+`DPLL(T^M)` transition system, generic theory model object, or paper-style
+`M-Propagate` state. The Section 5.2 mutation is LRA-specific and scratch-only:
+the diversified assignment is not installed into the live tableau or directly
+used for final model values. Final arrangement/model reconstruction therefore
+retains its independent strict-separation search. No theory other than LRA has a
+mutator.
 
-**Tests derived from the subset.** The QF_UFLRA unit tests cover a rejected
-bad model-equality guess, mutation-filter skipping, full-pair fallback, active
-assumption accumulation, care-ranked selection, ranked fallback, and adaptive
-backoff. The tests assert lifecycle counters for queued and activated guesses,
-and assert that mutation-filtered cases create no queued assumptions.
+**Tests derived from the subset.** The QF_UFLRA unit tests cover a rejected bad
+model-equality guess, a scratch mutation that removes an accidental equality,
+an entailed equality that mutation cannot remove, model reconstruction after a
+scratch-only mutation, full-pair fallback, active assumption accumulation,
+care-ranked selection, ranked fallback, and adaptive backoff. The tests assert
+that mutation filtering occurs before care-queue construction and equality-atom
+creation.
 
 Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or
@@ -899,20 +899,17 @@ setting; `--no-qf-uflra-fixed-elimination` disables only the mixed default.
   theory checks accept the same Boolean assignment, neither theory contributes a
   new shared equality clause, and this final arrangement validation succeeds.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
-  neither theory forces an equality, the coordinator builds the current LRA
-  model and classifies candidate pairs through the LRA-backed
-  `theory::ModelEqualityEvaluation` path. The current adapter,
-  `LraTheoryModelView`, reads the concrete LRA values and, when mutation
-  filtering is enabled, asks whether either strict orientation is still
-  LRA-consistent before a SAT equality atom is created. The default `first`
+  neither theory forces an equality, the coordinator uses the current checked
+  LRA tableau and, unless disabled, runs one Section 5.2 scratch diversification
+  sweep before expanding candidate pairs. The default `first`
   policy keeps the historical full-pair order. The `ranked` policy keeps the
   full candidate set but tries care-diagnostic and EUF-argument pairs first. The
   `adaptive` policy uses the ranked order and stops issuing guesses after
   repeated unproductive rejected assumptions or theory conflicts. The
   `care-queued` policy scans only a bounded queue rebuilt from the current EUF
-  care pairs, with no full-pair fallback. For a missing, user-invisible equality
-  atom, the branch creates a SAT-visible optional atom only after the query
-  reports an equal pair that was not filtered as mutation-avoidable, then
+  care pairs that remain equal after mutation, with no full-pair fallback. For a missing,
+  user-invisible equality atom, the branch creates a SAT-visible optional atom
+  only after the diversified partition retains the pair, then
   retries the SAT loop with that atom on an active model-equality assumption
   trail. Surviving model-equal assumptions are
   re-applied while the coordinator tries later model-equal pairs.

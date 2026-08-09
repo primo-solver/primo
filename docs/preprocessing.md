@@ -981,9 +981,12 @@ default-off model-equality branch solved only five more files, worsened PAR2,
 and learned no forced model-equality clauses on the full run because every
 mutation-forced candidate was already true at the SAT level.
 
-The next high-value opportunities therefore belong in preprocessing and
-SAT-visible arithmetic strengthening before adding broader Nelson-Oppen
-machinery:
+That conclusion applies to the former per-pair strict-separation proxy, which
+has since been replaced by one Section 5.2 scratch diversification sweep per
+mixed round. Fresh evaluation of that integration is tracked in
+`docs/qf-uflra-model-guided-performance.md`. The remaining high-value
+opportunities still include preprocessing and SAT-visible arithmetic
+strengthening:
 
 - the first adjacent Nelson-Oppen pruning step is implemented as opt-in
   `--qf-uflra-candidate-final-scan`: it reduces the final LRA-to-EUF equality

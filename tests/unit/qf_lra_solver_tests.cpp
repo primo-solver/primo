@@ -1259,10 +1259,9 @@ void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-mutation-unqueried") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-enabled") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-calls") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-filter-candidate-pairs") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-candidates") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-created") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-pending") >= 1);
@@ -1291,11 +1290,12 @@ void qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-mutation-avoidable") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-lra-equal") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-enabled") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-calls") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-before") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-after") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-pruned-pairs") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-mutation-checks") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-mutated") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-candidates") == 0);
@@ -1431,10 +1431,8 @@ void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-mutation-unqueried") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-enabled") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-calls") == 0);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 1);
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
@@ -1561,10 +1559,8 @@ void qf_uf_lra_care_queued_model_equality_branching_uses_only_care_pairs() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-mutation-unqueried") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-enabled") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-calls") == 0);
   assert(result.statistics.get(":no.interface.model-equality-full-pairs") == 3);
   assert(result.statistics.get(":no.interface.model-equality-care-pairs") == 1);
   assert(result.statistics.get(":no.interface.model-equality-care-pruned-pairs") == 2);
@@ -1613,7 +1609,7 @@ void qf_uf_lra_care_queued_model_equality_branching_does_not_fallback_to_full_pa
   assert(result.statistics.get(":no.interface.model-equality-selected-full") == 0);
 }
 
-void qf_uf_lra_care_queued_model_equality_mutation_skips_before_atom_creation() {
+void qf_uf_lra_care_queued_model_equality_mutation_filters_before_queue_creation() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_branch_policy =
@@ -1631,14 +1627,14 @@ void qf_uf_lra_care_queued_model_equality_mutation_skips_before_atom_creation() 
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(":no.interface.model-equality-api-builds") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-queries") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-equal") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-api-mutation-avoidable") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-lra-equal") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-enabled") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-calls") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-before") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-after") == 0);
   assert(result.statistics.get(":no.interface.model-equality-mutation-checks") >= 1);
   assert(result.statistics.get(":no.interface.model-equality-mutated") >= 1);
-  assert(result.statistics.get(":no.interface.model-equality-queue-skipped-mutation") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-queue-builds") == 0);
   assert(result.statistics.get(":no.interface.model-equality-candidates") == 0);
   assert(result.statistics.get(":no.interface.model-equality-created") == 0);
   assert(result.statistics.get(":no.interface.model-equality-pending") == 0);
@@ -1842,6 +1838,67 @@ void qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom() {
   assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
   assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
   assert(result.statistics.get(":no.shared-model.converged-rounds") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-calls") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-before") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-after") >= 1);
+}
+
+void qf_uf_lra_shared_model_mutation_removes_accidental_value_equality() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-enabled") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-calls") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-value-classes-after") >
+         result.statistics.get(":no.interface.lra-model-mutation-value-classes-before"));
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-before") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-after") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-pruned-pairs") == 1);
+  assert(result.statistics.get(":no.shared-model.lra-value-classes") == 0);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+}
+
+void qf_uf_lra_shared_model_reconstructs_after_scratch_mutation() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+    (get-model)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(model") != std::string::npos);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-calls") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-pruned-pairs") == 1);
+  assert(result.statistics.get(":no.shared-model.lra-separations") >= 1);
+  assert(result.statistics.get(":no.shared-model.reconstructed-models") == 1);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
 }
 
 void qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible() {
@@ -3822,13 +3879,15 @@ int main() {
   qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs();
   qf_uf_lra_care_queued_model_equality_branching_uses_only_care_pairs();
   qf_uf_lra_care_queued_model_equality_branching_does_not_fallback_to_full_pairs();
-  qf_uf_lra_care_queued_model_equality_mutation_skips_before_atom_creation();
+  qf_uf_lra_care_queued_model_equality_mutation_filters_before_queue_creation();
   qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses();
   qf_uf_lra_reports_euf_care_pair_diagnostics();
   qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
   qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();
   qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities();
   qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom();
+  qf_uf_lra_shared_model_mutation_removes_accidental_value_equality();
+  qf_uf_lra_shared_model_reconstructs_after_scratch_mutation();
   qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible();
   qf_uf_lra_shared_model_builds_model_from_internal_equality();
   qf_uf_lra_shared_model_retains_transitive_merges_before_conflict();

@@ -42,7 +42,6 @@
 #include "theory/equality/explained_congruence_closure.hpp"
 #include "theory/equality/flat_congruence_closure.hpp"
 #include "theory/equality/flat_terms.hpp"
-#include "theory/theory_solver.hpp"
 #include "util/rational.hpp"
 #include "util/statistics.hpp"
 
@@ -4515,66 +4514,6 @@ InterfacePropagationResult force_implied_interface_equalities(
   return result;
 }
 
-InterfacePropagationResult force_implied_interface_equality_with_reason(
-    const core::TermManager& terms, BooleanClausifier& clausifier, sat::IpasirUpBackend& backend,
-    TheoryCombinationManager& manager, core::TermId equality, const sat::Clause& reason_lits,
-    InterfaceEqualityClassification source_classification, util::Statistics& statistics) {
-  InterfacePropagationResult result;
-  result.candidates = 1;
-  const core::Term& equality_term = terms.get(equality);
-  if (equality_term.kind != core::TermKind::Equality || equality_term.children.size() != 2 ||
-      !manager.ensure_interface_pair(equality_term.children.at(0), equality_term.children.at(1))
-           .has_value()) {
-    result.missing_atoms = 1;
-    return result;
-  }
-  manager.mark_interface_equality_classification(equality, source_classification);
-
-  std::optional<sat::Lit> lit = manager.interface_equality_lit(equality);
-  bool created = false;
-  if (!lit.has_value()) {
-    ++result.missing_atoms;
-    lit = create_interface_equality_lit(terms, clausifier, manager, equality);
-    if (!lit.has_value()) {
-      return result;
-    }
-    ++result.created_atoms;
-    created = true;
-  } else {
-    ++result.deliverable_existing;
-  }
-
-  if (!created) {
-    const std::optional<bool> value = lit_value_in_backend(backend, lit.value());
-    if (value.has_value() && value.value()) {
-      ++result.already_true;
-      manager.mark_interface_equality_classification(equality,
-                                                     InterfaceEqualityClassification::AlreadyTrue);
-      return result;
-    }
-    if (value.has_value() && !value.value()) {
-      ++result.assigned_false;
-      manager.mark_interface_equality_classification(
-          equality, InterfaceEqualityClassification::AssignedFalse);
-    }
-  }
-
-  sat::Clause clause = reason_lits;
-  append_lit_once(clause, lit.value());
-  result.reason_lits = clause.size() > 0 ? clause.size() - 1U : 0U;
-  backend.add_clause(clause);
-  result.clauses = 1;
-  manager.mark_interface_equality_classification(equality,
-                                                 InterfaceEqualityClassification::SatForced);
-  statistics.set(":no.interface.sat-equality-atoms",
-                 registered_interface_equality_atom_count(manager));
-  statistics.set(":no.interface.materialized-pairs", manager.summary().equality_registry.size());
-  statistics.set(":no.interface.materialized-missing-pairs", manager.summary().missing_equalities);
-  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-  statistics.increment(":no.interface.sat-equalities-forced");
-  return result;
-}
-
 bool clause_mentions_interface_equality(const sat::Clause& clause,
                                         const TheoryCombinationManager& manager) {
   for (const sat::Lit lit : clause) {
@@ -5696,18 +5635,20 @@ std::vector<ExplainedInterfaceEquality> lra_entailed_shared_equalities(
   return equalities;
 }
 
-// de Moura-Bjorner MBTC Sections 4 and 5 use equal-value model classes as
-// equality candidates. Here they are only a necessary-condition filter for the
-// exact convex oracle: every retained pair still needs both strict conflicts.
+// de Moura-Bjorner MBTC Sections 4, 5, and 5.2 use equal-value model classes and
+// model diversification to reduce equality candidates. Here the classes are
+// only a necessary-condition filter for the exact convex oracle: every retained
+// pair still needs both strict conflicts before it is published as entailed.
 struct LraModelEqualPartition {
   std::vector<std::vector<core::TermId>> classes;
   std::vector<TermPairKey> candidate_pairs;
+  std::size_t candidate_pairs_before_mutation = 0;
 };
 
 LraModelEqualPartition lra_model_equal_partition(const PreparedLraTheory& prepared,
                                                  const theory::arithmetic::LraTableau& tableau,
                                                  const std::vector<core::TermId>& shared_terms,
-                                                 bool collect_classes,
+                                                 bool collect_classes, bool diversify_model,
                                                  util::Statistics& statistics) {
   using theory::arithmetic::LraVarId;
 
@@ -5730,54 +5671,113 @@ LraModelEqualPartition lra_model_equal_partition(const PreparedLraTheory& prepar
     }
   }
 
-  std::unordered_set<TermPairKey, TermPairKeyHash> candidates;
-  candidates.reserve(shared_terms.size());
-  LraModelEqualPartition partition;
-  const auto add_class = [&candidates, &partition,
-                          collect_classes](std::vector<core::TermId> class_terms) {
-    std::sort(class_terms.begin(), class_terms.end());
-    class_terms.erase(std::unique(class_terms.begin(), class_terms.end()), class_terms.end());
-    if (class_terms.size() < 2) {
-      return;
-    }
-    for (std::size_t i = 0; i < class_terms.size(); ++i) {
-      for (std::size_t j = i + 1; j < class_terms.size(); ++j) {
-        candidates.insert(canonical_term_pair(class_terms[i], class_terms[j]));
-      }
-    }
-    if (collect_classes) {
-      partition.classes.push_back(std::move(class_terms));
-    }
+  struct ProjectedClasses {
+    std::vector<std::vector<core::TermId>> classes;
+    std::unordered_set<TermPairKey, TermPairKeyHash> candidates;
+    std::size_t conservative_pairs = 0;
   };
+  const auto project_classes = [&](const std::vector<std::vector<LraVarId>>& variable_classes,
+                                   bool retain_classes) {
+    ProjectedClasses projection;
+    projection.candidates.reserve(shared_terms.size());
+    std::unordered_set<LraVarId> variables_in_multi_var_class;
+    const auto add_class = [&](std::vector<core::TermId> class_terms) {
+      std::sort(class_terms.begin(), class_terms.end());
+      class_terms.erase(std::unique(class_terms.begin(), class_terms.end()), class_terms.end());
+      if (class_terms.size() < 2) {
+        return;
+      }
+      for (std::size_t i = 0; i < class_terms.size(); ++i) {
+        for (std::size_t j = i + 1; j < class_terms.size(); ++j) {
+          projection.candidates.insert(canonical_term_pair(class_terms[i], class_terms[j]));
+        }
+      }
+      if (retain_classes) {
+        projection.classes.push_back(std::move(class_terms));
+      }
+    };
 
-  std::unordered_set<LraVarId> variables_in_multi_var_class;
-  for (const std::vector<LraVarId>& equal_class : tableau.model_equal_classes(shared_variables)) {
-    std::vector<core::TermId> class_terms;
-    for (const LraVarId variable : equal_class) {
-      variables_in_multi_var_class.insert(variable);
-      const std::vector<core::TermId>& mapped_terms = terms_by_variable.at(variable);
-      class_terms.insert(class_terms.end(), mapped_terms.begin(), mapped_terms.end());
+    for (const std::vector<LraVarId>& equal_class : variable_classes) {
+      std::vector<core::TermId> class_terms;
+      for (const LraVarId variable : equal_class) {
+        variables_in_multi_var_class.insert(variable);
+        const std::vector<core::TermId>& mapped_terms = terms_by_variable.at(variable);
+        class_terms.insert(class_terms.end(), mapped_terms.begin(), mapped_terms.end());
+      }
+      add_class(std::move(class_terms));
     }
-    add_class(std::move(class_terms));
-  }
-  // Several terms may exceptionally map to one tableau variable. Such terms
-  // form a model class even when the variable has no equal-valued peer.
-  for (const auto& [variable, mapped_terms] : terms_by_variable) {
-    if (!variables_in_multi_var_class.contains(variable)) {
-      add_class(mapped_terms);
-    }
-  }
-
-  const std::size_t before_conservative_pairs = candidates.size();
-  for (const core::TermId unmapped : unmapped_terms) {
-    for (const core::TermId term : shared_terms) {
-      if (unmapped != term) {
-        candidates.insert(canonical_term_pair(unmapped, term));
+    // Several terms may exceptionally map to one tableau variable. Such terms
+    // form a model class even when the variable has no equal-valued peer.
+    for (const auto& [variable, mapped_terms] : terms_by_variable) {
+      if (!variables_in_multi_var_class.contains(variable)) {
+        add_class(mapped_terms);
       }
     }
+
+    const std::size_t before_conservative_pairs = projection.candidates.size();
+    for (const core::TermId unmapped : unmapped_terms) {
+      for (const core::TermId term : shared_terms) {
+        if (unmapped != term) {
+          projection.candidates.insert(canonical_term_pair(unmapped, term));
+        }
+      }
+    }
+    projection.conservative_pairs = projection.candidates.size() - before_conservative_pairs;
+    return projection;
+  };
+  const auto projected_pair_count =
+      [&](const std::vector<std::vector<LraVarId>>& variable_classes) {
+        std::size_t pair_count = 0;
+        std::unordered_set<LraVarId> variables_in_multi_var_class;
+        for (const std::vector<LraVarId>& equal_class : variable_classes) {
+          std::size_t term_count = 0;
+          for (const LraVarId variable : equal_class) {
+            variables_in_multi_var_class.insert(variable);
+            term_count += terms_by_variable.at(variable).size();
+          }
+          pair_count += unordered_pair_count(term_count);
+        }
+        for (const auto& [variable, mapped_terms] : terms_by_variable) {
+          if (!variables_in_multi_var_class.contains(variable)) {
+            pair_count += unordered_pair_count(mapped_terms.size());
+          }
+        }
+        pair_count += unmapped_terms.size() * (shared_terms.size() - unmapped_terms.size());
+        pair_count += unordered_pair_count(unmapped_terms.size());
+        return pair_count;
+      };
+
+  const std::vector<std::vector<LraVarId>> original_classes =
+      tableau.model_equal_classes(shared_variables);
+  ProjectedClasses projection;
+  LraModelEqualPartition partition;
+  if (diversify_model) {
+    const std::size_t original_candidate_count = projected_pair_count(original_classes);
+    const theory::arithmetic::LraTableau::ModelMutationResult mutation =
+        tableau.diversify_shared_model(shared_variables);
+    projection = project_classes(mutation.classes, collect_classes);
+    partition.candidate_pairs_before_mutation = original_candidate_count;
+    statistics.increment(":no.interface.lra-model-mutation-calls");
+    statistics.increment(":no.interface.lra-model-mutation-updates", mutation.updates.size());
+    statistics.increment(":no.interface.lra-model-mutation-value-classes-before",
+                         mutation.classes_before);
+    statistics.increment(":no.interface.lra-model-mutation-value-classes-after",
+                         mutation.classes_after);
+    statistics.increment(":no.interface.lra-model-mutation-candidate-pairs-before",
+                         original_candidate_count);
+    statistics.increment(":no.interface.lra-model-mutation-candidate-pairs-after",
+                         projection.candidates.size());
+    statistics.increment(":no.interface.lra-model-mutation-pruned-pairs",
+                         original_candidate_count > projection.candidates.size()
+                             ? original_candidate_count - projection.candidates.size()
+                             : 0);
+  } else {
+    projection = project_classes(original_classes, collect_classes);
+    partition.candidate_pairs_before_mutation = projection.candidates.size();
   }
 
-  partition.candidate_pairs.assign(candidates.begin(), candidates.end());
+  partition.classes = std::move(projection.classes);
+  partition.candidate_pairs.assign(projection.candidates.begin(), projection.candidates.end());
   std::sort(partition.classes.begin(), partition.classes.end());
   std::sort(partition.candidate_pairs.begin(), partition.candidate_pairs.end(), less_term_pair);
   const std::size_t full_pair_count = unordered_pair_count(shared_terms.size());
@@ -5789,7 +5789,7 @@ LraModelEqualPartition lra_model_equal_partition(const PreparedLraTheory& prepar
                        full_pair_count - partition.candidate_pairs.size());
   statistics.increment(":no.interface.lra-model-filter-unmapped-terms", unmapped_terms.size());
   statistics.increment(":no.interface.lra-model-filter-conservative-pairs",
-                       candidates.size() - before_conservative_pairs);
+                       projection.conservative_pairs);
   return partition;
 }
 
@@ -5858,44 +5858,6 @@ std::optional<sat::Clause> lra_assignment_conflict_with_extra_atom(
       options.lra_sparse_leaving, lra_fixed_elimination_for_mixed(options), false,
       /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   return find_incremental_lra_theory_conflict(augmented_lra_theory, augmented_lra_assignments);
-}
-
-bool lra_assignment_conflicts_with_extra_atom(
-    const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId extra_atom,
-    const CheckSatOptions& options, util::Statistics* statistics = nullptr) {
-  return lra_assignment_conflict_with_extra_atom(terms, lra_atoms, lra_assignments, extra_atom,
-                                                 options, statistics)
-      .has_value();
-}
-
-std::optional<sat::Clause> lra_forced_equality_reason(
-    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId lhs, core::TermId rhs,
-    const CheckSatOptions& options, util::Statistics* statistics = nullptr) {
-  const std::optional<sat::Clause> lhs_lt_rhs_conflict = lra_assignment_conflict_with_extra_atom(
-      terms, lra_atoms, lra_assignments, terms.mk_lt(lhs, rhs), options, statistics);
-  if (!lhs_lt_rhs_conflict.has_value()) {
-    return std::nullopt;
-  }
-  const std::optional<sat::Clause> rhs_lt_lhs_conflict = lra_assignment_conflict_with_extra_atom(
-      terms, lra_atoms, lra_assignments, terms.mk_lt(rhs, lhs), options, statistics);
-  if (!rhs_lt_lhs_conflict.has_value()) {
-    return std::nullopt;
-  }
-
-  sat::Clause reason;
-  reason.reserve(lhs_lt_rhs_conflict->size() + rhs_lt_lhs_conflict->size());
-  const auto append_non_synthetic_reason = [&reason](const sat::Clause& conflict) {
-    for (const sat::Lit lit : conflict) {
-      if (lit.value != 0) {
-        append_lit_once(reason, lit);
-      }
-    }
-  };
-  append_non_synthetic_reason(lhs_lt_rhs_conflict.value());
-  append_non_synthetic_reason(rhs_lt_lhs_conflict.value());
-  return reason;
 }
 
 struct LraImpliedRealEqualitiesResult {
@@ -6608,92 +6570,6 @@ std::optional<LraModelState> build_lra_model_state(
                        std::move(augmented_lra_assignments)};
 }
 
-bool lra_model_equality_can_be_mutated(core::TermManager& terms,
-                                       const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-                                       const std::vector<AssignedTheoryAtom>& lra_assignments,
-                                       core::TermId lhs, core::TermId rhs,
-                                       const CheckSatOptions& options) {
-  const core::TermId lhs_lt_rhs = terms.mk_lt(lhs, rhs);
-  if (!lra_assignment_conflicts_with_extra_atom(terms, lra_atoms, lra_assignments, lhs_lt_rhs,
-                                                options)) {
-    return true;
-  }
-  const core::TermId rhs_lt_lhs = terms.mk_lt(rhs, lhs);
-  return !lra_assignment_conflicts_with_extra_atom(terms, lra_atoms, lra_assignments, rhs_lt_lhs,
-                                                   options);
-}
-
-class LraTheoryModelView {
- public:
-  LraTheoryModelView(core::TermManager& terms,
-                     const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-                     const std::vector<AssignedTheoryAtom>& lra_assignments,
-                     const RealModelValues& real_values, const CheckSatOptions& options,
-                     bool mutation_queries_enabled)
-      : terms_(terms),
-        lra_atoms_(lra_atoms),
-        lra_assignments_(lra_assignments),
-        real_values_(real_values),
-        options_(options),
-        mutation_queries_enabled_(mutation_queries_enabled) {}
-
-  theory::ModelEqualityEvaluation evaluate_equality(core::TermId lhs, core::TermId rhs) const {
-    if (value_of(lhs) != value_of(rhs)) {
-      return theory::ModelEqualityEvaluation{lhs, rhs, theory::ModelEqualityStatus::kNotEqual};
-    }
-    if (!mutation_queries_enabled_) {
-      return theory::ModelEqualityEvaluation{lhs, rhs,
-                                             theory::ModelEqualityStatus::kEqualMutationUnknown};
-    }
-    if (lra_model_equality_can_be_mutated(terms_, lra_atoms_, lra_assignments_, lhs, rhs,
-                                          options_)) {
-      return theory::ModelEqualityEvaluation{lhs, rhs,
-                                             theory::ModelEqualityStatus::kEqualMutationAvoidable};
-    }
-    return theory::ModelEqualityEvaluation{lhs, rhs,
-                                           theory::ModelEqualityStatus::kEqualMutationForced};
-  }
-
-  std::optional<sat::Clause> forced_equality_reason(core::TermId lhs, core::TermId rhs) const {
-    return lra_forced_equality_reason(terms_, lra_atoms_, lra_assignments_, lhs, rhs, options_);
-  }
-
- private:
-  util::Rational value_of(core::TermId term) const {
-    const auto found = real_values_.find(term);
-    return found == real_values_.end() ? util::Rational(0) : found->second;
-  }
-
-  core::TermManager& terms_;
-  const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms_;
-  const std::vector<AssignedTheoryAtom>& lra_assignments_;
-  const RealModelValues& real_values_;
-  const CheckSatOptions& options_;
-  bool mutation_queries_enabled_ = false;
-};
-
-void record_model_equality_evaluation(const theory::ModelEqualityEvaluation& evaluation,
-                                      util::Statistics& statistics) {
-  statistics.increment(":no.interface.model-equality-api-queries");
-  switch (evaluation.status) {
-    case theory::ModelEqualityStatus::kNotEqual:
-      statistics.increment(":no.interface.model-equality-api-not-equal");
-      break;
-    case theory::ModelEqualityStatus::kEqualMutationUnknown:
-      statistics.increment(":no.interface.model-equality-api-equal");
-      statistics.increment(":no.interface.model-equality-api-mutation-unqueried");
-      break;
-    case theory::ModelEqualityStatus::kEqualMutationAvoidable:
-      statistics.increment(":no.interface.model-equality-api-equal");
-      statistics.increment(":no.interface.model-equality-api-mutation-avoidable");
-      break;
-    case theory::ModelEqualityStatus::kEqualMutationForced:
-      statistics.increment(":no.interface.model-equality-api-equal");
-      statistics.increment(":no.interface.model-equality-api-mutation-forced");
-      break;
-  }
-}
-
 struct ModelEqualityBranchState {
   std::unordered_set<int> tried_vars;
   std::uint64_t unproductive_rejections = 0;
@@ -6841,18 +6717,6 @@ struct ModelEqualityCandidateQueue {
     statistics.increment(":no.interface.model-equality-queue-pops");
     return candidate;
   }
-
-  std::vector<core::TermId> terms() const {
-    std::vector<core::TermId> result;
-    result.reserve(candidates.size() * 2U);
-    for (const ModelEqualityCandidate& candidate : candidates) {
-      result.push_back(candidate.pair.lhs);
-      result.push_back(candidate.pair.rhs);
-    }
-    std::sort(result.begin(), result.end());
-    result.erase(std::unique(result.begin(), result.end()), result.end());
-    return result;
-  }
 };
 
 bool contains_term_pair(const std::unordered_set<TermPairKey, TermPairKeyHash>& pairs,
@@ -6904,14 +6768,12 @@ std::vector<ModelEqualityCandidate> ranked_model_equality_candidates(
 
 struct ModelEqualityBranchChoice {
   std::optional<sat::Lit> pending_branch;
-  bool learned_clause = false;
 };
 
 ModelEqualityBranchChoice choose_lra_model_equality_branch(
     core::TermManager& terms, BooleanClausifier& clausifier, sat::IpasirUpBackend& backend,
-    TheoryCombinationManager& manager, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const std::vector<AssignedTheoryAtom>& lra_assignments,
-    const std::vector<TermPairKey>& candidate_pairs, const EufCarePairDiagnostics& euf_care,
+    TheoryCombinationManager& manager, const std::vector<TermPairKey>& candidate_pairs,
+    std::size_t full_pair_count, const EufCarePairDiagnostics& euf_care,
     const CheckSatOptions& options, ModelEqualityArrangementState& arrangement_state,
     ModelEqualityCandidateQueue& candidate_queue, util::Statistics& statistics) {
   ModelEqualityBranchState& branch_state = arrangement_state.branch_search;
@@ -6930,47 +6792,28 @@ ModelEqualityBranchChoice choose_lra_model_equality_branch(
 
   const bool care_queued_policy =
       options.nelson_oppen_model_equality_branch_policy == ModelEqualityBranchPolicy::CareQueued;
-  statistics.set(":no.interface.model-equality-full-pairs", candidate_pairs.size());
+  const std::vector<TermPairKey> care_candidate_pairs =
+      intersect_sorted_term_pairs(candidate_pairs, euf_care.term_pairs);
+  statistics.set(":no.interface.model-equality-full-pairs", full_pair_count);
+  statistics.set(":no.interface.model-equality-filtered-pairs", candidate_pairs.size());
   if (options.nelson_oppen_model_equality_branch_policy == ModelEqualityBranchPolicy::First) {
     statistics.set(":no.interface.model-equality-care-pairs", candidate_pairs.size());
-    statistics.set(":no.interface.model-equality-care-pruned-pairs", 0);
-  } else {
-    statistics.set(":no.interface.model-equality-care-pairs", euf_care.term_pairs.size());
     statistics.set(":no.interface.model-equality-care-pruned-pairs",
-                   candidate_pairs.size() > euf_care.term_pairs.size()
-                       ? candidate_pairs.size() - euf_care.term_pairs.size()
-                       : 0);
+                   full_pair_count - candidate_pairs.size());
+  } else {
+    statistics.set(":no.interface.model-equality-care-pairs", care_candidate_pairs.size());
+    statistics.set(":no.interface.model-equality-care-pruned-pairs",
+                   full_pair_count - care_candidate_pairs.size());
   }
 
-  std::vector<core::TermId> care_terms;
   if (care_queued_policy) {
     const std::size_t remaining_budget =
         options.nelson_oppen_model_equality_branch_budget - branch_state.tried_vars.size();
-    candidate_queue.rebuild_from_care_pairs(euf_care.term_pairs, remaining_budget, statistics);
+    candidate_queue.rebuild_from_care_pairs(care_candidate_pairs, remaining_budget, statistics);
     if (candidate_queue.candidates.empty()) {
       return {};
     }
-    care_terms = candidate_queue.terms();
-  } else {
-    care_terms.reserve(candidate_pairs.size() * 2U);
-    for (const TermPairKey& pair : candidate_pairs) {
-      care_terms.push_back(pair.lhs);
-      care_terms.push_back(pair.rhs);
-    }
-    std::sort(care_terms.begin(), care_terms.end());
-    care_terms.erase(std::unique(care_terms.begin(), care_terms.end()), care_terms.end());
   }
-
-  std::optional<LraModelState> model_state =
-      build_lra_model_state(terms, lra_atoms, lra_assignments, {}, options);
-  if (!model_state.has_value()) {
-    return {};
-  }
-  const RealModelValues real_values = real_model_values_from_lra(
-      terms, care_terms, {}, model_state->prepared, model_state->tableau, model_state->assignments);
-  statistics.increment(":no.interface.model-equality-api-builds");
-  const LraTheoryModelView lra_model_view(terms, lra_atoms, lra_assignments, real_values, options,
-                                          options.nelson_oppen_model_equality_mutation);
 
   const std::vector<ModelEqualityCandidate> ranked_candidates =
       options.nelson_oppen_model_equality_branch_policy == ModelEqualityBranchPolicy::First ||
@@ -7005,48 +6848,7 @@ ModelEqualityBranchChoice choose_lra_model_equality_branch(
       equality = terms.mk_eq(lhs, rhs);
       lit = manager.interface_equality_lit(equality.value());
     }
-    const theory::ModelEqualityEvaluation evaluation = lra_model_view.evaluate_equality(lhs, rhs);
-    record_model_equality_evaluation(evaluation, statistics);
-    if (!evaluation.equal_in_model()) {
-      continue;
-    }
     statistics.increment(":no.interface.model-equality-lra-equal");
-    if (options.nelson_oppen_model_equality_mutation) {
-      statistics.increment(":no.interface.model-equality-mutation-checks");
-      if (evaluation.avoidable_by_mutation()) {
-        statistics.increment(":no.interface.model-equality-mutated");
-        if (care_queued_policy) {
-          statistics.increment(":no.interface.model-equality-queue-skipped-mutation");
-        }
-        continue;
-      }
-      assert(evaluation.forced_after_mutation_filter());
-      statistics.increment(":no.interface.model-equality-mutation-forced");
-      std::optional<sat::Clause> forced_reason = lra_model_view.forced_equality_reason(lhs, rhs);
-      if (forced_reason.has_value()) {
-        if (!equality.has_value()) {
-          equality = terms.mk_eq(lhs, rhs);
-        }
-        const InterfacePropagationResult forced_propagation =
-            force_implied_interface_equality_with_reason(
-                terms, clausifier, backend, manager, equality.value(), forced_reason.value(),
-                InterfaceEqualityClassification::ModelInternal, statistics);
-        publish_interface_propagation_result(forced_propagation,
-                                             ":no.interface.model-equality-forced", statistics);
-        statistics.increment(":no.interface.model-equality-forced-reason-lits",
-                             forced_propagation.reason_lits);
-        statistics.increment(":no.interface.model-equality-forced-already-true",
-                             forced_propagation.already_true);
-        statistics.increment(":no.interface.model-equality-forced-assigned-false",
-                             forced_propagation.assigned_false);
-        if (forced_propagation.triggered_recheck()) {
-          statistics.increment(":no.interface.equalities-propagated");
-          statistics.increment(":no.interface.model-equality-forced-propagations");
-          return ModelEqualityBranchChoice{.pending_branch = std::nullopt, .learned_clause = true};
-        }
-        continue;
-      }
-    }
     statistics.increment(":no.interface.model-equality-candidates");
     if (!equality.has_value()) {
       equality = terms.mk_eq(lhs, rhs);
@@ -7096,7 +6898,7 @@ ModelEqualityBranchChoice choose_lra_model_equality_branch(
     statistics.set(":no.interface.sat-equality-atoms",
                    registered_interface_equality_atom_count(manager));
     statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-    return ModelEqualityBranchChoice{.pending_branch = lit, .learned_clause = false};
+    return ModelEqualityBranchChoice{.pending_branch = lit};
   }
   return {};
 }
@@ -9332,6 +9134,9 @@ CheckSatOutcome solve_qf_uf_lra(
   const bool mixed_fixed_elimination = lra_fixed_elimination_for_mixed(options);
   const bool candidate_final_scan_enabled =
       options.qf_uflra_candidate_final_scan || options.qf_uflra_model_reconciliation;
+  const bool model_mutation_enabled =
+      options.nelson_oppen_model_equality_mutation &&
+      (options.nelson_oppen_model_equality_branching || options.qf_uflra_model_reconciliation);
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
@@ -9429,6 +9234,14 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-model-filter-pruned-pairs", 0);
   statistics.set(":no.interface.lra-model-filter-unmapped-terms", 0);
   statistics.set(":no.interface.lra-model-filter-conservative-pairs", 0);
+  statistics.set(":no.interface.lra-model-mutation-enabled", model_mutation_enabled ? 1 : 0);
+  statistics.set(":no.interface.lra-model-mutation-calls", 0);
+  statistics.set(":no.interface.lra-model-mutation-updates", 0);
+  statistics.set(":no.interface.lra-model-mutation-value-classes-before", 0);
+  statistics.set(":no.interface.lra-model-mutation-value-classes-after", 0);
+  statistics.set(":no.interface.lra-model-mutation-candidate-pairs-before", 0);
+  statistics.set(":no.interface.lra-model-mutation-candidate-pairs-after", 0);
+  statistics.set(":no.interface.lra-model-mutation-pruned-pairs", 0);
   statistics.set(":no.interface.equality-rechecks", 0);
   statistics.set(":no.interface.euf-to-lra-candidates", 0);
   statistics.set(":no.interface.euf-to-lra-existing-atoms", 0);
@@ -9479,20 +9292,13 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.model-equality-retained-assumptions", 0);
   statistics.set(":no.interface.model-equality-conflicts", 0);
   statistics.set(":no.interface.model-equality-full-pairs", 0);
+  statistics.set(":no.interface.model-equality-filtered-pairs", 0);
   statistics.set(":no.interface.model-equality-care-pairs", 0);
   statistics.set(":no.interface.model-equality-care-pruned-pairs", 0);
   statistics.set(":no.interface.model-equality-scanned", 0);
   statistics.set(":no.interface.model-equality-lra-equal", 0);
-  statistics.set(":no.interface.model-equality-api-builds", 0);
-  statistics.set(":no.interface.model-equality-api-queries", 0);
-  statistics.set(":no.interface.model-equality-api-not-equal", 0);
-  statistics.set(":no.interface.model-equality-api-equal", 0);
-  statistics.set(":no.interface.model-equality-api-mutation-unqueried", 0);
-  statistics.set(":no.interface.model-equality-api-mutation-avoidable", 0);
-  statistics.set(":no.interface.model-equality-api-mutation-forced", 0);
   statistics.set(":no.interface.model-equality-mutation-checks", 0);
   statistics.set(":no.interface.model-equality-mutated", 0);
-  statistics.set(":no.interface.model-equality-mutation-forced", 0);
   statistics.set(":no.interface.model-equality-selected-care", 0);
   statistics.set(":no.interface.model-equality-selected-full", 0);
   statistics.set(":no.interface.model-equality-skipped-assigned", 0);
@@ -9502,7 +9308,6 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.model-equality-queue-pops", 0);
   statistics.set(":no.interface.model-equality-queue-skipped-tried", 0);
   statistics.set(":no.interface.model-equality-queue-skipped-assigned", 0);
-  statistics.set(":no.interface.model-equality-queue-skipped-mutation", 0);
   statistics.set(":no.interface.model-equality-queue-empty", 0);
   statistics.set(":no.interface.model-equality-adaptive-stops", 0);
   statistics.set(":no.interface.model-equality-active-assumptions", 0);
@@ -9823,8 +9628,18 @@ CheckSatOutcome solve_qf_uf_lra(
     if (euf_check.has_value() && !shared_real_terms.empty()) {
       LraModelEqualPartition lra_model_partition = lra_model_equal_partition(
           *prepared_lra_theory_for_check, *checked_lra_tableau, shared_real_terms,
-          options.qf_uflra_model_reconciliation, statistics);
+          options.qf_uflra_model_reconciliation, model_mutation_enabled, statistics);
       lra_exact_candidate_pairs = std::move(lra_model_partition.candidate_pairs);
+      if (options.nelson_oppen_model_equality_branching && model_mutation_enabled) {
+        statistics.increment(":no.interface.model-equality-mutation-checks",
+                             lra_model_partition.candidate_pairs_before_mutation);
+        statistics.increment(
+            ":no.interface.model-equality-mutated",
+            lra_model_partition.candidate_pairs_before_mutation > lra_exact_candidate_pairs.size()
+                ? lra_model_partition.candidate_pairs_before_mutation -
+                      lra_exact_candidate_pairs.size()
+                : 0);
+      }
       if (options.qf_uflra_model_reconciliation) {
         no_manager.begin_shared_model_iteration(lra_model_partition.classes);
         statistics.increment(":no.shared-model.iterations");
@@ -10001,13 +9816,8 @@ CheckSatOutcome solve_qf_uf_lra(
     }
 
     const ModelEqualityBranchChoice model_equality_branch = choose_lra_model_equality_branch(
-        terms, clausifier, backend, no_manager, lra_atoms_for_check, lra_assignments_for_check,
-        shared_real_pairs, euf_care, options, model_equality_arrangement,
-        model_equality_candidate_queue, statistics);
-    if (model_equality_branch.learned_clause) {
-      publish_sat_stats(backend.statistics(), statistics);
-      continue;
-    }
+        terms, clausifier, backend, no_manager, lra_exact_candidate_pairs, shared_real_pairs.size(),
+        euf_care, options, model_equality_arrangement, model_equality_candidate_queue, statistics);
     if (model_equality_branch.pending_branch.has_value()) {
       model_equality_arrangement.enqueue_pending_branch(
           model_equality_branch.pending_branch.value(), statistics);

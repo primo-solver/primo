@@ -395,28 +395,18 @@ Implemented now:
   using that literal as part of its reason. The optional
   `--model-equality-branching` mode
   adds a default-off model-driven SAT-assumption loop for LRA-model-equal shared
-  Real pairs. Before creating a guessed equality atom, its narrow mutation filter
-  asks whether either strict separation of the two terms is still LRA-consistent
-  under the current Boolean assignment; if so, the equality is treated as an
-  avoidable model artifact and skipped. Guessed equality atoms that survive SAT
+  Real pairs. Before creating a guessed equality atom, the mixed coordinator
+  calls `LraTableau::diversify_shared_model()` once for the feasible round and
+  removes pairs split by that valid scratch model. Guessed equality atoms that survive SAT
   and theory checks remain active as assumptions while the coordinator tries
   additional model-equal pairs; if SAT later proves the active assumption set
   inconsistent, Primo learns a blocking clause over the failed assumptions and
   drops them from the active trail. These guesses are optional branches, not
-  permanent unit clauses. The branch selector now routes LRA model-equality
-  decisions through a narrow theory-model query result:
-  `theory::ModelEqualityEvaluation` is the generic theory-layer status object,
-  while the mixed coordinator's `LraTheoryModelView` is the current LRA-only
-  adapter that reads tableau model values and classifies equalities as
-  mutation-unqueried, mutation-avoidable, or not avoided by the strict
-  separation filter. A pair not avoided by this filter has LRA evidence: both
-  strict separations conflict with the current arithmetic assignment. In the
-  default-off model-equality mode, such a pair is handled by learning a guarded
-  equality clause from the two strict-separation conflict reasons and re-entering
-  SAT, not by enqueueing a model-equality assumption. Equalities whose current
-  model value is accidental or mutation-avoidable still stay out of entailed
-  propagation. This is intentionally not full Nelson-Oppen: generic
-  `DPLL(T^M)` state, freedom-interval mutation, a mutable shared theory-model
+  permanent unit clauses. A pair that remains coincident after the greedy sweep
+  has no entailment status: it is still only an assumption candidate. Explained
+  equality clauses remain the responsibility of the independent LRA/EUF
+  propagation paths. This is intentionally not full Nelson-Oppen: generic
+  `DPLL(T^M)` state, a mutable shared theory-model
   object, native false-`Eq` LRA atoms, complete model-equality propagation for
   arbitrary theories, and unbounded arrangement enumeration remain unsupported.
   Ordinary SMT-LIB Real disequality is handled before LRA theory
@@ -463,8 +453,14 @@ Implemented now:
   assumptions are blocked by a learned clause over their negations and removed
   from the active assumption trail; ordinary EUF/LRA theory conflicts under
   active assumptions are learned by the normal theory-conflict path. Guesses are
-  not exposed as entailed theory propagations; only mutation-forced LRA equalities
-  with strict-separation conflict reasons use the guarded equality-clause path.
+  not exposed as entailed theory propagations. Before reconciliation or branch
+  selection, the coordinator may call
+  `LraTableau::diversify_shared_model()` once on the checked feasible tableau.
+  This Section 5.2 scratch sweep returns a valid, more diverse LRA model without
+  changing live tableau state. Its post-mutation classes are used as candidates;
+  a pair that remains equal is not thereby entailed. Explained equality
+  propagation continues to come only from the cheap `FixedEq`/`EqRow` rules or
+  the exact convex fallback.
   In default mixed QF_UFLRA solving, the original LRA atoms are observed by the
   same trail-synced online LRA propagator used by pure QF_LRA, so arithmetic
   conflicts and bound propagations can be delivered inside the SAT search. Final

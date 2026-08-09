@@ -18,6 +18,26 @@ The clean-room sources for the intended direction are:
 
 ## Current Evidence
 
+**Section 5.2 integration pending SLURM evaluation, 2026-08-09.** The merged LRA
+prerequisite provides `freedom_interval()` and
+`diversify_shared_model()`. The mixed coordinator now runs one scratch sweep per
+feasible round when model reconciliation or model-equality branching is enabled,
+projects the post-mutation classes once, and reuses them for reconciliation,
+exact convex candidate filtering, and optional branch selection. This removes
+the former two-fresh-solves-per-pair mutation proxy. The pre-mutation pair count
+is computed from class cardinalities, so only post-mutation pairs are
+materialized.
+
+The soundness boundary is explicit: a pair left equal by the greedy sweep is not
+called forced. Only the explained `FixedEq`/`EqRow` producers and exact convex
+fallback may publish an entailed equality. The scratch assignment is not
+installed into the live tableau, so final arrangement/model reconstruction
+retains its independent strict-separation validation. Focused tests cover an
+accidental equality removed before queue/atom creation, an entailed equality
+that cannot move, and model reconstruction after scratch-only mutation. Fresh
+fuzz and benchmark evidence must be added before this subsection claims a
+performance result.
+
 **Shared-model reconciliation result, 2026-08-09.** The repaired opt-in
 `--qf-uflra-model-reconciliation` profile passed 3,000 generated mixed cases,
 1,000 finite-domain cases, all 11 tracked-seed preflights, and a YinYang
@@ -42,8 +62,9 @@ and artifacts are in `docs/run-log.json`.
 
 This accepts the profile as a measured QF_UFLRA experiment, not as the default
 or as a full implementation of the paper. A second EUF-to-LRA reconciliation
-iteration, genuine model mutation, generic component-model state, and broader
-logic coverage remain missing.
+iteration, generic component-model state, and broader logic coverage remain
+missing. The later Section 5.2 scratch model-mutation integration described
+below has not yet been included in this historical benchmark result.
 
 **Correctness blocker and repair, 2026-08-05.** The later full 1284-file QF_UFLRA
 5s SLURM run at commit `f7c8bd7`, recorded as
@@ -133,13 +154,12 @@ make several non-LRA integration costs explicit:
 These are current diagnosis numbers, not a completed default-versus-candidate
 comparison. The default array and final CSV comparison remain pending.
 
-## Non-LRA-First Roadmap
+## Historical Non-LRA-First Roadmap
 
-The immediate implementation order must avoid overlapping the concurrent LRA
-work. In particular, this phase must not add fixed-variable detection,
-row-derived equality rules, one-sided-bound analysis, freedom intervals, or a
-second arithmetic model implementation. It can still remove substantial cost
-at the SMT/EUF/SAT integration layer.
+This ordering governed the work while the LRA branch was concurrent. That branch
+has now been merged intact. The current integration consumes its APIs and does
+not duplicate fixed-variable, row, one-sided-bound, or freedom-interval logic in
+the SMT layer.
 
 ### 1. Preserve Existing Probe Explanations (Implemented)
 
@@ -243,8 +263,8 @@ this milestone.
 Keep care-pair and EUF-cooccurrence candidates ahead of any full fallback, cache
 pair classifications for the current SAT trail, and avoid reconsidering an
 already assigned or already explained pair in the same combination round.
-Positive-first model equality case splits remain default-off until model
-mutation is available.
+Positive-first model equality case splits remain default-off while the new
+scratch mutation integration is fuzzed and evaluated.
 
 Preprocessing stays family-targeted. The representative MathSAT
 `pb_real_40_80_60_36.smt2` is one large conjunction of roughly 480 ternary
@@ -254,12 +274,12 @@ ITE, and proxy-definition improvements remain plausible for CPAchecker/BMC or
 other mined families, but they should not displace the four integration
 milestones above for RandomDecoupled.
 
-### Deferred LRA Work
+### Integrated LRA Work
 
-After the concurrent LRA work lands, re-audit its APIs before implementing the
-paper's Simplex-specific mechanisms:
+The merged LRA branch supplies the paper-grounded mechanisms below, which the
+mixed coordinator consumes without reimplementing their arithmetic logic:
 
-- `FixedEq`, `EqRow`, and `EqOffsetRows` opportunistic equality production;
+- `FixedEq` and `EqRow` opportunistic equality production;
 - linear expected-time bucketing of shared terms by the current `beta` value;
 - freedom-interval mutation of non-basic variables;
 - short bound/row explanations produced directly by the active tableau.
@@ -290,14 +310,12 @@ pieces of that design.
 
 Missing performance-relevant pieces for QF_UFLRA:
 
-- **Cheap Simplex equality production.** Section 5.1 describes opportunities
-  such as fixed variables and row-derived equalities. Primo still finds many
-  equalities by calling a temporary strict-bound probe for selected pairs.
-- **Model mutation or avoidability in the default path.** Section 5.2 explains
-  that a model-equal pair may be avoidable by mutating the arithmetic model.
-  Primo has a conservative strict-separation mutation filter only in the
-  default-off model-equality branch mode. The default final path still treats
-  many LRA-discovered equalities as facts to force through SAT.
+- **Broader cheap Simplex equality production.** Section 5.1 `FixedEq` and
+  `EqRow` producers are implemented, but the exact fallback still probes
+  surviving pairs not covered by those rules.
+- **Model mutation in the default profile.** Section 5.2 freedom intervals and
+  greedy diversification are implemented and wired to the opt-in shared-model
+  and branch profiles. The ordinary default final path does not run the sweep.
 - **A shared model state.** Appendix A presents a `DPLL(T^M)` state carrying
   model information. Primo's mixed QF_UFLRA coordinator is still a final-check
   loop in `src/smt/check_sat.cpp`; it repeatedly rebuilds theory views and
@@ -341,9 +359,10 @@ This repairs the invariant missing from the rejected mergeable-skip experiment:
 an equality is not called internal unless the receiving model actually absorbs
 it. It is still not the paper's full `M-Propagate`/`M-Mutate` system. In
 particular, arbitrary model coincidences are recorded as classes but are not
-propagated as entailments, and the tableau is not mutated through freedom
-intervals. The safety check now counts distinct eager EUF representatives among
-shared terms before and after each tentative merge. The intended direct join
+propagated as entailments. The integrated Section 5.2 sweep mutates only a
+scratch LRA assignment; it does not change live tableau state. The safety check
+now counts distinct eager EUF representatives among shared terms before and
+after each tentative merge. The intended direct join
 reduces the class count by exactly one; any other delta keeps the guarded SAT
 fallback. This is expected linear in the shared-interface size per attempt and
 replaces the earlier quadratic shared-pair comparison. Counters
@@ -366,12 +385,14 @@ increased from 1,322,558 to 1,390,745 even though aggregate solved-row time fell
 from 144.154 to 141.232 seconds. The new scan performed 21,036 checks and
 13,653,597 representative visits. If this scan becomes dominant, reuse of the
 representative-set scratch storage or an incremental shared projection is the
-next optimization; no LRA freedom-interval work is included here.
+next optimization. The freedom-interval integration is a later, separately
+validated milestone.
 
 ## Immediate Performance Target
 
 After the shared-equality ownership cleanup, the current conservative source
-change keeps LRA-to-EUF equality handling consumer-aware only as a classifier.
+change keeps LRA-to-EUF equality handling consumer-aware and adds one scratch
+model-diversification pass before candidate expansion.
 The broad 2026-08-05 rejected run shows that treating EUF-mergeable LRA
 equalities as internal model equalities is unsound as implemented, so the
 repaired path forces mergeable LRA equalities through SAT. `TheoryCombinationManager` owns the
@@ -444,25 +465,20 @@ Expected benchmark movement after any future sound skip repair:
 - lower wall time on CPAchecker solved-but-slow cases whose SAT search is
   already small but equality probing is large.
 
-## Deferred Simplex-Side Target
+## Integrated Simplex-Side Subset
 
 The consumer-aware skip only reduces SAT pollution after an equality has already
-been found. After the non-LRA-first roadmap and the concurrent LRA work are
-integrated, the next arithmetic layer is to reduce how many temporary
-strict-bound probes are needed to find LRA equalities in the first place.
+been found. The merged LRA branch reduces temporary strict-bound probes through
+the following narrow sources:
 
-The first LRA-side prototype should expose a narrow equality source with clear
-limitations:
+- paired non-strict bounds used by online propagation;
+- `FixedEq` for variables fixed by current lower and upper bounds;
+- `EqRow` for direct explained row equalities;
+- model-value bucketing and Section 5.2 scratch diversification before exact
+  candidate expansion.
 
-- paired non-strict bounds already used by online propagation;
-- variables fixed by current lower and upper bounds to the same rational value;
-- direct row-derived equalities only when the row and active bounds make the
-  proof obligation obvious and explainable.
-
-This must not be documented as the full Section 5.1 Simplex algorithm unless
-the implementation really maps the paper's operations, invariants, and
-complexity expectations. A baseline fixed-bound detector is acceptable, but it
-should be called a baseline.
+These mechanisms are documented as Section 5.1/5.2 subsets, not as the full
+Simplex algorithm from the paper.
 
 Required data structures:
 
@@ -476,7 +492,7 @@ Required tests:
 
 - fixed lower/upper bounds produce an explained shared Real equality;
 - a one-sided bound does not produce an equality;
-- model-equal but mutation-avoidable values do not become entailed
+- model-equal values removed by scratch mutation do not become entailed
   propagations;
 - paired-bound online propagation remains lazy and keeps
   `:no.online.precreated-equality-atoms == 0`;
@@ -522,9 +538,8 @@ The next extension should record or expose:
 
 - current EUF closure classes and forbidden equalities under the SAT assignment;
 - component-model ownership rather than only an LRA value projection;
-- LRA equality candidates with one of three classifications:
-  `entailed`, `model_equal_mutation_avoidable`, or
-  `model_equal_mutation_forced`;
+- LRA equality candidates with an explicit distinction between independently
+  explained entailments and unexplained post-mutation model equalities;
 - a second EUF-to-LRA reconciliation step after an internal merge, so
   congruence-producing merges need not fall back to SAT.
 
