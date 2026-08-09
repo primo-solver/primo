@@ -25116,7 +25116,7 @@
         "binary": "Release, git 541af76, CaDiCaL 3.0.0",
         "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
         "reference_reuse": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv; Z3 5.0.0 on the identical corpus, with a five-second timeout",
-        "scheduler_state": "All eight baseline shards completed with exit code 0. The scheduler identifier is intentionally not stored in the repository."
+        "scheduler_state": "SLURM array job 122259; all eight baseline shards completed with exit code 0."
       },
       "command": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=30, and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation",
       "inputs": {
@@ -25174,7 +25174,7 @@
         "binary": "Release, git 6927d87, CaDiCaL 3.0.0",
         "references": "Z3 5.0.0 for mixed generation and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
         "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 6927d87, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
-        "scheduler_state": "All four generated shards completed with exit code 0 in 26 to 27 seconds; the mutation task completed with exit code 0 in 14 minutes 12 seconds. Scheduler identifiers are intentionally not stored in the repository."
+        "scheduler_state": "SLURM array job 122267 completed all four generated shards with exit code 0 in 26 to 27 seconds; mutation job 122268 completed with exit code 0 in 14 minutes 12 seconds."
       },
       "commands": {
         "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, seed base 2026080930, and --qf-uflra-model-reconciliation",
@@ -25197,6 +25197,122 @@
       "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-profile-6927d87/ and fuzz-results/qf-uflra-profile-6927d87/; local ignored generated summaries under /tmp/primo-fuzz-6927d87-generated/",
       "evidence_status": "slurm-complete-current",
       "outcome": "The exact candidate passed the correctness gate required before the full 30-second corpus comparison."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-30s-probe-reuse-6927d87",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "benchmark",
+      "scope": "First full 30-second QF_UFLRA candidate after statistics lookup, exact-probe reuse, and forced-atom DAG memoization",
+      "commit": "6927d87",
+      "baseline_commit": "541af76",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 6927d87, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "reference_reuse": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv; Z3 5.0.0 on the identical corpus",
+        "scheduler_state": "SLURM array job 122272; all eight shards completed with exit code 0 in 5 minutes 3 seconds to 8 minutes 24 seconds."
+      },
+      "command": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=30, and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation",
+      "results": {
+        "candidate": "1199 solved (716 sat, 483 unsat), 85 timeout, 0 error/unsupported/wrong, solved-row time 454.676094 seconds, PAR2 5554.676094.",
+        "families": "FFT 10/10; CPAchecker BMC 5/15; CPAchecker induction 284/359; MathSAT 900/900.",
+        "comparison": "25 baseline timeout recoveries, 0 losses, and 0 decisive-answer disagreements. Across the 1174 common solves, time fell from 455.421176 to 138.376874 seconds.",
+        "mechanism": "Assignment-bound replay fell from 364252532 to 51977616; 1028993 probes copied a checked tableau and 24708 selected the basis-cost fallback."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-profile-6927d87-30s/; local ignored copy /tmp/primo-qfuflra-30s-candidate-6927d87/",
+      "evidence_status": "slurm-complete-intermediate",
+      "outcome": "Accepted the first implementation-cost reduction and continued profiling the remaining pre-theory timeout family."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-equality-query-profile-9b9a035",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "profile",
+      "scope": "Callgrind diagnosis of repeated preprocessing equality-query registration and gprof triage of the next frontend-heavy case",
+      "commit": "9b9a035",
+      "baseline_commit": "6927d87",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binary": "RelWithDebInfo, embedded git revision 9b9a035, CaDiCaL 3.0.0",
+        "tools": "Valgrind Callgrind for Problem01_00 diagnosis; gprof for committed Problem05_60 follow-up"
+      },
+      "commands": {
+        "callgrind": "valgrind --tool=callgrind build-profile/primo --quiet --stats --qf-uflra-model-reconciliation <Problem01_00>",
+        "committed_confirmation": "/usr/bin/time build-profile/primo --quiet --stats --qf-uflra-model-reconciliation <Problem01_00>",
+        "next_profile": "build-gprof/primo --quiet --stats --max-theory-conflicts=100 --qf-uflra-model-reconciliation <Problem05_60>; gprof build-gprof/primo gmon.out"
+      },
+      "results": {
+        "diagnosis": "The bounded pre-fix callgrind sample accumulated 5034466083 instructions. IncrementalCongruenceClosure::ensure_capacity used 18.91 percent self instructions; 4362 distinct terms triggered 35267698 add_term requests because the query scanner walked a shared Boolean DAG by occurrence.",
+        "fix": "A pass-local TermId visitation vector now spans assertions sharing a temporary closure, and add_term checks its seen vector before term lookup and capacity work.",
+        "confirmation": "Problem01_00 now solves unsat in 0.04 seconds with 7335 query nodes, 25328 memo hits, 1914 add requests, and 1684 already-seen hits.",
+        "next_lead": "Problem05_60 solves in 5.37 uninstrumented seconds. Its 6.28-second gprof run spent 37.85 percent self time in TermBuilder::dispatch, 16.95 percent in dispatch_instantiate_definition, and about 30 percent in CaDiCaL factoring over a source chain of 109849 nullary definitions."
+      },
+      "artifacts": "local-only:/tmp/primo-profile-6927d87-problem01-callgrind-nopg/, /tmp/primo-problem01-equality-query-memo/, /tmp/primo-profile-9b9a035-problem05/, and /tmp/primo-profile-9b9a035-problem05-gprof/",
+      "evidence_status": "local-complete-current",
+      "outcome": "Accepted the shared-DAG registration fix. Retain nullary-definition compilation as a separate frontend throughput target; it is not a current 30-second timeout cause."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-profile-fuzz-9b9a035",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "fuzz",
+      "scope": "Fresh merge-grade generated, finite-domain, tracked-seed, and YinYang validation after equality-query DAG memoization",
+      "commit": "9b9a035",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 9b9a035, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 9b9a035, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "scheduler_state": "Generated array job 122280 completed four shards in 27 seconds; mutation job 122281 completed in 8 minutes 12 seconds; all exit codes were zero."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with 750 mixed and 125+125 finite cases per shard, seed base 2026080970, and --qf-uflra-model-reconciliation",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with 2000 configured iterations per seed, seed base 2026080980, an 8-second solver timeout, and --qf-uflra-model-reconciliation"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS against Z3",
+        "finite_domain": "1000/1000 PASS against Z3 and cvc5",
+        "tracked_seeds": "11/11 PASS against Z3",
+        "mutation": "43914 solver calls; 11 seeds processed, 11 valid, 0 invalid, and 0 bug triggers",
+        "failures": "0 wrong answer, crash, parser/type error, timeout, unsupported result, reference disagreement, invalid seed, or mutation bug trigger."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-profile-9b9a035/ and fuzz-results/qf-uflra-profile-9b9a035/; local ignored generated summaries under /tmp/primo-fuzz-9b9a035-generated-v2/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact final candidate passed the required correctness gate before full-corpus evaluation."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-30s-final-9b9a035",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "benchmark",
+      "scope": "Final 30-second full-corpus QF_UFLRA profile after eliminating the diagnosed implementation costs",
+      "commit": "9b9a035",
+      "baseline_commit": "541af76",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 9b9a035, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "reference_reuse": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv; Z3 5.0.0 on the identical corpus, not rerun",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 9b9a035 and dependencies immediately before submission",
+        "scheduler_state": "SLURM array job 122285; all eight shards completed with exit code 0 in 3 minutes 6 seconds to 6 minutes 26 seconds."
+      },
+      "command": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=30, and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation",
+      "results": {
+        "candidate": "1234 solved (727 sat, 507 unsat), 50 timeout, 0 error/unsupported/wrong, solved-row time 588.435922 seconds, PAR2 3588.435922.",
+        "families": "FFT 10/10, PAR2 0.085063; CPAchecker BMC 5/15, PAR2 618.188666; CPAchecker induction 319/359, PAR2 2907.207869; MathSAT 900/900, PAR2 62.954324.",
+        "baseline_comparison": "60 timeout recoveries, 0 losses, and 0 decisive-answer disagreements. Across 1174 common solves, time fell from 455.421176 to 135.895532 seconds; 58 common cases improved by at least 2x with no corresponding 2x regression.",
+        "intermediate_comparison": "35 recoveries over 6927d87, 0 losses, and 0 disagreements. Common-solved time was stable at 454.676094 versus 453.032081 seconds because the additional newly solved cases account for the larger total solved-row time.",
+        "mechanism": "The corpus recorded 1998980 first equality-query visits, 4134635 DAG memo hits, 4987952 closure add requests, and 4063125 already-seen hits. Probe assignment replay remained about 7x below baseline at 52448472 versus 364252532, with 1085789 checked-tableau copies and 24911 basis-cost fallbacks.",
+        "z3_reused": "Z3 solved 1234 (736 sat, 498 unsat) with 50 timeouts and PAR2 758.708455 at five seconds. The solved counts match, but each solver has 16 decisive results absent from the other run; there were no decisive-answer disagreements. Z3 common-solved time remains lower, 230.079480 versus Primo 447.092861 seconds."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-profile-9b9a035-30s/; local ignored CSV/JSONL copy /tmp/primo-qfuflra-30s-candidate-9b9a035-v2/; baseline /tmp/primo-qfuflra-30s-baseline-541af76-full/; reused Z3 results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted both implementation-cost fixes. The 30-second solved-count gap to the reused Z3 run is closed on this corpus, but frontend definition compilation, SAT factoring/arrangement search, and the 16 remaining fast-Z3/timeout-Primo cases remain performance work."
     }
   ]
 }

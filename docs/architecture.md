@@ -313,6 +313,15 @@ Implemented now:
   `4a93256` SLURM gate found no wrong answer in 4,000 generated cases or the
   tracked-seed mutation campaign, and the full 1,284-file run preserved all
   1,156 baseline solves while reducing PAR2 from 1412.285 to 1407.514 seconds.
+  A later exact 30-second profile of the full 1,284-file corpus retained this
+  mode and removed two implementation costs outside the arithmetic solver:
+  checked-tableau reuse for exact interface probes and DAG-memoized
+  preprocessing equality-query registration. At revision `9b9a035`, Primo
+  solves 1,234 files with 50 timeouts and no wrong answers, versus 1,174 solves
+  and 110 timeouts at `541af76`; PAR2 falls from 7,055.421 to 3,588.436. The
+  solved count matches the reused Z3 run on this corpus, but not instance for
+  instance, and Z3 remains faster on common solves. These are implementation
+  efficiency results, not additional model-guided transitions.
   Outside this opt-in reconciliation profile, the default final path classifies
   LRA-to-EUF equalities through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already

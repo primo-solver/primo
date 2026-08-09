@@ -226,6 +226,14 @@ instead of recursively registering the same equality endpoints again;
 work accounting, not which equality nodes or endpoint subterms enter the
 closure.
 
+The motivating CPAchecker `Problem01_00` profile contained only 4,362 distinct
+terms but made 35,267,698 duplicate closure-registration calls while walking
+shared Boolean subterms by occurrence. On committed revision `9b9a035`, the
+same instance solves in 0.04 seconds and reports 7,335 first visits, 25,328 DAG
+memo hits, 1,914 closure add requests, and 1,684 already-seen hits. In the
+matching 1,284-file SLURM run, this pass recovered 35 additional instances over
+the preceding probe-reuse revision without losing a solve.
+
 `IncrementalCongruenceClosure::add_term` also checks its existing `seen_` vector
 before asking the `TermManager` for its current size. A hit is valid because a
 seen term was type-checked, had all children registered, and had its application
@@ -1037,6 +1045,13 @@ strengthening:
   and solved Real definitions before SAT search;
 - reuse equality and bound definitions aggressively for repeated linear terms
   and Real-valued UF proxies introduced by mixed purification;
+- compile long chains of nullary `define-fun` declarations more directly. A
+  post-fix gprof run on CPAchecker `Problem05_60` attributed about 55 percent of
+  its 6.28-second instrumented runtime to iterative term dispatch and
+  definition instantiation over 109,849 nullary definitions, with about 30
+  percent in CaDiCaL factoring. The uninstrumented committed build solves in
+  5.37 seconds, so this is a frontend throughput target rather than the cause
+  of a current 30-second timeout;
 - profile representative files from the committed top-100 gap manifest before
   choosing between LRA-domain preprocessing, stronger arithmetic propagation, or
   Boolean encoding changes.
