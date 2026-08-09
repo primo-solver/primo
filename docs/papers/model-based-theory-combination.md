@@ -31,7 +31,9 @@ combination. It has these related pieces:
 - an opt-in `--qf-uflra-model-reconciliation` profile where
   `TheoryCombinationManager` owns a round-scoped shared-interface model
   projection and retains explained, EUF-compatible LRA equalities in the live
-  closure without SAT atoms; the default path still forces such equalities;
+  closure without SAT atoms when the merge has no downstream shared congruence
+  consequence; the default path and congruence-producing merges still force
+  such equalities;
 - bounded shared-Real separation for the documented model-printing subset;
 - default-off `--model-equality-branching`, which keeps surviving
   LRA-model-equal shared Real equality guesses on an active SAT-assumption trail;
@@ -127,8 +129,11 @@ paper's novel model-based transition system.
   models and shared sorts.
 - [ ] Implement `M-Mutate` as an actual update of a component model.
 - [x] **Partial:** reconcile explained LRA equalities into the live EUF closure
-  through round-scoped shared state owned by the combination manager; final
-  validation and model reconstruction consume the same internal equalities.
+  through round-scoped shared state owned by the combination manager when the
+  merge only joins its two existing shared classes; final validation and model
+  reconstruction consume the same internal equalities. A merge that creates a
+  new shared congruence consequence falls back to SAT because there is no
+  second EUF-to-LRA reconciliation pass yet.
 - [ ] Generalize the mechanism beyond the documented EUF plus rational-LRA
   path, including non-convex theory case splits.
 

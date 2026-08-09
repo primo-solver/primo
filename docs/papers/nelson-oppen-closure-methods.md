@@ -83,8 +83,13 @@ closure nor a tableau.
 The first internal reconciliation rule accepts only explained LRA entailments.
 An EUF-compatible equality remains asserted in the assignment-local live EUF
 closure and is recorded for final validation/model reconstruction without a SAT
-atom. EUF-forbidden equalities retain their explanation and use the lazy
-guarded-clause path. This makes the internal classification a model invariant,
+atom when it only joins its two existing shared classes. Before retaining the
+merge, the coordinator snapshots the EUF partition over shared terms and checks
+that the merge did not create another shared equality through congruence. A
+congruence-producing merge and an EUF-forbidden equality retain the LRA
+explanation and use the lazy guarded-clause path, because the current prototype
+does not perform another EUF-to-LRA reconciliation iteration after an internal
+merge. This makes every admitted internal classification a model invariant,
 not merely a skipped propagation. Model-equal but unentailed pairs remain
 conjectures and are not admitted by this rule.
 `analyze_nelson_oppen_interface` is a
@@ -473,6 +478,7 @@ coordinator publishes:
 - `:no.shared-model.exact-fallbacks`
 - `:no.shared-model.validation-failures`
 - `:no.shared-model.sat-materializations-avoided`
+- `:no.shared-model.congruence-fallbacks`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
 - `:no.interface.lra-online-enabled`

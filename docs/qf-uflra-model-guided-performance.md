@@ -296,12 +296,19 @@ invalidate this state. EUF closures and LRA tableaux remain theory-owned.
 
 The first producer admitted to the internal path is deliberately conservative:
 only an explained LRA entailment may be retained in the live EUF closure. If
-the merge succeeds, final validation and model reconstruction reuse the merged
-closure and explicitly include the equality in the UF model input. If the
-merge is missing an endpoint or conflicts with EUF, Primo lazily creates the
-equality atom and uses the existing guarded explanation. Enabling the profile
-also enables candidate-first scanning, with the broad exact scan retained as a
-fallback when arrangement validation detects a missed equality.
+the merge succeeds and only joins the two pre-merge shared classes, final
+validation and model reconstruction reuse the merged closure and explicitly
+include the equality in the UF model input. If the merge is missing an
+endpoint, conflicts with EUF, or creates another shared equality by congruence,
+Primo lazily creates the equality atom and uses the existing guarded
+explanation. The congruence fallback is counted by
+`:no.shared-model.congruence-fallbacks`; it is required until this path has a
+second EUF-to-LRA reconciliation iteration. The regression is
+`benchmarks/seeds/qf_uflra/real_congruence_forced_unsat.smt2`: internalizing
+`x = y` without rechecking would miss `f(x) = f(y)` and incorrectly accept
+incompatible arithmetic values. Enabling the profile also enables
+candidate-first scanning, with the broad exact scan retained as a fallback when
+arrangement validation detects a missed equality.
 
 This repairs the invariant missing from the rejected mergeable-skip experiment:
 an equality is not called internal unless the receiving model actually absorbs
