@@ -4,6 +4,9 @@
 # This gate assumes the remote workspace was prepared on the login node with:
 #   make contrib-yinyang contrib-z3
 # It does not install Python packages from compute nodes.
+# PRIMO_FUZZ_EXTRA_SOLVER_ARGS appends space-separated, argument-only options to
+# every selected profile. Submit --array=0 when gating one option on the default
+# profile rather than comparing all three built-in profiles.
 
 #SBATCH --job-name=primo-qfuflra-mut
 #SBATCH --array=0-2
@@ -27,6 +30,7 @@ SEED_SIZE_LIMIT=${PRIMO_FUZZ_SEED_SIZE_LIMIT:-4096}
 YINYANG_WALL_SECONDS=${PRIMO_FUZZ_YINYANG_WALL_SECONDS:-27000}
 FILE_SIZE_LIMIT=${PRIMO_FUZZ_FILE_SIZE_LIMIT:-200000}
 MUTATION_REF=${PRIMO_FUZZ_MUTATION_REF:-"z3 model_validate=true"}
+EXTRA_SOLVER_ARGS_TEXT=${PRIMO_FUZZ_EXTRA_SOLVER_ARGS:-}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 mutation_seed=$((MUTATION_SEED_BASE + TASK_ID))
 
@@ -90,6 +94,11 @@ else
   echo "task $TASK_ID is outside the active 3-task range"
   exit 0
 fi
+extra_option_args=()
+if [[ -n $EXTRA_SOLVER_ARGS_TEXT ]]; then
+  read -r -a extra_option_args <<< "$EXTRA_SOLVER_ARGS_TEXT"
+fi
+option_args+=("${extra_option_args[@]}")
 
 out="$OUT_ROOT/$label"
 mkdir -p "$out"
