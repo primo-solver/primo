@@ -219,11 +219,12 @@ To stage a complete extracted corpus without first creating a temporary
 manifest, replace `--manifest ...` with `--all-smt2`. Paths are discovered below
 `--root` and sorted before archiving.
 
-When the verified corpus already exists in another workspace on the same
-remote host, add `--remote-source-dir`. The helper sends only the validated
-path list over SSH and performs the tar copy between remote directories. It
-still builds a staging tree and replaces the target only after every selected
-file has been copied:
+When the corpus already exists in another workspace on the same remote host,
+add `--remote-source-dir`. The helper computes the selected local path/size
+fingerprint, sends only the path list over SSH, verifies the remote source has
+the same count, total bytes, and fingerprint, and then performs the tar copy
+between remote directories. It still builds a staging tree and replaces the
+target only after every selected file has been copied:
 
 ```bash
 python3 scripts/slurm_stage_manifest_files.py \

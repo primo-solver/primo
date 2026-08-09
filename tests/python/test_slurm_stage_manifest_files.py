@@ -33,6 +33,23 @@ class SlurmStageManifestFilesTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "no SMT-LIB files found"):
                 slurm_stage.all_smt2_paths(Path(temporary))
 
+    def test_path_size_fingerprint_is_ordered_and_content_independent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "a.smt2").write_text("abc", encoding="utf-8")
+            (root / "b.smt2").write_text("12345", encoding="utf-8")
+
+            count, size, fingerprint = slurm_stage.path_size_fingerprint(
+                root, ["b.smt2", "a.smt2"]
+            )
+
+            self.assertEqual((count, size), (2, 8))
+            self.assertEqual(len(fingerprint), 64)
+            self.assertNotEqual(
+                fingerprint,
+                slurm_stage.path_size_fingerprint(root, ["a.smt2", "b.smt2"])[2],
+            )
+
     def test_manifest_rejects_parent_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             manifest = Path(temporary) / "manifest.txt"
@@ -56,9 +73,15 @@ class SlurmStageManifestFilesTests(unittest.TestCase):
 
     def test_remote_reuse_copies_only_selected_paths_before_replacement(self) -> None:
         remote = slurm_stage.remote_copy_script(
-            "source/tmp/QF_UFLRA", "target/tmp/QF_UFLRA"
+            "source/tmp/QF_UFLRA",
+            "target/tmp/QF_UFLRA",
+            1,
+            42,
+            "a" * 64,
         )
         self.assertIn('test -d "$source_root"', remote)
+        self.assertIn('test "$actual_count" -eq 1', remote)
+        self.assertIn('test "$actual_bytes" -eq 42', remote)
         self.assertIn('tar -C "$source_root" --null -T "$path_list"', remote)
         self.assertLess(
             remote.index('tar -C "$source_root"'),

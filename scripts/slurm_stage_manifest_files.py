@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import shlex
 import subprocess
 from pathlib import Path, PurePosixPath
@@ -52,6 +53,18 @@ def all_smt2_paths(root: Path) -> list[str]:
     return paths
 
 
+def path_size_fingerprint(root: Path, paths: list[str]) -> tuple[int, int, str]:
+    digest = hashlib.sha256()
+    total_bytes = 0
+    for path in paths:
+        if any(character in path for character in "\0\n\r\t"):
+            raise SystemExit(f"unsafe control character in selected path: {path!r}")
+        size = (root / path).stat().st_size
+        total_bytes += size
+        digest.update(f"{path}\t{size}\n".encode())
+    return len(paths), total_bytes, digest.hexdigest()
+
+
 def compressed_tar_command(root: Path, paths: list[str]) -> list[str]:
     return ["tar", "-C", root.as_posix(), "-czf", "-", "--", *paths]
 
@@ -73,24 +86,46 @@ trap - EXIT HUP INT TERM
 """.strip()
 
 
-def remote_copy_script(remote_source_root: str, remote_root: str) -> str:
+def remote_copy_script(
+    remote_source_root: str,
+    remote_root: str,
+    expected_count: int,
+    expected_bytes: int,
+    expected_fingerprint: str,
+) -> str:
     return f"""
 set -euo pipefail
 source_root={shlex.quote(remote_source_root)}
 remote_root={shlex.quote(remote_root)}
 staging="$remote_root.staging.$$"
 path_list="$remote_root.paths.$$"
-cleanup() {{ rm -rf "$staging"; rm -f "$path_list"; }}
+size_manifest="$remote_root.sizes.$$"
+cleanup() {{ rm -rf "$staging"; rm -f "$path_list" "$size_manifest"; }}
 trap cleanup EXIT HUP INT TERM
 test -d "$source_root"
 mkdir -p "$(dirname "$remote_root")"
 rm -rf "$staging"
 mkdir -p "$staging"
 cat > "$path_list"
+actual_count=0
+actual_bytes=0
+while IFS= read -r -d '' path; do
+  test -f "$source_root/$path"
+  size=$(stat -c %s "$source_root/$path")
+  printf '%s\t%s\n' "$path" "$size" >> "$size_manifest"
+  actual_count=$((actual_count + 1))
+  actual_bytes=$((actual_bytes + size))
+done < "$path_list"
+actual_fingerprint=$(sha256sum "$size_manifest" | cut -d ' ' -f 1)
+test "$actual_count" -eq {expected_count}
+test "$actual_bytes" -eq {expected_bytes}
+test "$actual_fingerprint" = {shlex.quote(expected_fingerprint)}
+printf 'verified remote source: %s files, %s bytes, %s\n' \
+  "$actual_count" "$actual_bytes" "$actual_fingerprint"
 tar -C "$source_root" --null -T "$path_list" -cf - | tar -xf - -C "$staging"
 rm -rf "$remote_root"
 mv "$staging" "$remote_root"
-rm -f "$path_list"
+rm -f "$path_list" "$size_manifest"
 trap - EXIT HUP INT TERM
 """.strip()
 
@@ -100,9 +135,19 @@ def stage_from_remote(
     remote: str,
     remote_source_root: str,
     remote_root: str,
+    local_root: Path,
     paths: list[str],
 ) -> None:
-    remote_script = remote_copy_script(remote_source_root, remote_root)
+    expected_count, expected_bytes, expected_fingerprint = path_size_fingerprint(
+        local_root, paths
+    )
+    remote_script = remote_copy_script(
+        remote_source_root,
+        remote_root,
+        expected_count,
+        expected_bytes,
+        expected_fingerprint,
+    )
     shell_syntax_check(remote_script)
     path_list = b"".join(path.encode() + b"\0" for path in paths)
     command = ["ssh", "-F", str(config), remote, remote_script]
@@ -168,7 +213,12 @@ def main() -> int:
         if remote_source_root == remote_root:
             raise SystemExit("--remote-source-dir and --remote-dir select the same corpus")
         stage_from_remote(
-            args.ssh_config, args.remote, remote_source_root, remote_root, paths
+            args.ssh_config,
+            args.remote,
+            remote_source_root,
+            remote_root,
+            args.root,
+            paths,
         )
         print(
             f"staged {len(paths)} files within {args.remote}:"
