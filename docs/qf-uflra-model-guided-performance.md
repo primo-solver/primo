@@ -18,8 +18,8 @@ The clean-room sources for the intended direction are:
 
 ## Current Evidence
 
-**Section 5.2 integration pending SLURM evaluation, 2026-08-09.** The merged LRA
-prerequisite provides `freedom_interval()` and
+**Section 5.2 integration result, 2026-08-09.** The merged LRA prerequisite
+provides `freedom_interval()` and
 `diversify_shared_model()`. The mixed coordinator now runs one scratch sweep per
 feasible round when model reconciliation or model-equality branching is enabled,
 projects the post-mutation classes once, and reuses them for reconciliation,
@@ -34,9 +34,34 @@ fallback may publish an entailed equality. The scratch assignment is not
 installed into the live tableau, so final arrangement/model reconstruction
 retains its independent strict-separation validation. Focused tests cover an
 accidental equality removed before queue/atom creation, an entailed equality
-that cannot move, and model reconstruction after scratch-only mutation. Fresh
-fuzz and benchmark evidence must be added before this subsection claims a
-performance result.
+that cannot move, and model reconstruction after scratch-only mutation.
+
+Fresh SLURM gates at commit `4937d3c` passed 4,000 generated cases with
+reconciliation and another 4,000 with model-equality branching. Each option set
+covered 3,000 generated mixed cases plus 500 finite-domain QF_UF and 500
+finite-domain QF_UFLRA cases, with no wrong answer, timeout, crash, unsupported
+result, parser/type error, or reference disagreement. The reconciliation and
+branching YinYang runs then each processed all 11 compact QF_UFLRA seeds. They
+made 43,982 and 43,872 differential solver calls respectively, with no invalid
+seed or bug trigger.
+
+On the same-commit 1,284-file QF_UFLRA reconciliation ablation at five seconds
+per file, mutation on and off both solved 1,156 files with 128 timeouts and zero
+wrong answers or answer/status differences. The scratch sweep removed
+2,280,171 of 11,450,940 model-equality candidate pairs. SAT decisions fell from
+1,388,580 to 1,281,729, propagations from 24,996,441 to 24,718,750, and solve
+calls from 2,199 to 2,169. PAR2 fell from 1,419.782409 to 1,412.285038; solved-row
+time fell from 139.782409 to 132.285038 seconds. The unchanged Z3 result remains
+1,234 solved, 50 timeouts, and PAR2 758.708455.
+
+The 45-file, 60-second sample gives the same policy decision. Reconciliation
+solved 43 files both with and without mutation; PAR2 changed from 275.807627 to
+271.117621. Model-equality branching solved only 37 files in both variants,
+although mutation reduced its PAR2 from 1,034.190677 to 991.359031. The reused
+Z3 result solved all 45 with PAR2 10.936763. Mutation therefore remains enabled
+within the opt-in reconciliation and branching profiles, with
+`--no-model-equality-mutation` retained as an ablation. Neither profile is
+promoted to the ordinary default by this result.
 
 **Shared-model reconciliation result, 2026-08-09.** The repaired opt-in
 `--qf-uflra-model-reconciliation` profile passed 3,000 generated mixed cases,
