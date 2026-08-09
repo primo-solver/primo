@@ -6230,11 +6230,9 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
       continue;
     }
 
-    const std::optional<std::size_t> shared_class_count_before =
-        reconcile_shared_model
-            ? std::optional<std::size_t>{euf_closure.class_count(shared_flat_terms)}
-            : std::nullopt;
-    if (shared_class_count_before.has_value()) {
+    std::size_t shared_class_count_before = 0;
+    if (reconcile_shared_model) {
+      shared_class_count_before = euf_closure.class_count(shared_flat_terms);
       statistics.increment(":no.shared-model.congruence-summary-checks");
       statistics.increment(":no.shared-model.congruence-summary-terms", shared_flat_terms.size());
     }
@@ -6244,10 +6242,9 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
       manager.mark_interface_equality_classification(equality_id,
                                                      InterfaceEqualityClassification::EufMergeable);
       const bool creates_shared_congruence =
-          shared_class_count_before.has_value() &&
-          merge_creates_shared_congruence(euf_closure, shared_flat_terms,
-                                          shared_class_count_before.value());
-      if (shared_class_count_before.has_value()) {
+          reconcile_shared_model && merge_creates_shared_congruence(euf_closure, shared_flat_terms,
+                                                                    shared_class_count_before);
+      if (reconcile_shared_model) {
         statistics.increment(":no.shared-model.congruence-summary-terms", shared_flat_terms.size());
       }
       if (reconcile_shared_model && !creates_shared_congruence &&
