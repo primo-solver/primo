@@ -24568,6 +24568,35 @@
       "artifacts": "remote:primo-cadical-profile/results/qf-uflra-full-finite-fix-{default,candidate}-e6930d0-5s/; local ignored copies of shard CSVs and summaries under results/ with matching names; reused local Z3 artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted as full-corpus correctness and sanity evidence. The valid-input unsupported defect is removed with no wrong answers, no non-timeout failures, and no material solved-count or PAR2 regression. This repair improves supported behavior, not five-second solved count."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-shared-model-local-fuzz-75a87c4",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "fuzz",
+      "scope": "Local differential smoke and merge gate for opt-in convex QF_UFLRA shared-model reconciliation",
+      "commit": "75a87c4",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "workspace": "/workspace",
+        "binary": "build/primo with CaDiCaL 3.0.0",
+        "reference": "contrib/local/bin/z3"
+      },
+      "commands": {
+        "rejected_reference_attempt": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260809 --timeout 5 --shape mixed --solver-arg=--qf-uflra-model-reconciliation --out fuzz-results/qf-uflra-shared-model-local-20260809",
+        "first_valid_gate": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref ./contrib/local/bin/z3 --count 1000 --seed 20260809 --timeout 5 --shape mixed --solver-arg=--qf-uflra-model-reconciliation --out fuzz-results/qf-uflra-shared-model-local-20260809-z3",
+        "final_valid_gate": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref ./contrib/local/bin/z3 --count 1000 --seed 202608091 --timeout 5 --shape mixed --solver-arg=--qf-uflra-model-reconciliation --out fuzz-results/qf-uflra-shared-model-local-20260809-z3-final"
+      },
+      "results": {
+        "rejected_reference_attempt": "1000 REFERENCE_UNUSABLE because z3 was absent from PATH; not correctness evidence.",
+        "first_valid_gate": "1000/1000 PASS against the repository-managed Z3, zero disagreement, timeout, crash, or unsupported result.",
+        "final_valid_gate": "1000/1000 PASS with a fresh seed against the repository-managed Z3, zero disagreement, timeout, crash, or unsupported result.",
+        "accepted_cases": 2000
+      },
+      "artifacts": "local ignored: fuzz-results/qf-uflra-shared-model-local-20260809{,-z3,-z3-final}",
+      "evidence_status": "local-complete-awaiting-slurm",
+      "outcome": "Accepted as local differential evidence only. The first attempt correctly failed as evidence because its reference command was unresolved. SLURM generated and real-seed mutation gates remain required before benchmark or default-promotion claims."
     }
   ]
 }
