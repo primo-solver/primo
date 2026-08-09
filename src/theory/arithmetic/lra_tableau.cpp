@@ -927,37 +927,61 @@ struct DeltaRationalHash {
   }
 };
 
-}  // namespace
-
-std::vector<std::vector<LraVarId>> LraTableau::model_equal_classes(
-    const std::vector<LraVarId>& shared) const {
-  // Group by model value. Insertion order is preserved inside each class, and
-  // classes come out in first-appearance order, so the result is deterministic
-  // for a given `shared` -- an unordered_map iteration would not be, and a
-  // combination layer that case-splits on this must not depend on hash order.
-  std::unordered_map<DeltaRational, std::size_t, DeltaRationalHash> class_of_value;
+// The partition of `shared` by model value, shared by model_equal_classes()
+// and by the mutation sweep, which needs the same grouping against a scratch
+// assignment. Templated on the value lookup so the live path keeps costing
+// O(|shared|) rather than materializing an assignment vector to call this.
+//
+// `total` counts ALL classes, singletons included -- that is the paper's
+// |classes(R_beta)|, the quantity a model mutator must not decrease. `classes`
+// keeps only the non-singleton ones, which is what a caller can act on.
+struct ModelValueGrouping {
   std::vector<std::vector<LraVarId>> classes;
+  std::size_t total = 0;
+};
+
+template <typename ValueOf>
+ModelValueGrouping group_by_model_value(const std::vector<LraVarId>& shared, ValueOf value_of) {
+  // Insertion order is preserved inside each class, and classes come out in
+  // first-appearance order, so the result is deterministic for a given
+  // `shared` -- an unordered_map iteration would not be, and a combination
+  // layer that case-splits on this must not depend on hash order.
+  std::unordered_map<DeltaRational, std::size_t, DeltaRationalHash> class_of_value;
   std::unordered_set<LraVarId> seen;
+  ModelValueGrouping grouping;
 
   for (const LraVarId var : shared) {
     if (!seen.insert(var).second) {
       continue;  // duplicates in `shared` are the caller's business, not ours
     }
-    const DeltaRational& value = vars_.at(var).assignment;
-    const auto [it, inserted] = class_of_value.emplace(value, classes.size());
+    const auto [it, inserted] = class_of_value.emplace(value_of(var), grouping.classes.size());
     if (inserted) {
-      classes.push_back({var});
+      grouping.classes.push_back({var});
     } else {
-      classes[it->second].push_back(var);
+      grouping.classes[it->second].push_back(var);
     }
   }
+  grouping.total = grouping.classes.size();
 
-  // Singletons carry no information for the combination layer: a variable equal
-  // to nothing else proposes no equality. Dropping them here keeps the caller
-  // from having to filter, and keeps the common case (nothing coincides) cheap
-  // to test -- an empty result means "no candidates".
-  std::erase_if(classes, [](const std::vector<LraVarId>& c) { return c.size() < 2; });
-  return classes;
+  // Singletons carry no information for the combination layer: a variable
+  // equal to nothing else proposes no equality. Dropping them here keeps the
+  // caller from having to filter, and keeps the common case (nothing
+  // coincides) cheap to test -- an empty result means "no candidates".
+  std::erase_if(grouping.classes, [](const std::vector<LraVarId>& c) { return c.size() < 2; });
+  return grouping;
+}
+
+}  // namespace
+
+std::vector<std::vector<LraVarId>> LraTableau::model_equal_classes(
+    const std::vector<LraVarId>& shared) const {
+  // Keying on DeltaRational and not on its rational part is load-bearing --
+  // see the header's note on why two variables agreeing rationally but
+  // differing in delta are not equal in the concrete model.
+  return group_by_model_value(
+             shared,
+             [this](LraVarId var) -> const DeltaRational& { return vars_.at(var).assignment; })
+      .classes;
 }
 
 std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
@@ -1091,10 +1115,18 @@ std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
 }
 
 LraTableau::FreedomInterval LraTableau::freedom_interval(LraVarId nonbasic) const {
+  return freedom_interval_impl(nonbasic, nullptr);
+}
+
+LraTableau::FreedomInterval LraTableau::freedom_interval_impl(
+    LraVarId nonbasic, const std::vector<DeltaRational>* beta) const {
   assert(!vars_.at(nonbasic).is_basic &&
          "freedom_interval is defined for nonbasic variables only -- a basic "
          "variable's value follows from its row, and Section 5.2 mutates "
          "without pivoting one free");
+  const auto value_of = [this, beta](LraVarId var) -> const DeltaRational& {
+    return beta != nullptr ? (*beta)[var] : vars_.at(var).assignment;
+  };
 
   FreedomInterval interval;
   // Start from the variable's own bounds; the row constraints only ever
@@ -1107,7 +1139,7 @@ LraTableau::FreedomInterval LraTableau::freedom_interval(LraVarId nonbasic) cons
     interval.upper = own_upper->value;
   }
 
-  const DeltaRational& beta_j = vars_.at(nonbasic).assignment;
+  const DeltaRational& beta_j = value_of(nonbasic);
   const auto tighten_lower = [&interval](const DeltaRational& candidate) {
     if (!interval.lower.has_value() || *interval.lower < candidate) {
       interval.lower = candidate;
@@ -1135,6 +1167,7 @@ LraTableau::FreedomInterval LraTableau::freedom_interval(LraVarId nonbasic) cons
     }
 
     const VarState& basic_state = vars_.at(basic);
+    const DeltaRational& beta_i = value_of(basic);
     // How far beta(x_i) may move before it hits its own bound, converted into
     // a bound on x_j via division by a_ij. The sign of a_ij decides which of
     // x_i's bounds limits which direction, which is the whole content of the
@@ -1144,7 +1177,7 @@ LraTableau::FreedomInterval LraTableau::freedom_interval(LraVarId nonbasic) cons
 
     if (basic_state.lower.has_value()) {
       const DeltaRational shifted =
-          beta_j + (basic_state.lower->value - basic_state.assignment).scaled(inverse_coeff);
+          beta_j + (basic_state.lower->value - beta_i).scaled(inverse_coeff);
       if (positive) {
         tighten_lower(shifted);
       } else {
@@ -1153,7 +1186,7 @@ LraTableau::FreedomInterval LraTableau::freedom_interval(LraVarId nonbasic) cons
     }
     if (basic_state.upper.has_value()) {
       const DeltaRational shifted =
-          beta_j + (basic_state.upper->value - basic_state.assignment).scaled(inverse_coeff);
+          beta_j + (basic_state.upper->value - beta_i).scaled(inverse_coeff);
       if (positive) {
         tighten_upper(shifted);
       } else {
@@ -1163,6 +1196,132 @@ LraTableau::FreedomInterval LraTableau::freedom_interval(LraVarId nonbasic) cons
   }
 
   return interval;
+}
+
+LraTableau::ModelMutationResult LraTableau::diversify_shared_model(
+    const std::vector<LraVarId>& shared) const {
+  ModelMutationResult result;
+  if (shared.empty()) {
+    return result;
+  }
+
+  // The scratch model. Copying every variable's value is O(vars) once, which
+  // buys the guarantee that nothing below can touch tableau state.
+  std::vector<DeltaRational> beta;
+  beta.reserve(vars_.size());
+  for (const VarState& state : vars_) {
+    beta.push_back(state.assignment);
+  }
+  const auto value_of = [&beta](LraVarId var) -> const DeltaRational& { return beta[var]; };
+
+  auto grouping = group_by_model_value(shared, value_of);
+  result.classes_before = grouping.total;
+  if (grouping.classes.empty()) {
+    // Nothing coincides, so there is nothing to separate and no reason to pay
+    // for the sweep.
+    result.classes_after = grouping.total;
+    return result;
+  }
+
+  // Which nonbasic variables can move a shared value at all: the shared ones
+  // themselves, plus those appearing in a shared BASIC variable's row -- a
+  // basic variable moves only through its row, and Section 5.2 will not pivot
+  // to make it free. Anything else cannot change the partition, so scoring it
+  // would be wasted work. Built in first-appearance order; an unordered_set
+  // would make the sweep's outcome depend on hash order.
+  std::vector<LraVarId> candidates;
+  std::unordered_set<LraVarId> candidate_seen;
+  const auto add_candidate = [&candidates, &candidate_seen](LraVarId var) {
+    if (candidate_seen.insert(var).second) {
+      candidates.push_back(var);
+    }
+  };
+  for (const std::vector<LraVarId>& equal_class : grouping.classes) {
+    for (const LraVarId var : equal_class) {
+      if (!vars_.at(var).is_basic) {
+        add_candidate(var);
+        continue;
+      }
+      for (const auto& [term_var, coeff, slot] : rows_.at(var)) {
+        if (!vars_.at(term_var).is_basic && !coeff.is_zero()) {
+          add_candidate(term_var);
+        }
+      }
+    }
+  }
+
+  // Applies update(x_j, v) to the scratch model exactly as update() would.
+  const auto apply = [this, &beta](LraVarId nonbasic, const DeltaRational& value) {
+    const DeltaRational shift = value - beta[nonbasic];
+    beta[nonbasic] = value;
+    for (const LraVarId basic : occurs_in_.at(nonbasic)) {
+      if (!vars_.at(basic).is_basic) {
+        continue;
+      }
+      for (const auto& [term_var, coeff, slot] : rows_.at(basic)) {
+        if (term_var == nonbasic) {
+          beta[basic] = beta[basic] + shift.scaled(coeff);
+        }
+      }
+    }
+  };
+
+  for (const LraVarId candidate : candidates) {
+    const FreedomInterval interval = freedom_interval_impl(candidate, &beta);
+    const DeltaRational current = beta[candidate];
+
+    // Where to try inside the interval. The interval is exact; this choice is
+    // pure heuristic, which is why the count is a Tuning knob. Endpoints first
+    // -- they are the values most likely to break a coincidence, since a
+    // coincidence usually sits in the interior -- then successive midpoints
+    // toward the current value, which stay legal when an endpoint is
+    // unbounded on one side.
+    std::vector<DeltaRational> tries;
+    tries.reserve(tuning_.model_mutation_candidates);
+    if (interval.lower.has_value()) {
+      tries.push_back(*interval.lower);
+    } else {
+      // Unbounded below, so any step down is legal. Without this an entirely
+      // unconstrained variable -- the one that is *easiest* to move -- would
+      // offer no candidate at all and be skipped.
+      tries.push_back(current - DeltaRational::from_rational(util::Rational(1)));
+    }
+    if (interval.upper.has_value()) {
+      tries.push_back(*interval.upper);
+    } else {
+      tries.push_back(current + DeltaRational::from_rational(util::Rational(1)));
+    }
+    const std::size_t seeds = tries.size();
+    for (std::size_t i = 0; i < seeds && tries.size() < tuning_.model_mutation_candidates; ++i) {
+      tries.push_back((tries[i] + current).scaled(util::Rational(1) / util::Rational(2)));
+    }
+    if (tries.size() > tuning_.model_mutation_candidates) {
+      tries.resize(tuning_.model_mutation_candidates);
+    }
+
+    for (const DeltaRational& value : tries) {
+      if (value == current) {
+        continue;  // a zero-width move cannot change the partition
+      }
+      const DeltaRational saved = current;
+      apply(candidate, value);
+      auto mutated = group_by_model_value(shared, value_of);
+      if (mutated.total > grouping.total) {
+        grouping = std::move(mutated);
+        result.updates.emplace_back(candidate, value);
+        break;  // this variable has paid off; move to the next one
+      }
+      apply(candidate, saved);  // no improvement, so put it back
+    }
+  }
+
+  result.classes_after = grouping.total;
+  result.classes = std::move(grouping.classes);
+  assert(result.classes_after >= result.classes_before &&
+         "a model mutator must not decrease |classes| -- the paper's stated "
+         "obligation, and the reason each update is kept only when it "
+         "strictly increases the count");
+  return result;
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::check() {

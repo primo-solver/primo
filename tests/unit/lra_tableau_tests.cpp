@@ -2043,6 +2043,144 @@ void every_value_in_the_freedom_interval_keeps_the_model_feasible() {
   assert(checked > 0);  // a vacuous loop would pass everything above
 }
 
+// -- M-Mutate: the greedy diversifier ---------------------------------------
+
+void diversify_separates_a_coincidence_that_is_not_entailed() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.check().has_value());
+  // Both sit at 0 with nothing forcing them together: a model coincidence,
+  // which is exactly the case the paper wants mutated away rather than turned
+  // into a case split.
+  assert(tableau.assignment(x) == tableau.assignment(y));
+  assert(tableau.model_equal_classes({x, y}).size() == 1);
+
+  const auto result = tableau.diversify_shared_model({x, y});
+  assert(result.classes_before == 1);
+  assert(result.classes_after == 2);
+  assert(result.classes.empty());  // nothing coincides any more
+  assert(result.updates.size() == 1);
+}
+
+void diversify_cannot_separate_an_entailed_equality() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(-1)}});
+  // s = x - y pinned to 0, so x = y in every model. No freedom interval can
+  // break this, and the mutator must not pretend otherwise -- claiming a
+  // separation here would let the combination layer drop a real equality.
+  assert(!tableau.assert_lower(s, rat(0), Lit{1}).has_value());
+  assert(!tableau.assert_upper(s, rat(0), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto result = tableau.diversify_shared_model({x, y});
+  assert(result.classes_before == 1);
+  assert(result.classes_after == 1);
+  assert(result.updates.empty());
+  assert(result.classes.size() == 1 && result.classes.front().size() == 2);
+}
+
+void diversify_leaves_the_tableau_untouched() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+  assert(!tableau.assert_upper(s, rat(8), Lit{1}).has_value());
+  assert(!tableau.assert_lower(s, rat(-8), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+
+  std::vector<DeltaRational> before;
+  std::vector<bool> basic_before;
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    before.push_back(tableau.assignment(var));
+    basic_before.push_back(tableau.is_basic(var));
+  }
+
+  const auto result = tableau.diversify_shared_model({x, y});
+  assert(result.classes_after >= result.classes_before);
+
+  // The whole design rests on this: the sweep runs on a scratch copy, so a
+  // caller can poll it at a check point without the tableau drifting under
+  // them. Asserting it rather than trusting the comment, because a claim of
+  // exactly this shape was wrong once already in this file's history.
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    assert(tableau.assignment(var) == before[var]);
+    assert(tableau.is_basic(var) == basic_before[var]);
+  }
+  assert_tableau_invariants(tableau);
+}
+
+void diversify_is_a_no_op_when_nothing_coincides() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.assert_lower(x, rat(5), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(5), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x) != tableau.assignment(y));
+
+  const auto result = tableau.diversify_shared_model({x, y});
+  assert(result.classes_before == 2);
+  assert(result.classes_after == 2);
+  assert(result.updates.empty());  // no coincidence, so no work
+  assert(result.classes.empty());
+  assert(tableau.diversify_shared_model({}).updates.empty());
+}
+
+void diversify_separations_agree_with_the_entailment_oracle() {
+  // The differential check. Anything the mutator separates must be an
+  // equality the independent oracle agrees is NOT entailed -- separating a
+  // genuinely entailed pair would hand the combination layer a disequality
+  // that holds in no model.
+  const auto run_case =
+      [](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId)>& setup) {
+        LraTableau tableau;
+        const LraVarId x = tableau.add_variable();
+        const LraVarId y = tableau.add_variable();
+        const LraVarId slack = tableau.add_variable();
+        tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
+        setup(tableau, x, y, slack);
+        assert(!tableau.check().has_value());
+
+        const auto before = tableau.model_equal_classes({x, y});
+        const auto result = tableau.diversify_shared_model({x, y});
+        assert(result.classes_after >= result.classes_before);  // the paper's obligation
+
+        const bool was_coincident = !before.empty();
+        const bool separated = was_coincident && result.classes.empty();
+        if (separated) {
+          assert(!equality_is_entailed(tableau, slack, 700));
+        }
+        // And the converse direction: an entailed equality can never be separated.
+        if (equality_is_entailed(tableau, slack, 701)) {
+          assert(!separated);
+        }
+      };
+
+  run_case([](LraTableau&, LraVarId, LraVarId, LraVarId) {});  // free, coincident at 0
+  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId slack) {
+    assert(!t.assert_lower(slack, rat(0), Lit{11}).has_value());
+    assert(!t.assert_upper(slack, rat(0), Lit{12}).has_value());  // entailed
+  });
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+    assert(!t.assert_lower(x, rat(3), Lit{13}).has_value());
+    assert(!t.assert_upper(x, rat(3), Lit{14}).has_value());
+    assert(!t.assert_lower(y, rat(3), Lit{15}).has_value());
+    assert(!t.assert_upper(y, rat(3), Lit{16}).has_value());  // both fixed, entailed
+  });
+  run_case([](LraTableau& t, LraVarId x, LraVarId, LraVarId) {
+    assert(!t.assert_lower(x, rat(0), Lit{17}).has_value());
+    assert(!t.assert_upper(x, rat(4), Lit{18}).has_value());  // room to move
+  });
+  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId slack) {
+    assert(!t.assert_upper(slack, rat(0), Lit{19}).has_value());  // x <= y only
+  });
+}
+
 int main() {
   direct_bound_conflict_on_a_single_variable();
   weaker_bound_is_a_silent_no_op();
@@ -2111,5 +2249,10 @@ int main() {
   freedom_interval_keeps_the_delta_component_of_a_strict_bound();
   freedom_interval_takes_the_tightest_of_several_rows();
   every_value_in_the_freedom_interval_keeps_the_model_feasible();
+  diversify_separates_a_coincidence_that_is_not_entailed();
+  diversify_cannot_separate_an_entailed_equality();
+  diversify_leaves_the_tableau_untouched();
+  diversify_is_a_no_op_when_nothing_coincides();
+  diversify_separations_agree_with_the_entailment_oracle();
   return 0;
 }

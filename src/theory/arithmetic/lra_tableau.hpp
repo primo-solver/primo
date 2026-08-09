@@ -179,6 +179,11 @@ class LraTableau {
     // `factor * variables + offset` pivots.
     std::size_t bland_fallback_factor = 4;
     std::size_t bland_fallback_offset = 64;
+    // How many values inside a variable's freedom interval
+    // diversify_shared_model() tries before giving up on that variable. The
+    // interval is exact; which value inside it is worth taking is pure
+    // heuristic, so this is the knob that decides how hard mutation tries.
+    std::size_t model_mutation_candidates = 4;
   };
 
   // Intended to be set before solving starts, like set_sparse_leaving():
@@ -388,6 +393,39 @@ class LraTableau {
     }
   };
   [[nodiscard]] FreedomInterval freedom_interval(LraVarId nonbasic) const;
+
+  // The paper's greedy model mutator: walk the nonbasic variables that can
+  // move a shared value and, for each, take a value inside its freedom
+  // interval if doing so leaves MORE distinct values among `shared`. Fewer
+  // coincidences means fewer candidate equalities, and every one avoided is a
+  // case split the combination layer does not make.
+  //
+  // The obligation the paper places on a mutator is monotonicity --
+  // |classes(R_M)| <= |classes(R_mutated)| -- which holds here by
+  // construction, since an update is kept only when it strictly increases the
+  // count. That also gives termination for free: each accepted update raises
+  // a quantity bounded by |shared|, so at most |shared| - 1 are ever taken.
+  //
+  // **Does not touch the tableau.** The sweep runs against a scratch copy of
+  // the assignment, so this stays const and poll-only like model_equal_classes
+  // and entailed_equalities. That is not fastidiousness: update() trails the
+  // old value only under PivotingRule::Soi, and bounds are the only thing
+  // pop() restores, so a mutation applied to the live tableau in the default
+  // mode could not be undone on backtrack.
+  //
+  // `classes` holds the non-singleton classes AFTER mutation, in the same
+  // shape and order discipline model_equal_classes returns -- it is what the
+  // combination layer should branch on. `updates` is the audit trail of what
+  // moved, which is what makes a disagreement with the exact oracle
+  // debuggable rather than merely detectable.
+  struct ModelMutationResult {
+    std::vector<std::vector<LraVarId>> classes;
+    std::vector<std::pair<LraVarId, DeltaRational>> updates;
+    std::size_t classes_before = 0;
+    std::size_t classes_after = 0;
+  };
+  [[nodiscard]] ModelMutationResult diversify_shared_model(
+      const std::vector<LraVarId>& shared) const;
 
   // Read-only access to a variable's current upper/lower bound (if any) and
   // the literal that established it -- used by OnlineLraPropagator's
@@ -633,6 +671,13 @@ class LraTableau {
       std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry, FRowTrailEntry>;
 
   void update(LraVarId nonbasic_var, const DeltaRational& new_value);
+
+  // Shared by the public freedom_interval() and by diversify_shared_model().
+  // `beta` overrides the live assignment when non-null, which the mutation
+  // sweep needs: after it takes one update, later intervals must be measured
+  // against the moved values, not the tableau's.
+  [[nodiscard]] FreedomInterval freedom_interval_impl(LraVarId nonbasic,
+                                                      const std::vector<DeltaRational>* beta) const;
   void pivot(LraVarId basic_var, LraVarId entering_var);
 
   // check()'s entering-variable choice, split out so the three rules stay
