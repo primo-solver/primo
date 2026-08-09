@@ -24752,6 +24752,117 @@
       "artifacts": "remote:<fresh-workspace>/results/qf-uflra-shared-model-full-{default,reconciliation}-2d1ecf8-5s/; local ignored CSV copies and comparison directory under results/qf-uflra-shared-model-full-*-2d1ecf8-5s/; reused local Z3 artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted as full-corpus evidence for the opt-in convex QF_UFLRA profile. It adds 33 solved files, removes all seven MathSAT timeouts, cuts PAR2 by 30 percent, and halves SAT decisions without a detected correctness regression. It remains opt-in because component-model ownership, a second EUF-to-LRA reconciliation iteration, and paper-style model mutation are not implemented."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-linear-class-summary-slurm-fuzz-2f9113b",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "fuzz",
+      "scope": "Merge-grade generated, finite-domain, tracked-seed, and YinYang validation for the exact linear shared-class summary",
+      "commit": "2f9113b",
+      "implementation_commit": "0fa62ff",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 2f9113b, GCC 11.4.1, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified the exact binary revision, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "scheduler_state": "All five array tasks completed with exit code 0; generated tasks took less than one minute and mutation took 00:08:14. Scheduler identifiers are intentionally not stored in the repository."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, PRIMO_FUZZ_SEED_BASE=2026080970, and PRIMO_FUZZ_SOLVER_ARGS=--qf-uflra-model-reconciliation",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with 2000 configured iterations per seed, PRIMO_FUZZ_MUTATION_SEED_BASE=2026080980, an 8-second solver timeout, and PRIMO_FUZZ_EXTRA_SOLVER_ARGS=--qf-uflra-model-reconciliation"
+      },
+      "inputs": {
+        "generated_mixed": 3000,
+        "generated_finite_domain": 1000,
+        "generated_seed_range": "2026080970-2026080973; finite QF_UF adds 100000 and finite QF_UFLRA adds 200000",
+        "tracked_seeds": 11,
+        "mutation_iterations_per_seed": 2000,
+        "generated_solver_timeout_seconds": 5,
+        "mutation_solver_timeout_seconds": 8
+      },
+      "results": {
+        "generated": "3000/3000 PASS against Z3, with 0 wrong answer, timeout, crash, unsupported result, parser/type error, or reference disagreement.",
+        "finite_domain": "1000/1000 PASS against Z3 and cvc5, complete metadata 8/8, all seven scenarios represented, and zero bug files. Aggregate activation: 8036 raw/emitted AMO clauses, 2382 post-processed AMO clauses, and 6267 lowered Real equalities.",
+        "tracked_seeds": "11/11 PASS, including real_congruence_forced_unsat.smt2.",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers; 2000 iterations configured per seed and 43970 differential solver calls reported."
+      },
+      "artifacts": "remote:<prepared-workspace>/fuzz-results/qf-uflra-class-summary-2f9113b/ and qf-uflra-class-summary-mutation-2f9113b/; remote scheduler logs retained with the prepared workspace",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as merge-grade correctness evidence for the linear shared-class summary and its exact class-delta fallback criterion. No LRA implementation or freedom-interval code was changed."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-linear-class-summary-slurm-sample-2f9113b",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "benchmark",
+      "scope": "45-file QF_UFLRA sample comparing the linear class summary with the preserved quadratic-classifier reconciliation baseline",
+      "commit": "2f9113b",
+      "implementation_commit": "0fa62ff",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 2f9113b, GCC 11.4.1, CaDiCaL 3.0.0",
+        "corpus": "benchmarks/qf_uflra-preprocessing-opportunity-sample.txt over the staged full QF_UFLRA tree",
+        "baseline_reuse": "results/qf-uflra-shared-model-sample-2d1ecf8/reconciliation.csv; identical manifest, profile, and 60-second timeout",
+        "scheduler_state": "The single current-profile task completed with exit code 0 in 00:02:36; the unchanged baseline and Z3 profiles were not rerun. Scheduler identifiers are intentionally not stored in the repository."
+      },
+      "command": "scripts/slurm_qf_uflra_sample_compare.sbatch --array=0 with a 60-second timeout and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation",
+      "inputs": {
+        "files": 45,
+        "families": "25 MathSAT, 19 CPAchecker induction, 1 CPAchecker BMC",
+        "timeout_seconds": 60
+      },
+      "results": {
+        "quadratic_baseline": "43 solved, 2 timeout, 0 error/wrong, PAR2 277.404402.",
+        "linear_summary": "43 solved, 2 timeout, 0 error/wrong, PAR2 274.483229.",
+        "cross_version": "All 45 paths common, zero answer disagreement, and zero status change.",
+        "search": "Both versions used 16488 SAT decisions, 136205 propagations, 1155 internal EUF merges, and 18 congruence fallbacks.",
+        "linear_summary_activity": "1173 class-summary checks and 372104 representative visits.",
+        "timing": "Aggregate solved-row time changed from 37.404402 to 34.483229 seconds."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-class-summary-sample-2f9113b/; local ignored CSV copies under results/qf-uflra-class-summary-sample-2f9113b/; preserved baseline under results/qf-uflra-shared-model-sample-2d1ecf8/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as a clean sample result. It preserves search behavior and removes the quadratic partition scan with a small wall-time improvement."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-linear-class-summary-slurm-full-2f9113b",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "benchmark",
+      "scope": "Full 1,284-file QF_UFLRA correctness and performance comparison for the linear shared-class summary",
+      "commit": "2f9113b",
+      "implementation_commit": "0fa62ff",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 2f9113b, GCC 11.4.1, CaDiCaL 3.0.0",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 2f9113b, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "baseline_reuse": "results/qf-uflra-shared-model-full-reconciliation-2d1ecf8-5s; identical corpus, profile, and timeout",
+        "reference_reuse": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv; Z3 5.0.0, identical corpus and timeout",
+        "scheduler_state": "All eight current-profile shards completed with exit code 0 in 00:01:26-00:02:01. Unchanged baseline and Z3 profiles were not rerun. Scheduler identifiers are intentionally not stored in the repository."
+      },
+      "command": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, a 5-second per-file timeout, and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation",
+      "inputs": {
+        "files": 1284,
+        "timeout_seconds": 5,
+        "families": "FFT 10, CPAchecker BMC 15, CPAchecker induction 359, MathSAT 900"
+      },
+      "results": {
+        "quadratic_baseline": "1156 solved (675 sat, 481 unsat), 128 timeout, 0 unsupported/error/wrong, PAR2 1424.154414.",
+        "linear_summary": "1156 solved (675 sat, 481 unsat), 128 timeout, 0 unsupported/error/wrong, PAR2 1421.231621.",
+        "families": "Both versions: FFT 10/10; CPAchecker BMC 4/15; CPAchecker induction 242/359; MathSAT 900/900.",
+        "cross_version": "All 1284 paths common, zero answer disagreement, and zero status change.",
+        "search": "SAT conflicts remained 564086. Decisions changed from 1322558 to 1390745, propagations from 24815243 to 25004096, and solve calls from 2177 to 2200. Internal merges changed from 19600 to 20447 and guarded congruence fallbacks from 584 to 588.",
+        "linear_summary_activity": "21036 class-summary checks and 13653597 representative visits.",
+        "timing": "Aggregate solved-row time changed from 144.154414 to 141.231621 seconds.",
+        "z3_reused": "1234 solved (736 sat, 498 unsat), 50 timeout, 0 error/wrong, PAR2 758.708455."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-class-summary-full-reconciliation-2f9113b-5s/; local ignored CSV copies under results/qf-uflra-class-summary-full-reconciliation-2f9113b-5s/; preserved baseline and Z3 CSVs under results/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as an implementation-level efficiency improvement with no observed correctness or solved-count regression. The exact class-delta test is slightly more conservative than the old pair classifier, but the expected-linear scan still reduces measured solved-row time. The reconciliation profile remains opt-in because its second EUF-to-LRA iteration and paper-style model mutation are still missing."
     }
   ]
 }

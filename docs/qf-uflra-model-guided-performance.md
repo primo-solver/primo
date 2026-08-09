@@ -352,6 +352,22 @@ replaces the earlier quadratic shared-pair comparison. Counters
 total representative visits. The profile remains opt-in while the missing
 second reconciliation direction is addressed.
 
+The 2026-08-09 validation at commit `2f9113b` accepts this linear summary as an
+implementation improvement, not as a profile promotion. A fresh SLURM gate
+passed 3,000 generated mixed cases, 1,000 finite-domain cases, all 11 tracked
+seeds, and 2,000 YinYang iterations per seed without a discrepancy or bug
+trigger. On the fixed 45-file sample, the old and new implementations both
+solved 43 files with two timeouts and identical SAT search counts; PAR2 changed
+from 277.404 to 274.483 seconds. On the full 1,284-file, five-second corpus,
+both solved 1,156 files with 128 timeouts and no answer or status change; PAR2
+changed from 1424.154 to 1421.232 seconds. The exact class-delta criterion used
+588 guarded fallbacks rather than the old classifier's 584, so SAT decisions
+increased from 1,322,558 to 1,390,745 even though aggregate solved-row time fell
+from 144.154 to 141.232 seconds. The new scan performed 21,036 checks and
+13,653,597 representative visits. If this scan becomes dominant, reuse of the
+representative-set scratch storage or an incremental shared projection is the
+next optimization; no LRA freedom-interval work is included here.
+
 ## Immediate Performance Target
 
 After the shared-equality ownership cleanup, the current conservative source
