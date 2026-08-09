@@ -212,13 +212,18 @@ void TheoryCombinationManager::begin_shared_model_round() {
   shared_model_.valid = true;
   shared_model_.reconciliation_iteration = 0;
   shared_model_.lra_value_classes.clear();
+  shared_model_.lra_class_by_term.clear();
+  shared_model_.lra_mapped_terms.clear();
   shared_model_.lra_model_spanning_equalities.clear();
   shared_model_.internal_equalities.clear();
+  shared_model_.explained_equalities.clear();
+  explained_equality_keys_.clear();
   shared_model_.lra_separation_atoms.clear();
 }
 
 void TheoryCombinationManager::begin_shared_model_iteration(
-    const std::vector<std::vector<core::TermId>>& lra_value_classes) {
+    const std::vector<std::vector<core::TermId>>& lra_value_classes,
+    const std::vector<core::TermId>& lra_mapped_terms) {
   if (!shared_model_.valid) {
     begin_shared_model_round();
   }
@@ -229,8 +234,18 @@ void TheoryCombinationManager::begin_shared_model_iteration(
     entry.classifications &= ~model_internal_bit;
   }
   shared_model_.lra_value_classes.clear();
+  shared_model_.lra_class_by_term.clear();
+  shared_model_.lra_mapped_terms.clear();
   shared_model_.lra_model_spanning_equalities.clear();
   shared_model_.internal_equalities.clear();
+  shared_model_.explained_equalities.clear();
+  explained_equality_keys_.clear();
+
+  for (const core::TermId term : lra_mapped_terms) {
+    if (interface_sort_by_term_.contains(term)) {
+      shared_model_.lra_mapped_terms.insert(term);
+    }
+  }
 
   shared_model_.lra_value_classes.reserve(lra_value_classes.size());
   for (std::vector<core::TermId> value_class : lra_value_classes) {
@@ -241,19 +256,69 @@ void TheoryCombinationManager::begin_shared_model_iteration(
     if (value_class.size() < 2) {
       continue;
     }
-    const core::TermId representative = value_class.front();
-    for (std::size_t index = 1; index < value_class.size(); ++index) {
-      shared_model_.lra_model_spanning_equalities.push_back(
-          SharedModelEquality{representative, value_class[index]});
+    for (const core::TermId term : value_class) {
+      shared_model_.lra_mapped_terms.insert(term);
     }
     shared_model_.lra_value_classes.push_back(std::move(value_class));
   }
   std::sort(shared_model_.lra_value_classes.begin(), shared_model_.lra_value_classes.end());
+  for (std::size_t class_index = 0; class_index < shared_model_.lra_value_classes.size();
+       ++class_index) {
+    const std::vector<core::TermId>& value_class = shared_model_.lra_value_classes[class_index];
+    const core::TermId representative = value_class.front();
+    for (const core::TermId term : value_class) {
+      shared_model_.lra_class_by_term.emplace(term, class_index);
+    }
+    for (std::size_t index = 1; index < value_class.size(); ++index) {
+      shared_model_.lra_model_spanning_equalities.push_back(
+          SharedModelEquality{representative, value_class[index]});
+    }
+  }
   std::sort(shared_model_.lra_model_spanning_equalities.begin(),
             shared_model_.lra_model_spanning_equalities.end(),
             [](const SharedModelEquality& lhs, const SharedModelEquality& rhs) {
               return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
             });
+}
+
+bool TheoryCombinationManager::lra_model_terms_mapped(core::TermId lhs, core::TermId rhs) const {
+  return shared_model_.valid && shared_model_.lra_mapped_terms.contains(lhs) &&
+         shared_model_.lra_mapped_terms.contains(rhs);
+}
+
+bool TheoryCombinationManager::lra_model_agrees_equal(core::TermId lhs, core::TermId rhs) const {
+  if (!lra_model_terms_mapped(lhs, rhs)) {
+    return false;
+  }
+  const auto lhs_class = shared_model_.lra_class_by_term.find(lhs);
+  const auto rhs_class = shared_model_.lra_class_by_term.find(rhs);
+  return lhs_class != shared_model_.lra_class_by_term.end() &&
+         rhs_class != shared_model_.lra_class_by_term.end() &&
+         lhs_class->second == rhs_class->second;
+}
+
+bool TheoryCombinationManager::enqueue_explained_shared_equality(core::TermId lhs, core::TermId rhs,
+                                                                 std::vector<sat::Lit> reasons,
+                                                                 SharedEqualitySource source) {
+  if (!shared_model_.valid || !ensure_interface_pair(lhs, rhs).has_value()) {
+    return false;
+  }
+  if (rhs < lhs) {
+    std::swap(lhs, rhs);
+  }
+  if (!explained_equality_keys_.insert(equality_key(lhs, rhs)).second) {
+    return false;
+  }
+  shared_model_.explained_equalities.push_back(
+      ExplainedSharedEquality{lhs, rhs, std::move(reasons), source});
+  return true;
+}
+
+std::vector<ExplainedSharedEquality> TheoryCombinationManager::drain_explained_shared_equalities() {
+  std::vector<ExplainedSharedEquality> drained = std::move(shared_model_.explained_equalities);
+  shared_model_.explained_equalities.clear();
+  explained_equality_keys_.clear();
+  return drained;
 }
 
 bool TheoryCombinationManager::record_internal_model_equality(core::TermId lhs, core::TermId rhs) {
@@ -292,8 +357,12 @@ void TheoryCombinationManager::invalidate_shared_model() {
   shared_model_.valid = false;
   shared_model_.reconciliation_iteration = 0;
   shared_model_.lra_value_classes.clear();
+  shared_model_.lra_class_by_term.clear();
+  shared_model_.lra_mapped_terms.clear();
   shared_model_.lra_model_spanning_equalities.clear();
   shared_model_.internal_equalities.clear();
+  shared_model_.explained_equalities.clear();
+  explained_equality_keys_.clear();
   shared_model_.lra_separation_atoms.clear();
 }
 

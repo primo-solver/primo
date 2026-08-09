@@ -365,18 +365,16 @@ atoms selected during final validation. SAT re-entry and backtracking
 invalidate this state. EUF closures and LRA tableaux remain theory-owned.
 
 The first producer admitted to the internal path is deliberately conservative:
-only an explained LRA entailment may be retained in the live EUF closure. If
-the merge succeeds and only joins the two pre-merge shared classes, final
-validation and model reconstruction reuse the merged closure and explicitly
-include the equality in the UF model input. If the merge is missing an
-endpoint, conflicts with EUF, or creates another shared equality by congruence,
-Primo lazily creates the equality atom and uses the existing guarded
-explanation. The congruence fallback is counted by
-`:no.shared-model.congruence-fallbacks`; it is required until this path has a
-second EUF-to-LRA reconciliation iteration. The regression is
+only an explained LRA entailment enters the manager's worklist. A batch is
+asserted into the live EUF closure with its LRA reasons, then the shared EUF
+classes are projected once. Consequences whose endpoints are mapped into the
+same diversified LRA model class remain internal; disagreement or an unmapped
+endpoint lazily creates an equality atom with the EUF explanation. An immediate
+EUF contradiction returns the composed conflict directly. Final validation and
+model reconstruction reuse internal spanning equalities. The regression is
 `benchmarks/seeds/qf_uflra/real_congruence_forced_unsat.smt2`: internalizing
-`x = y` without rechecking would miss `f(x) = f(y)` and incorrectly accept
-incompatible arithmetic values. Enabling the profile also enables
+`x = y` without reconciling `f(x) = f(y)` would incorrectly accept incompatible
+arithmetic values. Enabling the profile also enables
 candidate-first scanning, with the broad exact scan retained as a fallback when
 arrangement validation detects a missed equality.
 
@@ -565,8 +563,8 @@ The next extension should record or expose:
 - component-model ownership rather than only an LRA value projection;
 - LRA equality candidates with an explicit distinction between independently
   explained entailments and unexplained post-mutation model equalities;
-- a second EUF-to-LRA reconciliation step after an internal merge, so
-  congruence-producing merges need not fall back to SAT.
+- a persistent component-model transition rather than the current round-local
+  reconciliation batch.
 
 This object should still be QF_UFLRA-specific until the invariants are stable.
 General `DPLL(T^M)` can come later; the current evidence does not justify a

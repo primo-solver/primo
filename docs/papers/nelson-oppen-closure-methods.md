@@ -75,23 +75,21 @@ theory-local closure/tableau state. For the mixed QF_UFLRA path, the manager is
 also rebuilt from shared Real interface terms.
 With `--qf-uflra-model-reconciliation`, the same manager owns
 `SharedModelState`, a round-scoped shared-interface projection containing LRA
-model-value classes, deterministic spanning pairs, internal equalities, and
-selected separation atoms. Starting a new SAT round or popping the combination
-trail invalidates it. The state deliberately stores neither a congruence
-closure nor a tableau.
+model-value classes and membership, deterministic spanning pairs, a canonical
+explained-equality worklist, internal equalities, and selected separation atoms.
+Starting a new SAT round or popping the combination trail invalidates it. The
+state deliberately stores neither a congruence closure nor a tableau.
 
-The first internal reconciliation rule accepts only explained LRA entailments.
-An EUF-compatible equality remains asserted in the assignment-local live EUF
-closure and is recorded for final validation/model reconstruction without a SAT
-atom when it only joins its two existing shared classes. Before retaining the
-merge, the coordinator snapshots the EUF partition over shared terms and checks
-that the merge did not create another shared equality through congruence. A
-congruence-producing merge and an EUF-forbidden equality retain the LRA
-explanation and use the lazy guarded-clause path, because the current prototype
-does not perform another EUF-to-LRA reconciliation iteration after an internal
-merge. This makes every admitted internal classification a model invariant,
-not merely a skipped propagation. Model-equal but unentailed pairs remain
-conjectures and are not admitted by this rule.
+The internal reconciliation rule accepts only explained LRA entailments. It
+batches those equalities into EUF, projects the resulting shared EUF classes
+once, retains consequences already agreed by the diversified LRA model, and
+exposes actual LRA-model disagreement or unmapped endpoints lazily to SAT. A
+direct EUF contradiction returns its composed conflict clause without an
+interface equality atom. Every internal merge carries its LRA reason into the
+EUF explanation structure. Model-equal but unentailed pairs remain conjectures
+and are never admitted by this rule. The detailed ownership, complexity, and
+proof checklist is in
+`docs/papers/model-based-theory-combination.md`.
 `analyze_nelson_oppen_interface` is a
 compatibility wrapper around this manager, and the diagnostic path reports the
 same information through `check_sat` statistics:
@@ -367,6 +365,12 @@ coordinator publishes:
 - `:no.interface.lra-model-filter-pruned-pairs`
 - `:no.interface.lra-model-filter-unmapped-terms`
 - `:no.interface.lra-model-filter-conservative-pairs`
+- `:no.interface.lra-model-filter-classes`
+- `:no.interface.lra-model-filter-class-terms`
+- `:no.interface.lra-model-filter-physical-pairs`
+- `:no.interface.lra-model-filter-sparse-pairs`
+- `:no.interface.lra-model-filter-sparse-retained`
+- `:no.interface.lra-exact-fallback-streamed-pairs`
 - `:no.interface.euf-to-lra-equalities`
 - `:no.interface.euf-to-lra-candidates`
 - `:no.interface.euf-to-lra-existing-atoms`
@@ -387,6 +391,7 @@ coordinator publishes:
 - `:no.interface.lra-to-euf-equalities-euf-forbidden-forced`
 - `:no.interface.lra-to-euf-internal-model-equalities`
 - `:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks`
+- `:no.interface.combined-direct-conflicts`
 - `:no.interface.conflicts`
 - `:no.interface.euf-conflicts`
 - `:no.interface.lra-conflicts`
@@ -471,6 +476,18 @@ coordinator publishes:
 - `:no.shared-model.congruence-fallbacks`
 - `:no.shared-model.congruence-summary-checks`
 - `:no.shared-model.congruence-summary-terms`
+- `:no.shared-model.worklist-enqueued`
+- `:no.shared-model.worklist-deduplicated`
+- `:no.shared-model.worklist-drained`
+- `:no.shared-model.worklist-missing-reasons`
+- `:no.shared-model.direct-conflicts`
+- `:no.shared-model.direct-conflict-lits`
+- `:no.shared-model.euf-class-projections`
+- `:no.shared-model.euf-class-projection-terms`
+- `:no.shared-model.euf-derived-consequences`
+- `:no.shared-model.euf-model-agree-internal`
+- `:no.shared-model.euf-model-disagreement-sat`
+- `:no.shared-model.euf-unmapped-sat`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
 - `:no.interface.lra-online-enabled`
@@ -693,12 +710,13 @@ still see ordinary theory atoms and explanations.
    an explained LRA producer or the exact convex oracle may force it.
 
 **Complexity expectation.** The coordinator performs one scratch mutation
-sweep instead of two fresh LRA solves per coincident pair. The pre-mutation pair
-count is computed from class sizes; only post-mutation classes are expanded.
-Candidate enumeration is still bounded by `--model-equality-branch-budget` and
-the surviving model-equal pair list for the legacy policies. The `care-queued`
-policy further intersects that list with EUF care pairs. This is still a
-final-check branching scaffold, not a generic model-propagation transition.
+sweep instead of two fresh LRA solves per coincident pair. Pre- and post-mutation
+pair counts are computed from class sizes. Post-mutation classes are stored
+once; sparse care inputs use membership filtering, and complete consumers use a
+deterministic cursor without retaining the pair expansion. Branch enumeration
+remains bounded by `--model-equality-branch-budget`. The `care-queued` policy
+intersects only current EUF care pairs. This is still a final-check branching
+scaffold, not a generic model-propagation transition.
 
 **Proof obligations.** The only clauses introduced by this subset are ordinary
 theory conflicts, guarded interface-equality clauses from the existing

@@ -6,6 +6,7 @@
 #include <iterator>
 #include <optional>
 #include <stdexcept>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -225,6 +226,29 @@ std::size_t FlatCongruenceClosure::class_count(const std::vector<FlatTermId>& te
     representatives.insert(representative(term));
   }
   return representatives.size();
+}
+
+std::vector<std::vector<FlatTermId>> FlatCongruenceClosure::equivalence_classes(
+    const std::vector<FlatTermId>& terms) const {
+  std::unordered_map<FlatTermId, std::vector<FlatTermId>> terms_by_representative;
+  terms_by_representative.reserve(terms.size());
+  for (const FlatTermId term : terms) {
+    if (term >= parent_.size()) {
+      throw std::out_of_range("flat congruence closure term out of range");
+    }
+    terms_by_representative[representative(term)].push_back(term);
+  }
+
+  std::vector<std::vector<FlatTermId>> classes;
+  classes.reserve(terms_by_representative.size());
+  for (auto& [representative, equal_terms] : terms_by_representative) {
+    static_cast<void>(representative);
+    std::sort(equal_terms.begin(), equal_terms.end());
+    equal_terms.erase(std::unique(equal_terms.begin(), equal_terms.end()), equal_terms.end());
+    classes.push_back(std::move(equal_terms));
+  }
+  std::sort(classes.begin(), classes.end());
+  return classes;
 }
 
 void FlatCongruenceClosure::drain_changed_terms(std::vector<FlatTermId>& out) {

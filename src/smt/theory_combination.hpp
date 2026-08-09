@@ -5,6 +5,7 @@
 #include <functional>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "core/ids.hpp"
@@ -106,13 +107,28 @@ struct SharedModelEquality {
   bool operator==(const SharedModelEquality& other) const = default;
 };
 
+enum class SharedEqualitySource {
+  LraEntailed,
+  EufImplied,
+};
+
+struct ExplainedSharedEquality {
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+  std::vector<sat::Lit> reasons;
+  SharedEqualitySource source = SharedEqualitySource::LraEntailed;
+};
+
 struct SharedModelState {
   bool valid = false;
   std::uint64_t generation = 0;
   std::size_t reconciliation_iteration = 0;
   std::vector<std::vector<core::TermId>> lra_value_classes;
+  std::unordered_map<core::TermId, std::size_t> lra_class_by_term;
+  std::unordered_set<core::TermId> lra_mapped_terms;
   std::vector<SharedModelEquality> lra_model_spanning_equalities;
   std::vector<SharedModelEquality> internal_equalities;
+  std::vector<ExplainedSharedEquality> explained_equalities;
   std::vector<core::TermId> lra_separation_atoms;
 };
 
@@ -155,8 +171,14 @@ class TheoryCombinationManager {
                                              InterfaceEqualityClassification classification) const;
   void clear_interface_equality_classifications();
   void begin_shared_model_round();
-  void begin_shared_model_iteration(
-      const std::vector<std::vector<core::TermId>>& lra_value_classes);
+  void begin_shared_model_iteration(const std::vector<std::vector<core::TermId>>& lra_value_classes,
+                                    const std::vector<core::TermId>& lra_mapped_terms = {});
+  bool lra_model_terms_mapped(core::TermId lhs, core::TermId rhs) const;
+  bool lra_model_agrees_equal(core::TermId lhs, core::TermId rhs) const;
+  bool enqueue_explained_shared_equality(core::TermId lhs, core::TermId rhs,
+                                         std::vector<sat::Lit> reasons,
+                                         SharedEqualitySource source);
+  std::vector<ExplainedSharedEquality> drain_explained_shared_equalities();
   bool record_internal_model_equality(core::TermId lhs, core::TermId rhs);
   bool record_lra_separation_atom(core::TermId atom);
   void invalidate_shared_model();
@@ -188,6 +210,7 @@ class TheoryCombinationManager {
   std::vector<std::size_t> value_level_starts_;
   std::vector<std::size_t> assignment_level_starts_;
   SharedModelState shared_model_;
+  std::unordered_set<std::uint64_t> explained_equality_keys_;
 };
 
 // Conservative Track-B scaffold for Nelson-Oppen bookkeeping. It only reports

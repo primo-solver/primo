@@ -281,34 +281,33 @@ Implemented now:
   discarded after the pair. Missing endpoint mappings conservatively use the
   older augmented-theory reconstruction oracle. This avoids repeated atom
   normalization and shares setup between orientations, but still performs
-  quadratic pair enumeration, a tableau copy and assignment replay per pair,
-  and any required simplex work.
+  logical quadratic pair space, a tableau copy and assignment replay per pair
+  actually consumed by the complete fallback, and any required simplex work.
+  Equal-valued model classes are stored once with a term-to-class index. Sparse
+  care/candidate inputs are filtered by class membership, while complete scans
+  use a deterministic cursor and do not retain the quadratic pair expansion.
   The opt-in `--qf-uflra-model-reconciliation` profile gives
   `TheoryCombinationManager` ownership of a round-scoped projection of the
   component models onto the shared Real interface. `SharedModelState` records
-  a generation, LRA model-value classes, deterministic spanning pairs,
-  internally absorbed equalities, and selected strict LRA separations. It does
-  not own the EUF closure or LRA tableau. A new SAT assignment or backtrack
-  invalidates the projection; the theory-local objects remain owned by their
-  solvers.
+  a generation, LRA model-value classes and membership, deterministic spanning
+  pairs, a canonical explained-equality worklist, internally absorbed
+  equalities, and selected strict LRA separations. It does not own the EUF
+  closure or LRA tableau. A new SAT assignment or backtrack invalidates the
+  projection; the theory-local objects remain owned by their solvers.
 
-  In this profile, an LRA-entailed equality that the current EUF closure can
-  merge is retained in that live closure and recorded as internal instead of
-  receiving a SAT atom only when the merge joins its two existing shared-term
-  classes without creating another shared congruence consequence. Final
-  arrangement validation and model construction consume that recorded
-  equality. A missing EUF endpoint, an assigned disequality, a congruence
-  conflict, or a merge that newly equates another shared pair remains on the
-  explained guarded-clause path. The last case is necessary because this
-  prototype does not yet rerun EUF-to-LRA reconciliation after an internal
-  merge. `FlatCongruenceClosure::class_count()` detects that case by counting
-  distinct eager EUF representatives among shared terms before and after the
-  tentative merge. A direct join reduces the count by exactly one; any other
-  delta uses the fallback. The two expected-linear representative scans replace
-  the earlier quadratic shared-pair comparison. The profile also enables the
-  candidate-first final scan and retains its complete exact fallback. This is a
-  convex QF_UFLRA reconciliation subset, not generic `DPLL(T^M)` or
-  freedom-interval model mutation.
+  In this profile, explained LRA equalities are batched into the live EUF
+  closure with their blocking literals. An immediate EUF contradiction returns
+  the composed combined-theory conflict directly, without creating a shared
+  equality atom. For a consistent batch,
+  `FlatCongruenceClosure::equivalence_classes()` projects the shared interface
+  once from its eager representatives. Deterministic spanning consequences
+  whose endpoints are both mapped into the same diversified LRA model class are
+  recorded internally; actual LRA-model disagreement or an unmapped endpoint
+  uses the lazy guarded-clause path with the EUF explanation. Final arrangement
+  validation and model construction consume the internal equalities. The
+  profile also enables the candidate-first final scan and retains its complete
+  exact fallback. This is a convex QF_UFLRA reconciliation subset, not generic
+  `DPLL(T^M)`; the Section 5.2 mutation remains scratch-only.
   In this final path, LRA-to-EUF equalities are classified through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already
   true in EUF can be ignored. Equalities that EUF can merge, or that EUF
@@ -487,8 +486,8 @@ Not implemented yet:
   satisfiability-preserving rewrites outside the current preprocessing trail.
 - Generic model-based theory combination with a mutable shared model,
   non-convex arrangement enumeration, generic model-equality propagation,
-  care-set-driven default search, `EqOffsetRows`/`EqRows`, freedom-interval
-  mutation, and fine-grained minimal cross-theory explanations. The supported
+  care-set-driven default search, `EqOffsetRows`/`EqRows`, live-model mutation,
+  and minimal cross-theory explanations. The supported
   EUF+LRA subset now has a complete convex shared-Real equality fixpoint, while
   the default-off model-equality branch remains an experiment rather than part
   of that completeness argument.

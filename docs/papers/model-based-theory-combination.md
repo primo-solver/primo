@@ -1,7 +1,7 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
 Status stamp: 2026-08-09, branch `convex-no-qflra-integration`, after the
-opt-in shared-model reconciliation implementation and SLURM validation.
+class/worklist implementation and before its fresh SLURM revalidation.
 
 Reference:
 
@@ -30,10 +30,9 @@ combination. It has these related pieces:
 - guarded equality clauses when EUF or LRA implies a shared Real equality;
 - an opt-in `--qf-uflra-model-reconciliation` profile where
   `TheoryCombinationManager` owns a round-scoped shared-interface model
-  projection and retains explained, EUF-compatible LRA equalities in the live
-  closure without SAT atoms when the merge has no downstream shared congruence
-  consequence; the default path and congruence-producing merges still force
-  such equalities;
+  projection and explained-equality worklist, retains LRA-to-EUF consequences
+  agreed by both current models without SAT atoms, exposes model disagreement
+  lazily to SAT, and returns direct combined conflicts;
 - bounded shared-Real separation for the documented model-printing subset;
 - default-off `--model-equality-branching`, which keeps surviving
   LRA-model-equal shared Real equality guesses on an active SAT-assumption trail;
@@ -124,14 +123,11 @@ paper's novel model-based transition system.
 - [ ] Implement theory-independent `M-Propagate` over arbitrary component
   models and shared sorts.
 - [ ] Implement `M-Mutate` as an actual update of a component model.
-- [x] **Partial:** reconcile explained LRA equalities into the live EUF closure
-  through round-scoped shared state owned by the combination manager when the
-  merge only joins its two existing shared classes; final validation and model
-  reconstruction consume the same internal equalities. A merge that creates a
-  new shared congruence consequence falls back to SAT because there is no
-  second EUF-to-LRA reconciliation pass yet. The safety test uses two
-  expected-linear counts of eager EUF representatives over shared terms rather
-  than enumerating shared pairs; a direct merge must reduce the count by one.
+- [x] **Partial:** reconcile a batch of explained LRA equalities into the live
+  EUF closure with their reasons, project the resulting shared EUF classes, keep
+  consequences agreed by the diversified LRA model internal, expose actual
+  disagreement lazily to SAT, and return direct composed conflicts. Final
+  validation and model reconstruction consume the same internal equalities.
 - [ ] Generalize the mechanism beyond the documented EUF plus rational-LRA
   path, including non-convex theory case splits.
 
@@ -154,20 +150,20 @@ paper's novel model-based transition system.
 - [ ] Hook the first three rules eagerly into pivot/row updates as described by
   the paper. Primo currently polls `FixedEq` and `EqRow` after a feasible check
   to keep combination work off the LRA pivot hot path.
-- [ ] Build the paper's expected-linear-time hash partition of all shared
-  variables by equal `beta` values. The optional branch heuristic currently
-  examines selected pairs instead.
+- [x] Build the paper's expected-linear-time hash partition of shared variables
+  by equal `beta` values. The coordinator stores each class once and streams
+  pairs only for consumers that require them.
 - [ ] Evaluate and promote row-bound propagation specifically for its ability
   to expose additional fixed variables and reduce exact fallback probes.
 
 ### Section 5.2: freedom-interval mutation
 
-- [x] **Prerequisite only:** `LraTableau` has its internal feasibility-preserving
+- [x] `LraTableau` has its internal feasibility-preserving
   `update(nonbasic, value)` operation.
-- [ ] Compute the paper's freedom interval `[L_j, U_j]` for each non-basic
-  variable as a model-mutation API.
-- [ ] Select a value in that interval that increases the number of model-value
-  equivalence classes.
+- [x] **Scratch-model subset:** compute the paper's freedom interval
+  `[L_j, U_j]` for each eligible non-basic variable.
+- [x] **Scratch-model subset:** select and apply a value in that interval only
+  when it increases the number of shared model-value equivalence classes.
 - [ ] Apply those updates to diversify the live arithmetic model before
   `M-Propagate`.
 - [ ] Trail or reconstruct mutated component models across SAT backtracking.
@@ -297,6 +293,91 @@ Deviations and limitations:
 - No EUF or non-LRA theory model implements a mutator yet.
 - No completeness claim changes. The supported behavior remains the documented
   convex QF_UFLRA path plus opt-in model-guided profiles.
+
+## 2026-08-09 Class Projection and Reconciliation Checklist
+
+Bibliographic basis:
+
+- de Moura and Bjorner, Sections 4 and 5.2, for model-value equivalence classes,
+  model mutation before equality sharing, and model-based propagation;
+- Nieuwenhuis and Oliveras, "Proof-Producing Congruence Closure", for eager
+  representative maintenance and expected-linear projection of a finite term
+  set into congruence classes. Primo uses only that ordinary projection
+  property here, not the paper's proof-producing union-find implementation.
+
+Implemented target subset:
+
+- [x] Store each LRA model-value class once, with a term-to-class index and a
+  separate set of unmapped shared terms. Keep the quadratic number of possible
+  pairs as a diagnostic integer, not a vector or hash set.
+- [x] Filter sparse EUF care and candidate-final pairs by class membership in
+  expected linear time in the sparse input size.
+- [x] Enumerate complete fallback and branch pairs through a deterministic,
+  resumable class cursor. Consumers stop the cursor at their own budget; the
+  complete exact fallback consumes it to exhaustion.
+- [x] Let `TheoryCombinationManager` own a round-scoped, canonical worklist of
+  explained shared equalities. The manager owns terms and SAT explanations but
+  neither the EUF closure nor the LRA tableau.
+- [x] Batch explained LRA equalities into the assignment-local EUF closure,
+  preserving every LRA reason literal. Return a direct conflict if congruence
+  closure contradicts an asserted EUF disequality.
+- [x] Project shared EUF classes once after each batch. Keep an EUF consequence
+  internal only when both endpoints are mapped into the same diversified LRA
+  model class; otherwise lazily expose that consequence to SAT with its EUF
+  explanation.
+
+Data structures and ownership:
+
+- `LraModelEqualPartition` is an SMT-layer, round-local view. It stores sorted
+  classes, a term-to-class index, sorted unmapped terms, and logical pair
+  counts. It never owns or changes `LraTableau` state.
+- The pair cursor is a local consumer over an immutable partition. It yields
+  canonical pairs in deterministic order and never materializes the remaining
+  sequence.
+- `TheoryCombinationManager::SharedModelState` owns the model-class projection,
+  internal shared equalities, and explained-worklist deduplication for one SAT
+  assignment generation. Theory operations remain in `check_sat.cpp` and
+  `FlatCongruenceClosure`.
+- `FlatCongruenceClosure` exposes a read-only projection of selected flat terms
+  into classes. It remains the owner of representatives and explanations.
+
+Invariants and proof obligations:
+
+- A mapped pair is a model-equality candidate exactly when both terms have the
+  same post-mutation class. Any pair containing an unmapped term remains a
+  conservative candidate for the complete exact entailment fallback, but it is
+  never treated as model agreement for internal reconciliation.
+- A model-equal pair is not an entailed equality. Only LRA equalities carrying
+  independently checkable reasons may enter the EUF reconciliation worklist.
+- Every internal LRA-to-EUF merge keeps its LRA blocking literals in the EUF
+  proof forest. A resulting EUF conflict or propagated consequence must include
+  those literals in its explanation.
+- Internal EUF consequences are accepted only as agreement between the current
+  EUF closure and the valid diversified LRA model. Final arrangement checking
+  and model reconstruction remain completeness and soundness backstops.
+- Canonical worklist deduplication and monotone EUF class merging guarantee
+  termination within a round. A SAT-visible consequence starts a new SAT round.
+
+Complexity expectations and measurements:
+
+- Projection is linear in the shared terms plus hash-table cost. Sparse
+  filtering is linear in the supplied sparse pairs. Physical pair enumeration
+  is proportional only to what a consumer actually requests.
+- Counters distinguish logical candidate pairs, physically enumerated pairs,
+  materialized SAT equality atoms, worklist operations, direct conflicts, and
+  EUF consequences retained internally or exposed to SAT.
+- Focused tests must cover deterministic streaming, unmapped-term
+  conservativeness, explanation composition through congruence, direct
+  conflicts, transitive/nested EUF consequences, and lazy SAT exposure on LRA
+  model disagreement.
+
+Deviations and limitations:
+
+- This is a convex EUF plus rational-LRA coordinator subset, not the Appendix A
+  `DPLL(T^M)` transition system.
+- It does not install the scratch mutation into the live LRA tableau and does
+  not change LRA freedom intervals, pivoting, or reason storage.
+- Non-convex theories and finite shared sorts remain out of scope.
 
 ## Next Implementation Direction
 

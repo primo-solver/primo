@@ -23,6 +23,7 @@ using primo::smt::InterfaceEqualityClassification;
 using primo::smt::InterfaceEqualityStatus;
 using primo::smt::InterfaceEqualityValue;
 using primo::smt::PurificationSiteKind;
+using primo::smt::SharedEqualitySource;
 using primo::smt::SharedModelEquality;
 using primo::smt::TheoryCombinationManager;
 
@@ -435,13 +436,27 @@ void manager_owns_round_scoped_shared_model_state() {
 
   manager.begin_shared_model_round();
   const std::uint64_t generation = manager.shared_model().generation;
-  manager.begin_shared_model_iteration({{c, a, b}, {a}});
+  manager.begin_shared_model_iteration({{c, a, b}, {a}}, {a, b, c});
   assert(manager.shared_model().valid);
   assert(manager.shared_model().reconciliation_iteration == 1);
   assert(manager.shared_model().lra_value_classes.size() == 1);
   const std::vector<SharedModelEquality> expected_spanning{SharedModelEquality{a, b},
                                                            SharedModelEquality{a, c}};
   assert(manager.shared_model().lra_model_spanning_equalities == expected_spanning);
+  assert(manager.lra_model_terms_mapped(a, c));
+  assert(manager.lra_model_agrees_equal(a, c));
+
+  assert(manager.enqueue_explained_shared_equality(c, a, {primo::sat::Lit{-3}},
+                                                   SharedEqualitySource::LraEntailed));
+  assert(!manager.enqueue_explained_shared_equality(a, c, {primo::sat::Lit{-4}},
+                                                    SharedEqualitySource::LraEntailed));
+  const auto explained = manager.drain_explained_shared_equalities();
+  assert(explained.size() == 1);
+  assert(explained.front().lhs == a);
+  assert(explained.front().rhs == c);
+  assert(explained.front().reasons.size() == 1);
+  assert(explained.front().reasons.front().value == -3);
+  assert(manager.drain_explained_shared_equalities().empty());
 
   assert(manager.record_internal_model_equality(c, a));
   assert(!manager.record_internal_model_equality(a, c));
@@ -451,12 +466,14 @@ void manager_owns_round_scoped_shared_model_state() {
   assert(manager.record_lra_separation_atom(separation));
   assert(!manager.record_lra_separation_atom(separation));
 
-  manager.begin_shared_model_iteration({{a, c}});
+  manager.begin_shared_model_iteration({{a, c}}, {a, b, c});
   assert(manager.shared_model().reconciliation_iteration == 2);
   assert(manager.shared_model().internal_equalities.empty());
   assert(!manager.has_interface_equality_classification(
       a, c, InterfaceEqualityClassification::ModelInternal));
   assert(manager.shared_model().lra_separation_atoms.size() == 1);
+  assert(manager.lra_model_terms_mapped(a, b));
+  assert(!manager.lra_model_agrees_equal(a, b));
 
   manager.invalidate_shared_model();
   assert(!manager.shared_model().valid);

@@ -51,6 +51,8 @@ class FlatCongruenceClosure {
   // Expected-linear projection over the eager class representatives maintained
   // by the Nieuwenhuis-Oliveras Section 3 congruence-closure structure.
   std::size_t class_count(const std::vector<FlatTermId>& terms) const;
+  std::vector<std::vector<FlatTermId>> equivalence_classes(
+      const std::vector<FlatTermId>& terms) const;
   std::optional<std::vector<sat::Lit>> explain_equal(FlatTermId lhs, FlatTermId rhs) const;
   std::optional<std::vector<sat::Lit>> conflict() const { return conflict_; }
   void drain_changed_terms(std::vector<FlatTermId>& out);
