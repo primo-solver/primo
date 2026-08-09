@@ -71,6 +71,23 @@ if "--stats" in sys.argv:
         }
         self.assertEqual(slots, expected)
 
+    def test_generation_preflight_executes_every_slot(self) -> None:
+        logics = ("QF_UF", "QF_UFLRA")
+        cases = finite_domain_fuzz.preflight_generation(23, logics)
+        self.assertEqual(len(cases), len(logics) * len(finite_domain_fuzz.SCENARIOS) * 2)
+        self.assertEqual(
+            {(case.logic, case.scenario, case.expected) for case in cases},
+            {
+                (logic, scenario, verdict)
+                for logic in logics
+                for scenario in finite_domain_fuzz.SCENARIOS
+                for verdict in ("sat", "unsat")
+            },
+        )
+        alias_cases = [case for case in cases if case.scenario == "define-fun-aliases"]
+        self.assertTrue(alias_cases)
+        self.assertTrue(all("(define-fun a0" in case.text for case in alias_cases))
+
     def test_generation_is_reproducible_and_mixed_cases_are_genuinely_mixed(
         self,
     ) -> None:

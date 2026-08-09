@@ -109,9 +109,11 @@ def generate_case(
 
     if scenario == "define-fun-aliases":
         values = [f"a{i}" for i in range(domain_size)]
+        if len(values) != len(base_values):
+            raise AssertionError("finite-domain aliases must match their base values")
         declarations.extend(
-            f"(define-fun {alias} () {sort} {value})"
-            for alias, value in zip(values, base_values, strict=True)
+            f"(define-fun {values[i]} () {sort} {base_values[i]})"
+            for i in range(len(values))
         )
 
     facts = pairwise_disequalities(values)
@@ -162,6 +164,13 @@ def generate_case(
         ]
     )
     return GeneratedCase(logic=logic, scenario=scenario, expected=expected, text=text)
+
+
+def preflight_generation(seed: int, logics: tuple[str, ...]) -> list[GeneratedCase]:
+    """Generate one complete coverage cycle before invoking any solver."""
+    rng = random.Random(seed)
+    slot_count = len(logics) * len(SCENARIOS) * 2
+    return [generate_case(rng, index, logics) for index in range(slot_count)]
 
 
 def parse_stats(output: str) -> dict[str, int]:
@@ -268,6 +277,7 @@ def main() -> int:
         parser.error(
             f"--count must be at least {minimum_count} to cover every logic/scenario/verdict slot"
         )
+    preflight_generation(args.seed, logics)
     args.out.mkdir(parents=True, exist_ok=True)
     cases_dir = args.out / "cases"
     failures_dir = args.out / "failures"

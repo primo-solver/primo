@@ -18,7 +18,9 @@ scenario from a sufficiently large campaign.
 
 The generator supports the cluster's Python 3.9 runtime. Its Python tests parse
 the complete script using the Python 3.9 grammar so newer local interpreters
-cannot silently admit syntax that fails before a SLURM case is generated.
+cannot silently admit newer syntax. Before invoking a solver, each process also
+generates one complete logic/scenario/verdict cycle. This makes runtime failures
+in a generator branch fail before the campaign spends solver work.
 
 Each verdict is known from construction. Primo is checked against that verdict
 and external references. QF_UFLRA cases contain both Real arithmetic and
