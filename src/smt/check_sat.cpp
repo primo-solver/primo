@@ -64,9 +64,13 @@ constexpr util::StatKey kStatEqBridgeEqualities = util::StatKey::EqBridgeEqualit
 constexpr util::StatKey kStatEqBridgeSkippedOrNodes = util::StatKey::EqBridgeSkippedOrNodes;
 constexpr util::StatKey kStatBooleanUnitFacts = util::StatKey::BooleanUnitFacts;
 constexpr util::StatKey kStatBooleanUnitRewrites = util::StatKey::BooleanUnitRewrites;
+constexpr util::StatKey kStatBooleanUnitMemoHits = util::StatKey::BooleanUnitMemoHits;
+constexpr util::StatKey kStatBooleanUnitMemoMisses = util::StatKey::BooleanUnitMemoMisses;
 constexpr util::StatKey kStatForcedAtomFacts = util::StatKey::ForcedAtomFacts;
 constexpr util::StatKey kStatForcedAtomDisequalities = util::StatKey::ForcedAtomDisequalities;
 constexpr util::StatKey kStatForcedAtomRewrites = util::StatKey::ForcedAtomRewrites;
+constexpr util::StatKey kStatForcedAtomMemoHits = util::StatKey::ForcedAtomMemoHits;
+constexpr util::StatKey kStatForcedAtomMemoMisses = util::StatKey::ForcedAtomMemoMisses;
 constexpr util::StatKey kStatUnitEqualityConsequences = util::StatKey::UnitEqualityConsequences;
 constexpr util::StatKey kStatUnitEqualitySubstitutionUnits =
     util::StatKey::UnitEqualitySubstitutionUnits;
@@ -5932,14 +5936,19 @@ struct LraEqualityProbeContext {
   theory::arithmetic::LraVarId difference_var = 0;
 };
 
+constexpr std::size_t kCheckedTableauProbeMaxDifferenceTerms = 8;
+constexpr std::size_t kCheckedTableauProbeMaxPivotTermOpsPerVariable = 8;
+
 // Per-pair exact convex-equality oracle. Following Dutertre and de Moura,
-// SRI-CSL-06-01 Sections 3.1, 3.2.3, and 3.2.4, structural rows are installed
-// before checkpoints and temporary assertions are reversible bounds. One
-// context shares assignment replay between the two strict orientations; it is
-// discarded before moving to another pair.
+// SRI-CSL-06-01 Sections 3.1, 3.2.3, and 3.2.4, temporary assertions are
+// reversible bounds. The accepted, feasible tableau already contains the
+// current SAT assignment, so each context copies that state and expresses its
+// difference row in the current nonbasic basis. One context is discarded after
+// checking both strict orientations.
 std::optional<LraEqualityProbeContext> prepare_lra_equality_probe_context(
-    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& lra_assignments,
-    core::TermId lhs, core::TermId rhs, util::Statistics* statistics) {
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& checked_tableau,
+    const std::vector<AssignedTheoryAtom>& lra_assignments, core::TermId lhs, core::TermId rhs,
+    util::Statistics* statistics) {
   const auto lhs_var = prepared.variables_by_term.find(lhs);
   const auto rhs_var = prepared.variables_by_term.find(rhs);
   if (lhs_var == prepared.variables_by_term.end() || rhs_var == prepared.variables_by_term.end()) {
@@ -5948,27 +5957,123 @@ std::optional<LraEqualityProbeContext> prepare_lra_equality_probe_context(
     }
     return std::nullopt;
   }
-  if (lra_assignments.size() != prepared.atoms.size()) {
-    throw UnsupportedInput("internal theory atom mapping mismatch in LRA equality probe");
+  using DifferenceTerm = std::pair<theory::arithmetic::LraVarId, util::Rational>;
+  const auto variable_expression = [&checked_tableau](theory::arithmetic::LraVarId var) {
+    std::vector<DifferenceTerm> expression;
+    if (!checked_tableau.is_basic(var)) {
+      expression.emplace_back(var, util::Rational(1));
+      return expression;
+    }
+    const theory::arithmetic::LraTableau::Row& row = checked_tableau.row(var);
+    expression.reserve(row.size());
+    for (const theory::arithmetic::LraTableau::RowEntry& entry : row) {
+      expression.emplace_back(entry.var, entry.coeff);
+    }
+    return expression;
+  };
+  const std::vector<DifferenceTerm> lhs_expression = variable_expression(lhs_var->second);
+  const std::vector<DifferenceTerm> rhs_expression = variable_expression(rhs_var->second);
+
+  // Both endpoint expressions are sorted by variable id, as required by
+  // LraTableau::Row. Merge them directly to retain that invariant without a
+  // per-pair node-allocating coefficient map.
+  std::vector<std::pair<theory::arithmetic::LraVarId, util::Rational>> difference_row;
+  difference_row.reserve(lhs_expression.size() + rhs_expression.size());
+  std::size_t lhs_index = 0;
+  std::size_t rhs_index = 0;
+  while (lhs_index < lhs_expression.size() || rhs_index < rhs_expression.size()) {
+    theory::arithmetic::LraVarId var = 0;
+    util::Rational coefficient(0);
+    if (rhs_index == rhs_expression.size() ||
+        (lhs_index < lhs_expression.size() &&
+         lhs_expression[lhs_index].first < rhs_expression[rhs_index].first)) {
+      var = lhs_expression[lhs_index].first;
+      coefficient = lhs_expression[lhs_index].second;
+      ++lhs_index;
+    } else if (lhs_index == lhs_expression.size() ||
+               rhs_expression[rhs_index].first < lhs_expression[lhs_index].first) {
+      var = rhs_expression[rhs_index].first;
+      coefficient = -rhs_expression[rhs_index].second;
+      ++rhs_index;
+    } else {
+      var = lhs_expression[lhs_index].first;
+      coefficient = lhs_expression[lhs_index].second - rhs_expression[rhs_index].second;
+      ++lhs_index;
+      ++rhs_index;
+    }
+    if (!coefficient.is_zero()) {
+      difference_row.emplace_back(var, std::move(coefficient));
+    }
+  }
+  if (statistics != nullptr) {
+    statistics->set(
+        ":no.interface.lra-probe-reuse-checked-tableau-max-difference-terms",
+        std::max<std::uint64_t>(
+            statistics->get(":no.interface.lra-probe-reuse-checked-tableau-max-difference-terms"),
+            difference_row.size()));
+    statistics->set(
+        ":no.interface.lra-probe-reuse-checked-tableau-max-pivot-term-ops",
+        std::max<std::uint64_t>(
+            statistics->get(":no.interface.lra-probe-reuse-checked-tableau-max-pivot-term-ops"),
+            checked_tableau.row_term_op_count()));
   }
 
-  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
-  const theory::arithmetic::LraVarId difference_var = tableau.add_variable();
-  tableau.add_row(difference_var,
-                  {{lhs_var->second, util::Rational(1)}, {rhs_var->second, util::Rational(-1)}});
-  for (std::size_t i = 0; i < lra_assignments.size(); ++i) {
-    const AssignedTheoryAtom& assignment = lra_assignments[i];
-    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
-    if (!prepared_atom.is_arithmetic || assignment.filtered) {
-      continue;
-    }
+  const bool difference_is_sparse = difference_row.size() <= kCheckedTableauProbeMaxDifferenceTerms;
+  const bool basis_has_bounded_pivot_cost =
+      checked_tableau.row_term_op_count() <=
+      kCheckedTableauProbeMaxPivotTermOpsPerVariable * checked_tableau.variable_count();
+  // A dense current basis can make one temporary repair much more expensive
+  // than replaying the sparse base. These conservative guards retain the old
+  // path when the checked snapshot already signals that risk.
+  const bool use_checked_tableau = difference_is_sparse && basis_has_bounded_pivot_cost;
+  theory::arithmetic::LraTableau tableau =
+      use_checked_tableau ? checked_tableau : prepared.base_tableau;
+  if (!use_checked_tableau) {
     if (statistics != nullptr) {
-      statistics->increment(":no.interface.lra-probe-reuse-assignment-bounds");
+      statistics->increment(":no.interface.lra-probe-reuse-checked-tableau-fallbacks");
+      if (!difference_is_sparse) {
+        statistics->increment(":no.interface.lra-probe-reuse-checked-tableau-difference-fallbacks");
+      }
+      if (!basis_has_bounded_pivot_cost) {
+        statistics->increment(":no.interface.lra-probe-reuse-checked-tableau-basis-cost-fallbacks");
+      }
     }
-    const std::optional<sat::Clause> conflict = assert_lra_atom_bound(
-        tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs,
-        assignment.value, prepared_atom.asserts_lower_when_true, blocking_lit(assignment));
-    if (conflict.has_value()) {
+    difference_row = {{lhs_var->second, util::Rational(1)}, {rhs_var->second, util::Rational(-1)}};
+  }
+  const theory::arithmetic::LraVarId difference_var = tableau.add_variable();
+  // A checked copy can contain older trail entries. Every probe checkpoint is
+  // taken after this row is installed, no pop crosses its creation point, and
+  // the whole context is destroyed after the pair.
+  tableau.add_row(difference_var, difference_row);
+  if (use_checked_tableau) {
+    assert(tableau.assignment(difference_var) == checked_tableau.assignment(lhs_var->second) -
+                                                     checked_tableau.assignment(rhs_var->second));
+  }
+  if (!use_checked_tableau) {
+    if (lra_assignments.size() != prepared.atoms.size()) {
+      throw UnsupportedInput("internal theory atom mapping mismatch in LRA equality probe");
+    }
+    for (std::size_t i = 0; i < lra_assignments.size(); ++i) {
+      const AssignedTheoryAtom& assignment = lra_assignments[i];
+      const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
+      if (!prepared_atom.is_arithmetic || assignment.filtered) {
+        continue;
+      }
+      if (statistics != nullptr) {
+        statistics->increment(":no.interface.lra-probe-reuse-assignment-bounds");
+      }
+      const std::optional<sat::Clause> conflict = assert_lra_atom_bound(
+          tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs,
+          assignment.value, prepared_atom.asserts_lower_when_true, blocking_lit(assignment));
+      if (conflict.has_value()) {
+        if (statistics != nullptr) {
+          statistics->increment(":no.interface.lra-probe-reuse-context-conflicts");
+        }
+        throw std::logic_error(
+            "internal LRA equality probe context conflicts after an accepted assignment");
+      }
+    }
+    if (tableau.check().has_value()) {
       if (statistics != nullptr) {
         statistics->increment(":no.interface.lra-probe-reuse-context-conflicts");
       }
@@ -5976,15 +6081,11 @@ std::optional<LraEqualityProbeContext> prepare_lra_equality_probe_context(
           "internal LRA equality probe context conflicts after an accepted assignment");
     }
   }
-  if (tableau.check().has_value()) {
-    if (statistics != nullptr) {
-      statistics->increment(":no.interface.lra-probe-reuse-context-conflicts");
-    }
-    throw std::logic_error(
-        "internal LRA equality probe context conflicts after an accepted assignment");
-  }
   if (statistics != nullptr) {
     statistics->increment(":no.interface.lra-probe-reuse-pairs");
+    if (use_checked_tableau) {
+      statistics->increment(":no.interface.lra-probe-reuse-checked-tableau-copies");
+    }
   }
   return LraEqualityProbeContext{std::move(tableau), difference_var};
 }
@@ -6008,6 +6109,7 @@ std::optional<sat::Clause> probe_lra_equality_orientation(LraEqualityProbeContex
     conflict = context.tableau.check();
   }
   context.tableau.pop(checkpoint);
+  assert(context.tableau.occurs_in_index_matches_full_rebuild());
   return conflict;
 }
 
@@ -6034,14 +6136,15 @@ struct LraImpliedRealEqualityProbeResult {
 
 LraImpliedRealEqualityProbeResult probe_lra_implied_real_equality(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& lra_assignments,
-    const TermPairKey& pair, const CheckSatOptions& options, util::Statistics* statistics) {
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& checked_tableau,
+    const std::vector<AssignedTheoryAtom>& lra_assignments, const TermPairKey& pair,
+    const CheckSatOptions& options, util::Statistics* statistics) {
   if (statistics != nullptr &&
       !consume_no_extra_atom_probe_budget(options, *statistics, 1, false)) {
     return LraImpliedRealEqualityProbeResult{std::nullopt, true};
   }
-  std::optional<LraEqualityProbeContext> reusable_context =
-      prepare_lra_equality_probe_context(prepared, lra_assignments, pair.lhs, pair.rhs, statistics);
+  std::optional<LraEqualityProbeContext> reusable_context = prepare_lra_equality_probe_context(
+      prepared, checked_tableau, lra_assignments, pair.lhs, pair.rhs, statistics);
   const auto probe_orientation = [&](bool lhs_less_than_rhs) {
     if (reusable_context.has_value()) {
       return probe_lra_equality_orientation(reusable_context.value(), lhs_less_than_rhs,
@@ -6080,14 +6183,14 @@ LraImpliedRealEqualityProbeResult probe_lra_implied_real_equality(
 
 LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_pairs(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& lra_assignments,
-    const std::vector<TermPairKey>& pairs, const CheckSatOptions& options,
-    util::Statistics* statistics = nullptr) {
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& checked_tableau,
+    const std::vector<AssignedTheoryAtom>& lra_assignments, const std::vector<TermPairKey>& pairs,
+    const CheckSatOptions& options, util::Statistics* statistics = nullptr) {
   std::vector<ExplainedInterfaceEquality> equalities;
   equalities.reserve(pairs.size());
   for (const TermPairKey& pair : pairs) {
     LraImpliedRealEqualityProbeResult probe = probe_lra_implied_real_equality(
-        terms, lra_atoms, prepared, lra_assignments, pair, options, statistics);
+        terms, lra_atoms, prepared, checked_tableau, lra_assignments, pair, options, statistics);
     if (probe.probe_limit_hit) {
       return LraImpliedRealEqualitiesResult{std::move(equalities), true};
     }
@@ -6100,10 +6203,11 @@ LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_pairs(
 
 LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_partition(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
-    const PreparedLraTheory& prepared_lra, const std::vector<AssignedTheoryAtom>& lra_assignments,
-    const LraModelEqualPartition& partition, const PreparedFlatTheory& prepared_euf,
-    theory::equality::FlatCongruenceClosure& euf_closure, const TheoryCombinationManager& manager,
-    const CheckSatOptions& options, util::Statistics& statistics) {
+    const PreparedLraTheory& prepared_lra, const theory::arithmetic::LraTableau& checked_tableau,
+    const std::vector<AssignedTheoryAtom>& lra_assignments, const LraModelEqualPartition& partition,
+    const PreparedFlatTheory& prepared_euf, theory::equality::FlatCongruenceClosure& euf_closure,
+    const TheoryCombinationManager& manager, const CheckSatOptions& options,
+    util::Statistics& statistics) {
   std::vector<ExplainedInterfaceEquality> equalities;
   LraModelPairCursor cursor(partition);
   while (const std::optional<TermPairKey> pair = cursor.next()) {
@@ -6117,8 +6221,9 @@ LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_partition(
       continue;
     }
     statistics.increment(":no.interface.lra-exact-fallback-pairs");
-    LraImpliedRealEqualityProbeResult probe = probe_lra_implied_real_equality(
-        terms, lra_atoms, prepared_lra, lra_assignments, pair.value(), options, &statistics);
+    LraImpliedRealEqualityProbeResult probe =
+        probe_lra_implied_real_equality(terms, lra_atoms, prepared_lra, checked_tableau,
+                                        lra_assignments, pair.value(), options, &statistics);
     if (probe.probe_limit_hit) {
       return LraImpliedRealEqualitiesResult{std::move(equalities), true};
     }
@@ -9495,6 +9600,12 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-probe-reuse-pairs", 0);
   statistics.set(":no.interface.lra-probe-reuse-orientations", 0);
   statistics.set(":no.interface.lra-probe-reuse-assignment-bounds", 0);
+  statistics.set(":no.interface.lra-probe-reuse-checked-tableau-copies", 0);
+  statistics.set(":no.interface.lra-probe-reuse-checked-tableau-fallbacks", 0);
+  statistics.set(":no.interface.lra-probe-reuse-checked-tableau-difference-fallbacks", 0);
+  statistics.set(":no.interface.lra-probe-reuse-checked-tableau-basis-cost-fallbacks", 0);
+  statistics.set(":no.interface.lra-probe-reuse-checked-tableau-max-difference-terms", 0);
+  statistics.set(":no.interface.lra-probe-reuse-checked-tableau-max-pivot-term-ops", 0);
   statistics.set(":no.interface.lra-probe-reuse-mapping-fallbacks", 0);
   statistics.set(":no.interface.lra-probe-reuse-context-conflicts", 0);
   statistics.set(":no.interface.euf-care-checks", 0);
@@ -9902,7 +10013,7 @@ CheckSatOutcome solve_qf_uf_lra(
                                        model_filtered_candidate_pairs, statistics);
         const LraImpliedRealEqualitiesResult implied_equalities =
             lra_implied_real_equalities_for_pairs(
-                terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                terms, lra_atoms_for_check, *prepared_lra_theory_for_check, *checked_lra_tableau,
                 lra_assignments_for_check, fallback_pairs, options, &statistics);
         if (implied_equalities.probe_limit_hit) {
           return CheckSatOutcome{
@@ -9952,7 +10063,7 @@ CheckSatOutcome solve_qf_uf_lra(
       } else {
         const LraImpliedRealEqualitiesResult implied_equalities =
             lra_implied_real_equalities_for_partition(
-                terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                terms, lra_atoms_for_check, *prepared_lra_theory_for_check, *checked_lra_tableau,
                 lra_assignments_for_check, lra_model_partition.value(),
                 prepared_flat_theory.value(), euf_check->closure, no_manager, options, statistics);
         if (implied_equalities.probe_limit_hit) {
@@ -10036,7 +10147,7 @@ CheckSatOutcome solve_qf_uf_lra(
             const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
                 lra_implied_real_equalities_for_partition(
                     terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
-                    lra_assignments_for_check, lra_model_partition.value(),
+                    *checked_lra_tableau, lra_assignments_for_check, lra_model_partition.value(),
                     prepared_flat_theory.value(), euf_check->closure, no_manager, options,
                     statistics);
             if (lra_implied_equalities_for_euf.probe_limit_hit) {
@@ -10069,7 +10180,7 @@ CheckSatOutcome solve_qf_uf_lra(
           }
           const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
               lra_implied_real_equalities_for_partition(
-                  terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                  terms, lra_atoms_for_check, *prepared_lra_theory_for_check, *checked_lra_tableau,
                   lra_assignments_for_check, lra_model_partition.value(),
                   prepared_flat_theory.value(), euf_check->closure, no_manager, options,
                   statistics);
@@ -10168,7 +10279,7 @@ CheckSatOutcome solve_qf_uf_lra(
             const LraImpliedRealEqualitiesResult lra_implied_scan =
                 lra_implied_real_equalities_for_partition(
                     terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
-                    lra_assignments_for_check, lra_model_partition.value(),
+                    *checked_lra_tableau, lra_assignments_for_check, lra_model_partition.value(),
                     prepared_flat_theory.value(), euf_check->closure, no_manager, options,
                     statistics);
             if (lra_implied_scan.probe_limit_hit) {
@@ -10202,7 +10313,7 @@ CheckSatOutcome solve_qf_uf_lra(
           }
           const LraImpliedRealEqualitiesResult lra_implied_scan =
               lra_implied_real_equalities_for_partition(
-                  terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
+                  terms, lra_atoms_for_check, *prepared_lra_theory_for_check, *checked_lra_tableau,
                   lra_assignments_for_check, lra_model_partition.value(),
                   prepared_flat_theory.value(), euf_check->closure, no_manager, options,
                   statistics);
@@ -10732,6 +10843,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       }
       statistics.increment(kStatBooleanUnitFacts, boolean_units.units);
       statistics.increment(kStatBooleanUnitRewrites, boolean_units.rewrites);
+      statistics.increment(kStatBooleanUnitMemoHits, boolean_units.memo_hits);
+      statistics.increment(kStatBooleanUnitMemoMisses, boolean_units.memo_misses);
       ForcedAtomPropagationResult forced_atoms =
           propagate_forced_atoms(frontend.terms(), assertions);
       assertions = std::move(forced_atoms.assertions);
@@ -10741,6 +10854,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatForcedAtomFacts, forced_atoms.units);
       statistics.increment(kStatForcedAtomDisequalities, forced_atoms.disequalities);
       statistics.increment(kStatForcedAtomRewrites, forced_atoms.rewrites);
+      statistics.increment(kStatForcedAtomMemoHits, forced_atoms.memo_hits);
+      statistics.increment(kStatForcedAtomMemoMisses, forced_atoms.memo_misses);
       forced_equalities.insert(forced_equalities.end(), forced_atoms.equality_pairs.begin(),
                                forced_atoms.equality_pairs.end());
       forced_disequalities.insert(forced_disequalities.end(),

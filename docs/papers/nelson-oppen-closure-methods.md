@@ -165,14 +165,30 @@ model-equal conjectures and arrangement guesses are not part of it.
 
 The exact fallback reuses structural LRA preparation within each candidate pair.
 Following the bound-checkpoint discipline of Dutertre and de Moura, technical
-report SRI-CSL-06-01, Sections 3.1, 3.2.3, and 3.2.4, it copies the prepared base
-tableau, adds one row for `lhs - rhs` before the first checkpoint, and replays the
-current assignment once. It then checks `lhs - rhs < 0` and `lhs - rhs > 0` as
-separate checkpointed bounds on that context. Both checks must conflict, and the
-synthetic bound literal is removed from their combined explanation. This is a
-local constant-factor improvement to the complete convex oracle. The subsequent
-model-value filter reduces how many such contexts are needed, but neither
-change is the shared model state or transition system of de Moura and Bjorner.
+report SRI-CSL-06-01, Sections 3.1, 3.2.3, and 3.2.4, it checks `lhs - rhs < 0`
+and `lhs - rhs > 0` as separate reversible bounds on one context. Both checks
+must conflict, and the synthetic bound literal is removed from their combined
+explanation.
+
+The preferred context copies the feasible tableau already accepted for the
+current SAT assignment. Because pivoting may have made either endpoint basic,
+the SMT coordinator expands each endpoint through its current row and linearly
+merges the two sorted expressions before adding the difference row. The context
+never pops past that row's creation point and is destroyed after the pair. A
+debug invariant checks both its represented value and the tableau occurrence
+index after rollback. This avoids replaying every assigned arithmetic bound.
+It is an engineering refinement of the paper's checkpoint discipline, not a new
+paper rule.
+
+Reuse is deliberately adaptive. A difference expression above eight terms, or
+a checked tableau whose cumulative pivot term operations exceed eight per
+tableau variable, uses the older sparse-base path: copy the prepared base,
+install the direct difference row, replay the assignment once, and then probe
+both orientations. These conservative guards prevent a heavily pivoted basis
+from turning a cheap equality query into dense simplex work. The thresholds are
+profile-guided implementation policy, not claims from the paper. The subsequent
+model-value filter reduces how many contexts are needed, but neither change is
+the shared model state or transition system of de Moura and Bjorner.
 
 Default final-mode LRA-to-EUF sharing is now consumer-aware as a classifier.
 When the LRA scan finds an entailed shared Real equality, `solve_qf_uf_lra`
@@ -448,6 +464,12 @@ coordinator publishes:
 - `:no.interface.lra-probe-reuse-pairs`
 - `:no.interface.lra-probe-reuse-orientations`
 - `:no.interface.lra-probe-reuse-assignment-bounds`
+- `:no.interface.lra-probe-reuse-checked-tableau-copies`
+- `:no.interface.lra-probe-reuse-checked-tableau-fallbacks`
+- `:no.interface.lra-probe-reuse-checked-tableau-difference-fallbacks`
+- `:no.interface.lra-probe-reuse-checked-tableau-basis-cost-fallbacks`
+- `:no.interface.lra-probe-reuse-checked-tableau-max-difference-terms`
+- `:no.interface.lra-probe-reuse-checked-tableau-max-pivot-term-ops`
 - `:no.interface.lra-probe-reuse-mapping-fallbacks`
 - `:no.interface.lra-probe-reuse-context-conflicts`
 - `:no.interface.euf-care-checks`

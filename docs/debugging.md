@@ -679,11 +679,20 @@ inconsistent if merged; only those pairs become
 more temporary strict separation/equality atoms.
 `:no.interface.lra-extra-atoms-probed` sums the number of temporary atoms across
 those checks. Exact single-pair equality scans normally use a check-local copy of
-the prepared tableau, replay the current bounds once, and probe both strict
-orientations with `push()`/`pop()`. The corresponding work is split into
+the already feasible tableau and probe both strict orientations with
+`push()`/`pop()`. The corresponding work is split into
 `:no.interface.lra-probe-reuse-pairs`,
 `:no.interface.lra-probe-reuse-orientations`, and
-`:no.interface.lra-probe-reuse-assignment-bounds`. A nonzero
+`:no.interface.lra-probe-reuse-assignment-bounds`.
+`:no.interface.lra-probe-reuse-checked-tableau-copies` counts contexts that
+avoided assignment replay. The checked basis is rejected when its endpoint
+difference expands above eight terms or its prior pivot-term work exceeds eight
+operations per tableau variable. The total and the two reasons are reported by
+`:no.interface.lra-probe-reuse-checked-tableau-fallbacks`,
+`:no.interface.lra-probe-reuse-checked-tableau-difference-fallbacks`, and
+`:no.interface.lra-probe-reuse-checked-tableau-basis-cost-fallbacks`; the
+observed maxima are published by the matching `max-difference-terms` and
+`max-pivot-term-ops` counters. A nonzero
 `:no.interface.lra-probe-reuse-mapping-fallbacks` means a shared endpoint was
 absent from the prepared term map and the old augmented-theory reconstruction
 oracle was used. A nonzero

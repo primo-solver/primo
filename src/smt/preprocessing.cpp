@@ -659,13 +659,38 @@ ForcedAtomAssignments collect_forced_atoms(core::TermManager& terms,
   return assignments;
 }
 
+struct BooleanUnitSimplificationCache {
+  struct Entry {
+    core::TermId term = 0;
+    std::size_t rewrites = 0;
+  };
+
+  std::unordered_map<core::TermId, Entry> entries;
+  std::size_t hits = 0;
+  std::size_t misses = 0;
+};
+
 core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId term_id,
                                          const std::unordered_map<core::TermId, bool>& assignments,
+                                         BooleanUnitSimplificationCache& cache,
                                          std::size_t& rewrites) {
+  if (const auto cached = cache.entries.find(term_id); cached != cache.entries.end()) {
+    ++cache.hits;
+    rewrites += cached->second.rewrites;
+    return cached->second.term;
+  }
+  ++cache.misses;
+  const std::size_t rewrites_before = rewrites;
+  const auto remember = [&cache, term_id, rewrites_before, &rewrites](core::TermId simplified) {
+    cache.entries.emplace(
+        term_id, BooleanUnitSimplificationCache::Entry{simplified, rewrites - rewrites_before});
+    return simplified;
+  };
+
   const auto assigned = assignments.find(term_id);
   if (assigned != assignments.end()) {
     ++rewrites;
-    return terms.mk_bool(assigned->second);
+    return remember(terms.mk_bool(assigned->second));
   }
 
   const core::Term& term = terms.get(term_id);
@@ -682,39 +707,47 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
     case core::TermKind::Times:
     case core::TermKind::Le:
     case core::TermKind::Lt:
-      return term_id;
+      return remember(term_id);
     case core::TermKind::Equality: {
       const core::TermId lhs =
-          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites);
+          simplify_with_boolean_units(terms, children.at(0), assignments, cache, rewrites);
       const core::TermId rhs =
-          simplify_with_boolean_units(terms, children.at(1), assignments, rewrites);
-      return lhs != children.at(0) || rhs != children.at(1) ? terms.mk_eq(lhs, rhs) : term_id;
+          simplify_with_boolean_units(terms, children.at(1), assignments, cache, rewrites);
+      return remember(lhs != children.at(0) || rhs != children.at(1) ? terms.mk_eq(lhs, rhs)
+                                                                     : term_id);
     }
-    case core::TermKind::Not:
-      return terms.mk_not(
-          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites));
+    case core::TermKind::Not: {
+      const core::TermId child =
+          simplify_with_boolean_units(terms, children.at(0), assignments, cache, rewrites);
+      return remember(terms.mk_not(child));
+    }
     case core::TermKind::And: {
       std::vector<core::TermId> rewritten;
       rewritten.reserve(children.size());
       for (const core::TermId child : children) {
-        rewritten.push_back(simplify_with_boolean_units(terms, child, assignments, rewrites));
+        rewritten.push_back(
+            simplify_with_boolean_units(terms, child, assignments, cache, rewrites));
       }
-      return terms.mk_and(std::move(rewritten));
+      return remember(terms.mk_and(std::move(rewritten)));
     }
     case core::TermKind::Or: {
       std::vector<core::TermId> rewritten;
       rewritten.reserve(children.size());
       for (const core::TermId child : children) {
-        rewritten.push_back(simplify_with_boolean_units(terms, child, assignments, rewrites));
+        rewritten.push_back(
+            simplify_with_boolean_units(terms, child, assignments, cache, rewrites));
       }
-      return terms.mk_or(std::move(rewritten));
+      return remember(terms.mk_or(std::move(rewritten)));
     }
-    case core::TermKind::Implies:
-      return terms.mk_implies(
-          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites),
-          simplify_with_boolean_units(terms, children.at(1), assignments, rewrites));
+    case core::TermKind::Implies: {
+      const core::TermId lhs =
+          simplify_with_boolean_units(terms, children.at(0), assignments, cache, rewrites);
+      const core::TermId rhs =
+          simplify_with_boolean_units(terms, children.at(1), assignments, cache, rewrites);
+      return remember(terms.mk_implies(lhs, rhs));
+    }
   }
-  return term_id;
+  return remember(term_id);
 }
 
 std::pair<core::TermId, core::TermId> representative_pair(
@@ -2672,9 +2705,10 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
       result.assertions.push_back(unit);
     }
   }
+  BooleanUnitSimplificationCache cache;
   for (const core::TermId assertion : assertions) {
     const core::TermId simplified =
-        simplify_with_boolean_units(terms, assertion, assignments.values, result.rewrites);
+        simplify_with_boolean_units(terms, assertion, assignments.values, cache, result.rewrites);
     const core::Term& node = terms.get(simplified);
     if (node.kind == core::TermKind::BoolValue && node.bool_value) {
       continue;
@@ -2683,6 +2717,8 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
       result.assertions.push_back(simplified);
     }
   }
+  result.memo_hits = cache.hits;
+  result.memo_misses = cache.misses;
   return result;
 }
 
@@ -2715,9 +2751,10 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
         result.assertions.push_back(unit);
       }
     }
+    BooleanUnitSimplificationCache cache;
     for (const core::TermId assertion : assertions) {
       const core::TermId simplified =
-          simplify_with_boolean_units(terms, assertion, assignments.values, result.rewrites);
+          simplify_with_boolean_units(terms, assertion, assignments.values, cache, result.rewrites);
       const core::Term& node = terms.get(simplified);
       if (node.kind == core::TermKind::BoolValue && node.bool_value) {
         continue;
@@ -2726,6 +2763,8 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
         result.assertions.push_back(simplified);
       }
     }
+    result.memo_hits = cache.hits;
+    result.memo_misses = cache.misses;
     return result;
   }
 

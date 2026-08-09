@@ -1330,6 +1330,8 @@ void qf_uf_lra_exact_mode_keeps_mandatory_convex_closure() {
   assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
   assert(result.statistics.get(":no.interface.lra-probe-reuse-pairs") >= 1);
   assert(result.statistics.get(":no.interface.lra-probe-reuse-orientations") >= 2);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-assignment-bounds") == 0);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-checked-tableau-copies") >= 1);
   assert(result.statistics.get(":no.interface.lra-probe-reuse-mapping-fallbacks") == 0);
   assert(result.statistics.get(":no.interface.lra-probe-reuse-context-conflicts") == 0);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
@@ -1356,6 +1358,8 @@ void qf_uf_lra_exact_probe_reuse_does_not_prove_one_sided_bound() {
   assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") == 0);
   assert(result.statistics.get(":no.interface.lra-probe-reuse-pairs") >= 1);
   assert(result.statistics.get(":no.interface.lra-probe-reuse-orientations") >= 1);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-assignment-bounds") == 0);
+  assert(result.statistics.get(":no.interface.lra-probe-reuse-checked-tableau-copies") >= 1);
   assert(result.statistics.get(":no.interface.lra-probe-reuse-mapping-fallbacks") == 0);
   assert(result.statistics.get(":no.interface.lra-probe-reuse-context-conflicts") == 0);
 }

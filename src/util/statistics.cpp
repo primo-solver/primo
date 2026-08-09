@@ -6,6 +6,7 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace primo::util {
@@ -28,9 +29,13 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":preprocessing.eq-bridge.skipped-or-nodes"sv,
     ":preprocessing.boolean-units.facts"sv,
     ":preprocessing.boolean-units.rewrites"sv,
+    ":preprocessing.boolean-units.memo-hits"sv,
+    ":preprocessing.boolean-units.memo-misses"sv,
     ":preprocessing.forced-atoms.facts"sv,
     ":preprocessing.forced-atoms.disequalities"sv,
     ":preprocessing.forced-atoms.rewrites"sv,
+    ":preprocessing.forced-atoms.memo-hits"sv,
+    ":preprocessing.forced-atoms.memo-misses"sv,
     ":preprocessing.unit-equality.consequences"sv,
     ":preprocessing.unit-equality.substitution-units"sv,
     ":preprocessing.unit-equality.substitutions"sv,
@@ -183,17 +188,33 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.elimination-pivots"sv,
 };
 
+const std::unordered_map<std::string_view, StatKey>& stat_keys_by_name() {
+  static const std::unordered_map<std::string_view, StatKey> keys = [] {
+    std::unordered_map<std::string_view, StatKey> result;
+    result.reserve(kStatNames.size());
+    for (std::size_t i = 0; i < kStatNames.size(); ++i) {
+      result.emplace(kStatNames[i], static_cast<StatKey>(i));
+    }
+    return result;
+  }();
+  return keys;
+}
+
 }  // namespace
 
 std::string_view stat_name(StatKey key) { return kStatNames.at(static_cast<std::size_t>(key)); }
 
 std::optional<StatKey> Statistics::lookup_key(std::string_view name) {
-  for (std::size_t i = 0; i < kStatNames.size(); ++i) {
-    if (kStatNames[i] == name) {
-      return static_cast<StatKey>(i);
-    }
+  const auto& keys = stat_keys_by_name();
+  const auto found = keys.find(name);
+  if (found != keys.end()) {
+    return found->second;
   }
   return std::nullopt;
+}
+
+std::size_t Statistics::TransparentStringHash::operator()(std::string_view value) const noexcept {
+  return std::hash<std::string_view>{}(value);
 }
 
 void Statistics::remember_key(StatKey key) {
@@ -204,25 +225,24 @@ void Statistics::remember_key(StatKey key) {
   }
 }
 
-void Statistics::remember_key(std::string_view name) {
-  const std::string key{name};
-  if (!extra_values_.contains(key)) {
-    extra_order_.push_back(key);
-  }
-}
-
 void Statistics::set(StatKey key, Value value) {
   remember_key(key);
   values_[index(key)] = value;
 }
 
 void Statistics::set(std::string_view name, Value value) {
+  if (const auto extra = extra_values_.find(name); extra != extra_values_.end()) {
+    extra->second = value;
+    return;
+  }
   if (const std::optional<StatKey> key = lookup_key(name); key.has_value()) {
     set(key.value(), value);
     return;
   }
-  remember_key(name);
-  extra_values_[std::string{name}] = value;
+  const auto [inserted, is_new] = extra_values_.try_emplace(std::string{name}, value);
+  if (is_new) {
+    extra_order_.push_back(inserted->first);
+  }
 }
 
 void Statistics::increment(StatKey key, Value delta) {
@@ -231,34 +251,42 @@ void Statistics::increment(StatKey key, Value delta) {
 }
 
 void Statistics::increment(std::string_view name, Value delta) {
+  if (const auto extra = extra_values_.find(name); extra != extra_values_.end()) {
+    extra->second += delta;
+    return;
+  }
   if (const std::optional<StatKey> key = lookup_key(name); key.has_value()) {
     increment(key.value(), delta);
     return;
   }
-  remember_key(name);
-  extra_values_[std::string{name}] += delta;
+  const auto [inserted, is_new] = extra_values_.try_emplace(std::string{name}, delta);
+  if (is_new) {
+    extra_order_.push_back(inserted->first);
+  }
 }
 
 Statistics::Value Statistics::get(StatKey key) const { return values_[index(key)]; }
 
 Statistics::Value Statistics::get(std::string_view name) const {
+  if (const auto extra = extra_values_.find(name); extra != extra_values_.end()) {
+    return extra->second;
+  }
   if (const std::optional<StatKey> key = lookup_key(name); key.has_value()) {
     return get(key.value());
   }
-  const auto found = extra_values_.find(std::string{name});
-  if (found == extra_values_.end()) {
-    return 0;
-  }
-  return found->second;
+  return 0;
 }
 
 bool Statistics::contains(StatKey key) const { return seen_[index(key)]; }
 
 bool Statistics::contains(std::string_view name) const {
+  if (extra_values_.contains(name)) {
+    return true;
+  }
   if (const std::optional<StatKey> key = lookup_key(name); key.has_value()) {
     return contains(key.value());
   }
-  return extra_values_.contains(std::string{name});
+  return false;
 }
 
 std::vector<std::string> Statistics::keys() const {

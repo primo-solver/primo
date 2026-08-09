@@ -814,6 +814,56 @@ void boolean_unit_propagation_skips_when_no_units_exist() {
   check(result.assertions == assertions);
 }
 
+void boolean_unit_simplification_memoizes_shared_boolean_subterms() {
+  Fixture fixture;
+  const auto boolean_constant = [&fixture](const char* name) {
+    return fixture.constant(fixture.symbols.declare_constant(name, fixture.symbols.bool_sort()));
+  };
+  const primo::core::TermId p = boolean_constant("memo_p");
+  const primo::core::TermId q = boolean_constant("memo_q");
+  const primo::core::TermId r = boolean_constant("memo_r");
+  const primo::core::TermId s = boolean_constant("memo_s");
+  const primo::core::TermId shared = fixture.terms.mk_or({fixture.terms.mk_not(p), q});
+  const std::vector<primo::core::TermId> assertions{p, fixture.terms.mk_or({shared, r}),
+                                                    fixture.terms.mk_implies(shared, s)};
+
+  const primo::smt::BooleanUnitPropagationResult result =
+      primo::smt::propagate_boolean_units(fixture.terms, assertions);
+
+  check(result.rewrites >= 2);
+  check(result.memo_hits >= 1);
+  check(result.memo_misses >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_or({q, r})) != result.assertions.end());
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_implies(q, s)) != result.assertions.end());
+}
+
+void forced_atom_simplification_memoizes_shared_boolean_subterms() {
+  Fixture fixture;
+  const primo::core::TermId atom = fixture.pred(fixture.p, fixture.constant(fixture.a));
+  const primo::core::TermId q = fixture.constant(
+      fixture.symbols.declare_constant("forced_memo_q", fixture.symbols.bool_sort()));
+  const primo::core::TermId r = fixture.constant(
+      fixture.symbols.declare_constant("forced_memo_r", fixture.symbols.bool_sort()));
+  const primo::core::TermId s = fixture.constant(
+      fixture.symbols.declare_constant("forced_memo_s", fixture.symbols.bool_sort()));
+  const primo::core::TermId shared = fixture.terms.mk_or({fixture.terms.mk_not(atom), q});
+  const std::vector<primo::core::TermId> assertions{atom, fixture.terms.mk_or({shared, r}),
+                                                    fixture.terms.mk_implies(shared, s)};
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, assertions);
+
+  check(result.rewrites >= 2);
+  check(result.memo_hits >= 1);
+  check(result.memo_misses >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_or({q, r})) != result.assertions.end());
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_implies(q, s)) != result.assertions.end());
+}
+
 void forced_atom_propagation_simplifies_predicate_units() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -1226,6 +1276,8 @@ int main() {
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();
   boolean_unit_propagation_skips_when_no_units_exist();
+  boolean_unit_simplification_memoizes_shared_boolean_subterms();
+  forced_atom_simplification_memoizes_shared_boolean_subterms();
   forced_atom_propagation_simplifies_predicate_units();
   forced_atom_propagation_uses_negative_equality_units();
   forced_atom_propagation_folds_disequalities_modulo_equalities();

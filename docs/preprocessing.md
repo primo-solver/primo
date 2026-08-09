@@ -286,6 +286,16 @@ This is an ownership invariant: `TermManager` may intern new terms while a child
 is being simplified, so preprocessing must not keep references into term storage
 across recursive calls.
 
+Rebuilding is memoized for the duration of one propagation call. The cache maps
+each hash-consed input `TermId` to its rewritten `TermId` and the number of unit
+replacements in that subtree. Reusing the saved replacement count preserves the
+existing occurrence-based `rewrites` statistic even though a shared DAG subtree
+is traversed once. The cache owns only term handles and is destroyed before the
+`TermManager`; it cannot outlive or mutate term storage. This changes repeated
+DAG traversal from tree-size work to expected linear work in the number of
+distinct visited terms. `:preprocessing.boolean-units.memo-hits` and
+`:preprocessing.boolean-units.memo-misses` expose that behavior.
+
 The pass deliberately does not rewrite inside uninterpreted-function
 applications and does not collect frontend `$primo_bool_arg_*` auxiliaries as
 substitution facts. Those auxiliaries encode equivalences for compound Boolean
@@ -340,7 +350,11 @@ the existing frontend auxiliaries and EUF facts.
 
 Activation is reported by `:preprocessing.forced-atoms.facts`,
 `:preprocessing.forced-atoms.disequalities`, and
-`:preprocessing.forced-atoms.rewrites`.
+`:preprocessing.forced-atoms.rewrites`. When the exact-atom-only branch uses the
+Boolean rewriter, `:preprocessing.forced-atoms.memo-hits` and
+`:preprocessing.forced-atoms.memo-misses` report its pass-local DAG cache. The
+temporary congruence-closure branch has separate rewriting machinery and leaves
+these two counters at zero.
 
 ## Solved-Constant Substitution
 

@@ -275,14 +275,16 @@ Implemented now:
   for still-unresolved shared Real pairs. This exact fallback is the
   completeness mechanism for the supported convex EUF+LRA fragment; it does
   not preallocate the pair cross product as SAT variables. For each pair, a
-  check-local context copies the prepared LRA base tableau, adds an unbounded
-  difference row before asserting bounds, replays the current assignment once,
-  and tests the two strict orientations with tableau checkpoints. The context is
-  discarded after the pair. Missing endpoint mappings conservatively use the
-  older augmented-theory reconstruction oracle. This avoids repeated atom
-  normalization and shares setup between orientations, but still performs
-  logical quadratic pair space, a tableau copy and assignment replay per pair
-  actually consumed by the complete fallback, and any required simplex work.
+  check-local context normally copies the already feasible LRA tableau,
+  expresses an unbounded difference row in its current nonbasic basis, and tests
+  the two strict orientations with tableau checkpoints. The context is discarded
+  after the pair. Dense difference rows and bases with high prior pivot-term cost
+  conservatively copy the prepared sparse base and replay the current assignment
+  once instead. Missing endpoint mappings use the older augmented-theory
+  reconstruction oracle. This avoids repeated atom normalization and usually
+  avoids assignment replay, but still performs logical quadratic pair space, a
+  tableau copy per pair actually consumed by the complete fallback, and any
+  required simplex work.
   Equal-valued model classes are stored once with a term-to-class index. Sparse
   care/candidate inputs are filtered by class membership, while complete scans
   use a deterministic cursor and do not retain the quadratic pair expansion.

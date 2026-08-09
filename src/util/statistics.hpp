@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <iosfwd>
 #include <optional>
 #include <string>
@@ -26,9 +27,13 @@ enum class StatKey : std::size_t {
   EqBridgeSkippedOrNodes,
   BooleanUnitFacts,
   BooleanUnitRewrites,
+  BooleanUnitMemoHits,
+  BooleanUnitMemoMisses,
   ForcedAtomFacts,
   ForcedAtomDisequalities,
   ForcedAtomRewrites,
+  ForcedAtomMemoHits,
+  ForcedAtomMemoMisses,
   UnitEqualityConsequences,
   UnitEqualitySubstitutionUnits,
   UnitEqualitySubstitutions,
@@ -202,19 +207,27 @@ class Statistics {
   std::vector<std::string> keys() const;
 
  private:
+  struct TransparentStringHash {
+    using is_transparent = void;
+
+    std::size_t operator()(std::string_view value) const noexcept;
+    std::size_t operator()(const std::string& value) const noexcept {
+      return operator()(std::string_view{value});
+    }
+  };
+
   static constexpr std::size_t kStatCount = static_cast<std::size_t>(StatKey::Count);
 
   static std::optional<StatKey> lookup_key(std::string_view name);
   static std::size_t index(StatKey key) { return static_cast<std::size_t>(key); }
 
   void remember_key(StatKey key);
-  void remember_key(std::string_view name);
 
   std::array<Value, kStatCount> values_{};
   std::array<bool, kStatCount> seen_{};
   std::vector<StatKey> order_;
   std::vector<std::string> extra_order_;
-  std::unordered_map<std::string, Value> extra_values_;
+  std::unordered_map<std::string, Value, TransparentStringHash, std::equal_to<>> extra_values_;
 };
 
 void print_statistics(std::ostream& output, const Statistics& statistics);

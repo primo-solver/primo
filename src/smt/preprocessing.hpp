@@ -133,6 +133,8 @@ struct BooleanUnitPropagationResult {
   std::vector<std::pair<core::TermId, bool>> assignments;
   std::size_t units = 0;
   std::size_t rewrites = 0;
+  std::size_t memo_hits = 0;
+  std::size_t memo_misses = 0;
 };
 
 BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
@@ -146,6 +148,8 @@ struct ForcedAtomPropagationResult {
   std::size_t units = 0;
   std::size_t disequalities = 0;
   std::size_t rewrites = 0;
+  std::size_t memo_hits = 0;
+  std::size_t memo_misses = 0;
 };
 
 ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
