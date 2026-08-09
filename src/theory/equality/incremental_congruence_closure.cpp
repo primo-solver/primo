@@ -92,13 +92,15 @@ void IncrementalCongruenceClosure::pop(std::size_t checkpoint) {
 }
 
 void IncrementalCongruenceClosure::add_term(core::TermId term) {
+  ++stats_.add_term_requests;
+  if (term < seen_.size() && seen_[term]) {
+    ++stats_.add_term_seen_hits;
+    return;
+  }
   terms_.get(term);
   ensure_capacity();
   if (term >= seen_.size()) {
     throw std::logic_error("incremental congruence closure term storage did not grow");
-  }
-  if (seen_[term]) {
-    return;
   }
   seen_[term] = true;
   terms_seen_.push_back(term);

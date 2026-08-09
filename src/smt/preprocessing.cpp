@@ -19,6 +19,7 @@
 #include "core/term_manager.hpp"
 #include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
+#include "theory/equality/congruence_stats.hpp"
 #include "theory/equality/incremental_congruence_closure.hpp"
 #include "util/rational.hpp"
 
@@ -1015,11 +1016,19 @@ void collect_unit_equalities(const core::TermManager& terms, core::TermId assert
 }
 
 void register_equality_query_terms(const core::TermManager& terms, core::TermId assertion,
-                                   theory::equality::IncrementalCongruenceClosure& closure) {
+                                   theory::equality::IncrementalCongruenceClosure& closure,
+                                   std::vector<bool>& visited, std::size_t& nodes,
+                                   std::size_t& memo_hits) {
   std::vector<core::TermId> work{assertion};
   while (!work.empty()) {
     const core::TermId term = work.back();
     work.pop_back();
+    if (visited.at(term)) {
+      ++memo_hits;
+      continue;
+    }
+    visited[term] = true;
+    ++nodes;
     const core::Term& node = terms.get(term);
     if (node.kind == core::TermKind::Equality) {
       closure.add_term(node.children.at(0));
@@ -2491,7 +2500,7 @@ EqualityBridgeResult EqualityBridge::bridge(const std::vector<core::TermId>& ass
 
 std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
-                                                    std::size_t* consequences_added) {
+                                                    UnitEqualityPropagationStats* stats) {
   // This is a deliberately small preprocessing closure, not a SAT/theory
   // shortcut. Unit equalities already asserted at top level, including facts
   // derived by the equality bridge, are fed to the same ground congruence
@@ -2499,8 +2508,8 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   // relation are simplified before Boolean abstraction.
   const UnitEqualityPropagationShape shape = unit_equality_propagation_shape(terms, assertions);
   if (shape.unit_equalities == 0 || shape.equality_nodes <= shape.unit_equalities) {
-    if (consequences_added != nullptr) {
-      *consequences_added = 0;
+    if (stats != nullptr) {
+      *stats = UnitEqualityPropagationStats{};
     }
     return assertions;
   }
@@ -2508,7 +2517,12 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   theory::equality::IncrementalCongruenceClosure closure(terms);
   for (const core::TermId assertion : assertions) {
     collect_unit_equalities(terms, assertion, closure);
-    register_equality_query_terms(terms, assertion, closure);
+  }
+  std::vector<bool> visited(terms.size(), false);
+  std::size_t query_nodes = 0;
+  std::size_t query_memo_hits = 0;
+  for (const core::TermId assertion : assertions) {
+    register_equality_query_terms(terms, assertion, closure, visited, query_nodes, query_memo_hits);
   }
   closure.saturate();
 
@@ -2531,8 +2545,13 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
       ++added;
     }
   }
-  if (consequences_added != nullptr) {
-    *consequences_added = added;
+  if (stats != nullptr) {
+    const theory::equality::IncrementalCongruenceClosureStats& closure_stats = closure.stats();
+    stats->consequences_added = added;
+    stats->query_nodes = query_nodes;
+    stats->query_memo_hits = query_memo_hits;
+    stats->add_term_requests = closure_stats.add_term_requests;
+    stats->add_term_seen_hits = closure_stats.add_term_seen_hits;
   }
   return simplified;
 }
@@ -2776,8 +2795,10 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
     closure.add_term(lhs);
     closure.add_term(rhs);
   }
+  std::vector<bool> visited(terms.size(), false);
   for (const core::TermId assertion : assertions) {
-    register_equality_query_terms(terms, assertion, closure);
+    register_equality_query_terms(terms, assertion, closure, visited, result.query_nodes,
+                                  result.query_memo_hits);
   }
   closure.saturate();
   const KnownDisequalityClasses known_disequalities =
@@ -2809,6 +2830,9 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
       result.assertions.push_back(simplified);
     }
   }
+  const theory::equality::IncrementalCongruenceClosureStats& closure_stats = closure.stats();
+  result.add_term_requests = closure_stats.add_term_requests;
+  result.add_term_seen_hits = closure_stats.add_term_seen_hits;
   return result;
 }
 

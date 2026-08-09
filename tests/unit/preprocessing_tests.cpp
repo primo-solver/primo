@@ -374,12 +374,12 @@ void unit_equality_propagation_simplifies_nested_boolean_terms_after_interning()
       fixture.terms.mk_implies(inner, fixture.terms.mk_not(fixture.terms.mk_eq(a, b)));
   const std::vector<primo::core::TermId> assertions{fixture.terms.mk_eq(x, y), outer};
 
-  std::size_t consequences = 0;
+  primo::smt::UnitEqualityPropagationStats stats;
   const std::vector<primo::core::TermId> simplified =
-      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &consequences);
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &stats);
 
   check(!simplified.empty());
-  check(consequences >= 1);
+  check(stats.consequences_added >= 1);
 }
 
 void unit_equality_propagation_skips_without_nonunit_queries() {
@@ -392,12 +392,37 @@ void unit_equality_propagation_skips_without_nonunit_queries() {
       fixture.terms.mk_and({fixture.terms.mk_eq(b, c)}),
   };
 
-  std::size_t consequences = 99;
+  primo::smt::UnitEqualityPropagationStats stats;
+  stats.consequences_added = 99;
   const std::vector<primo::core::TermId> simplified =
-      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &consequences);
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &stats);
 
-  check(consequences == 0);
+  check(stats.consequences_added == 0);
   check(simplified == assertions);
+}
+
+void unit_equality_propagation_visits_shared_query_dag_once() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId fa = fixture.app(fixture.f, a);
+  const primo::core::TermId fb = fixture.app(fixture.f, b);
+  const primo::core::TermId query = fixture.terms.mk_eq(fa, fb);
+  const primo::core::TermId shared = fixture.terms.mk_or({query, fixture.pred(fixture.p, a)});
+  const std::vector<primo::core::TermId> assertions{
+      fixture.terms.mk_eq(a, b), fixture.terms.mk_or({shared, fixture.pred(fixture.p, b)}),
+      fixture.terms.mk_implies(shared, fixture.pred(fixture.p, c))};
+
+  primo::smt::UnitEqualityPropagationStats stats;
+  const std::vector<primo::core::TermId> simplified =
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &stats);
+
+  check(!simplified.empty());
+  check(stats.query_memo_hits >= 1);
+  check(stats.query_nodes <= fixture.terms.size());
+  check(stats.add_term_seen_hits >= 1);
+  check(stats.add_term_requests < 20);
 }
 
 void ground_unit_substitution_rewrites_applications_and_preserves_units() {
@@ -1258,6 +1283,7 @@ int main() {
   unit_equality_propagation_simplifies_disequality();
   unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();
   unit_equality_propagation_skips_without_nonunit_queries();
+  unit_equality_propagation_visits_shared_query_dag_once();
   ground_unit_substitution_rewrites_applications_and_preserves_units();
   ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts();
   solved_constant_substitution_eliminates_acyclic_definition();

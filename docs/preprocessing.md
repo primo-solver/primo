@@ -214,6 +214,27 @@ incremental EUF checks over `core::TermId` values. Preprocessing assertions have
 unconditional reasons, so the closure does not build congruence explanation
 paths while deriving simplification-only consequences.
 
+The forced-atom and unit-equality passes share one equality-query registration
+scanner. Because terms are hash-consed, the scanner treats each assertion batch
+as a DAG: a pass-local `vector<bool>` indexed by `TermId` records visited nodes
+across all assertions using the same temporary closure. The vector is sized
+after formula construction, the scan does not create terms, and it is destroyed
+before the closure, so its indices remain stable for its complete lifetime.
+Repeated occurrences increment `:preprocessing.equality-query.memo-hits`
+instead of recursively registering the same equality endpoints again;
+`:preprocessing.equality-query.nodes` counts first visits. This changes only
+work accounting, not which equality nodes or endpoint subterms enter the
+closure.
+
+`IncrementalCongruenceClosure::add_term` also checks its existing `seen_` vector
+before asking the `TermManager` for its current size. A hit is valid because a
+seen term was type-checked, had all children registered, and had its application
+signature installed before the earlier call returned. Requests and fast-path
+hits are reported by `:preprocessing.equality-query.add-term-requests` and
+`:preprocessing.equality-query.add-term-seen-hits`. This is ordinary DAG
+memoization around the existing congruence-closure algorithm, not a new
+congruence-closure algorithm or an implementation of an additional paper.
+
 When no top-level unit equalities are present, the pass returns the assertion
 vector unchanged after inspecting only the top-level conjunction structure. When
 the only equality nodes are the unit equalities themselves, it also returns

@@ -61,6 +61,10 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.unit-equality.substitutions`;
 - `:preprocessing.unit-equality.substitution-accepted`;
 - `:preprocessing.unit-equality.substitution-rejected`;
+- `:preprocessing.equality-query.nodes`;
+- `:preprocessing.equality-query.memo-hits`;
+- `:preprocessing.equality-query.add-term-requests`;
+- `:preprocessing.equality-query.add-term-seen-hits`;
 - `:preprocessing.solve-eqs.candidates`;
 - `:preprocessing.solve-eqs.accepted`;
 - `:preprocessing.solve-eqs.rewrites`;

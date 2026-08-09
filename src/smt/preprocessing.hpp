@@ -26,9 +26,17 @@ class EqualityBridge {
   core::TermManager& terms_;
 };
 
+struct UnitEqualityPropagationStats {
+  std::size_t consequences_added = 0;
+  std::size_t query_nodes = 0;
+  std::size_t query_memo_hits = 0;
+  std::size_t add_term_requests = 0;
+  std::size_t add_term_seen_hits = 0;
+};
+
 std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
-                                                    std::size_t* consequences_added = nullptr);
+                                                    UnitEqualityPropagationStats* stats = nullptr);
 
 struct GroundEqualitySubstitutionResult {
   std::vector<core::TermId> assertions;
@@ -150,6 +158,10 @@ struct ForcedAtomPropagationResult {
   std::size_t rewrites = 0;
   std::size_t memo_hits = 0;
   std::size_t memo_misses = 0;
+  std::size_t query_nodes = 0;
+  std::size_t query_memo_hits = 0;
+  std::size_t add_term_requests = 0;
+  std::size_t add_term_seen_hits = 0;
 };
 
 ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,

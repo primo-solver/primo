@@ -79,6 +79,12 @@ constexpr util::StatKey kStatUnitEqualitySubstitutionAccepted =
     util::StatKey::UnitEqualitySubstitutionAccepted;
 constexpr util::StatKey kStatUnitEqualitySubstitutionRejected =
     util::StatKey::UnitEqualitySubstitutionRejected;
+constexpr util::StatKey kStatEqualityQueryNodes = util::StatKey::EqualityQueryNodes;
+constexpr util::StatKey kStatEqualityQueryMemoHits = util::StatKey::EqualityQueryMemoHits;
+constexpr util::StatKey kStatEqualityQueryAddTermRequests =
+    util::StatKey::EqualityQueryAddTermRequests;
+constexpr util::StatKey kStatEqualityQueryAddTermSeenHits =
+    util::StatKey::EqualityQueryAddTermSeenHits;
 constexpr util::StatKey kStatSolvedConstantCandidates = util::StatKey::SolvedConstantCandidates;
 constexpr util::StatKey kStatSolvedConstantAccepted = util::StatKey::SolvedConstantAccepted;
 constexpr util::StatKey kStatSolvedConstantRewrites = util::StatKey::SolvedConstantRewrites;
@@ -2409,6 +2415,8 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
     const theory::equality::IncrementalCongruenceClosureStats& lhs,
     const theory::equality::IncrementalCongruenceClosureStats& rhs) {
   return theory::equality::IncrementalCongruenceClosureStats{
+      positive_delta(lhs.add_term_requests, rhs.add_term_requests),
+      positive_delta(lhs.add_term_seen_hits, rhs.add_term_seen_hits),
       positive_delta(lhs.terms, rhs.terms),
       positive_delta(lhs.flat_definitions, rhs.flat_definitions),
       positive_delta(lhs.merges, rhs.merges),
@@ -10482,6 +10490,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatUnitEqualitySubstitutions, 0);
   statistics.set(kStatUnitEqualitySubstitutionAccepted, 0);
   statistics.set(kStatUnitEqualitySubstitutionRejected, 0);
+  statistics.set(kStatEqualityQueryNodes, 0);
+  statistics.set(kStatEqualityQueryMemoHits, 0);
+  statistics.set(kStatEqualityQueryAddTermRequests, 0);
+  statistics.set(kStatEqualityQueryAddTermSeenHits, 0);
   statistics.set(kStatSolvedConstantCandidates, 0);
   statistics.set(kStatSolvedConstantAccepted, 0);
   statistics.set(kStatSolvedConstantRewrites, 0);
@@ -10856,6 +10868,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatForcedAtomRewrites, forced_atoms.rewrites);
       statistics.increment(kStatForcedAtomMemoHits, forced_atoms.memo_hits);
       statistics.increment(kStatForcedAtomMemoMisses, forced_atoms.memo_misses);
+      statistics.increment(kStatEqualityQueryNodes, forced_atoms.query_nodes);
+      statistics.increment(kStatEqualityQueryMemoHits, forced_atoms.query_memo_hits);
+      statistics.increment(kStatEqualityQueryAddTermRequests, forced_atoms.add_term_requests);
+      statistics.increment(kStatEqualityQueryAddTermSeenHits, forced_atoms.add_term_seen_hits);
       forced_equalities.insert(forced_equalities.end(), forced_atoms.equality_pairs.begin(),
                                forced_atoms.equality_pairs.end());
       forced_disequalities.insert(forced_disequalities.end(),
@@ -10897,9 +10913,15 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           statistics.increment(kStatUnitEqualitySubstitutionRejected);
         }
       }
-      std::size_t unit_consequences = 0;
-      assertions = propagate_unit_equalities(frontend.terms(), assertions, &unit_consequences);
-      statistics.increment(kStatUnitEqualityConsequences, unit_consequences);
+      UnitEqualityPropagationStats unit_equality_stats;
+      assertions = propagate_unit_equalities(frontend.terms(), assertions, &unit_equality_stats);
+      statistics.increment(kStatUnitEqualityConsequences, unit_equality_stats.consequences_added);
+      statistics.increment(kStatEqualityQueryNodes, unit_equality_stats.query_nodes);
+      statistics.increment(kStatEqualityQueryMemoHits, unit_equality_stats.query_memo_hits);
+      statistics.increment(kStatEqualityQueryAddTermRequests,
+                           unit_equality_stats.add_term_requests);
+      statistics.increment(kStatEqualityQueryAddTermSeenHits,
+                           unit_equality_stats.add_term_seen_hits);
       if (assertions == before) {
         break;
       }
