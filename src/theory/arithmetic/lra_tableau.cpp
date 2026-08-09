@@ -1,12 +1,13 @@
 #include "theory/arithmetic/lra_tableau.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <set>
-#include <unordered_set>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -280,9 +281,9 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
         ++i;
       } else if (have_entering && (!have_other || new_entering_row[j].var < other_row[i].var)) {
         // A product of two nonzero rationals, so it cannot be zero either.
-        rebuilt.emplace_back(new_entering_row[j].var,
-                             entering_in_other * new_entering_row[j].coeff,
-                             static_cast<std::uint32_t>(occurs_in_[new_entering_row[j].var].size()));
+        rebuilt.emplace_back(
+            new_entering_row[j].var, entering_in_other * new_entering_row[j].coeff,
+            static_cast<std::uint32_t>(occurs_in_[new_entering_row[j].var].size()));
         occurs_in_[new_entering_row[j].var].push_back(other_basic);
         ++j;
       } else {
@@ -497,8 +498,7 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
     if (sum.is_zero()) {
       continue;
     }
-    rebuilt.emplace_back(term_var, sum,
-                         static_cast<std::uint32_t>(occurs_in_[term_var].size()));
+    rebuilt.emplace_back(term_var, sum, static_cast<std::uint32_t>(occurs_in_[term_var].size()));
     occurs_in_[term_var].push_back(*f_var_);
   }
   f_row = std::move(rebuilt);
@@ -1088,6 +1088,81 @@ std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
   }
 
   return result;
+}
+
+LraTableau::FreedomInterval LraTableau::freedom_interval(LraVarId nonbasic) const {
+  assert(!vars_.at(nonbasic).is_basic &&
+         "freedom_interval is defined for nonbasic variables only -- a basic "
+         "variable's value follows from its row, and Section 5.2 mutates "
+         "without pivoting one free");
+
+  FreedomInterval interval;
+  // Start from the variable's own bounds; the row constraints only ever
+  // tighten from here, which is why {l_j} and {u_j} are members of the paper's
+  // max/min sets rather than special cases.
+  if (const auto& own_lower = vars_.at(nonbasic).lower; own_lower.has_value()) {
+    interval.lower = own_lower->value;
+  }
+  if (const auto& own_upper = vars_.at(nonbasic).upper; own_upper.has_value()) {
+    interval.upper = own_upper->value;
+  }
+
+  const DeltaRational& beta_j = vars_.at(nonbasic).assignment;
+  const auto tighten_lower = [&interval](const DeltaRational& candidate) {
+    if (!interval.lower.has_value() || *interval.lower < candidate) {
+      interval.lower = candidate;
+    }
+  };
+  const auto tighten_upper = [&interval](const DeltaRational& candidate) {
+    if (!interval.upper.has_value() || candidate < *interval.upper) {
+      interval.upper = candidate;
+    }
+  };
+
+  // occurs_in_ is the column of `nonbasic`: exactly the basic variables whose
+  // value moves when this one does. Walking it (rather than every row) is what
+  // makes this O(column) -- the same work update() already does to repair
+  // those same rows.
+  for (const LraVarId basic : occurs_in_.at(nonbasic)) {
+    if (!vars_.at(basic).is_basic) {
+      continue;  // stale occurrence; occurs_in_ is a superset between rebuilds
+    }
+    const Row& basic_row = rows_.at(basic);
+    const auto entry = std::find_if(basic_row.begin(), basic_row.end(),
+                                    [nonbasic](const RowEntry& e) { return e.var == nonbasic; });
+    if (entry == basic_row.end() || entry->coeff.is_zero()) {
+      continue;
+    }
+
+    const VarState& basic_state = vars_.at(basic);
+    // How far beta(x_i) may move before it hits its own bound, converted into
+    // a bound on x_j via division by a_ij. The sign of a_ij decides which of
+    // x_i's bounds limits which direction, which is the whole content of the
+    // paper's four-way case split.
+    const util::Rational inverse_coeff = util::Rational(1) / entry->coeff;
+    const bool positive = entry->coeff.sign() > 0;
+
+    if (basic_state.lower.has_value()) {
+      const DeltaRational shifted =
+          beta_j + (basic_state.lower->value - basic_state.assignment).scaled(inverse_coeff);
+      if (positive) {
+        tighten_lower(shifted);
+      } else {
+        tighten_upper(shifted);
+      }
+    }
+    if (basic_state.upper.has_value()) {
+      const DeltaRational shifted =
+          beta_j + (basic_state.upper->value - basic_state.assignment).scaled(inverse_coeff);
+      if (positive) {
+        tighten_upper(shifted);
+      } else {
+        tighten_lower(shifted);
+      }
+    }
+  }
+
+  return interval;
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::check() {

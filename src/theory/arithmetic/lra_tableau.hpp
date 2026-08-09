@@ -306,8 +306,7 @@ class LraTableau {
   // would hand the combination layer equalities that do not hold.
   //
   // Duplicates in `shared` are ignored; the result contains each variable once.
-  std::vector<std::vector<LraVarId>> model_equal_classes(
-      const std::vector<LraVarId>& shared) const;
+  std::vector<std::vector<LraVarId>> model_equal_classes(const std::vector<LraVarId>& shared) const;
 
   // An equality between shared variables that holds in EVERY model of the
   // current bounds, together with the reason literals that force it.
@@ -350,10 +349,45 @@ class LraTableau {
   // Const, and polled at check points -- never hooked into pivot() or
   // assert_*. It is not allocation-free: each candidate row builds two small
   // variable vectors plus a reason vector, so the cost is O(shared candidates
-  // x row length), paid per check rather than per pivot. Keeping Nelson-Oppen work off the LRA hot path is
-  // deliberate -- see docs/nelson-oppen-qf-lra-regression.md for what happened
-  // last time it was not.
+  // x row length), paid per check rather than per pivot. Keeping Nelson-Oppen work off the LRA hot
+  // path is deliberate -- see docs/nelson-oppen-qf-lra-regression.md for what happened last time it
+  // was not.
   std::vector<EntailedEquality> entailed_equalities(const std::vector<LraVarId>& shared) const;
+
+  // -- M-Mutate (paper Section 5.2, "Mutation using freedom intervals") ------
+  //
+  // The range over which a NONBASIC variable's value may be moved while every
+  // basic variable stays inside its bounds. `nullopt` on an endpoint means
+  // unbounded in that direction. From the paper, for nonbasic x_j:
+  //
+  //   L_j = max({b(x_j) + (l_i - b(x_i))/a_ij | a_ij > 0}
+  //           u {b(x_j) + (u_i - b(x_i))/a_ij | a_ij < 0} u {l_j})
+  //   U_j = min({b(x_j) + (u_i - b(x_i))/a_ij | a_ij > 0}
+  //           u {b(x_j) + (l_i - b(x_i))/a_ij | a_ij < 0} u {u_j})
+  //
+  // The point of the interval is that it makes model diversification cost an
+  // O(column) computation instead of a solve: any value inside it keeps the
+  // assignment a genuine model of the current constraints, so a disequality
+  // read off the mutated model is true in some model rather than merely
+  // unrefuted. That is what lets the combination layer skip a case split
+  // honestly.
+  //
+  // Only defined for nonbasic variables -- a basic variable's value is a
+  // consequence of its row, not a free choice, and the paper is explicit that
+  // mutation performs NO pivoting to make one free. Throws std::out_of_range
+  // via is_basic()'s accessor for an unknown id; asserts on a basic one.
+  struct FreedomInterval {
+    std::optional<DeltaRational> lower;
+    std::optional<DeltaRational> upper;
+
+    // Whether `value` is inside the interval, treating absent endpoints as
+    // infinite. An empty interval (lower > upper) cannot occur on a feasible
+    // tableau, but this answers false for it rather than pretending.
+    [[nodiscard]] bool contains(const DeltaRational& value) const {
+      return (!lower.has_value() || *lower <= value) && (!upper.has_value() || value <= *upper);
+    }
+  };
+  [[nodiscard]] FreedomInterval freedom_interval(LraVarId nonbasic) const;
 
   // Read-only access to a variable's current upper/lower bound (if any) and
   // the literal that established it -- used by OnlineLraPropagator's
