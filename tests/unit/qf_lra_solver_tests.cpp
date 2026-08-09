@@ -971,6 +971,8 @@ void qf_uf_lra_shares_lra_implied_real_equalities_with_euf() {
   assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-forbidden-forced") >= 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-skipped") == 0);
+  assert(result.statistics.get(":no.shared-model.enabled") == 0);
+  assert(result.statistics.get(":no.shared-model.euf-forbidden-equalities") == 0);
   assert(result.statistics.get(":no.interface.conflicts") >= 1);
   assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
 }
@@ -1807,6 +1809,113 @@ void qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities() {
   assert(result.statistics.get(":no.interface.lra-to-euf-internal-model-equalities") == 0);
   assert(result.statistics.get(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks") ==
          0);
+}
+
+void qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.shared-model.enabled") == 1);
+  assert(result.statistics.get(":no.shared-model.rounds") == 1);
+  assert(result.statistics.get(":no.shared-model.iterations") == 1);
+  assert(result.statistics.get(":no.shared-model.lra-value-classes") >= 1);
+  assert(result.statistics.get(":no.shared-model.internal-euf-merges") >= 1);
+  assert(result.statistics.get(":no.shared-model.sat-materializations-avoided") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-skipped") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
+  assert(result.statistics.get(":no.shared-model.converged-rounds") == 1);
+}
+
+void qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.shared-model.enabled") == 1);
+  assert(result.statistics.get(":no.shared-model.euf-forbidden-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-forbidden-forced") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
+}
+
+void qf_uf_lra_shared_model_builds_model_from_internal_equality() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+    (get-model)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(model") != std::string::npos);
+  assert(result.statistics.get(":no.shared-model.internal-euf-merges") >= 1);
+  assert(result.statistics.get(":no.shared-model.reconstructed-models") == 1);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+}
+
+void qf_uf_lra_shared_model_retains_transitive_merges_before_conflict() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (<= y z))
+    (assert (<= z y))
+    (assert (p x))
+    (assert (q y))
+    (assert (not (p z)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.shared-model.internal-euf-merges") >= 1);
+  assert(result.statistics.get(":no.shared-model.euf-forbidden-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
 }
 
 void qf_uf_lra_purifies_real_valued_applications_in_arithmetic() {
@@ -3694,6 +3803,10 @@ int main() {
   qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
   qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();
   qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities();
+  qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom();
+  qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible();
+  qf_uf_lra_shared_model_builds_model_from_internal_equality();
+  qf_uf_lra_shared_model_retains_transitive_merges_before_conflict();
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   qf_uf_lra_online_propagates_simple_lra_shared_equalities();

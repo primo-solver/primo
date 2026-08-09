@@ -94,6 +94,28 @@ struct NelsonOppenInterfaceSummary {
   std::size_t arithmetic_uninterpreted_applications = 0;
 };
 
+// Round-scoped projection of the component models onto the shared interface.
+// This is the QF_UFLRA subset of the model set M in de Moura and Bjorner,
+// Model-based Theory Combination, Section 4 and Appendix A. Theory solvers
+// retain their own model objects; the combination manager owns only the
+// information needed to reconcile their shared terms.
+struct SharedModelEquality {
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+
+  bool operator==(const SharedModelEquality& other) const = default;
+};
+
+struct SharedModelState {
+  bool valid = false;
+  std::uint64_t generation = 0;
+  std::size_t reconciliation_iteration = 0;
+  std::vector<std::vector<core::TermId>> lra_value_classes;
+  std::vector<SharedModelEquality> lra_model_spanning_equalities;
+  std::vector<SharedModelEquality> internal_equalities;
+  std::vector<core::TermId> lra_separation_atoms;
+};
+
 class TheoryCombinationManager {
  public:
   explicit TheoryCombinationManager(const core::TermManager& terms);
@@ -132,6 +154,13 @@ class TheoryCombinationManager {
   bool has_interface_equality_classification(core::TermId lhs, core::TermId rhs,
                                              InterfaceEqualityClassification classification) const;
   void clear_interface_equality_classifications();
+  void begin_shared_model_round();
+  void begin_shared_model_iteration(
+      const std::vector<std::vector<core::TermId>>& lra_value_classes);
+  bool record_internal_model_equality(core::TermId lhs, core::TermId rhs);
+  bool record_lra_separation_atom(core::TermId atom);
+  void invalidate_shared_model();
+  const SharedModelState& shared_model() const { return shared_model_; }
   void push_level();
   void pop_to_level(std::size_t new_level);
 
@@ -158,6 +187,7 @@ class TheoryCombinationManager {
   std::vector<EqualityAssignmentTrailEntry> assignment_trail_;
   std::vector<std::size_t> value_level_starts_;
   std::vector<std::size_t> assignment_level_starts_;
+  SharedModelState shared_model_;
 };
 
 // Conservative Track-B scaffold for Nelson-Oppen bookkeeping. It only reports

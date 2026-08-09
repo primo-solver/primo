@@ -4,11 +4,14 @@
 
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "core/ids.hpp"
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
+#include "sat/lit.hpp"
 #include "smt/theory_combination.hpp"
 #include "util/rational.hpp"
 
@@ -20,6 +23,7 @@ using primo::smt::InterfaceEqualityClassification;
 using primo::smt::InterfaceEqualityStatus;
 using primo::smt::InterfaceEqualityValue;
 using primo::smt::PurificationSiteKind;
+using primo::smt::SharedModelEquality;
 using primo::smt::TheoryCombinationManager;
 
 namespace {
@@ -413,6 +417,55 @@ void manager_tracks_per_round_interface_equality_classifications() {
   assert(manager.interface_equality(a, b).has_value());
 }
 
+void manager_owns_round_scoped_shared_model_state() {
+  SymbolTable symbols;
+  const auto real_sort = symbols.real_sort();
+  const auto a_symbol = symbols.declare_constant("a", real_sort);
+  const auto b_symbol = symbols.declare_constant("b", real_sort);
+  const auto c_symbol = symbols.declare_constant("c", real_sort);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+  assert(!manager.shared_model().valid);
+
+  manager.begin_shared_model_round();
+  const std::uint64_t generation = manager.shared_model().generation;
+  manager.begin_shared_model_iteration({{c, a, b}, {a}});
+  assert(manager.shared_model().valid);
+  assert(manager.shared_model().reconciliation_iteration == 1);
+  assert(manager.shared_model().lra_value_classes.size() == 1);
+  const std::vector<SharedModelEquality> expected_spanning{SharedModelEquality{a, b},
+                                                           SharedModelEquality{a, c}};
+  assert(manager.shared_model().lra_model_spanning_equalities == expected_spanning);
+
+  assert(manager.record_internal_model_equality(c, a));
+  assert(!manager.record_internal_model_equality(a, c));
+  assert(manager.has_interface_equality_classification(
+      a, c, InterfaceEqualityClassification::ModelInternal));
+  const auto separation = terms.mk_lt(b, c);
+  assert(manager.record_lra_separation_atom(separation));
+  assert(!manager.record_lra_separation_atom(separation));
+
+  manager.begin_shared_model_iteration({{a, c}});
+  assert(manager.shared_model().reconciliation_iteration == 2);
+  assert(manager.shared_model().internal_equalities.empty());
+  assert(!manager.has_interface_equality_classification(
+      a, c, InterfaceEqualityClassification::ModelInternal));
+  assert(manager.shared_model().lra_separation_atoms.size() == 1);
+
+  manager.invalidate_shared_model();
+  assert(!manager.shared_model().valid);
+  manager.begin_shared_model_round();
+  assert(manager.shared_model().generation == generation + 1);
+  manager.rebuild_from_interface_terms({a, b});
+  assert(!manager.shared_model().valid);
+}
+
 void manager_rebuilds_registry_from_explicit_interface_terms() {
   SymbolTable symbols;
   const auto real_sort = symbols.real_sort();
@@ -511,6 +564,7 @@ int main() {
   manager_tracks_interface_equality_assignment_snapshots();
   manager_rolls_back_interface_equality_assignments_by_decision_level();
   manager_tracks_per_round_interface_equality_classifications();
+  manager_owns_round_scoped_shared_model_state();
   manager_rebuilds_registry_from_explicit_interface_terms();
   reports_real_terms_inside_euf_atoms_as_purification_sites();
   reports_uninterpreted_applications_inside_arithmetic_atoms();

@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -13,6 +16,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
+#include "sat/lit.hpp"
 
 namespace primo::smt {
 
@@ -164,6 +168,7 @@ std::uint32_t TheoryCombinationManager::classification_bit(
 
 void TheoryCombinationManager::rebuild_from_interface_terms(
     const std::vector<core::TermId>& interface_terms) {
+  invalidate_shared_model();
   summary_ = NelsonOppenInterfaceSummary{};
   interface_sort_by_term_.clear();
   equality_index_.clear();
@@ -202,7 +207,98 @@ void TheoryCombinationManager::rebuild_from_interface_terms(
   rebuild_equality_index();
 }
 
+void TheoryCombinationManager::begin_shared_model_round() {
+  ++shared_model_.generation;
+  shared_model_.valid = true;
+  shared_model_.reconciliation_iteration = 0;
+  shared_model_.lra_value_classes.clear();
+  shared_model_.lra_model_spanning_equalities.clear();
+  shared_model_.internal_equalities.clear();
+  shared_model_.lra_separation_atoms.clear();
+}
+
+void TheoryCombinationManager::begin_shared_model_iteration(
+    const std::vector<std::vector<core::TermId>>& lra_value_classes) {
+  if (!shared_model_.valid) {
+    begin_shared_model_round();
+  }
+  ++shared_model_.reconciliation_iteration;
+  const std::uint32_t model_internal_bit =
+      classification_bit(InterfaceEqualityClassification::ModelInternal);
+  for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
+    entry.classifications &= ~model_internal_bit;
+  }
+  shared_model_.lra_value_classes.clear();
+  shared_model_.lra_model_spanning_equalities.clear();
+  shared_model_.internal_equalities.clear();
+
+  shared_model_.lra_value_classes.reserve(lra_value_classes.size());
+  for (std::vector<core::TermId> value_class : lra_value_classes) {
+    std::erase_if(value_class,
+                  [this](core::TermId term) { return !interface_sort_by_term_.contains(term); });
+    std::sort(value_class.begin(), value_class.end());
+    value_class.erase(std::unique(value_class.begin(), value_class.end()), value_class.end());
+    if (value_class.size() < 2) {
+      continue;
+    }
+    const core::TermId representative = value_class.front();
+    for (std::size_t index = 1; index < value_class.size(); ++index) {
+      shared_model_.lra_model_spanning_equalities.push_back(
+          SharedModelEquality{representative, value_class[index]});
+    }
+    shared_model_.lra_value_classes.push_back(std::move(value_class));
+  }
+  std::sort(shared_model_.lra_value_classes.begin(), shared_model_.lra_value_classes.end());
+  std::sort(shared_model_.lra_model_spanning_equalities.begin(),
+            shared_model_.lra_model_spanning_equalities.end(),
+            [](const SharedModelEquality& lhs, const SharedModelEquality& rhs) {
+              return std::pair{lhs.lhs, lhs.rhs} < std::pair{rhs.lhs, rhs.rhs};
+            });
+}
+
+bool TheoryCombinationManager::record_internal_model_equality(core::TermId lhs, core::TermId rhs) {
+  if (!shared_model_.valid || !ensure_interface_pair(lhs, rhs).has_value()) {
+    return false;
+  }
+  if (rhs < lhs) {
+    std::swap(lhs, rhs);
+  }
+  if (has_interface_equality_classification(lhs, rhs,
+                                            InterfaceEqualityClassification::ModelInternal)) {
+    return false;
+  }
+  mark_interface_equality_classification(lhs, rhs, InterfaceEqualityClassification::ModelInternal);
+  shared_model_.internal_equalities.push_back(SharedModelEquality{lhs, rhs});
+  return true;
+}
+
+bool TheoryCombinationManager::record_lra_separation_atom(core::TermId atom) {
+  if (!shared_model_.valid || atom == core::kInvalidTermId ||
+      std::find(shared_model_.lra_separation_atoms.begin(),
+                shared_model_.lra_separation_atoms.end(),
+                atom) != shared_model_.lra_separation_atoms.end()) {
+    return false;
+  }
+  shared_model_.lra_separation_atoms.push_back(atom);
+  return true;
+}
+
+void TheoryCombinationManager::invalidate_shared_model() {
+  const std::uint32_t model_internal_bit =
+      classification_bit(InterfaceEqualityClassification::ModelInternal);
+  for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
+    entry.classifications &= ~model_internal_bit;
+  }
+  shared_model_.valid = false;
+  shared_model_.reconciliation_iteration = 0;
+  shared_model_.lra_value_classes.clear();
+  shared_model_.lra_model_spanning_equalities.clear();
+  shared_model_.internal_equalities.clear();
+  shared_model_.lra_separation_atoms.clear();
+}
+
 void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertions) {
+  invalidate_shared_model();
   summary_ = NelsonOppenInterfaceSummary{};
   interface_sort_by_term_.clear();
   equality_index_.clear();
@@ -531,6 +627,7 @@ void TheoryCombinationManager::push_level() {
 }
 
 void TheoryCombinationManager::pop_to_level(std::size_t new_level) {
+  invalidate_shared_model();
   const std::size_t keep_values =
       new_level < value_level_starts_.size() ? value_level_starts_[new_level] : std::size_t{0};
   while (value_trail_.size() > keep_values) {

@@ -28,10 +28,10 @@ combination. It has these related pieces:
   interface, with an exact unresolved-pair fallback;
 - lazy SAT-visible equality atoms for shared Real terms;
 - guarded equality clauses when EUF or LRA implies a shared Real equality;
-- a QF_UFLRA-local LRA-to-EUF classifier that skips SAT equality creation only
-  when the current EUF closure already has the pair equal; EUF-mergeable
-  LRA-implied equalities are still forced through guarded SAT-visible equality
-  clauses;
+- an opt-in `--qf-uflra-model-reconciliation` profile where
+  `TheoryCombinationManager` owns a round-scoped shared-interface model
+  projection and retains explained, EUF-compatible LRA equalities in the live
+  closure without SAT atoms; the default path still forces such equalities;
 - bounded shared-Real separation for the documented model-printing subset;
 - default-off `--model-equality-branching`, which keeps surviving
   LRA-model-equal shared Real equality guesses on an active SAT-assumption trail;
@@ -54,11 +54,11 @@ combination. It has these related pieces:
   validation mechanism, not only a successful pair-separation search.
 
 The missing parts are the paper's central mechanisms. `TheoryCombinationManager`
-already provides shared equality ownership for interface terms, equality atoms,
-SAT literals, SAT assignment snapshots, trailed equality values, and per-round
-classification flags, but it is not a shared model object in the paper's sense:
-it does not own component model fragments, mutation state, or the current
-reconciled model.
+provides shared equality ownership and, under the opt-in
+`--qf-uflra-model-reconciliation` profile, owns a round-scoped projection of
+the LRA model classes and reconciled internal equalities over shared Real
+terms. This is not a full shared model object in the paper's sense: it does not
+own component theory models or mutable tableau state.
 
 - no generic model object carried by the DPLL(T) state;
 - no full or generic `M-Propagate` transition;
@@ -126,8 +126,9 @@ paper's novel model-based transition system.
 - [ ] Implement theory-independent `M-Propagate` over arbitrary component
   models and shared sorts.
 - [ ] Implement `M-Mutate` as an actual update of a component model.
-- [ ] Reconcile and validate component model fragments through a shared model
-  object owned by the combination manager.
+- [x] **Partial:** reconcile explained LRA equalities into the live EUF closure
+  through round-scoped shared state owned by the combination manager; final
+  validation and model reconstruction consume the same internal equalities.
 - [ ] Generalize the mechanism beyond the documented EUF plus rational-LRA
   path, including non-convex theory case splits.
 

@@ -283,6 +283,24 @@ Implemented now:
   normalization and shares setup between orientations, but still performs
   quadratic pair enumeration, a tableau copy and assignment replay per pair,
   and any required simplex work.
+  The opt-in `--qf-uflra-model-reconciliation` profile gives
+  `TheoryCombinationManager` ownership of a round-scoped projection of the
+  component models onto the shared Real interface. `SharedModelState` records
+  a generation, LRA model-value classes, deterministic spanning pairs,
+  internally absorbed equalities, and selected strict LRA separations. It does
+  not own the EUF closure or LRA tableau. A new SAT assignment or backtrack
+  invalidates the projection; the theory-local objects remain owned by their
+  solvers.
+
+  In this profile, an LRA-entailed equality that the current EUF closure can
+  merge is retained in that live closure and recorded as internal instead of
+  receiving a SAT atom. Final arrangement validation and model construction
+  consume the recorded equality, so this is not the previously rejected
+  bookkeeping-only skip. A missing EUF endpoint, an assigned disequality, or a
+  congruence conflict remains on the explained guarded-clause path. The profile
+  also enables the candidate-first final scan and retains its complete exact
+  fallback. This is a convex QF_UFLRA reconciliation subset, not generic
+  `DPLL(T^M)` or freedom-interval model mutation.
   In this final path, LRA-to-EUF equalities are classified through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already
   true in EUF can be ignored. Equalities that EUF can merge, or that EUF

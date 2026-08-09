@@ -73,6 +73,20 @@ state are backtrackable through `TheoryCombinationManager::push_level` and
 `pop_to_level`; the manager owns only combination-layer equality state, not
 theory-local closure/tableau state. For the mixed QF_UFLRA path, the manager is
 also rebuilt from shared Real interface terms.
+With `--qf-uflra-model-reconciliation`, the same manager owns
+`SharedModelState`, a round-scoped shared-interface projection containing LRA
+model-value classes, deterministic spanning pairs, internal equalities, and
+selected separation atoms. Starting a new SAT round or popping the combination
+trail invalidates it. The state deliberately stores neither a congruence
+closure nor a tableau.
+
+The first internal reconciliation rule accepts only explained LRA entailments.
+An EUF-compatible equality remains asserted in the assignment-local live EUF
+closure and is recorded for final validation/model reconstruction without a SAT
+atom. EUF-forbidden equalities retain their explanation and use the lazy
+guarded-clause path. This makes the internal classification a model invariant,
+not merely a skipped propagation. Model-equal but unentailed pairs remain
+conjectures and are not admitted by this rule.
 `analyze_nelson_oppen_interface` is a
 compatibility wrapper around this manager, and the diagnostic path reports the
 same information through `check_sat` statistics:
@@ -446,6 +460,19 @@ coordinator publishes:
 - `:no.interface.candidate-final-scan-equalities`
 - `:no.interface.candidate-final-scan-fallbacks`
 - `:no.interface.candidate-final-scan-fallback-equalities`
+- `:no.shared-model.enabled`
+- `:no.shared-model.rounds`
+- `:no.shared-model.iterations`
+- `:no.shared-model.lra-value-classes`
+- `:no.shared-model.lra-spanning-equalities`
+- `:no.shared-model.internal-euf-merges`
+- `:no.shared-model.euf-forbidden-equalities`
+- `:no.shared-model.lra-separations`
+- `:no.shared-model.reconstructed-models`
+- `:no.shared-model.converged-rounds`
+- `:no.shared-model.exact-fallbacks`
+- `:no.shared-model.validation-failures`
+- `:no.shared-model.sat-materializations-avoided`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
 - `:no.interface.lra-online-enabled`

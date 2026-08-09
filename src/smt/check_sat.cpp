@@ -5699,9 +5699,16 @@ std::vector<ExplainedInterfaceEquality> lra_entailed_shared_equalities(
 // de Moura-Bjorner MBTC Sections 4 and 5 use equal-value model classes as
 // equality candidates. Here they are only a necessary-condition filter for the
 // exact convex oracle: every retained pair still needs both strict conflicts.
-std::vector<TermPairKey> lra_model_equal_candidate_pairs(
-    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const std::vector<core::TermId>& shared_terms, util::Statistics& statistics) {
+struct LraModelEqualPartition {
+  std::vector<std::vector<core::TermId>> classes;
+  std::vector<TermPairKey> candidate_pairs;
+};
+
+LraModelEqualPartition lra_model_equal_partition(const PreparedLraTheory& prepared,
+                                                 const theory::arithmetic::LraTableau& tableau,
+                                                 const std::vector<core::TermId>& shared_terms,
+                                                 bool collect_classes,
+                                                 util::Statistics& statistics) {
   using theory::arithmetic::LraVarId;
 
   std::vector<LraVarId> shared_variables;
@@ -5725,27 +5732,40 @@ std::vector<TermPairKey> lra_model_equal_candidate_pairs(
 
   std::unordered_set<TermPairKey, TermPairKeyHash> candidates;
   candidates.reserve(shared_terms.size());
-  const auto add_pairs = [&candidates](const std::vector<core::TermId>& class_terms) {
+  LraModelEqualPartition partition;
+  const auto add_class = [&candidates, &partition,
+                          collect_classes](std::vector<core::TermId> class_terms) {
+    std::sort(class_terms.begin(), class_terms.end());
+    class_terms.erase(std::unique(class_terms.begin(), class_terms.end()), class_terms.end());
+    if (class_terms.size() < 2) {
+      return;
+    }
     for (std::size_t i = 0; i < class_terms.size(); ++i) {
       for (std::size_t j = i + 1; j < class_terms.size(); ++j) {
         candidates.insert(canonical_term_pair(class_terms[i], class_terms[j]));
       }
     }
+    if (collect_classes) {
+      partition.classes.push_back(std::move(class_terms));
+    }
   };
 
-  // Several terms may exceptionally map to one tableau variable. Such terms
-  // are model-equal even though model_equal_classes() deduplicates variables.
-  for (const auto& [variable, mapped_terms] : terms_by_variable) {
-    (void)variable;
-    add_pairs(mapped_terms);
-  }
+  std::unordered_set<LraVarId> variables_in_multi_var_class;
   for (const std::vector<LraVarId>& equal_class : tableau.model_equal_classes(shared_variables)) {
     std::vector<core::TermId> class_terms;
     for (const LraVarId variable : equal_class) {
+      variables_in_multi_var_class.insert(variable);
       const std::vector<core::TermId>& mapped_terms = terms_by_variable.at(variable);
       class_terms.insert(class_terms.end(), mapped_terms.begin(), mapped_terms.end());
     }
-    add_pairs(class_terms);
+    add_class(std::move(class_terms));
+  }
+  // Several terms may exceptionally map to one tableau variable. Such terms
+  // form a model class even when the variable has no equal-valued peer.
+  for (const auto& [variable, mapped_terms] : terms_by_variable) {
+    if (!variables_in_multi_var_class.contains(variable)) {
+      add_class(mapped_terms);
+    }
   }
 
   const std::size_t before_conservative_pairs = candidates.size();
@@ -5757,18 +5777,20 @@ std::vector<TermPairKey> lra_model_equal_candidate_pairs(
     }
   }
 
-  std::vector<TermPairKey> result(candidates.begin(), candidates.end());
-  std::sort(result.begin(), result.end(), less_term_pair);
+  partition.candidate_pairs.assign(candidates.begin(), candidates.end());
+  std::sort(partition.classes.begin(), partition.classes.end());
+  std::sort(partition.candidate_pairs.begin(), partition.candidate_pairs.end(), less_term_pair);
   const std::size_t full_pair_count = unordered_pair_count(shared_terms.size());
   statistics.increment(":no.interface.lra-model-filter-builds");
   statistics.increment(":no.interface.lra-model-filter-full-pairs", full_pair_count);
-  statistics.increment(":no.interface.lra-model-filter-candidate-pairs", result.size());
+  statistics.increment(":no.interface.lra-model-filter-candidate-pairs",
+                       partition.candidate_pairs.size());
   statistics.increment(":no.interface.lra-model-filter-pruned-pairs",
-                       full_pair_count - result.size());
+                       full_pair_count - partition.candidate_pairs.size());
   statistics.increment(":no.interface.lra-model-filter-unmapped-terms", unmapped_terms.size());
   statistics.increment(":no.interface.lra-model-filter-conservative-pairs",
                        candidates.size() - before_conservative_pairs);
-  return result;
+  return partition;
 }
 
 std::vector<TermPairKey> intersect_sorted_term_pairs(const std::vector<TermPairKey>& lhs,
@@ -6136,7 +6158,8 @@ struct LraToEufEqualityFilterResult {
 LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
     const core::TermManager& terms, TheoryCombinationManager& manager,
     const PreparedFlatTheory& prepared_euf, theory::equality::FlatCongruenceClosure& euf_closure,
-    const std::vector<ExplainedInterfaceEquality>& equalities, util::Statistics& statistics) {
+    const std::vector<ExplainedInterfaceEquality>& equalities, bool reconcile_shared_model,
+    util::Statistics& statistics) {
   LraToEufEqualityFilterResult result;
   result.forced_equalities.reserve(equalities.size());
   result.model_equalities.reserve(equalities.size());
@@ -6183,9 +6206,13 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
     const std::size_t before_pair = euf_closure.push();
     euf_closure.assert_equal(lhs_flat.value(), rhs_flat.value());
     if (!euf_closure.conflict().has_value()) {
-      ++result.mergeable_forced;
       manager.mark_interface_equality_classification(equality_id,
                                                      InterfaceEqualityClassification::EufMergeable);
+      if (reconcile_shared_model && manager.record_internal_model_equality(lhs, rhs)) {
+        ++result.mergeable_skipped;
+        continue;
+      }
+      ++result.mergeable_forced;
       if (!explained_equality_list_contains_pair(terms, result.forced_equalities, lhs, rhs)) {
         result.forced_equalities.push_back(explained_equality);
       }
@@ -6201,7 +6228,9 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
       result.forced_equalities.push_back(explained_equality);
     }
   }
-  euf_closure.pop(filter_checkpoint);
+  if (!reconcile_shared_model) {
+    euf_closure.pop(filter_checkpoint);
+  }
 
   statistics.increment(":no.interface.lra-to-euf-equalities-euf-already-true", result.already_true);
   statistics.increment(":no.interface.lra-to-euf-equalities-euf-mergeable-skipped",
@@ -6212,6 +6241,11 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
                        result.forbidden_forced);
   statistics.increment(":no.interface.lra-to-euf-internal-model-equalities",
                        result.mergeable_skipped);
+  if (reconcile_shared_model) {
+    statistics.increment(":no.shared-model.internal-euf-merges", result.mergeable_skipped);
+    statistics.increment(":no.shared-model.euf-forbidden-equalities", result.forbidden_forced);
+    statistics.increment(":no.shared-model.sat-materializations-avoided", result.mergeable_skipped);
+  }
   statistics.set(":no.interface.materialized-pairs", manager.summary().equality_registry.size());
   statistics.set(":no.interface.materialized-missing-pairs", manager.summary().missing_equalities);
   return result;
@@ -6230,6 +6264,19 @@ void append_unique_equalities_by_pair(const core::TermManager& terms,
       target.push_back(equality_id);
     }
   }
+}
+
+std::vector<core::TermId> shared_model_internal_equality_terms(
+    core::TermManager& terms, const TheoryCombinationManager& manager) {
+  std::vector<core::TermId> equalities;
+  if (!manager.shared_model().valid) {
+    return equalities;
+  }
+  equalities.reserve(manager.shared_model().internal_equalities.size());
+  for (const SharedModelEquality& equality : manager.shared_model().internal_equalities) {
+    equalities.push_back(terms.mk_eq(equality.lhs, equality.rhs));
+  }
+  return equalities;
 }
 
 struct RealSeparationCandidate {
@@ -9240,6 +9287,8 @@ CheckSatOutcome solve_qf_uf_lra(
     const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(":solver.qf-uflra");
   const bool mixed_fixed_elimination = lra_fixed_elimination_for_mixed(options);
+  const bool candidate_final_scan_enabled =
+      options.qf_uflra_candidate_final_scan || options.qf_uflra_model_reconciliation;
   sat::CadicalBackend backend(options.cadical_options);
   const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
@@ -9356,6 +9405,19 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-to-euf-equalities-euf-forbidden-forced", 0);
   statistics.set(":no.interface.lra-to-euf-internal-model-equalities", 0);
   statistics.set(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks", 0);
+  statistics.set(":no.shared-model.enabled", options.qf_uflra_model_reconciliation ? 1 : 0);
+  statistics.set(":no.shared-model.rounds", 0);
+  statistics.set(":no.shared-model.iterations", 0);
+  statistics.set(":no.shared-model.lra-value-classes", 0);
+  statistics.set(":no.shared-model.lra-spanning-equalities", 0);
+  statistics.set(":no.shared-model.internal-euf-merges", 0);
+  statistics.set(":no.shared-model.euf-forbidden-equalities", 0);
+  statistics.set(":no.shared-model.lra-separations", 0);
+  statistics.set(":no.shared-model.reconstructed-models", 0);
+  statistics.set(":no.shared-model.converged-rounds", 0);
+  statistics.set(":no.shared-model.exact-fallbacks", 0);
+  statistics.set(":no.shared-model.validation-failures", 0);
+  statistics.set(":no.shared-model.sat-materializations-avoided", 0);
   statistics.set(":no.interface.conflicts", 0);
   statistics.set(":no.interface.euf-conflicts", 0);
   statistics.set(":no.interface.lra-conflicts", 0);
@@ -9424,7 +9486,7 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.euf-care-pairs", 0);
   statistics.set(":no.interface.euf-care-pruned-pairs", 0);
   statistics.set(":no.interface.candidate-final-scan-enabled",
-                 options.qf_uflra_candidate_final_scan ? 1 : 0);
+                 candidate_final_scan_enabled ? 1 : 0);
   statistics.set(":no.interface.candidate-final-scan-pairs", 0);
   statistics.set(":no.interface.candidate-final-scan-skipped-pairs", 0);
   statistics.set(":no.interface.candidate-final-scan-equalities", 0);
@@ -9563,6 +9625,11 @@ CheckSatOutcome solve_qf_uf_lra(
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
 
+    no_manager.invalidate_shared_model();
+    if (options.qf_uflra_model_reconciliation) {
+      no_manager.begin_shared_model_round();
+      statistics.increment(":no.shared-model.rounds");
+    }
     no_manager.clear_interface_equality_classifications();
     refresh_interface_equality_assignment_state(backend, no_manager);
     const std::vector<InterfaceEqualityRegistryEntry> true_interface_equalities =
@@ -9603,7 +9670,7 @@ CheckSatOutcome solve_qf_uf_lra(
       }
       euf_check = check_incremental_euf_closure(prepared_euf_theory.value(),
                                                 euf_assignments_for_check, statistics);
-      if (options.nelson_oppen_model_equality_branching || options.qf_uflra_candidate_final_scan) {
+      if (options.nelson_oppen_model_equality_branching || candidate_final_scan_enabled) {
         euf_care = euf_care_pair_diagnostics(prepared_euf_theory.value(), euf_check->closure,
                                              shared_real_terms);
         publish_euf_care_pair_diagnostics(euf_care, statistics);
@@ -9707,8 +9774,21 @@ CheckSatOutcome solve_qf_uf_lra(
     bool candidate_lra_implied_equalities_had_internal_model_equalities = false;
     std::vector<core::TermId> lra_implied_equalities_for_model;
     bool lra_implied_equalities_for_model_complete = false;
-    if (options.qf_uflra_candidate_final_scan && euf_check.has_value() &&
-        !shared_real_terms.empty()) {
+    if (euf_check.has_value() && !shared_real_terms.empty()) {
+      LraModelEqualPartition lra_model_partition = lra_model_equal_partition(
+          *prepared_lra_theory_for_check, *checked_lra_tableau, shared_real_terms,
+          options.qf_uflra_model_reconciliation, statistics);
+      lra_exact_candidate_pairs = std::move(lra_model_partition.candidate_pairs);
+      if (options.qf_uflra_model_reconciliation) {
+        no_manager.begin_shared_model_iteration(lra_model_partition.classes);
+        statistics.increment(":no.shared-model.iterations");
+        statistics.increment(":no.shared-model.lra-value-classes",
+                             lra_model_partition.classes.size());
+        statistics.increment(":no.shared-model.lra-spanning-equalities",
+                             no_manager.shared_model().lra_model_spanning_equalities.size());
+      }
+    }
+    if (candidate_final_scan_enabled && euf_check.has_value() && !shared_real_terms.empty()) {
       candidate_final_scan_pairs = qf_uflra_candidate_final_scan_pairs(
           terms, euf_atoms, lra_assignments_for_check, euf_care, shared_real_terms);
       statistics.set(":no.interface.candidate-final-scan-pairs", candidate_final_scan_pairs.size());
@@ -9754,9 +9834,9 @@ CheckSatOutcome solve_qf_uf_lra(
         statistics.increment(":no.interface.lra-to-euf-equalities",
                              opportunistic_equalities.size());
         const LraToEufEqualityFilterResult opportunistic_filtered =
-            filter_lra_implied_equalities_for_euf(terms, no_manager, prepared_flat_theory.value(),
-                                                  euf_check->closure, opportunistic_equalities,
-                                                  statistics);
+            filter_lra_implied_equalities_for_euf(
+                terms, no_manager, prepared_flat_theory.value(), euf_check->closure,
+                opportunistic_equalities, options.qf_uflra_model_reconciliation, statistics);
         const InterfacePropagationResult opportunistic_propagation =
             force_implied_interface_equalities(
                 terms, clausifier, backend, no_manager, opportunistic_filtered.forced_equalities,
@@ -9779,10 +9859,7 @@ CheckSatOutcome solve_qf_uf_lra(
         statistics.increment(":no.interface.lra-opportunistic-skipped-rounds");
       }
 
-      lra_exact_candidate_pairs = lra_model_equal_candidate_pairs(
-          *prepared_lra_theory_for_check, *checked_lra_tableau, shared_real_terms, statistics);
-
-      if (options.qf_uflra_candidate_final_scan) {
+      if (candidate_final_scan_enabled) {
         const std::vector<TermPairKey> model_filtered_candidate_pairs =
             intersect_sorted_term_pairs(candidate_final_scan_pairs, lra_exact_candidate_pairs);
         const std::vector<TermPairKey> fallback_pairs =
@@ -9809,9 +9886,9 @@ CheckSatOutcome solve_qf_uf_lra(
         statistics.increment(":no.interface.lra-exact-fallback-equalities",
                              implied_equalities.equalities.size());
         const LraToEufEqualityFilterResult filtered_equalities =
-            filter_lra_implied_equalities_for_euf(terms, no_manager, prepared_flat_theory.value(),
-                                                  euf_check->closure, implied_equalities.equalities,
-                                                  statistics);
+            filter_lra_implied_equalities_for_euf(
+                terms, no_manager, prepared_flat_theory.value(), euf_check->closure,
+                implied_equalities.equalities, options.qf_uflra_model_reconciliation, statistics);
         candidate_lra_implied_equalities = filtered_equalities.model_equalities;
         candidate_lra_implied_equalities_had_internal_model_equalities =
             filtered_equalities.mergeable_skipped > 0;
@@ -9852,9 +9929,9 @@ CheckSatOutcome solve_qf_uf_lra(
         statistics.increment(":no.interface.lra-exact-fallback-equalities",
                              implied_equalities.equalities.size());
         const LraToEufEqualityFilterResult filtered_equalities =
-            filter_lra_implied_equalities_for_euf(terms, no_manager, prepared_flat_theory.value(),
-                                                  euf_check->closure, implied_equalities.equalities,
-                                                  statistics);
+            filter_lra_implied_equalities_for_euf(
+                terms, no_manager, prepared_flat_theory.value(), euf_check->closure,
+                implied_equalities.equalities, options.qf_uflra_model_reconciliation, statistics);
         append_unique_equalities_by_pair(terms, lra_implied_equalities_for_model,
                                          filtered_equalities.model_equalities);
         lra_implied_equalities_for_model_complete = true;
@@ -9903,7 +9980,7 @@ CheckSatOutcome solve_qf_uf_lra(
             interface_equality_terms(explained_euf_equalities);
         bool deferred_candidate_lra_implied_equalities_for_model = false;
         if (!shared_real_terms.empty()) {
-          if (options.qf_uflra_candidate_final_scan) {
+          if (candidate_final_scan_enabled) {
             forced_model_equalities.insert(forced_model_equalities.end(),
                                            candidate_lra_implied_equalities.begin(),
                                            candidate_lra_implied_equalities.end());
@@ -9930,12 +10007,17 @@ CheckSatOutcome solve_qf_uf_lra(
                                            equality_terms.end());
           }
         }
+        append_unique_equalities_by_pair(terms, forced_model_equalities,
+                                         shared_model_internal_equality_terms(terms, no_manager));
         RealModelSeparationResult separation_atoms = shared_real_model_separation_atoms(
             terms, lra_atoms, lra_assignments, prepared_flat_theory.value(), euf_check->closure,
             shared_real_terms, forced_model_equalities, options, statistics);
         if (separation_atoms.status == RealModelSeparationStatus::Inconsistent &&
             deferred_candidate_lra_implied_equalities_for_model) {
           statistics.increment(":no.interface.candidate-final-scan-fallbacks");
+          if (options.qf_uflra_model_reconciliation) {
+            statistics.increment(":no.shared-model.exact-fallbacks");
+          }
           if (candidate_lra_implied_equalities_had_internal_model_equalities) {
             statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
           }
@@ -9958,7 +10040,8 @@ CheckSatOutcome solve_qf_uf_lra(
           const LraToEufEqualityFilterResult filtered_equalities =
               filter_lra_implied_equalities_for_euf(
                   terms, no_manager, prepared_flat_theory.value(), euf_check->closure,
-                  lra_implied_equalities_for_euf.equalities, statistics);
+                  lra_implied_equalities_for_euf.equalities, options.qf_uflra_model_reconciliation,
+                  statistics);
           if (deferred_candidate_lra_implied_equalities_for_model) {
             const InterfacePropagationResult propagation = force_implied_interface_equalities(
                 terms, clausifier, backend, no_manager, filtered_equalities.forced_equalities,
@@ -9993,12 +10076,22 @@ CheckSatOutcome solve_qf_uf_lra(
         }
         if (separation_atoms.status != RealModelSeparationStatus::Success) {
           statistics.increment(":no.interface.arrangement-failures");
+          if (options.qf_uflra_model_reconciliation) {
+            statistics.increment(":no.shared-model.validation-failures");
+          }
           return CheckSatOutcome{
               CheckSatResult::Unknown,
               "mixed QF_UFLRA final arrangement could not separate Real argument constants",
               statistics, ""};
         }
         statistics.set(":no.interface.arrangement-separations", separation_atoms.atoms.size());
+        if (options.qf_uflra_model_reconciliation) {
+          for (const core::TermId atom : separation_atoms.atoms) {
+            no_manager.record_lra_separation_atom(atom);
+          }
+          statistics.increment(":no.shared-model.lra-separations", separation_atoms.atoms.size());
+          statistics.increment(":no.shared-model.converged-rounds");
+        }
       }
     }
     if (options.produce_model) {
@@ -10012,7 +10105,7 @@ CheckSatOutcome solve_qf_uf_lra(
         euf_implied_equalities = interface_equality_terms(explained_euf_equalities);
         bool deferred_candidate_lra_implied_equalities_for_model = false;
         if (!shared_real_terms.empty()) {
-          if (options.qf_uflra_candidate_final_scan) {
+          if (candidate_final_scan_enabled) {
             lra_implied_equalities_for_euf = candidate_lra_implied_equalities;
             deferred_candidate_lra_implied_equalities_for_model = true;
           } else if (lra_implied_equalities_for_model_complete) {
@@ -10032,6 +10125,8 @@ CheckSatOutcome solve_qf_uf_lra(
             lra_implied_equalities_for_euf = interface_equality_terms(lra_implied_scan.equalities);
           }
         }
+        append_unique_equalities_by_pair(terms, lra_implied_equalities_for_euf,
+                                         shared_model_internal_equality_terms(terms, no_manager));
         extra_lra_model_atoms = euf_implied_equalities;
         std::vector<core::TermId> forced_model_equalities = euf_implied_equalities;
         forced_model_equalities.insert(forced_model_equalities.end(),
@@ -10043,6 +10138,9 @@ CheckSatOutcome solve_qf_uf_lra(
         if (separation_atoms.status == RealModelSeparationStatus::Inconsistent &&
             deferred_candidate_lra_implied_equalities_for_model) {
           statistics.increment(":no.interface.candidate-final-scan-fallbacks");
+          if (options.qf_uflra_model_reconciliation) {
+            statistics.increment(":no.shared-model.exact-fallbacks");
+          }
           if (candidate_lra_implied_equalities_had_internal_model_equalities) {
             statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
           }
@@ -10062,9 +10160,9 @@ CheckSatOutcome solve_qf_uf_lra(
                                  lra_implied_scan.equalities.size());
           }
           const LraToEufEqualityFilterResult filtered_equalities =
-              filter_lra_implied_equalities_for_euf(terms, no_manager, prepared_flat_theory.value(),
-                                                    euf_check->closure, lra_implied_scan.equalities,
-                                                    statistics);
+              filter_lra_implied_equalities_for_euf(
+                  terms, no_manager, prepared_flat_theory.value(), euf_check->closure,
+                  lra_implied_scan.equalities, options.qf_uflra_model_reconciliation, statistics);
           if (deferred_candidate_lra_implied_equalities_for_model) {
             const InterfacePropagationResult propagation = force_implied_interface_equalities(
                 terms, clausifier, backend, no_manager, filtered_equalities.forced_equalities,
@@ -10098,6 +10196,9 @@ CheckSatOutcome solve_qf_uf_lra(
               ""};
         }
         if (separation_atoms.status != RealModelSeparationStatus::Success) {
+          if (options.qf_uflra_model_reconciliation) {
+            statistics.increment(":no.shared-model.validation-failures");
+          }
           return CheckSatOutcome{
               CheckSatResult::Unknown,
               "mixed QF_UFLRA model reconstruction could not separate Real argument constants",
@@ -10105,6 +10206,12 @@ CheckSatOutcome solve_qf_uf_lra(
         }
         extra_lra_model_atoms.insert(extra_lra_model_atoms.end(), separation_atoms.atoms.begin(),
                                      separation_atoms.atoms.end());
+        if (options.qf_uflra_model_reconciliation) {
+          for (const core::TermId atom : separation_atoms.atoms) {
+            no_manager.record_lra_separation_atom(atom);
+          }
+          statistics.increment(":no.shared-model.lra-separations", separation_atoms.atoms.size());
+        }
         statistics.set(":no.interface.model-separations", separation_atoms.atoms.size());
       } else {
         statistics.set(":no.interface.model-separations", 0);
@@ -10120,6 +10227,9 @@ CheckSatOutcome solve_qf_uf_lra(
       std::optional<LraModelState> lra_model = build_lra_model_state(
           terms, lra_atoms_for_check, lra_assignments_for_check, extra_lra_model_atoms, options);
       if (!lra_model.has_value()) {
+        if (options.qf_uflra_model_reconciliation) {
+          statistics.increment(":no.shared-model.validation-failures");
+        }
         return CheckSatOutcome{CheckSatResult::Unknown,
                                "mixed QF_UFLRA model reconstruction found an LRA conflict",
                                statistics, ""};
@@ -10127,6 +10237,10 @@ CheckSatOutcome solve_qf_uf_lra(
       const RealModelValues real_values = real_model_values_from_lra(
           terms, model_terms, preprocessing_model_assignments, lra_model->prepared,
           lra_model->tableau, lra_model->assignments);
+      if (options.qf_uflra_model_reconciliation) {
+        statistics.increment(":no.shared-model.reconstructed-models");
+        statistics.increment(":no.shared-model.converged-rounds");
+      }
       std::vector<TheoryModelAssignment> uf_model_assignments;
       append_supported_uf_model_assignments(terms, uf_model_assignments,
                                             preprocessing_model_assignments);

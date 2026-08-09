@@ -1,6 +1,6 @@
 # QF_UFLRA Model-Guided Performance Plan
 
-Status stamp: 2026-08-06, branch `nelson-oppen-online-lazy-ipasir-up`.
+Status stamp: 2026-08-09, branch `convex-no-qflra-integration`.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -284,6 +284,31 @@ The current code therefore must not be described as implementing the full
 model-based theory-combination algorithm. The intended implementation is a
 QF_UFLRA subset that moves the expensive final equality scan toward the paper's
 candidate-first discipline.
+
+## Shared-Model Reconciliation Prototype
+
+The opt-in `--qf-uflra-model-reconciliation` profile implements the first
+round-scoped ownership slice. `TheoryCombinationManager::shared_model()` stores
+the current generation, LRA value classes over shared Real terms, deterministic
+spanning equalities, internally absorbed equalities, and strict separation
+atoms selected during final validation. SAT re-entry and backtracking
+invalidate this state. EUF closures and LRA tableaux remain theory-owned.
+
+The first producer admitted to the internal path is deliberately conservative:
+only an explained LRA entailment may be retained in the live EUF closure. If
+the merge succeeds, final validation and model reconstruction reuse the merged
+closure and explicitly include the equality in the UF model input. If the
+merge is missing an endpoint or conflicts with EUF, Primo lazily creates the
+equality atom and uses the existing guarded explanation. Enabling the profile
+also enables candidate-first scanning, with the broad exact scan retained as a
+fallback when arrangement validation detects a missed equality.
+
+This repairs the invariant missing from the rejected mergeable-skip experiment:
+an equality is not called internal unless the receiving model actually absorbs
+it. It is still not the paper's full `M-Propagate`/`M-Mutate` system. In
+particular, arbitrary model coincidences are recorded as classes but are not
+propagated as entailments, and the tableau is not mutated through freedom
+intervals.
 
 ## Immediate Performance Target
 
