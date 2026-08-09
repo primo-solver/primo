@@ -45,6 +45,49 @@ void assert_tableau_invariants(const LraTableau& tableau) {
   }
 }
 
+// Applies update(x_j, v) the way LraTableau::update does -- every basic
+// variable in x_j's column moves by a_ij * (v - beta(x_j)) -- and reports
+// whether the resulting assignment is a genuine model: every variable,
+// BASIC ONES INCLUDED, inside its bounds.
+//
+// Simulated rather than applied because freedom_interval's whole contract is
+// about what *would* happen, and because the diversifier deliberately works
+// on a scratch assignment (update() stays private). Checking basic variables
+// is the point: assert_tableau_invariants above deliberately does not, since
+// check() is allowed to leave them violated mid-repair.
+bool update_would_stay_feasible(const LraTableau& tableau, LraVarId nonbasic,
+                                const DeltaRational& value) {
+  const auto within = [&](LraVarId var, const DeltaRational& candidate) {
+    const auto upper = tableau.upper_bound(var);
+    const auto lower = tableau.lower_bound(var);
+    return (!upper.has_value() || candidate <= upper->value) &&
+           (!lower.has_value() || candidate >= lower->value);
+  };
+  if (!within(nonbasic, value)) {
+    return false;
+  }
+  const DeltaRational shift = value - tableau.assignment(nonbasic);
+  for (LraVarId basic = 0; basic < tableau.variable_count(); ++basic) {
+    if (!tableau.is_basic(basic)) {
+      continue;
+    }
+    DeltaRational moved = tableau.assignment(basic);
+    for (const auto& [term_var, coeff, term_slot] : tableau.row(basic)) {
+      if (term_var == nonbasic) {
+        moved = moved + shift.scaled(coeff);
+      }
+    }
+    if (!within(basic, moved)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+DeltaRational midpoint(const DeltaRational& lhs, const DeltaRational& rhs) {
+  return (lhs + rhs).scaled(Rational(1) / Rational(2));
+}
+
 bool has_reason(const std::vector<Lit>& reasons, Lit lit) {
   return std::find_if(reasons.begin(), reasons.end(),
                       [&](Lit r) { return r.value == lit.value; }) != reasons.end();
@@ -1818,6 +1861,326 @@ void the_entailment_oracle_is_itself_correct() {
 
 }  // namespace
 
+// -- M-Mutate: freedom intervals (paper Section 5.2) ------------------------
+
+void freedom_interval_is_the_variables_own_bounds_without_rows() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  assert(!tableau.assert_lower(x, rat(-3), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(7), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+
+  // With no row mentioning x, {l_j} and {u_j} are the only members of the
+  // paper's max/min sets, so the interval is exactly x's own bounds.
+  const auto interval = tableau.freedom_interval(x);
+  assert(interval.lower.has_value() && *interval.lower == rat(-3));
+  assert(interval.upper.has_value() && *interval.upper == rat(7));
+  assert(interval.contains(rat(0)));
+  assert(!interval.contains(rat(8)));
+  assert(!interval.contains(rat(-4)));
+}
+
+void freedom_interval_is_unbounded_when_nothing_constrains_it() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+  assert(!tableau.check().has_value());
+
+  // x has no bounds and the only row it feeds has none either, so neither
+  // endpoint exists. nullopt has to mean "infinite" rather than "zero" -- a
+  // zero-width interval here would silently disable mutation everywhere.
+  const auto interval = tableau.freedom_interval(x);
+  assert(!interval.lower.has_value());
+  assert(!interval.upper.has_value());
+  assert(interval.contains(rat(1000000)));
+  assert(interval.contains(rat(-1000000)));
+}
+
+void freedom_interval_tightens_to_a_basic_variables_bound() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+  // Both bounds straddle the initial assignment, so check() repairs nothing
+  // and the basis stays as add_row() built it. That is load-bearing: with a
+  // lower bound of 2 instead, check() pivots s out of the basis and y into
+  // it, x's only remaining row is unbounded, and the interval is correctly
+  // infinite -- a test written against the pre-check() basis would be
+  // asserting something the tableau never promised.
+  assert(!tableau.assert_upper(s, rat(10), Lit{1}).has_value());
+  assert(!tableau.assert_lower(s, rat(-2), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.is_basic(s) && !tableau.is_basic(x));
+
+  // beta(s) = beta(x) + beta(y). Moving x by d moves s by d, so x is free
+  // exactly as far as s is from each of its own bounds.
+  const auto interval = tableau.freedom_interval(x);
+  assert(interval.lower.has_value() && interval.upper.has_value());
+  const DeltaRational slack_below = tableau.assignment(s) - rat(-2);
+  const DeltaRational slack_above = rat(10) - tableau.assignment(s);
+  assert(*interval.lower == tableau.assignment(x) - slack_below);
+  assert(*interval.upper == tableau.assignment(x) + slack_above);
+  assert(update_would_stay_feasible(tableau, x, *interval.lower));
+  assert(update_would_stay_feasible(tableau, x, *interval.upper));
+}
+
+void freedom_interval_flips_direction_on_a_negative_coefficient() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(-1)}});
+  assert(!tableau.assert_upper(s, rat(4), Lit{1}).has_value());
+  assert(!tableau.check().has_value());
+
+  // s = x - y with only an UPPER bound on s. Raising x raises s, so x gets an
+  // upper endpoint and no lower one. y has coefficient -1, so raising y
+  // *lowers* s -- y is limited from below instead. Getting this sign case
+  // backwards is the likeliest way to write an unsound interval, so both
+  // directions are pinned here.
+  const auto x_interval = tableau.freedom_interval(x);
+  assert(x_interval.upper.has_value() && !x_interval.lower.has_value());
+  const auto y_interval = tableau.freedom_interval(y);
+  assert(y_interval.lower.has_value() && !y_interval.upper.has_value());
+
+  assert(update_would_stay_feasible(tableau, x, *x_interval.upper));
+  assert(update_would_stay_feasible(tableau, y, *y_interval.lower));
+  // One step beyond each endpoint must break feasibility, or the endpoint is
+  // not actually the boundary.
+  assert(!update_would_stay_feasible(tableau, x, *x_interval.upper + rat(1)));
+  assert(!update_would_stay_feasible(tableau, y, *y_interval.lower - rat(1)));
+}
+
+void freedom_interval_keeps_the_delta_component_of_a_strict_bound() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}});
+  // s < 5, encoded as s <= 5 - delta.
+  const DeltaRational strict_upper{Rational(5), Rational(-1)};
+  assert(!tableau.assert_upper(s, strict_upper, Lit{1}).has_value());
+  assert(!tableau.check().has_value());
+
+  // The endpoint must carry the infinitesimal through. Truncating it to the
+  // rational part would place x exactly at 5, which violates the strict bound
+  // in every concrete model the delta encoding stands for.
+  const auto interval = tableau.freedom_interval(x);
+  assert(interval.upper.has_value());
+  assert(interval.upper->infinitesimal == Rational(-1));
+  assert(*interval.upper < rat(5));
+  assert(update_would_stay_feasible(tableau, x, *interval.upper));
+  assert(!update_would_stay_feasible(tableau, x, rat(5)));
+}
+
+void freedom_interval_takes_the_tightest_of_several_rows() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId loose = tableau.add_variable();
+  const LraVarId tight = tableau.add_variable();
+  tableau.add_row(loose, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(tight, {{x, Rational(1)}});
+  assert(!tableau.assert_upper(loose, rat(100), Lit{1}).has_value());
+  assert(!tableau.assert_upper(tight, rat(3), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+
+  // x occurs in two rows; the interval is the intersection, so the tighter
+  // row wins. A `min` written as a `max` would pass every single-row test.
+  const auto interval = tableau.freedom_interval(x);
+  assert(interval.upper.has_value() && *interval.upper == rat(3));
+  assert(update_would_stay_feasible(tableau, x, rat(3)));
+  assert(!update_would_stay_feasible(tableau, x, rat(4)));
+}
+
+void every_value_in_the_freedom_interval_keeps_the_model_feasible() {
+  // The paper's actual claim: "if beta satisfies all rows and bound
+  // constraints, then beta will also satisfy them after executing
+  // update(x_j, v) for any value v in the interval". Assert it directly
+  // rather than trusting the formula, over every nonbasic variable of a
+  // tableau with mixed signs, several rows and both bound directions.
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId p = tableau.add_variable();
+  const LraVarId q = tableau.add_variable();
+  tableau.add_row(p, {{x, Rational(2)}, {y, Rational(-1)}});
+  tableau.add_row(q, {{y, Rational(1)}, {z, Rational(3)}});
+  assert(!tableau.assert_lower(p, rat(-6), Lit{1}).has_value());
+  assert(!tableau.assert_upper(p, rat(6), Lit{2}).has_value());
+  assert(!tableau.assert_lower(q, rat(-9), Lit{3}).has_value());
+  assert(!tableau.assert_upper(q, rat(9), Lit{4}).has_value());
+  assert(!tableau.assert_lower(x, rat(-4), Lit{5}).has_value());
+  assert(!tableau.assert_upper(x, rat(4), Lit{6}).has_value());
+  assert(!tableau.check().has_value());
+
+  std::size_t checked = 0;
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (tableau.is_basic(var)) {
+      continue;
+    }
+    const auto interval = tableau.freedom_interval(var);
+    // The current value is always inside its own freedom interval -- the
+    // tableau is feasible, so a zero-length move is trivially legal.
+    assert(interval.contains(tableau.assignment(var)));
+    assert(update_would_stay_feasible(tableau, var, tableau.assignment(var)));
+
+    if (interval.lower.has_value()) {
+      assert(update_would_stay_feasible(tableau, var, *interval.lower));
+    }
+    if (interval.upper.has_value()) {
+      assert(update_would_stay_feasible(tableau, var, *interval.upper));
+    }
+    if (interval.lower.has_value() && interval.upper.has_value()) {
+      assert(*interval.lower <= *interval.upper);
+      assert(update_would_stay_feasible(tableau, var, midpoint(*interval.lower, *interval.upper)));
+    }
+    ++checked;
+  }
+  assert(checked > 0);  // a vacuous loop would pass everything above
+}
+
+// -- M-Mutate: the greedy diversifier ---------------------------------------
+
+void diversify_separates_a_coincidence_that_is_not_entailed() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.check().has_value());
+  // Both sit at 0 with nothing forcing them together: a model coincidence,
+  // which is exactly the case the paper wants mutated away rather than turned
+  // into a case split.
+  assert(tableau.assignment(x) == tableau.assignment(y));
+  assert(tableau.model_equal_classes({x, y}).size() == 1);
+
+  const auto result = tableau.diversify_shared_model({x, y});
+  assert(result.classes_before == 1);
+  assert(result.classes_after == 2);
+  assert(result.classes.empty());  // nothing coincides any more
+  assert(result.updates.size() == 1);
+}
+
+void diversify_cannot_separate_an_entailed_equality() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(-1)}});
+  // s = x - y pinned to 0, so x = y in every model. No freedom interval can
+  // break this, and the mutator must not pretend otherwise -- claiming a
+  // separation here would let the combination layer drop a real equality.
+  assert(!tableau.assert_lower(s, rat(0), Lit{1}).has_value());
+  assert(!tableau.assert_upper(s, rat(0), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto result = tableau.diversify_shared_model({x, y});
+  assert(result.classes_before == 1);
+  assert(result.classes_after == 1);
+  assert(result.updates.empty());
+  assert(result.classes.size() == 1 && result.classes.front().size() == 2);
+}
+
+void diversify_leaves_the_tableau_untouched() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1)}});
+  assert(!tableau.assert_upper(s, rat(8), Lit{1}).has_value());
+  assert(!tableau.assert_lower(s, rat(-8), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+
+  std::vector<DeltaRational> before;
+  std::vector<bool> basic_before;
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    before.push_back(tableau.assignment(var));
+    basic_before.push_back(tableau.is_basic(var));
+  }
+
+  const auto result = tableau.diversify_shared_model({x, y});
+  assert(result.classes_after >= result.classes_before);
+
+  // The whole design rests on this: the sweep runs on a scratch copy, so a
+  // caller can poll it at a check point without the tableau drifting under
+  // them. Asserting it rather than trusting the comment, because a claim of
+  // exactly this shape was wrong once already in this file's history.
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    assert(tableau.assignment(var) == before[var]);
+    assert(tableau.is_basic(var) == basic_before[var]);
+  }
+  assert_tableau_invariants(tableau);
+}
+
+void diversify_is_a_no_op_when_nothing_coincides() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  assert(!tableau.assert_lower(x, rat(5), Lit{1}).has_value());
+  assert(!tableau.assert_upper(x, rat(5), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x) != tableau.assignment(y));
+
+  const auto result = tableau.diversify_shared_model({x, y});
+  assert(result.classes_before == 2);
+  assert(result.classes_after == 2);
+  assert(result.updates.empty());  // no coincidence, so no work
+  assert(result.classes.empty());
+  assert(tableau.diversify_shared_model({}).updates.empty());
+}
+
+void diversify_separations_agree_with_the_entailment_oracle() {
+  // The differential check. Anything the mutator separates must be an
+  // equality the independent oracle agrees is NOT entailed -- separating a
+  // genuinely entailed pair would hand the combination layer a disequality
+  // that holds in no model.
+  const auto run_case =
+      [](const std::function<void(LraTableau&, LraVarId, LraVarId, LraVarId)>& setup) {
+        LraTableau tableau;
+        const LraVarId x = tableau.add_variable();
+        const LraVarId y = tableau.add_variable();
+        const LraVarId slack = tableau.add_variable();
+        tableau.add_row(slack, {{x, Rational(1)}, {y, Rational(-1)}});
+        setup(tableau, x, y, slack);
+        assert(!tableau.check().has_value());
+
+        const auto before = tableau.model_equal_classes({x, y});
+        const auto result = tableau.diversify_shared_model({x, y});
+        assert(result.classes_after >= result.classes_before);  // the paper's obligation
+
+        const bool was_coincident = !before.empty();
+        const bool separated = was_coincident && result.classes.empty();
+        if (separated) {
+          assert(!equality_is_entailed(tableau, slack, 700));
+        }
+        // And the converse direction: an entailed equality can never be separated.
+        if (equality_is_entailed(tableau, slack, 701)) {
+          assert(!separated);
+        }
+      };
+
+  run_case([](LraTableau&, LraVarId, LraVarId, LraVarId) {});  // free, coincident at 0
+  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId slack) {
+    assert(!t.assert_lower(slack, rat(0), Lit{11}).has_value());
+    assert(!t.assert_upper(slack, rat(0), Lit{12}).has_value());  // entailed
+  });
+  run_case([](LraTableau& t, LraVarId x, LraVarId y, LraVarId) {
+    assert(!t.assert_lower(x, rat(3), Lit{13}).has_value());
+    assert(!t.assert_upper(x, rat(3), Lit{14}).has_value());
+    assert(!t.assert_lower(y, rat(3), Lit{15}).has_value());
+    assert(!t.assert_upper(y, rat(3), Lit{16}).has_value());  // both fixed, entailed
+  });
+  run_case([](LraTableau& t, LraVarId x, LraVarId, LraVarId) {
+    assert(!t.assert_lower(x, rat(0), Lit{17}).has_value());
+    assert(!t.assert_upper(x, rat(4), Lit{18}).has_value());  // room to move
+  });
+  run_case([](LraTableau& t, LraVarId, LraVarId, LraVarId slack) {
+    assert(!t.assert_upper(slack, rat(0), Lit{19}).has_value());  // x <= y only
+  });
+}
+
 int main() {
   direct_bound_conflict_on_a_single_variable();
   weaker_bound_is_a_silent_no_op();
@@ -1879,5 +2242,17 @@ int main() {
   fixed_elimination_closes_the_eqrow_basis_gap();
   the_entailment_oracle_is_itself_correct();
   entailed_equalities_agree_with_the_entailment_oracle();
+  freedom_interval_is_the_variables_own_bounds_without_rows();
+  freedom_interval_is_unbounded_when_nothing_constrains_it();
+  freedom_interval_tightens_to_a_basic_variables_bound();
+  freedom_interval_flips_direction_on_a_negative_coefficient();
+  freedom_interval_keeps_the_delta_component_of_a_strict_bound();
+  freedom_interval_takes_the_tightest_of_several_rows();
+  every_value_in_the_freedom_interval_keeps_the_model_feasible();
+  diversify_separates_a_coincidence_that_is_not_entailed();
+  diversify_cannot_separate_an_entailed_equality();
+  diversify_leaves_the_tableau_untouched();
+  diversify_is_a_no_op_when_nothing_coincides();
+  diversify_separations_agree_with_the_entailment_oracle();
   return 0;
 }

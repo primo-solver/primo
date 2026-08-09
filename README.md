@@ -112,7 +112,9 @@ make format
 make check
 ```
 
-`make lint` always checks Python syntax. It also runs `clang-format --dry-run` and `ruff check` when those tools are installed. `make check` runs lint and tests.
+`make lint` always checks Python syntax and **requires `clang-format`** -- if it is not installed, lint fails rather than skipping the C++ format check. It also runs `ruff check` when ruff is installed. `make check` runs lint and tests.
+
+Run `make format` before committing; it applies the repository `.clang-format` in place.
 
 ## Fuzz
 
