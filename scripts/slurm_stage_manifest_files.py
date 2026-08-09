@@ -73,11 +73,65 @@ trap - EXIT HUP INT TERM
 """.strip()
 
 
+def remote_copy_script(remote_source_root: str, remote_root: str) -> str:
+    return f"""
+set -euo pipefail
+source_root={shlex.quote(remote_source_root)}
+remote_root={shlex.quote(remote_root)}
+staging="$remote_root.staging.$$"
+path_list="$remote_root.paths.$$"
+cleanup() {{ rm -rf "$staging"; rm -f "$path_list"; }}
+trap cleanup EXIT HUP INT TERM
+test -d "$source_root"
+mkdir -p "$(dirname "$remote_root")"
+rm -rf "$staging"
+mkdir -p "$staging"
+cat > "$path_list"
+tar -C "$source_root" --null -T "$path_list" -cf - | tar -xf - -C "$staging"
+rm -rf "$remote_root"
+mv "$staging" "$remote_root"
+rm -f "$path_list"
+trap - EXIT HUP INT TERM
+""".strip()
+
+
+def stage_from_remote(
+    config: Path,
+    remote: str,
+    remote_source_root: str,
+    remote_root: str,
+    paths: list[str],
+) -> None:
+    remote_script = remote_copy_script(remote_source_root, remote_root)
+    shell_syntax_check(remote_script)
+    path_list = b"".join(path.encode() + b"\0" for path in paths)
+    command = ["ssh", "-F", str(config), remote, remote_script]
+    print(
+        "+",
+        " ".join(shlex.quote(part) for part in command),
+        f"<{len(paths)} remote paths>",
+        flush=True,
+    )
+    proc = subprocess.run(command, input=path_list, capture_output=True, check=False)
+    if proc.stdout:
+        print(proc.stdout.decode(errors="replace"), end="")
+    if proc.stderr:
+        print(proc.stderr.decode(errors="replace"), end="")
+    proc.check_returncode()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ssh-config", type=Path, required=True)
     parser.add_argument("--remote", required=True)
     parser.add_argument("--remote-dir", required=True)
+    parser.add_argument(
+        "--remote-source-dir",
+        help=(
+            "Existing workspace on --remote from which to copy selected files instead of "
+            "streaming file contents from the local machine"
+        ),
+    )
     parser.add_argument("--root", type=Path, required=True)
     selection = parser.add_mutually_exclusive_group(required=True)
     selection.add_argument("--manifest", type=Path)
@@ -107,6 +161,21 @@ def main() -> int:
         raise SystemExit(f"{args.root}: missing {len(missing)} manifest files:\n{shown}{suffix}")
 
     remote_root = f"{args.remote_dir.rstrip('/')}/{args.root.as_posix()}"
+    if args.remote_source_dir is not None:
+        remote_source_root = (
+            f"{args.remote_source_dir.rstrip('/')}/{args.root.as_posix()}"
+        )
+        if remote_source_root == remote_root:
+            raise SystemExit("--remote-source-dir and --remote-dir select the same corpus")
+        stage_from_remote(
+            args.ssh_config, args.remote, remote_source_root, remote_root, paths
+        )
+        print(
+            f"staged {len(paths)} files within {args.remote}:"
+            f"<remote-workspace>/{args.root}"
+        )
+        return 0
+
     remote_script = remote_extract_script(remote_root)
     shell_syntax_check(remote_script)
 

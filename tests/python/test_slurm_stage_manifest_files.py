@@ -54,6 +54,18 @@ class SlurmStageManifestFilesTests(unittest.TestCase):
         self.assertLess(remote.index('tar -xzf'), remote.index('rm -rf "$remote_root"'))
         slurm_stage.shell_syntax_check(remote)
 
+    def test_remote_reuse_copies_only_selected_paths_before_replacement(self) -> None:
+        remote = slurm_stage.remote_copy_script(
+            "source/tmp/QF_UFLRA", "target/tmp/QF_UFLRA"
+        )
+        self.assertIn('test -d "$source_root"', remote)
+        self.assertIn('tar -C "$source_root" --null -T "$path_list"', remote)
+        self.assertLess(
+            remote.index('tar -C "$source_root"'),
+            remote.index('rm -rf "$remote_root"'),
+        )
+        slurm_stage.shell_syntax_check(remote)
+
 
 if __name__ == "__main__":
     unittest.main()
