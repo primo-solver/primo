@@ -1834,6 +1834,9 @@ void qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom() {
   assert(result.statistics.get(":no.shared-model.lra-value-classes") >= 1);
   assert(result.statistics.get(":no.shared-model.internal-euf-merges") >= 1);
   assert(result.statistics.get(":no.shared-model.sat-materializations-avoided") >= 1);
+  assert(result.statistics.get(":no.shared-model.congruence-summary-checks") == 1);
+  assert(result.statistics.get(":no.shared-model.congruence-summary-terms") == 4);
+  assert(result.statistics.get(":no.shared-model.congruence-fallbacks") == 0);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-skipped") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
   assert(result.statistics.get(":no.interface.sat-equalities-forced") == 0);
@@ -1934,6 +1937,8 @@ void qf_uf_lra_shared_model_rechecks_congruence_consequences() {
                                        options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.shared-model.congruence-fallbacks") >= 1);
+  assert(result.statistics.get(":no.shared-model.congruence-summary-checks") >= 1);
+  assert(result.statistics.get(":no.shared-model.congruence-summary-terms") >= 2);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-forced") >= 1);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
 }

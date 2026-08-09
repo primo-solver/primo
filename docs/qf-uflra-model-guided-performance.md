@@ -342,11 +342,15 @@ an equality is not called internal unless the receiving model actually absorbs
 it. It is still not the paper's full `M-Propagate`/`M-Mutate` system. In
 particular, arbitrary model coincidences are recorded as classes but are not
 propagated as entailments, and the tableau is not mutated through freedom
-intervals. The current safety check snapshots and compares all shared EUF class
-pairs around each tentative merge, so its worst-case cost is quadratic in the
-shared interface per attempted internal equality. The profile remains opt-in;
-replacing that scan with an incremental class-change summary is the next local
-efficiency opportunity.
+intervals. The safety check now counts distinct eager EUF representatives among
+shared terms before and after each tentative merge. The intended direct join
+reduces the class count by exactly one; any other delta keeps the guarded SAT
+fallback. This is expected linear in the shared-interface size per attempt and
+replaces the earlier quadratic shared-pair comparison. Counters
+`:no.shared-model.congruence-summary-checks` and
+`:no.shared-model.congruence-summary-terms` expose its invocation count and
+total representative visits. The profile remains opt-in while the missing
+second reconciliation direction is addressed.
 
 ## Immediate Performance Target
 

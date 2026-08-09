@@ -6,6 +6,7 @@
 #include <iterator>
 #include <optional>
 #include <stdexcept>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -212,6 +213,18 @@ bool FlatCongruenceClosure::are_equal(FlatTermId lhs, FlatTermId rhs) {
   ensure_node_count(std::max(lhs, rhs) + 1);
   propagate();
   return representative(lhs) == representative(rhs);
+}
+
+std::size_t FlatCongruenceClosure::class_count(const std::vector<FlatTermId>& terms) const {
+  std::unordered_set<FlatTermId> representatives;
+  representatives.reserve(terms.size());
+  for (const FlatTermId term : terms) {
+    if (term >= parent_.size()) {
+      throw std::out_of_range("flat congruence closure term out of range");
+    }
+    representatives.insert(representative(term));
+  }
+  return representatives.size();
 }
 
 void FlatCongruenceClosure::drain_changed_terms(std::vector<FlatTermId>& out) {

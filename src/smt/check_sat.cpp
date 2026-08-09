@@ -6155,70 +6155,28 @@ struct LraToEufEqualityFilterResult {
   std::size_t forbidden_forced = 0;
 };
 
-struct SharedInterfacePartitionSnapshot {
+std::vector<theory::equality::FlatTermId> shared_interface_flat_terms(
+    const PreparedFlatTheory& prepared_euf, const TheoryCombinationManager& manager) {
   std::vector<theory::equality::FlatTermId> flat_terms;
-  std::vector<std::size_t> classes;
-  std::size_t lhs_class = 0;
-  std::size_t rhs_class = 0;
-};
-
-SharedInterfacePartitionSnapshot snapshot_shared_interface_partition(
-    const PreparedFlatTheory& prepared_euf, theory::equality::FlatCongruenceClosure& euf_closure,
-    const TheoryCombinationManager& manager, core::TermId lhs, core::TermId rhs) {
-  SharedInterfacePartitionSnapshot snapshot;
-  snapshot.flat_terms.reserve(manager.summary().terms.size());
+  flat_terms.reserve(manager.summary().terms.size());
   for (const InterfaceTerm& interface_term : manager.summary().terms) {
     const std::optional<theory::equality::FlatTermId> flat =
         prepared_euf.flat.existing_flat_term(interface_term.term);
     if (flat.has_value()) {
-      snapshot.flat_terms.push_back(flat.value());
+      flat_terms.push_back(flat.value());
     }
   }
-
-  snapshot.classes.resize(snapshot.flat_terms.size());
-  for (std::size_t index = 0; index < snapshot.flat_terms.size(); ++index) {
-    snapshot.classes[index] = index;
-    for (std::size_t earlier = 0; earlier < index; ++earlier) {
-      if (euf_closure.are_equal(snapshot.flat_terms[index], snapshot.flat_terms[earlier])) {
-        snapshot.classes[index] = snapshot.classes[earlier];
-        break;
-      }
-    }
-  }
-
-  const theory::equality::FlatTermId lhs_flat = prepared_euf.flat.existing_flat_term(lhs).value();
-  const theory::equality::FlatTermId rhs_flat = prepared_euf.flat.existing_flat_term(rhs).value();
-  for (std::size_t index = 0; index < snapshot.flat_terms.size(); ++index) {
-    if (snapshot.flat_terms[index] == lhs_flat) {
-      snapshot.lhs_class = snapshot.classes[index];
-    }
-    if (snapshot.flat_terms[index] == rhs_flat) {
-      snapshot.rhs_class = snapshot.classes[index];
-    }
-  }
-  return snapshot;
+  return flat_terms;
 }
 
 bool merge_creates_shared_congruence(theory::equality::FlatCongruenceClosure& euf_closure,
-                                     const SharedInterfacePartitionSnapshot& before) {
+                                     const std::vector<theory::equality::FlatTermId>& flat_terms,
+                                     std::size_t before_class_count) {
   // A direct class join is already represented by the LRA equality. Any other
   // new shared equality needs another EUF-to-LRA round, which this prototype
   // conservatively obtains through the SAT-visible recheck path.
-  for (std::size_t lhs = 0; lhs < before.flat_terms.size(); ++lhs) {
-    for (std::size_t rhs = lhs + 1; rhs < before.flat_terms.size(); ++rhs) {
-      if (before.classes[lhs] == before.classes[rhs] ||
-          !euf_closure.are_equal(before.flat_terms[lhs], before.flat_terms[rhs])) {
-        continue;
-      }
-      const bool direct_class_join =
-          (before.classes[lhs] == before.lhs_class && before.classes[rhs] == before.rhs_class) ||
-          (before.classes[lhs] == before.rhs_class && before.classes[rhs] == before.lhs_class);
-      if (!direct_class_join) {
-        return true;
-      }
-    }
-  }
-  return false;
+  const std::size_t after_class_count = euf_closure.class_count(flat_terms);
+  return before_class_count != after_class_count + 1;
 }
 
 LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
@@ -6229,6 +6187,9 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
   LraToEufEqualityFilterResult result;
   result.forced_equalities.reserve(equalities.size());
   result.model_equalities.reserve(equalities.size());
+  const std::vector<theory::equality::FlatTermId> shared_flat_terms =
+      reconcile_shared_model ? shared_interface_flat_terms(prepared_euf, manager)
+                             : std::vector<theory::equality::FlatTermId>{};
   const std::size_t filter_checkpoint = euf_closure.push();
 
   for (const ExplainedInterfaceEquality& explained_equality : equalities) {
@@ -6269,19 +6230,26 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
       continue;
     }
 
-    const std::optional<SharedInterfacePartitionSnapshot> partition_before_merge =
+    const std::optional<std::size_t> shared_class_count_before =
         reconcile_shared_model
-            ? std::optional<SharedInterfacePartitionSnapshot>{snapshot_shared_interface_partition(
-                  prepared_euf, euf_closure, manager, lhs, rhs)}
+            ? std::optional<std::size_t>{euf_closure.class_count(shared_flat_terms)}
             : std::nullopt;
+    if (shared_class_count_before.has_value()) {
+      statistics.increment(":no.shared-model.congruence-summary-checks");
+      statistics.increment(":no.shared-model.congruence-summary-terms", shared_flat_terms.size());
+    }
     const std::size_t before_pair = euf_closure.push();
     euf_closure.assert_equal(lhs_flat.value(), rhs_flat.value());
     if (!euf_closure.conflict().has_value()) {
       manager.mark_interface_equality_classification(equality_id,
                                                      InterfaceEqualityClassification::EufMergeable);
       const bool creates_shared_congruence =
-          partition_before_merge.has_value() &&
-          merge_creates_shared_congruence(euf_closure, partition_before_merge.value());
+          shared_class_count_before.has_value() &&
+          merge_creates_shared_congruence(euf_closure, shared_flat_terms,
+                                          shared_class_count_before.value());
+      if (shared_class_count_before.has_value()) {
+        statistics.increment(":no.shared-model.congruence-summary-terms", shared_flat_terms.size());
+      }
       if (reconcile_shared_model && !creates_shared_congruence &&
           manager.record_internal_model_equality(lhs, rhs)) {
         ++result.mergeable_skipped;
@@ -9497,6 +9465,8 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.shared-model.validation-failures", 0);
   statistics.set(":no.shared-model.sat-materializations-avoided", 0);
   statistics.set(":no.shared-model.congruence-fallbacks", 0);
+  statistics.set(":no.shared-model.congruence-summary-checks", 0);
+  statistics.set(":no.shared-model.congruence-summary-terms", 0);
   statistics.set(":no.interface.conflicts", 0);
   statistics.set(":no.interface.euf-conflicts", 0);
   statistics.set(":no.interface.lra-conflicts", 0);

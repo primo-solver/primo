@@ -133,7 +133,9 @@ paper's novel model-based transition system.
   merge only joins its two existing shared classes; final validation and model
   reconstruction consume the same internal equalities. A merge that creates a
   new shared congruence consequence falls back to SAT because there is no
-  second EUF-to-LRA reconciliation pass yet.
+  second EUF-to-LRA reconciliation pass yet. The safety test uses two
+  expected-linear counts of eager EUF representatives over shared terms rather
+  than enumerating shared pairs; a direct merge must reduce the count by one.
 - [ ] Generalize the mechanism beyond the documented EUF plus rational-LRA
   path, including non-convex theory case splits.
 

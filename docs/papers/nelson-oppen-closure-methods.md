@@ -479,6 +479,8 @@ coordinator publishes:
 - `:no.shared-model.validation-failures`
 - `:no.shared-model.sat-materializations-avoided`
 - `:no.shared-model.congruence-fallbacks`
+- `:no.shared-model.congruence-summary-checks`
+- `:no.shared-model.congruence-summary-terms`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
 - `:no.interface.lra-online-enabled`
@@ -524,10 +526,13 @@ absorbed `x = y` that also induced `f(x) = f(y)` by EUF congruence while LRA
 still assigned incompatible values to the function applications. The repair
 compares the shared EUF partition before and after each tentative merge and
 uses the normal explained SAT-visible path whenever another shared class pair
-is joined. This safety check currently compares all shared pairs before and
-after a tentative merge, so it is quadratic in the shared-interface size per
-attempted internal equality; the profile remains opt-in while that cost and the
-missing second reconciliation direction are addressed.
+is joined. `FlatCongruenceClosure::class_count()` now projects the shared terms
+onto their eager EUF representatives before and after the merge. The intended
+direct join reduces the distinct-class count by exactly one; any other delta is
+conservative fallback evidence. This replaces the earlier quadratic pair
+comparison with two expected-linear scans. The summary-check and visited-term
+counters expose the remaining work. The profile stays opt-in while the missing
+second reconciliation direction is addressed.
 
 At commit `2d1ecf8`, 3,000 generated mixed QF_UFLRA cases, 1,000 generated
 finite-domain cases, and the 11-seed mutation preflight passed; the YinYang task

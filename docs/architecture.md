@@ -301,9 +301,14 @@ Implemented now:
   conflict, or a merge that newly equates another shared pair remains on the
   explained guarded-clause path. The last case is necessary because this
   prototype does not yet rerun EUF-to-LRA reconciliation after an internal
-  merge. The profile also enables the candidate-first final scan and retains
-  its complete exact fallback. This is a convex QF_UFLRA reconciliation subset,
-  not generic `DPLL(T^M)` or freedom-interval model mutation.
+  merge. `FlatCongruenceClosure::class_count()` detects that case by counting
+  distinct eager EUF representatives among shared terms before and after the
+  tentative merge. A direct join reduces the count by exactly one; any other
+  delta uses the fallback. The two expected-linear representative scans replace
+  the earlier quadratic shared-pair comparison. The profile also enables the
+  candidate-first final scan and retains its complete exact fallback. This is a
+  convex QF_UFLRA reconciliation subset, not generic `DPLL(T^M)` or
+  freedom-interval model mutation.
   In this final path, LRA-to-EUF equalities are classified through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already
   true in EUF can be ignored. Equalities that EUF can merge, or that EUF
