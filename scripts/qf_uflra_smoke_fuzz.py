@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import random
 import shutil
 import subprocess
@@ -488,36 +489,44 @@ def main() -> int:
     rng = random.Random(args.seed)
     cases_dir = args.out / "cases"
     cases_dir.mkdir(parents=True, exist_ok=True)
-    rows = []
     counts: dict[str, int] = {}
-
-    for index in range(args.count):
-        case_path = cases_dir / f"case-{index:04d}.smt2"
-        case_path.write_text(generate_case(rng, index, args.shape), encoding="utf-8")
-        ours, ours_code = run_solver([args.solver, *args.solver_arg, str(case_path)], args.timeout)
-        reference, ref_code = run_solver([ref, str(case_path)], args.timeout)
-        outcome = classify(ours, reference)
-        counts[outcome] = counts.get(outcome, 0) + 1
-        rows.append(
-            {
-                "case": str(case_path),
-                "ours": ours,
-                "ours_code": ours_code,
-                "reference": reference,
-                "reference_code": ref_code,
-                "outcome": outcome,
-            }
-        )
-        print(f"{case_path}: {outcome} ours={ours} ref={reference}", flush=True)
-
     summary_path = args.out / "summary.csv"
-    with summary_path.open("w", newline="") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=["case", "ours", "ours_code", "reference", "reference_code", "outcome"],
-        )
+    fieldnames = [
+        "case",
+        "ours",
+        "ours_code",
+        "reference",
+        "reference_code",
+        "outcome",
+    ]
+    with summary_path.open("w", newline="", encoding="utf-8") as summary:
+        writer = csv.DictWriter(summary, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        summary.flush()
+        os.fsync(summary.fileno())
+
+        for index in range(args.count):
+            case_path = cases_dir / f"case-{index:04d}.smt2"
+            case_path.write_text(generate_case(rng, index, args.shape), encoding="utf-8")
+            ours, ours_code = run_solver(
+                [args.solver, *args.solver_arg, str(case_path)], args.timeout
+            )
+            reference, ref_code = run_solver([ref, str(case_path)], args.timeout)
+            outcome = classify(ours, reference)
+            counts[outcome] = counts.get(outcome, 0) + 1
+            writer.writerow(
+                {
+                    "case": str(case_path),
+                    "ours": ours,
+                    "ours_code": ours_code,
+                    "reference": reference,
+                    "reference_code": ref_code,
+                    "outcome": outcome,
+                }
+            )
+            summary.flush()
+            os.fsync(summary.fileno())
+            print(f"{case_path}: {outcome} ours={ours} ref={reference}", flush=True)
 
     print(f"summary: {summary_path}", flush=True)
     for outcome in sorted(counts):
