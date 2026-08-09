@@ -198,8 +198,13 @@ workspace.
 
 Archive-mode preparation intentionally excludes `tmp/`, so benchmark manifests
 that refer to locally extracted SMT-LIB archives need a separate staging step.
-Use the manifest staging helper to copy only the listed files into the matching
-remote root, without copying `.git` or the whole archive:
+Before transferring a large corpus, check for a complete copy in another remote
+workspace and verify its file count, total bytes, and path/size manifest hash; a
+server-side copy is preferable to another network transfer. Otherwise, use the
+staging helper to copy only the listed files into the matching remote root,
+without copying `.git` or unrelated archive content. The helper streams a gzip
+archive, extracts into a staging directory before replacing the target, and
+reports the path count without printing the full manifest:
 
 ```bash
 python3 scripts/slurm_stage_manifest_files.py \
@@ -209,6 +214,10 @@ python3 scripts/slurm_stage_manifest_files.py \
   --root tmp/QF_UFLRA \
   --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt
 ```
+
+To stage a complete extracted corpus without first creating a temporary
+manifest, replace `--manifest ...` with `--all-smt2`. Paths are discovered below
+`--root` and sorted before archiving.
 
 If the published `interesting.html` table is available, pass
 `--reference-html path/to/interesting.html`. The script extracts table text with

@@ -41,13 +41,51 @@ def manifest_paths(manifest: Path) -> list[str]:
     return paths
 
 
+def all_smt2_paths(root: Path) -> list[str]:
+    paths = sorted(
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*.smt2")
+        if path.is_file()
+    )
+    if not paths:
+        raise SystemExit(f"{root}: no SMT-LIB files found")
+    return paths
+
+
+def compressed_tar_command(root: Path, paths: list[str]) -> list[str]:
+    return ["tar", "-C", root.as_posix(), "-czf", "-", "--", *paths]
+
+
+def remote_extract_script(remote_root: str) -> str:
+    return f"""
+set -eu
+remote_root={shlex.quote(remote_root)}
+staging="$remote_root.staging.$$"
+cleanup() {{ rm -rf "$staging"; }}
+trap cleanup EXIT HUP INT TERM
+rm -rf "$staging"
+mkdir -p "$staging"
+tar -xzf - -C "$staging"
+mkdir -p "$(dirname "$remote_root")"
+rm -rf "$remote_root"
+mv "$staging" "$remote_root"
+trap - EXIT HUP INT TERM
+""".strip()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ssh-config", type=Path, required=True)
     parser.add_argument("--remote", required=True)
     parser.add_argument("--remote-dir", required=True)
     parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--manifest", type=Path)
+    selection.add_argument(
+        "--all-smt2",
+        action="store_true",
+        help="stage every .smt2 file under --root in sorted relative-path order",
+    )
     args = parser.parse_args()
 
     if not args.ssh_config.is_file():
@@ -56,10 +94,12 @@ def main() -> int:
         raise SystemExit(f"missing local root: {args.root}")
     if args.root.is_absolute() or ".." in args.root.parts:
         raise SystemExit("--root must be a relative path inside the repository")
-    if not args.manifest.is_file():
-        raise SystemExit(f"missing manifest: {args.manifest}")
-
-    paths = manifest_paths(args.manifest)
+    if args.manifest is not None:
+        if not args.manifest.is_file():
+            raise SystemExit(f"missing manifest: {args.manifest}")
+        paths = manifest_paths(args.manifest)
+    else:
+        paths = all_smt2_paths(args.root)
     missing = [path for path in paths if not (args.root / path).is_file()]
     if missing:
         shown = "\n".join(f"  {path}" for path in missing[:20])
@@ -67,19 +107,15 @@ def main() -> int:
         raise SystemExit(f"{args.root}: missing {len(missing)} manifest files:\n{shown}{suffix}")
 
     remote_root = f"{args.remote_dir.rstrip('/')}/{args.root.as_posix()}"
-    remote_script = f"""
-set -eu
-rm -rf {shlex.quote(remote_root)}
-mkdir -p {shlex.quote(remote_root)}
-tar -xf - -C {shlex.quote(remote_root)}
-""".strip()
+    remote_script = remote_extract_script(remote_root)
     shell_syntax_check(remote_script)
 
-    tar_command = ["tar", "-C", args.root.as_posix(), "-cf", "-", *paths]
+    tar_command = compressed_tar_command(args.root, paths)
     ssh_command = ["ssh", "-F", str(args.ssh_config), args.remote, remote_script]
     print(
         "+",
-        " ".join(shlex.quote(part) for part in tar_command),
+        " ".join(shlex.quote(part) for part in tar_command[:6]),
+        f"<{len(paths)} paths>",
         "|",
         " ".join(shlex.quote(part) for part in ssh_command),
         flush=True,
