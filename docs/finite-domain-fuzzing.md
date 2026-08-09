@@ -62,3 +62,20 @@ activation fail the gate. Solver timeouts are counted separately and do not by
 themselves establish a correctness defect. Every merge-grade run must record
 the exact commit, commands, seeds, references, counts, SLURM job IDs, and
 artifact paths in `docs/run-log.json`.
+
+## Current evidence
+
+The preprocessing-order repair is validated at commit `e6930d0` (solver change
+`1a5b0c0`). SLURM jobs `121938` and `121939` completed 1,000 focused
+finite-domain cases and the standard 3,000 general plus 1,000 finite-domain
+cases with no failures. Mutation job `121947` processed all 11 QF_UFLRA seeds
+in default, candidate-final, and online-EUF profiles with zero invalid seeds and
+zero bug triggers. Full-corpus jobs `121950` and `121951` then covered all 1,284
+QF_UFLRA inputs with no wrong answers, unsupported inputs, errors, or
+cross-profile disagreements. The formerly unsupported CPAchecker input now
+enters solving and honestly times out at the five-second benchmark limit.
+
+These runs establish correctness and mechanism coverage for the repair. They do
+not establish a solved-count improvement: default and candidate-final solved
+counts are unchanged from the pre-fix run because the repaired CPAchecker input
+does not solve within five seconds.

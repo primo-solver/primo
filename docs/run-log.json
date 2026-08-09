@@ -24492,6 +24492,82 @@
       "artifacts": "remote:primo-cadical-profile/slurm-results/{finite-domain-fuzz-eaeda4f,qf-uflra-fuzz-eaeda4f}; remote:primo-cadical-profile/fuzz-results/qf-uflra-mutation-eaeda4f; remote SLURM logs for jobs 121926-121928",
       "evidence_status": "rejected-harness-failure",
       "outcome": "No solver defect was observed, but the jobs are incomplete and cannot serve as gate evidence. The Python 3.10-only call was replaced by an explicit equal-length invariant and indexed construction. The generator now pre-generates a complete scenario cycle before invoking any solver. Fresh gates are required."
+    },
+    {
+      "id": "2026-08-09-finite-domain-merge-fuzz-gates-121938-121947",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "fuzz",
+      "scope": "Merge-grade focused, standard, and seed-mutation QF_UF/QF_UFLRA gates for the finite-domain Real-equality preprocessing-order repair",
+      "commit": "e6930d0",
+      "implementation_commit": "1a5b0c0",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_ids": {
+          "focused_finite_domain": "121938_[0-4]",
+          "standard_qf_uflra": "121939_[0-3]",
+          "mutation": "121947_[0-2]"
+        },
+        "binary": "Release, git e6930d0, CaDiCaL 3.0.0",
+        "python": "3.9.18; all seven finite-domain fuzzer tests passed remotely before submission",
+        "references": "Z3 5.0.0 and cvc5 1.3.4 for finite-domain generation; Z3 5.0.0 with model_validate=true for mutation",
+        "yinyang": "MikolasJanota/yinyang fork installed by contrib/install_yinyang.py; keep_logic and hoist_declarations API preflight passed"
+      },
+      "commands": {
+        "focused": "scripts/slurm_finite_domain_fuzz_gate.sbatch with 200 cases per profile and seed base 2026080800",
+        "standard": "scripts/slurm_qf_uflra_fuzz_gate.sbatch with 750 general, 125 QF_UF finite-domain, and 125 QF_UFLRA finite-domain cases per task",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch with 2,000 configured typefuzz iterations per seed, seeds 2026080700 through 2026080702, and an 8-second solver timeout"
+      },
+      "results": {
+        "focused": "1000/1000 PASS, complete metadata 5/5, zero bug files; all seven scenarios present. Aggregate activation: 7768 raw AMO, 1318 post AMO, 7768 emitted AMO, and 7443 lowered Real equalities.",
+        "standard_general": "3000/3000 PASS across four 750-case mixed QF_UFLRA shards.",
+        "standard_finite": "1000/1000 PASS, complete metadata 8/8, zero bug files; all seven scenarios present. Aggregate activation: 7846 raw AMO, 2379 post AMO, 7846 emitted AMO, and 6211 lowered Real equalities.",
+        "mutation_default": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers; completed in 00:14:01.",
+        "mutation_candidate_final": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers; completed in 00:12:02.",
+        "mutation_online_euf": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers; completed in 00:31:29.",
+        "wrong_answers": 0,
+        "crashes": 0,
+        "unsupported": 0,
+        "reference_disagreements": 0
+      },
+      "artifacts": "remote:primo-cadical-profile/slurm-results/{finite-domain-fuzz-e6930d0,qf-uflra-fuzz-e6930d0}; remote:primo-cadical-profile/fuzz-results/qf-uflra-mutation-e6930d0; remote SLURM logs for jobs 121938, 121939, and 121947",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as merge-grade correctness evidence. The dedicated generator activated the repaired finite-domain and Real-equality-lowering mechanisms, and all three real-seed mutation profiles completed without a bug trigger."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-full-finite-domain-fix-121950-121951",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "benchmark",
+      "scope": "Full 1,284-file QF_UFLRA correctness and sanity rerun after repairing finite-domain clauses that escaped Real-equality lowering",
+      "commit": "e6930d0",
+      "implementation_commit": "1a5b0c0",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_ids": {
+          "default": "121950_[0-7]",
+          "candidate_final": "121951_[0-7]"
+        },
+        "binary": "Release, git e6930d0, CaDiCaL 3.0.0",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified the exact revision, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf"
+      },
+      "command": "scripts/slurm_qf_uflra_model_mine.sbatch with 8 shards, a 5-second per-file timeout, build-slurm-rel/primo --quiet --stats for default, and the additional --qf-uflra-candidate-final-scan option for candidate-final",
+      "results": {
+        "default": "1284 files: 1123 solved (642 sat, 481 unsat), 161 timeout, 0 unsupported/error, 0 wrong declared-status answer; PAR2 2041.418179; 222598 Real equalities lowered.",
+        "candidate_final": "1284 files: 1153 solved (672 sat, 481 unsat), 131 timeout, 0 unsupported/error, 0 wrong declared-status answer; PAR2 1487.056137; 222816 Real equalities lowered.",
+        "default_families": "FFT 10/10; CPAchecker BMC 4/15 with 11 timeout; CPAchecker induction 216/359 with 143 timeout; MathSAT 893/900 with 7 timeout.",
+        "candidate_final_families": "FFT 10/10; CPAchecker BMC 4/15 with 11 timeout; CPAchecker induction 241/359 with 118 timeout; MathSAT 898/900 with 2 timeout.",
+        "cross_profile": "1284 common files, 1123 jointly solved, 0 decisive-answer disagreements.",
+        "z3_reused": "Existing Z3 5.0.0 artifact from results/qf-uflra-full-mine-z3stats-77599f4-5s: 1234 solved, 50 timeout, 0 wrong answer; all 1284 paths common and zero disagreements with either Primo profile on jointly solved rows.",
+        "regression_row": "cpachecker-induction.rekh_ctm_true-unreach-call.1.c.smt2 now reaches the solver in both profiles, reports 5 raw finite-domain AMO clauses and 28771 lowered Real equalities, and honestly times out at five seconds instead of returning unsupported.",
+        "comparison_to_84d5e8a": "Solved counts are unchanged. The prior 1 unsupported row became a timeout; default moved from 160 timeout plus 1 unsupported to 161 timeout, and candidate-final from 130 timeout plus 1 unsupported to 131 timeout. PAR2 changed from 2043.045990 to 2041.418179 default and from 1486.812553 to 1487.056137 candidate-final."
+      },
+      "artifacts": "remote:primo-cadical-profile/results/qf-uflra-full-finite-fix-{default,candidate}-e6930d0-5s/; local ignored copies of shard CSVs and summaries under results/ with matching names; reused local Z3 artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as full-corpus correctness and sanity evidence. The valid-input unsupported defect is removed with no wrong answers, no non-timeout failures, and no material solved-count or PAR2 regression. This repair improves supported behavior, not five-second solved count."
     }
   ]
 }
