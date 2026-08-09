@@ -19841,6 +19841,33 @@
    },
    "conclusion": "Pure QF_LRA behaviour is preserved exactly: 89 of 89 commonly-solved files bit-identical on search counters, 0 answer differences anywhere. Consistent with the code, which has no path doing anything main does not.",
    "method_note": "Counter comparisons across runs are only meaningful on instances that COMPLETE. A timeout is not a measurement, it is a snapshot of wherever the search had reached. This is the second time in one session that artifact produced a false alarm -- the first was the supposed node-contention regression on the full division. Restricting to completed runs is the fix; explaining the difference away is not."
+  },
+  {
+   "id": "2026-08-09-qflra-model-mutation-preserves-pure-lra",
+   "started_at": "2026-08-09",
+   "recorded_at": "2026-08-09",
+   "kind": "analysis",
+   "scope": "Confirm the qflra-model-mutation branch leaves pure QF_LRA behaviour untouched. It adds the Section 5.2 freedom-interval and greedy-diversifier primitives to LraTableau and refactors model_equal_classes' grouping, so the refactor is the part that needed checking rather than the additions.",
+   "commit": "8571a6f vs main 996a100",
+   "branch": "qflra-model-mutation",
+   "evidence_status": "current",
+   "environment": {
+    "type": "local",
+    "notes": "Both Release, same toolchain; main built in a scratch worktree sharing /workspace/contrib/local for the prebuilt dependencies."
+   },
+   "result": {
+    "by_inspection": "grep over src/ shows freedom_interval, diversify_shared_model, model_equal_classes and entailed_equalities all have NO caller outside lra_tableau.{hpp,cpp}. The only reachable change is the added Tuning field, which is default-constructed and read only by the unwired sweep.",
+    "sample": {
+     "files": 60,
+     "families": 14,
+     "timeout_s": 25
+    },
+    "completed": 56,
+    "unknown_or_timeout": 4,
+    "answer_diffs": 0,
+    "counter_diffs_on_completed": 0,
+    "false_alarm_avoided": "A first pass at a 10s timeout reported 12 counter diffs. All 12 were instances that time out and print 'unknown' -- the solver emits an answer on timeout, so a naive script counts them as completed. Re-running one of them at 20s gave byte-identical counters from both binaries (:lra.pivots 8695, :lra.online-check-calls 44980). This is the second time this session that cut-off counters produced a false alarm; the rule is that counter comparisons mean nothing on instances that do not finish."
+   }
   }
  ]
 }

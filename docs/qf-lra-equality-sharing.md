@@ -91,8 +91,17 @@ EqRows only before `M-Propagate`**, being the expensive one.
 
 The *freedom* of a non-basic `xⱼ` is `[Lⱼ, Uⱼ]`, computed from the rows it
 occurs in; `update(xⱼ, v)` for any `v` in that interval preserves feasibility
-without pivoting. The greedy heuristic: pick `v` that **reduces** the number of
-equal-value classes, i.e. makes β more diverse.
+without pivoting. The greedy heuristic: pick `v` that **increases** the number
+of equal-value classes, i.e. makes β more diverse.
+
+```{note}
+This page previously said mutation *reduces* the class count. That is backwards
+and worth stating plainly, because the sign is the whole algorithm: more
+classes means fewer variables sharing a value, which is the diversity being
+sought. The paper's obligation on a mutator is
+`|classes(R_M)| ≤ |classes(R_δ(M))|` — never decrease it — and its greedy step
+keeps an update only when `|classes|` strictly grows.
+```
 
 Why this matters to the NO side: every pair that merely *happens* to share a β
 value becomes a case split under `M-Propagate`. Diversifying β before
@@ -100,8 +109,35 @@ propagating removes coincidental equalities and shrinks that set. The paper
 reports the average number of shared equalities actually propagated by Z3 as
 **2.46**, maximum 57 — small, because of exactly this.
 
-We already have the ingredients: `update()` exists in the tableau, and
-`can_enter` already reasons about how far a non-basic variable may move.
+**Implemented on the LRA side** (branch `qflra-model-mutation`), still with no
+caller:
+
+| method | what it is |
+|---|---|
+| `LraTableau::freedom_interval(nonbasic)` | `[Lⱼ, Uⱼ]`, `nullopt` endpoint = unbounded |
+| `LraTableau::diversify_shared_model(shared)` | the greedy sweep, returning the post-mutation classes, the updates taken, and the class count before/after |
+
+Three properties are worth knowing before wiring it up:
+
+- **Nonbasic only, and that is the paper's choice, not a shortcut.** §5.2
+  diversifies "without performing any pivoting operation", so a basic
+  variable's value moves only through its row. This is what keeps mutation
+  clear of `entailed_equalities`' basis-dependence.
+- **It does not touch the tableau.** The sweep runs on a scratch copy of the
+  assignment. That is forced, not stylistic: `update()` trails the old value
+  only under `PivotingRule::Soi`, and `pop()` restores bounds alone (item H9),
+  so a mutation applied to the live tableau in the default mode could not be
+  undone on backtrack.
+- **A mutated β is a genuine model**, since every value in the interval
+  satisfies all rows and bounds. So a disequality read off it is true in some
+  model — a stronger guarantee than the current `check_sat.cpp` proxy, which
+  is sound only because a solver call said so.
+
+The proxy it is meant to replace is `lra_model_equality_can_be_mutated` on the
+NO branch, which builds a fresh `PreparedLraTheory` and solves **twice per
+candidate pair**, and then does not actually mutate anything — it suppresses
+the guess and leaves β with `x = y`. Swapping it is deferred to that branch,
+since it lives in the file where the two trees diverge hardest.
 
 ## Two things we own that are already implemented — and switched off
 
