@@ -16,11 +16,12 @@ def run(command: list[str], *, check: bool = True) -> subprocess.CompletedProces
 
 def ssh(config: Path, remote: str, command: str) -> subprocess.CompletedProcess[str]:
     shell_syntax_check(command)
-    proc = run(["ssh", "-F", str(config), remote, command])
+    proc = run(["ssh", "-F", str(config), remote, command], check=False)
     if proc.stdout:
         print(proc.stdout, end="")
     if proc.stderr:
         print(proc.stderr, end="")
+    proc.check_returncode()
     return proc
 
 
