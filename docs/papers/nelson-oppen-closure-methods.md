@@ -516,6 +516,29 @@ coordinator publishes:
 - `:no.online.final-lra-equality-scan-capped`
 - `:no.online.final-lra-equality-scan-fallbacks`
 
+### Shared-model validation result
+
+The opt-in reconciliation profile was validated on SLURM after a tracked-seed
+preflight exposed an unsound first version. The failing shape was an internally
+absorbed `x = y` that also induced `f(x) = f(y)` by EUF congruence while LRA
+still assigned incompatible values to the function applications. The repair
+compares the shared EUF partition before and after each tentative merge and
+uses the normal explained SAT-visible path whenever another shared class pair
+is joined. This safety check currently compares all shared pairs before and
+after a tentative merge, so it is quadratic in the shared-interface size per
+attempted internal equality; the profile remains opt-in while that cost and the
+missing second reconciliation direction are addressed.
+
+At commit `2d1ecf8`, 3,000 generated mixed QF_UFLRA cases, 1,000 generated
+finite-domain cases, and the 11-seed mutation preflight passed; the YinYang task
+completed 2,000 configured iterations per seed with no bug trigger. On the
+full 1,284-file corpus with a five-second cutoff, reconciliation solved 1,156
+files versus 1,123 for the same-commit default, with zero wrong answers,
+non-timeout failures, or disagreements on jointly solved rows. It avoided
+19,600 SAT materializations and used 584 congruence fallbacks. These results
+support the profile as an opt-in convex QF_UFLRA experiment. They do not support
+a full `DPLL(T^M)` claim or remove the need for the exact fallback.
+
 ## Primary Base Paper
 
 Leonardo de Moura and Nikolaj Bjorner. *Model-based Theory Combination.*

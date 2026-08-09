@@ -24597,6 +24597,161 @@
       "artifacts": "local ignored: fuzz-results/qf-uflra-shared-model-local-20260809{,-z3,-z3-final}",
       "evidence_status": "local-complete-awaiting-slurm",
       "outcome": "Accepted as local differential evidence only. The first attempt correctly failed as evidence because its reference command was unresolved. SLURM generated and real-seed mutation gates remain required before benchmark or default-promotion claims."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-shared-model-prefixed-fuzz-rejected-121966-121970",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "fuzz",
+      "scope": "First option-specific SLURM gate for shared-model reconciliation before the congruence-consequence repair",
+      "commit": "ed82847",
+      "implementation_commit": "75a87c4",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_ids": {
+          "generated": "121966_[0-3]",
+          "mutation_preflight": "121970_0"
+        },
+        "binary": "Release, git ed82847, CaDiCaL 3.0.0",
+        "reference": "Z3 5.0.0"
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch with --qf-uflra-model-reconciliation, 750 mixed plus 125 QF_UF and 125 QF_UFLRA finite-domain cases per shard",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with PRIMO_FUZZ_EXTRA_SOLVER_ARGS=--qf-uflra-model-reconciliation"
+      },
+      "inputs": {
+        "generated_cases": 4000,
+        "tracked_seeds": 11,
+        "solver_timeout_seconds": 5,
+        "seed_record": "The generated submission seed was not retained in its log and its temporary slurm-results directory was removed by the later workspace refresh. This run is rejected evidence and is superseded by job 121994 with an explicit seed."
+      },
+      "results": {
+        "generated": "3000 mixed plus 1000 finite-domain cases completed without a reported discrepancy.",
+        "seed_preflight": "10 PASS and 1 decisive disagreement: real_congruence_forced_unsat.smt2 returned sat in Primo and unsat in Z3, matching its declared unsat status.",
+        "mutation": "Not started because the mandatory seed preflight failed.",
+        "slurm_state": "All four generated tasks completed in 27 seconds; mutation task failed with exit code 1 after 2 seconds."
+      },
+      "artifacts": "remote:<fresh-workspace>/slurm_logs/primo-qf-uflra-fuzz-121966_*.out and primo-qfuflra-mut-121970-0.out; remote:<fresh-workspace>/fuzz-results/qf-uflra-shared-model-mutation-ed82847/default/seed-summary.csv",
+      "evidence_status": "rejected-soundness-failure",
+      "outcome": "Rejected. An internal x = y merge can induce f(x) = f(y) by EUF congruence; without another EUF-to-LRA reconciliation pass, accepting that merge could miss incompatible arithmetic values. Commit 579ee70 added a shared-partition snapshot and guarded SAT fallback for every congruence-producing merge."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-shared-model-slurm-fuzz-121971-121994",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "fuzz",
+      "scope": "Merge-grade generated, finite-domain, tracked-seed, and mutation validation for repaired opt-in shared-model reconciliation",
+      "commit": "2d1ecf8",
+      "implementation_commit": "579ee70",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_ids": {
+          "first_repaired_generated": "121971_[0-3]",
+          "mutation": "121975_0",
+          "preserved_generated": "121994_[0-3]"
+        },
+        "binary": "Release, git 2d1ecf8 for job 121994 and git 579ee70 for jobs 121971/121975; CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified the exact 2d1ecf8 binary, CaDiCaL linkage, Z3, and cvc5 immediately before job 121994"
+      },
+      "commands": {
+        "preserved_generated": "sbatch --array=0-3 --export=ALL,PRIMO_FUZZ_COUNT=750,PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125,PRIMO_FUZZ_SEED_BASE=2026080960,PRIMO_FUZZ_SOLVER_ARGS=--qf-uflra-model-reconciliation,PRIMO_FUZZ_OUT_DIR=fuzz-results/qf-uflra-shared-model-generated-2d1ecf8 scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with 2000 configured iterations per seed, PRIMO_FUZZ_MUTATION_SEED_BASE=2026080950, an 8-second solver timeout, and PRIMO_FUZZ_EXTRA_SOLVER_ARGS=--qf-uflra-model-reconciliation"
+      },
+      "inputs": {
+        "generated_mixed": 3000,
+        "generated_finite_domain": 1000,
+        "generated_seed_range": "2026080960-2026080963; finite QF_UF adds 100000 and finite QF_UFLRA adds 200000",
+        "tracked_seeds": 11,
+        "mutation_iterations_per_seed": 2000,
+        "solver_timeout_seconds": 5,
+        "mutation_solver_timeout_seconds": 8
+      },
+      "results": {
+        "generated": "3000/3000 PASS against Z3, with 0 wrong answer, timeout, crash, unsupported result, or reference disagreement.",
+        "finite_domain": "1000/1000 PASS against Z3 and cvc5, complete metadata 8/8, all seven scenarios represented, and zero bug files. Aggregate activation: 7872 raw/emitted AMO clauses, 2302 post-processed AMO clauses, and 6216 lowered Real equalities.",
+        "tracked_seeds": "11/11 PASS, including real_congruence_forced_unsat.smt2.",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers; 2000 iterations configured per seed.",
+        "slurm_state": "All four preserved generated tasks completed in 25-26 seconds; mutation completed in 00:10:15 with exit code 0."
+      },
+      "artifacts": "remote:<fresh-workspace>/fuzz-results/qf-uflra-shared-model-generated-2d1ecf8/; remote:<fresh-workspace>/fuzz-results/qf-uflra-shared-model-mutation-579ee70/; remote:<fresh-workspace>/slurm_logs for jobs 121971, 121975, and 121994",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as merge-grade correctness evidence for the opt-in QF_UFLRA profile. The preserved rerun supplies explicit seeds and durable case metadata after the initial repaired result directory was removed during a later workspace refresh."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-shared-model-sample-121976",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "benchmark",
+      "scope": "45-file QF_UFLRA promotion sample comparing same-commit default and shared-model reconciliation",
+      "commit": "2d1ecf8",
+      "implementation_commit": "579ee70",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_id": "121976_[0-1]",
+        "binary": "Release, git 2d1ecf8, CaDiCaL 3.0.0",
+        "corpus": "benchmarks/qf-uflra-preprocessing-opportunity-sample.txt over the staged full QF_UFLRA tree",
+        "reference_reuse": "results/qf-uflra-opportunity-45-3451af9-rerun/z3.csv; identical 45-file manifest and 60-second timeout"
+      },
+      "command": "scripts/slurm_qf_uflra_sample_compare.sbatch with a 60-second timeout, build-slurm-rel/primo --quiet --stats for default, and --qf-uflra-model-reconciliation for reconciliation",
+      "inputs": {
+        "files": 45,
+        "families": "25 MathSAT, 19 CPAchecker induction, 1 CPAchecker BMC",
+        "timeout_seconds": 60
+      },
+      "results": {
+        "default": "42 solved, 3 timeout, 0 error/wrong, PAR2 416.246354.",
+        "reconciliation": "43 solved, 2 timeout, 0 error/wrong, PAR2 277.404402.",
+        "z3_reused": "45 solved, 0 timeout, PAR2 10.936763.",
+        "cross_solver": "Zero decisive-answer disagreements and zero non-timeout failures.",
+        "mechanism": "Reconciliation avoided 1155 SAT materializations, used 18 congruence fallbacks and 0 exact fallbacks, reduced SAT equality atoms from 1147 to 34, decisions from 29187 to 16488, propagations from 208421 to 136205, and solve calls from 258 to 77."
+      },
+      "artifacts": "remote:<fresh-workspace>/results/qf-uflra-shared-model-sample-2d1ecf8/; local ignored CSV copies under results/qf-uflra-shared-model-sample-2d1ecf8/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as the promotion sample. The profile preserved answers, solved one additional BMC row, and materially reduced search and equality traffic."
+    },
+    {
+      "id": "2026-08-09-qf-uflra-shared-model-full-121978-121979",
+      "started_at": "2026-08-09",
+      "recorded_at": "2026-08-09",
+      "kind": "benchmark",
+      "scope": "Full 1,284-file QF_UFLRA correctness and performance comparison for opt-in shared-model reconciliation",
+      "commit": "2d1ecf8",
+      "implementation_commit": "579ee70",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "job_ids": {
+          "default": "121978_[0-7]",
+          "reconciliation": "121979_[0-7]"
+        },
+        "binary": "Release, git 2d1ecf8, CaDiCaL 3.0.0",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 2d1ecf8, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf"
+      },
+      "command": "scripts/slurm_qf_uflra_model_mine.sbatch with 8 shards and a 5-second per-file timeout; build-slurm-rel/primo --quiet --stats for default and the additional --qf-uflra-model-reconciliation option for reconciliation",
+      "inputs": {
+        "files": 1284,
+        "timeout_seconds": 5,
+        "families": "FFT 10, CPAchecker BMC 15, CPAchecker induction 359, MathSAT 900",
+        "reference_reuse": "results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv; Z3 5.0.0, identical corpus and timeout"
+      },
+      "results": {
+        "default": "1123 solved (642 sat, 481 unsat), 161 timeout, 0 unsupported/error/wrong, PAR2 2040.942239.",
+        "reconciliation": "1156 solved (675 sat, 481 unsat), 128 timeout, 0 unsupported/error/wrong, PAR2 1424.154414.",
+        "z3_reused": "1234 solved (736 sat, 498 unsat), 50 timeout, 0 error/wrong, PAR2 758.708455.",
+        "default_families": "FFT 10/10; CPAchecker BMC 4/15; CPAchecker induction 216/359; MathSAT 893/900.",
+        "reconciliation_families": "FFT 10/10; CPAchecker BMC 4/15; CPAchecker induction 242/359; MathSAT 900/900.",
+        "cross_solver": "Zero decisive-answer disagreements among default, reconciliation, and reused Z3 on jointly solved files; zero non-timeout failures.",
+        "mechanism": "Reconciliation absorbed 19600 explained equalities without SAT materialization, used 584 congruence fallbacks, 304 LRA separations, 0 exact fallbacks, and 0 validation failures. SAT equality atoms fell from 17730 to 1161, decisions from 2646397 to 1322558, propagations from 42195478 to 24815243, and solve calls from 8348 to 2177.",
+        "timing": "Aggregate measured total time fell from 421.656698 seconds to 131.879076 seconds. Default shard tasks completed in 02:26-02:59; reconciliation tasks completed in 01:27-02:00."
+      },
+      "artifacts": "remote:<fresh-workspace>/results/qf-uflra-shared-model-full-{default,reconciliation}-2d1ecf8-5s/; local ignored CSV copies and comparison directory under results/qf-uflra-shared-model-full-*-2d1ecf8-5s/; reused local Z3 artifact results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as full-corpus evidence for the opt-in convex QF_UFLRA profile. It adds 33 solved files, removes all seven MathSAT timeouts, cuts PAR2 by 30 percent, and halves SAT decisions without a detected correctness regression. It remains opt-in because component-model ownership, a second EUF-to-LRA reconciliation iteration, and paper-style model mutation are not implemented."
     }
   ]
 }

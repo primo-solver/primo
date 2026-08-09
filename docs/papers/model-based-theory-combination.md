@@ -1,7 +1,7 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
-Status stamp: 2026-08-08, branch `convex-no-qflra-integration`, after the
-convex EUF/LRA equality fixpoint and mixed fixed-elimination promotion.
+Status stamp: 2026-08-09, branch `convex-no-qflra-integration`, after the
+opt-in shared-model reconciliation implementation and SLURM validation.
 
 Reference:
 
@@ -179,9 +179,11 @@ paper's novel model-based transition system.
 - [x] Expose counters for convex rounds, equality producers, lazy atoms,
   reasons, exact fallback probes, model-equality queries, assumptions, and
   mutation-filter outcomes.
-- [x] Run focused unit, ASAN, generated-fuzz, mutation-fuzz, and 45-file
-  QF_UFLRA promotion gates; exact commands and results are in
-  `docs/run-log.json` under commit `9481bfb`.
+- [x] Run focused unit, ASAN, generated-fuzz, finite-domain fuzz,
+  mutation-fuzz, 45-file, and full 1,284-file QF_UFLRA gates. The repaired
+  profile has no wrong answers or reference disagreements and improves the
+  full-corpus five-second result from 1,123 to 1,156 solved. Exact commands and
+  results are in `docs/run-log.json` under the 2026-08-09 shared-model entries.
 - [ ] Reproduce the paper's Section 6 benchmark suite and comparisons.
 - [ ] Claim the full Appendix A `DPLL(T^M)` transition system. This remains an
   explicit non-goal of the current convex milestone.

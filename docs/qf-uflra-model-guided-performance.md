@@ -18,6 +18,33 @@ The clean-room sources for the intended direction are:
 
 ## Current Evidence
 
+**Shared-model reconciliation result, 2026-08-09.** The repaired opt-in
+`--qf-uflra-model-reconciliation` profile passed 3,000 generated mixed cases,
+1,000 finite-domain cases, all 11 tracked-seed preflights, and a YinYang
+campaign configured for 2,000 mutations per seed on SLURM. The seed preflight caught an
+earlier unsound version: internally merging `x = y` could also make `f(x) =
+f(y)` true by congruence without sending that consequence back to LRA. The
+implemented repair keeps such congruence-producing merges on the explained
+SAT-visible path.
+
+On the full 1,284-file QF_UFLRA corpus at five seconds per file, the repaired
+profile solved 1,156 files with PAR2 1,424.154414, compared with 1,123 and PAR2
+2,040.942239 for the same-commit default. It solved all 900 MathSAT files and
+242/359 CPAchecker induction files; default solved 893 and 216 respectively.
+There were no wrong answers, non-timeout failures, or decisive-answer
+disagreements with default or the reused identical-corpus Z3 result. The
+profile reduced SAT decisions from 2,646,397 to 1,322,558, propagations from
+42,195,478 to 24,815,243, solve calls from 8,348 to 2,177, and SAT-visible
+interface equality atoms from 17,730 to 1,161. It absorbed 19,600 explained
+equalities internally and used 584 guarded congruence fallbacks with zero
+validation or exact-fallback failures. Exact commands, job IDs, corpus hashes,
+and artifacts are in `docs/run-log.json`.
+
+This accepts the profile as a measured QF_UFLRA experiment, not as the default
+or as a full implementation of the paper. A second EUF-to-LRA reconciliation
+iteration, genuine model mutation, generic component-model state, and broader
+logic coverage remain missing.
+
 **Correctness blocker and repair, 2026-08-05.** The later full 1284-file QF_UFLRA
 5s SLURM run at commit `f7c8bd7`, recorded as
 `2026-08-05-qfuflra-full-5s-rejected-unsound-filter`, invalidates the
@@ -315,7 +342,11 @@ an equality is not called internal unless the receiving model actually absorbs
 it. It is still not the paper's full `M-Propagate`/`M-Mutate` system. In
 particular, arbitrary model coincidences are recorded as classes but are not
 propagated as entailments, and the tableau is not mutated through freedom
-intervals.
+intervals. The current safety check snapshots and compares all shared EUF class
+pairs around each tentative merge, so its worst-case cost is quadratic in the
+shared interface per attempted internal equality. The profile remains opt-in;
+replacing that scan with an incremental class-change summary is the next local
+efficiency opportunity.
 
 ## Immediate Performance Target
 
@@ -433,17 +464,20 @@ Required tests:
 
 ## Model-State Direction
 
-After the two narrow optimizations above, the larger architectural step is to
-move from final-check loops toward a QF_UFLRA model state.
+After the two narrow optimizations above, the larger architectural step was to
+move selected final-check data into a QF_UFLRA shared-model projection.
 
 Primo already has shared equality ownership in `TheoryCombinationManager`.
 That class owns the interface term list, visible or generated interface equality
 registry, SAT literals for equality atoms, SAT assignment snapshots, trailed
 `InterfaceEqualityValue` entries, and per-round classification flags. This is
-necessary shared interface state, but it is not yet the model state meant here.
-It does not own an EUF model, an LRA model, a reconciled arrangement/model view,
-or mutable model values. Those objects are still rebuilt in `solve_qf_uf_lra` as
-local final-check data.
+necessary shared interface state. With
+`--qf-uflra-model-reconciliation`, it now also owns `SharedModelState`: a
+round-scoped projection containing LRA value classes, deterministic spanning
+equalities, internally absorbed equalities, and selected strict separations.
+It still does not own the component EUF closure, the LRA tableau, or mutable
+model values. Those theory objects remain local to their solvers and are
+rebuilt or copied by `solve_qf_uf_lra`.
 
 The current implementation now reuses the structural EUF preparation across
 mixed SAT rounds. `PreparedFlatTheory` owns the flattened terms, definition
@@ -456,17 +490,23 @@ the round-local input. The closure itself remains a per-round copy, so this is
 a preparation optimization, not the general model state or a persistent
 DPLL(T^M) transition system.
 
-The first useful state object should record:
+The current projection records:
 
-- current shared Real terms;
+- the round generation and current shared Real terms;
+- LRA model-value classes and their deterministic spanning pairs;
+- internally absorbed explained equalities and selected strict separations;
+- SAT-visible equality atoms already created, assigned true, or assigned false
+  through the manager's existing ledger.
+
+The next extension should record or expose:
+
 - current EUF closure classes and forbidden equalities under the SAT assignment;
-- current LRA model values for shared Real terms;
+- component-model ownership rather than only an LRA value projection;
 - LRA equality candidates with one of three classifications:
   `entailed`, `model_equal_mutation_avoidable`, or
   `model_equal_mutation_forced`;
-- equalities absorbed internally by the consumer theory for final/model
-  validation;
-- SAT-visible equality atoms already created, assigned true, or assigned false.
+- a second EUF-to-LRA reconciliation step after an internal merge, so
+  congruence-producing merges need not fall back to SAT.
 
 This object should still be QF_UFLRA-specific until the invariants are stable.
 General `DPLL(T^M)` can come later; the current evidence does not justify a
