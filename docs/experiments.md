@@ -219,6 +219,22 @@ To stage a complete extracted corpus without first creating a temporary
 manifest, replace `--manifest ...` with `--all-smt2`. Paths are discovered below
 `--root` and sorted before archiving.
 
+When the verified corpus already exists in another workspace on the same
+remote host, add `--remote-source-dir`. The helper sends only the validated
+path list over SSH and performs the tar copy between remote directories. It
+still builds a staging tree and replaces the target only after every selected
+file has been copied:
+
+```bash
+python3 scripts/slurm_stage_manifest_files.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote llm2smt-slurm \
+  --remote-source-dir <existing-remote-workspace> \
+  --remote-dir <new-remote-workspace> \
+  --root tmp/QF_UFLRA \
+  --all-smt2
+```
+
 If the published `interesting.html` table is available, pass
 `--reference-html path/to/interesting.html`. The script extracts table text with
 standard-library HTML parsing and writes `results/interesting-qf-uf-reference.csv`
