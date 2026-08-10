@@ -25833,6 +25833,70 @@
       "artifacts": "remote:<prepared-workspace>/results/qf-uflra-epoch-ccdd71a-30s/ and results/qf-uflra-epoch-row-ccdd71a-30s/; reused baseline results/qf-uflra-nullary-stack-safe-1f3d81c-30s/ and results/qf-uflra-convex-reconcile-bbd43b9-30s/; local ignored copies /tmp/primo-convex-no-eval/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted retained-epoch reconciliation for QF_UFLRA default promotion: it adds 26 solves with no loss against the old default and materially reduces common-solved time. Forward row propagation remains opt-in because its equal solved count masks solved-set churn."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-default-fuzz-4e19d1b",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "fuzz",
+      "scope": "Exact-commit SLURM campaign gate for the promoted convex QF_UFLRA default, with no reconciliation or row-propagation option",
+      "commit": "4e19d1b",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 4e19d1b, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation, deterministic seeds, and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 4e19d1b, CaDiCaL linkage, and all fuzz/reference dependencies immediately before each submission.",
+        "scheduler_state": "All four generated shards and the all-seed mutation task completed with exit code 0 in 28-29 seconds. Scheduler identifiers are kept outside the repository."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with 750 mixed, 125 finite QF_UF, and 125 finite QF_UFLRA cases per shard; seed base 2026082300; no PRIMO_FUZZ_SOLVER_ARGS",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with 100 mutations per each of 11 tracked seeds, seed base 2026082400, a 2-second solver timeout, and no extra solver arguments"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS against Z3",
+        "finite_domain": "1000/1000 PASS: 500 QF_UF and 500 QF_UFLRA against Z3 and cvc5",
+        "tracked_seeds": "11/11 deterministic seeds PASS against Z3",
+        "mutation": "All 11 seeds completed 100 successful generations and 0 unsuccessful generations; 0 saved bug files.",
+        "failures": "0 wrong answer, crash, parser/type error, unsupported result, reference disagreement, or saved bug file."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-default-fuzz-4e19d1b/ and fuzz-results/qf-uflra-default-mutation-4e19d1b/; compressed summary-only copy /tmp/primo-default-fuzz-4e19d1b-v2/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The actual option-free promoted default clears the campaign-grade QF_UFLRA fuzz gate."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-default-full-and-timeout-triage-4e19d1b",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "benchmark-and-triage",
+      "scope": "Exact-commit 30-second full-corpus confirmation of the promoted QF_UFLRA default, plus controlled triage of one timeout-handler abort",
+      "commit": "4e19d1b",
+      "baseline_commit": "ccdd71a",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM plus one stopped workstation probe",
+        "binary": "Release, git 4e19d1b, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes",
+        "reference_reuse": "The identical-corpus ccdd71a explicit-profile, 1f3d81c old-default, bbd43b9 prior-profile, Z3, and Yices results were reused rather than rerun.",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 4e19d1b and the intended binary immediately before the benchmark and each controlled probe.",
+        "scheduler_state": "All eight benchmark shards completed with scheduler exit code 0 in 1 minute 47 seconds to 2 minutes 53 seconds. Scheduler identifiers are kept outside the repository."
+      },
+      "commands": {
+        "benchmark": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=30, and build-slurm-rel/primo --quiet --stats; summarized by scripts/summarize_benchmark_shards.py",
+        "workstation_probe": "build/primo --quiet --stats --max-theory-conflicts=100 on cpachecker-induction.cs_fib_true-unreach-call.i.smt2; manually hard-killed after 111.73 seconds because the controlled limit had not fired",
+        "slurm_probe": "A locally written and validated one-file sbatch ran build-slurm-rel/primo --quiet --stats --max-theory-conflicts=1 under an outer timeout -s KILL 180 with 32 GB requested memory; an initial attempt exited 127 before running because /usr/bin/time was unavailable, then the corrected probe ran to the hard guard"
+      },
+      "results": {
+        "default": "1264 solved (753 sat, 511 unsat), 20 harness-classified timeouts, 0 unsupported/wrong, solved-row time 470.517558 seconds, PAR2 1670.517558.",
+        "families": "FFT 10/10; CPAchecker BMC 7/15; CPAchecker induction 347/359 with 12 timeouts; MathSAT 900/900.",
+        "exact_profile_comparison": "0 recoveries, 0 losses, and 0 decisive-answer disagreements against explicit ccdd71a. All 1264 solved rows have identical answers and every non-time statistic. Solved-row time changed from 492.677561 to 470.517558 seconds.",
+        "timeout_handler_failure": "The 94029941-byte cpachecker-induction.cs_fib_true-unreach-call.i.smt2 row was a timeout in both runs. At 31.211819 seconds the default run exited -6 with a glibc malloc assertion while the SIGTERM handler attempted its allocator-using statistics flush; the shard reached MaxRSS 18939772 KB. The harness classifies timeout before child exit status, so this raw failure is not visible in aggregate error counts.",
+        "controlled_probe": "The workstation max-conflicts=100 probe had not reached its cap after 111.73 seconds and 26365824 KB RSS and was stopped. The corrected SLURM max-conflicts=1 probe likewise did not reach its cap; the outer hard kill fired after 180 seconds and SLURM reported 154539380 KB MaxRSS. No SIGTERM handler ran in that probe, and no malloc assertion was printed before the hard kill.",
+        "triage": "Source inspection confirms the SIGTERM handler calls non-async-signal-safe statistics and std::exit code. The observed abort is therefore recorded as a timeout-infrastructure defect under extreme memory pressure, while the unbounded pre-first-theory-conflict memory growth remains a separate unresolved performance issue. This evidence does not establish that the underlying oversized run is memory-safe to completion."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-default-4e19d1b-30s/ and results/csfib-controlled-4e19d1b-r2/; local compressed CSV copy /tmp/primo-convex-no-eval/default-4e19d1b/ and summary /tmp/primo-default-4e19d1b-summary.json",
+      "evidence_status": "slurm-complete-current-with-timeout-infrastructure-caveat",
+      "outcome": "Accepted the convex reconciliation default: it reproduces the explicit profile's solved set and exact solved-row search behavior while passing fresh option-free fuzzing. Do not describe the full benchmark as crash-free; fix the async-unsafe timeout flush and investigate the oversized row's memory growth separately."
     }
   ]
 }

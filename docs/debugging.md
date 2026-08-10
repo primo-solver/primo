@@ -285,7 +285,14 @@ When the CLI is run with `--stats`, it keeps the current counters in a live
 statistics sink. On `SIGTERM` it prints `unknown` to stdout and flushes the
 partial counters to stderr before exiting. The benchmark harnesses send
 `SIGTERM` first and only use `SIGKILL` after a short grace period, so timeout
-rows can still contain diagnostic counters.
+rows can often contain diagnostic counters. This timeout flush is best-effort,
+not async-signal-safe: it calls statistics and process-exit code that may
+allocate while the signal interrupted an allocation. An oversized QF_UFLRA row
+at `4e19d1b` aborted in this handler under high memory pressure. Inspect
+`exit_code` and `stderr_head` even when the harness classifies a row as a
+timeout. Prefer `--max-theory-conflicts` for controlled profiling, but remember
+that it cannot cap frontend work or a search that has not yet reported its first
+theory conflict.
 
 The auto counters record which concrete path `--euf-prop=auto` selected for the
 current abstraction.

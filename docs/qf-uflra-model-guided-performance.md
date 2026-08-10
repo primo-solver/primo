@@ -127,6 +127,19 @@ convex model reconciliation to the QF_UFLRA default. The explained exact path
 remains available through `--no-qf-uflra-model-reconciliation` and as the
 automatic fallback for failed candidate invariants.
 
+The exact promoted-default revision `4e19d1b` then passed the same campaign
+without an enable flag: 3,000 mixed cases, 1,000 finite-domain cases, all 11
+seed preflights, and 100 successful mutations per seed, with no disagreement or
+saved bug. Its 30-second full-corpus run has the same 1,264 solved files and 20
+timeouts as explicit `ccdd71a`. Every solved row has identical answer and
+non-time statistics; aggregate solved-row time changed from 492.677561 to
+470.517558 seconds. One already-timeout 94 MB CPAchecker row aborted while the
+benchmark's async-unsafe SIGTERM handler tried to flush statistics under high
+memory pressure. A hard-kill controlled probe reproduced the extreme memory
+growth without that handler abort. This is recorded as timeout-infrastructure
+and memory triage, not hidden as a clean timeout or counted as a solved-set
+regression.
+
 **Mixed row-propagation A/B, 2026-08-10.** On the same deterministic 20-row
 sample, enabling only `--lra-row-propagation` preserved all 20 answers and all
 27 SAT solve calls while reducing SAT decisions from 17,016 to 8,070 and SAT

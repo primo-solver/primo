@@ -97,7 +97,10 @@ row records the manifest row number, absolute and repository-relative file path,
 family, solver arguments, status, answer, elapsed seconds, exit code, per-file
 stdout/stderr logs, and any `--stats` counters emitted before completion. The
 runner sends `SIGTERM` at the timeout and waits briefly before `SIGKILL`, so
-Primo can flush partial `--stats` counters for timeout rows. The
+Primo can often flush partial `--stats` counters for timeout rows. The current
+CLI flush is not async-signal-safe and may abort if the signal interrupts an
+allocation; timeout rows must therefore be checked for a nonzero exit code or
+allocator diagnostics rather than assumed clean from their status alone. The
 same parser preserves LLM2SMT `[stats]` lines as `llm2smt.*` columns for
 reference comparisons.
 script uses SMT-LIB `:status sat|unsat` metadata as the expected answer by
@@ -280,7 +283,10 @@ wrong-answer, status, answer, family, and PAR2 counts. Only non-wrong `sat` and
 `unsupported`, timeouts, and errors contribute `2 * timeout`. Any performance
 report based on this archive must include the SLURM job id, timeout, commit,
 merged CSV path, family summary, unsupported count, wrong-answer count, and
-comparison against the previous full-archive Primo run.
+comparison against the previous full-archive Primo run. Because timeout status
+takes precedence over child exit status, reports must also inspect
+`timed_out_with_stats`, `exit_code`, and `stderr_head` for timeout-handler
+failures.
 
 Harness status is stricter than recognized stdout. An explicit `unsupported`
 answer has status `unsupported`, including Primo's normal exit code 2 for an
