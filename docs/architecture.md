@@ -321,7 +321,13 @@ Implemented now:
   and 110 timeouts at `541af76`; PAR2 falls from 7,055.421 to 3,588.436. The
   solved count matches the reused Z3 run on this corpus, but not instance for
   instance, and Z3 remains faster on common solves. These are implementation
-  efficiency results, not additional model-guided transitions.
+  efficiency results, not additional model-guided transitions. A subsequent
+  reference run added Yices 2.7.0: at five seconds it solves 1,275 files with
+  nine timeouts, and at 30 seconds it solves 1,276 with eight timeouts. Yices
+  has no answer disagreement with either Primo or Z3 on jointly solved rows;
+  it solves every row decided by their stored evaluations and exposes 42 more
+  30-second Primo gaps. Matching Z3's solved count therefore did not close the
+  performance gap to the strongest measured reference.
   Outside this opt-in reconciliation profile, the default final path classifies
   LRA-to-EUF equalities through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already

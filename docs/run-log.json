@@ -25313,6 +25313,37 @@
       "artifacts": "remote:<prepared-workspace>/results/qf-uflra-profile-9b9a035-30s/; local ignored CSV/JSONL copy /tmp/primo-qfuflra-30s-candidate-9b9a035-v2/; baseline /tmp/primo-qfuflra-30s-baseline-541af76-full/; reused Z3 results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted both implementation-cost fixes. The 30-second solved-count gap to the reused Z3 run is closed on this corpus, but frontend definition compilation, SAT factoring/arrangement search, and the 16 remaining fast-Z3/timeout-Primo cases remain performance work."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-yices-reference-01a8a95",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "reference-benchmark",
+      "scope": "Add Yices 2.7.0 at exact five-second and 30-second budgets to the full 1,284-file QF_UFLRA evaluation",
+      "commit": "01a8a95",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "solver": "Yices 2.7.0 revision 4f19700f0e272f4a68250080d12a873523bc7ac3, release/static, run as the separate yices-smt2 reference binary",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py installed contrib-yices and --check-only verified source revision 01a8a95, CaDiCaL linkage, and contrib/local/bin/yices-smt2 immediately before each submission",
+        "scheduler_state": "Thirty-second array job 122384 completed all eight shards in 41 to 54 seconds; five-second array job 122393 completed all eight shards in 13 to 21 seconds; every task exited zero."
+      },
+      "commands": {
+        "thirty_seconds": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=30, and PRIMO_MINE_SOLVER=contrib/local/bin/yices-smt2",
+        "five_seconds": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=5, and PRIMO_MINE_SOLVER=contrib/local/bin/yices-smt2"
+      },
+      "results": {
+        "five_seconds": "1275 solved (764 sat, 511 unsat), 9 timeout, 0 error/unsupported/wrong, solved-row time 66.687539 seconds, PAR2 156.687539.",
+        "five_second_families": "FFT 10/10, PAR2 0.032193; CPAchecker BMC 7/15, PAR2 80.382583; CPAchecker induction 358/359, PAR2 56.123251; MathSAT 900/900, PAR2 20.149512.",
+        "thirty_seconds": "1276 solved (765 sat, 511 unsat), 8 timeout, 0 error/unsupported/wrong, solved-row time 110.699880 seconds, PAR2 590.699880.",
+        "thirty_second_families": "FFT 10/10, PAR2 0.203294; CPAchecker BMC 7/15, PAR2 480.525139; CPAchecker induction 359/359, PAR2 80.500455; MathSAT 900/900, PAR2 29.470992.",
+        "z3_comparison": "At the exact five-second budget, reused Z3 solves 1234 with 50 timeouts and PAR2 758.708455. Yices adds 41 solves, loses none, and has zero decisive-answer disagreements.",
+        "primo_comparison": "Against Primo 9b9a035 at 30 seconds, Yices at 30 seconds adds 42 solves, loses none, and has zero decisive-answer disagreements. Yices solves all 359 CPAchecker induction rows; both solvers still time out on eight of the same CPAchecker BMC rows."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-yices-2.7.0-5s/ and results/qf-uflra-yices-2.7.0-30s/; local ignored CSV/JSONL copies /tmp/primo-qfuflra-yices-2.7.0-5s/ and /tmp/primo-qfuflra-yices-2.7.0-30s/; reused Primo /tmp/primo-qfuflra-30s-candidate-9b9a035-v2/; reused Z3 results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Use Yices as the strongest measured QF_UFLRA reference for the next performance triage. The previous equal solved count with Z3 understated the remaining gap."
     }
   ]
 }
