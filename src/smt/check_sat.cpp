@@ -5749,10 +5749,19 @@ std::vector<ExplainedInterfaceEquality> lra_entailed_shared_equalities(
     equalities.push_back(
         ExplainedInterfaceEquality{terms.mk_eq(lhs->second, rhs->second), equality.reasons});
     statistics.increment(":no.interface.lra-opportunistic-reason-lits", equality.reasons.size());
-    if (equality.rule == theory::arithmetic::LraTableau::EntailedEqualityRule::FixedEq) {
-      statistics.increment(":no.interface.lra-opportunistic-fixed-eq");
-    } else {
-      statistics.increment(":no.interface.lra-opportunistic-eq-row");
+    switch (equality.rule) {
+      case theory::arithmetic::LraTableau::EntailedEqualityRule::FixedEq:
+        statistics.increment(":no.interface.lra-opportunistic-fixed-eq");
+        break;
+      case theory::arithmetic::LraTableau::EntailedEqualityRule::EqRow:
+        statistics.increment(":no.interface.lra-opportunistic-eq-row");
+        break;
+      case theory::arithmetic::LraTableau::EntailedEqualityRule::EqOffsetRows:
+        statistics.increment(":no.interface.lra-opportunistic-eq-offset-rows");
+        break;
+      case theory::arithmetic::LraTableau::EntailedEqualityRule::EqRows:
+        statistics.increment(":no.interface.lra-opportunistic-eq-rows");
+        break;
     }
   }
   return equalities;
@@ -9636,6 +9645,8 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-opportunistic-candidates", 0);
   statistics.set(":no.interface.lra-opportunistic-fixed-eq", 0);
   statistics.set(":no.interface.lra-opportunistic-eq-row", 0);
+  statistics.set(":no.interface.lra-opportunistic-eq-offset-rows", 0);
+  statistics.set(":no.interface.lra-opportunistic-eq-rows", 0);
   statistics.set(":no.interface.lra-opportunistic-reason-lits", 0);
   statistics.set(":no.interface.lra-opportunistic-unmapped-terms", 0);
   statistics.set(":no.interface.lra-opportunistic-unmapped-equalities", 0);

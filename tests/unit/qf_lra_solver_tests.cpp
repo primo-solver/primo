@@ -903,10 +903,10 @@ void qf_uf_lra_shares_purified_real_argument_equalities_with_euf() {
   assert(result.statistics.get(":no.interface.equality-created-atoms") >= 1);
   assert(result.statistics.get(":no.interface.equality-clauses") >= 1);
   assert(result.statistics.get(":no.interface.equality-rechecks") >= 1);
-  assert(result.statistics.get(":no.interface.lra-to-euf-candidates") >= 1);
-  assert(result.statistics.get(":no.interface.lra-to-euf-created-atoms") >= 1);
-  assert(result.statistics.get(":no.interface.lra-to-euf-clauses") >= 1);
-  assert(result.statistics.get(":no.interface.lra-to-euf-rechecks") >= 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-candidates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-rechecks") >= 1);
   assert(result.statistics.get(":no.interface.equality-local-reasons") >= 1);
   assert(result.statistics.get(":no.interface.equality-local-reason-lits") >= 2);
   assert(result.statistics.get(":no.interface.equality-fallback-reasons") == 0);

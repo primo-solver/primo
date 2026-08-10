@@ -326,7 +326,7 @@ class LraTableau {
   // the SAT solver. An EMPTY reason set is meaningful and legal: it means the
   // equality follows from the tableau's own row structure with no asserted
   // bound involved, so it holds unconditionally.
-  enum class EntailedEqualityRule { FixedEq, EqRow };
+  enum class EntailedEqualityRule { FixedEq, EqRow, EqOffsetRows, EqRows };
 
   struct EntailedEquality {
     LraVarId lhs = 0;
@@ -342,11 +342,11 @@ class LraTableau {
   //   FixedEq   l_i = u_i = l_j = u_j                      ==> x_i = x_j
   //   EqRow     x_i = x_j + P, P fixed, beta(P) = 0        ==> x_i = x_j
   //
-  // Deliberately INCOMPLETE -- the paper's own EqOffsetRows and EqRows are not
-  // implemented, and even all four together miss equalities. What they miss is
-  // what the combination layer must case-split on. For a complete but very
-  // expensive reference, see lra_implied_real_equalities in check_sat.cpp,
-  // which is used as the test oracle.
+  // All four Section 5.1 rules are implemented. They remain deliberately
+  // INCOMPLETE: what they miss is what the combination layer must case-split
+  // on. For a complete but very expensive reference, see
+  // lra_implied_real_equalities in check_sat.cpp, which is used as the test
+  // oracle.
   //
   // Emits a SPANNING set, not all pairs: within a group of mutually equal
   // variables each is linked to the group's first member, giving n-1
@@ -424,11 +424,17 @@ class LraTableau {
   struct ModelMutationResult {
     std::vector<std::vector<LraVarId>> classes;
     std::vector<std::pair<LraVarId, DeltaRational>> updates;
+    std::vector<DeltaRational> values;
     std::size_t classes_before = 0;
     std::size_t classes_after = 0;
+    std::size_t forbidden_equalities_before = 0;
+    std::size_t forbidden_equalities_after = 0;
+
+    [[nodiscard]] const DeltaRational& value(LraVarId var) const { return values.at(var); }
   };
   [[nodiscard]] ModelMutationResult diversify_shared_model(
-      const std::vector<LraVarId>& shared) const;
+      const std::vector<LraVarId>& shared,
+      const std::vector<std::pair<LraVarId, LraVarId>>& forbidden_equalities = {}) const;
 
   // Read-only access to a variable's current upper/lower bound (if any) and
   // the literal that established it -- used by OnlineLraPropagator's

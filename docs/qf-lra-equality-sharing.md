@@ -112,6 +112,15 @@ variables; EqRow checked cheaply when a row is updated during a pivot;
 EqOffsetRows via a map `(x_k, v) ↦ xᵢ`. **The first three are applied eagerly;
 EqRows only before `M-Propagate`**, being the expensive one.
 
+Primo implements all four as poll-only mixed-theory producers. `EqOffsetRows`
+indexes the single non-fixed coefficient-one signature and exact fixed offset;
+`EqRows` hashes the complete canonical non-fixed polynomial and exact fixed
+offset. A bucket retains its first shared basic variable and emits a spanning
+edge to later members. Reasons are the deduplicated fixing-bound literals from
+both fixed row portions. Primo deliberately polls rather than maintaining the
+indexes during every pivot, so this is the paper's logical rule and indexed
+complexity but not its eager pivot-hook scheduling.
+
 ### 3. Model mutation via freedom intervals (§5.2)
 
 The *freedom* of a non-basic `xⱼ` is `[Lⱼ, Uⱼ]`, computed from the rows it
@@ -139,7 +148,7 @@ reports the average number of shared equalities actually propagated by Z3 as
 | method | what it is |
 |---|---|
 | `LraTableau::freedom_interval(nonbasic)` | `[Lⱼ, Uⱼ]`, `nullopt` endpoint = unbounded |
-| `LraTableau::diversify_shared_model(shared)` | the greedy sweep, returning the post-mutation classes, the updates taken, and the class count before/after |
+| `LraTableau::diversify_shared_model(shared, forbidden)` | the greedy sweep, returning the complete scratch assignment, post-mutation classes, updates, class counts, and forbidden-equality violations before/after |
 
 Three properties govern the integration:
 
@@ -156,6 +165,12 @@ Three properties govern the integration:
   satisfies all rows and bounds. So a disequality read off it is true in some
   model — a stronger guarantee than the current `check_sat.cpp` proxy, which
   is sound only because a solver call said so.
+- **Assigned disequalities are objectives, not entailment tests.** An accepted
+  update may separate a currently violated forbidden pair but may not
+  reintroduce a forbidden equality that the scratch model already satisfies;
+  it must also preserve the paper's non-decreasing class-count obligation.
+  Any forbidden pair left equal requires targeted strict separation by the
+  coordinator.
 
 `solve_qf_uf_lra()` now calls `diversify_shared_model()` once for each feasible
 mixed round when either `--qf-uflra-model-reconciliation` or
@@ -457,13 +472,11 @@ preprocessing activation, so it does not close the revalidation requirement.
 1. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
    is newly exposed fixedness and fewer exact fallback probes, not pure-QF_LRA
    solved count alone.
-2. **Add `EqOffsetRows`, then `EqRows`.** Each rule needs its own explanation
-   invariant, soundness-oracle tests, counters, and a case where it removes
-   exact strict-separation probes.
-3. **Add the paper's shared model transition state, then freedom-interval
-   mutation.** The partition is already safe as an exact-candidate filter, but
-   using equal classes to drive SAT choices still requires this state. Model
-   equality must remain distinct from entailed propagation.
+2. **Complete the shared model transition.** The four Section 5.1 rules and
+   freedom-interval mutation now exist, but using model classes to replace the
+   exact scan still requires arrangement-aware negative equalities and a real
+   `M-Propagate` witness transition. Model equality must remain distinct from
+   entailed propagation.
 
 ## Combination contract
 

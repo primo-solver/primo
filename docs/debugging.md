@@ -347,6 +347,8 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-opportunistic-candidates`
 - `:no.interface.lra-opportunistic-fixed-eq`
 - `:no.interface.lra-opportunistic-eq-row`
+- `:no.interface.lra-opportunistic-eq-offset-rows`
+- `:no.interface.lra-opportunistic-eq-rows`
 - `:no.interface.lra-opportunistic-reason-lits`
 - `:no.interface.lra-opportunistic-unmapped-terms`
 - `:no.interface.lra-opportunistic-unmapped-equalities`

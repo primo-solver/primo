@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cassert>
 #include <functional>
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -1677,6 +1678,101 @@ void entailed_equalities_emits_a_spanning_set_not_all_pairs() {
   assert(has_equality(eqs, x, z));
 }
 
+void eqoffsetrows_reports_matching_fixed_offsets() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId common = tableau.add_variable();
+  const LraVarId p = tableau.add_variable();
+  const LraVarId q = tableau.add_variable();
+  tableau.add_row(x, {{common, Rational(1)}, {p, Rational(1)}});
+  tableau.add_row(y, {{common, Rational(1)}, {q, Rational(1)}});
+  assert(!tableau.assert_lower(p, rat(2), Lit{31}).has_value());
+  assert(!tableau.assert_upper(p, rat(2), Lit{32}).has_value());
+  assert(!tableau.assert_lower(q, rat(2), Lit{33}).has_value());
+  assert(!tableau.assert_upper(q, rat(2), Lit{34}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto equalities = tableau.entailed_equalities({x, y});
+  const auto found = std::find_if(equalities.begin(), equalities.end(), [](const auto& equality) {
+    return equality.rule == LraTableau::EntailedEqualityRule::EqOffsetRows;
+  });
+  assert(found != equalities.end());
+  assert(found->lhs == x && found->rhs == y);
+  assert(found->reasons.size() == 4);
+  for (std::size_t index = 0; index < found->reasons.size(); ++index) {
+    assert(found->reasons[index].value == static_cast<int>(31 + index));
+  }
+}
+
+void eqoffsetrows_rejects_different_offsets() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId common = tableau.add_variable();
+  const LraVarId p = tableau.add_variable();
+  const LraVarId q = tableau.add_variable();
+  tableau.add_row(x, {{common, Rational(1)}, {p, Rational(1)}});
+  tableau.add_row(y, {{common, Rational(1)}, {q, Rational(1)}});
+  assert(!tableau.assert_lower(p, rat(2), Lit{31}).has_value());
+  assert(!tableau.assert_upper(p, rat(2), Lit{32}).has_value());
+  assert(!tableau.assert_lower(q, rat(3), Lit{33}).has_value());
+  assert(!tableau.assert_upper(q, rat(3), Lit{34}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto equalities = tableau.entailed_equalities({x, y});
+  assert(std::none_of(equalities.begin(), equalities.end(), [](const auto& equality) {
+    return equality.rule == LraTableau::EntailedEqualityRule::EqOffsetRows;
+  }));
+}
+
+void eqrows_reports_matching_polynomials_and_emits_a_spanning_set() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId u = tableau.add_variable();
+  const LraVarId v = tableau.add_variable();
+  const LraVarId p = tableau.add_variable();
+  const LraVarId q = tableau.add_variable();
+  const LraVarId r = tableau.add_variable();
+  tableau.add_row(x, {{u, Rational(2)}, {v, Rational(-3)}, {p, Rational(1)}});
+  tableau.add_row(y, {{u, Rational(2)}, {v, Rational(-3)}, {q, Rational(1)}});
+  tableau.add_row(z, {{u, Rational(2)}, {v, Rational(-3)}, {r, Rational(1)}});
+  int reason = 41;
+  for (const LraVarId fixed : {p, q, r}) {
+    assert(!tableau.assert_lower(fixed, rat(5), Lit{reason++}).has_value());
+    assert(!tableau.assert_upper(fixed, rat(5), Lit{reason++}).has_value());
+  }
+  assert(!tableau.check().has_value());
+
+  const auto equalities = tableau.entailed_equalities({x, y, z});
+  std::vector<LraTableau::EntailedEquality> eqrows;
+  std::copy_if(equalities.begin(), equalities.end(), std::back_inserter(eqrows),
+               [](const auto& equality) {
+                 return equality.rule == LraTableau::EntailedEqualityRule::EqRows;
+               });
+  assert(eqrows.size() == 2);
+  assert(eqrows[0].lhs == x && eqrows[0].rhs == y);
+  assert(eqrows[1].lhs == x && eqrows[1].rhs == z);
+}
+
+void eqrows_rejects_different_nonfixed_polynomials() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId u = tableau.add_variable();
+  const LraVarId v = tableau.add_variable();
+  tableau.add_row(x, {{u, Rational(2)}, {v, Rational(-3)}});
+  tableau.add_row(y, {{u, Rational(2)}, {v, Rational(-2)}});
+  assert(!tableau.check().has_value());
+
+  const auto equalities = tableau.entailed_equalities({x, y});
+  assert(std::none_of(equalities.begin(), equalities.end(), [](const auto& equality) {
+    return equality.rule == LraTableau::EntailedEqualityRule::EqRows;
+  }));
+}
+
 // -- Differential oracle for entailed_equalities --
 //
 // entailed_equalities applies deliberately incomplete rules. To test it we need
@@ -2181,6 +2277,59 @@ void diversify_separations_agree_with_the_entailment_oracle() {
   });
 }
 
+void diversify_prioritizes_forbidden_equalities_and_returns_the_model() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId sum = tableau.add_variable();
+  tableau.add_row(sum, {{x, Rational(1)}, {y, Rational(1)}, {z, Rational(1)}});
+  assert(!tableau.check().has_value());
+
+  const auto result = tableau.diversify_shared_model({x, y, z}, {{x, y}, {y, z}});
+  assert(result.values.size() == tableau.variable_count());
+  assert(result.forbidden_equalities_before == 2);
+  assert(result.forbidden_equalities_after == 0);
+  assert(result.value(x) != result.value(y));
+  assert(result.value(y) != result.value(z));
+  assert(result.value(sum) == result.value(x) + result.value(y) + result.value(z));
+  assert(tableau.assignment(x) == DeltaRational{});
+  assert(tableau.assignment(y) == DeltaRational{});
+  assert(tableau.assignment(z) == DeltaRational{});
+}
+
+void diversify_does_not_reintroduce_a_satisfied_forbidden_equality() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  assert(!tableau.assert_lower(z, rat(1), Lit{51}).has_value());
+  assert(!tableau.assert_upper(z, rat(1), Lit{52}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto result = tableau.diversify_shared_model({x, y, z}, {{x, y}, {x, z}});
+  assert(result.forbidden_equalities_before == 1);
+  assert(result.forbidden_equalities_after == 0);
+  assert(result.value(x) != result.value(y));
+  assert(result.value(x) != result.value(z));
+}
+
+void diversify_reports_an_unresolved_entailed_forbidden_equality() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId difference = tableau.add_variable();
+  tableau.add_row(difference, {{x, Rational(1)}, {y, Rational(-1)}});
+  assert(!tableau.assert_lower(difference, rat(0), Lit{61}).has_value());
+  assert(!tableau.assert_upper(difference, rat(0), Lit{62}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto result = tableau.diversify_shared_model({x, y}, {{x, y}});
+  assert(result.forbidden_equalities_before == 1);
+  assert(result.forbidden_equalities_after == 1);
+  assert(result.value(x) == result.value(y));
+}
+
 int main() {
   direct_bound_conflict_on_a_single_variable();
   weaker_bound_is_a_silent_no_op();
@@ -2239,6 +2388,10 @@ int main() {
   eqrow_declines_on_a_negated_coefficient();
   entailed_equalities_respects_the_shared_set();
   entailed_equalities_emits_a_spanning_set_not_all_pairs();
+  eqoffsetrows_reports_matching_fixed_offsets();
+  eqoffsetrows_rejects_different_offsets();
+  eqrows_reports_matching_polynomials_and_emits_a_spanning_set();
+  eqrows_rejects_different_nonfixed_polynomials();
   fixed_elimination_closes_the_eqrow_basis_gap();
   the_entailment_oracle_is_itself_correct();
   entailed_equalities_agree_with_the_entailment_oracle();
@@ -2254,5 +2407,8 @@ int main() {
   diversify_leaves_the_tableau_untouched();
   diversify_is_a_no_op_when_nothing_coincides();
   diversify_separations_agree_with_the_entailment_oracle();
+  diversify_prioritizes_forbidden_equalities_and_returns_the_model();
+  diversify_does_not_reintroduce_a_satisfied_forbidden_equality();
+  diversify_reports_an_unresolved_entailed_forbidden_equality();
   return 0;
 }

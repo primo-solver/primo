@@ -927,6 +927,26 @@ struct DeltaRationalHash {
   }
 };
 
+struct RowModelKey {
+  std::vector<std::pair<LraVarId, util::Rational>> nonfixed_terms;
+  DeltaRational fixed_offset;
+
+  bool operator==(const RowModelKey& other) const = default;
+};
+
+struct RowModelKeyHash {
+  std::size_t operator()(const RowModelKey& key) const {
+    std::size_t seed = DeltaRationalHash{}(key.fixed_offset);
+    const util::RationalHash rational_hash;
+    for (const auto& [var, coefficient] : key.nonfixed_terms) {
+      const std::size_t term_hash =
+          var ^ (rational_hash(coefficient) + 0x9e3779b97f4a7c15ULL + (var << 6U) + (var >> 2U));
+      seed ^= term_hash + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+    }
+    return seed;
+  }
+};
+
 // The partition of `shared` by model value, shared by model_equal_classes()
 // and by the mutation sweep, which needs the same grouping against a scratch
 // assignment. Templated on the value lookup so the live path keeps costing
@@ -1112,6 +1132,58 @@ std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
     }
   }
 
+  // -- EqOffsetRows / EqRows ----------------------------------------------
+  // Split each shared basic row into its non-fixed polynomial P and fixed
+  // remainder P_i. Rows with the same P and beta(P_i) define equal basics.
+  // The single coefficient-one P=x_k case is the paper's cheaper
+  // EqOffsetRows rule; all other signatures use EqRows. Keeping the first row
+  // per key emits a spanning set instead of every pair in the bucket.
+  struct IndexedRow {
+    LraVarId basic = 0;
+    std::vector<LraVarId> fixed_vars;
+  };
+  std::unordered_map<RowModelKey, IndexedRow, RowModelKeyHash> offset_rows;
+  std::unordered_map<RowModelKey, IndexedRow, RowModelKeyHash> general_rows;
+  for (const LraVarId basic : vars) {
+    if (!vars_.at(basic).is_basic) {
+      continue;
+    }
+    RowModelKey key;
+    IndexedRow indexed{.basic = basic, .fixed_vars = {}};
+    for (const auto& [var, coefficient, slot] : rows_.at(basic)) {
+      const std::optional<DeltaRational> value = fixed_value(var);
+      if (value.has_value()) {
+        indexed.fixed_vars.push_back(var);
+        key.fixed_offset = key.fixed_offset + value->scaled(coefficient);
+      } else {
+        key.nonfixed_terms.emplace_back(var, coefficient);
+      }
+    }
+
+    const bool is_offset =
+        key.nonfixed_terms.size() == 1 && key.nonfixed_terms.front().second == util::Rational(1);
+    auto& index = is_offset ? offset_rows : general_rows;
+    const auto [bucket, inserted] = index.emplace(key, indexed);
+    if (inserted) {
+      continue;
+    }
+    std::vector<sat::Lit> reasons;
+    reasons.reserve(2 * (bucket->second.fixed_vars.size() + indexed.fixed_vars.size()));
+    for (const LraVarId fixed : bucket->second.fixed_vars) {
+      append_fixing_reasons(fixed, reasons);
+    }
+    for (const LraVarId fixed : indexed.fixed_vars) {
+      append_fixing_reasons(fixed, reasons);
+    }
+    std::sort(reasons.begin(), reasons.end(),
+              [](sat::Lit lhs, sat::Lit rhs) { return lhs.value < rhs.value; });
+    reasons.erase(std::unique(reasons.begin(), reasons.end(),
+                              [](sat::Lit lhs, sat::Lit rhs) { return lhs.value == rhs.value; }),
+                  reasons.end());
+    emit(bucket->second.basic, basic, std::move(reasons),
+         is_offset ? EntailedEqualityRule::EqOffsetRows : EntailedEqualityRule::EqRows);
+  }
+
   return result;
 }
 
@@ -1200,11 +1272,9 @@ LraTableau::FreedomInterval LraTableau::freedom_interval_impl(
 }
 
 LraTableau::ModelMutationResult LraTableau::diversify_shared_model(
-    const std::vector<LraVarId>& shared) const {
+    const std::vector<LraVarId>& shared,
+    const std::vector<std::pair<LraVarId, LraVarId>>& forbidden_equalities) const {
   ModelMutationResult result;
-  if (shared.empty()) {
-    return result;
-  }
 
   // The scratch model. Copying every variable's value is O(vars) once, which
   // buys the guarantee that nothing below can touch tableau state.
@@ -1214,13 +1284,27 @@ LraTableau::ModelMutationResult LraTableau::diversify_shared_model(
     beta.push_back(state.assignment);
   }
   const auto value_of = [&beta](LraVarId var) -> const DeltaRational& { return beta[var]; };
+  const auto forbidden_violations = [&beta, &forbidden_equalities]() {
+    return static_cast<std::size_t>(std::count_if(
+        forbidden_equalities.begin(), forbidden_equalities.end(),
+        [&beta](const auto& pair) { return beta.at(pair.first) == beta.at(pair.second); }));
+  };
+
+  result.forbidden_equalities_before = forbidden_violations();
+  if (shared.empty()) {
+    result.forbidden_equalities_after = result.forbidden_equalities_before;
+    result.values = std::move(beta);
+    return result;
+  }
 
   auto grouping = group_by_model_value(shared, value_of);
   result.classes_before = grouping.total;
-  if (grouping.classes.empty()) {
+  if (grouping.classes.empty() && result.forbidden_equalities_before == 0) {
     // Nothing coincides, so there is nothing to separate and no reason to pay
     // for the sweep.
     result.classes_after = grouping.total;
+    result.forbidden_equalities_after = 0;
+    result.values = std::move(beta);
     return result;
   }
 
@@ -1305,9 +1389,28 @@ LraTableau::ModelMutationResult LraTableau::diversify_shared_model(
         continue;  // a zero-width move cannot change the partition
       }
       const DeltaRational saved = current;
+      std::vector<bool> forbidden_was_equal;
+      forbidden_was_equal.reserve(forbidden_equalities.size());
+      for (const auto& [lhs, rhs] : forbidden_equalities) {
+        forbidden_was_equal.push_back(beta.at(lhs) == beta.at(rhs));
+      }
       apply(candidate, value);
       auto mutated = group_by_model_value(shared, value_of);
-      if (mutated.total > grouping.total) {
+      bool reintroduced_forbidden_equality = false;
+      std::size_t newly_separated = 0;
+      for (std::size_t index = 0; index < forbidden_equalities.size(); ++index) {
+        const auto& [lhs, rhs] = forbidden_equalities[index];
+        const bool now_equal = beta.at(lhs) == beta.at(rhs);
+        if (!forbidden_was_equal[index] && now_equal) {
+          reintroduced_forbidden_equality = true;
+          break;
+        }
+        if (forbidden_was_equal[index] && !now_equal) {
+          ++newly_separated;
+        }
+      }
+      if (!reintroduced_forbidden_equality && mutated.total >= grouping.total &&
+          (newly_separated > 0 || mutated.total > grouping.total)) {
         grouping = std::move(mutated);
         result.updates.emplace_back(candidate, value);
         break;  // this variable has paid off; move to the next one
@@ -1318,10 +1421,14 @@ LraTableau::ModelMutationResult LraTableau::diversify_shared_model(
 
   result.classes_after = grouping.total;
   result.classes = std::move(grouping.classes);
+  result.forbidden_equalities_after = forbidden_violations();
+  result.values = std::move(beta);
   assert(result.classes_after >= result.classes_before &&
          "a model mutator must not decrease |classes| -- the paper's stated "
          "obligation, and the reason each update is kept only when it "
          "strictly increases the count");
+  assert(result.forbidden_equalities_after <= result.forbidden_equalities_before &&
+         "a model mutator must not reintroduce a forbidden shared equality");
   return result;
 }
 

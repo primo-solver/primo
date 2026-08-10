@@ -338,6 +338,49 @@ scoped-temporary-row experiment remains possible, but it must expose maximum
 added rows/nonzeros and probe-check cost, and it must be rejected if structural
 growth approaches the candidate set. It is not the next default mechanism.
 
+#### Complete convex model-reconciliation checklist
+
+The next opt-in implementation follows de Moura and Bjorner Sections 4, 5.1,
+and 5.2 without claiming the generic Appendix A transition system. Its state is
+the current SAT assignment, an EUF closure, and one LRA candidate assignment.
+`TheoryCombinationManager` owns only their shared-term projection and the lazy
+equality-decision lifecycle; EUF and LRA retain their theory-local objects.
+
+The LRA candidate model is a full scratch `beta`, not only an equality
+partition. Every accepted freedom-interval update must preserve every tableau
+row and bound. SAT-false shared equalities are mandatory disequalities for this
+model: mutation first minimizes their violations and only then maximizes the
+number of value classes. If the greedy sweep leaves a mandatory pair equal,
+the coordinator searches the two strict orientations for those unresolved
+pairs only. Failure of this heuristic is never an entailment result; an
+equality is forced only from two explained strict conflicts.
+
+Before model propagation, the remaining Section 5.1 rules are indexed rather
+than compared pairwise. `EqOffsetRows` groups a shared basic variable by its
+single non-fixed coefficient-one variable and fixed offset. `EqRows` groups by
+the canonical non-fixed row polynomial and fixed offset. Each bucket emits a
+spanning set and combines the fixing-bound reasons from the two rows. The
+expected work is linear in scanned row nonzeros plus emitted reasons; the
+broader rule runs once immediately before model propagation, not on every
+pivot.
+
+Model agreement is tested by checkpointing the EUF closure and merging the
+deterministic spanning edges of each LRA value class. Successful merges are
+candidate-model choices, not theory consequences. If every edge is absorbed,
+the component models agree on the shared Real interface. If an edge conflicts,
+that pair becomes one lazy positive-first `M-Propagate` SAT assumption. Existing
+true and false equality atoms participate in the same arrangement; formula
+occurrence is not a reason to skip them. The finite set of shared pairs gives
+termination, so the complete reconciliation profile has no candidate budget or
+adaptive early stop.
+
+The old exact scan remains a shadow oracle and conservative fallback while the
+profile is opt-in. It is required for an unmapped shared term, a failed
+mandatory-separation invariant, or a disagreement between candidate-model and
+exact validation. No such fallback may be reported as successful model-based
+convergence. Pure QF_LRA and QF_UF never construct this state and must retain
+identical SAT/theory statistics.
+
 Preprocessing stays family-targeted. The representative MathSAT
 `pb_real_40_80_60_36.smt2` is one large conjunction of roughly 480 ternary
 mixed clauses, with no ITEs; its dominant evidence is equality traffic rather

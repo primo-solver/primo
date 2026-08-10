@@ -146,8 +146,10 @@ paper's novel model-based transition system.
   separately measured default.
 - [x] Check every opportunistically reported equality against an independent
   two-strict-separations entailment oracle in tableau tests.
-- [ ] Implement `EqOffsetRows` and its `(x_k, value) -> x_i` index.
-- [ ] Implement the more expensive `EqRows` pass before model propagation.
+- [x] Implement `EqOffsetRows` with a `(x_k, fixed value) -> x_i` hash index,
+  exact offsets, bound explanations, and spanning output.
+- [x] Implement `EqRows` with a canonical non-fixed-polynomial/fixed-offset
+  hash index, bound explanations, and spanning output.
 - [ ] Hook the first three rules eagerly into pivot/row updates as described by
   the paper. Primo currently polls `FixedEq` and `EqRow` after a feasible check
   to keep combination work off the LRA pivot hot path.
@@ -226,8 +228,8 @@ default.
 | 3.3.1 Dynamic Ackermannization | Dynamic Ackermannization adds Ackermann constraints during search, especially when disequalities between applications make argument disequalities relevant. | **Separate/partial.** This belongs to the QF_UF disequality propagation line, not to current mixed QF_UFLRA model-based combination. |
 | 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Not fully implemented.** Primo has a default-off LRA-model-equality path for the QF_UFLRA coordinator. `ModelEqualityArrangementState` owns queued guesses, active IPASIR assumptions, SAT failed-assumption blocking, and adaptive rejection counters. One Section 5.2 scratch diversification sweep filters candidates before queue and atom creation. A surviving pair is still only a guess; there is no generic `DPLL(T^M)` state or generic model-equality propagation. |
 | 5 Simplex: An Example Model-Producing Theory Solver | The paper shows how Simplex naturally provides a model: the current assignment maps arithmetic variables to rational values. Equal-valued shared variables are equality candidates. | **Partial.** Primo's LRA path has a tableau assignment and hashes full `DeltaRational` values into model-equality classes. The convex fallback uses those classes only to filter exact entailment candidates; there is not yet a complete Simplex-backed combination API. |
-| 5.1 Opportunistic Equality Propagation | The paper describes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`, plus fixed-variable removal and supporting bound propagation. | **Partial implementation.** `LraTableau::entailed_equalities()` implements explained `FixedEq` and `EqRow`; mixed QF_UFLRA removes fixed basic variables by default. `EqOffsetRows`, `EqRows`, eager pivot hooks, and mixed-path row-bound propagation remain missing. The exact unresolved-pair fallback preserves convex completeness despite those omissions. |
-| 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Implemented LRA subset.** `LraTableau::diversify_shared_model()` performs the greedy nonbasic-variable sweep on a scratch assignment and returns post-mutation classes. The mixed coordinator invokes it once per feasible opt-in round. It does not perturb the stored Simplex assignment or implement a generic `M-Mutate` transition. |
+| 5.1 Opportunistic Equality Propagation | The paper describes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`, plus fixed-variable removal and supporting bound propagation. | **Partial implementation.** `LraTableau::entailed_equalities()` implements all four rules with exact explanations and spanning output; mixed QF_UFLRA removes fixed basic variables by default. Primo polls the rules after a feasible check rather than maintaining the first three eagerly during pivots, and mixed-path row-bound propagation remains missing. The exact unresolved-pair fallback preserves convex completeness despite those deviations. |
+| 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Implemented LRA subset.** `LraTableau::diversify_shared_model()` performs the greedy nonbasic-variable sweep on a scratch assignment and returns the complete candidate assignment plus post-mutation classes. It accepts forbidden shared-variable pairs and never reintroduces one already separated. The mixed coordinator still needs to turn unresolved forbidden pairs into targeted strict separation and a complete `M-Mutate` transition. |
 | 6 Experimental Evaluation | The paper compares model-based theory combination against DTC, Ackermannization, Yices, and MathSAT on several UF+arithmetic benchmark families. | **Not reproduced.** Primo has local and SLURM benchmark evidence in `docs/run-log.json`, including QF_UFLRA CPAchecker and sample Z3 comparisons, but it has not reproduced the paper's experiment suite. |
 | 7 Conclusions | The paper emphasizes that the approach requires theories to efficiently answer whether two shared terms have equal values in the current model. | **Partial.** Primo can answer this for some LRA Real terms and can query EUF closure equality, but there is no uniform cross-theory model-query object yet. |
 | 7.1 On the Significance of Ackermann's Reduction | The paper argues that model-based combination can avoid some Ackermannization costs, while dynamic Ackermannization remains useful in UF-heavy cases. | **Separate.** Primo's Ackermann-related work should stay documented as EUF-specific unless it is explicitly wired into mixed-theory model combination. |
@@ -285,9 +287,10 @@ Implemented subset:
 
 Data structures and invariants:
 
-- `LraTableau::ModelMutationResult` owns variable classes, accepted scratch
-  updates, and distinct-class counts before/after. It contains no SAT literals
-  or SMT-LIB nodes.
+- `LraTableau::ModelMutationResult` owns the complete scratch assignment,
+  variable classes, accepted updates, distinct-class counts, and
+  forbidden-equality violation counts. It contains no SAT literals or SMT-LIB
+  nodes.
 - `LraModelEqualPartition` is a round-local SMT-coordinator projection over
   `TermId`s and canonical `TermPairKey`s. It does not own the tableau.
 - The live tableau is unchanged. This preserves its trail/backtrack invariants;
