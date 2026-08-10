@@ -1,8 +1,8 @@
 # QF_UFLRA Model-Guided Performance Plan
 
 Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, after the
-convex model-reconciliation implementation and before its fresh fuzz and SLURM
-performance gate.
+convex model-reconciliation implementation, exact-commit fuzz gate, and full
+SLURM performance comparison.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -19,6 +19,45 @@ The clean-room sources for the intended direction are:
 - current benchmark evidence recorded in `docs/run-log.json`.
 
 ## Current Evidence
+
+**Complete convex reconciliation result, 2026-08-10.** Commits `9bed48e`,
+`7d907f7`, and `bbd43b9` complete the opt-in convex QF_UFLRA checklist below.
+The implementation adds all four Section 5.1 LRA equality producers, a full
+scratch candidate assignment with Section 5.2 mutation, SAT-false equality
+separation, checkpointed EUF compatibility projection, one causal
+positive-first equality assumption, and direct output of the accepted combined
+model. EUF-only Real classes receive fresh model representatives without
+entering Nelson-Oppen arrangement search.
+
+The exact `bbd43b9` binary passed 3,000 generated mixed cases against Z3 and
+1,000 finite-domain cases against Z3 and cvc5. All 11 tracked QF_UFLRA seeds
+passed deterministic preflight. A complete 100-mutation-per-seed YinYang run
+processed all 11 seeds with zero invalid seed or bug trigger. A separate deeper
+campaign reached 39,320 differential solver calls with zero bug files before it
+was stopped: cumulative mutations of a late Boolean seed made both Primo and Z3
+time out, so that run is additional partial coverage rather than evidence that
+every configured mutation completed. Local Dolmen validation accepted all 611
+SAT models among 1,000 generated cases; the other 389 cases were UNSAT.
+
+On the full 1,284-file QF_UFLRA corpus at 30 seconds per file, the new profile
+solved 1,257 files with 27 timeouts, zero errors, unsupported rows, or wrong
+answers, and PAR2 2,092.497309. The `1f3d81c` baseline solved 1,238 with 46
+timeouts and PAR2 3,306.995737. All 19 differences were timeout recoveries;
+there were no losses or decisive-answer disagreements. Common-solved aggregate
+time fell from 546.995737 to 316.577621 seconds. CPAchecker BMC improved from
+5/15 to 7/15, CPAchecker induction from 323/359 to 340/359, and MathSAT stayed
+900/900 while its aggregate time fell from 74.297800 to 61.867465 seconds.
+
+The intended mechanism is active: 739 rows converged without the broad exact
+scan, 386 rejected EUF congruence-producing edges were materialized as lazy
+splits, and only one row used the conservative exact fallback because two LRA
+interface terms were unmapped. Exact fallback probes fell from 1,133,771 to
+210. The tradeoff is more SAT work: decisions rose from 3,958,867 to 7,316,844,
+propagations from 60,226,688 to 68,470,250, and solve calls from 2,165 to 3,562.
+The expensive tableau-probe removal nevertheless dominates wall time. The
+profile remains opt-in: the reused Yices 2.7.0 30-second result still solves
+1,276 files with eight timeouts and PAR2 590.699880, so a large performance gap
+remains.
 
 **Section 5.2 integration result, 2026-08-09.** The merged LRA prerequisite
 provides `freedom_interval()` and
@@ -340,7 +379,7 @@ growth approaches the candidate set. It is not the next default mechanism.
 
 #### Complete convex model-reconciliation checklist
 
-The next opt-in implementation follows de Moura and Bjorner Sections 4, 5.1,
+The implemented opt-in profile follows de Moura and Bjorner Sections 4, 5.1,
 and 5.2 without claiming the generic Appendix A transition system. Its state is
 the current SAT assignment, an EUF closure, and one LRA candidate assignment.
 `TheoryCombinationManager` owns only their shared-term projection and the lazy
@@ -394,7 +433,8 @@ milestones above for RandomDecoupled.
 The merged LRA branch supplies the paper-grounded mechanisms below, which the
 mixed coordinator consumes without reimplementing their arithmetic logic:
 
-- `FixedEq` and `EqRow` opportunistic equality production;
+- `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows` opportunistic equality
+  production;
 - linear expected-time bucketing of shared terms by the current `beta` value;
 - freedom-interval mutation of non-basic variables;
 - short bound/row explanations produced directly by the active tableau.
@@ -404,41 +444,48 @@ candidate API. It must not reproduce bound or row analysis in `smt/`.
 
 ### Non-LRA Milestone Gate
 
-Before accepting this phase:
+The 2026-08-10 acceptance evidence resolves these checks as follows:
 
-- pure QF_UF and pure QF_LRA answers and selected statistics must remain
-  unchanged on seconds-scale samples;
-- focused tests must check sparse creation, trail/backtrack behavior, and exact
-  EUF/probe-local reason validity;
-- aggregate interface reason literals and equality rechecks must decrease on
-  the 45-file sample without increasing forced equalities or wrong answers;
-- the exact option set must pass the existing 5000-case generated QF_UFLRA gate
-  and real-seed YinYang/typefuzz gate;
-- the sharded, durable-output full SLURM comparison must report family summaries,
-  wrong answers, timeouts, and PAR2 before any default-promotion claim.
+- Pure QF_UF and pure QF_LRA answers and selected non-time statistics are
+  unchanged on the 27-file isolation sample; seconds-scale aggregate timings
+  remain within run-to-run noise.
+- Focused tests cover sparse creation, trail/backtrack behavior, EUF
+  compatibility consequences, exact/probe-local reasons, and model output.
+- The earlier expectation that reason traffic and equality rechecks would also
+  decrease is rejected by the full result: both grow, as do SAT decisions and
+  solve calls. The measured gain comes from removing almost all exact tableau
+  probes, and the added SAT churn remains the next efficiency target.
+- The exact option set passed 3,000 generated mixed cases, 1,000 finite-domain
+  cases, and a real-seed YinYang/typefuzz gate.
+- The sharded full SLURM comparison reports family summaries, wrong answers,
+  timeouts, and PAR2 above. It supports merging the opt-in mechanism, not
+  default promotion.
 
 ## Paper Mechanism Still Missing
 
 The de Moura-Bjorner paper is relevant because it explains how a theory model
-should guide equality sharing. The current QF_UFLRA implementation has only
-pieces of that design.
+should guide equality sharing. The current implementation covers its convex
+EUF+rational-LRA subset, not the generic transition system.
 
 Missing performance-relevant pieces for QF_UFLRA:
 
-- **Broader cheap Simplex equality production.** Section 5.1 `FixedEq` and
-  `EqRow` producers are implemented, but the exact fallback still probes
-  surviving pairs not covered by those rules.
 - **Model mutation in the default profile.** Section 5.2 freedom intervals and
   greedy diversification are implemented and wired to the opt-in shared-model
   and branch profiles. The ordinary default final path does not run the sweep.
-- **A shared model state.** Appendix A presents a `DPLL(T^M)` state carrying
-  model information. Primo's mixed QF_UFLRA coordinator is still a final-check
-  loop in `src/smt/check_sat.cpp`; it repeatedly rebuilds theory views and
-  re-enters SAT after guarded equality clauses.
-- **Theory-consumer relevance.** The paper's model-guided direction is not
-  "enumerate all equal shared Real pairs". The producing theory should expose
-  candidates, and the combination layer should propagate only equalities that a
-  consuming theory cannot absorb, mutate away, or ignore.
+- **A generic persistent model state.** Appendix A presents a `DPLL(T^M)` state
+  carrying component models through generic transitions. Primo's state is
+  round-scoped and specialized to the mixed QF_UFLRA final-check coordinator;
+  EUF and LRA still own their closure and tableau objects.
+- **Theory-independent transitions.** The causal positive-first split and LRA
+  scratch mutation are implemented only for shared Real terms in convex
+  EUF+LRA. Other theory combinations, finite shared sorts, and non-convex
+  arrangement enumeration remain unsupported.
+- **Mixed row-bound propagation.** All four Section 5.1 equality rules are
+  implemented, but the paper's supporting row-bound propagation is not wired
+  into the mixed path.
+- **SAT search efficiency and default policy.** The full run removes almost all
+  exact probes but increases decisions, propagations, and solve calls. That SAT
+  churn and the remaining Yices gap must be addressed before default promotion.
 
 The current code therefore must not be described as implementing the full
 model-based theory-combination algorithm. The intended implementation is a
@@ -482,7 +529,8 @@ remain specific to the older optional `--model-equality-branching` heuristic.
 Focused tests cover forbidden-pair mutation, targeted separation, lazy
 positive assumptions and failed-assumption blocking, optional-merge
 congruence consequences, direct conflicts, and candidate-model output. Fresh
-fuzz and benchmark evidence is still required before promotion.
+fuzz and benchmark evidence now establish merge readiness, but not default
+promotion.
 
 Relevant counters are grouped under `:no.shared-model.*`: `forbidden-*`,
 `targeted-separation-*`, `compatibility-*`, and `split-materializations`.

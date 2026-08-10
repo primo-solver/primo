@@ -385,6 +385,12 @@ Implemented now:
   it solves every row decided by their stored evaluations and exposes 42 more
   30-second Primo gaps. Matching Z3's solved count therefore did not close the
   performance gap to the strongest measured reference.
+  The completed convex reconciliation profile at `bbd43b9` subsequently solves
+  1,257 files at 30 seconds, with 27 timeouts and PAR2 2,092.497309, versus
+  1,238, 46, and 3,306.995737 at `1f3d81c`. It has no losses or decisive-answer
+  disagreements and skips the broad exact scan on 739 rows, but increases SAT
+  decisions and solve calls. It therefore remains opt-in, and the unchanged
+  Yices 30-second result remains ahead at 1,276 solves.
   Outside this opt-in reconciliation profile, the default final path classifies
   LRA-to-EUF equalities through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already
@@ -393,7 +399,8 @@ Implemented now:
   optimization was rejected after the 2026-08-05 full QF_UFLRA run found wrong
   answers.
   `--nelson-oppen-prop=exact` retains this mandatory bidirectional closure and
-  exact fallback, but disables the optional LRA `FixedEq`/`EqRow` producer.
+  exact fallback, but disables the optional LRA `FixedEq`, `EqRow`,
+  `EqOffsetRows`, and `EqRows` producer.
   The older spelling `--nelson-oppen-prop=off` is retained as an alias for
   `exact`; it does not disable combination because doing so is unsound for
   mixed QF_UFLRA. `--nelson-oppen-prop=online` is an opt-in
@@ -443,8 +450,9 @@ Implemented now:
   LRA-implied equality, Primo runs the broad scan once and forces any equality
   found by that fallback through the existing interface-equality SAT clause
   machinery before accepting the final arrangement. Final-check LRA sharing
-  additionally consumes `FixedEq` and `EqRow` entailments from the checked
-  tableau. These rules and the model-value filter are deliberately polled at
+  additionally consumes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`
+  entailments from the checked tableau. These rules and the model-value filter
+  are deliberately polled at
   quiescence rather than on
   every bound change, keeping their map/vector work off the SAT callback hot
   path. `EqOffsetRows`, `EqRows`, and Section 5.2 freedom-interval mutation are
@@ -510,7 +518,7 @@ Implemented now:
   function prefixes that are equal in the current EUF closure. Default solving
   skips this scan because there is no active consumer for the care-pair ranking.
   Default equality propagation enumerates the shared Real pair set after the
-  EUF spanning and LRA `FixedEq`/`EqRow` producers, but strict LRA probes are
+  EUF spanning and four LRA Section 5.1 producers, but strict LRA probes are
   issued only for pairs that remain unresolved. The
   `--qf-uflra-candidate-final-scan` option narrows that exact fallback further.
   Final arrangement validation scans the shared Real interface
@@ -565,8 +573,8 @@ Not implemented yet:
   satisfiability-preserving rewrites outside the current preprocessing trail.
 - Generic model-based theory combination with a mutable shared model,
   non-convex arrangement enumeration, generic model-equality propagation,
-  care-set-driven default search, `EqOffsetRows`/`EqRows`, live-model mutation,
-  and minimal cross-theory explanations. The supported
+  care-set-driven default search, live-model mutation, theory-independent model
+  transitions, and minimal cross-theory explanations. The supported
   EUF+LRA subset now has a complete convex shared-Real equality fixpoint, while
   the default-off model-equality branch remains an experiment rather than part
   of that completeness argument.

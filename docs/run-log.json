@@ -25573,6 +25573,101 @@
       "artifacts": "local-only:/tmp/primo-qfuflra-profile-current-5702fc0/ and related rejected-experiment scratch directories",
       "evidence_status": "local-current",
       "outcome": "The per-pair structural copy is a clear bottleneck, but neither attempted non-LRA shortcut improved it. Literature review rejects an unbounded all-pairs difference-row cache: bounds-only push/pop presupposes a fixed matrix, while dynamic row insertion/removal is the older costly scheme. The next implementation must reduce requested equalities through model-based scheduling or use a strictly bounded, measured scratch experiment."
+    },
+    {
+      "id": "2026-08-10-convex-reconciliation-local-bbd43b9",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "validation",
+      "scope": "Local correctness, model-validation, pure-theory isolation, and memory-safety checks for complete convex QF_UFLRA shared-model reconciliation",
+      "commit": "bbd43b9",
+      "baseline_commit": "9bed48e",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binary": "Release, git bbd43b9, CaDiCaL 3.0.0; ASAN build for memory-sensitive unit coverage",
+        "model_validator": "Dolmen 0.10",
+        "artifacts_are_local_only": true
+      },
+      "commands": {
+        "generated": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build-release-current/primo --solver-arg=--qf-uflra-model-reconciliation --ref z3 --count 1000 --seed 2026081390 --timeout 5 --shape mixed --out /tmp/primo-reconcile-model-fuzz-bbd43b9",
+        "model_validation": "python3 scripts/validate_model.py --solver ./build-release-current/primo --solver-arg=--quiet --solver-arg=--qf-uflra-model-reconciliation --timeout 5 --dolmen dolmen --dolmen-timeout 10 --out /tmp/primo-reconcile-model-validation-1000-bbd43b9 /tmp/primo-reconcile-model-fuzz-bbd43b9/cases/*.smt2",
+        "repository_checks": "make check; make lint; make docs; make asan-test; clang-tidy -p build src/smt/check_sat.cpp; focused rebuild and ASAN ctest of primo_qf_lra_solver_tests",
+        "pure_isolation": "Compare answer, exit status, and every non-time statistic for 27 QF_UF/QF_LRA seed and smoke files against parent revision 9bed48e; repeat seconds-scale QF_UF and QF_LRA timing loops with the reconciliation option enabled and disabled."
+      },
+      "results": {
+        "generated": "1000/1000 PASS against Z3: 611 SAT and 389 UNSAT.",
+        "model_validation": "611/611 SAT models accepted by Dolmen; all 389 UNSAT rows correctly required no model.",
+        "bug_found_and_fixed": "The first 300-case validation at 7d907f7 found five invalid SAT models caused by assigning the same default Real value to distinct EUF-only Real classes. Commit bbd43b9 gives every unanchored EUF Real class a deterministic fresh rational; the repaired 300-case rerun passed all 194 SAT models.",
+        "pure_isolation": "27 files compared with zero answer, return-code, or non-time-statistic mismatch. QF_UF and QF_LRA aggregate timing differences remained within ordinary run-to-run noise.",
+        "verification": "All 13 C++ and 19 Python checks pass; lint and docs pass; full ASAN passed before the final narrow map robustness edit and the rebuilt affected ASAN test passed afterward; clang-tidy reported only a suppressed external-code warning."
+      },
+      "artifacts": "local-only:/tmp/primo-reconcile-model-fuzz-bbd43b9/ and /tmp/primo-reconcile-model-validation-1000-bbd43b9/",
+      "evidence_status": "local-current",
+      "outcome": "The implementation is locally correct for the exercised convex QF_UFLRA paths, prints validator-accepted models, and leaves pure QF_UF/QF_LRA non-time statistics unchanged."
+    },
+    {
+      "id": "2026-08-10-convex-reconciliation-fuzz-bbd43b9",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "fuzz",
+      "scope": "Exact-commit SLURM generated, finite-domain, deterministic-seed, and YinYang gate for complete convex QF_UFLRA reconciliation",
+      "commit": "bbd43b9",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git bbd43b9, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation, deterministic seeds, and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision bbd43b9, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before each accepted submission.",
+        "scheduler_state": "All four generated shards completed with exit code 0 in 27 seconds. The complete all-seed mutation task completed with exit code 0 in 29 seconds. Scheduler identifiers are kept outside the repository."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with 750 mixed, 125 finite QF_UF, and 125 finite QF_UFLRA cases per shard; seed base 2026081490; --qf-uflra-model-reconciliation",
+        "complete_mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with 100 mutations per each of 11 tracked seeds, seed base 2026081890, a 2-second solver timeout, and --qf-uflra-model-reconciliation",
+        "deeper_partial_mutation": "The same mutation gate was configured for 2000 mutations per seed with seed base 2026081590 and stopped after cumulative mutation growth made both solvers time out on a late seed."
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS against Z3",
+        "finite_domain": "1000/1000 PASS: 500 QF_UF and 500 QF_UFLRA cases against Z3 and cvc5",
+        "tracked_seeds": "11/11 deterministic seeds PASS against Z3",
+        "complete_mutation": "All 11 seeds processed and valid; 2132 differential solver calls; 0 invalid seeds and 0 bug triggers.",
+        "deeper_partial_mutation": "39320 differential solver calls and 0 bug files before controlled cancellation. Nine seeds completed 2000 mutations, the tenth reached mutation 1660, and the last seed was covered by the separate complete campaign. This is partial additional coverage, not a completed 2000-per-seed gate.",
+        "failures": "0 wrong answer, crash, parser/type error, unsupported result, reference disagreement, or saved bug file in the accepted generated and complete mutation gates."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-convex-reconcile-bbd43b9/, fuzz-results/qf-uflra-convex-reconcile-yinyang-allseeds-bbd43b9/, and fuzz-results/qf-uflra-convex-reconcile-yinyang-bbd43b9/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact complete convex reconciliation implementation clears the merge-grade QF_UFLRA fuzz gate. The long mutation configuration remains unsuitable for these cumulative seeds and is not represented as complete coverage."
+    },
+    {
+      "id": "2026-08-10-convex-reconciliation-full-bbd43b9",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "benchmark",
+      "scope": "Accepted 30-second full-corpus QF_UFLRA comparison of complete convex shared-model reconciliation",
+      "commit": "bbd43b9",
+      "baseline_commit": "1f3d81c",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git bbd43b9, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes",
+        "reference_reuse": "The unchanged 1f3d81c Primo baseline, Z3 5.0.0 five-second result, and Yices 2.7.0 30-second result were reused rather than rerun.",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision bbd43b9 and all fuzz/reference dependencies immediately before submission.",
+        "scheduler_state": "All eight array shards completed with exit code 0 in 2 minutes 15 seconds to 3 minutes 55 seconds. Scheduler identifiers are kept outside the repository."
+      },
+      "command": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=30, and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation; summarized by scripts/summarize_benchmark_shards.py",
+      "results": {
+        "baseline": "1238 solved (727 sat, 511 unsat), 46 timeout, 0 error/unsupported/wrong, solved-row time 546.995737 seconds, PAR2 3306.995737.",
+        "candidate": "1257 solved (746 sat, 511 unsat), 27 timeout, 0 error/unsupported/wrong, solved-row time 472.497309 seconds, PAR2 2092.497309.",
+        "families": "FFT 10/10; CPAchecker BMC 7/15; CPAchecker induction 340/359 with 19 timeouts; MathSAT 900/900. Candidate family PAR2 values were 0.129267, 495.631552, 1534.869025, and 61.867465 respectively.",
+        "comparison": "19 timeout recoveries, 0 losses, 0 decisive-answer disagreements, and 1238 common solves. Common-solved aggregate time fell from 546.995737 to 316.577621 seconds, a 42.1 percent reduction.",
+        "mechanism": "739 rows converged without broad exact scanning; 386 rejected congruence-producing edges became lazy splits; one row used exact fallback because two interface terms were unmapped. LRA extra-atom probes fell from 1133771 to 210.",
+        "search_tradeoff": "SAT decisions increased from 3958867 to 7316844, propagations from 60226688 to 68470250, solve calls from 2165 to 3562, and SAT-visible equality atoms from 1175 to 2727. Eliminating exact tableau probes still produced the net time and PAR2 gain.",
+        "references": "The reused Z3 five-second result solves 1234 with 50 timeouts and PAR2 758.708455; its shorter timeout makes direct PAR2 comparison inappropriate. The comparable Yices 30-second result solves 1276 with eight timeouts and PAR2 590.699880."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-convex-reconcile-bbd43b9-30s/; reused baseline remote:<prepared-workspace>/results/qf-uflra-nullary-stack-safe-1f3d81c-30s/; local ignored CSV copies /tmp/primo-convex-no-eval/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as a substantial opt-in convex QF_UFLRA performance improvement. The profile remains default-off because SAT search grows and Yices remains materially faster."
     }
   ]
 }

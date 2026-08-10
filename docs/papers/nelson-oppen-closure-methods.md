@@ -146,8 +146,9 @@ minimal than a theory-local explanation, but it is sound for lazy final checks:
 an equality discovered in one Boolean branch cannot become an unconditional
 fact in another branch. `--nelson-oppen-prop=final` is this default guarded
 final-check mode. `--nelson-oppen-prop=exact` retains the mandatory EUF-to-LRA
-spanning equalities and the exact LRA-to-EUF fallback, but disables the optional
-LRA `FixedEq`/`EqRow` producer. The legacy `off` spelling is an alias for
+  spanning equalities and the exact LRA-to-EUF fallback, but disables the optional
+  LRA `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows` producer. The legacy
+  `off` spelling is an alias for
 `exact`: disabling the closure itself is unsound because separate satisfiable
 EUF and LRA assignments need not agree on the shared equality arrangement.
 Generated equality literals that are true are asserted to both EUF and LRA. Generated equality
@@ -160,14 +161,15 @@ Real arguments whose equality is rejected by the current EUF closure.
 For each SAT-consistent assignment, the coordinator repeats equality sharing
 until no guarded clause is added. EUF returns a deterministic spanning set for
 each shared equality class, which is sufficient because equality is transitive.
-LRA first polls the feasible tableau's sound `FixedEq` and `EqRow` rules; each
-result carries its bound-blocking literals. The equality atom is created only
-when one of these producers reports it. The default path then partitions shared
+LRA first polls the feasible tableau's sound `FixedEq`, `EqRow`, `EqOffsetRows`,
+and `EqRows` rules; each result carries its bound/row-blocking literals. The
+equality atom is created only when one of these producers reports it. The
+default path then partitions shared
 Real terms by value in the current feasible LRA model and tests both strict
 orders for every still-unresolved pair inside one model class. Cross-value
 pairs cannot be LRA-entailed. Those exact probes make the LRA producer complete
-even though the two cheap tableau rules are not; model-equal pairs are still
-candidates rather than consequences. A new clause restarts SAT, and the next
+even though the four opportunistic tableau rules are not; model-equal pairs are
+still candidates rather than consequences. A new clause restarts SAT, and the next
 round asserts the equality to both theories.
 This is the standard convex closure argument for the supported EUF+LRA subset;
 model-equal conjectures and arrangement guesses are not part of it.
@@ -675,8 +677,8 @@ proxy-purification subset is part of default QF_UFLRA:
 
 1. **Implemented:** the combination manager lists shared terms and owns sparse
    equality entries.
-2. **Implemented:** EUF spanning equalities plus LRA `FixedEq`/`EqRow` and an
-   exact unresolved-pair fallback reach a convex fixpoint.
+2. **Implemented:** EUF spanning equalities plus all four LRA Section 5.1 rules
+   and an exact unresolved-pair fallback reach a convex fixpoint.
 3. **Implemented:** directional, rule, reason, lazy-atom, recheck, and exact
    fallback counters expose the mechanism.
 4. **Separate experiment:** model-equality assumptions remain outside entailed
@@ -940,8 +942,9 @@ independently measured default-off setting;
   orientations conflict. After both theory checks accept the current assignment,
   the EUF closure emits one spanning set of implied equalities between Real
   proxy constants that also occur in LRA atoms. In the reverse direction, the
-  feasible LRA tableau first emits `FixedEq` and `EqRow` equalities with their
-  bound reasons. The exact fallback then considers every unresolved same-sort
+  feasible LRA tableau emits `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`
+  equalities with their bound/row reasons. The exact fallback then considers
+  every unresolved same-sort
   shared Real pair by adding `x < y` and `y < x` to the current LRA assignment;
   if both conflict, LRA entails `x = y`. Either direction learns a guarded
   clause from the producing theory's explanation to the corresponding generated
@@ -1037,8 +1040,8 @@ independently measured default-off setting;
   EUF-implied proxy equality that makes the LRA side inconsistent, an
   EUF-implied proxy equality combined with a lowered input Real disequality,
   LRA-implied shared Real-constant equality that makes the EUF side inconsistent,
-  zero-probe `FixedEq` and `EqRow` fast paths with local reasons, deterministic
-  EUF spanning output for a three-term class, a multi-round
+  zero-probe tests for all four Section 5.1 equality rules with local reasons,
+  deterministic EUF spanning output for a three-term class, a multi-round
   EUF-to-LRA-to-EUF contradiction, and a non-optimizer equality that remains
   covered by the exact fallback,
   source-split interface conflict counters for those receiving-theory conflicts,
