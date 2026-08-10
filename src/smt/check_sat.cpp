@@ -154,7 +154,9 @@ constexpr util::StatKey kStatLraTheoryConflicts = util::StatKey::LraTheoryConfli
 constexpr util::StatKey kStatLraTheoryPropagations = util::StatKey::LraTheoryPropagations;
 constexpr util::StatKey kStatLraBlandFallbacks = util::StatKey::LraBlandFallbacks;
 constexpr util::StatKey kStatLraSoiMultiRowConflicts = util::StatKey::LraSoiMultiRowConflicts;
-constexpr util::StatKey kStatLraSoiQuickxplainCalls = util::StatKey::LraSoiQuickxplainCalls;
+constexpr util::StatKey kStatLraSoiMinimizeCalls = util::StatKey::LraSoiMinimizeCalls;
+constexpr util::StatKey kStatLraSoiMinimizeShrunk = util::StatKey::LraSoiMinimizeShrunk;
+constexpr util::StatKey kStatLraSoiConflictLits = util::StatKey::LraSoiConflictLits;
 constexpr util::StatKey kStatLraPivots = util::StatKey::LraPivots;
 // Item H3's cost accounting: what the pivots actually cost, not just how
 // many there were -- a sparsity rule's whole risk is trading one for the
@@ -399,10 +401,37 @@ theory::arithmetic::LraTableau::PivotingRule lra_pivoting_rule_from_options(LraP
 
 // Same wiring-point translation as above, for the numeric Check/Pivot knobs
 // (LraTuning mirrors LraTableau::Tuning field for field).
+theory::arithmetic::LraTableau::SoiMinimization lra_soi_minimization_from_options(
+    LraSoiMinimization strategy) {
+  switch (strategy) {
+    case LraSoiMinimization::Deletion:
+      return theory::arithmetic::LraTableau::SoiMinimization::Deletion;
+    case LraSoiMinimization::None:
+      return theory::arithmetic::LraTableau::SoiMinimization::None;
+    case LraSoiMinimization::QuickXplain:
+      break;
+  }
+  return theory::arithmetic::LraTableau::SoiMinimization::QuickXplain;
+}
+
+theory::arithmetic::LraTableau::SoiMinimizationOrder lra_soi_minimization_order_from_options(
+    LraSoiMinimizationOrder order) {
+  switch (order) {
+    case LraSoiMinimizationOrder::RowSupport:
+      return theory::arithmetic::LraTableau::SoiMinimizationOrder::RowSupport;
+    case LraSoiMinimizationOrder::Violation:
+      return theory::arithmetic::LraTableau::SoiMinimizationOrder::Violation;
+    case LraSoiMinimizationOrder::Id:
+      break;
+  }
+  return theory::arithmetic::LraTableau::SoiMinimizationOrder::Id;
+}
+
 theory::arithmetic::LraTableau::Tuning lra_tuning_from_options(const LraTuning& tuning) {
-  return theory::arithmetic::LraTableau::Tuning{tuning.sparse_pricing_candidates,
-                                                tuning.bland_fallback_factor,
-                                                tuning.bland_fallback_offset};
+  return theory::arithmetic::LraTableau::Tuning{
+      tuning.sparse_pricing_candidates, tuning.bland_fallback_factor, tuning.bland_fallback_offset,
+      lra_soi_minimization_from_options(tuning.soi_minimization),
+      lra_soi_minimization_order_from_options(tuning.soi_minimization_order)};
 }
 
 constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
@@ -1894,8 +1923,7 @@ static_assert(sizeof(FormulaFeatureSummary) == 4,
 
 FormulaFeatureSummary summarize_formula_features(
     const core::TermManager& terms, core::TermId term_id,
-    std::unordered_map<core::TermId, FormulaFeatureSummary>& memo,
-    MixedDispatchMode dispatch) {
+    std::unordered_map<core::TermId, FormulaFeatureSummary>& memo, MixedDispatchMode dispatch) {
   const auto found = memo.find(term_id);
   if (found != memo.end()) {
     return found->second;
@@ -4888,8 +4916,7 @@ void apply_monotone_eliminations(const core::TermManager& terms, RealModelValues
         if (leaf == entry.variable) {
           continue;
         }
-        std::optional<util::Rational> leaf_value =
-            evaluate_real_model_term(terms, leaf, values);
+        std::optional<util::Rational> leaf_value = evaluate_real_model_term(terms, leaf, values);
         if (!leaf_value.has_value()) {
           assign_real_model_value(terms, values, leaf, util::Rational(0));
           leaf_value = evaluate_real_model_term(terms, leaf, values);
@@ -5582,11 +5609,10 @@ std::optional<LraModelState> build_lra_model_state(
     augmented_lra_assignments.push_back(AssignedTheoryAtom{0, true, atom, false});
   }
 
-  PreparedLraTheory prepared(terms, augmented_lra_atoms,
-                             lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-                             options.lra_sparse_leaving, options.lra_fixed_elimination, true,
-                             /*least_violated_leaving=*/false,
-                             lra_tuning_from_options(options.lra_tuning));
+  PreparedLraTheory prepared(
+      terms, augmented_lra_atoms, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination, true,
+      /*least_violated_leaving=*/false, lra_tuning_from_options(options.lra_tuning));
   theory::arithmetic::LraTableau tableau = prepared.base_tableau;
   for (std::size_t i = 0; i < augmented_lra_assignments.size(); ++i) {
     const AssignedTheoryAtom& atom = augmented_lra_assignments[i];
@@ -6633,9 +6659,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   //
   // Defaults to false so the pure path pays nothing; the dispatcher turns it
   // on, which is precisely the path that consumes it.
-  void set_interface_equalities_enabled(bool enabled) {
-    interface_equalities_enabled_ = enabled;
-  }
+  void set_interface_equalities_enabled(bool enabled) { interface_equalities_enabled_ = enabled; }
 
   struct InterfaceEqualityPropagation {
     TermPairKey pair;
@@ -6807,7 +6831,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     }
     const std::size_t fallbacks_before = tableau_.bland_fallback_count();
     const std::size_t multi_row_conflicts_before = tableau_.soi_multi_row_conflict_count();
-    const std::size_t quickxplain_calls_before = tableau_.soi_quickxplain_call_count();
+    const std::size_t minimize_calls_before = tableau_.soi_minimize_call_count();
+    const std::size_t minimize_shrunk_before = tableau_.soi_minimize_shrunk_count();
+    const std::size_t conflict_lits_before = tableau_.soi_conflict_lit_count();
     const std::size_t pivots_before = tableau_.pivot_count();
     const std::size_t row_updates_before = tableau_.row_update_count();
     const std::size_t term_ops_before = tableau_.row_term_op_count();
@@ -6818,8 +6844,12 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                           tableau_.bland_fallback_count() - fallbacks_before);
     statistics_.increment(kStatLraSoiMultiRowConflicts,
                           tableau_.soi_multi_row_conflict_count() - multi_row_conflicts_before);
-    statistics_.increment(kStatLraSoiQuickxplainCalls,
-                          tableau_.soi_quickxplain_call_count() - quickxplain_calls_before);
+    statistics_.increment(kStatLraSoiMinimizeCalls,
+                          tableau_.soi_minimize_call_count() - minimize_calls_before);
+    statistics_.increment(kStatLraSoiMinimizeShrunk,
+                          tableau_.soi_minimize_shrunk_count() - minimize_shrunk_before);
+    statistics_.increment(kStatLraSoiConflictLits,
+                          tableau_.soi_conflict_lit_count() - conflict_lits_before);
     statistics_.increment(kStatLraPivots, pivot_delta);
     statistics_.increment(kStatLraPivotRowUpdates,
                           tableau_.row_update_count() - row_updates_before);
@@ -9153,8 +9183,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         if (frontend.has_declared_real_constants()) {
           const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
           outcome.model = build_qf_lra_preprocessing_only_model(
-              frontend.terms(), model_terms, preprocessing_model_assignments,
-              &monotone_eliminated);
+              frontend.terms(), model_terms, preprocessing_model_assignments, &monotone_eliminated);
         } else {
           outcome.model = build_qf_uf_model(frontend.terms(), preprocessing_model_assignments);
         }
@@ -9186,9 +9215,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     FormulaFeatureSummary formula_features;
     std::unordered_map<core::TermId, FormulaFeatureSummary> formula_feature_memo;
     for (const core::TermId assertion : assertions) {
-      const FormulaFeatureSummary assertion_features =
-          summarize_formula_features(frontend.terms(), assertion, formula_feature_memo,
-                                     options.mixed_dispatch);
+      const FormulaFeatureSummary assertion_features = summarize_formula_features(
+          frontend.terms(), assertion, formula_feature_memo, options.mixed_dispatch);
       formula_features |= assertion_features;
     }
     const bool has_equality = formula_features.has_equality;
@@ -9220,20 +9248,18 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           solve_options.produce_model ? frontend.declared_real_constant_terms()
                                       : std::vector<core::TermId>{};
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(
-          solve_qf_lra(frontend.terms(), assertions, lra_model_terms,
-                       preprocessing_model_assignments, solve_options, statistics,
-                       &monotone_eliminated),
-          solve_start);
+      return finish_solve(solve_qf_lra(frontend.terms(), assertions, lra_model_terms,
+                                       preprocessing_model_assignments, solve_options, statistics,
+                                       &monotone_eliminated),
+                          solve_start);
     }
     if (options.produce_model && frontend.has_declared_real_constants() && !has_equality &&
         !has_euf_predicate) {
       const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(
-          solve_qf_lra(frontend.terms(), assertions, model_terms,
-                       preprocessing_model_assignments, solve_options, statistics,
-                       &monotone_eliminated),
+          solve_qf_lra(frontend.terms(), assertions, model_terms, preprocessing_model_assignments,
+                       solve_options, statistics, &monotone_eliminated),
           solve_start);
     }
     // has_application_term, not has_equality alone: preprocessing rewrites
