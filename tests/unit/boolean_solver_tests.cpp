@@ -659,18 +659,29 @@ void nullary_define_fun_replays_term_ite_constraints() {
 }
 
 void long_nullary_define_fun_chain_is_compiled_linearly() {
-  constexpr int kDefinitions = 2000;
+  constexpr int kDefinitions = 20000;
   std::ostringstream input;
-  input << "(set-logic QF_UF)\n";
-  input << "(define-fun d0 () Bool true)\n";
+  input << "(set-logic QF_UFLRA)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun a () A)\n";
+  input << "(declare-fun b () A)\n";
+  input << "(declare-fun c () A)\n";
+  input << "(declare-fun q () Bool)\n";
+  input << "(declare-fun x () Real)\n";
+  input << "(declare-fun f (Real) Real)\n";
+  input << "(declare-fun g (Bool) A)\n";
+  input << "(define-fun d0 () Bool (= a c))\n";
   for (int i = 1; i < kDefinitions; ++i) {
-    input << "(define-fun d" << i << " () Bool (and d" << (i - 1) << " true))\n";
+    input << "(define-fun d" << i << " () Bool (=> d" << (i - 1) << " q))\n";
   }
-  input << "(assert (not d" << (kDefinitions - 1) << "))\n";
+  input << "(assert (= a b))\n";
+  input << "(assert (<= (f x) x))\n";
+  input << "(assert d" << (kDefinitions - 1) << ")\n";
+  input << "(assert (= (g d" << (kDefinitions - 1) << ") a))\n";
   input << "(check-sat)\n";
 
   const auto result = check_sat_smtlib(input.str());
-  assert(result.result == CheckSatResult::Unsat);
+  assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":frontend.define-fun.nullary-eager-compiles") == kDefinitions);
   assert(result.statistics.get(":frontend.define-fun.nullary-direct-uses") >= kDefinitions);
 }

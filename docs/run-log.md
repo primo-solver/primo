@@ -45,3 +45,26 @@ move from `needs_revalidation` to `current`.
 For user-requested SLURM campaigns, local runs may be logged as profiling,
 debugging, or smoke checks, but headline benchmark evidence must reference the
 SLURM job id and artifact directory.
+
+## Sharded benchmark summaries
+
+`scripts/summarize_benchmark_shards.py` aggregates the durable CSV files
+written by the benchmark harness. It ignores `*-summary.csv`, rejects duplicate
+benchmark paths, reports totals and family-level solved/timeout/error/PAR2
+counts, and can compare recoveries, losses, decisive-answer disagreements, and
+common-solved time for two runs. This keeps the analysis reproducible without
+rerunning unchanged reference solvers:
+
+```bash
+python3 scripts/summarize_benchmark_shards.py \
+  --timeout 30 \
+  --run baseline=results/baseline \
+  --run candidate=results/candidate \
+  --baseline baseline \
+  --candidate candidate
+```
+
+The JSON printed by the script is an analysis aid, not a replacement for a
+`docs/run-log.json` entry. Raw result directories may remain remote or
+untracked, but the ledger still records the exact commit, environment, command,
+artifact path, and accepted or rejected conclusion.

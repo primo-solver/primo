@@ -889,6 +889,30 @@ void forced_atom_simplification_memoizes_shared_boolean_subterms() {
                   fixture.terms.mk_implies(q, s)) != result.assertions.end());
 }
 
+void forced_atom_simplification_handles_deep_boolean_terms() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId equality = fixture.terms.mk_eq(a, b);
+  const primo::core::TermId p = fixture.constant(
+      fixture.symbols.declare_constant("deep_forced_p", fixture.symbols.bool_sort()));
+  const primo::core::TermId q = fixture.constant(
+      fixture.symbols.declare_constant("deep_forced_q", fixture.symbols.bool_sort()));
+
+  primo::core::TermId deep = p;
+  for (std::size_t depth = 0; depth < 20000; ++depth) {
+    deep = depth % 2 == 0 ? fixture.terms.mk_implies(deep, q) : fixture.terms.mk_implies(p, deep);
+  }
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, {equality, deep});
+
+  check(result.units == 1);
+  check(result.equality_pairs.size() == 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(), deep) !=
+        result.assertions.end());
+}
+
 void forced_atom_propagation_simplifies_predicate_units() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -1304,6 +1328,7 @@ int main() {
   boolean_unit_propagation_skips_when_no_units_exist();
   boolean_unit_simplification_memoizes_shared_boolean_subterms();
   forced_atom_simplification_memoizes_shared_boolean_subterms();
+  forced_atom_simplification_handles_deep_boolean_terms();
   forced_atom_propagation_simplifies_predicate_units();
   forced_atom_propagation_uses_negative_equality_units();
   forced_atom_propagation_folds_disequalities_modulo_equalities();

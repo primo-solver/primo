@@ -997,10 +997,24 @@ no non-constant Real terms inside EUF atoms, the purification pass returns the
 assertions unchanged and reports `:no.purification.skipped-no-sites`. The Boolean
 mixed-purification rewrite itself also memoizes formula, arithmetic, and EUF
 rewrites by `TermId` for that pass. Repeated hash-consed subterms therefore reuse
-their rewritten result and do not recursively rebuild the same proxy definitions
-or child vectors. The Boolean clausifier records theory-atom polarity by
+their rewritten result and do not rebuild the same proxy definitions or child
+vectors. Formula-level purification uses an explicit post-order worklist; the
+theory-specific arithmetic and EUF leaf rewriters remain responsible for their
+own term kinds. The Boolean clausifier records theory-atom polarity by
 `(TermId, polarity)`, so repeated hash-consed subformulas are traversed at most
 once per polarity while preserving positive/negative occurrence flags.
+
+All preprocessing walks that can receive expanded Boolean structure are
+stack-safe. Forced-atom simplification, Boolean-unit simplification,
+unit-equality consequence rebuilding, solved-constant substitution,
+Real-equality lowering, equality-node counting, and candidate-variable subtree
+summaries use explicit work vectors. Memoized passes process children before
+reconstructing a parent. `subtree_occurrences` still has work proportional to
+the candidate-variable summaries it merges; replacing recursion does not claim
+an asymptotic improvement to that map union. Boolean-unit cache hits retain the
+existing rewrite-accounting semantics, including replay of the cached subtree's
+rewrite count. These are traversal changes only: they do not add facts, alter
+the congruence relation, or change Real-equality lowering rules.
 
 UF symmetry breaking traverses top-level conjunctions to collect explicit
 disequalities, then scans `or` nodes for choice disjunctions. The invariance
@@ -1065,8 +1079,14 @@ lookups. At implementation revision `cef5165`, three repeated runs fell from the
 recorded 5.37-second baseline to 2.71--2.74 seconds, and frontend time in the
 stats run fell from 2.783 to 0.125 seconds. SAT variables, clauses, conflicts,
 decisions, and propagations were unchanged on that target. This remains local
-microbenchmark evidence; a fresh fuzz gate and full-corpus comparison are
-required before claiming a corpus-level gain.
+microbenchmark evidence. The first 1,284-file corpus run of the eager compiler
+was rejected after five deep CPAchecker definition DAGs exited with SIGSEGV.
+ASAN identified recursive preprocessing, dispatch, purification, and
+clausification walks rather than a theory conflict or CaDiCaL defect. Those
+walks now use explicit worklists, and the five witnesses complete in an
+optimized local smoke check. A fresh exact-commit fuzz gate and clean
+full-corpus SLURM comparison are still required before claiming a corpus-level
+gain.
 
 ## Current Status
 

@@ -159,6 +159,30 @@ resolution, result-sort preservation, and replay of every auxiliary constraint.
 Unit tests cover long transitive chains, parameter shadowing, compound Boolean
 UF arguments, and non-Boolean `ite` bodies.
 
+Eager compilation can expose a definition chain as a very deep, shared core
+term DAG even though every SMT-LIB declaration body is shallow. Core `TermId`
+values are stable, but the process call stack is not an acceptable storage
+mechanism for that depth. Downstream whole-formula walks therefore keep their
+own explicit work vectors and, where the operation is a DAG computation,
+pass-local memo tables keyed by `TermId`. This applies to preprocessing
+occurrence summaries and rewrites, formula-feature dispatch, mixed
+purification, theory-atom polarity collection, Boolean-argument bridge
+materialization, and Tseitin encoding. Rewriters copy a node's child IDs before
+calling a `TermManager` constructor because construction may grow term storage
+and invalidate a borrowed `Term` reference. The clausifier allocates a parent
+SAT variable before scheduling its children and emits the parent's defining
+clauses after those children have literals, preserving the existing ownership
+boundary: the SMT layer owns the worklist and term-to-literal map, while the SAT
+backend receives only variables and clauses.
+
+This stack-safety work is implementation hardening, not a new preprocessing or
+clausification algorithm. The expected auxiliary space is linear in reachable
+DAG nodes for memoized walks and linear in current DAG depth for a plain
+post-order worklist. The regression test compiles a 20,000-definition Boolean
+chain, places a non-unit equality at its base, includes both a mixed arithmetic
+purification site and the deep Boolean term as a UF argument, and runs through
+the complete solver under ASAN.
+
 Parameterized macro applications are not reparsed from text. The parser has
 already stored each body as an SMT-LIB syntax tree, and each application walks
 that stored body under fresh parameter bindings to build `TermId` values. A

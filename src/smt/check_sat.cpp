@@ -1651,31 +1651,35 @@ class BooleanClausifier {
   const std::vector<TheoryAtom>& theory_atoms() const { return theory_atoms_; }
 
   void materialize_boolean_argument_literals() {
-    std::function<void(core::TermId)> visit = [&](core::TermId term_id) {
-      const std::vector<core::TermId> children = terms_.get(term_id).children;
-      const core::TermKind kind = terms_.get(term_id).kind;
-      if (kind == core::TermKind::Application) {
-        if (terms_.get(term_id).sort == terms_.symbols().bool_sort()) {
-          ensure_boolean_domain_bridge(term_id);
-        }
-        for (const core::TermId child : children) {
-          if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
-            ensure_boolean_domain_bridge(child);
-          }
-        }
-      } else if (kind == core::TermKind::Equality) {
-        for (const core::TermId child : children) {
-          if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
-            ensure_boolean_domain_bridge(child);
-          }
-        }
-      }
-      for (const core::TermId child : children) {
-        visit(child);
-      }
-    };
+    std::unordered_set<core::TermId> visited;
     for (std::size_t index = 0; index < theory_atoms_.size(); ++index) {
-      visit(theory_atoms_[index].term);
+      std::vector<core::TermId> pending{theory_atoms_[index].term};
+      while (!pending.empty()) {
+        const core::TermId term_id = pending.back();
+        pending.pop_back();
+        if (!visited.insert(term_id).second) {
+          continue;
+        }
+        const std::vector<core::TermId> children = terms_.get(term_id).children;
+        const core::TermKind kind = terms_.get(term_id).kind;
+        if (kind == core::TermKind::Application) {
+          if (terms_.get(term_id).sort == terms_.symbols().bool_sort()) {
+            ensure_boolean_domain_bridge(term_id);
+          }
+          for (const core::TermId child : children) {
+            if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
+              ensure_boolean_domain_bridge(child);
+            }
+          }
+        } else if (kind == core::TermKind::Equality) {
+          for (const core::TermId child : children) {
+            if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
+              ensure_boolean_domain_bridge(child);
+            }
+          }
+        }
+        pending.insert(pending.end(), children.begin(), children.end());
+      }
     }
   }
 
@@ -1716,48 +1720,59 @@ class BooleanClausifier {
   }
 
   void collect_theory_atom_polarities(core::TermId term_id, bool positive) {
-    ensure_term_index(term_id);
-    const std::uint8_t polarity_bit = positive ? kPositivePolaritySeen : kNegativePolaritySeen;
-    if ((polarity_seen_by_term_[term_id] & polarity_bit) != 0) {
-      return;
-    }
-    polarity_seen_by_term_[term_id] |= polarity_bit;
-    const core::Term& term = terms_.get(term_id);
-    switch (term.kind) {
-      case core::TermKind::BoolValue:
-        return;
-      case core::TermKind::And:
-      case core::TermKind::Or:
-        for (const core::TermId child : term.children) {
-          collect_theory_atom_polarities(child, positive);
-        }
-        return;
-      case core::TermKind::Implies:
-        collect_theory_atom_polarities(term.children.at(0), !positive);
-        collect_theory_atom_polarities(term.children.at(1), positive);
-        return;
-      case core::TermKind::Not:
-        collect_theory_atom_polarities(term.children.at(0), !positive);
-        return;
-      case core::TermKind::Constant:
-        if (term.sort == terms_.symbols().bool_sort()) {
-          record_theory_atom_polarity(term_id, positive);
-        }
-        return;
-      case core::TermKind::Application:
-        if (term.sort == terms_.symbols().bool_sort()) {
-          record_theory_atom_polarity(term_id, positive);
-        }
-        return;
-      case core::TermKind::Equality:
-      case core::TermKind::Le:
-      case core::TermKind::Lt:
-        record_theory_atom_polarity(term_id, positive);
-        return;
-      case core::TermKind::Rational:
-      case core::TermKind::Plus:
-      case core::TermKind::Times:
-        throw UnsupportedInput("Real-sorted term used in a Boolean context");
+    struct Pending {
+      core::TermId term;
+      bool positive;
+    };
+
+    std::vector<Pending> pending{{term_id, positive}};
+    while (!pending.empty()) {
+      const Pending current = pending.back();
+      pending.pop_back();
+      ensure_term_index(current.term);
+      const std::uint8_t polarity_bit =
+          current.positive ? kPositivePolaritySeen : kNegativePolaritySeen;
+      if ((polarity_seen_by_term_[current.term] & polarity_bit) != 0) {
+        continue;
+      }
+      polarity_seen_by_term_[current.term] |= polarity_bit;
+      const core::Term& term = terms_.get(current.term);
+      switch (term.kind) {
+        case core::TermKind::BoolValue:
+          break;
+        case core::TermKind::And:
+        case core::TermKind::Or:
+          for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+            pending.push_back(Pending{*child, current.positive});
+          }
+          break;
+        case core::TermKind::Implies:
+          pending.push_back(Pending{term.children.at(1), current.positive});
+          pending.push_back(Pending{term.children.at(0), !current.positive});
+          break;
+        case core::TermKind::Not:
+          pending.push_back(Pending{term.children.at(0), !current.positive});
+          break;
+        case core::TermKind::Constant:
+          if (term.sort == terms_.symbols().bool_sort()) {
+            record_theory_atom_polarity(current.term, current.positive);
+          }
+          break;
+        case core::TermKind::Application:
+          if (term.sort == terms_.symbols().bool_sort()) {
+            record_theory_atom_polarity(current.term, current.positive);
+          }
+          break;
+        case core::TermKind::Equality:
+        case core::TermKind::Le:
+        case core::TermKind::Lt:
+          record_theory_atom_polarity(current.term, current.positive);
+          break;
+        case core::TermKind::Rational:
+        case core::TermKind::Plus:
+        case core::TermKind::Times:
+          throw UnsupportedInput("Real-sorted term used in a Boolean context");
+      }
     }
   }
 
@@ -1836,57 +1851,97 @@ class BooleanClausifier {
   }
 
   sat::Lit encode(core::TermId term_id) {
-    ensure_term_index(term_id);
-    if (lit_by_term_[term_id].value != 0) {
-      return lit_by_term_[term_id];
-    }
+    struct Visit {
+      core::TermId term;
+      bool expanded;
+    };
 
-    const core::Term& term = terms_.get(term_id);
-    if (term.kind == core::TermKind::BoolValue) {
-      return term.bool_value ? true_lit() : negate(true_lit());
-    }
+    std::vector<Visit> pending{{term_id, false}};
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      ensure_term_index(visit.term);
+      const core::Term& term = terms_.get(visit.term);
 
-    if (term.kind == core::TermKind::Constant) {
-      return atom_lit(term_id);
-    }
-
-    if (term.kind == core::TermKind::Not) {
-      const sat::Lit lit = negate(encode(term.children.at(0)));
-      lit_by_term_[term_id] = lit;
-      return lit;
-    }
-
-    const sat::Lit lit{backend_.new_var()};
-    lit_by_term_[term_id] = lit;
-
-    switch (term.kind) {
-      case core::TermKind::And:
-        encode_and(lit, term.children);
-        return lit;
-      case core::TermKind::Or:
-        encode_or(lit, term.children);
-        return lit;
-      case core::TermKind::Implies:
-        encode_implies(lit, encode(term.children.at(0)), encode(term.children.at(1)));
-        return lit;
-      case core::TermKind::Application:
-        if (term.sort != terms_.symbols().bool_sort()) {
-          throw UnsupportedInput("non-Boolean function application in Boolean context");
+      if (visit.expanded) {
+        const std::vector<core::TermId> children = term.children;
+        switch (term.kind) {
+          case core::TermKind::Not:
+            lit_by_term_[visit.term] = negate(encoded_lit(children.at(0)));
+            break;
+          case core::TermKind::And:
+            encode_and(lit_by_term_[visit.term], children);
+            break;
+          case core::TermKind::Or:
+            encode_or(lit_by_term_[visit.term], children);
+            break;
+          case core::TermKind::Implies:
+            encode_implies(lit_by_term_[visit.term], encoded_lit(children.at(0)),
+                           encoded_lit(children.at(1)));
+            break;
+          case core::TermKind::BoolValue:
+          case core::TermKind::Constant:
+          case core::TermKind::Application:
+          case core::TermKind::Equality:
+          case core::TermKind::Rational:
+          case core::TermKind::Plus:
+          case core::TermKind::Times:
+          case core::TermKind::Le:
+          case core::TermKind::Lt:
+            assert(false && "atom reached Boolean clausifier post-order encoding");
+            break;
         }
-        return theory_atom_for_term(term_id).lit;
-      case core::TermKind::Equality:
-      case core::TermKind::Le:
-      case core::TermKind::Lt:
-        return theory_atom_for_term(term_id).lit;
-      case core::TermKind::BoolValue:
-      case core::TermKind::Constant:
-      case core::TermKind::Not:
-      case core::TermKind::Rational:
-      case core::TermKind::Plus:
-      case core::TermKind::Times:
-        break;
+        continue;
+      }
+
+      if (lit_by_term_[visit.term].value != 0) {
+        continue;
+      }
+      if (term.kind == core::TermKind::BoolValue) {
+        (void)true_lit();
+        continue;
+      }
+      if (term.kind == core::TermKind::Constant) {
+        (void)atom_lit(visit.term);
+        continue;
+      }
+      if (term.kind == core::TermKind::Not) {
+        pending.push_back(Visit{visit.term, true});
+        pending.push_back(Visit{term.children.at(0), false});
+        continue;
+      }
+
+      lit_by_term_[visit.term] = sat::Lit{backend_.new_var()};
+      switch (term.kind) {
+        case core::TermKind::And:
+        case core::TermKind::Or:
+        case core::TermKind::Implies:
+          pending.push_back(Visit{visit.term, true});
+          for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+            pending.push_back(Visit{*child, false});
+          }
+          break;
+        case core::TermKind::Application:
+          if (term.sort != terms_.symbols().bool_sort()) {
+            throw UnsupportedInput("non-Boolean function application in Boolean context");
+          }
+          (void)theory_atom_for_term(visit.term);
+          break;
+        case core::TermKind::Equality:
+        case core::TermKind::Le:
+        case core::TermKind::Lt:
+          (void)theory_atom_for_term(visit.term);
+          break;
+        case core::TermKind::BoolValue:
+        case core::TermKind::Constant:
+        case core::TermKind::Not:
+        case core::TermKind::Rational:
+        case core::TermKind::Plus:
+        case core::TermKind::Times:
+          throw UnsupportedInput("unsupported Boolean term");
+      }
     }
-    throw UnsupportedInput("unsupported Boolean term");
+    return encoded_lit(term_id);
   }
 
   sat::Lit atom_lit(core::TermId term_id) {
@@ -1934,7 +1989,7 @@ class BooleanClausifier {
   void encode_and(sat::Lit output, const std::vector<core::TermId>& children) {
     sat::Clause reverse_clause{output};
     for (const core::TermId child : children) {
-      const sat::Lit child_lit = encode(child);
+      const sat::Lit child_lit = encoded_lit(child);
       backend_.add_clause(sat::Clause{negate(output), child_lit});
       reverse_clause.push_back(negate(child_lit));
     }
@@ -1944,7 +1999,7 @@ class BooleanClausifier {
   void encode_or(sat::Lit output, const std::vector<core::TermId>& children) {
     sat::Clause forward_clause{negate(output)};
     for (const core::TermId child : children) {
-      const sat::Lit child_lit = encode(child);
+      const sat::Lit child_lit = encoded_lit(child);
       backend_.add_clause(sat::Clause{negate(child_lit), output});
       forward_clause.push_back(child_lit);
     }
@@ -1955,6 +2010,16 @@ class BooleanClausifier {
     backend_.add_clause(sat::Clause{lhs, output});
     backend_.add_clause(sat::Clause{negate(rhs), output});
     backend_.add_clause(sat::Clause{negate(output), negate(lhs), rhs});
+  }
+
+  sat::Lit encoded_lit(core::TermId term_id) {
+    const core::Term& term = terms_.get(term_id);
+    if (term.kind == core::TermKind::BoolValue) {
+      return term.bool_value ? true_lit() : negate(true_lit());
+    }
+    assert(term_id < lit_by_term_.size());
+    assert(lit_by_term_[term_id].value != 0);
+    return lit_by_term_[term_id];
   }
 
   sat::IpasirUpBackend& backend_;
@@ -1987,14 +2052,15 @@ CheckSatResult map_sat_result(sat::SatResult result) {
 }
 
 bool contains_application_term(const core::TermManager& terms, core::TermId term_id) {
-  const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Application) {
-    return true;
-  }
-  for (const core::TermId child : term.children) {
-    if (contains_application_term(terms, child)) {
+  std::vector<core::TermId> pending{term_id};
+  while (!pending.empty()) {
+    const core::TermId current = pending.back();
+    pending.pop_back();
+    const core::Term& term = terms.get(current);
+    if (term.kind == core::TermKind::Application) {
       return true;
     }
+    pending.insert(pending.end(), term.children.begin(), term.children.end());
   }
   return false;
 }
@@ -2005,7 +2071,7 @@ struct FormulaFeatureSummary {
   bool has_arithmetic = false;
   bool has_euf_predicate = false;
 
-  // The single place that enumerates the fields. Both the per-child recursion
+  // The single place that enumerates the fields. Both the per-child traversal
   // in summarize_formula_features and the per-assertion loop at the dispatch
   // go through this, so a field cannot be aggregated in one and forgotten in
   // the other.
@@ -2037,54 +2103,70 @@ static_assert(sizeof(FormulaFeatureSummary) == 4,
 FormulaFeatureSummary summarize_formula_features(
     const core::TermManager& terms, core::TermId term_id,
     std::unordered_map<core::TermId, FormulaFeatureSummary>& memo, MixedDispatchMode dispatch) {
-  const auto found = memo.find(term_id);
-  if (found != memo.end()) {
-    return found->second;
-  }
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+  };
 
-  const core::Term& term = terms.get(term_id);
-  FormulaFeatureSummary summary;
-  summary.has_application_term = term.kind == core::TermKind::Application;
-  // Only a Bool-sorted *Application* is an EUF predicate. A Bool-sorted
-  // Constant is a plain propositional variable: it has no arguments, so no
-  // congruence rule can ever apply to it, and there is nothing for EUF to do
-  // with it.
-  //
-  // This read `Application || Constant` until 2026-08-07, which meant any
-  // QF_LRA formula containing a single propositional variable dispatched to
-  // solve_qf_uf_lra. On 2019-ezsmt that cost a file outright -- 0.93s to a
-  // deterministic timeout -- because the mixed path then hands those variables
-  // to congruence closure. See docs/nelson-oppen-qf-lra-regression.md.
-  //
-  // Consumed only by the mixed dispatch `(has_equality || has_euf_predicate)
-  // && has_arithmetic`; the QF_UF dispatch keys on has_application_term, so
-  // narrowing this cannot affect it.
-  summary.has_euf_predicate =
-      (term.kind == core::TermKind::Application ||
-       (dispatch == MixedDispatchMode::Wide && term.kind == core::TermKind::Constant)) &&
-      term.sort == terms.symbols().bool_sort();
-  summary.has_arithmetic = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
-
-  for (const core::TermId child : term.children) {
-    const FormulaFeatureSummary child_summary =
-        summarize_formula_features(terms, child, memo, dispatch);
-    summary |= child_summary;
-  }
-
-  // `(= a b)` is built by the sort-agnostic mk_eq for any sort, including Real.
-  // A plain Real equality is an LRA atom, but a Real equality containing a UF
-  // application is a purification definition and must dispatch to the mixed
-  // EUF/LRA path so EUF can own the application.
-  if (term.kind == core::TermKind::Equality) {
-    const bool real_equality = terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
-    summary.has_arithmetic = summary.has_arithmetic || real_equality;
-    if (!real_equality || summary.has_application_term) {
-      summary.has_equality = true;
+  std::vector<Visit> pending{{term_id, false}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (memo.contains(visit.term)) {
+      continue;
     }
-  }
 
-  const auto [inserted, _] = memo.emplace(term_id, summary);
-  return inserted->second;
+    const core::Term& term = terms.get(visit.term);
+    if (!visit.expanded) {
+      pending.push_back(Visit{visit.term, true});
+      for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+        if (!memo.contains(*child)) {
+          pending.push_back(Visit{*child, false});
+        }
+      }
+      continue;
+    }
+
+    FormulaFeatureSummary summary;
+    summary.has_application_term = term.kind == core::TermKind::Application;
+    // Only a Bool-sorted *Application* is an EUF predicate. A Bool-sorted
+    // Constant is a plain propositional variable: it has no arguments, so no
+    // congruence rule can ever apply to it, and there is nothing for EUF to do
+    // with it.
+    //
+    // This read `Application || Constant` until 2026-08-07, which meant any
+    // QF_LRA formula containing a single propositional variable dispatched to
+    // solve_qf_uf_lra. On 2019-ezsmt that cost a file outright -- 0.93s to a
+    // deterministic timeout -- because the mixed path then hands those variables
+    // to congruence closure. See docs/nelson-oppen-qf-lra-regression.md.
+    //
+    // Consumed only by the mixed dispatch `(has_equality || has_euf_predicate)
+    // && has_arithmetic`; the QF_UF dispatch keys on has_application_term, so
+    // narrowing this cannot affect it.
+    summary.has_euf_predicate =
+        (term.kind == core::TermKind::Application ||
+         (dispatch == MixedDispatchMode::Wide && term.kind == core::TermKind::Constant)) &&
+        term.sort == terms.symbols().bool_sort();
+    summary.has_arithmetic = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
+
+    for (const core::TermId child : term.children) {
+      summary |= memo.at(child);
+    }
+
+    // `(= a b)` is built by the sort-agnostic mk_eq for any sort, including Real.
+    // A plain Real equality is an LRA atom, but a Real equality containing a UF
+    // application is a purification definition and must dispatch to the mixed
+    // EUF/LRA path so EUF can own the application.
+    if (term.kind == core::TermKind::Equality) {
+      const bool real_equality = terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+      summary.has_arithmetic = summary.has_arithmetic || real_equality;
+      if (!real_equality || summary.has_application_term) {
+        summary.has_equality = true;
+      }
+    }
+    memo.emplace(visit.term, summary);
+  }
+  return memo.at(term_id);
 }
 
 struct BooleanShape {
@@ -7512,91 +7594,111 @@ core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
 
 core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
                                   MixedPurificationRewriteState& state) {
-  const auto memoized = state.formula_rewrite_memo.find(term_id);
-  if (memoized != state.formula_rewrite_memo.end()) {
-    ++state.memoized_formula_rewrites;
-    return memoized->second;
-  }
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+  };
+
   core::TermManager& terms = frontend.terms();
-  const core::Term& term = terms.get(term_id);
-  const core::TermKind kind = term.kind;
-  const core::SortId sort = term.sort;
-  core::TermId result = term_id;
-  switch (kind) {
-    case core::TermKind::Le: {
-      const std::vector<core::TermId> term_children = term.children;
-      const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
-      const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
-      result = lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                        : terms.mk_le(lhs, rhs);
-      break;
+  std::vector<Visit> pending{{term_id, false}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (state.formula_rewrite_memo.contains(visit.term)) {
+      ++state.memoized_formula_rewrites;
+      continue;
     }
-    case core::TermKind::Lt: {
-      const std::vector<core::TermId> term_children = term.children;
-      const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
-      const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
-      result = lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                        : terms.mk_lt(lhs, rhs);
-      break;
+
+    const core::Term& term = terms.get(visit.term);
+    const core::TermKind kind = term.kind;
+    const bool rewrites_formula_children =
+        kind == core::TermKind::Not || kind == core::TermKind::And || kind == core::TermKind::Or ||
+        kind == core::TermKind::Implies;
+    if (!visit.expanded && rewrites_formula_children) {
+      pending.push_back(Visit{visit.term, true});
+      for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+        pending.push_back(Visit{*child, false});
+      }
+      continue;
     }
-    case core::TermKind::Equality:
-      if (terms.get(term.children.at(0)).sort == terms.symbols().real_sort()) {
-        const std::vector<core::TermId> term_children = term.children;
+
+    // Copy before purification helpers or TermManager constructors grow term storage.
+    const core::SortId sort = term.sort;
+    const std::vector<core::TermId> term_children = term.children;
+    core::TermId result = visit.term;
+    switch (kind) {
+      case core::TermKind::Le: {
         const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
         const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
-        result = lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                          : terms.mk_eq(lhs, rhs);
+        result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
+                                                                          : terms.mk_le(lhs, rhs);
         break;
       }
-      {
-        const std::vector<core::TermId> term_children = term.children;
-        const core::TermId lhs = purify_euf_term(frontend, term_children.at(0), state);
-        const core::TermId rhs = purify_euf_term(frontend, term_children.at(1), state);
-        result = lhs == term_children.at(0) && rhs == term_children.at(1) ? term_id
-                                                                          : terms.mk_eq(lhs, rhs);
+      case core::TermKind::Lt: {
+        const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
+        const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
+        result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
+                                                                          : terms.mk_lt(lhs, rhs);
         break;
       }
-    case core::TermKind::Not: {
-      const core::TermId original_child = term.children.at(0);
-      const core::TermId child = purify_mixed_formula(frontend, original_child, state);
-      result = child == original_child ? term_id : terms.mk_not(child);
-      break;
-    }
-    case core::TermKind::And:
-    case core::TermKind::Or: {
-      const std::vector<core::TermId> term_children = term.children;
-      std::vector<core::TermId> children;
-      children.reserve(term_children.size());
-      bool changed = false;
-      for (const core::TermId child : term_children) {
-        const core::TermId rewritten = purify_mixed_formula(frontend, child, state);
-        changed = changed || rewritten != child;
-        children.push_back(rewritten);
+      case core::TermKind::Equality:
+        if (terms.get(term_children.at(0)).sort == terms.symbols().real_sort()) {
+          const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
+          const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
+          result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
+                                                                            : terms.mk_eq(lhs, rhs);
+          break;
+        }
+        {
+          const core::TermId lhs = purify_euf_term(frontend, term_children.at(0), state);
+          const core::TermId rhs = purify_euf_term(frontend, term_children.at(1), state);
+          result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
+                                                                            : terms.mk_eq(lhs, rhs);
+          break;
+        }
+      case core::TermKind::Not: {
+        const core::TermId child = state.formula_rewrite_memo.at(term_children.at(0));
+        result = child == term_children.at(0) ? visit.term : terms.mk_not(child);
+        break;
       }
-      result = !changed ? term_id
-                        : (kind == core::TermKind::And ? terms.mk_and(std::move(children))
-                                                       : terms.mk_or(std::move(children)));
-      break;
-    }
-    case core::TermKind::Implies: {
-      const std::vector<core::TermId> term_children = term.children;
-      const core::TermId lhs = purify_mixed_formula(frontend, term_children.at(0), state);
-      const core::TermId rhs = purify_mixed_formula(frontend, term_children.at(1), state);
-      result = lhs == term_children.at(0) && rhs == term_children.at(1)
-                   ? term_id
-                   : terms.mk_implies(lhs, rhs);
-      break;
-    }
-    case core::TermKind::Application:
-      if (sort == terms.symbols().bool_sort()) {
-        result = purify_euf_term(frontend, term_id, state);
+      case core::TermKind::And:
+      case core::TermKind::Or: {
+        std::vector<core::TermId> children;
+        children.reserve(term_children.size());
+        bool changed = false;
+        for (const core::TermId child : term_children) {
+          const core::TermId rewritten = state.formula_rewrite_memo.at(child);
+          changed = changed || rewritten != child;
+          children.push_back(rewritten);
+        }
+        result = !changed ? visit.term
+                          : (kind == core::TermKind::And ? terms.mk_and(std::move(children))
+                                                         : terms.mk_or(std::move(children)));
+        break;
       }
-      break;
-    default:
-      break;
+      case core::TermKind::Implies: {
+        const core::TermId lhs = state.formula_rewrite_memo.at(term_children.at(0));
+        const core::TermId rhs = state.formula_rewrite_memo.at(term_children.at(1));
+        result = lhs == term_children.at(0) && rhs == term_children.at(1)
+                     ? visit.term
+                     : terms.mk_implies(lhs, rhs);
+        break;
+      }
+      case core::TermKind::Application:
+        if (sort == terms.symbols().bool_sort()) {
+          result = purify_euf_term(frontend, visit.term, state);
+        }
+        break;
+      case core::TermKind::BoolValue:
+      case core::TermKind::Constant:
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Times:
+        break;
+    }
+    state.formula_rewrite_memo.emplace(visit.term, result);
   }
-  state.formula_rewrite_memo.emplace(term_id, result);
-  return result;
+  return state.formula_rewrite_memo.at(term_id);
 }
 
 MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
