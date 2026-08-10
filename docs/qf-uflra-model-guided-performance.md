@@ -1,7 +1,8 @@
 # QF_UFLRA Model-Guided Performance Plan
 
-Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, through the
-exact-fallback profile and literature audit at commit `5702fc0`.
+Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, after the
+convex model-reconciliation implementation and before its fresh fuzz and SLURM
+performance gate.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -30,12 +31,11 @@ is computed from class cardinalities, so only post-mutation pairs are
 materialized.
 
 The soundness boundary is explicit: a pair left equal by the greedy sweep is not
-called forced. Only the explained `FixedEq`/`EqRow` producers and exact convex
-fallback may publish an entailed equality. The scratch assignment is not
-installed into the live tableau, so final arrangement/model reconstruction
-retains its independent strict-separation validation. Focused tests cover an
-accidental equality removed before queue/atom creation, an entailed equality
-that cannot move, and model reconstruction after scratch-only mutation.
+called forced. Only explained opportunistic producers or exact convex fallback
+may publish an entailed equality. Reconciliation treats the scratch assignment
+as a model candidate: SAT-false pairs must be separated, and EUF must absorb all
+spanning edges and their congruence consequences. Accepted model output uses
+that same candidate assignment rather than rebuilding a different tableau.
 
 Fresh SLURM gates at commit `4937d3c` passed 4,000 generated cases with
 reconciliation and another 4,000 with model-equality branching. Each option set
@@ -445,7 +445,48 @@ model-based theory-combination algorithm. The intended implementation is a
 QF_UFLRA subset that moves the expensive final equality scan toward the paper's
 candidate-first discipline.
 
-## Shared-Model Reconciliation Prototype
+## Current Convex Reconciliation
+
+The opt-in profile now executes the complete checklist above for the supported
+convex EUF+rational-LRA interface. After ordinary explained propagation reaches
+quiescence, `LraModelEqualPartition` retains the full scratch assignment,
+concrete model values, exact value classes, and unresolved SAT-false pairs.
+Greedy Section 5.2 mutation prioritizes those mandatory disequalities. A
+remaining violation is handled by strict-orientation search over only the
+violating pairs; success rebuilds a scratch candidate, while inconsistency
+falls back to the existing two-conflict explained equality oracle.
+
+`TheoryCombinationManager::SharedEqualityDecisionState` owns pending, active,
+and tried lazy equality choices. The coordinator checkpoints EUF and merges a
+deterministic spanning set for each LRA value class. It projects shared EUF
+classes before and after each optional merge. A direct disequality conflict or
+a congruence consequence that joins different LRA value classes rejects the
+causal edge. That edge is lazily materialized and tried positively as an
+IPASIR-UP assumption; a failed assumption produces a blocking clause. A
+successful merge is only a candidate-model choice and never an entailed lemma.
+
+When every edge is absorbed, the component models agree on the shared Real
+relation. Non-model checks return SAT without the broad exact pair scan.
+`get-model` concretizes and returns the same diversified or targeted LRA
+assignment and supplies the internal spanning equalities to EUF model
+construction. Unmapped shared terms, targeted-separation failure, or another
+candidate invariant failure keeps the old exact path as a conservative
+fallback. The profile has no model-pair budget or adaptive stop; those knobs
+remain specific to the older optional `--model-equality-branching` heuristic.
+
+Focused tests cover forbidden-pair mutation, targeted separation, lazy
+positive assumptions and failed-assumption blocking, optional-merge
+congruence consequences, direct conflicts, and candidate-model output. Fresh
+fuzz and benchmark evidence is still required before promotion.
+
+Relevant counters are grouped under `:no.shared-model.*`: `forbidden-*`,
+`targeted-separation-*`, `compatibility-*`, and `split-materializations`.
+`:no.online.final-lra-equality-scan-skipped` counts compatible rounds that
+bypass broad exact scanning; the historical name is retained for statistics
+compatibility even though the model-reconciliation profile is not restricted
+to online propagation.
+
+## Historical Shared-Model Reconciliation Prototype
 
 The opt-in `--qf-uflra-model-reconciliation` profile implements the first
 round-scoped ownership slice. `TheoryCombinationManager::shared_model()` stores

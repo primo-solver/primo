@@ -79,6 +79,9 @@ model-value classes and membership, deterministic spanning pairs, a canonical
 explained-equality worklist, internal equalities, and selected separation atoms.
 Starting a new SAT round or popping the combination trail invalidates it. The
 state deliberately stores neither a congruence closure nor a tableau.
+`SharedEqualityDecisionState` is solve-scoped rather than round-scoped and owns
+the pending, active, and tried lazy equality assumptions. The mixed coordinator
+performs IPASIR-UP calls but no longer owns this shared-equality lifecycle.
 
 The internal reconciliation rule accepts only explained LRA entailments. It
 batches those equalities into EUF, projects the resulting shared EUF classes
@@ -87,8 +90,14 @@ exposes actual LRA-model disagreement or unmapped endpoints lazily to SAT. A
 direct EUF contradiction returns its composed conflict clause without an
 interface equality atom. Every internal merge carries its LRA reason into the
 EUF explanation structure. Model-equal but unentailed pairs remain conjectures
-and are never admitted by this rule. The detailed ownership, complexity, and
-proof checklist is in
+and are never admitted as theory consequences. After explained propagation,
+the reconciliation profile checkpoints EUF and tries the spanning edges of
+diversified LRA value classes as optional model choices. It rejects an edge on
+a direct conflict or when congruence creates an equality across different LRA
+value classes, then lazily tries that edge as a positive SAT assumption.
+SAT-false pairs are mandatory LRA candidate disequalities; unresolved pairs use
+targeted strict orientations before exact fallback. The detailed ownership,
+complexity, and proof checklist is in
 `docs/papers/model-based-theory-combination.md`.
 `analyze_nelson_oppen_interface` is a
 compatibility wrapper around this manager, and the diagnostic path reports the
@@ -260,9 +269,9 @@ with a mutable shared model object.
 The paired-bound producer is deliberately the stable online LRA-to-EUF subset.
 It is sound, has a compact two-literal explanation, and avoids searching the
 tableau on every LRA bound change. At final-check quiescence, the broader
-`LraTableau::entailed_equalities()` producer implements `FixedEq` and `EqRow`
-with explanations. `EqOffsetRows` and `EqRows` remain future work and must add
-soundness-oracle tests and counters before they can reduce the exact fallback.
+`LraTableau::entailed_equalities()` producer implements `FixedEq`, `EqRow`,
+`EqOffsetRows`, and `EqRows` with explanations and deterministic spanning
+output. All four are polled only after a feasible mixed-theory check.
 
 The default-off `--qf-uflra-online-euf` option extends only the callback
 plumbing around this subset. `MixedTheoryPropagationDispatcher` acts as the
@@ -716,7 +725,8 @@ the non-singleton post-mutation value classes. The coordinator reuses that one
 partition for shared-model reconciliation, exact convex candidate filtering,
 and branch selection. The paths create a SAT-visible equality atom only for a
 selected surviving pair and set the SAT phase so the positive equality is tried
-first. `ModelEqualityArrangementState` owns the resulting assumption lifecycle:
+first. `TheoryCombinationManager::SharedEqualityDecisionState` owns the
+resulting assumption lifecycle:
 one selected equality literal is queued, activated as an IPASIR assumption on
 the next SAT call, retained across later SAT calls when it survives, and removed
 when the SAT backend reports it as a failed assumption. SAT-level rejections
@@ -728,10 +738,11 @@ the ordinary theory-conflict path.
 from equality term to SAT literal. `BooleanClausifier` creates the optional
 theory atom when the equality is selected. `ModelEqualityCandidateQueue` owns
 the care-pair candidate queue for the `care-queued` policy during the mixed
-coordinator loop. `ModelEqualityArrangementState` owns the pending literal,
+coordinator loop. `SharedEqualityDecisionState` owns the pending literal,
 active IPASIR assumption trail, tried SAT variables, and adaptive rejection
-counters. The SAT adapter still sees only literals and clauses; theory solvers
-still see ordinary theory atoms and explanations.
+counters; the local coordinator performs backend calls. The SAT adapter still
+sees only literals and clauses; theory solvers still see ordinary theory atoms
+and explanations.
 
 **Invariants and operations.**
 
@@ -763,11 +774,11 @@ the solver may backtrack and explore the negated arrangement.
 
 **Deviations and limitations.** Primo does not implement the paper's full
 `DPLL(T^M)` transition system, generic theory model object, or paper-style
-`M-Propagate` state. The Section 5.2 mutation is LRA-specific and scratch-only:
-the diversified assignment is not installed into the live tableau or directly
-used for final model values. Final arrangement/model reconstruction therefore
-retains its independent strict-separation search. No theory other than LRA has a
-mutator.
+generic `M-Propagate` state. The implemented convex QF_UFLRA subset has a lazy
+model split, but it is not theory-independent. Section 5.2 mutation is
+LRA-specific and scratch-only: the diversified assignment is not installed
+into the live tableau, although a compatible assignment is used directly for
+mixed model values. No theory other than LRA has a mutator.
 
 **Tests derived from the subset.** The QF_UFLRA unit tests cover a rejected bad
 model-equality guess, a scratch mutation that removes an accidental equality,
@@ -868,11 +879,12 @@ accepted syntax/model-reconstruction boundary remains narrower than all of
 QF_UFLRA.
 
 The mixed path enables fixed-variable elimination by default before polling
-`FixedEq` and `EqRow`. This implements the basis preparation described in de
-Moura and Bjorner, Section 5.1, for the two opportunistic rules Primo currently
-supports. It does not implement `EqOffsetRows`, `EqRows`, or the paper's model
-mutation rules. Pure QF_LRA retains its independently measured default-off
-setting; `--no-qf-uflra-fixed-elimination` disables only the mixed default.
+`FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`. This implements the basis
+preparation and all four opportunistic equality shapes described in de Moura
+and Bjorner, Section 5.1. The reconciliation profile also implements the
+LRA-specific scratch mutation subset from Section 5.2. Pure QF_LRA retains its
+independently measured default-off setting;
+`--no-qf-uflra-fixed-elimination` disables only the mixed default.
 
 - **Data structures:** `TheoryCombinationManager` owns the shared Real
   interface-pair registry, the generated equality atom `TermId`, the registered

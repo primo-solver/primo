@@ -335,22 +335,38 @@ Implemented now:
   a generation, LRA model-value classes and membership, deterministic spanning
   pairs, a canonical explained-equality worklist, internally absorbed
   equalities, and selected strict LRA separations. It does not own the EUF
-  closure or LRA tableau. A new SAT assignment or backtrack invalidates the
-  projection; the theory-local objects remain owned by their solvers.
+  closure or LRA tableau. `SharedEqualityDecisionState` separately owns lazy
+  equality decisions that survive SAT re-entry: tried variables, one pending
+  literal, active assumptions, and rejection metadata. Rebuilding the manager
+  clears this solve-scoped state. A new SAT assignment invalidates only the
+  round projection; the theory-local objects remain owned by their solvers.
 
   In this profile, explained LRA equalities are batched into the live EUF
   closure with their blocking literals. An immediate EUF contradiction returns
   the composed combined-theory conflict directly, without creating a shared
   equality atom. For a consistent batch,
   `FlatCongruenceClosure::equivalence_classes()` projects the shared interface
-  once from its eager representatives. Deterministic spanning consequences
-  whose endpoints are both mapped into the same diversified LRA model class are
-  recorded internally; actual LRA-model disagreement or an unmapped endpoint
-  uses the lazy guarded-clause path with the EUF explanation. Final arrangement
-  validation and model construction consume the internal equalities. The
-  profile also enables the candidate-first final scan and retains its complete
-  exact fallback. This is a convex QF_UFLRA reconciliation subset, not generic
-  `DPLL(T^M)`; the Section 5.2 mutation remains scratch-only. The fresh
+  from its eager representatives. SAT-false shared equalities are mandatory
+  LRA candidate disequalities. Freedom-interval mutation tries to satisfy them;
+  remaining violations receive a strict-orientation search over only those
+  pairs and a rebuilt scratch candidate.
+
+  After explained propagation is quiescent, the coordinator checkpoints EUF
+  and merges each deterministic spanning edge of the LRA value classes. It
+  projects EUF classes before and after optional merges. A direct conflict or a
+  congruence consequence joining two different LRA classes rejects the causal
+  edge. That edge is lazily materialized and tried positively as an IPASIR-UP
+  assumption; failed assumptions produce blocking clauses. Successful merges
+  are model choices, not entailed theory lemmas. If all edges are absorbed, the
+  no-model path returns SAT without the broad exact scan, and model production
+  concretizes the same scratch LRA assignment and supplies the internal
+  spanning equalities to EUF. Unmapped terms or failed candidate invariants use
+  the old explained exact scan. This is a convex QF_UFLRA reconciliation
+  subset, not generic `DPLL(T^M)`; the Section 5.2 mutation remains
+  scratch-only and pure QF_UF/QF_LRA do not enter this path.
+
+  The earlier class/worklist prototype was measured before this complete
+  reconciliation step. Its fresh
   `4a93256` SLURM gate found no wrong answer in 4,000 generated cases or the
   tracked-seed mutation campaign, and the full 1,284-file run preserved all
   1,156 baseline solves while reducing PAR2 from 1412.285 to 1407.514 seconds.
@@ -508,9 +524,10 @@ Implemented now:
   `ModelEqualityCandidateQueue`
   is owned by the mixed coordinator, rebuilt from the current EUF care pairs,
   bounded by `--model-equality-branch-budget`, and consumed before creating a
-  fresh equality atom. The optional branch path is owned by
-  `ModelEqualityArrangementState`: a selected LRA-model-equal pair is queued,
-  then activated as an IPASIR assumption on the next SAT call. SAT-level failed
+  fresh equality atom. The optional branch state is owned by
+  `TheoryCombinationManager::SharedEqualityDecisionState`: a selected
+  LRA-model-equal pair is queued, then activated by the coordinator as an
+  IPASIR assumption on the next SAT call. SAT-level failed
   assumptions are blocked by a learned clause over their negations and removed
   from the active assumption trail; ordinary EUF/LRA theory conflicts under
   active assumptions are learned by the normal theory-conflict path. Guesses are
@@ -520,8 +537,8 @@ Implemented now:
   This Section 5.2 scratch sweep returns a valid, more diverse LRA model without
   changing live tableau state. Its post-mutation classes are used as candidates;
   a pair that remains equal is not thereby entailed. Explained equality
-  propagation continues to come only from the cheap `FixedEq`/`EqRow` rules or
-  the exact convex fallback.
+  propagation continues to come only from the cheap `FixedEq`, `EqRow`,
+  `EqOffsetRows`, and `EqRows` rules or the exact convex fallback.
   In default mixed QF_UFLRA solving, the original LRA atoms are observed by the
   same trail-synced online LRA propagator used by pure QF_LRA, so arithmetic
   conflicts and bound propagations can be delivered inside the SAT search. Final

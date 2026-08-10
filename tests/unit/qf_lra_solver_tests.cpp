@@ -1165,7 +1165,10 @@ void qf_uf_lra_candidate_final_scan_keeps_noncare_mergeable_pair_in_fallback() {
   assert(result.statistics.get(":no.interface.candidate-final-scan-fallbacks") == 0);
   assert(result.statistics.get(":no.interface.candidate-final-scan-fallback-equalities") == 0);
   assert(result.statistics.get(":no.interface.lra-to-euf-rechecks") == 0);
-  assert(result.statistics.get(":no.interface.model-separation-euf-mergeable-pairs") == 1);
+  // EqOffsetRows discovers x = y before final arrangement reconstruction,
+  // so the former non-care mergeable pair no longer reaches separation.
+  assert(result.statistics.get(":no.interface.lra-opportunistic-eq-offset-rows") >= 1);
+  assert(result.statistics.get(":no.interface.model-separation-euf-mergeable-pairs") == 0);
   assert(result.statistics.get(":no.interface.model-separation-euf-forbidden-pairs") == 0);
   assert(result.statistics.get(":no.interface.euf-conflicts") == 0);
 }
@@ -1882,6 +1885,60 @@ void qf_uf_lra_shared_model_mutation_removes_accidental_value_equality() {
   assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
 }
 
+void qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
+  assert(result.statistics.get(":no.shared-model.split-materializations") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-assumptions") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-blocking-clauses") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
+  assert(result.statistics.get(":no.shared-model.forbidden-equalities") >= 1);
+  assert(result.statistics.get(":no.shared-model.targeted-separation-searches") >= 1);
+  assert(result.statistics.get(":no.shared-model.targeted-separation-successes") >= 1);
+  assert(result.statistics.get(":no.shared-model.unresolved-forbidden") == 0);
+  assert(result.statistics.get(":no.shared-model.exact-fallbacks") == 0);
+}
+
+void qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun f (Real) Real)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (= (f x) 0))
+    (assert (= (f y) 1))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.shared-model.compatibility-consequence-disagreements") >= 1);
+  assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
+  assert(result.statistics.get(":no.shared-model.split-materializations") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-blocking-clauses") >= 1);
+  assert(result.statistics.get(":no.shared-model.targeted-separation-successes") >= 1);
+  assert(result.statistics.get(":no.shared-model.exact-fallbacks") == 0);
+}
+
 void qf_uf_lra_shared_model_reconstructs_after_scratch_mutation() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.qf_uflra_model_reconciliation = true;
@@ -1905,7 +1962,8 @@ void qf_uf_lra_shared_model_reconstructs_after_scratch_mutation() {
   assert(result.statistics.get(":no.interface.lra-model-mutation-calls") == 1);
   assert(result.statistics.get(":no.interface.lra-model-mutation-updates") >= 1);
   assert(result.statistics.get(":no.interface.lra-model-mutation-pruned-pairs") == 1);
-  assert(result.statistics.get(":no.shared-model.lra-separations") >= 1);
+  assert(result.statistics.get(":no.shared-model.lra-separations") == 0);
+  assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") == 1);
   assert(result.statistics.get(":no.shared-model.reconstructed-models") == 1);
   assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
 }
@@ -3900,6 +3958,8 @@ int main() {
   qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities();
   qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom();
   qf_uf_lra_shared_model_mutation_removes_accidental_value_equality();
+  qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split();
+  qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence();
   qf_uf_lra_shared_model_reconstructs_after_scratch_mutation();
   qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible();
   qf_uf_lra_shared_model_builds_model_from_internal_equality();

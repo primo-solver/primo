@@ -503,8 +503,9 @@ materialize every pair in a class. `:no.interface.exact-only` is one for
 EUF spanning and exact LRA fallback sharing remain active, while
 `:no.interface.lra-opportunistic-enabled` is zero and
 `:no.interface.lra-opportunistic-skipped-rounds` counts rounds that omit the
-optional `FixedEq`/`EqRow` poll. LRA otherwise first polls the checked tableau's
-`FixedEq` and `EqRow` rules. The `:no.interface.lra-opportunistic-*` counters
+optional opportunistic poll. LRA otherwise first polls the checked tableau's
+`FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows` rules. The
+`:no.interface.lra-opportunistic-*` counters
 split rule hits, reason literals, unmapped shared terms, lazy SAT atom delivery,
 clauses, and rechecks. After these cheap producers are quiescent, the feasible
 tableau's `model_equal_classes()` partition removes cross-value pairs, which
@@ -535,6 +536,34 @@ therefore keep `mergeable-skipped` and
 sharing. Broad fallback after an internal skip is counted by
 `:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks` and should also
 remain zero on the conservative path.
+
+With `--qf-uflra-model-reconciliation`, the broad exact scan is no longer the
+normal final step. The shared-model counters diagnose the replacement:
+
+- `:no.shared-model.forbidden-equalities`, `forbidden-before`, and
+  `forbidden-after` report SAT-false pairs supplied to scratch LRA mutation;
+- `:no.shared-model.unresolved-forbidden` reports violations remaining in the
+  final candidate partition;
+- `:no.shared-model.targeted-separation-*` reports strict-orientation searches
+  restricted to unresolved mandatory disequalities;
+- `:no.shared-model.compatibility-edges`, `compatibility-merges`, and
+  `compatibility-projections` report EUF absorption of LRA class spanning
+  edges;
+- `:no.shared-model.compatibility-splits` counts direct or congruence-induced
+  rejection of an optional merge, while
+  `compatibility-consequence-disagreements` isolates the latter;
+- `:no.shared-model.split-materializations` counts lazy positive-first equality
+  assumptions; failed assumptions continue to use the
+  `:no.interface.model-equality-*` blocking-clause counters;
+- `:no.shared-model.compatibility-successes` and
+  `:no.online.final-lra-equality-scan-skipped` count accepted candidate rounds.
+
+The `:no.online.*` spelling of the final-scan counter is historical. It also
+counts reconciliation rounds when `--nelson-oppen-prop` is `final`. Nonzero
+`:no.shared-model.exact-fallbacks` means an unmapped term, failed mandatory
+separation, or another candidate invariant forced the old complete path. A
+model-equality coincidence alone is never an entailed propagation.
+
 When default-off `--model-equality-branching` is enabled, the EUF care counters
 compare the full shared-Real cross product with pairs that occur as arguments
 under flat EUF function prefixes equal in the current EUF closure. Default

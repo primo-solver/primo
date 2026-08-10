@@ -515,6 +515,33 @@ void manager_rebuilds_registry_from_explicit_interface_terms() {
   assert(manager.summary().missing_equalities == 0);
 }
 
+void manager_owns_lazy_shared_equality_decisions() {
+  SymbolTable symbols;
+  const auto real_sort = symbols.real_sort();
+  const auto x_symbol = symbols.declare_constant("x", real_sort);
+  const auto y_symbol = symbols.declare_constant("y", real_sort);
+  TermManager terms(symbols);
+  const auto x = terms.mk_constant(x_symbol);
+  const auto y = terms.mk_constant(y_symbol);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({x, y});
+  auto& decisions = manager.shared_equality_decisions();
+  decisions.tried_vars.insert(7);
+  decisions.pending = primo::sat::Lit{7};
+  decisions.active.push_back(primo::sat::Lit{5});
+
+  manager.begin_shared_model_round();
+  assert(manager.shared_equality_decisions().tried_vars.contains(7));
+  assert(manager.shared_equality_decisions().pending->value == 7);
+  assert(manager.shared_equality_decisions().active.size() == 1);
+
+  manager.rebuild_from_interface_terms({x, y});
+  assert(manager.shared_equality_decisions().tried_vars.empty());
+  assert(!manager.shared_equality_decisions().pending.has_value());
+  assert(manager.shared_equality_decisions().active.empty());
+}
+
 void reports_real_terms_inside_euf_atoms_as_purification_sites() {
   SymbolTable symbols;
   const auto real_sort = symbols.real_sort();
@@ -583,6 +610,7 @@ int main() {
   manager_tracks_per_round_interface_equality_classifications();
   manager_owns_round_scoped_shared_model_state();
   manager_rebuilds_registry_from_explicit_interface_terms();
+  manager_owns_lazy_shared_equality_decisions();
   reports_real_terms_inside_euf_atoms_as_purification_sites();
   reports_uninterpreted_applications_inside_arithmetic_atoms();
   return 0;

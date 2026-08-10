@@ -335,8 +335,9 @@ int main(int argc, char** argv) {
                "Enable experimental mixed QF_UFLRA candidate-first final LRA equality scans before "
                "falling back to the full shared-Real pair scan [default: off]");
   app.add_flag("--qf-uflra-model-reconciliation", qf_uflra_model_reconciliation,
-               "Enable experimental convex QF_UFLRA shared-model reconciliation; retain "
-               "EUF-compatible LRA equalities without creating SAT atoms [default: off]");
+               "Enable experimental convex QF_UFLRA shared-model reconciliation with scratch "
+               "LRA mutation, EUF compatibility checks, and lazy positive equality splits "
+               "[default: off]");
   app.add_flag("--qf-uflra-online-euf", qf_uflra_online_euf,
                "Enable experimental incremental EUF callbacks in online mixed QF_UFLRA solving "
                "[default: off]");

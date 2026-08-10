@@ -1,8 +1,8 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
 Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, after the
-class/worklist implementation, its fresh SLURM validation, and the
-exact-fallback literature audit at commit `5702fc0`.
+convex shared-model reconciliation implementation and before its fresh fuzz and
+SLURM performance gate.
 
 Reference:
 
@@ -31,9 +31,11 @@ combination. It has these related pieces:
 - guarded equality clauses when EUF or LRA implies a shared Real equality;
 - an opt-in `--qf-uflra-model-reconciliation` profile where
   `TheoryCombinationManager` owns a round-scoped shared-interface model
-  projection and explained-equality worklist, retains LRA-to-EUF consequences
-  agreed by both current models without SAT atoms, exposes model disagreement
-  lazily to SAT, and returns direct combined conflicts;
+  projection, explained-equality worklist, and lazy equality-decision state;
+  the coordinator mutates a scratch LRA model, satisfies active shared
+  disequalities, checks whether EUF can absorb each LRA value-class spanning
+  edge and its congruence consequences, and exposes a rejected edge as a lazy
+  positive-first SAT assumption;
 - bounded shared-Real separation for the documented model-printing subset;
 - default-off `--model-equality-branching`, which keeps surviving
   LRA-model-equal shared Real equality guesses on an active SAT-assumption trail;
@@ -52,15 +54,14 @@ combination. It has these related pieces:
   pairs. Removing this scan requires the paper's missing shared-model
   validation mechanism, not only a successful pair-separation search.
 
-The missing parts are the paper's central mechanisms. `TheoryCombinationManager`
-provides shared equality ownership and, under the opt-in
-`--qf-uflra-model-reconciliation` profile, owns a round-scoped projection of
-the LRA model classes and reconciled internal equalities over shared Real
-terms. This is not a full shared model object in the paper's sense: it does not
-own component theory models or mutable tableau state.
+The implementation is the paper's convex EUF+rational-LRA subset, not its
+generic transition system. `TheoryCombinationManager` owns the shared
+projection and equality-decision lifecycle, while EUF and LRA retain their
+theory-local closure/tableau objects.
 
 - no generic model object carried by the DPLL(T) state;
-- no full or generic `M-Propagate` transition;
+- no theory-independent `M-Propagate` transition beyond shared Real terms in
+  EUF+LRA;
 - no generic `M-Mutate` transition or mutable theory-model object; the
   implemented LRA sweep is scratch-only;
 - no theory-independent implementation for more than EUF plus Real LRA;
@@ -106,9 +107,10 @@ paper's novel model-based transition system.
 
 - [x] **Partial:** build shared LRA model-value classes from the checked tableau
   and project them into the combination manager.
-- [x] **Partial:** lazily create a model-equality case-split literal, prefer its
-  positive phase, and carry the guess as an IPASIR assumption
-  (`ModelEqualityArrangementState`). This path is default-off.
+- [x] **Convex QF_UFLRA subset:** lazily create a model-equality case-split
+  literal, prefer its positive phase, and carry the guess as an IPASIR
+  assumption. `TheoryCombinationManager::SharedEqualityDecisionState` owns
+  pending, active, and tried choices; the coordinator owns backend calls.
 - [x] **Partial:** postpone optional model-equality guesses until ordinary SAT
   search and the current individual-theory checks have quiesced.
 - [x] **Partial:** retain surviving guesses, inspect failed assumptions, learn a
@@ -117,10 +119,18 @@ paper's novel model-based transition system.
   to reduce the pairs queried by the optional branch heuristic.
 - [x] **LRA-only `M-Mutate` subset:** apply the Section 5.2 greedy
   freedom-interval updates to a scratch model once per feasible mixed round and
-  remove split pairs before queue or SAT-atom creation. This is not a generic
-  transition and does not mutate the live tableau.
+  remove split pairs before queue or SAT-atom creation. SAT-false shared
+  equalities are mandatory disequalities. Remaining violations receive a
+  targeted two-orientation strict search and a rebuilt scratch candidate; an
+  inconsistent search falls back to explained exact equality probing. This is
+  not a generic transition and does not mutate the live tableau.
 - [ ] Carry a set of component models `M` as part of the generic DPLL(T) search
   state.
+- [x] **Convex QF_UFLRA subset:** checkpoint EUF and merge a deterministic
+  spanning presentation of every LRA candidate value class. A direct conflict
+  or a congruence consequence crossing LRA classes rejects the causal edge and
+  creates one positive-first equality assumption. Successful optional merges
+  remain model choices and never become theory lemmas.
 - [ ] Implement theory-independent `M-Propagate` over arbitrary component
   models and shared sorts.
 - [ ] Implement `M-Mutate` as an actual update of a component model.
@@ -226,10 +236,10 @@ default.
 | 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Not implemented as DTC.** Default `final` mode creates shared Real equality atoms lazily when a theory implication or model-equality branch needs them. Opt-in `--nelson-oppen-prop=online` also avoids all-pairs precreation: it creates and observes only the paired-bound candidate equality atom it is about to propagate. |
 | 3.3 Ackermannization | Ackermann reduction replaces UF reasoning with constraints over applications and congruence axioms. The paper treats it as useful in some cases but potentially expensive. | **Separate from this work.** Primo's Ackermann and disequality-propagation options are EUF-side mechanisms. They are not integrated as the paper's model-combination method. |
 | 3.3.1 Dynamic Ackermannization | Dynamic Ackermannization adds Ackermann constraints during search, especially when disequalities between applications make argument disequalities relevant. | **Separate/partial.** This belongs to the QF_UF disequality propagation line, not to current mixed QF_UFLRA model-based combination. |
-| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Not fully implemented.** Primo has a default-off LRA-model-equality path for the QF_UFLRA coordinator. `ModelEqualityArrangementState` owns queued guesses, active IPASIR assumptions, SAT failed-assumption blocking, and adaptive rejection counters. One Section 5.2 scratch diversification sweep filters candidates before queue and atom creation. A surviving pair is still only a guess; there is no generic `DPLL(T^M)` state or generic model-equality propagation. |
-| 5 Simplex: An Example Model-Producing Theory Solver | The paper shows how Simplex naturally provides a model: the current assignment maps arithmetic variables to rational values. Equal-valued shared variables are equality candidates. | **Partial.** Primo's LRA path has a tableau assignment and hashes full `DeltaRational` values into model-equality classes. The convex fallback uses those classes only to filter exact entailment candidates; there is not yet a complete Simplex-backed combination API. |
+| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Implemented convex QF_UFLRA subset.** The opt-in reconciliation profile postpones model choices until both theories are feasible, mutates the scratch LRA model, tests LRA class spanning edges in a checkpointed EUF closure, and sends only a rejected causal edge to a positive-first IPASIR assumption. Failed assumptions produce blocking clauses. This is not generic `DPLL(T^M)`. |
+| 5 Simplex: An Example Model-Producing Theory Solver | The paper shows how Simplex naturally provides a model: the current assignment maps arithmetic variables to rational values. Equal-valued shared variables are equality candidates. | **Implemented LRA subset.** Primo hashes exact `DeltaRational` candidate values into classes, retains the complete diversified assignment, and uses that same assignment for accepted mixed model output. |
 | 5.1 Opportunistic Equality Propagation | The paper describes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`, plus fixed-variable removal and supporting bound propagation. | **Partial implementation.** `LraTableau::entailed_equalities()` implements all four rules with exact explanations and spanning output; mixed QF_UFLRA removes fixed basic variables by default. Primo polls the rules after a feasible check rather than maintaining the first three eagerly during pivots, and mixed-path row-bound propagation remains missing. The exact unresolved-pair fallback preserves convex completeness despite those deviations. |
-| 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Implemented LRA subset.** `LraTableau::diversify_shared_model()` performs the greedy nonbasic-variable sweep on a scratch assignment and returns the complete candidate assignment plus post-mutation classes. It accepts forbidden shared-variable pairs and never reintroduces one already separated. The mixed coordinator still needs to turn unresolved forbidden pairs into targeted strict separation and a complete `M-Mutate` transition. |
+| 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Implemented LRA subset.** `LraTableau::diversify_shared_model()` performs the greedy nonbasic-variable sweep on a scratch assignment and returns the complete candidate assignment plus post-mutation classes. It accepts forbidden shared-variable pairs and never reintroduces one already separated. The coordinator applies targeted strict orientations to unresolved mandatory disequalities and rebuilds the scratch model; the live tableau remains unchanged. |
 | 6 Experimental Evaluation | The paper compares model-based theory combination against DTC, Ackermannization, Yices, and MathSAT on several UF+arithmetic benchmark families. | **Not reproduced.** Primo has local and SLURM benchmark evidence in `docs/run-log.json`, including QF_UFLRA CPAchecker and sample Z3 comparisons, but it has not reproduced the paper's experiment suite. |
 | 7 Conclusions | The paper emphasizes that the approach requires theories to efficiently answer whether two shared terms have equal values in the current model. | **Partial.** Primo can answer this for some LRA Real terms and can query EUF closure equality, but there is no uniform cross-theory model-query object yet. |
 | 7.1 On the Significance of Ackermann's Reduction | The paper argues that model-based combination can avoid some Ackermannization costs, while dynamic Ackermannization remains useful in UF-heavy cases. | **Separate.** Primo's Ackermann-related work should stay documented as EUF-specific unless it is explicitly wired into mixed-theory model combination. |
@@ -247,9 +257,9 @@ The relevant implemented pieces are documented and tested here:
   branch and its limitations.
 - `src/smt/theory_combination.hpp`: `TheoryCombinationManager`, the current
   shared equality ledger and diagnostic scaffold.
-- `src/smt/check_sat.cpp`: `solve_qf_uf_lra`, lazy generated equality literals,
-  mixed final checks, model reconstruction, and default-off model-equality
-  branching.
+- `src/smt/check_sat.cpp`: `solve_qf_uf_lra`, scratch candidate construction,
+  targeted mandatory separation, EUF compatibility checking, lazy generated
+  equality assumptions, exact fallback, and candidate-model output.
 - `tests/unit/lra_tableau_tests.cpp`: `FixedEq`/`EqRow` rules, explanations,
   soundness oracle, and fixed-basis preparation.
 - `tests/unit/qf_lra_solver_tests.cpp`: QF_UFLRA convex fixpoint,
@@ -283,7 +293,9 @@ Implemented subset:
 - `choose_lra_model_equality_branch()` receives only post-mutation candidates.
   The care-queued policy intersects those candidates with current EUF care pairs
   before queue construction. Surviving unexplained equalities remain SAT
-  assumption guesses managed by `ModelEqualityArrangementState`.
+  assumption guesses stored by `TheoryCombinationManager`; the local
+  arrangement coordinator performs IPASIR-UP calls and failed-assumption
+  learning.
 
 Data structures and invariants:
 
@@ -293,9 +305,9 @@ Data structures and invariants:
   nodes.
 - `LraModelEqualPartition` is a round-local SMT-coordinator projection over
   `TermId`s and canonical `TermPairKey`s. It does not own the tableau.
-- The live tableau is unchanged. This preserves its trail/backtrack invariants;
-  final arrangement and model reconstruction independently add strict
-  separation atoms when required.
+- The live tableau is unchanged. This preserves its trail/backtrack invariants.
+  Targeted strict atoms create a second scratch model only for unresolved
+  mandatory disequalities.
 - A post-mutation equality is a model fact, not an entailment. Failure of the
   greedy sweep to separate a pair cannot force an equality. Explained
   propagation remains owned by `entailed_equalities()` and the exact convex
@@ -319,9 +331,9 @@ Counters and tests:
 Deviations and limitations:
 
 - No generic `DPLL(T^M)` state carries per-theory model objects yet.
-- No generic `M-Propagate` implementation exists for model equalities.
-- The LRA mutation is not a generic `M-Mutate` transition and does not install
-  the scratch assignment as the coordinator's final arithmetic model.
+- `M-Propagate` exists only for the convex EUF+rational-LRA shared-Real subset.
+- The LRA mutation is not a generic `M-Mutate` transition; it does, however,
+  supply the accepted arithmetic model for this QF_UFLRA profile.
 - No EUF or non-LRA theory model implements a mutator yet.
 - No completeness claim changes. The supported behavior remains the documented
   convex QF_UFLRA path plus opt-in model-guided profiles.
@@ -478,12 +490,13 @@ the paper's transitions.
 
 Use this wording when summarizing the current state:
 
-> Primo implements prerequisites and a narrow experimental QF_UFLRA
-> model-equality assumption loop inspired by de Moura and Bjorner's
-> model-based theory-combination paper. Its LRA component implements the
-> Section 5.2 freedom-interval greedy diversification sweep on a scratch model;
-> post-mutation equalities remain guesses managed by
-> `ModelEqualityArrangementState`, never entailed propagations.
+> Primo implements a convex experimental QF_UFLRA subset of de Moura and
+> Bjorner's model-based theory combination. Its LRA component diversifies a
+> scratch model, mandatory disequalities receive targeted separation, and a
+> checkpointed EUF closure tests LRA value-class spanning edges and their
+> congruence consequences. Rejected edges become lazy positive-first
+> assumptions owned by `TheoryCombinationManager`; successful model choices
+> never become entailed propagations.
 > The opt-in online
 > paired-bound producer exercises the SAT callback path without all-pairs
 > equality precreation and lazily creates only the selected equality atom it is

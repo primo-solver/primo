@@ -132,6 +132,18 @@ struct SharedModelState {
   std::vector<core::TermId> lra_separation_atoms;
 };
 
+// Backend-neutral lifecycle for lazy shared-equality decisions. The mixed SMT
+// coordinator applies these literals as IPASIR-UP assumptions and learns any
+// failed-assumption clause; the combination manager owns which interface
+// choices are pending, active, or already tried.
+struct SharedEqualityDecisionState {
+  std::unordered_set<int> tried_vars;
+  std::optional<sat::Lit> pending;
+  std::vector<sat::Lit> active;
+  std::uint64_t unproductive_rejections = 0;
+  bool adaptive_stopped = false;
+};
+
 class TheoryCombinationManager {
  public:
   explicit TheoryCombinationManager(const core::TermManager& terms);
@@ -183,6 +195,10 @@ class TheoryCombinationManager {
   bool record_lra_separation_atom(core::TermId atom);
   void invalidate_shared_model();
   const SharedModelState& shared_model() const { return shared_model_; }
+  SharedEqualityDecisionState& shared_equality_decisions() { return shared_equality_decisions_; }
+  const SharedEqualityDecisionState& shared_equality_decisions() const {
+    return shared_equality_decisions_;
+  }
   void push_level();
   void pop_to_level(std::size_t new_level);
 
@@ -210,6 +226,7 @@ class TheoryCombinationManager {
   std::vector<std::size_t> value_level_starts_;
   std::vector<std::size_t> assignment_level_starts_;
   SharedModelState shared_model_;
+  SharedEqualityDecisionState shared_equality_decisions_;
   std::unordered_set<std::uint64_t> explained_equality_keys_;
 };
 

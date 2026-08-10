@@ -169,6 +169,7 @@ std::uint32_t TheoryCombinationManager::classification_bit(
 void TheoryCombinationManager::rebuild_from_interface_terms(
     const std::vector<core::TermId>& interface_terms) {
   invalidate_shared_model();
+  shared_equality_decisions_ = SharedEqualityDecisionState{};
   summary_ = NelsonOppenInterfaceSummary{};
   interface_sort_by_term_.clear();
   equality_index_.clear();
@@ -368,6 +369,7 @@ void TheoryCombinationManager::invalidate_shared_model() {
 
 void TheoryCombinationManager::rebuild(const std::vector<core::TermId>& assertions) {
   invalidate_shared_model();
+  shared_equality_decisions_ = SharedEqualityDecisionState{};
   summary_ = NelsonOppenInterfaceSummary{};
   interface_sort_by_term_.clear();
   equality_index_.clear();
