@@ -1,7 +1,7 @@
 # QF_UFLRA Model-Guided Performance Plan
 
-Status stamp: 2026-08-09, branch `convex-no-qflra-integration`, through the
-class/worklist reconciliation validation at commit `4a93256`.
+Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, through the
+exact-fallback profile and literature audit at commit `5702fc0`.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -294,6 +294,49 @@ pair classifications for the current SAT trail, and avoid reconsidering an
 already assigned or already explained pair in the same combination round.
 Positive-first model equality case splits remain default-off while the new
 scratch mutation integration is fuzzed and evaluated.
+
+#### Exact-probe tableau boundary
+
+The exact fallback's per-pair tableau copies are expensive, but replacing them
+with a permanently cached difference row for every candidate is not justified
+by the linear-arithmetic literature. Dutertre and de Moura, *Integrating
+Simplex with DPLL(T)*, Sections 2.2-2.3, describe the older incremental-Simplex
+scheme: asserting an arbitrary linear atom creates a slack variable and row;
+retraction removes the row and may first need a pivot to make its slack basic.
+They identify frequent row insertion/removal, slack creation/deletion, and the
+associated bookkeeping as significant costs. Their replacement in Sections
+3.1 and 3.2 fixes the matrix from all formula atoms known in advance and makes
+search assertions and backtracking change only bounds. Section 3.2.4 therefore
+supports `push`/`pop` of `x < y` only after a variable for `x - y` has already
+been internalized; it does not make an unseen linear expression a reversible
+bound automatically.
+
+Primo has the same boundary. `LraTableau::push()` trails bounds (and the
+SOI-specific state), while `add_variable()` and `add_row()` are structural and
+not trailed. The exact oracle consequently copies the feasible tableau, adds
+one difference row, checks both strict orientations with bound checkpoints,
+and discards the copy. This is an implementation fallback, not a mechanism
+recommended by the model-based combination paper.
+
+The size risk is concrete on the profiled CPAchecker `dvb-usb-az6027` case. Its
+prepared tableau has 2,437 variables, 1,091 rows, and 2,201 row nonzeros. The
+candidate-final set contains 32,817 pairs and each observed difference row has
+at most five terms. Permanently internalizing that set could add 32,817
+variables/rows and up to about 164,000 coefficients; the full 759-term shared
+cross product contains 287,661 pairs. A lazy cache avoids up-front allocation
+but remains quadratic if search eventually requests most pairs, and inactive
+rows can still enlarge violation scans, occurrence lists, and pivot updates.
+
+The paper-grounded primary direction is therefore to request far fewer fresh
+equalities: de Moura and Bjorner Section 4 uses postponed `M-Propagate`, model
+mutation, and positive-first case splits, while Section 5.1 uses `FixedEq`,
+`EqRow`, `EqOffsetRows`, and `EqRows` for equalities available without an
+additional solve. Their reported model-based runs propagated 2.46 shared
+equalities on average and at most 57, which is qualitatively different from
+internalizing every exact-probe candidate. A bounded one-scratch-tableau or
+scoped-temporary-row experiment remains possible, but it must expose maximum
+added rows/nonzeros and probe-check cost, and it must be rejected if structural
+growth approaches the candidate set. It is not the next default mechanism.
 
 Preprocessing stays family-targeted. The representative MathSAT
 `pb_real_40_80_60_36.smt2` is one large conjunction of roughly 480 ternary

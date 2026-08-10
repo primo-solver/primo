@@ -25546,6 +25546,33 @@
       "artifacts": "remote:<prepared-workspace>/results/qf-uflra-nullary-stack-safe-1f3d81c-30s/; reused baseline remote:<prepared-workspace>/results/qf-uflra-profile-9b9a035-30s/; local ignored CSV copies /tmp/primo-nullary-stack-safe-eval/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted. The stack-safe eager compiler improves solved count by four and PAR2 by 281.440185 while eliminating all five corpus crashes and introducing no wrong answer, unsupported row, error, or decisive-answer disagreement."
+    },
+    {
+      "id": "2026-08-10-qfuflra-exact-probe-profile-5702fc0",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "profile",
+      "scope": "Representative QF_UFLRA exact convex-fallback investigation after the 30-second corpus comparison identified a fast-reference/slow-Primo CPAchecker induction case",
+      "commit": "5702fc0",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binary": "RelWithDebInfo with -pg; PRIMO_WARNINGS_AS_ERRORS=OFF only for the GCC 13 optimized vector-copy diagnostic; source unchanged",
+        "host": "workspace",
+        "benchmark": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--media--dvb--dvb-usb--dvb-usb-az6027.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2"
+      },
+      "command": "/usr/bin/time build-gprof-current/primo --quiet --stats --max-theory-conflicts=4 --qf-uflra-model-reconciliation < BENCHMARK; gprof build-gprof-current/primo gmon.out",
+      "results": {
+        "baseline": "22.59 seconds; 57568 feasible-tableau copies for checked-tableau equality probes; 57597 strict-orientation probes; six SAT solve calls.",
+        "tableau_shape": "2437 variables, 1091 rows, and 2201 row nonzeros before exact probing.",
+        "interface_shape": "759 shared Real terms, 287661 possible pairs, and 32817 candidate-final pairs; the largest observed difference row had five terms.",
+        "profile": "LraTableau copy construction/destruction and Rational copying dominate the sampled work, consistent with one structural tableau copy per exact pair.",
+        "rejected_one_equality_stop": "Stopping a round after the first actionable exact equality increased runtime to 60.74 seconds, checked-tableau copies to 133417, and mixed SAT rounds to nine. The experiment was removed.",
+        "rejected_full_projection_skip": "Skipping the exact pass only when full EUF/LRA class projections agreed took 25.08 seconds, skipped no exact scan on this witness, and observed two projection disagreements. The experiment was removed."
+      },
+      "artifacts": "local-only:/tmp/primo-qfuflra-profile-current-5702fc0/ and related rejected-experiment scratch directories",
+      "evidence_status": "local-current",
+      "outcome": "The per-pair structural copy is a clear bottleneck, but neither attempted non-LRA shortcut improved it. Literature review rejects an unbounded all-pairs difference-row cache: bounds-only push/pop presupposes a fixed matrix, while dynamic row insertion/removal is the older costly scheme. The next implementation must reduce requested equalities through model-based scheduling or use a strictly bounded, measured scratch experiment."
     }
   ]
 }

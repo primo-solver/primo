@@ -1,8 +1,8 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
-Status stamp: 2026-08-09, branch `convex-no-qflra-integration`, after the
-class/worklist implementation and its fresh SLURM fuzz and full-corpus
-revalidation at commit `4a93256`.
+Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, after the
+class/worklist implementation, its fresh SLURM validation, and the
+exact-fallback literature audit at commit `5702fc0`.
 
 Reference:
 
@@ -156,6 +156,34 @@ paper's novel model-based transition system.
   pairs only for consumers that require them.
 - [ ] Evaluate and promote row-bound propagation specifically for its ability
   to expose additional fixed variables and reduce exact fallback probes.
+
+#### Structural boundary for fresh equality probes
+
+The paper's fresh `M-Propagate` equality must not be read as a license to
+preallocate a difference row for every pair of shared arithmetic terms. The
+relevant Simplex basis is Dutertre and de Moura, *Integrating Simplex with
+DPLL(T)*, technical report SRI-CSL-06-01. Sections 2.2-2.3 describe dynamic
+row insertion and removal as the older, expensive incremental scheme; removing
+a probe row may require first pivoting its slack variable into the basis.
+Sections 3.1, 3.2.3, and 3.2.4 obtain cheap assertion and rollback by fixing the
+matrix from the formula's known atoms and changing only bounds during search.
+Thus a strict bound on `lhs - rhs` is cheaply reversible only after that
+difference has been internalized. Creating the difference variable and row is
+a structural operation outside the bounds-only trail.
+
+Primo's exact convex fallback respects this boundary by owning one disposable
+probe context per candidate pair. It adds the difference row before the
+context's first checkpoint, checks the two strict orientations as bounds, and
+then destroys the context. Retaining every such context or accumulating every
+difference row would make tableau size proportional to the number of queried
+pairs and potentially quadratic in the shared interface. That is not an
+implementation of either cited paper. The model-based paper instead minimizes
+how often fresh equalities are requested through opportunistic rules,
+postponement, and model mutation; its evaluation reports 2.46 `M-Propagate`
+equalities on average and 57 at most. The current roadmap therefore prioritizes
+reducing exact-probe demand. Any bounded scratch-tableau experiment must expose
+its row/nonzero growth and remains an engineering experiment, not a paper-backed
+default.
 
 ### Section 5.2: freedom-interval mutation
 
