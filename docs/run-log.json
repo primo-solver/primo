@@ -25368,6 +25368,36 @@
       "artifacts": "local-only:/tmp/primo-factor-off.out and /tmp/primo-factor-off.err; default/profile artifacts under /tmp/primo-profile-9b9a035-problem05*/",
       "evidence_status": "local-preliminary",
       "outcome": "Factoring is a plausible conditional cost on very large definitional CNFs. Do not change the default from one row; evaluate a targeted recognizer or a corpus-wide factor on/off profile first."
+    },
+    {
+      "id": "2026-08-10-nullary-define-fun-eager-compile-local-cef5165",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "profile",
+      "scope": "Local confirmation of declaration-time nullary define-fun compilation on the definition-heavy CPAchecker Problem05_60 profile target",
+      "commit": "cef5165",
+      "baseline_commit": "9b9a035",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binary": "RelWithDebInfo, embedded git revision cef5165, CaDiCaL 3.0.0",
+        "instance": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.Problem05_60_false-unreach-call.c.smt2",
+        "boundary": "Both revisions completed naturally with --max-theory-conflicts=100; no signal-based timeout was used."
+      },
+      "commands": {
+        "timing": "Three repetitions of /usr/bin/time build-profile/primo --quiet --max-theory-conflicts=100 --qf-uflra-model-reconciliation <instance>",
+        "statistics": "/usr/bin/time build-profile/primo --quiet --stats --max-theory-conflicts=100 --qf-uflra-model-reconciliation <instance>"
+      },
+      "results": {
+        "baseline": "The committed 9b9a035 confirmation took 5.37 seconds; its stats run reported 2.783262 seconds in frontend processing and the gprof run attributed 37.85 percent self time to TermBuilder::dispatch plus 16.95 percent to definition instantiation.",
+        "candidate_timing": "The three exact-commit non-stat runs took 2.71, 2.74, and 2.74 seconds. The stats run took 2.83 seconds with 237728 KiB maximum RSS.",
+        "candidate_frontend": "Frontend processing took 0.125403 seconds after 109849 eager compiles and 219379 direct nullary-definition uses; no compiled side assertions occurred in this instance.",
+        "search_invariance": "Both revisions generated 29144 SAT variables and 211658 clauses and recorded 4 conflicts, 74303 decisions, and 202391 propagations. The accepted TermId allocation change did not alter this instance's measured SAT search.",
+        "local_verification": "make check, make lint, make docs, make asan-test, whole-tree make tidy, advisory whole-tree make include-cleaner, and git diff --check passed before the implementation commit."
+      },
+      "artifacts": "local-only:/tmp/primo-nullary-eager-cef5165-{time,stdout,stats}.txt; baseline local-only:/tmp/primo-profile-9b9a035-problem05/ and /tmp/primo-profile-9b9a035-problem05-gprof/",
+      "evidence_status": "local-complete-current",
+      "outcome": "The targeted frontend throughput issue is fixed locally without changing the target's SAT structure or search counters. Fresh fuzzing and full-corpus SLURM evaluation remain required before claiming a corpus-level performance improvement."
     }
   ]
 }

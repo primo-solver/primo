@@ -1061,8 +1061,12 @@ a preprocessing pass. The motivating `Problem05_60` profile attributed about
 55 percent of a 6.28-second instrumented run to term dispatch and definition
 instantiation over 109,849 nullary definitions. The implementation compiles
 each such body at declaration time and makes later references direct `TermId`
-lookups. A fresh fuzz gate and full-corpus comparison remain required before
-claiming a corpus-level gain from the change.
+lookups. At implementation revision `cef5165`, three repeated runs fell from the
+recorded 5.37-second baseline to 2.71--2.74 seconds, and frontend time in the
+stats run fell from 2.783 to 0.125 seconds. SAT variables, clauses, conflicts,
+decisions, and propagations were unchanged on that target. This remains local
+microbenchmark evidence; a fresh fuzz gate and full-corpus comparison are
+required before claiming a corpus-level gain.
 
 ## Current Status
 
