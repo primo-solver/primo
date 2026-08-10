@@ -243,11 +243,34 @@ version's cap is a two-line addition and directly bounded work.
 
 ### 9. SOI conflict-minimization budget
 
-`minimize_soi_conflict` calls `quickxplain` on every multi-row conflict with
-no size guard. Suggested `--lra-soi-minimize-max-vars` (skip minimization
-above this error-set size, 0 = never minimize). Smaller conflicts are better
-clauses but cost repeated `soi_subset_still_conflicts` evaluations;
-`:lra.soi-quickxplain-calls` already measures the volume.
+**Superseded 2026-08-10 — the original suggestion here was aimed the wrong
+way, and the counter it cited does not measure what it claimed.**
+
+The suggestion was `--lra-soi-minimize-max-vars`, skipping minimization *above*
+a given error-set size on the theory that large sets cost repeated
+`soi_subset_still_conflicts` evaluations, citing
+`:lra.soi-quickxplain-calls` as already measuring the volume. Both halves were
+wrong:
+
+- **That counter measured successes, not calls.** It only incremented when
+  minimization actually shrank the set (a 6x under-report: 345 against 2253),
+  which made a high success rate look like a low one. It is now split into
+  `:lra.soi-minimize-calls`, `:lra.soi-minimize-shrunk` and
+  `:lra.soi-conflict-lits`.
+- **There are no large sets to skip.** Instrumented over 2253 calls: 82% have
+  a single element, the rest average 2.83, and the largest seen was 9. A
+  size-threshold knob would never usefully fire, and minimization *succeeds*
+  88% of the time on the sets that have more than one element — so a threshold
+  would be disabling the case that pays.
+
+What replaced it is `--lra-soi-minimize {quickxplain,deletion,none}` with
+`--lra-soi-minimize-order {id,row-support,violation}`. Since minimization
+reduces the set to 1.23 elements on average, there are usually several equally
+minimal answers and the algorithm silently picks one; deletion makes that pick
+orderable, where QuickXplain's recursion cannot be steered. The quantity to
+watch is `:lra.soi-conflict-lits`, not the set size — `build_soi_conflict`
+emits one literal per nonzero entry of the restricted SOI row *plus* one per
+error variable, and the first term usually dominates.
 
 **Separate, non-tuning finding from the same code:** `quickxplain`
 (`src/theory/arithmetic/lra_tableau.cpp:770-797`) is **recursive**, with a GCC
