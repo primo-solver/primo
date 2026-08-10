@@ -140,6 +140,11 @@ paper's novel model-based transition system.
   not a generic transition and does not mutate the live tableau.
 - [ ] Carry a set of component models `M` as part of the generic DPLL(T) search
   state.
+- [x] **QF_UFLRA ownership subset:** retain one augmented LRA preparation and
+  checked tableau while the exact true-interface equality key is unchanged.
+  Recheck a changed component assignment by popping old bounds and asserting
+  current bounds on the retained feasible basis. This is not the generic set of
+  component models `M` from Appendix A.
 - [x] **Convex QF_UFLRA subset:** checkpoint EUF and merge a deterministic
   spanning presentation of every LRA candidate value class. A direct conflict
   or a congruence consequence crossing LRA classes rejects the causal edge. All
@@ -465,8 +470,10 @@ The implemented convex path now follows the paper's candidate-first principle:
 it gets equality candidates from a current theory model, a cheap theory
 implication, or a care-ranked relevance filter before creating SAT equality
 atoms. It does not materialize the full same-sort shared-pair cross product.
-The next paper-level step is persistent component-model state and explicit
-generic `M-Propagate`/`M-Mutate` transitions, not another pair container.
+The next paper-level step is SAT-trail-synchronized component-model state and
+explicit generic `M-Propagate`/`M-Mutate` transitions, not another pair
+container. Primo's one-entry augmented LRA epoch is a measured QF_UFLRA ownership
+subset, not that generic state.
 
 The concrete post-2026-08-05 performance plan is tracked in
 `docs/qf-uflra-model-guided-performance.md`. That note records the Z3-stat

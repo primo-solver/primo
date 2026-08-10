@@ -581,6 +581,19 @@ algebraically cancelled constants are EUF-only model terms. Consequently
 `lra-model-filter-unmapped-terms` should remain zero. A model-equality
 coincidence alone is never an entailed propagation.
 
+Augmented LRA component-state reuse is reported by:
+
+- `:no.interface.lra-model-epoch-prepared-hits` and `prepared-misses`;
+- `:no.interface.lra-model-epoch-check-hits` and `check-misses`;
+- `:no.interface.lra-model-epoch-tableau-reuses` for same-interface checks that
+  pop prior bounds and reuse the feasible basis;
+- `:no.interface.lra-model-epoch-invalidations` when the exact true-interface
+  equality key changes.
+
+This epoch exists only in mixed QF_UFLRA when true generated interface
+equalities augment LRA. A prepared hit with a check miss is expected: it means
+the same rows are being checked under a different current SAT assignment.
+
 When default-off `--model-equality-branching` is enabled, the EUF care counters
 compare the full shared-Real cross product with pairs that occur as arguments
 under flat EUF function prefixes equal in the current EUF closure. Default

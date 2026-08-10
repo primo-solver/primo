@@ -371,6 +371,17 @@ Implemented now:
   subset, not generic `DPLL(T^M)`; the Section 5.2 mutation remains
   scratch-only and pure QF_UF/QF_LRA do not enter this path.
 
+  `MixedLraModelEpoch` retains one augmented LRA component preparation and its
+  checked tableau inside `solve_qf_uf_lra`. The exact ordered set of true
+  interface equality atoms is the structural epoch key. An unchanged key reuses
+  the preparation and tableau; a changed key rebuilds both. Before checking a
+  different LRA assignment in the same epoch, `LraTableau::pop(0)` removes all
+  prior bounds and reasons, then the coordinator asserts the current bounds on
+  the retained feasible basis. An exact assignment match may reuse the complete
+  check. This is mixed-only component state: `TheoryCombinationManager` still
+  owns shared equality identity and decisions, while LRA owns tableau semantics.
+  Pure QF_LRA and the base mixed online tableau are unchanged.
+
   The earlier class/worklist prototype was measured before this complete
   reconciliation step. Its fresh
   `4a93256` SLURM gate found no wrong answer in 4,000 generated cases or the

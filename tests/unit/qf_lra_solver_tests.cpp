@@ -2021,6 +2021,29 @@ void qf_uf_lra_shared_model_batches_independent_rejected_merges() {
   assert(result.statistics.get(":no.shared-model.exact-fallbacks") == 0);
 }
 
+void qf_uf_lra_shared_model_reuses_augmented_lra_epoch() {
+  for (const LraPivotingRule rule : {LraPivotingRule::Sparse, LraPivotingRule::Soi}) {
+    CheckSatOptions options = no_preprocessing_or_substitution();
+    options.qf_uflra_model_reconciliation = true;
+    options.lra_pivoting_rule = rule;
+    const auto result = check_sat_smtlib(R"(
+      (set-logic QF_UFLRA)
+      (declare-fun f () Real)
+      (declare-fun s (Real) Real)
+      (assert (and (= 0.0 (s 1.0)) (or (= 1.0 f) (= 1.0 (s f)))))
+      (check-sat)
+    )",
+                                         options);
+    assert(result.result == CheckSatResult::Sat);
+    assert(result.statistics.get(":no.interface.lra-model-epoch-prepared-misses") == 1);
+    assert(result.statistics.get(":no.interface.lra-model-epoch-prepared-hits") == 1);
+    assert(result.statistics.get(":no.interface.lra-model-epoch-check-hits") == 0);
+    assert(result.statistics.get(":no.interface.lra-model-epoch-check-misses") == 2);
+    assert(result.statistics.get(":no.interface.lra-model-epoch-tableau-reuses") == 1);
+    assert(result.statistics.get(":lra.theory-conflicts") == 1);
+  }
+}
+
 void qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.qf_uflra_model_reconciliation = true;
@@ -4070,6 +4093,7 @@ int main() {
   qf_uf_lra_shared_model_mutation_removes_accidental_value_equality();
   qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split();
   qf_uf_lra_shared_model_batches_independent_rejected_merges();
+  qf_uf_lra_shared_model_reuses_augmented_lra_epoch();
   qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence();
   qf_uf_lra_shared_model_reconstructs_after_scratch_mutation();
   qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible();

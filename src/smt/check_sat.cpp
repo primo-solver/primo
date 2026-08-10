@@ -6129,6 +6129,58 @@ struct LraTheoryCheckResult {
   theory::arithmetic::LraTableau tableau;
 };
 
+bool same_lra_assignments(const std::vector<AssignedTheoryAtom>& lhs,
+                          const std::vector<AssignedTheoryAtom>& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    if (lhs[index].lit != rhs[index].lit || lhs[index].value != rhs[index].value ||
+        lhs[index].term != rhs[index].term || lhs[index].filtered != rhs[index].filtered) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool same_interface_equality_atoms(const std::vector<core::TermId>& atoms,
+                                   const std::vector<InterfaceEqualityRegistryEntry>& equalities) {
+  if (atoms.size() != equalities.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < atoms.size(); ++index) {
+    if (atoms[index] != equalities[index].atom) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void assign_interface_equality_atoms(const std::vector<InterfaceEqualityRegistryEntry>& equalities,
+                                     std::vector<core::TermId>& atoms) {
+  atoms.resize(equalities.size());
+  for (std::size_t index = 0; index < equalities.size(); ++index) {
+    atoms[index] = equalities[index].atom;
+  }
+}
+
+// QF_UFLRA-local ownership for one augmented component-model epoch. The exact
+// interface key protects structural preparation reuse; the exact theory-
+// assignment key protects checked-tableau reuse. This is the specialized
+// component state suggested by de Moura-Bjorner Section 4, not generic M state.
+struct MixedLraModelEpoch {
+  std::vector<core::TermId> true_interface_equalities;
+  std::optional<PreparedLraTheory> prepared;
+  std::vector<AssignedTheoryAtom> checked_assignments;
+  std::optional<theory::arithmetic::LraTableau> tableau;
+  std::optional<sat::Clause> conflict;
+  bool check_valid = false;
+};
+
+std::optional<sat::Clause> check_lra_theory_in_place(const PreparedLraTheory& prepared,
+                                                     const std::vector<AssignedTheoryAtom>& atoms,
+                                                     theory::arithmetic::LraTableau& tableau);
+
 LraTheoryCheckResult check_incremental_lra_theory(const PreparedLraTheory& prepared,
                                                   const std::vector<AssignedTheoryAtom>& atoms);
 
@@ -8125,19 +8177,13 @@ MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
       .skipped_no_sites = false};
 }
 
-// Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies the
-// precomputed base tableau and asserts the round's assigned bounds. Returning
-// the feasible tableau lets the convex combination final check poll the
-// explanation-producing equality rules from de Moura and Bjorner Section 5.1.
-// The callback-owned tableau is reused when no interface atom augments LRA;
-// this copy path remains necessary for augmented checks and temporary probes.
-LraTheoryCheckResult check_incremental_lra_theory(const PreparedLraTheory& prepared,
-                                                  const std::vector<AssignedTheoryAtom>& atoms) {
+std::optional<sat::Clause> check_lra_theory_in_place(const PreparedLraTheory& prepared,
+                                                     const std::vector<AssignedTheoryAtom>& atoms,
+                                                     theory::arithmetic::LraTableau& tableau) {
   if (atoms.size() != prepared.atoms.size()) {
     throw UnsupportedInput("internal theory atom mapping mismatch");
   }
 
-  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
   for (std::size_t i = 0; i < atoms.size(); ++i) {
     const AssignedTheoryAtom& atom = atoms[i];
     const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
@@ -8148,11 +8194,21 @@ LraTheoryCheckResult check_incremental_lra_theory(const PreparedLraTheory& prepa
         tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
         prepared_atom.asserts_lower_when_true, blocking_lit(atom));
     if (conflict.has_value()) {
-      return LraTheoryCheckResult{conflict.value(), std::move(tableau)};
+      return conflict;
     }
   }
 
-  std::optional<sat::Clause> conflict = tableau.check();
+  return tableau.check();
+}
+
+// Incremental QF_LRA theory check (Dutertre & de Moura Section 4): copies the
+// precomputed base tableau and asserts the round's assigned bounds. Returning
+// the feasible tableau lets the convex combination final check poll the
+// explanation-producing equality rules from de Moura and Bjorner Section 5.1.
+LraTheoryCheckResult check_incremental_lra_theory(const PreparedLraTheory& prepared,
+                                                  const std::vector<AssignedTheoryAtom>& atoms) {
+  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
+  std::optional<sat::Clause> conflict = check_lra_theory_in_place(prepared, atoms, tableau);
   return LraTheoryCheckResult{std::move(conflict), std::move(tableau)};
 }
 
@@ -10214,6 +10270,12 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.candidate-final-scan-fallback-equalities", 0);
   statistics.set(":no.interface.lra-prepared-reused", 0);
   statistics.set(":no.interface.lra-prepared-augmented", 0);
+  statistics.set(":no.interface.lra-model-epoch-prepared-hits", 0);
+  statistics.set(":no.interface.lra-model-epoch-prepared-misses", 0);
+  statistics.set(":no.interface.lra-model-epoch-check-hits", 0);
+  statistics.set(":no.interface.lra-model-epoch-check-misses", 0);
+  statistics.set(":no.interface.lra-model-epoch-invalidations", 0);
+  statistics.set(":no.interface.lra-model-epoch-tableau-reuses", 0);
   statistics.set(":no.interface.euf-prepared-reused", 0);
   statistics.set(":no.interface.euf-prepared-augmented", 0);
   statistics.set(":no.interface.euf-prepared-atoms", 0);
@@ -10329,6 +10391,7 @@ CheckSatOutcome solve_qf_uf_lra(
   }
 #endif
 
+  MixedLraModelEpoch lra_model_epoch;
   while (true) {
     statistics.increment(kStatSatSolveCalls);
     model_equality_arrangement.activate_pending_branch(statistics);
@@ -10435,8 +10498,7 @@ CheckSatOutcome solve_qf_uf_lra(
     std::optional<sat::Clause> lra_conflict;
     const PreparedLraTheory* prepared_lra_theory_for_check = nullptr;
     const theory::arithmetic::LraTableau* checked_lra_tableau = nullptr;
-    std::optional<PreparedLraTheory> augmented_prepared_lra_theory;
-    std::optional<LraTheoryCheckResult> copied_lra_check;
+    std::optional<LraTheoryCheckResult> round_lra_check;
 #if PRIMO_HAVE_IPASIR
     if (true_interface_equalities.empty() && online_lra_propagator.has_value()) {
       statistics.increment(":no.interface.lra-prepared-reused");
@@ -10450,19 +10512,52 @@ CheckSatOutcome solve_qf_uf_lra(
       prepared_lra_theory_for_check = &base_prepared_lra_theory;
       if (true_interface_equalities.empty()) {
         statistics.increment(":no.interface.lra-prepared-reused");
+        round_lra_check.emplace(check_incremental_lra_theory(*prepared_lra_theory_for_check,
+                                                             lra_assignments_for_check));
+        lra_conflict = round_lra_check->conflict;
+        checked_lra_tableau = &round_lra_check->tableau;
       } else {
-        augmented_prepared_lra_theory.emplace(
-            terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-            options.lra_sparse_leaving, mixed_fixed_elimination,
-            options.produce_model || !shared_real_terms.empty(), options.lra_least_violated_leaving,
-            lra_tuning_from_options(options.lra_tuning));
-        prepared_lra_theory_for_check = &augmented_prepared_lra_theory.value();
-        statistics.increment(":no.interface.lra-prepared-augmented");
+        if (lra_model_epoch.prepared.has_value() &&
+            same_interface_equality_atoms(lra_model_epoch.true_interface_equalities,
+                                          true_interface_equalities)) {
+          statistics.increment(":no.interface.lra-model-epoch-prepared-hits");
+        } else {
+          if (lra_model_epoch.prepared.has_value()) {
+            statistics.increment(":no.interface.lra-model-epoch-invalidations");
+          }
+          assign_interface_equality_atoms(true_interface_equalities,
+                                          lra_model_epoch.true_interface_equalities);
+          lra_model_epoch.prepared.emplace(
+              terms, lra_atoms_for_check, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+              options.lra_sparse_leaving, mixed_fixed_elimination,
+              options.produce_model || !shared_real_terms.empty(),
+              options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
+          lra_model_epoch.checked_assignments.clear();
+          lra_model_epoch.tableau = lra_model_epoch.prepared->base_tableau;
+          lra_model_epoch.conflict.reset();
+          lra_model_epoch.check_valid = false;
+          statistics.increment(":no.interface.lra-model-epoch-prepared-misses");
+          statistics.increment(":no.interface.lra-prepared-augmented");
+        }
+        prepared_lra_theory_for_check = &lra_model_epoch.prepared.value();
+        if (lra_model_epoch.check_valid &&
+            same_lra_assignments(lra_model_epoch.checked_assignments, lra_assignments_for_check)) {
+          statistics.increment(":no.interface.lra-model-epoch-check-hits");
+        } else {
+          if (lra_model_epoch.check_valid) {
+            lra_model_epoch.tableau->pop(0);
+            statistics.increment(":no.interface.lra-model-epoch-tableau-reuses");
+          }
+          lra_model_epoch.conflict =
+              check_lra_theory_in_place(*prepared_lra_theory_for_check, lra_assignments_for_check,
+                                        lra_model_epoch.tableau.value());
+          lra_model_epoch.checked_assignments = lra_assignments_for_check;
+          lra_model_epoch.check_valid = true;
+          statistics.increment(":no.interface.lra-model-epoch-check-misses");
+        }
+        lra_conflict = lra_model_epoch.conflict;
+        checked_lra_tableau = &lra_model_epoch.tableau.value();
       }
-      copied_lra_check.emplace(
-          check_incremental_lra_theory(*prepared_lra_theory_for_check, lra_assignments_for_check));
-      lra_conflict = copied_lra_check->conflict;
-      checked_lra_tableau = &copied_lra_check->tableau;
     }
     if (lra_conflict.has_value()) {
       statistics.increment(kStatLraTheoryConflicts);

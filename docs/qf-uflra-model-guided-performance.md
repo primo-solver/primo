@@ -86,6 +86,35 @@ and aggregate wall time from 1.109476 to 0.880448 seconds. Three frontier batche
 contained five rejected edges. This is directional local evidence only; the
 fresh fuzz gate and full SLURM comparison remain the acceptance bar.
 
+**Retained augmented-LRA epoch prototype, 2026-08-10.** The full-corpus
+`bbd43b9` artifact contains 2,241 augmented LRA preparations across 274 files.
+`MixedLraModelEpoch` now retains one such preparation and checked tableau while
+the exact set of true generated interface equalities is unchanged. A different
+component assignment pops all old bounds to checkpoint zero and asserts the new
+bounds on the retained feasible basis. A changed interface key rebuilds the
+epoch. This uses the existing Dutertre-de Moura bound-backtracking invariant; it
+does not add rows dynamically, mutate the live base LRA callback tableau, or
+affect pure QF_LRA.
+
+On `cpachecker-induction.ddv_machzwd_inw_false-unreach-call.i.smt2`, three exact
+Release runs improved from 0.86--0.90 seconds to 0.53--0.55 seconds. SAT solve
+calls, decisions, and propagations stayed exactly 87, 258,029, and 558,081.
+Augmented preparations fell from 86 to 13 and the retained tableau served 73
+new assignments. The 20-row local sample kept the same search counters and
+improved aggregate time from 0.880448 to 0.855104 seconds. ddSMT reduced the
+mechanism witness to one Real constant, one unary Real function, and one
+disjunction; focused tests exercise it under both Sparse and SOI pivoting.
+These are local prototype results pending exact-commit fuzz and SLURM evaluation.
+
+**Mixed row-propagation A/B, 2026-08-10.** On the same deterministic 20-row
+sample, enabling only `--lra-row-propagation` preserved all 20 answers and all
+27 SAT solve calls while reducing SAT decisions from 17,016 to 8,070 and SAT
+propagations from 82,123 to 65,816. Nine files used 1,149 forward row
+propagations. Adding `--lra-bidirectional-row-propagation` produced only 38
+reverse propagations on three files and did not improve aggregate time. Forward
+row propagation therefore advances to the full-corpus A/B as a mixed candidate;
+the global forward and reverse defaults remain unchanged pending that evidence.
+
 **Section 5.2 integration result, 2026-08-09.** The merged LRA prerequisite
 provides `freedom_interval()` and
 `diversify_shared_model()`. The mixed coordinator now runs one scratch sweep per
@@ -797,11 +826,12 @@ The next extension should record or expose:
 
 - persistent, incrementally updated EUF class state across SAT rounds rather
   than the current round-local projection;
-- component-model ownership rather than only an LRA value projection;
+- component-model ownership beyond the implemented one-epoch augmented LRA
+  preparation/tableau retention;
 - LRA equality candidates with an explicit distinction between independently
   explained entailments and unexplained post-mutation model equalities;
-- a persistent component-model transition rather than the current round-local
-  reconciliation batch.
+- a SAT-trail-synchronized component-model transition rather than the current
+  one-entry augmented LRA epoch and round-local reconciliation batch.
 
 This object should still be QF_UFLRA-specific until the invariants are stable.
 General `DPLL(T^M)` can come later; the current evidence does not justify a
