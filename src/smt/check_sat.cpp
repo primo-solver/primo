@@ -5587,7 +5587,18 @@ std::vector<core::TermId> shared_real_constants(
     collect_real_constants_in_term(terms, atom.term, euf_terms);
   }
   for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
-    collect_real_constants_in_term(terms, atom.term, lra_terms);
+    const core::Term& term = terms.get(atom.term);
+    const bool is_comparison = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
+    if (!is_comparison && !is_real_equality_term(terms, term)) {
+      continue;
+    }
+    const theory::arithmetic::LraAtom normalized =
+        theory::arithmetic::normalize_atom(terms, atom.term);
+    for (const auto& [variable, coefficient] : normalized.polynomial.terms()) {
+      if (!coefficient.is_zero()) {
+        lra_terms.insert(variable);
+      }
+    }
   }
 
   std::vector<core::TermId> shared;

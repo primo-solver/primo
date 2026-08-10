@@ -25668,6 +25668,37 @@
       "artifacts": "remote:<prepared-workspace>/results/qf-uflra-convex-reconcile-bbd43b9-30s/; reused baseline remote:<prepared-workspace>/results/qf-uflra-nullary-stack-safe-1f3d81c-30s/; local ignored CSV copies /tmp/primo-convex-no-eval/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted as a substantial opt-in convex QF_UFLRA performance improvement. The profile remains default-off because SAT search grows and Yices remains materially faster."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-normalized-interface-local",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "profile-and-fuzz",
+      "scope": "Remove the final convex-reconciliation mapping fallback by deriving the shared LRA interface from normalized polynomial variables",
+      "commit": "uncommitted-after-a57ce36",
+      "baseline_commit": "a57ce36",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binary": "Release candidate and RelWithDebInfo -pg build from a57ce36 plus the mapping repair, CaDiCaL 3.0.0",
+        "references": "Z3 from contrib/local",
+        "artifacts_are_local_only": true
+      },
+      "commands": {
+        "profile": "build-gprof-plan/primo --quiet --stats --max-theory-conflicts=100 --qf-uflra-model-reconciliation < tmp/QF_UFLRA/mathsat/RandomDecoupled/pb_real_50_100_30_09.smt2; gprof build-gprof-plan/primo gmon.out",
+        "focused_test": "ctest --test-dir build-release-current -R ^primo_qf_lra_solver_tests$ --output-on-failure --timeout 120",
+        "fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build-release-current/primo --solver-arg=--qf-uflra-model-reconciliation --ref ./contrib/local/bin/z3 --count 1000 --seed 2026082001 --timeout 5 --shape mixed --out /tmp/primo-qfuflra-mapping-fuzz-a57"
+      },
+      "results": {
+        "root_cause": "One syntactically shared Real constant cancelled from every normalized LRA polynomial and therefore had no PreparedLraTheory variable. Two partition builds reported it as two cumulative unmapped observations.",
+        "witness_before_after": "shared terms 95 to 94; unmapped observations 2 to 0; exact fallback count 1 to 0; strict extra-atom probes 156 to 0; answer remains sat.",
+        "profile": "The pre-repair 0.20-second profile was dominated by CaDiCaL propagation and LRA pivots; the witness is too short for stable fine-grained attribution, but counters isolate the eliminated strict-probe path.",
+        "focused_test": "PASS",
+        "fuzz": "1000/1000 PASS against Z3; zero disagreement, crash, timeout, unsupported result, or saved bug."
+      },
+      "artifacts": "local-only:/tmp/primo-profile-a57-unmapped-LHxhXZ and /tmp/primo-qfuflra-mapping-fuzz-a57/",
+      "evidence_status": "local-current",
+      "outcome": "The normalized-interface invariant removes the only observed exact fallback. SLURM campaign and full-corpus validation remain pending with the broader SAT-churn milestone."
     }
   ]
 }

@@ -565,9 +565,13 @@ normal final step. The shared-model counters diagnose the replacement:
 
 The `:no.online.*` spelling of the final-scan counter is historical. It also
 counts reconciliation rounds when `--nelson-oppen-prop` is `final`. Nonzero
-`:no.shared-model.exact-fallbacks` means an unmapped term, failed mandatory
-separation, or another candidate invariant forced the old complete path. A
-model-equality coincidence alone is never an entailed propagation.
+`:no.shared-model.exact-fallbacks` means an unexpected mapping failure, failed
+mandatory separation, or another candidate invariant forced the old complete
+path. The shared interface is the intersection of EUF Real constants with
+variables that survive LRA polynomial normalization; syntactically present but
+algebraically cancelled constants are EUF-only model terms. Consequently
+`lra-model-filter-unmapped-terms` should remain zero. A model-equality
+coincidence alone is never an entailed propagation.
 
 When default-off `--model-equality-branching` is enabled, the EUF care counters
 compare the full shared-Real cross product with pairs that occur as arguments

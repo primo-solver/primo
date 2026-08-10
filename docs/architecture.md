@@ -360,8 +360,12 @@ Implemented now:
   are model choices, not entailed theory lemmas. If all edges are absorbed, the
   no-model path returns SAT without the broad exact scan, and model production
   concretizes the same scratch LRA assignment and supplies the internal
-  spanning equalities to EUF. Unmapped terms or failed candidate invariants use
-  the old explained exact scan. This is a convex QF_UFLRA reconciliation
+  spanning equalities to EUF. Shared-interface discovery uses the variables of
+  each normalized LRA polynomial, not every syntactic Real constant in an
+  arithmetic atom. A constant cancelled by normalization is therefore EUF-only
+  and uses model completion rather than becoming an unmapped interface term.
+  Unexpected mapping failures or failed candidate invariants use the old
+  explained exact scan. This is a convex QF_UFLRA reconciliation
   subset, not generic `DPLL(T^M)`; the Section 5.2 mutation remains
   scratch-only and pure QF_UF/QF_LRA do not enter this path.
 

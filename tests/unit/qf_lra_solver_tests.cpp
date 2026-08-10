@@ -1451,6 +1451,26 @@ void qf_uf_lra_exact_model_filter_prunes_cross_value_pairs() {
   assert(result.statistics.get(":no.interface.lra-probe-reuse-pairs") == 0);
 }
 
+void qf_uf_lra_interface_excludes_arithmetically_cancelled_real_constants() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= (+ x (* (- 1) x)) (+ y (* (- 1) y))))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-filter-unmapped-terms") == 0);
+  assert(result.statistics.get(":no.shared-model.exact-fallbacks") == 0);
+}
+
 void qf_uf_lra_exact_mode_rejects_inconsistent_model_request() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
@@ -3999,6 +4019,7 @@ int main() {
   qf_uf_lra_exact_mode_keeps_mandatory_convex_closure();
   qf_uf_lra_exact_probe_reuse_does_not_prove_one_sided_bound();
   qf_uf_lra_exact_model_filter_prunes_cross_value_pairs();
+  qf_uf_lra_interface_excludes_arithmetically_cancelled_real_constants();
   qf_uf_lra_exact_mode_rejects_inconsistent_model_request();
   qf_uf_lra_model_equality_branching_uses_full_shared_pairs();
   qf_uf_lra_model_equality_branching_accumulates_active_assumptions();

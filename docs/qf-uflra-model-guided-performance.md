@@ -59,6 +59,17 @@ profile remains opt-in: the reused Yices 2.7.0 30-second result still solves
 1,276 files with eight timeouts and PAR2 590.699880, so a large performance gap
 remains.
 
+**Normalized-interface repair, 2026-08-10.** The one exact-fallback row did not
+contain missing arithmetic variables. One Real constant occurred syntactically
+in both theories but cancelled from every normalized LRA polynomial, and was
+counted twice across two model-partition builds. Shared-interface discovery now
+uses normalized LRA variables. On
+`mathsat/RandomDecoupled/pb_real_50_100_30_09.smt2`, the interface falls from 95
+to 94 terms, cumulative unmapped observations from two to zero, exact probes
+from 156 to zero, and reconciliation converges normally. A fresh local
+1,000-case mixed differential gate passed against Z3. Full-corpus evidence is
+still required before this repair is used in promotion claims.
+
 **Section 5.2 integration result, 2026-08-09.** The merged LRA prerequisite
 provides `freedom_interval()` and
 `diversify_shared_model()`. The mixed coordinator now runs one scratch sweep per
