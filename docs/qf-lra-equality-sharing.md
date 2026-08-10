@@ -218,10 +218,10 @@ the opportunistic rules fire. Its own evaluation
 again, measured with nothing downstream that consumed fixedness.
 
 **Neither the global fixed-elimination default nor row propagation should be
-flipped on this reasoning alone.** Their original measurements did not consume
-newly exposed fixedness. The mixed fixed-elimination exception below was
-therefore measured with equality propagation before being enabled. Row
-propagation still needs that mixed-path evaluation and remains off.
+flipped on this reasoning alone.** The mixed fixed-elimination exception below
+was measured with equality propagation before being enabled. The later
+1,284-file mixed row-propagation A/B kept the same solved count but exchanged
+one solve for one loss, so row propagation remains off by default.
 
 (fixed-elimination-for-no)=
 ### Should `--lra-fixed-elimination` be on by default for Nelson-Oppen?

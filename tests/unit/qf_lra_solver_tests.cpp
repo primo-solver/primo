@@ -33,6 +33,12 @@ CheckSatOptions no_preprocessing_or_substitution() {
   return options;
 }
 
+CheckSatOptions exact_no_preprocessing_or_substitution() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = false;
+  return options;
+}
+
 CheckSatOptions guarded_real_equality_lowering_options() {
   CheckSatOptions options = no_preprocessing();
   options.guarded_real_equality_lowering = true;
@@ -557,7 +563,8 @@ void qf_uf_lra_prints_shared_real_predicate_model() {
   assert(result.model.find("(define-fun p ((x0 Real)) Bool ") != std::string::npos);
   assert(result.model.find("(define-fun x () Real ") != std::string::npos);
   assert(result.model.find("(define-fun y () Real ") != std::string::npos);
-  assert(result.statistics.get(":no.interface.model-separations") >= 1);
+  assert(result.statistics.get(":no.shared-model.enabled") == 1);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
@@ -572,7 +579,7 @@ void qf_uf_lra_validates_final_arrangement_without_model() {
     (assert (not (p y)))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.interface.arrangement-checks") >= 1);
   assert(result.statistics.get(":no.interface.arrangement-failures") == 0);
@@ -595,7 +602,7 @@ void qf_uf_lra_final_arrangement_skips_euf_mergeable_shared_pairs() {
     (assert (p y))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
   assert(result.statistics.get(":no.interface.arrangement-checks") >= 1);
@@ -620,7 +627,7 @@ void qf_uf_lra_model_reconstruction_skips_euf_mergeable_shared_pairs() {
     (check-sat)
     (get-model)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.model.find("(model") != std::string::npos);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
@@ -642,7 +649,7 @@ void qf_uf_lra_final_arrangement_uses_shared_real_interface_terms_only() {
     (assert (not (= (h x) (h y))))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.interface.model-real-terms-before-interface-filter") == 2);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 1);
@@ -665,7 +672,7 @@ void qf_uf_lra_model_reconstruction_uses_shared_real_interface_terms_only() {
     (check-sat)
     (get-model)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.model.find("(model") != std::string::npos);
   assert(result.statistics.get(":no.interface.model-real-terms-before-interface-filter") == 2);
@@ -676,7 +683,7 @@ void qf_uf_lra_model_reconstruction_uses_shared_real_interface_terms_only() {
 }
 
 void qf_uf_lra_model_reconstruction_assigns_fresh_euf_only_real_values() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.produce_model = true;
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -705,7 +712,6 @@ void qf_uf_lra_model_reconstruction_assigns_fresh_euf_only_real_values() {
 void qf_uf_lra_shared_model_assigns_fresh_euf_only_real_values() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.produce_model = true;
-  options.qf_uflra_model_reconciliation = true;
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
     (set-logic QF_UFLRA)
@@ -742,7 +748,7 @@ void qf_uf_lra_final_arrangement_ignores_lra_only_real_terms() {
     (assert (not (p y)))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.interface.model-real-terms-before-interface-filter") == 2);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
@@ -766,7 +772,7 @@ void qf_uf_lra_prints_shared_real_equal_predicate_model() {
     (check-sat)
     (get-model)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.model.find("(define-fun p ((x0 Real)) Bool ") != std::string::npos);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
@@ -792,7 +798,7 @@ void qf_uf_lra_searches_multiple_shared_real_model_separations() {
     (check-sat)
     (get-model)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.model.find("(define-fun h ((x0 Real)) U ") != std::string::npos);
   assert(result.statistics.get(":no.interface.model-separation-candidates") == 3);
@@ -805,6 +811,7 @@ void qf_uf_lra_searches_multiple_shared_real_model_separations() {
 }
 
 void qf_uf_lra_orients_capped_model_separations_from_lra_model() {
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-sort U 0)
@@ -846,7 +853,7 @@ void qf_uf_lra_orients_capped_model_separations_from_lra_model() {
     (assert (not (= (h x5) (h x6))))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.interface.model-separation-candidates") == 21);
   assert(result.statistics.get(":no.interface.arrangement-separations") == 21);
@@ -856,7 +863,7 @@ void qf_uf_lra_orients_capped_model_separations_from_lra_model() {
 }
 
 void qf_uf_lra_arrangement_probe_limit_returns_unknown() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_arrangement_probe_limit = 1;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -950,20 +957,11 @@ void qf_uf_lra_shares_purified_real_argument_equalities_with_euf() {
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.purification.euf-real-term-definitions") == 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
-  assert(result.statistics.get(":no.interface.sat-equality-atoms") >= 1);
-  assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
-  assert(result.statistics.get(":no.interface.equality-candidates") >= 1);
-  assert(result.statistics.get(":no.interface.equality-missing-atoms") >= 1);
-  assert(result.statistics.get(":no.interface.equality-created-atoms") >= 1);
-  assert(result.statistics.get(":no.interface.equality-clauses") >= 1);
-  assert(result.statistics.get(":no.interface.equality-rechecks") >= 1);
-  assert(result.statistics.get(":no.interface.lra-opportunistic-candidates") >= 1);
-  assert(result.statistics.get(":no.interface.lra-opportunistic-created-atoms") >= 1);
-  assert(result.statistics.get(":no.interface.lra-opportunistic-clauses") >= 1);
-  assert(result.statistics.get(":no.interface.lra-opportunistic-rechecks") >= 1);
-  assert(result.statistics.get(":no.interface.equality-local-reasons") >= 1);
-  assert(result.statistics.get(":no.interface.equality-local-reason-lits") >= 2);
-  assert(result.statistics.get(":no.interface.equality-fallback-reasons") == 0);
+  assert(result.statistics.get(":no.shared-model.enabled") == 1);
+  assert(result.statistics.get(":no.shared-model.worklist-enqueued") >= 1);
+  assert(result.statistics.get(":no.shared-model.worklist-drained") >= 1);
+  assert(result.statistics.get(":no.shared-model.direct-conflicts") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
 }
 
 void qf_uf_lra_prints_model_with_purified_real_predicate_argument() {
@@ -1016,7 +1014,7 @@ void qf_uf_lra_shares_lra_implied_real_equalities_with_euf() {
     (assert (not (p y)))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
@@ -1045,7 +1043,7 @@ void qf_uf_lra_uses_fixed_equalities_before_exact_pair_probes() {
     (assert (not (p y)))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.interface.lra-opportunistic-fixed-eq") >= 1);
   assert(result.statistics.get(":no.interface.lra-opportunistic-created-atoms") >= 1);
@@ -1057,7 +1055,7 @@ void qf_uf_lra_uses_fixed_equalities_before_exact_pair_probes() {
 }
 
 void qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun s () Real)
@@ -1082,7 +1080,7 @@ void qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them() {
 }
 
 void qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.qf_uflra_fixed_elimination = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1147,7 +1145,7 @@ void qf_uf_lra_reaches_a_convex_equality_fixpoint_across_theories() {
     (assert (distinct (h c) (h d)))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.interface.convex-rounds") >= 2);
   assert(result.statistics.get(":no.interface.euf-to-lra-equalities") >= 1);
@@ -1158,7 +1156,7 @@ void qf_uf_lra_reaches_a_convex_equality_fixpoint_across_theories() {
 }
 
 void qf_uf_lra_candidate_final_scan_propagates_paired_bound_equality() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.qf_uflra_candidate_final_scan = true;
   options.qf_uflra_fixed_elimination = false;
   const auto result = check_sat_smtlib(R"(
@@ -1190,7 +1188,7 @@ void qf_uf_lra_candidate_final_scan_propagates_paired_bound_equality() {
 }
 
 void qf_uf_lra_candidate_final_scan_keeps_noncare_mergeable_pair_in_fallback() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.qf_uflra_candidate_final_scan = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1239,7 +1237,7 @@ void qf_uf_lra_forces_mergeable_lra_equality_needed_for_congruence() {
     (check-sat)
   )";
 
-  const auto result = check_sat_smtlib(input, no_preprocessing_or_substitution());
+  const auto result = check_sat_smtlib(input, exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-forced") >= 1);
@@ -1248,7 +1246,7 @@ void qf_uf_lra_forces_mergeable_lra_equality_needed_for_congruence() {
   assert(result.statistics.get(":no.interface.sat-equalities-forced") >= 1);
   assert(result.statistics.get(":no.interface.conflicts") >= 1);
 
-  CheckSatOptions online_options = no_preprocessing_or_substitution();
+  CheckSatOptions online_options = exact_no_preprocessing_or_substitution();
   online_options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
   const auto online_result = check_sat_smtlib(input, online_options);
   assert(online_result.result == CheckSatResult::Unsat);
@@ -1300,7 +1298,7 @@ void qf_uf_lra_does_not_share_unentailed_lra_equalities() {
 }
 
 void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
@@ -1332,7 +1330,7 @@ void qf_uf_lra_model_equality_branching_backs_off_from_bad_guess() {
 }
 
 void qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1364,7 +1362,7 @@ void qf_uf_lra_model_equality_mutation_skips_nonforced_bad_guess() {
 }
 
 void qf_uf_lra_exact_mode_keeps_mandatory_convex_closure() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1396,7 +1394,7 @@ void qf_uf_lra_exact_mode_keeps_mandatory_convex_closure() {
 }
 
 void qf_uf_lra_exact_probe_reuse_does_not_prove_one_sided_bound() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1422,7 +1420,7 @@ void qf_uf_lra_exact_probe_reuse_does_not_prove_one_sided_bound() {
 }
 
 void qf_uf_lra_exact_model_filter_prunes_cross_value_pairs() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -1472,7 +1470,7 @@ void qf_uf_lra_interface_excludes_arithmetically_cancelled_real_constants() {
 }
 
 void qf_uf_lra_exact_mode_rejects_inconsistent_model_request() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Exact;
   options.produce_model = true;
   const auto result = check_sat_smtlib(R"(
@@ -1496,7 +1494,7 @@ void qf_uf_lra_exact_mode_rejects_inconsistent_model_request() {
 }
 
 void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
@@ -1531,7 +1529,7 @@ void qf_uf_lra_model_equality_branching_uses_full_shared_pairs() {
 }
 
 void qf_uf_lra_model_equality_branching_accumulates_active_assumptions() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
@@ -1561,7 +1559,7 @@ void qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs() {
   // This run rejects one generated equality while another remains active. The
   // prepared EUF atom cache must align assignments by atom identity, not by the
   // round-local true-then-false ordering of generated equalities.
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   options.nelson_oppen_model_equality_branch_policy = primo::smt::ModelEqualityBranchPolicy::Ranked;
@@ -1592,7 +1590,7 @@ void qf_uf_lra_ranked_model_equality_branching_prefers_care_pairs() {
 }
 
 void qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   options.nelson_oppen_model_equality_branch_policy = primo::smt::ModelEqualityBranchPolicy::Ranked;
@@ -1619,7 +1617,7 @@ void qf_uf_lra_ranked_model_equality_branching_falls_back_to_full_pairs() {
 }
 
 void qf_uf_lra_care_queued_model_equality_branching_uses_only_care_pairs() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   options.nelson_oppen_model_equality_branch_policy =
@@ -1658,7 +1656,7 @@ void qf_uf_lra_care_queued_model_equality_branching_uses_only_care_pairs() {
 }
 
 void qf_uf_lra_care_queued_model_equality_branching_does_not_fallback_to_full_pairs() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   options.nelson_oppen_model_equality_branch_policy =
@@ -1692,7 +1690,7 @@ void qf_uf_lra_care_queued_model_equality_branching_does_not_fallback_to_full_pa
 }
 
 void qf_uf_lra_care_queued_model_equality_mutation_filters_before_queue_creation() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_branch_policy =
       primo::smt::ModelEqualityBranchPolicy::CareQueued;
@@ -1724,7 +1722,7 @@ void qf_uf_lra_care_queued_model_equality_mutation_filters_before_queue_creation
 }
 
 void qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   options.nelson_oppen_model_equality_branch_policy =
@@ -1772,7 +1770,7 @@ void qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses() {
 }
 
 void qf_uf_lra_reports_euf_care_pair_diagnostics() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
@@ -1800,7 +1798,7 @@ void qf_uf_lra_reports_euf_care_pair_diagnostics() {
 }
 
 void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_model_equality_branching = true;
   options.nelson_oppen_model_equality_mutation = false;
   const auto result = check_sat_smtlib(R"(
@@ -1845,7 +1843,7 @@ void qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation() {
     (assert (q y))
     (check-sat)
   )",
-                                       no_preprocessing_or_substitution());
+                                       exact_no_preprocessing_or_substitution());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.interface.shared-real-terms") == 2);
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 0);
@@ -1861,7 +1859,7 @@ void qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation() {
 }
 
 void qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.produce_model = true;
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -2024,7 +2022,6 @@ void qf_uf_lra_shared_model_batches_independent_rejected_merges() {
 void qf_uf_lra_shared_model_reuses_augmented_lra_epoch() {
   for (const LraPivotingRule rule : {LraPivotingRule::Sparse, LraPivotingRule::Soi}) {
     CheckSatOptions options = no_preprocessing_or_substitution();
-    options.qf_uflra_model_reconciliation = true;
     options.lra_pivoting_rule = rule;
     const auto result = check_sat_smtlib(R"(
       (set-logic QF_UFLRA)
@@ -2042,6 +2039,23 @@ void qf_uf_lra_shared_model_reuses_augmented_lra_epoch() {
     assert(result.statistics.get(":no.interface.lra-model-epoch-tableau-reuses") == 1);
     assert(result.statistics.get(":lra.theory-conflicts") == 1);
   }
+}
+
+void qf_uf_lra_shared_model_reconciliation_can_be_disabled() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun f () Real)
+    (declare-fun s (Real) Real)
+    (assert (and (= 0.0 (s 1.0)) (or (= 1.0 f) (= 1.0 (s f)))))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.shared-model.enabled") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-epoch-prepared-hits") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-epoch-prepared-misses") >= 1);
 }
 
 void qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence() {
@@ -2275,7 +2289,7 @@ void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
     (check-sat)
   )";
 
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
   options.qf_uflra_online_euf = true;
   const auto result = check_sat_smtlib(input, options);
@@ -2318,7 +2332,7 @@ void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {
     (check-sat)
   )";
 
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
   const auto result = check_sat_smtlib(input, options);
   assert(result.result == CheckSatResult::Unsat);
@@ -2346,7 +2360,7 @@ void qf_uf_lra_online_skips_pairs_already_resolved_by_online_propagation() {
     (check-sat)
   )";
 
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
   const auto result = check_sat_smtlib(input, options);
   assert(result.result == CheckSatResult::Sat);
@@ -2378,7 +2392,7 @@ void qf_uf_lra_online_scans_non_paired_final_equalities() {
     (check-sat)
   )";
 
-  CheckSatOptions options = no_preprocessing_or_substitution();
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
   options.qf_uflra_fixed_elimination = false;
   const auto result = check_sat_smtlib(input, options);
@@ -4094,6 +4108,7 @@ int main() {
   qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split();
   qf_uf_lra_shared_model_batches_independent_rejected_merges();
   qf_uf_lra_shared_model_reuses_augmented_lra_epoch();
+  qf_uf_lra_shared_model_reconciliation_can_be_disabled();
   qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence();
   qf_uf_lra_shared_model_reconstructs_after_scratch_mutation();
   qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible();

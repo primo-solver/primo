@@ -73,7 +73,7 @@ state are backtrackable through `TheoryCombinationManager::push_level` and
 `pop_to_level`; the manager owns only combination-layer equality state, not
 theory-local closure/tableau state. For the mixed QF_UFLRA path, the manager is
 also rebuilt from shared Real interface terms.
-With `--qf-uflra-model-reconciliation`, the same manager owns
+With the default QF_UFLRA model-reconciliation path, the same manager owns
 `SharedModelState`, a round-scoped shared-interface projection containing LRA
 model-value classes and membership, deterministic spanning pairs, a canonical
 explained-equality worklist, internal equalities, and selected separation atoms.
@@ -567,7 +567,7 @@ coordinator publishes:
 
 ### Shared-model validation result
 
-The opt-in reconciliation profile was validated on SLURM after a tracked-seed
+The then-opt-in reconciliation profile was validated on SLURM after a tracked-seed
 preflight exposed an unsound first version. The failing shape was an internally
 absorbed `x = y` that also induced `f(x) = f(y)` by EUF congruence while LRA
 still assigned incompatible values to the function applications. The repair
@@ -582,8 +582,9 @@ counters expose the remaining work. Commit `4a93256` supersedes this per-merge
 guard with a manager-owned explained-equality worklist: it batches the LRA
 equalities, projects the resulting shared EUF classes once, retains model-agree
 consequences internally, and exposes actual model disagreement to SAT. The
-profile stays opt-in while generic component-model transitions remain
-unimplemented.
+later `ccdd71a` retained-epoch and split-frontier evaluation promotes this
+convex QF_UFLRA path to default while generic component-model transitions
+remain unimplemented.
 
 At commit `2d1ecf8`, 3,000 generated mixed QF_UFLRA cases, 1,000 generated
 finite-domain cases, and the 11-seed mutation preflight passed; the YinYang task
@@ -592,8 +593,9 @@ full 1,284-file corpus with a five-second cutoff, reconciliation solved 1,156
 files versus 1,123 for the same-commit default, with zero wrong answers,
 non-timeout failures, or disagreements on jointly solved rows. It avoided
 19,600 SAT materializations and used 584 congruence fallbacks. These results
-support the profile as an opt-in convex QF_UFLRA experiment. They do not support
-a full `DPLL(T^M)` claim or remove the need for the exact fallback.
+supported the profile as an opt-in convex QF_UFLRA experiment at that
+milestone. They did not support a full `DPLL(T^M)` claim or remove the need for
+the exact fallback.
 
 Fresh validation at `4a93256` passed the same 3,000 mixed and 1,000
 finite-domain generated cases, all 11 tracked seeds, and a 2,000-iteration

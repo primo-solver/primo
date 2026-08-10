@@ -151,6 +151,7 @@ int main(int argc, char** argv) {
   bool no_qf_uflra_fixed_elimination = false;
   bool qf_uflra_candidate_final_scan = false;
   bool qf_uflra_model_reconciliation = false;
+  bool no_qf_uflra_model_reconciliation = false;
   bool qf_uflra_online_euf = false;
   bool guarded_real_equality_lowering = false;
   bool monotone_elimination = false;
@@ -335,9 +336,12 @@ int main(int argc, char** argv) {
                "Enable experimental mixed QF_UFLRA candidate-first final LRA equality scans before "
                "falling back to the full shared-Real pair scan [default: off]");
   app.add_flag("--qf-uflra-model-reconciliation", qf_uflra_model_reconciliation,
-               "Enable experimental convex QF_UFLRA shared-model reconciliation with scratch "
+               "Explicitly enable convex QF_UFLRA shared-model reconciliation with scratch "
                "LRA mutation, EUF compatibility checks, and lazy positive equality splits "
-               "[default: off]");
+               "(enabled by default)");
+  app.add_flag("--no-qf-uflra-model-reconciliation", no_qf_uflra_model_reconciliation,
+               "Disable default convex QF_UFLRA shared-model reconciliation and use the "
+               "explained exact equality-sharing fallback");
   app.add_flag("--qf-uflra-online-euf", qf_uflra_online_euf,
                "Enable experimental incremental EUF callbacks in online mixed QF_UFLRA solving "
                "[default: off]");
@@ -529,9 +533,9 @@ int main(int argc, char** argv) {
     if (starts_with(name, "--lra-") || starts_with(name, "--no-lra-") ||
         name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
         name == "--qf-uflra-candidate-final-scan" || name == "--qf-uflra-model-reconciliation" ||
-        name == "--no-qf-uflra-fixed-elimination" || name == "--guarded-real-equality-lowering" ||
-        name == "--monotone-elimination" || name == "--lra-least-violated-leaving" ||
-        name == "--mixed-dispatch") {
+        name == "--no-qf-uflra-model-reconciliation" || name == "--no-qf-uflra-fixed-elimination" ||
+        name == "--guarded-real-equality-lowering" || name == "--monotone-elimination" ||
+        name == "--lra-least-violated-leaving" || name == "--mixed-dispatch") {
       return kGroupLra;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)
@@ -656,7 +660,12 @@ int main(int argc, char** argv) {
     solver_options.qf_uflra_fixed_elimination = false;
   }
   solver_options.qf_uflra_candidate_final_scan = qf_uflra_candidate_final_scan;
-  solver_options.qf_uflra_model_reconciliation = qf_uflra_model_reconciliation;
+  if (qf_uflra_model_reconciliation) {
+    solver_options.qf_uflra_model_reconciliation = true;
+  }
+  if (no_qf_uflra_model_reconciliation) {
+    solver_options.qf_uflra_model_reconciliation = false;
+  }
   solver_options.qf_uflra_online_euf = qf_uflra_online_euf;
   if (monotone_elimination) {
     solver_options.monotone_elimination = true;

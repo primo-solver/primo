@@ -25768,6 +25768,71 @@
       "artifacts": "local-only:/tmp/primo-epoch-profile-hHGDPB, /tmp/qfuflra-epoch-candidate.csv, /tmp/qfuflra-epoch-row.csv, /tmp/qfuflra-epoch-row-bidi.csv, and /tmp/primo-qfuflra-model-epoch-fuzz-3640ce6/",
       "evidence_status": "local-current-needs-exact-commit-slurm",
       "outcome": "The retained epoch removes repeated structural setup and preserves search. Forward row propagation is promising enough for a full-corpus mixed A/B, but neither row direction is promoted and exact-commit SLURM fuzz remains required."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-retained-epoch-fuzz-ccdd71a",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "fuzz",
+      "scope": "Exact-commit SLURM generated, finite-domain, deterministic-seed, and YinYang gate for batched convex reconciliation with a retained augmented LRA epoch",
+      "commit": "ccdd71a",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git ccdd71a, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation, deterministic seeds, and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision ccdd71a, CaDiCaL linkage, and fuzz/reference dependencies immediately before each submission.",
+        "scheduler_state": "All four generated shards and the complete mutation task finished with exit code 0. Scheduler identifiers are kept outside the repository."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with 750 mixed, 125 finite QF_UF, and 125 finite QF_UFLRA cases per shard; seed base 2026082003; --qf-uflra-model-reconciliation --lra-row-propagation",
+        "complete_mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with 100 mutations per each of 11 tracked seeds, seed base 2026082200, a 2-second solver timeout, and --qf-uflra-model-reconciliation --lra-row-propagation"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS against Z3",
+        "finite_domain": "1000/1000 PASS: 500 QF_UF and 500 QF_UFLRA cases against Z3 and cvc5",
+        "tracked_seeds": "11/11 deterministic seeds PASS against Z3",
+        "complete_mutation": "All 11 seeds processed and valid; 0 invalid seeds, 0 bug triggers, and 0 saved bug files.",
+        "failures": "0 wrong answer, crash, parser/type error, unsupported result, reference disagreement, or saved bug file."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-epoch-row-fuzz-ccdd71a/ and fuzz-results/qf-uflra-epoch-row-mutation-ccdd71a/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact retained-epoch implementation and the forward-row A/B configuration clear the campaign-grade QF_UFLRA correctness gate. Row propagation still requires performance acceptance independently of correctness."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-retained-epoch-full-ccdd71a",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "benchmark",
+      "scope": "Exact-commit 30-second full-corpus QF_UFLRA comparison of retained-epoch reconciliation, with a separate forward-row-propagation A/B",
+      "commit": "ccdd71a",
+      "baseline_commit": "1f3d81c",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git ccdd71a, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes",
+        "reference_reuse": "The unchanged 1f3d81c Primo baseline, bbd43b9 reconciliation result, Z3 result, and Yices 2.7.0 result were reused rather than rerun.",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision ccdd71a and the intended binary immediately before each submission.",
+        "scheduler_state": "Both eight-shard arrays completed with exit code 0. Scheduler identifiers are kept outside the repository."
+      },
+      "commands": {
+        "epoch": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=30, and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation; summarized by scripts/summarize_benchmark_shards.py",
+        "epoch_forward_row": "The same command with --lra-row-propagation"
+      },
+      "results": {
+        "old_default": "1238 solved (727 sat, 511 unsat), 46 timeout, 0 error/unsupported/wrong, solved-row time 546.995737 seconds, PAR2 3306.995737.",
+        "prior_reconciliation": "1257 solved, 27 timeout, 0 error/unsupported/wrong, solved-row time 472.497309 seconds, PAR2 2092.497309.",
+        "retained_epoch": "1264 solved (753 sat, 511 unsat), 20 timeout, 0 error/unsupported/wrong, solved-row time 492.677561 seconds, PAR2 1692.677561.",
+        "families": "FFT 10/10; CPAchecker BMC 7/15; CPAchecker induction 347/359 with 12 timeouts; MathSAT 900/900.",
+        "comparison": "Against bbd43b9: 7 timeout recoveries, 0 losses, and 0 decisive-answer disagreements; common-solved time 472.497309 to 376.858650 seconds. Against 1f3d81c: 26 recoveries, 0 losses, and 0 disagreements; common-solved time 546.995737 to 276.354906 seconds, a 49.5 percent reduction.",
+        "search": "Relative to bbd43b9, SAT solve calls fell from 3562 to 3092, decisions from 7316844 to 6705117, and propagations from 68470250 to 66110064. LRA checks fell from 3012 to 2542 and pivots from 269940 to 267124.",
+        "epoch_mechanism": "793 augmented preparation misses and 976 retained-tableau reuses across 130 files; 142 split-frontier batches covered 1510 pairs and used 580 assumption solve calls.",
+        "forward_row": "1264 solved, 20 timeout, 0 error/unsupported/wrong, solved-row time 447.364553 seconds, and PAR2 1647.364553. It exchanged one solve for one timeout and one timeout for one solve relative to retained epoch alone. It produced 712262 row propagations across 650 files and reduced decisions to 4341799, propagations to 49049632, and pivots to 182458."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-epoch-ccdd71a-30s/ and results/qf-uflra-epoch-row-ccdd71a-30s/; reused baseline results/qf-uflra-nullary-stack-safe-1f3d81c-30s/ and results/qf-uflra-convex-reconcile-bbd43b9-30s/; local ignored copies /tmp/primo-convex-no-eval/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted retained-epoch reconciliation for QF_UFLRA default promotion: it adds 26 solves with no loss against the old default and materially reduces common-solved time. Forward row propagation remains opt-in because its equal solved count masks solved-set churn."
     }
   ]
 }

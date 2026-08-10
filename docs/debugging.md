@@ -546,8 +546,9 @@ sharing. Broad fallback after an internal skip is counted by
 `:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks` and should also
 remain zero on the conservative path.
 
-With `--qf-uflra-model-reconciliation`, the broad exact scan is no longer the
-normal final step. The shared-model counters diagnose the replacement:
+With the default QF_UFLRA model reconciliation, the broad exact scan is no
+longer the normal final step. The shared-model counters diagnose the
+replacement (`--no-qf-uflra-model-reconciliation` selects the old fallback):
 
 - `:no.shared-model.forbidden-equalities`, `forbidden-before`, and
   `forbidden-after` report SAT-false pairs supplied to scratch LRA mutation;

@@ -312,8 +312,10 @@ Implemented now:
   `--no-qf-uflra-fixed-elimination` is the ablation switch. The global pure-LRA
   `--lra-fixed-elimination` option remains off by default. If either direction learns a guarded clause, SAT is
   re-entered so both theories see the equality on the next round. Once these
-  cheap producers are quiescent, the default path tests both strict orders only
-  for still-unresolved shared Real pairs. This exact fallback is the
+  cheap producers are quiescent, the default shared-model path validates a
+  candidate component-model agreement. When reconciliation is disabled or a
+  candidate invariant fails, the exact path tests both strict orders only for
+  still-unresolved shared Real pairs. This exact fallback is the
   completeness mechanism for the supported convex EUF+LRA fragment; it does
   not preallocate the pair cross product as SAT variables. For each pair, a
   check-local context normally copies the already feasible LRA tableau,
@@ -329,7 +331,7 @@ Implemented now:
   Equal-valued model classes are stored once with a term-to-class index. Sparse
   care/candidate inputs are filtered by class membership, while complete scans
   use a deterministic cursor and do not retain the quadratic pair expansion.
-  The opt-in `--qf-uflra-model-reconciliation` profile gives
+  The default QF_UFLRA model-reconciliation path gives
   `TheoryCombinationManager` ownership of a round-scoped projection of the
   component models onto the shared Real interface. `SharedModelState` records
   a generation, LRA model-value classes and membership, deterministic spanning
@@ -381,6 +383,8 @@ Implemented now:
   check. This is mixed-only component state: `TheoryCombinationManager` still
   owns shared equality identity and decisions, while LRA owns tableau semantics.
   Pure QF_LRA and the base mixed online tableau are unchanged.
+  `--no-qf-uflra-model-reconciliation` restores the explained exact
+  equality-sharing fallback for ablation and diagnosis.
 
   The earlier class/worklist prototype was measured before this complete
   reconciliation step. Its fresh
@@ -406,9 +410,11 @@ Implemented now:
   1,257 files at 30 seconds, with 27 timeouts and PAR2 2,092.497309, versus
   1,238, 46, and 3,306.995737 at `1f3d81c`. It has no losses or decisive-answer
   disagreements and skips the broad exact scan on 739 rows, but increases SAT
-  decisions and solve calls. It therefore remains opt-in, and the unchanged
-  Yices 30-second result remains ahead at 1,276 solves.
-  Outside this opt-in reconciliation profile, the default final path classifies
+  decisions and solve calls. Split-frontier batching and the retained LRA epoch
+  at `ccdd71a` later raise this to 1,264 solves, 20 timeouts, and PAR2
+  1,692.677561, with no loss against either earlier profile. This later result
+  promotes reconciliation to default; Yices remains ahead at 1,276 solves.
+  When reconciliation is disabled or falls back, the exact final path classifies
   LRA-to-EUF equalities through the current
   EUF closure before SAT-visible equality atoms are created. Equalities already
   true in EUF can be ignored. Equalities that EUF can merge, or that EUF
@@ -473,7 +479,7 @@ Implemented now:
   quiescence rather than on
   every bound change, keeping their map/vector work off the SAT callback hot
   path. `EqOffsetRows`, `EqRows`, and Section 5.2 freedom-interval mutation are
-  implemented for the opt-in reconciliation profile. The paired-bound rule is therefore still the
+  implemented for the default reconciliation path. The paired-bound rule is therefore still the
   stable online LRA-to-EUF propagation subset; this is not the full model-guided
   transition system.
   The optional online EUF child does not replace the final EUF check: after SAT

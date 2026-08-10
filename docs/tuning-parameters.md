@@ -37,6 +37,7 @@ dimensions today.
 | `--no-lra-sparse-leaving` | on | ablation of the leaving-side half |
 | `--lra-fixed-elimination` | off | nets to nothing overall, doubles the >5MB band -- textbook portfolio arm |
 | `--no-qf-uflra-fixed-elimination` | mixed elimination on | ablation of the mixed-only default that exposes `EqRow`; pure QF_LRA remains off |
+| `--no-qf-uflra-model-reconciliation` | reconciliation on | ablation of the default convex shared-model path; restores explained exact equality sharing |
 | `--lra-propagation`, `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | on/off/off | |
 | `--lra-model-phase`, `--lra-theory-decisions` | off/off | see [](#theory-decision-share) before enabling |
 | `--theory-phase` | auto | `positive` is known to help the tropical family by firing guards |

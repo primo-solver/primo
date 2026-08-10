@@ -29,7 +29,8 @@ combination. It has these related pieces:
   interface, with an exact unresolved-pair fallback;
 - lazy SAT-visible equality atoms for shared Real terms;
 - guarded equality clauses when EUF or LRA implies a shared Real equality;
-- an opt-in `--qf-uflra-model-reconciliation` profile where
+- default convex QF_UFLRA model reconciliation, disableable with
+  `--no-qf-uflra-model-reconciliation`, where
   `TheoryCombinationManager` owns a round-scoped shared-interface model
   projection, explained-equality worklist, and lazy equality-decision state;
   the coordinator mutates a scratch LRA model, satisfies active shared
@@ -64,9 +65,10 @@ cases, all 11 deterministic QF_UFLRA seeds, a complete 100-mutation-per-seed
 YinYang pass, and Dolmen validation of all 611 SAT models in a 1,000-case local
 sample. The 30-second 1,284-file run solved 1,257 files versus 1,238 for
 `1f3d81c`, with 19 timeout recoveries, no losses or answer disagreements, and a
-PAR2 reduction from 3,306.995737 to 2,092.497309. This validates the specialized
-convex mechanism; it does not turn it into the generic Appendix A system or
-justify enabling the option by default.
+PAR2 reduction from 3,306.995737 to 2,092.497309. This validated the specialized
+convex mechanism before the later retained component epoch and split-frontier
+work justified default promotion. It does not turn the implementation into the
+generic Appendix A system.
 
 - no generic model object carried by the DPLL(T) state;
 - no theory-independent `M-Propagate` transition beyond shared Real terms in
@@ -256,9 +258,9 @@ default.
 | 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Not implemented as DTC.** Default `final` mode creates shared Real equality atoms lazily when a theory implication or model-equality branch needs them. Opt-in `--nelson-oppen-prop=online` also avoids all-pairs precreation: it creates and observes only the paired-bound candidate equality atom it is about to propagate. |
 | 3.3 Ackermannization | Ackermann reduction replaces UF reasoning with constraints over applications and congruence axioms. The paper treats it as useful in some cases but potentially expensive. | **Separate from this work.** Primo's Ackermann and disequality-propagation options are EUF-side mechanisms. They are not integrated as the paper's model-combination method. |
 | 3.3.1 Dynamic Ackermannization | Dynamic Ackermannization adds Ackermann constraints during search, especially when disequalities between applications make argument disequalities relevant. | **Separate/partial.** This belongs to the QF_UF disequality propagation line, not to current mixed QF_UFLRA model-based combination. |
-| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Implemented convex QF_UFLRA subset.** The opt-in reconciliation profile postpones model choices until both theories are feasible, mutates the scratch LRA model, tests LRA class spanning edges in a checkpointed EUF closure, and sends the canonical rejected-edge frontier through one positive-first IPASIR assumption solve. Failed assumptions produce blocking clauses. Frontier batching is Primo's scheduling optimization, not a separate paper transition, and this is not generic `DPLL(T^M)`. |
+| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Implemented convex QF_UFLRA subset.** The default reconciliation path postpones model choices until both theories are feasible, mutates the scratch LRA model, tests LRA class spanning edges in a checkpointed EUF closure, and sends the canonical rejected-edge frontier through one positive-first IPASIR assumption solve. Failed assumptions produce blocking clauses. Frontier batching is Primo's scheduling optimization, not a separate paper transition, and this is not generic `DPLL(T^M)`. |
 | 5 Simplex: An Example Model-Producing Theory Solver | The paper shows how Simplex naturally provides a model: the current assignment maps arithmetic variables to rational values. Equal-valued shared variables are equality candidates. | **Implemented LRA subset.** Primo hashes exact `DeltaRational` candidate values into classes, retains the complete diversified assignment, and uses that same assignment for accepted mixed model output. |
-| 5.1 Opportunistic Equality Propagation | The paper describes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`, plus fixed-variable removal and supporting bound propagation. | **Partial implementation.** `LraTableau::entailed_equalities()` implements all four rules with exact explanations and spanning output; mixed QF_UFLRA removes fixed basic variables by default. Primo polls the rules after a feasible check rather than maintaining the first three eagerly during pivots, and mixed-path row-bound propagation remains missing. The exact unresolved-pair fallback preserves convex completeness despite those deviations. |
+| 5.1 Opportunistic Equality Propagation | The paper describes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`, plus fixed-variable removal and supporting bound propagation. | **Partial implementation.** `LraTableau::entailed_equalities()` implements all four rules with exact explanations and spanning output; mixed QF_UFLRA removes fixed basic variables by default. Primo polls the rules after a feasible check rather than maintaining the first three eagerly during pivots. Row-bound propagation is wired into mixed solving but remains opt-in after a mixed full-corpus A/B exchanged one solve for one loss. The exact unresolved-pair fallback preserves convex completeness despite those deviations. |
 | 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Implemented LRA subset.** `LraTableau::diversify_shared_model()` performs the greedy nonbasic-variable sweep on a scratch assignment and returns the complete candidate assignment plus post-mutation classes. It accepts forbidden shared-variable pairs and never reintroduces one already separated. The coordinator applies targeted strict orientations to unresolved mandatory disequalities and rebuilds the scratch model; the live tableau remains unchanged. |
 | 6 Experimental Evaluation | The paper compares model-based theory combination against DTC, Ackermannization, Yices, and MathSAT on several UF+arithmetic benchmark families. | **Not reproduced.** Primo has local and SLURM benchmark evidence in `docs/run-log.json`, including QF_UFLRA CPAchecker and sample Z3 comparisons, but it has not reproduced the paper's experiment suite. |
 | 7 Conclusions | The paper emphasizes that the approach requires theories to efficiently answer whether two shared terms have equal values in the current model. | **Partial.** Primo can answer this for some LRA Real terms and can query EUF closure equality, but there is no uniform cross-theory model-query object yet. |
@@ -460,9 +462,10 @@ files and 128 timeouts with no status or answer change relative to `4937d3c`.
 PAR2 improved from 1412.285 to 1407.514 seconds. On the 241 rows that had used
 the old congruence fallback, SAT equality atoms fell from 1,139 to 728, solve
 calls from 1,220 to 845, decisions from 582,833 to 506,065, and propagations
-from 7,827,815 to 6,775,357. The profile remains opt-in because these results
-do not establish the paper's generic transition system or close the remaining
-gap to Z3.
+from 7,827,815 to 6,775,357. At that milestone the profile remained opt-in;
+later split-frontier, retained-epoch, exact-commit fuzz, and 30-second corpus
+evidence justified promoting the convex path without claiming the paper's
+generic transition system.
 
 ## Next Implementation Direction
 

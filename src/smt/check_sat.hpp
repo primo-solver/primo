@@ -271,11 +271,12 @@ struct CheckSatOptions {
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;
   bool qf_uflra_candidate_final_scan = false;
-  // Experimental Section 4 shared-model reconciliation for convex QF_UFLRA.
+  // Default Section 4 shared-model reconciliation for convex QF_UFLRA.
   // LRA-entailed equalities that EUF can absorb are retained in the round's
-  // EUF model instead of being materialized as SAT atoms. The exact path stays
-  // available as a fallback while this is evaluated.
-  bool qf_uflra_model_reconciliation = false;
+  // EUF model instead of being materialized as SAT atoms. The explained exact
+  // path remains available explicitly and as the conservative fallback for
+  // failed candidate invariants.
+  bool qf_uflra_model_reconciliation = true;
   bool qf_uflra_online_euf = false;
   bool top_level_or_tseitin = false;
   bool auto_top_level_or_tseitin = true;

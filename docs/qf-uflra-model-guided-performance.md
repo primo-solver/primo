@@ -21,7 +21,9 @@ The clean-room sources for the intended direction are:
 ## Current Evidence
 
 **Complete convex reconciliation result, 2026-08-10.** Commits `9bed48e`,
-`7d907f7`, and `bbd43b9` complete the opt-in convex QF_UFLRA checklist below.
+`7d907f7`, and `bbd43b9` completed the then-opt-in convex QF_UFLRA checklist
+below. The `ccdd71a` retained-epoch evaluation supplies the later default
+promotion evidence.
 The implementation adds all four Section 5.1 LRA equality producers, a full
 scratch candidate assignment with Section 5.2 mutation, SAT-false equality
 separation, checkpointed EUF compatibility projection, one causal
@@ -54,10 +56,11 @@ splits, and only one row used the conservative exact fallback because two LRA
 interface terms were unmapped. Exact fallback probes fell from 1,133,771 to
 210. The tradeoff is more SAT work: decisions rose from 3,958,867 to 7,316,844,
 propagations from 60,226,688 to 68,470,250, and solve calls from 2,165 to 3,562.
-The expensive tableau-probe removal nevertheless dominates wall time. The
-profile remains opt-in: the reused Yices 2.7.0 30-second result still solves
-1,276 files with eight timeouts and PAR2 590.699880, so a large performance gap
-remains.
+The expensive tableau-probe removal nevertheless dominates wall time. At that
+milestone the profile remained opt-in: the reused Yices 2.7.0 30-second result
+still solved 1,276 files with eight timeouts and PAR2 590.699880, so a large
+performance gap remained. The retained-epoch result below supplies the later
+default-promotion evidence.
 
 **Normalized-interface repair, 2026-08-10.** The one exact-fallback row did not
 contain missing arithmetic variables. One Real constant occurred syntactically
@@ -67,8 +70,9 @@ uses normalized LRA variables. On
 `mathsat/RandomDecoupled/pb_real_50_100_30_09.smt2`, the interface falls from 95
 to 94 terms, cumulative unmapped observations from two to zero, exact probes
 from 156 to zero, and reconciliation converges normally. A fresh local
-1,000-case mixed differential gate passed against Z3. Full-corpus evidence is
-still required before this repair is used in promotion claims.
+1,000-case mixed differential gate passed against Z3. The subsequent exact
+`ccdd71a` fuzz and full-corpus runs include this repair and supply its promotion
+evidence.
 
 **Batched split-frontier prototype, 2026-08-10.** Reconciliation now scans the
 rest of the deterministic LRA spanning presentation after one optional merge is
@@ -104,7 +108,24 @@ new assignments. The 20-row local sample kept the same search counters and
 improved aggregate time from 0.880448 to 0.855104 seconds. ddSMT reduced the
 mechanism witness to one Real constant, one unary Real function, and one
 disjunction; focused tests exercise it under both Sparse and SOI pivoting.
-These are local prototype results pending exact-commit fuzz and SLURM evaluation.
+The exact-commit SLURM evaluation at `ccdd71a` passed 3,000 generated mixed
+cases, 1,000 finite-domain cases, all 11 deterministic seeds, and the complete
+100-mutation-per-seed gate with no disagreement, crash, unsupported result, or
+saved bug. On the 1,284-file, 30-second corpus, the retained epoch solved 1,264
+files with 20 timeouts and PAR2 1,692.677561. The prior accepted reconciliation
+profile solved 1,257 with 27 timeouts and PAR2 2,092.497309; the old default
+solved 1,238 with 46 timeouts and PAR2 3,306.995737. The epoch had seven
+recoveries and no losses against the prior profile, and 26 recoveries and no
+losses against the old default. Common-solved time against the old default fell
+from 546.995737 to 276.354906 seconds.
+
+Batching and retention also reduced the prior reconciliation profile's SAT
+solve calls from 3,562 to 3,092, decisions from 7,316,844 to 6,705,117, and
+propagations from 68,470,250 to 66,110,064. There were 793 augmented preparation
+misses and 976 retained-tableau reuses across 130 files. This evidence promotes
+convex model reconciliation to the QF_UFLRA default. The explained exact path
+remains available through `--no-qf-uflra-model-reconciliation` and as the
+automatic fallback for failed candidate invariants.
 
 **Mixed row-propagation A/B, 2026-08-10.** On the same deterministic 20-row
 sample, enabling only `--lra-row-propagation` preserved all 20 answers and all
@@ -112,8 +133,11 @@ sample, enabling only `--lra-row-propagation` preserved all 20 answers and all
 propagations from 82,123 to 65,816. Nine files used 1,149 forward row
 propagations. Adding `--lra-bidirectional-row-propagation` produced only 38
 reverse propagations on three files and did not improve aggregate time. Forward
-row propagation therefore advances to the full-corpus A/B as a mixed candidate;
-the global forward and reverse defaults remain unchanged pending that evidence.
+row propagation therefore advanced to the full-corpus A/B as a mixed candidate.
+The 1,284-file run kept the same 1,264 solved count and reduced PAR2 from
+1,692.677561 to 1,647.364553, but exchanged one solved file for one timeout and
+one timeout for one solve. It remains opt-in; the global forward and reverse
+defaults are unchanged.
 
 **Section 5.2 integration result, 2026-08-09.** The merged LRA prerequisite
 provides `freedom_interval()` and
@@ -155,9 +179,10 @@ solved 43 files both with and without mutation; PAR2 changed from 275.807627 to
 271.117621. Model-equality branching solved only 37 files in both variants,
 although mutation reduced its PAR2 from 1,034.190677 to 991.359031. The reused
 Z3 result solved all 45 with PAR2 10.936763. Mutation therefore remains enabled
-within the opt-in reconciliation and branching profiles, with
-`--no-model-equality-mutation` retained as an ablation. Neither profile is
-promoted to the ordinary default by this result.
+within the reconciliation and branching profiles, with
+`--no-model-equality-mutation` retained as an ablation. This result alone did
+not promote either profile; the later retained-epoch evidence promotes convex
+reconciliation while model-equality branching remains opt-in.
 
 **Shared-model reconciliation result, 2026-08-09.** The repaired opt-in
 `--qf-uflra-model-reconciliation` profile passed 3,000 generated mixed cases,
@@ -275,8 +300,9 @@ make several non-LRA integration costs explicit:
   zero because those existing pure-QF_UF mechanisms are not connected to the
   mixed dispatcher.
 
-These are current diagnosis numbers, not a completed default-versus-candidate
-comparison. The default array and final CSV comparison remain pending.
+These diagnosis numbers belong to an incomplete historical experiment, not a
+completed default-versus-candidate comparison. That experiment was superseded
+without being used for a promotion claim.
 
 ## Historical Non-LRA-First Roadmap
 
@@ -435,7 +461,7 @@ growth approaches the candidate set. It is not the next default mechanism.
 
 #### Complete convex model-reconciliation checklist
 
-The implemented opt-in profile follows de Moura and Bjorner Sections 4, 5.1,
+The implemented default convex path follows de Moura and Bjorner Sections 4, 5.1,
 and 5.2 without claiming the generic Appendix A transition system. Its state is
 the current SAT assignment, an EUF closure, and one LRA candidate assignment.
 `TheoryCombinationManager` owns only their shared-term projection and the lazy
@@ -470,12 +496,12 @@ occurrence is not a reason to skip them. The finite set of shared pairs gives
 termination, so the complete reconciliation profile has no candidate budget or
 adaptive early stop.
 
-The old exact scan remains a shadow oracle and conservative fallback while the
-profile is opt-in. It is required for an unmapped shared term, a failed
-mandatory-separation invariant, or a disagreement between candidate-model and
-exact validation. No such fallback may be reported as successful model-based
-convergence. Pure QF_LRA and QF_UF never construct this state and must retain
-identical SAT/theory statistics.
+The old exact scan remains a shadow oracle and conservative fallback. It is
+selected explicitly by `--no-qf-uflra-model-reconciliation` and automatically
+for an unmapped shared term, a failed mandatory-separation invariant, or a
+disagreement between candidate-model and exact validation. No such fallback may
+be reported as successful model-based convergence. Pure QF_LRA and QF_UF never
+construct this state and must retain identical SAT/theory statistics.
 
 Preprocessing stays family-targeted. The representative MathSAT
 `pb_real_40_80_60_36.smt2` is one large conjunction of roughly 480 ternary
@@ -514,9 +540,10 @@ The 2026-08-10 acceptance evidence resolves these checks as follows:
   probes, and the added SAT churn remains the next efficiency target.
 - The exact option set passed 3,000 generated mixed cases, 1,000 finite-domain
   cases, and a real-seed YinYang/typefuzz gate.
-- The sharded full SLURM comparison reports family summaries, wrong answers,
-  timeouts, and PAR2 above. It supports merging the opt-in mechanism, not
-  default promotion.
+- The later exact-commit sharded SLURM comparison reports family summaries,
+  wrong answers, timeouts, and PAR2 above. Together with split-frontier batching
+  and retained component state, it supports default promotion for convex
+  QF_UFLRA while preserving an explicit exact-path ablation.
 
 ## Paper Mechanism Still Missing
 
@@ -526,9 +553,10 @@ EUF+rational-LRA subset, not the generic transition system.
 
 Missing performance-relevant pieces for QF_UFLRA:
 
-- **Model mutation in the default profile.** Section 5.2 freedom intervals and
-  greedy diversification are implemented and wired to the opt-in shared-model
-  and branch profiles. The ordinary default final path does not run the sweep.
+- **Model mutation beyond convex QF_UFLRA.** Section 5.2 freedom intervals and
+  greedy diversification are implemented in the default convex shared-model
+  path and the optional branch profile. There is no generic mutable component
+  model for other theory combinations.
 - **A generic persistent model state.** Appendix A presents a `DPLL(T^M)` state
   carrying component models through generic transitions. Primo's state is
   round-scoped and specialized to the mixed QF_UFLRA final-check coordinator;
@@ -537,12 +565,14 @@ Missing performance-relevant pieces for QF_UFLRA:
   scratch mutation are implemented only for shared Real terms in convex
   EUF+LRA. Other theory combinations, finite shared sorts, and non-convex
   arrangement enumeration remain unsupported.
-- **Mixed row-bound propagation.** All four Section 5.1 equality rules are
-  implemented, but the paper's supporting row-bound propagation is not wired
-  into the mixed path.
-- **SAT search efficiency and default policy.** The full run removes almost all
-  exact probes but increases decisions, propagations, and solve calls. That SAT
-  churn and the remaining Yices gap must be addressed before default promotion.
+- **Default mixed row-bound propagation.** All four Section 5.1 equality rules
+  and supporting row-bound propagation are wired into the mixed path, but row
+  propagation remains opt-in after its full-corpus A/B exchanged one solve for
+  one loss.
+- **SAT search efficiency.** Split-frontier batching reduced reconciliation SAT
+  re-entry, and the retained epoch reduced repeated LRA setup. The promoted path
+  still uses more decisions and solve calls than the old exact default, so
+  SAT-trail-synchronized component state remains the next performance target.
 
 The current code therefore must not be described as implementing the full
 model-based theory-combination algorithm. The intended implementation is a
@@ -551,7 +581,7 @@ candidate-first discipline.
 
 ## Current Convex Reconciliation
 
-The opt-in profile now executes the complete checklist above for the supported
+The default path now executes the complete checklist above for the supported
 convex EUF+rational-LRA interface. After ordinary explained propagation reaches
 quiescence, `LraModelEqualPartition` retains the full scratch assignment,
 concrete model values, exact value classes, and unresolved SAT-false pairs.
@@ -588,8 +618,8 @@ remain specific to the older optional `--model-equality-branching` heuristic.
 Focused tests cover forbidden-pair mutation, targeted separation, lazy
 positive assumptions and failed-assumption blocking, optional-merge
 congruence consequences, direct conflicts, and candidate-model output. Fresh
-fuzz and benchmark evidence now establish merge readiness, but not default
-promotion.
+fuzz and benchmark evidence now establish default readiness for the supported
+convex fragment. This is not evidence for generic `DPLL(T^M)`.
 
 Relevant counters are grouped under `:no.shared-model.*`: `forbidden-*`,
 `targeted-separation-*`, `compatibility-*`, `split-frontier-*`, and
@@ -605,7 +635,7 @@ to online propagation.
 
 ## Historical Shared-Model Reconciliation Prototype
 
-The opt-in `--qf-uflra-model-reconciliation` profile implements the first
+The now-default QF_UFLRA model-reconciliation path implements the first
 round-scoped ownership slice. `TheoryCombinationManager::shared_model()` stores
 the current generation, LRA value classes over shared Real terms, deterministic
 spanning equalities, internally absorbed equalities, and strict separation
@@ -641,8 +671,9 @@ replaces the earlier quadratic shared-pair comparison. Counters
 `:no.shared-model.congruence-summary-terms` expose its invocation count and
 total representative visits. That older guard is superseded by the manager's
 explained-equality worklist and one-shot shared EUF class projection. The
-profile remains opt-in while component models and the generic paper transition
-system remain absent.
+profile remained opt-in at that milestone. The later retained component epoch
+and full-corpus gate justify the convex default without adding the still-absent
+generic paper transition system.
 
 The 2026-08-09 validation at commit `2f9113b` accepts this linear summary as an
 implementation improvement, not as a profile promotion. A fresh SLURM gate
