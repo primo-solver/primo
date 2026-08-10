@@ -591,7 +591,7 @@ void define_fun_macros_are_expanded() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
-void nullary_define_fun_expansion_is_memoized() {
+void nullary_define_fun_is_eagerly_compiled() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort A 0)
@@ -604,9 +604,75 @@ void nullary_define_fun_expansion_is_memoized() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-direct-uses") >= 3);
+  assert(result.statistics.get(":frontend.define-fun.nullary-eager-compiles") == 1);
+  assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 0);
   assert(result.statistics.get(":frontend.define-fun.nullary-cache-hits") >= 2);
   assert(result.statistics.get(":frontend.define-fun.nullary-cache-misses") == 1);
   assert(result.statistics.get(":frontend.define-fun.nullary-cache-entries") == 1);
+}
+
+void nullary_define_fun_uses_definition_site_bindings() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (define-fun d () A a)
+    (define-fun use ((a A)) A d)
+    (assert (distinct (use b) a))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void nullary_define_fun_replays_boolean_argument_constraints() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) A)
+    (define-fun d () A (f (or p q)))
+    (assert p)
+    (assert (distinct d (f true)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 1);
+}
+
+void nullary_define_fun_replays_term_ite_constraints() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun p () Bool)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (define-fun d () A (ite p a b))
+    (assert p)
+    (assert (distinct d a))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 2);
+}
+
+void long_nullary_define_fun_chain_is_compiled_linearly() {
+  constexpr int kDefinitions = 2000;
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(define-fun d0 () Bool true)\n";
+  for (int i = 1; i < kDefinitions; ++i) {
+    input << "(define-fun d" << i << " () Bool (and d" << (i - 1) << " true))\n";
+  }
+  input << "(assert (not d" << (kDefinitions - 1) << "))\n";
+  input << "(check-sat)\n";
+
+  const auto result = check_sat_smtlib(input.str());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-eager-compiles") == kDefinitions);
+  assert(result.statistics.get(":frontend.define-fun.nullary-direct-uses") >= kDefinitions);
 }
 
 void solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion() {
@@ -2691,7 +2757,11 @@ int main() {
   predicate_applications_respect_congruence();
   annotated_assertions_are_solved();
   define_fun_macros_are_expanded();
-  nullary_define_fun_expansion_is_memoized();
+  nullary_define_fun_is_eagerly_compiled();
+  nullary_define_fun_uses_definition_site_bindings();
+  nullary_define_fun_replays_boolean_argument_constraints();
+  nullary_define_fun_replays_term_ite_constraints();
+  long_nullary_define_fun_chain_is_compiled_linearly();
   solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion();
   compound_bool_arguments_are_bound_before_euf_flattening();
   recursive_define_fun_is_rejected();

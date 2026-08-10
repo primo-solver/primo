@@ -1045,13 +1045,6 @@ strengthening:
   and solved Real definitions before SAT search;
 - reuse equality and bound definitions aggressively for repeated linear terms
   and Real-valued UF proxies introduced by mixed purification;
-- compile long chains of nullary `define-fun` declarations more directly. A
-  post-fix gprof run on CPAchecker `Problem05_60` attributed about 55 percent of
-  its 6.28-second instrumented runtime to iterative term dispatch and
-  definition instantiation over 109,849 nullary definitions, with about 30
-  percent in CaDiCaL factoring. The uninstrumented committed build solves in
-  5.37 seconds, so this is a frontend throughput target rather than the cause
-  of a current 30-second timeout;
 - profile representative files from the committed top-100 gap manifest before
   choosing between LRA-domain preprocessing, stronger arithmetic propagation, or
   Boolean encoding changes.
@@ -1062,6 +1055,14 @@ emit ordinary `TermId` assertions, preserve the preprocessing
 reconstruction trail for model-producing runs, include counters showing the
 recognizer and generated clauses are active, and be evaluated against the
 current SLURM QF_UFLRA baseline.
+
+Nullary `define-fun` compilation is implemented in the frontend rather than as
+a preprocessing pass. The motivating `Problem05_60` profile attributed about
+55 percent of a 6.28-second instrumented run to term dispatch and definition
+instantiation over 109,849 nullary definitions. The implementation compiles
+each such body at declaration time and makes later references direct `TermId`
+lookups. A fresh fuzz gate and full-corpus comparison remain required before
+claiming a corpus-level gain from the change.
 
 ## Current Status
 

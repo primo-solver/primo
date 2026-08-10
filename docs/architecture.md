@@ -127,20 +127,37 @@ The constructors do not currently canonicalize commutative operands. For example
 SMT-LIB `let` does not create a term node. `smt::Frontend` keeps a stack of local maps from variable names to `TermId`. Binding right-hand sides are built in the outer scope, then the body is built in an extended scope. Because bound names resolve to existing `TermId` values, `let` expansion does not duplicate subtrees beyond the normal constructor calls and hash-consing behavior.
 
 SMT-LIB `define-fun` is supported for the QF_UF macro subset used by benchmark
-preludes. Definitions are stored by the frontend and expanded at each use by
-binding formal parameters to already-built argument terms before rebuilding the
-body through `TermManager`. The implementation checks argument and result sorts
-against the declared sorted variables, and deliberately rejects recursive
-definitions instead of treating them as uninterpreted functions.
+preludes. `smt::Frontend::Definition` has two representations. A nullary
+definition is compiled at its declaration into one hash-consed `TermId`; a
+parameterized definition retains its `SExpr` body and is expanded at each use by
+binding formal parameters to already-built argument terms. Both paths check the
+declared result sort. Parameterized expansion also checks argument sorts and
+rejects recursive use instead of treating it as an uninterpreted function.
 
-Zero-argument `define-fun` bodies are memoized after their first successful
-expansion when there is no active non-empty `let` or macro-parameter scope. The
-cache maps the definition name to the resulting `TermId`, after recursive-use
-detection and result-sort checking. This is a bounded cache: it contains at most
-one entry per nullary definition in the current SMT-LIB session, and it does not
-memoize parameterized macro applications. This keeps ordinary argument-dependent
-macro expansion simple while avoiding repeated reconstruction of
-CPAchecker-style definition DAGs.
+Compiling a nullary definition at its declaration gives it definition-site
+name resolution and prevents a surrounding parameterized macro or `let` from
+capturing names in its body. The frontend does not retain or deep-copy the
+nullary `SExpr`. A reference is a direct lookup of `compiled_nullary`, so a DAG
+of nullary definitions costs time linear in the sum of declaration-body syntax
+plus its references, rather than walking the general definition-instantiation
+path on the first demand for every node.
+
+The compiled representation also owns `compiled_side_assertions`. These are
+the Boolean equivalences for compound `Bool` UF arguments and guarded
+equalities for non-Boolean `ite` auxiliaries created while compiling the body.
+Every use replays that package into the current assertion build. A per-build set
+deduplicates transitive packages, and a session set emits each resulting
+`TermId` assertion only once into the permanent assertion list. An unused
+definition may allocate terms and auxiliaries, but its side assertions are not
+asserted until the definition is referenced.
+
+This is an original frontend compilation optimization, not an implementation
+of a cited macro-expansion algorithm. Eager construction changes `TermId`
+allocation order and can therefore change downstream SAT search. The intended
+invariants are semantic: one stable term per nullary definition, lexical name
+resolution, result-sort preservation, and replay of every auxiliary constraint.
+Unit tests cover long transitive chains, parameter shadowing, compound Boolean
+UF arguments, and non-Boolean `ite` bodies.
 
 Parameterized macro applications are not reparsed from text. The parser has
 already stored each body as an SMT-LIB syntax tree, and each application walks

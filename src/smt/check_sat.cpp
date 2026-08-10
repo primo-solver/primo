@@ -743,13 +743,17 @@ class Frontend {
         define_fun(command);
         return;
       case smtlib::CommandKind::Assert:
-        side_assertions_.clear();
+        clear_side_assertion_capture();
         {
           const core::TermId assertion = build_term(command.assertion);
-          assertions.insert(assertions.end(), side_assertions_.begin(), side_assertions_.end());
+          for (const core::TermId side_assertion : side_assertions_) {
+            if (emitted_side_assertions_.insert(side_assertion).second) {
+              assertions.push_back(side_assertion);
+            }
+          }
           assertions.push_back(assertion);
         }
-        side_assertions_.clear();
+        clear_side_assertion_capture();
         return;
       case smtlib::CommandKind::CheckSat:
         saw_check_sat_ = true;
@@ -784,9 +788,13 @@ class Frontend {
   core::TermManager& terms() { return terms_; }
   std::size_t boolean_ites() const { return boolean_ites_; }
   std::size_t auxiliary_ites() const { return auxiliary_ites_; }
-  std::size_t nullary_definition_cache_hits() const { return nullary_definition_cache_hits_; }
-  std::size_t nullary_definition_cache_misses() const { return nullary_definition_cache_misses_; }
-  std::size_t nullary_definition_cache_entries() const { return nullary_definition_cache_.size(); }
+  std::size_t nullary_definition_direct_uses() const { return nullary_definition_direct_uses_; }
+  std::size_t nullary_definition_eager_compiles() const {
+    return nullary_definition_eager_compiles_;
+  }
+  std::size_t nullary_definition_side_assertions() const {
+    return nullary_definition_side_assertions_;
+  }
   core::TermId fresh_internal_constant(core::SortId sort, std::string_view prefix) {
     return fresh_auxiliary_constant(sort, prefix);
   }
@@ -796,8 +804,27 @@ class Frontend {
     std::vector<std::string> parameters;
     std::vector<core::SortId> parameter_sorts;
     core::SortId result_sort = core::kInvalidSortId;
-    smtlib::SExpr body;
+    std::unique_ptr<smtlib::SExpr> body;
+    core::TermId compiled_nullary = core::kInvalidTermId;
+    std::vector<core::TermId> compiled_side_assertions;
   };
+
+  void clear_side_assertion_capture() {
+    side_assertions_.clear();
+    side_assertion_ids_.clear();
+  }
+
+  void record_side_assertion(core::TermId assertion) {
+    if (side_assertion_ids_.insert(assertion).second) {
+      side_assertions_.push_back(assertion);
+    }
+  }
+
+  void replay_side_assertions(const std::vector<core::TermId>& assertions) {
+    for (const core::TermId assertion : assertions) {
+      record_side_assertion(assertion);
+    }
+  }
 
   std::optional<core::TermId> lookup_bound_term(const std::string& name) const {
     for (auto scope = let_scopes_.rbegin(); scope != let_scopes_.rend(); ++scope) {
@@ -807,10 +834,6 @@ class Frontend {
       }
     }
     return std::nullopt;
-  }
-
-  bool has_active_bindings() const {
-    return std::ranges::any_of(let_scopes_, [](const auto& scope) { return !scope.empty(); });
   }
 
   static void require_arity(const smtlib::SExpr& expr, std::size_t arity, std::string_view op) {
@@ -856,7 +879,7 @@ class Frontend {
       return term;
     }
     const core::TermId auxiliary = fresh_auxiliary_constant(symbols_.bool_sort(), "bool_arg");
-    side_assertions_.push_back(
+    record_side_assertion(
         terms_.mk_and({terms_.mk_implies(auxiliary, term), terms_.mk_implies(term, auxiliary)}));
     return auxiliary;
   }
@@ -912,7 +935,27 @@ class Frontend {
       definition.parameter_sorts.push_back(lookup_sort_name(parameter.sort));
     }
     definition.result_sort = lookup_sort_name(command.result_sort);
-    definition.body = command.body;
+    if (definition.parameters.empty()) {
+      clear_side_assertion_capture();
+      core::TermId body = core::kInvalidTermId;
+      try {
+        body = build_term(command.body);
+      } catch (...) {
+        clear_side_assertion_capture();
+        throw;
+      }
+      if (terms_.get(body).sort != definition.result_sort) {
+        clear_side_assertion_capture();
+        throw UnsupportedInput("define-fun result sort mismatch: " + command.name);
+      }
+      definition.compiled_nullary = body;
+      definition.compiled_side_assertions = std::move(side_assertions_);
+      side_assertion_ids_.clear();
+      ++nullary_definition_eager_compiles_;
+      nullary_definition_side_assertions_ += definition.compiled_side_assertions.size();
+    } else {
+      definition.body = std::make_unique<smtlib::SExpr>(command.body);
+    }
     definitions_.emplace(command.name, std::move(definition));
   }
 
@@ -939,15 +982,17 @@ class Frontend {
   std::vector<std::unordered_map<std::string, core::TermId>> let_scopes_;
   std::unordered_map<std::string, Definition> definitions_;
   std::unordered_set<std::string> expanding_definitions_;
-  std::unordered_map<std::string, core::TermId> nullary_definition_cache_;
   std::vector<core::TermId> side_assertions_;
+  std::unordered_set<core::TermId> side_assertion_ids_;
+  std::unordered_set<core::TermId> emitted_side_assertions_;
   std::vector<core::SymbolId> declared_real_constant_symbols_;
   std::optional<std::string> logic_;
   std::size_t auxiliary_counter_ = 0;
   std::size_t boolean_ites_ = 0;
   std::size_t auxiliary_ites_ = 0;
-  std::size_t nullary_definition_cache_hits_ = 0;
-  std::size_t nullary_definition_cache_misses_ = 0;
+  std::size_t nullary_definition_direct_uses_ = 0;
+  std::size_t nullary_definition_eager_compiles_ = 0;
+  std::size_t nullary_definition_side_assertions_ = 0;
   bool saw_check_sat_ = false;
   bool requested_model_ = false;
   bool produce_models_ = false;
@@ -1203,9 +1248,9 @@ void TermBuilder::finish_ite(core::TermId condition, core::TermId then_term, cor
   }
   const core::TermId auxiliary = frontend_.fresh_auxiliary_constant(result_sort, "ite");
   ++frontend_.auxiliary_ites_;
-  frontend_.side_assertions_.push_back(
+  frontend_.record_side_assertion(
       frontend_.terms_.mk_implies(condition, frontend_.terms_.mk_eq(auxiliary, then_term)));
-  frontend_.side_assertions_.push_back(frontend_.terms_.mk_implies(
+  frontend_.record_side_assertion(frontend_.terms_.mk_implies(
       frontend_.terms_.mk_not(condition), frontend_.terms_.mk_eq(auxiliary, else_term)));
   resume(std::move(k), auxiliary);
 }
@@ -1513,15 +1558,12 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
   if (args.size() != definition.parameters.size()) {
     throw UnsupportedInput("define-fun application has wrong arity: " + name);
   }
-  const bool cache_nullary = args.empty() && !frontend_.has_active_bindings();
-  if (cache_nullary) {
-    if (const auto cached = frontend_.nullary_definition_cache_.find(name);
-        cached != frontend_.nullary_definition_cache_.end()) {
-      ++frontend_.nullary_definition_cache_hits_;
-      resume(std::move(k), cached->second);
-      return;
-    }
-    ++frontend_.nullary_definition_cache_misses_;
+  if (definition.parameters.empty()) {
+    assert(definition.compiled_nullary != core::kInvalidTermId);
+    ++frontend_.nullary_definition_direct_uses_;
+    frontend_.replay_side_assertions(definition.compiled_side_assertions);
+    resume(std::move(k), definition.compiled_nullary);
+    return;
   }
 
   std::unordered_map<std::string, core::TermId> scope;
@@ -1537,15 +1579,13 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
   frontend_.expanding_definitions_.insert(name);
   frontend_.let_scopes_.push_back(std::move(scope));
   const core::SortId result_sort = definition.result_sort;
-  schedule(definition.body,
-           [this, k = std::move(k), name, result_sort, cache_nullary](core::TermId body) mutable {
+  assert(definition.body != nullptr);
+  schedule(*definition.body,
+           [this, k = std::move(k), name, result_sort](core::TermId body) mutable {
              frontend_.let_scopes_.pop_back();
              frontend_.expanding_definitions_.erase(name);
              if (frontend_.terms_.get(body).sort != result_sort) {
                throw UnsupportedInput("define-fun result sort mismatch: " + name);
-             }
-             if (cache_nullary) {
-               frontend_.nullary_definition_cache_.emplace(name, body);
              }
              resume(std::move(k), body);
            });
@@ -10683,12 +10723,20 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatAssertionsInitial, assertions.size());
     statistics.set(kStatFrontendBooleanItes, frontend.boolean_ites());
     statistics.set(kStatFrontendAuxiliaryItes, frontend.auxiliary_ites());
+    statistics.set(":frontend.define-fun.nullary-direct-uses",
+                   frontend.nullary_definition_direct_uses());
+    statistics.set(":frontend.define-fun.nullary-eager-compiles",
+                   frontend.nullary_definition_eager_compiles());
+    statistics.set(":frontend.define-fun.nullary-side-assertions",
+                   frontend.nullary_definition_side_assertions());
+    // Retain the old names for benchmark compatibility. A cache hit is now a
+    // direct use, while a miss/entry corresponds to eager declaration-time compilation.
     statistics.set(":frontend.define-fun.nullary-cache-hits",
-                   frontend.nullary_definition_cache_hits());
+                   frontend.nullary_definition_direct_uses());
     statistics.set(":frontend.define-fun.nullary-cache-misses",
-                   frontend.nullary_definition_cache_misses());
+                   frontend.nullary_definition_eager_compiles());
     statistics.set(":frontend.define-fun.nullary-cache-entries",
-                   frontend.nullary_definition_cache_entries());
+                   frontend.nullary_definition_eager_compiles());
     if (!frontend.saw_check_sat()) {
       return finish(CheckSatResult::Unsupported, "missing check-sat command");
     }

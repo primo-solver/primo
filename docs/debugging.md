@@ -40,9 +40,16 @@ scripts and result artifacts. Current counters include:
 - `:input.assertions`;
 - `:frontend.ite.boolean`;
 - `:frontend.ite.auxiliaries`;
-- `:frontend.define-fun.nullary-cache-hits`;
-- `:frontend.define-fun.nullary-cache-misses`;
-- `:frontend.define-fun.nullary-cache-entries`;
+- `:frontend.define-fun.nullary-direct-uses`: direct references, including
+  references from later definitions;
+- `:frontend.define-fun.nullary-eager-compiles`: declaration-time compiles;
+- `:frontend.define-fun.nullary-side-assertions`: auxiliary assertions stored
+  with compiled definitions;
+- `:frontend.define-fun.nullary-cache-hits`,
+  `:frontend.define-fun.nullary-cache-misses`, and
+  `:frontend.define-fun.nullary-cache-entries`: compatibility aliases for old
+  result files; hits means direct uses, while misses and entries mean eager
+  compiles;
 - `:preprocessing.assertions`;
 - `:preprocessing.passes`;
 - `:preprocessing.changed-passes`;
