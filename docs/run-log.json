@@ -25675,7 +25675,7 @@
       "recorded_at": "2026-08-10",
       "kind": "profile-and-fuzz",
       "scope": "Remove the final convex-reconciliation mapping fallback by deriving the shared LRA interface from normalized polynomial variables",
-      "commit": "uncommitted-after-a57ce36",
+      "commit": "6b68628",
       "baseline_commit": "a57ce36",
       "branch": "convex-no-qflra-integration",
       "environment": {
@@ -25699,6 +25699,39 @@
       "artifacts": "local-only:/tmp/primo-profile-a57-unmapped-LHxhXZ and /tmp/primo-qfuflra-mapping-fuzz-a57/",
       "evidence_status": "local-current",
       "outcome": "The normalized-interface invariant removes the only observed exact fallback. SLURM campaign and full-corpus validation remain pending with the broader SAT-churn milestone."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-batched-split-frontier-local",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "profile-and-fuzz",
+      "scope": "Batch rejected convex shared-model edges into one positive-first IPASIR-UP assumption re-entry and deduplicate explained equality reasons",
+      "commit": "b49d724",
+      "baseline_commit": "6b68628",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "candidate_binary": "fresh Release build from the dirty candidate tree, CaDiCaL 3.0.0",
+        "baseline_binary": "fresh detached-worktree Release build at exact revision 6b68628, CaDiCaL 3.0.0",
+        "reference": "Z3 from contrib/local",
+        "artifacts_are_local_only": true
+      },
+      "commands": {
+        "focused_tests": "ctest --test-dir build --output-on-failure -R 'theory_combination|qf_lra_solver'",
+        "sample_baseline": "python3 scripts/bench_qf_uf_full.py --repo . --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt --solver /tmp/primo-prebatch-6b68628/build-release/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--qf-uflra-model-reconciliation --timeout 10",
+        "sample_candidate": "the same 20-row command with ./build-release-plan/primo",
+        "fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build-release-plan/primo --solver-arg=--qf-uflra-model-reconciliation --ref ./contrib/local/bin/z3 --count 1000 --seed 2026082002 --timeout 5 --shape mixed --out /tmp/primo-qfuflra-frontier-fuzz-6b68628"
+      },
+      "results": {
+        "focused_tests": "PASS",
+        "sample": "20/20 solved by both binaries with no wrong answer; aggregate wall time 1.109476 to 0.880448 seconds",
+        "search": "SAT solve calls 30 to 27, decisions 18468 to 17016, propagations 86842 to 82123",
+        "mechanism": "Three candidate frontier batches contained five rejected edges; the focused four-term regression requires a frontier of at least two edges and one assumption batch",
+        "fuzz": "1000/1000 PASS against Z3; zero disagreement, crash, timeout, unsupported result, or saved bug"
+      },
+      "artifacts": "local-only:/tmp/qfuflra-prebatch-6b68628.csv, /tmp/qfuflra-batch-candidate.csv, and /tmp/primo-qfuflra-frontier-fuzz-6b68628/",
+      "evidence_status": "local-current",
+      "outcome": "The batching prototype reduces mixed SAT re-entry and search on the focused sample without changing answers. Exact-commit SLURM fuzz and full-corpus evaluation remain required before default promotion."
     }
   ]
 }
