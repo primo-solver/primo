@@ -25344,6 +25344,30 @@
       "artifacts": "remote:<prepared-workspace>/results/qf-uflra-yices-2.7.0-5s/ and results/qf-uflra-yices-2.7.0-30s/; local ignored CSV/JSONL copies /tmp/primo-qfuflra-yices-2.7.0-5s/ and /tmp/primo-qfuflra-yices-2.7.0-30s/; reused Primo /tmp/primo-qfuflra-30s-candidate-9b9a035-v2/; reused Z3 results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv",
       "evidence_status": "slurm-complete-current",
       "outcome": "Use Yices as the strongest measured QF_UFLRA reference for the next performance triage. The previous equal solved count with Z3 understated the remaining gap."
+    },
+    {
+      "id": "2026-08-10-cadical-factor-problem05-local-7556339",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "parameter-probe",
+      "scope": "Single-instance check of CaDiCaL bounded-variable-addition cost after the Problem05_60 gprof profile",
+      "commit": "7556339",
+      "implementation_commit": "9b9a035",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binary": "RelWithDebInfo, embedded implementation revision 9b9a035, CaDiCaL 3.0.0",
+        "instance": "tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.Problem05_60_false-unreach-call.c.smt2"
+      },
+      "command": "build-profile/primo --quiet --max-theory-conflicts=100 --qf-uflra-model-reconciliation --cadical-option factor=0 <instance>",
+      "results": {
+        "factor_default": "The previously recorded committed confirmation solved sat in 5.37 seconds; gprof attributed about 30 percent of its instrumented time to CaDiCaL factoring.",
+        "factor_disabled": "Solved sat in 3.86 seconds with maximum resident set size 262060 KiB.",
+        "change": "1.51 seconds faster, approximately 28 percent, on this one definition-heavy instance."
+      },
+      "artifacts": "local-only:/tmp/primo-factor-off.out and /tmp/primo-factor-off.err; default/profile artifacts under /tmp/primo-profile-9b9a035-problem05*/",
+      "evidence_status": "local-preliminary",
+      "outcome": "Factoring is a plausible conditional cost on very large definitional CNFs. Do not change the default from one row; evaluate a targeted recognizer or a corpus-wide factor on/off profile first."
     }
   ]
 }
