@@ -25396,8 +25396,8 @@
         "local_verification": "make check, make lint, make docs, make asan-test, whole-tree make tidy, advisory whole-tree make include-cleaner, and git diff --check passed before the implementation commit."
       },
       "artifacts": "local-only:/tmp/primo-nullary-eager-cef5165-{time,stdout,stats}.txt; baseline local-only:/tmp/primo-profile-9b9a035-problem05/ and /tmp/primo-profile-9b9a035-problem05-gprof/",
-      "evidence_status": "local-complete-current",
-      "outcome": "The targeted frontend throughput issue is fixed locally without changing the target's SAT structure or search counters. Fresh fuzzing and full-corpus SLURM evaluation remain required before claiming a corpus-level performance improvement."
+      "evidence_status": "local-complete-superseded-by-slurm",
+      "outcome": "The targeted frontend throughput issue was fixed locally without changing the target's SAT structure or search counters. At this milestone fresh fuzzing and full-corpus SLURM evaluation were still required; the later 1f3d81c entries supply that evidence."
     },
     {
       "id": "2026-08-10-nullary-define-fun-fuzz-140be1a",
@@ -25457,6 +25457,95 @@
       "artifacts": "remote:<prepared-workspace>/results/qf-uflra-nullary-eager-140be1a-30s/; baseline remote:<prepared-workspace>/results/qf-uflra-profile-9b9a035-30s/; local ignored shard CSV copies /tmp/primo-nullary-eager-eval/",
       "evidence_status": "rejected",
       "outcome": "Rejected regardless of the nominal speed and solved-count changes. ASAN and gdb traced the failures to recursive whole-formula walks exposed by deep compiled TermId DAGs; performance conclusions require a stack-safe exact-commit rerun."
+    },
+    {
+      "id": "2026-08-10-nullary-definition-stack-safety-local-1f3d81c",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "correctness-debugging",
+      "scope": "Diagnosis and local verification of the five stack overflows exposed by eager nullary define-fun compilation",
+      "commit": "1f3d81c",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "binaries": "ASAN/UBSan test build plus optimized Release witness runs, CaDiCaL 3.0.0",
+        "witnesses": "The five CPAchecker induction files that exited with SIGSEGV in the rejected 140be1a corpus run"
+      },
+      "commands": {
+        "diagnosis": "Reproduced under ASAN and inspected representative failures under gdb; traces ended in recursive whole-formula preprocessing, dispatch, purification, Boolean bridge, and clausification walks over the compiled TermId DAG.",
+        "focused_regression": "Ran the 20,000-definition end-to-end QF_UFLRA regression through the ASAN build.",
+        "witness_smoke": "Ran all five former crash rows with the optimized stats binary, --max-theory-conflicts=100, and --qf-uflra-model-reconciliation.",
+        "verification": "make check; make lint; make docs; make asan-test; make tidy; make include-cleaner; git diff --check"
+      },
+      "results": {
+        "root_cause": "Eager compilation represented shallow declaration bodies as one deep shared core DAG. Production walkers used the native call stack as traversal storage and overflowed; this was not an LRA conflict or CaDiCaL failure.",
+        "fix": "Converted every implicated path to explicit worklists while preserving each pass's memoization and rewrite semantics. Rewriters copy child TermIds before interning replacement terms so TermManager growth cannot invalidate borrowed Term references.",
+        "deep_regression": "The 20,000-definition mixed QF_UFLRA regression passes under ASAN/UBSan.",
+        "former_crashes": "All five terminate without a signal: Problem07_60 false sat in 12.27 seconds; Problem08_60 false sat in 30.12 seconds; Problem07_00, Problem07_10, and Problem07_50 true unsat in 13.74, 12.94, and 12.77 seconds."
+      },
+      "artifacts": "local-only:/tmp/primo-nullary-stack-safe* and /tmp/primo-nullary-stack-safe-five-release.tsv",
+      "evidence_status": "local-complete-current",
+      "outcome": "The known crash class is fixed locally and covered by a depth regression. A separate repository-wide audit of input-sized recursion remains open in docs/open-leads.md."
+    },
+    {
+      "id": "2026-08-10-nullary-definition-stack-safe-fuzz-1f3d81c",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "fuzz",
+      "scope": "Exact-commit generated, finite-domain, tracked-seed, and YinYang validation after replacing deep TermId DAG recursion with explicit worklists",
+      "commit": "1f3d81c",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 1f3d81c, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation and mutation; Z3 5.0.0 plus cvc5 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 1f3d81c, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "scheduler_state": "All four generated shards completed with exit code 0 in 28 to 29 seconds. The mutation task completed with exit code 0 in 28 minutes 18 seconds. Scheduler identifiers are kept outside the repository."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with 750 mixed, 125 finite QF_UF, and 125 finite QF_UFLRA cases per shard; seed base 2026081070; --qf-uflra-model-reconciliation",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with 2000 configured mutations per tracked seed, seed base 2026081080, an 8-second solver timeout, and --qf-uflra-model-reconciliation"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS against Z3",
+        "finite_domain": "1000/1000 PASS: 500 QF_UF and 500 QF_UFLRA cases against Z3 and cvc5",
+        "tracked_seeds": "11/11 deterministic seeds PASS against Z3",
+        "mutation": "All 11 seeds processed and valid; 43978 differential solver calls; 0 invalid seeds and 0 bug triggers.",
+        "failures": "0 wrong answer, crash, parser/type error, unsupported result, reference disagreement, or saved bug file."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-nullary-stack-safe-1f3d81c/ and fuzz-results/qf-uflra-nullary-stack-safe-1f3d81c/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact stack-safe implementation clears the QF_UFLRA merge fuzz gate."
+    },
+    {
+      "id": "2026-08-10-nullary-definition-stack-safe-full-1f3d81c",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "benchmark",
+      "scope": "Accepted 30-second full-corpus QF_UFLRA evaluation of stack-safe eager nullary define-fun compilation",
+      "commit": "1f3d81c",
+      "baseline_commit": "9b9a035",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release, git 1f3d81c, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes",
+        "reference_reuse": "The unchanged 9b9a035 Primo baseline and existing Z3/Yices result artifacts were reused rather than rerun.",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 1f3d81c and all fuzz/reference dependencies immediately before submission.",
+        "scheduler_state": "All eight array shards completed with exit code 0 in 2 minutes 56 seconds to 6 minutes 14 seconds. Scheduler identifiers are kept outside the repository."
+      },
+      "command": "scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 with 8 shards, PRIMO_MINE_TIMEOUT=30, and build-slurm-rel/primo --quiet --stats --qf-uflra-model-reconciliation; summarized by scripts/summarize_benchmark_shards.py",
+      "results": {
+        "baseline": "1234 solved (727 sat, 507 unsat), 50 timeout, 0 error/unsupported/wrong, solved-row time 588.435922 seconds, PAR2 3588.435922.",
+        "candidate": "1238 solved (727 sat, 511 unsat), 46 timeout, 0 error/unsupported/wrong, solved-row time 546.995737 seconds, PAR2 3306.995737.",
+        "families": "FFT 10/10; CPAchecker BMC 5/15; CPAchecker induction 323/359 with 36 timeouts; MathSAT 900/900. Candidate family PAR2 values were 0.093087, 618.733848, 2613.871002, and 74.297800 respectively.",
+        "comparison": "7 timeout recoveries, 3 timeout losses, 0 decisive-answer disagreements, and 1231 common solves. Common-solved aggregate time fell from 526.983649 to 423.162823 seconds, a 19.7 percent reduction.",
+        "former_crashes": "All five former SIGSEGV rows now terminate normally. Problem07_60, Problem07_00, Problem07_10, and Problem07_50 solve in 20.91 to 22.05 seconds; Problem08_60 reaches the 30-second limit as a normal timeout.",
+        "timing_caveat": "MathSAT stayed 900/900 solved but aggregate family time increased from 62.954324 to 74.297800 seconds; the aggregate gain is concentrated in CPAchecker induction."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-nullary-stack-safe-1f3d81c-30s/; reused baseline remote:<prepared-workspace>/results/qf-uflra-profile-9b9a035-30s/; local ignored CSV copies /tmp/primo-nullary-stack-safe-eval/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted. The stack-safe eager compiler improves solved count by four and PAR2 by 281.440185 while eliminating all five corpus crashes and introducing no wrong answer, unsupported row, error, or decisive-answer disagreement."
     }
   ]
 }

@@ -1084,9 +1084,19 @@ was rejected after five deep CPAchecker definition DAGs exited with SIGSEGV.
 ASAN identified recursive preprocessing, dispatch, purification, and
 clausification walks rather than a theory conflict or CaDiCaL defect. Those
 walks now use explicit worklists, and the five witnesses complete in an
-optimized local smoke check. A fresh exact-commit fuzz gate and clean
-full-corpus SLURM comparison are still required before claiming a corpus-level
-gain.
+optimized local smoke check. At stack-safe revision `1f3d81c`, a fresh SLURM
+gate passed 3,000/3,000 mixed generated cases, 1,000/1,000 finite-domain cases,
+11/11 tracked seeds, and 43,978 YinYang differential solver calls with no bug
+trigger. The exact-commit 1,284-file, 30-second SLURM comparison then completed
+with zero errors, wrong answers, unsupported rows, or decisive-answer
+disagreements. It solved 1,238 files against the `9b9a035` baseline's 1,234,
+reduced timeouts from 50 to 46, and reduced PAR2 from 3,588.44 to 3,307.00.
+Seven files were gained and three lost. On the 1,231 files solved by both,
+aggregate time fell from 526.98 to 423.16 seconds. All five former SIGSEGV rows
+now terminate normally: four solve inside the corpus limit and `Problem08_60`
+times out normally. The gain is concentrated in CPAchecker induction; MathSAT
+remains 900/900 solved but its aggregate time increased from 62.95 to 74.30
+seconds in this run.
 
 ## Current Status
 
