@@ -25732,6 +25732,42 @@
       "artifacts": "local-only:/tmp/qfuflra-prebatch-6b68628.csv, /tmp/qfuflra-batch-candidate.csv, and /tmp/primo-qfuflra-frontier-fuzz-6b68628/",
       "evidence_status": "local-current",
       "outcome": "The batching prototype reduces mixed SAT re-entry and search on the focused sample without changing answers. Exact-commit SLURM fuzz and full-corpus evaluation remain required before default promotion."
+    },
+    {
+      "id": "2026-08-10-qf-uflra-retained-lra-epoch-local",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "profile-benchmark-and-fuzz",
+      "scope": "Retain the augmented QF_UFLRA LRA preparation and feasible tableau while the exact true-interface equality key is unchanged, then evaluate existing row propagation as a mixed-path candidate",
+      "commit": "c7443e0",
+      "baseline_commit": "3640ce6",
+      "branch": "convex-no-qflra-integration",
+      "environment": {
+        "type": "local",
+        "candidate_binary": "build-release-epoch/primo, Release, CaDiCaL 3.0.0",
+        "baseline_binary": "build-release-plan/primo from the pre-epoch tree",
+        "reference": "Z3 from contrib/local",
+        "artifacts_are_local_only": true,
+        "candidate_relation": "The measured binary was built from the c7443e0 working tree before a final allocation-only cleanup that compares the retained interface key without constructing a temporary vector. Exact-commit SLURM fuzz is still required."
+      },
+      "commands": {
+        "profile": "build-gprof-epoch/primo --quiet --stats --qf-uflra-model-reconciliation --max-theory-conflicts=500 tmp/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.ddv_machzwd_inw_false-unreach-call.i.smt2; gprof build-gprof-epoch/primo gmon.out",
+        "sample": "python3 scripts/bench_qf_uf_full.py --repo /workspace --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt --solver build-release-epoch/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--qf-uflra-model-reconciliation --timeout 5, repeated with --lra-row-propagation and then with both row-propagation flags",
+        "fuzz": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build-release-epoch/primo --solver-arg=--qf-uflra-model-reconciliation --ref ./contrib/local/bin/z3 --count 1000 --seed 2026082003 --timeout 5 --shape mixed --out /tmp/primo-qfuflra-model-epoch-fuzz-3640ce6",
+        "local_gates": "make check; make lint; make docs; make asan-test; make tidy; touched-file clang-tidy and misc-include-cleaner; git diff --check; python3 -m json.tool docs/run-log.json"
+      },
+      "results": {
+        "profile": "The pre-epoch profile made 87 SAT calls and 86 augmented preparations. Preparation construction accounted for about 55 milliseconds; repeated LRA checking and live tableau work dominated.",
+        "representative_before_after": "Three exact Release runs improved from 0.86-0.90 seconds to 0.53-0.55 seconds. SAT solve calls, decisions, and propagations remained exactly 87, 258029, and 558081. Augmented preparations fell from 86 to 13; 73 assignments reused the retained tableau.",
+        "sample_epoch": "20/20 solved with no wrong answer. Aggregate wall time changed from the batched-frontier baseline's 0.880448 seconds to 0.855104 seconds; search stayed exactly 27 solve calls, 17016 decisions, and 82123 propagations.",
+        "sample_forward_row": "20/20 solved with no wrong answer and 27 solve calls. Forward row propagation reduced decisions to 8070 and propagations to 65816; 1149 row propagations fired across nine files. Aggregate wall time was 0.818145 seconds.",
+        "sample_bidirectional_row": "20/20 solved with no wrong answer. The reverse direction fired 38 times across three files, with 8052 decisions, 65822 propagations, and 0.829787 seconds; it did not improve on forward-only elapsed time.",
+        "fuzz": "1000/1000 PASS against Z3; zero disagreement, crash, timeout, unsupported result, or saved bug.",
+        "local_gates": "All functional, lint, documentation, ASAN, whole-tree clang-tidy, and touched-file include-cleaner checks passed."
+      },
+      "artifacts": "local-only:/tmp/primo-epoch-profile-hHGDPB, /tmp/qfuflra-epoch-candidate.csv, /tmp/qfuflra-epoch-row.csv, /tmp/qfuflra-epoch-row-bidi.csv, and /tmp/primo-qfuflra-model-epoch-fuzz-3640ce6/",
+      "evidence_status": "local-current-needs-exact-commit-slurm",
+      "outcome": "The retained epoch removes repeated structural setup and preserves search. Forward row propagation is promising enough for a full-corpus mixed A/B, but neither row direction is promoted and exact-commit SLURM fuzz remains required."
     }
   ]
 }
