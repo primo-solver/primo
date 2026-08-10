@@ -19901,6 +19901,35 @@
     ],
     "caveats": "Clause length is a proxy. A shorter clause is usually stronger but not always -- a longer clause over lower-level literals can backjump further, and the tableau cannot see decision levels. PAR2 was not measured and would be authoritative."
    }
+  },
+  {
+   "id": "2026-08-10-row-propagation-limits-wired",
+   "started_at": "2026-08-10",
+   "recorded_at": "2026-08-10",
+   "kind": "analysis",
+   "scope": "Wire CheckSatOptions::lra_row_propagation_limits, which four CLI options wrote and nothing read, and confirm the fix changes nothing at default settings.",
+   "commit": "pending vs 8d93eb5",
+   "branch": "qflra-soi-minimize-order",
+   "evidence_status": "current",
+   "environment": {
+    "type": "local",
+    "notes": "Both Release, same toolchain; the pre-change binary built from HEAD in a scratch worktree sharing /workspace/contrib/local."
+   },
+   "result": {
+    "default_settings": {
+     "completed": 24,
+     "answer_diffs": 0,
+     "lra_counter_diffs": 0
+    },
+    "row_propagation_enabled": {
+     "completed": 10,
+     "answer_diffs": 0,
+     "lra_counter_diffs": 0
+    },
+    "knobs_now_bind": "On sc/sc-9.base.cvc.smt2 with row propagation on: max-row-size 1 -> 0 propagations, 4 -> 667, 64 -> 2694; max-fanout 1 -> 0, 64 -> 2694, 100000 -> 3177. Before the fix every value gave 2694.",
+    "finding": "The forward fanout cap was binding at its default the whole time -- 2694 against 3177 uncapped, so ~15% of available row propagations were being discarded by a constant no option could reach.",
+    "verdicts_unchanged": "Every probe answered unsat regardless of cap, as required: these are cost caps and must not move a verdict."
+   }
   }
  ]
 }

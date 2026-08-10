@@ -58,10 +58,10 @@ precondition without which the option does nothing.
 | option | default | requires | note |
 |---|---:|---|---|
 | `--lra-pivoting-rule` | `sparse` | — | 4 values (`bland`/`dantzig`/`soi`/`sparse`); the strongest single categorical, and the guard for much of the rest of this table |
-| `--lra-row-propagation-max-row-size` | 64 | **nothing reads it** | see [](#dead-knobs) |
-| `--lra-row-propagation-max-fanout` | 64 | **nothing reads it** | |
-| `--lra-bidirectional-row-propagation-max-row-size` | 32 | **nothing reads it** | |
-| `--lra-bidirectional-row-propagation-max-fanout` | 32 | **nothing reads it** | |
+| `--lra-row-propagation-max-row-size` | 64 | **`--lra-row-propagation`** | dead until 2026-08-10, see [](#dead-knobs) |
+| `--lra-row-propagation-max-fanout` | 64 | **`--lra-row-propagation`** | |
+| `--lra-bidirectional-row-propagation-max-row-size` | 32 | **`--lra-bidirectional-row-propagation`** | |
+| `--lra-bidirectional-row-propagation-max-fanout` | 32 | **`--lra-bidirectional-row-propagation`** | |
 | `--lra-least-violated-leaving` | off | **`--lra-pivoting-rule sparse`** | MathSAT's rule; measured 167 vs 174 overall but **beats most-violated by 5**, i.e. a complementarity candidate, not a loss. Pairing it with any other rule wastes the dimension |
 | `--no-lra-sparse-leaving` | on | **`--lra-pivoting-rule sparse`** | ablation of the leaving-side half |
 | `--lra-fixed-elimination` | off | — | nets to nothing overall, doubles the >5MB band -- textbook portfolio arm. Note it also forces `model_phase_backtrack_may_change_beta` (`check_sat.cpp:7552`), as `soi` does, so it interacts with `--lra-model-phase` |
@@ -92,13 +92,26 @@ This matters more than a typical dead flag because the table above previously
 advertised all four as free dimensions requiring zero code change. Putting
 them in `qflra_parameters.txt` would have spent four dimensions on noise.
 
-**The fix is small and behaviour-preserving:** the constants are 64/64/32/32
-and `LraRowPropagationLimits`' defaults are also 64/64/32/32, so threading the
-struct through `OnlineLraPropagator` and the two free functions that use the
-constants reproduces today's behaviour exactly at defaults while making the
-knobs live. Not done here — it changes propagator signatures and belongs with
-its own measurement, since making a knob live means tuning it can now move
-results.
+**Fixed 2026-08-10.** The struct is threaded through `OnlineLraPropagator` and
+the two `compute_implied_*_bound` helpers, and the four constants are gone.
+The defaults were already 64/64/32/32, identical to the constants, so this is
+behaviour-preserving where it matters — verified against the pre-change binary
+on 24 completed instances at default settings and 10 more with row propagation
+explicitly enabled, 0 answer differences and 0 `:lra.*` counter differences in
+both.
+
+The knobs now bind, and one of them was binding all along without anyone being
+able to see it: on `sc/sc-9.base.cvc.smt2`, `--lra-row-propagation-max-fanout
+100000` yields **3177** row propagations against **2694** at the default 64.
+So the forward fanout cap is not a formality on real input — it is discarding
+about 15% of available propagations at its default, which is now a tunable
+decision rather than a constant nobody could reach.
+
+`row_propagation_limits_are_actually_enforced` in
+`tests/unit/qf_lra_solver_tests.cpp` pins it. The test asserts the caps
+**bind** rather than that propagation happens, deliberately: a test of the
+latter shape would have passed throughout the entire period the options did
+nothing.
 
 (cadical)=
 ### The CaDiCaL sub-space

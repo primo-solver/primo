@@ -4490,25 +4490,12 @@ std::optional<sat::Lit> bound_entails(const theory::arithmetic::LraTableau& tabl
   return std::nullopt;
 }
 
-// Defensive bounds on row-based/interval bound propagation's O(row size)
-// per-affected-row cost -- unlike same-slack propagation (O(atoms sharing
-// a slack), typically small), this is triggered by *any* bound change on
-// a variable that occurs in potentially many rows. Not precisely derived;
-// generous enough to matter for real formulas, small enough to bound
-// worst-case cost on an adversarial/fuzzed input, tunable later against
-// real evidence (mirrors the Gaussian-elimination caps' own precedent).
-constexpr std::size_t kRowBasedPropagationMaxRowSize = 64;
-constexpr std::size_t kRowBasedPropagationMaxFanout = 64;
-
-// Competitiveness-roadmap item 7 (bidirectional row-based propagation):
-// separate, smaller caps for the reverse (child-tightening) direction,
-// since it does an O(row size) compute_implied_child_bound call for
-// *each* other term of an affected row, not just once per row --
-// multiplicatively pricier than item 2's own forward-only caps above.
-// Not precisely derived either; deliberately smaller pending real
-// evidence from this item's own quick-eval.
-constexpr std::size_t kBidirectionalRowPropagationMaxRowSize = 32;
-constexpr std::size_t kBidirectionalRowPropagationMaxFanout = 32;
+// The four caps that used to live here as constants are now
+// CheckSatOptions::lra_row_propagation_limits, whose defaults are these same
+// values -- see LraRowPropagationLimits in check_sat.hpp for the rationale.
+// They were exposed on the CLI for a long time while nothing read the struct,
+// so the options parsed and did nothing; docs/tuning-parameters.md records
+// how that was found.
 
 // Applies one assigned LRA atom's relation+truth-value+strictness to
 // `tableau` as a single Assert-Bound call (Eq asserts both bounds). Shared
@@ -6289,9 +6276,10 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
 // unlike same-variable propagation's single-literal one.
 std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>>>
 compute_implied_bound(const theory::arithmetic::LraTableau& tableau,
-                      theory::arithmetic::LraVarId basic_var, bool want_upper) {
+                      theory::arithmetic::LraVarId basic_var, bool want_upper,
+                      const LraRowPropagationLimits& limits) {
   const auto& row = tableau.row(basic_var);
-  if (row.size() > kRowBasedPropagationMaxRowSize) {
+  if (row.size() > limits.max_row_size) {
     return std::nullopt;
   }
   theory::arithmetic::DeltaRational total =
@@ -6329,9 +6317,10 @@ std::optional<std::pair<theory::arithmetic::DeltaRational, std::vector<sat::Lit>
 compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
                             theory::arithmetic::LraVarId basic_var,
                             theory::arithmetic::LraVarId target_var,
-                            const util::Rational& target_coeff, bool want_upper_of_target) {
+                            const util::Rational& target_coeff, bool want_upper_of_target,
+                            const LraRowPropagationLimits& limits) {
   const auto& row = tableau.row(basic_var);
-  if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
+  if (row.size() > limits.bidirectional_max_row_size) {
     return std::nullopt;
   }
   const bool want_upper_of_basic = want_upper_of_target == (target_coeff.sign() > 0);
@@ -6409,6 +6398,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                       bool propagation_enabled, bool row_propagation_enabled,
                       bool bidirectional_row_propagation_enabled, bool theory_decisions_enabled,
                       bool model_phase_enabled, bool model_phase_backtrack_may_change_beta,
+                      const LraRowPropagationLimits& row_propagation_limits,
                       sat::IpasirUpBackend& backend, util::Statistics& statistics)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
@@ -6419,6 +6409,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         theory_decisions_enabled_(theory_decisions_enabled),
         model_phase_enabled_(model_phase_enabled),
         model_phase_backtrack_may_change_beta_(model_phase_backtrack_may_change_beta),
+        row_propagation_limits_(row_propagation_limits),
         backend_(backend),
         statistics_(statistics) {
     int max_theory_var = 0;
@@ -7046,7 +7037,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   // is checked against an implied *lower* bound and vice versa.
   std::optional<std::vector<sat::Lit>> implied_bound_entails(theory::arithmetic::LraVarId basic_var,
                                                              const BoundAssertion& assertion) {
-    auto implied = compute_implied_bound(tableau_, basic_var, assertion.is_upper);
+    auto implied =
+        compute_implied_bound(tableau_, basic_var, assertion.is_upper, row_propagation_limits_);
     if (!implied.has_value()) {
       return std::nullopt;
     }
@@ -7074,7 +7066,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   void scan_row_based_propagations(theory::arithmetic::LraVarId changed_var) {
     const std::vector<theory::arithmetic::LraVarId>& affected_rows =
         tableau_.occurs_in(changed_var);
-    if (affected_rows.empty() || affected_rows.size() > kRowBasedPropagationMaxFanout) {
+    if (affected_rows.empty() || affected_rows.size() > row_propagation_limits_.max_fanout) {
       return;
     }
     for (const theory::arithmetic::LraVarId basic_var : affected_rows) {
@@ -7105,7 +7097,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         }
       }
       if (bidirectional_row_propagation_enabled_ &&
-          affected_rows.size() <= kBidirectionalRowPropagationMaxFanout) {
+          affected_rows.size() <= row_propagation_limits_.bidirectional_max_fanout) {
         scan_row_child_propagations(basic_var, changed_var);
       }
     }
@@ -7120,7 +7112,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   void scan_row_child_propagations(theory::arithmetic::LraVarId basic_var,
                                    theory::arithmetic::LraVarId exclude_var) {
     const auto& row = tableau_.row(basic_var);
-    if (row.size() > kBidirectionalRowPropagationMaxRowSize) {
+    if (row.size() > row_propagation_limits_.bidirectional_max_row_size) {
       return;
     }
     for (const auto& [target_var, target_coeff, target_var_slot] : row) {
@@ -7163,7 +7155,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       theory::arithmetic::LraVarId basic_var, theory::arithmetic::LraVarId target_var,
       const util::Rational& target_coeff, const BoundAssertion& assertion) {
     auto implied = compute_implied_child_bound(tableau_, basic_var, target_var, target_coeff,
-                                               assertion.is_upper);
+                                               assertion.is_upper, row_propagation_limits_);
     if (!implied.has_value()) {
       return std::nullopt;
     }
@@ -7192,9 +7184,13 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   bool propagation_enabled_;
   bool row_propagation_enabled_;
   bool bidirectional_row_propagation_enabled_;
+  // The caps enforced by scan_row_based_propagations and the two
   bool theory_decisions_enabled_;
   bool model_phase_enabled_;
   bool model_phase_backtrack_may_change_beta_;
+  // compute_implied_*_bound helpers. Held rather than read from options at
+  // each use so the propagator stays independent of CheckSatOptions.
+  LraRowPropagationLimits row_propagation_limits_;
   sat::IpasirUpBackend& backend_;
   util::Statistics& statistics_;
   std::vector<char> observed_vars_;
@@ -7548,8 +7544,8 @@ CheckSatOutcome solve_qf_lra_impl(
       prepared_theory, clausifier.theory_atoms(), options.lra_propagation,
       options.lra_row_propagation, options.lra_bidirectional_row_propagation,
       options.lra_theory_decisions, options.lra_model_phase,
-      options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination, backend,
-      statistics);
+      options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
+      options.lra_row_propagation_limits, backend, statistics);
   backend.connect_external_propagator(&online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -8135,8 +8131,8 @@ CheckSatOutcome solve_qf_uf_lra(
         base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
         options.lra_model_phase,
-        options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination, backend,
-        statistics);
+        options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
+        options.lra_row_propagation_limits, backend, statistics);
     if (options.nelson_oppen_propagation == NelsonOppenPropagationMode::Online) {
       mixed_online_dispatcher.emplace(backend, no_manager, &online_lra_propagator.value(),
                                       lra_atoms, statistics);
