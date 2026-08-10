@@ -389,7 +389,11 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-equality-pending`
 - `:no.interface.model-equality-activated`
 - `:no.interface.model-equality-duplicate-pending`
+- `:no.interface.model-equality-pending-batches`
+- `:no.interface.model-equality-pending-batch-lits`
+- `:no.interface.model-equality-max-pending-batch`
 - `:no.interface.model-equality-assumptions`
+- `:no.interface.model-equality-assumption-solve-calls`
 - `:no.interface.model-equality-failed-assumptions`
 - `:no.interface.model-equality-blocking-clauses`
 - `:no.interface.model-equality-dropped-assumptions`
@@ -557,6 +561,10 @@ normal final step. The shared-model counters diagnose the replacement:
 - `:no.shared-model.compatibility-splits` counts direct or congruence-induced
   rejection of an optional merge, while
   `compatibility-consequence-disagreements` isolates the latter;
+- `:no.shared-model.split-frontier-batches`, `split-frontier-pairs`,
+  `split-frontier-duplicates`, and `split-frontier-max` report how many rejected
+  model edges are canonicalized and sent through one SAT re-entry rather than
+  stopping at the first edge;
 - `:no.shared-model.split-materializations` counts lazy positive-first equality
   assumptions; failed assumptions continue to use the
   `:no.interface.model-equality-*` blocking-clause counters;

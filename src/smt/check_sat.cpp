@@ -6601,13 +6601,14 @@ bool complete_euf_real_model_values(const PreparedFlatTheory& prepared,
 struct SharedModelReconciliationResult {
   bool compatible = false;
   bool requires_exact_fallback = false;
-  std::optional<TermPairKey> split_pair;
+  std::vector<TermPairKey> split_pairs;
 };
 
 // de Moura-Bjorner, Model-Based Theory Combination, Sections 4 and 5: test
 // whether EUF can absorb a spanning presentation of the LRA candidate model.
-// These merges are model choices, not consequences, so a rejected merge only
-// yields an M-Propagate split candidate and never a theory lemma.
+// These merges are model choices, not consequences. Collect every rejected
+// edge from one candidate projection as an assumption frontier; the eventual
+// failed-assumption clause, rather than this scan, is the SAT-visible result.
 SharedModelReconciliationResult reconcile_lra_candidate_with_euf(
     const PreparedFlatTheory& prepared_euf, theory::equality::FlatCongruenceClosure& euf_closure,
     TheoryCombinationManager& manager, util::Statistics& statistics) {
@@ -6619,7 +6620,7 @@ SharedModelReconciliationResult reconcile_lra_candidate_with_euf(
     if (!flat.has_value()) {
       statistics.increment(":no.shared-model.compatibility-unmapped");
       return SharedModelReconciliationResult{
-          .compatible = false, .requires_exact_fallback = true, .split_pair = std::nullopt};
+          .compatible = false, .requires_exact_fallback = true, .split_pairs = {}};
     }
     shared_flat_terms.emplace_back(term, flat.value());
   }
@@ -6660,8 +6661,10 @@ SharedModelReconciliationResult reconcile_lra_candidate_with_euf(
     euf_closure.pop(checkpoint);
     statistics.increment(":no.shared-model.compatibility-initial-disagreements");
     return SharedModelReconciliationResult{
-        .compatible = false, .requires_exact_fallback = true, .split_pair = std::nullopt};
+        .compatible = false, .requires_exact_fallback = true, .split_pairs = {}};
   }
+  std::vector<TermPairKey> rejected_edges;
+  rejected_edges.reserve(manager.shared_model().lra_model_spanning_equalities.size());
   for (const SharedModelEquality& equality : manager.shared_model().lra_model_spanning_equalities) {
     const std::optional<theory::equality::FlatTermId> lhs =
         prepared_euf.flat.existing_flat_term(equality.lhs);
@@ -6671,7 +6674,7 @@ SharedModelReconciliationResult reconcile_lra_candidate_with_euf(
       euf_closure.pop(checkpoint);
       statistics.increment(":no.shared-model.compatibility-unmapped");
       return SharedModelReconciliationResult{
-          .compatible = false, .requires_exact_fallback = true, .split_pair = std::nullopt};
+          .compatible = false, .requires_exact_fallback = true, .split_pairs = {}};
     }
     statistics.increment(":no.shared-model.compatibility-edges");
     if (euf_closure.are_equal(lhs.value(), rhs.value())) {
@@ -6680,26 +6683,40 @@ SharedModelReconciliationResult reconcile_lra_candidate_with_euf(
       continue;
     }
 
+    const std::size_t edge_checkpoint = euf_closure.push();
     euf_closure.assert_equal(lhs.value(), rhs.value());
     if (euf_closure.conflict().has_value()) {
-      euf_closure.pop(checkpoint);
+      euf_closure.pop(edge_checkpoint);
       statistics.increment(":no.shared-model.compatibility-splits");
-      return SharedModelReconciliationResult{
-          .compatible = false,
-          .requires_exact_fallback = false,
-          .split_pair = canonical_term_pair(equality.lhs, equality.rhs)};
+      rejected_edges.push_back(canonical_term_pair(equality.lhs, equality.rhs));
+      continue;
     }
     if (!lra_agrees_with_euf_projection()) {
-      euf_closure.pop(checkpoint);
+      euf_closure.pop(edge_checkpoint);
       statistics.increment(":no.shared-model.compatibility-consequence-disagreements");
       statistics.increment(":no.shared-model.compatibility-splits");
-      return SharedModelReconciliationResult{
-          .compatible = false,
-          .requires_exact_fallback = false,
-          .split_pair = canonical_term_pair(equality.lhs, equality.rhs)};
+      rejected_edges.push_back(canonical_term_pair(equality.lhs, equality.rhs));
+      continue;
     }
     accepted_equalities.push_back(equality);
     statistics.increment(":no.shared-model.compatibility-merges");
+  }
+
+  if (!rejected_edges.empty()) {
+    euf_closure.pop(checkpoint);
+    std::sort(rejected_edges.begin(), rejected_edges.end(), less_term_pair);
+    const auto unique_end = std::unique(rejected_edges.begin(), rejected_edges.end());
+    statistics.increment(":no.shared-model.split-frontier-duplicates",
+                         static_cast<std::size_t>(rejected_edges.end() - unique_end));
+    rejected_edges.erase(unique_end, rejected_edges.end());
+    statistics.increment(":no.shared-model.split-frontier-batches");
+    statistics.increment(":no.shared-model.split-frontier-pairs", rejected_edges.size());
+    statistics.set(":no.shared-model.split-frontier-max",
+                   std::max<std::uint64_t>(statistics.get(":no.shared-model.split-frontier-max"),
+                                           rejected_edges.size()));
+    return SharedModelReconciliationResult{.compatible = false,
+                                           .requires_exact_fallback = false,
+                                           .split_pairs = std::move(rejected_edges)};
   }
 
   for (const SharedModelEquality& equality : accepted_equalities) {
@@ -6707,7 +6724,7 @@ SharedModelReconciliationResult reconcile_lra_candidate_with_euf(
   }
   statistics.increment(":no.shared-model.compatibility-successes");
   return SharedModelReconciliationResult{
-      .compatible = true, .requires_exact_fallback = false, .split_pair = std::nullopt};
+      .compatible = true, .requires_exact_fallback = false, .split_pairs = {}};
 }
 
 bool equality_list_contains_pair(const core::TermManager& terms,
@@ -7324,30 +7341,45 @@ struct ModelEqualityArrangementState {
   }
 
   void enqueue_pending_branch(sat::Lit lit, util::Statistics& statistics) {
-    manager_.shared_equality_decisions().pending = lit;
+    SharedEqualityDecisionState& decisions = manager_.shared_equality_decisions();
+    const int var = sat_var(lit);
+    const auto contains_var = [var](const std::vector<sat::Lit>& literals) {
+      return std::any_of(literals.begin(), literals.end(),
+                         [var](sat::Lit current) { return sat_var(current) == var; });
+    };
+    if (contains_var(decisions.pending) || contains_var(decisions.active)) {
+      statistics.increment(":no.interface.model-equality-duplicate-pending");
+      return;
+    }
+    decisions.pending.push_back(lit);
     statistics.increment(":no.interface.model-equality-pending");
   }
 
   void activate_pending_branch(util::Statistics& statistics) {
     SharedEqualityDecisionState& decisions = manager_.shared_equality_decisions();
-    if (!decisions.pending.has_value()) {
+    if (decisions.pending.empty()) {
       return;
     }
-    const int pending_var = sat_var(decisions.pending.value());
-    bool already_active = false;
-    for (const sat::Lit lit : decisions.active) {
-      if (sat_var(lit) == pending_var) {
-        already_active = true;
-        break;
+    statistics.increment(":no.interface.model-equality-pending-batches");
+    statistics.increment(":no.interface.model-equality-pending-batch-lits",
+                         decisions.pending.size());
+    statistics.set(
+        ":no.interface.model-equality-max-pending-batch",
+        std::max<std::uint64_t>(statistics.get(":no.interface.model-equality-max-pending-batch"),
+                                decisions.pending.size()));
+    for (const sat::Lit pending : decisions.pending) {
+      const int pending_var = sat_var(pending);
+      const bool already_active =
+          std::any_of(decisions.active.begin(), decisions.active.end(),
+                      [pending_var](sat::Lit lit) { return sat_var(lit) == pending_var; });
+      if (already_active) {
+        statistics.increment(":no.interface.model-equality-duplicate-pending");
+      } else {
+        decisions.active.push_back(pending);
+        statistics.increment(":no.interface.model-equality-activated");
       }
     }
-    if (already_active) {
-      statistics.increment(":no.interface.model-equality-duplicate-pending");
-    } else {
-      decisions.active.push_back(decisions.pending.value());
-      statistics.increment(":no.interface.model-equality-activated");
-    }
-    decisions.pending.reset();
+    decisions.pending.clear();
     publish_active_stats(statistics);
   }
 
@@ -7361,6 +7393,7 @@ struct ModelEqualityArrangementState {
     for (const sat::Lit lit : active) {
       backend.assume(lit);
     }
+    statistics.increment(":no.interface.model-equality-assumption-solve-calls");
     statistics.increment(":no.interface.model-equality-assumptions", active.size());
     publish_active_stats(statistics);
     return propagation_start;
@@ -10092,6 +10125,10 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.shared-model.split-materialization-failures", 0);
   statistics.set(":no.shared-model.split-tried", 0);
   statistics.set(":no.shared-model.split-assigned", 0);
+  statistics.set(":no.shared-model.split-frontier-batches", 0);
+  statistics.set(":no.shared-model.split-frontier-pairs", 0);
+  statistics.set(":no.shared-model.split-frontier-duplicates", 0);
+  statistics.set(":no.shared-model.split-frontier-max", 0);
   statistics.set(":no.shared-model.targeted-separation-searches", 0);
   statistics.set(":no.shared-model.targeted-separation-pairs", 0);
   statistics.set(":no.shared-model.targeted-separation-capped", 0);
@@ -10107,7 +10144,11 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.model-equality-pending", 0);
   statistics.set(":no.interface.model-equality-activated", 0);
   statistics.set(":no.interface.model-equality-duplicate-pending", 0);
+  statistics.set(":no.interface.model-equality-pending-batches", 0);
+  statistics.set(":no.interface.model-equality-pending-batch-lits", 0);
+  statistics.set(":no.interface.model-equality-max-pending-batch", 0);
   statistics.set(":no.interface.model-equality-assumptions", 0);
+  statistics.set(":no.interface.model-equality-assumption-solve-calls", 0);
   statistics.set(":no.interface.model-equality-failed-assumptions", 0);
   statistics.set(":no.interface.model-equality-blocking-clauses", 0);
   statistics.set(":no.interface.model-equality-dropped-assumptions", 0);
@@ -10610,12 +10651,17 @@ CheckSatOutcome solve_qf_uf_lra(
           shared_model_exact_fallback = reconciliation.requires_exact_fallback;
           if (shared_model_exact_fallback) {
             statistics.increment(":no.shared-model.exact-fallbacks");
-          } else if (reconciliation.split_pair.has_value()) {
-            const std::optional<sat::Lit> split =
-                materialize_shared_model_split(terms, clausifier, backend, no_manager,
-                                               reconciliation.split_pair.value(), statistics);
-            if (split.has_value()) {
-              model_equality_arrangement.enqueue_pending_branch(split.value(), statistics);
+          } else if (!reconciliation.split_pairs.empty()) {
+            std::size_t materialized = 0;
+            for (const TermPairKey& split_pair : reconciliation.split_pairs) {
+              const std::optional<sat::Lit> split = materialize_shared_model_split(
+                  terms, clausifier, backend, no_manager, split_pair, statistics);
+              if (split.has_value()) {
+                model_equality_arrangement.enqueue_pending_branch(split.value(), statistics);
+                ++materialized;
+              }
+            }
+            if (materialized != 0) {
               publish_sat_stats(backend.statistics(), statistics);
               continue;
             }

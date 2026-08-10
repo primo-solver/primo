@@ -70,6 +70,22 @@ from 156 to zero, and reconciliation converges normally. A fresh local
 1,000-case mixed differential gate passed against Z3. Full-corpus evidence is
 still required before this repair is used in promotion claims.
 
+**Batched split-frontier prototype, 2026-08-10.** Reconciliation now scans the
+rest of the deterministic LRA spanning presentation after one optional merge is
+rejected. It rolls back all temporary model merges, canonicalizes the rejected
+edges, lazily materializes them, and activates them as one IPASIR-UP assumption
+batch. These are speculative model choices, not entailed equalities; only the
+backend's failed-assumption set produces a blocking clause. The round worklist
+also canonicalizes reason literals and retains the shortest independently valid
+reason when multiple producers publish the same equality.
+
+An exact local comparison against `6b68628` on the 20 executable rows in
+`benchmarks/qf_uflra-smtlib-sample-5-per-family.txt` reduced SAT solve calls from
+30 to 27, decisions from 18,468 to 17,016, propagations from 86,842 to 82,123,
+and aggregate wall time from 1.109476 to 0.880448 seconds. Three frontier batches
+contained five rejected edges. This is directional local evidence only; the
+fresh fuzz gate and full SLURM comparison remain the acceptance bar.
+
 **Section 5.2 integration result, 2026-08-09.** The merged LRA prerequisite
 provides `freedom_interval()` and
 `diversify_shared_model()`. The mixed coordinator now runs one scratch sweep per
@@ -417,8 +433,9 @@ pivot.
 Model agreement is tested by checkpointing the EUF closure and merging the
 deterministic spanning edges of each LRA value class. Successful merges are
 candidate-model choices, not theory consequences. If every edge is absorbed,
-the component models agree on the shared Real interface. If an edge conflicts,
-that pair becomes one lazy positive-first `M-Propagate` SAT assumption. Existing
+the component models agree on the shared Real interface. If edges conflict, the
+rejected causal edges form one canonical lazy positive-first `M-Propagate`
+SAT-assumption frontier. Existing
 true and false equality atoms participate in the same arrangement; formula
 occurrence is not a reason to skip them. The finite set of shared pairs gives
 termination, so the complete reconciliation profile has no candidate budget or
@@ -514,13 +531,15 @@ remaining violation is handled by strict-orientation search over only the
 violating pairs; success rebuilds a scratch candidate, while inconsistency
 falls back to the existing two-conflict explained equality oracle.
 
-`TheoryCombinationManager::SharedEqualityDecisionState` owns pending, active,
+`TheoryCombinationManager::SharedEqualityDecisionState` owns a pending batch, active,
 and tried lazy equality choices. The coordinator checkpoints EUF and merges a
 deterministic spanning set for each LRA value class. It projects shared EUF
 classes before and after each optional merge. A direct disequality conflict or
 a congruence consequence that joins different LRA value classes rejects the
-causal edge. That edge is lazily materialized and tried positively as an
-IPASIR-UP assumption; a failed assumption produces a blocking clause. A
+causal edge. Reconciliation continues over the remaining spanning edges, then
+rolls back its temporary model choices and lazily materializes the rejected
+frontier. The frontier is tried positively in one IPASIR-UP assumption solve; a
+failed assumption set produces a blocking clause. A
 successful merge is only a candidate-model choice and never an entailed lemma.
 
 When every edge is absorbed, the component models agree on the shared Real
@@ -544,7 +563,10 @@ fuzz and benchmark evidence now establish merge readiness, but not default
 promotion.
 
 Relevant counters are grouped under `:no.shared-model.*`: `forbidden-*`,
-`targeted-separation-*`, `compatibility-*`, and `split-materializations`.
+`targeted-separation-*`, `compatibility-*`, `split-frontier-*`, and
+`split-materializations`. The `:no.interface.model-equality-pending-batches`,
+`pending-batch-lits`, `max-pending-batch`, and `assumption-solve-calls` counters
+separate batch count from literal count.
 The `:no.interface.model-euf-real-*` counters expose EUF-only Real model
 completion and fail-loud mapping/value conflicts.
 `:no.online.final-lra-equality-scan-skipped` counts compatible rounds that

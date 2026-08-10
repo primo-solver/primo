@@ -446,16 +446,18 @@ void manager_owns_round_scoped_shared_model_state() {
   assert(manager.lra_model_terms_mapped(a, c));
   assert(manager.lra_model_agrees_equal(a, c));
 
-  assert(manager.enqueue_explained_shared_equality(c, a, {primo::sat::Lit{-3}},
-                                                   SharedEqualitySource::LraEntailed));
+  assert(manager.enqueue_explained_shared_equality(
+      c, a, {primo::sat::Lit{-3}, primo::sat::Lit{-5}, primo::sat::Lit{-3}},
+      SharedEqualitySource::LraEntailed));
   assert(!manager.enqueue_explained_shared_equality(a, c, {primo::sat::Lit{-4}},
-                                                    SharedEqualitySource::LraEntailed));
+                                                    SharedEqualitySource::EufImplied));
   const auto explained = manager.drain_explained_shared_equalities();
   assert(explained.size() == 1);
   assert(explained.front().lhs == a);
   assert(explained.front().rhs == c);
   assert(explained.front().reasons.size() == 1);
-  assert(explained.front().reasons.front().value == -3);
+  assert(explained.front().reasons.front().value == -4);
+  assert(explained.front().source == SharedEqualitySource::EufImplied);
   assert(manager.drain_explained_shared_equalities().empty());
 
   assert(manager.record_internal_model_equality(c, a));
@@ -528,17 +530,20 @@ void manager_owns_lazy_shared_equality_decisions() {
   manager.rebuild_from_interface_terms({x, y});
   auto& decisions = manager.shared_equality_decisions();
   decisions.tried_vars.insert(7);
-  decisions.pending = primo::sat::Lit{7};
+  decisions.pending.push_back(primo::sat::Lit{7});
+  decisions.pending.push_back(primo::sat::Lit{9});
   decisions.active.push_back(primo::sat::Lit{5});
 
   manager.begin_shared_model_round();
   assert(manager.shared_equality_decisions().tried_vars.contains(7));
-  assert(manager.shared_equality_decisions().pending->value == 7);
+  assert(manager.shared_equality_decisions().pending.size() == 2);
+  assert(manager.shared_equality_decisions().pending.front().value == 7);
+  assert(manager.shared_equality_decisions().pending.back().value == 9);
   assert(manager.shared_equality_decisions().active.size() == 1);
 
   manager.rebuild_from_interface_terms({x, y});
   assert(manager.shared_equality_decisions().tried_vars.empty());
-  assert(!manager.shared_equality_decisions().pending.has_value());
+  assert(manager.shared_equality_decisions().pending.empty());
   assert(manager.shared_equality_decisions().active.empty());
 }
 

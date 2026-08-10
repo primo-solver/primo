@@ -34,8 +34,8 @@ combination. It has these related pieces:
   projection, explained-equality worklist, and lazy equality-decision state;
   the coordinator mutates a scratch LRA model, satisfies active shared
   disequalities, checks whether EUF can absorb each LRA value-class spanning
-  edge and its congruence consequences, and exposes a rejected edge as a lazy
-  positive-first SAT assumption;
+  edge and its congruence consequences, and exposes the canonical frontier of
+  rejected edges as one lazy positive-first SAT-assumption batch;
 - bounded shared-Real separation for the documented model-printing subset;
 - default-off `--model-equality-branching`, which keeps surviving
   LRA-model-equal shared Real equality guesses on an active SAT-assumption trail;
@@ -124,6 +124,11 @@ paper's novel model-based transition system.
   search and the current individual-theory checks have quiesced.
 - [x] **Partial:** retain surviving guesses, inspect failed assumptions, learn a
   blocking clause, and drop failed guesses on backtracking.
+- [x] **Convex QF_UFLRA scheduling optimization:** continue candidate-model
+  reconciliation after a rejected spanning edge and activate the canonical
+  rejected-edge frontier in one SAT re-entry. The frontier consists only of
+  model choices; it is not an entailed equality batch. Failed-assumption clauses
+  retain the original soundness boundary.
 - [x] **Partial:** use care-pair queues, ranking, budgets, and adaptive stopping
   to reduce the pairs queried by the optional branch heuristic.
 - [x] **LRA-only `M-Mutate` subset:** apply the Section 5.2 greedy
@@ -137,8 +142,9 @@ paper's novel model-based transition system.
   state.
 - [x] **Convex QF_UFLRA subset:** checkpoint EUF and merge a deterministic
   spanning presentation of every LRA candidate value class. A direct conflict
-  or a congruence consequence crossing LRA classes rejects the causal edge and
-  creates one positive-first equality assumption. Successful optional merges
+  or a congruence consequence crossing LRA classes rejects the causal edge. All
+  rejected edges from that projection form one positive-first equality-assumption
+  frontier. Successful optional merges
   remain model choices and never become theory lemmas.
 - [ ] Implement theory-independent `M-Propagate` over arbitrary component
   models and shared sorts.
@@ -245,7 +251,7 @@ default.
 | 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Not implemented as DTC.** Default `final` mode creates shared Real equality atoms lazily when a theory implication or model-equality branch needs them. Opt-in `--nelson-oppen-prop=online` also avoids all-pairs precreation: it creates and observes only the paired-bound candidate equality atom it is about to propagate. |
 | 3.3 Ackermannization | Ackermann reduction replaces UF reasoning with constraints over applications and congruence axioms. The paper treats it as useful in some cases but potentially expensive. | **Separate from this work.** Primo's Ackermann and disequality-propagation options are EUF-side mechanisms. They are not integrated as the paper's model-combination method. |
 | 3.3.1 Dynamic Ackermannization | Dynamic Ackermannization adds Ackermann constraints during search, especially when disequalities between applications make argument disequalities relevant. | **Separate/partial.** This belongs to the QF_UF disequality propagation line, not to current mixed QF_UFLRA model-based combination. |
-| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Implemented convex QF_UFLRA subset.** The opt-in reconciliation profile postpones model choices until both theories are feasible, mutates the scratch LRA model, tests LRA class spanning edges in a checkpointed EUF closure, and sends only a rejected causal edge to a positive-first IPASIR assumption. Failed assumptions produce blocking clauses. This is not generic `DPLL(T^M)`. |
+| 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Implemented convex QF_UFLRA subset.** The opt-in reconciliation profile postpones model choices until both theories are feasible, mutates the scratch LRA model, tests LRA class spanning edges in a checkpointed EUF closure, and sends the canonical rejected-edge frontier through one positive-first IPASIR assumption solve. Failed assumptions produce blocking clauses. Frontier batching is Primo's scheduling optimization, not a separate paper transition, and this is not generic `DPLL(T^M)`. |
 | 5 Simplex: An Example Model-Producing Theory Solver | The paper shows how Simplex naturally provides a model: the current assignment maps arithmetic variables to rational values. Equal-valued shared variables are equality candidates. | **Implemented LRA subset.** Primo hashes exact `DeltaRational` candidate values into classes, retains the complete diversified assignment, and uses that same assignment for accepted mixed model output. |
 | 5.1 Opportunistic Equality Propagation | The paper describes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`, plus fixed-variable removal and supporting bound propagation. | **Partial implementation.** `LraTableau::entailed_equalities()` implements all four rules with exact explanations and spanning output; mixed QF_UFLRA removes fixed basic variables by default. Primo polls the rules after a feasible check rather than maintaining the first three eagerly during pivots, and mixed-path row-bound propagation remains missing. The exact unresolved-pair fallback preserves convex completeness despite those deviations. |
 | 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Implemented LRA subset.** `LraTableau::diversify_shared_model()` performs the greedy nonbasic-variable sweep on a scratch assignment and returns the complete candidate assignment plus post-mutation classes. It accepts forbidden shared-variable pairs and never reintroduces one already separated. The coordinator applies targeted strict orientations to unresolved mandatory disequalities and rebuilds the scratch model; the live tableau remains unchanged. |

@@ -218,7 +218,7 @@ void TheoryCombinationManager::begin_shared_model_round() {
   shared_model_.lra_model_spanning_equalities.clear();
   shared_model_.internal_equalities.clear();
   shared_model_.explained_equalities.clear();
-  explained_equality_keys_.clear();
+  explained_equality_index_.clear();
   shared_model_.lra_separation_atoms.clear();
 }
 
@@ -240,7 +240,7 @@ void TheoryCombinationManager::begin_shared_model_iteration(
   shared_model_.lra_model_spanning_equalities.clear();
   shared_model_.internal_equalities.clear();
   shared_model_.explained_equalities.clear();
-  explained_equality_keys_.clear();
+  explained_equality_index_.clear();
 
   for (const core::TermId term : lra_mapped_terms) {
     if (interface_sort_by_term_.contains(term)) {
@@ -307,9 +307,26 @@ bool TheoryCombinationManager::enqueue_explained_shared_equality(core::TermId lh
   if (rhs < lhs) {
     std::swap(lhs, rhs);
   }
-  if (!explained_equality_keys_.insert(equality_key(lhs, rhs)).second) {
+  std::sort(reasons.begin(), reasons.end(),
+            [](sat::Lit lhs_lit, sat::Lit rhs_lit) { return lhs_lit.value < rhs_lit.value; });
+  reasons.erase(std::unique(reasons.begin(), reasons.end(),
+                            [](sat::Lit lhs_lit, sat::Lit rhs_lit) {
+                              return lhs_lit.value == rhs_lit.value;
+                            }),
+                reasons.end());
+  const std::uint64_t key = equality_key(lhs, rhs);
+  const auto existing = explained_equality_index_.find(key);
+  if (existing != explained_equality_index_.end()) {
+    // Each producer reason proves the same equality. Retaining the shortest one
+    // reduces downstream EUF explanation traffic without changing the lemma.
+    ExplainedSharedEquality& current = shared_model_.explained_equalities.at(existing->second);
+    if (reasons.size() < current.reasons.size()) {
+      current.reasons = std::move(reasons);
+      current.source = source;
+    }
     return false;
   }
+  explained_equality_index_.emplace(key, shared_model_.explained_equalities.size());
   shared_model_.explained_equalities.push_back(
       ExplainedSharedEquality{lhs, rhs, std::move(reasons), source});
   return true;
@@ -318,7 +335,7 @@ bool TheoryCombinationManager::enqueue_explained_shared_equality(core::TermId lh
 std::vector<ExplainedSharedEquality> TheoryCombinationManager::drain_explained_shared_equalities() {
   std::vector<ExplainedSharedEquality> drained = std::move(shared_model_.explained_equalities);
   shared_model_.explained_equalities.clear();
-  explained_equality_keys_.clear();
+  explained_equality_index_.clear();
   return drained;
 }
 
@@ -363,7 +380,7 @@ void TheoryCombinationManager::invalidate_shared_model() {
   shared_model_.lra_model_spanning_equalities.clear();
   shared_model_.internal_equalities.clear();
   shared_model_.explained_equalities.clear();
-  explained_equality_keys_.clear();
+  explained_equality_index_.clear();
   shared_model_.lra_separation_atoms.clear();
 }
 

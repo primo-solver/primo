@@ -135,10 +135,10 @@ struct SharedModelState {
 // Backend-neutral lifecycle for lazy shared-equality decisions. The mixed SMT
 // coordinator applies these literals as IPASIR-UP assumptions and learns any
 // failed-assumption clause; the combination manager owns which interface
-// choices are pending, active, or already tried.
+// choices are pending as one re-entry batch, active, or already tried.
 struct SharedEqualityDecisionState {
   std::unordered_set<int> tried_vars;
-  std::optional<sat::Lit> pending;
+  std::vector<sat::Lit> pending;
   std::vector<sat::Lit> active;
   std::uint64_t unproductive_rejections = 0;
   bool adaptive_stopped = false;
@@ -227,7 +227,7 @@ class TheoryCombinationManager {
   std::vector<std::size_t> assignment_level_starts_;
   SharedModelState shared_model_;
   SharedEqualityDecisionState shared_equality_decisions_;
-  std::unordered_set<std::uint64_t> explained_equality_keys_;
+  std::unordered_map<std::uint64_t, std::size_t> explained_equality_index_;
 };
 
 // Conservative Track-B scaffold for Nelson-Oppen bookkeeping. It only reports

@@ -1988,6 +1988,39 @@ void qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split() {
   assert(result.statistics.get(":no.shared-model.exact-fallbacks") == 0);
 }
 
+void qf_uf_lra_shared_model_batches_independent_rejected_merges() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun w () Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 w))
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (p w))
+    (assert (not (p x)))
+    (assert (p y))
+    (assert (not (p z)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.shared-model.split-frontier-batches") >= 1);
+  assert(result.statistics.get(":no.shared-model.split-frontier-pairs") >= 2);
+  assert(result.statistics.get(":no.shared-model.split-frontier-max") >= 2);
+  assert(result.statistics.get(":no.interface.model-equality-pending-batches") >= 1);
+  assert(result.statistics.get(":no.interface.model-equality-pending-batch-lits") >= 2);
+  assert(result.statistics.get(":no.interface.model-equality-max-pending-batch") >= 2);
+  assert(result.statistics.get(":no.interface.model-equality-assumption-solve-calls") >= 1);
+  assert(result.statistics.get(":no.shared-model.exact-fallbacks") == 0);
+}
+
 void qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.qf_uflra_model_reconciliation = true;
@@ -4036,6 +4069,7 @@ int main() {
   qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom();
   qf_uf_lra_shared_model_mutation_removes_accidental_value_equality();
   qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split();
+  qf_uf_lra_shared_model_batches_independent_rejected_merges();
   qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence();
   qf_uf_lra_shared_model_reconstructs_after_scratch_mutation();
   qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible();

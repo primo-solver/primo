@@ -337,7 +337,7 @@ Implemented now:
   equalities, and selected strict LRA separations. It does not own the EUF
   closure or LRA tableau. `SharedEqualityDecisionState` separately owns lazy
   equality decisions that survive SAT re-entry: tried variables, one pending
-  literal, active assumptions, and rejection metadata. Rebuilding the manager
+  batch, active assumptions, and rejection metadata. Rebuilding the manager
   clears this solve-scoped state. A new SAT assignment invalidates only the
   round projection; the theory-local objects remain owned by their solvers.
 
@@ -355,8 +355,10 @@ Implemented now:
   and merges each deterministic spanning edge of the LRA value classes. It
   projects EUF classes before and after optional merges. A direct conflict or a
   congruence consequence joining two different LRA classes rejects the causal
-  edge. That edge is lazily materialized and tried positively as an IPASIR-UP
-  assumption; failed assumptions produce blocking clauses. Successful merges
+  edge. The scan continues after a rejection, rolls back its temporary model
+  merges, lazily materializes the canonical rejected-edge frontier, and tries
+  the whole frontier positively in one IPASIR-UP assumption batch. Failed
+  assumptions produce blocking clauses. Successful merges
   are model choices, not entailed theory lemmas. If all edges are absorbed, the
   no-model path returns SAT without the broad exact scan, and model production
   concretizes the same scratch LRA assignment and supplies the internal
