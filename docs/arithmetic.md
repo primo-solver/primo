@@ -212,6 +212,33 @@ alternatives considered before/while implementing it.
     of the restricted row *plus* one per error variable, and the first term
     usually dominates -- so which row survives, not how many, is what sets
     clause length.
+
+    **Measured 2026-08-10** (18 instances where all five arms complete, 0
+    answer disagreements; `:lra.soi-conflict-lits`, median ratio against
+    quickxplain):
+
+    | arm | median | geomean | better/worse |
+    |---|---:|---:|---:|
+    | `deletion/id` | 1.000 | 0.957 | 6 / 7 |
+    | `deletion/row-support` | 1.000 | 0.917 | 8 / 5 |
+    | `deletion/violation` | 1.001 | 0.917 | 5 / 9 |
+    | `none` | 1.218 | 1.186 | 3 / 15 |
+
+    Two conclusions, and the second is the awkward one. **Minimization
+    clearly pays** -- `none` costs ~19% more literals, 3 better against 15
+    worse. But **no deletion arm dominates QuickXplain**: all three sit at a
+    median of ~1.000, and the better geomeans for `row-support` and
+    `violation` come from a handful of instances with large swings while
+    their win/loss records point in opposite directions. So the
+    `row-support` rationale above is *not* confirmed as a general effect.
+    It is not worse either, which is what makes these portfolio arms rather
+    than default candidates -- they are complementary, cheap, and cannot
+    reach a default run. **The default stays `quickxplain/id`.**
+
+    Clause length is a proxy: a shorter clause is usually stronger, but a
+    longer one over lower-level literals can backjump further, and the
+    tableau cannot see decision levels. PAR2 would be authoritative and was
+    not measured.
   - Defensive pivot-count fallback to plain Bland selection, belt-and-
     suspenders beyond the paper's own tie-breaking-reduces-to-Bland
     termination argument (Section V-C), reusing the existing

@@ -19841,6 +19841,66 @@
    },
    "conclusion": "Pure QF_LRA behaviour is preserved exactly: 89 of 89 commonly-solved files bit-identical on search counters, 0 answer differences anywhere. Consistent with the code, which has no path doing anything main does not.",
    "method_note": "Counter comparisons across runs are only meaningful on instances that COMPLETE. A timeout is not a measurement, it is a snapshot of wherever the search had reached. This is the second time in one session that artifact produced a false alarm -- the first was the supposed node-contention regression on the full division. Restricting to completed runs is the fix; explaining the difference away is not."
+  },
+  {
+   "id": "2026-08-10-soi-minimization-arms-measured",
+   "started_at": "2026-08-10",
+   "recorded_at": "2026-08-10",
+   "kind": "benchmark",
+   "scope": "Decide whether the new SOI conflict-minimization arms (--lra-soi-minimize / --lra-soi-minimize-order) are worth keeping, and whether the row-support ordering's rationale survives contact with data.",
+   "commit": "8ddd62d",
+   "branch": "qflra-soi-minimize-order",
+   "evidence_status": "current",
+   "environment": {
+    "type": "local",
+    "notes": "Single Release binary, 5 arms per instance, --lra-pivoting-rule soi forced (SOI is not the default). Candidates pre-screened to those that COMPLETE and where minimization actually engages; counters off a timed-out run are not comparable."
+   },
+   "command": {
+    "sample": "every 7th file of benchmarks/qf-lra-full-division.txt, first 220, screened at 8s; arms then run at 25s",
+    "metric": ":lra.soi-conflict-lits (clause length), not error-set size"
+   },
+   "result": {
+    "instances_all_five_completed": 18,
+    "answer_disagreements": 0,
+    "note_on_sums": "The largest instance is 71% of the quickxplain total, so summed literals are not a fair summary; medians and per-instance ratios below.",
+    "ratio_vs_quickxplain": {
+     "deletion/id": {
+      "median": 1.0,
+      "geomean": 0.957,
+      "better": 6,
+      "worse": 7,
+      "same": 5
+     },
+     "deletion/row-support": {
+      "median": 1.0,
+      "geomean": 0.917,
+      "better": 8,
+      "worse": 5,
+      "same": 5
+     },
+     "deletion/violation": {
+      "median": 1.001,
+      "geomean": 0.917,
+      "better": 5,
+      "worse": 9,
+      "same": 4
+     },
+     "none": {
+      "median": 1.218,
+      "geomean": 1.186,
+      "better": 3,
+      "worse": 15,
+      "same": 0
+     }
+    },
+    "conclusions": [
+     "Minimization clearly pays: `none` is ~19% worse on clause length, 3 better / 15 worse. That settles the ablation.",
+     "No deletion arm dominates quickxplain. All three sit at a median ratio of ~1.000; row-support and violation have a geomean of 0.917 but that is driven by a few instances with large swings, and their win/loss records (8-5 and 5-9) point opposite ways.",
+     "The row-support rationale -- that clause length is dominated by the surviving row's support -- is NOT confirmed as a general effect. It is not worse either.",
+     "Read as portfolio dimensions rather than candidate defaults, this is the wanted outcome: the arms are complementary, cheap, and cannot reach a default run. The default stays quickxplain/id on this evidence."
+    ],
+    "caveats": "Clause length is a proxy. A shorter clause is usually stronger but not always -- a longer clause over lower-level literals can backjump further, and the tableau cannot see decision levels. PAR2 was not measured and would be authoritative."
+   }
   }
  ]
 }
