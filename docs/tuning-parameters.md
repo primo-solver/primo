@@ -62,6 +62,12 @@ management is irrelevant. Caveat to check first: CaDiCaL disables several
 inprocessing options while an external propagator is attached, so confirm an
 option actually takes effect before spending a search dimension on it.
 
+The `factor` bounded-variable-addition pass is intentionally not part of the
+active tuning space. A definition-heavy QF_UFLRA microprobe improved when it
+was disabled, but the required cross-logic global A/B campaign is tabled; see
+[](sat-ipasir-up.md) for the mechanism, preliminary evidence, and acceptance
+criteria.
+
 (implemented)=
 ## Implemented 2026-08-06: the three Check/Pivot knobs
 
