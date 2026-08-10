@@ -675,6 +675,60 @@ void qf_uf_lra_model_reconstruction_uses_shared_real_interface_terms_only() {
   assert(result.statistics.get(":no.interface.model-separations") == 0);
 }
 
+void qf_uf_lra_model_reconstruction_assigns_fresh_euf_only_real_values() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x 0))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+    (get-model)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.shared-real-terms") == 1);
+  assert(result.statistics.get(":no.interface.model-real-terms-filtered") == 1);
+  assert(result.statistics.get(":no.interface.model-separations") == 0);
+  assert(result.statistics.get(":no.interface.model-euf-real-anchored-classes") == 1);
+  assert(result.statistics.get(":no.interface.model-euf-real-fresh-classes") == 1);
+  assert(result.statistics.get(":no.interface.model-euf-real-value-conflicts") == 0);
+  assert(result.model.find("(define-fun x () Real 0)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real 1)") != std::string::npos);
+}
+
+void qf_uf_lra_shared_model_assigns_fresh_euf_only_real_values() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.produce_model = true;
+  options.qf_uflra_model_reconciliation = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x 0))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+    (get-model)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.shared-model.reconstructed-models") == 1);
+  assert(result.statistics.get(":no.interface.model-separations") == 0);
+  assert(result.statistics.get(":no.interface.model-euf-real-anchored-classes") == 1);
+  assert(result.statistics.get(":no.interface.model-euf-real-fresh-classes") == 1);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
+  assert(result.model.find("(define-fun x () Real 0)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real 1)") != std::string::npos);
+}
+
 void qf_uf_lra_final_arrangement_ignores_lra_only_real_terms() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -3916,6 +3970,8 @@ int main() {
   qf_uf_lra_model_reconstruction_skips_euf_mergeable_shared_pairs();
   qf_uf_lra_final_arrangement_uses_shared_real_interface_terms_only();
   qf_uf_lra_model_reconstruction_uses_shared_real_interface_terms_only();
+  qf_uf_lra_model_reconstruction_assigns_fresh_euf_only_real_values();
+  qf_uf_lra_shared_model_assigns_fresh_euf_only_real_values();
   qf_uf_lra_final_arrangement_ignores_lra_only_real_terms();
   qf_uf_lra_prints_shared_real_equal_predicate_model();
   qf_uf_lra_searches_multiple_shared_real_model_separations();

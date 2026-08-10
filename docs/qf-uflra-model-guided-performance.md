@@ -469,7 +469,12 @@ When every edge is absorbed, the component models agree on the shared Real
 relation. Non-model checks return SAT without the broad exact pair scan.
 `get-model` concretizes and returns the same diversified or targeted LRA
 assignment and supplies the internal spanning equalities to EUF model
-construction. Unmapped shared terms, targeted-separation failure, or another
+construction. Real constants that occur only on the EUF side stay out of
+Nelson-Oppen arrangement search. During model printing, their EUF equivalence
+classes instead receive deterministic fresh rational representatives; a class
+containing a genuine shared term remains anchored to that term's LRA value.
+This is model completion, not another theory split or LRA mutation. Unmapped
+shared terms, targeted-separation failure, or another
 candidate invariant failure keeps the old exact path as a conservative
 fallback. The profile has no model-pair budget or adaptive stop; those knobs
 remain specific to the older optional `--model-equality-branching` heuristic.
@@ -481,6 +486,8 @@ fuzz and benchmark evidence is still required before promotion.
 
 Relevant counters are grouped under `:no.shared-model.*`: `forbidden-*`,
 `targeted-separation-*`, `compatibility-*`, and `split-materializations`.
+The `:no.interface.model-euf-real-*` counters expose EUF-only Real model
+completion and fail-loud mapping/value conflicts.
 `:no.online.final-lra-equality-scan-skipped` counts compatible rounds that
 bypass broad exact scanning; the historical name is retained for statistics
 compatibility even though the model-reconciliation profile is not restricted

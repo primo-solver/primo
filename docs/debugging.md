@@ -462,6 +462,11 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.model-separations`
 - `:no.interface.model-real-terms-before-interface-filter`
 - `:no.interface.model-real-terms-filtered`
+- `:no.interface.model-euf-real-classes`
+- `:no.interface.model-euf-real-anchored-classes`
+- `:no.interface.model-euf-real-fresh-classes`
+- `:no.interface.model-euf-real-unmapped-terms`
+- `:no.interface.model-euf-real-value-conflicts`
 - `:no.interface.model-separation-candidates`
 - `:no.interface.model-separation-euf-mergeable-pairs`
 - `:no.interface.model-separation-euf-forbidden-pairs`
@@ -709,7 +714,15 @@ constants were present in EUF atoms before the final arrangement/model path was
 restricted to the Nelson-Oppen interface, and
 `:no.interface.model-real-terms-filtered` reports how many of those EUF-side
 Real constants were excluded because they are not common EUF/LRA interface
-terms. The final arrangement path then probes the current EUF closure with a
+terms. Exclusion applies to arrangement search and LRA probes, not to printed
+model completion. For `get-model`, the shared class keeps its concrete LRA
+value and every unanchored EUF-only Real equivalence class receives a distinct
+fresh rational. `:no.interface.model-euf-real-classes`,
+`:no.interface.model-euf-real-anchored-classes`, and
+`:no.interface.model-euf-real-fresh-classes` report that reconstruction;
+`model-euf-real-unmapped-terms` or `model-euf-real-value-conflicts` makes model
+construction return `unknown` rather than print an invalid model. The final
+arrangement path then probes the current EUF closure with a
 temporary equality for each remaining shared-Real pair. A pair counted by
 `:no.interface.model-separation-euf-mergeable-pairs` is in different EUF
 classes but can still be merged without an EUF conflict, so it does not require

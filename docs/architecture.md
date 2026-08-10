@@ -447,8 +447,8 @@ Implemented now:
   tableau. These rules and the model-value filter are deliberately polled at
   quiescence rather than on
   every bound change, keeping their map/vector work off the SAT callback hot
-  path. `EqOffsetRows`, `EqRows`, and freedom-interval mutation remain
-  unimplemented. The paired-bound rule is therefore still the
+  path. `EqOffsetRows`, `EqRows`, and Section 5.2 freedom-interval mutation are
+  implemented for the opt-in reconciliation profile. The paired-bound rule is therefore still the
   stable online LRA-to-EUF propagation subset; this is not the full model-guided
   transition system.
   The optional online EUF child does not replace the final EUF check: after SAT

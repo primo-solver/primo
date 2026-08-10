@@ -6510,6 +6510,83 @@ bool flat_closure_forbids_equality_on_terms(const PreparedFlatTheory& prepared,
   return forbidden;
 }
 
+// EUF-only Real constants are not Nelson-Oppen interface terms and must not
+// enter arrangement search. They still need concrete representatives when a
+// combined model is printed. Give every unanchored EUF class a fresh value,
+// while preserving the LRA value of any class containing a shared term.
+bool complete_euf_real_model_values(const PreparedFlatTheory& prepared,
+                                    theory::equality::FlatCongruenceClosure& closure,
+                                    const std::vector<core::TermId>& euf_real_terms,
+                                    const std::vector<core::TermId>& shared_real_terms,
+                                    RealModelValues& values, util::Statistics& statistics) {
+  std::unordered_set<core::TermId> shared(shared_real_terms.begin(), shared_real_terms.end());
+  std::vector<theory::equality::FlatTermId> flat_terms;
+  flat_terms.reserve(euf_real_terms.size());
+  std::unordered_map<theory::equality::FlatTermId, std::vector<core::TermId>> terms_by_flat;
+  terms_by_flat.reserve(euf_real_terms.size());
+  for (const core::TermId term : euf_real_terms) {
+    const std::optional<theory::equality::FlatTermId> flat = prepared.flat.existing_flat_term(term);
+    if (!flat.has_value()) {
+      statistics.increment(":no.interface.model-euf-real-unmapped-terms");
+      return false;
+    }
+    flat_terms.push_back(flat.value());
+    terms_by_flat[flat.value()].push_back(term);
+  }
+
+  std::vector<util::Rational> occupied;
+  occupied.reserve(shared_real_terms.size() + euf_real_terms.size());
+  for (const core::TermId term : shared_real_terms) {
+    const auto found = values.find(term);
+    if (found == values.end()) {
+      statistics.increment(":no.interface.model-euf-real-value-conflicts");
+      return false;
+    }
+    if (std::find(occupied.begin(), occupied.end(), found->second) == occupied.end()) {
+      occupied.push_back(found->second);
+    }
+  }
+
+  std::int64_t next_fresh = 0;
+  const std::vector<std::vector<theory::equality::FlatTermId>> classes =
+      closure.equivalence_classes(flat_terms);
+  statistics.set(":no.interface.model-euf-real-classes", classes.size());
+  for (const std::vector<theory::equality::FlatTermId>& equal_class : classes) {
+    std::optional<util::Rational> class_value;
+    for (const theory::equality::FlatTermId flat : equal_class) {
+      for (const core::TermId term : terms_by_flat.at(flat)) {
+        if (!shared.contains(term)) {
+          continue;
+        }
+        const util::Rational& value = values.at(term);
+        if (class_value.has_value() && class_value.value() != value) {
+          statistics.increment(":no.interface.model-euf-real-value-conflicts");
+          return false;
+        }
+        class_value = value;
+      }
+    }
+
+    if (class_value.has_value()) {
+      statistics.increment(":no.interface.model-euf-real-anchored-classes");
+    } else {
+      util::Rational fresh(next_fresh++);
+      while (std::find(occupied.begin(), occupied.end(), fresh) != occupied.end()) {
+        fresh = util::Rational(next_fresh++);
+      }
+      class_value = std::move(fresh);
+      occupied.push_back(class_value.value());
+      statistics.increment(":no.interface.model-euf-real-fresh-classes");
+    }
+    for (const theory::equality::FlatTermId flat : equal_class) {
+      for (const core::TermId term : terms_by_flat.at(flat)) {
+        values.insert_or_assign(term, class_value.value());
+      }
+    }
+  }
+  return true;
+}
+
 struct SharedModelReconciliationResult {
   bool compatible = false;
   bool requires_exact_fallback = false;
@@ -9883,6 +9960,11 @@ CheckSatOutcome solve_qf_uf_lra(
                  euf_model_real_terms_before_interface_filter.size());
   statistics.set(":no.interface.model-real-terms-filtered",
                  euf_model_real_terms_before_interface_filter.size() - shared_real_terms.size());
+  statistics.set(":no.interface.model-euf-real-classes", 0);
+  statistics.set(":no.interface.model-euf-real-anchored-classes", 0);
+  statistics.set(":no.interface.model-euf-real-fresh-classes", 0);
+  statistics.set(":no.interface.model-euf-real-unmapped-terms", 0);
+  statistics.set(":no.interface.model-euf-real-value-conflicts", 0);
   statistics.set(":no.online.shared-real-pairs", no_manager.summary().candidate_pairs);
   statistics.set(":no.interface.materialized-pairs", no_manager.summary().equality_registry.size());
   statistics.set(":no.interface.materialized-missing-pairs",
@@ -10537,6 +10619,15 @@ CheckSatOutcome solve_qf_uf_lra(
             }
 
             RealModelValues real_values = lra_model_partition->concrete_values;
+            if (!complete_euf_real_model_values(prepared_flat_theory.value(), euf_check->closure,
+                                                euf_model_real_terms_before_interface_filter,
+                                                shared_real_terms, real_values, statistics)) {
+              statistics.increment(":no.shared-model.validation-failures");
+              return CheckSatOutcome{
+                  CheckSatResult::Unknown,
+                  "mixed QF_UFLRA model reconstruction could not assign EUF-side Real values",
+                  statistics, ""};
+            }
             apply_real_preprocessing_model_assignments(terms, real_values,
                                                        preprocessing_model_assignments);
             std::vector<TheoryModelAssignment> uf_model_assignments;
@@ -10973,9 +11064,23 @@ CheckSatOutcome solve_qf_uf_lra(
                                "mixed QF_UFLRA model reconstruction found an LRA conflict",
                                statistics, ""};
       }
-      const RealModelValues real_values = real_model_values_from_lra(
+      RealModelValues real_values = real_model_values_from_lra(
           terms, model_terms, preprocessing_model_assignments, lra_model->prepared,
           lra_model->tableau, lra_model->assignments);
+      if (euf_check.has_value() &&
+          !complete_euf_real_model_values(prepared_flat_theory.value(), euf_check->closure,
+                                          euf_model_real_terms_before_interface_filter,
+                                          shared_real_terms, real_values, statistics)) {
+        if (options.qf_uflra_model_reconciliation) {
+          statistics.increment(":no.shared-model.validation-failures");
+        }
+        return CheckSatOutcome{
+            CheckSatResult::Unknown,
+            "mixed QF_UFLRA model reconstruction could not assign EUF-side Real values", statistics,
+            ""};
+      }
+      apply_real_preprocessing_model_assignments(terms, real_values,
+                                                 preprocessing_model_assignments);
       if (options.qf_uflra_model_reconciliation) {
         statistics.increment(":no.shared-model.reconstructed-models");
         statistics.increment(":no.shared-model.converged-rounds");

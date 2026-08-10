@@ -333,9 +333,11 @@ would require unsupported theories. Mixed `:produce-models true` supports UF
 symbols with Real arguments, including non-constant arithmetic arguments after
 purification, and UF symbols whose result sort is `Real`. The model path
 augments the LRA reconstruction with EUF-implied Real-constant equalities and
-strict disequalities separating EUF-distinct Real constants, including Real
-constants that occur only as UF arguments, then gives those concrete Real values
-to the UF model table printer for both guards and Real-valued results. The
+strict disequalities separating EUF-distinct shared Real constants. Real
+constants that occur only as UF arguments remain outside arrangement search;
+model completion gives each unanchored EUF equivalence class a fresh rational
+representative. The resulting concrete values are passed to the UF model table
+printer for both guards and Real-valued results. The
 coordinator publishes:
 
 - `:solver.qf-uflra`
@@ -353,6 +355,11 @@ coordinator publishes:
 - `:no.interface.shared-real-terms`
 - `:no.interface.model-real-terms-before-interface-filter`
 - `:no.interface.model-real-terms-filtered`
+- `:no.interface.model-euf-real-classes`
+- `:no.interface.model-euf-real-anchored-classes`
+- `:no.interface.model-euf-real-fresh-classes`
+- `:no.interface.model-euf-real-unmapped-terms`
+- `:no.interface.model-euf-real-value-conflicts`
 - `:no.interface.sat-equality-atoms`
 - `:no.interface.sat-equalities-true`
 - `:no.interface.sat-equalities-false`
@@ -962,7 +969,9 @@ independently measured default-off setting;
   model reconstruction. Shared Real pairs that are merely in different EUF
   classes but are mergeable are not forced apart. Real constants that occur in
   EUF atoms but not in LRA atoms are counted by the pre-filter diagnostic only;
-  they are not Nelson-Oppen arrangement variables. Return `sat` only when both
+  they are not Nelson-Oppen arrangement variables. If a model is requested,
+  their EUF classes receive fresh concrete representatives after the shared
+  arrangement has converged. Return `sat` only when both
   theory checks accept the same Boolean assignment, neither theory contributes a
   new shared equality clause, and this final arrangement validation succeeds.
 - **Model-equality branching:** if `--model-equality-branching` is enabled and
