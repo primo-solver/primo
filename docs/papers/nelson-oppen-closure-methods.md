@@ -378,23 +378,32 @@ that equality delivery itself is the dominant defect. Adding a generic theory
 interface or broader model-equality search is not justified by these
 statistics.
 
-The immediate experiment on this branch is narrower: decompose formulas whose
-truth is already required by the assertion context, before giving the remaining
-Boolean structure to the Tseitin clausifier. For example, an asserted
-`(not (or a b))` can become two asserted children, `(not a)` and `(not b)`,
-without distribution or a new SAT variable. Existing preprocessing found no
-forced facts, unit-equality consequences, or solved equalities on `mt20xx`, even
-though its asserted root contains this shape. The pass must be scoped to mixed
-QF_UFLRA while it is experimental so that the established pure-QF_LRA profile
-is unchanged.
+After merging main's post-preprocessing bounded flattening, `mt20xx` solves in
+15.18 seconds under the same controlled local setup, with 9,510 SAT variables,
+75,021 decisions, 20 SAT solve calls, and 12 LRA conflicts. This is a major
+change from the earlier 1.73-million-decision partial run and confirms that the
+Boolean-shape diagnosis was real. It also changes the residual bottleneck:
+Yices remains near 1.3 seconds, while Primo now performs 18,190,224 full-pair
+LRA model-filter visits and projects 5,972,400 terms in shared-model
+compatibility checks.
 
-Associative DAG representation and bounded flattening are owned by the
-separate Boolean-DAG work now on `main`; Real-equality lowering belongs to the
-LRA boundary. Neither is changed as part of this experiment. Dynamic relevancy
-for guarded theory atoms remains a later DPLL(T) opportunity rather than a
-preprocessing rewrite. Any assertion-context simplifier must remain linear in
-the reachable assertion shape, preserve shared `TermId` nodes, and avoid
-distributive expansion.
+A follow-up root-polarity clausification prototype treated the active assertion
+vector as one implicit conjunction, so its semantics did not depend on SMT-LIB
+`assert` boundaries. The order-preserving version removed only 29 variables and
+84 clauses on `mt20xx`; decisions, solve calls, and theory conflicts were
+identical. Five other established mixed representatives exposed only one or two
+useful decompositions. The prototype was reverted before fuzzing because this
+is not enough structural activity to justify a general encoding option. The
+design and rejected measurements are recorded in
+[](../root-polarity-clausification.md).
+
+Associative DAG representation and bounded flattening remain owned by the
+Boolean-DAG work on `main`; Real-equality lowering belongs to the LRA boundary.
+Neither is changed on this branch. Dynamic relevancy for guarded theory atoms
+remains a later DPLL(T) opportunity. If root normalization is revisited, it must
+operate on the implicit conjunction early enough for ordinary preprocessing to
+consume exposed conjuncts, remain linear in the reachable assertion shape,
+preserve shared `TermId` nodes, and avoid distributive expansion.
 
 The default theory phase is also not the common explanation. Positive or
 polarity phase reduced `main3_true` from about 702,000 to 103,000--112,000 SAT

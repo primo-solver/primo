@@ -220,6 +220,14 @@ that can expose branch literals to SAT search, but a 334-row QF_UF SLURM
 validation rejected it as an unconditional default because it regressed PEQ and
 SEQ rows.
 
+The assertion vector is an implicit conjunction, not a semantic boundary. A
+root-polarity clausification prototype confirmed that separate assertions, an
+asserted conjunction, and root De Morgan equivalents can share one
+required-context treatment without distribution. It was reverted because it
+removed too little Boolean structure on the target QF_UFLRA cases. The invariant
+and rejected measurements are recorded in
+[](root-polarity-clausification.md); there is no current solver option.
+
 What survived that rejection is a **guarded automatic rule**, on by default and
 disabled with `--no-auto-top-level-or-tseitin`. It is much narrower than
 "automatic" suggests -- `should_use_auto_top_level_or_tseitin` requires *all* of:

@@ -8,6 +8,7 @@ parts:
     chapters:
       - file: architecture
       - file: boolean-dag-flattening
+      - file: root-polarity-clausification
       - file: sat-ipasir-up
       - file: dpllt
       - file: preprocessing

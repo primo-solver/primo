@@ -26351,6 +26351,37 @@
           "why_fewer": "assert_positive gained a per-assertion visited set in the same commit, so a subterm reached via several paths of the top-level And spine is clausified once rather than repeatedly. Terms and vars unchanged; only redundant duplicate clauses disappear."
         }
       }
+    },
+    {
+      "id": "2026-08-11-qf-uflra-main-rebaseline-root-polarity-rejected-91f94b9",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "profile-and-rejected-prototype",
+      "scope": "Rebaseline established QF_UFLRA gaps after merging main's post-preprocessing flattening default, then test assertion-boundary-independent required-root clausification without changing LRA",
+      "commit": "91f94b9 baseline; temporary dirty prototype based on 91f94b9, fully reverted after measurement",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "local",
+        "binary": "Release, CaDiCaL 3.0.0",
+        "limits": "--max-theory-conflicts=1000 for fast representatives and 20 for mt20xx"
+      },
+      "commands": {
+        "baseline": "build-live-euf-release/primo --quiet --stats --max-theory-conflicts=N on main3_true, wm831x, iw_main6, uinput, m0_opl3, and mt20xx",
+        "candidate": "same binary and limits with the temporary --root-polarity-clausification option",
+        "focused_tests": "primo_boolean_solver_tests and primo_qf_lra_solver_tests under ctest --timeout 120"
+      },
+      "results": {
+        "main_rebaseline": "All six representatives solved. main3_true used 5615 SAT variables, 22381 clauses, 56304 decisions, and 32 solve calls in 3.82s. mt20xx used 9510 variables, 51027 clauses, 75021 decisions, 20 solve calls, and 12 LRA conflicts in 15.18s. The earlier pre-main controlled mt20xx run had reached 1.73 million decisions without solving, so main's post-pass materially changes the mixed baseline.",
+        "residual_model_cost": "mt20xx performed 18190224 LRA model-filter full-pair visits and 5972400 shared-model compatibility projection terms; Yices historical time remains about 1.3s.",
+        "prototype_invariant": "The corrected prototype used shared (TermId, required-value) visited state across the implicit assertion conjunction while interleaving polarity collection and clause emission in existing assertion order. Unit tests showed equivalent treatment of separate assertions, one conjunction, and a root De Morgan equivalent, plus unchanged LRA tableau shape.",
+        "main3_corrected": "2 decompositions; 5615 variables, 22381 clauses, 56304 decisions, 32 solve calls, 21 LRA conflicts, 3.45s. All non-time search counts matched baseline exactly.",
+        "mt20xx_corrected": "33 decompositions; 9481 variables, 50943 clauses, 75021 decisions, 20 solve calls, 12 LRA conflicts, 14.24s. The prototype removed 29 variables and 84 clauses but did not change search counts.",
+        "other_activity": "wm831x, iw_main6, uinput, and m0_opl3 exposed only one or two decompositions in the diagnostic prototype.",
+        "discarded_first_variant": "A first implementation collected all theory-atom polarities before clause emission and changed SAT variable order. It was corrected before the authoritative main3/mt20xx comparison; its search measurements are rejected."
+      },
+      "artifacts": "local-only:/tmp/qfuflra-main-post-baseline-91f94b9-v3/, /tmp/qfuflra-main-post-residual-91f94b9/, /tmp/qfuflra-root-polarity-diagnostic-91f94b9-dirty-v2/, and /tmp/qfuflra-root-polarity-order-preserving-91f94b9-dirty/",
+      "evidence_status": "rejected-local-diagnostic",
+      "outcome": "The root-polarity clausification source and tests were reverted before fuzzing because the corrected mechanism changed too little structure and no search work on the residual target. Retain the assertion-semantics invariant and redirect performance work to shared-model pair filtering/projection."
     }
   ]
 }
