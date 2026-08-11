@@ -26251,12 +26251,43 @@
         "phase": "Positive/polarity reduced main3_true from 702043 to 102954-111692 decisions and helped m0_opl3, but positive/polarity/none timed out on wm831x and positive timed out on iw_main6 and uinput. Auto matched the negative default on these mixed inputs.",
         "flatten_representatives": "Threshold 128 reduced SAT variables by 19-65% and decisions by about 5-17x across main3_true, wm831x, iw_main6, uinput, and m0_opl3. All five solved within the ten-second diagnostic cap.",
         "flatten_gap_set": "9/31 solved, 22 timeout, 0 wrong/error/unsupported, PAR2 244.416102 at a five-second cap; the existing live profile timed out on all 31 at the same corpus budget.",
+        "direct_interface_ab": "On main3_true, default versus threshold 128 used 12017/6874 SAT variables and 702043/117837 decisions, but both had exactly 557 EUF atoms, 3559 LRA atoms, 1007 shared Real terms, and a 506521-pair diagnostic cross product. The speedup does not come from shrinking the semantic Nelson-Oppen interface.",
         "yices_mt20xx": "sat in 1.297s with --stats: 7128 Boolean variables, 23391 decisions, 76 SAT conflicts, 71 theory conflicts, 3606 theory propagations, 802 e-graph final checks, 849 interface lemmas, and 941 simplex pivots.",
-        "primo_mt20xx": "Threshold 128 reached the configured outer theory-conflict stop after 21.19s, but only after 432 combined conflicts despite --max-theory-conflicts=20: 12927 SAT variables, 1730478 decisions, 303300 LRA propagations, 452 SAT/EUF checks, and 29811 propagated interface equalities. Because the mixed path does not enforce this budget promptly, the live-EUF and positive-phase diagnostics also required 30s and 20s outer wall caps. Live EUF removed all 452 closure rebuilds but reached 1884557 decisions and 464 LRA conflicts; positive phase reached 3745313 decisions."
+        "primo_mt20xx": "Threshold 128 reached the configured outer theory-conflict stop after 21.19s, but only after 432 combined conflicts despite --max-theory-conflicts=20: 12927 SAT variables, 1730478 decisions, 303300 LRA propagations, 452 SAT/EUF checks, and 29811 reported interface equalities. Because the mixed path does not enforce this budget promptly, the live-EUF and positive-phase diagnostics also required 30s and 20s outer wall caps. Live EUF removed all 452 closure rebuilds but reached 1884557 decisions and 464 LRA conflicts; positive phase reached 3745313 decisions.",
+        "counter_limitation": ":no.interface.equalities-propagated accumulates complete producer vectors across rounds, including repeated and already-absorbed equalities; the 29811 mt20xx reports produced 408 equality clauses. It is not a unique-lemma or useful-delivery count."
       },
       "artifacts": "local-only:/tmp/qfuflra-phase-matrix-540b847.jsonl, /tmp/qfuflra-flatten-matrix-540b847.jsonl, /tmp/qfuflra-yices-only-31-flatten128.csv, /tmp/qfuflra-yices-only-31-flatten128.jsonl, /tmp/qfuflra-yices-only-31-flatten128-summary.json, and /tmp/qfuflra-yices-only-31-flatten128-logs/",
       "evidence_status": "local-diagnostic-current",
-      "outcome": "Bounded Boolean flattening is the strongest immediate non-LRA candidate and should receive an exact threshold-128 fuzz gate plus full SLURM A/B before profile/default changes. The residual mt20xx statistics prioritize interface-equality delivery and callback scheduling over generic model machinery or a blanket theory-phase change."
+      "outcome": "The threshold-128 diagnostic identified Boolean shape as the strongest immediate non-LRA signal. A subsequent exact-option fuzz gate passed, but no full A/B was submitted because the separately owned main branch added and validated a post-preprocessing bounded-flattening default. The current branch must rebase its performance baseline on that main behavior before attributing further gains. The residual mt20xx statistics prioritize assertion-context simplification and better interface-delivery counters over generic model machinery or a blanket theory-phase change."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-flatten128-fuzz-47ddba6",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "fuzz",
+      "scope": "Exact-option correctness gate for the pre-preprocessing bounded Boolean flattening diagnostic; retained as historical evidence after main adopted a separately validated post-preprocessing policy",
+      "commit": "47ddba6",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 47ddba6, CaDiCaL 3.0.0",
+        "scheduler": "Generated/finite job 123847 and mutation job 123848 completed."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch with PRIMO_FUZZ_SOLVER_ARGS=--boolean-flatten-threshold=128",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch with --boolean-flatten-threshold=128 and 1000 mutation iterations per tracked seed"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS",
+        "finite_qf_uf": "500/500 PASS",
+        "finite_qf_uflra": "500/500 PASS",
+        "generated_failures": "Zero wrong answer, crash, unsupported result, parser/type error, or reference disagreement.",
+        "tracked_seeds": "11/11 PASS before mutation",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, and 0 bug triggers."
+      },
+      "artifacts": "remote:<prepared-workspace>/SLURM job outputs for 123847 and 123848",
+      "evidence_status": "historical-option-gate",
+      "outcome": "The exact threshold-128 option passed the required correctness gate. Further benchmark work on that pre-pass was stopped to avoid overlapping the Boolean-DAG branch; origin/main subsequently introduced the distinct post-preprocessing default that now defines the baseline."
     }
   ]
 }

@@ -353,6 +353,14 @@ five-second local cap. This is evidence for evaluating bounded flattening as a
 QF_UFLRA frontend profile; it is not evidence for changing the default before
 an exact-option fuzz gate and a full SLURM A/B.
 
+The improvement is indirect rather than a change in combination scope. On
+`main3_true`, threshold 128 reduced SAT variables from 12,017 to 6,874 and SAT
+decisions from 702,043 to 117,837, while both profiles retained exactly 557 EUF
+atoms, 3,559 LRA atoms, 1,007 shared Real terms, and the same 506,521-pair
+diagnostic cross product. Mixed final rounds fell from 90 to 55 because SAT
+visited a different sequence of candidate models. Tseitin variables do not
+themselves become Nelson-Oppen interface terms on this shape.
+
 Second, the residual `mt20xx` instance remains a combination/search problem.
 Yices reports 23,391 decisions, 71 theory conflicts, 3,606 theory propagations,
 802 e-graph final checks, and 849 interface lemmas. A controlled Primo run with
@@ -362,10 +370,31 @@ outer loop observed the theory-conflict limit. The live-EUF option removed all
 452 measured
 final-closure rebuilds on the comparable path, but performed millions of
 callback rounds and did not improve throughput. A positive theory phase also
-regressed this residual. The resulting priority is narrow: reduce duplicate or
-low-value interface-equality delivery and callback polling, and measure useful
-equalities per candidate/check. Adding a generic theory interface or broader
-model-equality search is not justified by these statistics.
+regressed this residual. The `:no.interface.equalities-propagated` counter is
+cumulative across rounds and includes repeated and already-absorbed equality
+reports: the 29,811 reports produced 408 equality clauses. Distinct, repeated,
+already-true, and clause-producing counts are therefore needed before claiming
+that equality delivery itself is the dominant defect. Adding a generic theory
+interface or broader model-equality search is not justified by these
+statistics.
+
+The immediate experiment on this branch is narrower: decompose formulas whose
+truth is already required by the assertion context, before giving the remaining
+Boolean structure to the Tseitin clausifier. For example, an asserted
+`(not (or a b))` can become two asserted children, `(not a)` and `(not b)`,
+without distribution or a new SAT variable. Existing preprocessing found no
+forced facts, unit-equality consequences, or solved equalities on `mt20xx`, even
+though its asserted root contains this shape. The pass must be scoped to mixed
+QF_UFLRA while it is experimental so that the established pure-QF_LRA profile
+is unchanged.
+
+Associative DAG representation and bounded flattening are owned by the
+separate Boolean-DAG work now on `main`; Real-equality lowering belongs to the
+LRA boundary. Neither is changed as part of this experiment. Dynamic relevancy
+for guarded theory atoms remains a later DPLL(T) opportunity rather than a
+preprocessing rewrite. Any assertion-context simplifier must remain linear in
+the reachable assertion shape, preserve shared `TermId` nodes, and avoid
+distributive expansion.
 
 The default theory phase is also not the common explanation. Positive or
 polarity phase reduced `main3_true` from about 702,000 to 103,000--112,000 SAT
