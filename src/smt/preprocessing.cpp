@@ -2687,7 +2687,7 @@ BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
         children.push_back(rewritten.at(child));
       }
 
-      core::TermId replacement;
+      core::TermId replacement = core::kInvalidTermId;
       switch (term.kind) {
         case core::TermKind::Equality:
           replacement = terms.mk_eq(children.at(0), children.at(1));
@@ -2717,6 +2717,9 @@ BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
         case core::TermKind::Le:
         case core::TermKind::Lt:
           throw std::logic_error("leaf reached Boolean flattening reconstruction");
+      }
+      if (replacement == core::kInvalidTermId) {
+        throw std::logic_error("Boolean flattening reconstruction produced no term");
       }
       rewritten[visit.term] = replacement;
       if (replacement != visit.term) {
