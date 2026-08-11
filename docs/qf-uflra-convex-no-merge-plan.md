@@ -161,3 +161,33 @@ These are ordered by correctness first, then performance.
 The paper basis is de Moura and Bjørner, *Model-based Theory Combination*,
 Section 5. The implementation is intentionally a convex QF_UFLRA subset, not
 the paper's generic `DPLL(T^M)` transition system.
+
+## Return Checkpoint After Frontend DAG Work
+
+Commit `4e19d1b` promotes the convex shared-model reconciliation profile after
+the exact-default fuzz and full-corpus gates recorded in `docs/run-log.json`.
+The frontend Boolean-DAG memory defect discovered on
+`cpachecker-induction.cs_fib_true-unreach-call.i.smt2` is independent of that
+combination mechanism. Boolean-DAG work should therefore proceed on a separate
+branch and must not be interpreted as completing any item below.
+
+The next QF_UFLRA work, in priority order, is:
+
+1. Retain EUF component state across SAT rounds, synchronized with the SAT
+   trail, instead of copying the prepared closure for each round.
+2. Generalize the retained LRA epoch from its current one-entry augmented
+   tableau reuse to the sequence of model-guided checks, without disturbing
+   pure QF_LRA behavior.
+3. Reduce the remaining SAT re-entry and equality-recheck churn in split-frontier
+   reconciliation. The promoted path avoids most exact probes but still makes
+   more SAT decisions and solve calls than the previous exact default.
+4. Re-evaluate mixed row-bound propagation. All four Section 5.1 candidate
+   rules are wired, but row propagation remains default-off because its prior
+   full-corpus A/B traded one solved instance for one loss.
+5. Preserve the exact entailment oracle as a fail-safe until the retained
+   component states and candidate coverage have fresh correctness evidence.
+
+Generic mutable theory-model ownership, theory-independent `DPLL(T^M)`
+transitions, finite shared sorts, and non-convex arrangement enumeration remain
+explicitly tabled. They are not prerequisites for finishing the convex
+EUF+rational-LRA path above.
