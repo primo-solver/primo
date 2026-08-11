@@ -2759,6 +2759,51 @@ void row_based_propagation_drives_boolean_structure() {
   assert(not_propagated.statistics.get(StatKey::LraRowPropagations) == 0);
 }
 
+void boolean_flattening_runs_after_the_rewriting_passes() {
+  // Regression test for a 2.7x slowdown on LassoRanker QF_LRA.
+  //
+  // The DAG repair (docs/boolean-dag-flattening.md) stopped
+  // TermManager::mk_and / mk_or flattening same-kind children at
+  // construction, which was correct -- eager flattening cost 1.88 GB on a
+  // 20k-link `d_n = (and d_(n-1) atom)` chain. But the replacement pass ran
+  // only BEFORE the rewriting preprocessing passes, and those passes build
+  // fresh nodes through the same constructors, so they reintroduce nesting
+  // the pre-pass has already gone past. The result was ~10% more SAT
+  // variables and, on some inputs, a vastly larger search.
+  //
+  // Asserting the post-pass FIRES is the point. A test that merely checked
+  // the option parses, or that flattening works in isolation, passed
+  // throughout the regression -- the unit test of
+  // flatten_associative_booleans itself was green the whole time.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real) (declare-fun y () Real) (declare-fun z () Real)
+    (declare-fun p () Bool) (declare-fun q () Bool)
+    (assert (or (or (<= x 1) (<= y 2)) (<= z 3)))
+    (assert (or (or p q) (<= (+ x y) 4)))
+    (assert (and (and (>= x 0) (>= y 0)) (>= z 0)))
+    (check-sat)
+  )";
+
+  CheckSatOptions enabled;
+  enabled.boolean_flatten_post_threshold = 256;
+  const auto with_pass = check_sat_smtlib(formula, enabled);
+  assert(with_pass.result == CheckSatResult::Sat);
+
+  CheckSatOptions disabled;
+  disabled.boolean_flatten_post_threshold = 0;
+  const auto without_pass = check_sat_smtlib(formula, disabled);
+  assert(without_pass.result == CheckSatResult::Sat);  // a representation choice, never a verdict
+
+  // The pass must actually accept flattenings at the post point, and must do
+  // nothing at all when switched off.
+  assert(with_pass.statistics.get(":preprocessing.boolean-flatten-post.accepted") > 0);
+  assert(without_pass.statistics.get(":preprocessing.boolean-flatten-post.accepted") == 0);
+  // Flattening removes intermediate nodes, so it cannot increase the term count.
+  assert(with_pass.statistics.get(StatKey::PreprocessingTermSizeFinal) <=
+         without_pass.statistics.get(StatKey::PreprocessingTermSizeFinal));
+}
+
 void row_propagation_limits_are_actually_enforced() {
   // Regression test for four CLI options that parsed and did nothing:
   // CheckSatOptions::lra_row_propagation_limits was written by main.cpp and
@@ -4183,6 +4228,7 @@ int main() {
   same_slack_propagation_can_reach_a_conflict();
   row_based_propagation_drives_boolean_structure();
   row_based_propagation_can_reach_a_conflict();
+  boolean_flattening_runs_after_the_rewriting_passes();
   row_propagation_limits_are_actually_enforced();
   bidirectional_row_propagation_drives_boolean_structure();
   bidirectional_row_propagation_can_reach_a_conflict();

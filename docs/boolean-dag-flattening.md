@@ -153,3 +153,54 @@ does not preserve exact encoding or search behavior. Nested disjunctions below
 the top-level shape can receive additional Tseitin literals. This remains an
 efficiency target for DAG-aware clausification and is why default readiness
 cannot be inferred from the memory fix alone.
+
+(post-preprocessing-application)=
+## The second application point, and why it was needed (2026-08-11)
+
+The repair above is correct and the memory result is real -- reproduced here
+on a synthetic 20,000-link `d_n = (and d_(n-1) atom)` chain, which peaks at
+**1.88 GB** on the pre-repair binary and **57 MB** after. But the pass as
+first landed ran **only before** the rewriting preprocessing passes, and that
+turned out not to be enough.
+
+Those passes build fresh `And`/`Or` nodes through `TermManager`, which -- by
+this note's own design -- no longer flattens at construction. So they
+reintroduce nesting the *input* never had, after the pre-pass has already gone
+past. The symptom is diagnostic: on affected inputs the pre-pass reports
+`attempts = 0` (there is genuinely nothing nested yet) while the finished
+formula carries ~10% more nodes than it did before the repair.
+
+Measured on `yPositive-SIscaled50.bpl_Iteration1_Loop_6-phaseTemplate`:
+`:preprocessing.term-size.initial` is **identical** either way (28,011) and
+only `term-size.final` diverges (151,804 -> 162,106), which is what localises
+the cause to preprocessing rather than parsing.
+
+Cost of the gap, against the commit before the repair:
+
+| instance | before repair | after repair | with post-pass |
+|---|---:|---:|---:|
+| `yPositive-SIscaled50` | 9.0s / 485 MB | 22.7s / 605 MB | **8.9s / 485 MB** |
+| `Gcd_havoc` | ~4.0s | 9.7s / 76 MB | **4.0s / 55 MB** |
+| `sas2.t2.c` | ~13.4s | 21.5s / 258 MB | **12.4s / 237 MB** |
+
+Note memory moves the *same* way as time: flattening removes intermediate
+Tseitin nodes, so on these inputs it is cheaper on both axes. The pathological
+chain is the opposite case, which is exactly why this is a bounded, tunable
+policy rather than a fixed choice.
+
+**`--boolean-flatten-post-threshold`, default 256.** The widest node these
+inputs need is 206, so 256 reproduces the pre-repair clausification exactly --
+identical clause count, variable count and decision count -- while still
+bounding arity growth. `0` disables it, and that is the setting to reach for
+if a wide-DAG input regresses on memory.
+
+Broader check, 34 QF_LRA instances solved by both settings: **0 answer
+disagreements**, median time ratio **0.76**, six instances more than 30%
+faster and none more than 30% slower.
+
+**Not verified here:** the `cpachecker-induction` instance that motivated the
+original repair is not staged locally, so the claim that the post-pass is safe
+on it rests on the bound plus the synthetic chain, where the pass does not
+fire at all (`attempts = 0`). That instance should be re-run on the cluster
+before this default is trusted in production.
+

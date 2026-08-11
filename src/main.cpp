@@ -498,6 +498,12 @@ int main(int argc, char** argv) {
   app.add_option("--boolean-flatten-threshold", solver_options.boolean_flatten_threshold,
                  "Flatten nested and/or nodes during preprocessing up to this arity; 0 disables")
       ->check(CLI::Range(0, 1000000));
+  app.add_option("--boolean-flatten-post-threshold", solver_options.boolean_flatten_post_threshold,
+                 "Apply the same bounded And/Or flattening again AFTER the rewriting "
+                 "preprocessing passes, up to this arity; 0 disables. Those passes build "
+                 "fresh nodes through TermManager, which no longer flattens at construction, "
+                 "so they reintroduce nesting that --boolean-flatten-threshold (which runs "
+                 "before them) cannot see. 0 disables [default: 256]");
   app.add_option("--preprocessing-adaptive-extra-passes",
                  solver_options.preprocessing_adaptive_extra_passes,
                  "Additional adaptive QF_UF preprocessing passes after the configured pass cap")
@@ -563,7 +569,7 @@ int main(int argc, char** argv) {
     if (name == "--cadical-option" || name == "--max-theory-conflicts" ||
         name == "--qf-uflra-online-euf" || name == "--pure-theory-filter" ||
         name == "--theory-phase" || name == "--boolean-flatten-threshold" ||
-        starts_with(name, "--top-level-or-tseitin") ||
+        name == "--boolean-flatten-post-threshold" || starts_with(name, "--top-level-or-tseitin") ||
         starts_with(name, "--no-top-level-or-tseitin") ||
         starts_with(name, "--no-auto-top-level-or-tseitin")) {
       return kGroupSat;

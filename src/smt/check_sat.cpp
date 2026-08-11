@@ -11956,6 +11956,22 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.set(":no.purification.memoized-euf-rewrites", purification.memoized_euf_rewrites);
       statistics.set(":no.purification.skipped-no-sites", purification.skipped_no_sites ? 1 : 0);
     }
+    // Second, post-preprocessing application of the same bounded pass. The
+    // first one (above) runs before the rewriting passes so they see wider
+    // nodes; but those passes then build fresh And/Or nodes through
+    // TermManager, which -- since the DAG repair -- no longer flattens at
+    // construction. So nesting the input never had is introduced *after* the
+    // first pass, which is why it reports attempts=0 on inputs that
+    // nonetheless end up nested. See docs/boolean-dag-flattening.md.
+    const BooleanFlatteningResult post_flattening = flatten_associative_booleans(
+        frontend.terms(), assertions, options.boolean_flatten_post_threshold);
+    assertions = post_flattening.assertions;
+    statistics.set(":preprocessing.boolean-flatten-post.attempts", post_flattening.attempts);
+    statistics.set(":preprocessing.boolean-flatten-post.accepted", post_flattening.accepted);
+    statistics.set(":preprocessing.boolean-flatten-post.threshold-stops",
+                   post_flattening.threshold_stops);
+    statistics.set(":preprocessing.boolean-flatten-post.rewrites", post_flattening.rewrites);
+    statistics.set(":preprocessing.boolean-flatten-post.max-arity", post_flattening.max_arity);
     statistics.set(kStatAssertionsFinal, assertions.size());
     statistics.set(kStatPreprocessingTermSizeFinal,
                    reachable_term_count(frontend.terms(), assertions));

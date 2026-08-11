@@ -303,6 +303,20 @@ struct CheckSatOptions {
   // Optional associative Boolean preprocessing. Zero preserves the core DAG;
   // positive values bound arity growth caused by flattening.
   std::size_t boolean_flatten_threshold = 0;
+  // Same pass, applied again AFTER the rewriting preprocessing passes.
+  //
+  // Why a second application point: since the DAG repair
+  // (docs/boolean-dag-flattening.md) TermManager::mk_and / mk_or no longer
+  // flatten same-kind children at construction. The rewriting passes build
+  // fresh nodes through those, so they reintroduce nesting that the input
+  // never had -- and the pre-pass above has already run by then, which is why
+  // it reports attempts=0 on inputs that nonetheless end up nested.
+  //
+  // Default 256: measured, the widest node these inputs need is 206, so this
+  // reproduces the pre-repair clausification exactly (identical clauses, vars
+  // and decisions) while still bounding arity growth. Set 0 to disable, which
+  // is the setting to reach for if a wide-DAG input regresses on memory.
+  std::size_t boolean_flatten_post_threshold = 256;
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;
