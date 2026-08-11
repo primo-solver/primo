@@ -362,6 +362,50 @@ flips the dispatch. So:
   different solve paths. That is fine for answer-differential testing, which
   is what those tasks do, but it means mutation timing data is not meaningful.
 
+#### Assertion packaging is another trigger
+
+The default QF_UF `auto` preprocessing selector also reads
+`assertions.size()`. It currently distinguishes a single assertion, a compact
+multi-assertion batch, and a batch above 10,000 assertions. Those branches
+enable different preprocessing subsets and can also select different static
+SAT phase hints. Consequently, these two inputs can follow different pipelines:
+
+```text
+(assert (and A B))
+```
+
+```text
+(assert A)
+(assert B)
+```
+
+They denote the same conjunction. Assertion roots remain useful operational
+storage for SMT-LIB scopes, incremental lifetime, source bookkeeping, and
+avoiding one enormous synthetic `And`; their number is not a semantic property
+of the formula and should not be a preprocessing classifier feature.
+
+This is deterministic for one fixed input, but it is a nondeterminism trigger
+for benchmark and mutation comparisons in the same sense as dispatch above: a
+semantics-preserving packaging edit changes the algorithm and can cause CDCL
+search churn. Until the selector is replaced, reports comparing rewritten or
+mutated inputs must record
+`:preprocessing.auto.single-assertion`,
+`:preprocessing.auto.basic-single`,
+`:preprocessing.auto.basic-multi`,
+`:preprocessing.auto.strong`, and
+`:preprocessing.auto.large-assertion-skip`.
+
+The repair is not to concatenate the roots into a physical conjunction or to
+flatten every Boolean DAG. Selection should instead use representation-stable
+structural costs of the implicit conjunction, such as reachable terms,
+top-level conjunct or clause shape, finite-domain recognizer output, and a
+bounded estimate of generated preprocessing clauses. Promotion requires
+equivalence tests that package the same conjunction both ways, followed by the
+QF_UF selector benchmark and the QF_LRA no-regression comparison documented in
+[](preprocessing.md). The existing assertion-count selectors are empirically
+tuned, so removing them without those comparisons would merely exchange one
+source of search churn for another.
+
 ### Not to be "fixed" naively
 
 Restricting `has_euf_predicate` to `Application` sends pure QF_LRA formulas to
