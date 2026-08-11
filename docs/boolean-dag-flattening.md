@@ -188,15 +188,41 @@ Tseitin nodes, so on these inputs it is cheaper on both axes. The pathological
 chain is the opposite case, which is exactly why this is a bounded, tunable
 policy rather than a fixed choice.
 
-**`--boolean-flatten-post-threshold`, default 256.** The widest node these
-inputs need is 206, so 256 reproduces the pre-repair clausification exactly --
-identical clause count, variable count and decision count -- while still
-bounding arity growth. `0` disables it, and that is the setting to reach for
-if a wide-DAG input regresses on memory.
+**`--boolean-flatten-post-threshold`, default 2048**, chosen by measurement.
+256 restores most QF_LRA inputs but leaves one of 55 short --
+`simple-scaled200` hits 20,200 threshold stops there and needs 2048 to match
+the pre-repair clause and decision counts exactly. Raising the bound costs
+nothing where the bound exists to protect: on the 94 MB
+`cpachecker-induction.cs_fib` instance, 2048 peaks at 3,346,944 KB against
+3,347,208 KB at 256, a 264 KB *saving*, with threshold stops falling from 17
+to 1.
+
+The bound still matters -- it is what stops a pathological input from
+unbounded arity growth -- but it is not the axis that decides memory on real
+inputs, because the pass rewrites each reachable node once instead of
+materialising every prefix. `0` disables the pass entirely.
 
 Broader check, 34 QF_LRA instances solved by both settings: **0 answer
 disagreements**, median time ratio **0.76**, six instances more than 30%
 faster and none more than 30% slower.
+
+### Are we back to the old behaviour on QF_LRA?
+
+Effectively yes, and where it differs it is better. Against the pre-regression
+binary over 55 QF_LRA instances (45 solved by both):
+
+- **0 answer disagreements**, and **nothing lost or gained** -- the same
+  instances solve.
+- Time median **1.02**, with **no instance more than 30% faster or slower**.
+- Clause counts: 34 identical, 10 **fewer** now, 1 more (closed by the 2048
+  default).
+
+The instances with fewer clauses are not a flattening effect. `assert_positive`
+gained a per-assertion visited set in the same commit, so a subterm reached
+through several paths of the top-level `And` spine is clausified once instead
+of repeatedly. Terms and variables are unchanged there; only redundant
+duplicate clauses disappear. That part of the DAG work is a straight
+improvement and is deliberately kept.
 
 ### Verified on the motivating instance
 

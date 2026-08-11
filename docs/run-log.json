@@ -26171,6 +26171,19 @@
             "solved_by_both": 28,
             "max_rss_change": "under 5% either way"
           }
+        },
+        "default": "2048, not 256: 256 leaves simple-scaled200 short (20200 threshold stops), and 2048 costs nothing on the memory guard (3,346,944 KB vs 3,347,208 KB, stops 17 -> 1).",
+        "qf_lra_vs_pre_regression": {
+          "instances": 55,
+          "solved_by_both": 45,
+          "answer_disagreements": 0,
+          "lost": 0,
+          "gained": 0,
+          "median_time_ratio": 1.02,
+          "faster_gt_30pct": 0,
+          "slower_gt_30pct": 0,
+          "clauses": "34 identical, 10 fewer now, 1 more (closed at 2048)",
+          "why_fewer": "assert_positive gained a per-assertion visited set in the same commit, so a subterm reached via several paths of the top-level And spine is clausified once rather than repeatedly. Terms and vars unchanged; only redundant duplicate clauses disappear."
         }
       }
     }

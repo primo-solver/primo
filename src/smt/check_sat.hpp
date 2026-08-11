@@ -312,11 +312,18 @@ struct CheckSatOptions {
   // never had -- and the pre-pass above has already run by then, which is why
   // it reports attempts=0 on inputs that nonetheless end up nested.
   //
-  // Default 256: measured, the widest node these inputs need is 206, so this
-  // reproduces the pre-repair clausification exactly (identical clauses, vars
-  // and decisions) while still bounding arity growth. Set 0 to disable, which
-  // is the setting to reach for if a wide-DAG input regresses on memory.
-  std::size_t boolean_flatten_post_threshold = 256;
+  // Default 2048, chosen by measurement rather than intuition. 256 restores
+  // most QF_LRA inputs but leaves one of 55 short (20,200 threshold stops on
+  // simple-scaled200), and raising the bound costs nothing where the bound
+  // exists to protect: on the 94 MB cpachecker-induction.cs_fib instance that
+  // motivated the DAG repair, 2048 peaks at 3,346,944 KB against 3,347,208 KB
+  // at 256 -- a 264 KB *saving*, with threshold stops falling from 17 to 1.
+  //
+  // The bound still matters; it is what keeps a pathological input from
+  // unbounded arity growth. It is simply not the axis that decides memory on
+  // real inputs, because the pass rewrites each reachable node once rather
+  // than materialising every prefix. Set 0 to disable.
+  std::size_t boolean_flatten_post_threshold = 2048;
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;

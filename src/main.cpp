@@ -503,7 +503,7 @@ int main(int argc, char** argv) {
                  "preprocessing passes, up to this arity; 0 disables. Those passes build "
                  "fresh nodes through TermManager, which no longer flattens at construction, "
                  "so they reintroduce nesting that --boolean-flatten-threshold (which runs "
-                 "before them) cannot see. 0 disables [default: 256]");
+                 "before them) cannot see. 0 disables [default: 2048]");
   app.add_option("--preprocessing-adaptive-extra-passes",
                  solver_options.preprocessing_adaptive_extra_passes,
                  "Additional adaptive QF_UF preprocessing passes after the configured pass cap")
