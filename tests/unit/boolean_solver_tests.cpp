@@ -10,6 +10,7 @@
 #include "smt/check_sat.hpp"
 
 using primo::smt::check_sat_smtlib;
+using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
 
 namespace {
@@ -211,12 +212,15 @@ void auto_top_level_or_tseitin_selects_sparse_negated_finite_domain_shape() {
   for (int i = 0; i < 60; ++i) {
     input << "(declare-fun x" << i << " () A)\n";
   }
+  for (int i = 0; i < 1000; ++i) {
+    input << "(declare-fun guard" << i << " () Bool)\n";
+  }
   input << "(assert (and (distinct a b)";
   for (int i = 0; i < 60; ++i) {
     input << " (or (= x" << i << " a) (= x" << i << " b))";
   }
   for (int i = 0; i < 1000; ++i) {
-    input << " (or p q)";
+    input << " (or guard" << i << " q)";
   }
   input << "))\n(check-sat)\n";
 
@@ -590,7 +594,7 @@ void define_fun_macros_are_expanded() {
   assert(result.result == CheckSatResult::Unsat);
 }
 
-void nullary_define_fun_expansion_is_memoized() {
+void nullary_define_fun_is_eagerly_compiled() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort A 0)
@@ -603,9 +607,141 @@ void nullary_define_fun_expansion_is_memoized() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-direct-uses") >= 3);
+  assert(result.statistics.get(":frontend.define-fun.nullary-eager-compiles") == 1);
+  assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 0);
   assert(result.statistics.get(":frontend.define-fun.nullary-cache-hits") >= 2);
   assert(result.statistics.get(":frontend.define-fun.nullary-cache-misses") == 1);
   assert(result.statistics.get(":frontend.define-fun.nullary-cache-entries") == 1);
+}
+
+void nullary_define_fun_uses_definition_site_bindings() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (define-fun d () A a)
+    (define-fun use ((a A)) A d)
+    (assert (distinct (use b) a))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void nullary_define_fun_replays_boolean_argument_constraints() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) A)
+    (define-fun d () A (f (or p q)))
+    (assert p)
+    (assert (distinct d (f true)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 1);
+}
+
+void nullary_define_fun_replays_term_ite_constraints() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun p () Bool)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (define-fun d () A (ite p a b))
+    (assert p)
+    (assert (distinct d a))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 2);
+}
+
+void long_nullary_define_fun_chain_is_compiled_linearly() {
+  constexpr int kDefinitions = 20000;
+  std::ostringstream input;
+  input << "(set-logic QF_UFLRA)\n";
+  input << "(declare-sort A 0)\n";
+  input << "(declare-fun a () A)\n";
+  input << "(declare-fun b () A)\n";
+  input << "(declare-fun c () A)\n";
+  input << "(declare-fun q () Bool)\n";
+  input << "(declare-fun x () Real)\n";
+  input << "(declare-fun f (Real) Real)\n";
+  input << "(declare-fun g (Bool) A)\n";
+  input << "(define-fun d0 () Bool (= a c))\n";
+  for (int i = 1; i < kDefinitions; ++i) {
+    input << "(define-fun d" << i << " () Bool (=> d" << (i - 1) << " q))\n";
+  }
+  input << "(assert (= a b))\n";
+  input << "(assert (<= (f x) x))\n";
+  input << "(assert d" << (kDefinitions - 1) << ")\n";
+  input << "(assert (= (g d" << (kDefinitions - 1) << ") a))\n";
+  input << "(check-sat)\n";
+
+  const auto result = check_sat_smtlib(input.str());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":frontend.define-fun.nullary-eager-compiles") == kDefinitions);
+  assert(result.statistics.get(":frontend.define-fun.nullary-direct-uses") >= kDefinitions);
+}
+
+void long_nullary_and_chain_preserves_dag_and_supports_optional_flattening() {
+  constexpr int kDefinitions = 5000;
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-fun p () Bool)\n";
+  for (int i = 1; i < kDefinitions; ++i) {
+    input << "(declare-fun q" << i << " () Bool)\n";
+  }
+  input << "(define-fun d0 () Bool p)\n";
+  for (int i = 1; i < kDefinitions; ++i) {
+    input << "(define-fun d" << i << " () Bool (and d" << (i - 1) << " q" << i << "))\n";
+  }
+  input << "(assert d" << (kDefinitions - 1) << ")\n";
+  input << "(check-sat)\n";
+
+  CheckSatOptions default_options;
+  default_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto default_result = check_sat_smtlib(input.str(), default_options);
+  assert(default_result.result == CheckSatResult::Sat);
+  assert(default_result.statistics.get(":preprocessing.boolean-flatten.attempts") == 0);
+  assert(default_result.statistics.get(":preprocessing.boolean-flatten.operands-copied") == 0);
+
+  CheckSatOptions flattened_options = default_options;
+  flattened_options.boolean_flatten_threshold = 8;
+  const auto flattened_result = check_sat_smtlib(input.str(), flattened_options);
+  assert(flattened_result.result == CheckSatResult::Sat);
+  assert(flattened_result.statistics.get(":preprocessing.boolean-flatten.accepted") > 0);
+  assert(flattened_result.statistics.get(":preprocessing.boolean-flatten.threshold-stops") > 0);
+  assert(flattened_result.statistics.get(":preprocessing.boolean-flatten.max-arity") <= 8);
+}
+
+void reconvergent_nullary_and_dag_is_clausified_once() {
+  constexpr int kDefinitions = 60;
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-fun p () Bool)\n";
+  input << "(declare-fun q () Bool)\n";
+  input << "(declare-fun r () Bool)\n";
+  input << "(define-fun d0 () Bool (or p q))\n";
+  input << "(define-fun d1 () Bool (or q r))\n";
+  for (int i = 2; i < kDefinitions; ++i) {
+    input << "(define-fun d" << i << " () Bool (and d" << (i - 1) << " d" << (i - 2) << "))\n";
+  }
+  input << "(assert d" << (kDefinitions - 1) << ")\n";
+  input << "(check-sat)\n";
+
+  CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(input.str(), options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.boolean-shape.top-level-or-nodes") == 2);
+  assert(result.statistics.get(":sat.clauses") == 2);
+  assert(result.statistics.get(":sat.binary-clauses") == 2);
 }
 
 void solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion() {
@@ -2463,6 +2599,120 @@ void boolean_unit_simplification_handles_nested_rewrites() {
   assert(result.statistics.get(":preprocessing.boolean-units.rewrites") >= 1);
 }
 
+void bool_argument_congruence_preserves_boolean_domain() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (declare-fun g (Bool Bool) Bool)
+    (declare-fun x () Real)
+    (assert (= (f p) (f q)))
+    (assert (not (g q q)))
+    (assert (distinct (f false) (f true)))
+    (assert (g p q))
+    (assert (< 0 x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.boolean-domain.bridged-terms") >= 1);
+}
+
+void bool_result_and_complement_congruence_preserves_boolean_domain() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (declare-fun x () Real)
+    (assert (f p))
+    (assert (not (= (f (not p)) (f (not q)))))
+    (assert (not (= (f q) false)))
+    (assert (< 0 x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void nested_boolean_formula_equality_uses_euf_proxies() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (declare-fun x () Real)
+    (assert (= (or p (ite q r p)) (and p p)))
+    (assert (<= 0 x))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+}
+
+void boolean_application_formula_equality_is_propositional() {
+  const std::string input = read_text_file(
+      "../benchmarks/seeds/qf_uflra/seed_bool_application_formula_equality_mixed_unsat.smt2");
+
+  // Direct duplicate elimination now lets default preprocessing prove this
+  // UNSAT before dispatch. Disable preprocessing here so this remains a mixed
+  // dispatcher regression rather than only an answer regression.
+  CheckSatOptions dispatch_options;
+  dispatch_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto dispatch_result = check_sat_smtlib(input, dispatch_options);
+  assert(dispatch_result.result == CheckSatResult::Unsat);
+  assert(dispatch_result.statistics.get(":solver.qf-uflra") == 1);
+
+  assert(check_sat_smtlib(input).result == CheckSatResult::Unsat);
+
+  CheckSatOptions candidate_options;
+  candidate_options.qf_uflra_candidate_final_scan = true;
+  assert(check_sat_smtlib(input, candidate_options).result == CheckSatResult::Unsat);
+
+  CheckSatOptions online_options;
+  online_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Online;
+  online_options.qf_uflra_online_euf = true;
+  assert(check_sat_smtlib(input, online_options).result == CheckSatResult::Unsat);
+}
+
+void boolean_application_formula_equality_is_propositional_in_qf_uf() {
+  const std::string input = read_text_file(
+      "../benchmarks/seeds/qf_uflra/seed_bool_application_formula_equality_unsat.smt2");
+  CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":solver.qf-uf") == 1);
+  assert(check_sat_smtlib(input).result == CheckSatResult::Unsat);
+}
+
+void boolean_application_formula_disequality_is_propositional() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun g (Bool Bool) Bool)
+    (declare-fun x () Real)
+    (assert (< 0 x))
+    (assert (g q p))
+    (assert (distinct (<= x x) (or (g q p) (g q p))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void opensmt_boolean_disagreement_is_unsat() {
+  const std::string input =
+      read_text_file("../benchmarks/regression/qf_uflra/opensmt_boolean_disagreement.smt2");
+  const auto result = check_sat_smtlib(input);
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void opensmt_boolean_disagreement_original_is_unsat() {
+  const std::string input = read_text_file(
+      "../benchmarks/regression/qf_uflra/opensmt_boolean_disagreement_original.smt2");
+  const auto result = check_sat_smtlib(input);
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 }  // namespace
 
 // Congruence must not be dropped for Bool-sorted function arguments.
@@ -2586,7 +2836,13 @@ int main() {
   predicate_applications_respect_congruence();
   annotated_assertions_are_solved();
   define_fun_macros_are_expanded();
-  nullary_define_fun_expansion_is_memoized();
+  nullary_define_fun_is_eagerly_compiled();
+  nullary_define_fun_uses_definition_site_bindings();
+  nullary_define_fun_replays_boolean_argument_constraints();
+  nullary_define_fun_replays_term_ite_constraints();
+  long_nullary_define_fun_chain_is_compiled_linearly();
+  long_nullary_and_chain_preserves_dag_and_supports_optional_flattening();
+  reconvergent_nullary_and_dag_is_clausified_once();
   solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion();
   compound_bool_arguments_are_bound_before_euf_flattening();
   recursive_define_fun_is_rejected();
@@ -2664,6 +2920,14 @@ int main() {
   online_euf_propagation_accepts_already_assigned_implications();
   online_euf_reason_cache_survives_backtracking();
   boolean_unit_simplification_handles_nested_rewrites();
+  bool_argument_congruence_preserves_boolean_domain();
+  bool_result_and_complement_congruence_preserves_boolean_domain();
+  nested_boolean_formula_equality_uses_euf_proxies();
+  boolean_application_formula_equality_is_propositional();
+  boolean_application_formula_equality_is_propositional_in_qf_uf();
+  boolean_application_formula_disequality_is_propositional();
+  opensmt_boolean_disagreement_is_unsat();
+  opensmt_boolean_disagreement_original_is_unsat();
   bool_argument_congruence_is_not_dropped();
   bool_argument_applications_stay_satisfiable_when_unrelated();
   bool_argument_congruence_chains_through_two_applications();

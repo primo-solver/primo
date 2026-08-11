@@ -363,11 +363,12 @@ def classify_atom(term, reals):
 
 # ------------------------------------------------------------- the analysis
 
-BOOL_OPS = {'and', 'or', 'not', '=>', 'ite', 'xor', '=>', 'let'}
+BOOL_OPS = {'and', 'or', 'not', '=>', 'ite', 'xor', 'let'}
 
 
 def analyze(path):
-    src = open(path, encoding='utf-8', errors='replace').read()
+    with open(path, encoding='utf-8', errors='replace') as stream:
+        src = stream.read()
     forms = parse(tokenize(src))
 
     decls = collections.Counter()
@@ -547,7 +548,7 @@ def sexpr(term):
     out = []
     stack = [(term, 0)]
     while stack:
-        node, state = stack.pop()
+        node, _state = stack.pop()
         if isinstance(node, str):
             out.append(node)
             continue
@@ -585,7 +586,8 @@ def report(info):
 # ------------------------------------------------------------------ selftest
 
 def selftest():
-    import tempfile, os
+    import os
+    import tempfile
     failures = []
 
     def check(name, smt, **expect):

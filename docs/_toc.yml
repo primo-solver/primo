@@ -1,15 +1,13 @@
 format: jb-book
 root: index
 
-# Grouped into parts 2026-08-06. The book had grown to 33 flat chapters and
-# ~15k lines, with no signal about which documents belong together -- the
-# arithmetic cluster alone is six siblings and ~39% of the text. Parts give
-# the grouping; `sections` nest the notes that only make sense underneath a
-# parent document, so a theory chapter is the entry point to its own detail.
+# Theory reference pages are entry points; detailed design and evidence notes
+# are nested beneath the component they qualify.
 parts:
   - caption: Core architecture
     chapters:
       - file: architecture
+      - file: boolean-dag-flattening
       - file: sat-ipasir-up
       - file: dpllt
       - file: preprocessing
@@ -18,9 +16,8 @@ parts:
     chapters:
       - file: euf
         sections:
+          - file: euf-boolean-arguments
           - file: qfuf-disequality-propagation
-      # arithmetic.md is the entry point: what is implemented, its options and
-      # its statistics. Everything nested under it is evidence or open work.
       - file: arithmetic
         sections:
           - file: qf-lra-heuristics
@@ -28,6 +25,9 @@ parts:
           - file: open-leads
           - file: tropical-matrix-structure
           - file: fuzz-coverage-qf-lra
+      - file: qf-uflra-model-guided-performance
+        sections:
+          - file: qf-uflra-convex-no-merge-plan
       - file: nelson-oppen-qf-lra-regression
       - file: qf-lra-equality-sharing
       - file: bool-argument-congruence-bug
@@ -38,13 +38,12 @@ parts:
       - file: experiments
       - file: run-log
       - file: debugging
+        sections:
+          - file: finite-domain-fuzzing
       - file: termid-order-sensitivity
 
   - caption: Paper notes
     chapters:
-      # literature.md states the policy and the template; the two files nested
-      # under it are the lower-confidence tiers it defines -- read-in-brief and
-      # abstracts-only. The deep notes follow as chapters of their own.
       - file: literature
         sections:
           - file: papers/summaries

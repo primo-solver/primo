@@ -4,20 +4,27 @@
 
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "core/ids.hpp"
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
+#include "sat/lit.hpp"
 #include "smt/theory_combination.hpp"
 #include "util/rational.hpp"
 
 using primo::core::SymbolTable;
 using primo::core::TermManager;
 using primo::smt::analyze_nelson_oppen_interface;
+using primo::smt::InterfaceEqualityAssignment;
+using primo::smt::InterfaceEqualityClassification;
 using primo::smt::InterfaceEqualityStatus;
 using primo::smt::InterfaceEqualityValue;
 using primo::smt::PurificationSiteKind;
+using primo::smt::SharedEqualitySource;
+using primo::smt::SharedModelEquality;
 using primo::smt::TheoryCombinationManager;
 
 namespace {
@@ -66,8 +73,8 @@ void finds_visible_interface_constants_and_equalities_by_sort() {
   assert(summary.terms.size() == 4);
   assert(summary.sort_count == 2);
   assert(summary.candidate_pairs == 3);
-  assert(summary.equality_registry.size() == 3);
-  assert(summary.missing_equalities == 1);
+  assert(summary.equality_registry.size() == 2);
+  assert(summary.missing_equalities == 0);
   assert(summary.visible_equalities.size() == 2);
   assert(summary.visible_equalities[0].lhs == a);
   assert(summary.visible_equalities[0].rhs == b);
@@ -76,12 +83,9 @@ void finds_visible_interface_constants_and_equalities_by_sort() {
   assert(summary.equality_registry[0].lhs == a);
   assert(summary.equality_registry[0].rhs == b);
   assert(summary.equality_registry[0].status == InterfaceEqualityStatus::Visible);
-  assert(summary.equality_registry[1].lhs == a);
+  assert(summary.equality_registry[1].lhs == b);
   assert(summary.equality_registry[1].rhs == c);
-  assert(summary.equality_registry[1].status == InterfaceEqualityStatus::Missing);
-  assert(summary.equality_registry[2].lhs == b);
-  assert(summary.equality_registry[2].rhs == c);
-  assert(summary.equality_registry[2].status == InterfaceEqualityStatus::Visible);
+  assert(summary.equality_registry[1].status == InterfaceEqualityStatus::Visible);
 }
 
 void ignores_boolean_and_internal_constants() {
@@ -163,9 +167,9 @@ void registry_supports_mock_theory_dispatch_without_creating_atoms() {
   mock.inspect(summary);
 
   assert(summary.candidate_pairs == 3);
-  assert(summary.equality_registry.size() == 3);
+  assert(summary.equality_registry.size() == 2);
   assert(mock.visible_pairs == 2);
-  assert(mock.missing_pairs == 1);
+  assert(mock.missing_pairs == 0);
   const std::vector expected_visible_atoms{eq_ab, terms.mk_eq(a, c)};
   assert(mock.visible_atoms == expected_visible_atoms);
 }
@@ -203,6 +207,7 @@ void manager_tracks_canonical_interface_equality_values() {
   assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Equal);
   assert(manager.interface_equality_value(b, a) == InterfaceEqualityValue::Equal);
 
+  assert(manager.ensure_interface_pair(b, c).has_value());
   assert(manager.set_interface_equality_value(b, c, InterfaceEqualityValue::Disequal));
   const auto missing = manager.interface_equality(c, b);
   assert(missing.has_value());
@@ -276,6 +281,9 @@ void manager_rolls_back_interface_equality_values_by_decision_level() {
 
   TheoryCombinationManager manager(terms);
   manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.ensure_interface_pair(a, b).has_value());
+  assert(manager.ensure_interface_pair(b, c).has_value());
+  assert(manager.ensure_interface_pair(a, c).has_value());
 
   assert(manager.set_interface_equality_value(a, b, InterfaceEqualityValue::Equal));
   manager.push_level();
@@ -293,6 +301,188 @@ void manager_rolls_back_interface_equality_values_by_decision_level() {
   assert(manager.interface_equality_value(a, b) == InterfaceEqualityValue::Equal);
   assert(manager.interface_equality_value(b, c) == InterfaceEqualityValue::Unknown);
   assert(manager.interface_equality_value(a, c) == InterfaceEqualityValue::Unknown);
+}
+
+void manager_tracks_interface_equality_assignment_snapshots() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto b_symbol = symbols.declare_constant("b", sort_a);
+  const auto c_symbol = symbols.declare_constant("c", sort_a);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+  const auto eq_ab = terms.mk_eq(a, b);
+  const auto eq_bc = terms.mk_eq(b, c);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.ensure_interface_pair(a, b).has_value());
+  assert(manager.ensure_interface_pair(b, c).has_value());
+  assert(manager.register_interface_equality_atom(eq_ab, primo::sat::Lit{17}));
+  assert(manager.register_interface_equality_atom(eq_bc, primo::sat::Lit{19}));
+
+  manager.refresh_interface_equality_assignments([](primo::sat::Lit lit) -> std::optional<bool> {
+    if (lit.value == 17) {
+      return true;
+    }
+    if (lit.value == 19) {
+      return false;
+    }
+    return std::nullopt;
+  });
+
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::True);
+  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::False);
+  assert(manager.interface_equality_assignment(a, c) == InterfaceEqualityAssignment::Unknown);
+  assert(manager.interface_equalities_with_assignment(InterfaceEqualityAssignment::True).size() ==
+         1);
+  assert(manager.interface_equalities_with_assignment(InterfaceEqualityAssignment::False).size() ==
+         1);
+  assert(manager.registered_interface_equality_atom_count() == 2);
+
+  manager.clear_interface_equality_assignments();
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::Unknown);
+  assert(manager.interface_equality_lit(a, b)->value == 17);
+}
+
+void manager_rolls_back_interface_equality_assignments_by_decision_level() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto b_symbol = symbols.declare_constant("b", sort_a);
+  const auto c_symbol = symbols.declare_constant("c", sort_a);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.ensure_interface_pair(a, b).has_value());
+  assert(manager.ensure_interface_pair(b, c).has_value());
+  assert(manager.ensure_interface_pair(a, c).has_value());
+
+  assert(manager.set_interface_equality_assignment(a, b, InterfaceEqualityAssignment::True));
+  manager.push_level();
+  assert(manager.set_interface_equality_assignment(a, b, InterfaceEqualityAssignment::False));
+  assert(manager.set_interface_equality_assignment(b, c, InterfaceEqualityAssignment::True));
+  manager.push_level();
+  assert(manager.set_interface_equality_assignment(a, c, InterfaceEqualityAssignment::False));
+
+  manager.pop_to_level(1);
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::False);
+  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::True);
+  assert(manager.interface_equality_assignment(a, c) == InterfaceEqualityAssignment::Unknown);
+
+  manager.pop_to_level(0);
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::True);
+  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::Unknown);
+  assert(manager.interface_equality_assignment(a, c) == InterfaceEqualityAssignment::Unknown);
+}
+
+void manager_tracks_per_round_interface_equality_classifications() {
+  SymbolTable symbols;
+  const auto sort_a = symbols.declare_sort("A");
+  const auto a_symbol = symbols.declare_constant("a", sort_a);
+  const auto b_symbol = symbols.declare_constant("b", sort_a);
+  const auto c_symbol = symbols.declare_constant("c", sort_a);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+  const auto eq_ab = terms.mk_eq(a, b);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+  assert(manager.ensure_interface_pair(a, b).has_value());
+
+  assert(manager.mark_interface_equality_classification(
+      eq_ab, InterfaceEqualityClassification::LraImplied));
+  assert(manager.mark_interface_equality_classification(
+      b, a, InterfaceEqualityClassification::SatForced));
+  assert(manager.has_interface_equality_classification(
+      a, b, InterfaceEqualityClassification::LraImplied));
+  assert(manager.has_interface_equality_classification(a, b,
+                                                       InterfaceEqualityClassification::SatForced));
+  assert(!manager.mark_interface_equality_classification(
+      terms.mk_eq(a, a), InterfaceEqualityClassification::EufImplied));
+
+  manager.clear_interface_equality_classifications();
+  assert(!manager.has_interface_equality_classification(
+      a, b, InterfaceEqualityClassification::LraImplied));
+  assert(manager.interface_equality(a, b).has_value());
+}
+
+void manager_owns_round_scoped_shared_model_state() {
+  SymbolTable symbols;
+  const auto real_sort = symbols.real_sort();
+  const auto a_symbol = symbols.declare_constant("a", real_sort);
+  const auto b_symbol = symbols.declare_constant("b", real_sort);
+  const auto c_symbol = symbols.declare_constant("c", real_sort);
+
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({a, b, c});
+  assert(!manager.shared_model().valid);
+
+  manager.begin_shared_model_round();
+  const std::uint64_t generation = manager.shared_model().generation;
+  manager.begin_shared_model_iteration({{c, a, b}, {a}}, {a, b, c});
+  assert(manager.shared_model().valid);
+  assert(manager.shared_model().reconciliation_iteration == 1);
+  assert(manager.shared_model().lra_value_classes.size() == 1);
+  const std::vector<SharedModelEquality> expected_spanning{SharedModelEquality{a, b},
+                                                           SharedModelEquality{a, c}};
+  assert(manager.shared_model().lra_model_spanning_equalities == expected_spanning);
+  assert(manager.lra_model_terms_mapped(a, c));
+  assert(manager.lra_model_agrees_equal(a, c));
+
+  assert(manager.enqueue_explained_shared_equality(
+      c, a, {primo::sat::Lit{-3}, primo::sat::Lit{-5}, primo::sat::Lit{-3}},
+      SharedEqualitySource::LraEntailed));
+  assert(!manager.enqueue_explained_shared_equality(a, c, {primo::sat::Lit{-4}},
+                                                    SharedEqualitySource::EufImplied));
+  const auto explained = manager.drain_explained_shared_equalities();
+  assert(explained.size() == 1);
+  assert(explained.front().lhs == a);
+  assert(explained.front().rhs == c);
+  assert(explained.front().reasons.size() == 1);
+  assert(explained.front().reasons.front().value == -4);
+  assert(explained.front().source == SharedEqualitySource::EufImplied);
+  assert(manager.drain_explained_shared_equalities().empty());
+
+  assert(manager.record_internal_model_equality(c, a));
+  assert(!manager.record_internal_model_equality(a, c));
+  assert(manager.has_interface_equality_classification(
+      a, c, InterfaceEqualityClassification::ModelInternal));
+  const auto separation = terms.mk_lt(b, c);
+  assert(manager.record_lra_separation_atom(separation));
+  assert(!manager.record_lra_separation_atom(separation));
+
+  manager.begin_shared_model_iteration({{a, c}}, {a, b, c});
+  assert(manager.shared_model().reconciliation_iteration == 2);
+  assert(manager.shared_model().internal_equalities.empty());
+  assert(!manager.has_interface_equality_classification(
+      a, c, InterfaceEqualityClassification::ModelInternal));
+  assert(manager.shared_model().lra_separation_atoms.size() == 1);
+  assert(manager.lra_model_terms_mapped(a, b));
+  assert(!manager.lra_model_agrees_equal(a, b));
+
+  manager.invalidate_shared_model();
+  assert(!manager.shared_model().valid);
+  manager.begin_shared_model_round();
+  assert(manager.shared_model().generation == generation + 1);
+  manager.rebuild_from_interface_terms({a, b});
+  assert(!manager.shared_model().valid);
 }
 
 void manager_rebuilds_registry_from_explicit_interface_terms() {
@@ -316,14 +506,45 @@ void manager_rebuilds_registry_from_explicit_interface_terms() {
   assert(manager.summary().terms.size() == 3);
   assert(manager.summary().sort_count == 1);
   assert(manager.summary().candidate_pairs == 3);
-  assert(manager.summary().equality_registry.size() == 3);
-  assert(manager.summary().missing_equalities == 3);
-  assert(manager.interface_equality(y, x).has_value());
+  assert(manager.summary().equality_registry.empty());
+  assert(manager.summary().missing_equalities == 0);
+  assert(!manager.interface_equality(y, x).has_value());
+  assert(manager.ensure_interface_pair(y, x).has_value());
   assert(!manager.interface_equality_lit(x, y).has_value());
   assert(!manager.register_interface_equality_atom(eq_xy, primo::sat::Lit{0}));
   assert(manager.register_interface_equality_atom(eq_xy, primo::sat::Lit{23}));
   assert(manager.interface_equality_lit(y, x)->value == 23);
-  assert(manager.summary().missing_equalities == 2);
+  assert(manager.summary().missing_equalities == 0);
+}
+
+void manager_owns_lazy_shared_equality_decisions() {
+  SymbolTable symbols;
+  const auto real_sort = symbols.real_sort();
+  const auto x_symbol = symbols.declare_constant("x", real_sort);
+  const auto y_symbol = symbols.declare_constant("y", real_sort);
+  TermManager terms(symbols);
+  const auto x = terms.mk_constant(x_symbol);
+  const auto y = terms.mk_constant(y_symbol);
+
+  TheoryCombinationManager manager(terms);
+  manager.rebuild_from_interface_terms({x, y});
+  auto& decisions = manager.shared_equality_decisions();
+  decisions.tried_vars.insert(7);
+  decisions.pending.push_back(primo::sat::Lit{7});
+  decisions.pending.push_back(primo::sat::Lit{9});
+  decisions.active.push_back(primo::sat::Lit{5});
+
+  manager.begin_shared_model_round();
+  assert(manager.shared_equality_decisions().tried_vars.contains(7));
+  assert(manager.shared_equality_decisions().pending.size() == 2);
+  assert(manager.shared_equality_decisions().pending.front().value == 7);
+  assert(manager.shared_equality_decisions().pending.back().value == 9);
+  assert(manager.shared_equality_decisions().active.size() == 1);
+
+  manager.rebuild_from_interface_terms({x, y});
+  assert(manager.shared_equality_decisions().tried_vars.empty());
+  assert(manager.shared_equality_decisions().pending.empty());
+  assert(manager.shared_equality_decisions().active.empty());
 }
 
 void reports_real_terms_inside_euf_atoms_as_purification_sites() {
@@ -389,7 +610,12 @@ int main() {
   manager_rejects_unregistered_or_cross_sort_equality_values();
   manager_rebuild_replaces_previous_arrangement();
   manager_rolls_back_interface_equality_values_by_decision_level();
+  manager_tracks_interface_equality_assignment_snapshots();
+  manager_rolls_back_interface_equality_assignments_by_decision_level();
+  manager_tracks_per_round_interface_equality_classifications();
+  manager_owns_round_scoped_shared_model_state();
   manager_rebuilds_registry_from_explicit_interface_terms();
+  manager_owns_lazy_shared_equality_decisions();
   reports_real_terms_inside_euf_atoms_as_purification_sites();
   reports_uninterpreted_applications_inside_arithmetic_atoms();
   return 0;

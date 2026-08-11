@@ -65,6 +65,8 @@ precondition without which the option does nothing.
 | `--lra-least-violated-leaving` | off | **`--lra-pivoting-rule sparse`** | MathSAT's rule; measured 167 vs 174 overall but **beats most-violated by 5**, i.e. a complementarity candidate, not a loss. Pairing it with any other rule wastes the dimension |
 | `--no-lra-sparse-leaving` | on | **`--lra-pivoting-rule sparse`** | ablation of the leaving-side half |
 | `--lra-fixed-elimination` | off | — | nets to nothing overall, doubles the >5MB band -- textbook portfolio arm. Note it also forces `model_phase_backtrack_may_change_beta` (`check_sat.cpp:7552`), as `soi` does, so it interacts with `--lra-model-phase` |
+| `--no-qf-uflra-fixed-elimination` | mixed elimination on | mixed QF_UFLRA | ablation of the mixed-only default that exposes `EqRow`; pure QF_LRA remains off |
+| `--no-qf-uflra-model-reconciliation` | reconciliation on | mixed QF_UFLRA | ablation of the default convex shared-model path; restores explained exact equality sharing |
 | `--lra-propagation` | on | — | the root of the propagation chain |
 | `--lra-row-propagation` | off | **`--lra-propagation`** | |
 | `--lra-bidirectional-row-propagation` | off | **`--lra-row-propagation`** (hence `--lra-propagation` too) | |

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import collections
-import concurrent.futures as futures
 import csv
 import json
 import os
@@ -27,6 +26,7 @@ import resource
 import subprocess
 import sys
 import time
+from concurrent import futures
 
 ANALYZER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'analyze_smt2.py')
 
@@ -45,7 +45,7 @@ def run_one(path, timeout, mem_mb):
         proc = subprocess.run(
             [sys.executable, ANALYZER, '--json', path],
             capture_output=True, text=True, timeout=timeout,
-            preexec_fn=_limit(mem_mb))
+            preexec_fn=_limit(mem_mb), check=False)
     except subprocess.TimeoutExpired:
         return {'file': path, 'status': 'timeout', 'seconds': timeout}
     except Exception as exc:                      # noqa: BLE001 - report, never drop

@@ -427,6 +427,39 @@ void flat_congruence_closure_drains_changed_terms_from_merges() {
   check(changed.empty());
 }
 
+void flat_congruence_closure_counts_selected_classes_across_backtracking() {
+  FlatCongruenceClosure closure(5);
+  const std::vector<FlatTermId> selected{0, 1, 2, 2};
+  check(closure.class_count(selected) == 3);
+
+  closure.assert_equal(0, 1);
+  check(closure.class_count(selected) == 2);
+
+  const std::size_t checkpoint = closure.push();
+  closure.assert_equal(1, 2);
+  check(closure.class_count(selected) == 1);
+  closure.pop(checkpoint);
+  check(closure.class_count(selected) == 2);
+}
+
+void flat_congruence_closure_projects_selected_classes_deterministically() {
+  FlatCongruenceClosure closure(7);
+  closure.assert_equal(4, 1);
+  closure.assert_equal(5, 2);
+  closure.assert_equal(2, 6);
+
+  const std::vector<FlatTermId> selected{6, 4, 0, 2, 1, 2, 5};
+  const std::vector<std::vector<FlatTermId>> expected{{0}, {1, 4}, {2, 5, 6}};
+  check(closure.equivalence_classes(selected) == expected);
+
+  const std::size_t checkpoint = closure.push();
+  closure.assert_equal(1, 2);
+  check((closure.equivalence_classes(selected) ==
+         std::vector<std::vector<FlatTermId>>{{0}, {1, 2, 4, 5, 6}}));
+  closure.pop(checkpoint);
+  check(closure.equivalence_classes(selected) == expected);
+}
+
 void flat_congruence_closure_pop_does_not_restore_drained_changed_terms() {
   FlatCongruenceClosure closure(8);
   closure.assert_equal(5, 6);
@@ -1289,6 +1322,8 @@ int main() {
   flat_terms_share_nested_subterms_and_flatten_equalities();
   flat_congruence_closure_uses_curried_definitions();
   flat_congruence_closure_drains_changed_terms_from_merges();
+  flat_congruence_closure_counts_selected_classes_across_backtracking();
+  flat_congruence_closure_projects_selected_classes_deterministically();
   flat_congruence_closure_pop_does_not_restore_drained_changed_terms();
   flat_congruence_closure_adds_self_application_to_one_use_list();
   flat_congruence_closure_skips_unrelated_disequality_scans();

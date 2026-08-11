@@ -11,6 +11,7 @@ ITERATIONS=50
 SOLVER_TIMEOUT=8
 BUGS="yinyang_bugs"
 SCRATCH="yinyang_scratch"
+LOGS=""
 FILE_SIZE_LIMIT=20000
 CONFIG=""
 KEEP_LOGIC=0
@@ -19,6 +20,7 @@ TYPEFUZZ="${TYPEFUZZ:-typefuzz}"
 YINYANG_INSTALL_SPEC="${YINYANG_INSTALL_SPEC:-yinyang}"
 DIAGNOSE=0
 KEEP_MUTANTS=0
+RANDOM_SEED=""
 EXTRA_ARGS=()
 
 usage() {
@@ -34,6 +36,7 @@ Options:
   --solver-timeout N       per-solver timeout in seconds
   --bugs DIR               bug output directory
   --scratch DIR            scratch directory
+  --logs DIR               rolling log directory; useful for SLURM array tasks
   --file-size-limit N      max seed size in bytes
   --config PATH            operator/signature config restricting mutations
   --keep-logic             keep the seed's (set-logic ...) in mutants
@@ -41,6 +44,7 @@ Options:
   --typefuzz PATH          typefuzz executable
   --diagnose               forward solver output to stdout
   --keep-mutants           keep generated mutants in scratch
+  --random-seed N          reproducible typefuzz random seed
   -h, --help               show this help
 
 Install:
@@ -69,6 +73,7 @@ while (($#)); do
         --solver-timeout) SOLVER_TIMEOUT="$2"; shift 2 ;;
         --bugs) BUGS="$2"; shift 2 ;;
         --scratch) SCRATCH="$2"; shift 2 ;;
+        --logs) LOGS="$2"; shift 2 ;;
         --file-size-limit) FILE_SIZE_LIMIT="$2"; shift 2 ;;
         --config) CONFIG="$2"; shift 2 ;;
         --keep-logic) KEEP_LOGIC=1; shift ;;
@@ -76,6 +81,7 @@ while (($#)); do
         --typefuzz) TYPEFUZZ="$2"; shift 2 ;;
         --diagnose) DIAGNOSE=1; shift ;;
         --keep-mutants) KEEP_MUTANTS=1; shift ;;
+        --random-seed) RANDOM_SEED="$2"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         --) shift; EXTRA_ARGS=("$@"); break ;;
         *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -99,7 +105,10 @@ if [[ ! -e "$SEEDS" ]]; then
     exit 1
 fi
 
-mkdir -p "$BUGS" "$SCRATCH"
+mkdir -p "$(dirname "$BUGS")" "$(dirname "$SCRATCH")"
+if [[ -n $LOGS ]]; then
+    mkdir -p "$(dirname "$LOGS")"
+fi
 
 # typefuzz's -L silently drops any seed larger than the limit; it reports the
 # loss only as "N valid, M invalid" in its summary, which reads like a
@@ -126,6 +135,9 @@ cmd=(
     -L "$FILE_SIZE_LIMIT"
 )
 
+if [[ -n $LOGS ]]; then
+    cmd+=(-l "$LOGS")
+fi
 if ((DIAGNOSE)); then
     cmd+=(-d)
 fi
@@ -144,6 +156,9 @@ if ((HOIST_DECLARATIONS)); then
 fi
 if ((KEEP_MUTANTS)); then
     cmd+=(-k)
+fi
+if [[ -n $RANDOM_SEED ]]; then
+    cmd+=(--seed "$RANDOM_SEED")
 fi
 cmd+=("${EXTRA_ARGS[@]}")
 cmd+=("$SOLVER;$REF" "$SEEDS")

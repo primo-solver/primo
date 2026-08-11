@@ -11,6 +11,23 @@ namespace primo::smt {
 
 class Preprocessing {};
 
+struct BooleanFlatteningResult {
+  std::vector<core::TermId> assertions;
+  std::size_t attempts = 0;
+  std::size_t accepted = 0;
+  std::size_t threshold_stops = 0;
+  std::size_t operands_copied = 0;
+  std::size_t rewrites = 0;
+  std::size_t max_arity = 0;
+};
+
+// Optionally widens nested And/Or nodes in the reachable assertion DAG. The
+// threshold bounds arity growth caused by this pass; explicitly wider source
+// nodes remain wider. A zero threshold disables rewriting.
+BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
+                                                     const std::vector<core::TermId>& assertions,
+                                                     std::size_t max_arity);
+
 struct EqualityBridgeResult {
   std::vector<core::TermId> equalities;
   std::size_t skipped_or_nodes = 0;
@@ -26,9 +43,17 @@ class EqualityBridge {
   core::TermManager& terms_;
 };
 
+struct UnitEqualityPropagationStats {
+  std::size_t consequences_added = 0;
+  std::size_t query_nodes = 0;
+  std::size_t query_memo_hits = 0;
+  std::size_t add_term_requests = 0;
+  std::size_t add_term_seen_hits = 0;
+};
+
 std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
-                                                    std::size_t* consequences_added = nullptr);
+                                                    UnitEqualityPropagationStats* stats = nullptr);
 
 struct GroundEqualitySubstitutionResult {
   std::vector<core::TermId> assertions;
@@ -125,14 +150,16 @@ struct MonotoneEliminationResult {
 // any leaf that model reconstruction could not evaluate disqualifies
 // every variable in it, so a discharged constraint can always be repaired
 // when the model is built.
-MonotoneEliminationResult eliminate_monotone_variables(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions);
+MonotoneEliminationResult eliminate_monotone_variables(core::TermManager& terms,
+                                                       const std::vector<core::TermId>& assertions);
 
 struct BooleanUnitPropagationResult {
   std::vector<core::TermId> assertions;
   std::vector<std::pair<core::TermId, bool>> assignments;
   std::size_t units = 0;
   std::size_t rewrites = 0;
+  std::size_t memo_hits = 0;
+  std::size_t memo_misses = 0;
 };
 
 BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
@@ -146,6 +173,12 @@ struct ForcedAtomPropagationResult {
   std::size_t units = 0;
   std::size_t disequalities = 0;
   std::size_t rewrites = 0;
+  std::size_t memo_hits = 0;
+  std::size_t memo_misses = 0;
+  std::size_t query_nodes = 0;
+  std::size_t query_memo_hits = 0;
+  std::size_t add_term_requests = 0;
+  std::size_t add_term_seen_hits = 0;
 };
 
 ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,

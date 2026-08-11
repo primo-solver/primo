@@ -80,9 +80,10 @@ The practical Primo rules are therefore:
 - `sat::IpasirUpCapabilities` records whether a backend supports observed
   variables, external propagation, external clauses, external decisions, and
   fresh observed variables during solving.
-- Current Nelson-Oppen online propagation still uses the reduced paired-bound
-  precreation fallback. The fresh-observed-variable probe is an enabling SAT
-  result, not yet mixed-theory behavior.
+- Current Nelson-Oppen online propagation uses that fresh-observed-variable path
+  for selected paired-bound candidates: the mixed dispatcher creates and
+  observes the interface equality atom from `cb_propagate()` immediately before
+  returning the propagated equality literal.
 - CryptoMiniSat's upstream public API currently exposes ordinary IPASIR, not
   IPASIR-UP observed-variable and user-propagator callbacks, so it is not a
   drop-in backend for online theory propagation.
@@ -102,6 +103,66 @@ calls with small deltas should be checked with an incremental profile such as
 `ilb=2` plus selected inprocessing options disabled before attributing a
 slowdown to Primo's EUF code. Invalid option names or values are rejected by the
 backend and reported as unsupported input for that run.
+
+## CaDiCaL preprocessing: factoring (BVA)
+
+CaDiCaL 3.0 enables its `factor` pass by default. Here *factoring* means
+bounded variable addition (BVA) over propositional CNF; it is unrelated to
+factoring arithmetic expressions or an LRA basis. BVA recognizes repeated
+clause products and introduces an internal extension variable to represent the
+shared structure. For example, the four clauses
+
+```text
+(a or x)  (a or y)  (b or x)  (b or y)
+```
+
+are equisatisfiable with the following clauses after existentially introducing
+`e`:
+
+```text
+(a or e)  (b or e)  ((not e) or x)  ((not e) or y)
+```
+
+Larger products can lose many clauses or literals. The pass is bounded because
+CaDiCaL limits candidate size and effort and applies a factor only when its
+estimated representation is suitable. Candidate discovery still has a cost:
+CaDiCaL builds occurrence lists, ranks possible factor literals, matches their
+quotient clauses, adds the extension variable and replacement clauses, removes
+the original clauses, and maintains reconstruction information. Profiles name
+parts of this work `next_factor`, `factorize_next`, and
+`eagerly_remove_from_occurences`.
+
+The extension variable is owned entirely by CaDiCaL. It has no `TermId`, theory
+atom, or entry in Primo's Boolean abstraction. `sat::CadicalBackend` uses
+CaDiCaL's `declare_more_variables()` API for later Primo-owned variables so an
+internal BVA variable cannot collide with a subsequently allocated abstraction
+variable. This ownership rule is described in [](dpllt.md).
+
+Factoring can be either a compression win or a preprocessing loss. The local
+`Problem05_60` profile at implementation revision `9b9a035` contains 109,849
+nullary SMT-LIB definitions and attributes about 30 percent of its instrumented
+runtime to CaDiCaL factoring. A preliminary single-row run changed from 5.37
+seconds with the default to 3.86 seconds with
+`--cadical-option factor=0`, approximately 28 percent faster. The exact command,
+binary, and artifact paths are recorded in `docs/run-log.json` under
+`2026-08-10-cadical-factor-problem05-local-7556339`.
+
+This one row does **not** justify changing the default. A global A/B campaign is
+tabled. Before reconsidering it, run `factor=1` and `factor=0` with identical
+commits, corpora, options, hosts, and per-instance timeouts, and report:
+
+- solved, timeout, error, unsupported, wrong-answer, and PAR2 totals;
+- family-level results and paired per-file timing changes;
+- SAT variables, clauses, decisions, propagations, and conflicts;
+- separate QF_UF, QF_LRA, and QF_UFLRA results, because BVA may help one CNF
+  shape while hurting another;
+- the number and shape of large definitional inputs for which factoring is a
+  measurable net cost.
+
+Keep `factor=1` as the ordinary CaDiCaL default until that campaign shows no
+correctness problem and a robust aggregate win. A conditional policy based on
+formula shape would require its own recognizer, counters, fuzz gate, and full
+evaluation; it must not be inferred from the current microprobe.
 
 ## Search statistics
 

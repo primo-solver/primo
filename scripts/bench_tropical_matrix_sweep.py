@@ -74,13 +74,14 @@ def run(name, smt_file, args):
     started = time.time()
     with open(errpath, "w") as errfh:
         proc = subprocess.run(cmd, capture_output=False, stdout=subprocess.PIPE,
-                              stderr=errfh, text=True, cwd=WORKDIR)
+                              stderr=errfh, text=True, cwd=WORKDIR, check=False)
     elapsed = time.time() - started
-    err = open(errpath).read()
+    with open(errpath) as errfh:
+        err = errfh.read()
     answer = "unknown"
-    if re.search(r'^sat$', proc.stdout or "", re.M):
+    if re.search(r'^sat$', proc.stdout or "", re.MULTILINE):
         answer = "sat"
-    elif re.search(r'^unsat$', proc.stdout or "", re.M):
+    elif re.search(r'^unsat$', proc.stdout or "", re.MULTILINE):
         answer = "unsat"
     return {
         "file": smt_file,

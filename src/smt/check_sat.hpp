@@ -62,6 +62,7 @@ enum class ModelEqualityBranchPolicy {
   First,
   Ranked,
   Adaptive,
+  CareQueued,
 };
 
 // Which formulas reach the mixed EUF/LRA solver rather than the pure QF_LRA
@@ -166,7 +167,7 @@ enum class CheckSatResult {
 };
 
 enum class NelsonOppenPropagationMode {
-  Off,
+  Exact,
   Final,
   Online,
 };
@@ -259,6 +260,11 @@ struct CheckSatOptions {
   // real effect is on the largest instances (>5MB: 7 -> 14 of 50), paid for
   // in the 50-500KB band. Worth enabling on equality-dominated input.
   bool lra_fixed_elimination = false;
+  // Fixed-variable elimination is part of the mixed convex equality-sharing
+  // path by default. It exposes EqRow consequences and reduces exact fallback
+  // probes without changing the pure QF_LRA default above. The mixed setting
+  // remains independently disableable for ablation.
+  bool qf_uflra_fixed_elimination = true;
   bool uf_symmetry_breaking = true;
   bool finite_domain_value_precedence = true;
   bool finite_domain_equality_definitions = true;
@@ -272,6 +278,14 @@ struct CheckSatOptions {
   bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;
+  bool qf_uflra_candidate_final_scan = false;
+  // Default Section 4 shared-model reconciliation for convex QF_UFLRA.
+  // LRA-entailed equalities that EUF can absorb are retained in the round's
+  // EUF model instead of being materialized as SAT atoms. The explained exact
+  // path remains available explicitly and as the conservative fallback for
+  // failed candidate invariants.
+  bool qf_uflra_model_reconciliation = true;
+  bool qf_uflra_online_euf = false;
   bool top_level_or_tseitin = false;
   bool auto_top_level_or_tseitin = true;
   bool auto_basic_single_preprocessing = true;
@@ -286,12 +300,16 @@ struct CheckSatOptions {
   std::size_t euf_diseq_ackermann_queue_budget = 4096;
   std::size_t euf_diseq_ackermann_per_symbol = 64;
   std::size_t nelson_oppen_model_equality_branch_budget = 16;
+  // Optional associative Boolean preprocessing. Zero preserves the core DAG;
+  // positive values bound arity growth caused by flattening.
+  std::size_t boolean_flatten_threshold = 0;
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;
   std::size_t finite_domain_eqdefs_auto_domain_limit = 8;
   std::size_t finite_domain_eqdefs_auto_clause_limit = 5000;
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
+  std::optional<std::size_t> nelson_oppen_arrangement_probe_limit;
   std::optional<std::size_t> max_theory_conflicts;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;

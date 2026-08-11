@@ -1,0 +1,12 @@
+; Boolean UF argument bridge with an uninterpreted result sort.
+(set-logic QF_UFLRA)
+(declare-sort U 0)
+(declare-fun p () Bool)
+(declare-fun q () Bool)
+(declare-fun f (Bool) U)
+(declare-fun x () Real)
+(assert (not p))
+(assert (not q))
+(assert (not (= (f p) (f q))))
+(assert (<= 0 x))
+(check-sat)

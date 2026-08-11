@@ -16,11 +16,12 @@ def run(command: list[str], *, check: bool = True) -> subprocess.CompletedProces
 
 def ssh(config: Path, remote: str, command: str) -> subprocess.CompletedProcess[str]:
     shell_syntax_check(command)
-    proc = run(["ssh", "-F", str(config), remote, command])
+    proc = run(["ssh", "-F", str(config), remote, command], check=False)
     if proc.stdout:
         print(proc.stdout, end="")
     if proc.stderr:
         print(proc.stderr, end="")
+    proc.check_returncode()
     return proc
 
 
@@ -148,7 +149,61 @@ rm -rf "$snapshot"
         raise subprocess.CalledProcessError(ssh_proc.returncode, ssh_command)
 
 
-def build_command(workdir: str, cmake: str, target: str, jobs: int, git: str) -> str:
+def build_command(
+    workdir: str,
+    cmake: str,
+    target: str,
+    jobs: int,
+    git: str,
+    contrib_targets: list[str],
+    reuse_dependencies: bool,
+) -> str:
+    make_targets = " ".join(
+        shlex.quote(contrib_target) for contrib_target in contrib_targets
+    )
+    if reuse_dependencies:
+        extra_targets = [
+            target for target in contrib_targets if target != "contrib-required"
+        ]
+        extra_setup = ""
+        if extra_targets:
+            quoted_extra_targets = " ".join(
+                shlex.quote(target) for target in extra_targets
+            )
+            extra_setup = f"make MAKEFLAGS= {quoted_extra_targets}"
+        dependency_setup = f"""
+missing_dependency=0
+for required in \
+  contrib/local/include/CLI/CLI.hpp \
+  contrib/local/include/antlr4-runtime/antlr4-runtime.h \
+  contrib/local/lib/libantlr4-runtime.a \
+  contrib/local/lib/libcadical.a \
+  contrib/local/lib/libgmp.a \
+  contrib/local/lib/libgmpxx.a; do
+  if [ ! -e "$required" ]; then
+    echo "missing reusable dependency: $required"
+    missing_dependency=1
+  fi
+done
+if [ ! -e contrib/local/include/ipasir_up.h ] && \
+   [ ! -e contrib/local/include/ipasir.h ]; then
+  echo "missing reusable dependency: IPASIR header (ipasir_up.h or ipasir.h)"
+  missing_dependency=1
+fi
+if [ "$missing_dependency" -ne 0 ]; then
+  echo 'reusable dependency installation is incomplete; provisioning it now'
+  make MAKEFLAGS= contrib-required
+fi
+{extra_setup}
+rm -rf build-slurm-rel
+""".strip()
+    else:
+        dependency_setup = f"""
+rm -f contrib/local/.cadical.stamp contrib/local/lib/libcadical.a
+rm -rf contrib/src/cadical/build contrib/src/cadical/makefile \\
+  contrib/src/cadical/src/makefile build-slurm-rel
+make {make_targets}
+""".strip()
     return f"""
 set -eu
 cd {shlex.quote(workdir)}
@@ -161,10 +216,7 @@ fi
 case "$cmake_path" in
   */*) cmake_dir=$(dirname "$cmake_path"); export PATH="$PWD/$cmake_dir:$PATH" ;;
 esac
-rm -f contrib/local/.cadical.stamp contrib/local/lib/libcadical.a
-rm -rf contrib/src/cadical/build contrib/src/cadical/makefile \
-  contrib/src/cadical/src/makefile build-slurm-rel
-make contrib-required
+{dependency_setup}
 "$cmake_path" -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release \
   -DPRIMO_GIT_REVISION_OVERRIDE={shlex.quote(git)}
 "$cmake_path" --build build-slurm-rel --target {shlex.quote(target)} -j{jobs}
@@ -172,8 +224,14 @@ build-slurm-rel/{shlex.quote(target)} --version
 """.strip()
 
 
-def check_command(workdir: str, expected_git: str, target: str) -> str:
+def check_command(
+    workdir: str, expected_git: str, target: str, required_tools: list[str]
+) -> str:
     expected_line = f"git: {expected_git}"
+    tool_checks = "\n".join(
+        f"test -x {shlex.quote(tool)}\n{shlex.quote(tool)} --version >/dev/null"
+        for tool in required_tools
+    )
     return f"""
 set -eu
 cd {shlex.quote(workdir)}
@@ -183,6 +241,7 @@ printf '%s\\n' "$version"
 printf '%s\\n' "$version" | grep -F {shlex.quote(expected_line)}
 printf '%s\\n' "$version" | grep -F 'cadical:'
 ldd build-slurm-rel/{shlex.quote(target)} >/dev/null
+{tool_checks}
 """.strip()
 
 
@@ -235,6 +294,28 @@ def main() -> int:
     parser.add_argument("--cmake", default=".venv-build/bin/cmake")
     parser.add_argument("--target", default="primo")
     parser.add_argument("--jobs", type=int, default=4)
+    parser.add_argument(
+        "--contrib-target",
+        action="append",
+        help=(
+            "Make target to run before configuring the remote build. Repeat to add "
+            "reference-tool targets such as contrib-z3. Defaults to contrib-required."
+        ),
+    )
+    parser.add_argument(
+        "--with-z3",
+        action="store_true",
+        help="Install and require contrib/local/bin/z3 in the remote workspace.",
+    )
+    parser.add_argument(
+        "--require-tool",
+        action="append",
+        default=[],
+        help=(
+            "Remote executable path that --check-only must find and run with --version, "
+            "for example contrib/local/bin/z3. Repeat for multiple tools."
+        ),
+    )
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--no-sync", action="store_true")
     parser.add_argument(
@@ -242,6 +323,14 @@ def main() -> int:
         choices=("archive", "rsync"),
         default="archive",
         help="archive sends only tracked HEAD files; rsync preserves the legacy full-tree sync",
+    )
+    parser.add_argument(
+        "--reuse-dependencies",
+        action="store_true",
+        help=(
+            "Reuse the remote contrib/local installation while replacing the tracked source "
+            "snapshot and rebuilding Primo from a clean build-slurm-rel directory"
+        ),
     )
     parser.add_argument(
         "--allow-active-jobs",
@@ -254,6 +343,14 @@ def main() -> int:
         raise SystemExit("--jobs must be positive")
     if not args.ssh_config.is_file():
         raise SystemExit(f"missing SSH config: {args.ssh_config}")
+
+    contrib_targets = args.contrib_target or ["contrib-required"]
+    required_tools = list(args.require_tool)
+    if args.with_z3:
+        if "contrib-z3" not in contrib_targets:
+            contrib_targets.append("contrib-z3")
+        if "contrib/local/bin/z3" not in required_tools:
+            required_tools.append("contrib/local/bin/z3")
 
     git = run(
         ["git", "-C", str(args.local_dir), "rev-parse", "--short", "HEAD"]
@@ -277,9 +374,21 @@ def main() -> int:
         ssh(
             args.ssh_config,
             args.remote,
-            build_command(args.remote_dir, args.cmake, args.target, args.jobs, git),
+            build_command(
+                args.remote_dir,
+                args.cmake,
+                args.target,
+                args.jobs,
+                git,
+                contrib_targets,
+                args.reuse_dependencies,
+            ),
         )
-    ssh(args.ssh_config, args.remote, check_command(args.remote_dir, git, args.target))
+    ssh(
+        args.ssh_config,
+        args.remote,
+        check_command(args.remote_dir, git, args.target, required_tools),
+    )
     return 0
 
 

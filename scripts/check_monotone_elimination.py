@@ -22,11 +22,11 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import os
 import re
 import subprocess
 import sys
 import tempfile
-import os
 
 PRIMO = '/workspace/build/primo'
 Z3 = '/workspace/contrib/local/bin/z3'
@@ -43,7 +43,9 @@ ATOMS = [
 
 def run(cmd, timeout=20):
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout).stdout
+        return subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, check=False
+        ).stdout
     except subprocess.TimeoutExpired:
         return ''
 
@@ -88,9 +90,12 @@ def check_one(body, verbose):
     base_ans = base.split('\n', 1)[0].strip()
     pass_ans = with_pass.split('\n', 1)[0].strip()
 
-    if base_ans in ('sat', 'unsat') and pass_ans in ('sat', 'unsat'):
-        if base_ans != pass_ans:
-            problems.append(f'ANSWER CHANGED: {base_ans} -> {pass_ans}')
+    if (
+        base_ans in ('sat', 'unsat')
+        and pass_ans in ('sat', 'unsat')
+        and base_ans != pass_ans
+    ):
+        problems.append(f'ANSWER CHANGED: {base_ans} -> {pass_ans}')
 
     # reference answer
     with tempfile.NamedTemporaryFile('w', suffix='.smt2', delete=False) as fh:

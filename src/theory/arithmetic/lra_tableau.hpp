@@ -218,6 +218,11 @@ class LraTableau {
     // `factor * variables + offset` pivots.
     std::size_t bland_fallback_factor = 4;
     std::size_t bland_fallback_offset = 64;
+    // How many values inside a variable's freedom interval
+    // diversify_shared_model() tries before giving up on that variable. The
+    // interval is exact; which value inside it is worth taking is pure
+    // heuristic, so this is the knob that decides how hard mutation tries.
+    std::size_t model_mutation_candidates = 4;
     // SOI-only; inert under every other pivoting rule.
     SoiMinimization soi_minimization = SoiMinimization::QuickXplain;
     SoiMinimizationOrder soi_minimization_order = SoiMinimizationOrder::Id;
@@ -363,10 +368,13 @@ class LraTableau {
   // the SAT solver. An EMPTY reason set is meaningful and legal: it means the
   // equality follows from the tableau's own row structure with no asserted
   // bound involved, so it holds unconditionally.
+  enum class EntailedEqualityRule { FixedEq, EqRow, EqOffsetRows, EqRows };
+
   struct EntailedEquality {
     LraVarId lhs = 0;
     LraVarId rhs = 0;
     std::vector<sat::Lit> reasons;
+    EntailedEqualityRule rule = EntailedEqualityRule::FixedEq;
   };
 
   // Applies the cheap entailment rules from de Moura and Bjorner's
@@ -376,11 +384,11 @@ class LraTableau {
   //   FixedEq   l_i = u_i = l_j = u_j                      ==> x_i = x_j
   //   EqRow     x_i = x_j + P, P fixed, beta(P) = 0        ==> x_i = x_j
   //
-  // Deliberately INCOMPLETE -- the paper's own EqOffsetRows and EqRows are not
-  // implemented, and even all four together miss equalities. What they miss is
-  // what the combination layer must case-split on. For a complete but very
-  // expensive reference, see lra_implied_real_equalities in check_sat.cpp,
-  // which is used as the test oracle.
+  // All four Section 5.1 rules are implemented. They remain deliberately
+  // INCOMPLETE: what they miss is what the combination layer must case-split
+  // on. For a complete but very expensive reference, see
+  // lra_implied_real_equalities in check_sat.cpp, which is used as the test
+  // oracle.
   //
   // Emits a SPANNING set, not all pairs: within a group of mutually equal
   // variables each is linked to the group's first member, giving n-1
@@ -395,6 +403,80 @@ class LraTableau {
   // path is deliberate -- see docs/nelson-oppen-qf-lra-regression.md for what happened last time it
   // was not.
   std::vector<EntailedEquality> entailed_equalities(const std::vector<LraVarId>& shared) const;
+
+  // -- M-Mutate (paper Section 5.2, "Mutation using freedom intervals") ------
+  //
+  // The range over which a NONBASIC variable's value may be moved while every
+  // basic variable stays inside its bounds. `nullopt` on an endpoint means
+  // unbounded in that direction. From the paper, for nonbasic x_j:
+  //
+  //   L_j = max({b(x_j) + (l_i - b(x_i))/a_ij | a_ij > 0}
+  //           u {b(x_j) + (u_i - b(x_i))/a_ij | a_ij < 0} u {l_j})
+  //   U_j = min({b(x_j) + (u_i - b(x_i))/a_ij | a_ij > 0}
+  //           u {b(x_j) + (l_i - b(x_i))/a_ij | a_ij < 0} u {u_j})
+  //
+  // The point of the interval is that it makes model diversification cost an
+  // O(column) computation instead of a solve: any value inside it keeps the
+  // assignment a genuine model of the current constraints, so a disequality
+  // read off the mutated model is true in some model rather than merely
+  // unrefuted. That is what lets the combination layer skip a case split
+  // honestly.
+  //
+  // Only defined for nonbasic variables -- a basic variable's value is a
+  // consequence of its row, not a free choice, and the paper is explicit that
+  // mutation performs NO pivoting to make one free. Throws std::out_of_range
+  // via is_basic()'s accessor for an unknown id; asserts on a basic one.
+  struct FreedomInterval {
+    std::optional<DeltaRational> lower;
+    std::optional<DeltaRational> upper;
+
+    // Whether `value` is inside the interval, treating absent endpoints as
+    // infinite. An empty interval (lower > upper) cannot occur on a feasible
+    // tableau, but this answers false for it rather than pretending.
+    [[nodiscard]] bool contains(const DeltaRational& value) const {
+      return (!lower.has_value() || *lower <= value) && (!upper.has_value() || value <= *upper);
+    }
+  };
+  [[nodiscard]] FreedomInterval freedom_interval(LraVarId nonbasic) const;
+
+  // The paper's greedy model mutator: walk the nonbasic variables that can
+  // move a shared value and, for each, take a value inside its freedom
+  // interval if doing so leaves MORE distinct values among `shared`. Fewer
+  // coincidences means fewer candidate equalities, and every one avoided is a
+  // case split the combination layer does not make.
+  //
+  // The obligation the paper places on a mutator is monotonicity --
+  // |classes(R_M)| <= |classes(R_mutated)| -- which holds here by
+  // construction, since an update is kept only when it strictly increases the
+  // count. That also gives termination for free: each accepted update raises
+  // a quantity bounded by |shared|, so at most |shared| - 1 are ever taken.
+  //
+  // **Does not touch the tableau.** The sweep runs against a scratch copy of
+  // the assignment, so this stays const and poll-only like model_equal_classes
+  // and entailed_equalities. That is not fastidiousness: update() trails the
+  // old value only under PivotingRule::Soi, and bounds are the only thing
+  // pop() restores, so a mutation applied to the live tableau in the default
+  // mode could not be undone on backtrack.
+  //
+  // `classes` holds the non-singleton classes AFTER mutation, in the same
+  // shape and order discipline model_equal_classes returns -- it is what the
+  // combination layer should branch on. `updates` is the audit trail of what
+  // moved, which is what makes a disagreement with the exact oracle
+  // debuggable rather than merely detectable.
+  struct ModelMutationResult {
+    std::vector<std::vector<LraVarId>> classes;
+    std::vector<std::pair<LraVarId, DeltaRational>> updates;
+    std::vector<DeltaRational> values;
+    std::size_t classes_before = 0;
+    std::size_t classes_after = 0;
+    std::size_t forbidden_equalities_before = 0;
+    std::size_t forbidden_equalities_after = 0;
+
+    [[nodiscard]] const DeltaRational& value(LraVarId var) const { return values.at(var); }
+  };
+  [[nodiscard]] ModelMutationResult diversify_shared_model(
+      const std::vector<LraVarId>& shared,
+      const std::vector<std::pair<LraVarId, LraVarId>>& forbidden_equalities = {}) const;
 
   // Read-only access to a variable's current upper/lower bound (if any) and
   // the literal that established it -- used by OnlineLraPropagator's
@@ -654,6 +736,13 @@ class LraTableau {
       std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry, FRowTrailEntry>;
 
   void update(LraVarId nonbasic_var, const DeltaRational& new_value);
+
+  // Shared by the public freedom_interval() and by diversify_shared_model().
+  // `beta` overrides the live assignment when non-null, which the mutation
+  // sweep needs: after it takes one update, later intervals must be measured
+  // against the moved values, not the tableau's.
+  [[nodiscard]] FreedomInterval freedom_interval_impl(LraVarId nonbasic,
+                                                      const std::vector<DeltaRational>* beta) const;
   void pivot(LraVarId basic_var, LraVarId entering_var);
 
   // check()'s entering-variable choice, split out so the three rules stay

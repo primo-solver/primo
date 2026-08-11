@@ -1,10 +1,11 @@
 #include "smt/preprocessing.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <iterator>
 #include <optional>
-#include <cstdint>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -19,6 +20,7 @@
 #include "core/term_manager.hpp"
 #include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
+#include "theory/equality/congruence_stats.hpp"
 #include "theory/equality/incremental_congruence_closure.hpp"
 #include "util/rational.hpp"
 
@@ -237,30 +239,48 @@ using SubtreeOccurrenceMap =
 const std::vector<std::pair<core::TermId, std::size_t>>& subtree_occurrences(
     const core::TermManager& terms, core::TermId root,
     const std::unordered_set<core::TermId>& candidate_variables, SubtreeOccurrenceMap& memo) {
-  const auto found = memo.find(root);
-  if (found != memo.end()) {
-    return found->second;
-  }
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+  };
 
-  std::unordered_map<core::TermId, std::size_t> counts;
-  if (candidate_variables.contains(root)) {
-    counts.emplace(root, 1);
-  }
-  const core::Term& term = terms.get(root);
-  for (const core::TermId child : term.children) {
-    for (const auto& [term_id, count] :
-         subtree_occurrences(terms, child, candidate_variables, memo)) {
-      counts[term_id] += count;
+  std::vector<Visit> pending{{root, false}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (memo.contains(visit.term)) {
+      continue;
     }
-  }
 
-  std::vector<std::pair<core::TermId, std::size_t>> flattened;
-  flattened.reserve(counts.size());
-  for (const auto& [term_id, count] : counts) {
-    flattened.emplace_back(term_id, count);
+    const core::Term& term = terms.get(visit.term);
+    if (!visit.expanded) {
+      pending.push_back(Visit{visit.term, true});
+      for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+        if (!memo.contains(*child)) {
+          pending.push_back(Visit{*child, false});
+        }
+      }
+      continue;
+    }
+
+    std::unordered_map<core::TermId, std::size_t> counts;
+    if (candidate_variables.contains(visit.term)) {
+      counts.emplace(visit.term, 1);
+    }
+    for (const core::TermId child : term.children) {
+      for (const auto& [term_id, count] : memo.at(child)) {
+        counts[term_id] += count;
+      }
+    }
+
+    std::vector<std::pair<core::TermId, std::size_t>> flattened;
+    flattened.reserve(counts.size());
+    for (const auto& [term_id, count] : counts) {
+      flattened.emplace_back(term_id, count);
+    }
+    memo.emplace(visit.term, std::move(flattened));
   }
-  const auto [inserted, _] = memo.emplace(root, std::move(flattened));
-  return inserted->second;
+  return memo.at(root);
 }
 
 void count_term_occurrences(const core::TermManager& terms, core::TermId root,
@@ -659,62 +679,108 @@ ForcedAtomAssignments collect_forced_atoms(core::TermManager& terms,
   return assignments;
 }
 
+struct BooleanUnitSimplificationCache {
+  struct Entry {
+    core::TermId term = 0;
+    std::size_t rewrites = 0;
+  };
+
+  std::unordered_map<core::TermId, Entry> entries;
+  std::size_t hits = 0;
+  std::size_t misses = 0;
+};
+
 core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId term_id,
                                          const std::unordered_map<core::TermId, bool>& assignments,
+                                         BooleanUnitSimplificationCache& cache,
                                          std::size_t& rewrites) {
-  const auto assigned = assignments.find(term_id);
-  if (assigned != assignments.end()) {
-    ++rewrites;
-    return terms.mk_bool(assigned->second);
-  }
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+    std::size_t rewrites_before;
+  };
 
-  const core::Term& term = terms.get(term_id);
-  const std::vector<core::TermId> children = term.children;
-  switch (term.kind) {
-    case core::TermKind::BoolValue:
-    case core::TermKind::Constant:
-    case core::TermKind::Application:
-    // QF_LRA and QF_UF are mutually exclusive at dispatch (check_sat.cpp),
-    // so this pass never actually sees arithmetic/Le/Lt terms; treated as
-    // opaque leaves for switch exhaustiveness.
-    case core::TermKind::Rational:
-    case core::TermKind::Plus:
-    case core::TermKind::Times:
-    case core::TermKind::Le:
-    case core::TermKind::Lt:
-      return term_id;
-    case core::TermKind::Equality: {
-      const core::TermId lhs =
-          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites);
-      const core::TermId rhs =
-          simplify_with_boolean_units(terms, children.at(1), assignments, rewrites);
-      return lhs != children.at(0) || rhs != children.at(1) ? terms.mk_eq(lhs, rhs) : term_id;
-    }
-    case core::TermKind::Not:
-      return terms.mk_not(
-          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites));
-    case core::TermKind::And: {
-      std::vector<core::TermId> rewritten;
-      rewritten.reserve(children.size());
-      for (const core::TermId child : children) {
-        rewritten.push_back(simplify_with_boolean_units(terms, child, assignments, rewrites));
+  std::vector<Visit> pending{{term_id, false, 0}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (!visit.expanded) {
+      if (const auto cached = cache.entries.find(visit.term); cached != cache.entries.end()) {
+        ++cache.hits;
+        rewrites += cached->second.rewrites;
+        continue;
       }
-      return terms.mk_and(std::move(rewritten));
-    }
-    case core::TermKind::Or: {
-      std::vector<core::TermId> rewritten;
-      rewritten.reserve(children.size());
-      for (const core::TermId child : children) {
-        rewritten.push_back(simplify_with_boolean_units(terms, child, assignments, rewrites));
+      ++cache.misses;
+
+      const auto assigned = assignments.find(visit.term);
+      if (assigned != assignments.end()) {
+        ++rewrites;
+        cache.entries.emplace(
+            visit.term, BooleanUnitSimplificationCache::Entry{terms.mk_bool(assigned->second), 1});
+        continue;
       }
-      return terms.mk_or(std::move(rewritten));
+
+      const core::Term& term = terms.get(visit.term);
+      const core::TermKind kind = term.kind;
+      const bool rewrites_children = kind == core::TermKind::Equality ||
+                                     kind == core::TermKind::Not || kind == core::TermKind::And ||
+                                     kind == core::TermKind::Or || kind == core::TermKind::Implies;
+      if (!rewrites_children) {
+        cache.entries.emplace(visit.term, BooleanUnitSimplificationCache::Entry{visit.term, 0});
+        continue;
+      }
+
+      pending.push_back(Visit{visit.term, true, rewrites});
+      for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+        pending.push_back(Visit{*child, false, 0});
+      }
+      continue;
     }
-    case core::TermKind::Implies:
-      return terms.mk_implies(
-          simplify_with_boolean_units(terms, children.at(0), assignments, rewrites),
-          simplify_with_boolean_units(terms, children.at(1), assignments, rewrites));
+
+    const core::Term& term = terms.get(visit.term);
+    const core::TermKind kind = term.kind;
+    const std::vector<core::TermId> children = term.children;
+    std::vector<core::TermId> rewritten_children;
+    rewritten_children.reserve(children.size());
+    for (const core::TermId child : children) {
+      rewritten_children.push_back(cache.entries.at(child).term);
+    }
+
+    core::TermId simplified = visit.term;
+    switch (kind) {
+      case core::TermKind::BoolValue:
+      case core::TermKind::Constant:
+      case core::TermKind::Application:
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Times:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
+        assert(false && "leaf term reached Boolean-unit post-order reconstruction");
+        break;
+      case core::TermKind::Equality:
+        if (rewritten_children.at(0) != children.at(0) ||
+            rewritten_children.at(1) != children.at(1)) {
+          simplified = terms.mk_eq(rewritten_children.at(0), rewritten_children.at(1));
+        }
+        break;
+      case core::TermKind::Not:
+        simplified = terms.mk_not(rewritten_children.at(0));
+        break;
+      case core::TermKind::And:
+        simplified = terms.mk_and(std::move(rewritten_children));
+        break;
+      case core::TermKind::Or:
+        simplified = terms.mk_or(std::move(rewritten_children));
+        break;
+      case core::TermKind::Implies:
+        simplified = terms.mk_implies(rewritten_children.at(0), rewritten_children.at(1));
+        break;
+    }
+    cache.entries.emplace(visit.term, BooleanUnitSimplificationCache::Entry{
+                                          simplified, rewrites - visit.rewrites_before});
   }
-  return term_id;
+  return cache.entries.at(term_id).term;
 }
 
 std::pair<core::TermId, core::TermId> representative_pair(
@@ -748,85 +814,96 @@ core::TermId simplify_with_forced_atoms(core::TermManager& terms, core::TermId t
                                         const KnownDisequalityClasses& disequalities,
                                         std::unordered_map<core::TermId, core::TermId>& memo,
                                         std::size_t& rewrites) {
-  const auto memoized = memo.find(term_id);
-  if (memoized != memo.end()) {
-    return memoized->second;
-  }
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+  };
 
-  const auto assigned = assignments.find(term_id);
-  if (assigned != assignments.end()) {
-    ++rewrites;
-    const core::TermId rewritten = terms.mk_bool(assigned->second);
-    memo.emplace(term_id, rewritten);
-    return rewritten;
-  }
+  std::vector<Visit> pending{{term_id, false}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (memo.contains(visit.term)) {
+      continue;
+    }
 
-  const core::Term& term = terms.get(term_id);
-  const core::TermKind kind = term.kind;
-  const std::vector<core::TermId> children = term.children;
-  core::TermId rewritten = term_id;
-  switch (kind) {
-    case core::TermKind::BoolValue:
-    case core::TermKind::Constant:
-    case core::TermKind::Application:
-    case core::TermKind::Rational:
-    case core::TermKind::Plus:
-    case core::TermKind::Times:
-    case core::TermKind::Le:
-    case core::TermKind::Lt:
-      rewritten = term_id;
-      break;
-    case core::TermKind::Equality: {
-      const core::TermId lhs = simplify_with_forced_atoms(terms, children.at(0), assignments,
-                                                          closure, disequalities, memo, rewrites);
-      const core::TermId rhs = simplify_with_forced_atoms(terms, children.at(1), assignments,
-                                                          closure, disequalities, memo, rewrites);
-      if (closure.are_equal(lhs, rhs)) {
-        rewritten = terms.mk_bool(true);
-      } else if (is_known_disequal(closure, disequalities, lhs, rhs)) {
-        rewritten = terms.mk_bool(false);
-      } else if (lhs != children.at(0) || rhs != children.at(1)) {
-        rewritten = terms.mk_eq(lhs, rhs);
-      }
-      break;
+    const auto assigned = assignments.find(visit.term);
+    if (assigned != assignments.end()) {
+      ++rewrites;
+      memo.emplace(visit.term, terms.mk_bool(assigned->second));
+      continue;
     }
-    case core::TermKind::Not:
-      rewritten = terms.mk_not(simplify_with_forced_atoms(terms, children.at(0), assignments,
-                                                          closure, disequalities, memo, rewrites));
-      break;
-    case core::TermKind::And: {
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      for (const core::TermId child : children) {
-        rewritten_children.push_back(simplify_with_forced_atoms(terms, child, assignments, closure,
-                                                                disequalities, memo, rewrites));
-      }
-      rewritten = terms.mk_and(std::move(rewritten_children));
-      break;
+
+    const core::Term& term = terms.get(visit.term);
+    const core::TermKind kind = term.kind;
+    const bool rewrites_children = kind == core::TermKind::Equality ||
+                                   kind == core::TermKind::Not || kind == core::TermKind::And ||
+                                   kind == core::TermKind::Or || kind == core::TermKind::Implies;
+    if (!rewrites_children) {
+      memo.emplace(visit.term, visit.term);
+      continue;
     }
-    case core::TermKind::Or: {
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      for (const core::TermId child : children) {
-        rewritten_children.push_back(simplify_with_forced_atoms(terms, child, assignments, closure,
-                                                                disequalities, memo, rewrites));
+    if (!visit.expanded) {
+      pending.push_back(Visit{visit.term, true});
+      for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+        if (!memo.contains(*child)) {
+          pending.push_back(Visit{*child, false});
+        }
       }
-      rewritten = terms.mk_or(std::move(rewritten_children));
-      break;
+      continue;
     }
-    case core::TermKind::Implies:
-      rewritten =
-          terms.mk_implies(simplify_with_forced_atoms(terms, children.at(0), assignments, closure,
-                                                      disequalities, memo, rewrites),
-                           simplify_with_forced_atoms(terms, children.at(1), assignments, closure,
-                                                      disequalities, memo, rewrites));
-      break;
+
+    // Copy before calling TermManager constructors, which may grow term storage.
+    const std::vector<core::TermId> children = term.children;
+    std::vector<core::TermId> rewritten_children;
+    rewritten_children.reserve(children.size());
+    for (const core::TermId child : children) {
+      rewritten_children.push_back(memo.at(child));
+    }
+
+    core::TermId rewritten = visit.term;
+    switch (kind) {
+      case core::TermKind::BoolValue:
+      case core::TermKind::Constant:
+      case core::TermKind::Application:
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Times:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
+        assert(false && "leaf term reached forced-atom post-order reconstruction");
+        break;
+      case core::TermKind::Equality: {
+        const core::TermId lhs = rewritten_children.at(0);
+        const core::TermId rhs = rewritten_children.at(1);
+        if (closure.are_equal(lhs, rhs)) {
+          rewritten = terms.mk_bool(true);
+        } else if (is_known_disequal(closure, disequalities, lhs, rhs)) {
+          rewritten = terms.mk_bool(false);
+        } else if (lhs != children.at(0) || rhs != children.at(1)) {
+          rewritten = terms.mk_eq(lhs, rhs);
+        }
+        break;
+      }
+      case core::TermKind::Not:
+        rewritten = terms.mk_not(rewritten_children.at(0));
+        break;
+      case core::TermKind::And:
+        rewritten = terms.mk_and(std::move(rewritten_children));
+        break;
+      case core::TermKind::Or:
+        rewritten = terms.mk_or(std::move(rewritten_children));
+        break;
+      case core::TermKind::Implies:
+        rewritten = terms.mk_implies(rewritten_children.at(0), rewritten_children.at(1));
+        break;
+    }
+    if (rewritten != visit.term) {
+      ++rewrites;
+    }
+    memo.emplace(visit.term, rewritten);
   }
-  if (rewritten != term_id) {
-    ++rewrites;
-  }
-  memo.emplace(term_id, rewritten);
-  return rewritten;
+  return memo.at(term_id);
 }
 
 void collect_applications(const core::TermManager& terms, core::TermId root,
@@ -982,11 +1059,19 @@ void collect_unit_equalities(const core::TermManager& terms, core::TermId assert
 }
 
 void register_equality_query_terms(const core::TermManager& terms, core::TermId assertion,
-                                   theory::equality::IncrementalCongruenceClosure& closure) {
+                                   theory::equality::IncrementalCongruenceClosure& closure,
+                                   std::vector<bool>& visited, std::size_t& nodes,
+                                   std::size_t& memo_hits) {
   std::vector<core::TermId> work{assertion};
   while (!work.empty()) {
     const core::TermId term = work.back();
     work.pop_back();
+    if (visited.at(term)) {
+      ++memo_hits;
+      continue;
+    }
+    visited[term] = true;
+    ++nodes;
     const core::Term& node = terms.get(term);
     if (node.kind == core::TermKind::Equality) {
       closure.add_term(node.children.at(0));
@@ -1021,19 +1106,41 @@ std::size_t count_top_level_unit_equalities(const core::TermManager& terms,
 
 std::size_t count_equality_nodes(const core::TermManager& terms, core::TermId assertion,
                                  std::unordered_map<core::TermId, std::size_t>& memo) {
-  const auto found = memo.find(assertion);
-  if (found != memo.end()) {
-    return found->second;
-  }
-  const core::Term& node = terms.get(assertion);
-  std::size_t count = node.kind == core::TermKind::Equality ? 1 : 0;
-  if (count == 0) {
-    for (const core::TermId child : node.children) {
-      count += count_equality_nodes(terms, child, memo);
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+  };
+
+  std::vector<Visit> pending{{assertion, false}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (memo.contains(visit.term)) {
+      continue;
     }
+
+    const core::Term& node = terms.get(visit.term);
+    if (node.kind == core::TermKind::Equality) {
+      memo.emplace(visit.term, 1);
+      continue;
+    }
+    if (!visit.expanded) {
+      pending.push_back(Visit{visit.term, true});
+      for (auto child = node.children.rbegin(); child != node.children.rend(); ++child) {
+        if (!memo.contains(*child)) {
+          pending.push_back(Visit{*child, false});
+        }
+      }
+      continue;
+    }
+
+    std::size_t count = 0;
+    for (const core::TermId child : node.children) {
+      count += memo.at(child);
+    }
+    memo.emplace(visit.term, count);
   }
-  memo.emplace(assertion, count);
-  return count;
+  return memo.at(assertion);
 }
 
 UnitEqualityPropagationShape unit_equality_propagation_shape(
@@ -1055,70 +1162,84 @@ UnitEqualityPropagationShape unit_equality_propagation_shape(
 core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId term,
                                       theory::equality::IncrementalCongruenceClosure& closure,
                                       std::unordered_map<core::TermId, core::TermId>& memo) {
-  const auto found = memo.find(term);
-  if (found != memo.end()) {
-    return found->second;
-  }
-  const core::Term& node = terms.get(term);
-  const core::TermKind kind = node.kind;
-  core::TermId result = term;
-  switch (kind) {
-    case core::TermKind::BoolValue:
-    case core::TermKind::Constant:
-    case core::TermKind::Application:
-    case core::TermKind::Rational:
-    case core::TermKind::Plus:
-    case core::TermKind::Times:
-    case core::TermKind::Le:
-    case core::TermKind::Lt:
-      break;
-    case core::TermKind::Equality:
-      result =
-          closure.are_equal(node.children.at(0), node.children.at(1)) ? terms.mk_bool(true) : term;
-      break;
-    case core::TermKind::Not: {
-      const core::TermId original_child = node.children.at(0);
-      const core::TermId child = simplify_with_congruence(terms, original_child, closure, memo);
-      result = child == original_child ? term : terms.mk_not(child);
-      break;
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+  };
+
+  std::vector<Visit> pending{{term, false}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (memo.contains(visit.term)) {
+      continue;
     }
-    case core::TermKind::And: {
-      const std::vector<core::TermId> node_children = node.children;
-      std::vector<core::TermId> children;
-      children.reserve(node_children.size());
-      bool changed = false;
-      for (const core::TermId child : node_children) {
-        const core::TermId rewritten = simplify_with_congruence(terms, child, closure, memo);
-        changed = changed || rewritten != child;
-        children.push_back(rewritten);
+
+    const core::Term& node = terms.get(visit.term);
+    const core::TermKind kind = node.kind;
+    const bool rewrites_children = kind == core::TermKind::Not || kind == core::TermKind::And ||
+                                   kind == core::TermKind::Or || kind == core::TermKind::Implies;
+    if (!rewrites_children) {
+      const core::TermId result =
+          kind == core::TermKind::Equality &&
+                  closure.are_equal(node.children.at(0), node.children.at(1))
+              ? terms.mk_bool(true)
+              : visit.term;
+      memo.emplace(visit.term, result);
+      continue;
+    }
+    if (!visit.expanded) {
+      pending.push_back(Visit{visit.term, true});
+      for (auto child = node.children.rbegin(); child != node.children.rend(); ++child) {
+        if (!memo.contains(*child)) {
+          pending.push_back(Visit{*child, false});
+        }
       }
-      result = changed ? terms.mk_and(std::move(children)) : term;
-      break;
+      continue;
     }
-    case core::TermKind::Or: {
-      const std::vector<core::TermId> node_children = node.children;
-      std::vector<core::TermId> children;
-      children.reserve(node_children.size());
-      bool changed = false;
-      for (const core::TermId child : node_children) {
-        const core::TermId rewritten = simplify_with_congruence(terms, child, closure, memo);
-        changed = changed || rewritten != child;
-        children.push_back(rewritten);
+
+    // Copy before calling TermManager constructors, which may grow term storage.
+    const std::vector<core::TermId> original_children = node.children;
+    std::vector<core::TermId> rewritten_children;
+    rewritten_children.reserve(original_children.size());
+    bool changed = false;
+    for (const core::TermId child : original_children) {
+      const core::TermId rewritten = memo.at(child);
+      changed = changed || rewritten != child;
+      rewritten_children.push_back(rewritten);
+    }
+
+    core::TermId result = visit.term;
+    if (changed) {
+      switch (kind) {
+        case core::TermKind::Not:
+          result = terms.mk_not(rewritten_children.at(0));
+          break;
+        case core::TermKind::And:
+          result = terms.mk_and(std::move(rewritten_children));
+          break;
+        case core::TermKind::Or:
+          result = terms.mk_or(std::move(rewritten_children));
+          break;
+        case core::TermKind::Implies:
+          result = terms.mk_implies(rewritten_children.at(0), rewritten_children.at(1));
+          break;
+        case core::TermKind::BoolValue:
+        case core::TermKind::Constant:
+        case core::TermKind::Application:
+        case core::TermKind::Equality:
+        case core::TermKind::Rational:
+        case core::TermKind::Plus:
+        case core::TermKind::Times:
+        case core::TermKind::Le:
+        case core::TermKind::Lt:
+          assert(false && "leaf term reached congruence post-order reconstruction");
+          break;
       }
-      result = changed ? terms.mk_or(std::move(children)) : term;
-      break;
     }
-    case core::TermKind::Implies: {
-      const core::TermId original_lhs = node.children.at(0);
-      const core::TermId original_rhs = node.children.at(1);
-      const core::TermId lhs = simplify_with_congruence(terms, original_lhs, closure, memo);
-      const core::TermId rhs = simplify_with_congruence(terms, original_rhs, closure, memo);
-      result = lhs == original_lhs && rhs == original_rhs ? term : terms.mk_implies(lhs, rhs);
-      break;
-    }
+    memo.emplace(visit.term, result);
   }
-  memo.emplace(term, result);
-  return result;
+  return memo.at(term);
 }
 
 std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash> collect_disequalities(
@@ -1839,118 +1960,104 @@ core::TermId rewrite_with_solved_constants(
     core::TermManager& terms, core::TermId term_id,
     const std::unordered_map<core::TermId, core::TermId>& replacements,
     std::unordered_map<core::TermId, core::TermId>& memo, std::size_t& rewrites) {
-  if (const auto found = memo.find(term_id); found != memo.end()) {
-    return found->second;
-  }
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+  };
 
-  if (const auto replacement = replacements.find(term_id); replacement != replacements.end()) {
-    const core::TermId rewritten =
-        rewrite_with_solved_constants(terms, replacement->second, replacements, memo, rewrites);
-    if (rewritten != term_id) {
+  std::vector<Visit> pending{{term_id, false}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (memo.contains(visit.term)) {
+      continue;
+    }
+
+    const auto replacement = replacements.find(visit.term);
+    const core::Term& term = terms.get(visit.term);
+    if (!visit.expanded) {
+      pending.push_back(Visit{visit.term, true});
+      if (replacement != replacements.end()) {
+        if (!memo.contains(replacement->second)) {
+          pending.push_back(Visit{replacement->second, false});
+        }
+      } else {
+        for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+          if (!memo.contains(*child)) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+      }
+      continue;
+    }
+
+    core::TermId rewritten = visit.term;
+    if (replacement != replacements.end()) {
+      rewritten = memo.at(replacement->second);
+    } else {
+      // Copy before calling TermManager constructors, which may grow term storage.
+      const core::TermKind kind = term.kind;
+      const std::vector<core::TermId> children = term.children;
+      const core::SymbolId symbol = term.symbol;
+      const util::Rational rational_value = term.rational_value;
+      std::vector<core::TermId> rewritten_children;
+      rewritten_children.reserve(children.size());
+      bool changed = false;
+      for (const core::TermId child : children) {
+        const core::TermId rewritten_child = memo.at(child);
+        changed = changed || rewritten_child != child;
+        rewritten_children.push_back(rewritten_child);
+      }
+
+      switch (kind) {
+        case core::TermKind::BoolValue:
+        case core::TermKind::Constant:
+        case core::TermKind::Rational:
+          break;
+        case core::TermKind::Plus:
+          if (changed) {
+            rewritten = terms.mk_plus(std::move(rewritten_children));
+          }
+          break;
+        case core::TermKind::Times:
+          if (changed) {
+            rewritten = terms.mk_times(rational_value, rewritten_children.at(0));
+          }
+          break;
+        case core::TermKind::Le:
+          rewritten = terms.mk_le(rewritten_children.at(0), rewritten_children.at(1));
+          break;
+        case core::TermKind::Lt:
+          rewritten = terms.mk_lt(rewritten_children.at(0), rewritten_children.at(1));
+          break;
+        case core::TermKind::Application:
+          if (changed) {
+            rewritten = terms.mk_app(symbol, std::move(rewritten_children));
+          }
+          break;
+        case core::TermKind::Equality:
+          rewritten = terms.mk_eq(rewritten_children.at(0), rewritten_children.at(1));
+          break;
+        case core::TermKind::Not:
+          rewritten = terms.mk_not(rewritten_children.at(0));
+          break;
+        case core::TermKind::And:
+          rewritten = terms.mk_and(std::move(rewritten_children));
+          break;
+        case core::TermKind::Or:
+          rewritten = terms.mk_or(std::move(rewritten_children));
+          break;
+        case core::TermKind::Implies:
+          rewritten = terms.mk_implies(rewritten_children.at(0), rewritten_children.at(1));
+          break;
+      }
+    }
+    if (rewritten != visit.term) {
       ++rewrites;
     }
-    memo.emplace(term_id, rewritten);
-    return rewritten;
+    memo.emplace(visit.term, rewritten);
   }
-
-  const core::Term& term = terms.get(term_id);
-  const std::vector<core::TermId> children = term.children;
-  const core::SymbolId symbol = term.symbol;
-  const util::Rational rational_value = term.rational_value;
-  core::TermId rewritten = term_id;
-  switch (term.kind) {
-    case core::TermKind::BoolValue:
-    case core::TermKind::Constant:
-    case core::TermKind::Rational:
-      break;
-    case core::TermKind::Plus: {
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      bool changed = false;
-      for (const core::TermId child : children) {
-        const core::TermId rewritten_child =
-            rewrite_with_solved_constants(terms, child, replacements, memo, rewrites);
-        changed = changed || rewritten_child != child;
-        rewritten_children.push_back(rewritten_child);
-      }
-      if (changed) {
-        rewritten = terms.mk_plus(std::move(rewritten_children));
-      }
-      break;
-    }
-    case core::TermKind::Times: {
-      const core::TermId rewritten_child =
-          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites);
-      if (rewritten_child != children.at(0)) {
-        rewritten = terms.mk_times(rational_value, rewritten_child);
-      }
-      break;
-    }
-    case core::TermKind::Le:
-      rewritten = terms.mk_le(
-          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites),
-          rewrite_with_solved_constants(terms, children.at(1), replacements, memo, rewrites));
-      break;
-    case core::TermKind::Lt:
-      rewritten = terms.mk_lt(
-          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites),
-          rewrite_with_solved_constants(terms, children.at(1), replacements, memo, rewrites));
-      break;
-    case core::TermKind::Application: {
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      bool changed = false;
-      for (const core::TermId child : children) {
-        const core::TermId rewritten_child =
-            rewrite_with_solved_constants(terms, child, replacements, memo, rewrites);
-        changed = changed || rewritten_child != child;
-        rewritten_children.push_back(rewritten_child);
-      }
-      if (changed) {
-        rewritten = terms.mk_app(symbol, std::move(rewritten_children));
-      }
-      break;
-    }
-    case core::TermKind::Equality:
-      rewritten = terms.mk_eq(
-          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites),
-          rewrite_with_solved_constants(terms, children.at(1), replacements, memo, rewrites));
-      break;
-    case core::TermKind::Not:
-      rewritten = terms.mk_not(
-          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites));
-      break;
-    case core::TermKind::And: {
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      for (const core::TermId child : children) {
-        rewritten_children.push_back(
-            rewrite_with_solved_constants(terms, child, replacements, memo, rewrites));
-      }
-      rewritten = terms.mk_and(std::move(rewritten_children));
-      break;
-    }
-    case core::TermKind::Or: {
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      for (const core::TermId child : children) {
-        rewritten_children.push_back(
-            rewrite_with_solved_constants(terms, child, replacements, memo, rewrites));
-      }
-      rewritten = terms.mk_or(std::move(rewritten_children));
-      break;
-    }
-    case core::TermKind::Implies:
-      rewritten = terms.mk_implies(
-          rewrite_with_solved_constants(terms, children.at(0), replacements, memo, rewrites),
-          rewrite_with_solved_constants(terms, children.at(1), replacements, memo, rewrites));
-      break;
-  }
-  if (rewritten != term_id) {
-    ++rewrites;
-  }
-  memo.emplace(term_id, rewritten);
-  return rewritten;
+  return memo.at(term_id);
 }
 
 bool is_real_equality(const core::TermManager& terms, core::TermId term_id) {
@@ -1963,127 +2070,169 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
                                            std::unordered_map<core::TermId, core::TermId>& memo,
                                            RealEqualityLoweringResult& result,
                                            bool enable_guarded_real_equality_distribution) {
-  if (const auto found = memo.find(term_id); found != memo.end()) {
-    return found->second;
-  }
+  struct Visit {
+    core::TermId term;
+    bool expanded;
+  };
 
-  const core::Term& term = terms.get(term_id);
-  const std::vector<core::TermId> children = term.children;
-  core::TermId rewritten = term_id;
-  switch (term.kind) {
-    case core::TermKind::BoolValue:
-    case core::TermKind::Constant:
-    case core::TermKind::Rational:
-    case core::TermKind::Plus:
-    case core::TermKind::Times:
-    case core::TermKind::Le:
-    case core::TermKind::Lt:
-      break;
-    case core::TermKind::Application: {
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      bool changed = false;
+  const auto distributed_equality_child =
+      [&terms, enable_guarded_real_equality_distribution](
+          const std::vector<core::TermId>& children) -> std::optional<core::TermId> {
+    std::optional<core::TermId> equality_child;
+    if (enable_guarded_real_equality_distribution) {
       for (const core::TermId child : children) {
-        const core::TermId rewritten_child = lower_real_equalities_rewrite(
-            terms, child, memo, result, enable_guarded_real_equality_distribution);
-        changed = changed || rewritten_child != child;
-        rewritten_children.push_back(rewritten_child);
-      }
-      if (changed) {
-        rewritten = terms.mk_app(term.symbol, std::move(rewritten_children));
-      }
-      break;
-    }
-    case core::TermKind::Equality: {
-      const core::TermId lhs = lower_real_equalities_rewrite(
-          terms, children.at(0), memo, result, enable_guarded_real_equality_distribution);
-      const core::TermId rhs = lower_real_equalities_rewrite(
-          terms, children.at(1), memo, result, enable_guarded_real_equality_distribution);
-      if (terms.get(lhs).sort == terms.symbols().real_sort()) {
-        rewritten = terms.mk_and({terms.mk_le(lhs, rhs), terms.mk_le(rhs, lhs)});
-        ++result.lowered;
-      } else {
-        rewritten = terms.mk_eq(lhs, rhs);
-      }
-      break;
-    }
-    case core::TermKind::Not:
-      rewritten = terms.mk_not(lower_real_equalities_rewrite(
-          terms, children.at(0), memo, result, enable_guarded_real_equality_distribution));
-      break;
-    case core::TermKind::And: {
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      for (const core::TermId child : children) {
-        rewritten_children.push_back(lower_real_equalities_rewrite(
-            terms, child, memo, result, enable_guarded_real_equality_distribution));
-      }
-      rewritten = terms.mk_and(std::move(rewritten_children));
-      break;
-    }
-    case core::TermKind::Or: {
-      std::optional<core::TermId> equality_child;
-      if (enable_guarded_real_equality_distribution) {
-        for (const core::TermId child : children) {
-          if (!is_real_equality(terms, child)) {
-            continue;
-          }
-          if (equality_child.has_value()) {
-            equality_child.reset();
-            break;
-          }
-          equality_child = child;
+        if (!is_real_equality(terms, child)) {
+          continue;
         }
+        if (equality_child.has_value()) {
+          equality_child.reset();
+          break;
+        }
+        equality_child = child;
       }
-      if (equality_child.has_value() && children.size() > 1) {
+    }
+    return equality_child;
+  };
+
+  std::vector<Visit> pending{{term_id, false}};
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (memo.contains(visit.term)) {
+      continue;
+    }
+
+    const core::Term& term = terms.get(visit.term);
+    const core::TermKind kind = term.kind;
+    const bool rewrites_children = kind == core::TermKind::Application ||
+                                   kind == core::TermKind::Equality ||
+                                   kind == core::TermKind::Not || kind == core::TermKind::And ||
+                                   kind == core::TermKind::Or || kind == core::TermKind::Implies;
+    if (!rewrites_children) {
+      memo.emplace(visit.term, visit.term);
+      continue;
+    }
+    if (!visit.expanded) {
+      pending.push_back(Visit{visit.term, true});
+      const std::optional<core::TermId> equality_child =
+          kind == core::TermKind::Or && term.children.size() > 1
+              ? distributed_equality_child(term.children)
+              : std::nullopt;
+      if (equality_child.has_value()) {
         const core::Term& equality = terms.get(*equality_child);
-        const core::TermId lhs =
-            lower_real_equalities_rewrite(terms, equality.children.at(0), memo, result,
-                                          enable_guarded_real_equality_distribution);
-        const core::TermId rhs =
-            lower_real_equalities_rewrite(terms, equality.children.at(1), memo, result,
-                                          enable_guarded_real_equality_distribution);
-
-        std::vector<core::TermId> le_children;
-        std::vector<core::TermId> ge_children;
-        le_children.reserve(children.size());
-        ge_children.reserve(children.size());
-        for (const core::TermId child : children) {
-          if (child == *equality_child) {
-            continue;
+        for (auto child = equality.children.rbegin(); child != equality.children.rend(); ++child) {
+          if (!memo.contains(*child)) {
+            pending.push_back(Visit{*child, false});
           }
-          const core::TermId rewritten_child = lower_real_equalities_rewrite(
-              terms, child, memo, result, enable_guarded_real_equality_distribution);
-          le_children.push_back(rewritten_child);
-          ge_children.push_back(rewritten_child);
         }
-        le_children.push_back(terms.mk_le(lhs, rhs));
-        ge_children.push_back(terms.mk_le(rhs, lhs));
-        rewritten = terms.mk_and(
-            {terms.mk_or(std::move(le_children)), terms.mk_or(std::move(ge_children))});
-        ++result.lowered;
-        ++result.guarded_distributed;
+        for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+          if (*child != *equality_child && !memo.contains(*child)) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+      } else {
+        for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+          if (!memo.contains(*child)) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+      }
+      continue;
+    }
+
+    // Copy before calling TermManager constructors, which may grow term storage.
+    const std::vector<core::TermId> children = term.children;
+    const core::SymbolId symbol = term.symbol;
+    core::TermId rewritten = visit.term;
+    switch (kind) {
+      case core::TermKind::BoolValue:
+      case core::TermKind::Constant:
+      case core::TermKind::Rational:
+      case core::TermKind::Plus:
+      case core::TermKind::Times:
+      case core::TermKind::Le:
+      case core::TermKind::Lt:
+        assert(false && "leaf term reached real-equality post-order reconstruction");
+        break;
+      case core::TermKind::Application: {
+        std::vector<core::TermId> rewritten_children;
+        rewritten_children.reserve(children.size());
+        bool changed = false;
+        for (const core::TermId child : children) {
+          const core::TermId rewritten_child = memo.at(child);
+          changed = changed || rewritten_child != child;
+          rewritten_children.push_back(rewritten_child);
+        }
+        if (changed) {
+          rewritten = terms.mk_app(symbol, std::move(rewritten_children));
+        }
         break;
       }
-      std::vector<core::TermId> rewritten_children;
-      rewritten_children.reserve(children.size());
-      for (const core::TermId child : children) {
-        rewritten_children.push_back(lower_real_equalities_rewrite(
-            terms, child, memo, result, enable_guarded_real_equality_distribution));
+      case core::TermKind::Equality: {
+        const core::TermId lhs = memo.at(children.at(0));
+        const core::TermId rhs = memo.at(children.at(1));
+        if (terms.get(lhs).sort == terms.symbols().real_sort()) {
+          rewritten = terms.mk_and({terms.mk_le(lhs, rhs), terms.mk_le(rhs, lhs)});
+          ++result.lowered;
+        } else {
+          rewritten = terms.mk_eq(lhs, rhs);
+        }
+        break;
       }
-      rewritten = terms.mk_or(std::move(rewritten_children));
-      break;
+      case core::TermKind::Not:
+        rewritten = terms.mk_not(memo.at(children.at(0)));
+        break;
+      case core::TermKind::And: {
+        std::vector<core::TermId> rewritten_children;
+        rewritten_children.reserve(children.size());
+        for (const core::TermId child : children) {
+          rewritten_children.push_back(memo.at(child));
+        }
+        rewritten = terms.mk_and(std::move(rewritten_children));
+        break;
+      }
+      case core::TermKind::Or: {
+        const std::optional<core::TermId> equality_child =
+            children.size() > 1 ? distributed_equality_child(children) : std::nullopt;
+        if (equality_child.has_value()) {
+          const core::Term& equality = terms.get(*equality_child);
+          const core::TermId lhs = memo.at(equality.children.at(0));
+          const core::TermId rhs = memo.at(equality.children.at(1));
+          std::vector<core::TermId> le_children;
+          std::vector<core::TermId> ge_children;
+          le_children.reserve(children.size());
+          ge_children.reserve(children.size());
+          for (const core::TermId child : children) {
+            if (child == *equality_child) {
+              continue;
+            }
+            const core::TermId rewritten_child = memo.at(child);
+            le_children.push_back(rewritten_child);
+            ge_children.push_back(rewritten_child);
+          }
+          le_children.push_back(terms.mk_le(lhs, rhs));
+          ge_children.push_back(terms.mk_le(rhs, lhs));
+          rewritten = terms.mk_and(
+              {terms.mk_or(std::move(le_children)), terms.mk_or(std::move(ge_children))});
+          ++result.lowered;
+          ++result.guarded_distributed;
+          break;
+        }
+        std::vector<core::TermId> rewritten_children;
+        rewritten_children.reserve(children.size());
+        for (const core::TermId child : children) {
+          rewritten_children.push_back(memo.at(child));
+        }
+        rewritten = terms.mk_or(std::move(rewritten_children));
+        break;
+      }
+      case core::TermKind::Implies:
+        rewritten = terms.mk_implies(memo.at(children.at(0)), memo.at(children.at(1)));
+        break;
     }
-    case core::TermKind::Implies:
-      rewritten = terms.mk_implies(
-          lower_real_equalities_rewrite(terms, children.at(0), memo, result,
-                                        enable_guarded_real_equality_distribution),
-          lower_real_equalities_rewrite(terms, children.at(1), memo, result,
-                                        enable_guarded_real_equality_distribution));
-      break;
+    memo.emplace(visit.term, rewritten);
   }
-  memo.emplace(term_id, rewritten);
-  return rewritten;
+  return memo.at(term_id);
 }
 
 bool is_domain_value(core::TermId term, const std::unordered_set<core::TermId>& values) {
@@ -2446,6 +2595,147 @@ void add_value_precedence_constraints(core::TermManager& terms,
 
 }  // namespace
 
+BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
+                                                     const std::vector<core::TermId>& assertions,
+                                                     std::size_t max_arity) {
+  BooleanFlatteningResult result;
+  if (max_arity == 0) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool expanded = false;
+  };
+
+  const std::size_t source_term_count = terms.size();
+  std::vector<core::TermId> rewritten(source_term_count, core::kInvalidTermId);
+  std::vector<Visit> pending;
+
+  const auto rewrites_children = [&terms](const core::Term& term) {
+    if (term.kind == core::TermKind::Not || term.kind == core::TermKind::And ||
+        term.kind == core::TermKind::Or || term.kind == core::TermKind::Implies) {
+      return true;
+    }
+    return term.kind == core::TermKind::Equality && !term.children.empty() &&
+           terms.get(term.children.front()).sort == terms.symbols().bool_sort();
+  };
+
+  const auto flatten_children =
+      [&terms, max_arity, &result](core::TermKind kind, const std::vector<core::TermId>& children) {
+        std::vector<core::TermId> flattened;
+        flattened.reserve(children.size());
+        for (std::size_t index = 0; index < children.size(); ++index) {
+          const core::TermId child = children[index];
+          const core::Term& child_term = terms.get(child);
+          if (child_term.kind != kind) {
+            flattened.push_back(child);
+            continue;
+          }
+
+          ++result.attempts;
+          const std::size_t remaining_children = children.size() - index - 1;
+          bool fits = child_term.children.size() <= max_arity &&
+                      flattened.size() <= max_arity - child_term.children.size();
+          if (fits) {
+            const std::size_t arity_after_flattening =
+                flattened.size() + child_term.children.size();
+            fits = remaining_children <= max_arity - arity_after_flattening;
+          }
+          if (!fits) {
+            ++result.threshold_stops;
+            flattened.push_back(child);
+            continue;
+          }
+          ++result.accepted;
+          result.operands_copied += child_term.children.size();
+          flattened.insert(flattened.end(), child_term.children.begin(), child_term.children.end());
+        }
+        return flattened;
+      };
+
+  result.assertions.reserve(assertions.size());
+  for (const core::TermId assertion : assertions) {
+    pending.push_back(Visit{assertion, false});
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      if (rewritten.at(visit.term) != core::kInvalidTermId) {
+        continue;
+      }
+
+      const core::Term& term = terms.get(visit.term);
+      if (!rewrites_children(term)) {
+        rewritten[visit.term] = visit.term;
+        continue;
+      }
+      if (!visit.expanded) {
+        pending.push_back(Visit{visit.term, true});
+        for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+          if (rewritten.at(*child) == core::kInvalidTermId) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+        continue;
+      }
+
+      const std::vector<core::TermId> source_children = term.children;
+      std::vector<core::TermId> children;
+      children.reserve(source_children.size());
+      for (const core::TermId child : source_children) {
+        children.push_back(rewritten.at(child));
+      }
+
+      core::TermId replacement = core::kInvalidTermId;
+      switch (term.kind) {
+        case core::TermKind::Equality:
+          replacement = terms.mk_eq(children.at(0), children.at(1));
+          break;
+        case core::TermKind::Not:
+          replacement = terms.mk_not(children.at(0));
+          break;
+        case core::TermKind::And: {
+          std::vector<core::TermId> flattened = flatten_children(core::TermKind::And, children);
+          replacement = terms.mk_and(std::move(flattened));
+          break;
+        }
+        case core::TermKind::Or: {
+          std::vector<core::TermId> flattened = flatten_children(core::TermKind::Or, children);
+          replacement = terms.mk_or(std::move(flattened));
+          break;
+        }
+        case core::TermKind::Implies:
+          replacement = terms.mk_implies(children.at(0), children.at(1));
+          break;
+        case core::TermKind::BoolValue:
+        case core::TermKind::Constant:
+        case core::TermKind::Application:
+        case core::TermKind::Rational:
+        case core::TermKind::Plus:
+        case core::TermKind::Times:
+        case core::TermKind::Le:
+        case core::TermKind::Lt:
+          throw std::logic_error("leaf reached Boolean flattening reconstruction");
+      }
+      if (replacement == core::kInvalidTermId) {
+        throw std::logic_error("Boolean flattening reconstruction produced no term");
+      }
+      rewritten[visit.term] = replacement;
+      if (replacement != visit.term) {
+        ++result.rewrites;
+      }
+      const core::Term& replacement_term = terms.get(replacement);
+      if (replacement_term.kind == core::TermKind::And ||
+          replacement_term.kind == core::TermKind::Or) {
+        result.max_arity = std::max(result.max_arity, replacement_term.children.size());
+      }
+    }
+    result.assertions.push_back(rewritten.at(assertion));
+  }
+  return result;
+}
+
 EqualityBridge::EqualityBridge(core::TermManager& terms) : terms_(terms) {}
 
 EqualityBridgeResult EqualityBridge::bridge(const std::vector<core::TermId>& assertions) {
@@ -2458,7 +2748,7 @@ EqualityBridgeResult EqualityBridge::bridge(const std::vector<core::TermId>& ass
 
 std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
-                                                    std::size_t* consequences_added) {
+                                                    UnitEqualityPropagationStats* stats) {
   // This is a deliberately small preprocessing closure, not a SAT/theory
   // shortcut. Unit equalities already asserted at top level, including facts
   // derived by the equality bridge, are fed to the same ground congruence
@@ -2466,8 +2756,8 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   // relation are simplified before Boolean abstraction.
   const UnitEqualityPropagationShape shape = unit_equality_propagation_shape(terms, assertions);
   if (shape.unit_equalities == 0 || shape.equality_nodes <= shape.unit_equalities) {
-    if (consequences_added != nullptr) {
-      *consequences_added = 0;
+    if (stats != nullptr) {
+      *stats = UnitEqualityPropagationStats{};
     }
     return assertions;
   }
@@ -2475,7 +2765,12 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
   theory::equality::IncrementalCongruenceClosure closure(terms);
   for (const core::TermId assertion : assertions) {
     collect_unit_equalities(terms, assertion, closure);
-    register_equality_query_terms(terms, assertion, closure);
+  }
+  std::vector<bool> visited(terms.size(), false);
+  std::size_t query_nodes = 0;
+  std::size_t query_memo_hits = 0;
+  for (const core::TermId assertion : assertions) {
+    register_equality_query_terms(terms, assertion, closure, visited, query_nodes, query_memo_hits);
   }
   closure.saturate();
 
@@ -2498,8 +2793,13 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
       ++added;
     }
   }
-  if (consequences_added != nullptr) {
-    *consequences_added = added;
+  if (stats != nullptr) {
+    const theory::equality::IncrementalCongruenceClosureStats& closure_stats = closure.stats();
+    stats->consequences_added = added;
+    stats->query_nodes = query_nodes;
+    stats->query_memo_hits = query_memo_hits;
+    stats->add_term_requests = closure_stats.add_term_requests;
+    stats->add_term_seen_hits = closure_stats.add_term_seen_hits;
   }
   return simplified;
 }
@@ -2672,9 +2972,10 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
       result.assertions.push_back(unit);
     }
   }
+  BooleanUnitSimplificationCache cache;
   for (const core::TermId assertion : assertions) {
     const core::TermId simplified =
-        simplify_with_boolean_units(terms, assertion, assignments.values, result.rewrites);
+        simplify_with_boolean_units(terms, assertion, assignments.values, cache, result.rewrites);
     const core::Term& node = terms.get(simplified);
     if (node.kind == core::TermKind::BoolValue && node.bool_value) {
       continue;
@@ -2683,6 +2984,8 @@ BooleanUnitPropagationResult propagate_boolean_units(core::TermManager& terms,
       result.assertions.push_back(simplified);
     }
   }
+  result.memo_hits = cache.hits;
+  result.memo_misses = cache.misses;
   return result;
 }
 
@@ -2715,9 +3018,10 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
         result.assertions.push_back(unit);
       }
     }
+    BooleanUnitSimplificationCache cache;
     for (const core::TermId assertion : assertions) {
       const core::TermId simplified =
-          simplify_with_boolean_units(terms, assertion, assignments.values, result.rewrites);
+          simplify_with_boolean_units(terms, assertion, assignments.values, cache, result.rewrites);
       const core::Term& node = terms.get(simplified);
       if (node.kind == core::TermKind::BoolValue && node.bool_value) {
         continue;
@@ -2726,6 +3030,8 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
         result.assertions.push_back(simplified);
       }
     }
+    result.memo_hits = cache.hits;
+    result.memo_misses = cache.misses;
     return result;
   }
 
@@ -2737,8 +3043,10 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
     closure.add_term(lhs);
     closure.add_term(rhs);
   }
+  std::vector<bool> visited(terms.size(), false);
   for (const core::TermId assertion : assertions) {
-    register_equality_query_terms(terms, assertion, closure);
+    register_equality_query_terms(terms, assertion, closure, visited, result.query_nodes,
+                                  result.query_memo_hits);
   }
   closure.saturate();
   const KnownDisequalityClasses known_disequalities =
@@ -2770,6 +3078,9 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
       result.assertions.push_back(simplified);
     }
   }
+  const theory::equality::IncrementalCongruenceClosureStats& closure_stats = closure.stats();
+  result.add_term_requests = closure_stats.add_term_requests;
+  result.add_term_seen_hits = closure_stats.add_term_seen_hits;
   return result;
 }
 
@@ -3275,8 +3586,7 @@ MonotoneEliminationResult eliminate_monotone_variables(
   for (const core::TermId variable : ordered) {
     MonotoneEliminatedVariable entry;
     entry.variable = variable;
-    entry.bounded_above =
-        state.sides.at(variable) == static_cast<unsigned char>(MonotoneSide::Hi);
+    entry.bounded_above = state.sides.at(variable) == static_cast<unsigned char>(MonotoneSide::Hi);
     std::vector<core::TermId> atom_ids = state.atoms_of.at(variable);
     std::sort(atom_ids.begin(), atom_ids.end());
     atom_ids.erase(std::unique(atom_ids.begin(), atom_ids.end()), atom_ids.end());

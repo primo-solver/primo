@@ -1,4 +1,4 @@
-.PHONY: build test asan-build asan-test smoke compare fuzz fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -21,6 +21,9 @@ build: contrib-required
 
 test: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
+
+python-test:
+	$(PYTHON) -m unittest discover -s tests/python -p 'test_*.py'
 
 asan-build: contrib-required
 	cmake -S . -B $(ASAN_BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$(CURDIR)/$(CONTRIB_PREFIX) -DPRIMO_SANITIZERS=address
@@ -50,6 +53,11 @@ fuzz: build
 		PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/fuzz_external.py --fuzzer yinyang --seeds benchmarks/seeds/qf_uf --solver ./$(PRIMO) --refs z3 cvc5 --logic QF_UF --count 1 --timeout 5 --out fuzz-results/qf_uf-yinyang; \
 	fi
 
+fuzz-finite-domain: build
+	@PATH="$(PATH_WITH_CONTRIB)" command -v z3 >/dev/null 2>&1 || { echo "z3 is required; run make contrib-z3" >&2; exit 2; }
+	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/finite_domain_fuzz.py --solver ./$(PRIMO) --solver-arg=--qf-uf-preprocess=strong --ref z3 --logic QF_UF --count 56 --timeout 5 --require-post-amo --out fuzz-results/finite-domain-qf-uf
+	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/finite_domain_fuzz.py --solver ./$(PRIMO) --ref z3 --logic QF_UFLRA --count 56 --timeout 5 --require-post-amo --out fuzz-results/finite-domain-qf-uflra
+
 bench: build
 	$(PYTHON) scripts/bench.py benchmarks/smoke/qf_uf/*.smt2 --solver ./$(PRIMO) --timeout 5 --out results/bench.csv
 
@@ -68,7 +76,7 @@ docs-serve: docs
 	$(PYTHON) -m http.server 8000 -d docs/_build/html
 
 lint:
-	$(PYTHON) -m py_compile scripts/*.py contrib/*.py
+	$(PYTHON) -m py_compile scripts/*.py contrib/*.py tests/python/*.py
 	@if command -v clang-format >/dev/null 2>&1; then \
 		clang-format --dry-run --Werror $(CPP_FORMAT_FILES); \
 	else \
@@ -111,7 +119,7 @@ format:
 		echo "ruff is not installed in the configured Python environment; skipping Python formatting."; \
 	fi
 
-check: lint test
+check: lint test python-test
 
 fuzzsmt: build contrib-fuzzsmt contrib-z3
 	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/fuzz_external.py --fuzzer fuzzsmt --solver ./$(PRIMO) --refs z3 --logic QF_UF --count 20 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/qf_uf-fuzzsmt

@@ -2,8 +2,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "core/ids.hpp"
@@ -38,6 +40,25 @@ enum class InterfaceEqualityValue {
   Disequal,
 };
 
+enum class InterfaceEqualityAssignment {
+  Unknown,
+  True,
+  False,
+};
+
+enum class InterfaceEqualityClassification : std::uint32_t {
+  None = 0,
+  EufImplied = 1U << 0U,
+  LraImplied = 1U << 1U,
+  ModelInternal = 1U << 2U,
+  SatForced = 1U << 3U,
+  AlreadyTrue = 1U << 4U,
+  AssignedFalse = 1U << 5U,
+  EufAlreadyTrue = 1U << 6U,
+  EufMergeable = 1U << 7U,
+  EufForbidden = 1U << 8U,
+};
+
 struct InterfaceEqualityRegistryEntry {
   core::TermId atom = core::kInvalidTermId;
   core::TermId lhs = core::kInvalidTermId;
@@ -46,6 +67,8 @@ struct InterfaceEqualityRegistryEntry {
   sat::Lit lit;
   InterfaceEqualityStatus status = InterfaceEqualityStatus::Missing;
   InterfaceEqualityValue value = InterfaceEqualityValue::Unknown;
+  InterfaceEqualityAssignment assignment = InterfaceEqualityAssignment::Unknown;
+  std::uint32_t classifications = 0;
 };
 
 enum class PurificationSiteKind {
@@ -72,6 +95,55 @@ struct NelsonOppenInterfaceSummary {
   std::size_t arithmetic_uninterpreted_applications = 0;
 };
 
+// Round-scoped projection of the component models onto the shared interface.
+// This is the QF_UFLRA subset of the model set M in de Moura and Bjorner,
+// Model-based Theory Combination, Section 4 and Appendix A. Theory solvers
+// retain their own model objects; the combination manager owns only the
+// information needed to reconcile their shared terms.
+struct SharedModelEquality {
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+
+  bool operator==(const SharedModelEquality& other) const = default;
+};
+
+enum class SharedEqualitySource {
+  LraEntailed,
+  EufImplied,
+};
+
+struct ExplainedSharedEquality {
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+  std::vector<sat::Lit> reasons;
+  SharedEqualitySource source = SharedEqualitySource::LraEntailed;
+};
+
+struct SharedModelState {
+  bool valid = false;
+  std::uint64_t generation = 0;
+  std::size_t reconciliation_iteration = 0;
+  std::vector<std::vector<core::TermId>> lra_value_classes;
+  std::unordered_map<core::TermId, std::size_t> lra_class_by_term;
+  std::unordered_set<core::TermId> lra_mapped_terms;
+  std::vector<SharedModelEquality> lra_model_spanning_equalities;
+  std::vector<SharedModelEquality> internal_equalities;
+  std::vector<ExplainedSharedEquality> explained_equalities;
+  std::vector<core::TermId> lra_separation_atoms;
+};
+
+// Backend-neutral lifecycle for lazy shared-equality decisions. The mixed SMT
+// coordinator applies these literals as IPASIR-UP assumptions and learns any
+// failed-assumption clause; the combination manager owns which interface
+// choices are pending as one re-entry batch, active, or already tried.
+struct SharedEqualityDecisionState {
+  std::unordered_set<int> tried_vars;
+  std::vector<sat::Lit> pending;
+  std::vector<sat::Lit> active;
+  std::uint64_t unproductive_rejections = 0;
+  bool adaptive_stopped = false;
+};
+
 class TheoryCombinationManager {
  public:
   explicit TheoryCombinationManager(const core::TermManager& terms);
@@ -84,13 +156,49 @@ class TheoryCombinationManager {
   std::optional<InterfaceEqualityRegistryEntry> interface_equality(core::TermId lhs,
                                                                    core::TermId rhs) const;
   std::optional<InterfaceEqualityRegistryEntry> interface_equality(core::TermId equality) const;
+  std::optional<InterfaceEqualityRegistryEntry> ensure_interface_pair(core::TermId lhs,
+                                                                      core::TermId rhs);
   std::optional<sat::Lit> interface_equality_lit(core::TermId lhs, core::TermId rhs) const;
   std::optional<sat::Lit> interface_equality_lit(core::TermId equality) const;
   bool register_interface_equality_atom(core::TermId equality, sat::Lit lit);
+  std::size_t registered_interface_equality_atom_count() const;
   InterfaceEqualityValue interface_equality_value(core::TermId lhs, core::TermId rhs) const;
   bool set_interface_equality_value(core::TermId lhs, core::TermId rhs,
                                     InterfaceEqualityValue value);
   void clear_interface_equality_values();
+  InterfaceEqualityAssignment interface_equality_assignment(core::TermId lhs,
+                                                            core::TermId rhs) const;
+  bool set_interface_equality_assignment(core::TermId lhs, core::TermId rhs,
+                                         InterfaceEqualityAssignment assignment);
+  void clear_interface_equality_assignments();
+  void refresh_interface_equality_assignments(
+      const std::function<std::optional<bool>(sat::Lit)>& lit_value);
+  std::vector<InterfaceEqualityRegistryEntry> interface_equalities_with_assignment(
+      InterfaceEqualityAssignment assignment) const;
+  bool mark_interface_equality_classification(core::TermId lhs, core::TermId rhs,
+                                              InterfaceEqualityClassification classification);
+  bool mark_interface_equality_classification(core::TermId equality,
+                                              InterfaceEqualityClassification classification);
+  bool has_interface_equality_classification(core::TermId lhs, core::TermId rhs,
+                                             InterfaceEqualityClassification classification) const;
+  void clear_interface_equality_classifications();
+  void begin_shared_model_round();
+  void begin_shared_model_iteration(const std::vector<std::vector<core::TermId>>& lra_value_classes,
+                                    const std::vector<core::TermId>& lra_mapped_terms = {});
+  bool lra_model_terms_mapped(core::TermId lhs, core::TermId rhs) const;
+  bool lra_model_agrees_equal(core::TermId lhs, core::TermId rhs) const;
+  bool enqueue_explained_shared_equality(core::TermId lhs, core::TermId rhs,
+                                         std::vector<sat::Lit> reasons,
+                                         SharedEqualitySource source);
+  std::vector<ExplainedSharedEquality> drain_explained_shared_equalities();
+  bool record_internal_model_equality(core::TermId lhs, core::TermId rhs);
+  bool record_lra_separation_atom(core::TermId atom);
+  void invalidate_shared_model();
+  const SharedModelState& shared_model() const { return shared_model_; }
+  SharedEqualityDecisionState& shared_equality_decisions() { return shared_equality_decisions_; }
+  const SharedEqualityDecisionState& shared_equality_decisions() const {
+    return shared_equality_decisions_;
+  }
   void push_level();
   void pop_to_level(std::size_t new_level);
 
@@ -100,14 +208,26 @@ class TheoryCombinationManager {
     InterfaceEqualityValue old_value = InterfaceEqualityValue::Unknown;
   };
 
+  struct EqualityAssignmentTrailEntry {
+    std::size_t index = 0;
+    InterfaceEqualityAssignment old_assignment = InterfaceEqualityAssignment::Unknown;
+  };
+
   static std::uint64_t equality_key(core::TermId lhs, core::TermId rhs);
+  static std::uint32_t classification_bit(InterfaceEqualityClassification classification);
   void rebuild_equality_index();
 
   const core::TermManager& terms_;
   NelsonOppenInterfaceSummary summary_;
+  std::unordered_map<core::TermId, core::SortId> interface_sort_by_term_;
   std::unordered_map<std::uint64_t, std::size_t> equality_index_;
   std::vector<EqualityValueTrailEntry> value_trail_;
-  std::vector<std::size_t> level_starts_;
+  std::vector<EqualityAssignmentTrailEntry> assignment_trail_;
+  std::vector<std::size_t> value_level_starts_;
+  std::vector<std::size_t> assignment_level_starts_;
+  SharedModelState shared_model_;
+  SharedEqualityDecisionState shared_equality_decisions_;
+  std::unordered_map<std::uint64_t, std::size_t> explained_equality_index_;
 };
 
 // Conservative Track-B scaffold for Nelson-Oppen bookkeeping. It only reports

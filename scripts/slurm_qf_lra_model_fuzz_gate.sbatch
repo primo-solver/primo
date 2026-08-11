@@ -99,6 +99,14 @@ for required in "${required_tools[@]}"; do
     exit 2
   fi
 done
+if (( OPFUZZ_TASKS > 0 )) && ! command -v opfuzz >/dev/null 2>&1; then
+  echo "required tool 'opfuzz' not found on PATH; run make contrib-yinyang before sbatch" >&2
+  exit 2
+fi
+if (( YINYANG_SHARDS > 0 )) && ! command -v typefuzz >/dev/null 2>&1; then
+  echo "required tool 'typefuzz' not found on PATH; run make contrib-yinyang before sbatch" >&2
+  exit 2
+fi
 
 # The family-complete QF_LRA corpus is GENERATED, not committed -- .gitignore
 # excludes benchmarks/seeds/qf_lra_division/ deliberately, to avoid carrying
@@ -185,7 +193,8 @@ elif (( TASK_ID < yinyang_start )); then
     ${OPFUZZ_CONFIG:+--config "$OPFUZZ_CONFIG"} \
     ${MUTATION_KEEP_LOGIC:+--keep-logic} \
     --bugs "$out/bugs" \
-    --scratch "$out/scratch"
+    --scratch "$out/scratch" \
+    --logs "$out/logs"
 else
   out="$OUT_ROOT/yinyang/task-$TASK_ID"
   mkdir -p "$out"
@@ -202,5 +211,6 @@ else
     ${MUTATION_KEEP_LOGIC:+--keep-logic} \
     ${MUTATION_HOIST_DECLARATIONS:+--hoist-declarations} \
     --bugs "$out/bugs" \
-    --scratch "$out/scratch"
+    --scratch "$out/scratch" \
+    --logs "$out/logs"
 fi

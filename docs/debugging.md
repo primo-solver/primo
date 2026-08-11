@@ -40,15 +40,28 @@ scripts and result artifacts. Current counters include:
 - `:input.assertions`;
 - `:frontend.ite.boolean`;
 - `:frontend.ite.auxiliaries`;
-- `:frontend.define-fun.nullary-cache-hits`;
-- `:frontend.define-fun.nullary-cache-misses`;
-- `:frontend.define-fun.nullary-cache-entries`;
+- `:frontend.define-fun.nullary-direct-uses`: direct references, including
+  references from later definitions;
+- `:frontend.define-fun.nullary-eager-compiles`: declaration-time compiles;
+- `:frontend.define-fun.nullary-side-assertions`: auxiliary assertions stored
+  with compiled definitions;
+- `:frontend.define-fun.nullary-cache-hits`,
+  `:frontend.define-fun.nullary-cache-misses`, and
+  `:frontend.define-fun.nullary-cache-entries`: compatibility aliases for old
+  result files; hits means direct uses, while misses and entries mean eager
+  compiles;
 - `:preprocessing.assertions`;
 - `:preprocessing.passes`;
 - `:preprocessing.changed-passes`;
 - `:preprocessing.adaptive-passes`;
 - `:preprocessing.term-size.initial`;
 - `:preprocessing.term-size.final`;
+- `:preprocessing.boolean-flatten.attempts`;
+- `:preprocessing.boolean-flatten.accepted`;
+- `:preprocessing.boolean-flatten.threshold-stops`;
+- `:preprocessing.boolean-flatten.operands-copied`;
+- `:preprocessing.boolean-flatten.rewrites`;
+- `:preprocessing.boolean-flatten.max-arity`;
 - `:preprocessing.eq-bridge.equalities`;
 - `:preprocessing.eq-bridge.skipped-or-nodes`;
 - `:preprocessing.boolean-units.facts`;
@@ -61,6 +74,10 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.unit-equality.substitutions`;
 - `:preprocessing.unit-equality.substitution-accepted`;
 - `:preprocessing.unit-equality.substitution-rejected`;
+- `:preprocessing.equality-query.nodes`;
+- `:preprocessing.equality-query.memo-hits`;
+- `:preprocessing.equality-query.add-term-requests`;
+- `:preprocessing.equality-query.add-term-seen-hits`;
 - `:preprocessing.solve-eqs.candidates`;
 - `:preprocessing.solve-eqs.accepted`;
 - `:preprocessing.solve-eqs.rewrites`;
@@ -259,16 +276,29 @@ can be much smaller than `rounds * theory-atoms`.
 
 For difficult instances, `--max-theory-conflicts N` returns `unknown` after at
 least `N` learned theory conflicts. In lazy mode this is checked after each
-post-model theory conflict. In online/conflict callback mode Primo also installs
+post-model theory conflict, including EUF conflicts discovered by the mixed
+QF_UFLRA final-check loop. In online/conflict callback mode Primo also installs
 a CaDiCaL terminator, so a long in-progress SAT call can stop soon after the
 callback reaches the limit. This is intended for profiling and stats snapshots
 on timeout-prone benchmarks; it is not a solving heuristic.
+For mixed QF_UFLRA instances that finish SAT search but spend time in final
+equality sharing or arrangement/model reconstruction,
+`--nelson-oppen-arrangement-probe-limit N` instead caps temporary LRA
+consistency probes and returns `unknown` at the cap. Use it when
+`:no.interface.lra-extra-atom-probes` grows but `:theory.conflicts` does not.
 
 When the CLI is run with `--stats`, it keeps the current counters in a live
 statistics sink. On `SIGTERM` it prints `unknown` to stdout and flushes the
 partial counters to stderr before exiting. The benchmark harnesses send
 `SIGTERM` first and only use `SIGKILL` after a short grace period, so timeout
-rows can still contain diagnostic counters.
+rows can often contain diagnostic counters. This timeout flush is best-effort,
+not async-signal-safe: it calls statistics and process-exit code that may
+allocate while the signal interrupted an allocation. An oversized QF_UFLRA row
+at `4e19d1b` aborted in this handler under high memory pressure. Inspect
+`exit_code` and `stderr_head` even when the harness classifies a row as a
+timeout. Prefer `--max-theory-conflicts` for controlled profiling, but remember
+that it cannot cap frontend work or a search that has not yet reported its first
+theory conflict.
 
 The auto counters record which concrete path `--euf-prop=auto` selected for the
 current abstraction.
@@ -318,6 +348,39 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.equality-assigned-false`
 - `:no.interface.equality-clauses`
 - `:no.interface.equality-reason-lits`
+- `:no.interface.equality-local-reasons`
+- `:no.interface.equality-local-reason-lits`
+- `:no.interface.equality-fallback-reasons`
+- `:no.interface.euf-explanation-missing`
+- `:no.interface.convex-rounds`
+- `:no.interface.exact-only`
+- `:no.interface.euf-spanning-equalities`
+- `:no.interface.lra-opportunistic-enabled`
+- `:no.interface.lra-opportunistic-skipped-rounds`
+- `:no.interface.lra-opportunistic-candidates`
+- `:no.interface.lra-opportunistic-fixed-eq`
+- `:no.interface.lra-opportunistic-eq-row`
+- `:no.interface.lra-opportunistic-eq-offset-rows`
+- `:no.interface.lra-opportunistic-eq-rows`
+- `:no.interface.lra-opportunistic-reason-lits`
+- `:no.interface.lra-opportunistic-unmapped-terms`
+- `:no.interface.lra-opportunistic-unmapped-equalities`
+- `:no.interface.lra-opportunistic-existing-atoms`
+- `:no.interface.lra-opportunistic-missing-atoms`
+- `:no.interface.lra-opportunistic-created-atoms`
+- `:no.interface.lra-opportunistic-clauses`
+- `:no.interface.lra-opportunistic-rechecks`
+- `:no.interface.lra-exact-fallback-pairs`
+- `:no.interface.lra-exact-fallback-skipped-pairs`
+- `:no.interface.lra-exact-fallback-equalities`
+- `:no.interface.lra-model-filter-builds`
+- `:no.interface.lra-model-filter-full-pairs`
+- `:no.interface.lra-model-filter-candidate-pairs`
+- `:no.interface.lra-model-filter-pruned-pairs`
+- `:no.interface.lra-model-filter-unmapped-terms`
+- `:no.interface.lra-model-filter-conservative-pairs`
+- `:no.interface.materialized-pairs`
+- `:no.interface.materialized-missing-pairs`
 - `:no.interface.equality-rechecks`
 - `:no.interface.euf-to-lra-candidates`
 - `:no.interface.euf-to-lra-existing-atoms`
@@ -336,27 +399,56 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-conflicts`
 - `:no.interface.model-equality-candidates`
 - `:no.interface.model-equality-created`
+- `:no.interface.model-equality-pending`
+- `:no.interface.model-equality-activated`
+- `:no.interface.model-equality-duplicate-pending`
+- `:no.interface.model-equality-pending-batches`
+- `:no.interface.model-equality-pending-batch-lits`
+- `:no.interface.model-equality-max-pending-batch`
 - `:no.interface.model-equality-assumptions`
+- `:no.interface.model-equality-assumption-solve-calls`
 - `:no.interface.model-equality-failed-assumptions`
+- `:no.interface.model-equality-blocking-clauses`
+- `:no.interface.model-equality-dropped-assumptions`
+- `:no.interface.model-equality-retained-assumptions`
 - `:no.interface.model-equality-conflicts`
 - `:no.interface.model-equality-full-pairs`
+- `:no.interface.model-equality-filtered-pairs`
 - `:no.interface.model-equality-care-pairs`
 - `:no.interface.model-equality-care-pruned-pairs`
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
+- `:no.interface.lra-model-mutation-enabled`
+- `:no.interface.lra-model-mutation-calls`
+- `:no.interface.lra-model-mutation-updates`
+- `:no.interface.lra-model-mutation-value-classes-before`
+- `:no.interface.lra-model-mutation-value-classes-after`
+- `:no.interface.lra-model-mutation-candidate-pairs-before`
+- `:no.interface.lra-model-mutation-candidate-pairs-after`
+- `:no.interface.lra-model-mutation-pruned-pairs`
 - `:no.interface.model-equality-mutation-checks`
 - `:no.interface.model-equality-mutated`
-- `:no.interface.model-equality-mutation-forced`
 - `:no.interface.model-equality-selected-care`
 - `:no.interface.model-equality-selected-full`
 - `:no.interface.model-equality-skipped-assigned`
 - `:no.interface.model-equality-skipped-tried`
+- `:no.interface.model-equality-queue-builds`
+- `:no.interface.model-equality-queued`
+- `:no.interface.model-equality-queue-pops`
+- `:no.interface.model-equality-queue-skipped-tried`
+- `:no.interface.model-equality-queue-skipped-assigned`
+- `:no.interface.model-equality-queue-empty`
 - `:no.interface.model-equality-adaptive-stops`
 - `:no.interface.model-equality-active-assumptions`
 - `:no.interface.model-equality-max-active-assumptions`
 - `:no.interface.arrangement-checks`
 - `:no.interface.arrangement-failures`
 - `:no.interface.arrangement-separations`
+- `:no.interface.arrangement-lra-extra-atom-probes`
+- `:no.interface.arrangement-lra-extra-atoms-probed`
+- `:no.interface.lra-extra-atom-probes`
+- `:no.interface.lra-extra-atoms-probed`
+- `:no.interface.lra-extra-atom-probe-limit-hit`
 - `:no.interface.euf-care-checks`
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
@@ -385,7 +477,16 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-conflict-lits`
 - `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-separations`
+- `:no.interface.model-real-terms-before-interface-filter`
+- `:no.interface.model-real-terms-filtered`
+- `:no.interface.model-euf-real-classes`
+- `:no.interface.model-euf-real-anchored-classes`
+- `:no.interface.model-euf-real-fresh-classes`
+- `:no.interface.model-euf-real-unmapped-terms`
+- `:no.interface.model-euf-real-value-conflicts`
 - `:no.interface.model-separation-candidates`
+- `:no.interface.model-separation-euf-mergeable-pairs`
+- `:no.interface.model-separation-euf-forbidden-pairs`
 - `:no.interface.model-separation-search-capped`
 - `:no.interface.model-separation-search-branches`
 - `:no.interface.model-separation-search-backtracks`
@@ -416,6 +517,97 @@ models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
+`:no.interface.convex-rounds` counts SAT-consistent mixed rounds that reach
+bidirectional equality sharing. EUF reports one spanning set per shared
+equality class, counted by `:no.interface.euf-spanning-equalities`; it does not
+materialize every pair in a class. `:no.interface.exact-only` is one for
+`--nelson-oppen-prop=exact` and its legacy `off` alias. In that mode mandatory
+EUF spanning and exact LRA fallback sharing remain active, while
+`:no.interface.lra-opportunistic-enabled` is zero and
+`:no.interface.lra-opportunistic-skipped-rounds` counts rounds that omit the
+optional opportunistic poll. LRA otherwise first polls the checked tableau's
+`FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows` rules. The
+`:no.interface.lra-opportunistic-*` counters
+split rule hits, reason literals, unmapped shared terms, lazy SAT atom delivery,
+clauses, and rechecks. After these cheap producers are quiescent, the feasible
+tableau's `model_equal_classes()` partition removes cross-value pairs, which
+cannot be LRA-entailed. The `:no.interface.lra-model-filter-*` counters report
+partition builds, the unfiltered cross product, retained and pruned pairs, and
+conservative fallbacks for unmapped terms. Equal-value pairs are only candidates
+and still require exact proof. `:no.interface.lra-exact-fallback-pairs` counts
+unresolved retained pairs sent to strict-separation probes,
+`:no.interface.lra-exact-fallback-skipped-pairs` counts retained pairs already
+resolved by SAT/EUF, and
+`:no.interface.lra-exact-fallback-equalities` counts exact entailments found.
+These counters are cumulative across fixpoint rounds. A FixedEq/EqRow test with
+zero fallback pairs is the direct evidence that the cheap producer removed
+probe work; a zero fallback count on arbitrary inputs is not expected.
+For LRA-to-EUF equality sharing, the default `final` path classifies each
+LRA-implied shared Real equality through the current EUF closure before creating
+or forcing an equality atom. The filter records
+`:no.interface.lra-to-euf-equalities-euf-already-true` when EUF already has the
+pair equal, `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped` when EUF
+can absorb the LRA equality without conflict and the equality is skipped,
+`:no.interface.lra-to-euf-equalities-euf-mergeable-forced` when such a
+mergeable equality is conservatively sent through the guarded clause path, and
+`:no.interface.lra-to-euf-equalities-euf-forbidden-forced` when EUF rejects the
+equality immediately. The 2026-08-05 full QF_UFLRA run rejected the
+mergeable-skip optimization after wrong answers; the conservative path should
+therefore keep `mergeable-skipped` and
+`:no.interface.lra-to-euf-internal-model-equalities` at zero for LRA-to-EUF
+sharing. Broad fallback after an internal skip is counted by
+`:no.interface.lra-to-euf-skip-model-reconstruction-fallbacks` and should also
+remain zero on the conservative path.
+
+With the default QF_UFLRA model reconciliation, the broad exact scan is no
+longer the normal final step. The shared-model counters diagnose the
+replacement (`--no-qf-uflra-model-reconciliation` selects the old fallback):
+
+- `:no.shared-model.forbidden-equalities`, `forbidden-before`, and
+  `forbidden-after` report SAT-false pairs supplied to scratch LRA mutation;
+- `:no.shared-model.unresolved-forbidden` reports violations remaining in the
+  final candidate partition;
+- `:no.shared-model.targeted-separation-*` reports strict-orientation searches
+  restricted to unresolved mandatory disequalities;
+- `:no.shared-model.compatibility-edges`, `compatibility-merges`, and
+  `compatibility-projections` report EUF absorption of LRA class spanning
+  edges;
+- `:no.shared-model.compatibility-splits` counts direct or congruence-induced
+  rejection of an optional merge, while
+  `compatibility-consequence-disagreements` isolates the latter;
+- `:no.shared-model.split-frontier-batches`, `split-frontier-pairs`,
+  `split-frontier-duplicates`, and `split-frontier-max` report how many rejected
+  model edges are canonicalized and sent through one SAT re-entry rather than
+  stopping at the first edge;
+- `:no.shared-model.split-materializations` counts lazy positive-first equality
+  assumptions; failed assumptions continue to use the
+  `:no.interface.model-equality-*` blocking-clause counters;
+- `:no.shared-model.compatibility-successes` and
+  `:no.online.final-lra-equality-scan-skipped` count accepted candidate rounds.
+
+The `:no.online.*` spelling of the final-scan counter is historical. It also
+counts reconciliation rounds when `--nelson-oppen-prop` is `final`. Nonzero
+`:no.shared-model.exact-fallbacks` means an unexpected mapping failure, failed
+mandatory separation, or another candidate invariant forced the old complete
+path. The shared interface is the intersection of EUF Real constants with
+variables that survive LRA polynomial normalization; syntactically present but
+algebraically cancelled constants are EUF-only model terms. Consequently
+`lra-model-filter-unmapped-terms` should remain zero. A model-equality
+coincidence alone is never an entailed propagation.
+
+Augmented LRA component-state reuse is reported by:
+
+- `:no.interface.lra-model-epoch-prepared-hits` and `prepared-misses`;
+- `:no.interface.lra-model-epoch-check-hits` and `check-misses`;
+- `:no.interface.lra-model-epoch-tableau-reuses` for same-interface checks that
+  pop prior bounds and reuse the feasible basis;
+- `:no.interface.lra-model-epoch-invalidations` when the exact true-interface
+  equality key changes.
+
+This epoch exists only in mixed QF_UFLRA when true generated interface
+equalities augment LRA. A prepared hit with a check miss is expected: it means
+the same rows are being checked under a different current SAT assignment.
+
 When default-off `--model-equality-branching` is enabled, the EUF care counters
 compare the full shared-Real cross product with pairs that occur as arguments
 under flat EUF function prefixes equal in the current EUF closure. Default
@@ -426,7 +618,24 @@ validation use the full shared Real pair set. The default
 reports the full pair count through `:no.interface.model-equality-care-pairs`
 for continuity. The `ranked` and `adaptive` policies use care-pair diagnostics
 only as a ranking signal; they fall back to the full pair set instead of pruning
-the search.
+the search. The opt-in `care-queued` policy rebuilds a bounded queue from the
+current EUF care pairs only, so a shared Real pair that is merely present in the
+full cross product is not materialized as a model-equality branch candidate.
+The opt-in `--qf-uflra-candidate-final-scan` path also consumes the EUF care
+diagnostic, but for entailed LRA-to-EUF equality propagation rather than model
+guesses. It probes only a candidate set made from current EUF care pairs, shared
+Real constants co-occurring inside one EUF atom, and shared Real pairs whose
+two non-strict LRA bounds are both true in the current SAT assignment. The
+counters `:no.interface.candidate-final-scan-enabled`,
+`:no.interface.candidate-final-scan-pairs`,
+`:no.interface.candidate-final-scan-skipped-pairs`, and
+`:no.interface.candidate-final-scan-equalities` report that first pass. If
+final arrangement validation or model reconstruction cannot be completed using
+those equalities, `:no.interface.candidate-final-scan-fallbacks` increments and
+Primo runs the broad all-pairs LRA equality scan once. Equalities found by that
+fallback are forced through SAT before the solver accepts the final
+arrangement; `:no.interface.candidate-final-scan-fallback-equalities` records
+how many the fallback found.
 `:no.interface.conflicts` counts ordinary EUF/LRA conflict clauses whose reason
 mentions a generated interface equality literal, split by `:no.interface.euf-conflicts` and
 `:no.interface.lra-conflicts`; direct single-theory conflicts that do not use
@@ -442,7 +651,11 @@ in that model.
 the base prepared LRA theory because no SAT-visible interface equality is true
 in the current assignment. `:no.interface.lra-prepared-augmented` counts checks
 that rebuild an augmented prepared LRA theory to include true generated
-interface equality atoms. `:no.interface.lra-online-enabled` records whether the
+interface equality atoms.
+`:no.interface.lra-fixed-elimination-enabled` is one when fixed-variable
+elimination is active in the mixed tableau. It is on by default in QF_UFLRA,
+can be disabled with `--no-qf-uflra-fixed-elimination`, and does not describe
+the separate pure-QF_LRA default. `:no.interface.lra-online-enabled` records whether the
 default mixed coordinator attached the pure-QF_LRA trail-synced online
 propagator for original arithmetic atoms, and
 `:no.interface.lra-online-final-checks` counts final SAT assignments whose base
@@ -451,79 +664,178 @@ disabled for the experimental `--model-equality-branching` mode; when generated
 interface equalities are true, the coordinator still rebuilds the augmented LRA
 theory and performs an ordinary final check.
 
+EUF preparation follows the same reuse boundary. `:no.interface.euf-prepared-reused`
+counts rounds whose existing `PreparedFlatTheory` was sufficient, while
+`:no.interface.euf-prepared-augmented` counts rounds that appended newly
+materialized interface equality atoms or their flat definitions. The
+`:no.interface.euf-prepared-atoms` and `:no.interface.euf-prepared-definitions`
+counters report the cumulative prepared sizes. This is structural reuse only:
+each SAT round still copies the definition-only congruence closure and asserts
+its own assignments, so explanations and backtracking remain round-local.
+The preparation is append-only during one mixed solve because lazy interface
+equality atoms and Boolean EUF proxies can appear after the initial
+preparation. Each cached atom is keyed by its signed SAT literal and `TermId`.
+Before a closure check, current assignments are realigned through that key;
+their input order is not stable because generated equalities are gathered as
+true atoms followed by false atoms in each SAT round. A large
+`:sat.solve-calls` count on a small model-equality example can indicate a broken
+alignment: a conflict clause may then describe a different cached equality and
+already be satisfied by the assignment that produced it.
+
 `--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
 callback, was connected. `:no.online.precreated-equality-atoms` counts the
-shared Real equality literals created before SAT search. The SAT backend now has
-a backend-neutral IPASIR-UP fresh-observed-variable path, but this mixed
-Nelson-Oppen mode has not yet been changed to allocate equality atoms during
-search. It therefore still uses the smaller fallback precreation set recorded by
-`:no.online.paired-bound-precreate-candidates`: shared Real pairs for which both
-non-strict LRA bounds are already present in the prepared formula. This counter
-should be much smaller than `:no.online.shared-real-pairs`, which records the
-full shared Real cross product for diagnostics only, not as an observed SAT
-variable count. `:no.online.assignments` and
+shared Real equality literals created before SAT search; in the lazy online path
+it should remain zero. `:no.online.paired-bound-precreate-candidates` is kept as
+a compatibility diagnostic and should also remain zero. The full shared Real
+cross product is reported by `:no.online.shared-real-pairs` for diagnostics
+only, not as an observed SAT variable count. `:no.online.assignments` and
 `:no.online.backtracks` count the dispatcher trail traffic.
 `:no.online.lra-published-equalities` counts equality candidates produced by
 `OnlineLraPropagator`; today those are exactly the implemented paired-bound
 rule where both `(<= a b)` and `(<= b a)` are true for a shared Real pair.
-Broader LRA-derived equalities are intentionally not part of this counter yet:
-mining arbitrary tableau rows for equal shared terms is a future opportunity
-with explicit cost risk, not a stable online propagation mode.
-`:no.online.lra-bound-equality-candidates` counts published candidates that
-already had a SAT-visible interface equality literal. `:no.online.lra-bound-equality-missing-atoms`
-counts published candidates whose atom was not registered. This can be nonzero
-even in the current paired-bound fallback because the pure LRA producer may
+Broader LRA-derived equalities are intentionally not part of this **online
+callback** counter. `FixedEq` and `EqRow` are polled after the final feasible
+LRA check and reported through `:no.interface.lra-opportunistic-*`; they do not
+run on each callback bound update.
+`:no.online.lra-bound-equality-candidates` counts published candidates whose
+pair is known to the mixed-theory interface registry.
+`:no.online.lra-bound-equality-missing-atoms` counts published candidates outside
+that registry; this can still be nonzero because the pure LRA producer may
 publish equalities for pairs that are not mixed-theory shared Real interface
-pairs, while the dispatcher only materializes registered interface candidates.
-`:no.online.lra-bound-equality-materialized` counts candidates with a
-deliverable equality literal. `:no.online.lazy-equality-atoms-created` is
-reserved for a future backend phase that permits in-callback allocation and
-remains zero in the fallback path, and `:no.online.lazy-equality-vars-observed`
-counts newly observed equality variables registered outside the callback.
-`:no.online.final-lra-equality-scan-skipped` counts online final checks where at
-least one paired-bound equality candidate was materialized and the broad
-all-pairs `lra_implied_real_equalities` strict-bound scan was skipped; if no
-candidate was materialized, the broad scan still runs as the final-check
-completeness fallback. If final arrangement validation or model reconstruction
-cannot separate shared Real arguments after such a skip,
-`:no.online.final-lra-equality-scan-fallbacks` increments and Primo runs the
-broad scan once to classify additional LRA-implied equalities for that final
-validation step. Those fallback equalities are not reported as online theory
-propagations.
-`:no.online.final-lra-equality-scan-capped` is reserved for a future capped
-replacement and remains zero in the current skip policy.
+pairs. `:no.online.lra-bound-equality-materialized` counts candidates that
+obtained a deliverable equality literal, either by reusing an existing atom or
+by lazy creation. `:no.online.lazy-equality-atoms-created` counts equality atoms
+created by the dispatcher from `cb_propagate()`, and
+`:no.online.lazy-equality-vars-observed` counts the corresponding fresh observed
+SAT variables.
+`:no.online.final-lra-equality-scan-skipped`,
+`:no.online.final-lra-equality-scan-fallbacks`, and
+`:no.online.final-lra-equality-scan-capped` remain compatibility counters and
+must be zero. Online mode retains the complete exact final fallback over
+unresolved pairs because a successful separation check is not sufficient to
+prove that omitted LRA-implied equalities are irrelevant to EUF congruence.
 `:no.online.propagations` counts returned equality literals, and
 `:no.online.reason-lits` counts the two bound literals used as the SAT reason.
 `:no.online.skipped-assigned` counts candidates already assigned by SAT before
-the dispatcher could return them. Pure QF_UF and pure QF_LRA runs should leave
+delivery.
+
+`--qf-uflra-online-euf` additionally attaches the existing incremental EUF
+propagator as a second child of the mixed dispatcher. It has no effect unless
+`--nelson-oppen-prop=online` is also selected and is default-off. Use these
+counters to distinguish useful mixed EUF work from callback overhead:
+
+- `:no.interface.euf-online-enabled` is one only when the mixed EUF child is
+  attached;
+- `:no.online.euf-propagations` counts literals returned by that child;
+- `:no.online.euf-external-clauses` counts EUF external-clause callbacks
+  selected by the dispatcher;
+- `:no.online.euf-generated-equalities-registered` counts lazily created
+  interface equality atoms appended to the EUF child;
+- `:no.online.euf-generated-equality-registration-failures` counts atoms whose
+  endpoints were not already representable in its flat term state;
+- `:no.online.euf-generated-equality-observation-failures` counts dispatcher
+  attempts that could not be handed to the EUF child.
+
+A high `:euf.propagation.rounds` value with zero
+`:no.online.euf-propagations` and zero
+`:no.online.euf-external-clauses` means the option is adding callback work
+without helping the mixed search. Final EUF checking still rebuilds a closure;
+these counters do not imply that callback state was reused by final validation.
+Pure QF_UF and pure QF_LRA runs should leave
 `:no.online.enabled` at zero; that is the guard against single-theory overhead.
 `:no.interface.arrangement-checks` counts non-model `sat` results where the
-coordinator validated that the EUF arrangement over Real arguments can be
-separated consistently by LRA, with failures and accepted strict separations
-split into the corresponding arrangement counters. When
-`--model-equality-branching` is enabled, the model-equality counters record
-full shared Real pairs scanned, how many were equal in the current LRA model,
-how many such equalities were checked by the model-mutation filter, how many
-were skipped because either strict separation is still LRA-consistent, how many
-were not separated by that filter, optional SAT equality atoms created for those
-pairs, active assumption attempts over those atoms, assumptions rejected at the
-SAT level, assigned or already-tried equality literals skipped, whether the
-selected guess came from the care-ranked prefix or the full-pair fallback,
+coordinator validated that the EUF arrangement over shared Real interface
+arguments can be separated consistently by LRA, with failures and accepted
+strict separations split into the corresponding arrangement counters.
+`:no.interface.model-real-terms-before-interface-filter` reports how many Real
+constants were present in EUF atoms before the final arrangement/model path was
+restricted to the Nelson-Oppen interface, and
+`:no.interface.model-real-terms-filtered` reports how many of those EUF-side
+Real constants were excluded because they are not common EUF/LRA interface
+terms. Exclusion applies to arrangement search and LRA probes, not to printed
+model completion. For `get-model`, the shared class keeps its concrete LRA
+value and every unanchored EUF-only Real equivalence class receives a distinct
+fresh rational. `:no.interface.model-euf-real-classes`,
+`:no.interface.model-euf-real-anchored-classes`, and
+`:no.interface.model-euf-real-fresh-classes` report that reconstruction;
+`model-euf-real-unmapped-terms` or `model-euf-real-value-conflicts` makes model
+construction return `unknown` rather than print an invalid model. The final
+arrangement path then probes the current EUF closure with a
+temporary equality for each remaining shared-Real pair. A pair counted by
+`:no.interface.model-separation-euf-mergeable-pairs` is in different EUF
+classes but can still be merged without an EUF conflict, so it does not require
+a strict LRA order. A pair counted by
+`:no.interface.model-separation-euf-forbidden-pairs` would make the EUF closure
+inconsistent if merged; only those pairs become
+`:no.interface.model-separation-candidates` for strict LRA separation.
+`:no.interface.lra-extra-atom-probes` counts LRA consistency checks with one or
+more temporary strict separation/equality atoms.
+`:no.interface.lra-extra-atoms-probed` sums the number of temporary atoms across
+those checks. Exact single-pair equality scans normally use a check-local copy of
+the already feasible tableau and probe both strict orientations with
+`push()`/`pop()`. The corresponding work is split into
+`:no.interface.lra-probe-reuse-pairs`,
+`:no.interface.lra-probe-reuse-orientations`, and
+`:no.interface.lra-probe-reuse-assignment-bounds`.
+`:no.interface.lra-probe-reuse-checked-tableau-copies` counts contexts that
+avoided assignment replay. The checked basis is rejected when its endpoint
+difference expands above eight terms or its prior pivot-term work exceeds eight
+operations per tableau variable. The total and the two reasons are reported by
+`:no.interface.lra-probe-reuse-checked-tableau-fallbacks`,
+`:no.interface.lra-probe-reuse-checked-tableau-difference-fallbacks`, and
+`:no.interface.lra-probe-reuse-checked-tableau-basis-cost-fallbacks`; the
+observed maxima are published by the matching `max-difference-terms` and
+`max-pivot-term-ops` counters. A nonzero
+`:no.interface.lra-probe-reuse-mapping-fallbacks` means a shared endpoint was
+absent from the prepared term map and the old augmented-theory reconstruction
+oracle was used. A nonzero
+`:no.interface.lra-probe-reuse-context-conflicts` means replaying an assignment
+already accepted by the main LRA check conflicted in the local context. This is
+an internal-consistency violation: the solver records it and fails loudly rather
+than treating a base conflict as evidence for the candidate equality. These live
+counters expose arrangement exploration cost even if the final search does not
+finish before a profiling timeout.
+`:no.interface.arrangement-lra-extra-atom-probes` and
+`:no.interface.arrangement-lra-extra-atoms-probed` are the subset spent while
+choosing strict separations for final mixed QF_UFLRA arrangement validation or
+model reconstruction. `--nelson-oppen-arrangement-probe-limit N` caps the broader
+temporary-probe counter, including conservative LRA-to-EUF equality scans that
+feed the final mixed check, and returns `unknown` when the next temporary LRA
+consistency check would exceed the budget.
+`:no.interface.lra-extra-atom-probe-limit-hit` marks that soft stop. The cap is
+opt-in and does not limit SAT solving or ordinary LRA theory conflicts.
+When `--model-equality-branching` is enabled, the model-equality counters record
+full shared Real pairs, how many remain after the one scratch model-mutation
+sweep, how many are scanned by the branch selector, optional SAT equality atoms
+created for those pairs, guesses queued for the next SAT call, guesses activated onto the IPASIR
+assumption trail, duplicate queued guesses that were already active, active
+assumption attempts over those atoms, SAT-level failed-assumption blocking
+clauses, dropped failed assumptions, the active assumptions retained after the
+last SAT rejection, assigned or already-tried equality literals skipped, whether
+the selected guess came from the care-ranked prefix or the full-pair fallback,
+care-queued queue builds, queued candidates, queue pops, queued candidates
+skipped because their existing equality atom was already tried or assigned,
 adaptive stops, the current and maximum active model-equality assumption-trail
 size, and ordinary theory conflicts reached while at least one guessed equality
 was active. A surviving model-equality guess is re-applied as an IPASIR
 assumption on later SAT calls while the coordinator tries additional model-equal
-pairs; it is still not a
-permanent unit clause. The current positive-equality path should
-also show activity in
-`:no.interface.sat-equalities-forced`, which counts guarded propagation clauses
-from the current theory assignment to an interface equality literal, and then
-ordinary EUF/LRA theory-conflict counters if the forced equality is
-inconsistent. Compare it with `:no.interface.equality-candidates`: a large gap
-means the producer is rediscovering equalities that are already true, missing
-from the current interface registry, or not useful enough to force a SAT
-recheck.
+pairs; it is still not a permanent unit clause.
+`:no.interface.lra-model-mutation-*` reports the one Section 5.2 scratch sweep
+performed per feasible mixed round: whether the path is enabled, calls, accepted
+updates, distinct value classes before/after, candidate pairs before/after, and
+pairs pruned. The pre-mutation pair count is computed from class sizes; Primo
+does not materialize that pair set. `:no.interface.model-equality-filtered-pairs`
+is the post-mutation candidate count presented to the optional branch selector.
+The legacy `model-equality-mutation-checks` and `model-equality-mutated` counters
+remain aggregate branch diagnostics for pairs considered and removed by the
+sweep. A pair that remains equal after mutation is only a branch candidate, not
+an entailed equality. Guarded equality clauses and
+`:no.interface.sat-equalities-forced` continue to require an independent LRA or
+EUF explanation.
+Compare it with `:no.interface.equality-candidates`: a large gap means the
+producer is rediscovering equalities that are already true, missing from the
+current interface registry, or not useful enough to force a SAT recheck.
 
 Add a counter when implementing a nontrivial preprocessing rule, generated
 lemma, SAT interaction, or theory-solver action. Keep names stable once they are
@@ -623,6 +935,56 @@ For QF_LRA and QF_UFLRA mutation campaigns, use the patched YinYang fork until
 the public package release includes the linear-Real mutation fix: older
 typefuzz builds can generate non-linear Real properties, so their arithmetic
 coverage is not acceptable fuzz-gate evidence.
+Provision the fork on the SLURM login node with `make contrib-yinyang` before
+submitting mutation jobs. The checked-in SLURM gates put `.venv-yinyang/bin` on
+`PATH` and fail if `typefuzz` or `opfuzz` is missing; they do not install Python
+packages from compute nodes. Array tasks must also use task-local YinYang log
+directories through `scripts/yinyang_fuzz.sh --logs ...`, because sharing the
+default `./logs` directory makes concurrent mutation shards a harness failure
+rather than fuzz evidence.
+
+For the mixed generated gate, `scripts/slurm_qf_uflra_fuzz_gate.sbatch`
+accepts space-free solver option tokens through `PRIMO_FUZZ_SOLVER_ARGS`; for
+example, the experimental mixed callback profile uses
+`--nelson-oppen-prop=online --qf-uflra-online-euf`. The mutation gate's task 2
+uses that same profile. Submit only array task 2 when the default and
+candidate-final mutation profiles are not part of the current experiment.
+Every standard mixed gate also runs dedicated finite-domain shards: 500 QF_UF
+cases under strong preprocessing and 500 default-profile QF_UFLRA cases. These
+cases have construction-known answers, compare with Z3 and cvc5, and fail when
+the expected finite-domain, Real-equality-lowering, or mixed-dispatch counters
+do not fire. `scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
+default/strong/raw-only profile matrix. See [](finite-domain-fuzzing.md).
+Before mutation, `scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch` runs
+`scripts/check_solver_seed_corpus.py` on every compact QF_UFLRA mutation seed
+with the exact task options and Z3 reference. Any disagreement, timeout,
+unsupported result, crash, or mismatch with a declared status fails the task.
+The seed timeout defaults to 60 seconds and can be changed with
+`PRIMO_FUZZ_SEED_TIMEOUT`; the shorter mutation timeout remains independent.
+Mutation counts do not replace this deterministic regression check. The gate
+also rejects seeds larger than 4096 bytes by default; use
+`PRIMO_FUZZ_SEED_SIZE_LIMIT` only when a deliberately larger mutation seed has
+been shown to retain useful throughput.
+
+The mutation phase defaults to 2000 mutations per compact seed and records a
+reproducible typefuzz seed derived from `PRIMO_FUZZ_MUTATION_SEED_BASE` plus the
+SLURM task id. `PRIMO_FUZZ_YINYANG_ITERATIONS` may reduce the count for a smoke
+run, but such a run is not merge-grade evidence when typefuzz filters most
+generated mutants before obtaining comparable solver answers.
+
+Large source benchmarks are not mutation seeds. In particular, the two full
+MathSAT witnesses under `benchmarks/performance/qf_uflra/` exposed the unsound
+online final-scan shortcut, but they are expensive search benchmarks and make
+poor YinYang inputs. The compact
+`benchmarks/seeds/qf_uflra/online_nonpaired_congruence_forced_unsat.smt2`
+witness and focused unit tests preserve that correctness obligation. Keep the
+full witnesses in the deferred performance manifest and evaluate them
+separately after material changes to convex QF_UFLRA combination; their current
+runtime must not prevent the mutation campaign from starting.
+`scripts/qf_uflra_smoke_fuzz.py` flushes each case result immediately so SLURM
+stdout is a durable progress record even before the final `summary.csv` is
+written. The dedicated finite-domain fuzzer is stricter: it appends and fsyncs
+each CSV row and writes a running metadata record before invoking any solver.
 
 ### The remote sanitizer build
 

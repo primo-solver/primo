@@ -24,6 +24,15 @@ Primo currently exposes QF_UF preprocessing through
   input has more than one assertion, at most 10,000 assertions, and at most
   20,000 initially reachable terms.
 
+Associative Boolean flattening is separate from those presets and applies to
+all supported logics. Core `And` and `Or` terms retain nested DAG structure by
+default. `--boolean-flatten-threshold N` enables one explicit pre-pass over the
+reachable assertion DAG; `0`, the default, disables it. The pass widens a
+same-kind child only when the resulting parent, including remaining direct
+children, stays within `N`. It does not split an explicitly wider SMT-LIB node.
+Clausification accepts nested nodes directly and does not enable this pass.
+See [](boolean-dag-flattening.md) for ownership and complexity details.
+
 The default command now enables the safe part of the predecessor performance
 profile:
 
@@ -214,6 +223,35 @@ incremental EUF checks over `core::TermId` values. Preprocessing assertions have
 unconditional reasons, so the closure does not build congruence explanation
 paths while deriving simplification-only consequences.
 
+The forced-atom and unit-equality passes share one equality-query registration
+scanner. Because terms are hash-consed, the scanner treats each assertion batch
+as a DAG: a pass-local `vector<bool>` indexed by `TermId` records visited nodes
+across all assertions using the same temporary closure. The vector is sized
+after formula construction, the scan does not create terms, and it is destroyed
+before the closure, so its indices remain stable for its complete lifetime.
+Repeated occurrences increment `:preprocessing.equality-query.memo-hits`
+instead of recursively registering the same equality endpoints again;
+`:preprocessing.equality-query.nodes` counts first visits. This changes only
+work accounting, not which equality nodes or endpoint subterms enter the
+closure.
+
+The motivating CPAchecker `Problem01_00` profile contained only 4,362 distinct
+terms but made 35,267,698 duplicate closure-registration calls while walking
+shared Boolean subterms by occurrence. On committed revision `9b9a035`, the
+same instance solves in 0.04 seconds and reports 7,335 first visits, 25,328 DAG
+memo hits, 1,914 closure add requests, and 1,684 already-seen hits. In the
+matching 1,284-file SLURM run, this pass recovered 35 additional instances over
+the preceding probe-reuse revision without losing a solve.
+
+`IncrementalCongruenceClosure::add_term` also checks its existing `seen_` vector
+before asking the `TermManager` for its current size. A hit is valid because a
+seen term was type-checked, had all children registered, and had its application
+signature installed before the earlier call returned. Requests and fast-path
+hits are reported by `:preprocessing.equality-query.add-term-requests` and
+`:preprocessing.equality-query.add-term-seen-hits`. This is ordinary DAG
+memoization around the existing congruence-closure algorithm, not a new
+congruence-closure algorithm or an implementation of an additional paper.
+
 When no top-level unit equalities are present, the pass returns the assertion
 vector unchanged after inspecting only the top-level conjunction structure. When
 the only equality nodes are the unit equalities themselves, it also returns
@@ -286,6 +324,16 @@ This is an ownership invariant: `TermManager` may intern new terms while a child
 is being simplified, so preprocessing must not keep references into term storage
 across recursive calls.
 
+Rebuilding is memoized for the duration of one propagation call. The cache maps
+each hash-consed input `TermId` to its rewritten `TermId` and the number of unit
+replacements in that subtree. Reusing the saved replacement count preserves the
+existing occurrence-based `rewrites` statistic even though a shared DAG subtree
+is traversed once. The cache owns only term handles and is destroyed before the
+`TermManager`; it cannot outlive or mutate term storage. This changes repeated
+DAG traversal from tree-size work to expected linear work in the number of
+distinct visited terms. `:preprocessing.boolean-units.memo-hits` and
+`:preprocessing.boolean-units.memo-misses` expose that behavior.
+
 The pass deliberately does not rewrite inside uninterpreted-function
 applications and does not collect frontend `$primo_bool_arg_*` auxiliaries as
 substitution facts. Those auxiliaries encode equivalences for compound Boolean
@@ -340,7 +388,11 @@ the existing frontend auxiliaries and EUF facts.
 
 Activation is reported by `:preprocessing.forced-atoms.facts`,
 `:preprocessing.forced-atoms.disequalities`, and
-`:preprocessing.forced-atoms.rewrites`.
+`:preprocessing.forced-atoms.rewrites`. When the exact-atom-only branch uses the
+Boolean rewriter, `:preprocessing.forced-atoms.memo-hits` and
+`:preprocessing.forced-atoms.memo-misses` report its pass-local DAG cache. The
+temporary congruence-closure branch has separate rewriting machinery and leaves
+these two counters at zero.
 
 ## Solved-Constant Substitution
 
@@ -598,16 +650,21 @@ machinery already handles, and CDCL branching over the two `Le` atoms
 explores `t1<t2` vs `t1>t2` for free, with no bespoke case-split code
 anywhere.
 
-This lowering runs once, as the very last step of the preprocessing
-pipeline, immediately before the `has_equality`/`has_arithmetic` theory
-dispatch. Running it *last* (rather than at parse time, where it used to
-happen) means every other preprocessing pass -- solve-eqs, equality
-bridging, forced-atom propagation, unit-equality congruence closure -- gets
-to see and reason about genuine Real `Equality` nodes, instead of a second,
-parallel `And(Le,Le)` representation those passes would otherwise need to
-special-case. It must still run before `BooleanClausifier`/theory dispatch,
-or QF_LRA disequality would regress to needing the case-split machinery this
-design avoids.
+This lowering runs once, at the final equality-producing boundary of the
+preprocessing pipeline. Solve-eqs, equality bridging, forced-atom propagation,
+unit-equality congruence closure, symmetry breaking, finite-domain AMO, and
+finite-domain equality definitions all run first. This ordering matters in both
+directions: those passes need genuine Real `Equality` nodes as input, and the
+symmetry/finite-domain passes may produce new equality clauses of their own.
+Lowering therefore rewrites the complete generated assertion set before
+monotone elimination, mixed purification, `BooleanClausifier`, or theory
+dispatch. No native Real equality is allowed to reach the LRA atom layer.
+
+An earlier ordering lowered the input assertions before appending raw
+finite-domain AMO clauses. A Real-domain choice could consequently reintroduce
+`(not (= x v))` after lowering and reach LRA as an unsupported native
+disequality. The end-to-end finite-Real-domain regressions and the permanent
+finite-domain fuzz gate protect this composition invariant.
 
 When `--guarded-real-equality-lowering` is enabled, a guarded disjunction with
 exactly one Real equality child lowers by distributing the guard directly:
@@ -949,10 +1006,24 @@ no non-constant Real terms inside EUF atoms, the purification pass returns the
 assertions unchanged and reports `:no.purification.skipped-no-sites`. The Boolean
 mixed-purification rewrite itself also memoizes formula, arithmetic, and EUF
 rewrites by `TermId` for that pass. Repeated hash-consed subterms therefore reuse
-their rewritten result and do not recursively rebuild the same proxy definitions
-or child vectors. The Boolean clausifier records theory-atom polarity by
+their rewritten result and do not rebuild the same proxy definitions or child
+vectors. Formula-level purification uses an explicit post-order worklist; the
+theory-specific arithmetic and EUF leaf rewriters remain responsible for their
+own term kinds. The Boolean clausifier records theory-atom polarity by
 `(TermId, polarity)`, so repeated hash-consed subformulas are traversed at most
 once per polarity while preserving positive/negative occurrence flags.
+
+All preprocessing walks that can receive expanded Boolean structure are
+stack-safe. Forced-atom simplification, Boolean-unit simplification,
+unit-equality consequence rebuilding, solved-constant substitution,
+Real-equality lowering, equality-node counting, and candidate-variable subtree
+summaries use explicit work vectors. Memoized passes process children before
+reconstructing a parent. `subtree_occurrences` still has work proportional to
+the candidate-variable summaries it merges; replacing recursion does not claim
+an asymptotic improvement to that map union. Boolean-unit cache hits retain the
+existing rewrite-accounting semantics, including replay of the cached subtree's
+rewrite count. These are traversal changes only: they do not add facts, alter
+the congruence relation, or change Real-equality lowering rules.
 
 UF symmetry breaking traverses top-level conjunctions to collect explicit
 disequalities, then scans `or` nodes for choice disjunctions. The invariance
@@ -964,6 +1035,77 @@ Generated assertions are ordinary `TermId` formulas using `mk_not`,
 `mk_implies`, `mk_or`, and `mk_eq`. They are appended before QF_UF solving, so
 they reuse the same SAT abstraction and congruence-closure code as user
 assertions.
+
+## QF_UFLRA Preprocessing Opportunities
+
+The 2026-08-04 full-corpus QF_UFLRA mining run at commit `77599f4` found 582
+files where Z3 solved in at most one second while default Primo timed out at
+five seconds. The committed follow-up manifest
+`benchmarks/qf_uflra-z3-fast-primo-timeout-100.txt` is the current optimization
+sample. The first model-equality/NO pass did not explain these gaps: the
+default-off model-equality branch solved only five more files, worsened PAR2,
+and learned no forced model-equality clauses on the full run because every
+mutation-forced candidate was already true at the SAT level.
+
+That conclusion applies to the former per-pair strict-separation proxy, which
+has since been replaced by one Section 5.2 scratch diversification sweep per
+mixed round. Fresh evaluation of that integration is tracked in
+`docs/qf-uflra-model-guided-performance.md`. The remaining high-value
+opportunities still include preprocessing and SAT-visible arithmetic
+strengthening:
+
+- the first adjacent Nelson-Oppen pruning step is implemented as opt-in
+  `--qf-uflra-candidate-final-scan`: it reduces the final LRA-to-EUF equality
+  scan to EUF care pairs, EUF-atom co-occurrence pairs, and true paired LRA
+  bounds, with a broad-scan fallback that routes discovered equalities back
+  through SAT before accepting the arrangement;
+- recognize MathSAT-style pseudo-Boolean-over-Real encodings as LRA-local
+  finite-domain shapes, not only as UF finite-domain choice disjunctions;
+- add guarded SAT-visible at-most-one/exactly-one structure for repeated Real
+  domain choices such as `x = c0`, `x = c1`, ..., when the disequality/order
+  facts make the strengthening sound;
+- simplify large mixed Boolean/LRA disjunctions using top-level LRA unit facts
+  and solved Real definitions before SAT search;
+- reuse equality and bound definitions aggressively for repeated linear terms
+  and Real-valued UF proxies introduced by mixed purification;
+- profile representative files from the committed top-100 gap manifest before
+  choosing between LRA-domain preprocessing, stronger arithmetic propagation, or
+  Boolean encoding changes.
+
+Except for the opt-in candidate final scan noted above, these are planned
+opportunities, not implemented behavior. Any accepted preprocessing pass must
+emit ordinary `TermId` assertions, preserve the preprocessing
+reconstruction trail for model-producing runs, include counters showing the
+recognizer and generated clauses are active, and be evaluated against the
+current SLURM QF_UFLRA baseline.
+
+Nullary `define-fun` compilation is implemented in the frontend rather than as
+a preprocessing pass. The motivating `Problem05_60` profile attributed about
+55 percent of a 6.28-second instrumented run to term dispatch and definition
+instantiation over 109,849 nullary definitions. The implementation compiles
+each such body at declaration time and makes later references direct `TermId`
+lookups. At implementation revision `cef5165`, three repeated runs fell from the
+recorded 5.37-second baseline to 2.71--2.74 seconds, and frontend time in the
+stats run fell from 2.783 to 0.125 seconds. SAT variables, clauses, conflicts,
+decisions, and propagations were unchanged on that target. This remains local
+microbenchmark evidence. The first 1,284-file corpus run of the eager compiler
+was rejected after five deep CPAchecker definition DAGs exited with SIGSEGV.
+ASAN identified recursive preprocessing, dispatch, purification, and
+clausification walks rather than a theory conflict or CaDiCaL defect. Those
+walks now use explicit worklists, and the five witnesses complete in an
+optimized local smoke check. At stack-safe revision `1f3d81c`, a fresh SLURM
+gate passed 3,000/3,000 mixed generated cases, 1,000/1,000 finite-domain cases,
+11/11 tracked seeds, and 43,978 YinYang differential solver calls with no bug
+trigger. The exact-commit 1,284-file, 30-second SLURM comparison then completed
+with zero errors, wrong answers, unsupported rows, or decisive-answer
+disagreements. It solved 1,238 files against the `9b9a035` baseline's 1,234,
+reduced timeouts from 50 to 46, and reduced PAR2 from 3,588.44 to 3,307.00.
+Seven files were gained and three lost. On the 1,231 files solved by both,
+aggregate time fell from 526.98 to 423.16 seconds. All five former SIGSEGV rows
+now terminate normally: four solve inside the corpus limit and `Problem08_60`
+times out normally. The gain is concentrated in CPAchecker induction; MathSAT
+remains 900/900 solved but its aggregate time increased from 62.95 to 74.30
+seconds in this run.
 
 ## Current Status
 

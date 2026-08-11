@@ -84,6 +84,63 @@ class FreshObservedModelCheckPropagator final : public ExternalPropagator {
   bool reason_started_ = false;
 };
 
+class FreshObservedPropagationCallbackPropagator final : public ExternalPropagator {
+ public:
+  explicit FreshObservedPropagationCallbackPropagator(CadicalBackend& backend)
+      : backend_(backend) {}
+
+  void notify_assignment(const std::vector<int>& lits) override {
+    for (const int lit : lits) {
+      assignments_.push_back(lit);
+    }
+  }
+
+  void notify_new_decision_level() override { ++decision_levels_; }
+
+  void notify_backtrack(std::size_t new_level) override { backtracked_to_ = new_level; }
+
+  bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
+
+  int cb_propagate() override {
+    if (propagated_) {
+      return 0;
+    }
+    fresh_var_ = backend_.new_observed_var();
+    propagated_ = true;
+    active_reason_lit_ = fresh_var_.value();
+    reason_started_ = false;
+    return active_reason_lit_;
+  }
+
+  int cb_add_reason_clause_lit(int propagated_lit) override {
+    if (propagated_lit != active_reason_lit_) {
+      return 0;
+    }
+    if (!reason_started_) {
+      reason_started_ = true;
+      return propagated_lit;
+    }
+    active_reason_lit_ = 0;
+    reason_started_ = false;
+    return 0;
+  }
+
+  std::optional<int> fresh_var() const { return fresh_var_; }
+  std::size_t assignment_count() const { return assignments_.size(); }
+  std::size_t decision_levels() const { return decision_levels_; }
+  std::optional<std::size_t> backtracked_to() const { return backtracked_to_; }
+
+ private:
+  CadicalBackend& backend_;
+  std::vector<int> assignments_;
+  std::optional<int> fresh_var_;
+  std::optional<std::size_t> backtracked_to_;
+  int active_reason_lit_ = 0;
+  std::size_t decision_levels_ = 0;
+  bool propagated_ = false;
+  bool reason_started_ = false;
+};
+
 void backend_reports_sat_for_simple_clause() {
   CadicalBackend backend;
   const int x = backend.new_var();
@@ -194,6 +251,29 @@ void backend_observes_fresh_variable_from_model_callback() {
   assert(propagator.assignment_count() >= 1);
 }
 
+void backend_observes_fresh_variable_from_propagation_callback() {
+  if (primo::sat::cadical_signature() == "unavailable") {
+    return;
+  }
+
+  CadicalBackend backend;
+  const auto capabilities = backend.capabilities();
+  assert(capabilities.observed_variables);
+  assert(capabilities.external_propagation);
+  assert(capabilities.fresh_observed_variables_during_solving);
+
+  FreshObservedPropagationCallbackPropagator propagator(backend);
+  backend.connect_external_propagator(&propagator);
+  const SatResult result = backend.solve();
+  backend.disconnect_external_propagator();
+
+  assert(result == SatResult::Sat);
+  assert(propagator.fresh_var().has_value());
+  assert(backend.value(propagator.fresh_var().value()).has_value());
+  assert(backend.value(propagator.fresh_var().value()).value());
+  assert(propagator.assignment_count() >= 1);
+}
+
 }  // namespace
 
 int main() {
@@ -204,5 +284,6 @@ int main() {
   backend_rejects_invalid_cadical_options();
   backend_declares_variables_safely_with_factor_enabled();
   backend_observes_fresh_variable_from_model_callback();
+  backend_observes_fresh_variable_from_propagation_callback();
   return 0;
 }

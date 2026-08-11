@@ -77,6 +77,50 @@ struct RealFixture {
   primo::core::TermId rational(std::int64_t value) { return terms.mk_rational(value); }
 };
 
+void bounded_boolean_flattening_preserves_threshold_and_handles_deep_dags() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId pa = fixture.pred(fixture.p, a);
+  const primo::core::TermId pb = fixture.pred(fixture.p, b);
+  const primo::core::TermId pc = fixture.pred(fixture.p, c);
+  const primo::core::TermId inner = fixture.terms.mk_and({pa, pb});
+  const primo::core::TermId outer = fixture.terms.mk_and({inner, pc});
+
+  const primo::smt::BooleanFlatteningResult flattened =
+      primo::smt::flatten_associative_booleans(fixture.terms, {outer}, 3);
+  check(flattened.attempts == 1);
+  check(flattened.accepted == 1);
+  check(flattened.threshold_stops == 0);
+  check(flattened.operands_copied == 2);
+  check(flattened.rewrites == 1);
+  const primo::core::Term& flat_root = fixture.terms.get(flattened.assertions.front());
+  check(flat_root.kind == primo::core::TermKind::And);
+  check(flat_root.children == std::vector<primo::core::TermId>({pa, pb, pc}));
+  check(flattened.max_arity == 3);
+
+  const primo::smt::BooleanFlatteningResult bounded =
+      primo::smt::flatten_associative_booleans(fixture.terms, {outer}, 2);
+  check(bounded.attempts == 1);
+  check(bounded.accepted == 0);
+  check(bounded.threshold_stops == 1);
+  check(bounded.rewrites == 0);
+  check(bounded.assertions.front() == outer);
+
+  primo::core::TermId chain = pa;
+  for (std::size_t index = 0; index < 20000; ++index) {
+    const primo::core::SymbolId symbol = fixture.symbols.declare_constant(
+        "deep_bool_" + std::to_string(index), fixture.symbols.bool_sort());
+    chain = fixture.terms.mk_and({chain, fixture.terms.mk_constant(symbol)});
+  }
+  const primo::smt::BooleanFlatteningResult deep =
+      primo::smt::flatten_associative_booleans(fixture.terms, {chain}, 4);
+  check(deep.assertions.size() == 1);
+  check(deep.max_arity <= 4);
+  check(deep.accepted > 0);
+  check(deep.threshold_stops > 0);
+}
 
 // --- monotone (one-sided) variable elimination -------------------------
 //
@@ -111,7 +155,8 @@ void monotone_elimination_respects_polarity() {
   // (<= x 5) positively and (not (<= x 3)) negatively push x in opposite
   // directions, so x is two-sided even though both atoms mention only x.
   const primo::core::TermId positive = fixture.terms.mk_le(x, fixture.rational(5));
-  const primo::core::TermId negative = fixture.terms.mk_not(fixture.terms.mk_le(x, fixture.rational(3)));
+  const primo::core::TermId negative =
+      fixture.terms.mk_not(fixture.terms.mk_le(x, fixture.rational(3)));
 
   const primo::smt::MonotoneEliminationResult result =
       primo::smt::eliminate_monotone_variables(fixture.terms, {positive, negative});
@@ -166,8 +211,7 @@ void monotone_elimination_keeps_variable_under_uninterpreted_application() {
   const primo::core::TermId xt = terms.mk_constant(x);
   // f(x) constrains x in a way this pass cannot see, so x must survive.
   const primo::core::TermId bound = terms.mk_le(xt, terms.mk_rational(5));
-  const primo::core::TermId application =
-      terms.mk_eq(terms.mk_app(f, {xt}), terms.mk_constant(a));
+  const primo::core::TermId application = terms.mk_eq(terms.mk_app(f, {xt}), terms.mk_constant(a));
 
   const primo::smt::MonotoneEliminationResult result =
       primo::smt::eliminate_monotone_variables(terms, {bound, application});
@@ -375,12 +419,12 @@ void unit_equality_propagation_simplifies_nested_boolean_terms_after_interning()
       fixture.terms.mk_implies(inner, fixture.terms.mk_not(fixture.terms.mk_eq(a, b)));
   const std::vector<primo::core::TermId> assertions{fixture.terms.mk_eq(x, y), outer};
 
-  std::size_t consequences = 0;
+  primo::smt::UnitEqualityPropagationStats stats;
   const std::vector<primo::core::TermId> simplified =
-      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &consequences);
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &stats);
 
   check(!simplified.empty());
-  check(consequences >= 1);
+  check(stats.consequences_added >= 1);
 }
 
 void unit_equality_propagation_skips_without_nonunit_queries() {
@@ -393,12 +437,37 @@ void unit_equality_propagation_skips_without_nonunit_queries() {
       fixture.terms.mk_and({fixture.terms.mk_eq(b, c)}),
   };
 
-  std::size_t consequences = 99;
+  primo::smt::UnitEqualityPropagationStats stats;
+  stats.consequences_added = 99;
   const std::vector<primo::core::TermId> simplified =
-      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &consequences);
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &stats);
 
-  check(consequences == 0);
+  check(stats.consequences_added == 0);
   check(simplified == assertions);
+}
+
+void unit_equality_propagation_visits_shared_query_dag_once() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId fa = fixture.app(fixture.f, a);
+  const primo::core::TermId fb = fixture.app(fixture.f, b);
+  const primo::core::TermId query = fixture.terms.mk_eq(fa, fb);
+  const primo::core::TermId shared = fixture.terms.mk_or({query, fixture.pred(fixture.p, a)});
+  const std::vector<primo::core::TermId> assertions{
+      fixture.terms.mk_eq(a, b), fixture.terms.mk_or({shared, fixture.pred(fixture.p, b)}),
+      fixture.terms.mk_implies(shared, fixture.pred(fixture.p, c))};
+
+  primo::smt::UnitEqualityPropagationStats stats;
+  const std::vector<primo::core::TermId> simplified =
+      primo::smt::propagate_unit_equalities(fixture.terms, assertions, &stats);
+
+  check(!simplified.empty());
+  check(stats.query_memo_hits >= 1);
+  check(stats.query_nodes <= fixture.terms.size());
+  check(stats.add_term_seen_hits >= 1);
+  check(stats.add_term_requests < 20);
 }
 
 void ground_unit_substitution_rewrites_applications_and_preserves_units() {
@@ -815,6 +884,80 @@ void boolean_unit_propagation_skips_when_no_units_exist() {
   check(result.assertions == assertions);
 }
 
+void boolean_unit_simplification_memoizes_shared_boolean_subterms() {
+  Fixture fixture;
+  const auto boolean_constant = [&fixture](const char* name) {
+    return fixture.constant(fixture.symbols.declare_constant(name, fixture.symbols.bool_sort()));
+  };
+  const primo::core::TermId p = boolean_constant("memo_p");
+  const primo::core::TermId q = boolean_constant("memo_q");
+  const primo::core::TermId r = boolean_constant("memo_r");
+  const primo::core::TermId s = boolean_constant("memo_s");
+  const primo::core::TermId shared = fixture.terms.mk_or({fixture.terms.mk_not(p), q});
+  const std::vector<primo::core::TermId> assertions{p, fixture.terms.mk_or({shared, r}),
+                                                    fixture.terms.mk_implies(shared, s)};
+
+  const primo::smt::BooleanUnitPropagationResult result =
+      primo::smt::propagate_boolean_units(fixture.terms, assertions);
+
+  check(result.rewrites >= 2);
+  check(result.memo_hits >= 1);
+  check(result.memo_misses >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_or({q, r})) != result.assertions.end());
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_implies(q, s)) != result.assertions.end());
+}
+
+void forced_atom_simplification_memoizes_shared_boolean_subterms() {
+  Fixture fixture;
+  const primo::core::TermId atom = fixture.pred(fixture.p, fixture.constant(fixture.a));
+  const primo::core::TermId q = fixture.constant(
+      fixture.symbols.declare_constant("forced_memo_q", fixture.symbols.bool_sort()));
+  const primo::core::TermId r = fixture.constant(
+      fixture.symbols.declare_constant("forced_memo_r", fixture.symbols.bool_sort()));
+  const primo::core::TermId s = fixture.constant(
+      fixture.symbols.declare_constant("forced_memo_s", fixture.symbols.bool_sort()));
+  const primo::core::TermId shared = fixture.terms.mk_or({fixture.terms.mk_not(atom), q});
+  const std::vector<primo::core::TermId> assertions{atom, fixture.terms.mk_or({shared, r}),
+                                                    fixture.terms.mk_implies(shared, s)};
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, assertions);
+
+  check(result.rewrites >= 2);
+  check(result.memo_hits >= 1);
+  check(result.memo_misses >= 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_or({q, r})) != result.assertions.end());
+  check(std::find(result.assertions.begin(), result.assertions.end(),
+                  fixture.terms.mk_implies(q, s)) != result.assertions.end());
+}
+
+void forced_atom_simplification_handles_deep_boolean_terms() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId equality = fixture.terms.mk_eq(a, b);
+  const primo::core::TermId p = fixture.constant(
+      fixture.symbols.declare_constant("deep_forced_p", fixture.symbols.bool_sort()));
+  const primo::core::TermId q = fixture.constant(
+      fixture.symbols.declare_constant("deep_forced_q", fixture.symbols.bool_sort()));
+
+  primo::core::TermId deep = p;
+  for (std::size_t depth = 0; depth < 20000; ++depth) {
+    deep = depth % 2 == 0 ? fixture.terms.mk_implies(deep, q) : fixture.terms.mk_implies(p, deep);
+  }
+
+  const primo::smt::ForcedAtomPropagationResult result =
+      primo::smt::propagate_forced_atoms(fixture.terms, {equality, deep});
+
+  check(result.units == 1);
+  check(result.equality_pairs.size() == 1);
+  check(std::find(result.assertions.begin(), result.assertions.end(), deep) !=
+        result.assertions.end());
+}
+
 void forced_atom_propagation_simplifies_predicate_units() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -1201,6 +1344,7 @@ void finite_domain_evaluator_simplifies_table_tautology() {
 }  // namespace
 
 int main() {
+  bounded_boolean_flattening_preserves_threshold_and_handles_deep_dags();
   symmetric_fixed_terms_get_value_precedence();
   asymmetric_value_use_is_rejected();
   moving_only_symmetry_terms_are_rejected();
@@ -1209,6 +1353,7 @@ int main() {
   unit_equality_propagation_simplifies_disequality();
   unit_equality_propagation_simplifies_nested_boolean_terms_after_interning();
   unit_equality_propagation_skips_without_nonunit_queries();
+  unit_equality_propagation_visits_shared_query_dag_once();
   ground_unit_substitution_rewrites_applications_and_preserves_units();
   ground_unit_substitution_uses_conjunctive_units_and_drops_true_parts();
   solved_constant_substitution_eliminates_acyclic_definition();
@@ -1227,6 +1372,9 @@ int main() {
   boolean_unit_propagation_simplifies_boolean_structure_and_arguments();
   boolean_unit_propagation_preserves_contradictory_units();
   boolean_unit_propagation_skips_when_no_units_exist();
+  boolean_unit_simplification_memoizes_shared_boolean_subterms();
+  forced_atom_simplification_memoizes_shared_boolean_subterms();
+  forced_atom_simplification_handles_deep_boolean_terms();
   forced_atom_propagation_simplifies_predicate_units();
   forced_atom_propagation_uses_negative_equality_units();
   forced_atom_propagation_folds_disequalities_modulo_equalities();

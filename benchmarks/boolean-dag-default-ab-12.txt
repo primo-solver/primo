@@ -1,0 +1,12 @@
+benchmarks/smoke/qf_uf/direct_equality_contradiction.smt2
+benchmarks/smoke/qf_uf/sat_nested_functions.smt2
+benchmarks/seeds/qf_uf/seed_bool_argument_compound.smt2
+benchmarks/seeds/qf_lra/seed_basic.smt2
+benchmarks/seeds/qf_lra/seed_branching.smt2
+benchmarks/seeds/qf_lra/seed_unsat_pivot.smt2
+benchmarks/seeds/qf_uflra/real_congruence_forced_unsat.smt2
+benchmarks/seeds/qf_uflra/seed_bool_argument_compound.smt2
+benchmarks/seeds/qf_uflra/finite_real_domain_amo_unsat.smt2
+benchmarks/regression/qf_uflra/opensmt_boolean_disagreement.smt2
+benchmarks/performance/qf_uflra/mathsat_randomdecoupled_pb_real_40_80_60_01.smt2
+benchmarks/performance/qf_uflra/mathsat_randomcoupled_pb_real_30_0600_10_18.smt2

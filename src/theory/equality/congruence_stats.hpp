@@ -5,6 +5,8 @@
 namespace primo::theory::equality {
 
 struct IncrementalCongruenceClosureStats {
+  std::size_t add_term_requests = 0;
+  std::size_t add_term_seen_hits = 0;
   std::size_t terms = 0;
   std::size_t flat_definitions = 0;
   std::size_t merges = 0;

@@ -1,0 +1,22 @@
+Local reproduction, 2026-08-07, current proxy binary:
+
+contrib/local/bin/z3 witness.smt2
+unsat
+
+./build/primo witness.smt2
+unsat
+
+contrib/local/bin/opensmt witness.smt2
+sat
+
+contrib/local/bin/cvc5 witness.smt2
+unsat
+
+contrib/local/bin/yices-smt2 witness.smt2
+unsat
+
+Z3, Primo, cvc5, and Yices agree on `unsat`; OpenSMT reports `sat`.
+
+The original campaign witness was reduced to this four-assertion core by
+removing the nested UF, `ite`, and double-negation assertions. All five solver
+results remained unchanged.

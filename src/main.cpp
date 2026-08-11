@@ -148,6 +148,11 @@ int main(int argc, char** argv) {
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
+  bool no_qf_uflra_fixed_elimination = false;
+  bool qf_uflra_candidate_final_scan = false;
+  bool qf_uflra_model_reconciliation = false;
+  bool no_qf_uflra_model_reconciliation = false;
+  bool qf_uflra_online_euf = false;
   bool guarded_real_equality_lowering = false;
   bool monotone_elimination = false;
   bool top_level_or_tseitin = false;
@@ -184,6 +189,7 @@ int main(int argc, char** argv) {
   std::string theory_phase = "negative";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
+  std::size_t nelson_oppen_arrangement_probe_limit = 0;
   std::size_t max_theory_conflicts = 0;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::string> cadical_options;
@@ -323,6 +329,9 @@ int main(int argc, char** argv) {
                "(heuristics item H7). Off by default: it nets to nothing on the scrambled "
                "competition set, but doubles the >5MB band, so it is worth enabling on "
                "equality-dominated input [default: off]");
+  app.add_flag("--no-qf-uflra-fixed-elimination", no_qf_uflra_fixed_elimination,
+               "Disable default mixed QF_UFLRA fixed-variable elimination, which exposes "
+               "EqRow interface equalities before the exact pair fallback [default: on]");
   app.add_flag("--ground-congruence", solver_options.ground_congruence,
                "Enable bounded SAT-visible ground congruence clauses [default: off]");
   app.add_flag(
@@ -339,6 +348,19 @@ int main(int argc, char** argv) {
                "equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25) [default: on]");
   app.add_flag("--no-gaussian-elimination", no_gaussian_elimination,
                "Disable QF_LRA Gauss-Jordan equality-system elimination [default: on]");
+  app.add_flag("--qf-uflra-candidate-final-scan", qf_uflra_candidate_final_scan,
+               "Enable experimental mixed QF_UFLRA candidate-first final LRA equality scans before "
+               "falling back to the full shared-Real pair scan [default: off]");
+  app.add_flag("--qf-uflra-model-reconciliation", qf_uflra_model_reconciliation,
+               "Explicitly enable convex QF_UFLRA shared-model reconciliation with scratch "
+               "LRA mutation, EUF compatibility checks, and lazy positive equality splits "
+               "(enabled by default)");
+  app.add_flag("--no-qf-uflra-model-reconciliation", no_qf_uflra_model_reconciliation,
+               "Disable default convex QF_UFLRA shared-model reconciliation and use the "
+               "explained exact equality-sharing fallback");
+  app.add_flag("--qf-uflra-online-euf", qf_uflra_online_euf,
+               "Enable experimental incremental EUF callbacks in online mixed QF_UFLRA solving "
+               "[default: off]");
   app.add_flag("--monotone-elimination", monotone_elimination,
                "Enable experimental monotone (one-sided) real-variable elimination: a\n"
                "variable every constraint pushes the same way is discharged and its\n"
@@ -408,21 +430,29 @@ int main(int argc, char** argv) {
                "Enable experimental QF_UFLRA model-equality branching over shared Real terms; "
                "not a full Nelson-Oppen model-equality implementation [default: off]");
   app.add_flag("--no-model-equality-mutation", no_nelson_oppen_model_equality_mutation,
-               "Disable the experimental QF_UFLRA LRA model-mutation filter inside "
-               "--model-equality-branching [default: on]");
+               "Disable the Section 5.2 greedy LRA model-diversification sweep used by the "
+               "experimental QF_UFLRA shared-model and model-equality branching paths "
+               "[default: on when either path is enabled]");
   app.add_option("--nelson-oppen-prop", nelson_oppen_propagation,
-                 "QF_UFLRA Nelson-Oppen interface equality propagation mode: off, final, or "
-                 "online. Pure QF_UF and QF_LRA keep their direct theory propagators [default: "
-                 "final]")
-      ->check(CLI::IsMember({"off", "final", "online"}))
+                 "QF_UFLRA Nelson-Oppen interface equality propagation mode: exact, final, or "
+                 "online. Exact keeps the mandatory convex closure but disables opportunistic "
+                 "LRA producers; off is a backward-compatible alias for exact. Pure QF_UF and "
+                 "QF_LRA keep their direct theory propagators [default: final]")
+      ->check(CLI::IsMember({"off", "exact", "final", "online"}))
       ->default_val("final");
   app.add_option("--model-equality-branch-budget",
                  solver_options.nelson_oppen_model_equality_branch_budget,
                  "Maximum QF_UFLRA model-equality branch assumptions per check-sat")
       ->check(CLI::Range(0, 1000000));
   app.add_option("--model-equality-branch-policy", model_equality_branch_policy,
-                 "QF_UFLRA model-equality branch policy: first, ranked, or adaptive")
-      ->check(CLI::IsMember({"first", "ranked", "adaptive"}));
+                 "QF_UFLRA model-equality branch policy: first, ranked, adaptive, or care-queued")
+      ->check(CLI::IsMember({"first", "ranked", "adaptive", "care-queued"}));
+  CLI::Option* no_arrangement_probe_limit_option =
+      app.add_option("--nelson-oppen-arrangement-probe-limit", nelson_oppen_arrangement_probe_limit,
+                     "Return unknown once mixed QF_UFLRA final equality sharing or "
+                     "arrangement/model reconstruction has used this many temporary LRA "
+                     "consistency probes")
+          ->check(CLI::Range(1, 1000000000));
   app.add_flag(
       "--euf-dynamic-ackermann-shadow", euf_dynamic_ackermann_shadow,
       "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them [default: off]");
@@ -465,6 +495,9 @@ int main(int argc, char** argv) {
                      solver_options.preprocessing_passes,
                      "Number of QF_UF preprocessing passes to run")
           ->check(CLI::Range(0, 100));
+  app.add_option("--boolean-flatten-threshold", solver_options.boolean_flatten_threshold,
+                 "Flatten nested and/or nodes during preprocessing up to this arity; 0 disables")
+      ->check(CLI::Range(0, 1000000));
   app.add_option("--preprocessing-adaptive-extra-passes",
                  solver_options.preprocessing_adaptive_extra_passes,
                  "Additional adaptive QF_UF preprocessing passes after the configured pass cap")
@@ -518,6 +551,8 @@ int main(int argc, char** argv) {
   const auto group_for = [&starts_with](const std::string& name) -> std::string {
     if (starts_with(name, "--lra-") || starts_with(name, "--no-lra-") ||
         name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
+        name == "--qf-uflra-candidate-final-scan" || name == "--qf-uflra-model-reconciliation" ||
+        name == "--no-qf-uflra-model-reconciliation" || name == "--no-qf-uflra-fixed-elimination" ||
         name == "--guarded-real-equality-lowering" || name == "--monotone-elimination" ||
         name == "--lra-least-violated-leaving" || name == "--mixed-dispatch") {
       return kGroupLra;
@@ -526,7 +561,8 @@ int main(int argc, char** argv) {
     // boundary: initial phase for theory atoms, T-pure filtering, the
     // theory-conflict budget, and how top-level disjunctions get clausified.
     if (name == "--cadical-option" || name == "--max-theory-conflicts" ||
-        name == "--pure-theory-filter" || name == "--theory-phase" ||
+        name == "--qf-uflra-online-euf" || name == "--pure-theory-filter" ||
+        name == "--theory-phase" || name == "--boolean-flatten-threshold" ||
         starts_with(name, "--top-level-or-tseitin") ||
         starts_with(name, "--no-top-level-or-tseitin") ||
         starts_with(name, "--no-auto-top-level-or-tseitin")) {
@@ -640,6 +676,17 @@ int main(int argc, char** argv) {
   if (no_gaussian_elimination) {
     solver_options.gaussian_elimination = false;
   }
+  if (no_qf_uflra_fixed_elimination) {
+    solver_options.qf_uflra_fixed_elimination = false;
+  }
+  solver_options.qf_uflra_candidate_final_scan = qf_uflra_candidate_final_scan;
+  if (qf_uflra_model_reconciliation) {
+    solver_options.qf_uflra_model_reconciliation = true;
+  }
+  if (no_qf_uflra_model_reconciliation) {
+    solver_options.qf_uflra_model_reconciliation = false;
+  }
+  solver_options.qf_uflra_online_euf = qf_uflra_online_euf;
   if (monotone_elimination) {
     solver_options.monotone_elimination = true;
   }
@@ -740,8 +787,8 @@ int main(int argc, char** argv) {
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
   solver_options.nelson_oppen_model_equality_branching = nelson_oppen_model_equality_branching;
-  if (nelson_oppen_propagation == "off") {
-    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Off;
+  if (nelson_oppen_propagation == "off" || nelson_oppen_propagation == "exact") {
+    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Exact;
   } else if (nelson_oppen_propagation == "online") {
     solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Online;
   } else {
@@ -753,6 +800,9 @@ int main(int argc, char** argv) {
   if (model_equality_branch_policy == "adaptive") {
     solver_options.nelson_oppen_model_equality_branch_policy =
         primo::smt::ModelEqualityBranchPolicy::Adaptive;
+  } else if (model_equality_branch_policy == "care-queued") {
+    solver_options.nelson_oppen_model_equality_branch_policy =
+        primo::smt::ModelEqualityBranchPolicy::CareQueued;
   } else if (model_equality_branch_policy == "ranked") {
     solver_options.nelson_oppen_model_equality_branch_policy =
         primo::smt::ModelEqualityBranchPolicy::Ranked;
@@ -800,6 +850,9 @@ int main(int argc, char** argv) {
   solver_options.euf_propagation_delivery = parsed_prop_delivery.value();
   if (max_theory_conflicts_option->count() > 0) {
     solver_options.max_theory_conflicts = max_theory_conflicts;
+  }
+  if (no_arrangement_probe_limit_option->count() > 0) {
+    solver_options.nelson_oppen_arrangement_probe_limit = nelson_oppen_arrangement_probe_limit;
   }
   for (const std::string& option : cadical_options) {
     const std::optional<std::pair<std::string, int>> parsed = parse_cadical_option(option);

@@ -46,6 +46,7 @@ notes it points to.
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
+| [R1](#lead-recursion-audit) | Audit input-sized recursion across the repository | robustness; prevents depth-dependent crashes | medium-large | **open; deliberately deferred** |
 
 (lead-pure-filter-lra)=
 ## 1. Extend `--pure-theory-filter` to LRA atoms
@@ -1173,6 +1174,41 @@ complete. Two families carry a real blind spot: `sc` (20.8% of atoms opaque)
 and `tta_startup` (12.1%), both from `ite` inside arithmetic terms, where the
 analyzer conservatively forces every variable two-sided. Their zeros therefore
 mean "could not tell", not "none". Every other family is at 0.0% opaque.
+
+(lead-recursion-audit)=
+## R1. Audit input-sized recursion across the repository
+
+**Status: open and deliberately deferred.** The SMT-LIB frontend was already
+converted to explicit stacks after fuzzing exposed depth-dependent stack
+overflows. Eager nullary-definition compilation then exposed the same class of
+failure in downstream whole-formula walkers: many shallow definition bodies can
+form one very deep hash-consed `TermId` DAG. The immediate preprocessing,
+dispatch, purification, Boolean-bridge, and clausification paths are now
+iterative, but that focused repair is not evidence that the rest of the
+repository is stack-safe.
+
+The follow-up is a whole-tree call-graph and source audit. Classify every
+recursive function by what bounds its depth:
+
+- recursion proportional to parser input, syntax depth, reachable `TermId` DAG
+  depth, equality-proof depth, or another user-controlled graph size must be
+  replaced by an explicit worklist or given a documented and enforced limit;
+- structurally bounded recursion, such as a fixed number of sort or operator
+  cases, may remain only when the bound is explicit in the nearest design page;
+- mutually recursive helpers and recursion hidden behind callbacks must be
+  included, not only functions that call themselves textually.
+
+Known starting points include EUF term registration and explanation traversal,
+the recursive repair noted in the LRA tuning documentation, model and printer
+walkers, rewriting/substitution utilities, and test or diagnostic code that can
+receive solver-produced DAGs. LRA-owned code must be audited with the active LRA
+work rather than changed opportunistically from the Nelson-Oppen branch.
+
+Acceptance requires a checked-in inventory with an owner and disposition for
+every finding, iterative replacements for all unbounded production paths,
+deep-chain and deep-shared-DAG regressions for each affected layer, ASAN runs of
+those regressions, and the ordinary merge fuzz gate. A grep for self-calls is
+only a starting aid and does not complete the audit.
 
 (complementarity)=
 ## Complementarity: losing on average is not the same as useless

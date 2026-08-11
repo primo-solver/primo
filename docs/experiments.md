@@ -97,7 +97,10 @@ row records the manifest row number, absolute and repository-relative file path,
 family, solver arguments, status, answer, elapsed seconds, exit code, per-file
 stdout/stderr logs, and any `--stats` counters emitted before completion. The
 runner sends `SIGTERM` at the timeout and waits briefly before `SIGKILL`, so
-Primo can flush partial `--stats` counters for timeout rows. The
+Primo can often flush partial `--stats` counters for timeout rows. The current
+CLI flush is not async-signal-safe and may abort if the signal interrupts an
+allocation; timeout rows must therefore be checked for a nonzero exit code or
+allocator diagnostics rather than assumed clean from their status alone. The
 same parser preserves LLM2SMT `[stats]` lines as `llm2smt.*` columns for
 reference comparisons.
 script uses SMT-LIB `:status sat|unsat` metadata as the expected answer by
@@ -133,6 +136,60 @@ outputs in a reused workspace cannot make benchmark binaries report a spurious
 `-dirty` suffix. Use `--sync-mode rsync` only for a deliberate legacy full-tree
 sync.
 
+When a workspace already has a verified cluster-local dependency installation,
+pass `--reuse-dependencies`. The helper preserves `contrib/local`, installs the
+clean tracked source snapshot, removes `build-slurm-rel`, and rebuilds Primo from
+scratch. This avoids repeated CaDiCaL, GMP, ANTLR, and CLI11 provisioning without
+risking stale project objects from preserved source timestamps. Before reusing the
+installation, the helper checks the concrete CLI11, ANTLR4, IPASIR, CaDiCaL, and
+GMP headers/libraries required by CMake. If any are absent, it automatically runs
+`contrib-required` instead of starting a doomed build. Explicit
+`--contrib-target` requests can be combined with reuse mode for independent,
+idempotent tools such as `contrib-yinyang`; those targets run after the core
+artifact check without rebuilding valid native dependencies. The IPASIR check
+accepts either `ipasir_up.h` or the compatible `ipasir.h`, matching the
+alternatives in CMake; requiring only the former would falsely reprovision a
+valid CaDiCaL installation on every synchronization.
+
+For example, a fuzz workspace that already has the native build dependencies
+and Z3 but lacks the pinned YinYang environment can be prepared with:
+
+```bash
+python3 scripts/slurm_prepare_benchmark_workspace.py \
+  --reuse-dependencies \
+  --contrib-target contrib-yinyang \
+  --require-tool .venv-yinyang/bin/typefuzz \
+  --require-tool contrib/local/bin/z3
+```
+
+`contrib-required` is only the dependency set needed to build and run Primo. A
+benchmark that names reference solvers under `contrib/local/bin` must either
+reuse an existing matching reference result, or prepare the workspace with the
+matching reference tool and require it in the preflight check. For Z3:
+
+```bash
+python3 scripts/slurm_prepare_benchmark_workspace.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote-dir <remote-home>/primo-cadical-profile \
+  --with-z3
+python3 scripts/slurm_prepare_benchmark_workspace.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote-dir <remote-home>/primo-cadical-profile \
+  --with-z3 \
+  --check-only
+```
+
+If the SMT-LIB corpus, timeout, and reference binary are unchanged, prefer the
+standing practice of reusing the existing reference CSV instead of rerunning Z3
+or cvc5 just because a Primo branch changed.
+
+`scripts/bench_qf_uf_full.py` writes an append-only JSONL journal after every
+completed instance, defaulting to `<out>.jsonl`, in addition to its final CSV
+and summary. SLURM result collection should retain this journal: it preserves
+all completed rows if a task is cancelled, times out at the scheduler level, or
+loses its node before the final aggregate files are written. `--journal` can
+select a different path when a wrapper has a fixed artifact layout.
+
 The local CMake build refreshes a generated git-revision header on every `primo`
 build; uncommitted source changes are reported with a `-dirty` suffix. Use
 `--check-only` immediately before `sbatch` when the workspace was already
@@ -144,8 +201,13 @@ workspace.
 
 Archive-mode preparation intentionally excludes `tmp/`, so benchmark manifests
 that refer to locally extracted SMT-LIB archives need a separate staging step.
-Use the manifest staging helper to copy only the listed files into the matching
-remote root, without copying `.git` or the whole archive:
+Before transferring a large corpus, check for a complete copy in another remote
+workspace and verify its file count, total bytes, and path/size manifest hash; a
+server-side copy is preferable to another network transfer. Otherwise, use the
+staging helper to copy only the listed files into the matching remote root,
+without copying `.git` or unrelated archive content. The helper streams a gzip
+archive, extracts into a staging directory before replacing the target, and
+reports the path count without printing the full manifest:
 
 ```bash
 python3 scripts/slurm_stage_manifest_files.py \
@@ -154,6 +216,27 @@ python3 scripts/slurm_stage_manifest_files.py \
   --remote-dir <remote-home>/primo-cadical-profile \
   --root tmp/QF_UFLRA \
   --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt
+```
+
+To stage a complete extracted corpus without first creating a temporary
+manifest, replace `--manifest ...` with `--all-smt2`. Paths are discovered below
+`--root` and sorted before archiving.
+
+When the corpus already exists in another workspace on the same remote host,
+add `--remote-source-dir`. The helper computes the selected local path/size
+fingerprint, sends only the path list over SSH, verifies the remote source has
+the same count, total bytes, and fingerprint, and then performs the tar copy
+between remote directories. It still builds a staging tree and replaces the
+target only after every selected file has been copied:
+
+```bash
+python3 scripts/slurm_stage_manifest_files.py \
+  --ssh-config /tmp/llm2smt_slurm_ssh_config \
+  --remote llm2smt-slurm \
+  --remote-source-dir <existing-remote-workspace> \
+  --remote-dir <new-remote-workspace> \
+  --root tmp/QF_UFLRA \
+  --all-smt2
 ```
 
 If the published `interesting.html` table is available, pass
@@ -200,7 +283,18 @@ wrong-answer, status, answer, family, and PAR2 counts. Only non-wrong `sat` and
 `unsupported`, timeouts, and errors contribute `2 * timeout`. Any performance
 report based on this archive must include the SLURM job id, timeout, commit,
 merged CSV path, family summary, unsupported count, wrong-answer count, and
-comparison against the previous full-archive Primo run.
+comparison against the previous full-archive Primo run. Because timeout status
+takes precedence over child exit status, reports must also inspect
+`timed_out_with_stats`, `exit_code`, and `stderr_head` for timeout-handler
+failures.
+
+Harness status is stricter than recognized stdout. An explicit `unsupported`
+answer has status `unsupported`, including Primo's normal exit code 2 for an
+unsupported fragment. A nonzero exit with any other answer, or a zero exit
+without a recognized answer, has status `error`. Only a recognized answer from
+a normal exit has status `ok`. The same classification is used by
+`scripts/bench_interesting_qf_uf.py` and is covered by the Python tests run by
+`make check`.
 
 Use `scripts/render_benchmark_matrix_html.py` to turn one or more merged
 benchmark CSVs into the compact detailed-results table used for solver/config

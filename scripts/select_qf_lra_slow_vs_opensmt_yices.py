@@ -16,7 +16,6 @@ import glob
 from dataclasses import dataclass
 from pathlib import Path
 
-
 DECISIVE = {"sat", "unsat"}
 
 

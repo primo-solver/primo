@@ -19,6 +19,8 @@ class TermManager {
   TermId mk_app(SymbolId symbol, std::vector<TermId> args);
   TermId mk_eq(TermId lhs, TermId rhs);
   TermId mk_not(TermId child);
+  // Preserve nested associative nodes so hash-consed callers retain DAG
+  // sharing. Wider And/Or nodes are an explicit SMT preprocessing decision.
   TermId mk_and(std::vector<TermId> children);
   TermId mk_or(std::vector<TermId> children);
   TermId mk_implies(TermId lhs, TermId rhs);

@@ -1,0 +1,11 @@
+; Compound Boolean arguments plus a Real constraint in QF_UFLRA.
+(set-logic QF_UFLRA)
+(declare-fun p () Bool)
+(declare-fun q () Bool)
+(declare-fun f (Bool) Bool)
+(declare-fun x () Real)
+(assert (f (and p q)))
+(assert (or (not (f (and q p))) (f (or p q))))
+(assert (or (f (not p)) (not (f (not q)))))
+(assert (<= x 1))
+(check-sat)
