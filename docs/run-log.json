@@ -25968,6 +25968,39 @@
       "artifacts": "remote:<prepared-workspace>/results/boolean-dag-witness-e9b8c39/ and results/qf-uflra-boolean-dag-opportunity-45-e9b8c39/; local ignored witness files under results/boolean-dag-0856d8f/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted the representation repair on the feature branch. The direct witness shows that clausification and preprocessing consume the nested DAG without invoking flattening, eliminating the pre-solve memory explosion. The optional pass remains default-off."
+    },
+    {
+      "id": "2026-08-11-boolean-dag-default-stat-ab-cd10201",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "benchmark-and-stat-regression",
+      "scope": "Local exact-stat default A/B for nested Boolean DAG preservation across tracked QF_UF, QF_LRA, and QF_UFLRA cases",
+      "commit": "cd10201",
+      "baseline_commit": "c1a8288",
+      "branch": "boolean-dag-bounded-flattening",
+      "environment": {
+        "type": "local release A/B",
+        "host": "local workspace",
+        "binary": "Separate clean Release builds with GCC 13.3.0 and the same CaDiCaL 3.0.0 library; revision banners cd10201 and c1a8288",
+        "manifest": "benchmarks/boolean-dag-default-ab-12.txt; 3 QF_UF, 3 QF_LRA, and 6 QF_UFLRA files",
+        "timeout": "30 seconds per invocation; no timeout occurred"
+      },
+      "commands": {
+        "default_ab": "For every manifest file, invoke each release binary three times as primo --quiet --stats FILE, preserve stdout and stderr separately, parse every integer statistic, and compare the union of keys while treating the five :time.* counters separately.",
+        "flatten_probe": "On the two MathSAT-derived files, compare c1a8288 default against cd10201 --boolean-flatten-threshold=100000."
+      },
+      "results": {
+        "correctness": "12/12 answers and return codes agreed in all three repetitions (4 sat, 8 unsat): 0 timeout, error, unsupported result, or disagreement.",
+        "determinism": "Every non-time statistic was stable across the three repetitions of each binary.",
+        "unchanged_cases": "Nine files had identical shared non-time counters; cd10201 additionally reported six zero-valued :preprocessing.boolean-flatten.* counters.",
+        "finite_domain_case": "finite_real_domain_amo_unsat changed preprocessing.term-size.initial 18 to 19, forced-atoms.rewrites 24 to 25, and equality-query.nodes 52 to 53.",
+        "decoupled_case": "mathsat_randomdecoupled changed term-size.initial 988 to 1943, sat.vars 268 to 744, sat.clauses 695 to 2105, sat.decisions 2748 to 3046, and median total time 46.909 to 35.134 ms. There were 120 differing shared non-time counters; three direct-conflict counters present in the parent were absent because the current search did not take that path.",
+        "coupled_case": "mathsat_randomcoupled changed term-size.initial 1247 to 2444, sat.vars 302 to 901, sat.clauses 758 to 2556, sat.decisions 1104 to 3840, and median total time 34.637 to 40.927 ms. There were 45 differing shared non-time counters.",
+        "flatten_probe": "Threshold 100000 reproduced all parent shared non-time counters on the decoupled file. The coupled file retained only three one-count differences: purification formula rewrites 1621 to 1620, binary clauses 66 to 67, and clause literals 2106 to 2105."
+      },
+      "artifacts": "local-only ignored directory results/boolean-dag-default-ab-cd10201/; summary.json contains every differing statistic and timing repetition, stat-differences.tsv lists all 168 shared-key differences, and per-run stdout/stderr preserve complete statistics",
+      "evidence_status": "local-complete-current",
+      "outcome": "Default semantic behavior is preserved on the 12-file sample, but exact encoding and search behavior are not preserved on large nested disjunction chains. The additional Tseitin variables and clauses are a documented efficiency limitation, not a correctness disagreement."
     }
   ]
 }

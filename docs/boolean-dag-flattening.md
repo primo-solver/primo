@@ -132,7 +132,24 @@ default-disabled pass solved 45/45 with zero wrong or unsupported results and
 PAR2 2.174189 seconds. That sample is a same-commit sanity result, not a
 before/after attribution; the oversized witness is the direct memory evidence.
 
-Known limitation: disabling flattening can change preprocessing visibility and
-SAT search because nested disjunctions may receive additional Tseitin literals.
-That is why default readiness requires benchmark comparison rather than being
-inferred from the memory fix alone.
+An exact local default A/B against the pre-change `c1a8288` release used the 12
+tracked files in `benchmarks/boolean-dag-default-ab-12.txt`. All answers and
+return codes agreed across three runs per binary, and every non-time counter was
+deterministic. Nine files had identical shared non-time counters. The current
+binary additionally reports the six zero-valued flatten counters. One compact
+finite-domain seed changed three preprocessing counts by one.
+
+The two MathSAT-derived files expose the known search limitation. On the
+decoupled file, preserving the nested `Or` chain increased SAT variables from
+268 to 744 and clauses from 695 to 2,105, but median total time improved from
+46.9 to 35.1 milliseconds. On the coupled file, variables increased from 302
+to 901, clauses from 758 to 2,556, decisions from 1,104 to 3,840, and median
+time increased from 34.6 to 40.9 milliseconds. Enabling a threshold large
+enough to flatten both formulas reproduced all parent non-time counters on the
+decoupled file and all but three one-count differences on the coupled file.
+
+Therefore the default preserves results on this sample, but it deliberately
+does not preserve exact encoding or search behavior. Nested disjunctions below
+the top-level shape can receive additional Tseitin literals. This remains an
+efficiency target for DAG-aware clausification and is why default readiness
+cannot be inferred from the memory fix alone.
