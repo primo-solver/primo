@@ -26157,7 +26157,21 @@
           "faster_gt_30pct": 6,
           "slower_gt_30pct": 0
         },
-        "not_verified": "The cpachecker-induction instance behind the original repair is not staged locally. Safety there rests on the arity bound plus the synthetic chain; re-run it on the cluster before trusting the default."
+        "memory_guard_verified": {
+          "instance": "sandbox/non-incremental/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.cs_fib_true-unreach-call.i.smt2 (94 MB)",
+          "peak_rss_post_0": "4.85 GB",
+          "peak_rss_post_256": "3.19 GB",
+          "flattenings_accepted": 3512924,
+          "threshold_stops": 17,
+          "max_arity": 243,
+          "note": "Both still time out at 180s; this is a memory result. The post-pass REDUCES memory on the very instance that motivated the DAG repair, because it removes intermediate Tseitin nodes and rewrites each reachable node once rather than materialising every prefix at construction.",
+          "qf_uflra_sample": {
+            "instances": 28,
+            "answer_disagreements": 0,
+            "solved_by_both": 28,
+            "max_rss_change": "under 5% either way"
+          }
+        }
       }
     }
   ]

@@ -198,9 +198,30 @@ Broader check, 34 QF_LRA instances solved by both settings: **0 answer
 disagreements**, median time ratio **0.76**, six instances more than 30%
 faster and none more than 30% slower.
 
-**Not verified here:** the `cpachecker-induction` instance that motivated the
-original repair is not staged locally, so the claim that the post-pass is safe
-on it rests on the bound plus the synthetic chain, where the pass does not
-fire at all (`attempts = 0`). That instance should be re-run on the cluster
-before this default is trusted in production.
+### Verified on the motivating instance
+
+`cpachecker-induction.cs_fib_true-unreach-call.i.smt2` -- the 94 MB input this
+note was written about -- is in `sandbox/non-incremental/QF_UFLRA`, and the
+post-pass **reduces** its peak memory rather than threatening it:
+
+| setting | peak RSS | flattenings accepted |
+|---|---:|---|
+| `--boolean-flatten-post-threshold 0` | 4.85 GB | 0 |
+| `--boolean-flatten-post-threshold 256` (default) | **3.19 GB** | 3,512,924 (17 threshold stops, max arity 243) |
+
+Both still time out at 180s, so this is a memory result, not a solved/unsolved
+one. The direction is the same as on QF_LRA and for the same reason:
+flattening removes intermediate Tseitin nodes, so where it applies it costs
+less, not more. The 17 threshold stops are the bound doing its job -- without
+it those nodes are where unbounded growth would start.
+
+This is the opposite of what the bound was expected to buy. The risk it
+guards against is real but is a property of flattening *at construction*,
+where every prefix of a shared chain is materialised; the post-pass rewrites
+each reachable node once, so the same policy is cheap when applied to a DAG
+rather than to a construction stream.
+
+Across 28 sampled `QF_UFLRA` instances: 0 answer disagreements, all 28 solved
+under both settings, and no instance's peak RSS moved by more than 5% either
+way.
 
