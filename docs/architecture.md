@@ -462,8 +462,11 @@ Implemented now:
   before the backend observes its SAT variable, provided both endpoint terms
   already exist in that state. Registration failures are counted and prevent
   the EUF child from observing the atom. This is an experimental IPASIR-UP
-  integration scaffold, not a new EUF algorithm and not full model-based theory
-  combination.
+  integration path, not a new EUF algorithm and not full model-based theory
+  combination. The option no longer requires
+  `--nelson-oppen-prop=online`: in final propagation mode the dispatcher keeps
+  the LRA paired-bound producer disabled but still maintains the EUF trail and
+  exposes it to final reconciliation.
   Online mode retains a complete final strict-bound fallback over candidate
   pairs not already resolved by EUF or lazy entailment. The checked LRA
   tableau's model-value partition first removes pairs with unequal current
@@ -493,15 +496,23 @@ Implemented now:
   implemented for the default reconciliation path. The paired-bound rule is therefore still the
   stable online LRA-to-EUF propagation subset; this is not the full model-guided
   transition system.
-  The optional online EUF child does not replace the final EUF check: after SAT
-  returns, the coordinator still constructs the assignment-local flat closure
-  used for final consistency, care-pair classification, and model validation.
-  Exposing callback-owned closure state safely across that boundary, including
-  its backtracking lifetime, remains unimplemented. The option is default-off;
-  a 45-file local ablation solved the same 43/45 rows as online LRA alone and
-  produced only a small PAR2 change, which is insufficient for promotion.
+  The optional online EUF child exposes a move-only, assignment-local
+  `IncrementalFlatAssignmentState::ModelScope` after SAT. The scope protects a
+  closure checkpoint and returns a `FlatEufModelView` containing only the flat
+  term index and mutable closure needed by care-pair classification,
+  reconciliation, explanation, and model completion. Temporary candidate-model
+  merges are rolled back when the scope is destroyed. CaDiCaL can issue a
+  synchronous backtrack while the coordinator adds a learned clause; callbacks
+  received during a scope are queued by `OnlineEufPropagator` and replayed in
+  order before the next solve. `cb_check_found_model` synchronizes observed EUF
+  values omitted from ordinary trail notifications using IPASIR-UP's complete
+  reconstructed model vector before the view is acquired. Incomplete
+  registration or unavailable incremental state retain the old
+  `PreparedFlatTheory` closure rebuild as a measured fallback. The option
+  remains default-off pending a fresh fuzz and corpus A/B.
 - **Single-theory invariant:** the combination dispatcher is used only by the
-  mixed QF_UFLRA solver when `--nelson-oppen-prop=online` is selected. Pure
+  mixed QF_UFLRA solver when online Nelson-Oppen propagation or live mixed EUF
+  state is explicitly selected. Pure
   QF_UF keeps its direct EUF propagator path, and pure QF_LRA keeps its direct
   `OnlineLraPropagator` path, so single-theory runs do not pay for shared
   equality registration, dispatcher callbacks, or arrangement bookkeeping. The

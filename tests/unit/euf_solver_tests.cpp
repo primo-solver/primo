@@ -333,6 +333,28 @@ void incremental_closure_backtracks_and_rediscoveres_congruence() {
   check(closure.stats().backtracks == 1);
 }
 
+void flat_congruence_closure_protects_borrowed_checkpoint() {
+  FlatCongruenceClosure closure(2);
+  const std::size_t borrowed = closure.push();
+  closure.protect_checkpoint(borrowed);
+  const std::size_t temporary = closure.push();
+  closure.assert_equal(0, 1);
+  closure.pop(temporary);
+
+  bool rejected = false;
+  try {
+    closure.pop(borrowed);
+  } catch (const std::logic_error&) {
+    rejected = true;
+  }
+  check(rejected);
+  check(closure.checkpoint_depth() == borrowed + 1);
+
+  closure.release_protected_checkpoint(borrowed);
+  closure.pop(borrowed);
+  check(closure.checkpoint_depth() == borrowed);
+}
+
 void flat_terms_curry_nary_applications_deterministically() {
   primo::core::SymbolTable symbols;
   const auto sort = symbols.declare_sort("A");
@@ -1318,6 +1340,7 @@ int main() {
   incremental_closure_discovers_binary_shared_subterm_congruence();
   incremental_closure_reports_disequality_conflict();
   incremental_closure_backtracks_and_rediscoveres_congruence();
+  flat_congruence_closure_protects_borrowed_checkpoint();
   flat_terms_curry_nary_applications_deterministically();
   flat_terms_share_nested_subterms_and_flatten_equalities();
   flat_congruence_closure_uses_curried_definitions();

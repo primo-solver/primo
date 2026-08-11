@@ -390,8 +390,8 @@ equality atoms are appended to the EUF child's atom table and registered in its
 flat assignment state before the fresh SAT variable is observed.
 
 This EUF child is enabled only by the explicit
-`--qf-uflra-online-euf` option together with
-`--nelson-oppen-prop=online`. It is default-off because the first 45-file,
+`--qf-uflra-online-euf` option. It can accompany either final or online
+Nelson-Oppen propagation. It is default-off because the first 45-file,
 3-second local ablation at commit `cbe1cfc` solved the same 43/45 instances with
 zero wrong answers and changed PAR2 only from 20.660 to 20.639. On the
 representative MathSAT `pb_real_40_80_60_36.smt2`, both paths solve in about one
@@ -413,13 +413,17 @@ performance regressions, not mutation seeds. Removing the scan requires a
 complete shared-model validation invariant rather than another activity-based
 skip condition.
 
-The final coordinator still rebuilds a flat EUF closure after SAT returns. The
-EUF component does not yet expose a safe live closure/model view, so care pairs,
-EUF-forbidden checks, and final equality explanations do not reuse callback
-state. Generated equality registration also does not extend the optional
+The final coordinator now acquires a protected `FlatEufModelView` from the
+callback state after SAT returns. A move-only scope rolls back candidate-model
+merges, and IPASIR-UP callbacks triggered synchronously by learned-clause
+insertion are queued until the scope ends. `cb_check_found_model` synchronizes
+ordinary callback omissions from IPASIR-UP's complete reconstructed model
+before acquisition. The coordinator falls back to the old rebuilt closure if
+the assignment or dynamic equality registration is incomplete. Generated
+equality registration still does not extend the optional
 dynamic Ackermann indexes. Dynamic Ackermann propagation therefore remains a
-separate mixed-mode ablation, and live closure reuse is the unfinished part of
-this milestone.
+separate mixed-mode ablation, and the live view remains opt-in until its fuzz
+and corpus gates are complete.
 
 ### 5. Tighten Candidate Scheduling And Preprocessing
 

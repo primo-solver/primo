@@ -275,8 +275,8 @@ tableau on every LRA bound change. At final-check quiescence, the broader
 `EqOffsetRows`, and `EqRows` with explanations and deterministic spanning
 output. All four are polled only after a feasible mixed-theory check.
 
-The default-off `--qf-uflra-online-euf` option extends only the callback
-plumbing around this subset. `MixedTheoryPropagationDispatcher` acts as the
+The default-off `--qf-uflra-online-euf` option extends the callback plumbing and
+final EUF model-state reuse around this subset. `MixedTheoryPropagationDispatcher` acts as the
 single IPASIR-UP external propagator and multiplexes the existing incremental
 EUF and LRA children. It records the owner of each propagated literal or
 external clause so the corresponding child supplies the explanation. When the
@@ -287,12 +287,49 @@ variable. The statistics `:no.online.euf-generated-equalities-registered`,
 `:no.online.euf-generated-equality-observation-failures` make this dynamic path
 auditable.
 
-This is still not the paper's shared model state or an implementation of its
-transition system. The final mixed check rebuilds EUF closure from the SAT
-assignment instead of consuming the callback-owned closure, and generated
-equality registration does not update optional dynamic Ackermann indexes. The
-option remains experimental and default-off: the first 45-file local ablation
-had identical solved and wrong-answer counts and only a small PAR2 difference.
+Before accepting SAT, `OnlineEufPropagator::cb_check_found_model` consumes
+IPASIR-UP's complete reconstructed observed-variable model, filling values
+omitted from ordinary trail notifications. It then lends the coordinator a
+move-only `IncrementalFlatAssignmentState::ModelScope`. Its
+`FlatEufModelView` exposes the live flat index and closure under a protected
+checkpoint. Candidate-model merges are therefore temporary. CaDiCaL may
+synchronously backtrack when the coordinator adds a clause; callbacks received
+while the checkpoint is protected are queued and replayed before the next SAT
+call. If the assignment or generated-atom registration is incomplete, the
+coordinator rebuilds the round-local closure as before.
+
+**Implementation checklist and invariants.** This step is based on the
+candidate-model compatibility operations in de Moura and Bjorner, Sections 4
+and 5, and on the observed-variable callback contract in Fazekas et al.,
+*IPASIR-UP: User Propagators for CDCL*, Sections 3 and 4. The implemented mapping
+is:
+
+- `IncrementalFlatAssignmentState` owns the persistent flat index, explained
+  closure, SAT-level checkpoints, and a single active protected model scope;
+- `OnlineEufPropagator` owns observed-variable assignments and the ordered queue
+  of callbacks deferred during that scope;
+- `MixedTheoryPropagationDispatcher` synchronizes generated equality atoms and
+  replays deferred callbacks before `backend.solve()`;
+- `solve_qf_uf_lra` owns the round-local scope and uses `FlatEufModelView` for
+  care pairs, equality filtering, compatibility checks, and model completion;
+- scope destruction restores the closure to its exact SAT-owned checkpoint;
+  no model-choice merge may survive into the next SAT call;
+- final callback synchronization scans IPASIR-UP's observed-variable model
+  once, so its own cost is linear in the observed SAT-variable count; closure
+  operations retain the complexity of the existing incremental
+  congruence-closure implementation;
+- a generated equality must be registered in the flat atom table before its SAT
+  variable is observed, and every learned clause must see all deferred callbacks
+  replayed before the following solve;
+- the rebuilt `PreparedFlatTheory` closure remains the conservative fallback,
+  and counters distinguish reuse, callback synchronization, callback deferral,
+  and rebuilds.
+
+This is still not the paper's generic shared model transition system. The live
+state is EUF-specific, LRA candidate construction remains in the existing mixed
+coordinator, generated equality registration does not update optional dynamic
+Ackermann indexes, and other theories are not generalized. The option remains
+experimental and default-off pending the new fuzz and corpus evaluation.
 
 **Single-theory invariant.** `MixedTheoryPropagationDispatcher` is never used
 for pure QF_UF or pure QF_LRA. Pure QF_UF keeps its direct EUF callback path;

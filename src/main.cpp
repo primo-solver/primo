@@ -359,8 +359,8 @@ int main(int argc, char** argv) {
                "Disable default convex QF_UFLRA shared-model reconciliation and use the "
                "explained exact equality-sharing fallback");
   app.add_flag("--qf-uflra-online-euf", qf_uflra_online_euf,
-               "Enable experimental incremental EUF callbacks in online mixed QF_UFLRA solving "
-               "[default: off]");
+               "Enable experimental incremental EUF callbacks and live final-model closure reuse "
+               "in mixed QF_UFLRA solving [default: off]");
   app.add_flag("--monotone-elimination", monotone_elimination,
                "Enable experimental monotone (one-sided) real-variable elimination: a\n"
                "variable every constraint pushes the same way is discharged and its\n"

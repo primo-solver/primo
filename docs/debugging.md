@@ -682,6 +682,25 @@ true atoms followed by false atoms in each SAT round. A large
 alignment: a conflict clause may then describe a different cached equality and
 already be satisfied by the assignment that produced it.
 
+With `--qf-uflra-online-euf`, final reconciliation first attempts to borrow the
+trail-synchronized closure instead of copying `PreparedFlatTheory::base_closure`.
+`:no.interface.euf-live-model-attempts` splits into
+`:no.interface.euf-live-model-reuses` and
+`:no.interface.euf-live-model-fallbacks`; the latter is further diagnosed by
+`:no.interface.euf-live-model-incomplete` and
+`:no.interface.euf-live-model-registration-invalid`.
+`:no.interface.euf-final-closure-rebuilds` is the direct count of broad final
+closure copies. Repeated CaDiCaL solves may omit already known observed values
+from ordinary trail notifications.
+`:no.interface.euf-live-model-callback-assignments` counts missing values
+synchronized from the complete model vector passed to `cb_check_found_model`.
+`:no.interface.euf-live-deferred-callbacks` counts assignment, level, or
+backtrack callbacks queued while a protected model scope is active and replayed
+before the next solve. `:no.interface.euf-live-registry-syncs` counts the
+pre-solve generated-equality registry synchronization passes. A
+protected-checkpoint exception indicates that coordinator or callback code
+tried to roll back SAT-owned EUF state through a live model scope.
+
 `--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
 callback, was connected. `:no.online.precreated-equality-atoms` counts the
@@ -721,8 +740,8 @@ prove that omitted LRA-implied equalities are irrelevant to EUF congruence.
 delivery.
 
 `--qf-uflra-online-euf` additionally attaches the existing incremental EUF
-propagator as a second child of the mixed dispatcher. It has no effect unless
-`--nelson-oppen-prop=online` is also selected and is default-off. Use these
+propagator as a child of the mixed dispatcher. It works with either final or
+online Nelson-Oppen propagation and is default-off. Use these
 counters to distinguish useful mixed EUF work from callback overhead:
 
 - `:no.interface.euf-online-enabled` is one only when the mixed EUF child is
@@ -740,8 +759,8 @@ counters to distinguish useful mixed EUF work from callback overhead:
 A high `:euf.propagation.rounds` value with zero
 `:no.online.euf-propagations` and zero
 `:no.online.euf-external-clauses` means the option is adding callback work
-without helping the mixed search. Final EUF checking still rebuilds a closure;
-these counters do not imply that callback state was reused by final validation.
+without helping the mixed search. Consult the live-model and final-rebuild
+counters above to determine whether final validation reused callback state.
 Pure QF_UF and pure QF_LRA runs should leave
 `:no.online.enabled` at zero; that is the guard against single-theory overhead.
 `:no.interface.arrangement-checks` counts non-model `sat` results where the

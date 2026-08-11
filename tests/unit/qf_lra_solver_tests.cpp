@@ -2315,6 +2315,60 @@ void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
   assert(result.statistics.get(":no.interface.euf-prepared-definitions") >= 1);
 }
 
+void qf_uf_lra_live_euf_model_reuses_trail_closure_in_final_mode() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
+  options.qf_uflra_online_euf = true;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.euf-online-enabled") == 1);
+  assert(result.statistics.get(":no.interface.euf-live-model-attempts") >= 1);
+  assert(result.statistics.get(":no.interface.euf-live-model-reuses") >= 1);
+  assert(result.statistics.get(":no.interface.euf-live-model-fallbacks") == 0);
+  assert(result.statistics.get(":no.interface.euf-final-closure-rebuilds") == 0);
+  assert(result.statistics.get(StatKey::EufIncrementalFlatDefinitions) >= 1);
+  assert(result.statistics.get(":no.online.lra-published-equalities") == 0);
+}
+
+void qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  options.qf_uflra_online_euf = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
+  assert(result.statistics.get(":no.shared-model.split-materializations") >= 1);
+  assert(result.statistics.get(":no.interface.euf-live-model-reuses") >= 2);
+  assert(result.statistics.get(":no.interface.euf-live-model-fallbacks") == 0);
+  assert(result.statistics.get(":no.interface.euf-live-model-incomplete") == 0);
+  assert(result.statistics.get(":no.interface.euf-live-model-callback-assignments") >= 1);
+  assert(result.statistics.get(":no.interface.euf-final-closure-rebuilds") == 0);
+  assert(result.statistics.get(":no.online.euf-generated-equality-registration-failures") == 0);
+}
+
 void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {
   constexpr std::string_view input = R"(
     (set-logic QF_UFLRA)
@@ -4162,6 +4216,8 @@ int main() {
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   qf_uf_lra_online_propagates_simple_lra_shared_equalities();
+  qf_uf_lra_live_euf_model_reuses_trail_closure_in_final_mode();
+  qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges();
   qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs();
   qf_uf_lra_online_skips_pairs_already_resolved_by_online_propagation();
   qf_uf_lra_online_scans_non_paired_final_equalities();
