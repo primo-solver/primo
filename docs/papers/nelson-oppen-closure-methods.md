@@ -336,6 +336,44 @@ measured closure rebuilds, but slightly increased SAT decisions and
 common-solved time. These results validate the scoped-state mechanism, not the
 paper's full algorithm or a new default profile.
 
+### Reference-solver performance triage
+
+The full-corpus result leaves 31 five-second cases that Yices 2.7.0 solves and
+the live-EUF Primo profile does not; all 31 are CPAchecker induction inputs.
+Reference statistics separate two performance problems that should not be
+attributed to missing generic model state.
+
+First, representative Yices and Z3 runs create far fewer Boolean variables.
+On five mixed CPAchecker inputs, Primo's default nested-DAG clausification used
+roughly 3.5 to 6 times as many SAT variables as Yices. Enabling the existing
+bounded associative pass with `--boolean-flatten-threshold=128` reduced Primo's
+SAT-variable counts by 19 to 65 percent and decisions by about 5 to 17 times on
+the five-file diagnostic set. It recovered 9 of the 31 Yices-only gaps at a
+five-second local cap. This is evidence for evaluating bounded flattening as a
+QF_UFLRA frontend profile; it is not evidence for changing the default before
+an exact-option fuzz gate and a full SLURM A/B.
+
+Second, the residual `mt20xx` instance remains a combination/search problem.
+Yices reports 23,391 decisions, 71 theory conflicts, 3,606 theory propagations,
+802 e-graph final checks, and 849 interface lemmas. A controlled Primo run with
+threshold 128 reached 1,730,478 decisions, 432 combined theory conflicts,
+303,300 LRA propagations, and 29,811 propagated interface equalities before the
+outer loop observed the theory-conflict limit. The live-EUF option removed all
+452 measured
+final-closure rebuilds on the comparable path, but performed millions of
+callback rounds and did not improve throughput. A positive theory phase also
+regressed this residual. The resulting priority is narrow: reduce duplicate or
+low-value interface-equality delivery and callback polling, and measure useful
+equalities per candidate/check. Adding a generic theory interface or broader
+model-equality search is not justified by these statistics.
+
+The default theory phase is also not the common explanation. Positive or
+polarity phase reduced `main3_true` from about 702,000 to 103,000--112,000 SAT
+decisions and helped `m0_opl3`, but timed out or regressed `wm831x`, `iw_main6`,
+and `uinput` in the same bounded matrix. Any mixed-theory phase policy therefore
+needs a shape-specific predictor and independent validation; a blanket default
+flip is rejected by this sample.
+
 **Single-theory invariant.** `MixedTheoryPropagationDispatcher` is never used
 for pure QF_UF or pure QF_LRA. Pure QF_UF keeps its direct EUF callback path;
 pure QF_LRA keeps its direct `OnlineLraPropagator` path. The CVC-like

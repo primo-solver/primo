@@ -26224,6 +26224,39 @@
       "artifacts": "remote:<prepared-workspace>/results/qf-uflra-live-euf-ab-540b847/, results/qf-uflra-live-euf-full-default-540b847-5s/, and results/qf-uflra-live-euf-full-live-540b847-5s/; local-only:/tmp/primo-live-euf-slurm-ab-540b847/ and /tmp/primo-live-euf-full-540b847-5s-correct/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Keep the mechanism and counters behind --qf-uflra-online-euf. It removes the intended rebuild cost and gains one net five-second solve, but the small search and common-time regressions do not justify default promotion."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-reference-stats-triage-540b847",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "reference-statistics-profile-and-option-ablation",
+      "scope": "Triage the 31 five-second QF_UFLRA cases solved by Yices 2.7.0 but not the live-EUF Primo profile, using reference statistics and existing non-LRA options",
+      "commit": "540b847",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "local",
+        "binary": "Release git 540b847, GCC 13.3.0, CaDiCaL 3.0.0",
+        "references": "Yices 2.7.0 local --stats probes plus existing five-second Yices and Z3 corpus artifacts",
+        "corpus": "The 31 CPAchecker-induction recoveries in the existing live-Primo versus Yices comparison; no reference implementation source was inspected"
+      },
+      "commands": {
+        "phase_matrix": "Six representative inputs under default and --theory-phase=positive|polarity|none|auto, eight-second local cap, four workers",
+        "flatten_matrix": "Five representative mixed inputs under --boolean-flatten-threshold=0|8|32|128, ten-second local cap, four workers",
+        "gap_sample": "python3 scripts/bench_qf_uf_full.py over the exact 31-file recovery manifest with --boolean-flatten-threshold=128 and a five-second cap; append-only JSONL enabled",
+        "reference_stats": "contrib/local/bin/yices-smt2 --stats on representative recovered inputs and the residual mt20xx input",
+        "controlled_residual": "build-live-euf-release/primo --quiet --stats --boolean-flatten-threshold=128 --max-theory-conflicts=20 on mt20xx; repeated with --qf-uflra-online-euf and with --theory-phase=positive"
+      },
+      "results": {
+        "reference_shape": "Representative Primo rows used roughly 3.5-6x the SAT variables reported by Yices; Z3 statistics on the six common fast-reference rows showed the same direction.",
+        "phase": "Positive/polarity reduced main3_true from 702043 to 102954-111692 decisions and helped m0_opl3, but positive/polarity/none timed out on wm831x and positive timed out on iw_main6 and uinput. Auto matched the negative default on these mixed inputs.",
+        "flatten_representatives": "Threshold 128 reduced SAT variables by 19-65% and decisions by about 5-17x across main3_true, wm831x, iw_main6, uinput, and m0_opl3. All five solved within the ten-second diagnostic cap.",
+        "flatten_gap_set": "9/31 solved, 22 timeout, 0 wrong/error/unsupported, PAR2 244.416102 at a five-second cap; the existing live profile timed out on all 31 at the same corpus budget.",
+        "yices_mt20xx": "sat in 1.297s with --stats: 7128 Boolean variables, 23391 decisions, 76 SAT conflicts, 71 theory conflicts, 3606 theory propagations, 802 e-graph final checks, 849 interface lemmas, and 941 simplex pivots.",
+        "primo_mt20xx": "Threshold 128 reached the configured outer theory-conflict stop after 21.19s, but only after 432 combined conflicts despite --max-theory-conflicts=20: 12927 SAT variables, 1730478 decisions, 303300 LRA propagations, 452 SAT/EUF checks, and 29811 propagated interface equalities. Because the mixed path does not enforce this budget promptly, the live-EUF and positive-phase diagnostics also required 30s and 20s outer wall caps. Live EUF removed all 452 closure rebuilds but reached 1884557 decisions and 464 LRA conflicts; positive phase reached 3745313 decisions."
+      },
+      "artifacts": "local-only:/tmp/qfuflra-phase-matrix-540b847.jsonl, /tmp/qfuflra-flatten-matrix-540b847.jsonl, /tmp/qfuflra-yices-only-31-flatten128.csv, /tmp/qfuflra-yices-only-31-flatten128.jsonl, /tmp/qfuflra-yices-only-31-flatten128-summary.json, and /tmp/qfuflra-yices-only-31-flatten128-logs/",
+      "evidence_status": "local-diagnostic-current",
+      "outcome": "Bounded Boolean flattening is the strongest immediate non-LRA candidate and should receive an exact threshold-128 fuzz gate plus full SLURM A/B before profile/default changes. The residual mt20xx statistics prioritize interface-equality delivery and callback scheduling over generic model machinery or a blanket theory-phase change."
     }
   ]
 }
