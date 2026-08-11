@@ -127,10 +127,18 @@ enum class LraPivotingRule {
 // campaign can vary them per run rather than per build; the defaults are
 // exactly the constants they replaced, so an untuned run is unchanged.
 // See docs/tuning-parameters.md.
+// Mirrors theory::arithmetic::LraTableau::SoiMinimization /
+// ::SoiMinimizationOrder, translated at the wiring point the same way
+// LraPivotingRule is -- keeps this header free of theory-layer includes.
+enum class LraSoiMinimization { QuickXplain, Deletion, None };
+enum class LraSoiMinimizationOrder { Id, RowSupport, Violation };
+
 struct LraTuning {
   std::size_t sparse_pricing_candidates = 16;
   std::size_t bland_fallback_factor = 4;
   std::size_t bland_fallback_offset = 64;
+  LraSoiMinimization soi_minimization = LraSoiMinimization::QuickXplain;
+  LraSoiMinimizationOrder soi_minimization_order = LraSoiMinimizationOrder::Id;
 };
 
 struct LraRowPropagationLimits {

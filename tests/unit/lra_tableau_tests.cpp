@@ -2330,6 +2330,135 @@ void diversify_reports_an_unresolved_entailed_forbidden_equality() {
   assert(result.value(x) == result.value(y));
 }
 
+// -- SOI conflict minimization strategy -------------------------------------
+
+// Two rows that are each infeasible ON THEIR OWN (disjoint variables, each
+// row's lower bound exceeding what its variables can sum to), so either one
+// alone certifies the conflict and minimization has a genuine choice between
+// them. The rows differ in length AND the longer one has the higher id, which
+// is what makes the id and row-support orders disagree -- with the lengths
+// aligned to the ids every order would coincide and the test would pass
+// without testing anything.
+struct SoiMinimizationCase {
+  LraTableau tableau{LraTableau::PivotingRule::Soi};
+  LraVarId short_row = 0;  // two terms
+  LraVarId long_row = 0;   // three terms, and the HIGHER id of the two
+  std::vector<Lit> asserted;
+};
+
+SoiMinimizationCase build_soi_minimization_case(LraTableau::SoiMinimization strategy,
+                                                LraTableau::SoiMinimizationOrder order) {
+  SoiMinimizationCase built;
+  LraTableau::Tuning tuning;
+  tuning.soi_minimization = strategy;
+  tuning.soi_minimization_order = order;
+  built.tableau.set_tuning(tuning);
+
+  const LraVarId x = built.tableau.add_variable();
+  const LraVarId y = built.tableau.add_variable();
+  const LraVarId u = built.tableau.add_variable();
+  const LraVarId z = built.tableau.add_variable();
+  const LraVarId w = built.tableau.add_variable();
+  built.short_row = built.tableau.add_variable();
+  built.long_row = built.tableau.add_variable();
+
+  built.tableau.add_row(built.short_row, {{z, Rational(1)}, {w, Rational(1)}});
+  built.tableau.add_row(built.long_row, {{x, Rational(1)}, {y, Rational(1)}, {u, Rational(1)}});
+  for (const LraVarId var : {x, y, u, z, w}) {
+    const Lit lower{static_cast<int>(10 + var)};
+    const Lit upper{static_cast<int>(20 + var)};
+    assert(!built.tableau.assert_lower(var, rat(0), lower).has_value());
+    assert(!built.tableau.assert_upper(var, rat(1), upper).has_value());
+    built.asserted.push_back(lower);
+    built.asserted.push_back(upper);
+  }
+  // Each row's variables can sum to at most 2 and 3 respectively.
+  assert(!built.tableau.assert_lower(built.short_row, rat(10), Lit{7}).has_value());
+  assert(!built.tableau.assert_lower(built.long_row, rat(10), Lit{8}).has_value());
+  built.asserted.push_back(Lit{7});
+  built.asserted.push_back(Lit{8});
+  return built;
+}
+
+void soi_minimization_none_keeps_every_violated_row() {
+  auto built = build_soi_minimization_case(LraTableau::SoiMinimization::None,
+                                           LraTableau::SoiMinimizationOrder::Id);
+  const auto conflict = built.tableau.check();
+  assert(conflict.has_value());
+  // Both rows' own bound reasons survive, plus every pinned variable: the
+  // ablation baseline is the whole error set, and it is what the other arms
+  // have to beat.
+  assert(has_reason(*conflict, Lit{7}) && has_reason(*conflict, Lit{8}));
+  assert(conflict->size() == 7);
+}
+
+void soi_deletion_row_support_keeps_the_shorter_row() {
+  auto id_case = build_soi_minimization_case(LraTableau::SoiMinimization::Deletion,
+                                             LraTableau::SoiMinimizationOrder::Id);
+  const auto id_conflict = id_case.tableau.check();
+  assert(id_conflict.has_value());
+
+  auto support_case = build_soi_minimization_case(LraTableau::SoiMinimization::Deletion,
+                                                  LraTableau::SoiMinimizationOrder::RowSupport);
+  const auto support_conflict = support_case.tableau.check();
+  assert(support_conflict.has_value());
+
+  // Deletion drops what it visits first. Ascending id offers the short row
+  // first, so the LONG row survives; longest-first offers the long row
+  // first, so the SHORT one does.
+  assert(has_reason(*id_conflict, Lit{8}) && !has_reason(*id_conflict, Lit{7}));
+  assert(has_reason(*support_conflict, Lit{7}) && !has_reason(*support_conflict, Lit{8}));
+
+  // And that is the entire point of the ordering: a shorter surviving row
+  // means a shorter clause. If this ever stops holding, the heuristic has no
+  // rationale left.
+  assert(support_conflict->size() < id_conflict->size());
+}
+
+void soi_minimization_arms_all_produce_a_sound_conflict() {
+  // Every literal a conflict names must be a reason we actually asserted --
+  // an arm that invented or dropped a literal would be unsound regardless of
+  // how short its clause is.
+  const std::vector<std::pair<LraTableau::SoiMinimization, LraTableau::SoiMinimizationOrder>> arms =
+      {{LraTableau::SoiMinimization::QuickXplain, LraTableau::SoiMinimizationOrder::Id},
+       {LraTableau::SoiMinimization::Deletion, LraTableau::SoiMinimizationOrder::Id},
+       {LraTableau::SoiMinimization::Deletion, LraTableau::SoiMinimizationOrder::RowSupport},
+       {LraTableau::SoiMinimization::Deletion, LraTableau::SoiMinimizationOrder::Violation},
+       {LraTableau::SoiMinimization::None, LraTableau::SoiMinimizationOrder::Id}};
+
+  for (const auto& [strategy, order] : arms) {
+    auto built = build_soi_minimization_case(strategy, order);
+    const auto conflict = built.tableau.check();
+    assert(conflict.has_value());  // the system is unsat under every arm
+    assert(!conflict->empty());
+    for (const Lit lit : *conflict) {
+      assert(has_reason(built.asserted, lit));
+    }
+    // Every arm must keep at least one of the two row bounds, or it is not
+    // explaining the infeasibility at all.
+    assert(has_reason(*conflict, Lit{7}) || has_reason(*conflict, Lit{8}));
+  }
+}
+
+void soi_minimization_is_deterministic() {
+  // Ties break by variable id precisely so a portfolio arm is reproducible;
+  // an arm whose clause varies run to run cannot be measured against another.
+  for (const auto order :
+       {LraTableau::SoiMinimizationOrder::Id, LraTableau::SoiMinimizationOrder::RowSupport,
+        LraTableau::SoiMinimizationOrder::Violation}) {
+    auto first = build_soi_minimization_case(LraTableau::SoiMinimization::Deletion, order);
+    auto second = build_soi_minimization_case(LraTableau::SoiMinimization::Deletion, order);
+    const auto first_conflict = first.tableau.check();
+    const auto second_conflict = second.tableau.check();
+    assert(first_conflict.has_value() && second_conflict.has_value());
+    // sat::Lit has no operator==, so compare the underlying values in order.
+    assert(first_conflict->size() == second_conflict->size());
+    for (std::size_t i = 0; i < first_conflict->size(); ++i) {
+      assert((*first_conflict)[i].value == (*second_conflict)[i].value);
+    }
+  }
+}
+
 int main() {
   direct_bound_conflict_on_a_single_variable();
   weaker_bound_is_a_silent_no_op();
@@ -2410,5 +2539,9 @@ int main() {
   diversify_prioritizes_forbidden_equalities_and_returns_the_model();
   diversify_does_not_reintroduce_a_satisfied_forbidden_equality();
   diversify_reports_an_unresolved_entailed_forbidden_equality();
+  soi_minimization_none_keeps_every_violated_row();
+  soi_deletion_row_support_keeps_the_shorter_row();
+  soi_minimization_arms_all_produce_a_sound_conflict();
+  soi_minimization_is_deterministic();
   return 0;
 }

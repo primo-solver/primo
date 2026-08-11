@@ -26001,6 +26001,95 @@
       "artifacts": "local-only ignored directory results/boolean-dag-default-ab-cd10201/; summary.json contains every differing statistic and timing repetition, stat-differences.tsv lists all 168 shared-key differences, and per-run stdout/stderr preserve complete statistics",
       "evidence_status": "local-complete-current",
       "outcome": "Default semantic behavior is preserved on the 12-file sample, but exact encoding and search behavior are not preserved on large nested disjunction chains. The additional Tseitin variables and clauses are a documented efficiency limitation, not a correctness disagreement."
+    },
+    {
+      "id": "2026-08-10-soi-minimization-arms-measured",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "benchmark",
+      "scope": "Decide whether the new SOI conflict-minimization arms (--lra-soi-minimize / --lra-soi-minimize-order) are worth keeping, and whether the row-support ordering's rationale survives contact with data.",
+      "commit": "8ddd62d",
+      "branch": "qflra-soi-minimize-order",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Single Release binary, 5 arms per instance, --lra-pivoting-rule soi forced (SOI is not the default). Candidates pre-screened to those that COMPLETE and where minimization actually engages; counters off a timed-out run are not comparable."
+      },
+      "command": {
+        "sample": "every 7th file of benchmarks/qf-lra-full-division.txt, first 220, screened at 8s; arms then run at 25s",
+        "metric": ":lra.soi-conflict-lits (clause length), not error-set size"
+      },
+      "result": {
+        "instances_all_five_completed": 18,
+        "answer_disagreements": 0,
+        "note_on_sums": "The largest instance is 71% of the quickxplain total, so summed literals are not a fair summary; medians and per-instance ratios below.",
+        "ratio_vs_quickxplain": {
+          "deletion/id": {
+            "median": 1.0,
+            "geomean": 0.957,
+            "better": 6,
+            "worse": 7,
+            "same": 5
+          },
+          "deletion/row-support": {
+            "median": 1.0,
+            "geomean": 0.917,
+            "better": 8,
+            "worse": 5,
+            "same": 5
+          },
+          "deletion/violation": {
+            "median": 1.001,
+            "geomean": 0.917,
+            "better": 5,
+            "worse": 9,
+            "same": 4
+          },
+          "none": {
+            "median": 1.218,
+            "geomean": 1.186,
+            "better": 3,
+            "worse": 15,
+            "same": 0
+          }
+        },
+        "conclusions": [
+          "Minimization clearly pays: `none` is ~19% worse on clause length, 3 better / 15 worse. That settles the ablation.",
+          "No deletion arm dominates quickxplain. All three sit at a median ratio of ~1.000; row-support and violation have a geomean of 0.917 but that is driven by a few instances with large swings, and their win/loss records (8-5 and 5-9) point opposite ways.",
+          "The row-support rationale -- that clause length is dominated by the surviving row's support -- is NOT confirmed as a general effect. It is not worse either.",
+          "Read as portfolio dimensions rather than candidate defaults, this is the wanted outcome: the arms are complementary, cheap, and cannot reach a default run. The default stays quickxplain/id on this evidence."
+        ],
+        "caveats": "Clause length is a proxy. A shorter clause is usually stronger but not always -- a longer clause over lower-level literals can backjump further, and the tableau cannot see decision levels. PAR2 was not measured and would be authoritative."
+      }
+    },
+    {
+      "id": "2026-08-10-row-propagation-limits-wired",
+      "started_at": "2026-08-10",
+      "recorded_at": "2026-08-10",
+      "kind": "analysis",
+      "scope": "Wire CheckSatOptions::lra_row_propagation_limits, which four CLI options wrote and nothing read, and confirm the fix changes nothing at default settings.",
+      "commit": "pending vs 8d93eb5",
+      "branch": "qflra-soi-minimize-order",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Both Release, same toolchain; the pre-change binary built from HEAD in a scratch worktree sharing /workspace/contrib/local."
+      },
+      "result": {
+        "default_settings": {
+          "completed": 24,
+          "answer_diffs": 0,
+          "lra_counter_diffs": 0
+        },
+        "row_propagation_enabled": {
+          "completed": 10,
+          "answer_diffs": 0,
+          "lra_counter_diffs": 0
+        },
+        "knobs_now_bind": "On sc/sc-9.base.cvc.smt2 with row propagation on: max-row-size 1 -> 0 propagations, 4 -> 667, 64 -> 2694; max-fanout 1 -> 0, 64 -> 2694, 100000 -> 3177. Before the fix every value gave 2694.",
+        "finding": "The forward fanout cap was binding at its default the whole time -- 2694 against 3177 uncapped, so ~15% of available row propagations were being discarded by a constant no option could reach.",
+        "verdicts_unchanged": "Every probe answered unsat regardless of cap, as required: these are cost caps and must not move a verdict."
+      }
     }
   ]
 }

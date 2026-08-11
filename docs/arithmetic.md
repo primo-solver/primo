@@ -193,8 +193,52 @@ alternatives considered before/while implementing it.
   - `build_soi_conflict()`/`minimize_soi_conflict()` (Section V-B) handle
     the case where several rows are simultaneously stuck: a multi-row
     conflict generalizing the existing single-row `build_conflict`, then
-    standard QuickXplain (Junker 2001) minimization via
-    `soi_subset_still_conflicts()`'s restricted-objective oracle.
+    minimization via `soi_subset_still_conflicts()`'s restricted-objective
+    oracle. The algorithm is selectable
+    (`--lra-soi-minimize {quickxplain,deletion,none}`, default the original
+    QuickXplain of Junker 2001), and deletion takes an ordering
+    (`--lra-soi-minimize-order {id,row-support,violation}`).
+
+    The reason for a choice here is *not* speed. Instrumented over 2253
+    calls: 82% of error sets have one element, the rest average 2.83, and
+    the largest seen was 9 -- far too small for the asymptotics separating
+    these algorithms to matter. What matters is that minimization reduces
+    the set to 1.23 on average, so there are usually several equally
+    minimal answers and the algorithm silently picks one. QuickXplain's
+    divide-and-conquer decides which elements are tested together and so
+    cannot be steered; deletion drops what it visits first, which makes
+    the pick an ordering decision. `row-support` sheds the longest rows
+    first because `build_soi_conflict` emits one literal per nonzero entry
+    of the restricted row *plus* one per error variable, and the first term
+    usually dominates -- so which row survives, not how many, is what sets
+    clause length.
+
+    **Measured 2026-08-10** (18 instances where all five arms complete, 0
+    answer disagreements; `:lra.soi-conflict-lits`, median ratio against
+    quickxplain):
+
+    | arm | median | geomean | better/worse |
+    |---|---:|---:|---:|
+    | `deletion/id` | 1.000 | 0.957 | 6 / 7 |
+    | `deletion/row-support` | 1.000 | 0.917 | 8 / 5 |
+    | `deletion/violation` | 1.001 | 0.917 | 5 / 9 |
+    | `none` | 1.218 | 1.186 | 3 / 15 |
+
+    Two conclusions, and the second is the awkward one. **Minimization
+    clearly pays** -- `none` costs ~19% more literals, 3 better against 15
+    worse. But **no deletion arm dominates QuickXplain**: all three sit at a
+    median of ~1.000, and the better geomeans for `row-support` and
+    `violation` come from a handful of instances with large swings while
+    their win/loss records point in opposite directions. So the
+    `row-support` rationale above is *not* confirmed as a general effect.
+    It is not worse either, which is what makes these portfolio arms rather
+    than default candidates -- they are complementary, cheap, and cannot
+    reach a default run. **The default stays `quickxplain/id`.**
+
+    Clause length is a proxy: a shorter clause is usually stronger, but a
+    longer one over lower-level literals can backjump further, and the
+    tableau cannot see decision levels. PAR2 would be authoritative and was
+    not measured.
   - Defensive pivot-count fallback to plain Bland selection, belt-and-
     suspenders beyond the paper's own tie-breaking-reduces-to-Bland
     termination argument (Section V-C), reusing the existing
@@ -210,7 +254,8 @@ alternatives considered before/while implementing it.
     that exact vector, when `nonbasic_var` was itself a term in
     `f_var_`'s row -- fixed by copying the affected-rows list before
     iterating.
-  - Reported by `:lra.soi-multi-row-conflicts`/`:lra.soi-quickxplain-calls`,
+  - Reported by `:lra.soi-multi-row-conflicts`, `:lra.soi-minimize-calls`,
+    `:lra.soi-minimize-shrunk` and `:lra.soi-conflict-lits`,
     alongside the existing `:lra.bland-fallbacks`. **Opt-in**
     (`--lra-pivoting-rule soi`), same rollout precedent as Dantzig.
   - **Merge-gate fuzz result (job 113439, 2026-07-25): correctness-clean
@@ -824,7 +869,7 @@ of each affected row, not once per row.
 | `:lra.bland-fallbacks` | `check()` calls that hit the anti-cycling fallback |
 | `:lra.rows` / `:lra.tableau-vars` / `:lra.row-nonzeros` | prepared tableau shape |
 | `:lra.row-propagations` / `:lra.bidirectional-row-propagations` | propagations by direction |
-| `:lra.soi-multi-row-conflicts` / `:lra.soi-quickxplain-calls` | SOI-only |
+| `:lra.soi-multi-row-conflicts` / `:lra.soi-minimize-calls` / `:lra.soi-minimize-shrunk` / `:lra.soi-conflict-lits` | SOI-only |
 | `:lra.fixed-variables` / `:lra.elimination-pivots` | item H7 |
 | `:rational.promotions` / `:rational.big-operations` | item H2's small-to-GMP transitions |
 

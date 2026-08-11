@@ -170,6 +170,45 @@ class LraTableau {
   // Bland's rule takes over, which termination needs to happen after
   // finitely many pivots but not after any particular count. Every value
   // in range is therefore sound, including zero.
+  // -- SOI conflict minimization strategy -------------------------------
+  //
+  // Which algorithm shrinks the error set before build_soi_conflict() turns
+  // it into a clause, and in which order candidates are offered up for
+  // removal. PivotingRule::Soi only; inert under every other rule.
+  //
+  // Measured on this code (25 instances, SOI forced, 2253 minimization
+  // calls): the error set averages 2.83 variables when it has more than one,
+  // never exceeded 9, and minimization reduces it to 1.23. So the *algorithm*
+  // is irrelevant here -- QuickXplain's O(k + k log(m/k)) against deletion's
+  // O(m) is about one predicate test at m = 3. What matters is that at
+  // k ~= 1.23 there are usually several equally minimal answers, and which
+  // one survives decides the clause.
+  //
+  // That choice is currently unspecified: QuickXplain's divide-and-conquer
+  // decides which elements get tested together, so it cannot be steered.
+  // Deletion can, because it drops the elements it visits first -- hence the
+  // ordering below is "worst first".
+  //
+  // Why it is worth steering: build_soi_conflict emits one literal per
+  // nonzero entry of the restricted SOI row PLUS one per error variable.
+  // Minimizing |S| shrinks only the second term, while the first depends on
+  // *which* rows survive and is usually the larger of the two.
+  enum class SoiMinimization {
+    QuickXplain,  // Junker 2001, the historical default
+    Deletion,     // iterative, steerable by SoiMinimizationOrder
+    None,         // ablation baseline and a portfolio arm
+  };
+
+  // Deletion's visit order. All are computable from tableau state alone --
+  // LraTableau has no decision-level or activity information, and plumbing
+  // any in would defeat the point of keeping this off the main solver.
+  // Ties break by variable id, so every arm stays deterministic.
+  enum class SoiMinimizationOrder {
+    Id,          // ascending id: reproduces today's order (violated_vars_ is a std::set)
+    RowSupport,  // longest row first: sheds the rows that contribute most literals
+    Violation,   // largest bound violation first: the "most responsible row" reading
+  };
+
   struct Tuning {
     // How many *eligible* entering candidates PivotingRule::Sparse scores
     // before settling for the best seen so far; 0 means unbounded (score
@@ -184,6 +223,9 @@ class LraTableau {
     // interval is exact; which value inside it is worth taking is pure
     // heuristic, so this is the knob that decides how hard mutation tries.
     std::size_t model_mutation_candidates = 4;
+    // SOI-only; inert under every other pivoting rule.
+    SoiMinimization soi_minimization = SoiMinimization::QuickXplain;
+    SoiMinimizationOrder soi_minimization_order = SoiMinimizationOrder::Id;
   };
 
   // Intended to be set before solving starts, like set_sparse_leaving():
@@ -590,12 +632,26 @@ class LraTableau {
   // bland_fallback_count().
   std::size_t pivot_count() const { return pivot_count_; }
 
-  // PivotingRule::Soi observability: how many times check() had to build a
-  // multi-row conflict (Section V-B, Flex(f) empty with 2+ rows still
-  // violated), and how many of those invoked QuickXplain-style
-  // minimization (minimize_soi_conflict()). Always 0 under Bland/Dantzig.
+  // PivotingRule::Soi observability. Always 0 under Bland/Dantzig.
+  //
+  //   conflict_count  -- times check() built a conflict from the error set
+  //                      (Section V-B, Flex(f) empty). Despite the historical
+  //                      name this includes SINGLE-row error sets: the only
+  //                      guard is `error_vars.empty()`, and 82% of them are
+  //                      size 1 in practice.
+  //   minimize_calls  -- times minimization ran at all.
+  //   minimize_shrunk -- times it actually removed something.
+  //   conflict_lits   -- total literals emitted by build_soi_conflict().
+  //
+  // The last two are separate on purpose. `minimize_shrunk` used to be
+  // published as ":lra.soi-quickxplain-calls", which made a 6x under-report
+  // of volume look like a low success rate and led to the wrong conclusion
+  // about where the waste was. `conflict_lits` is the quantity a minimization
+  // strategy is actually trying to reduce -- clause length, not set size.
   std::size_t soi_multi_row_conflict_count() const { return soi_multi_row_conflict_count_; }
-  std::size_t soi_quickxplain_call_count() const { return soi_quickxplain_call_count_; }
+  std::size_t soi_minimize_call_count() const { return soi_minimize_call_count_; }
+  std::size_t soi_minimize_shrunk_count() const { return soi_minimize_shrunk_count_; }
+  std::size_t soi_conflict_lit_count() const { return soi_conflict_lit_count_; }
 
   // Total number of tableau variables (problem variables plus slacks, plus
   // f_var_ under PivotingRule::Soi). Only grows during initial construction
@@ -801,6 +857,19 @@ class LraTableau {
   // still produce a sound conflict -- not necessarily globally minimal,
   // but usually is in practice (paper: "most of the time... |S|=2").
   std::vector<LraVarId> minimize_soi_conflict(const std::vector<LraVarId>& error_vars) const;
+
+  // Deletion-based minimization: visit `error_vars` in soi_minimization_order_
+  // and drop each element whose removal leaves the remainder still a
+  // conflict. Soundness does NOT rest on the predicate being monotone --
+  // every removal is validated by soi_subset_still_conflicts() on the
+  // resulting set, so whatever comes back independently certifies a
+  // conflict. Monotonicity would only bound how small a set is reachable,
+  // and soi_subset_still_conflicts is not obviously monotone: adding a row
+  // changes f_S and can introduce an eligible nonbasic variable.
+  std::vector<LraVarId> delete_soi_conflict(const std::vector<LraVarId>& error_vars) const;
+
+  // `error_vars` reordered worst-first for delete_soi_conflict().
+  std::vector<LraVarId> ordered_for_deletion(const std::vector<LraVarId>& error_vars) const;
   bool soi_subset_still_conflicts(const std::vector<LraVarId>& subset) const;
   // The recursive QuickXplain step: minimal subset of `candidates` that,
   // combined with `background`, still conflicts. Standard algorithm
@@ -841,7 +910,9 @@ class LraTableau {
   std::size_t row_update_count_ = 0;
   std::size_t row_term_op_count_ = 0;
   std::size_t soi_multi_row_conflict_count_ = 0;
-  std::size_t soi_quickxplain_call_count_ = 0;
+  std::size_t soi_minimize_call_count_ = 0;
+  std::size_t soi_minimize_shrunk_count_ = 0;
+  mutable std::size_t soi_conflict_lit_count_ = 0;
   std::size_t fixed_variable_count_ = 0;
   std::size_t elimination_pivot_count_ = 0;
   std::optional<LraVarId> f_var_;

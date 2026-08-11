@@ -20,29 +20,100 @@ repository. The first deliverable of the QF_LRA effort is a
 `qflra_parameters.txt` alongside it; everything in
 [](#already-exposed) can go into it with no code change at all.
 
+(preconditions)=
+## A knob is only a dimension where it is reachable
+
+**Reviewed 2026-08-10, and it changed what belongs in the search space.** Most
+options here are guarded: they do nothing unless some *other* option is set,
+and several of those guards are off by default. A guarded knob handed to irace
+is worse than useless — it consumes a dimension, doubles the configurations to
+evaluate, and contributes only noise, while looking like a tuned parameter in
+the report.
+
+Two of the guards are structural rather than a matter of taste:
+
+- **Pivoting-rule scoping.** `least_violated_leaving_` and `sparse_leaving_`
+  are both read as `flag && rule_ == PivotingRule::Sparse`
+  (`lra_tableau.cpp:1299`, `:1310`), and `sparse_pricing_candidates` is only
+  reached through `select_sparse_entering_variable`, called under `Sparse`
+  alone (`:913`). SOI minimization is likewise `Soi`-only.
+- **Propagation nesting.** `scan_row_based_propagations` is called only when
+  `propagation_enabled_ && row_propagation_enabled_` (`check_sat.cpp:6786`),
+  and the bidirectional check sits *inside* that function (`:7107`). So the
+  chain is `--lra-propagation` → `--lra-row-propagation` →
+  `--lra-bidirectional-row-propagation`, and the last two are **off by
+  default**.
+
+**How to check a knob before spending a dimension on it:** run it at two
+extreme values and diff a counter that it should move. If nothing changes, it
+is not reachable in that configuration. That is how the dead options below
+were found.
+
 (already-exposed)=
 ## Tier 0 -- already exposed, never tuned (zero code change)
 
-These are live CLI options that no search space contains. They are free
-dimensions today.
+Live CLI options that no search space contains. The **requires** column is the
+precondition without which the option does nothing.
 
-| option | default | note |
-|---|---:|---|
-| `--lra-pivoting-rule` | `sparse` | 4 values (`bland`/`dantzig`/`soi`/`sparse`); the strongest single categorical |
-| `--lra-row-propagation-max-row-size` | 64 | forward row propagation |
-| `--lra-row-propagation-max-fanout` | 64 | |
-| `--lra-bidirectional-row-propagation-max-row-size` | 32 | reverse direction |
-| `--lra-bidirectional-row-propagation-max-fanout` | 32 | |
-| `--lra-least-violated-leaving` | off | MathSAT's rule; measured 167 vs 174 overall but **beats most-violated by 5**, i.e. a complementarity candidate, not a loss |
-| `--no-lra-sparse-leaving` | on | ablation of the leaving-side half |
-| `--lra-fixed-elimination` | off | nets to nothing overall, doubles the >5MB band -- textbook portfolio arm |
-| `--no-qf-uflra-fixed-elimination` | mixed elimination on | ablation of the mixed-only default that exposes `EqRow`; pure QF_LRA remains off |
-| `--no-qf-uflra-model-reconciliation` | reconciliation on | ablation of the default convex shared-model path; restores explained exact equality sharing |
-| `--lra-propagation`, `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | on/off/off | |
-| `--lra-model-phase`, `--lra-theory-decisions` | off/off | see [](#theory-decision-share) before enabling |
-| `--theory-phase` | auto | `positive` is known to help the tropical family by firing guards |
-| `--preprocessing-passes` / `-adaptive-extra-passes` / `-adaptive-shrink-percent` | | already integer-ranged |
-| `--cadical-option name=value` | -- | arbitrary CaDiCaL integers, see [](#cadical) |
+| option | default | requires | note |
+|---|---:|---|---|
+| `--lra-pivoting-rule` | `sparse` | — | 4 values (`bland`/`dantzig`/`soi`/`sparse`); the strongest single categorical, and the guard for much of the rest of this table |
+| `--lra-row-propagation-max-row-size` | 64 | **`--lra-row-propagation`** | dead until 2026-08-10, see [](#dead-knobs) |
+| `--lra-row-propagation-max-fanout` | 64 | **`--lra-row-propagation`** | |
+| `--lra-bidirectional-row-propagation-max-row-size` | 32 | **`--lra-bidirectional-row-propagation`** | |
+| `--lra-bidirectional-row-propagation-max-fanout` | 32 | **`--lra-bidirectional-row-propagation`** | |
+| `--lra-least-violated-leaving` | off | **`--lra-pivoting-rule sparse`** | MathSAT's rule; measured 167 vs 174 overall but **beats most-violated by 5**, i.e. a complementarity candidate, not a loss. Pairing it with any other rule wastes the dimension |
+| `--no-lra-sparse-leaving` | on | **`--lra-pivoting-rule sparse`** | ablation of the leaving-side half |
+| `--lra-fixed-elimination` | off | — | nets to nothing overall, doubles the >5MB band -- textbook portfolio arm. Note it also forces `model_phase_backtrack_may_change_beta` (`check_sat.cpp:7552`), as `soi` does, so it interacts with `--lra-model-phase` |
+| `--no-qf-uflra-fixed-elimination` | mixed elimination on | mixed QF_UFLRA | ablation of the mixed-only default that exposes `EqRow`; pure QF_LRA remains off |
+| `--no-qf-uflra-model-reconciliation` | reconciliation on | mixed QF_UFLRA | ablation of the default convex shared-model path; restores explained exact equality sharing |
+| `--lra-propagation` | on | — | the root of the propagation chain |
+| `--lra-row-propagation` | off | **`--lra-propagation`** | |
+| `--lra-bidirectional-row-propagation` | off | **`--lra-row-propagation`** (hence `--lra-propagation` too) | |
+| `--lra-model-phase`, `--lra-theory-decisions` | off/off | — | independent flags inside the propagator; see [](#theory-decision-share) before enabling |
+| `--theory-phase` | auto | — | `positive` is known to help the tropical family by firing guards |
+| `--preprocessing-passes` / `-adaptive-extra-passes` / `-adaptive-shrink-percent` | | — | already integer-ranged |
+| `--cadical-option name=value` | -- | varies | arbitrary CaDiCaL integers, but several are disabled while an external propagator is attached -- see [](#cadical) |
+
+(dead-knobs)=
+### Four options that parse and do nothing
+
+`CheckSatOptions::lra_row_propagation_limits` (`check_sat.hpp:224`) is written
+by all four `--lra-*-max-row-size` / `-max-fanout` options in `main.cpp:232-252`
+and then **never read anywhere in `src/`**. The propagation code uses
+hardcoded constants instead: `kRowBasedPropagationMaxRowSize` /
+`...MaxFanout` (`check_sat.cpp:4500-4501`) and their bidirectional
+counterparts (`:4510-4511`).
+
+Confirmed empirically, not just by reading: with row propagation switched on,
+`--lra-row-propagation-max-row-size 1` and `100000` both give
+`:lra.row-propagations 2694` on `sc/sc-9.base.cvc.smt2` — byte-identical
+counters at extremes three orders of magnitude apart.
+
+This matters more than a typical dead flag because the table above previously
+advertised all four as free dimensions requiring zero code change. Putting
+them in `qflra_parameters.txt` would have spent four dimensions on noise.
+
+**Fixed 2026-08-10.** The struct is threaded through `OnlineLraPropagator` and
+the two `compute_implied_*_bound` helpers, and the four constants are gone.
+The defaults were already 64/64/32/32, identical to the constants, so this is
+behaviour-preserving where it matters — verified against the pre-change binary
+on 24 completed instances at default settings and 10 more with row propagation
+explicitly enabled, 0 answer differences and 0 `:lra.*` counter differences in
+both.
+
+The knobs now bind, and one of them was binding all along without anyone being
+able to see it: on `sc/sc-9.base.cvc.smt2`, `--lra-row-propagation-max-fanout
+100000` yields **3177** row propagations against **2694** at the default 64.
+So the forward fanout cap is not a formality on real input — it is discarding
+about 15% of available propagations at its default, which is now a tunable
+decision rather than a constant nobody could reach.
+
+`row_propagation_limits_are_actually_enforced` in
+`tests/unit/qf_lra_solver_tests.cpp` pins it. The test asserts the caps
+**bind** rather than that propagation happens, deliberately: a test of the
+latter shape would have passed throughout the entire period the options did
+nothing.
 
 (cadical)=
 ### The CaDiCaL sub-space
@@ -63,20 +134,29 @@ management is irrelevant. Caveat to check first: CaDiCaL disables several
 inprocessing options while an external propagator is attached, so confirm an
 option actually takes effect before spending a search dimension on it.
 
-The `factor` bounded-variable-addition pass is intentionally not part of the
-active tuning space. A definition-heavy QF_UFLRA microprobe improved when it
-was disabled, but the required cross-logic global A/B campaign is tabled; see
-[](sat-ipasir-up.md) for the mechanism, preliminary evidence, and acceptance
-criteria.
-
 (implemented)=
-## Implemented 2026-08-06: the three Check/Pivot knobs
+## Implemented: the Check/Pivot knobs and the SOI minimization arms
 
-`LraTableau::Tuning` now carries what were three hardcoded constants, wired
-through `CheckSatOptions::lra_tuning` and exposed on the CLI. Defaults are the
-former constants, so an untuned run is unchanged -- verified on
-`constraint-199552`, which still reports exactly the recorded 7,679 pivots and
-128,402,240 pivot term ops.
+`LraTableau::Tuning` now carries what were hardcoded constants, wired through
+`CheckSatOptions::lra_tuning` and exposed on the CLI. Defaults are the former
+constants, so an untuned run is unchanged -- verified on `constraint-199552`,
+which still reports exactly the recorded 7,679 pivots and 128,402,240 pivot
+term ops.
+
+**Every one of these is guarded by `--lra-pivoting-rule`**, which is the
+single most important thing to know before putting them in a search space:
+
+| knob | requires |
+|---|---|
+| `--lra-sparse-pricing-candidates` | `--lra-pivoting-rule sparse` |
+| `--lra-bland-fallback-factor` / `-offset` | any rule **other than** `bland` -- under `bland` selection is already Bland's, so the fallback threshold is unobservable |
+| `--lra-soi-minimize` | `--lra-pivoting-rule soi` |
+| `--lra-soi-minimize-order` | `--lra-pivoting-rule soi` **and** `--lra-soi-minimize deletion` -- the order is deletion's visit order and `quickxplain`/`none` ignore it |
+
+Since `sparse` is the default and `soi` is not, the SOI arms are unreachable
+unless the rule is set explicitly. Treat the rule as a parent dimension and
+these as conditional on its value; irace supports exactly that, and a flat
+space would spend most of its budget on combinations that cannot differ.
 
 A unit test (`tuning_knobs_never_change_a_verdict`) pins the property the
 whole campaign rests on: these are cost levers, and no value of them may
@@ -233,6 +313,10 @@ arithmetic analogues:
 - `--lra-check-assign-threshold f` -- skip while fewer than fraction `f` of
   arithmetic atoms are assigned.
 
+**Requires:** nothing -- the repair runs on every path, which is exactly why
+this is the biggest gap. Unlike most of the table it would be a knob with no
+guard above it.
+
 Both are completeness-preserving provided the check is forced at
 `cb_check_found_model`, which is where the verdict actually matters. This is
 the closest thing on the list to a cheap approximation of relevancy
@@ -251,11 +335,34 @@ version's cap is a two-line addition and directly bounded work.
 
 ### 9. SOI conflict-minimization budget
 
-`minimize_soi_conflict` calls `quickxplain` on every multi-row conflict with
-no size guard. Suggested `--lra-soi-minimize-max-vars` (skip minimization
-above this error-set size, 0 = never minimize). Smaller conflicts are better
-clauses but cost repeated `soi_subset_still_conflicts` evaluations;
-`:lra.soi-quickxplain-calls` already measures the volume.
+**Superseded 2026-08-10 — the original suggestion here was aimed the wrong
+way, and the counter it cited does not measure what it claimed.**
+
+The suggestion was `--lra-soi-minimize-max-vars`, skipping minimization *above*
+a given error-set size on the theory that large sets cost repeated
+`soi_subset_still_conflicts` evaluations, citing
+`:lra.soi-quickxplain-calls` as already measuring the volume. Both halves were
+wrong:
+
+- **That counter measured successes, not calls.** It only incremented when
+  minimization actually shrank the set (a 6x under-report: 345 against 2253),
+  which made a high success rate look like a low one. It is now split into
+  `:lra.soi-minimize-calls`, `:lra.soi-minimize-shrunk` and
+  `:lra.soi-conflict-lits`.
+- **There are no large sets to skip.** Instrumented over 2253 calls: 82% have
+  a single element, the rest average 2.83, and the largest seen was 9. A
+  size-threshold knob would never usefully fire, and minimization *succeeds*
+  88% of the time on the sets that have more than one element — so a threshold
+  would be disabling the case that pays.
+
+What replaced it is `--lra-soi-minimize {quickxplain,deletion,none}` with
+`--lra-soi-minimize-order {id,row-support,violation}`. Since minimization
+reduces the set to 1.23 elements on average, there are usually several equally
+minimal answers and the algorithm silently picks one; deletion makes that pick
+orderable, where QuickXplain's recursion cannot be steered. The quantity to
+watch is `:lra.soi-conflict-lits`, not the set size — `build_soi_conflict`
+emits one literal per nonzero entry of the restricted SOI row *plus* one per
+error variable, and the first term usually dominates.
 
 **Separate, non-tuning finding from the same code:** `quickxplain`
 (`src/theory/arithmetic/lra_tableau.cpp:770-797`) is **recursive**, with a GCC
@@ -267,6 +374,10 @@ depth is data-dependent.
 (theory-decision-share)=
 ### 10. Theory-decision share -- turning a cliff into a dial
 
+**Requires `--lra-theory-decisions` (off by default).** The share dial is a
+refinement of that flag, so it inherits its guard -- searching `p` without
+turning theory decisions on measures nothing.
+
 `--lra-theory-decisions` is all-or-nothing, and on the tropical family it is
 catastrophic: **9.2M theory decisions and a timeout at 90s, against 3.5s
 without it** ([](tropical-matrix-structure.md)). A
@@ -277,9 +388,14 @@ so *Boolean* flags are decided first) the same dial when it is implemented.
 
 ### 11. Model-phase refresh interval
 
+**Requires `--lra-model-phase` (off by default).**
+
 `--lra-model-phase` refreshes at every quiescence point whenever dirty. A
 `--lra-model-phase-interval` bounds that cost. Lower priority: the option is
-off by default and its cost has not been shown to bind.
+off by default and its cost has not been shown to bind. Note also that
+`--lra-pivoting-rule soi` and `--lra-fixed-elimination` both set
+`model_phase_backtrack_may_change_beta`, so what a refresh costs depends on
+those too.
 
 ## What not to turn into a parameter
 
@@ -290,6 +406,10 @@ off by default and its cost has not been shown to bind.
   that cannot change behaviour still costs configurations. Every suggestion
   above names the counter that settles this; check it before including the
   dimension.
+- **Anything guarded by an option the space holds at its default.** The
+  strongest form of the point above: see [](#preconditions) for the guards
+  that actually exist, and [](#dead-knobs) for four options that were
+  advertised here as free dimensions while reading nothing at all.
 - **Correctness-relevant limits.** None of the above changes an answer, only
   how long it takes to reach one. Keep it that way: the fuzz gate
   ([](fuzz-coverage-qf-lra.md)) validates models, and a parameter that can

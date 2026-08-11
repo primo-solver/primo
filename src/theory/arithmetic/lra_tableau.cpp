@@ -733,6 +733,9 @@ std::vector<sat::Lit> LraTableau::build_soi_conflict(
     const int direction = soi_directions_.at(error_var);
     reasons.push_back(direction < 0 ? state.lower->reason : state.upper->reason);
   }
+  // The quantity a minimization strategy is actually trying to move: the
+  // clause length, not the size of the error set it was derived from.
+  soi_conflict_lit_count_ += reasons.size();
   return reasons;
 }
 
@@ -806,6 +809,76 @@ std::vector<LraVarId> LraTableau::quickxplain(const std::vector<LraVarId>& backg
 std::vector<LraVarId> LraTableau::minimize_soi_conflict(
     const std::vector<LraVarId>& error_vars) const {
   return quickxplain({}, error_vars);
+}
+
+std::vector<LraVarId> LraTableau::ordered_for_deletion(
+    const std::vector<LraVarId>& error_vars) const {
+  std::vector<LraVarId> ordered = error_vars;
+  if (tuning_.soi_minimization_order == SoiMinimizationOrder::Id) {
+    // error_vars already arrives id-ascending (violated_vars_ is a std::set),
+    // but sort anyway so the arm does not silently depend on the caller.
+    std::sort(ordered.begin(), ordered.end());
+    return ordered;
+  }
+
+  // Worst first: deletion offers up what it visits first, so whatever we
+  // least want in the final conflict must be offered up earliest. Both keys
+  // sort descending, with the id ascending as the tie-break so the order is
+  // total and reproducible.
+  if (tuning_.soi_minimization_order == SoiMinimizationOrder::RowSupport) {
+    std::sort(ordered.begin(), ordered.end(), [this](LraVarId lhs, LraVarId rhs) {
+      const std::size_t lhs_support = rows_.at(lhs).size();
+      const std::size_t rhs_support = rows_.at(rhs).size();
+      if (lhs_support != rhs_support) {
+        return lhs_support > rhs_support;
+      }
+      return lhs < rhs;
+    });
+    return ordered;
+  }
+
+  // How far the variable currently sits outside the bound it violates. The
+  // direction says which bound that is -- the same convention
+  // build_soi_conflict uses to pick the reason literal.
+  const auto violation_of = [this](LraVarId var) {
+    const VarState& state = vars_.at(var);
+    const int direction = soi_directions_.at(var);
+    if (direction < 0 && state.lower.has_value()) {
+      return state.lower->value - state.assignment;
+    }
+    if (direction > 0 && state.upper.has_value()) {
+      return state.assignment - state.upper->value;
+    }
+    return DeltaRational{};
+  };
+  std::sort(ordered.begin(), ordered.end(), [&violation_of](LraVarId lhs, LraVarId rhs) {
+    const DeltaRational lhs_violation = violation_of(lhs);
+    const DeltaRational rhs_violation = violation_of(rhs);
+    if (lhs_violation != rhs_violation) {
+      return rhs_violation < lhs_violation;
+    }
+    return lhs < rhs;
+  });
+  return ordered;
+}
+
+std::vector<LraVarId> LraTableau::delete_soi_conflict(
+    const std::vector<LraVarId>& error_vars) const {
+  std::vector<LraVarId> kept = ordered_for_deletion(error_vars);
+
+  for (std::size_t index = 0; index < kept.size();) {
+    std::vector<LraVarId> without = kept;
+    without.erase(without.begin() + static_cast<std::ptrdiff_t>(index));
+    // Only drop when what remains still certifies a conflict on its own.
+    // This is what makes the result sound without relying on the predicate
+    // being monotone -- see the declaration's comment.
+    if (soi_subset_still_conflicts(without)) {
+      kept = std::move(without);
+      continue;  // same index now holds the next candidate
+    }
+    ++index;
+  }
+  return kept;
 }
 
 // Whether a non-basic variable with coefficient `coeff` in the violated
@@ -1464,9 +1537,15 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
           return std::nullopt;
         }
         ++soi_multi_row_conflict_count_;
-        const std::vector<LraVarId> minimized = minimize_soi_conflict(error_vars);
-        if (minimized.size() < error_vars.size()) {
-          ++soi_quickxplain_call_count_;
+        std::vector<LraVarId> minimized = error_vars;
+        if (tuning_.soi_minimization != SoiMinimization::None) {
+          ++soi_minimize_call_count_;
+          minimized = tuning_.soi_minimization == SoiMinimization::Deletion
+                          ? delete_soi_conflict(error_vars)
+                          : minimize_soi_conflict(error_vars);
+          if (minimized.size() < error_vars.size()) {
+            ++soi_minimize_shrunk_count_;
+          }
         }
         return build_soi_conflict(minimized);
       }

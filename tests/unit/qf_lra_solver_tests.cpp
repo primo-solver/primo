@@ -2759,6 +2759,50 @@ void row_based_propagation_drives_boolean_structure() {
   assert(not_propagated.statistics.get(StatKey::LraRowPropagations) == 0);
 }
 
+void row_propagation_limits_are_actually_enforced() {
+  // Regression test for four CLI options that parsed and did nothing:
+  // CheckSatOptions::lra_row_propagation_limits was written by main.cpp and
+  // read by nobody, so the propagation code used hardcoded constants and the
+  // knobs were dead. Asserting the caps BIND is what keeps that from
+  // silently returning -- a test that only checked "propagation happens"
+  // passed throughout the entire period the options did nothing.
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun a () Real) (declare-fun b () Real) (declare-fun c () Real)
+    (declare-fun d () Real) (declare-fun e () Real) (declare-fun f () Real)
+    (declare-fun g () Real)
+    (assert (>= (+ a b c d e f) 1))
+    (assert (<= a 1)) (assert (<= b 1)) (assert (<= c 1))
+    (assert (<= d 1)) (assert (<= e 1)) (assert (<= f 1))
+    (assert (or (<= (+ a b c d e f) 100) (>= g 1000)))
+    (check-sat)
+  )";
+
+  CheckSatOptions generous;
+  generous.lra_propagation = true;
+  generous.lra_row_propagation = true;
+  generous.lra_row_propagation_limits.max_row_size = 64;
+  const auto with_generous_cap = check_sat_smtlib(formula, generous);
+  assert(with_generous_cap.result == CheckSatResult::Sat);
+  assert(with_generous_cap.statistics.get(StatKey::LraRowPropagations) > 0);
+
+  // A cap below the row width must switch row propagation off entirely:
+  // compute_implied_bound returns nullopt the moment the row is too wide.
+  CheckSatOptions tight = generous;
+  tight.lra_row_propagation_limits.max_row_size = 1;
+  const auto with_tight_cap = check_sat_smtlib(formula, tight);
+  assert(with_tight_cap.result == CheckSatResult::Sat);  // a cost cap, never a verdict
+  assert(with_tight_cap.statistics.get(StatKey::LraRowPropagations) == 0);
+
+  // Same for the fanout cap, which is enforced at a different site
+  // (scan_row_based_propagations rather than compute_implied_bound).
+  CheckSatOptions tight_fanout = generous;
+  tight_fanout.lra_row_propagation_limits.max_fanout = 0;
+  const auto with_tight_fanout = check_sat_smtlib(formula, tight_fanout);
+  assert(with_tight_fanout.result == CheckSatResult::Sat);
+  assert(with_tight_fanout.statistics.get(StatKey::LraRowPropagations) == 0);
+}
+
 void bidirectional_row_propagation_drives_boolean_structure() {
   // s := (+ x y) has a directly-asserted lower bound (>= s 5) and x has a
   // directly-asserted upper bound (<= x 2), so x+y>=5 and x<=2 together
@@ -4139,6 +4183,7 @@ int main() {
   same_slack_propagation_can_reach_a_conflict();
   row_based_propagation_drives_boolean_structure();
   row_based_propagation_can_reach_a_conflict();
+  row_propagation_limits_are_actually_enforced();
   bidirectional_row_propagation_drives_boolean_structure();
   bidirectional_row_propagation_can_reach_a_conflict();
   theory_decisions_drive_boolean_structure();
