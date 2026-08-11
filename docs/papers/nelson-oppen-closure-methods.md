@@ -329,7 +329,12 @@ This is still not the paper's generic shared model transition system. The live
 state is EUF-specific, LRA candidate construction remains in the existing mixed
 coordinator, generated equality registration does not update optional dynamic
 Ackermann indexes, and other theories are not generalized. The option remains
-experimental and default-off pending the new fuzz and corpus evaluation.
+experimental and default-off. Fresh commit-`540b847` fuzzing passed 4,000
+generated cases, all 11 deterministic seeds, and 21,868 YinYang differential
+calls. A five-second full-corpus A/B gained one net solve and removed all 3,261
+measured closure rebuilds, but slightly increased SAT decisions and
+common-solved time. These results validate the scoped-state mechanism, not the
+paper's full algorithm or a new default profile.
 
 **Single-theory invariant.** `MixedTheoryPropagationDispatcher` is never used
 for pure QF_UF or pure QF_LRA. Pure QF_UF keeps its direct EUF callback path;

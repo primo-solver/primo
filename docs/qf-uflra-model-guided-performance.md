@@ -422,8 +422,25 @@ before acquisition. The coordinator falls back to the old rebuilt closure if
 the assignment or dynamic equality registration is incomplete. Generated
 equality registration still does not extend the optional
 dynamic Ackermann indexes. Dynamic Ackermann propagation therefore remains a
-separate mixed-mode ablation, and the live view remains opt-in until its fuzz
-and corpus gates are complete.
+separate mixed-mode ablation, and the live view remains opt-in.
+
+The commit-`540b847` gates are now complete. Three repeated-solve CPAchecker
+profiles reduced flat-definition insertions from 21,990 to 794 and replaced all
+76 final closure rebuilds with live-scope reuse. A fresh SLURM gate passed 3,000
+generated mixed QF_UFLRA cases, 500 finite QF_UF cases, 500 finite QF_UFLRA
+cases, all 11 deterministic mixed seeds, and 21,868 YinYang differential calls
+without a disagreement or bug trigger. On the 45-file, 60-second sample both
+profiles solved 45/45; PAR2 changed from 3.001 to 2.998 seconds.
+
+The five-second 1,284-file A/B was mixed rather than a clear promotion result.
+Default solved 1,243 files with PAR2 562.400; live reuse solved 1,244 with PAR2
+557.287, comprising two recoveries and one loss with no decisive-answer
+disagreement. Live reuse eliminated all 3,261 final closure rebuilds and reduced
+flat-definition work from 1,145,153 to 134,523. It also increased decisions from
+33,572,448 to 34,211,143 and common-solved time from 147.485 to 148.450 seconds.
+The option therefore remains default-off: it establishes the required EUF model
+state and removes a concrete implementation cost, but callback search policy is
+still the next performance question.
 
 ### 5. Tighten Candidate Scheduling And Preprocessing
 

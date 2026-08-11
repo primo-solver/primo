@@ -509,7 +509,11 @@ Implemented now:
   reconstructed model vector before the view is acquired. Incomplete
   registration or unavailable incremental state retain the old
   `PreparedFlatTheory` closure rebuild as a measured fallback. The option
-  remains default-off pending a fresh fuzz and corpus A/B.
+  remains default-off. At commit `540b847`, fresh generated and mutation fuzzing
+  found no disagreements, while the five-second 1,284-file QF_UFLRA A/B gained
+  one net solve and removed every measured final closure rebuild. The same run
+  increased decisions and common-solved time slightly, so the evidence supports
+  the ownership/lifetime mechanism but not default promotion.
 - **Single-theory invariant:** the combination dispatcher is used only by the
   mixed QF_UFLRA solver when online Nelson-Oppen propagation or live mixed EUF
   state is explicitly selected. Pure

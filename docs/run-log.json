@@ -26123,6 +26123,107 @@
       "artifacts": "local:results/boolean-dag-merge-stat-ab-15c425e/summary.json; remote:~/primo-boolean-dag-0856d8f/slurm-results/boolean-dag-merged-default-15c425e/, slurm-results/boolean-dag-merged-threshold8-15c425e/, fuzz-results/boolean-dag-merged-default-15c425e/, and fuzz-results/boolean-dag-merged-threshold8-15c425e/",
       "evidence_status": "slurm-complete-current",
       "outcome": "The conflict-resolved exact commit preserves default search statistics on the retained comparison cases and passes fresh default and optional-pass fuzz gates. It is ready for the local merge to main."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-live-euf-local-profile-540b847",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "profile-and-ablation",
+      "scope": "Profile repeated final EUF closure rebuilding and measure scoped reuse of the IPASIR-UP callback-owned closure",
+      "commit": "540b847",
+      "baseline_commit": "5284c64",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "local",
+        "profile_binary": "gprof RelWithDebInfo builds against CaDiCaL 3.0.0",
+        "release_binary": "Release git 540b847, GCC 13.3.0, CaDiCaL 3.0.0",
+        "candidate_provenance": "The candidate gprof artifacts were produced from the final source before its 540b847 commit; the exact committed Release binary repeated the mechanism and answer checks."
+      },
+      "commands": {
+        "profile": "Run each selected input under the gprof binary with --quiet --stats [--qf-uflra-online-euf], then run gprof on the resulting gmon.out",
+        "release_ab": "/tmp/run_primo_live_euf_ab.sh; five repetitions per input and profile using /usr/bin/time"
+      },
+      "inputs": {
+        "files": 3,
+        "family": "CPAchecker induction QF_UFLRA",
+        "shape": "14, 19, and 43 SAT solve calls, selected to expose repeated final EUF checks"
+      },
+      "results": {
+        "gprof_total_time_us": "949714 to 717693, 382818 to 285981, and 762238 to 625764",
+        "gprof_flat_definitions": "14233 to 331, 2912 to 208, and 4845 to 255",
+        "live_mechanism": "All 76 candidate final checks reused the callback closure with zero fallback or rebuild; 18336 observed assignments were completed through model callbacks and 72 re-entrant callbacks were deferred and replayed.",
+        "release_medians": "Default/live wall medians were 0.42/0.40, 0.17/0.17, and 0.35/0.36 seconds. SAT decisions, propagations, solve calls, and answers were identical on each pair.",
+        "release_rss": "Live medians were about 1-2 MiB higher: 30656 vs 28696, 18640 vs 17684, and 42732 vs 41068 KiB."
+      },
+      "artifacts": "local-only:/tmp/primo-live-euf-profile-baseline-5284c64/, /tmp/primo-live-euf-profile-candidate-model-callback/, and /tmp/primo-live-euf-release-ab-540b847/",
+      "evidence_status": "local-complete-current",
+      "outcome": "The rebuilt closure was a real repeated cost and the scoped callback state removes it. Release timing is neutral on these already-fast cases, so broader evaluation remains authoritative."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-live-euf-fuzz-540b847",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "fuzz",
+      "scope": "Merge-grade generated, finite-domain, deterministic-seed, and YinYang validation of live EUF model-state reuse",
+      "commit": "540b847",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 540b847, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation, deterministic seeds, and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 540b847, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "scheduler": "Generated array job 123698 completed four tasks in 26-27 seconds; mutation job 123699 completed in 4 minutes 48 seconds."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with PRIMO_FUZZ_SOLVER_ARGS=--qf-uflra-online-euf, count 750 plus two finite counts of 125 per task, seeds 202607390 through 202607393, timeout 5 seconds",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with --qf-uflra-online-euf, 1000 iterations per seed, seed 2026080700, and solver timeout 8 seconds"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS",
+        "finite_qf_uf": "500/500 PASS",
+        "finite_qf_uflra": "500/500 PASS",
+        "generated_failures": "Zero wrong answer, timeout, crash, unsupported result, parser/type error, or reference disagreement.",
+        "tracked_seeds": "11/11 PASS before mutation",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers, and 21868 differential solver calls."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-live-euf-fuzz-540b847/ and fuzz-results/qf-uflra-live-euf-mutation-540b847/; local-only:/tmp/primo-live-euf-fuzz-540b847/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as merge-grade correctness evidence for the default-off live EUF model-state path."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-live-euf-slurm-ab-540b847",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "benchmark",
+      "scope": "Same-commit 45-file and full 1,284-file QF_UFLRA A/B of callback-owned final EUF closure reuse",
+      "commit": "540b847",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 540b847, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; historical C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "reference_reuse": "Z3 5.0.0 results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv and Yices 2.7.0 /tmp/primo-qfuflra-yices-2.7.0-5s/ were not rerun; solver binaries, corpus, and five-second budget are unchanged.",
+        "scheduler": "45-file job 123704 completed both tasks in 3-4 seconds. Correct full arrays 123723 and 123724 completed all 16 tasks in 39-65 seconds."
+      },
+      "commands": {
+        "sample": "scripts/slurm_qf_uflra_sample_compare.sbatch --array=0-1 over benchmarks/qf_uflra-preprocessing-opportunity-sample.txt, timeout 60, profiles default and --qf-uflra-online-euf",
+        "full": "Two scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 runs, eight shards, timeout 5, profiles default and --qf-uflra-online-euf",
+        "summary": "scripts/summarize_benchmark_shards.py --timeout 5 with default as baseline and live as candidate",
+        "discarded_submission": "Jobs 123706 and 123707 accidentally ran the script default --model-equality-branching profile because shell variables were not exported to sbatch. Their logs exposed the mismatch immediately; they are rejected and are not used in any comparison."
+      },
+      "results": {
+        "sample_default": "45 solved, 0 timeout/error/wrong, PAR2 3.001235.",
+        "sample_live": "45 solved, 0 timeout/error/wrong, PAR2 2.998063.",
+        "full_default": "1243 solved (737 sat, 506 unsat), 41 timeout, 0 error/unsupported/wrong, PAR2 562.400041.",
+        "full_live": "1244 solved (737 sat, 507 unsat), 40 timeout, 0 error/unsupported/wrong, PAR2 557.286967.",
+        "cross_profile": "Two recoveries, one loss, zero decisive-answer disagreements; among 1242 common solves, time changed from 147.485141 to 148.449934 seconds.",
+        "mechanism": "Final closure rebuilds fell from 3261 to 0 and flat-definition work from 1145153 to 134523; all 3284 attempts reused live state with zero incomplete, registration-invalid, or other fallback.",
+        "search": "Decisions increased from 33572448 to 34211143, propagations from 68269051 to 68714307, and solve calls from 3756 to 3782; conflicts decreased from 539762 to 537675.",
+        "references": "Reused Z3 solved 1234 with PAR2 758.708455. Reused Yices solved 1275 with PAR2 156.687539, adding 31 solves over live Primo with no loss or decisive disagreement."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-live-euf-ab-540b847/, results/qf-uflra-live-euf-full-default-540b847-5s/, and results/qf-uflra-live-euf-full-live-540b847-5s/; local-only:/tmp/primo-live-euf-slurm-ab-540b847/ and /tmp/primo-live-euf-full-540b847-5s-correct/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Keep the mechanism and counters behind --qf-uflra-online-euf. It removes the intended rebuild cost and gains one net five-second solve, but the small search and common-time regressions do not justify default promotion."
     }
   ]
 }
