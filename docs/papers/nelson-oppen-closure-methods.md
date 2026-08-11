@@ -383,9 +383,10 @@ After merging main's post-preprocessing bounded flattening, `mt20xx` solves in
 75,021 decisions, 20 SAT solve calls, and 12 LRA conflicts. This is a major
 change from the earlier 1.73-million-decision partial run and confirms that the
 Boolean-shape diagnosis was real. It also changes the residual bottleneck:
-Yices remains near 1.3 seconds, while Primo now performs 18,190,224 full-pair
-LRA model-filter visits and projects 5,972,400 terms in shared-model
-compatibility checks.
+Yices remains near 1.3 seconds, while Primo now performs 2,800 shared-model
+compatibility projections totaling 5,972,400 projected-term visits. The
+18,190,224 `:no.interface.lra-model-filter-full-pairs` value is a constant-time
+cross-product diagnostic, not a physical-visit counter.
 
 A follow-up root-polarity clausification prototype treated the active assertion
 vector as one implicit conjunction, so its semantics did not depend on SMT-LIB

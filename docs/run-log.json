@@ -26372,7 +26372,7 @@
       },
       "results": {
         "main_rebaseline": "All six representatives solved. main3_true used 5615 SAT variables, 22381 clauses, 56304 decisions, and 32 solve calls in 3.82s. mt20xx used 9510 variables, 51027 clauses, 75021 decisions, 20 solve calls, and 12 LRA conflicts in 15.18s. The earlier pre-main controlled mt20xx run had reached 1.73 million decisions without solving, so main's post-pass materially changes the mixed baseline.",
-        "residual_model_cost": "mt20xx performed 18190224 LRA model-filter full-pair visits and 5972400 shared-model compatibility projection terms; Yices historical time remains about 1.3s.",
+        "residual_model_cost": "mt20xx performed 2800 shared-model compatibility projections totaling 5972400 projected-term visits; Yices historical time remains about 1.3s. The 18190224 :no.interface.lra-model-filter-full-pairs value is a constant-time combinatorial diagnostic, not a physical-visit counter.",
         "prototype_invariant": "The corrected prototype used shared (TermId, required-value) visited state across the implicit assertion conjunction while interleaving polarity collection and clause emission in existing assertion order. Unit tests showed equivalent treatment of separate assertions, one conjunction, and a root De Morgan equivalent, plus unchanged LRA tableau shape.",
         "main3_corrected": "2 decompositions; 5615 variables, 22381 clauses, 56304 decisions, 32 solve calls, 21 LRA conflicts, 3.45s. All non-time search counts matched baseline exactly.",
         "mt20xx_corrected": "33 decompositions; 9481 variables, 50943 clauses, 75021 decisions, 20 solve calls, 12 LRA conflicts, 14.24s. The prototype removed 29 variables and 84 clauses but did not change search counts.",

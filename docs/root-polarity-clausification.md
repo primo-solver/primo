@@ -70,6 +70,8 @@ The experiment remains useful as a design constraint. Root simplification, if
 revisited, should normalize the implicit conjunction early enough for ordinary
 preprocessing to consume the exposed conjuncts, and it needs evidence that this
 changes more than a handful of clauses. The current performance lead is instead
-the mixed shared-model path: on `mt20xx`, the merged baseline performs
-18,190,224 LRA model-filter full-pair visits and projects 5,972,400 terms during
-compatibility checks.
+the mixed shared-model path. On `mt20xx`, the merged baseline performs 2,800
+compatibility projections and visits 5,972,400 projected terms. The reported
+18,190,224 `:no.interface.lra-model-filter-full-pairs` value is only a
+constant-time cross-product diagnostic; it is not a count of physical pair
+visits.
