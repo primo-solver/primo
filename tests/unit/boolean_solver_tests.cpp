@@ -720,6 +720,30 @@ void long_nullary_and_chain_preserves_dag_and_supports_optional_flattening() {
   assert(flattened_result.statistics.get(":preprocessing.boolean-flatten.max-arity") <= 8);
 }
 
+void reconvergent_nullary_and_dag_is_clausified_once() {
+  constexpr int kDefinitions = 60;
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-fun p () Bool)\n";
+  input << "(declare-fun q () Bool)\n";
+  input << "(declare-fun r () Bool)\n";
+  input << "(define-fun d0 () Bool (or p q))\n";
+  input << "(define-fun d1 () Bool (or q r))\n";
+  for (int i = 2; i < kDefinitions; ++i) {
+    input << "(define-fun d" << i << " () Bool (and d" << (i - 1) << " d" << (i - 2) << "))\n";
+  }
+  input << "(assert d" << (kDefinitions - 1) << ")\n";
+  input << "(check-sat)\n";
+
+  CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(input.str(), options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.boolean-shape.top-level-or-nodes") == 2);
+  assert(result.statistics.get(":sat.clauses") == 2);
+  assert(result.statistics.get(":sat.binary-clauses") == 2);
+}
+
 void solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
@@ -2818,6 +2842,7 @@ int main() {
   nullary_define_fun_replays_term_ite_constraints();
   long_nullary_define_fun_chain_is_compiled_linearly();
   long_nullary_and_chain_preserves_dag_and_supports_optional_flattening();
+  reconvergent_nullary_and_dag_is_clausified_once();
   solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion();
   compound_bool_arguments_are_bound_before_euf_flattening();
   recursive_define_fun_is_rejected();

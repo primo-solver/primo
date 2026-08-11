@@ -1799,9 +1799,13 @@ class BooleanClausifier {
 
   void assert_positive(core::TermId term_id) {
     std::vector<core::TermId> pending{term_id};
+    std::unordered_set<core::TermId> seen;
     while (!pending.empty()) {
       const core::TermId current = pending.back();
       pending.pop_back();
+      if (!seen.insert(current).second) {
+        continue;
+      }
       const core::Term& term = terms_.get(current);
       switch (term.kind) {
         case core::TermKind::BoolValue:
@@ -2206,9 +2210,13 @@ void collect_boolean_shape(const core::TermManager& terms, core::TermId term_id,
 void collect_top_level_or_shape(const core::TermManager& terms, core::TermId term_id,
                                 BooleanShape& shape) {
   std::vector<core::TermId> pending{term_id};
+  std::unordered_set<core::TermId> seen;
   while (!pending.empty()) {
     const core::TermId current = pending.back();
     pending.pop_back();
+    if (!seen.insert(current).second) {
+      continue;
+    }
     const core::Term& term = terms.get(current);
     if (term.kind == core::TermKind::And) {
       pending.insert(pending.end(), term.children.begin(), term.children.end());
