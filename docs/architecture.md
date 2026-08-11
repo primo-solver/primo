@@ -116,8 +116,8 @@ Implemented constructors:
 - `mk_app(symbol, args)`: creates or reuses a function or predicate application.
 - `mk_eq(lhs, rhs)`: requires matching sorts and returns `true` immediately when `lhs == rhs`.
 - `mk_not(child)`: requires Bool, folds Boolean constants, and removes double negation.
-- `mk_and(children)`: requires Bool children, flattens nested `And`, drops `true`, returns `false` if any child is `false`, and returns the single child for singleton conjunctions.
-- `mk_or(children)`: requires Bool children, flattens nested `Or`, drops `false`, returns `true` if any child is `true`, and returns the single child for singleton disjunctions.
+- `mk_and(children)`: requires Bool children, preserves nested `And` children, drops `true`, removes duplicate direct children, returns `false` if any child is `false`, and returns the single child for singleton conjunctions.
+- `mk_or(children)`: requires Bool children, preserves nested `Or` children, drops `false`, removes duplicate direct children, returns `true` if any child is `true`, and returns the single child for singleton disjunctions.
 - `mk_implies(lhs, rhs)`: requires Bool operands and folds trivial cases such as `p => p`, `false => p`, `true => p`, `p => true`, and `p => false`.
 
 The constructors do not currently canonicalize commutative operands. For example, `(= a b)` and `(= b a)` are different syntactic terms unless another layer rewrites them before calling `mk_eq`.
