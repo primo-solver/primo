@@ -11,6 +11,23 @@ namespace primo::smt {
 
 class Preprocessing {};
 
+struct BooleanFlatteningResult {
+  std::vector<core::TermId> assertions;
+  std::size_t attempts = 0;
+  std::size_t accepted = 0;
+  std::size_t threshold_stops = 0;
+  std::size_t operands_copied = 0;
+  std::size_t rewrites = 0;
+  std::size_t max_arity = 0;
+};
+
+// Optionally widens nested And/Or nodes in the reachable assertion DAG. The
+// threshold bounds arity growth caused by this pass; explicitly wider source
+// nodes remain wider. A zero threshold disables rewriting.
+BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
+                                                     const std::vector<core::TermId>& assertions,
+                                                     std::size_t max_arity);
+
 struct EqualityBridgeResult {
   std::vector<core::TermId> equalities;
   std::size_t skipped_or_nodes = 0;

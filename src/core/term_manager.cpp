@@ -1,6 +1,8 @@
 #include "core/term_manager.hpp"
 
+#include <algorithm>
 #include <stdexcept>
+#include <unordered_set>
 #include <utility>
 
 namespace primo::core {
@@ -9,6 +11,19 @@ namespace {
 
 void hash_combine(std::size_t& seed, std::size_t value) {
   seed ^= value + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+}
+
+bool append_unique(std::vector<TermId>& result, std::unordered_set<TermId>* large_seen,
+                   TermId child) {
+  if (large_seen != nullptr) {
+    if (!large_seen->insert(child).second) {
+      return false;
+    }
+  } else if (std::find(result.begin(), result.end(), child) != result.end()) {
+    return false;
+  }
+  result.push_back(child);
+  return true;
 }
 
 }  // namespace
@@ -81,6 +96,12 @@ TermId TermManager::mk_not(TermId child) {
 TermId TermManager::mk_and(std::vector<TermId> children) {
   std::vector<TermId> simplified;
   simplified.reserve(children.size());
+  std::unordered_set<TermId> seen;
+  std::unordered_set<TermId>* large_seen = nullptr;
+  if (children.size() > 8) {
+    seen.reserve(children.size());
+    large_seen = &seen;
+  }
   for (const TermId child : children) {
     const Term& child_term = require_term(child);
     if (child_term.sort != symbols_.bool_sort()) {
@@ -92,11 +113,7 @@ TermId TermManager::mk_and(std::vector<TermId> children) {
       }
       continue;
     }
-    if (child_term.kind == TermKind::And) {
-      simplified.insert(simplified.end(), child_term.children.begin(), child_term.children.end());
-      continue;
-    }
-    simplified.push_back(child);
+    (void)append_unique(simplified, large_seen, child);
   }
   if (simplified.empty()) {
     return mk_bool(true);
@@ -111,6 +128,12 @@ TermId TermManager::mk_and(std::vector<TermId> children) {
 TermId TermManager::mk_or(std::vector<TermId> children) {
   std::vector<TermId> simplified;
   simplified.reserve(children.size());
+  std::unordered_set<TermId> seen;
+  std::unordered_set<TermId>* large_seen = nullptr;
+  if (children.size() > 8) {
+    seen.reserve(children.size());
+    large_seen = &seen;
+  }
   for (const TermId child : children) {
     const Term& child_term = require_term(child);
     if (child_term.sort != symbols_.bool_sort()) {
@@ -122,11 +145,7 @@ TermId TermManager::mk_or(std::vector<TermId> children) {
       }
       continue;
     }
-    if (child_term.kind == TermKind::Or) {
-      simplified.insert(simplified.end(), child_term.children.begin(), child_term.children.end());
-      continue;
-    }
-    simplified.push_back(child);
+    (void)append_unique(simplified, large_seen, child);
   }
   if (simplified.empty()) {
     return mk_bool(false);

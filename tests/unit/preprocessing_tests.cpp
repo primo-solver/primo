@@ -77,6 +77,51 @@ struct RealFixture {
   primo::core::TermId rational(std::int64_t value) { return terms.mk_rational(value); }
 };
 
+void bounded_boolean_flattening_preserves_threshold_and_handles_deep_dags() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId pa = fixture.pred(fixture.p, a);
+  const primo::core::TermId pb = fixture.pred(fixture.p, b);
+  const primo::core::TermId pc = fixture.pred(fixture.p, c);
+  const primo::core::TermId inner = fixture.terms.mk_and({pa, pb});
+  const primo::core::TermId outer = fixture.terms.mk_and({inner, pc});
+
+  const primo::smt::BooleanFlatteningResult flattened =
+      primo::smt::flatten_associative_booleans(fixture.terms, {outer}, 3);
+  check(flattened.attempts == 1);
+  check(flattened.accepted == 1);
+  check(flattened.threshold_stops == 0);
+  check(flattened.operands_copied == 2);
+  check(flattened.rewrites == 1);
+  const primo::core::Term& flat_root = fixture.terms.get(flattened.assertions.front());
+  check(flat_root.kind == primo::core::TermKind::And);
+  check(flat_root.children == std::vector<primo::core::TermId>({pa, pb, pc}));
+  check(flattened.max_arity == 3);
+
+  const primo::smt::BooleanFlatteningResult bounded =
+      primo::smt::flatten_associative_booleans(fixture.terms, {outer}, 2);
+  check(bounded.attempts == 1);
+  check(bounded.accepted == 0);
+  check(bounded.threshold_stops == 1);
+  check(bounded.rewrites == 0);
+  check(bounded.assertions.front() == outer);
+
+  primo::core::TermId chain = pa;
+  for (std::size_t index = 0; index < 20000; ++index) {
+    const primo::core::SymbolId symbol = fixture.symbols.declare_constant(
+        "deep_bool_" + std::to_string(index), fixture.symbols.bool_sort());
+    chain = fixture.terms.mk_and({chain, fixture.terms.mk_constant(symbol)});
+  }
+  const primo::smt::BooleanFlatteningResult deep =
+      primo::smt::flatten_associative_booleans(fixture.terms, {chain}, 4);
+  check(deep.assertions.size() == 1);
+  check(deep.max_arity <= 4);
+  check(deep.accepted > 0);
+  check(deep.threshold_stops > 0);
+}
+
 // --- monotone (one-sided) variable elimination -------------------------
 //
 // Each test pins one soundness precondition. The pass is only correct
@@ -1299,6 +1344,7 @@ void finite_domain_evaluator_simplifies_table_tautology() {
 }  // namespace
 
 int main() {
+  bounded_boolean_flattening_preserves_threshold_and_handles_deep_dags();
   symmetric_fixed_terms_get_value_precedence();
   asymmetric_value_use_is_rejected();
   moving_only_symmetry_terms_are_rejected();

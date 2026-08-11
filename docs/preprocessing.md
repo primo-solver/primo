@@ -24,6 +24,15 @@ Primo currently exposes QF_UF preprocessing through
   input has more than one assertion, at most 10,000 assertions, and at most
   20,000 initially reachable terms.
 
+Associative Boolean flattening is separate from those presets and applies to
+all supported logics. Core `And` and `Or` terms retain nested DAG structure by
+default. `--boolean-flatten-threshold N` enables one explicit pre-pass over the
+reachable assertion DAG; `0`, the default, disables it. The pass widens a
+same-kind child only when the resulting parent, including remaining direct
+children, stays within `N`. It does not split an explicitly wider SMT-LIB node.
+Clausification accepts nested nodes directly and does not enable this pass.
+See [](boolean-dag-flattening.md) for ownership and complexity details.
+
 The default command now enables the safe part of the predecessor performance
 profile:
 

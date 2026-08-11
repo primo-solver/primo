@@ -1798,56 +1798,64 @@ class BooleanClausifier {
   }
 
   void assert_positive(core::TermId term_id) {
-    const core::Term& term = terms_.get(term_id);
-    switch (term.kind) {
-      case core::TermKind::BoolValue:
-        if (!term.bool_value) {
-          backend_.add_clause(sat::Clause{});
-        }
-        return;
-      case core::TermKind::And:
-        for (const core::TermId child : term.children) {
-          assert_positive(child);
-        }
-        return;
-      case core::TermKind::Or: {
-        if (top_level_or_tseitin_) {
-          backend_.add_clause(sat::Clause{encode(term_id)});
-          return;
-        }
-        sat::Clause clause;
-        clause.reserve(term.children.size());
-        for (const core::TermId child : term.children) {
-          const core::Term& child_term = terms_.get(child);
-          if (child_term.kind == core::TermKind::BoolValue) {
-            if (child_term.bool_value) {
-              return;
-            }
-            continue;
+    std::vector<core::TermId> pending{term_id};
+    while (!pending.empty()) {
+      const core::TermId current = pending.back();
+      pending.pop_back();
+      const core::Term& term = terms_.get(current);
+      switch (term.kind) {
+        case core::TermKind::BoolValue:
+          if (!term.bool_value) {
+            backend_.add_clause(sat::Clause{});
           }
-          clause.push_back(encode(child));
+          break;
+        case core::TermKind::And:
+          for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+            pending.push_back(*child);
+          }
+          break;
+        case core::TermKind::Or: {
+          if (top_level_or_tseitin_) {
+            backend_.add_clause(sat::Clause{encode(current)});
+            break;
+          }
+          sat::Clause clause;
+          clause.reserve(term.children.size());
+          bool tautology = false;
+          for (const core::TermId child : term.children) {
+            const core::Term& child_term = terms_.get(child);
+            if (child_term.kind == core::TermKind::BoolValue) {
+              if (child_term.bool_value) {
+                tautology = true;
+                break;
+              }
+              continue;
+            }
+            clause.push_back(encode(child));
+          }
+          if (!tautology) {
+            backend_.add_clause(clause);
+          }
+          break;
         }
-        backend_.add_clause(clause);
-        return;
+        case core::TermKind::Implies:
+          backend_.add_clause(
+              sat::Clause{negate(encode(term.children.at(0))), encode(term.children.at(1))});
+          break;
+        case core::TermKind::Not:
+        case core::TermKind::Constant:
+        case core::TermKind::Application:
+        case core::TermKind::Equality:
+        case core::TermKind::Le:
+        case core::TermKind::Lt:
+          backend_.add_clause(sat::Clause{encode(current)});
+          break;
+        case core::TermKind::Rational:
+        case core::TermKind::Plus:
+        case core::TermKind::Times:
+          throw UnsupportedInput("unsupported Boolean assertion");
       }
-      case core::TermKind::Implies:
-        backend_.add_clause(
-            sat::Clause{negate(encode(term.children.at(0))), encode(term.children.at(1))});
-        return;
-      case core::TermKind::Not:
-      case core::TermKind::Constant:
-      case core::TermKind::Application:
-      case core::TermKind::Equality:
-      case core::TermKind::Le:
-      case core::TermKind::Lt:
-        backend_.add_clause(sat::Clause{encode(term_id)});
-        return;
-      case core::TermKind::Rational:
-      case core::TermKind::Plus:
-      case core::TermKind::Times:
-        break;
     }
-    throw UnsupportedInput("unsupported Boolean assertion");
   }
 
   sat::Lit encode(core::TermId term_id) {
@@ -2178,33 +2186,39 @@ struct BooleanShape {
 
 void collect_boolean_shape(const core::TermManager& terms, core::TermId term_id,
                            std::unordered_set<core::TermId>& seen, BooleanShape& shape) {
-  if (!seen.insert(term_id).second) {
-    return;
-  }
-  const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Or) {
-    ++shape.or_nodes;
-  } else if (term.kind == core::TermKind::Not) {
-    ++shape.not_nodes;
-  }
-  for (const core::TermId child : term.children) {
-    collect_boolean_shape(terms, child, seen, shape);
+  std::vector<core::TermId> pending{term_id};
+  while (!pending.empty()) {
+    const core::TermId current = pending.back();
+    pending.pop_back();
+    if (!seen.insert(current).second) {
+      continue;
+    }
+    const core::Term& term = terms.get(current);
+    if (term.kind == core::TermKind::Or) {
+      ++shape.or_nodes;
+    } else if (term.kind == core::TermKind::Not) {
+      ++shape.not_nodes;
+    }
+    pending.insert(pending.end(), term.children.begin(), term.children.end());
   }
 }
 
 void collect_top_level_or_shape(const core::TermManager& terms, core::TermId term_id,
                                 BooleanShape& shape) {
-  const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::And) {
-    for (const core::TermId child : term.children) {
-      collect_top_level_or_shape(terms, child, shape);
+  std::vector<core::TermId> pending{term_id};
+  while (!pending.empty()) {
+    const core::TermId current = pending.back();
+    pending.pop_back();
+    const core::Term& term = terms.get(current);
+    if (term.kind == core::TermKind::And) {
+      pending.insert(pending.end(), term.children.begin(), term.children.end());
+      continue;
     }
-    return;
-  }
-  if (term.kind == core::TermKind::Or) {
-    ++shape.top_level_or_nodes;
-    shape.max_top_level_or_children =
-        std::max(shape.max_top_level_or_children, term.children.size());
+    if (term.kind == core::TermKind::Or) {
+      ++shape.top_level_or_nodes;
+      shape.max_top_level_or_children =
+          std::max(shape.max_top_level_or_children, term.children.size());
+    }
   }
 }
 
@@ -11291,6 +11305,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatPreprocessingAdaptivePasses, 0);
   statistics.set(kStatPreprocessingTermSizeInitial, 0);
   statistics.set(kStatPreprocessingTermSizeFinal, 0);
+  statistics.set(":preprocessing.boolean-flatten.attempts", 0);
+  statistics.set(":preprocessing.boolean-flatten.accepted", 0);
+  statistics.set(":preprocessing.boolean-flatten.threshold-stops", 0);
+  statistics.set(":preprocessing.boolean-flatten.operands-copied", 0);
+  statistics.set(":preprocessing.boolean-flatten.rewrites", 0);
+  statistics.set(":preprocessing.boolean-flatten.max-arity", 0);
   statistics.set(kStatEqBridgeEqualities, 0);
   statistics.set(kStatEqBridgeSkippedOrNodes, 0);
   statistics.set(kStatBooleanUnitFacts, 0);
@@ -11520,6 +11540,17 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       options.produce_model = true;
     }
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
+    const BooleanFlatteningResult boolean_flattening = flatten_associative_booleans(
+        frontend.terms(), assertions, options.boolean_flatten_threshold);
+    assertions = boolean_flattening.assertions;
+    statistics.set(":preprocessing.boolean-flatten.attempts", boolean_flattening.attempts);
+    statistics.set(":preprocessing.boolean-flatten.accepted", boolean_flattening.accepted);
+    statistics.set(":preprocessing.boolean-flatten.threshold-stops",
+                   boolean_flattening.threshold_stops);
+    statistics.set(":preprocessing.boolean-flatten.operands-copied",
+                   boolean_flattening.operands_copied);
+    statistics.set(":preprocessing.boolean-flatten.rewrites", boolean_flattening.rewrites);
+    statistics.set(":preprocessing.boolean-flatten.max-arity", boolean_flattening.max_arity);
     const std::size_t initial_reachable_terms =
         options.qf_uf_preprocess == QfUfPreprocessMode::Auto
             ? reachable_term_count(frontend.terms(), assertions)

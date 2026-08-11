@@ -7,6 +7,7 @@ parts:
   - caption: Core architecture
     chapters:
       - file: architecture
+      - file: boolean-dag-flattening
       - file: sat-ipasir-up
       - file: dpllt
       - file: preprocessing

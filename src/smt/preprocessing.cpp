@@ -2595,6 +2595,144 @@ void add_value_precedence_constraints(core::TermManager& terms,
 
 }  // namespace
 
+BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
+                                                     const std::vector<core::TermId>& assertions,
+                                                     std::size_t max_arity) {
+  BooleanFlatteningResult result;
+  if (max_arity == 0) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool expanded = false;
+  };
+
+  const std::size_t source_term_count = terms.size();
+  std::vector<core::TermId> rewritten(source_term_count, core::kInvalidTermId);
+  std::vector<Visit> pending;
+
+  const auto rewrites_children = [&terms](const core::Term& term) {
+    if (term.kind == core::TermKind::Not || term.kind == core::TermKind::And ||
+        term.kind == core::TermKind::Or || term.kind == core::TermKind::Implies) {
+      return true;
+    }
+    return term.kind == core::TermKind::Equality && !term.children.empty() &&
+           terms.get(term.children.front()).sort == terms.symbols().bool_sort();
+  };
+
+  const auto flatten_children =
+      [&terms, max_arity, &result](core::TermKind kind, const std::vector<core::TermId>& children) {
+        std::vector<core::TermId> flattened;
+        flattened.reserve(children.size());
+        for (std::size_t index = 0; index < children.size(); ++index) {
+          const core::TermId child = children[index];
+          const core::Term& child_term = terms.get(child);
+          if (child_term.kind != kind) {
+            flattened.push_back(child);
+            continue;
+          }
+
+          ++result.attempts;
+          const std::size_t remaining_children = children.size() - index - 1;
+          bool fits = child_term.children.size() <= max_arity &&
+                      flattened.size() <= max_arity - child_term.children.size();
+          if (fits) {
+            const std::size_t arity_after_flattening =
+                flattened.size() + child_term.children.size();
+            fits = remaining_children <= max_arity - arity_after_flattening;
+          }
+          if (!fits) {
+            ++result.threshold_stops;
+            flattened.push_back(child);
+            continue;
+          }
+          ++result.accepted;
+          result.operands_copied += child_term.children.size();
+          flattened.insert(flattened.end(), child_term.children.begin(), child_term.children.end());
+        }
+        return flattened;
+      };
+
+  result.assertions.reserve(assertions.size());
+  for (const core::TermId assertion : assertions) {
+    pending.push_back(Visit{assertion, false});
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      if (rewritten.at(visit.term) != core::kInvalidTermId) {
+        continue;
+      }
+
+      const core::Term& term = terms.get(visit.term);
+      if (!rewrites_children(term)) {
+        rewritten[visit.term] = visit.term;
+        continue;
+      }
+      if (!visit.expanded) {
+        pending.push_back(Visit{visit.term, true});
+        for (auto child = term.children.rbegin(); child != term.children.rend(); ++child) {
+          if (rewritten.at(*child) == core::kInvalidTermId) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+        continue;
+      }
+
+      const std::vector<core::TermId> source_children = term.children;
+      std::vector<core::TermId> children;
+      children.reserve(source_children.size());
+      for (const core::TermId child : source_children) {
+        children.push_back(rewritten.at(child));
+      }
+
+      core::TermId replacement;
+      switch (term.kind) {
+        case core::TermKind::Equality:
+          replacement = terms.mk_eq(children.at(0), children.at(1));
+          break;
+        case core::TermKind::Not:
+          replacement = terms.mk_not(children.at(0));
+          break;
+        case core::TermKind::And: {
+          std::vector<core::TermId> flattened = flatten_children(core::TermKind::And, children);
+          replacement = terms.mk_and(std::move(flattened));
+          break;
+        }
+        case core::TermKind::Or: {
+          std::vector<core::TermId> flattened = flatten_children(core::TermKind::Or, children);
+          replacement = terms.mk_or(std::move(flattened));
+          break;
+        }
+        case core::TermKind::Implies:
+          replacement = terms.mk_implies(children.at(0), children.at(1));
+          break;
+        case core::TermKind::BoolValue:
+        case core::TermKind::Constant:
+        case core::TermKind::Application:
+        case core::TermKind::Rational:
+        case core::TermKind::Plus:
+        case core::TermKind::Times:
+        case core::TermKind::Le:
+        case core::TermKind::Lt:
+          throw std::logic_error("leaf reached Boolean flattening reconstruction");
+      }
+      rewritten[visit.term] = replacement;
+      if (replacement != visit.term) {
+        ++result.rewrites;
+      }
+      const core::Term& replacement_term = terms.get(replacement);
+      if (replacement_term.kind == core::TermKind::And ||
+          replacement_term.kind == core::TermKind::Or) {
+        result.max_arity = std::max(result.max_arity, replacement_term.children.size());
+      }
+    }
+    result.assertions.push_back(rewritten.at(assertion));
+  }
+  return result;
+}
+
 EqualityBridge::EqualityBridge(core::TermManager& terms) : terms_(terms) {}
 
 EqualityBridgeResult EqualityBridge::bridge(const std::vector<core::TermId>& assertions) {

@@ -142,6 +142,16 @@ of nullary definitions costs time linear in the sum of declaration-body syntax
 plus its references, rather than walking the general definition-instantiation
 path on the first demand for every node.
 
+`core::TermManager` preserves that sharing for Boolean connectives. `mk_and`
+and `mk_or` simplify constants and duplicate direct operands but do not flatten
+a same-kind child. Nested associative nodes are valid core terms. Optional
+bounded flattening is an SMT preprocessing transformation over reachable
+assertions, controlled by `--boolean-flatten-threshold`; it is not part of term
+construction. This distinction prevents a chain of eagerly compiled nullary
+definitions from retaining every flattened conjunction prefix. The data
+structures, complexity bound, and 154 GB regression are documented in
+[](boolean-dag-flattening.md).
+
 The compiled representation also owns `compiled_side_assertions`. These are
 the Boolean equivalences for compound `Bool` UF arguments and guarded
 equalities for non-Boolean `ite` auxiliaries created while compiling the body.
@@ -167,7 +177,8 @@ own explicit work vectors and, where the operation is a DAG computation,
 pass-local memo tables keyed by `TermId`. This applies to preprocessing
 occurrence summaries and rewrites, formula-feature dispatch, mixed
 purification, theory-atom polarity collection, Boolean-argument bridge
-materialization, and Tseitin encoding. Rewriters copy a node's child IDs before
+materialization, top-level conjunction assertion, and Tseitin encoding.
+Rewriters copy a node's child IDs before
 calling a `TermManager` constructor because construction may grow term storage
 and invalidate a borrowed `Term` reference. The clausifier allocates a parent
 SAT variable before scheduling its children and emits the parent's defining

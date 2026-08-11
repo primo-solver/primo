@@ -212,12 +212,15 @@ void auto_top_level_or_tseitin_selects_sparse_negated_finite_domain_shape() {
   for (int i = 0; i < 60; ++i) {
     input << "(declare-fun x" << i << " () A)\n";
   }
+  for (int i = 0; i < 1000; ++i) {
+    input << "(declare-fun guard" << i << " () Bool)\n";
+  }
   input << "(assert (and (distinct a b)";
   for (int i = 0; i < 60; ++i) {
     input << " (or (= x" << i << " a) (= x" << i << " b))";
   }
   for (int i = 0; i < 1000; ++i) {
-    input << " (or p q)";
+    input << " (or guard" << i << " q)";
   }
   input << "))\n(check-sat)\n";
 
@@ -684,6 +687,37 @@ void long_nullary_define_fun_chain_is_compiled_linearly() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":frontend.define-fun.nullary-eager-compiles") == kDefinitions);
   assert(result.statistics.get(":frontend.define-fun.nullary-direct-uses") >= kDefinitions);
+}
+
+void long_nullary_and_chain_preserves_dag_and_supports_optional_flattening() {
+  constexpr int kDefinitions = 5000;
+  std::ostringstream input;
+  input << "(set-logic QF_UF)\n";
+  input << "(declare-fun p () Bool)\n";
+  for (int i = 1; i < kDefinitions; ++i) {
+    input << "(declare-fun q" << i << " () Bool)\n";
+  }
+  input << "(define-fun d0 () Bool p)\n";
+  for (int i = 1; i < kDefinitions; ++i) {
+    input << "(define-fun d" << i << " () Bool (and d" << (i - 1) << " q" << i << "))\n";
+  }
+  input << "(assert d" << (kDefinitions - 1) << ")\n";
+  input << "(check-sat)\n";
+
+  CheckSatOptions default_options;
+  default_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto default_result = check_sat_smtlib(input.str(), default_options);
+  assert(default_result.result == CheckSatResult::Sat);
+  assert(default_result.statistics.get(":preprocessing.boolean-flatten.attempts") == 0);
+  assert(default_result.statistics.get(":preprocessing.boolean-flatten.operands-copied") == 0);
+
+  CheckSatOptions flattened_options = default_options;
+  flattened_options.boolean_flatten_threshold = 8;
+  const auto flattened_result = check_sat_smtlib(input.str(), flattened_options);
+  assert(flattened_result.result == CheckSatResult::Sat);
+  assert(flattened_result.statistics.get(":preprocessing.boolean-flatten.accepted") > 0);
+  assert(flattened_result.statistics.get(":preprocessing.boolean-flatten.threshold-stops") > 0);
+  assert(flattened_result.statistics.get(":preprocessing.boolean-flatten.max-arity") <= 8);
 }
 
 void solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion() {
@@ -2594,9 +2628,16 @@ void boolean_application_formula_equality_is_propositional() {
   const std::string input = read_text_file(
       "../benchmarks/seeds/qf_uflra/seed_bool_application_formula_equality_mixed_unsat.smt2");
 
-  const auto default_result = check_sat_smtlib(input);
-  assert(default_result.result == CheckSatResult::Unsat);
-  assert(default_result.statistics.get(":solver.qf-uflra") == 1);
+  // Direct duplicate elimination now lets default preprocessing prove this
+  // UNSAT before dispatch. Disable preprocessing here so this remains a mixed
+  // dispatcher regression rather than only an answer regression.
+  CheckSatOptions dispatch_options;
+  dispatch_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto dispatch_result = check_sat_smtlib(input, dispatch_options);
+  assert(dispatch_result.result == CheckSatResult::Unsat);
+  assert(dispatch_result.statistics.get(":solver.qf-uflra") == 1);
+
+  assert(check_sat_smtlib(input).result == CheckSatResult::Unsat);
 
   CheckSatOptions candidate_options;
   candidate_options.qf_uflra_candidate_final_scan = true;
@@ -2611,9 +2652,12 @@ void boolean_application_formula_equality_is_propositional() {
 void boolean_application_formula_equality_is_propositional_in_qf_uf() {
   const std::string input = read_text_file(
       "../benchmarks/seeds/qf_uflra/seed_bool_application_formula_equality_unsat.smt2");
-  const auto result = check_sat_smtlib(input);
+  CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto result = check_sat_smtlib(input, options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":solver.qf-uf") == 1);
+  assert(check_sat_smtlib(input).result == CheckSatResult::Unsat);
 }
 
 void boolean_application_formula_disequality_is_propositional() {
@@ -2773,6 +2817,7 @@ int main() {
   nullary_define_fun_replays_boolean_argument_constraints();
   nullary_define_fun_replays_term_ite_constraints();
   long_nullary_define_fun_chain_is_compiled_linearly();
+  long_nullary_and_chain_preserves_dag_and_supports_optional_flattening();
   solved_constant_rewrite_preserves_application_symbols_after_define_fun_expansion();
   compound_bool_arguments_are_bound_before_euf_flattening();
   recursive_define_fun_is_rejected();

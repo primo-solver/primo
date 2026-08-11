@@ -56,6 +56,12 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.adaptive-passes`;
 - `:preprocessing.term-size.initial`;
 - `:preprocessing.term-size.final`;
+- `:preprocessing.boolean-flatten.attempts`;
+- `:preprocessing.boolean-flatten.accepted`;
+- `:preprocessing.boolean-flatten.threshold-stops`;
+- `:preprocessing.boolean-flatten.operands-copied`;
+- `:preprocessing.boolean-flatten.rewrites`;
+- `:preprocessing.boolean-flatten.max-arity`;
 - `:preprocessing.eq-bridge.equalities`;
 - `:preprocessing.eq-bridge.skipped-or-nodes`;
 - `:preprocessing.boolean-units.facts`;

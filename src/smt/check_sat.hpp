@@ -292,6 +292,9 @@ struct CheckSatOptions {
   std::size_t euf_diseq_ackermann_queue_budget = 4096;
   std::size_t euf_diseq_ackermann_per_symbol = 64;
   std::size_t nelson_oppen_model_equality_branch_budget = 16;
+  // Optional associative Boolean preprocessing. Zero preserves the core DAG;
+  // positive values bound arity growth caused by flattening.
+  std::size_t boolean_flatten_threshold = 0;
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;

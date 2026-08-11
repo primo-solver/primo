@@ -144,6 +144,29 @@ void trivial_boolean_terms_are_simplified() {
   assert(terms.mk_implies(p, p) == t);
 }
 
+void associative_boolean_terms_preserve_shared_dag_nodes() {
+  SymbolTable symbols;
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto q_symbol = symbols.declare_constant("q", symbols.bool_sort());
+  const auto r_symbol = symbols.declare_constant("r", symbols.bool_sort());
+  TermManager terms(symbols);
+  const auto p = terms.mk_constant(p_symbol);
+  const auto q = terms.mk_constant(q_symbol);
+  const auto r = terms.mk_constant(r_symbol);
+
+  const auto inner_and = terms.mk_and({p, q});
+  const auto outer_and = terms.mk_and({inner_and, r});
+  assert(terms.get(outer_and).children == std::vector({inner_and, r}));
+  assert(terms.mk_and({p, p}) == p);
+  assert(terms.get(terms.mk_and({p, q, p, r})).children == std::vector({p, q, r}));
+
+  const auto inner_or = terms.mk_or({p, q});
+  const auto outer_or = terms.mk_or({inner_or, r});
+  assert(terms.get(outer_or).children == std::vector({inner_or, r}));
+  assert(terms.mk_or({q, q}) == q);
+  assert(terms.get(terms.mk_or({q, p, q, r})).children == std::vector({q, p, r}));
+}
+
 void arithmetic_terms_are_hash_consed_and_checked() {
   SymbolTable symbols;
   const auto x_symbol = symbols.declare_constant("x", symbols.real_sort());
@@ -253,6 +276,7 @@ int main() {
   term_manager_hash_conses_and_checks_sorts();
   Boolean_terms_are_hash_consed();
   trivial_boolean_terms_are_simplified();
+  associative_boolean_terms_preserve_shared_dag_nodes();
   arithmetic_terms_are_hash_consed_and_checked();
   arithmetic_terms_are_simplified();
   statistics_preserve_fixed_and_dynamic_counters();
