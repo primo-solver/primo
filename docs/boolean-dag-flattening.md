@@ -153,3 +153,100 @@ does not preserve exact encoding or search behavior. Nested disjunctions below
 the top-level shape can receive additional Tseitin literals. This remains an
 efficiency target for DAG-aware clausification and is why default readiness
 cannot be inferred from the memory fix alone.
+
+(post-preprocessing-application)=
+## The second application point, and why it was needed (2026-08-11)
+
+The repair above is correct and the memory result is real -- reproduced here
+on a synthetic 20,000-link `d_n = (and d_(n-1) atom)` chain, which peaks at
+**1.88 GB** on the pre-repair binary and **57 MB** after. But the pass as
+first landed ran **only before** the rewriting preprocessing passes, and that
+turned out not to be enough.
+
+Those passes build fresh `And`/`Or` nodes through `TermManager`, which -- by
+this note's own design -- no longer flattens at construction. So they
+reintroduce nesting the *input* never had, after the pre-pass has already gone
+past. The symptom is diagnostic: on affected inputs the pre-pass reports
+`attempts = 0` (there is genuinely nothing nested yet) while the finished
+formula carries ~10% more nodes than it did before the repair.
+
+Measured on `yPositive-SIscaled50.bpl_Iteration1_Loop_6-phaseTemplate`:
+`:preprocessing.term-size.initial` is **identical** either way (28,011) and
+only `term-size.final` diverges (151,804 -> 162,106), which is what localises
+the cause to preprocessing rather than parsing.
+
+Cost of the gap, against the commit before the repair:
+
+| instance | before repair | after repair | with post-pass |
+|---|---:|---:|---:|
+| `yPositive-SIscaled50` | 9.0s / 485 MB | 22.7s / 605 MB | **8.9s / 485 MB** |
+| `Gcd_havoc` | ~4.0s | 9.7s / 76 MB | **4.0s / 55 MB** |
+| `sas2.t2.c` | ~13.4s | 21.5s / 258 MB | **12.4s / 237 MB** |
+
+Note memory moves the *same* way as time: flattening removes intermediate
+Tseitin nodes, so on these inputs it is cheaper on both axes. The pathological
+chain is the opposite case, which is exactly why this is a bounded, tunable
+policy rather than a fixed choice.
+
+**`--boolean-flatten-post-threshold`, default 2048**, chosen by measurement.
+256 restores most QF_LRA inputs but leaves one of 55 short --
+`simple-scaled200` hits 20,200 threshold stops there and needs 2048 to match
+the pre-repair clause and decision counts exactly. Raising the bound costs
+nothing where the bound exists to protect: on the 94 MB
+`cpachecker-induction.cs_fib` instance, 2048 peaks at 3,346,944 KB against
+3,347,208 KB at 256, a 264 KB *saving*, with threshold stops falling from 17
+to 1.
+
+The bound still matters -- it is what stops a pathological input from
+unbounded arity growth -- but it is not the axis that decides memory on real
+inputs, because the pass rewrites each reachable node once instead of
+materialising every prefix. `0` disables the pass entirely.
+
+Broader check, 34 QF_LRA instances solved by both settings: **0 answer
+disagreements**, median time ratio **0.76**, six instances more than 30%
+faster and none more than 30% slower.
+
+### Are we back to the old behaviour on QF_LRA?
+
+Effectively yes, and where it differs it is better. Against the pre-regression
+binary over 55 QF_LRA instances (45 solved by both):
+
+- **0 answer disagreements**, and **nothing lost or gained** -- the same
+  instances solve.
+- Time median **1.02**, with **no instance more than 30% faster or slower**.
+- Clause counts: 34 identical, 10 **fewer** now, 1 more (closed by the 2048
+  default).
+
+The instances with fewer clauses are not a flattening effect. `assert_positive`
+gained a per-assertion visited set in the same commit, so a subterm reached
+through several paths of the top-level `And` spine is clausified once instead
+of repeatedly. Terms and variables are unchanged there; only redundant
+duplicate clauses disappear. That part of the DAG work is a straight
+improvement and is deliberately kept.
+
+### Verified on the motivating instance
+
+`cpachecker-induction.cs_fib_true-unreach-call.i.smt2` -- the 94 MB input this
+note was written about -- is in `sandbox/non-incremental/QF_UFLRA`, and the
+post-pass **reduces** its peak memory rather than threatening it:
+
+| setting | peak RSS | flattenings accepted |
+|---|---:|---|
+| `--boolean-flatten-post-threshold 0` | 4.85 GB | 0 |
+| `--boolean-flatten-post-threshold 256` (default) | **3.19 GB** | 3,512,924 (17 threshold stops, max arity 243) |
+
+Both still time out at 180s, so this is a memory result, not a solved/unsolved
+one. The direction is the same as on QF_LRA and for the same reason:
+flattening removes intermediate Tseitin nodes, so where it applies it costs
+less, not more. The 17 threshold stops are the bound doing its job -- without
+it those nodes are where unbounded growth would start.
+
+This is the opposite of what the bound was expected to buy. The risk it
+guards against is real but is a property of flattening *at construction*,
+where every prefix of a shared chain is materialised; the post-pass rewrites
+each reachable node once, so the same policy is cheap when applied to a DAG
+rather than to a construction stream.
+
+Across 28 sampled `QF_UFLRA` instances: 0 answer disagreements, all 28 solved
+under both settings, and no instance's peak RSS moved by more than 5% either
+way.

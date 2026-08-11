@@ -303,6 +303,27 @@ struct CheckSatOptions {
   // Optional associative Boolean preprocessing. Zero preserves the core DAG;
   // positive values bound arity growth caused by flattening.
   std::size_t boolean_flatten_threshold = 0;
+  // Same pass, applied again AFTER the rewriting preprocessing passes.
+  //
+  // Why a second application point: since the DAG repair
+  // (docs/boolean-dag-flattening.md) TermManager::mk_and / mk_or no longer
+  // flatten same-kind children at construction. The rewriting passes build
+  // fresh nodes through those, so they reintroduce nesting that the input
+  // never had -- and the pre-pass above has already run by then, which is why
+  // it reports attempts=0 on inputs that nonetheless end up nested.
+  //
+  // Default 2048, chosen by measurement rather than intuition. 256 restores
+  // most QF_LRA inputs but leaves one of 55 short (20,200 threshold stops on
+  // simple-scaled200), and raising the bound costs nothing where the bound
+  // exists to protect: on the 94 MB cpachecker-induction.cs_fib instance that
+  // motivated the DAG repair, 2048 peaks at 3,346,944 KB against 3,347,208 KB
+  // at 256 -- a 264 KB *saving*, with threshold stops falling from 17 to 1.
+  //
+  // The bound still matters; it is what keeps a pathological input from
+  // unbounded arity growth. It is simply not the axis that decides memory on
+  // real inputs, because the pass rewrites each reachable node once rather
+  // than materialising every prefix. Set 0 to disable.
+  std::size_t boolean_flatten_post_threshold = 2048;
   std::size_t preprocessing_passes = 4;
   std::size_t preprocessing_adaptive_extra_passes = 4;
   std::size_t preprocessing_adaptive_shrink_percent = 10;

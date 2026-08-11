@@ -26288,6 +26288,69 @@
       "artifacts": "remote:<prepared-workspace>/SLURM job outputs for 123847 and 123848",
       "evidence_status": "historical-option-gate",
       "outcome": "The exact threshold-128 option passed the required correctness gate. Further benchmark work on that pre-pass was stopped to avoid overlapping the Boolean-DAG branch; origin/main subsequently introduced the distinct post-preprocessing default that now defines the baseline."
+    },
+    {
+      "id": "2026-08-11-boolean-flatten-post-preprocessing",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "analysis",
+      "scope": "Diagnose and repair a QF_LRA slowdown introduced by the Boolean DAG representation change, without reintroducing the memory blowup that change fixed.",
+      "commit": "2b09fc0",
+      "branch": "main",
+      "evidence_status": "current",
+      "environment": {
+        "type": "local",
+        "notes": "Release; git bisect across the 168-commit Boolean DAG branch (first-parent to the merge, then within it), plus direct A/B of the culprit against its parent."
+      },
+      "result": {
+        "culprit": "0856d8f 'Preserve shared Boolean term DAGs'; its parent c1a8288 is good.",
+        "mechanism": "TermManager::mk_and/mk_or stopped flattening same-kind children at construction. flatten_associative_booleans replaced it but ran only BEFORE the rewriting preprocessing passes, which build fresh nodes through those same constructors and so reintroduce nesting. Localised by :preprocessing.term-size.initial being identical (28011) while term-size.final diverged (151804 -> 162106), placing the cause in preprocessing rather than parsing.",
+        "cost": {
+          "yPositive-SIscaled50": "9.0s/485MB -> 22.7s/605MB",
+          "Gcd_havoc": "4.0s -> 9.7s",
+          "sas2.t2.c": "13.4s -> 21.5s",
+          "sat_vars": "98886 -> 109188",
+          "sat_clauses": "110514 -> 125304",
+          "sat_decisions": "13788 -> 1566573"
+        },
+        "repair": "--boolean-flatten-post-threshold, default 256 (widest node needed is 206). Restores the pre-repair clausification exactly: 110514 clauses, 98886 vars, 13788 decisions, 8.9s, 485MB.",
+        "memory_guard": "Synthetic 20000-link `d_n = (and d_(n-1) atom)` chain reproduces the original failure: 1.88 GB peak RSS pre-repair vs 57 MB after. With the post-pass enabled it stays at 57 MB -- the pass does not fire on that shape (attempts=0).",
+        "broader": {
+          "instances": 34,
+          "answer_disagreements": 0,
+          "median_time_ratio": 0.76,
+          "faster_gt_30pct": 6,
+          "slower_gt_30pct": 0
+        },
+        "memory_guard_verified": {
+          "instance": "sandbox/non-incremental/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.cs_fib_true-unreach-call.i.smt2 (94 MB)",
+          "peak_rss_post_0": "4.85 GB",
+          "peak_rss_post_256": "3.19 GB",
+          "flattenings_accepted": 3512924,
+          "threshold_stops": 17,
+          "max_arity": 243,
+          "note": "Both still time out at 180s; this is a memory result. The post-pass REDUCES memory on the very instance that motivated the DAG repair, because it removes intermediate Tseitin nodes and rewrites each reachable node once rather than materialising every prefix at construction.",
+          "qf_uflra_sample": {
+            "instances": 28,
+            "answer_disagreements": 0,
+            "solved_by_both": 28,
+            "max_rss_change": "under 5% either way"
+          }
+        },
+        "default": "2048, not 256: 256 leaves simple-scaled200 short (20200 threshold stops), and 2048 costs nothing on the memory guard (3,346,944 KB vs 3,347,208 KB, stops 17 -> 1).",
+        "qf_lra_vs_pre_regression": {
+          "instances": 55,
+          "solved_by_both": 45,
+          "answer_disagreements": 0,
+          "lost": 0,
+          "gained": 0,
+          "median_time_ratio": 1.02,
+          "faster_gt_30pct": 0,
+          "slower_gt_30pct": 0,
+          "clauses": "34 identical, 10 fewer now, 1 more (closed at 2048)",
+          "why_fewer": "assert_positive gained a per-assertion visited set in the same commit, so a subterm reached via several paths of the top-level And spine is clausified once rather than repeatedly. Terms and vars unchanged; only redundant duplicate clauses disappear."
+        }
+      }
     }
   ]
 }
