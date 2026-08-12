@@ -26677,6 +26677,37 @@
       "artifacts": "remote:<isolated-workspace>/slurm-results/qfuflra-full-120s-9061611/{primo-all,primo-care,z3,cvc5,opensmt,yices}/; local-only:/tmp/primo-qfuflra-120s-9061611/summary.json and solver shard CSV copies",
       "evidence_status": "slurm-complete-current",
       "outcome": "At 120 seconds, default all is the strongest Primo scope by solved count, while care is about 18 percent faster on common solves but loses one cutoff-sensitive row. Yices remains the performance target: four additional solves and roughly 13.4x lower aggregate time on the 1272 rows shared with Primo all."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-joint-z3-yices-gap-profile-0b40649",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "profiling",
+      "scope": "Rank QF_UFLRA rows where Primo is slower than both Z3 and Yices, then profile representative model-mutation paths",
+      "commit": "0b40649",
+      "benchmark_commit": "9061611",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "ranking": "Local analysis of the complete SLURM shard CSV copies from jobs 125259, 125260, 125261, and 125264; identical 1284-file corpus and 120-second cutoff.",
+        "profiling": "Local RelWithDebInfo build with CMAKE_CXX_FLAGS=-pg, git 0b40649, CaDiCaL 3.0.0; gprof flat and call-graph reports.",
+        "selection": "Require Primo, Z3, and Yices status ok; require Primo >= 2 seconds and >= 2x each reference. A second ranking uses the faster successful Primo all/care time per row under the same thresholds."
+      },
+      "commands": {
+        "ranking": "python3 csv.DictReader over /tmp/primo-qfuflra-120s-9061611/{primo-all,primo-care,z3,yices}/shard-[0-9].csv with the recorded selection predicate",
+        "build": "cmake -S . -B build-gprof-current -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-pg; cmake --build build-gprof-current -j2",
+        "profile": "build-gprof-current/primo --quiet --stats --model-equality-mutation-scope={all,care} TARGET; gprof -b -p build-gprof-current/primo gmon.out; gprof -b build-gprof-current/primo gmon.out",
+        "targets": "cpachecker-bmc.parport_false-unreach-call.i.cil.c.smt2 under all and care; cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--media--dvb--frontends--tda18271c2dd.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2 under all; cpachecker-induction.m0_false-unreach-call_sound-oss-opl3-ko--111_1a--42f9f8d-1.c.smt2 under all"
+      },
+      "results": {
+        "default_scope_candidates": "22 solved SAT rows met the joint-reference threshold: 21 CPAchecker induction and one CPAchecker BMC. Care was faster on 21 and slower on one.",
+        "best_profile_candidates": "Four rows still met the threshold after taking the faster Primo scope per row: tda18271c2dd 9.069368 care versus Z3 2.139755 and Yices 1.955185; m0 opl3 9.568418 all versus 2.292364 and 0.255088; mt20xx 19.104990 care versus 5.499450 and 2.730922; mem2mem_testdev 15.650901 care versus 5.726376 and 0.202270.",
+        "timeouts": "No Primo timeout was solved by both Z3 and Yices. The four Yices-only solves against Primo all were also Z3 timeouts.",
+        "profiles": "gprof attributed 70.3 percent of sampled cumulative time on parport all, 71.3 percent on tda18271c2dd all, and 78.3 percent on m0 opl3 all to LraTableau::diversify_shared_model below lra_model_equal_partition. Leading flat work was SOI breakpoint introsort plus hash-set insertion/rehash in model-value grouping, with about 16.7M, 63.4M, and 27.7M introsort calls.",
+        "scope_effect": "Care reduced parport from 5.735583 to 1.429197 seconds and tda18271c2dd from 20.298982 to 9.069368 in the SLURM artifacts. On m0 opl3 it regressed 9.568418 to 14.548173 seconds while SAT solve calls rose 6 to 13 and compatibility-projection terms rose 3182207 to 8398453."
+      },
+      "artifacts": "local-only:/tmp/primo-qfuflra-120s-9061611 solver shard CSV copies and /tmp/primo-profile-{parport-all,parport-care,tda-all,m0-all}/gmon.out",
+      "evidence_status": "local-profile-current-over-slurm-current",
+      "outcome": "Prioritize adaptive mixed-coordinator model-mutation scheduling over a blanket care-default promotion. The profiles identify the coordinator's repeated full/shared mutation work as the dominant cost without requiring an LRA implementation change."
     }
   ]
 }

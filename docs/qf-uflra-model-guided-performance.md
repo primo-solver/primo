@@ -233,6 +233,35 @@ had zero wrong answers, errors, unsupported results, or pairwise decisive-answer
 disagreements. The exact commands, job IDs, family counts, PAR2 values, and
 artifacts are recorded in `docs/run-log.json`.
 
+**Joint Z3/Yices gap triage, 2026-08-12.** The 120-second shard artifacts were
+also ranked by requiring both Z3 and Yices to solve a row. No Primo timeout met
+that condition: Z3 also timed out on all four rows solved only by Yices. Under
+the default `all` scope, 22 solved rows took at least two seconds and at least
+twice as long as each reference; 21 were CPAchecker induction rows, one was a
+CPAchecker BMC row, and every one was SAT. Taking the faster of `all` and `care`
+per row leaves four robust gaps:
+
+| row (CPAchecker induction) | best Primo | Z3 | Yices |
+| --- | ---: | ---: | ---: |
+| `...tda18271c2dd.ko...` | 9.07 (`care`) | 2.14 | 1.96 |
+| `m0_false...opl3...` | 9.57 (`all`) | 2.29 | 0.26 |
+| `...mt20xx.ko...` | 19.10 (`care`) | 5.50 | 2.73 |
+| `...mem2mem_testdev.ko...` | 15.65 (`care`) | 5.73 | 0.20 |
+
+Fresh `gprof` runs at commit `0b40649` covered the smaller `parport` row and
+the `tda18271c2dd` and `m0...opl3` rows. In those runs,
+`lra_model_equal_partition()` accounted for about 70--80 percent of sampled
+cumulative time, almost entirely below `LraTableau::diversify_shared_model()`.
+The leading flat-profile work was model-value grouping through repeated SOI
+breakpoint sorting and hash-set insertion. The all-scope runs made about 16.7
+million, 63.4 million, and 27.7 million such sorting calls respectively. This
+does not justify modifying the LRA implementation: the mixed coordinator chooses
+the mutation scope and invocation schedule. Care reduced runtime on 21 of the
+22 default-scope gaps, but regressed `m0...opl3` by increasing solve calls from
+6 to 13 and compatibility-projection visits from 3.18 million to 8.40 million.
+The next experiment therefore needs an adaptive coordinator policy, not a
+blanket switch of the default scope.
+
 **Shared-model reconciliation result, 2026-08-09.** The repaired opt-in
 `--qf-uflra-model-reconciliation` profile passed 3,000 generated mixed cases,
 1,000 finite-domain cases, all 11 tracked-seed preflights, and a YinYang
