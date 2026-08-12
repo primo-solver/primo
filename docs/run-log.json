@@ -26497,6 +26497,45 @@
       "artifacts": "remote:<prepared-workspace>/slurm-results/care-scope-fcbea41/seed-gate/, generated/, and mutation/",
       "evidence_status": "slurm-complete-current",
       "outcome": "The exact care-scoped prototype passed the merge-grade correctness gate. Performance evaluation may proceed, but the option remains non-default."
+    },
+    {
+      "id": "2026-08-12-care-scoped-mutation-benchmark-30d9a26",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Same-commit sample, five-second full-corpus, and 30-second full-corpus A/B of all-shared versus EUF-care-scoped model mutation",
+      "commit": "30d9a26",
+      "implementation_commit": "fcbea41",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 30d9a26, CaDiCaL 3.0.0; source is identical to fcbea41 except for documentation and run-log additions",
+        "corpus": "tmp/QF_UFLRA; 1284 files; historical C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "reference_reuse": "Unchanged identical-corpus Z3 5.0.0 and Yices 2.7.0 results were not rerun. Yices previously solved 1275 at five seconds and 1276 at 30 seconds with zero wrong answers.",
+        "scheduler": "Sample job 125144 completed both tasks in 3-4 seconds. Five-second jobs 125146/125147 and 30-second jobs 125162/125163 completed all eight shards per profile with exit status zero."
+      },
+      "commands": {
+        "sample": "scripts/slurm_qf_uflra_sample_compare.sbatch --array=0-1 over benchmarks/qf_uflra-preprocessing-opportunity-sample.txt, timeout 30, profiles default all and --model-equality-mutation-scope=care",
+        "five_seconds": "Two scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 runs, eight shards, timeout 5, profiles default all and care",
+        "thirty_seconds": "Two scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 runs, eight shards, timeout 30, profiles default all and care",
+        "summary": "scripts/summarize_benchmark_shards.py at each timeout plus selected-counter aggregation from durable shard CSVs"
+      },
+      "results": {
+        "sample": "Both profiles solved 45/45 with zero wrong/error/unsupported rows. Care reduced scoped visits 4472 to 1850, decisions 16822 to 16367, propagations 136517 to 126995, solve calls 58 to 54, and aggregate wall time 1.861670 to 1.776263 seconds.",
+        "five_second_all": "1242 solved (735 sat, 507 unsat), 42 timeout, 0 error/unsupported/wrong, PAR2 592.164651.",
+        "five_second_care": "1247 solved (740 sat, 507 unsat), 37 timeout, 0 error/unsupported/wrong, PAR2 539.428890; six recoveries, one loss, and zero decisive-answer disagreements.",
+        "five_second_families": "All/care solved FFT 10/10 and MathSAT 900/900. CPAchecker BMC improved 6/15 to 7/15; CPAchecker induction improved 326/359 to 330/359. Family PAR2 changed respectively: FFT 0.281811 to 0.281743, BMC 91.028576 to 82.286272, induction 429.938384 to 380.484551, and MathSAT 70.915880 to 76.376324.",
+        "five_second_common": "Across 1241 common solves, time fell from 170.608342 to 153.315494 seconds.",
+        "thirty_second_all": "1267 solved (756 sat, 511 unsat), 17 timeout, 0 error/unsupported/wrong, PAR2 1593.277162.",
+        "thirty_second_care": "1267 solved (756 sat, 511 unsat), 17 timeout, 0 error/unsupported/wrong, PAR2 1502.067240; two recoveries, two losses, and zero decisive-answer disagreements.",
+        "thirty_second_families": "Both scopes solved FFT 10/10, CPAchecker BMC 7/15, CPAchecker induction 350/359, and MathSAT 900/900. Family PAR2 all/care was FFT 0.085760/0.085424, BMC 486.760281/482.171362, induction 1035.527703/951.748497, and MathSAT 70.903418/68.061957.",
+        "thirty_second_common": "Across 1265 common solves, time fell from 564.657864 to 451.026811 seconds.",
+        "mechanism": "At 30 seconds, care reduced scoped mutation visits from 524902 to 182213, attempted updates from 44624 to 19482, and internal total time from 543495069 to 453352406 microseconds. The global pair guard rejected two attempted mutations.",
+        "search_tradeoff": "Care increased decisions from 8377635 to 8928243, propagations from 68585054 to 70284462, solve calls from 3350 to 3365, and compatibility projection terms from 71369784 to 87447114."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/care-scope-30d9a26/sample/, full-all/, full-care/, full30-all/, and full30-care/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Retain --model-equality-mutation-scope=care as a validated opt-in performance mode. It reduces mutation cost and improves aggregate time, but the cutoff-dependent solved-set exchanges and increased SAT work do not justify changing the default from all."
     }
   ]
 }

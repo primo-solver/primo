@@ -197,6 +197,33 @@ within the reconciliation and branching profiles, with
 not promote either profile; the later retained-epoch evidence promotes convex
 reconciliation while model-equality branching remains opt-in.
 
+**Care-scoped mutation result, 2026-08-12.** The default scratch sweep still
+receives every mapped shared Real variable. The opt-in
+`--model-equality-mutation-scope=care` specialization instead passes only
+current EUF care-pair endpoints to the unchanged LRA mutator. The coordinator
+then reconstructs the complete shared-value partition from the returned full
+assignment. It rejects an attempted mutation if that partition contains more
+candidate pairs than the original model, so the restricted sweep cannot trade
+a local care improvement for additional global candidate equalities.
+
+The exact implementation passed 3,000 generated mixed cases, 500 finite QF_UF
+cases, 500 finite QF_UFLRA cases, all 11 deterministic seeds, and 100 YinYang
+mutations per seed with no bug trigger or reference disagreement. At five
+seconds on all 1,284 QF_UFLRA files, care solved 1,247 versus 1,242 for the
+same-commit `all` scope, with six recoveries, one loss, no answer disagreement,
+and PAR2 539.428890 versus 592.164651. At 30 seconds both solved 1,267, with two
+recoveries and two losses; care reduced common-solved time from 564.657864 to
+451.026811 seconds and PAR2 from 1,593.277162 to 1,502.067240.
+
+The mechanism is not an unqualified search win. In the 30-second run, scoped
+mutation visits fell from 524,902 to 182,213 and attempted updates from 44,624
+to 19,482, but SAT decisions rose from 8,377,635 to 8,928,243 and compatibility
+projection terms from 71,369,784 to 87,447,114 because the model choices changed
+the subsequent search. Two attempted care mutations were rejected by the
+global pair guard. The option is retained as a validated performance mode; the
+default remains `all` because the solved-set exchanges and increased SAT work
+need broader policy evidence before promotion.
+
 **Shared-model reconciliation result, 2026-08-09.** The repaired opt-in
 `--qf-uflra-model-reconciliation` profile passed 3,000 generated mixed cases,
 1,000 finite-domain cases, all 11 tracked-seed preflights, and a YinYang

@@ -976,13 +976,16 @@ an empty care set, unchanged pure QF_UF/QF_LRA routing, full-partition use after
 care mutation, and the global candidate-pair non-regression guard. Statistics
 must prove that fewer variables reached the mutator on the strict-subset case.
 
-**Correctness-gate status.** Commit `fcbea41` passed all 11 deterministic mixed
+**Evaluation status.** Commit `fcbea41` passed all 11 deterministic mixed
 seeds, 3,000 generated mixed cases, 500 finite QF_UF cases, 500 finite QF_UFLRA
 cases, and a 100-mutation-per-seed YinYang campaign against the configured
 references. There were no wrong answers, crashes, parser/type errors,
-unsupported results, or reference disagreements. This validates the opt-in
-prototype's tested boundary; performance evaluation remains separate and the
-default scope remains `all`.
+unsupported results, or reference disagreements. A same-source full-corpus A/B
+at commit `30d9a26` gained five net solves at five seconds. At 30 seconds both
+scopes solved 1,267 files; care reduced common-solved time by about 20 percent
+but exchanged two solves for two losses and increased SAT decisions. This
+validates the opt-in prototype's tested boundary and intended reduction in
+mutation visits. The default remains `all` because the search effects are mixed.
 
 Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or
