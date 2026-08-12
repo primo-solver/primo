@@ -918,6 +918,57 @@ care-ranked selection, ranked fallback, and adaptive backoff. The tests assert
 that mutation filtering occurs before care-queue construction and equality-atom
 creation.
 
+### 2026-08-12 Care-Scoped Mutation Prototype Checklist
+
+**Bibliographic basis.** The scope experiment combines de Moura and Bjorner,
+"Model-based Theory Combination," Section 4's care-pair restriction with
+Section 5.2's freedom-interval model mutation. It is an empirical specialization
+of the existing Section 5.2 implementation, not a claim that the paper mandates
+this exact scheduling policy.
+
+**Implemented subset.** The default `all` scope remains unchanged. The opt-in
+`care` scope obtains current EUF care pairs after the EUF model check and passes
+only their shared Real endpoints to the existing scratch LRA mutator. The
+mutator still returns values for every tableau variable. The mixed coordinator,
+not the LRA tableau, reconstructs the complete shared-value partition from
+those values before reconciliation, candidate filtering, or model printing.
+
+**Owners and data structures.** `CheckSatOptions` owns the scope enum.
+`EufCarePairDiagnostics` owns the solve-round care pairs. The mixed coordinator
+maps their endpoints through `PreparedLraTheory::variables_by_term`, invokes
+`LraTableau::diversify_shared_model` with the resulting subset, and builds the
+full partition in `LraModelEqualPartition`. No LRA data structure, tableau
+state, or pure QF_LRA control flow changes.
+
+**Invariants and proof obligations.** Every returned assignment remains an LRA
+model because the existing freedom-interval mutator is unchanged. False
+interface equalities remain global forbidden pairs, including pairs outside
+the care subset. A care-scoped result is accepted only if its complete shared
+partition has no more candidate pairs than the original complete partition;
+otherwise the coordinator restores the original tableau assignment. Empty care
+sets skip the mutation sweep. Model equality remains a filter or SAT assumption,
+never an entailed propagation.
+
+**Complexity expectation.** For `S` shared variables and `C <= S` care-endpoint
+variables, trial grouping falls from `O(tries * S)` to `O(tries * C)`. The
+coordinator pays one `O(S log S)` full-partition reconstruction per mutation
+call. EUF care discovery retains its existing definition-pair cost and is paid
+in this mode even when model-equality branching is disabled. Counters must
+therefore report full and scoped term counts, empty scopes, accepted updates,
+and rejected global regressions.
+
+**Deviations and limitations.** This is still the QF_UFLRA-specific final-check
+scaffold, not generic `DPLL(T^M)`. Care pairs are recomputed from the checked EUF
+model rather than maintained incrementally. The mode stays opt-in until
+profiling shows that reduced mutation work exceeds care-discovery and full
+partition-reconstruction cost, and merge fuzzing plus a QF_UFLRA A/B show no
+correctness or performance regression.
+
+**Tests derived from the algorithm.** Unit tests must cover a strict care subset,
+an empty care set, unchanged pure QF_UF/QF_LRA routing, full-partition use after
+care mutation, and the global candidate-pair non-regression guard. Statistics
+must prove that fewer variables reached the mutator on the strict-subset case.
+
 Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or
 advertise model-equality generation until Track A has produced a theory-facing
