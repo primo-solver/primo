@@ -51,6 +51,15 @@ and `scripts/slurm_qf_uflra_model_validation.sbatch` supplies separate
 real-corpus coverage. A later run-log entry must record the exact-commit result
 before this branch is merge-ready for model correctness.
 
+The first exact direct-Dolmen cluster run of that permanent gate exposed a
+missing concrete-model invariant rather than a theory-answer disagreement.
+Three generated SAT witnesses had shared Real arguments that were distinct as
+symbolic `DeltaRational` values but equal again after model printing chose
+`delta = 1`. The accepted repair applies the Section 3.3 crossing bounds to
+adjacent sorted shared values in the mixed coordinator, without changing LRA
+solving. The gate must be rerun on the repaired exact commit before replacing
+the preliminary result with merge evidence.
+
 On the full 1,284-file QF_UFLRA corpus at 30 seconds per file, the new profile
 solved 1,257 files with 27 timeouts, zero errors, unsupported rows, or wrong
 answers, and PAR2 2,092.497309. The `1f3d81c` baseline solved 1,238 with 46

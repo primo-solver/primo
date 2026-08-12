@@ -665,6 +665,9 @@ coordinator publishes:
 - `:no.shared-model.converged-rounds`
 - `:no.shared-model.exact-fallbacks`
 - `:no.shared-model.validation-failures`
+- `:no.shared-model.concrete-delta-order-pairs`
+- `:no.shared-model.concrete-delta-order-bounds`
+- `:no.shared-model.concrete-delta-order-tightenings`
 - `:no.shared-model.sat-materializations-avoided`
 - `:no.shared-model.congruence-fallbacks`
 - `:no.shared-model.congruence-summary-checks`
@@ -719,6 +722,20 @@ coordinator publishes:
 - `:no.online.final-lra-equality-scan-fallbacks`
 
 ### Shared-model validation result
+
+Concrete model production has one additional obligation beyond accepting the
+symbolic component models. Following Dutertre and de Moura, "A Fast
+Linear-Arithmetic Solver for DPLL(T)", Section 3.3, the symbolic infinitesimal
+must be instantiated below every crossing point whose order matters. Primo
+sorts the distinct shared `DeltaRational` values and checks only adjacent
+values; preserving those adjacent orders preserves the complete shared
+partition. The resulting `O(S log S)` coordinator step does not mutate the LRA
+tableau. The three `concrete-delta-order-*` counters distinguish adjacent pairs,
+actual positive crossing bounds, and bounds that tightened the chosen delta.
+The model regressions include `p(0) && !p(2*x)`, the affine
+`p(2*x) && p(0) && !p(x+1)` shape, and two arithmetic arguments connected by
+transitive bounds. Each used to be separated over symbolic delta-rationals and
+then collapse again when model printing chose `delta = 1`.
 
 The then-opt-in reconciliation profile was validated on SLURM after a tracked-seed
 preflight exposed an unsound first version. The failing shape was an internally

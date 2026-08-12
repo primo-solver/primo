@@ -2259,6 +2259,76 @@ void qf_uf_lra_shared_model_reconstructs_after_scratch_mutation() {
   assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
 }
 
+// Dutertre-de Moura Section 3.3 requires a concrete delta small enough to
+// preserve the symbolic model's ordering. These three fuzz witnesses used to
+// choose delta=1 and collapse EUF-distinct arithmetic arguments again while
+// printing the model.
+void qf_uf_lra_model_concretization_preserves_shared_delta_order() {
+  const auto doubled = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real Real) Bool)
+    (assert (p 0))
+    (assert (not (p (* 2 x))))
+    (assert (not (<= (+ x 1) y)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(doubled.result == CheckSatResult::Sat);
+  assert(doubled.model.find("(define-fun x () Real (- (/ 1 2)))") != std::string::npos);
+  assert(doubled.statistics.get(":no.shared-model.concrete-delta-order-bounds") >= 1);
+  assert(doubled.statistics.get(":no.shared-model.concrete-delta-order-tightenings") >= 1);
+
+  const auto affine = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real Real) Bool)
+    (assert (not (q (+ x 1) y)))
+    (assert (p (* 2 x)))
+    (assert (p 0))
+    (assert (not (p (+ x 1))))
+    (assert (not (<= (+ x 1) y)))
+    (assert (not (< 0 x)))
+    (assert (not (< z 3)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(affine.result == CheckSatResult::Sat);
+  assert(affine.model.find("(define-fun x () Real (- (/ 3 2)))") != std::string::npos);
+  assert(affine.statistics.get(":no.shared-model.concrete-delta-order-bounds") >= 1);
+
+  const auto transitive = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real Real) Bool)
+    (assert (p (+ x 1)))
+    (assert (not (p (+ y 1))))
+    (assert (q (+ x 1) y))
+    (assert (< y 4))
+    (assert (not (<= (+ x 1) y)))
+    (assert (not (< (+ x y) 5)))
+    (assert (<= y (+ x 1)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(transitive.result == CheckSatResult::Sat);
+  assert(transitive.model.find("(define-fun x () Real (/ 9 4))") != std::string::npos);
+  assert(transitive.model.find("(define-fun y () Real (/ 11 4))") != std::string::npos);
+  assert(transitive.statistics.get(":no.shared-model.concrete-delta-order-bounds") >= 1);
+}
+
 void qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.qf_uflra_model_reconciliation = true;
@@ -4405,6 +4475,7 @@ int main() {
   qf_uf_lra_shared_model_reconciliation_can_be_disabled();
   qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence();
   qf_uf_lra_shared_model_reconstructs_after_scratch_mutation();
+  qf_uf_lra_model_concretization_preserves_shared_delta_order();
   qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible();
   qf_uf_lra_shared_model_builds_model_from_internal_equality();
   qf_uf_lra_shared_model_retains_transitive_merges_before_conflict();

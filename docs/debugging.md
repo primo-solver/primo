@@ -935,6 +935,14 @@ strict separations are chosen by bounded backtracking over candidate orientation
 and fall back to the former greedy order when the candidate set is too large for
 the reconstruction cap, currently 18 candidate pairs.
 
+The accepted symbolic shared model is not printed with an arbitrary concrete
+infinitesimal. The coordinator sorts distinct shared `DeltaRational` values and
+chooses delta below every adjacent crossing bound, following Dutertre and de
+Moura Section 3.3. Inspect `:no.shared-model.concrete-delta-order-pairs`,
+`:no.shared-model.concrete-delta-order-bounds`, and
+`:no.shared-model.concrete-delta-order-tightenings` when Dolmen reports that two
+Real UF arguments collapsed in the printed model.
+
 Use [Dolmen](https://ceur-ws.org/Vol-3429/short9.pdf) as the independent
 model-format and assertion validator. Dolmen's model-validation interface uses a
 solver response file, conventionally with an `.rsmt2` extension:

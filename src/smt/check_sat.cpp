@@ -5382,14 +5382,16 @@ std::optional<util::Rational> positive_delta_upper_bound(theory::arithmetic::Del
   return std::nullopt;
 }
 
-void tighten_delta_upper_bound(std::optional<util::Rational>& upper,
+bool tighten_delta_upper_bound(std::optional<util::Rational>& upper,
                                const std::optional<util::Rational>& candidate) {
   if (!candidate.has_value() || candidate->sign() <= 0) {
-    return;
+    return false;
   }
   if (!upper.has_value() || candidate.value() < upper.value()) {
     upper = candidate;
+    return true;
   }
+  return false;
 }
 
 util::Rational choose_concrete_delta(const PreparedLraTheory& prepared,
@@ -5420,7 +5422,9 @@ util::Rational choose_concrete_delta(const PreparedLraTheory& prepared,
 util::Rational choose_concrete_delta(
     const PreparedLraTheory& prepared,
     const std::vector<theory::arithmetic::DeltaRational>& candidate_values,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms) {
+    const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    const std::vector<theory::arithmetic::LraVarId>& order_variables,
+    util::Statistics& statistics) {
   std::optional<util::Rational> upper;
   for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
     const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms.at(i);
@@ -5438,6 +5442,30 @@ util::Rational choose_concrete_delta(
       tighten_delta_upper_bound(upper, positive_delta_upper_bound(value, assertion.value));
     } else {
       tighten_delta_upper_bound(upper, positive_delta_upper_bound(assertion.value, value));
+    }
+  }
+
+  // Dutertre-de Moura, "A Fast Linear-Arithmetic Solver for DPLL(T)",
+  // Section 3.3: instantiate the symbolic infinitesimal below every crossing
+  // point whose order must survive in the concrete model. Adjacent distinct
+  // shared values suffice after sorting, avoiding a quadratic pair scan.
+  std::vector<theory::arithmetic::DeltaRational> ordered_values;
+  ordered_values.reserve(order_variables.size());
+  for (const theory::arithmetic::LraVarId variable : order_variables) {
+    ordered_values.push_back(candidate_values.at(variable));
+  }
+  std::sort(ordered_values.begin(), ordered_values.end());
+  ordered_values.erase(std::unique(ordered_values.begin(), ordered_values.end()),
+                       ordered_values.end());
+  for (std::size_t index = 1; index < ordered_values.size(); ++index) {
+    statistics.increment(":no.shared-model.concrete-delta-order-pairs");
+    const std::optional<util::Rational> candidate =
+        positive_delta_upper_bound(ordered_values[index - 1], ordered_values[index]);
+    if (candidate.has_value()) {
+      statistics.increment(":no.shared-model.concrete-delta-order-bounds");
+    }
+    if (tighten_delta_upper_bound(upper, candidate)) {
+      statistics.increment(":no.shared-model.concrete-delta-order-tightenings");
     }
   }
   return upper.has_value() ? upper.value() / util::Rational(2) : util::Rational(1);
@@ -6386,8 +6414,8 @@ LraModelEqualPartition lra_model_equal_partition(
   }
   if (build_concrete_values) {
     partition.concrete_values.reserve(prepared.variables_by_term.size());
-    const util::Rational concrete_delta =
-        choose_concrete_delta(prepared, candidate_values, assignments);
+    const util::Rational concrete_delta = choose_concrete_delta(
+        prepared, candidate_values, assignments, shared_variables, statistics);
     for (const auto& [term, variable] : prepared.variables_by_term) {
       partition.concrete_values.emplace(
           term, concretize_delta_rational(candidate_values.at(variable), concrete_delta));
@@ -10559,6 +10587,9 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.shared-model.converged-rounds", 0);
   statistics.set(":no.shared-model.exact-fallbacks", 0);
   statistics.set(":no.shared-model.validation-failures", 0);
+  statistics.set(":no.shared-model.concrete-delta-order-pairs", 0);
+  statistics.set(":no.shared-model.concrete-delta-order-bounds", 0);
+  statistics.set(":no.shared-model.concrete-delta-order-tightenings", 0);
   statistics.set(":no.shared-model.sat-materializations-avoided", 0);
   statistics.set(":no.shared-model.congruence-fallbacks", 0);
   statistics.set(":no.shared-model.congruence-summary-checks", 0);

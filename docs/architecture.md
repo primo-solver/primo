@@ -392,7 +392,13 @@ Implemented now:
   are model choices, not entailed theory lemmas. If all edges are absorbed, the
   no-model path returns SAT without the broad exact scan, and model production
   concretizes the same scratch LRA assignment and supplies the internal
-  spanning equalities to EUF. Shared-interface discovery uses the variables of
+  spanning equalities to EUF. Concretization preserves the ordering of the
+  distinct shared `DeltaRational` values: the coordinator sorts them, derives
+  the Dutertre-de Moura Section 3.3 crossing bound for each adjacent pair, and
+  chooses a smaller positive delta. This costs `O(S log S)` for `S` shared
+  variables and prevents model printing from collapsing EUF-distinct Real
+  arguments after reconciliation. It is mixed-coordinator postprocessing; the
+  LRA tableau and pure QF_LRA path are unchanged. Shared-interface discovery uses the variables of
   each normalized LRA polynomial, not every syntactic Real constant in an
   arithmetic atom. A constant cancelled by normalization is therefore EUF-only
   and uses model completion rather than becoming an unmapped interface term.
