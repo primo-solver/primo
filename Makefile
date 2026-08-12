@@ -1,4 +1,4 @@
-.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt bench bench-interesting-qf-uf docs docs-venv docs-serve lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -161,6 +161,12 @@ contrib-opensmt:
 # contrib/local, and the fuzz targets skip cleanly when typefuzz is absent.
 contrib-yinyang:
 	$(PYTHON) contrib/install_yinyang.py
+
+# Model validator only. The installer uses a repository-local opam root and
+# switch because the official Dolmen 0.10 Linux binary requires newer glibc
+# than the SLURM environment.
+contrib-dolmen:
+	$(PYTHON) contrib/install_dolmen.py --prefix $(CONTRIB_PREFIX)
 
 contrib-cadical: $(CADICAL_STAMP)
 

@@ -953,7 +953,10 @@ default. Pass `--check-model-mode=full` or `--check-model-mode=interleave` only
 when the installed Dolmen binary supports that option; Dolmen's interleave mode
 imposes additional ordering constraints between input declarations and model
 definitions. Dolmen is an external dependency and is not vendored in this
-repository.
+repository. `make contrib-dolmen` builds pinned Dolmen 0.10 through a
+repository-local opam switch. Building from source is intentional: the official
+0.10 Linux executable requires glibc 2.35, while the SLURM environment provides
+2.34.
 
 Each completed validation row is appended, flushed, and synced immediately.
 `metadata.json` starts with `status: running` and changes to `complete` only
