@@ -26708,6 +26708,65 @@
       "artifacts": "local-only:/tmp/primo-qfuflra-120s-9061611 solver shard CSV copies and /tmp/primo-profile-{parport-all,parport-care,tda-all,m0-all}/gmon.out",
       "evidence_status": "local-profile-current-over-slurm-current",
       "outcome": "Prioritize adaptive mixed-coordinator model-mutation scheduling over a blanket care-default promotion. The profiles identify the coordinator's repeated full/shared mutation work as the dominant cost without requiring an LRA implementation change."
+    },
+    {
+      "id": "2026-08-11-qf-lra-full-division-after-flattening-repair",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "benchmark",
+      "scope": "Full SMT-LIB QF_LRA division after the Boolean-flattening repair, against the commit predating the whole Boolean DAG episode. Answers the question the repair was supposed to settle: are we back to the old behaviour on our LRA problems?",
+      "commit": "ac07b56 (new) vs 0d73973 (pre)",
+      "branch": "main",
+      "evidence_status": "current",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm (direct, no ProxyJump needed)",
+        "remote_dir": "/home/janotmik/primo-flatten-ac07b56",
+        "notes": "Job 123932, array 0-79 = 2 arms x 40 shards, --cpus-per-task=3 --mem=12G, TIMEOUT=300. Both arms in one job on the same nodes, which is what makes the comparison free of cross-job contention. 160/160 tasks COMPLETED, 40/40 shard CSVs per arm verified (a shard killed by the wall clock vanishes silently). Corpus hard-linked from primo-eval-23bd391; an earlier submission (123852) failed every task because a SYMLINKED corpus resolves outside the repo and bench_qf_uf_full.py calls path.relative_to(repo)."
+      },
+      "command": {
+        "job": "123932",
+        "manifest": "benchmarks/qf-lra-full-division.txt (1753 files, carries :status)",
+        "references": "NOT re-run -- unchanged since job 120784"
+      },
+      "result": {
+        "pre_0d73973": {
+          "solved": 1657,
+          "wrong": 0,
+          "par2": 79375
+        },
+        "new_ac07b56": {
+          "solved": 1657,
+          "wrong": 0,
+          "par2": 79215
+        },
+        "net": "+0 (gained 2, lost 2)",
+        "answer_disagreements": 0,
+        "gained": [
+          "disj_nightmare.t2.c_Iteration2_Loop_4-pieceTemplate (250.0s)",
+          "constraint-330061 (211.0s)"
+        ],
+        "lost": [
+          "fun4.t2.c_Iteration1_Lasso_4-pieceTemplate (pre 244.1s, at the 300s wall -- churn)",
+          "eric.t2.c_Iteration1_Lasso_4-pieceTemplate (pre 112.9s -- NOT churn, see below)"
+        ],
+        "paired_timing": {
+          "instances": 587,
+          "criterion": "both solve, pre > 1s",
+          "median_new_over_pre": 1.002,
+          "faster_gt_30pct": 4,
+          "slower_gt_30pct": 1,
+          "total_seconds": "21,315 -> 21,035 (-1.3%)"
+        },
+        "conclusion": "Parity restored at division scale: identical solved count (1657), zero wrong answers, PAR2 marginally better (79,375 -> 79,215), paired median 1.002. Three of the four churn instances sit at the 300s wall. The fourth, eric.t2.c, does not and is a genuine unexplained loss unrelated to flattening -- calling it churn would have been wrong.",
+        "eric_t2c_followup": {
+          "bisect": "Bisected on the cluster to the same pair as the flattening regression: 0856d8f (skipped, does not build) / ba3aecc, with parent c1a8288 good at 96s. Predicate: sat within 240s.",
+          "mechanism_is_not_flattening": "The formula is IDENTICAL across the commit -- 42,784 terms and 24,505 SAT variables on both sides -- differing only by 96 removed clauses (0.3%), which are duplicates eliminated by the per-assertion visited set added to assert_positive. The post-flattening pass fires normally (11,316 accepted, 0 threshold stops) and changing its threshold (0 / 2048 / 16384) makes no difference.",
+          "knife_edge": "pre solves it ONLY in its default configuration (102s). Under --lra-pivoting-rule dantzig, --lra-pivoting-rule bland and --lra-least-violated-leaving it also fails at 200s, exactly as the new binary does under all four. So the old binary's success is not robust: three unrelated perturbations lose the instance too. A 0.3% clause change is simply another perturbation landing on the wrong side.",
+          "conclusion": "Not a capability regression and not worth acting on. Re-adding duplicate clauses to recover one knife-edge file would trade a correct clausification improvement for noise, and the division is already neutral-to-positive (1657 = 1657, PAR2 79,215 < 79,375).",
+          "false_start": "A first perturbation attempt used --cadical-option seed/restartint and looked like strong evidence of a systematic loss. It was invalid: --cadical-option seed is INERT under the external propagator (seeds 1/7/99 give identical decisions 8420 and conflicts 726), so three of five 'perturbations' perturbed nothing."
+        }
+      }
     }
   ]
 }
