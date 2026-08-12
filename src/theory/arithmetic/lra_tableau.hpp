@@ -82,6 +82,15 @@ struct DeltaRational {
 //     non-basic variable sits within its bounds (report equation 3.2)
 //     survives untouched.
 //
+// **(3.2) says *within*, not *at*.** Textbook bounded-variable Simplex pins
+// every non-basic variable *to* one of its bounds, so that a basis names a
+// vertex; the paper's algorithm only requires l_j <= beta(x_j) <= u_j, and
+// non-basic variables here routinely sit strictly inside. The initial state
+// is the plainest case: every variable is 0 and unbounded. This is a real
+// divergence, not a restatement -- it is what freedom_interval() measures
+// (a pinned non-basic would have none) and hence what makes the Section 5.2
+// model mutation in diversify_shared_model() possible at all.
+//
 // Note the two schemes are each self-consistent and it is *mixing* them
 // that breaks: restoring the assignment but not the basis would leave a
 // variable that was basic at snapshot time -- and so unconstrained by
