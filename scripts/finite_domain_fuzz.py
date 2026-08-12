@@ -38,7 +38,15 @@ STAT_FIELDS = {
     "real_lowered": ":preprocessing.real-equality-lowering.lowered",
     "solver_qf_uf": ":solver.qf-uf",
     "solver_qf_uflra": ":solver.qf-uflra",
+    "structural_selector": ":preprocessing.auto.selector.structural",
+    "structural_domains": ":preprocessing.auto.analysis.finite-domain-domains",
+    "profile_large_skip": ":preprocessing.auto.profile.large-skip",
+    "profile_finite_domain_basic": ":preprocessing.auto.profile.finite-domain-basic",
+    "profile_compact_clause_basic": ":preprocessing.auto.profile.compact-clause-basic",
+    "profile_strong": ":preprocessing.auto.profile.strong",
 }
+
+ACTIVATION_PROFILES = ("amo", "structural")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -211,18 +219,41 @@ def run_solver(command: list[str], timeout: float, collect_stats: bool) -> Solve
     )
 
 
-def activation_failure(case: GeneratedCase, stats: dict[str, int]) -> str | None:
-    required = [STAT_FIELDS["raw_amo"], STAT_FIELDS["amo"]]
+def activation_failure(
+    case: GeneratedCase, stats: dict[str, int], activation_profile: str = "amo"
+) -> str | None:
+    required: list[str] = []
+    if activation_profile == "amo":
+        required.extend([STAT_FIELDS["raw_amo"], STAT_FIELDS["amo"]])
+    elif activation_profile == "structural":
+        required.extend(
+            [STAT_FIELDS["structural_selector"], STAT_FIELDS["structural_domains"]]
+        )
+    else:
+        raise ValueError(f"unknown activation profile: {activation_profile}")
     if case.logic == "QF_UFLRA":
         required.extend([STAT_FIELDS["real_lowered"], STAT_FIELDS["solver_qf_uflra"]])
     else:
         required.append(STAT_FIELDS["solver_qf_uf"])
     missing = [name for name in required if stats.get(name, 0) <= 0]
+    if activation_profile == "structural" and not any(
+        stats.get(STAT_FIELDS[field], 0) > 0
+        for field in (
+            "profile_large_skip",
+            "profile_finite_domain_basic",
+            "profile_compact_clause_basic",
+            "profile_strong",
+        )
+    ):
+        missing.append(":preprocessing.auto.profile.<selected>")
     return ",".join(missing) if missing else None
 
 
 def classify(
-    case: GeneratedCase, ours: SolverRun, references: dict[str, SolverRun]
+    case: GeneratedCase,
+    ours: SolverRun,
+    references: dict[str, SolverRun],
+    activation_profile: str = "amo",
 ) -> str:
     if ours.answer in {"UNSUPPORTED_INPUT", "CRASH", "UNKNOWN_OUTPUT", "MISSING"}:
         return ours.answer
@@ -235,7 +266,7 @@ def classify(
             return "REFERENCE_UNUSABLE"
         if reference.answer != case.expected:
             return "REFERENCE_DISAGREEMENT"
-    if activation_failure(case, ours.stats):
+    if activation_failure(case, ours.stats, activation_profile):
         return "ACTIVATION_MISSING"
     return "PASS"
 
@@ -267,6 +298,9 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=2026080801)
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--require-post-amo", action="store_true")
+    parser.add_argument(
+        "--activation-profile", choices=ACTIVATION_PROFILES, default="amo"
+    )
     parser.add_argument("--out", type=Path, default=Path("fuzz-results/finite-domain"))
     args = parser.parse_args()
 
@@ -296,6 +330,7 @@ def main() -> int:
         "references": references,
         "timeout_seconds": args.timeout,
         "require_post_amo": args.require_post_amo,
+        "activation_profile": args.activation_profile,
     }
     metadata_path = args.out / "metadata.json"
     write_metadata(metadata_path, metadata)
@@ -336,10 +371,10 @@ def main() -> int:
                 )
                 for ref in references
             }
-            outcome = classify(case, ours, ref_runs)
+            outcome = classify(case, ours, ref_runs, args.activation_profile)
             counts[outcome] = counts.get(outcome, 0) + 1
             missing = (
-                activation_failure(case, ours.stats)
+                activation_failure(case, ours.stats, args.activation_profile)
                 if ours.answer == case.expected
                 else None
             )

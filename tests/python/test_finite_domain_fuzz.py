@@ -38,6 +38,9 @@ if "--stats" in sys.argv:
     print(f":preprocessing.real-equality-lowering.lowered {6 if is_mixed else 0}")
     print(f":solver.qf-uf {0 if is_mixed else 1}")
     print(f":solver.qf-uflra {1 if is_mixed else 0}")
+    print(":preprocessing.auto.selector.structural 1")
+    print(":preprocessing.auto.analysis.finite-domain-domains 1")
+    print(":preprocessing.auto.profile.compact-clause-basic 1")
 """
             if with_stats
             else ""
@@ -190,6 +193,37 @@ if "--stats" in sys.argv:
                 rows = list(csv.DictReader(handle))
             self.assertEqual({row["outcome"] for row in rows}, {"ACTIVATION_MISSING"})
             self.assertEqual(len(list((out / "failures").glob("*.smt2"))), 14)
+
+    def test_structural_activation_does_not_require_materialized_amo(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            solver = self.make_solver(root)
+            out = root / "out"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--solver",
+                    str(solver),
+                    "--ref",
+                    str(solver),
+                    "--logic",
+                    "QF_UFLRA",
+                    "--count",
+                    "14",
+                    "--activation-profile",
+                    "structural",
+                    "--out",
+                    str(out),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            with (out / "summary.csv").open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+            self.assertEqual({row["outcome"] for row in rows}, {"PASS"})
 
 
 if __name__ == "__main__":

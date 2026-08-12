@@ -996,9 +996,15 @@ cases have construction-known answers, compare with Z3 and cvc5, and fail when
 the expected finite-domain, Real-equality-lowering, or mixed-dispatch counters
 do not fire. Selector experiments that intentionally choose a profile without
 finite-domain AMO clauses must set
-`PRIMO_FINITE_DOMAIN_REQUIRE_POST_AMO=0`; this disables only the AMO-activation
-assertion, not answer comparison or the other required counters. The default is
-`1`. `scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
+`PRIMO_FINITE_DOMAIN_QF_UFLRA_REQUIRE_POST_AMO=0` and
+`PRIMO_FINITE_DOMAIN_QF_UFLRA_ACTIVATION_PROFILE=structural`. The structural activation
+profile requires the structural selector, detected finite-domain structure, a
+selected structural profile, the expected solver route, and Real-equality
+lowering for QF_UFLRA. The default `amo` profile still requires raw and emitted
+AMO clauses, and the QF_UFLRA post-AMO default remains `1`. The QF_UF shard
+continues to require AMO and post-AMO activation. Answer and reference
+comparisons are mandatory in both QF_UFLRA profiles.
+`scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
 default/strong/raw-only profile matrix. See [](finite-domain-fuzzing.md).
 Before mutation, `scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch` runs
 `scripts/check_solver_seed_corpus.py` on every compact QF_UFLRA mutation seed

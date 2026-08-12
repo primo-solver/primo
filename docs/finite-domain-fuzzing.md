@@ -24,11 +24,16 @@ in a generator branch fail before the campaign spends solver work.
 
 Each verdict is known from construction. Primo is checked against that verdict
 and external references. QF_UFLRA cases contain both Real arithmetic and
-uninterpreted applications. The fuzzer runs Primo with `--stats` and requires
-positive finite-domain AMO activation for every solved case. QF_UFLRA cases
-also require Real-equality lowering and mixed-solver dispatch. Strong/default
-profiles may additionally require nonzero aggregate post-AMO activation;
-raw-only profiles intentionally do not.
+uninterpreted applications. The fuzzer runs Primo with `--stats`. Its default
+`--activation-profile=amo` requires positive raw and emitted finite-domain AMO
+activation for every solved case. QF_UFLRA cases also require Real-equality
+lowering and mixed-solver dispatch. Strong/default profiles may additionally
+require nonzero aggregate post-AMO activation; raw-only profiles intentionally
+do not. Opt-in structural-selector campaigns use
+`--activation-profile=structural`: each case must activate the structural
+selector, detect finite-domain structure, and select a structural profile, but
+need not materialize AMO clauses. Solver-route, Real-equality-lowering, answer,
+and reference checks remain unchanged.
 
 The result directory contains generated cases, copied failures, `metadata.json`,
 and `summary.csv`. Metadata is written with status `running` before solver
