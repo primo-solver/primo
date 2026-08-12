@@ -128,6 +128,18 @@ occurs in; `update(xⱼ, v)` for any `v` in that interval preserves feasibility
 without pivoting. The greedy heuristic: pick `v` that **increases** the number
 of equal-value classes, i.e. makes β more diverse.
 
+That a non-basic variable has any freedom to spend is a property of the
+Dutertre–de Moura algorithm specifically, and is worth stating because it is
+easy to assume otherwise. Its invariant (technical report SRI-CSL-06-01,
+equation 3.2) is `lⱼ ≤ β(xⱼ) ≤ uⱼ` — *within* the bounds, not *at* one of
+them, unlike textbook bounded-variable Simplex, where a non-basic variable is
+pinned to a bound and a basis names a vertex. Primo's non-basic variables
+routinely sit strictly inside, starting from the initial assignment where
+every variable is 0 and unbounded. Under the textbook discipline every
+freedom interval would be a point or a one-sided stub and this whole section
+would have nothing to move. See `LraTableau`'s class comment, which carries
+the same note next to the backtracking argument that also rests on (3.2).
+
 ```{note}
 This page previously said mutation *reduces* the class count. That is backwards
 and worth stating plainly, because the sign is the whole algorithm: more
