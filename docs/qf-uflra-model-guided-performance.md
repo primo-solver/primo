@@ -1,8 +1,9 @@
 # QF_UFLRA Model-Guided Performance Plan
 
 Status stamp: 2026-08-12, branch `qf-uf-structural-preprocessing`, after the
-convex model-reconciliation implementation, exact-commit fuzz gate, and full
-120-second SLURM reference comparison.
+convex model-reconciliation implementation, exact-commit fuzz and model gate,
+full 120-second QF_UFLRA reference comparison, and full 300-second pure-QF_LRA
+main-merge regression comparison.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -78,6 +79,29 @@ were unsatisfiable. Both jobs completed every shard with no fallback, model
 error, wrong answer, crash, timeout, parser/type error, unsupported result, or
 saved bug. These results validate the implemented convex QF_UFLRA path and its
 model composition; they do not claim the generic DPLL(T^M) transition system.
+
+**Main-merge validation, 2026-08-12.** Commit `35ac160` merges the then-current
+`main` revision `626c7e5` into the QF_UFLRA branch without a conflict or an LRA
+behavior change. A fresh exact-commit gate passed 3,000 generated mixed cases,
+500 finite-domain QF_UF cases, and 500 finite-domain QF_UFLRA cases. Dolmen
+directly accepted all 2,098 satisfiable models among the 3,500 model rows; the
+other 1,402 rows were unsatisfiable. Every shard and metadata record completed,
+with no wrong answer, model error, crash, timeout, unsupported result, reference
+disagreement, or saved bug.
+
+The pure-QF_LRA merge comparison used all 1,753 files in
+`benchmarks/qf-lra-full-division.txt`, a 300-second per-file timeout, and exact
+Release binaries for `626c7e5` and `35ac160` in one paired SLURM array. Main
+solved 1,658 files and the candidate solved 1,657, both with zero wrong answers,
+errors, or decisive-answer disagreements. The only loss was a LassoRanker row
+that main completed in 297.2 seconds while the candidate reached the 300-second
+cutoff. All 1,657 commonly solved rows have identical non-time statistics.
+Their aggregate runtime improved from 21,685.8 to 21,484.8 seconds; among the
+590 rows where main took at least one second, the median candidate/main ratio
+was 0.9965 and no row differed by 30 percent. This is accepted as cutoff churn,
+not reported as exact solved-count parity. A preceding 237-file stratified run
+had identical 202-file solved coverage, identical non-time statistics on every
+commonly solved row, and a 2.5 percent aggregate timing improvement.
 
 On the full 1,284-file QF_UFLRA corpus at 30 seconds per file, the new profile
 solved 1,257 files with 27 timeouts, zero errors, unsupported rows, or wrong

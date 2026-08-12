@@ -26888,6 +26888,101 @@
       "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-dolmen-4dca518 and qf-uflra-real-models-4dca518; summary-only local copy:/tmp/qf-uflra-real-models-4dca518",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted as the current QF_UFLRA answer and model-correctness merge gate for commit 4dca518. It does not claim full generic DPLL(T^M) or replace separate performance/QF_LRA regression evaluation."
+    },
+    {
+      "id": "2026-08-12-qf-lra-main-merge-stratified-ab-35ac160",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Representative pure-QF_LRA default-profile regression A/B before merging the QF_UFLRA branch into main",
+      "commit": "35ac160 candidate vs 626c7e5 main",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Isolated exact Release binaries with CaDiCaL 3.0.0",
+        "job": "125335, array 0-15; eight shards per arm, all tasks completed with exit status zero",
+        "corpus": "benchmarks/qf-lra-stratified-sample.txt; 237 files",
+        "timeout": "60 seconds per file",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified each remote binary against its matching local worktree immediately before submission."
+      },
+      "commands": {
+        "benchmark": "scripts/slurm_qf_lra_scrambled_compare.sbatch with main and candidate solver arms",
+        "summary": "scripts/compare_solver_answers.py <result-root> --timeout 60 plus a shared non-time-statistic comparison"
+      },
+      "results": {
+        "main": "202 solved (103 sat, 99 unsat), 35 timeouts, 0 errors, PAR2 4949.1",
+        "candidate": "202 solved (103 sat, 99 unsat), 35 timeouts, 0 errors, PAR2 4930.6",
+        "correctness": "Zero wrong answers, decisive-answer disagreements, nonstandard rows, or arm-only solves.",
+        "statistics": "All 202 commonly solved rows had identical shared non-time statistics. The 219 observed counter differences were confined to 28 already-timeout rows and reflect where the 60-second wall cutoff interrupted deterministic search.",
+        "timing": "Common-solved aggregate time changed from 749.135260 to 730.647705 seconds. For the 64 main rows taking at least one second, aggregate candidate/main was 0.9721, median ratio was 0.9960, and no candidate row was more than 4.9 percent slower."
+      },
+      "artifacts": "remote:<candidate-workspace>/results/qflra-main-vs-no-35ac160-sample; summary-only local copy:/tmp/qflra-main-vs-no-35ac160-sample",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as representative evidence that the merged branch preserves pure-QF_LRA search behavior and timing. The full-division comparison supplies the merge decision."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-merge-gate-35ac160",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Fresh exact-commit QF_UFLRA differential, finite-domain, and generated-model gate after merging current main into the branch",
+      "commit": "35ac160",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 35ac160 with CaDiCaL 3.0.0",
+        "job": "125351, array 0-3; all tasks completed with exit status zero",
+        "seed_base": 2026081510,
+        "corpus": "3000 generated general QF_UFLRA cases, 500 finite-domain QF_UF cases, 500 finite-domain QF_UFLRA cases, and 3500 generated model rows",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for Primo model generation and Dolmen validation",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified git 35ac160, CaDiCaL, Z3, cvc5, and Dolmen immediately before submission."
+      },
+      "commands": {
+        "gate": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, and PRIMO_FUZZ_SEED_BASE=2026081510",
+        "summary": "scripts/summarize_fuzz_results.py slurm-results/qf-uflra-dolmen-35ac160"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general and 1000/1000 finite-domain comparisons passed with zero bug files.",
+        "models": "3500/3500 model rows completed: 2098 SAT models passed direct Dolmen validation and 1402 rows were UNSAT.",
+        "metadata": "All 20 summaries and all 16 metadata records were complete; observed counts equaled expected counts.",
+        "failures": "Zero wrong answer, model error, crash, timeout, unsupported result, parser/type error, reference disagreement, fallback, or saved bug."
+      },
+      "artifacts": "remote:<candidate-workspace>/slurm-results/qf-uflra-dolmen-35ac160",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as the exact merged-commit QF_UFLRA answer and generated-model correctness gate. The exact 4dca518 real-corpus Dolmen gate remains applicable because the intervening merge changed only comments and documentation in solver-owned files."
+    },
+    {
+      "id": "2026-08-12-qf-lra-full-main-merge-ab-35ac160",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Full pure-QF_LRA default-profile regression A/B before merging the QF_UFLRA branch into main",
+      "commit": "35ac160 candidate vs 626c7e5 main",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Isolated exact Release binaries with CaDiCaL 3.0.0",
+        "job": "125355, array 0-79; 40 shards per arm, all 80 tasks completed with exit status zero",
+        "corpus": "benchmarks/qf-lra-full-division.txt; 1753 files across 17 families with declared statuses",
+        "timeout": "300 seconds per file",
+        "durability": "Each shard wrote one flushed JSONL row per completed instance before producing its final CSV.",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified both exact binaries immediately before submission."
+      },
+      "commands": {
+        "benchmark": "scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_SHARDS=40 and paired main/candidate solver arms",
+        "summary": "scripts/compare_solver_answers.py <result-root> --timeout 300 and scripts/summarize_benchmark_shards.py --timeout 300"
+      },
+      "results": {
+        "main": "1658 solved (996 sat, 662 unsat), 95 timeouts, 0 errors, 0 wrong answers, PAR2 78982.973210",
+        "candidate": "1657 solved (995 sat, 662 unsat), 96 timeouts, 0 errors, 0 wrong answers, PAR2 79084.779394",
+        "correctness": "Zero decisive-answer disagreements, nonstandard rows, errors, unsupported results, or wrong answers.",
+        "coverage_delta": "One main-only solve: LassoRanker/Ultimate/GcdNew.bpl_Iteration1_Lasso_7-phaseTemplate.smt2 completed on main in 297.210567 seconds and reached the candidate's 300.122395-second timeout. There were no candidate-only solves.",
+        "statistics": "All 1657 commonly solved rows had identical shared non-time statistics.",
+        "timing": "Common-solved aggregate time improved from 21685.762643 to 21484.779394 seconds (candidate/main 0.9907). Across the 590 rows where main took at least one second, the median ratio was 0.9965 and no row was 30 percent faster or slower."
+      },
+      "artifacts": "remote:<candidate-workspace>/results/qflra-main-vs-no-35ac160-full-300s; summary-only local copy:/tmp/qflra-main-vs-no-35ac160-full-300s",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted for merge. The sole solved-count loss is a 297-second result crossing a 300-second wall cutoff; exact search statistics on every commonly solved row and the aggregate timing comparison show no pure-QF_LRA behavior or material performance regression."
     }
   ]
 }
