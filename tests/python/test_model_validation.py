@@ -101,6 +101,34 @@ class ModelValidationTests(unittest.TestCase):
             self.assertEqual(row["dolmen_exit"], "1")
             self.assertEqual(row["z3_exit"], "0")
 
+    def test_z3_only_path_records_empty_dolmen_exit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            case = root / "case.smt2"
+            self.write_case(case)
+            out = root / "out"
+            argv = [str(SCRIPT), "--out", str(out), str(case)]
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(
+                    MODULE.shutil,
+                    "which",
+                    side_effect=lambda name: None if "dolmen" in name else f"/tools/{name}",
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "run_command",
+                    side_effect=[solver_model(), ("done", 0, "sat\n", "", 0.01)],
+                ),
+            ):
+                result = MODULE.main()
+            self.assertEqual(result, 0)
+            with (out / "summary.csv").open(newline="", encoding="utf-8") as handle:
+                row = next(csv.DictReader(handle))
+            self.assertEqual(row["validator"], "z3-only")
+            self.assertEqual(row["dolmen_exit"], "")
+            self.assertEqual(row["z3_exit"], "0")
+
     def test_required_dolmen_pass_rejects_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

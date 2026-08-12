@@ -546,6 +546,44 @@ void qf_uf_lra_model_reflects_real_valued_uf_equalities() {
   assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") >= 2);
 }
 
+void qf_uf_lra_model_prefers_active_purified_real_application() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun f (Real) Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (f x) 1))
+    (assert (= x y))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun f ((x0 Real)) Real (ite (= x0 0) 1 0))") !=
+         std::string::npos);
+  assert(result.statistics.get(":no.interface.model-real-terms-before-interface-filter") >= 3);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
+}
+
+void qf_uf_lra_model_preserves_nested_real_application_rows() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun g (Real) Real)
+    (declare-fun h (Real Real) Real)
+    (declare-fun x () Real)
+    (assert (= x 90))
+    (assert (= (g x) 1))
+    (assert (= (h (g x) 4) 250))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(ite (= x0 90) 1 0)") != std::string::npos);
+  assert(result.model.find("(and (= x0 1) (= x1 4)) 250") != std::string::npos);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
+}
+
 void qf_uf_lra_prints_shared_real_predicate_model() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -4414,6 +4452,8 @@ int main() {
   qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities();
   qf_uf_lra_prints_real_valued_uf_application_model();
   qf_uf_lra_model_reflects_real_valued_uf_equalities();
+  qf_uf_lra_model_prefers_active_purified_real_application();
+  qf_uf_lra_model_preserves_nested_real_application_rows();
   qf_uf_lra_prints_shared_real_predicate_model();
   qf_uf_lra_validates_final_arrangement_without_model();
   qf_uf_lra_final_arrangement_skips_euf_mergeable_shared_pairs();

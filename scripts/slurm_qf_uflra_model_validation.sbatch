@@ -25,6 +25,7 @@ SOLVER_ARGS_TEXT=${PRIMO_MODEL_SOLVER_ARGS:-}
 SOLVER_TIMEOUT=${PRIMO_MODEL_SOLVER_TIMEOUT:-60}
 DOLMEN=${PRIMO_MODEL_DOLMEN:-dolmen}
 DOLMEN_TIMEOUT=${PRIMO_MODEL_DOLMEN_TIMEOUT:-30}
+DOLMEN_ARGS_TEXT=${PRIMO_MODEL_DOLMEN_ARGS---strict=false}
 Z3=${PRIMO_MODEL_Z3:-z3}
 
 cd "$WORKDIR"
@@ -58,6 +59,13 @@ if [[ -n $SOLVER_ARGS_TEXT ]]; then
     solver_args+=(--solver-arg="$arg")
   done
 fi
+dolmen_args=()
+if [[ -n $DOLMEN_ARGS_TEXT ]]; then
+  read -r -a dolmen_arg_words <<< "$DOLMEN_ARGS_TEXT"
+  for arg in "${dolmen_arg_words[@]}"; do
+    dolmen_args+=(--dolmen-arg="$arg")
+  done
+fi
 
 "$SOLVER" --version
 "$DOLMEN" --version
@@ -66,6 +74,7 @@ python3 scripts/validate_model.py \
   --solver "$SOLVER" \
   "${solver_args[@]}" \
   --dolmen "$DOLMEN" \
+  "${dolmen_args[@]}" \
   --z3 "$Z3" \
   --require-dolmen-pass \
   --timeout "$SOLVER_TIMEOUT" \

@@ -1255,6 +1255,12 @@ independently measured default-off setting;
   `:no.interface.lra-extra-atom-probe-limit-hit`.
   The resulting concrete Real values are used when printing UF tables for
   symbols with Real arguments and for Real-valued UF application results.
+  Model completion enumerates both Real constants and Real-valued applications
+  in purified EUF atoms and assigns every member of one EUF class its anchored
+  LRA value or the class's fresh rational. If preprocessing leaves a stale
+  original application with the same printed arguments as the active purified
+  application, the model builder gives the exact active assignment precedence
+  during table-row deduplication.
   Real-valued function tables use `0` as their default result and add entries for
   concrete applications whose LRA proxy value differs from that default. The
   same composed model builder is used for QF_UFLRA inputs that preprocess down
@@ -1265,7 +1271,8 @@ independently measured default-off setting;
   mix, EUF-conflict learning, LRA-conflict learning, separable mixed
   `get-model`, shared-Real predicate `get-model` with a separating LRA repair,
   shared-Real predicate `get-model` when LRA forces equality, Real-valued UF
-  application models, bounded shared-Real model-separation search over multiple
+  application models, stale-versus-purified Real application table rows,
+  nested Real-valued application rows, bounded shared-Real model-separation search over multiple
   candidates, positive SAT-visible interface equality forcing in both LRA-to-EUF
   and EUF-to-LRA directions, guarded interface-equality propagation that must not
   leak an equality from one Boolean branch into another, purification of

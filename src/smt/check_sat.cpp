@@ -5996,11 +5996,27 @@ std::vector<TermPairKey> qf_uflra_candidate_final_scan_pairs(
   return result;
 }
 
-std::vector<core::TermId> real_constants_in_atoms(
+std::vector<core::TermId> euf_real_model_terms_in_atoms(
     const core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& atoms) {
   std::unordered_set<core::TermId> real_terms;
+  std::unordered_set<core::TermId> visited;
+  std::vector<core::TermId> pending;
+  pending.reserve(atoms.size());
   for (const BooleanClausifier::TheoryAtom& atom : atoms) {
-    collect_real_constants_in_term(terms, atom.term, real_terms);
+    pending.push_back(atom.term);
+  }
+  while (!pending.empty()) {
+    const core::TermId term_id = pending.back();
+    pending.pop_back();
+    if (!visited.insert(term_id).second) {
+      continue;
+    }
+    const core::Term& term = terms.get(term_id);
+    if (term.sort == terms.symbols().real_sort() &&
+        (term.kind == core::TermKind::Constant || term.kind == core::TermKind::Application)) {
+      real_terms.insert(term_id);
+    }
+    pending.insert(pending.end(), term.children.begin(), term.children.end());
   }
   std::vector<core::TermId> result(real_terms.begin(), real_terms.end());
   std::sort(result.begin(), result.end());
@@ -6938,10 +6954,12 @@ bool flat_closure_forbids_equality_on_terms(const FlatEufModelView& euf, core::T
   return forbidden;
 }
 
-// EUF-only Real constants are not Nelson-Oppen interface terms and must not
-// enter arrangement search. They still need concrete representatives when a
-// combined model is printed. Give every unanchored EUF class a fresh value,
-// while preserving the LRA value of any class containing a shared term.
+// EUF-only Real terms are not Nelson-Oppen interface terms and must not enter
+// arrangement search. They still need concrete representatives when a combined
+// model is printed. Assign every Real constant and Real-valued application in
+// each EUF class so the model printer cannot lose a purified proxy equality.
+// Give every unanchored class a fresh value while preserving the LRA value of
+// any class containing a shared term.
 bool complete_euf_real_model_values(const FlatEufModelView& euf,
                                     const std::vector<core::TermId>& euf_real_terms,
                                     const std::vector<core::TermId>& shared_real_terms,
@@ -10448,7 +10466,7 @@ CheckSatOutcome solve_qf_uf_lra(
   const std::vector<core::TermId> shared_real_terms =
       shared_real_constants(terms, euf_atoms, lra_atoms);
   const std::vector<core::TermId> euf_model_real_terms_before_interface_filter =
-      real_constants_in_atoms(terms, euf_atoms);
+      euf_real_model_terms_in_atoms(terms, euf_atoms);
   const std::size_t shared_real_pair_count = unordered_pair_count(shared_real_terms.size());
   TheoryCombinationManager no_manager(terms);
   no_manager.rebuild_from_interface_terms(shared_real_terms);

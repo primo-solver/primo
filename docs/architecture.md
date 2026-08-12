@@ -294,7 +294,12 @@ Implemented now:
   model reconstruction augments the LRA side with EUF-implied Real-constant
   equalities and strict separations for EUF-distinct Real constants before
   printing concrete Real argument values and Real-valued UF application results
-  in the UF function tables. If QF_UFLRA preprocessing removes all remaining
+  in the UF function tables. `complete_euf_real_model_values` assigns the same
+  concrete rational to every Real constant and Real-valued application in one
+  purified EUF class. `smt::ModelBuilder` then prefers those exact application
+  assignments when a stale pre-rewrite term and an active purified term have
+  the same printed arguments; this prevents the stale default row from
+  shadowing the constrained function row. If QF_UFLRA preprocessing removes all remaining
   EUF atoms and dispatches the simplified problem to the QF_LRA solver, the same
   composed model builder is used so original UF constants and solved UF
   equalities remain defined in `get-model` output.

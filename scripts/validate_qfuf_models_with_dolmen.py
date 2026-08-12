@@ -364,6 +364,7 @@ def main() -> int:
             continue
 
         response_path.write_text(solver_stdout, encoding="utf-8")
+        dolmen_exit: int | None = None
         z3_exit: int | None = None
         validator = "dolmen"
         if dolmen_path is not None:

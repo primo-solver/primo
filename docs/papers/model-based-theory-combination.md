@@ -336,10 +336,14 @@ Data structures and invariants:
   strict-orientation scan.
 - Unmapped shared terms are paired conservatively with all other shared terms,
   so missing mapping metadata cannot prune a required exact probe.
-- EUF-only Real constants are not interface variables and never enter the
+- EUF-only Real terms are not interface variables and never enter the
   transition system. Model printing separately assigns one fresh rational to
   each unanchored EUF equivalence class, while a class containing a shared term
-  keeps that term's LRA value. This reconstruction step repairs the concrete
+  keeps that term's LRA value. The assignment is copied to every Real constant
+  and Real-valued application in the class. When preprocessing leaves an older
+  application in the term arena with the same concrete arguments as an active
+  purified application, the exact class assignment for the active application
+  wins table-row deduplication. This reconstruction step repairs the concrete
   combined interpretation without adding LRA atoms or SAT arrangements.
 
 Counters and tests:

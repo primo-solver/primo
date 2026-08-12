@@ -814,14 +814,18 @@ coordinator validated that the EUF arrangement over shared Real interface
 arguments can be separated consistently by LRA, with failures and accepted
 strict separations split into the corresponding arrangement counters.
 `:no.interface.model-real-terms-before-interface-filter` reports how many Real
-constants were present in EUF atoms before the final arrangement/model path was
-restricted to the Nelson-Oppen interface, and
+constants and Real-valued applications were present in purified EUF atoms
+before the final arrangement/model path was restricted to the Nelson-Oppen
+interface, and
 `:no.interface.model-real-terms-filtered` reports how many of those EUF-side
-Real constants were excluded because they are not common EUF/LRA interface
-terms. Exclusion applies to arrangement search and LRA probes, not to printed
-model completion. For `get-model`, the shared class keeps its concrete LRA
-value and every unanchored EUF-only Real equivalence class receives a distinct
-fresh rational. `:no.interface.model-euf-real-classes`,
+Real terms were excluded because they are not common EUF/LRA interface
+constants. Exclusion applies to arrangement search and LRA probes, not to
+printed model completion. For `get-model`, the shared class keeps its concrete
+LRA value and every unanchored EUF-only Real equivalence class receives a
+distinct fresh rational. Completion writes that class value for every Real
+constant and Real-valued application in the class. Exact application values
+take precedence over stale pre-rewrite application rows with the same concrete
+arguments when the UF table is printed. `:no.interface.model-euf-real-classes`,
 `:no.interface.model-euf-real-anchored-classes`, and
 `:no.interface.model-euf-real-fresh-classes` report that reconstruction;
 `model-euf-real-unmapped-terms` or `model-euf-real-value-conflicts` makes model
@@ -965,6 +969,14 @@ repository. `make contrib-dolmen` builds pinned Dolmen 0.10 through a
 repository-local opam switch. Building from source is intentional: the official
 0.10 Linux executable requires glibc 2.35, while the SLURM environment provides
 2.34.
+
+The generated QF_UFLRA gate uses Dolmen's default strict parser. The real-corpus
+batch script passes `--strict=false` through `--dolmen-arg` because the MathSAT
+RandomCoupled files contain linear multiplication over compound linear terms;
+Dolmen 0.10 accepts and model-checks those terms in lenient mode but promotes
+its narrower strict-linear-syntax warning to a fatal report in strict mode.
+This changes Dolmen's input acceptance, not model checking. Override
+`PRIMO_MODEL_DOLMEN_ARGS` to change or clear that real-corpus setting.
 
 Each completed validation row is appended, flushed, and synced immediately.
 `metadata.json` starts with `status: running` and changes to `complete` only

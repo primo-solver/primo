@@ -48,8 +48,7 @@ those later changes compared verdicts but did not request models, and the full
 those answer campaigns were not current-model evidence. The permanent mixed
 gate now validates its general and finite-domain QF_UFLRA cases with Dolmen,
 and `scripts/slurm_qf_uflra_model_validation.sbatch` supplies separate
-real-corpus coverage. A later run-log entry must record the exact-commit result
-before this branch is merge-ready for model correctness.
+real-corpus coverage.
 
 The first exact direct-Dolmen cluster run of that permanent gate exposed a
 missing concrete-model invariant rather than a theory-answer disagreement.
@@ -57,8 +56,18 @@ Three generated SAT witnesses had shared Real arguments that were distinct as
 symbolic `DeltaRational` values but equal again after model printing chose
 `delta = 1`. The accepted repair applies the Section 3.3 crossing bounds to
 adjacent sorted shared values in the mixed coordinator, without changing LRA
-solving. The gate must be rerun on the repaired exact commit before replacing
-the preliminary result with merge evidence.
+solving. At exact commit `2b26aa6`, the fresh generated gate passed 3,000
+general answer comparisons, 1,000 finite-domain comparisons, and all 2,081
+satisfiable model checks directly with Dolmen; the other 1,419 generated cases
+were unsatisfiable. The companion 20-file real sample then found a separate
+printer defect in three SAT models: a stale pre-rewrite Real application table
+row could shadow the exact value of the active purified application with the
+same concrete arguments. The follow-up repair assigns every Real-valued
+application in a purified EUF class and gives exact application rows precedence
+during table deduplication. The five MathSAT sample rows require Dolmen's
+lenient parser for compound linear multiplication, so the real-corpus gate uses
+`--strict=false` while the generated gate remains strict. A fresh exact-commit
+rerun of both gates is still required before this becomes merge evidence.
 
 On the full 1,284-file QF_UFLRA corpus at 30 seconds per file, the new profile
 solved 1,257 files with 27 timeouts, zero errors, unsupported rows, or wrong
