@@ -994,7 +994,11 @@ Every standard mixed gate also runs dedicated finite-domain shards: 500 QF_UF
 cases under strong preprocessing and 500 default-profile QF_UFLRA cases. These
 cases have construction-known answers, compare with Z3 and cvc5, and fail when
 the expected finite-domain, Real-equality-lowering, or mixed-dispatch counters
-do not fire. `scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
+do not fire. Selector experiments that intentionally choose a profile without
+finite-domain AMO clauses must set
+`PRIMO_FINITE_DOMAIN_REQUIRE_POST_AMO=0`; this disables only the AMO-activation
+assertion, not answer comparison or the other required counters. The default is
+`1`. `scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
 default/strong/raw-only profile matrix. See [](finite-domain-fuzzing.md).
 Before mutation, `scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch` runs
 `scripts/check_solver_seed_corpus.py` on every compact QF_UFLRA mutation seed
