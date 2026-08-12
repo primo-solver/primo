@@ -134,6 +134,17 @@ management is irrelevant. Caveat to check first: CaDiCaL disables several
 inprocessing options while an external propagator is attached, so confirm an
 option actually takes effect before spending a search dimension on it.
 
+```{warning}
+**Verified 2026-08-12 for `seed`: it is inert.** `--cadical-option seed=1`, `=7`
+and `=99` give byte-identical `:sat.decisions` (8420) and `:sat.conflicts`
+(726) on `sc/sc-9.base.cvc.smt2`. So the caveat above is not hypothetical --
+at least one obvious dimension in the list is already dead under the external
+propagator, and it cost a wrong conclusion once: a perturbation experiment
+built on `seed` looked like strong evidence until the identical timings gave
+it away. Apply the two-extreme-values check from [](#preconditions) to every
+CaDiCaL option before it enters the search space.
+```
+
 (implemented)=
 ## Implemented: the Check/Pivot knobs and the SOI minimization arms
 

@@ -26238,10 +26238,11 @@
         },
         "conclusion": "Parity restored at division scale: identical solved count (1657), zero wrong answers, PAR2 marginally better (79,375 -> 79,215), paired median 1.002. Three of the four churn instances sit at the 300s wall. The fourth, eric.t2.c, does not and is a genuine unexplained loss unrelated to flattening -- calling it churn would have been wrong.",
         "eric_t2c_followup": {
-          "measured": "On a compute node at a 600s limit: pre solves sat in 96s; current main does not solve in 600s.",
-          "flattening_is_not_the_cause": "Identical failure at --boolean-flatten-post-threshold 0, 2048 (default) and 16384, so neither the repair nor the flattening change explains it.",
-          "status": "Unexplained regression somewhere in the 168 commits between 0d73973 and ac07b56. At least a 6x slowdown on this instance. Not bisected yet; the predicate would be sat-vs-unknown, which is cleaner than the decision-count threshold used for the flattening bisect.",
-          "note": "An earlier probe reported 0.0s for every arm because `bc` is not installed on the compute nodes; the timings above come from a re-run using $SECONDS."
+          "bisect": "Bisected on the cluster to the same pair as the flattening regression: 0856d8f (skipped, does not build) / ba3aecc, with parent c1a8288 good at 96s. Predicate: sat within 240s.",
+          "mechanism_is_not_flattening": "The formula is IDENTICAL across the commit -- 42,784 terms and 24,505 SAT variables on both sides -- differing only by 96 removed clauses (0.3%), which are duplicates eliminated by the per-assertion visited set added to assert_positive. The post-flattening pass fires normally (11,316 accepted, 0 threshold stops) and changing its threshold (0 / 2048 / 16384) makes no difference.",
+          "knife_edge": "pre solves it ONLY in its default configuration (102s). Under --lra-pivoting-rule dantzig, --lra-pivoting-rule bland and --lra-least-violated-leaving it also fails at 200s, exactly as the new binary does under all four. So the old binary's success is not robust: three unrelated perturbations lose the instance too. A 0.3% clause change is simply another perturbation landing on the wrong side.",
+          "conclusion": "Not a capability regression and not worth acting on. Re-adding duplicate clauses to recover one knife-edge file would trade a correct clausification improvement for noise, and the division is already neutral-to-positive (1657 = 1657, PAR2 79,215 < 79,375).",
+          "false_start": "A first perturbation attempt used --cadical-option seed/restartint and looked like strong evidence of a systematic loss. It was invalid: --cadical-option seed is INERT under the external propagator (seeds 1/7/99 give identical decisions 8420 and conflicts 726), so three of five 'perturbations' perturbed nothing."
         }
       }
     }

@@ -1110,3 +1110,32 @@ file should end in one of these states:
 - `PRINTER_PRODUCES_INVALID_SMTLIB`
 - `TYPECHECKER_ACCEPTS_INVALID_INPUT`
 - `NONDETERMINISTIC_OUTPUT`
+
+## Bisecting on the SLURM cluster
+
+Four environment facts, each of which silently produced a *wrong* result
+rather than an error, found the hard way on 2026-08-12 while bisecting one
+QF_LRA instance. All four make a bisect converge on nothing or on the wrong
+commit, so validate both endpoints through the real harness before starting.
+
+| fact | how it fails |
+|---|---|
+| `module` is a shell function and is **not available in a batch shell** | `module load cmake` silently does nothing, `cmake` is not found, every test returns 125 and the bisect skips everything |
+| `/opt/ohpc` is **head-node only** | an absolute path to the module's cmake also fails on compute nodes |
+| compute nodes have `g++` but **not the C++ standard headers** | configure succeeds, then the build dies on `fatal error: string: No such file or directory`. Compute nodes can *run* binaries but cannot *compile*, which is why benchmark jobs are unaffected and only bisects hit this |
+| `bc` is **not installed** on compute nodes | timing arithmetic silently yields `0.0s` for every arm, so a probe looks complete and says nothing |
+
+The shape that works: **build on the head node, push the solve to a compute
+node with `srun`.** A cmake that works in both places is the pip-installed one
+in another workspace's `.venv-build/bin/cmake` (shared home), which is why
+`scripts/slurm_prepare_benchmark_workspace.py` defaults to exactly that.
+
+Two more from the same day, on the benchmark side:
+
+- **Do not symlink the corpus into a workspace.** `bench_qf_uf_full.py` calls
+  `path.relative_to(repo)`, and a symlink resolves outside the repo, so every
+  array task dies. `cp -al` gives a hard-linked tree at no storage cost when
+  both live on the same filesystem.
+- **Count shard CSVs before believing a result.** A shard killed by the wall
+  clock leaves no trace; 40/40 per arm is a check, not a formality.
+
