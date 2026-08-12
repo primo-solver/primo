@@ -26983,6 +26983,38 @@
       "artifacts": "remote:<candidate-workspace>/results/qflra-main-vs-no-35ac160-full-300s; summary-only local copy:/tmp/qflra-main-vs-no-35ac160-full-300s",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accepted for merge. The sole solved-count loss is a 297-second result crossing a 300-second wall cutoff; exact search statistics on every commonly solved row and the aggregate timing comparison show no pure-QF_LRA behavior or material performance regression."
+    },
+    {
+      "id": "2026-08-12-preprocessing-option-rename-68313a8",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-regression",
+      "scope": "Exact-commit differential fuzzing and default-behavior parity after replacing QF_UF-specific preprocessing option names with theory-neutral canonical names and retaining deprecated aliases",
+      "commit": "68313a8",
+      "branch": "preprocessing-option-names",
+      "environment": {
+        "type": "local",
+        "binary": "Debug git 68313a8 with CaDiCaL 3.0.0; parent comparison used Release git ca77b49 with the same CaDiCaL revision",
+        "generator": "scripts/qf_uflra_smoke_fuzz.py, mixed shape",
+        "reference": "repository-local pinned z3 on PATH via contrib/local/bin",
+        "seed": 20260812,
+        "corpus": "1000 fresh generated QF_UFLRA cases plus 14 tracked QF_LRA real seeds and 6 tracked QF_UF smoke instances",
+        "timeout": "5 seconds per generated solver invocation"
+      },
+      "commands": {
+        "fuzz": "PATH=$PWD/contrib/local/bin:$PATH python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--auto-preprocess-selector=structural --ref z3 --count 1000 --seed 20260812 --timeout 5 --shape mixed --out fuzz-results/preprocessing-option-names-68313a8",
+        "parity": "Run /tmp/primo-preprocessing-name-parent/build/primo and ./build/primo with --quiet --stats over benchmarks/seeds/qf_lra_real/*.smt2 and benchmarks/smoke/qf_uf/*.smt2, remove :time.* rows, and compare exit status, answer, and remaining statistics",
+        "verification": "make lint; make check; make docs; make asan-test; make tidy; make include-cleaner; git diff --check"
+      },
+      "results": {
+        "fuzz": "1000/1000 PASS: 618 SAT and 382 UNSAT in exact agreement with Z3",
+        "failures": "Zero wrong answer, crash, timeout, unsupported result, parser/type error, or reference disagreement",
+        "default_parity": "20/20 QF_LRA and QF_UF files had identical exit status, answer, and all non-time statistics before and after the rename",
+        "verification": "All unit, Python, CMake CLI, documentation, ASan, lint, and whole-tree clang-tidy checks passed. The advisory include-cleaner scan retained the known 138-warning baseline and added no warnings in changed translation units."
+      },
+      "artifacts": "local-only:fuzz-results/preprocessing-option-names-68313a8/summary.csv",
+      "evidence_status": "local-complete-current",
+      "outcome": "Accepted. The rename preserves default solver behavior while exposing --preprocessing-mode and --auto-preprocess-selector as canonical names; the former QF_UF-prefixed spellings remain warning-producing deprecated aliases."
     }
   ]
 }
