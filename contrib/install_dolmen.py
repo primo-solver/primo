@@ -28,6 +28,27 @@ OCAML_VERSION = "4.14.1"
 DOLMEN_VERSION = "0.10"
 
 
+def prepend_environment_value(
+    env: dict[str, str], name: str, value: str, separator: str
+) -> None:
+    current = env.get(name)
+    env[name] = value if not current else f"{value}{separator}{current}"
+
+
+def add_local_dependency_paths(env: dict[str, str], prefix: Path) -> None:
+    """Expose dependencies installed under Primo's repository-local prefix."""
+    include = str(prefix.resolve() / "include")
+    library = str(prefix.resolve() / "lib")
+    prepend_environment_value(env, "CPPFLAGS", f"-I{include}", " ")
+    prepend_environment_value(env, "CFLAGS", f"-I{include}", " ")
+    prepend_environment_value(env, "LDFLAGS", f"-L{library}", " ")
+    prepend_environment_value(env, "LIBRARY_PATH", library, os.pathsep)
+    prepend_environment_value(env, "LD_LIBRARY_PATH", library, os.pathsep)
+    prepend_environment_value(
+        env, "PKG_CONFIG_PATH", str(Path(library) / "pkgconfig"), os.pathsep
+    )
+
+
 def run(command: list[str], env: dict[str, str]) -> None:
     print("+", " ".join(command), flush=True)
     subprocess.run(command, check=True, env=env)
@@ -86,6 +107,7 @@ def main() -> int:
             "OPAMCONFIRMLEVEL": "unsafe-yes",
         }
     )
+    add_local_dependency_paths(env, args.prefix)
     opam_command = str(opam.resolve())
     if not (root / "config").is_file():
         run(
