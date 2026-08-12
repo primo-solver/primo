@@ -81,6 +81,11 @@ enum class ModelEqualityBranchPolicy {
   CareQueued,
 };
 
+enum class ModelEqualityMutationScope {
+  All,
+  Care,
+};
+
 // Which formulas reach the mixed EUF/LRA solver rather than the pure QF_LRA
 // one. This is a *dispatch* policy, not a theory setting.
 //
@@ -208,6 +213,8 @@ struct CheckSatOptions {
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
   bool nelson_oppen_model_equality_mutation = true;
+  ModelEqualityMutationScope nelson_oppen_model_equality_mutation_scope =
+      ModelEqualityMutationScope::All;
   ModelEqualityBranchPolicy nelson_oppen_model_equality_branch_policy =
       ModelEqualityBranchPolicy::First;
   NelsonOppenPropagationMode nelson_oppen_propagation = NelsonOppenPropagationMode::Final;

@@ -548,7 +548,12 @@ Implemented now:
   adds a default-off model-driven SAT-assumption loop for LRA-model-equal shared
   Real pairs. Before creating a guessed equality atom, the mixed coordinator
   calls `LraTableau::diversify_shared_model()` once for the feasible round and
-  removes pairs split by that valid scratch model. Guessed equality atoms that survive SAT
+  removes pairs split by that valid scratch model. The default mutation scope
+  visits all shared Real variables. The experimental
+  `--model-equality-mutation-scope=care` scope visits only current EUF care-pair
+  endpoints, then reconstructs and validates the complete shared partition in
+  the coordinator; a result that increases the global candidate-pair count is
+  discarded. Guessed equality atoms that survive SAT
   and theory checks remain active as assumptions while the coordinator tries
   additional model-equal pairs; if SAT later proves the active assumption set
   inconsistent, Primo learns a blocking clause over the failed assumptions and
@@ -609,7 +614,10 @@ Implemented now:
   selection, the coordinator may call
   `LraTableau::diversify_shared_model()` once on the checked feasible tableau.
   This Section 5.2 scratch sweep returns a valid, more diverse LRA model without
-  changing live tableau state. Its post-mutation classes are used as candidates;
+  changing live tableau state. The default sweep receives every shared Real
+  variable. The opt-in care scope receives only current EUF care-pair endpoints,
+  but the coordinator still derives the candidate classes and model values from
+  the complete returned assignment. Its post-mutation classes are used as candidates;
   a pair that remains equal is not thereby entailed. Explained equality
   propagation continues to come only from the cheap `FixedEq`, `EqRow`,
   `EqOffsetRows`, and `EqRows` rules or the exact convex fallback.

@@ -1957,6 +1957,107 @@ void qf_uf_lra_shared_model_mutation_removes_accidental_value_equality() {
   assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
 }
 
+void qf_uf_lra_shared_model_mutation_can_use_strict_care_scope() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation_scope = primo::smt::ModelEqualityMutationScope::Care;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun w () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (declare-fun r (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (<= 0 w))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (assert (r w))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-scope-care") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-full-variables") == 4);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-scoped-variables") == 2);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-empty-scopes") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-attempted-updates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") >= 1);
+  assert(result.statistics.get(
+             ":no.interface.lra-model-mutation-rejected-global-pair-regressions") == 0);
+  assert(result.statistics.get(":no.shared-model.converged-rounds") >= 1);
+}
+
+void qf_uf_lra_shared_model_mutation_skips_empty_care_scope() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation_scope = primo::smt::ModelEqualityMutationScope::Care;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-full-variables") == 2);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-scoped-variables") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-empty-scopes") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-attempted-updates") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") == 0);
+  assert(result.statistics.get(":no.shared-model.converged-rounds") == 1);
+}
+
+void qf_uf_lra_shared_model_mutation_rejects_global_pair_regression() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation_scope = primo::smt::ModelEqualityMutationScope::Care;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun w () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (declare-fun r (Real) Bool)
+    (assert (<= x 10))
+    (assert (<= y 10))
+    (assert (= z (- 1)))
+    (assert (= w (- 1)))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (assert (r w))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-full-variables") >
+         result.statistics.get(":no.interface.lra-model-mutation-scoped-variables"));
+  assert(result.statistics.get(":no.interface.lra-model-mutation-scoped-variables") >= 2);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-attempted-updates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") == 0);
+  assert(result.statistics.get(
+             ":no.interface.lra-model-mutation-rejected-global-pair-regressions") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-before") ==
+         result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-after"));
+}
+
 void qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.qf_uflra_model_reconciliation = true;
@@ -4248,6 +4349,9 @@ int main() {
   qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities();
   qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom();
   qf_uf_lra_shared_model_mutation_removes_accidental_value_equality();
+  qf_uf_lra_shared_model_mutation_can_use_strict_care_scope();
+  qf_uf_lra_shared_model_mutation_skips_empty_care_scope();
+  qf_uf_lra_shared_model_mutation_rejects_global_pair_regression();
   qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split();
   qf_uf_lra_shared_model_batches_independent_rejected_merges();
   qf_uf_lra_shared_model_reuses_augmented_lra_epoch();

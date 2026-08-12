@@ -6103,13 +6103,12 @@ class LraModelPairCursor {
   std::size_t shared_rhs_ = 1;
 };
 
-LraModelEqualPartition lra_model_equal_partition(const PreparedLraTheory& prepared,
-                                                 const theory::arithmetic::LraTableau& tableau,
-                                                 const std::vector<AssignedTheoryAtom>& assignments,
-                                                 const std::vector<core::TermId>& shared_terms,
-                                                 const std::vector<TermPairKey>& forbidden_pairs,
-                                                 bool diversify_model, bool build_concrete_values,
-                                                 util::Statistics& statistics) {
+LraModelEqualPartition lra_model_equal_partition(
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
+    const std::vector<AssignedTheoryAtom>& assignments,
+    const std::vector<core::TermId>& shared_terms, const std::vector<TermPairKey>& forbidden_pairs,
+    const std::vector<core::TermId>& mutation_terms, ModelEqualityMutationScope mutation_scope,
+    bool diversify_model, bool build_concrete_values, util::Statistics& statistics) {
   using theory::arithmetic::LraVarId;
 
   std::vector<LraVarId> shared_variables;
@@ -6214,14 +6213,76 @@ LraModelEqualPartition lra_model_equal_partition(const PreparedLraTheory& prepar
   LraModelEqualPartition partition;
   std::vector<theory::arithmetic::DeltaRational> candidate_values;
   if (diversify_model) {
+    bool mutation_accepted = true;
     const std::size_t original_candidate_count = projected_pair_count(original_classes);
+    std::vector<LraVarId> mutation_variables;
+    if (mutation_scope == ModelEqualityMutationScope::All) {
+      mutation_variables = shared_variables;
+    } else {
+      std::unordered_set<LraVarId> seen_mutation_variables;
+      mutation_variables.reserve(mutation_terms.size());
+      for (const core::TermId term : mutation_terms) {
+        const auto variable = prepared.variables_by_term.find(term);
+        if (variable != prepared.variables_by_term.end() &&
+            seen_mutation_variables.insert(variable->second).second) {
+          mutation_variables.push_back(variable->second);
+        }
+      }
+      std::sort(mutation_variables.begin(), mutation_variables.end());
+    }
+    statistics.increment(":no.interface.lra-model-mutation-full-variables",
+                         shared_variables.size());
+    statistics.increment(":no.interface.lra-model-mutation-scoped-variables",
+                         mutation_variables.size());
+    if (mutation_variables.empty()) {
+      statistics.increment(":no.interface.lra-model-mutation-empty-scopes");
+    }
     const theory::arithmetic::LraTableau::ModelMutationResult mutation =
-        tableau.diversify_shared_model(shared_variables, forbidden_variables);
-    projection = project_classes(mutation.classes);
+        tableau.diversify_shared_model(mutation_variables, forbidden_variables);
     candidate_values = mutation.values;
+    if (mutation_scope == ModelEqualityMutationScope::All) {
+      projection = project_classes(mutation.classes);
+    } else {
+      std::vector<LraVarId> ordered_variables = shared_variables;
+      std::sort(ordered_variables.begin(), ordered_variables.end(),
+                [&candidate_values](LraVarId lhs, LraVarId rhs) {
+                  if (candidate_values.at(lhs) == candidate_values.at(rhs)) {
+                    return lhs < rhs;
+                  }
+                  return candidate_values.at(lhs) < candidate_values.at(rhs);
+                });
+      std::vector<std::vector<LraVarId>> full_mutated_classes;
+      for (std::size_t begin = 0; begin < ordered_variables.size();) {
+        std::size_t end = begin + 1;
+        while (end < ordered_variables.size() && candidate_values.at(ordered_variables[begin]) ==
+                                                     candidate_values.at(ordered_variables[end])) {
+          ++end;
+        }
+        if (end - begin > 1) {
+          full_mutated_classes.emplace_back(
+              ordered_variables.begin() + static_cast<std::ptrdiff_t>(begin),
+              ordered_variables.begin() + static_cast<std::ptrdiff_t>(end));
+        }
+        begin = end;
+      }
+      projection = project_classes(full_mutated_classes);
+      if (projection.candidate_pairs > original_candidate_count) {
+        mutation_accepted = false;
+        statistics.increment(":no.interface.lra-model-mutation-rejected-global-pair-regressions");
+        projection = project_classes(original_classes);
+        candidate_values.clear();
+        candidate_values.reserve(tableau.variable_count());
+        for (LraVarId variable = 0; variable < tableau.variable_count(); ++variable) {
+          candidate_values.push_back(tableau.assignment(variable));
+        }
+      }
+    }
     partition.candidate_pairs_before_mutation = original_candidate_count;
     statistics.increment(":no.interface.lra-model-mutation-calls");
-    statistics.increment(":no.interface.lra-model-mutation-updates", mutation.updates.size());
+    statistics.increment(":no.interface.lra-model-mutation-attempted-updates",
+                         mutation.updates.size());
+    statistics.increment(":no.interface.lra-model-mutation-updates",
+                         mutation_accepted ? mutation.updates.size() : 0);
     statistics.increment(":no.interface.lra-model-mutation-value-classes-before",
                          mutation.classes_before);
     statistics.increment(":no.interface.lra-model-mutation-value-classes-after",
@@ -6235,7 +6296,9 @@ LraModelEqualPartition lra_model_equal_partition(const PreparedLraTheory& prepar
                              ? original_candidate_count - projection.candidate_pairs
                              : 0);
     statistics.increment(":no.shared-model.forbidden-before", mutation.forbidden_equalities_before);
-    statistics.increment(":no.shared-model.forbidden-after", mutation.forbidden_equalities_after);
+    statistics.increment(":no.shared-model.forbidden-after",
+                         mutation_accepted ? mutation.forbidden_equalities_after
+                                           : mutation.forbidden_equalities_before);
   } else {
     projection = project_classes(original_classes);
     partition.candidate_pairs_before_mutation = projection.candidate_pairs;
@@ -10367,8 +10430,21 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-model-filter-unmapped-terms", 0);
   statistics.set(":no.interface.lra-model-filter-conservative-pairs", 0);
   statistics.set(":no.interface.lra-model-mutation-enabled", model_mutation_enabled ? 1 : 0);
+  statistics.set(
+      ":no.interface.lra-model-mutation-scope-all",
+      options.nelson_oppen_model_equality_mutation_scope == ModelEqualityMutationScope::All ? 1
+                                                                                            : 0);
+  statistics.set(
+      ":no.interface.lra-model-mutation-scope-care",
+      options.nelson_oppen_model_equality_mutation_scope == ModelEqualityMutationScope::Care ? 1
+                                                                                             : 0);
   statistics.set(":no.interface.lra-model-mutation-calls", 0);
   statistics.set(":no.interface.lra-model-mutation-updates", 0);
+  statistics.set(":no.interface.lra-model-mutation-attempted-updates", 0);
+  statistics.set(":no.interface.lra-model-mutation-full-variables", 0);
+  statistics.set(":no.interface.lra-model-mutation-scoped-variables", 0);
+  statistics.set(":no.interface.lra-model-mutation-empty-scopes", 0);
+  statistics.set(":no.interface.lra-model-mutation-rejected-global-pair-regressions", 0);
   statistics.set(":no.interface.lra-model-mutation-value-classes-before", 0);
   statistics.set(":no.interface.lra-model-mutation-value-classes-after", 0);
   statistics.set(":no.interface.lra-model-mutation-candidate-pairs-before", 0);
@@ -10755,7 +10831,9 @@ CheckSatOutcome solve_qf_uf_lra(
         euf_conflict = euf_check->conflict;
         statistics.increment(":no.interface.euf-final-closure-rebuilds");
       }
-      if (options.nelson_oppen_model_equality_branching || candidate_final_scan_enabled) {
+      if (options.nelson_oppen_model_equality_branching || candidate_final_scan_enabled ||
+          (model_mutation_enabled && options.nelson_oppen_model_equality_mutation_scope ==
+                                         ModelEqualityMutationScope::Care)) {
         euf_care = euf_care_pair_diagnostics(euf_model.value(), shared_real_terms);
         publish_euf_care_pair_diagnostics(euf_care, statistics);
       }
@@ -10890,9 +10968,22 @@ CheckSatOutcome solve_qf_uf_lra(
     bool lra_implied_equalities_for_model_complete = false;
     bool shared_model_exact_fallback = false;
     if (euf_model.has_value() && !shared_real_terms.empty()) {
+      std::vector<core::TermId> mutation_terms = shared_real_terms;
+      if (options.nelson_oppen_model_equality_mutation_scope == ModelEqualityMutationScope::Care) {
+        mutation_terms.clear();
+        mutation_terms.reserve(euf_care.term_pairs.size() * 2);
+        for (const TermPairKey& pair : euf_care.term_pairs) {
+          mutation_terms.push_back(pair.lhs);
+          mutation_terms.push_back(pair.rhs);
+        }
+        std::sort(mutation_terms.begin(), mutation_terms.end());
+        mutation_terms.erase(std::unique(mutation_terms.begin(), mutation_terms.end()),
+                             mutation_terms.end());
+      }
       lra_model_partition = lra_model_equal_partition(
           *prepared_lra_theory_for_check, *checked_lra_tableau, lra_assignments_for_check,
-          shared_real_terms, false_interface_pairs, model_mutation_enabled,
+          shared_real_terms, false_interface_pairs, mutation_terms,
+          options.nelson_oppen_model_equality_mutation_scope, model_mutation_enabled,
           options.produce_model && options.qf_uflra_model_reconciliation, statistics);
       if (options.qf_uflra_model_reconciliation && lra_model_partition->unmapped_terms.empty() &&
           !lra_model_partition->unresolved_forbidden_pairs.empty()) {
@@ -10913,7 +11004,9 @@ CheckSatOutcome solve_qf_uf_lra(
           if (separated_model.has_value()) {
             lra_model_partition = lra_model_equal_partition(
                 separated_model->prepared, separated_model->tableau, separated_model->assignments,
-                shared_real_terms, false_interface_pairs, false, options.produce_model, statistics);
+                shared_real_terms, false_interface_pairs, shared_real_terms,
+                options.nelson_oppen_model_equality_mutation_scope, false, options.produce_model,
+                statistics);
           }
           if (separated_model.has_value() &&
               lra_model_partition->unresolved_forbidden_pairs.empty()) {

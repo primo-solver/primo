@@ -568,8 +568,15 @@ coordinator publishes:
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
 - `:no.interface.lra-model-mutation-enabled`
+- `:no.interface.lra-model-mutation-scope-all`
+- `:no.interface.lra-model-mutation-scope-care`
 - `:no.interface.lra-model-mutation-calls`
 - `:no.interface.lra-model-mutation-updates`
+- `:no.interface.lra-model-mutation-attempted-updates`
+- `:no.interface.lra-model-mutation-full-variables`
+- `:no.interface.lra-model-mutation-scoped-variables`
+- `:no.interface.lra-model-mutation-empty-scopes`
+- `:no.interface.lra-model-mutation-rejected-global-pair-regressions`
 - `:no.interface.lra-model-mutation-value-classes-before`
 - `:no.interface.lra-model-mutation-value-classes-after`
 - `:no.interface.lra-model-mutation-candidate-pairs-before`

@@ -181,6 +181,15 @@ round-scoped shared model, the exact convex scan's necessary-condition filter,
 and optional model-equality branch candidates. It computes the pre-mutation
 pair count from class sizes and materializes only post-mutation pairs.
 
+The default `--model-equality-mutation-scope=all` passes every mapped shared
+Real variable to the sweep. The experimental `care` scope passes only current
+EUF care-pair endpoints. Because movement of a scoped tableau variable can
+also move or collide with values outside that subset, the mixed coordinator
+reconstructs the full shared partition from the returned scratch assignment.
+It rejects the mutation if that complete partition has more candidate pairs
+than the original one. This scheduling specialization does not change the LRA
+tableau implementation or the pure QF_LRA path.
+
 This replaces the former `lra_model_equality_can_be_mutated` proxy, which built
 and solved two fresh LRA instances per coincident pair without updating a
 model. Failure of the greedy sweep to separate a pair is **not** an entailment

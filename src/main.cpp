@@ -184,6 +184,7 @@ int main(int argc, char** argv) {
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
   bool no_nelson_oppen_model_equality_mutation = false;
+  std::string model_equality_mutation_scope = "all";
   std::string nelson_oppen_propagation = "final";
   std::string model_equality_branch_policy = "first";
   bool euf_dynamic_ackermann_shadow = false;
@@ -468,6 +469,10 @@ int main(int argc, char** argv) {
                "Disable the Section 5.2 greedy LRA model-diversification sweep used by the "
                "experimental QF_UFLRA shared-model and model-equality branching paths "
                "[default: on when either path is enabled]");
+  app.add_option("--model-equality-mutation-scope", model_equality_mutation_scope,
+                 "QF_UFLRA LRA model-mutation scope: all shared Real terms or current EUF "
+                 "care-pair endpoints [default: all]")
+      ->check(CLI::IsMember({"all", "care"}));
   app.add_option("--nelson-oppen-prop", nelson_oppen_propagation,
                  "QF_UFLRA Nelson-Oppen interface equality propagation mode: exact, final, or "
                  "online. Exact keeps the mandatory convex closure but disables opportunistic "
@@ -855,6 +860,9 @@ int main(int argc, char** argv) {
   if (no_nelson_oppen_model_equality_mutation) {
     solver_options.nelson_oppen_model_equality_mutation = false;
   }
+  solver_options.nelson_oppen_model_equality_mutation_scope =
+      model_equality_mutation_scope == "care" ? primo::smt::ModelEqualityMutationScope::Care
+                                              : primo::smt::ModelEqualityMutationScope::All;
   if (model_equality_branch_policy == "adaptive") {
     solver_options.nelson_oppen_model_equality_branch_policy =
         primo::smt::ModelEqualityBranchPolicy::Adaptive;

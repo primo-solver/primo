@@ -865,8 +865,14 @@ pairs; it is still not a permanent unit clause.
 `:no.interface.lra-model-mutation-*` reports the one Section 5.2 scratch sweep
 performed per feasible mixed round: whether the path is enabled, calls, accepted
 updates, distinct value classes before/after, candidate pairs before/after, and
-pairs pruned. The pre-mutation pair count is computed from class sizes; Primo
-does not materialize that pair set. `:no.interface.model-equality-filtered-pairs`
+pairs pruned. `--model-equality-mutation-scope=all|care` selects all shared Real
+variables (the default) or only current EUF care-pair endpoints. The scope
+counters report the selected mode, full and scoped variable visits, empty care
+scopes, attempted versus accepted updates, and care-scoped results rejected
+because they would increase the complete shared candidate-pair count. Even in
+care mode the final partition and printed model use all shared terms. The
+pre-mutation pair count is computed from class sizes; Primo does not materialize
+that pair set. `:no.interface.model-equality-filtered-pairs`
 is the post-mutation candidate count presented to the optional branch selector.
 The legacy `model-equality-mutation-checks` and `model-equality-mutated` counters
 remain aggregate branch diagnostics for pairs considered and removed by the
