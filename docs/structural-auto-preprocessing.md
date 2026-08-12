@@ -101,3 +101,23 @@ The selector reports `:preprocessing.auto.structural.*`,
 configured `:preprocessing.auto.limit.*` values. During evaluation,
 `:preprocessing.auto.selector.legacy-disagreement` identifies inputs whose
 selected profile differs from the legacy assertion-count policy.
+
+## Evaluation status, 2026-08-12
+
+Commit `f88bc87` passed an exact-option SLURM correctness gate with the
+structural selector and clause-only implication rewriting: 3,000 generated
+mixed QF_UFLRA cases, 500 finite QF_UF cases, and 500 finite QF_UFLRA cases all
+agreed with the configured references. The stronger `all` implication rewrite
+also passed 1,400 generated or finite-domain cases. Both gates had zero wrong
+answers, crashes, parser/type errors, unsupported results, or reference
+disagreements.
+
+Performance does not justify changing either default. On the 45-file QF_UFLRA
+preprocessing-opportunity sample, all three profiles solved every input and had
+identical SAT variables, clauses, decisions, propagations, and solve calls. No
+implication was rewritten on that sample. On the 118-file QF_UF interesting
+set, the legacy default solved four files at 30 seconds while structural plus
+clause rewriting solved three; `SEQ009_size10.smt2` was the loss and there were
+no recoveries or answer disagreements. Therefore the selector remains
+`legacy`, implication rewriting remains `off`, and both alternatives remain
+explicit experimental options.

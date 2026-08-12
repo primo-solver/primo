@@ -26382,6 +26382,121 @@
       "artifacts": "local-only:/tmp/qfuflra-main-post-baseline-91f94b9-v3/, /tmp/qfuflra-main-post-residual-91f94b9/, /tmp/qfuflra-root-polarity-diagnostic-91f94b9-dirty-v2/, and /tmp/qfuflra-root-polarity-order-preserving-91f94b9-dirty/",
       "evidence_status": "rejected-local-diagnostic",
       "outcome": "The root-polarity clausification source and tests were reverted before fuzzing because the corrected mechanism changed too little structure and no search work on the residual target. Retain the assertion-semantics invariant and redirect performance work to shared-model pair filtering/projection."
+    },
+    {
+      "id": "2026-08-12-structural-implies-fuzz-f88bc87",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz",
+      "scope": "Exact-option correctness gates for structural automatic preprocessing selection and optional implication rewriting",
+      "commit": "f88bc87",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git f88bc87, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for all cases and cvc5 1.3.4 for finite-domain cases",
+        "scheduler": "Jobs 125107 and 125108 completed all four array tasks with exit status zero."
+      },
+      "commands": {
+        "structural_clause": "scripts/slurm_qf_uflra_fuzz_gate.sbatch, four tasks, each with 750 generated mixed cases, 125 finite QF_UF cases, and 125 finite QF_UFLRA cases; --qf-uf-auto-selector=structural --boolean-implies-rewrite=clause",
+        "implies_all": "scripts/slurm_qf_uflra_fuzz_gate.sbatch, four tasks, each with 250 generated mixed cases, 50 finite QF_UF cases, and 50 finite QF_UFLRA cases; --qf-uf-auto-selector=structural --boolean-implies-rewrite=all",
+        "seed_gate": "scripts/check_solver_seed_corpus.py over 7 QF_UF and 11 QF_UFLRA tracked seeds with each exact option set"
+      },
+      "results": {
+        "structural_clause": "4000/4000 PASS: 3000 generated mixed, 500 finite QF_UF, and 500 finite QF_UFLRA; zero wrong answer, crash, parser/type error, unsupported result, timeout, or reference disagreement.",
+        "implies_all": "1400/1400 PASS: 1000 generated mixed, 200 finite QF_UF, and 200 finite QF_UFLRA; zero failures of any class.",
+        "seed_gate": "Both option sets passed all 7 QF_UF and all 11 QF_UFLRA seeds.",
+        "activation": "All 500 structural finite QF_UFLRA cases selected the structural policy: 288 compact and 212 strong; Real-equality lowering fired 5574 times."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/structural-implies-f88bc87/seed-gate/, structural-clause/, and implies-all/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Both experimental transformations passed their correctness gates. This is not evidence for default promotion; performance was evaluated separately."
+    },
+    {
+      "id": "2026-08-12-structural-implies-benchmark-f88bc87",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Same-commit A/B of structural auto selection and implication rewriting on the 45-file mixed opportunity sample and 118-file interesting QF_UF set",
+      "commit": "f88bc87",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git f88bc87, CaDiCaL 3.0.0",
+        "limits": "30 seconds per file",
+        "scheduler": "QF_UFLRA job 125117 and QF_UF jobs 125115/125116 completed. Existing reference results were reused rather than rerun."
+      },
+      "commands": {
+        "qf_uflra": "scripts/slurm_qf_uflra_sample_compare.sbatch over benchmarks/qf_uflra-preprocessing-opportunity-sample.txt with default, structural+clause, and structural+all profiles",
+        "qf_uf": "scripts/bench_qf_uf_full.py over benchmarks/interesting-qf-uf.txt in four shards for default and structural+clause"
+      },
+      "results": {
+        "qf_uflra_default": "45 solved, 0 timeout/error/wrong, PAR2 2.961706; 18882 SAT variables, 59162 clauses, 16822 decisions, 136517 propagations, 58 solve calls.",
+        "qf_uflra_structural_clause": "45 solved, PAR2 2.961565, identical SAT/search counts; structural selected strong on all 45 and disagreed with legacy on all 45, but rewrote no implications.",
+        "qf_uflra_implies_all": "45 solved, PAR2 2.957442, identical SAT/search counts, and no implication rewrites.",
+        "qf_uf_default": "4 solved, 114 timeout, 0 error/wrong, PAR2 6882.516904.",
+        "qf_uf_structural_clause": "3 solved, 115 timeout, 0 error/wrong, PAR2 6943.879180; lost SEQ/SEQ009_size10.smt2 with no recoveries or answer disagreement."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/structural-implies-f88bc87/qf-uflra-preprocess-sample/, qf-uf-default/, and qf-uf-structural-clause/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Keep --qf-uf-auto-selector=legacy and --boolean-implies-rewrite=off as defaults. The mixed sample was neutral and the QF_UF sample had one net loss."
+    },
+    {
+      "id": "2026-08-12-model-mutation-profile-f88bc87",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "profile",
+      "scope": "Profile the residual mt20xx QF_UFLRA model-mutation and compatibility path after Boolean flattening fixed the earlier search explosion",
+      "commit": "f88bc87",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "local",
+        "binary": "GCC -pg -O2, git f88bc87, CaDiCaL 3.0.0",
+        "limit": "--max-theory-conflicts=20"
+      },
+      "commands": {
+        "profile": "build-gprof-structural/primo --quiet --stats --max-theory-conflicts=20 on the CPAchecker mt20xx residual, followed by gprof"
+      },
+      "results": {
+        "solve": "Solved in 21.74 seconds under gprof with 20 SAT calls, 75021 decisions, and 211823 propagations.",
+        "profile": "Hash-set insertion used 14.88%, model-value grouping sort 13.32%, rehash 13.32%, rational hash 5.22%, and group_by_model_value 3.39% of sampled time.",
+        "mutation": "8 mutation calls accepted 1013 updates; the complete diagnostic cross product was 18190224 pairs, while candidates fell from 6431192 to 5839418.",
+        "compatibility": "2800 compatibility projections visited 5972400 terms."
+      },
+      "artifacts": "local-only:/tmp/primo-structural-mt20xx-profile.6jRuc0",
+      "evidence_status": "local-diagnostic-current",
+      "outcome": "The profile supports reducing the variables repeatedly grouped by model mutation. It motivated the opt-in care-scoped prototype; it does not justify changing LRA or the default scope."
+    },
+    {
+      "id": "2026-08-12-care-scoped-mutation-fuzz-fcbea41",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz",
+      "scope": "Exact-commit generated, finite-domain, deterministic-seed, and seed-mutation correctness gate for care-scoped QF_UFLRA model mutation",
+      "commit": "fcbea41",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git fcbea41, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for all cases and cvc5 1.3.4 for finite-domain cases",
+        "scheduler": "Generated/finite job 125139 completed four tasks in 29 seconds each; mutation job 125140 task 0 completed in 101 seconds."
+      },
+      "commands": {
+        "seed_gate": "scripts/check_solver_seed_corpus.py over benchmarks/seeds/qf_uflra with --model-equality-mutation-scope=care and a 60-second seed timeout",
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch, four tasks, each with 750 generated mixed cases, 125 finite QF_UF cases, and 125 finite QF_UFLRA cases; seed base 202607390; five-second solver timeout",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch task 0 with --model-equality-mutation-scope=care, 100 iterations per tracked seed, mutation seed 2026080700, and eight-second solver timeout"
+      },
+      "results": {
+        "deterministic_seeds": "11/11 PASS against Z3 and declared statuses.",
+        "generated_mixed": "3000/3000 PASS.",
+        "finite_qf_uf": "500/500 PASS with no missing activation.",
+        "finite_qf_uflra": "500/500 PASS with no missing activation; Real-equality lowering fired 6211 times.",
+        "generated_failures": "Zero wrong answer, crash, parser/type error, unsupported result, timeout, or reference disagreement.",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, 2090 solver calls reported, and 0 bug triggers."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/care-scope-fcbea41/seed-gate/, generated/, and mutation/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact care-scoped prototype passed the merge-grade correctness gate. Performance evaluation may proceed, but the option remains non-default."
     }
   ]
 }
