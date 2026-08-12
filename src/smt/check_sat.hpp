@@ -12,14 +12,14 @@
 
 namespace primo::smt {
 
-enum class QfUfPreprocessMode {
+enum class PreprocessingMode {
   Off,
   Basic,
   Strong,
   Auto,
 };
 
-enum class QfUfAutoSelectorMode {
+enum class AutoPreprocessSelectorMode {
   Legacy,
   Structural,
 };
@@ -201,7 +201,7 @@ struct CheckSatOutcome {
 };
 
 struct CheckSatOptions {
-  QfUfPreprocessMode qf_uf_preprocess = QfUfPreprocessMode::Auto;
+  PreprocessingMode preprocessing_mode = PreprocessingMode::Auto;
   EufEngine euf_engine = EufEngine::Incremental;
   EufPropagationMode euf_propagation = EufPropagationMode::Auto;
   PureTheoryFilterMode pure_theory_filter = PureTheoryFilterMode::Auto;
@@ -315,7 +315,7 @@ struct CheckSatOptions {
   bool auto_basic_single_predicate_polarity = true;
   bool auto_basic_multi_preprocessing = true;
   bool auto_basic_multi_polarity = true;
-  QfUfAutoSelectorMode qf_uf_auto_selector = QfUfAutoSelectorMode::Legacy;
+  AutoPreprocessSelectorMode auto_preprocess_selector = AutoPreprocessSelectorMode::Legacy;
   AutoPreprocessTuning auto_preprocess_tuning;
   BooleanImpliesRewriteMode boolean_implies_rewrite = BooleanImpliesRewriteMode::Off;
   QfUfPortfolioMode qf_uf_portfolio = QfUfPortfolioMode::Off;

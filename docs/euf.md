@@ -483,12 +483,12 @@ premises.
 
 ## Preprocessing Interaction
 
-The CLI default `--qf-uf-preprocess=auto` pass runs before QF_UF solving. On
+The CLI default `--preprocessing-mode=auto` pass runs before QF_UF solving. On
 all assertion shapes it runs equality bridging, finite-domain at-most-one
 clauses, SMT symmetry restrictions, and unit-equality simplification when
 their recognizers can prove the required local conditions, but skips
 finite-domain equality-definition expansion. The explicit `strong` preset adds
-finite-domain equality definitions for experiments. `--qf-uf-preprocess=basic`
+finite-domain equality definitions for experiments. `--preprocessing-mode=basic`
 keeps only the unit-equality simplification subset, and `off` disables this
 loop.
 `--ground-congruence` additionally enables bounded ground-congruence clauses.

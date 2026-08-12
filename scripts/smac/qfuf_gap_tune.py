@@ -105,7 +105,7 @@ def solver_args(config: Any) -> list[str]:
 
     preprocess = config_value(config, "preprocess", "default")
     if preprocess != "default":
-        args.append(f"--qf-uf-preprocess={preprocess}")
+        args.append(f"--preprocessing-mode={preprocess}")
 
     args.append(f"--preprocessing-passes={config_value(config, 'passes', 4)}")
     args.append(

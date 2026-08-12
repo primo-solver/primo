@@ -1,11 +1,20 @@
 # Preprocessing
 
-Primo currently exposes QF_UF preprocessing through
-`--qf-uf-preprocess=off|basic|strong|auto`. The CLI and
-`CheckSatOptions` default is `auto`.
+Primo exposes its shared preprocessing pipeline through
+`--preprocessing-mode=off|basic|strong|auto`. Preprocessing runs before final
+formula classification, so the mode applies to pure QF_UF, pure QF_LRA,
+QF_UFLRA, and propositional inputs; individual transformations remain
+shape-dependent and are no-ops when their recognizers do not apply. The CLI
+and `CheckSatOptions::preprocessing_mode` default is `auto`.
+
+The former names `--qf-uf-preprocess` and `--qf-uf-auto-selector` remain only
+as deprecated compatibility aliases. Each prints a warning, and Primo rejects
+a command line that combines an alias with its canonical replacement. New
+scripts and documentation must use `--preprocessing-mode` and
+`--auto-preprocess-selector`.
 
 `auto` currently defaults to the historical assertion-root selector. The
-opt-in `--qf-uf-auto-selector=structural` mode instead analyzes the implicit
+opt-in `--auto-preprocess-selector=structural` mode instead analyzes the implicit
 top-level conjunction and finite-domain shape, so separate assertions and one
 equivalent asserted conjunction select the same profile. Its limits are exposed
 through `--auto-preprocess-*` and `--auto-basic-*-limit` options rather than
@@ -78,7 +87,7 @@ The exact legacy-style reproduction profile is:
 ```
 
 It sets the same safe switches as the default and leaves the selected
-`--qf-uf-preprocess` mode at `auto` unless the user overrides it. It also
+`--preprocessing-mode` mode at `auto` unless the user overrides it. It also
 keeps the legacy propagation tuning knobs available for experiments; select
 `--euf-prop=online` explicitly when reproducing online-propagation runs.
 
@@ -86,14 +95,14 @@ The individual legacy switches remain available for experiments and for
 reproducing narrower configurations:
 
 - equality bridging under disjunctions, enabled with `--eq-bridge` or
-  `--qf-uf-preprocess=strong`;
+  `--preprocessing-mode=strong`;
 - unit equality propagation, enabled by the `basic`, `strong`, and `auto`
   preprocessing loops;
 - experimental ground substitution from positive unit equalities, enabled with
   `--ground-unit-substitution`;
 - guarded experimental ground substitution, enabled with
   `--guarded-ground-unit-substitution`;
-- finite-domain at-most-one clauses, enabled by `--qf-uf-preprocess=strong` and
+- finite-domain at-most-one clauses, enabled by `--preprocessing-mode=strong` and
   by most of the default `auto` path. The guarded single-assertion exception
   reports `:preprocessing.auto.basic-single` and skips these clauses for a small
   finite-domain/symmetry shape. A same-run July 19, 2026 SLURM comparison on
@@ -108,7 +117,7 @@ reproducing narrower configurations:
   `--finite-domain-eqdefs-auto-domain-limit` and
   `--finite-domain-eqdefs-auto-clause-limit`; large single-assertion formulas
   are additionally guarded by `--finite-domain-eqdefs-auto-term-limit`.
-  `--qf-uf-preprocess=strong` keeps the historical unbounded expansion. Use
+  `--preprocessing-mode=strong` keeps the historical unbounded expansion. Use
   `--no-finite-domain-equality-definitions` for ablations;
 - solved-constant substitution for acyclic unit definitions, enabled by default
   and disabled with `--no-solved-constant-substitution`. The pass keeps exact
@@ -126,7 +135,7 @@ reproducing narrower configurations:
 
 `--no-eq-bridge`, `--no-uf-symmetry-breaking`, and
 `--theory-phase=auto` are useful ablation or targeted-experiment switches.
-`--qf-uf-preprocess=off` disables the preprocessing loop and the finite-domain
+`--preprocessing-mode=off` disables the preprocessing loop and the finite-domain
 symmetry-breaking preprocessing step. `--no-auto-basic-single-predicate-polarity`
 disables the predicate-aware phase override for selected single-assertion
 finite-domain formulas. `--no-auto-basic-multi` disables the compact
@@ -137,7 +146,7 @@ uses the ordinary theory-atom phase.
 ## Experimental QF_UF Portfolio
 
 `--qf-uf-portfolio=basic-polarity` runs a bounded first attempt with
-`--qf-uf-preprocess=basic`, `--theory-phase=polarity`, and a theory-conflict
+`--preprocessing-mode=basic`, `--theory-phase=polarity`, and a theory-conflict
 budget before falling back to the normal configured solve. The budget defaults
 to 2000 theory conflicts and is controlled by
 `--qf-uf-portfolio-conflicts=N`.
@@ -155,9 +164,9 @@ fallback overhead on NEQ and PEQ rows. It must be evaluated on the full target
 manifest before being considered for any default profile.
 
 ```bash
-./build/primo --qf-uf-preprocess=off input.smt2
-./build/primo --qf-uf-preprocess=auto input.smt2
-./build/primo --qf-uf-preprocess=strong input.smt2
+./build/primo --preprocessing-mode=off input.smt2
+./build/primo --preprocessing-mode=auto input.smt2
+./build/primo --preprocessing-mode=strong input.smt2
 ./build/primo --eq-bridge input.smt2
 ./build/primo --uf-symmetry-breaking input.smt2
 ./build/primo --eq-bridge --preprocessing-passes 3 input.smt2
@@ -221,7 +230,7 @@ therefore skip the repeated preprocessing loop and go directly to Boolean
 abstraction and EUF. The default solved-constant substitution pass is still run
 once on these batches because it is linear over the visible assertions, does not
 generate clauses, and is guarded against definition-size blowups. Explicit
-`--qf-uf-preprocess=basic` and `--qf-uf-preprocess=strong` still force the full
+`--preprocessing-mode=basic` and `--preprocessing-mode=strong` still force the full
 preprocessing loop for ablation or targeted experiments. This auto decision is
 reported by `:preprocessing.auto.large-assertion-skip`.
 
@@ -1133,7 +1142,7 @@ seconds in this run.
 
 Implemented:
 
-- preset CLI option `--qf-uf-preprocess=off|basic|strong|auto`;
+- preset CLI option `--preprocessing-mode=off|basic|strong|auto`;
 - CLI-default `auto` preprocessing dispatcher;
 - equality bridging under disjunctions;
 - unit equality propagation from top-level equalities;

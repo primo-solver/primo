@@ -395,7 +395,7 @@ reports comparing rewritten or mutated inputs under the legacy default must reco
 `:preprocessing.auto.strong`, and
 `:preprocessing.auto.large-assertion-skip`.
 
-The opt-in `--qf-uf-auto-selector=structural` implementation now performs the
+The opt-in `--auto-preprocess-selector=structural` implementation now performs the
 repair without concatenating roots or flattening every Boolean DAG. It uses
 representation-stable costs of the implicit conjunction: reachable terms,
 top-level conjunct and clause shape, and analysis-only finite-domain recognizer

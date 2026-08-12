@@ -126,10 +126,11 @@ std::optional<std::pair<std::string, int>> parse_cadical_option(const std::strin
 
 // --help section headings. CLI11 emits sections in order of the first
 // option registered into each, so the printed order follows registration
-// order in main() -- currently Procedural, QF_UF, QF_LRA, SAT -- not the
-// order of these declarations.
+// order in main() -- currently Procedural, QF_UF, QF_LRA, Preprocessing,
+// SAT -- not the order of these declarations.
 constexpr const char* kGroupLra = "QF_LRA theory options";
 constexpr const char* kGroupUf = "QF_UF / EUF theory options";
+constexpr const char* kGroupPreprocessing = "Preprocessing options";
 constexpr const char* kGroupSat = "SAT and DPLL(T) options";
 constexpr const char* kGroupProcedural = "Procedural options";
 
@@ -164,8 +165,10 @@ int main(int argc, char** argv) {
   bool auto_basic_multi = false;
   bool no_auto_basic_multi = false;
   bool no_auto_basic_multi_polarity = false;
-  std::string qf_uf_preprocess = "auto";
-  std::string qf_uf_auto_selector = "legacy";
+  std::string preprocessing_mode = "auto";
+  std::string deprecated_qf_uf_preprocessing_mode;
+  std::string auto_preprocess_selector = "legacy";
+  std::string deprecated_qf_uf_auto_selector;
   std::string boolean_implies_rewrite = "off";
   std::string qf_uf_profile = "default";
   std::string qf_uf_portfolio = "off";
@@ -387,13 +390,23 @@ int main(int argc, char** argv) {
   app.add_flag(
       "--preprocess-only", solver_options.preprocess_only,
       "Run parsing and preprocessing, print unknown, and skip SAT/theory solving [default: off]");
-  app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
-                 "QF_UF preprocessing preset: off, basic, strong, or auto")
-      ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
-  app.add_option("--qf-uf-auto-selector", qf_uf_auto_selector,
-                 "Auto preprocessing selector: legacy assertion-count heuristics or "
-                 "representation-stable structural analysis")
-      ->check(CLI::IsMember({"legacy", "structural"}));
+  CLI::Option* preprocessing_mode_option =
+      app.add_option("--preprocessing-mode", preprocessing_mode,
+                     "Preprocessing preset for all supported logics: off, basic, strong, or auto")
+          ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
+  CLI::Option* deprecated_preprocessing_mode_option =
+      app.add_option("--qf-uf-preprocess", deprecated_qf_uf_preprocessing_mode,
+                     "Deprecated alias for --preprocessing-mode")
+          ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
+  CLI::Option* auto_preprocess_selector_option =
+      app.add_option("--auto-preprocess-selector", auto_preprocess_selector,
+                     "Auto preprocessing selector: legacy assertion-count heuristics or "
+                     "representation-stable structural analysis")
+          ->check(CLI::IsMember({"legacy", "structural"}));
+  CLI::Option* deprecated_auto_preprocess_selector_option =
+      app.add_option("--qf-uf-auto-selector", deprecated_qf_uf_auto_selector,
+                     "Deprecated alias for --auto-preprocess-selector")
+          ->check(CLI::IsMember({"legacy", "structural"}));
   app.add_option("--auto-preprocess-large-conjunct-limit",
                  solver_options.auto_preprocess_tuning.large_conjunct_limit,
                  "Maximum implicit top-level conjunct occurrences for repeated auto "
@@ -533,7 +546,7 @@ int main(int argc, char** argv) {
   CLI::Option* preprocess_passes_option =
       app.add_option("--preprocessing-passes,--preprocess-passes",
                      solver_options.preprocessing_passes,
-                     "Number of QF_UF preprocessing passes to run")
+                     "Number of shared preprocessing passes to run")
           ->check(CLI::Range(0, 100));
   app.add_option("--boolean-flatten-threshold", solver_options.boolean_flatten_threshold,
                  "Flatten nested and/or nodes during preprocessing up to this arity; 0 disables")
@@ -551,7 +564,7 @@ int main(int argc, char** argv) {
       ->check(CLI::IsMember({"off", "clause", "all"}));
   app.add_option("--preprocessing-adaptive-extra-passes",
                  solver_options.preprocessing_adaptive_extra_passes,
-                 "Additional adaptive QF_UF preprocessing passes after the configured pass cap")
+                 "Additional adaptive preprocessing passes after the configured pass cap")
       ->check(CLI::Range(0, 100));
   app.add_option("--preprocessing-adaptive-shrink-percent",
                  solver_options.preprocessing_adaptive_shrink_percent,
@@ -591,10 +604,10 @@ int main(int argc, char** argv) {
   // with the ones it belongs beside.
   //
   // The split follows what each option acts *on*, which its own help text
-  // already states: theory solver (QF_LRA / QF_UF), the SAT layer and the
-  // DPLL(T) boundary, or the run itself. Only the placements that are not
-  // obvious from the prefix are listed explicitly below; anything left
-  // unmatched lands in "Other options", which is a bug rather than a
+  // already states: theory solver (QF_LRA / QF_UF), preprocessing, the SAT
+  // layer and DPLL(T) boundary, or the run itself. Only the placements that
+  // are not obvious from the prefix are listed explicitly below; anything
+  // left unmatched lands in "Other options", which is a bug rather than a
   // category -- `primo --help` should never print that heading.
   const auto starts_with = [](const std::string& text, std::string_view prefix) {
     return text.rfind(prefix, 0) == 0;
@@ -608,14 +621,19 @@ int main(int argc, char** argv) {
         name == "--lra-least-violated-leaving" || name == "--mixed-dispatch") {
       return kGroupLra;
     }
+    if (name == "--preprocessing-mode" || name == "--qf-uf-preprocess" ||
+        name == "--auto-preprocess-selector" || name == "--qf-uf-auto-selector" ||
+        name == "--boolean-flatten-threshold" || name == "--boolean-flatten-post-threshold" ||
+        name == "--boolean-implies-rewrite" || starts_with(name, "--auto-preprocess-") ||
+        starts_with(name, "--preprocessing-") || starts_with(name, "--preprocess-passes")) {
+      return kGroupPreprocessing;
+    }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)
     // boundary: initial phase for theory atoms, T-pure filtering, the
     // theory-conflict budget, and how top-level disjunctions get clausified.
     if (name == "--cadical-option" || name == "--max-theory-conflicts" ||
         name == "--qf-uflra-online-euf" || name == "--pure-theory-filter" ||
-        name == "--theory-phase" || name == "--boolean-flatten-threshold" ||
-        name == "--boolean-flatten-post-threshold" || name == "--boolean-implies-rewrite" ||
-        starts_with(name, "--top-level-or-tseitin") ||
+        name == "--theory-phase" || starts_with(name, "--top-level-or-tseitin") ||
         starts_with(name, "--no-top-level-or-tseitin") ||
         starts_with(name, "--no-auto-top-level-or-tseitin")) {
       return kGroupSat;
@@ -628,19 +646,15 @@ int main(int argc, char** argv) {
       return kGroupProcedural;
     }
     // Everything else is QF_UF/EUF: the euf-*, finite-domain-*, ground-*,
-    // qf-uf-*, auto-basic-* families, plus eq-bridge, symmetry breaking,
-    // solved-constant substitution, the online-propagation knobs and the
-    // preprocessing-pass counts -- all of which name QF_UF in their own
-    // help strings.
+    // qf-uf-* and auto-basic-* families, plus eq-bridge, symmetry breaking,
+    // solved-constant substitution, and the online-propagation knobs.
     if (starts_with(name, "--euf-") || starts_with(name, "--no-euf-") ||
         starts_with(name, "--finite-domain-") || starts_with(name, "--no-finite-domain-") ||
         starts_with(name, "--ground-") || starts_with(name, "--guarded-ground-") ||
         starts_with(name, "--model-equality-") || starts_with(name, "--no-model-equality-") ||
         starts_with(name, "--nelson-oppen-") || starts_with(name, "--qf-uf-") ||
         starts_with(name, "--auto-basic-") || starts_with(name, "--no-auto-basic-") ||
-        starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
-        starts_with(name, "--preprocess-passes") || name == "--eq-bridge" ||
-        name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
+        name == "--eq-bridge" || name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
         name == "--no-uf-symmetry-breaking" || name == "--no-solved-constant-substitution" ||
         name == "--prop-interval" || name == "--prop-assign-threshold" ||
         name == "--prop-delivery-budget") {
@@ -669,18 +683,38 @@ int main(int argc, char** argv) {
     return app.exit(error);
   }
 
-  if (qf_uf_preprocess == "off") {
-    solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
-  } else if (qf_uf_preprocess == "strong") {
-    solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
-  } else if (qf_uf_preprocess == "auto") {
-    solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
-  } else {
-    solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Basic;
+  if (deprecated_preprocessing_mode_option->count() > 0) {
+    if (preprocessing_mode_option->count() > 0) {
+      std::cerr << "error: --preprocessing-mode and deprecated --qf-uf-preprocess cannot be used "
+                   "together\n";
+      return 2;
+    }
+    preprocessing_mode = deprecated_qf_uf_preprocessing_mode;
+    std::cerr << "warning: --qf-uf-preprocess is deprecated; use --preprocessing-mode\n";
   }
-  solver_options.qf_uf_auto_selector = qf_uf_auto_selector == "structural"
-                                           ? primo::smt::QfUfAutoSelectorMode::Structural
-                                           : primo::smt::QfUfAutoSelectorMode::Legacy;
+  if (deprecated_auto_preprocess_selector_option->count() > 0) {
+    if (auto_preprocess_selector_option->count() > 0) {
+      std::cerr << "error: --auto-preprocess-selector and deprecated --qf-uf-auto-selector cannot "
+                   "be used together\n";
+      return 2;
+    }
+    auto_preprocess_selector = deprecated_qf_uf_auto_selector;
+    std::cerr << "warning: --qf-uf-auto-selector is deprecated; use "
+                 "--auto-preprocess-selector\n";
+  }
+
+  if (preprocessing_mode == "off") {
+    solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  } else if (preprocessing_mode == "strong") {
+    solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
+  } else if (preprocessing_mode == "auto") {
+    solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
+  } else {
+    solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Basic;
+  }
+  solver_options.auto_preprocess_selector = auto_preprocess_selector == "structural"
+                                                ? primo::smt::AutoPreprocessSelectorMode::Structural
+                                                : primo::smt::AutoPreprocessSelectorMode::Legacy;
   if (boolean_implies_rewrite == "clause") {
     solver_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Clause;
   } else if (boolean_implies_rewrite == "all") {

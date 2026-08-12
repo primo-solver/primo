@@ -24,7 +24,7 @@ namespace {
 
 CheckSatOptions no_preprocessing() {
   CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   return options;
 }
 

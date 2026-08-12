@@ -1,6 +1,6 @@
 # Structural automatic preprocessing selection
 
-This note specifies the opt-in `--qf-uf-auto-selector=structural` dispatcher.
+This note specifies the opt-in `--auto-preprocess-selector=structural` dispatcher.
 It replaces assertion-root counts with properties of the implicit conjunction
 without changing the preprocessing transformations themselves. The default is
 still `legacy` until differential fuzzing and the QF_UF/QF_LRA benchmark gates
@@ -13,9 +13,10 @@ validation rather than a theorem citation.
 
 ## Ownership and data flow
 
-`smt::CheckSatOptions` owns `QfUfAutoSelectorMode` and
-`AutoPreprocessTuning`. `check_sat_smtlib` invokes two analysis-only helpers
-before the preprocessing loop:
+`smt::CheckSatOptions` owns `PreprocessingMode`,
+`AutoPreprocessSelectorMode`, and `AutoPreprocessTuning`.
+`check_sat_smtlib` invokes two analysis-only helpers before the preprocessing
+loop and before pure/mixed theory dispatch:
 
 - `analyze_implicit_conjunction` inspects `core::TermId` roots and positive
   top-level `And` descendants;

@@ -55,7 +55,7 @@ fuzz: build
 
 fuzz-finite-domain: build
 	@PATH="$(PATH_WITH_CONTRIB)" command -v z3 >/dev/null 2>&1 || { echo "z3 is required; run make contrib-z3" >&2; exit 2; }
-	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/finite_domain_fuzz.py --solver ./$(PRIMO) --solver-arg=--qf-uf-preprocess=strong --ref z3 --logic QF_UF --count 56 --timeout 5 --require-post-amo --out fuzz-results/finite-domain-qf-uf
+	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/finite_domain_fuzz.py --solver ./$(PRIMO) --solver-arg=--preprocessing-mode=strong --ref z3 --logic QF_UF --count 56 --timeout 5 --require-post-amo --out fuzz-results/finite-domain-qf-uf
 	PATH="$(PATH_WITH_CONTRIB)" $(PYTHON) scripts/finite_domain_fuzz.py --solver ./$(PRIMO) --ref z3 --logic QF_UFLRA --count 56 --timeout 5 --require-post-amo --out fuzz-results/finite-domain-qf-uflra
 
 bench: build

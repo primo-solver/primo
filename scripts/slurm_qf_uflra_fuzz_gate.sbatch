@@ -105,7 +105,7 @@ python3 scripts/qf_uflra_smoke_fuzz.py \
 python3 scripts/finite_domain_fuzz.py \
     --solver ./build-slurm-rel/primo \
     "${solver_args[@]}" \
-    --solver-arg=--qf-uf-preprocess=strong \
+    --solver-arg=--preprocessing-mode=strong \
     --ref z3 \
     --ref cvc5 \
     --logic QF_UF \

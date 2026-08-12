@@ -32,7 +32,7 @@ scripts and result artifacts. Current counters include:
 - `:time.parse-us`: SMT-LIB parser elapsed time in microseconds;
 - `:time.frontend-us`: command validation, declarations, macro expansion, and
   core term construction time in microseconds;
-- `:time.preprocessing-us`: QF_UF preprocessing and pre-solve preparation time
+- `:time.preprocessing-us`: shared preprocessing and pre-solve preparation time
   in microseconds;
 - `:time.solve-us`: SAT/EUF solving time in microseconds;
 - `:time.total-us`: total `check_sat_smtlib` time in microseconds, excluding

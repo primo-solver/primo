@@ -12044,12 +12044,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(":preprocessing.boolean-flatten.rewrites", boolean_flattening.rewrites);
     statistics.set(":preprocessing.boolean-flatten.max-arity", boolean_flattening.max_arity);
     const std::size_t initial_reachable_terms =
-        options.qf_uf_preprocess == QfUfPreprocessMode::Auto
+        options.preprocessing_mode == PreprocessingMode::Auto
             ? reachable_term_count(frontend.terms(), assertions)
             : 0;
-    const bool auto_mode = options.qf_uf_preprocess == QfUfPreprocessMode::Auto;
+    const bool auto_mode = options.preprocessing_mode == PreprocessingMode::Auto;
     const bool structural_selector =
-        auto_mode && options.qf_uf_auto_selector == QfUfAutoSelectorMode::Structural;
+        auto_mode && options.auto_preprocess_selector == AutoPreprocessSelectorMode::Structural;
     const ImplicitConjunctionAnalysis conjunction =
         structural_selector ? analyze_implicit_conjunction(frontend.terms(), assertions)
                             : ImplicitConjunctionAnalysis{};
@@ -12081,7 +12081,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     bool auto_single_assertion = false;
     bool auto_strong = false;
     FiniteDomainAnalysis finite_domain_analysis;
-    const bool preprocessing_enabled = options.qf_uf_preprocess != QfUfPreprocessMode::Off;
+    const bool preprocessing_enabled = options.preprocessing_mode != PreprocessingMode::Off;
     if (structural_selector) {
       auto_large_assertion_skip = exceeds_optional_limit(
           conjunction.conjunct_occurrences, options.auto_preprocess_tuning.large_conjunct_limit);
@@ -12116,7 +12116,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     FiniteDomainAtMostOneResult raw_finite_domain_result;
     if (!structural_selector &&
         (auto_candidate_single_assertion ||
-         options.qf_uf_preprocess == QfUfPreprocessMode::Strong ||
+         options.preprocessing_mode == PreprocessingMode::Strong ||
          (auto_mode && assertions.size() > 1 && !auto_basic_multi && !auto_large_assertion_skip))) {
       FiniteDomainAtMostOne finite_domain(frontend.terms());
       raw_finite_domain_result = finite_domain.generate(assertions);
@@ -12205,7 +12205,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(":preprocessing.auto.analysis.predicted-amo-clauses",
                    finite_domain_analysis.predicted_amo_clauses);
     const bool strong_preprocessing =
-        options.qf_uf_preprocess == QfUfPreprocessMode::Strong || auto_strong;
+        options.preprocessing_mode == PreprocessingMode::Strong || auto_strong;
     const bool use_eq_bridge = options.eq_bridge || strong_preprocessing || auto_single_assertion;
     const bool use_finite_domain_evaluation = false;
     const bool use_finite_domain_amo = strong_preprocessing || auto_single_assertion;
@@ -12216,11 +12216,11 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const bool use_bounded_auto_equality_definitions =
         options.finite_domain_equality_definitions &&
         options.auto_finite_domain_equality_definitions &&
-        options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
+        options.preprocessing_mode == PreprocessingMode::Auto &&
         (auto_strong || auto_single_assertion_eqdefs_allowed);
     const bool use_finite_domain_equality_definitions =
         options.finite_domain_equality_definitions &&
-        (options.qf_uf_preprocess == QfUfPreprocessMode::Strong ||
+        (options.preprocessing_mode == PreprocessingMode::Strong ||
          use_bounded_auto_equality_definitions);
     const bool use_ground_congruence_definitions = options.ground_congruence;
     const bool use_ground_unit_substitution = options.ground_unit_substitution;
@@ -12700,7 +12700,7 @@ CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options
 
   CheckSatOptions first_options = options;
   first_options.qf_uf_portfolio = QfUfPortfolioMode::Off;
-  first_options.qf_uf_preprocess = QfUfPreprocessMode::Basic;
+  first_options.preprocessing_mode = PreprocessingMode::Basic;
   first_options.theory_phase = TheoryPhaseMode::Polarity;
   first_options.max_theory_conflicts = options.qf_uf_portfolio_conflicts;
   CheckSatOutcome first = check_sat_smtlib_once(input, first_options);
