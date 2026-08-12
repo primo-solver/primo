@@ -947,12 +947,22 @@ python3 scripts/validate_qfuf_models_with_dolmen.py \
 ```
 
 The script writes the input problem, Primo response file (`.rsmt2`), stdout and
-stderr logs, and `summary.csv`. It runs Dolmen with `--check-model=true -r` by
+stderr logs, `metadata.json`, and `summary.csv`. It runs Dolmen with
+`--check-model=true -r` by
 default. Pass `--check-model-mode=full` or `--check-model-mode=interleave` only
 when the installed Dolmen binary supports that option; Dolmen's interleave mode
 imposes additional ordering constraints between input declarations and model
 definitions. Dolmen is an external dependency and is not vendored in this
 repository.
+
+Each completed validation row is appended, flushed, and synced immediately.
+`metadata.json` starts with `status: running` and changes to `complete` only
+after every selected input has a row. The `validator` column distinguishes a
+direct `dolmen` pass from `z3-fallback` and `z3-only`; `dolmen_exit` is retained
+when a fallback is attempted instead of being overwritten by the fallback's
+exit status. A clean count with incomplete metadata is not a completed gate.
+Use `--root`, `--shards`, and `--shard-index` for deterministic manifest
+sharding.
 
 Current limitations:
 
@@ -1020,6 +1030,16 @@ example, the experimental mixed callback profile uses
 `--nelson-oppen-prop=online --qf-uflra-online-euf`. The mutation gate's task 2
 uses that same profile. Submit only array task 2 when the default and
 candidate-final mutation profiles are not part of the current experiment.
+The generated gate also reruns every general and finite-domain QF_UFLRA input
+with `:produce-models true` and `get-model`, then validates every SAT response
+with Dolmen. Dolmen is required when the default
+`PRIMO_FUZZ_MODEL_VALIDATION=1` is active; a missing executable fails before
+generation. `PRIMO_FUZZ_SOLVER_ARGS` is forwarded to model production as
+separate `--solver-arg` values, so an option cannot accidentally be tested only
+for verdicts. Model artifacts live under each task's `model-validation/`
+subtree and `scripts/summarize_fuzz_results.py` reports them as a separate
+result class. Disable this phase only for an explicitly verdict-only diagnostic
+run; such a run is not a complete QF_UFLRA merge gate.
 Every standard mixed gate also runs dedicated finite-domain shards: 500 QF_UF
 cases under strong preprocessing and 500 default-profile QF_UFLRA cases. These
 cases have construction-known answers, compare with Z3 and cvc5, and fail when
@@ -1036,6 +1056,11 @@ continues to require AMO and post-AMO activation. Answer and reference
 comparisons are mandatory in both QF_UFLRA profiles.
 `scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
 default/strong/raw-only profile matrix. See [](finite-domain-fuzzing.md).
+For models over real benchmark structure rather than generated formulas,
+`scripts/slurm_qf_uflra_model_validation.sbatch` shards the deterministic
+five-per-family QF_UFLRA manifest by default. Relative manifest entries are
+resolved below `PRIMO_MODEL_ROOT`; every shard uses the same durable validator
+format as the generated gate.
 Before mutation, `scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch` runs
 `scripts/check_solver_seed_corpus.py` on every compact QF_UFLRA mutation seed
 with the exact task options and Z3 reference. Any disagreement, timeout,
@@ -1219,4 +1244,3 @@ Two more from the same day, on the benchmark side:
   both live on the same filesystem.
 - **Count shard CSVs before believing a result.** A shard killed by the wall
   clock leaves no trace; 40/40 per arm is a check, not a formality.
-

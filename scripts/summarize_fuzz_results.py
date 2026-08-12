@@ -24,12 +24,14 @@ import json
 import sys
 from pathlib import Path
 
-KNOWN_KINDS = ("fuzzsmt", "opfuzz", "yinyang", "finite-domain")
+KNOWN_KINDS = ("fuzzsmt", "opfuzz", "yinyang", "finite-domain", "model-validation")
 failed = False
 
 
 def result_kind(root: Path, path: Path) -> str:
     relative = path.relative_to(root)
+    if "model-validation" in relative.parts:
+        return "model-validation"
     if relative.parts[0] in KNOWN_KINDS:
         return relative.parts[0]
     if any(part.startswith("finite-") for part in relative.parts):
@@ -49,6 +51,9 @@ for root_arg in sys.argv[1:]:
     activation_by_kind: dict[str, collections.Counter[str]] = collections.defaultdict(
         collections.Counter
     )
+    validators_by_kind: dict[str, collections.Counter[str]] = collections.defaultdict(
+        collections.Counter
+    )
     metadata_by_kind: collections.Counter[str] = collections.Counter()
     complete_metadata_by_kind: collections.Counter[str] = collections.Counter()
     expected_cases_by_kind: collections.Counter[str] = collections.Counter()
@@ -62,6 +67,8 @@ for root_arg in sys.argv[1:]:
                 outcomes[row.get("outcome", row.get("status", "?"))] += 1
                 if row.get("scenario"):
                     scenarios_by_kind[kind][row["scenario"]] += 1
+                if row.get("validator"):
+                    validators_by_kind[kind][row["validator"]] += 1
                 for field in ("raw_amo", "post_amo", "amo", "real_lowered"):
                     try:
                         activation_by_kind[kind][field] += int(row.get(field, 0))
@@ -99,6 +106,13 @@ for root_arg in sys.argv[1:]:
             f"  {kind}: summaries={summaries_by_kind[kind]} cases={sum(outcomes.values())} "
             f"{dict(outcomes)} bug_files={len(bugs)}"
         )
+        if validators_by_kind[kind]:
+            print(f"    validators={dict(validators_by_kind[kind])}")
+            if kind == "model-validation":
+                failed = failed or any(
+                    validator != "dolmen" and count
+                    for validator, count in validators_by_kind[kind].items()
+                )
         if metadata_by_kind[kind]:
             observed_cases = sum(outcomes.values())
             complete = complete_metadata_by_kind[kind] == metadata_by_kind[kind]
@@ -110,10 +124,11 @@ for root_arg in sys.argv[1:]:
                 f"activation={dict(activation_by_kind[kind])}"
             )
             failed = failed or not complete or not count_matches
+        accepted_outcomes = (
+            {"pass", "not-sat"} if kind == "model-validation" else {"PASS", "TIMEOUT"}
+        )
         failed = failed or any(
-            outcomes[outcome]
-            for outcome in outcomes
-            if outcome not in {"PASS", "TIMEOUT"}
+            outcomes[outcome] for outcome in outcomes if outcome not in accepted_outcomes
         )
         for path in bugs[:5]:
             print(f"    bug file: {path}")

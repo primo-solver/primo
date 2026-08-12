@@ -50,7 +50,11 @@ development but is not merge-grade evidence.
 The standard `scripts/slurm_qf_uflra_fuzz_gate.sbatch` keeps its 3,000 general
 mixed cases and adds 1,000 finite-domain cases: 500 strong-profile QF_UF and 500
 default-profile QF_UFLRA. Both finite-domain portions compare against Z3 and
-cvc5. `scripts/slurm_finite_domain_fuzz_gate.sbatch` is the focused profile
+cvc5. The QF_UFLRA portion is also rerun with model production and checked by
+Dolmen; its durable rows are stored below `model-validation/` and counted
+separately from verdict comparisons. Model checking is on by default and a
+missing Dolmen executable fails the gate.
+`scripts/slurm_finite_domain_fuzz_gate.sbatch` is the focused profile
 matrix for finite-domain or preprocessing changes; it covers QF_UF strong and
 raw-only profiles plus QF_UFLRA default, strong, and raw-only profiles.
 
@@ -66,7 +70,10 @@ missing scenarios, incomplete metadata, missing rows, or absent required
 activation fail the gate. Solver timeouts are counted separately and do not by
 themselves establish a correctness defect. Every merge-grade run must record
 the exact commit, commands, seeds, references, counts, SLURM job IDs, and
-artifact paths in `docs/run-log.json`.
+artifact paths in `docs/run-log.json`. For a QF_UFLRA gate this includes model
+passes, model errors, solver and Dolmen timeouts, fallback counts, complete
+metadata counts, and the validator identity. Verdict-only fuzzing does not
+establish model correctness.
 
 ## Current evidence
 

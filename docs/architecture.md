@@ -680,8 +680,11 @@ make contrib-cvc5
 make contrib-cadical
 ```
 
-Dolmen is used as an optional external validator for SMT-LIB model response
-files. It is not vendored under `contrib/`; install it separately and run
-`scripts/validate_model.py`.
+Dolmen is an external validator for SMT-LIB model response files. It is not
+vendored under `contrib/`; install it separately and run
+`scripts/validate_model.py`. The dependency is optional for ordinary builds,
+but required by the standard QF_UFLRA merge gate. The validator owns only
+generated problem/response artifacts and durable CSV/JSON metadata; it does not
+enter solver control flow or share model objects with Primo.
 
 Downloaded archives and build trees under `contrib/downloads`, `contrib/src`, and `contrib/local` are not committed.

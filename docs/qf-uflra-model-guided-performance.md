@@ -41,6 +41,16 @@ time out, so that run is additional partial coverage rather than evidence that
 every configured mutation completed. Local Dolmen validation accepted all 611
 SAT models among 1,000 generated cases; the other 389 cases were UNSAT.
 
+That 611-model run was the last external model gate before the later live-EUF,
+care-scope, and combination-scan work. The generated SLURM harness used for
+those later changes compared verdicts but did not request models, and the full
+1,284-file performance harness likewise ran without `get-model`. Consequently,
+those answer campaigns were not current-model evidence. The permanent mixed
+gate now validates its general and finite-domain QF_UFLRA cases with Dolmen,
+and `scripts/slurm_qf_uflra_model_validation.sbatch` supplies separate
+real-corpus coverage. A later run-log entry must record the exact-commit result
+before this branch is merge-ready for model correctness.
+
 On the full 1,284-file QF_UFLRA corpus at 30 seconds per file, the new profile
 solved 1,257 files with 27 timeouts, zero errors, unsupported rows, or wrong
 answers, and PAR2 2,092.497309. The `1f3d81c` baseline solved 1,238 with 46

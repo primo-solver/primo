@@ -12,15 +12,17 @@
 # PRIMO_FUZZ_SOLVER_ARGS is split on spaces into repeated --solver-arg values;
 # use it only for option tokens that contain no spaces. Set the QF_UFLRA
 # activation profile to structural and its post-AMO requirement to 0 when the
-# selector intentionally chooses a non-AMO profile.
+# selector intentionally chooses a non-AMO profile. General and finite-domain
+# QF_UFLRA cases are rerun with get-model and checked by Dolmen unless
+# PRIMO_FUZZ_MODEL_VALIDATION=0 is set explicitly.
 # Keep cluster hostnames, usernames, and absolute home paths out of this file.
 #SBATCH --job-name=primo-qf-uflra-fuzz
 #SBATCH --output=slurm_logs/primo-qf-uflra-fuzz-%A_%a.out
 #SBATCH --error=slurm_logs/primo-qf-uflra-fuzz-%A_%a.err
 #SBATCH --array=0-3
-#SBATCH --time=00:20:00
+#SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=2G
+#SBATCH --mem=4G
 
 set -euo pipefail
 
@@ -30,25 +32,40 @@ FINITE_COUNT=${PRIMO_FINITE_DOMAIN_FUZZ_COUNT:-125}
 SEED_BASE=${PRIMO_FUZZ_SEED_BASE:-202607390}
 OUT_ROOT=${PRIMO_FUZZ_OUT_DIR:-slurm-results/qf_uflra-fuzz-gate}
 SOLVER_ARGS_TEXT=${PRIMO_FUZZ_SOLVER_ARGS:-}
+MODEL_VALIDATION=${PRIMO_FUZZ_MODEL_VALIDATION:-1}
+MODEL_TIMEOUT=${PRIMO_FUZZ_MODEL_TIMEOUT:-10}
+MODEL_DOLMEN_TIMEOUT=${PRIMO_FUZZ_MODEL_DOLMEN_TIMEOUT:-10}
 QF_UFLRA_REQUIRE_POST_AMO=${PRIMO_FINITE_DOMAIN_QF_UFLRA_REQUIRE_POST_AMO:-1}
 QF_UFLRA_ACTIVATION_PROFILE=${PRIMO_FINITE_DOMAIN_QF_UFLRA_ACTIVATION_PROFILE:-amo}
 
 cd "$WORKDIR"
 mkdir -p slurm_logs "$OUT_ROOT"
+PATH="$WORKDIR/contrib/local/bin:$HOME/.opam/default/bin:$PATH"
+export PATH
 
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 SEED=$((SEED_BASE + TASK_ID))
 OUT="$OUT_ROOT/task-${TASK_ID}"
 
 ./build-slurm-rel/primo --version
-for required in z3 cvc5; do
+required_tools=(z3 cvc5)
+case "$MODEL_VALIDATION" in
+  0) ;;
+  1) required_tools+=(dolmen) ;;
+  *)
+    echo "PRIMO_FUZZ_MODEL_VALIDATION must be 0 or 1" >&2
+    exit 2
+    ;;
+esac
+for required in "${required_tools[@]}"; do
   if ! PATH="$WORKDIR/contrib/local/bin:$PATH" command -v "$required" >/dev/null 2>&1; then
-    echo "required reference '$required' not found; prepare contrib-z3 and contrib-cvc5" >&2
+    echo "required gate tool '$required' not found" >&2
     exit 2
   fi
 done
 solver_args=()
 solver_arg_words=()
+model_solver_args=(--solver-arg=--quiet)
 finite_domain_activation_args=()
 case "$QF_UFLRA_REQUIRE_POST_AMO" in
   0) ;;
@@ -69,13 +86,13 @@ if [[ -n $SOLVER_ARGS_TEXT ]]; then
   read -r -a solver_arg_words <<< "$SOLVER_ARGS_TEXT"
   for arg in "${solver_arg_words[@]}"; do
     solver_args+=(--solver-arg="$arg")
+    model_solver_args+=(--solver-arg="$arg")
   done
 fi
 printf 'solver options:'
 printf ' %q' "${solver_arg_words[@]}"
 printf '\n'
-PATH="$WORKDIR/contrib/local/bin:$PATH" \
-  python3 scripts/qf_uflra_smoke_fuzz.py \
+python3 scripts/qf_uflra_smoke_fuzz.py \
     --solver ./build-slurm-rel/primo \
     "${solver_args[@]}" \
     --ref z3 \
@@ -85,8 +102,7 @@ PATH="$WORKDIR/contrib/local/bin:$PATH" \
     --shape mixed \
     --out "$OUT/general"
 
-PATH="$WORKDIR/contrib/local/bin:$PATH" \
-  python3 scripts/finite_domain_fuzz.py \
+python3 scripts/finite_domain_fuzz.py \
     --solver ./build-slurm-rel/primo \
     "${solver_args[@]}" \
     --solver-arg=--qf-uf-preprocess=strong \
@@ -100,8 +116,7 @@ PATH="$WORKDIR/contrib/local/bin:$PATH" \
     --require-post-amo \
     --out "$OUT/finite-qf-uf"
 
-PATH="$WORKDIR/contrib/local/bin:$PATH" \
-  python3 scripts/finite_domain_fuzz.py \
+python3 scripts/finite_domain_fuzz.py \
     --solver ./build-slurm-rel/primo \
     "${solver_args[@]}" \
     --ref z3 \
@@ -113,3 +128,24 @@ PATH="$WORKDIR/contrib/local/bin:$PATH" \
     --activation-profile "$QF_UFLRA_ACTIVATION_PROFILE" \
     "${finite_domain_activation_args[@]}" \
     --out "$OUT/finite-qf-uflra"
+
+if ((MODEL_VALIDATION)); then
+  model_status=0
+  python3 scripts/validate_model.py \
+      --solver ./build-slurm-rel/primo \
+      "${model_solver_args[@]}" \
+      --require-dolmen-pass \
+      --timeout "$MODEL_TIMEOUT" \
+      --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
+      --out "$OUT/model-validation/general" \
+      "$OUT"/general/cases/*.smt2 || model_status=$?
+  python3 scripts/validate_model.py \
+      --solver ./build-slurm-rel/primo \
+      "${model_solver_args[@]}" \
+      --require-dolmen-pass \
+      --timeout "$MODEL_TIMEOUT" \
+      --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
+      --out "$OUT/model-validation/finite-qf-uflra" \
+      "$OUT"/finite-qf-uflra/cases/*.smt2 || model_status=$?
+  exit "$model_status"
+fi
