@@ -1294,9 +1294,9 @@ Limitations:
   model-equality branch consumer is enabled. It is used by the `ranked` and
   `adaptive` model-equality branch policies only as an ordering hint with
   full-pair fallback. It does not add clauses and is not an implementation of
-  the Jovanovic-Barrett care-set algorithms. The current scan is quadratic in
-  the number of shared-argument flat definitions, which is intentionally simple
-  and remains behind default-off model-equality branching for active consumers;
+  the Jovanovic-Barrett care-set algorithms. Function-class projection avoids a
+  quadratic cross-class scan, but candidate enumeration remains quadratic when
+  one current function class contains many distinct shared arguments;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;
@@ -1423,6 +1423,20 @@ term index and shared-term set. The cache is local to one `check-sat` call and
 does not survive structural preparation changes. This is coordinator-local
 memoization of Section 4 care information, not an additional model-based
 transition from the paper.
+
+The accepted 1,284-file QF_UFLRA evaluation at commit `20c8db1` used the same
+care-scoped command as the `30d9a26` baseline. At five seconds both revisions
+solved 1,247 files, while common-solved time fell from 169.43 to 159.99 seconds.
+At 30 seconds the new implementation solved 1,268 files versus 1,267, with no
+losses or answer disagreements; common-solved time fell from 482.07 to 437.14
+seconds. The recovered `rekh_ctm` instance retained exactly 2 SAT solve calls,
+1,122 decisions, and 353,565 propagations, but changed from a 30-second timeout
+inside care discovery to `sat` in 8.03 seconds. Its two care computations each
+considered 29,089 shared-argument definitions: the diagnostic full scan would
+have tested 846,140,832 definition pairs in total, while class bucketing retained
+2,753,870 argument-pair iterations. The final implied-equality projection visited
+29,546 flat shared terms per round. This is evidence for removing coordinator
+overhead without attributing the gain to a changed SAT search.
 
 ### Primo Checklist Items
 

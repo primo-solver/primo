@@ -26536,6 +26536,102 @@
       "artifacts": "remote:<prepared-workspace>/slurm-results/care-scope-30d9a26/sample/, full-all/, full-care/, full30-all/, and full30-care/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Retain --model-equality-mutation-scope=care as a validated opt-in performance mode. It reduces mutation cost and improves aggregate time, but the cutoff-dependent solved-set exchanges and increased SAT work do not justify changing the default from all."
+    },
+    {
+      "id": "2026-08-12-euf-combination-scan-profile-20c8db1",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "profile",
+      "scope": "Profile and remove repeated quadratic coordinator scans in EUF care discovery and LRA-to-EUF equality filtering without changing LRA internals",
+      "commit": "20c8db1",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "local",
+        "binary": "GCC Release and -pg builds, CaDiCaL 3.0.0",
+        "target": "sandbox/non-incremental/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.rekh_ctm_false-unreach-call.2.c.smt2",
+        "limit": "--max-theory-conflicts=100"
+      },
+      "commands": {
+        "solver": "primo --quiet --stats --model-equality-branching --model-equality-mutation-scope=care --max-theory-conflicts=100 TARGET",
+        "profile": "gprof BUILD/primo gmon.out"
+      },
+      "results": {
+        "initial_profile": "Before pair-set replacement, equality_list_contains_pair used 15.64% self time across 55,559 calls and approximately 1.55 billion TermManager lookups.",
+        "after_pair_sets": "The remaining small-list equality helper used 0.89% self time; arithmetic pivoting and Rational multiplication became the leading sampled costs.",
+        "release": "The accepted implementation solved the target locally in 26.89 seconds. One care miss plus 191 exact-assignment cache hits replaced repeated care construction; one EUF implied-equality class projection visited 29,546 terms.",
+        "care_work": "One diagnostic represented 423,070,416 full definition pairs but enumerated 1,376,935 within-class argument pairs.",
+        "dedup": "55,559 LRA-to-EUF pair-set lookups found zero duplicates on this target, confirming that the removed linear membership scans were pure overhead here."
+      },
+      "artifacts": "local-only:/tmp/primo-rekh-care-profile.4hbptp and /tmp/primo-rekh-care-profile-after.mU3qCM",
+      "evidence_status": "local-profile-current",
+      "outcome": "Class projection, exact care-epoch reuse, and hash-set pair membership removed the observed coordinator bottlenecks. Full-corpus and fuzz evaluation remained required before acceptance."
+    },
+    {
+      "id": "2026-08-12-euf-combination-scan-fuzz-20c8db1",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz",
+      "scope": "Exact-binary isolated-workspace merge gate for EUF combination scan changes",
+      "commit": "20c8db1",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 20c8db1, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for generated and mutation cases; cvc5 1.3.4 additionally for finite-domain cases",
+        "scheduler": "Isolated-workspace generated/finite job 125222 completed four tasks in 27-28 seconds; mutation job 125223 task 0 completed in 90 seconds."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch tasks 0-3 with --model-equality-mutation-scope=care, 750 generated mixed cases, 125 finite QF_UF cases, and 125 finite QF_UFLRA cases per task; seed base 202607390; five-second timeout",
+        "finite_seeds": "QF_UF seeds 202707390 through 202707393 and QF_UFLRA seeds 202807390 through 202807393",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch task 0 with --model-equality-mutation-scope=care, 100 iterations per tracked seed, seed 2026080700, and eight-second solver timeout"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS.",
+        "finite_qf_uf": "500/500 PASS.",
+        "finite_qf_uflra": "500/500 PASS.",
+        "deterministic_seeds": "11/11 PASS.",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers, and 2074 solver calls.",
+        "failures": "Zero wrong answer, crash, parser/type error, unsupported result, timeout, or reference disagreement.",
+        "superseded_attempt": "Jobs 125185 and 125189 also passed, but another experiment changed their shared source checkout while they ran. Their exact 20c8db1 solver binary evidence is retained only as historical corroboration, not as the merge gate."
+      },
+      "artifacts": "remote:<isolated-workspace>/slurm-results/qf_uflra-fuzz-gate/ and remote:<isolated-workspace>/slurm-results/euf-combination-20c8db1-isolated/mutation/; local-only:/tmp/primo-euf-combination-20c8db1-isolated/generated/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The isolated exact-binary merge gate passed. The finite-fuzzer metadata says commit unknown because the prepared archive intentionally has no .git directory; the SLURM logs and binary --version report git 20c8db1."
+    },
+    {
+      "id": "2026-08-12-euf-combination-scan-benchmark-20c8db1",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Isolated-workspace five-second and 30-second full QF_UFLRA comparison of the accepted EUF combination scan implementation against the prior care-scoped result",
+      "commit": "20c8db1",
+      "baseline_commit": "30d9a26",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 20c8db1, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; historical C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "reference_reuse": "Unchanged identical-corpus Z3 5.0.0 and Yices 2.7.0 results were not rerun. Z3 previously solved 1234 at five seconds; Yices solved 1275 at five seconds and 1276 at 30 seconds with zero wrong answers.",
+        "scheduler": "Isolated-workspace jobs 125243 and 125244 completed all eight shards."
+      },
+      "commands": {
+        "solver": "build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=care",
+        "five_seconds": "scripts/slurm_qf_uflra_model_mine.sbatch tasks 0-7, timeout 5",
+        "thirty_seconds": "scripts/slurm_qf_uflra_model_mine.sbatch tasks 0-7, timeout 30",
+        "summary": "scripts/summarize_benchmark_shards.py against the 30d9a26 care-scoped shard CSVs"
+      },
+      "results": {
+        "five_seconds": "Both revisions solved 1247/1284 (740 sat, 507 unsat), with 37 timeouts and zero error/unsupported/wrong rows. Common-solved time changed from 169.428890 to 159.986714 seconds and PAR2 from 539.428890 to 529.986714, with no recoveries or losses.",
+        "thirty_seconds": "The candidate solved 1268/1284 (757 sat, 511 unsat) versus 1267/1284 (756 sat, 511 unsat), with 16 versus 17 timeouts and zero error/unsupported/wrong rows. Common-solved time changed from 482.067240 to 437.144987 seconds and PAR2 from 1502.067240 to 1405.176392.",
+        "families_30_seconds": "Candidate solved FFT 10/10, CPAchecker BMC 7/15, CPAchecker induction 351/359, and MathSAT 900/900. The sole recovery was in CPAchecker induction; there were no losses or decisive-answer disagreements.",
+        "recovered_target": "cpachecker-induction.rekh_ctm_false-unreach-call.2.c.smt2 changed from timeout at 30.068995 seconds to sat in 8.031405 seconds while retaining 2 SAT solve calls, 1122 decisions, 353565 propagations, and 2 EUF care checks.",
+        "target_mechanism": "Across the two care checks, 846140832 diagnostic full definition pairs reduced to 2753870 within-class argument-pair iterations; final EUF class projections visited 59092 flat terms and pair-set filtering performed 110663 constant-time lookups.",
+        "remaining_reference_gap": "At 30 seconds the candidate is eight solves behind reused Yices and ahead of the reused five-second Z3 solved count at its five-second cutoff.",
+        "rejected_runs": "Jobs 125190/125191 accidentally added --model-equality-branching and were rejected as option-incomparable. Jobs 125206/125207 reproduced the accepted result but used a shared harness checkout and were superseded. Isolated jobs 125227/125228 failed before solver execution because a symlinked corpus resolved outside the harness repository; the corpus was hard-linked into the workspace before jobs 125243/125244."
+      },
+      "artifacts": "remote:<isolated-workspace>/slurm-results/euf-combination-20c8db1-isolated/full5-care-rerun/ and full30-care-rerun/; local-only:/tmp/primo-euf-combination-20c8db1-isolated/full5-summary.json and full30-summary.json",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accept the implementation on the opt-in care-scoped profile: it preserves the five-second solved set, gains one 30-second solve without losses, and removes the profiled care-scan bottleneck without changing the recovered target's SAT search."
     }
   ]
 }
