@@ -26767,6 +26767,127 @@
           "false_start": "A first perturbation attempt used --cadical-option seed/restartint and looked like strong evidence of a systematic loss. It was invalid: --cadical-option seed is INERT under the external propagator (seeds 1/7/99 give identical decisions 8420 and conflicts 726), so three of five 'perturbations' perturbed nothing."
         }
       }
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-local-smoke-20c8db1-dirty",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "model-validation-smoke",
+      "scope": "Initial local smoke of the durable QF_UFLRA model validator before committing the harness",
+      "commit": "20c8db1 plus uncommitted validation-harness changes",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "local",
+        "generator": "the repository QF_UFLRA generator",
+        "validator": "Dolmen 0.10 direct model checking",
+        "count": 60,
+        "timeouts": "10 seconds per Primo invocation and 10 seconds per Dolmen invocation"
+      },
+      "commands": {
+        "gate": "scripts/validate_qfuf_models_with_dolmen.py over 60 generated mixed cases"
+      },
+      "results": {
+        "models": "37 SAT models passed direct Dolmen validation; 23 cases were UNSAT.",
+        "failures": "0 wrong answer, model error, crash, parser/type error, timeout, unsupported result, or fallback."
+      },
+      "artifacts": "local-only:/tmp/primo-qfuflra-model-gate-smoke.l5IaiZ",
+      "evidence_status": "historical-preliminary",
+      "outcome": "Useful smoke evidence for the harness only; the dirty source state is not merge evidence."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-discovery-ecba89f",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-model-validation",
+      "scope": "First exact-commit direct-Dolmen generated and real-sample gates; this run discovered symbolic-delta concretization model errors",
+      "commit": "ecba89f",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git ecba89f with CaDiCaL 3.0.0",
+        "jobs": "125311 generated array and 125312 real-sample array; four shards each",
+        "seed_base": 2026081210,
+        "corpus": "3000 generated general QF_UFLRA cases, 1000 generated finite-domain comparisons, and the deterministic 20-file five-per-family QF_UFLRA sample",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for generated-model Primo and Dolmen; 60 seconds for real-sample Primo and 30 seconds for real-sample Dolmen",
+        "setup_note": "Dependency setup job 125309 was canceled after attempting a network download from a compute node. Dolmen was instead built on the login node with the committed installer before these jobs were submitted."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3 with PRIMO_FUZZ_COUNT=750 and PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125",
+        "real_sample": "scripts/slurm_qf_uflra_model_validation.sbatch array 0-3 with benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "validator": "Dolmen 0.10 --check-model=true -r with --require-dolmen-pass"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general and 1000/1000 finite-domain comparisons passed with zero bug files.",
+        "generated_models": "3500 rows: 2117 SAT models passed direct Dolmen, 1380 were UNSAT, and 3 SAT models failed Dolmen because concrete delta=1 collapsed distinct symbolic shared Real values.",
+        "real_sample": "20 rows: 8 SAT models passed direct Dolmen and 3 were UNSAT; four SAT models evaluated false in Dolmen and five MathSAT rows hit Dolmen strict-linear-syntax reports. The limited Z3 constant fallback did not establish full model validity.",
+        "failures": "The three generated model errors and four real-sample false models are correctness blockers; answer differential remained clean."
+      },
+      "artifacts": "expired-remote:slurm-results/qf-uflra-dolmen-ecba89f and qf-uflra-real-models-ecba89f after later exact-workspace sync; saved generated witnesses local-only:/tmp/primo-model-bugs",
+      "evidence_status": "rejected-correctness-discovery",
+      "outcome": "Rejected as merge evidence. It led to commit 2b26aa6, which preserves the order of symbolic shared values when choosing concrete delta."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-followup-2b26aa6",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Exact-commit rerun after the concrete-delta order repair; generated models passed and the real sample exposed stale Real application table-row shadowing",
+      "commit": "2b26aa6",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 2b26aa6 with CaDiCaL 3.0.0",
+        "jobs": "125320 generated array and 125319 real-sample array; four shards each",
+        "seed_base": 2026081310,
+        "corpus": "Fresh 3000-case general generation, 1000 finite-domain comparisons, 3500 generated model rows, and the deterministic 20-file real sample",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for generated-model Primo and Dolmen; 60 seconds for real-sample Primo and 30 seconds for real-sample Dolmen"
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3",
+        "real_sample": "scripts/slurm_qf_uflra_model_validation.sbatch array 0-3",
+        "summary": "scripts/summarize_fuzz_results.py over each result root"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general and 1000/1000 finite-domain comparisons passed with zero bug files.",
+        "generated_models": "3500 rows: 2081 SAT models passed direct Dolmen and 1419 were UNSAT; zero generated model errors or fallbacks.",
+        "real_sample": "20 rows: 9 SAT models passed direct Dolmen and 3 were UNSAT. Three SAT models still evaluated false because a stale pre-rewrite Real application row shadowed the active purified row; five MathSAT rows needed Dolmen lenient parsing.",
+        "repair_delta": "The previously failing generated witnesses all passed, and one of the four prior real false models was repaired."
+      },
+      "artifacts": "expired-remote:slurm-results/qf-uflra-dolmen-2b26aa6 and qf-uflra-real-models-2b26aa6 after later exact-workspace sync; saved real witnesses local-only:/tmp/primo-real-model-bugs-2b26aa6",
+      "evidence_status": "rejected-correctness-discovery",
+      "outcome": "Generated gate accepted the delta repair, but real model correctness remained blocked. The failures led to commit 4dca518."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-merge-gate-4dca518",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Fresh exact-commit QF_UFLRA differential, finite-domain, generated-model, and real-corpus Dolmen gate after both model-composition repairs",
+      "commit": "4dca518",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 4dca518 with CaDiCaL 3.0.0",
+        "jobs": "125327 generated array and 125328 real-sample array; all eight tasks completed with exit status zero",
+        "seed_base": 2026081410,
+        "corpus": "Fresh 3000-case general generation, 1000 finite-domain comparisons, 3500 generated model rows, and benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for generated-model Primo and Dolmen; 60 seconds for real-sample Primo and 30 seconds for real-sample Dolmen",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified git 4dca518, CaDiCaL, Z3, cvc5, and Dolmen immediately before submission."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, and PRIMO_FUZZ_SEED_BASE=2026081410",
+        "real_sample": "scripts/slurm_qf_uflra_model_validation.sbatch array 0-3; Dolmen receives --strict=false for accepted compound-linear MathSAT syntax",
+        "summary": "scripts/summarize_fuzz_results.py slurm-results/qf-uflra-dolmen-4dca518 and qf-uflra-real-models-4dca518"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general cases and 1000/1000 finite-domain cases passed; zero bug files.",
+        "generated_models": "3500/3500 rows completed: 2137 SAT models passed direct Dolmen and 1363 cases were UNSAT. No fallback, model error, crash, timeout, parser/type error, unsupported result, or reference disagreement.",
+        "real_sample": "20/20 rows completed: all 17 SAT models passed direct Dolmen and 3 cases were UNSAT. No fallback or model error.",
+        "metadata": "Generated model metadata 8/8 complete, finite-domain metadata 8/8 complete, real-sample metadata 4/4 complete; observed counts equal expected counts."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-dolmen-4dca518 and qf-uflra-real-models-4dca518; summary-only local copy:/tmp/qf-uflra-real-models-4dca518",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as the current QF_UFLRA answer and model-correctness merge gate for commit 4dca518. It does not claim full generic DPLL(T^M) or replace separate performance/QF_LRA regression evaluation."
     }
   ]
 }

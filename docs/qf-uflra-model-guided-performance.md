@@ -66,8 +66,18 @@ same concrete arguments. The follow-up repair assigns every Real-valued
 application in a purified EUF class and gives exact application rows precedence
 during table deduplication. The five MathSAT sample rows require Dolmen's
 lenient parser for compound linear multiplication, so the real-corpus gate uses
-`--strict=false` while the generated gate remains strict. A fresh exact-commit
-rerun of both gates is still required before this becomes merge evidence.
+`--strict=false` while the generated gate remains strict.
+
+The fresh exact-commit rerun at `4dca518` supplies the model-correctness merge
+evidence. SLURM job `125327` passed 3,000 general answer comparisons and 1,000
+finite-domain comparisons, then checked all 2,137 satisfiable generated models
+directly with Dolmen; the other 1,363 generated cases were unsatisfiable.
+SLURM job `125328` completed the deterministic 20-file real-corpus sample: all
+17 satisfiable models passed direct Dolmen validation and the other three cases
+were unsatisfiable. Both jobs completed every shard with no fallback, model
+error, wrong answer, crash, timeout, parser/type error, unsupported result, or
+saved bug. These results validate the implemented convex QF_UFLRA path and its
+model composition; they do not claim the generic DPLL(T^M) transition system.
 
 On the full 1,284-file QF_UFLRA corpus at 30 seconds per file, the new profile
 solved 1,257 files with 27 timeouts, zero errors, unsupported rows, or wrong

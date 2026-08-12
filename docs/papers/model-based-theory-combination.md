@@ -1,8 +1,8 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
-Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, after the
-convex shared-model reconciliation implementation, exact-commit fuzz gate, and
-full SLURM performance comparison.
+Status stamp: 2026-08-12, branch `qf-uf-structural-preprocessing`, after the
+convex shared-model reconciliation implementation, exact-commit fuzz and model
+gates, and full SLURM performance comparison.
 
 Reference:
 
@@ -67,8 +67,18 @@ sample. The 30-second 1,284-file run solved 1,257 files versus 1,238 for
 `1f3d81c`, with 19 timeout recoveries, no losses or answer disagreements, and a
 PAR2 reduction from 3,306.995737 to 2,092.497309. This validated the specialized
 convex mechanism before the later retained component epoch and split-frontier
-work justified default promotion. It does not turn the implementation into the
-generic Appendix A system.
+work justified default promotion.
+
+The newer exact model gate at `4dca518` covers the current implementation after
+the live-EUF, care-scope, preprocessing, and model-composition changes. SLURM
+job `125327` passed 3,000 general and 1,000 finite-domain answer comparisons,
+then validated all 2,137 satisfiable generated models directly with Dolmen; the
+other 1,363 generated cases were unsatisfiable. Job `125328` validated all 17
+satisfiable models in the deterministic 20-file real-corpus sample directly
+with Dolmen; the other three cases were unsatisfiable. No fallback, model error,
+wrong answer, crash, timeout, parser/type error, unsupported result, or saved
+bug remained. This validates the implemented convex QF_UFLRA model-composition
+subset. It does not turn the implementation into the generic Appendix A system.
 
 - no generic model object carried by the DPLL(T) state;
 - no theory-independent `M-Propagate` transition beyond shared Real terms in

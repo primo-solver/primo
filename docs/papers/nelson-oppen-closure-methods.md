@@ -836,10 +836,12 @@ The implementation status remains organized into separate tracks. Track A is a
 prerequisite for any model-guided closure claim:
 
 1. Keep expanding explicit model construction beyond the current QF_UF subset.
-2. Validate SMT-LIB `get-model` responses with Dolmen before relying on them in
-   combination experiments.
-3. Add model validation tests against the asserted formulas, including formulas
-   affected by preprocessing passes.
+2. **Implemented for the current QF_UFLRA subset:** validate SMT-LIB
+   `get-model` responses with Dolmen in the permanent generated and real-corpus
+   gates before relying on them in combination experiments.
+3. **Implemented for current reconstruction paths:** model-validation tests
+   cover asserted formulas and the supported preprocessing reconstruction;
+   extend them with each new satisfiability-preserving rewrite.
 4. Continue expanding reconstruction state for satisfiability-preserving
    rewrites beyond the current QF_UF unit and substitution subset.
 

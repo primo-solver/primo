@@ -39,6 +39,17 @@ def result_kind(root: Path, path: Path) -> str:
     return "direct"
 
 
+def summary_kind(root: Path, path: Path) -> str:
+    kind = result_kind(root, path)
+    if kind != "direct":
+        return kind
+    with path.open(newline="") as handle:
+        fields = set(csv.DictReader(handle).fieldnames or [])
+    if {"validator", "dolmen_exit"}.issubset(fields):
+        return "model-validation"
+    return kind
+
+
 for root_arg in sys.argv[1:]:
     root = Path(root_arg)
     print(f"=== {root} ===")
@@ -59,7 +70,7 @@ for root_arg in sys.argv[1:]:
     expected_cases_by_kind: collections.Counter[str] = collections.Counter()
 
     for summary in root.rglob("summary.csv"):
-        kind = result_kind(root, summary)
+        kind = summary_kind(root, summary)
         summaries_by_kind[kind] += 1
         outcomes = outcomes_by_kind.setdefault(kind, collections.Counter())
         with summary.open(newline="") as handle:
@@ -76,9 +87,11 @@ for root_arg in sys.argv[1:]:
                         pass
 
     for metadata_path in root.rglob("metadata.json"):
-        kind = result_kind(root, metadata_path)
         with metadata_path.open(encoding="utf-8") as handle:
             metadata = json.load(handle)
+        kind = result_kind(root, metadata_path)
+        if kind == "direct" and "require_dolmen_pass" in metadata:
+            kind = "model-validation"
         metadata_by_kind[kind] += 1
         expected_cases_by_kind[kind] += int(metadata.get("count", 0))
         if metadata.get("status") == "complete":

@@ -225,6 +225,41 @@ class ModelValidationTests(unittest.TestCase):
             self.assertIn("model-validation: summaries=1 cases=1", result.stdout)
             self.assertIn("validators={'dolmen': 1}", result.stdout)
 
+    def test_fuzz_summarizer_recognizes_standalone_model_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shard = root / "shard-0"
+            shard.mkdir()
+            (shard / "summary.csv").write_text(
+                "file,answer,outcome,validator,dolmen_exit\n"
+                "sat.smt2,sat,pass,dolmen,0\n"
+                "unsat.smt2,unsat,not-sat,,\n",
+                encoding="utf-8",
+            )
+            (shard / "metadata.json").write_text(
+                json.dumps(
+                    {
+                        "status": "complete",
+                        "count": 2,
+                        "require_dolmen_pass": True,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(Path(__file__).parents[2] / "scripts" / "summarize_fuzz_results.py"),
+                    str(root),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("model-validation: summaries=1 cases=2", result.stdout)
+            self.assertIn("{'pass': 1, 'not-sat': 1}", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
