@@ -1438,6 +1438,17 @@ have tested 846,140,832 definition pairs in total, while class bucketing retaine
 29,546 flat shared terms per round. This is evidence for removing coordinator
 overhead without attributing the gain to a changed SAT search.
 
+A fresh 120-second evaluation at benchmark commit `9061611` ran both Primo
+scopes and all four installed references over the same 1,284 files. Default
+`all` solved 1,272 and `care` solved 1,271; care used 660.98 seconds on the 1,271
+common solves versus 803.83 for all, but timed out on one induction row that all
+solved. Yices remained strongest with 1,276 solves and only the eight universal
+CPAchecker BMC timeouts. cvc5 solved 1,273, OpenSMT 1,265, and Z3 1,254. There
+were no declared-status wrong answers, solver errors, unsupported results, or
+decisive-answer disagreements. This longer cutoff therefore does not justify
+changing the default mutation scope to `care`: it confirms a throughput gain
+with a small, timeout-dependent solved-set loss.
+
 ### Primo Checklist Items
 
 - Keep `TheoryCombinationManager` in `smt/`; it may store SAT-visible equality

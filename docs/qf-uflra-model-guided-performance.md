@@ -1,8 +1,8 @@
 # QF_UFLRA Model-Guided Performance Plan
 
-Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, after the
+Status stamp: 2026-08-12, branch `qf-uf-structural-preprocessing`, after the
 convex model-reconciliation implementation, exact-commit fuzz gate, and full
-SLURM performance comparison.
+120-second SLURM reference comparison.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -223,6 +223,15 @@ the subsequent search. Two attempted care mutations were rejected by the
 global pair guard. The option is retained as a validated performance mode; the
 default remains `all` because the solved-set exchanges and increased SAT work
 need broader policy evidence before promotion.
+
+The later 120-second full-corpus comparison at commit `9061611` confirms that
+policy. Default `all` solved 1,272 files and `care` solved 1,271. Care reduced
+aggregate time on the 1,271 common solves from 803.83 to 660.98 seconds, but
+timed out on one induction row solved by all. The same run solved 1,254 files
+with Z3, 1,273 with cvc5, 1,265 with OpenSMT, and 1,276 with Yices. All profiles
+had zero wrong answers, errors, unsupported results, or pairwise decisive-answer
+disagreements. The exact commands, job IDs, family counts, PAR2 values, and
+artifacts are recorded in `docs/run-log.json`.
 
 **Shared-model reconciliation result, 2026-08-09.** The repaired opt-in
 `--qf-uflra-model-reconciliation` profile passed 3,000 generated mixed cases,

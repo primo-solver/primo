@@ -26632,6 +26632,51 @@
       "artifacts": "remote:<isolated-workspace>/slurm-results/euf-combination-20c8db1-isolated/full5-care-rerun/ and full30-care-rerun/; local-only:/tmp/primo-euf-combination-20c8db1-isolated/full5-summary.json and full30-summary.json",
       "evidence_status": "slurm-complete-current",
       "outcome": "Accept the implementation on the opt-in care-scoped profile: it preserves the five-second solved set, gains one 30-second solve without losses, and removes the profiled care-scan bottleneck without changing the recovered target's SAT search."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-full-120s-six-solver-9061611",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "reference-benchmark",
+      "scope": "Full 120-second QF_UFLRA comparison of Primo all, Primo care, Z3, cvc5, OpenSMT, and Yices",
+      "commit": "9061611",
+      "implementation_commit": "20c8db1",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binaries": "Primo Release git 9061611 with CaDiCaL 3.0.0; Z3 5.0.0; cvc5 1.3.4; OpenSMT 2.9.2; Yices 2.7.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "workspace": "Isolated prepared workspace; scripts/slurm_prepare_benchmark_workspace.py --check-only verified the exact Primo revision and all reference executables immediately before submission.",
+        "scheduler": "Eight shards per solver. Jobs 125259 through 125264 completed all 48 tasks with exit status zero; task elapsed times were 3:35-6:17 Primo all, 3:13-6:00 Primo care, 7:01-10:54 Z3, 3:13-6:34 cvc5, 4:13-13:01 OpenSMT, and 2:08-2:16 Yices."
+      },
+      "commands": {
+        "harness": "scripts/slurm_qf_uflra_model_mine.sbatch tasks 0-7, PRIMO_MINE_TIMEOUT=120, PRIMO_MINE_SHARDS=8, six-hour task allocation",
+        "primo_all": "build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=all",
+        "primo_care": "build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=care",
+        "z3": "contrib/local/bin/z3 -st",
+        "cvc5": "contrib/local/bin/cvc5 --lang smt2 --stats",
+        "opensmt": "contrib/local/bin/opensmt",
+        "yices": "contrib/local/bin/yices-smt2 --stats",
+        "summary": "scripts/summarize_benchmark_shards.py --timeout 120 plus structured pairwise analysis of the durable shard CSVs"
+      },
+      "results": {
+        "primo_all": "1272 solved (761 sat, 511 unsat), 12 timeout, 0 error/unsupported/wrong, solved-row time 805.384529 seconds, PAR2 3685.384529.",
+        "primo_care": "1271 solved (760 sat, 511 unsat), 13 timeout, 0 error/unsupported/wrong, solved-row time 660.975990 seconds, PAR2 3780.975990.",
+        "z3": "1254 solved (752 sat, 502 unsat), 30 timeout, 0 error/unsupported/wrong, solved-row time 617.388440 seconds, PAR2 7817.388440.",
+        "cvc5": "1273 solved (762 sat, 511 unsat), 11 timeout, 0 error/unsupported/wrong, solved-row time 966.152165 seconds, PAR2 3606.152165.",
+        "opensmt": "1265 solved (754 sat, 511 unsat), 19 timeout, 0 error/unsupported/wrong, solved-row time 1374.827663 seconds, PAR2 5934.827663.",
+        "yices": "1276 solved (765 sat, 511 unsat), 8 timeout, 0 error/unsupported/wrong, solved-row time 75.767448 seconds, PAR2 1995.767448.",
+        "families": "Solved FFT/BMC/induction/MathSAT: Primo all 10/7/355/900; Primo care 10/7/354/900; Z3 10/7/337/900; cvc5 10/7/356/900; OpenSMT 10/7/351/897; Yices 10/7/359/900.",
+        "all_vs_care": "Care had no recovery and lost cpachecker-induction.ddv_machzwd_outb_false-unreach-call.i.smt2 at the cutoff. Across 1271 common solves, all used 803.828272 seconds and care 660.975990 seconds; there was no answer disagreement.",
+        "primo_all_vs_references": "Against all, Z3 had 0 unique solves and missed 18; cvc5 had 3 unique solves and missed 2; OpenSMT had 3 unique solves and missed 10; Yices had 4 unique solves and missed 0. Common-solved times were all/reference: 456.737924/617.388440 Z3, 725.516596/792.641899 cvc5, 626.743651/1299.858345 OpenSMT, and 805.384529/60.167781 Yices.",
+        "yices_only_vs_primo_all": "Four CPAchecker induction SAT rows: 32_7_cilled_false-unreach-call_const_ok_linux-32_1-drivers--vhost--vhost_net.ko-ldv_main1_sequence_infinite_withcheck_stateful.cil.out.c.smt2, cs_fib_longer_false-unreach-call.i.smt2, cs_fib_longer_true-unreach-call.i.smt2, and cs_fib_true-unreach-call.i.smt2.",
+        "universal_timeouts": "All six profiles timed out on the same eight CPAchecker BMC rows: rekcba_ctm_false-unreach-call.2.c, rekcba_ctm_false-unreach-call.3.c, rekcba_ctm_true-unreach-call.1.c through .4.c, and rekh_ctm_true-unreach-call.3.c through .4.c.",
+        "portfolio": "The union solved 1276 files, exactly the Yices solved set. Yices was a solved-set superset of every other profile.",
+        "answer_validation": "All 1282 files with declared SMT-LIB status matched it. The two files without declared status were universal timeouts. There were zero pairwise decisive-answer disagreements on jointly solved files. The saved OpenSMT Boolean disagreement lies outside this corpus and is not contradicted by this result."
+      },
+      "artifacts": "remote:<isolated-workspace>/slurm-results/qfuflra-full-120s-9061611/{primo-all,primo-care,z3,cvc5,opensmt,yices}/; local-only:/tmp/primo-qfuflra-120s-9061611/summary.json and solver shard CSV copies",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "At 120 seconds, default all is the strongest Primo scope by solved count, while care is about 18 percent faster on common solves but loses one cutoff-sensitive row. Yices remains the performance target: four additional solves and roughly 13.4x lower aggregate time on the 1272 rows shared with Primo all."
     }
   ]
 }
