@@ -4760,23 +4760,6 @@ std::vector<core::TermId> interface_equality_terms(
   return result;
 }
 
-bool explained_equality_list_contains_pair(
-    const core::TermManager& terms, const std::vector<ExplainedInterfaceEquality>& equalities,
-    core::TermId lhs, core::TermId rhs) {
-  for (const ExplainedInterfaceEquality& explained : equalities) {
-    const core::Term& equality = terms.get(explained.equality);
-    if (equality.kind != core::TermKind::Equality || equality.children.size() != 2) {
-      continue;
-    }
-    const core::TermId current_lhs = equality.children.at(0);
-    const core::TermId current_rhs = equality.children.at(1);
-    if ((current_lhs == lhs && current_rhs == rhs) || (current_lhs == rhs && current_rhs == lhs)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void publish_interface_propagation_result(const InterfacePropagationResult& result,
                                           std::string_view prefix, util::Statistics& statistics) {
   statistics.increment(":no.interface.equality-candidates", result.candidates);
@@ -4928,6 +4911,11 @@ int sat_var(sat::Lit lit) { return lit.value > 0 ? lit.value : -lit.value; }
 
 struct EufCarePairDiagnostics {
   std::size_t full_pairs = 0;
+  std::size_t argument_definitions = 0;
+  std::size_t function_classes = 0;
+  std::size_t definition_pairs_full = 0;
+  std::size_t definition_pairs_within_classes = 0;
+  std::size_t argument_pairs_checked = 0;
   std::vector<TermPairKey> term_pairs;
   std::vector<core::TermId> argument_terms;
 };
@@ -4952,28 +4940,56 @@ EufCarePairDiagnostics euf_care_pair_diagnostics(
   };
 
   std::vector<SharedArgumentDefinition> shared_argument_definitions;
+  std::vector<theory::equality::FlatTermId> function_terms;
   shared_argument_definitions.reserve(euf.flat.definitions().size());
+  function_terms.reserve(euf.flat.definitions().size());
   for (const theory::equality::FlatDefinition& definition : euf.flat.definitions()) {
     if (shared_term_by_flat.contains(definition.argument)) {
       shared_argument_definitions.push_back(
           SharedArgumentDefinition{definition.function, definition.argument});
+      function_terms.push_back(definition.function);
       diagnostics.argument_terms.push_back(shared_term_by_flat.at(definition.argument));
     }
   }
+  diagnostics.argument_definitions = shared_argument_definitions.size();
+  diagnostics.definition_pairs_full = unordered_pair_count(shared_argument_definitions.size());
   std::sort(diagnostics.argument_terms.begin(), diagnostics.argument_terms.end());
   diagnostics.argument_terms.erase(
       std::unique(diagnostics.argument_terms.begin(), diagnostics.argument_terms.end()),
       diagnostics.argument_terms.end());
 
+  std::sort(function_terms.begin(), function_terms.end());
+  function_terms.erase(std::unique(function_terms.begin(), function_terms.end()),
+                       function_terms.end());
+  const std::vector<std::vector<theory::equality::FlatTermId>> function_classes =
+      euf.closure.equivalence_classes(function_terms);
+  diagnostics.function_classes = function_classes.size();
+
+  std::unordered_map<theory::equality::FlatTermId, std::size_t> function_class_by_term;
+  function_class_by_term.reserve(function_terms.size());
+  for (std::size_t class_index = 0; class_index < function_classes.size(); ++class_index) {
+    for (const theory::equality::FlatTermId function : function_classes[class_index]) {
+      function_class_by_term.emplace(function, class_index);
+    }
+  }
+
+  std::vector<std::vector<theory::equality::FlatTermId>> arguments_by_function_class(
+      function_classes.size());
+  for (const SharedArgumentDefinition& definition : shared_argument_definitions) {
+    arguments_by_function_class.at(function_class_by_term.at(definition.function))
+        .push_back(definition.argument);
+  }
+
   std::unordered_set<FlatPairKey, FlatPairKeyHash> candidate_pairs;
-  for (std::size_t i = 0; i < shared_argument_definitions.size(); ++i) {
-    const SharedArgumentDefinition& lhs = shared_argument_definitions[i];
-    for (std::size_t j = i + 1; j < shared_argument_definitions.size(); ++j) {
-      const SharedArgumentDefinition& rhs = shared_argument_definitions[j];
-      if (lhs.argument == rhs.argument || !euf.closure.are_equal(lhs.function, rhs.function)) {
-        continue;
+  for (std::vector<theory::equality::FlatTermId>& arguments : arguments_by_function_class) {
+    diagnostics.definition_pairs_within_classes += unordered_pair_count(arguments.size());
+    std::sort(arguments.begin(), arguments.end());
+    arguments.erase(std::unique(arguments.begin(), arguments.end()), arguments.end());
+    diagnostics.argument_pairs_checked += unordered_pair_count(arguments.size());
+    for (std::size_t i = 0; i < arguments.size(); ++i) {
+      for (std::size_t j = i + 1; j < arguments.size(); ++j) {
+        candidate_pairs.insert(canonical_flat_pair(arguments[i], arguments[j]));
       }
-      candidate_pairs.insert(canonical_flat_pair(lhs.argument, rhs.argument));
     }
   }
 
@@ -4995,7 +5011,7 @@ EufCarePairDiagnostics euf_care_pair_diagnostics(
   return diagnostics;
 }
 
-void publish_euf_care_pair_diagnostics(const EufCarePairDiagnostics& diagnostics,
+void publish_euf_care_pair_diagnostics(const EufCarePairDiagnostics& diagnostics, bool computed,
                                        util::Statistics& statistics) {
   statistics.increment(":no.interface.euf-care-checks");
   statistics.set(":no.interface.euf-care-full-pairs", diagnostics.full_pairs);
@@ -5004,6 +5020,24 @@ void publish_euf_care_pair_diagnostics(const EufCarePairDiagnostics& diagnostics
                  diagnostics.full_pairs > diagnostics.term_pairs.size()
                      ? diagnostics.full_pairs - diagnostics.term_pairs.size()
                      : 0);
+  if (!computed) {
+    return;
+  }
+  statistics.increment(":no.interface.euf-care-argument-definitions",
+                       diagnostics.argument_definitions);
+  statistics.increment(":no.interface.euf-care-function-classes", diagnostics.function_classes);
+  statistics.increment(":no.interface.euf-care-definition-pairs-full",
+                       diagnostics.definition_pairs_full);
+  statistics.increment(":no.interface.euf-care-definition-pairs-within-classes",
+                       diagnostics.definition_pairs_within_classes);
+  statistics.increment(":no.interface.euf-care-argument-pairs-checked",
+                       diagnostics.argument_pairs_checked);
+  statistics.increment(
+      ":no.interface.euf-care-definition-pairs-pruned",
+      diagnostics.definition_pairs_full - diagnostics.definition_pairs_within_classes);
+  statistics.increment(
+      ":no.interface.euf-care-duplicate-argument-pairs-pruned",
+      diagnostics.definition_pairs_within_classes - diagnostics.argument_pairs_checked);
 }
 
 bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
@@ -5949,26 +5983,45 @@ std::vector<ExplainedInterfaceEquality> euf_implied_real_equalities(
     core::TermManager& terms, const FlatEufModelView& euf,
     const std::vector<core::TermId>& shared_terms, util::Statistics& statistics) {
   std::vector<ExplainedInterfaceEquality> equalities;
-  std::vector<std::pair<core::TermId, theory::equality::FlatTermId>> class_representatives;
-  class_representatives.reserve(shared_terms.size());
+  std::vector<std::pair<core::TermId, theory::equality::FlatTermId>> mapped_terms;
+  std::vector<theory::equality::FlatTermId> flat_terms;
+  mapped_terms.reserve(shared_terms.size());
+  flat_terms.reserve(shared_terms.size());
   for (const core::TermId term : shared_terms) {
     const std::optional<theory::equality::FlatTermId> flat_term = euf.flat.existing_flat_term(term);
-    if (!flat_term.has_value()) {
-      continue;
+    if (flat_term.has_value()) {
+      mapped_terms.emplace_back(term, flat_term.value());
+      flat_terms.push_back(flat_term.value());
     }
+  }
 
-    const auto representative = std::find_if(
-        class_representatives.begin(), class_representatives.end(),
-        [&](const auto& candidate) { return euf.closure.are_equal(candidate.second, *flat_term); });
-    if (representative == class_representatives.end()) {
-      class_representatives.emplace_back(term, *flat_term);
+  const std::vector<std::vector<theory::equality::FlatTermId>> classes =
+      euf.closure.equivalence_classes(flat_terms);
+  statistics.increment(":no.interface.euf-implied-class-projections");
+  statistics.increment(":no.interface.euf-implied-class-projection-terms", flat_terms.size());
+  std::unordered_map<theory::equality::FlatTermId, std::size_t> class_by_flat_term;
+  class_by_flat_term.reserve(flat_terms.size());
+  for (std::size_t class_index = 0; class_index < classes.size(); ++class_index) {
+    for (const theory::equality::FlatTermId flat_term : classes[class_index]) {
+      class_by_flat_term.emplace(flat_term, class_index);
+    }
+  }
+
+  std::vector<std::optional<std::pair<core::TermId, theory::equality::FlatTermId>>>
+      class_representatives(classes.size());
+  for (const auto& [term, flat_term] : mapped_terms) {
+    std::optional<std::pair<core::TermId, theory::equality::FlatTermId>>& representative =
+        class_representatives.at(class_by_flat_term.at(flat_term));
+
+    if (!representative.has_value()) {
+      representative = std::pair{term, flat_term};
       continue;
     }
 
     const core::TermId equality = terms.mk_eq(representative->first, term);
     if (terms.get(equality).kind == core::TermKind::Equality) {
       std::optional<std::vector<sat::Lit>> reason =
-          euf.closure.explain_equal(representative->second, *flat_term);
+          euf.closure.explain_equal(representative->second, flat_term);
       if (!reason.has_value()) {
         statistics.increment(":no.interface.euf-explanation-missing");
       }
@@ -6415,8 +6468,8 @@ struct LraTheoryCheckResult {
   theory::arithmetic::LraTableau tableau;
 };
 
-bool same_lra_assignments(const std::vector<AssignedTheoryAtom>& lhs,
-                          const std::vector<AssignedTheoryAtom>& rhs) {
+bool same_theory_assignments(const std::vector<AssignedTheoryAtom>& lhs,
+                             const std::vector<AssignedTheoryAtom>& rhs) {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -6461,6 +6514,12 @@ struct MixedLraModelEpoch {
   std::optional<theory::arithmetic::LraTableau> tableau;
   std::optional<sat::Clause> conflict;
   bool check_valid = false;
+};
+
+struct MixedEufCareEpoch {
+  std::vector<AssignedTheoryAtom> checked_assignments;
+  EufCarePairDiagnostics diagnostics;
+  bool valid = false;
 };
 
 std::optional<sat::Clause> check_lra_theory_in_place(const PreparedLraTheory& prepared,
@@ -7107,6 +7166,30 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
   LraToEufEqualityFilterResult result;
   result.forced_equalities.reserve(equalities.size());
   result.model_equalities.reserve(equalities.size());
+  std::unordered_set<TermPairKey, TermPairKeyHash> model_equality_pairs;
+  std::unordered_set<TermPairKey, TermPairKeyHash> forced_equality_pairs;
+  model_equality_pairs.reserve(equalities.size());
+  forced_equality_pairs.reserve(equalities.size());
+  const auto append_unique_model_equality = [&](core::TermId equality, core::TermId lhs,
+                                                core::TermId rhs) {
+    statistics.increment(":no.interface.lra-to-euf-pair-dedup-lookups");
+    if (model_equality_pairs.insert(canonical_term_pair(lhs, rhs)).second) {
+      result.model_equalities.push_back(equality);
+    } else {
+      statistics.increment(":no.interface.lra-to-euf-pair-dedup-duplicates");
+    }
+  };
+  const auto append_unique_forced_equality =
+      [&]<typename Equality>(Equality&& equality, core::TermId lhs, core::TermId rhs) {
+        statistics.increment(":no.interface.lra-to-euf-pair-dedup-lookups");
+        if (forced_equality_pairs.insert(canonical_term_pair(lhs, rhs)).second) {
+          result.forced_equalities.push_back(std::forward<Equality>(equality));
+          return true;
+        } else {
+          statistics.increment(":no.interface.lra-to-euf-pair-dedup-duplicates");
+          return false;
+        }
+      };
   const std::size_t filter_checkpoint = euf.closure.push();
 
   for (const ExplainedInterfaceEquality& explained_equality : equalities) {
@@ -7122,9 +7205,7 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
     }
     manager.mark_interface_equality_classification(equality_id,
                                                    InterfaceEqualityClassification::LraImplied);
-    if (!equality_list_contains_pair(terms, result.model_equalities, lhs, rhs)) {
-      result.model_equalities.push_back(equality_id);
-    }
+    append_unique_model_equality(equality_id, lhs, rhs);
 
     if (flat_closure_equal_on_terms(euf, lhs, rhs)) {
       ++result.already_true;
@@ -7139,9 +7220,7 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
       ++result.mergeable_forced;
       manager.mark_interface_equality_classification(equality_id,
                                                      InterfaceEqualityClassification::EufMergeable);
-      if (!explained_equality_list_contains_pair(terms, result.forced_equalities, lhs, rhs)) {
-        result.forced_equalities.push_back(explained_equality);
-      }
+      append_unique_forced_equality(explained_equality, lhs, rhs);
       continue;
     }
 
@@ -7149,6 +7228,7 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
       if (!explained_equality.reason.has_value()) {
         ++result.mergeable_forced;
         result.forced_equalities.push_back(explained_equality);
+        forced_equality_pairs.insert(canonical_term_pair(lhs, rhs));
         statistics.increment(":no.shared-model.worklist-missing-reasons");
         continue;
       }
@@ -7167,19 +7247,16 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
       manager.mark_interface_equality_classification(equality_id,
                                                      InterfaceEqualityClassification::EufMergeable);
       ++result.mergeable_forced;
-      if (!explained_equality_list_contains_pair(terms, result.forced_equalities, lhs, rhs)) {
-        result.forced_equalities.push_back(explained_equality);
-      }
+      append_unique_forced_equality(explained_equality, lhs, rhs);
       euf.closure.pop(before_pair);
       continue;
     }
 
     euf.closure.pop(before_pair);
-    if (!explained_equality_list_contains_pair(terms, result.forced_equalities, lhs, rhs)) {
+    if (append_unique_forced_equality(explained_equality, lhs, rhs)) {
       ++result.forbidden_forced;
       manager.mark_interface_equality_classification(equality_id,
                                                      InterfaceEqualityClassification::EufForbidden);
-      result.forced_equalities.push_back(explained_equality);
     }
   }
   if (reconcile_shared_model) {
@@ -7193,8 +7270,9 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
           euf.flat.existing_flat_term(explained.rhs);
       if (!lhs_flat.has_value() || !rhs_flat.has_value()) {
         ++result.mergeable_forced;
-        result.forced_equalities.push_back(ExplainedInterfaceEquality{
-            terms.mk_eq(explained.lhs, explained.rhs), explained.reasons});
+        const core::TermId equality = terms.mk_eq(explained.lhs, explained.rhs);
+        result.forced_equalities.push_back(ExplainedInterfaceEquality{equality, explained.reasons});
+        forced_equality_pairs.insert(canonical_term_pair(explained.lhs, explained.rhs));
         continue;
       }
       const std::size_t merge_checkpoint = euf.closure.push();
@@ -7255,10 +7333,8 @@ LraToEufEqualityFilterResult filter_lra_implied_equalities_for_euf(
             ++result.unmapped_consequences;
           }
           ++result.mergeable_forced;
-          if (!explained_equality_list_contains_pair(terms, result.forced_equalities, lhs, rhs)) {
-            result.forced_equalities.push_back(
-                ExplainedInterfaceEquality{equality, std::move(reason)});
-          }
+          append_unique_forced_equality(ExplainedInterfaceEquality{equality, std::move(reason)},
+                                        lhs, rhs);
         }
       }
     }
@@ -10463,6 +10539,8 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.lra-to-euf-created-atoms", 0);
   statistics.set(":no.interface.lra-to-euf-clauses", 0);
   statistics.set(":no.interface.lra-to-euf-rechecks", 0);
+  statistics.set(":no.interface.lra-to-euf-pair-dedup-lookups", 0);
+  statistics.set(":no.interface.lra-to-euf-pair-dedup-duplicates", 0);
   statistics.set(":no.interface.lra-to-euf-equalities-euf-already-true", 0);
   statistics.set(":no.interface.lra-to-euf-equalities-euf-mergeable-skipped", 0);
   statistics.set(":no.interface.lra-to-euf-equalities-euf-mergeable-forced", 0);
@@ -10584,6 +10662,17 @@ CheckSatOutcome solve_qf_uf_lra(
   statistics.set(":no.interface.euf-care-full-pairs", 0);
   statistics.set(":no.interface.euf-care-pairs", 0);
   statistics.set(":no.interface.euf-care-pruned-pairs", 0);
+  statistics.set(":no.interface.euf-care-argument-definitions", 0);
+  statistics.set(":no.interface.euf-care-function-classes", 0);
+  statistics.set(":no.interface.euf-care-definition-pairs-full", 0);
+  statistics.set(":no.interface.euf-care-definition-pairs-within-classes", 0);
+  statistics.set(":no.interface.euf-care-argument-pairs-checked", 0);
+  statistics.set(":no.interface.euf-care-definition-pairs-pruned", 0);
+  statistics.set(":no.interface.euf-care-duplicate-argument-pairs-pruned", 0);
+  statistics.set(":no.interface.euf-care-cache-hits", 0);
+  statistics.set(":no.interface.euf-care-cache-misses", 0);
+  statistics.set(":no.interface.euf-implied-class-projections", 0);
+  statistics.set(":no.interface.euf-implied-class-projection-terms", 0);
   statistics.set(":no.interface.candidate-final-scan-enabled",
                  candidate_final_scan_enabled ? 1 : 0);
   statistics.set(":no.interface.candidate-final-scan-pairs", 0);
@@ -10729,6 +10818,7 @@ CheckSatOutcome solve_qf_uf_lra(
 #endif
 
   MixedLraModelEpoch lra_model_epoch;
+  MixedEufCareEpoch euf_care_epoch;
   while (true) {
     statistics.increment(kStatSatSolveCalls);
 #if PRIMO_HAVE_IPASIR
@@ -10834,8 +10924,20 @@ CheckSatOutcome solve_qf_uf_lra(
       if (options.nelson_oppen_model_equality_branching || candidate_final_scan_enabled ||
           (model_mutation_enabled && options.nelson_oppen_model_equality_mutation_scope ==
                                          ModelEqualityMutationScope::Care)) {
-        euf_care = euf_care_pair_diagnostics(euf_model.value(), shared_real_terms);
-        publish_euf_care_pair_diagnostics(euf_care, statistics);
+        bool computed_care = false;
+        if (euf_care_epoch.valid && same_theory_assignments(euf_care_epoch.checked_assignments,
+                                                            euf_assignments_for_check)) {
+          euf_care = euf_care_epoch.diagnostics;
+          statistics.increment(":no.interface.euf-care-cache-hits");
+        } else {
+          euf_care = euf_care_pair_diagnostics(euf_model.value(), shared_real_terms);
+          euf_care_epoch.checked_assignments = euf_assignments_for_check;
+          euf_care_epoch.diagnostics = euf_care;
+          euf_care_epoch.valid = true;
+          computed_care = true;
+          statistics.increment(":no.interface.euf-care-cache-misses");
+        }
+        publish_euf_care_pair_diagnostics(euf_care, computed_care, statistics);
       }
     }
     if (euf_conflict.has_value()) {
@@ -10912,7 +11014,8 @@ CheckSatOutcome solve_qf_uf_lra(
         }
         prepared_lra_theory_for_check = &lra_model_epoch.prepared.value();
         if (lra_model_epoch.check_valid &&
-            same_lra_assignments(lra_model_epoch.checked_assignments, lra_assignments_for_check)) {
+            same_theory_assignments(lra_model_epoch.checked_assignments,
+                                    lra_assignments_for_check)) {
           statistics.increment(":no.interface.lra-model-epoch-check-hits");
         } else {
           if (lra_model_epoch.check_valid) {

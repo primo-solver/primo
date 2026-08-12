@@ -416,6 +416,8 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-to-euf-created-atoms`
 - `:no.interface.lra-to-euf-clauses`
 - `:no.interface.lra-to-euf-rechecks`
+- `:no.interface.lra-to-euf-pair-dedup-lookups`
+- `:no.interface.lra-to-euf-pair-dedup-duplicates`
 - `:no.interface.conflicts`
 - `:no.interface.euf-conflicts`
 - `:no.interface.lra-conflicts`
@@ -475,6 +477,17 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
 - `:no.interface.euf-care-pruned-pairs`
+- `:no.interface.euf-care-argument-definitions`
+- `:no.interface.euf-care-function-classes`
+- `:no.interface.euf-care-definition-pairs-full`
+- `:no.interface.euf-care-definition-pairs-within-classes`
+- `:no.interface.euf-care-argument-pairs-checked`
+- `:no.interface.euf-care-definition-pairs-pruned`
+- `:no.interface.euf-care-duplicate-argument-pairs-pruned`
+- `:no.interface.euf-care-cache-hits`
+- `:no.interface.euf-care-cache-misses`
+- `:no.interface.euf-implied-class-projections`
+- `:no.interface.euf-implied-class-projection-terms`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
 - `:no.interface.lra-online-enabled`
@@ -539,10 +552,21 @@ models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
+The `euf-care-argument-definitions`, `euf-care-function-classes`, and
+`euf-care-definition-pairs-*` counters are cumulative across care checks.
+`definition-pairs-full` is the work of the former all-definition-pairs scan;
+`definition-pairs-within-classes` is the cross-class-pruned intermediate count,
+and `argument-pairs-checked` is the work retained after equal arguments within
+each class are deduplicated. The two `*-pruned` counters report those reductions.
+The work counters advance only on `euf-care-cache-misses`. A cache hit reuses
+the exact care diagnostics only when the complete ordered EUF assignment,
+including SAT-visible interface equalities, is unchanged.
 `:no.interface.convex-rounds` counts SAT-consistent mixed rounds that reach
 bidirectional equality sharing. EUF reports one spanning set per shared
 equality class, counted by `:no.interface.euf-spanning-equalities`; it does not
-materialize every pair in a class. `:no.interface.exact-only` is one for
+materialize every pair in a class. The corresponding
+`euf-implied-class-projection-*` counters report the expected-linear closure
+projection used to find those classes. `:no.interface.exact-only` is one for
 `--nelson-oppen-prop=exact` and its legacy `off` alias. In that mode mandatory
 EUF spanning and exact LRA fallback sharing remain active, while
 `:no.interface.lra-opportunistic-enabled` is zero and

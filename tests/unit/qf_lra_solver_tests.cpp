@@ -3,6 +3,7 @@
 #endif
 
 #include <cassert>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -1795,6 +1796,18 @@ void qf_uf_lra_reports_euf_care_pair_diagnostics() {
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 3);
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
   assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 2);
+  const std::uint64_t care_checks = result.statistics.get(":no.interface.euf-care-checks");
+  const std::uint64_t cache_misses = result.statistics.get(":no.interface.euf-care-cache-misses");
+  assert(care_checks == result.statistics.get(":no.interface.euf-care-cache-hits") + cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-argument-definitions") == 3 * cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-function-classes") == 2 * cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-definition-pairs-full") == 3 * cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-definition-pairs-within-classes") ==
+         cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-argument-pairs-checked") == cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-definition-pairs-pruned") ==
+         2 * cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-duplicate-argument-pairs-pruned") == 0);
 }
 
 void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
@@ -1827,7 +1840,40 @@ void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-forced") >= 2);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-forbidden-forced") == 0);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-skipped") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-pair-dedup-lookups") >= 2);
+  assert(result.statistics.get(":no.interface.euf-implied-class-projections") >= 1);
+  assert(result.statistics.get(":no.interface.euf-implied-class-projection-terms") >= 4);
   assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
+}
+
+void qf_uf_lra_deduplicates_equal_arguments_within_euf_function_classes() {
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun q (Real Real) Bool)
+    (assert (= x y))
+    (assert (<= 0 z))
+    (assert (q x z))
+    (assert (not (q y z)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  const std::uint64_t full = result.statistics.get(":no.interface.euf-care-definition-pairs-full");
+  const std::uint64_t within =
+      result.statistics.get(":no.interface.euf-care-definition-pairs-within-classes");
+  const std::uint64_t checked =
+      result.statistics.get(":no.interface.euf-care-argument-pairs-checked");
+  assert(full == within + result.statistics.get(":no.interface.euf-care-definition-pairs-pruned"));
+  assert(within ==
+         checked + result.statistics.get(":no.interface.euf-care-duplicate-argument-pairs-pruned"));
+  assert(result.statistics.get(":no.interface.euf-care-duplicate-argument-pairs-pruned") >= 1);
 }
 
 void qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation() {
@@ -4345,6 +4391,7 @@ int main() {
   qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses();
   qf_uf_lra_reports_euf_care_pair_diagnostics();
   qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
+  qf_uf_lra_deduplicates_equal_arguments_within_euf_function_classes();
   qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();
   qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities();
   qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom();

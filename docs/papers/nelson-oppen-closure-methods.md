@@ -161,6 +161,12 @@ Real arguments whose equality is rejected by the current EUF closure.
 For each SAT-consistent assignment, the coordinator repeats equality sharing
 until no guarded clause is added. EUF returns a deterministic spanning set for
 each shared equality class, which is sufficient because equality is transitive.
+The producer obtains all classes with one
+`FlatCongruenceClosure::equivalence_classes()` projection and then replays
+shared terms in their original order to preserve the established representative
+and equality order. It does not discover classes by comparing each term with
+every representative. The `euf-implied-class-projection-*` counters expose the
+number and size of these projections.
 LRA first polls the feasible tableau's sound `FixedEq`, `EqRow`, `EqOffsetRows`,
 and `EqRows` rules; each result carries its bound/row-blocking literals. The
 equality atom is created only when one of these producers reports it. The
@@ -171,6 +177,14 @@ pairs cannot be LRA-entailed. Those exact probes make the LRA producer complete
 even though the four opportunistic tableau rules are not; model-equal pairs are
 still candidates rather than consequences. A new clause restarts SAT, and the next
 round asserts the equality to both theories.
+
+The LRA-to-EUF filter preserves first-occurrence order in its model and forced
+equality vectors, but uses canonical `TermPairKey` hash sets for membership.
+This makes deduplication expected constant time per produced equality instead
+of repeatedly scanning all preceding equality terms. The
+`lra-to-euf-pair-dedup-*` counters expose lookups and rejected duplicates; this
+is an implementation of the existing set semantics, not a new inference rule.
+
 This is the standard convex closure argument for the supported EUF+LRA subset;
 model-equal conjectures and arrangement guesses are not part of it.
 
@@ -538,6 +552,8 @@ coordinator publishes:
 - `:no.interface.lra-to-euf-created-atoms`
 - `:no.interface.lra-to-euf-clauses`
 - `:no.interface.lra-to-euf-rechecks`
+- `:no.interface.lra-to-euf-pair-dedup-lookups`
+- `:no.interface.lra-to-euf-pair-dedup-duplicates`
 - `:no.interface.lra-to-euf-equalities-euf-already-true`
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped`
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-forced`
@@ -620,6 +636,17 @@ coordinator publishes:
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
 - `:no.interface.euf-care-pruned-pairs`
+- `:no.interface.euf-care-argument-definitions`
+- `:no.interface.euf-care-function-classes`
+- `:no.interface.euf-care-definition-pairs-full`
+- `:no.interface.euf-care-definition-pairs-within-classes`
+- `:no.interface.euf-care-argument-pairs-checked`
+- `:no.interface.euf-care-definition-pairs-pruned`
+- `:no.interface.euf-care-duplicate-argument-pairs-pruned`
+- `:no.interface.euf-care-cache-hits`
+- `:no.interface.euf-care-cache-misses`
+- `:no.interface.euf-implied-class-projections`
+- `:no.interface.euf-implied-class-projection-terms`
 - `:no.interface.candidate-final-scan-enabled`
 - `:no.interface.candidate-final-scan-pairs`
 - `:no.interface.candidate-final-scan-skipped-pairs`
@@ -1373,6 +1400,29 @@ rather than from a full care-graph API. Care information remains important as a
 scalability filter: without some relevance test, all same-sort shared pairs can
 still become quadratic noise. The current EUF care-pair scan is a narrow
 consumer-driven filter, not the architectural foundation.
+
+The implementation projects UF function terms through
+`FlatCongruenceClosure::equivalence_classes()` before enumerating care
+candidates. Definitions are compared only within one current function
+equivalence class; definitions from different classes cannot induce a
+congruence care pair and are skipped as a group. Equal argument terms are then
+deduplicated within each function class before pair enumeration. This preserves
+the Section 4 care-pair condition while replacing the previous quadratic
+sequence of pairwise closure queries with an expected-linear class projection
+plus enumeration of distinct argument pairs. The worst case remains quadratic
+when one class contains many distinct arguments. The cumulative
+`euf-care-definition-pairs-*` and `euf-care-argument-pairs-checked` counters
+distinguish that worst case from work removed by class bucketing and argument
+deduplication.
+
+`MixedEufCareEpoch` memoizes the resulting diagnostics under the complete
+ordered EUF assignment vector, including generated true and false interface
+equalities. A cache hit is therefore valid only when rebuilding or reusing the
+EUF closure would assert exactly the same facts over the unchanged prepared
+term index and shared-term set. The cache is local to one `check-sat` call and
+does not survive structural preparation changes. This is coordinator-local
+memoization of Section 4 care information, not an additional model-based
+transition from the paper.
 
 ### Primo Checklist Items
 
