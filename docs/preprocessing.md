@@ -4,6 +4,15 @@ Primo currently exposes QF_UF preprocessing through
 `--qf-uf-preprocess=off|basic|strong|auto`. The CLI and
 `CheckSatOptions` default is `auto`.
 
+`auto` currently defaults to the historical assertion-root selector. The
+opt-in `--qf-uf-auto-selector=structural` mode instead analyzes the implicit
+top-level conjunction and finite-domain shape, so separate assertions and one
+equivalent asserted conjunction select the same profile. Its limits are exposed
+through `--auto-preprocess-*` and `--auto-basic-*-limit` options rather than
+embedded constants. It remains experimental pending fuzz and benchmark
+evaluation; [](structural-auto-preprocessing.md) specifies its ownership,
+invariants, complexity, and counters.
+
 - `off` disables the preprocessing loop;
 - `basic` runs one pass of unit equality propagation;
 - `strong` enables repeated preprocessing, equality bridging, finite-domain
@@ -32,6 +41,19 @@ same-kind child only when the resulting parent, including remaining direct
 children, stays within `N`. It does not split an explicitly wider SMT-LIB node.
 Clausification accepts nested nodes directly and does not enable this pass.
 See [](boolean-dag-flattening.md) for ownership and complexity details.
+
+Implication normalization is also separate and disabled by default.
+`--boolean-implies-rewrite=clause` rewrites only `A => B` forms that can expose
+one bounded clause: `A` must be a literal, while `B` must be a literal or an
+`Or` of literals. For example, `p => (q or r)` becomes
+`(or (not p) q r)`. The resulting arity may not exceed
+`--boolean-flatten-post-threshold`; a zero threshold disables clause rewrites.
+`--boolean-implies-rewrite=all` performs the general equivalence
+`A => B` to `(or (not A) B)` without distribution. Both modes run after theory
+preprocessing and purification but before post-preprocessing Boolean
+flattening. They traverse Boolean structure and Boolean equality, while treating
+Boolean-valued UF applications as atomic so their arguments remain owned by the
+EUF normalization path.
 
 The default command now enables the safe part of the predecessor performance
 profile:

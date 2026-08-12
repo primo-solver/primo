@@ -228,6 +228,15 @@ removed too little Boolean structure on the target QF_UFLRA cases. The invariant
 and rejected measurements are recorded in
 [](root-polarity-clausification.md); there is no current solver option.
 
+The opt-in structural auto-preprocessing selector now enforces that invariant
+for profile selection without constructing a synthetic conjunction. It expands
+only positive top-level `And` nodes in an analysis-only DAG walk and uses the
+result with finite-domain diagnostics. The legacy assertion-count selector is
+still the default until evaluation is complete; see
+[](structural-auto-preprocessing.md). Optional implication normalization is an
+SMT-layer rewrite over `TermId` values and remains separate from both selector
+and clausifier.
+
 What survived that rejection is a **guarded automatic rule**, on by default and
 disabled with `--no-auto-top-level-or-tseitin`. It is much narrower than
 "automatic" suggests -- `should_use_auto_top_level_or_tseitin` requires *all* of:

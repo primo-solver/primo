@@ -9,6 +9,44 @@
 
 namespace primo::smt {
 
+enum class BooleanImpliesRewriteMode {
+  Off,
+  Clause,
+  All,
+};
+
+struct ImplicitConjunctionAnalysis {
+  std::size_t conjunct_occurrences = 0;
+  std::size_t unique_conjuncts = 0;
+  std::size_t clause_like_conjunct_occurrences = 0;
+  std::size_t implication_clause_candidates = 0;
+
+  [[nodiscard]] bool all_clause_like() const {
+    return conjunct_occurrences == clause_like_conjunct_occurrences;
+  }
+};
+
+// Treats the assertion vector as one implicit conjunction without constructing
+// an And term. Counts are saturating and each reachable And node is inspected
+// once, so sharing in the term DAG cannot amplify traversal cost.
+ImplicitConjunctionAnalysis analyze_implicit_conjunction(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions);
+
+struct BooleanImpliesRewriteResult {
+  std::vector<core::TermId> assertions;
+  std::size_t visited = 0;
+  std::size_t clause_candidates = 0;
+  std::size_t rewritten = 0;
+  std::size_t all_mode_rewrites = 0;
+  std::size_t widened_operands = 0;
+  std::size_t threshold_stops = 0;
+  std::size_t terms_created = 0;
+};
+
+BooleanImpliesRewriteResult rewrite_boolean_implications(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    BooleanImpliesRewriteMode mode, std::size_t clause_arity_limit);
+
 class Preprocessing {};
 
 struct BooleanFlatteningResult {
@@ -190,9 +228,17 @@ struct FiniteDomainAtMostOneResult {
   std::size_t choices = 0;
 };
 
+struct FiniteDomainAnalysis {
+  std::size_t domains = 0;
+  std::size_t choices = 0;
+  std::size_t predicted_amo_clauses = 0;
+};
+
 class FiniteDomainAtMostOne {
  public:
   explicit FiniteDomainAtMostOne(core::TermManager& terms);
+
+  FiniteDomainAnalysis analyze(const std::vector<core::TermId>& assertions) const;
 
   FiniteDomainAtMostOneResult generate(const std::vector<core::TermId>& assertions);
   FiniteDomainAtMostOneResult generate(

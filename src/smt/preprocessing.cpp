@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -27,6 +28,68 @@
 namespace primo::smt {
 
 namespace {
+
+std::size_t saturating_add(std::size_t lhs, std::size_t rhs) {
+  if (rhs > std::numeric_limits<std::size_t>::max() - lhs) {
+    return std::numeric_limits<std::size_t>::max();
+  }
+  return lhs + rhs;
+}
+
+std::size_t saturating_pair_count(std::size_t size) {
+  if (size < 2) {
+    return 0;
+  }
+  const std::size_t lhs = size;
+  const std::size_t rhs = size - 1;
+  if (lhs > std::numeric_limits<std::size_t>::max() / rhs) {
+    return std::numeric_limits<std::size_t>::max();
+  }
+  return (lhs * rhs) / 2;
+}
+
+bool is_boolean_literal(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  switch (term.kind) {
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+    case core::TermKind::Application:
+    case core::TermKind::Equality:
+    case core::TermKind::Le:
+    case core::TermKind::Lt:
+      return term.sort == terms.symbols().bool_sort();
+    case core::TermKind::Not:
+      return is_boolean_literal(terms, term.children.at(0)) &&
+             terms.get(term.children.at(0)).kind != core::TermKind::Not;
+    case core::TermKind::And:
+    case core::TermKind::Or:
+    case core::TermKind::Implies:
+    case core::TermKind::Rational:
+    case core::TermKind::Plus:
+    case core::TermKind::Times:
+      return false;
+  }
+  return false;
+}
+
+bool is_literal_disjunction(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  return term.kind == core::TermKind::Or &&
+         std::all_of(term.children.begin(), term.children.end(),
+                     [&terms](core::TermId child) { return is_boolean_literal(terms, child); });
+}
+
+bool is_clause_producing_implication(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  return term.kind == core::TermKind::Implies && is_boolean_literal(terms, term.children.at(0)) &&
+         (is_boolean_literal(terms, term.children.at(1)) ||
+          is_literal_disjunction(terms, term.children.at(1)));
+}
+
+bool is_clause_like_conjunct(const core::TermManager& terms, core::TermId term_id) {
+  return is_boolean_literal(terms, term_id) || is_literal_disjunction(terms, term_id) ||
+         is_clause_producing_implication(terms, term_id);
+}
 
 struct PairHash {
   std::size_t operator()(const std::pair<core::TermId, core::TermId>& pair) const {
@@ -2595,6 +2658,201 @@ void add_value_precedence_constraints(core::TermManager& terms,
 
 }  // namespace
 
+ImplicitConjunctionAnalysis analyze_implicit_conjunction(
+    const core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+  ImplicitConjunctionAnalysis result;
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool expanded = false;
+  };
+
+  std::vector<Visit> pending;
+  pending.reserve(assertions.size());
+  std::unordered_set<core::TermId> discovered_ands;
+  std::vector<core::TermId> and_postorder;
+  for (const core::TermId assertion : assertions) {
+    if (terms.get(assertion).kind == core::TermKind::And &&
+        discovered_ands.insert(assertion).second) {
+      pending.push_back(Visit{assertion, false});
+    }
+  }
+  while (!pending.empty()) {
+    const Visit visit = pending.back();
+    pending.pop_back();
+    if (visit.expanded) {
+      and_postorder.push_back(visit.term);
+      continue;
+    }
+    pending.push_back(Visit{visit.term, true});
+    for (const core::TermId child : terms.get(visit.term).children) {
+      if (terms.get(child).kind == core::TermKind::And && discovered_ands.insert(child).second) {
+        pending.push_back(Visit{child, false});
+      }
+    }
+  }
+
+  std::unordered_map<core::TermId, std::size_t> occurrences;
+  occurrences.reserve(assertions.size() + discovered_ands.size());
+  for (const core::TermId assertion : assertions) {
+    occurrences[assertion] = saturating_add(occurrences[assertion], 1);
+  }
+  for (auto node = and_postorder.rbegin(); node != and_postorder.rend(); ++node) {
+    const std::size_t weight = occurrences[*node];
+    for (const core::TermId child : terms.get(*node).children) {
+      occurrences[child] = saturating_add(occurrences[child], weight);
+    }
+  }
+
+  std::unordered_set<core::TermId> unique_conjuncts;
+  for (const auto& [term, count] : occurrences) {
+    if (count == 0 || terms.get(term).kind == core::TermKind::And) {
+      continue;
+    }
+    result.conjunct_occurrences = saturating_add(result.conjunct_occurrences, count);
+    unique_conjuncts.insert(term);
+    if (is_clause_like_conjunct(terms, term)) {
+      result.clause_like_conjunct_occurrences =
+          saturating_add(result.clause_like_conjunct_occurrences, count);
+    }
+    if (is_clause_producing_implication(terms, term)) {
+      result.implication_clause_candidates =
+          saturating_add(result.implication_clause_candidates, count);
+    }
+  }
+  result.unique_conjuncts = unique_conjuncts.size();
+  return result;
+}
+
+BooleanImpliesRewriteResult rewrite_boolean_implications(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    BooleanImpliesRewriteMode mode, std::size_t clause_arity_limit) {
+  BooleanImpliesRewriteResult result;
+  if (mode == BooleanImpliesRewriteMode::Off) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool expanded = false;
+  };
+  const std::size_t source_term_count = terms.size();
+  std::vector<core::TermId> rewritten(source_term_count, core::kInvalidTermId);
+  std::vector<Visit> pending;
+  const auto rewrites_children = [&terms](const core::Term& term) {
+    if (term.kind == core::TermKind::Not || term.kind == core::TermKind::And ||
+        term.kind == core::TermKind::Or || term.kind == core::TermKind::Implies) {
+      return true;
+    }
+    return term.kind == core::TermKind::Equality && !term.children.empty() &&
+           terms.get(term.children.front()).sort == terms.symbols().bool_sort();
+  };
+
+  for (const core::TermId assertion : assertions) {
+    pending.push_back(Visit{assertion, false});
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      if (rewritten[visit.term] != core::kInvalidTermId) {
+        continue;
+      }
+      const core::Term& source = terms.get(visit.term);
+      if (!rewrites_children(source)) {
+        rewritten[visit.term] = visit.term;
+        continue;
+      }
+      if (!visit.expanded) {
+        pending.push_back(Visit{visit.term, true});
+        for (auto child = source.children.rbegin(); child != source.children.rend(); ++child) {
+          if (rewritten[*child] == core::kInvalidTermId) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+        continue;
+      }
+
+      const core::TermKind kind = source.kind;
+      const std::vector<core::TermId> source_children = source.children;
+      std::vector<core::TermId> children;
+      children.reserve(source_children.size());
+      for (const core::TermId child : source_children) {
+        children.push_back(rewritten.at(child));
+      }
+
+      std::optional<core::TermId> replacement;
+      switch (kind) {
+        case core::TermKind::Not:
+          replacement.emplace(terms.mk_not(children.at(0)));
+          break;
+        case core::TermKind::And:
+          replacement.emplace(terms.mk_and(std::move(children)));
+          break;
+        case core::TermKind::Or:
+          replacement.emplace(terms.mk_or(std::move(children)));
+          break;
+        case core::TermKind::Equality:
+          replacement.emplace(terms.mk_eq(children.at(0), children.at(1)));
+          break;
+        case core::TermKind::Implies: {
+          ++result.visited;
+          const core::TermId lhs = children.at(0);
+          const core::TermId rhs = children.at(1);
+          const bool clause_candidate =
+              is_boolean_literal(terms, lhs) &&
+              (is_boolean_literal(terms, rhs) || is_literal_disjunction(terms, rhs));
+          if (clause_candidate) {
+            ++result.clause_candidates;
+          }
+          if (mode == BooleanImpliesRewriteMode::All) {
+            replacement.emplace(terms.mk_or({terms.mk_not(lhs), rhs}));
+            ++result.rewritten;
+            ++result.all_mode_rewrites;
+            break;
+          }
+          if (!clause_candidate) {
+            replacement.emplace(terms.mk_implies(lhs, rhs));
+            break;
+          }
+          const core::Term& rhs_term = terms.get(rhs);
+          const bool disjunctive_rhs = rhs_term.kind == core::TermKind::Or;
+          const std::vector<core::TermId> rhs_children = rhs_term.children;
+          const std::size_t arity = 1 + (disjunctive_rhs ? rhs_children.size() : 1);
+          if (clause_arity_limit == 0 || arity > clause_arity_limit) {
+            ++result.threshold_stops;
+            replacement.emplace(terms.mk_implies(lhs, rhs));
+            break;
+          }
+          std::vector<core::TermId> clause{terms.mk_not(lhs)};
+          if (disjunctive_rhs) {
+            clause.insert(clause.end(), rhs_children.begin(), rhs_children.end());
+            result.widened_operands += rhs_children.size();
+          } else {
+            clause.push_back(rhs);
+          }
+          replacement.emplace(terms.mk_or(std::move(clause)));
+          ++result.rewritten;
+          break;
+        }
+        case core::TermKind::BoolValue:
+        case core::TermKind::Constant:
+        case core::TermKind::Application:
+        case core::TermKind::Rational:
+        case core::TermKind::Plus:
+        case core::TermKind::Times:
+        case core::TermKind::Le:
+        case core::TermKind::Lt:
+          assert(false && "leaf reached implication rewrite reconstruction");
+          break;
+      }
+      assert(replacement.has_value());
+      rewritten[visit.term] = replacement.value();
+    }
+    result.assertions.push_back(rewritten.at(assertion));
+  }
+  result.terms_created = terms.size() - source_term_count;
+  return result;
+}
+
 BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
                                                      const std::vector<core::TermId>& assertions,
                                                      std::size_t max_arity) {
@@ -3085,6 +3343,55 @@ ForcedAtomPropagationResult propagate_forced_atoms(core::TermManager& terms,
 }
 
 FiniteDomainAtMostOne::FiniteDomainAtMostOne(core::TermManager& terms) : terms_(terms) {}
+
+FiniteDomainAnalysis FiniteDomainAtMostOne::analyze(
+    const std::vector<core::TermId>& assertions) const {
+  FiniteDomainAnalysis result;
+  const auto disequalities = collect_disequalities(terms_, assertions);
+  const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
+  result.choices = choices.size();
+  std::unordered_set<core::TermId> domain_terms;
+  for (const auto& entry : choices) {
+    domain_terms.insert(entry.first);
+    const FiniteDomainChoice& choice = entry.second;
+    result.predicted_amo_clauses =
+        saturating_add(result.predicted_amo_clauses, saturating_pair_count(choice.values.size()));
+  }
+
+  for (const auto& [lhs, rhs] : disequalities) {
+    const auto lhs_choice = choices.find(lhs);
+    const auto rhs_choice = choices.find(rhs);
+    if (lhs_choice != choices.end() && rhs_choice != choices.end() &&
+        lhs_choice->second.values == rhs_choice->second.values) {
+      result.predicted_amo_clauses =
+          saturating_add(result.predicted_amo_clauses, lhs_choice->second.values.size());
+    }
+  }
+
+  const std::unordered_set<core::TermId> value_constants =
+      finite_domain_disequality_endpoints(terms_, disequalities);
+  const auto observed_equalities =
+      collect_observed_value_equalities(terms_, assertions, value_constants);
+  for (const auto& [term, values] : observed_equalities) {
+    if (choices.contains(term)) {
+      continue;
+    }
+    std::size_t pair_count = 0;
+    for (std::size_t i = 0; i < values.size(); ++i) {
+      for (std::size_t j = i + 1; j < values.size(); ++j) {
+        if (disequalities.contains(ordered_pair(values[i], values[j]))) {
+          pair_count = saturating_add(pair_count, 1);
+        }
+      }
+    }
+    if (pair_count != 0) {
+      domain_terms.insert(term);
+      result.predicted_amo_clauses = saturating_add(result.predicted_amo_clauses, pair_count);
+    }
+  }
+  result.domains = domain_terms.size();
+  return result;
+}
 
 FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
     const std::vector<core::TermId>& assertions) {

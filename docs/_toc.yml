@@ -12,6 +12,7 @@ parts:
       - file: sat-ipasir-up
       - file: dpllt
       - file: preprocessing
+      - file: structural-auto-preprocessing
 
   - caption: Theories
     chapters:

@@ -18,6 +18,7 @@
 #include "generated/primo_git_revision.hpp"
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/preprocessing.hpp"
 #include "util/statistics.hpp"
 
 namespace {
@@ -164,6 +165,8 @@ int main(int argc, char** argv) {
   bool no_auto_basic_multi = false;
   bool no_auto_basic_multi_polarity = false;
   std::string qf_uf_preprocess = "auto";
+  std::string qf_uf_auto_selector = "legacy";
+  std::string boolean_implies_rewrite = "off";
   std::string qf_uf_profile = "default";
   std::string qf_uf_portfolio = "off";
   std::string euf_engine = "incremental";
@@ -386,6 +389,38 @@ int main(int argc, char** argv) {
   app.add_option("--qf-uf-preprocess", qf_uf_preprocess,
                  "QF_UF preprocessing preset: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
+  app.add_option("--qf-uf-auto-selector", qf_uf_auto_selector,
+                 "Auto preprocessing selector: legacy assertion-count heuristics or "
+                 "representation-stable structural analysis")
+      ->check(CLI::IsMember({"legacy", "structural"}));
+  app.add_option("--auto-preprocess-large-conjunct-limit",
+                 solver_options.auto_preprocess_tuning.large_conjunct_limit,
+                 "Maximum implicit top-level conjunct occurrences for repeated auto "
+                 "preprocessing; 0 means unlimited")
+      ->check(CLI::Range(0, 100000000));
+  app.add_option("--auto-basic-compact-term-limit",
+                 solver_options.auto_preprocess_tuning.compact_term_limit,
+                 "Maximum reachable terms for compact-clause basic auto preprocessing; 0 "
+                 "means unlimited")
+      ->check(CLI::Range(0, 100000000));
+  app.add_option("--auto-basic-compact-min-conjuncts",
+                 solver_options.auto_preprocess_tuning.compact_min_conjuncts,
+                 "Minimum implicit top-level conjunct occurrences for compact-clause basic "
+                 "auto preprocessing")
+      ->check(CLI::Range(1, 100000000));
+  app.add_option("--auto-basic-single-term-limit",
+                 solver_options.auto_preprocess_tuning.finite_domain_term_limit,
+                 "Maximum reachable terms for finite-domain basic auto preprocessing; 0 "
+                 "means unlimited")
+      ->check(CLI::Range(0, 100000000));
+  app.add_option("--auto-basic-single-min-domains",
+                 solver_options.auto_preprocess_tuning.finite_domain_min_domains,
+                 "Minimum recognized finite domains for finite-domain basic auto preprocessing")
+      ->check(CLI::Range(1, 100000000));
+  app.add_option("--auto-basic-single-max-symmetry-terms",
+                 solver_options.auto_preprocess_tuning.finite_domain_max_symmetry_terms,
+                 "Maximum terms in the accepted finite-domain symmetry group; 0 means unlimited")
+      ->check(CLI::Range(0, 100000000));
   app.add_flag("--no-auto-basic-single", no_auto_basic_single,
                "Disable the guarded auto basic-single preprocessing selector [default: on]");
   app.add_flag("--no-auto-basic-single-predicate-polarity", no_auto_basic_single_predicate_polarity,
@@ -503,7 +538,12 @@ int main(int argc, char** argv) {
                  "preprocessing passes, up to this arity; 0 disables. Those passes build "
                  "fresh nodes through TermManager, which no longer flattens at construction, "
                  "so they reintroduce nesting that --boolean-flatten-threshold (which runs "
-                 "before them) cannot see. 0 disables [default: 2048]");
+                 "before them) cannot see. 0 disables [default: 2048]")
+      ->check(CLI::Range(0, 1000000));
+  app.add_option("--boolean-implies-rewrite", boolean_implies_rewrite,
+                 "Post-preprocessing implication rewrite: off, clause (only expose flat "
+                 "clauses), or all (rewrite A=>B to (or (not A) B) without distribution)")
+      ->check(CLI::IsMember({"off", "clause", "all"}));
   app.add_option("--preprocessing-adaptive-extra-passes",
                  solver_options.preprocessing_adaptive_extra_passes,
                  "Additional adaptive QF_UF preprocessing passes after the configured pass cap")
@@ -569,7 +609,8 @@ int main(int argc, char** argv) {
     if (name == "--cadical-option" || name == "--max-theory-conflicts" ||
         name == "--qf-uflra-online-euf" || name == "--pure-theory-filter" ||
         name == "--theory-phase" || name == "--boolean-flatten-threshold" ||
-        name == "--boolean-flatten-post-threshold" || starts_with(name, "--top-level-or-tseitin") ||
+        name == "--boolean-flatten-post-threshold" || name == "--boolean-implies-rewrite" ||
+        starts_with(name, "--top-level-or-tseitin") ||
         starts_with(name, "--no-top-level-or-tseitin") ||
         starts_with(name, "--no-auto-top-level-or-tseitin")) {
       return kGroupSat;
@@ -592,8 +633,9 @@ int main(int argc, char** argv) {
         starts_with(name, "--model-equality-") || starts_with(name, "--no-model-equality-") ||
         starts_with(name, "--nelson-oppen-") || starts_with(name, "--qf-uf-") ||
         starts_with(name, "--auto-basic-") || starts_with(name, "--no-auto-basic-") ||
-        starts_with(name, "--preprocessing-") || starts_with(name, "--preprocess-passes") ||
-        name == "--eq-bridge" || name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
+        starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
+        starts_with(name, "--preprocess-passes") || name == "--eq-bridge" ||
+        name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
         name == "--no-uf-symmetry-breaking" || name == "--no-solved-constant-substitution" ||
         name == "--prop-interval" || name == "--prop-assign-threshold" ||
         name == "--prop-delivery-budget") {
@@ -630,6 +672,16 @@ int main(int argc, char** argv) {
     solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
   } else {
     solver_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Basic;
+  }
+  solver_options.qf_uf_auto_selector = qf_uf_auto_selector == "structural"
+                                           ? primo::smt::QfUfAutoSelectorMode::Structural
+                                           : primo::smt::QfUfAutoSelectorMode::Legacy;
+  if (boolean_implies_rewrite == "clause") {
+    solver_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Clause;
+  } else if (boolean_implies_rewrite == "all") {
+    solver_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::All;
+  } else {
+    solver_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Off;
   }
   if (profile_option->count() > 0 && qf_uf_profile == "tuned-interesting") {
     solver_options.uf_symmetry_breaking = true;

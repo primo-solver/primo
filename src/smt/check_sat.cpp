@@ -449,11 +449,6 @@ theory::arithmetic::LraTableau::Tuning lra_tuning_from_options(const LraTuning& 
   return result;
 }
 
-constexpr std::size_t kAutoPreprocessLargeAssertionLimit = 10000;
-constexpr std::size_t kAutoBasicMultiTermLimit = 20000;
-constexpr std::size_t kAutoBasicSingleTermLimit = 15000;
-constexpr std::size_t kAutoBasicSingleMinimumDomains = 200;
-constexpr std::size_t kAutoBasicSingleMaximumSymmetryTerms = 6;
 constexpr std::size_t kLiveStatsFlushInterval = 1024;
 using PhaseClock = std::chrono::steady_clock;
 
@@ -2393,12 +2388,21 @@ bool should_filter_assignment(PureTheoryFilterMode mode, const BooleanClausifier
   return (is_pure_positive(atom) && !value) || (is_pure_negative(atom) && value);
 }
 
-bool should_use_auto_basic_single(std::size_t assertion_count, std::size_t initial_reachable_terms,
-                                  const FiniteDomainAtMostOneResult& finite_domain,
-                                  const UfSymmetryBreakingResult& symmetry) {
-  return assertion_count == 1 && initial_reachable_terms <= kAutoBasicSingleTermLimit &&
-         finite_domain.domains >= kAutoBasicSingleMinimumDomains && symmetry.accepted_sets != 0 &&
-         symmetry.terms <= kAutoBasicSingleMaximumSymmetryTerms;
+bool within_optional_limit(std::size_t value, std::size_t limit) {
+  return limit == 0 || value <= limit;
+}
+
+bool exceeds_optional_limit(std::size_t value, std::size_t limit) {
+  return limit != 0 && value > limit;
+}
+
+bool should_use_auto_basic_finite_domain(std::size_t initial_reachable_terms,
+                                         std::size_t finite_domain_count,
+                                         const UfSymmetryBreakingResult& symmetry,
+                                         const AutoPreprocessTuning& tuning) {
+  return within_optional_limit(initial_reachable_terms, tuning.finite_domain_term_limit) &&
+         finite_domain_count >= tuning.finite_domain_min_domains && symmetry.accepted_sets != 0 &&
+         within_optional_limit(symmetry.terms, tuning.finite_domain_max_symmetry_terms);
 }
 
 AssignedTheoryAtom assigned_theory_atom(PureTheoryFilterMode mode,
@@ -11547,6 +11551,13 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(":preprocessing.boolean-flatten.operands-copied", 0);
   statistics.set(":preprocessing.boolean-flatten.rewrites", 0);
   statistics.set(":preprocessing.boolean-flatten.max-arity", 0);
+  statistics.set(":preprocessing.boolean-implies.visited", 0);
+  statistics.set(":preprocessing.boolean-implies.clause-candidates", 0);
+  statistics.set(":preprocessing.boolean-implies.rewritten", 0);
+  statistics.set(":preprocessing.boolean-implies.all-mode-rewrites", 0);
+  statistics.set(":preprocessing.boolean-implies.widened-operands", 0);
+  statistics.set(":preprocessing.boolean-implies.threshold-stops", 0);
+  statistics.set(":preprocessing.boolean-implies.terms-created", 0);
   statistics.set(kStatEqBridgeEqualities, 0);
   statistics.set(kStatEqBridgeSkippedOrNodes, 0);
   statistics.set(kStatBooleanUnitFacts, 0);
@@ -11791,26 +11802,82 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         options.qf_uf_preprocess == QfUfPreprocessMode::Auto
             ? reachable_term_count(frontend.terms(), assertions)
             : 0;
-    const bool auto_candidate_single_assertion =
-        options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() <= 1;
-    const bool auto_large_assertion_skip = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
-                                           assertions.size() > kAutoPreprocessLargeAssertionLimit;
-    const bool auto_basic_multi = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
-                                  options.auto_basic_multi_preprocessing && assertions.size() > 1 &&
-                                  assertions.size() <= kAutoPreprocessLargeAssertionLimit &&
-                                  initial_reachable_terms <= kAutoBasicMultiTermLimit;
-    const bool preprocessing_enabled =
-        options.qf_uf_preprocess != QfUfPreprocessMode::Off && !auto_large_assertion_skip;
-    const bool use_symmetry_breaking = preprocessing_enabled && options.uf_symmetry_breaking;
-    const bool auto_basic_single_candidate =
+    const bool auto_mode = options.qf_uf_preprocess == QfUfPreprocessMode::Auto;
+    const bool structural_selector =
+        auto_mode && options.qf_uf_auto_selector == QfUfAutoSelectorMode::Structural;
+    const ImplicitConjunctionAnalysis conjunction =
+        structural_selector ? analyze_implicit_conjunction(frontend.terms(), assertions)
+                            : ImplicitConjunctionAnalysis{};
+    statistics.set(":preprocessing.auto.structural.conjunct-occurrences",
+                   conjunction.conjunct_occurrences);
+    statistics.set(":preprocessing.auto.structural.unique-conjuncts", conjunction.unique_conjuncts);
+    statistics.set(":preprocessing.auto.structural.clause-like-conjuncts",
+                   conjunction.clause_like_conjunct_occurrences);
+    statistics.set(":preprocessing.auto.structural.implication-clause-candidates",
+                   conjunction.implication_clause_candidates);
+    statistics.set(":preprocessing.auto.selector.structural", structural_selector ? 1 : 0);
+    statistics.set(":preprocessing.auto.limit.large-conjuncts",
+                   options.auto_preprocess_tuning.large_conjunct_limit);
+    statistics.set(":preprocessing.auto.limit.compact-terms",
+                   options.auto_preprocess_tuning.compact_term_limit);
+    statistics.set(":preprocessing.auto.limit.compact-min-conjuncts",
+                   options.auto_preprocess_tuning.compact_min_conjuncts);
+    statistics.set(":preprocessing.auto.limit.finite-domain-terms",
+                   options.auto_preprocess_tuning.finite_domain_term_limit);
+    statistics.set(":preprocessing.auto.limit.finite-domain-min-domains",
+                   options.auto_preprocess_tuning.finite_domain_min_domains);
+    statistics.set(":preprocessing.auto.limit.finite-domain-max-symmetry-terms",
+                   options.auto_preprocess_tuning.finite_domain_max_symmetry_terms);
+
+    const bool auto_candidate_single_assertion = auto_mode && assertions.size() <= 1;
+    bool auto_large_assertion_skip = false;
+    bool auto_basic_multi = false;
+    bool auto_basic_single = false;
+    bool auto_single_assertion = false;
+    bool auto_strong = false;
+    FiniteDomainAnalysis finite_domain_analysis;
+    const bool preprocessing_enabled = options.qf_uf_preprocess != QfUfPreprocessMode::Off;
+    if (structural_selector) {
+      auto_large_assertion_skip = exceeds_optional_limit(
+          conjunction.conjunct_occurrences, options.auto_preprocess_tuning.large_conjunct_limit);
+      if (!auto_large_assertion_skip) {
+        FiniteDomainAtMostOne finite_domain(frontend.terms());
+        finite_domain_analysis = finite_domain.analyze(assertions);
+      }
+    } else if (auto_mode) {
+      auto_large_assertion_skip = exceeds_optional_limit(
+          assertions.size(), options.auto_preprocess_tuning.large_conjunct_limit);
+      auto_basic_multi = options.auto_basic_multi_preprocessing && assertions.size() > 1 &&
+                         !auto_large_assertion_skip &&
+                         within_optional_limit(initial_reachable_terms,
+                                               options.auto_preprocess_tuning.compact_term_limit);
+    }
+    const bool preprocessing_loop_enabled = preprocessing_enabled && !auto_large_assertion_skip;
+    const bool use_symmetry_breaking = preprocessing_loop_enabled && options.uf_symmetry_breaking;
+    bool auto_basic_single_candidate =
         options.auto_basic_single_preprocessing && auto_candidate_single_assertion &&
-        initial_reachable_terms <= kAutoBasicSingleTermLimit && use_symmetry_breaking;
+        within_optional_limit(initial_reachable_terms,
+                              options.auto_preprocess_tuning.finite_domain_term_limit) &&
+        use_symmetry_breaking;
+    if (structural_selector) {
+      auto_basic_single_candidate =
+          options.auto_basic_single_preprocessing && !auto_large_assertion_skip &&
+          within_optional_limit(initial_reachable_terms,
+                                options.auto_preprocess_tuning.finite_domain_term_limit) &&
+          finite_domain_analysis.domains >=
+              options.auto_preprocess_tuning.finite_domain_min_domains &&
+          use_symmetry_breaking;
+    }
     FiniteDomainAtMostOneResult raw_finite_domain_result;
-    if (auto_candidate_single_assertion || options.qf_uf_preprocess == QfUfPreprocessMode::Strong ||
-        (options.qf_uf_preprocess == QfUfPreprocessMode::Auto && assertions.size() > 1 &&
-         !auto_basic_multi && !auto_large_assertion_skip)) {
+    if (!structural_selector &&
+        (auto_candidate_single_assertion ||
+         options.qf_uf_preprocess == QfUfPreprocessMode::Strong ||
+         (auto_mode && assertions.size() > 1 && !auto_basic_multi && !auto_large_assertion_skip))) {
       FiniteDomainAtMostOne finite_domain(frontend.terms());
       raw_finite_domain_result = finite_domain.generate(assertions);
+      finite_domain_analysis.domains = raw_finite_domain_result.domains;
+      finite_domain_analysis.choices = raw_finite_domain_result.choices;
+      finite_domain_analysis.predicted_amo_clauses = raw_finite_domain_result.clauses.size();
     }
     std::optional<UfSymmetryBreakingResult> symmetry_result;
     if (auto_basic_single_candidate) {
@@ -11819,14 +11886,50 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           assertions,
           UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
     }
-    const bool auto_basic_single =
-        auto_basic_single_candidate && symmetry_result.has_value() &&
-        should_use_auto_basic_single(assertions.size(), initial_reachable_terms,
-                                     raw_finite_domain_result, symmetry_result.value());
-    const bool auto_single_assertion = auto_candidate_single_assertion && !auto_basic_single;
-    const bool auto_strong = options.qf_uf_preprocess == QfUfPreprocessMode::Auto &&
-                             assertions.size() > 1 && !auto_large_assertion_skip &&
-                             !auto_basic_multi;
+    auto_basic_single = auto_basic_single_candidate && symmetry_result.has_value() &&
+                        should_use_auto_basic_finite_domain(
+                            initial_reachable_terms, finite_domain_analysis.domains,
+                            symmetry_result.value(), options.auto_preprocess_tuning);
+    if (structural_selector) {
+      const bool enough_conjuncts =
+          conjunction.conjunct_occurrences >= options.auto_preprocess_tuning.compact_min_conjuncts;
+      auto_basic_multi = options.auto_basic_multi_preprocessing && !auto_large_assertion_skip &&
+                         !auto_basic_single && enough_conjuncts && conjunction.all_clause_like() &&
+                         finite_domain_analysis.choices != 0 &&
+                         within_optional_limit(initial_reachable_terms,
+                                               options.auto_preprocess_tuning.compact_term_limit);
+      auto_strong = !auto_large_assertion_skip && !auto_basic_single && !auto_basic_multi;
+      statistics.set(":preprocessing.auto.selector.shadow-evaluated", 1);
+      const bool legacy_large = exceeds_optional_limit(
+          assertions.size(), options.auto_preprocess_tuning.large_conjunct_limit);
+      const bool legacy_basic_multi =
+          options.auto_basic_multi_preprocessing && assertions.size() > 1 && !legacy_large &&
+          within_optional_limit(initial_reachable_terms,
+                                options.auto_preprocess_tuning.compact_term_limit);
+      const bool legacy_basic_single =
+          auto_candidate_single_assertion && auto_basic_single_candidate && auto_basic_single;
+      const bool legacy_single =
+          auto_candidate_single_assertion && !legacy_basic_single && !legacy_large;
+      const bool legacy_strong = assertions.size() > 1 && !legacy_large && !legacy_basic_multi;
+      const int structural_profile = auto_large_assertion_skip ? 1
+                                     : auto_basic_single       ? 2
+                                     : auto_basic_multi        ? 3
+                                                               : 4;
+      const int legacy_profile = legacy_large          ? 1
+                                 : legacy_basic_single ? 2
+                                 : legacy_basic_multi  ? 3
+                                 : legacy_single       ? 5
+                                 : legacy_strong       ? 4
+                                                       : 0;
+      statistics.set(":preprocessing.auto.selector.legacy-disagreement",
+                     structural_profile != legacy_profile ? 1 : 0);
+    } else {
+      auto_single_assertion = auto_candidate_single_assertion && !auto_basic_single;
+      auto_strong =
+          auto_mode && assertions.size() > 1 && !auto_large_assertion_skip && !auto_basic_multi;
+      statistics.set(":preprocessing.auto.selector.shadow-evaluated", 0);
+      statistics.set(":preprocessing.auto.selector.legacy-disagreement", 0);
+    }
     const bool auto_single_assertion_eqdefs_allowed =
         auto_single_assertion &&
         (options.finite_domain_eqdefs_auto_term_limit == 0 ||
@@ -11846,11 +11949,25 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     if (auto_large_assertion_skip) {
       statistics.increment(kStatAutoLargeAssertionSkip);
     }
+    statistics.set(":preprocessing.auto.profile.large-skip", auto_large_assertion_skip ? 1 : 0);
+    statistics.set(":preprocessing.auto.profile.finite-domain-basic", auto_basic_single ? 1 : 0);
+    statistics.set(":preprocessing.auto.profile.compact-clause-basic", auto_basic_multi ? 1 : 0);
+    statistics.set(":preprocessing.auto.profile.strong", auto_strong ? 1 : 0);
+    statistics.set(":preprocessing.auto.analysis.finite-domain-domains",
+                   finite_domain_analysis.domains);
+    statistics.set(":preprocessing.auto.analysis.finite-domain-choices",
+                   finite_domain_analysis.choices);
+    statistics.set(":preprocessing.auto.analysis.predicted-amo-clauses",
+                   finite_domain_analysis.predicted_amo_clauses);
     const bool strong_preprocessing =
         options.qf_uf_preprocess == QfUfPreprocessMode::Strong || auto_strong;
     const bool use_eq_bridge = options.eq_bridge || strong_preprocessing || auto_single_assertion;
     const bool use_finite_domain_evaluation = false;
     const bool use_finite_domain_amo = strong_preprocessing || auto_single_assertion;
+    if (structural_selector && use_finite_domain_amo) {
+      FiniteDomainAtMostOne finite_domain(frontend.terms());
+      raw_finite_domain_result = finite_domain.generate(assertions);
+    }
     const bool use_bounded_auto_equality_definitions =
         options.finite_domain_equality_definitions &&
         options.auto_finite_domain_equality_definitions &&
@@ -11883,8 +12000,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
       statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
     } else if (auto_basic_single) {
-      statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
-      statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
+      statistics.increment(kStatFiniteDomainRawChoices, finite_domain_analysis.choices);
+      statistics.increment(kStatFiniteDomainRawAmoClauses,
+                           finite_domain_analysis.predicted_amo_clauses);
     }
     if (auto_large_assertion_skip && options.solved_constant_substitution) {
       SolvedConstantSubstitutionResult solved_constants =
@@ -11902,7 +12020,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatSolvedConstantGaussianCandidates,
                            solved_constants.gaussian_candidates);
     }
-    for (std::size_t pass = 0; preprocessing_enabled && pass < preprocessing_pass_limit; ++pass) {
+    for (std::size_t pass = 0; preprocessing_loop_enabled && pass < preprocessing_pass_limit;
+         ++pass) {
       const std::vector<core::TermId> before = assertions;
       const std::size_t before_term_size = reachable_term_count(frontend.terms(), before);
       statistics.increment(kStatPreprocessingPasses);
@@ -12143,6 +12262,27 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.set(":no.purification.memoized-euf-rewrites", purification.memoized_euf_rewrites);
       statistics.set(":no.purification.skipped-no-sites", purification.skipped_no_sites ? 1 : 0);
     }
+    // Keep this normalization after theory preprocessing: it changes only
+    // Boolean shape and should not alter which equality or arithmetic terms
+    // those passes inspect. Clause mode uses the post-flattening bound because
+    // its only purpose is exposing a bounded flat clause.
+    const BooleanImpliesRewriteResult implication_rewrite =
+        rewrite_boolean_implications(frontend.terms(), assertions, options.boolean_implies_rewrite,
+                                     options.boolean_flatten_post_threshold);
+    assertions = implication_rewrite.assertions;
+    statistics.set(":preprocessing.boolean-implies.visited", implication_rewrite.visited);
+    statistics.set(":preprocessing.boolean-implies.clause-candidates",
+                   implication_rewrite.clause_candidates);
+    statistics.set(":preprocessing.boolean-implies.rewritten", implication_rewrite.rewritten);
+    statistics.set(":preprocessing.boolean-implies.all-mode-rewrites",
+                   implication_rewrite.all_mode_rewrites);
+    statistics.set(":preprocessing.boolean-implies.widened-operands",
+                   implication_rewrite.widened_operands);
+    statistics.set(":preprocessing.boolean-implies.threshold-stops",
+                   implication_rewrite.threshold_stops);
+    statistics.set(":preprocessing.boolean-implies.terms-created",
+                   implication_rewrite.terms_created);
+
     // Second, post-preprocessing application of the same bounded pass. The
     // first one (above) runs before the rewriting passes so they see wider
     // nodes; but those passes then build fresh And/Or nodes through

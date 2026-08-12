@@ -122,6 +122,171 @@ void bounded_boolean_flattening_preserves_threshold_and_handles_deep_dags() {
   check(deep.threshold_stops > 0);
 }
 
+void implicit_conjunction_analysis_ignores_assertion_packaging() {
+  Fixture fixture;
+  const primo::core::TermId pa = fixture.pred(fixture.p, fixture.constant(fixture.a));
+  const primo::core::TermId pb = fixture.pred(fixture.p, fixture.constant(fixture.b));
+  const primo::core::TermId pc = fixture.pred(fixture.p, fixture.constant(fixture.c));
+  const primo::core::TermId shared = fixture.terms.mk_and({pa, pb});
+  const primo::core::TermId nested = fixture.terms.mk_and({shared, pc});
+
+  const primo::smt::ImplicitConjunctionAnalysis separate =
+      primo::smt::analyze_implicit_conjunction(fixture.terms, {pa, pb, pc});
+  const primo::smt::ImplicitConjunctionAnalysis packaged =
+      primo::smt::analyze_implicit_conjunction(fixture.terms, {nested});
+  check(separate.conjunct_occurrences == 3);
+  check(packaged.conjunct_occurrences == separate.conjunct_occurrences);
+  check(packaged.unique_conjuncts == separate.unique_conjuncts);
+  check(packaged.clause_like_conjunct_occurrences == 3);
+  check(packaged.all_clause_like());
+
+  const primo::smt::ImplicitConjunctionAnalysis repeated =
+      primo::smt::analyze_implicit_conjunction(fixture.terms, {nested, shared});
+  check(repeated.conjunct_occurrences == 5);
+  check(repeated.unique_conjuncts == 3);
+  check(repeated.clause_like_conjunct_occurrences == 5);
+}
+
+void implicit_conjunction_analysis_recognizes_clause_implications() {
+  Fixture fixture;
+  const primo::core::TermId pa = fixture.pred(fixture.p, fixture.constant(fixture.a));
+  const primo::core::TermId pb = fixture.pred(fixture.p, fixture.constant(fixture.b));
+  const primo::core::TermId pc = fixture.pred(fixture.p, fixture.constant(fixture.c));
+  const primo::core::TermId clause = fixture.terms.mk_implies(pa, fixture.terms.mk_or({pb, pc}));
+  const primo::core::TermId compound = fixture.terms.mk_implies(fixture.terms.mk_and({pa, pb}), pc);
+
+  const primo::smt::ImplicitConjunctionAnalysis candidate =
+      primo::smt::analyze_implicit_conjunction(fixture.terms, {clause});
+  check(candidate.conjunct_occurrences == 1);
+  check(candidate.clause_like_conjunct_occurrences == 1);
+  check(candidate.implication_clause_candidates == 1);
+  check(candidate.all_clause_like());
+
+  const primo::smt::ImplicitConjunctionAnalysis rejected =
+      primo::smt::analyze_implicit_conjunction(fixture.terms, {compound});
+  check(rejected.clause_like_conjunct_occurrences == 0);
+  check(rejected.implication_clause_candidates == 0);
+  check(!rejected.all_clause_like());
+}
+
+void implication_clause_rewrite_flattens_bounded_literal_consequents() {
+  Fixture fixture;
+  const primo::core::TermId pa = fixture.pred(fixture.p, fixture.constant(fixture.a));
+  const primo::core::TermId pb = fixture.pred(fixture.p, fixture.constant(fixture.b));
+  const primo::core::TermId pc = fixture.pred(fixture.p, fixture.constant(fixture.c));
+  const primo::core::TermId implication =
+      fixture.terms.mk_implies(pa, fixture.terms.mk_or({pb, pc}));
+
+  const primo::smt::BooleanImpliesRewriteResult result = primo::smt::rewrite_boolean_implications(
+      fixture.terms, {implication}, primo::smt::BooleanImpliesRewriteMode::Clause, 3);
+  check(result.visited == 1);
+  check(result.clause_candidates == 1);
+  check(result.rewritten == 1);
+  check(result.widened_operands == 2);
+  check(result.threshold_stops == 0);
+  const primo::core::Term& rewritten = fixture.terms.get(result.assertions.front());
+  check(rewritten.kind == primo::core::TermKind::Or);
+  check(rewritten.children == std::vector<primo::core::TermId>({fixture.terms.mk_not(pa), pb, pc}));
+
+  const primo::smt::BooleanImpliesRewriteResult bounded = primo::smt::rewrite_boolean_implications(
+      fixture.terms, {implication}, primo::smt::BooleanImpliesRewriteMode::Clause, 2);
+  check(bounded.rewritten == 0);
+  check(bounded.threshold_stops == 1);
+  check(bounded.assertions.front() == implication);
+
+  const primo::smt::BooleanImpliesRewriteResult disabled = primo::smt::rewrite_boolean_implications(
+      fixture.terms, {implication}, primo::smt::BooleanImpliesRewriteMode::Off, 3);
+  check(disabled.visited == 0);
+  check(disabled.assertions.front() == implication);
+}
+
+void implication_rewrite_preserves_compound_clause_mode_and_shared_dags() {
+  Fixture fixture;
+  const primo::core::TermId pa = fixture.pred(fixture.p, fixture.constant(fixture.a));
+  const primo::core::TermId pb = fixture.pred(fixture.p, fixture.constant(fixture.b));
+  const primo::core::TermId pc = fixture.pred(fixture.p, fixture.constant(fixture.c));
+  const primo::core::TermId implication =
+      fixture.terms.mk_implies(fixture.terms.mk_and({pa, pb}), pc);
+  const primo::core::TermId shared = fixture.terms.mk_and({implication, fixture.terms.mk_not(pc)});
+
+  const primo::smt::BooleanImpliesRewriteResult clause = primo::smt::rewrite_boolean_implications(
+      fixture.terms, {shared, implication}, primo::smt::BooleanImpliesRewriteMode::Clause, 8);
+  check(clause.visited == 1);
+  check(clause.clause_candidates == 0);
+  check(clause.rewritten == 0);
+  check(clause.assertions.at(1) == implication);
+
+  const primo::smt::BooleanImpliesRewriteResult all = primo::smt::rewrite_boolean_implications(
+      fixture.terms, {implication}, primo::smt::BooleanImpliesRewriteMode::All, 0);
+  check(all.visited == 1);
+  check(all.rewritten == 1);
+  check(all.all_mode_rewrites == 1);
+  const primo::core::Term& rewritten = fixture.terms.get(all.assertions.front());
+  check(rewritten.kind == primo::core::TermKind::Or);
+  check(rewritten.children.size() == 2);
+  check(rewritten.children.at(0) == fixture.terms.mk_not(fixture.terms.mk_and({pa, pb})));
+  check(rewritten.children.at(1) == pc);
+}
+
+void implication_rewrite_enters_boolean_equality_but_not_uf_application_arguments() {
+  primo::core::SymbolTable symbols;
+  const primo::core::SortId bool_sort = symbols.bool_sort();
+  const primo::core::SymbolId p = symbols.declare_constant("p", bool_sort);
+  const primo::core::SymbolId q = symbols.declare_constant("q", bool_sort);
+  const primo::core::SymbolId r = symbols.declare_constant("r", bool_sort);
+  const primo::core::SymbolId f = symbols.declare_function("f", {bool_sort}, bool_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId pt = terms.mk_constant(p);
+  const primo::core::TermId qt = terms.mk_constant(q);
+  const primo::core::TermId rt = terms.mk_constant(r);
+  const primo::core::TermId implication = terms.mk_implies(pt, qt);
+  const primo::core::TermId equality = terms.mk_eq(implication, rt);
+  const primo::core::TermId application = terms.mk_app(f, {implication});
+
+  const primo::smt::BooleanImpliesRewriteResult result = primo::smt::rewrite_boolean_implications(
+      terms, {equality, application}, primo::smt::BooleanImpliesRewriteMode::Clause, 4);
+  check(result.visited == 1);
+  check(result.rewritten == 1);
+  check(terms.get(result.assertions.at(0)).kind == primo::core::TermKind::Equality);
+  check(terms.get(result.assertions.at(0)).children.at(0) != implication);
+  check(result.assertions.at(1) == application);
+}
+
+void finite_domain_analysis_is_non_materializing() {
+  Fixture fixture;
+  const primo::core::TermId a = fixture.constant(fixture.a);
+  const primo::core::TermId b = fixture.constant(fixture.b);
+  const primo::core::TermId c = fixture.constant(fixture.c);
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  std::vector<primo::core::TermId> assertions = fixture.value_disequalities();
+  assertions.push_back(fixture.choices(x, {a, b, c}));
+  const std::size_t term_count = fixture.terms.size();
+
+  primo::smt::FiniteDomainAtMostOne amo(fixture.terms);
+  const primo::smt::FiniteDomainAnalysis analysis = amo.analyze(assertions);
+  check(analysis.domains == 1);
+  check(analysis.choices == 1);
+  check(analysis.predicted_amo_clauses == 3);
+  check(fixture.terms.size() == term_count);
+
+  Fixture observed_fixture;
+  const primo::core::TermId observed_a = observed_fixture.constant(observed_fixture.a);
+  const primo::core::TermId observed_b = observed_fixture.constant(observed_fixture.b);
+  const primo::core::TermId observed_c = observed_fixture.constant(observed_fixture.c);
+  const primo::core::TermId observed_x = observed_fixture.constant(observed_fixture.x);
+  std::vector<primo::core::TermId> observed = observed_fixture.value_disequalities();
+  observed.push_back(observed_fixture.terms.mk_eq(observed_x, observed_a));
+  observed.push_back(observed_fixture.terms.mk_eq(observed_x, observed_b));
+  observed.push_back(observed_fixture.terms.mk_eq(observed_x, observed_c));
+  const std::size_t observed_term_count = observed_fixture.terms.size();
+  primo::smt::FiniteDomainAtMostOne observed_amo(observed_fixture.terms);
+  const primo::smt::FiniteDomainAnalysis observed_analysis = observed_amo.analyze(observed);
+  check(observed_analysis.domains == 1);
+  check(observed_analysis.choices == 0);
+  check(observed_analysis.predicted_amo_clauses == 3);
+  check(observed_fixture.terms.size() == observed_term_count);
+}
+
 // --- monotone (one-sided) variable elimination -------------------------
 //
 // Each test pins one soundness precondition. The pass is only correct
@@ -1345,6 +1510,12 @@ void finite_domain_evaluator_simplifies_table_tautology() {
 
 int main() {
   bounded_boolean_flattening_preserves_threshold_and_handles_deep_dags();
+  implicit_conjunction_analysis_ignores_assertion_packaging();
+  implicit_conjunction_analysis_recognizes_clause_implications();
+  implication_clause_rewrite_flattens_bounded_literal_consequents();
+  implication_rewrite_preserves_compound_clause_mode_and_shared_dags();
+  implication_rewrite_enters_boolean_equality_but_not_uf_application_arguments();
+  finite_domain_analysis_is_non_materializing();
   symmetric_fixed_terms_get_value_precedence();
   asymmetric_value_use_is_rejected();
   moving_only_symmetry_terms_are_rejected();

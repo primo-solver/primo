@@ -85,6 +85,13 @@ The pass reports:
 All remain zero when the pass is disabled. The command-line option is
 `--boolean-flatten-threshold N`; `0` disables the pass.
 
+The post-preprocessing threshold also bounds the optional
+`--boolean-implies-rewrite=clause` pass. That pass may widen
+`p => (q or r)` into the three-literal `or` node but does not distribute a
+compound antecedent or consequent. Its `all` mode only creates the binary
+`(or (not A) B)` equivalence; the ordinary bounded flattening pass decides
+whether any resulting nested `Or` is widened.
+
 ## Proof obligations and tests
 
 - Core tests must show that nested `And`/`Or` children remain shared and that

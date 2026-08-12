@@ -8,6 +8,7 @@
 #include <string>
 
 #include "smt/check_sat.hpp"
+#include "smt/preprocessing.hpp"
 
 using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
@@ -955,6 +956,129 @@ void solved_constant_substitution_can_be_disabled() {
   assert(result.statistics.get(":preprocessing.solve-eqs.candidates") == 0);
   assert(result.statistics.get(":preprocessing.solve-eqs.accepted") == 0);
   assert(result.statistics.get(":preprocessing.solve-eqs.rewrites") == 0);
+}
+
+void structural_auto_preprocessing_is_invariant_under_conjunction_packaging() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.qf_uf_auto_selector = primo::smt::QfUfAutoSelectorMode::Structural;
+  options.auto_preprocess_tuning.finite_domain_min_domains = 1;
+  const auto separate = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () U)
+    (assert (not (= a b)))
+    (assert (or (= x a) (= x b)))
+    (check-sat)
+  )",
+      options);
+  const auto packaged = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () U)
+    (assert (and (not (= a b)) (or (= x a) (= x b))))
+    (check-sat)
+  )",
+      options);
+
+  assert(separate.result == CheckSatResult::Sat);
+  assert(packaged.result == CheckSatResult::Sat);
+  for (const char* statistic :
+       {":preprocessing.auto.structural.conjunct-occurrences",
+        ":preprocessing.auto.structural.unique-conjuncts", ":preprocessing.auto.profile.large-skip",
+        ":preprocessing.auto.profile.finite-domain-basic",
+        ":preprocessing.auto.profile.compact-clause-basic", ":preprocessing.auto.profile.strong"}) {
+    assert(separate.statistics.get(statistic) == packaged.statistics.get(statistic));
+  }
+  assert(separate.statistics.get(":preprocessing.auto.structural.conjunct-occurrences") == 2);
+  assert(separate.statistics.get(":preprocessing.auto.profile.finite-domain-basic") == 1);
+}
+
+void structural_auto_preprocessing_applies_limits_to_implicit_conjuncts() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.qf_uf_auto_selector = primo::smt::QfUfAutoSelectorMode::Structural;
+  options.auto_preprocess_tuning.large_conjunct_limit = 1;
+  const auto separate = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert p)
+    (assert q)
+    (check-sat)
+  )",
+      options);
+  const auto packaged = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (and p q))
+    (check-sat)
+  )",
+      options);
+
+  assert(separate.result == CheckSatResult::Sat);
+  assert(packaged.result == CheckSatResult::Sat);
+  assert(separate.statistics.get(":preprocessing.auto.profile.large-skip") == 1);
+  assert(packaged.statistics.get(":preprocessing.auto.profile.large-skip") == 1);
+  assert(separate.statistics.get(":preprocessing.passes") == 0);
+  assert(packaged.statistics.get(":preprocessing.passes") == 0);
+}
+
+void clause_implication_rewrite_removes_nested_tseitin_layer() {
+  constexpr const char* input = R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (declare-fun s () Bool)
+    (assert (or s (=> p (or q r))))
+    (check-sat)
+  )";
+  primo::smt::CheckSatOptions off_options;
+  off_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  const auto off = check_sat_smtlib(input, off_options);
+
+  primo::smt::CheckSatOptions clause_options = off_options;
+  clause_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Clause;
+  const auto clause = check_sat_smtlib(input, clause_options);
+
+  assert(off.result == CheckSatResult::Sat);
+  assert(clause.result == CheckSatResult::Sat);
+  assert(off.statistics.get(":preprocessing.boolean-implies.visited") == 0);
+  assert(clause.statistics.get(":preprocessing.boolean-implies.visited") == 1);
+  assert(clause.statistics.get(":preprocessing.boolean-implies.rewritten") == 1);
+  assert(clause.statistics.get(":sat.vars") < off.statistics.get(":sat.vars"));
+  assert(clause.statistics.get(":sat.clauses") < off.statistics.get(":sat.clauses"));
+}
+
+void clause_implication_rewrite_respects_post_flattening_limit() {
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Clause;
+  options.boolean_flatten_post_threshold = 2;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (assert (=> p (or q r)))
+    (check-sat)
+  )",
+      options);
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.boolean-implies.rewritten") == 0);
+  assert(result.statistics.get(":preprocessing.boolean-implies.threshold-stops") == 1);
 }
 
 void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion() {
@@ -2855,6 +2979,10 @@ int main() {
   guarded_ground_unit_substitution_rejects_tiny_rewrite();
   solved_constant_substitution_records_rewrites_by_default();
   solved_constant_substitution_can_be_disabled();
+  structural_auto_preprocessing_is_invariant_under_conjunction_packaging();
+  structural_auto_preprocessing_applies_limits_to_implicit_conjuncts();
+  clause_implication_rewrite_removes_nested_tseitin_layer();
+  clause_implication_rewrite_respects_post_flattening_limit();
   auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
   auto_preprocessing_skips_large_flat_assertion_batches();
   preprocessing_off_disables_basic_loop();
