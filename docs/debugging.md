@@ -475,7 +475,6 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.online.final-lra-equality-scan-capped`
 - `:no.online.final-lra-equality-scan-fallbacks`
 - `:no.interface.lra-conflict-lits`
-- `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-separations`
 - `:no.interface.model-real-terms-before-interface-filter`
 - `:no.interface.model-real-terms-filtered`

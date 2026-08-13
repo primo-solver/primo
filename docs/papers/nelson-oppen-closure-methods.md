@@ -430,7 +430,6 @@ coordinator publishes:
 - `:no.interface.euf-conflicts`
 - `:no.interface.lra-conflicts`
 - `:no.interface.lra-conflict-lits`
-- `:no.interface.lra-conflict-duplicates`
 - `:no.interface.model-equality-candidates`
 - `:no.interface.model-equality-created`
 - `:no.interface.model-equality-pending`
