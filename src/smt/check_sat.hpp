@@ -7,15 +7,31 @@
 #include <utility>
 #include <vector>
 
+#include "smt/preprocessing.hpp"
 #include "util/statistics.hpp"
 
 namespace primo::smt {
 
-enum class QfUfPreprocessMode {
+enum class PreprocessingMode {
   Off,
   Basic,
   Strong,
   Auto,
+};
+
+enum class AutoPreprocessSelectorMode {
+  Legacy,
+  Structural,
+};
+
+struct AutoPreprocessTuning {
+  // Zero means unlimited for upper bounds. Minimum counts are always positive.
+  std::size_t large_conjunct_limit = 10000;
+  std::size_t compact_term_limit = 20000;
+  std::size_t compact_min_conjuncts = 2;
+  std::size_t finite_domain_term_limit = 15000;
+  std::size_t finite_domain_min_domains = 200;
+  std::size_t finite_domain_max_symmetry_terms = 6;
 };
 
 enum class EufPropagationMode {
@@ -63,6 +79,11 @@ enum class ModelEqualityBranchPolicy {
   Ranked,
   Adaptive,
   CareQueued,
+};
+
+enum class ModelEqualityMutationScope {
+  All,
+  Care,
 };
 
 // Which formulas reach the mixed EUF/LRA solver rather than the pure QF_LRA
@@ -180,7 +201,7 @@ struct CheckSatOutcome {
 };
 
 struct CheckSatOptions {
-  QfUfPreprocessMode qf_uf_preprocess = QfUfPreprocessMode::Auto;
+  PreprocessingMode preprocessing_mode = PreprocessingMode::Auto;
   EufEngine euf_engine = EufEngine::Incremental;
   EufPropagationMode euf_propagation = EufPropagationMode::Auto;
   PureTheoryFilterMode pure_theory_filter = PureTheoryFilterMode::Auto;
@@ -192,6 +213,8 @@ struct CheckSatOptions {
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
   bool nelson_oppen_model_equality_mutation = true;
+  ModelEqualityMutationScope nelson_oppen_model_equality_mutation_scope =
+      ModelEqualityMutationScope::All;
   ModelEqualityBranchPolicy nelson_oppen_model_equality_branch_policy =
       ModelEqualityBranchPolicy::First;
   NelsonOppenPropagationMode nelson_oppen_propagation = NelsonOppenPropagationMode::Final;
@@ -292,6 +315,9 @@ struct CheckSatOptions {
   bool auto_basic_single_predicate_polarity = true;
   bool auto_basic_multi_preprocessing = true;
   bool auto_basic_multi_polarity = true;
+  AutoPreprocessSelectorMode auto_preprocess_selector = AutoPreprocessSelectorMode::Legacy;
+  AutoPreprocessTuning auto_preprocess_tuning;
+  BooleanImpliesRewriteMode boolean_implies_rewrite = BooleanImpliesRewriteMode::Off;
   QfUfPortfolioMode qf_uf_portfolio = QfUfPortfolioMode::Off;
   bool preprocess_only = false;
   std::size_t euf_propagation_interval = 32;

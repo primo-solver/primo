@@ -362,6 +362,53 @@ flips the dispatch. So:
   different solve paths. That is fine for answer-differential testing, which
   is what those tasks do, but it means mutation timing data is not meaningful.
 
+#### Assertion packaging is another trigger
+
+The default QF_UF `auto` preprocessing selector still reads
+`assertions.size()`. The legacy policy distinguishes a single assertion, a compact
+multi-assertion batch, and a batch above 10,000 assertions. Those branches
+enable different preprocessing subsets and can also select different static
+SAT phase hints. Consequently, these two inputs can follow different pipelines:
+
+```text
+(assert (and A B))
+```
+
+```text
+(assert A)
+(assert B)
+```
+
+They denote the same conjunction. Assertion roots remain useful operational
+storage for SMT-LIB scopes, incremental lifetime, source bookkeeping, and
+avoiding one enormous synthetic `And`; their number is not a semantic property
+of the formula and should not be a preprocessing classifier feature.
+
+This is deterministic for one fixed input, but it is a nondeterminism trigger
+for benchmark and mutation comparisons in the same sense as dispatch above: a
+semantics-preserving packaging edit changes the algorithm and can cause CDCL
+search churn. Until the structural replacement is validated and promoted,
+reports comparing rewritten or mutated inputs under the legacy default must record
+`:preprocessing.auto.single-assertion`,
+`:preprocessing.auto.basic-single`,
+`:preprocessing.auto.basic-multi`,
+`:preprocessing.auto.strong`, and
+`:preprocessing.auto.large-assertion-skip`.
+
+The opt-in `--auto-preprocess-selector=structural` implementation now performs the
+repair without concatenating roots or flattening every Boolean DAG. It uses
+representation-stable costs of the implicit conjunction: reachable terms,
+top-level conjunct and clause shape, and analysis-only finite-domain recognizer
+output. It also reports its profile disagreement with the legacy selector. The
+implementation and equivalence tests are specified in
+[](structural-auto-preprocessing.md).
+
+Promotion remains open. It requires merge-tier QF_UF/QF_UFLRA fuzzing, the
+QF_UF selector benchmark, and the QF_LRA no-regression comparison documented in
+[](preprocessing.md). The existing assertion-count selectors are empirically
+tuned, so changing the default without those comparisons would merely exchange
+one source of search churn for another.
+
 ### Not to be "fixed" naively
 
 Restricting `has_euf_predicate` to `Application` sends pure QF_LRA formulas to

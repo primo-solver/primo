@@ -24,11 +24,16 @@ in a generator branch fail before the campaign spends solver work.
 
 Each verdict is known from construction. Primo is checked against that verdict
 and external references. QF_UFLRA cases contain both Real arithmetic and
-uninterpreted applications. The fuzzer runs Primo with `--stats` and requires
-positive finite-domain AMO activation for every solved case. QF_UFLRA cases
-also require Real-equality lowering and mixed-solver dispatch. Strong/default
-profiles may additionally require nonzero aggregate post-AMO activation;
-raw-only profiles intentionally do not.
+uninterpreted applications. The fuzzer runs Primo with `--stats`. Its default
+`--activation-profile=amo` requires positive raw and emitted finite-domain AMO
+activation for every solved case. QF_UFLRA cases also require Real-equality
+lowering and mixed-solver dispatch. Strong/default profiles may additionally
+require nonzero aggregate post-AMO activation; raw-only profiles intentionally
+do not. Opt-in structural-selector campaigns use
+`--activation-profile=structural`: each case must activate the structural
+selector, detect finite-domain structure, and select a structural profile, but
+need not materialize AMO clauses. Solver-route, Real-equality-lowering, answer,
+and reference checks remain unchanged.
 
 The result directory contains generated cases, copied failures, `metadata.json`,
 and `summary.csv`. Metadata is written with status `running` before solver
@@ -45,7 +50,11 @@ development but is not merge-grade evidence.
 The standard `scripts/slurm_qf_uflra_fuzz_gate.sbatch` keeps its 3,000 general
 mixed cases and adds 1,000 finite-domain cases: 500 strong-profile QF_UF and 500
 default-profile QF_UFLRA. Both finite-domain portions compare against Z3 and
-cvc5. `scripts/slurm_finite_domain_fuzz_gate.sbatch` is the focused profile
+cvc5. The QF_UFLRA portion is also rerun with model production and checked by
+Dolmen; its durable rows are stored below `model-validation/` and counted
+separately from verdict comparisons. Model checking is on by default and a
+missing Dolmen executable fails the gate.
+`scripts/slurm_finite_domain_fuzz_gate.sbatch` is the focused profile
 matrix for finite-domain or preprocessing changes; it covers QF_UF strong and
 raw-only profiles plus QF_UFLRA default, strong, and raw-only profiles.
 
@@ -61,7 +70,10 @@ missing scenarios, incomplete metadata, missing rows, or absent required
 activation fail the gate. Solver timeouts are counted separately and do not by
 themselves establish a correctness defect. Every merge-grade run must record
 the exact commit, commands, seeds, references, counts, SLURM job IDs, and
-artifact paths in `docs/run-log.json`.
+artifact paths in `docs/run-log.json`. For a QF_UFLRA gate this includes model
+passes, model errors, solver and Dolmen timeouts, fallback counts, complete
+metadata counts, and the validator identity. Verdict-only fuzzing does not
+establish model correctness.
 
 ## Current evidence
 

@@ -8,6 +8,7 @@
 #include <string>
 
 #include "smt/check_sat.hpp"
+#include "smt/preprocessing.hpp"
 
 using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
@@ -25,7 +26,7 @@ std::string read_text_file(const char* path) {
 
 primo::smt::CheckSatOptions propagation_test_options() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.uf_symmetry_breaking = false;
   options.eq_bridge = false;
   options.euf_propagation_interval = 1;
@@ -393,7 +394,7 @@ void default_euf_propagation_auto_uses_conflict_for_large_abstractions() {
   input << "(check-sat)\n";
 
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto result = check_sat_smtlib(input.str(), options);
 
   assert(result.result == CheckSatResult::Sat);
@@ -705,7 +706,7 @@ void long_nullary_and_chain_preserves_dag_and_supports_optional_flattening() {
   input << "(check-sat)\n";
 
   CheckSatOptions default_options;
-  default_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  default_options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto default_result = check_sat_smtlib(input.str(), default_options);
   assert(default_result.result == CheckSatResult::Sat);
   assert(default_result.statistics.get(":preprocessing.boolean-flatten.attempts") == 0);
@@ -736,7 +737,7 @@ void reconvergent_nullary_and_dag_is_clausified_once() {
   input << "(check-sat)\n";
 
   CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto result = check_sat_smtlib(input.str(), options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.boolean-shape.top-level-or-nodes") == 2);
@@ -957,9 +958,132 @@ void solved_constant_substitution_can_be_disabled() {
   assert(result.statistics.get(":preprocessing.solve-eqs.rewrites") == 0);
 }
 
+void structural_auto_preprocessing_is_invariant_under_conjunction_packaging() {
+  primo::smt::CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
+  options.auto_preprocess_selector = primo::smt::AutoPreprocessSelectorMode::Structural;
+  options.auto_preprocess_tuning.finite_domain_min_domains = 1;
+  const auto separate = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () U)
+    (assert (not (= a b)))
+    (assert (or (= x a) (= x b)))
+    (check-sat)
+  )",
+      options);
+  const auto packaged = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun x () U)
+    (assert (and (not (= a b)) (or (= x a) (= x b))))
+    (check-sat)
+  )",
+      options);
+
+  assert(separate.result == CheckSatResult::Sat);
+  assert(packaged.result == CheckSatResult::Sat);
+  for (const char* statistic :
+       {":preprocessing.auto.structural.conjunct-occurrences",
+        ":preprocessing.auto.structural.unique-conjuncts", ":preprocessing.auto.profile.large-skip",
+        ":preprocessing.auto.profile.finite-domain-basic",
+        ":preprocessing.auto.profile.compact-clause-basic", ":preprocessing.auto.profile.strong"}) {
+    assert(separate.statistics.get(statistic) == packaged.statistics.get(statistic));
+  }
+  assert(separate.statistics.get(":preprocessing.auto.structural.conjunct-occurrences") == 2);
+  assert(separate.statistics.get(":preprocessing.auto.profile.finite-domain-basic") == 1);
+}
+
+void structural_auto_preprocessing_applies_limits_to_implicit_conjuncts() {
+  primo::smt::CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
+  options.auto_preprocess_selector = primo::smt::AutoPreprocessSelectorMode::Structural;
+  options.auto_preprocess_tuning.large_conjunct_limit = 1;
+  const auto separate = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert p)
+    (assert q)
+    (check-sat)
+  )",
+      options);
+  const auto packaged = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (and p q))
+    (check-sat)
+  )",
+      options);
+
+  assert(separate.result == CheckSatResult::Sat);
+  assert(packaged.result == CheckSatResult::Sat);
+  assert(separate.statistics.get(":preprocessing.auto.profile.large-skip") == 1);
+  assert(packaged.statistics.get(":preprocessing.auto.profile.large-skip") == 1);
+  assert(separate.statistics.get(":preprocessing.passes") == 0);
+  assert(packaged.statistics.get(":preprocessing.passes") == 0);
+}
+
+void clause_implication_rewrite_removes_nested_tseitin_layer() {
+  constexpr const char* input = R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (declare-fun s () Bool)
+    (assert (or s (=> p (or q r))))
+    (check-sat)
+  )";
+  primo::smt::CheckSatOptions off_options;
+  off_options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  const auto off = check_sat_smtlib(input, off_options);
+
+  primo::smt::CheckSatOptions clause_options = off_options;
+  clause_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Clause;
+  const auto clause = check_sat_smtlib(input, clause_options);
+
+  assert(off.result == CheckSatResult::Sat);
+  assert(clause.result == CheckSatResult::Sat);
+  assert(off.statistics.get(":preprocessing.boolean-implies.visited") == 0);
+  assert(clause.statistics.get(":preprocessing.boolean-implies.visited") == 1);
+  assert(clause.statistics.get(":preprocessing.boolean-implies.rewritten") == 1);
+  assert(clause.statistics.get(":sat.vars") < off.statistics.get(":sat.vars"));
+  assert(clause.statistics.get(":sat.clauses") < off.statistics.get(":sat.clauses"));
+}
+
+void clause_implication_rewrite_respects_post_flattening_limit() {
+  primo::smt::CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Clause;
+  options.boolean_flatten_post_threshold = 2;
+  const auto result = check_sat_smtlib(
+      R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun r () Bool)
+    (assert (=> p (or q r)))
+    (check-sat)
+  )",
+      options);
+
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.boolean-implies.rewritten") == 0);
+  assert(result.statistics.get(":preprocessing.boolean-implies.threshold-stops") == 1);
+}
+
 void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -987,7 +1111,7 @@ void auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion
 
 void auto_preprocessing_skips_large_flat_assertion_batches() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   std::ostringstream input;
   input << "(set-logic QF_UF)\n";
   input << "(declare-fun p () Bool)\n";
@@ -1006,7 +1130,7 @@ void auto_preprocessing_skips_large_flat_assertion_batches() {
 
 void preprocessing_off_disables_basic_loop() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -1021,7 +1145,7 @@ void preprocessing_off_disables_basic_loop() {
 
 void preprocessing_extends_when_passes_keep_shrinking_terms() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Basic;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Basic;
   options.preprocessing_passes = 1;
   const auto result = check_sat_smtlib(
       R"(
@@ -1050,7 +1174,7 @@ void preprocessing_extends_when_passes_keep_shrinking_terms() {
 
 void preprocessing_adaptive_extra_passes_can_be_disabled() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Basic;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Basic;
   options.preprocessing_passes = 1;
   options.preprocessing_adaptive_extra_passes = 0;
   const auto result = check_sat_smtlib(
@@ -1070,7 +1194,7 @@ void preprocessing_adaptive_extra_passes_can_be_disabled() {
 
 void positive_pure_theory_literal_is_filtered_from_euf_check() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
   options.euf_engine = primo::smt::EufEngine::Lazy;
   const auto result = check_sat_smtlib(
@@ -1096,7 +1220,7 @@ void positive_pure_theory_literal_is_filtered_from_euf_check() {
 
 void pure_theory_literal_filter_can_be_disabled() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
   options.euf_engine = primo::smt::EufEngine::Lazy;
   options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
@@ -1123,7 +1247,7 @@ void pure_theory_literal_filter_can_be_disabled() {
 
 void mixed_polarity_theory_literal_is_not_filtered() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
   options.euf_engine = primo::smt::EufEngine::Lazy;
   const auto result = check_sat_smtlib(
@@ -1148,7 +1272,7 @@ void mixed_polarity_theory_literal_is_not_filtered() {
 
 void strong_preprocessing_enables_finite_domain_amo() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
   const auto result = check_sat_smtlib(
       R"(
@@ -1176,7 +1300,7 @@ void strong_preprocessing_enables_finite_domain_amo() {
 
 void finite_domain_raw_amo_survives_forced_atom_simplification() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -1202,7 +1326,7 @@ void finite_domain_raw_amo_survives_forced_atom_simplification() {
 
 void finite_domain_post_amo_can_be_disabled() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   options.finite_domain_post_amo = false;
   const auto result = check_sat_smtlib(
       R"(
@@ -1228,7 +1352,7 @@ void finite_domain_post_amo_can_be_disabled() {
 
 void finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -1257,7 +1381,7 @@ void finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities() {
 
 void auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   options.auto_basic_multi_preprocessing = true;
   options.auto_basic_multi_polarity = true;
   const auto result = check_sat_smtlib(
@@ -1286,7 +1410,7 @@ void auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions() {
 
 void auto_preprocessing_basic_multi_can_be_disabled() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   options.auto_basic_multi_preprocessing = false;
   const auto result = check_sat_smtlib(
       R"(
@@ -1311,7 +1435,7 @@ void auto_preprocessing_basic_multi_can_be_disabled() {
 
 void auto_preprocessing_basic_multi_polarity_can_be_disabled() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   options.auto_basic_multi_preprocessing = true;
   options.auto_basic_multi_polarity = false;
   const auto result = check_sat_smtlib(
@@ -1363,7 +1487,7 @@ void auto_preprocessing_uses_basic_for_selected_single_assertion_domains() {
   input << "))\n(check-sat)\n";
 
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   const auto result = check_sat_smtlib(input.str(), options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.auto.basic-single") == 1);
@@ -1405,7 +1529,7 @@ void auto_preprocessing_uses_predicate_polarity_for_selected_single_assertion_do
   input << "))\n(check-sat)\n";
 
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   const auto result = check_sat_smtlib(input.str(), options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.auto.basic-single") == 1);
@@ -1442,7 +1566,7 @@ void auto_preprocessing_basic_single_can_be_disabled() {
   input << "))\n(check-sat)\n";
 
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   options.auto_basic_single_preprocessing = false;
   const auto result = check_sat_smtlib(input.str(), options);
   assert(result.result == CheckSatResult::Sat);
@@ -1453,7 +1577,7 @@ void auto_preprocessing_basic_single_can_be_disabled() {
 
 void auto_preprocessing_emits_guarded_equality_definitions() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   options.auto_basic_multi_preprocessing = false;
   options.auto_finite_domain_equality_definitions = true;
   const auto result = check_sat_smtlib(
@@ -1481,7 +1605,7 @@ void auto_preprocessing_emits_guarded_equality_definitions() {
 
 void finite_domain_equality_definitions_can_be_disabled() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   options.auto_basic_multi_preprocessing = false;
   options.auto_finite_domain_equality_definitions = true;
   options.finite_domain_equality_definitions = false;
@@ -1508,7 +1632,7 @@ void finite_domain_equality_definitions_can_be_disabled() {
 
 void auto_preprocessing_keeps_equality_definitions_opt_in() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Auto;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
   options.auto_basic_multi_preprocessing = false;
   const auto result = check_sat_smtlib(
       R"(
@@ -1647,7 +1771,7 @@ void qg_shape_uses_fixed_terms_but_not_moving_table_terms_for_symmetry() {
 
 void no_symmetry_breaking_disables_strong_preset_symmetry_only() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
   options.uf_symmetry_breaking = false;
   const auto result = check_sat_smtlib(
@@ -1697,7 +1821,7 @@ void theory_phase_option_can_leave_backend_phase_unset() {
 
 void default_theory_phase_keeps_negative_phase() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -1720,7 +1844,7 @@ void default_theory_phase_keeps_negative_phase() {
 
 void theory_phase_auto_keeps_negative_phase_on_small_balanced_finite_domain_shape() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
   const auto result = check_sat_smtlib(
       R"(
@@ -1744,7 +1868,7 @@ void theory_phase_auto_keeps_negative_phase_on_small_balanced_finite_domain_shap
 
 void theory_phase_auto_keeps_negative_phase_for_positive_dominated_shape() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
   options.solved_constant_substitution = false;
   const auto result = check_sat_smtlib(
@@ -1796,7 +1920,7 @@ void theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape()
   input << "(check-sat)\n";
 
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
   options.solved_constant_substitution = false;
   const auto result = check_sat_smtlib(input.str(), options);
@@ -1812,7 +1936,7 @@ void theory_phase_auto_uses_polarity_for_low_negative_positive_dominated_shape()
 
 void strong_preprocessing_enables_ground_congruence_clauses() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Strong;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   options.ground_congruence = true;
   const auto result = check_sat_smtlib(
       R"(
@@ -1832,7 +1956,7 @@ void strong_preprocessing_enables_ground_congruence_clauses() {
 
 void disequality_propagation_diagnostic_counts_syntactic_unary_opportunity() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
   options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
   options.euf_diseq_propagation_diagnostics = true;
@@ -1860,7 +1984,7 @@ void disequality_propagation_diagnostic_counts_syntactic_unary_opportunity() {
 
 void disequality_propagation_diagnostic_counts_flat_curried_opportunity() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
   options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
   options.euf_diseq_propagation_diagnostics = true;
@@ -1887,7 +2011,7 @@ void disequality_propagation_diagnostic_counts_flat_curried_opportunity() {
 
 void disequality_propagation_diagnostic_rejects_unguarded_nary_pairwise_claim() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
   options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
   options.euf_diseq_propagation_diagnostics = true;
@@ -1916,7 +2040,7 @@ void disequality_propagation_diagnostic_rejects_unguarded_nary_pairwise_claim() 
 
 void ackermann_diagnostic_counts_symbol_pair_costs() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_ackermann_diagnostics = true;
   const auto result = check_sat_smtlib(
       R"(
@@ -1951,7 +2075,7 @@ void ackermann_diagnostic_counts_symbol_pair_costs() {
 
 void ackermann_diagnostic_is_zero_without_flag() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -1973,7 +2097,7 @@ void dynamic_ackermann_shadow_counts_full_assignment_conflict_shape() {
   primo::smt::CheckSatOptions options;
   options.euf_dynamic_ackermann_shadow = true;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -2001,7 +2125,7 @@ void dynamic_ackermann_shadow_counts_online_unit_shape() {
   primo::smt::CheckSatOptions options;
   options.euf_dynamic_ackermann_shadow = true;
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation_interval = 1;
   options.euf_propagation_assign_threshold = 1.0;
   const auto result = check_sat_smtlib(
@@ -2025,7 +2149,7 @@ void dynamic_ackermann_shadow_counts_online_unit_shape() {
 void dynamic_ackermann_shadow_is_zero_without_flag() {
   primo::smt::CheckSatOptions options;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto result = check_sat_smtlib(
       R"(
     (set-logic QF_UF)
@@ -2363,7 +2487,7 @@ void online_euf_propagation_handles_predicate_congruence() {
 
 void online_euf_propagation_keeps_conflicts_external() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
   const auto result = check_sat_smtlib(
       R"(
@@ -2384,7 +2508,7 @@ void online_euf_propagation_keeps_conflicts_external() {
 
 void conflict_euf_callback_learns_external_conflict_without_propagation() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
   const auto result = check_sat_smtlib(
       R"(
@@ -2410,7 +2534,7 @@ void conflict_euf_callback_learns_external_conflict_without_propagation() {
 
 void conflict_propagation_final_check_reuses_incremental_closure() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
   const auto result = check_sat_smtlib(
       R"(
@@ -2440,7 +2564,7 @@ void lazy_engine_with_online_propagation_still_sound() {
   // legacy find_theory_conflict path here rather than the propagator's
   // (absent) incremental closure, or this would unsoundly report Sat.
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_engine = primo::smt::EufEngine::Lazy;
   options.euf_propagation = primo::smt::EufPropagationMode::Online;
   const auto result = check_sat_smtlib(
@@ -2461,7 +2585,7 @@ void lazy_engine_with_online_propagation_still_sound() {
 
 void theory_conflict_limit_stops_lazy_search_with_unknown() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Off;
   options.max_theory_conflicts = 1;
   const auto result = check_sat_smtlib(
@@ -2484,7 +2608,7 @@ void theory_conflict_limit_stops_lazy_search_with_unknown() {
 
 void theory_conflict_limit_stops_external_search_with_unknown() {
   primo::smt::CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
   options.max_theory_conflicts = 1;
   const auto result = check_sat_smtlib(
@@ -2656,7 +2780,7 @@ void boolean_application_formula_equality_is_propositional() {
   // UNSAT before dispatch. Disable preprocessing here so this remains a mixed
   // dispatcher regression rather than only an answer regression.
   CheckSatOptions dispatch_options;
-  dispatch_options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  dispatch_options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto dispatch_result = check_sat_smtlib(input, dispatch_options);
   assert(dispatch_result.result == CheckSatResult::Unsat);
   assert(dispatch_result.statistics.get(":solver.qf-uflra") == 1);
@@ -2677,7 +2801,7 @@ void boolean_application_formula_equality_is_propositional_in_qf_uf() {
   const std::string input = read_text_file(
       "../benchmarks/seeds/qf_uflra/seed_bool_application_formula_equality_unsat.smt2");
   CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   const auto result = check_sat_smtlib(input, options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":solver.qf-uf") == 1);
@@ -2855,6 +2979,10 @@ int main() {
   guarded_ground_unit_substitution_rejects_tiny_rewrite();
   solved_constant_substitution_records_rewrites_by_default();
   solved_constant_substitution_can_be_disabled();
+  structural_auto_preprocessing_is_invariant_under_conjunction_packaging();
+  structural_auto_preprocessing_applies_limits_to_implicit_conjuncts();
+  clause_implication_rewrite_removes_nested_tseitin_layer();
+  clause_implication_rewrite_respects_post_flattening_limit();
   auto_preprocessing_bridges_single_assertion_without_finite_domain_expansion();
   auto_preprocessing_skips_large_flat_assertion_batches();
   preprocessing_off_disables_basic_loop();

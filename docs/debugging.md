@@ -32,7 +32,7 @@ scripts and result artifacts. Current counters include:
 - `:time.parse-us`: SMT-LIB parser elapsed time in microseconds;
 - `:time.frontend-us`: command validation, declarations, macro expansion, and
   core term construction time in microseconds;
-- `:time.preprocessing-us`: QF_UF preprocessing and pre-solve preparation time
+- `:time.preprocessing-us`: shared preprocessing and pre-solve preparation time
   in microseconds;
 - `:time.solve-us`: SAT/EUF solving time in microseconds;
 - `:time.total-us`: total `check_sat_smtlib` time in microseconds, excluding
@@ -62,6 +62,13 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.boolean-flatten.operands-copied`;
 - `:preprocessing.boolean-flatten.rewrites`;
 - `:preprocessing.boolean-flatten.max-arity`;
+- `:preprocessing.boolean-implies.visited`;
+- `:preprocessing.boolean-implies.clause-candidates`;
+- `:preprocessing.boolean-implies.rewritten`;
+- `:preprocessing.boolean-implies.all-mode-rewrites`;
+- `:preprocessing.boolean-implies.widened-operands`;
+- `:preprocessing.boolean-implies.threshold-stops`;
+- `:preprocessing.boolean-implies.terms-created`;
 - `:preprocessing.eq-bridge.equalities`;
 - `:preprocessing.eq-bridge.skipped-or-nodes`;
 - `:preprocessing.boolean-units.facts`;
@@ -109,6 +116,21 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.auto.basic-single`;
 - `:preprocessing.auto.basic-multi`;
 - `:preprocessing.auto.large-assertion-skip`;
+- `:preprocessing.auto.selector.structural`;
+- `:preprocessing.auto.selector.shadow-evaluated`;
+- `:preprocessing.auto.selector.legacy-disagreement`;
+- `:preprocessing.auto.structural.conjunct-occurrences`;
+- `:preprocessing.auto.structural.unique-conjuncts`;
+- `:preprocessing.auto.structural.clause-like-conjuncts`;
+- `:preprocessing.auto.structural.implication-clause-candidates`;
+- `:preprocessing.auto.analysis.finite-domain-domains`;
+- `:preprocessing.auto.analysis.finite-domain-choices`;
+- `:preprocessing.auto.analysis.predicted-amo-clauses`;
+- `:preprocessing.auto.profile.large-skip`;
+- `:preprocessing.auto.profile.finite-domain-basic`;
+- `:preprocessing.auto.profile.compact-clause-basic`;
+- `:preprocessing.auto.profile.strong`;
+- `:preprocessing.auto.limit.*`: the six effective structural selector limits;
 - `:solver.boolean`;
 - `:solver.qf-uf`;
 - `:sat.phase.theory-negative`;
@@ -394,6 +416,8 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-to-euf-created-atoms`
 - `:no.interface.lra-to-euf-clauses`
 - `:no.interface.lra-to-euf-rechecks`
+- `:no.interface.lra-to-euf-pair-dedup-lookups`
+- `:no.interface.lra-to-euf-pair-dedup-duplicates`
 - `:no.interface.conflicts`
 - `:no.interface.euf-conflicts`
 - `:no.interface.lra-conflicts`
@@ -453,6 +477,17 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
 - `:no.interface.euf-care-pruned-pairs`
+- `:no.interface.euf-care-argument-definitions`
+- `:no.interface.euf-care-function-classes`
+- `:no.interface.euf-care-definition-pairs-full`
+- `:no.interface.euf-care-definition-pairs-within-classes`
+- `:no.interface.euf-care-argument-pairs-checked`
+- `:no.interface.euf-care-definition-pairs-pruned`
+- `:no.interface.euf-care-duplicate-argument-pairs-pruned`
+- `:no.interface.euf-care-cache-hits`
+- `:no.interface.euf-care-cache-misses`
+- `:no.interface.euf-implied-class-projections`
+- `:no.interface.euf-implied-class-projection-terms`
 - `:no.interface.lra-prepared-reused`
 - `:no.interface.lra-prepared-augmented`
 - `:no.interface.lra-online-enabled`
@@ -516,10 +551,21 @@ models. A false generated interface equality is asserted to EUF as a
 disequality; it is not asserted to LRA as a native false-`Eq` atom. Ordinary
 SMT-LIB Real disequality such as `(not (= x y))` is supported by Real equality
 lowering and Boolean-level case splitting before prepared LRA atoms are asserted.
+The `euf-care-argument-definitions`, `euf-care-function-classes`, and
+`euf-care-definition-pairs-*` counters are cumulative across care checks.
+`definition-pairs-full` is the work of the former all-definition-pairs scan;
+`definition-pairs-within-classes` is the cross-class-pruned intermediate count,
+and `argument-pairs-checked` is the work retained after equal arguments within
+each class are deduplicated. The two `*-pruned` counters report those reductions.
+The work counters advance only on `euf-care-cache-misses`. A cache hit reuses
+the exact care diagnostics only when the complete ordered EUF assignment,
+including SAT-visible interface equalities, is unchanged.
 `:no.interface.convex-rounds` counts SAT-consistent mixed rounds that reach
 bidirectional equality sharing. EUF reports one spanning set per shared
 equality class, counted by `:no.interface.euf-spanning-equalities`; it does not
-materialize every pair in a class. `:no.interface.exact-only` is one for
+materialize every pair in a class. The corresponding
+`euf-implied-class-projection-*` counters report the expected-linear closure
+projection used to find those classes. `:no.interface.exact-only` is one for
 `--nelson-oppen-prop=exact` and its legacy `off` alias. In that mode mandatory
 EUF spanning and exact LRA fallback sharing remain active, while
 `:no.interface.lra-opportunistic-enabled` is zero and
@@ -681,6 +727,25 @@ true atoms followed by false atoms in each SAT round. A large
 alignment: a conflict clause may then describe a different cached equality and
 already be satisfied by the assignment that produced it.
 
+With `--qf-uflra-online-euf`, final reconciliation first attempts to borrow the
+trail-synchronized closure instead of copying `PreparedFlatTheory::base_closure`.
+`:no.interface.euf-live-model-attempts` splits into
+`:no.interface.euf-live-model-reuses` and
+`:no.interface.euf-live-model-fallbacks`; the latter is further diagnosed by
+`:no.interface.euf-live-model-incomplete` and
+`:no.interface.euf-live-model-registration-invalid`.
+`:no.interface.euf-final-closure-rebuilds` is the direct count of broad final
+closure copies. Repeated CaDiCaL solves may omit already known observed values
+from ordinary trail notifications.
+`:no.interface.euf-live-model-callback-assignments` counts missing values
+synchronized from the complete model vector passed to `cb_check_found_model`.
+`:no.interface.euf-live-deferred-callbacks` counts assignment, level, or
+backtrack callbacks queued while a protected model scope is active and replayed
+before the next solve. `:no.interface.euf-live-registry-syncs` counts the
+pre-solve generated-equality registry synchronization passes. A
+protected-checkpoint exception indicates that coordinator or callback code
+tried to roll back SAT-owned EUF state through a live model scope.
+
 `--nelson-oppen-prop=online` adds a mixed-theory dispatcher around the LRA
 callback. `:no.online.enabled` records that the dispatcher, not the direct LRA
 callback, was connected. `:no.online.precreated-equality-atoms` counts the
@@ -720,8 +785,8 @@ prove that omitted LRA-implied equalities are irrelevant to EUF congruence.
 delivery.
 
 `--qf-uflra-online-euf` additionally attaches the existing incremental EUF
-propagator as a second child of the mixed dispatcher. It has no effect unless
-`--nelson-oppen-prop=online` is also selected and is default-off. Use these
+propagator as a child of the mixed dispatcher. It works with either final or
+online Nelson-Oppen propagation and is default-off. Use these
 counters to distinguish useful mixed EUF work from callback overhead:
 
 - `:no.interface.euf-online-enabled` is one only when the mixed EUF child is
@@ -739,8 +804,8 @@ counters to distinguish useful mixed EUF work from callback overhead:
 A high `:euf.propagation.rounds` value with zero
 `:no.online.euf-propagations` and zero
 `:no.online.euf-external-clauses` means the option is adding callback work
-without helping the mixed search. Final EUF checking still rebuilds a closure;
-these counters do not imply that callback state was reused by final validation.
+without helping the mixed search. Consult the live-model and final-rebuild
+counters above to determine whether final validation reused callback state.
 Pure QF_UF and pure QF_LRA runs should leave
 `:no.online.enabled` at zero; that is the guard against single-theory overhead.
 `:no.interface.arrangement-checks` counts non-model `sat` results where the
@@ -748,14 +813,18 @@ coordinator validated that the EUF arrangement over shared Real interface
 arguments can be separated consistently by LRA, with failures and accepted
 strict separations split into the corresponding arrangement counters.
 `:no.interface.model-real-terms-before-interface-filter` reports how many Real
-constants were present in EUF atoms before the final arrangement/model path was
-restricted to the Nelson-Oppen interface, and
+constants and Real-valued applications were present in purified EUF atoms
+before the final arrangement/model path was restricted to the Nelson-Oppen
+interface, and
 `:no.interface.model-real-terms-filtered` reports how many of those EUF-side
-Real constants were excluded because they are not common EUF/LRA interface
-terms. Exclusion applies to arrangement search and LRA probes, not to printed
-model completion. For `get-model`, the shared class keeps its concrete LRA
-value and every unanchored EUF-only Real equivalence class receives a distinct
-fresh rational. `:no.interface.model-euf-real-classes`,
+Real terms were excluded because they are not common EUF/LRA interface
+constants. Exclusion applies to arrangement search and LRA probes, not to
+printed model completion. For `get-model`, the shared class keeps its concrete
+LRA value and every unanchored EUF-only Real equivalence class receives a
+distinct fresh rational. Completion writes that class value for every Real
+constant and Real-valued application in the class. Exact application values
+take precedence over stale pre-rewrite application rows with the same concrete
+arguments when the UF table is printed. `:no.interface.model-euf-real-classes`,
 `:no.interface.model-euf-real-anchored-classes`, and
 `:no.interface.model-euf-real-fresh-classes` report that reconstruction;
 `model-euf-real-unmapped-terms` or `model-euf-real-value-conflicts` makes model
@@ -823,8 +892,14 @@ pairs; it is still not a permanent unit clause.
 `:no.interface.lra-model-mutation-*` reports the one Section 5.2 scratch sweep
 performed per feasible mixed round: whether the path is enabled, calls, accepted
 updates, distinct value classes before/after, candidate pairs before/after, and
-pairs pruned. The pre-mutation pair count is computed from class sizes; Primo
-does not materialize that pair set. `:no.interface.model-equality-filtered-pairs`
+pairs pruned. `--model-equality-mutation-scope=all|care` selects all shared Real
+variables (the default) or only current EUF care-pair endpoints. The scope
+counters report the selected mode, full and scoped variable visits, empty care
+scopes, attempted versus accepted updates, and care-scoped results rejected
+because they would increase the complete shared candidate-pair count. Even in
+care mode the final partition and printed model use all shared terms. The
+pre-mutation pair count is computed from class sizes; Primo does not materialize
+that pair set. `:no.interface.model-equality-filtered-pairs`
 is the post-mutation candidate count presented to the optional branch selector.
 The legacy `model-equality-mutation-checks` and `model-equality-mutated` counters
 remain aggregate branch diagnostics for pairs considered and removed by the
@@ -863,6 +938,14 @@ strict separations are chosen by bounded backtracking over candidate orientation
 and fall back to the former greedy order when the candidate set is too large for
 the reconstruction cap, currently 18 candidate pairs.
 
+The accepted symbolic shared model is not printed with an arbitrary concrete
+infinitesimal. The coordinator sorts distinct shared `DeltaRational` values and
+chooses delta below every adjacent crossing bound, following Dutertre and de
+Moura Section 3.3. Inspect `:no.shared-model.concrete-delta-order-pairs`,
+`:no.shared-model.concrete-delta-order-bounds`, and
+`:no.shared-model.concrete-delta-order-tightenings` when Dolmen reports that two
+Real UF arguments collapsed in the printed model.
+
 Use [Dolmen](https://ceur-ws.org/Vol-3429/short9.pdf) as the independent
 model-format and assertion validator. Dolmen's model-validation interface uses a
 solver response file, conventionally with an `.rsmt2` extension:
@@ -875,12 +958,33 @@ python3 scripts/validate_qfuf_models_with_dolmen.py \
 ```
 
 The script writes the input problem, Primo response file (`.rsmt2`), stdout and
-stderr logs, and `summary.csv`. It runs Dolmen with `--check-model=true -r` by
+stderr logs, `metadata.json`, and `summary.csv`. It runs Dolmen with
+`--check-model=true -r` by
 default. Pass `--check-model-mode=full` or `--check-model-mode=interleave` only
 when the installed Dolmen binary supports that option; Dolmen's interleave mode
 imposes additional ordering constraints between input declarations and model
 definitions. Dolmen is an external dependency and is not vendored in this
-repository.
+repository. `make contrib-dolmen` builds pinned Dolmen 0.10 through a
+repository-local opam switch. Building from source is intentional: the official
+0.10 Linux executable requires glibc 2.35, while the SLURM environment provides
+2.34.
+
+The generated QF_UFLRA gate uses Dolmen's default strict parser. The real-corpus
+batch script passes `--strict=false` through `--dolmen-arg` because the MathSAT
+RandomCoupled files contain linear multiplication over compound linear terms;
+Dolmen 0.10 accepts and model-checks those terms in lenient mode but promotes
+its narrower strict-linear-syntax warning to a fatal report in strict mode.
+This changes Dolmen's input acceptance, not model checking. Override
+`PRIMO_MODEL_DOLMEN_ARGS` to change or clear that real-corpus setting.
+
+Each completed validation row is appended, flushed, and synced immediately.
+`metadata.json` starts with `status: running` and changes to `complete` only
+after every selected input has a row. The `validator` column distinguishes a
+direct `dolmen` pass from `z3-fallback` and `z3-only`; `dolmen_exit` is retained
+when a fallback is attempted instead of being overwritten by the fallback's
+exit status. A clean count with incomplete metadata is not a completed gate.
+Use `--root`, `--shards`, and `--shard-index` for deterministic manifest
+sharding.
 
 Current limitations:
 
@@ -948,12 +1052,37 @@ example, the experimental mixed callback profile uses
 `--nelson-oppen-prop=online --qf-uflra-online-euf`. The mutation gate's task 2
 uses that same profile. Submit only array task 2 when the default and
 candidate-final mutation profiles are not part of the current experiment.
+The generated gate also reruns every general and finite-domain QF_UFLRA input
+with `:produce-models true` and `get-model`, then validates every SAT response
+with Dolmen. Dolmen is required when the default
+`PRIMO_FUZZ_MODEL_VALIDATION=1` is active; a missing executable fails before
+generation. `PRIMO_FUZZ_SOLVER_ARGS` is forwarded to model production as
+separate `--solver-arg` values, so an option cannot accidentally be tested only
+for verdicts. Model artifacts live under each task's `model-validation/`
+subtree and `scripts/summarize_fuzz_results.py` reports them as a separate
+result class. Disable this phase only for an explicitly verdict-only diagnostic
+run; such a run is not a complete QF_UFLRA merge gate.
 Every standard mixed gate also runs dedicated finite-domain shards: 500 QF_UF
 cases under strong preprocessing and 500 default-profile QF_UFLRA cases. These
 cases have construction-known answers, compare with Z3 and cvc5, and fail when
 the expected finite-domain, Real-equality-lowering, or mixed-dispatch counters
-do not fire. `scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
+do not fire. Selector experiments that intentionally choose a profile without
+finite-domain AMO clauses must set
+`PRIMO_FINITE_DOMAIN_QF_UFLRA_REQUIRE_POST_AMO=0` and
+`PRIMO_FINITE_DOMAIN_QF_UFLRA_ACTIVATION_PROFILE=structural`. The structural activation
+profile requires the structural selector, detected finite-domain structure, a
+selected structural profile, the expected solver route, and Real-equality
+lowering for QF_UFLRA. The default `amo` profile still requires raw and emitted
+AMO clauses, and the QF_UFLRA post-AMO default remains `1`. The QF_UF shard
+continues to require AMO and post-AMO activation. Answer and reference
+comparisons are mandatory in both QF_UFLRA profiles.
+`scripts/slurm_finite_domain_fuzz_gate.sbatch` provides the focused
 default/strong/raw-only profile matrix. See [](finite-domain-fuzzing.md).
+For models over real benchmark structure rather than generated formulas,
+`scripts/slurm_qf_uflra_model_validation.sbatch` shards the deterministic
+five-per-family QF_UFLRA manifest by default. Relative manifest entries are
+resolved below `PRIMO_MODEL_ROOT`; every shard uses the same durable validator
+format as the generated gate.
 Before mutation, `scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch` runs
 `scripts/check_solver_seed_corpus.py` on every compact QF_UFLRA mutation seed
 with the exact task options and Z3 reference. Any disagreement, timeout,
@@ -1137,4 +1266,3 @@ Two more from the same day, on the benchmark side:
   both live on the same filesystem.
 - **Count shard CSVs before believing a result.** A shard killed by the wall
   clock leaves no trace; 40/40 per arm is a check, not a formality.
-

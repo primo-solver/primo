@@ -43,6 +43,8 @@ class FlatCongruenceClosure {
 
   std::size_t push();
   void pop(std::size_t checkpoint);
+  void protect_checkpoint(std::size_t checkpoint);
+  void release_protected_checkpoint(std::size_t checkpoint);
   void ensure_node_count(std::size_t node_count);
   void add_definition(const FlatDefinition& definition);
   void assert_equal(FlatTermId lhs, FlatTermId rhs, std::vector<sat::Lit> reason = {});
@@ -57,6 +59,7 @@ class FlatCongruenceClosure {
   std::optional<std::vector<sat::Lit>> conflict() const { return conflict_; }
   void drain_changed_terms(std::vector<FlatTermId>& out);
   const IncrementalCongruenceClosureStats& stats() const { return stats_; }
+  std::size_t checkpoint_depth() const { return checkpoints_.size(); }
 
  private:
   // Section-3-style congruence closure state from Nieuwenhuis and Oliveras:
@@ -220,6 +223,7 @@ class FlatCongruenceClosure {
   std::vector<FlatTermId> changed_terms_;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Checkpoint> checkpoints_;
+  std::optional<std::size_t> protected_checkpoint_;
   std::vector<TrailEntry> trail_;
   std::vector<std::vector<FlatTermId>> flat_vector_trail_;
   std::vector<std::vector<std::size_t>> size_vector_trail_;

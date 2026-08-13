@@ -161,6 +161,12 @@ Real arguments whose equality is rejected by the current EUF closure.
 For each SAT-consistent assignment, the coordinator repeats equality sharing
 until no guarded clause is added. EUF returns a deterministic spanning set for
 each shared equality class, which is sufficient because equality is transitive.
+The producer obtains all classes with one
+`FlatCongruenceClosure::equivalence_classes()` projection and then replays
+shared terms in their original order to preserve the established representative
+and equality order. It does not discover classes by comparing each term with
+every representative. The `euf-implied-class-projection-*` counters expose the
+number and size of these projections.
 LRA first polls the feasible tableau's sound `FixedEq`, `EqRow`, `EqOffsetRows`,
 and `EqRows` rules; each result carries its bound/row-blocking literals. The
 equality atom is created only when one of these producers reports it. The
@@ -171,6 +177,14 @@ pairs cannot be LRA-entailed. Those exact probes make the LRA producer complete
 even though the four opportunistic tableau rules are not; model-equal pairs are
 still candidates rather than consequences. A new clause restarts SAT, and the next
 round asserts the equality to both theories.
+
+The LRA-to-EUF filter preserves first-occurrence order in its model and forced
+equality vectors, but uses canonical `TermPairKey` hash sets for membership.
+This makes deduplication expected constant time per produced equality instead
+of repeatedly scanning all preceding equality terms. The
+`lra-to-euf-pair-dedup-*` counters expose lookups and rejected duplicates; this
+is an implementation of the existing set semantics, not a new inference rule.
+
 This is the standard convex closure argument for the supported EUF+LRA subset;
 model-equal conjectures and arrangement guesses are not part of it.
 
@@ -275,8 +289,8 @@ tableau on every LRA bound change. At final-check quiescence, the broader
 `EqOffsetRows`, and `EqRows` with explanations and deterministic spanning
 output. All four are polled only after a feasible mixed-theory check.
 
-The default-off `--qf-uflra-online-euf` option extends only the callback
-plumbing around this subset. `MixedTheoryPropagationDispatcher` acts as the
+The default-off `--qf-uflra-online-euf` option extends the callback plumbing and
+final EUF model-state reuse around this subset. `MixedTheoryPropagationDispatcher` acts as the
 single IPASIR-UP external propagator and multiplexes the existing incremental
 EUF and LRA children. It records the owner of each propagated literal or
 external clause so the corresponding child supplies the explanation. When the
@@ -287,12 +301,131 @@ variable. The statistics `:no.online.euf-generated-equalities-registered`,
 `:no.online.euf-generated-equality-observation-failures` make this dynamic path
 auditable.
 
-This is still not the paper's shared model state or an implementation of its
-transition system. The final mixed check rebuilds EUF closure from the SAT
-assignment instead of consuming the callback-owned closure, and generated
-equality registration does not update optional dynamic Ackermann indexes. The
-option remains experimental and default-off: the first 45-file local ablation
-had identical solved and wrong-answer counts and only a small PAR2 difference.
+Before accepting SAT, `OnlineEufPropagator::cb_check_found_model` consumes
+IPASIR-UP's complete reconstructed observed-variable model, filling values
+omitted from ordinary trail notifications. It then lends the coordinator a
+move-only `IncrementalFlatAssignmentState::ModelScope`. Its
+`FlatEufModelView` exposes the live flat index and closure under a protected
+checkpoint. Candidate-model merges are therefore temporary. CaDiCaL may
+synchronously backtrack when the coordinator adds a clause; callbacks received
+while the checkpoint is protected are queued and replayed before the next SAT
+call. If the assignment or generated-atom registration is incomplete, the
+coordinator rebuilds the round-local closure as before.
+
+**Implementation checklist and invariants.** This step is based on the
+candidate-model compatibility operations in de Moura and Bjorner, Sections 4
+and 5, and on the observed-variable callback contract in Fazekas et al.,
+*IPASIR-UP: User Propagators for CDCL*, Sections 3 and 4. The implemented mapping
+is:
+
+- `IncrementalFlatAssignmentState` owns the persistent flat index, explained
+  closure, SAT-level checkpoints, and a single active protected model scope;
+- `OnlineEufPropagator` owns observed-variable assignments and the ordered queue
+  of callbacks deferred during that scope;
+- `MixedTheoryPropagationDispatcher` synchronizes generated equality atoms and
+  replays deferred callbacks before `backend.solve()`;
+- `solve_qf_uf_lra` owns the round-local scope and uses `FlatEufModelView` for
+  care pairs, equality filtering, compatibility checks, and model completion;
+- scope destruction restores the closure to its exact SAT-owned checkpoint;
+  no model-choice merge may survive into the next SAT call;
+- final callback synchronization scans IPASIR-UP's observed-variable model
+  once, so its own cost is linear in the observed SAT-variable count; closure
+  operations retain the complexity of the existing incremental
+  congruence-closure implementation;
+- a generated equality must be registered in the flat atom table before its SAT
+  variable is observed, and every learned clause must see all deferred callbacks
+  replayed before the following solve;
+- the rebuilt `PreparedFlatTheory` closure remains the conservative fallback,
+  and counters distinguish reuse, callback synchronization, callback deferral,
+  and rebuilds.
+
+This is still not the paper's generic shared model transition system. The live
+state is EUF-specific, LRA candidate construction remains in the existing mixed
+coordinator, generated equality registration does not update optional dynamic
+Ackermann indexes, and other theories are not generalized. The option remains
+experimental and default-off. Fresh commit-`540b847` fuzzing passed 4,000
+generated cases, all 11 deterministic seeds, and 21,868 YinYang differential
+calls. A five-second full-corpus A/B gained one net solve and removed all 3,261
+measured closure rebuilds, but slightly increased SAT decisions and
+common-solved time. These results validate the scoped-state mechanism, not the
+paper's full algorithm or a new default profile.
+
+### Reference-solver performance triage
+
+The full-corpus result leaves 31 five-second cases that Yices 2.7.0 solves and
+the live-EUF Primo profile does not; all 31 are CPAchecker induction inputs.
+Reference statistics separate two performance problems that should not be
+attributed to missing generic model state.
+
+First, representative Yices and Z3 runs create far fewer Boolean variables.
+On five mixed CPAchecker inputs, Primo's default nested-DAG clausification used
+roughly 3.5 to 6 times as many SAT variables as Yices. Enabling the existing
+bounded associative pass with `--boolean-flatten-threshold=128` reduced Primo's
+SAT-variable counts by 19 to 65 percent and decisions by about 5 to 17 times on
+the five-file diagnostic set. It recovered 9 of the 31 Yices-only gaps at a
+five-second local cap. This is evidence for evaluating bounded flattening as a
+QF_UFLRA frontend profile; it is not evidence for changing the default before
+an exact-option fuzz gate and a full SLURM A/B.
+
+The improvement is indirect rather than a change in combination scope. On
+`main3_true`, threshold 128 reduced SAT variables from 12,017 to 6,874 and SAT
+decisions from 702,043 to 117,837, while both profiles retained exactly 557 EUF
+atoms, 3,559 LRA atoms, 1,007 shared Real terms, and the same 506,521-pair
+diagnostic cross product. Mixed final rounds fell from 90 to 55 because SAT
+visited a different sequence of candidate models. Tseitin variables do not
+themselves become Nelson-Oppen interface terms on this shape.
+
+Second, the residual `mt20xx` instance remains a combination/search problem.
+Yices reports 23,391 decisions, 71 theory conflicts, 3,606 theory propagations,
+802 e-graph final checks, and 849 interface lemmas. A controlled Primo run with
+threshold 128 reached 1,730,478 decisions, 432 combined theory conflicts,
+303,300 LRA propagations, and 29,811 propagated interface equalities before the
+outer loop observed the theory-conflict limit. The live-EUF option removed all
+452 measured
+final-closure rebuilds on the comparable path, but performed millions of
+callback rounds and did not improve throughput. A positive theory phase also
+regressed this residual. The `:no.interface.equalities-propagated` counter is
+cumulative across rounds and includes repeated and already-absorbed equality
+reports: the 29,811 reports produced 408 equality clauses. Distinct, repeated,
+already-true, and clause-producing counts are therefore needed before claiming
+that equality delivery itself is the dominant defect. Adding a generic theory
+interface or broader model-equality search is not justified by these
+statistics.
+
+After merging main's post-preprocessing bounded flattening, `mt20xx` solves in
+15.18 seconds under the same controlled local setup, with 9,510 SAT variables,
+75,021 decisions, 20 SAT solve calls, and 12 LRA conflicts. This is a major
+change from the earlier 1.73-million-decision partial run and confirms that the
+Boolean-shape diagnosis was real. It also changes the residual bottleneck:
+Yices remains near 1.3 seconds, while Primo now performs 2,800 shared-model
+compatibility projections totaling 5,972,400 projected-term visits. The
+18,190,224 `:no.interface.lra-model-filter-full-pairs` value is a constant-time
+cross-product diagnostic, not a physical-visit counter.
+
+A follow-up root-polarity clausification prototype treated the active assertion
+vector as one implicit conjunction, so its semantics did not depend on SMT-LIB
+`assert` boundaries. The order-preserving version removed only 29 variables and
+84 clauses on `mt20xx`; decisions, solve calls, and theory conflicts were
+identical. Five other established mixed representatives exposed only one or two
+useful decompositions. The prototype was reverted before fuzzing because this
+is not enough structural activity to justify a general encoding option. The
+design and rejected measurements are recorded in
+[](../root-polarity-clausification.md).
+
+Associative DAG representation and bounded flattening remain owned by the
+Boolean-DAG work on `main`; Real-equality lowering belongs to the LRA boundary.
+Neither is changed on this branch. Dynamic relevancy for guarded theory atoms
+remains a later DPLL(T) opportunity. If root normalization is revisited, it must
+operate on the implicit conjunction early enough for ordinary preprocessing to
+consume exposed conjuncts, remain linear in the reachable assertion shape,
+preserve shared `TermId` nodes, and avoid distributive expansion.
+
+The default theory phase is also not the common explanation. Positive or
+polarity phase reduced `main3_true` from about 702,000 to 103,000--112,000 SAT
+decisions and helped `m0_opl3`, but timed out or regressed `wm831x`, `iw_main6`,
+and `uinput` in the same bounded matrix. Any mixed-theory phase policy therefore
+needs a shape-specific predictor and independent validation; a blanket default
+flip is rejected by this sample.
 
 **Single-theory invariant.** `MixedTheoryPropagationDispatcher` is never used
 for pure QF_UF or pure QF_LRA. Pure QF_UF keeps its direct EUF callback path;
@@ -419,6 +552,8 @@ coordinator publishes:
 - `:no.interface.lra-to-euf-created-atoms`
 - `:no.interface.lra-to-euf-clauses`
 - `:no.interface.lra-to-euf-rechecks`
+- `:no.interface.lra-to-euf-pair-dedup-lookups`
+- `:no.interface.lra-to-euf-pair-dedup-duplicates`
 - `:no.interface.lra-to-euf-equalities-euf-already-true`
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-skipped`
 - `:no.interface.lra-to-euf-equalities-euf-mergeable-forced`
@@ -448,8 +583,15 @@ coordinator publishes:
 - `:no.interface.model-equality-scanned`
 - `:no.interface.model-equality-lra-equal`
 - `:no.interface.lra-model-mutation-enabled`
+- `:no.interface.lra-model-mutation-scope-all`
+- `:no.interface.lra-model-mutation-scope-care`
 - `:no.interface.lra-model-mutation-calls`
 - `:no.interface.lra-model-mutation-updates`
+- `:no.interface.lra-model-mutation-attempted-updates`
+- `:no.interface.lra-model-mutation-full-variables`
+- `:no.interface.lra-model-mutation-scoped-variables`
+- `:no.interface.lra-model-mutation-empty-scopes`
+- `:no.interface.lra-model-mutation-rejected-global-pair-regressions`
 - `:no.interface.lra-model-mutation-value-classes-before`
 - `:no.interface.lra-model-mutation-value-classes-after`
 - `:no.interface.lra-model-mutation-candidate-pairs-before`
@@ -493,6 +635,17 @@ coordinator publishes:
 - `:no.interface.euf-care-full-pairs`
 - `:no.interface.euf-care-pairs`
 - `:no.interface.euf-care-pruned-pairs`
+- `:no.interface.euf-care-argument-definitions`
+- `:no.interface.euf-care-function-classes`
+- `:no.interface.euf-care-definition-pairs-full`
+- `:no.interface.euf-care-definition-pairs-within-classes`
+- `:no.interface.euf-care-argument-pairs-checked`
+- `:no.interface.euf-care-definition-pairs-pruned`
+- `:no.interface.euf-care-duplicate-argument-pairs-pruned`
+- `:no.interface.euf-care-cache-hits`
+- `:no.interface.euf-care-cache-misses`
+- `:no.interface.euf-implied-class-projections`
+- `:no.interface.euf-implied-class-projection-terms`
 - `:no.interface.candidate-final-scan-enabled`
 - `:no.interface.candidate-final-scan-pairs`
 - `:no.interface.candidate-final-scan-skipped-pairs`
@@ -511,6 +664,9 @@ coordinator publishes:
 - `:no.shared-model.converged-rounds`
 - `:no.shared-model.exact-fallbacks`
 - `:no.shared-model.validation-failures`
+- `:no.shared-model.concrete-delta-order-pairs`
+- `:no.shared-model.concrete-delta-order-bounds`
+- `:no.shared-model.concrete-delta-order-tightenings`
 - `:no.shared-model.sat-materializations-avoided`
 - `:no.shared-model.congruence-fallbacks`
 - `:no.shared-model.congruence-summary-checks`
@@ -565,6 +721,20 @@ coordinator publishes:
 - `:no.online.final-lra-equality-scan-fallbacks`
 
 ### Shared-model validation result
+
+Concrete model production has one additional obligation beyond accepting the
+symbolic component models. Following Dutertre and de Moura, "A Fast
+Linear-Arithmetic Solver for DPLL(T)", Section 3.3, the symbolic infinitesimal
+must be instantiated below every crossing point whose order matters. Primo
+sorts the distinct shared `DeltaRational` values and checks only adjacent
+values; preserving those adjacent orders preserves the complete shared
+partition. The resulting `O(S log S)` coordinator step does not mutate the LRA
+tableau. The three `concrete-delta-order-*` counters distinguish adjacent pairs,
+actual positive crossing bounds, and bounds that tightened the chosen delta.
+The model regressions include `p(0) && !p(2*x)`, the affine
+`p(2*x) && p(0) && !p(x+1)` shape, and two arithmetic arguments connected by
+transitive bounds. Each used to be separated over symbolic delta-rationals and
+then collapse again when model printing chose `delta = 1`.
 
 The then-opt-in reconciliation profile was validated on SLURM after a tracked-seed
 preflight exposed an unsound first version. The failing shape was an internally
@@ -665,10 +835,12 @@ The implementation status remains organized into separate tracks. Track A is a
 prerequisite for any model-guided closure claim:
 
 1. Keep expanding explicit model construction beyond the current QF_UF subset.
-2. Validate SMT-LIB `get-model` responses with Dolmen before relying on them in
-   combination experiments.
-3. Add model validation tests against the asserted formulas, including formulas
-   affected by preprocessing passes.
+2. **Implemented for the current QF_UFLRA subset:** validate SMT-LIB
+   `get-model` responses with Dolmen in the permanent generated and real-corpus
+   gates before relying on them in combination experiments.
+3. **Implemented for current reconstruction paths:** model-validation tests
+   cover asserted formulas and the supported preprocessing reconstruction;
+   extend them with each new satisfiability-preserving rewrite.
 4. Continue expanding reconstruction state for satisfiability-preserving
    rewrites beyond the current QF_UF unit and substitution subset.
 
@@ -797,6 +969,68 @@ scratch-only mutation, full-pair fallback, active assumption accumulation,
 care-ranked selection, ranked fallback, and adaptive backoff. The tests assert
 that mutation filtering occurs before care-queue construction and equality-atom
 creation.
+
+### 2026-08-12 Care-Scoped Mutation Prototype Checklist
+
+**Bibliographic basis.** The scope experiment combines de Moura and Bjorner,
+"Model-based Theory Combination," Section 4's care-pair restriction with
+Section 5.2's freedom-interval model mutation. It is an empirical specialization
+of the existing Section 5.2 implementation, not a claim that the paper mandates
+this exact scheduling policy.
+
+**Implemented subset.** The default `all` scope remains unchanged. The opt-in
+`care` scope obtains current EUF care pairs after the EUF model check and passes
+only their shared Real endpoints to the existing scratch LRA mutator. The
+mutator still returns values for every tableau variable. The mixed coordinator,
+not the LRA tableau, reconstructs the complete shared-value partition from
+those values before reconciliation, candidate filtering, or model printing.
+
+**Owners and data structures.** `CheckSatOptions` owns the scope enum.
+`EufCarePairDiagnostics` owns the solve-round care pairs. The mixed coordinator
+maps their endpoints through `PreparedLraTheory::variables_by_term`, invokes
+`LraTableau::diversify_shared_model` with the resulting subset, and builds the
+full partition in `LraModelEqualPartition`. No LRA data structure, tableau
+state, or pure QF_LRA control flow changes.
+
+**Invariants and proof obligations.** Every returned assignment remains an LRA
+model because the existing freedom-interval mutator is unchanged. False
+interface equalities remain global forbidden pairs, including pairs outside
+the care subset. A care-scoped result is accepted only if its complete shared
+partition has no more candidate pairs than the original complete partition;
+otherwise the coordinator restores the original tableau assignment. Empty care
+sets skip the mutation sweep. Model equality remains a filter or SAT assumption,
+never an entailed propagation.
+
+**Complexity expectation.** For `S` shared variables and `C <= S` care-endpoint
+variables, trial grouping falls from `O(tries * S)` to `O(tries * C)`. The
+coordinator pays one `O(S log S)` full-partition reconstruction per mutation
+call. EUF care discovery retains its existing definition-pair cost and is paid
+in this mode even when model-equality branching is disabled. Counters must
+therefore report full and scoped term counts, empty scopes, accepted updates,
+and rejected global regressions.
+
+**Deviations and limitations.** This is still the QF_UFLRA-specific final-check
+scaffold, not generic `DPLL(T^M)`. Care pairs are recomputed from the checked EUF
+model rather than maintained incrementally. The mode stays opt-in until
+profiling shows that reduced mutation work exceeds care-discovery and full
+partition-reconstruction cost, and merge fuzzing plus a QF_UFLRA A/B show no
+correctness or performance regression.
+
+**Tests derived from the algorithm.** Unit tests must cover a strict care subset,
+an empty care set, unchanged pure QF_UF/QF_LRA routing, full-partition use after
+care mutation, and the global candidate-pair non-regression guard. Statistics
+must prove that fewer variables reached the mutator on the strict-subset case.
+
+**Evaluation status.** Commit `fcbea41` passed all 11 deterministic mixed
+seeds, 3,000 generated mixed cases, 500 finite QF_UF cases, 500 finite QF_UFLRA
+cases, and a 100-mutation-per-seed YinYang campaign against the configured
+references. There were no wrong answers, crashes, parser/type errors,
+unsupported results, or reference disagreements. A same-source full-corpus A/B
+at commit `30d9a26` gained five net solves at five seconds. At 30 seconds both
+scopes solved 1,267 files; care reduced common-solved time by about 20 percent
+but exchanged two solves for two losses and increased SAT decisions. This
+validates the opt-in prototype's tested boundary and intended reduction in
+mutation visits. The default remains `all` because the search effects are mixed.
 
 Track B can begin with the current QF_UF model printer if it is limited to
 entailed equalities and interface bookkeeping. Track B must not implement or
@@ -1022,6 +1256,12 @@ independently measured default-off setting;
   `:no.interface.lra-extra-atom-probe-limit-hit`.
   The resulting concrete Real values are used when printing UF tables for
   symbols with Real arguments and for Real-valued UF application results.
+  Model completion enumerates both Real constants and Real-valued applications
+  in purified EUF atoms and assigns every member of one EUF class its anchored
+  LRA value or the class's fresh rational. If preprocessing leaves a stale
+  original application with the same printed arguments as the active purified
+  application, the model builder gives the exact active assignment precedence
+  during table-row deduplication.
   Real-valued function tables use `0` as their default result and add entries for
   concrete applications whose LRA proxy value differs from that default. The
   same composed model builder is used for QF_UFLRA inputs that preprocess down
@@ -1032,7 +1272,8 @@ independently measured default-off setting;
   mix, EUF-conflict learning, LRA-conflict learning, separable mixed
   `get-model`, shared-Real predicate `get-model` with a separating LRA repair,
   shared-Real predicate `get-model` when LRA forces equality, Real-valued UF
-  application models, bounded shared-Real model-separation search over multiple
+  application models, stale-versus-purified Real application table rows,
+  nested Real-valued application rows, bounded shared-Real model-separation search over multiple
   candidates, positive SAT-visible interface equality forcing in both LRA-to-EUF
   and EUF-to-LRA directions, guarded interface-equality propagation that must not
   leak an equality from one Boolean branch into another, purification of
@@ -1078,9 +1319,9 @@ Limitations:
   model-equality branch consumer is enabled. It is used by the `ranked` and
   `adaptive` model-equality branch policies only as an ordering hint with
   full-pair fallback. It does not add clauses and is not an implementation of
-  the Jovanovic-Barrett care-set algorithms. The current scan is quadratic in
-  the number of shared-argument flat definitions, which is intentionally simple
-  and remains behind default-off model-equality branching for active consumers;
+  the Jovanovic-Barrett care-set algorithms. Function-class projection avoids a
+  quadratic cross-class scan, but candidate enumeration remains quadratic when
+  one current function class contains many distinct shared arguments;
 - cross-theory equality propagation uses guarded clauses over generated equality
   literals, but still lacks the minimal explanation machinery of a full
   Nelson-Oppen implementation;
@@ -1184,6 +1425,54 @@ rather than from a full care-graph API. Care information remains important as a
 scalability filter: without some relevance test, all same-sort shared pairs can
 still become quadratic noise. The current EUF care-pair scan is a narrow
 consumer-driven filter, not the architectural foundation.
+
+The implementation projects UF function terms through
+`FlatCongruenceClosure::equivalence_classes()` before enumerating care
+candidates. Definitions are compared only within one current function
+equivalence class; definitions from different classes cannot induce a
+congruence care pair and are skipped as a group. Equal argument terms are then
+deduplicated within each function class before pair enumeration. This preserves
+the Section 4 care-pair condition while replacing the previous quadratic
+sequence of pairwise closure queries with an expected-linear class projection
+plus enumeration of distinct argument pairs. The worst case remains quadratic
+when one class contains many distinct arguments. The cumulative
+`euf-care-definition-pairs-*` and `euf-care-argument-pairs-checked` counters
+distinguish that worst case from work removed by class bucketing and argument
+deduplication.
+
+`MixedEufCareEpoch` memoizes the resulting diagnostics under the complete
+ordered EUF assignment vector, including generated true and false interface
+equalities. A cache hit is therefore valid only when rebuilding or reusing the
+EUF closure would assert exactly the same facts over the unchanged prepared
+term index and shared-term set. The cache is local to one `check-sat` call and
+does not survive structural preparation changes. This is coordinator-local
+memoization of Section 4 care information, not an additional model-based
+transition from the paper.
+
+The accepted 1,284-file QF_UFLRA evaluation at commit `20c8db1` used the same
+care-scoped command as the `30d9a26` baseline. At five seconds both revisions
+solved 1,247 files, while common-solved time fell from 169.43 to 159.99 seconds.
+At 30 seconds the new implementation solved 1,268 files versus 1,267, with no
+losses or answer disagreements; common-solved time fell from 482.07 to 437.14
+seconds. The recovered `rekh_ctm` instance retained exactly 2 SAT solve calls,
+1,122 decisions, and 353,565 propagations, but changed from a 30-second timeout
+inside care discovery to `sat` in 8.03 seconds. Its two care computations each
+considered 29,089 shared-argument definitions: the diagnostic full scan would
+have tested 846,140,832 definition pairs in total, while class bucketing retained
+2,753,870 argument-pair iterations. The final implied-equality projection visited
+29,546 flat shared terms per round. This is evidence for removing coordinator
+overhead without attributing the gain to a changed SAT search.
+
+A fresh 120-second evaluation at benchmark commit `9061611` ran both Primo
+scopes and all four installed references over the same 1,284 files. Default
+`all` solved 1,272 and `care` solved 1,271; care used 660.98 seconds on the 1,271
+common solves versus 803.83 for all, but timed out on one induction row that all
+solved. Yices remained strongest with 1,276 solves and only the eight universal
+CPAchecker BMC timeouts. cvc5 solved 1,273, OpenSMT 1,265, and Z3 1,254. There
+were no declared-status wrong answers, solver errors, unsupported results, or
+decisive-answer disagreements. This longer cutoff therefore does not justify
+changing the default mutation scope to `care`: it confirms a throughput gain
+with a small, timeout-dependent solved-set loss.
 
 ### Primo Checklist Items
 

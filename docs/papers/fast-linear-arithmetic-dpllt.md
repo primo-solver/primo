@@ -168,13 +168,17 @@ before it, so Section 4.2 propagation is unaffected. See
   (1.4-1.8x); see [](../qf-lra-heuristics.md) section 6.2b. Note this index
   exists only to serve the explicit tableau, so it would disappear entirely
   under the paper's backtracking scheme above.
-- **No model extraction.** TR Section 3.3's second half converts a satisfying
-  β' over the delta-rationals into a concrete rational assignment, by
-  computing `delta_0 = min{(d_i - c_i)/(k_i - h_i) | c_i < d_i, k_i > h_i}`
-  and evaluating each variable at it. Primo implements none of this and
-  handles neither `get-model` nor `get-value`, so it answers sat/unsat
-  without ever producing the witness. Not a deviation in the algorithm, but
-  a missing capability that this paper does specify.
+- **Model extraction is implemented for the supported model fragments.** TR
+  Section 3.3's second half converts a satisfying β' over the
+  delta-rationals into a concrete rational assignment by computing
+  `delta_0 = min{(d_i - c_i)/(k_i - h_i) | c_i < d_i, k_i > h_i}` and
+  evaluating each variable at it. The QF_LRA path chooses a positive rational
+  delta that preserves its asserted bounds. Mixed QF_UFLRA model
+  reconciliation also sorts the distinct shared values and applies the same
+  crossing bound to adjacent values, which is sufficient to preserve their
+  complete order in `O(S log S)` time. `get-model` is supported for the
+  fragments documented in [](../arithmetic.md); `get-value` remains
+  unsupported.
 
 ## Extensions beyond the paper
 

@@ -40,6 +40,7 @@ struct VectorKeyHash {
 struct TableEntry {
   std::vector<std::string> args;
   std::string result;
+  bool has_exact_real_value = false;
 };
 
 bool is_internal_symbol(const core::Symbol& symbol) { return symbol.name.starts_with("$primo_"); }
@@ -267,7 +268,7 @@ class QfUfModelBuilder {
   }
 
   std::vector<TableEntry> table_entries(const core::Symbol& symbol) {
-    std::unordered_map<VectorKey, std::string, VectorKeyHash> seen;
+    std::unordered_map<VectorKey, std::size_t, VectorKeyHash> seen;
     std::vector<TableEntry> entries;
     for (const core::Term& term : terms_.terms()) {
       if (term.kind != core::TermKind::Application || term.symbol != symbol.id) {
@@ -282,8 +283,16 @@ class QfUfModelBuilder {
         key.values.push_back(term_value(child));
       }
       const std::string result = term_value(term.id);
-      if (seen.emplace(key, result).second) {
-        entries.push_back(TableEntry{key.values, result});
+      const bool has_exact_real_value = symbol.result_sort == terms_.symbols().real_sort() &&
+                                        options_.real_values != nullptr &&
+                                        options_.real_values->contains(term.id);
+      const auto found = seen.find(key);
+      if (found == seen.end()) {
+        seen.emplace(key, entries.size());
+        entries.push_back(TableEntry{std::move(key.values), result, has_exact_real_value});
+      } else if (has_exact_real_value && !entries.at(found->second).has_exact_real_value) {
+        entries.at(found->second).result = result;
+        entries.at(found->second).has_exact_real_value = true;
       }
     }
     std::sort(entries.begin(), entries.end(),

@@ -220,6 +220,23 @@ that can expose branch literals to SAT search, but a 334-row QF_UF SLURM
 validation rejected it as an unconditional default because it regressed PEQ and
 SEQ rows.
 
+The assertion vector is an implicit conjunction, not a semantic boundary. A
+root-polarity clausification prototype confirmed that separate assertions, an
+asserted conjunction, and root De Morgan equivalents can share one
+required-context treatment without distribution. It was reverted because it
+removed too little Boolean structure on the target QF_UFLRA cases. The invariant
+and rejected measurements are recorded in
+[](root-polarity-clausification.md); there is no current solver option.
+
+The opt-in structural auto-preprocessing selector now enforces that invariant
+for profile selection without constructing a synthetic conjunction. It expands
+only positive top-level `And` nodes in an analysis-only DAG walk and uses the
+result with finite-domain diagnostics. The legacy assertion-count selector is
+still the default until evaluation is complete; see
+[](structural-auto-preprocessing.md). Optional implication normalization is an
+SMT-layer rewrite over `TermId` values and remains separate from both selector
+and clausifier.
+
 What survived that rejection is a **guarded automatic rule**, on by default and
 disabled with `--no-auto-top-level-or-tseitin`. It is much narrower than
 "automatic" suggests -- `should_use_auto_top_level_or_tseitin` requires *all* of:
@@ -277,7 +294,12 @@ Implemented now:
   model reconstruction augments the LRA side with EUF-implied Real-constant
   equalities and strict separations for EUF-distinct Real constants before
   printing concrete Real argument values and Real-valued UF application results
-  in the UF function tables. If QF_UFLRA preprocessing removes all remaining
+  in the UF function tables. `complete_euf_real_model_values` assigns the same
+  concrete rational to every Real constant and Real-valued application in one
+  purified EUF class. `smt::ModelBuilder` then prefers those exact application
+  assignments when a stale pre-rewrite term and an active purified term have
+  the same printed arguments; this prevents the stale default row from
+  shadowing the constrained function row. If QF_UFLRA preprocessing removes all remaining
   EUF atoms and dispatches the simplified problem to the QF_LRA solver, the same
   composed model builder is used so original UF constants and solved UF
   equalities remain defined in `get-model` output.
@@ -375,7 +397,13 @@ Implemented now:
   are model choices, not entailed theory lemmas. If all edges are absorbed, the
   no-model path returns SAT without the broad exact scan, and model production
   concretizes the same scratch LRA assignment and supplies the internal
-  spanning equalities to EUF. Shared-interface discovery uses the variables of
+  spanning equalities to EUF. Concretization preserves the ordering of the
+  distinct shared `DeltaRational` values: the coordinator sorts them, derives
+  the Dutertre-de Moura Section 3.3 crossing bound for each adjacent pair, and
+  chooses a smaller positive delta. This costs `O(S log S)` for `S` shared
+  variables and prevents model printing from collapsing EUF-distinct Real
+  arguments after reconciliation. It is mixed-coordinator postprocessing; the
+  LRA tableau and pure QF_LRA path are unchanged. Shared-interface discovery uses the variables of
   each normalized LRA polynomial, not every syntactic Real constant in an
   arithmetic atom. A constant cancelled by normalization is therefore EUF-only
   and uses model completion rather than becoming an unmapped interface term.
@@ -462,8 +490,11 @@ Implemented now:
   before the backend observes its SAT variable, provided both endpoint terms
   already exist in that state. Registration failures are counted and prevent
   the EUF child from observing the atom. This is an experimental IPASIR-UP
-  integration scaffold, not a new EUF algorithm and not full model-based theory
-  combination.
+  integration path, not a new EUF algorithm and not full model-based theory
+  combination. The option no longer requires
+  `--nelson-oppen-prop=online`: in final propagation mode the dispatcher keeps
+  the LRA paired-bound producer disabled but still maintains the EUF trail and
+  exposes it to final reconciliation.
   Online mode retains a complete final strict-bound fallback over candidate
   pairs not already resolved by EUF or lazy entailment. The checked LRA
   tableau's model-value partition first removes pairs with unequal current
@@ -493,15 +524,27 @@ Implemented now:
   implemented for the default reconciliation path. The paired-bound rule is therefore still the
   stable online LRA-to-EUF propagation subset; this is not the full model-guided
   transition system.
-  The optional online EUF child does not replace the final EUF check: after SAT
-  returns, the coordinator still constructs the assignment-local flat closure
-  used for final consistency, care-pair classification, and model validation.
-  Exposing callback-owned closure state safely across that boundary, including
-  its backtracking lifetime, remains unimplemented. The option is default-off;
-  a 45-file local ablation solved the same 43/45 rows as online LRA alone and
-  produced only a small PAR2 change, which is insufficient for promotion.
+  The optional online EUF child exposes a move-only, assignment-local
+  `IncrementalFlatAssignmentState::ModelScope` after SAT. The scope protects a
+  closure checkpoint and returns a `FlatEufModelView` containing only the flat
+  term index and mutable closure needed by care-pair classification,
+  reconciliation, explanation, and model completion. Temporary candidate-model
+  merges are rolled back when the scope is destroyed. CaDiCaL can issue a
+  synchronous backtrack while the coordinator adds a learned clause; callbacks
+  received during a scope are queued by `OnlineEufPropagator` and replayed in
+  order before the next solve. `cb_check_found_model` synchronizes observed EUF
+  values omitted from ordinary trail notifications using IPASIR-UP's complete
+  reconstructed model vector before the view is acquired. Incomplete
+  registration or unavailable incremental state retain the old
+  `PreparedFlatTheory` closure rebuild as a measured fallback. The option
+  remains default-off. At commit `540b847`, fresh generated and mutation fuzzing
+  found no disagreements, while the five-second 1,284-file QF_UFLRA A/B gained
+  one net solve and removed every measured final closure rebuild. The same run
+  increased decisions and common-solved time slightly, so the evidence supports
+  the ownership/lifetime mechanism but not default promotion.
 - **Single-theory invariant:** the combination dispatcher is used only by the
-  mixed QF_UFLRA solver when `--nelson-oppen-prop=online` is selected. Pure
+  mixed QF_UFLRA solver when online Nelson-Oppen propagation or live mixed EUF
+  state is explicitly selected. Pure
   QF_UF keeps its direct EUF propagator path, and pure QF_LRA keeps its direct
   `OnlineLraPropagator` path, so single-theory runs do not pay for shared
   equality registration, dispatcher callbacks, or arrangement bookkeeping. The
@@ -516,7 +559,12 @@ Implemented now:
   adds a default-off model-driven SAT-assumption loop for LRA-model-equal shared
   Real pairs. Before creating a guessed equality atom, the mixed coordinator
   calls `LraTableau::diversify_shared_model()` once for the feasible round and
-  removes pairs split by that valid scratch model. Guessed equality atoms that survive SAT
+  removes pairs split by that valid scratch model. The default mutation scope
+  visits all shared Real variables. The experimental
+  `--model-equality-mutation-scope=care` scope visits only current EUF care-pair
+  endpoints, then reconstructs and validates the complete shared partition in
+  the coordinator; a result that increases the global candidate-pair count is
+  discarded. Guessed equality atoms that survive SAT
   and theory checks remain active as assumptions while the coordinator tries
   additional model-equal pairs; if SAT later proves the active assumption set
   inconsistent, Primo learns a blocking clause over the failed assumptions and
@@ -577,7 +625,10 @@ Implemented now:
   selection, the coordinator may call
   `LraTableau::diversify_shared_model()` once on the checked feasible tableau.
   This Section 5.2 scratch sweep returns a valid, more diverse LRA model without
-  changing live tableau state. Its post-mutation classes are used as candidates;
+  changing live tableau state. The default sweep receives every shared Real
+  variable. The opt-in care scope receives only current EUF care-pair endpoints,
+  but the coordinator still derives the candidate classes and model values from
+  the complete returned assignment. Its post-mutation classes are used as candidates;
   a pair that remains equal is not thereby entailed. Explained equality
   propagation continues to come only from the cheap `FixedEq`, `EqRow`,
   `EqOffsetRows`, and `EqRows` rules or the exact convex fallback.
@@ -640,8 +691,11 @@ make contrib-cvc5
 make contrib-cadical
 ```
 
-Dolmen is used as an optional external validator for SMT-LIB model response
-files. It is not vendored under `contrib/`; install it separately and run
-`scripts/validate_model.py`.
+Dolmen is an external validator for SMT-LIB model response files. It is not
+linked into Primo; install the pinned host-compatible build with
+`make contrib-dolmen` and run `scripts/validate_model.py`. The dependency is optional for ordinary builds,
+but required by the standard QF_UFLRA merge gate. The validator owns only
+generated problem/response artifacts and durable CSV/JSON metadata; it does not
+enter solver control flow or share model objects with Primo.
 
 Downloaded archives and build trees under `contrib/downloads`, `contrib/src`, and `contrib/local` are not committed.

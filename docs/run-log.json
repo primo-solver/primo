@@ -26125,6 +26125,171 @@
       "outcome": "The conflict-resolved exact commit preserves default search statistics on the retained comparison cases and passes fresh default and optional-pass fuzz gates. It is ready for the local merge to main."
     },
     {
+      "id": "2026-08-11-qf-uflra-live-euf-local-profile-540b847",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "profile-and-ablation",
+      "scope": "Profile repeated final EUF closure rebuilding and measure scoped reuse of the IPASIR-UP callback-owned closure",
+      "commit": "540b847",
+      "baseline_commit": "5284c64",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "local",
+        "profile_binary": "gprof RelWithDebInfo builds against CaDiCaL 3.0.0",
+        "release_binary": "Release git 540b847, GCC 13.3.0, CaDiCaL 3.0.0",
+        "candidate_provenance": "The candidate gprof artifacts were produced from the final source before its 540b847 commit; the exact committed Release binary repeated the mechanism and answer checks."
+      },
+      "commands": {
+        "profile": "Run each selected input under the gprof binary with --quiet --stats [--qf-uflra-online-euf], then run gprof on the resulting gmon.out",
+        "release_ab": "/tmp/run_primo_live_euf_ab.sh; five repetitions per input and profile using /usr/bin/time"
+      },
+      "inputs": {
+        "files": 3,
+        "family": "CPAchecker induction QF_UFLRA",
+        "shape": "14, 19, and 43 SAT solve calls, selected to expose repeated final EUF checks"
+      },
+      "results": {
+        "gprof_total_time_us": "949714 to 717693, 382818 to 285981, and 762238 to 625764",
+        "gprof_flat_definitions": "14233 to 331, 2912 to 208, and 4845 to 255",
+        "live_mechanism": "All 76 candidate final checks reused the callback closure with zero fallback or rebuild; 18336 observed assignments were completed through model callbacks and 72 re-entrant callbacks were deferred and replayed.",
+        "release_medians": "Default/live wall medians were 0.42/0.40, 0.17/0.17, and 0.35/0.36 seconds. SAT decisions, propagations, solve calls, and answers were identical on each pair.",
+        "release_rss": "Live medians were about 1-2 MiB higher: 30656 vs 28696, 18640 vs 17684, and 42732 vs 41068 KiB."
+      },
+      "artifacts": "local-only:/tmp/primo-live-euf-profile-baseline-5284c64/, /tmp/primo-live-euf-profile-candidate-model-callback/, and /tmp/primo-live-euf-release-ab-540b847/",
+      "evidence_status": "local-complete-current",
+      "outcome": "The rebuilt closure was a real repeated cost and the scoped callback state removes it. Release timing is neutral on these already-fast cases, so broader evaluation remains authoritative."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-live-euf-fuzz-540b847",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "fuzz",
+      "scope": "Merge-grade generated, finite-domain, deterministic-seed, and YinYang validation of live EUF model-state reuse",
+      "commit": "540b847",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 540b847, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for mixed generation, deterministic seeds, and mutation; Z3 5.0.0 plus cvc5 1.3.4 for finite-domain generation",
+        "workspace_preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified revision 540b847, CaDiCaL linkage, Z3, cvc5, and typefuzz immediately before submission",
+        "scheduler": "Generated array job 123698 completed four tasks in 26-27 seconds; mutation job 123699 completed in 4 minutes 48 seconds."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch --array=0-3 with PRIMO_FUZZ_SOLVER_ARGS=--qf-uflra-online-euf, count 750 plus two finite counts of 125 per task, seeds 202607390 through 202607393, timeout 5 seconds",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch --array=0 with --qf-uflra-online-euf, 1000 iterations per seed, seed 2026080700, and solver timeout 8 seconds"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS",
+        "finite_qf_uf": "500/500 PASS",
+        "finite_qf_uflra": "500/500 PASS",
+        "generated_failures": "Zero wrong answer, timeout, crash, unsupported result, parser/type error, or reference disagreement.",
+        "tracked_seeds": "11/11 PASS before mutation",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers, and 21868 differential solver calls."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-live-euf-fuzz-540b847/ and fuzz-results/qf-uflra-live-euf-mutation-540b847/; local-only:/tmp/primo-live-euf-fuzz-540b847/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as merge-grade correctness evidence for the default-off live EUF model-state path."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-live-euf-slurm-ab-540b847",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "benchmark",
+      "scope": "Same-commit 45-file and full 1,284-file QF_UFLRA A/B of callback-owned final EUF closure reuse",
+      "commit": "540b847",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 540b847, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; historical C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "reference_reuse": "Z3 5.0.0 results/qf-uflra-full-mine-z3stats-77599f4-5s/z3stats.csv and Yices 2.7.0 /tmp/primo-qfuflra-yices-2.7.0-5s/ were not rerun; solver binaries, corpus, and five-second budget are unchanged.",
+        "scheduler": "45-file job 123704 completed both tasks in 3-4 seconds. Correct full arrays 123723 and 123724 completed all 16 tasks in 39-65 seconds."
+      },
+      "commands": {
+        "sample": "scripts/slurm_qf_uflra_sample_compare.sbatch --array=0-1 over benchmarks/qf_uflra-preprocessing-opportunity-sample.txt, timeout 60, profiles default and --qf-uflra-online-euf",
+        "full": "Two scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 runs, eight shards, timeout 5, profiles default and --qf-uflra-online-euf",
+        "summary": "scripts/summarize_benchmark_shards.py --timeout 5 with default as baseline and live as candidate",
+        "discarded_submission": "Jobs 123706 and 123707 accidentally ran the script default --model-equality-branching profile because shell variables were not exported to sbatch. Their logs exposed the mismatch immediately; they are rejected and are not used in any comparison."
+      },
+      "results": {
+        "sample_default": "45 solved, 0 timeout/error/wrong, PAR2 3.001235.",
+        "sample_live": "45 solved, 0 timeout/error/wrong, PAR2 2.998063.",
+        "full_default": "1243 solved (737 sat, 506 unsat), 41 timeout, 0 error/unsupported/wrong, PAR2 562.400041.",
+        "full_live": "1244 solved (737 sat, 507 unsat), 40 timeout, 0 error/unsupported/wrong, PAR2 557.286967.",
+        "cross_profile": "Two recoveries, one loss, zero decisive-answer disagreements; among 1242 common solves, time changed from 147.485141 to 148.449934 seconds.",
+        "mechanism": "Final closure rebuilds fell from 3261 to 0 and flat-definition work from 1145153 to 134523; all 3284 attempts reused live state with zero incomplete, registration-invalid, or other fallback.",
+        "search": "Decisions increased from 33572448 to 34211143, propagations from 68269051 to 68714307, and solve calls from 3756 to 3782; conflicts decreased from 539762 to 537675.",
+        "references": "Reused Z3 solved 1234 with PAR2 758.708455. Reused Yices solved 1275 with PAR2 156.687539, adding 31 solves over live Primo with no loss or decisive disagreement."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/qf-uflra-live-euf-ab-540b847/, results/qf-uflra-live-euf-full-default-540b847-5s/, and results/qf-uflra-live-euf-full-live-540b847-5s/; local-only:/tmp/primo-live-euf-slurm-ab-540b847/ and /tmp/primo-live-euf-full-540b847-5s-correct/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Keep the mechanism and counters behind --qf-uflra-online-euf. It removes the intended rebuild cost and gains one net five-second solve, but the small search and common-time regressions do not justify default promotion."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-reference-stats-triage-540b847",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "reference-statistics-profile-and-option-ablation",
+      "scope": "Triage the 31 five-second QF_UFLRA cases solved by Yices 2.7.0 but not the live-EUF Primo profile, using reference statistics and existing non-LRA options",
+      "commit": "540b847",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "local",
+        "binary": "Release git 540b847, GCC 13.3.0, CaDiCaL 3.0.0",
+        "references": "Yices 2.7.0 local --stats probes plus existing five-second Yices and Z3 corpus artifacts",
+        "corpus": "The 31 CPAchecker-induction recoveries in the existing live-Primo versus Yices comparison; no reference implementation source was inspected"
+      },
+      "commands": {
+        "phase_matrix": "Six representative inputs under default and --theory-phase=positive|polarity|none|auto, eight-second local cap, four workers",
+        "flatten_matrix": "Five representative mixed inputs under --boolean-flatten-threshold=0|8|32|128, ten-second local cap, four workers",
+        "gap_sample": "python3 scripts/bench_qf_uf_full.py over the exact 31-file recovery manifest with --boolean-flatten-threshold=128 and a five-second cap; append-only JSONL enabled",
+        "reference_stats": "contrib/local/bin/yices-smt2 --stats on representative recovered inputs and the residual mt20xx input",
+        "controlled_residual": "build-live-euf-release/primo --quiet --stats --boolean-flatten-threshold=128 --max-theory-conflicts=20 on mt20xx; repeated with --qf-uflra-online-euf and with --theory-phase=positive"
+      },
+      "results": {
+        "reference_shape": "Representative Primo rows used roughly 3.5-6x the SAT variables reported by Yices; Z3 statistics on the six common fast-reference rows showed the same direction.",
+        "phase": "Positive/polarity reduced main3_true from 702043 to 102954-111692 decisions and helped m0_opl3, but positive/polarity/none timed out on wm831x and positive timed out on iw_main6 and uinput. Auto matched the negative default on these mixed inputs.",
+        "flatten_representatives": "Threshold 128 reduced SAT variables by 19-65% and decisions by about 5-17x across main3_true, wm831x, iw_main6, uinput, and m0_opl3. All five solved within the ten-second diagnostic cap.",
+        "flatten_gap_set": "9/31 solved, 22 timeout, 0 wrong/error/unsupported, PAR2 244.416102 at a five-second cap; the existing live profile timed out on all 31 at the same corpus budget.",
+        "direct_interface_ab": "On main3_true, default versus threshold 128 used 12017/6874 SAT variables and 702043/117837 decisions, but both had exactly 557 EUF atoms, 3559 LRA atoms, 1007 shared Real terms, and a 506521-pair diagnostic cross product. The speedup does not come from shrinking the semantic Nelson-Oppen interface.",
+        "yices_mt20xx": "sat in 1.297s with --stats: 7128 Boolean variables, 23391 decisions, 76 SAT conflicts, 71 theory conflicts, 3606 theory propagations, 802 e-graph final checks, 849 interface lemmas, and 941 simplex pivots.",
+        "primo_mt20xx": "Threshold 128 reached the configured outer theory-conflict stop after 21.19s, but only after 432 combined conflicts despite --max-theory-conflicts=20: 12927 SAT variables, 1730478 decisions, 303300 LRA propagations, 452 SAT/EUF checks, and 29811 reported interface equalities. Because the mixed path does not enforce this budget promptly, the live-EUF and positive-phase diagnostics also required 30s and 20s outer wall caps. Live EUF removed all 452 closure rebuilds but reached 1884557 decisions and 464 LRA conflicts; positive phase reached 3745313 decisions.",
+        "counter_limitation": ":no.interface.equalities-propagated accumulates complete producer vectors across rounds, including repeated and already-absorbed equalities; the 29811 mt20xx reports produced 408 equality clauses. It is not a unique-lemma or useful-delivery count."
+      },
+      "artifacts": "local-only:/tmp/qfuflra-phase-matrix-540b847.jsonl, /tmp/qfuflra-flatten-matrix-540b847.jsonl, /tmp/qfuflra-yices-only-31-flatten128.csv, /tmp/qfuflra-yices-only-31-flatten128.jsonl, /tmp/qfuflra-yices-only-31-flatten128-summary.json, and /tmp/qfuflra-yices-only-31-flatten128-logs/",
+      "evidence_status": "local-diagnostic-current",
+      "outcome": "The threshold-128 diagnostic identified Boolean shape as the strongest immediate non-LRA signal. A subsequent exact-option fuzz gate passed, but no full A/B was submitted because the separately owned main branch added and validated a post-preprocessing bounded-flattening default. The current branch must rebase its performance baseline on that main behavior before attributing further gains. The residual mt20xx statistics prioritize assertion-context simplification and better interface-delivery counters over generic model machinery or a blanket theory-phase change."
+    },
+    {
+      "id": "2026-08-11-qf-uflra-flatten128-fuzz-47ddba6",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "fuzz",
+      "scope": "Exact-option correctness gate for the pre-preprocessing bounded Boolean flattening diagnostic; retained as historical evidence after main adopted a separately validated post-preprocessing policy",
+      "commit": "47ddba6",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 47ddba6, CaDiCaL 3.0.0",
+        "scheduler": "Generated/finite job 123847 and mutation job 123848 completed."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch with PRIMO_FUZZ_SOLVER_ARGS=--boolean-flatten-threshold=128",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch with --boolean-flatten-threshold=128 and 1000 mutation iterations per tracked seed"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS",
+        "finite_qf_uf": "500/500 PASS",
+        "finite_qf_uflra": "500/500 PASS",
+        "generated_failures": "Zero wrong answer, crash, unsupported result, parser/type error, or reference disagreement.",
+        "tracked_seeds": "11/11 PASS before mutation",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, and 0 bug triggers."
+      },
+      "artifacts": "remote:<prepared-workspace>/SLURM job outputs for 123847 and 123848",
+      "evidence_status": "historical-option-gate",
+      "outcome": "The exact threshold-128 option passed the required correctness gate. Further benchmark work on that pre-pass was stopped to avoid overlapping the Boolean-DAG branch; origin/main subsequently introduced the distinct post-preprocessing default that now defines the baseline."
+    },
+    {
       "id": "2026-08-11-boolean-flatten-post-preprocessing",
       "started_at": "2026-08-11",
       "recorded_at": "2026-08-11",
@@ -26188,6 +26353,363 @@
       }
     },
     {
+      "id": "2026-08-11-qf-uflra-main-rebaseline-root-polarity-rejected-91f94b9",
+      "started_at": "2026-08-11",
+      "recorded_at": "2026-08-11",
+      "kind": "profile-and-rejected-prototype",
+      "scope": "Rebaseline established QF_UFLRA gaps after merging main's post-preprocessing flattening default, then test assertion-boundary-independent required-root clausification without changing LRA",
+      "commit": "91f94b9 baseline; temporary dirty prototype based on 91f94b9, fully reverted after measurement",
+      "branch": "qf-uflra-live-euf-model-state",
+      "environment": {
+        "type": "local",
+        "binary": "Release, CaDiCaL 3.0.0",
+        "limits": "--max-theory-conflicts=1000 for fast representatives and 20 for mt20xx"
+      },
+      "commands": {
+        "baseline": "build-live-euf-release/primo --quiet --stats --max-theory-conflicts=N on main3_true, wm831x, iw_main6, uinput, m0_opl3, and mt20xx",
+        "candidate": "same binary and limits with the temporary --root-polarity-clausification option",
+        "focused_tests": "primo_boolean_solver_tests and primo_qf_lra_solver_tests under ctest --timeout 120"
+      },
+      "results": {
+        "main_rebaseline": "All six representatives solved. main3_true used 5615 SAT variables, 22381 clauses, 56304 decisions, and 32 solve calls in 3.82s. mt20xx used 9510 variables, 51027 clauses, 75021 decisions, 20 solve calls, and 12 LRA conflicts in 15.18s. The earlier pre-main controlled mt20xx run had reached 1.73 million decisions without solving, so main's post-pass materially changes the mixed baseline.",
+        "residual_model_cost": "mt20xx performed 2800 shared-model compatibility projections totaling 5972400 projected-term visits; Yices historical time remains about 1.3s. The 18190224 :no.interface.lra-model-filter-full-pairs value is a constant-time combinatorial diagnostic, not a physical-visit counter.",
+        "prototype_invariant": "The corrected prototype used shared (TermId, required-value) visited state across the implicit assertion conjunction while interleaving polarity collection and clause emission in existing assertion order. Unit tests showed equivalent treatment of separate assertions, one conjunction, and a root De Morgan equivalent, plus unchanged LRA tableau shape.",
+        "main3_corrected": "2 decompositions; 5615 variables, 22381 clauses, 56304 decisions, 32 solve calls, 21 LRA conflicts, 3.45s. All non-time search counts matched baseline exactly.",
+        "mt20xx_corrected": "33 decompositions; 9481 variables, 50943 clauses, 75021 decisions, 20 solve calls, 12 LRA conflicts, 14.24s. The prototype removed 29 variables and 84 clauses but did not change search counts.",
+        "other_activity": "wm831x, iw_main6, uinput, and m0_opl3 exposed only one or two decompositions in the diagnostic prototype.",
+        "discarded_first_variant": "A first implementation collected all theory-atom polarities before clause emission and changed SAT variable order. It was corrected before the authoritative main3/mt20xx comparison; its search measurements are rejected."
+      },
+      "artifacts": "local-only:/tmp/qfuflra-main-post-baseline-91f94b9-v3/, /tmp/qfuflra-main-post-residual-91f94b9/, /tmp/qfuflra-root-polarity-diagnostic-91f94b9-dirty-v2/, and /tmp/qfuflra-root-polarity-order-preserving-91f94b9-dirty/",
+      "evidence_status": "rejected-local-diagnostic",
+      "outcome": "The root-polarity clausification source and tests were reverted before fuzzing because the corrected mechanism changed too little structure and no search work on the residual target. Retain the assertion-semantics invariant and redirect performance work to shared-model pair filtering/projection."
+    },
+    {
+      "id": "2026-08-12-structural-implies-fuzz-f88bc87",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz",
+      "scope": "Exact-option correctness gates for structural automatic preprocessing selection and optional implication rewriting",
+      "commit": "f88bc87",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git f88bc87, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for all cases and cvc5 1.3.4 for finite-domain cases",
+        "scheduler": "Jobs 125107 and 125108 completed all four array tasks with exit status zero."
+      },
+      "commands": {
+        "structural_clause": "scripts/slurm_qf_uflra_fuzz_gate.sbatch, four tasks, each with 750 generated mixed cases, 125 finite QF_UF cases, and 125 finite QF_UFLRA cases; --qf-uf-auto-selector=structural --boolean-implies-rewrite=clause",
+        "implies_all": "scripts/slurm_qf_uflra_fuzz_gate.sbatch, four tasks, each with 250 generated mixed cases, 50 finite QF_UF cases, and 50 finite QF_UFLRA cases; --qf-uf-auto-selector=structural --boolean-implies-rewrite=all",
+        "seed_gate": "scripts/check_solver_seed_corpus.py over 7 QF_UF and 11 QF_UFLRA tracked seeds with each exact option set"
+      },
+      "results": {
+        "structural_clause": "4000/4000 PASS: 3000 generated mixed, 500 finite QF_UF, and 500 finite QF_UFLRA; zero wrong answer, crash, parser/type error, unsupported result, timeout, or reference disagreement.",
+        "implies_all": "1400/1400 PASS: 1000 generated mixed, 200 finite QF_UF, and 200 finite QF_UFLRA; zero failures of any class.",
+        "seed_gate": "Both option sets passed all 7 QF_UF and all 11 QF_UFLRA seeds.",
+        "activation": "All 500 structural finite QF_UFLRA cases selected the structural policy: 288 compact and 212 strong; Real-equality lowering fired 5574 times."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/structural-implies-f88bc87/seed-gate/, structural-clause/, and implies-all/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Both experimental transformations passed their correctness gates. This is not evidence for default promotion; performance was evaluated separately."
+    },
+    {
+      "id": "2026-08-12-structural-implies-benchmark-f88bc87",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Same-commit A/B of structural auto selection and implication rewriting on the 45-file mixed opportunity sample and 118-file interesting QF_UF set",
+      "commit": "f88bc87",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git f88bc87, CaDiCaL 3.0.0",
+        "limits": "30 seconds per file",
+        "scheduler": "QF_UFLRA job 125117 and QF_UF jobs 125115/125116 completed. Existing reference results were reused rather than rerun."
+      },
+      "commands": {
+        "qf_uflra": "scripts/slurm_qf_uflra_sample_compare.sbatch over benchmarks/qf_uflra-preprocessing-opportunity-sample.txt with default, structural+clause, and structural+all profiles",
+        "qf_uf": "scripts/bench_qf_uf_full.py over benchmarks/interesting-qf-uf.txt in four shards for default and structural+clause"
+      },
+      "results": {
+        "qf_uflra_default": "45 solved, 0 timeout/error/wrong, PAR2 2.961706; 18882 SAT variables, 59162 clauses, 16822 decisions, 136517 propagations, 58 solve calls.",
+        "qf_uflra_structural_clause": "45 solved, PAR2 2.961565, identical SAT/search counts; structural selected strong on all 45 and disagreed with legacy on all 45, but rewrote no implications.",
+        "qf_uflra_implies_all": "45 solved, PAR2 2.957442, identical SAT/search counts, and no implication rewrites.",
+        "qf_uf_default": "4 solved, 114 timeout, 0 error/wrong, PAR2 6882.516904.",
+        "qf_uf_structural_clause": "3 solved, 115 timeout, 0 error/wrong, PAR2 6943.879180; lost SEQ/SEQ009_size10.smt2 with no recoveries or answer disagreement."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/structural-implies-f88bc87/qf-uflra-preprocess-sample/, qf-uf-default/, and qf-uf-structural-clause/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Keep --qf-uf-auto-selector=legacy and --boolean-implies-rewrite=off as defaults. The mixed sample was neutral and the QF_UF sample had one net loss."
+    },
+    {
+      "id": "2026-08-12-model-mutation-profile-f88bc87",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "profile",
+      "scope": "Profile the residual mt20xx QF_UFLRA model-mutation and compatibility path after Boolean flattening fixed the earlier search explosion",
+      "commit": "f88bc87",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "local",
+        "binary": "GCC -pg -O2, git f88bc87, CaDiCaL 3.0.0",
+        "limit": "--max-theory-conflicts=20"
+      },
+      "commands": {
+        "profile": "build-gprof-structural/primo --quiet --stats --max-theory-conflicts=20 on the CPAchecker mt20xx residual, followed by gprof"
+      },
+      "results": {
+        "solve": "Solved in 21.74 seconds under gprof with 20 SAT calls, 75021 decisions, and 211823 propagations.",
+        "profile": "Hash-set insertion used 14.88%, model-value grouping sort 13.32%, rehash 13.32%, rational hash 5.22%, and group_by_model_value 3.39% of sampled time.",
+        "mutation": "8 mutation calls accepted 1013 updates; the complete diagnostic cross product was 18190224 pairs, while candidates fell from 6431192 to 5839418.",
+        "compatibility": "2800 compatibility projections visited 5972400 terms."
+      },
+      "artifacts": "local-only:/tmp/primo-structural-mt20xx-profile.6jRuc0",
+      "evidence_status": "local-diagnostic-current",
+      "outcome": "The profile supports reducing the variables repeatedly grouped by model mutation. It motivated the opt-in care-scoped prototype; it does not justify changing LRA or the default scope."
+    },
+    {
+      "id": "2026-08-12-care-scoped-mutation-fuzz-fcbea41",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz",
+      "scope": "Exact-commit generated, finite-domain, deterministic-seed, and seed-mutation correctness gate for care-scoped QF_UFLRA model mutation",
+      "commit": "fcbea41",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git fcbea41, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for all cases and cvc5 1.3.4 for finite-domain cases",
+        "scheduler": "Generated/finite job 125139 completed four tasks in 29 seconds each; mutation job 125140 task 0 completed in 101 seconds."
+      },
+      "commands": {
+        "seed_gate": "scripts/check_solver_seed_corpus.py over benchmarks/seeds/qf_uflra with --model-equality-mutation-scope=care and a 60-second seed timeout",
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch, four tasks, each with 750 generated mixed cases, 125 finite QF_UF cases, and 125 finite QF_UFLRA cases; seed base 202607390; five-second solver timeout",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch task 0 with --model-equality-mutation-scope=care, 100 iterations per tracked seed, mutation seed 2026080700, and eight-second solver timeout"
+      },
+      "results": {
+        "deterministic_seeds": "11/11 PASS against Z3 and declared statuses.",
+        "generated_mixed": "3000/3000 PASS.",
+        "finite_qf_uf": "500/500 PASS with no missing activation.",
+        "finite_qf_uflra": "500/500 PASS with no missing activation; Real-equality lowering fired 6211 times.",
+        "generated_failures": "Zero wrong answer, crash, parser/type error, unsupported result, timeout, or reference disagreement.",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, 2090 solver calls reported, and 0 bug triggers."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/care-scope-fcbea41/seed-gate/, generated/, and mutation/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact care-scoped prototype passed the merge-grade correctness gate. Performance evaluation may proceed, but the option remains non-default."
+    },
+    {
+      "id": "2026-08-12-care-scoped-mutation-benchmark-30d9a26",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Same-commit sample, five-second full-corpus, and 30-second full-corpus A/B of all-shared versus EUF-care-scoped model mutation",
+      "commit": "30d9a26",
+      "implementation_commit": "fcbea41",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 30d9a26, CaDiCaL 3.0.0; source is identical to fcbea41 except for documentation and run-log additions",
+        "corpus": "tmp/QF_UFLRA; 1284 files; historical C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "reference_reuse": "Unchanged identical-corpus Z3 5.0.0 and Yices 2.7.0 results were not rerun. Yices previously solved 1275 at five seconds and 1276 at 30 seconds with zero wrong answers.",
+        "scheduler": "Sample job 125144 completed both tasks in 3-4 seconds. Five-second jobs 125146/125147 and 30-second jobs 125162/125163 completed all eight shards per profile with exit status zero."
+      },
+      "commands": {
+        "sample": "scripts/slurm_qf_uflra_sample_compare.sbatch --array=0-1 over benchmarks/qf_uflra-preprocessing-opportunity-sample.txt, timeout 30, profiles default all and --model-equality-mutation-scope=care",
+        "five_seconds": "Two scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 runs, eight shards, timeout 5, profiles default all and care",
+        "thirty_seconds": "Two scripts/slurm_qf_uflra_model_mine.sbatch --array=0-7 runs, eight shards, timeout 30, profiles default all and care",
+        "summary": "scripts/summarize_benchmark_shards.py at each timeout plus selected-counter aggregation from durable shard CSVs"
+      },
+      "results": {
+        "sample": "Both profiles solved 45/45 with zero wrong/error/unsupported rows. Care reduced scoped visits 4472 to 1850, decisions 16822 to 16367, propagations 136517 to 126995, solve calls 58 to 54, and aggregate wall time 1.861670 to 1.776263 seconds.",
+        "five_second_all": "1242 solved (735 sat, 507 unsat), 42 timeout, 0 error/unsupported/wrong, PAR2 592.164651.",
+        "five_second_care": "1247 solved (740 sat, 507 unsat), 37 timeout, 0 error/unsupported/wrong, PAR2 539.428890; six recoveries, one loss, and zero decisive-answer disagreements.",
+        "five_second_families": "All/care solved FFT 10/10 and MathSAT 900/900. CPAchecker BMC improved 6/15 to 7/15; CPAchecker induction improved 326/359 to 330/359. Family PAR2 changed respectively: FFT 0.281811 to 0.281743, BMC 91.028576 to 82.286272, induction 429.938384 to 380.484551, and MathSAT 70.915880 to 76.376324.",
+        "five_second_common": "Across 1241 common solves, time fell from 170.608342 to 153.315494 seconds.",
+        "thirty_second_all": "1267 solved (756 sat, 511 unsat), 17 timeout, 0 error/unsupported/wrong, PAR2 1593.277162.",
+        "thirty_second_care": "1267 solved (756 sat, 511 unsat), 17 timeout, 0 error/unsupported/wrong, PAR2 1502.067240; two recoveries, two losses, and zero decisive-answer disagreements.",
+        "thirty_second_families": "Both scopes solved FFT 10/10, CPAchecker BMC 7/15, CPAchecker induction 350/359, and MathSAT 900/900. Family PAR2 all/care was FFT 0.085760/0.085424, BMC 486.760281/482.171362, induction 1035.527703/951.748497, and MathSAT 70.903418/68.061957.",
+        "thirty_second_common": "Across 1265 common solves, time fell from 564.657864 to 451.026811 seconds.",
+        "mechanism": "At 30 seconds, care reduced scoped mutation visits from 524902 to 182213, attempted updates from 44624 to 19482, and internal total time from 543495069 to 453352406 microseconds. The global pair guard rejected two attempted mutations.",
+        "search_tradeoff": "Care increased decisions from 8377635 to 8928243, propagations from 68585054 to 70284462, solve calls from 3350 to 3365, and compatibility projection terms from 71369784 to 87447114."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/care-scope-30d9a26/sample/, full-all/, full-care/, full30-all/, and full30-care/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Retain --model-equality-mutation-scope=care as a validated opt-in performance mode. It reduces mutation cost and improves aggregate time, but the cutoff-dependent solved-set exchanges and increased SAT work do not justify changing the default from all."
+    },
+    {
+      "id": "2026-08-12-euf-combination-scan-profile-20c8db1",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "profile",
+      "scope": "Profile and remove repeated quadratic coordinator scans in EUF care discovery and LRA-to-EUF equality filtering without changing LRA internals",
+      "commit": "20c8db1",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "local",
+        "binary": "GCC Release and -pg builds, CaDiCaL 3.0.0",
+        "target": "sandbox/non-incremental/QF_UFLRA/cpachecker-induction-svcomp14/cpachecker-induction.rekh_ctm_false-unreach-call.2.c.smt2",
+        "limit": "--max-theory-conflicts=100"
+      },
+      "commands": {
+        "solver": "primo --quiet --stats --model-equality-branching --model-equality-mutation-scope=care --max-theory-conflicts=100 TARGET",
+        "profile": "gprof BUILD/primo gmon.out"
+      },
+      "results": {
+        "initial_profile": "Before pair-set replacement, equality_list_contains_pair used 15.64% self time across 55,559 calls and approximately 1.55 billion TermManager lookups.",
+        "after_pair_sets": "The remaining small-list equality helper used 0.89% self time; arithmetic pivoting and Rational multiplication became the leading sampled costs.",
+        "release": "The accepted implementation solved the target locally in 26.89 seconds. One care miss plus 191 exact-assignment cache hits replaced repeated care construction; one EUF implied-equality class projection visited 29,546 terms.",
+        "care_work": "One diagnostic represented 423,070,416 full definition pairs but enumerated 1,376,935 within-class argument pairs.",
+        "dedup": "55,559 LRA-to-EUF pair-set lookups found zero duplicates on this target, confirming that the removed linear membership scans were pure overhead here."
+      },
+      "artifacts": "local-only:/tmp/primo-rekh-care-profile.4hbptp and /tmp/primo-rekh-care-profile-after.mU3qCM",
+      "evidence_status": "local-profile-current",
+      "outcome": "Class projection, exact care-epoch reuse, and hash-set pair membership removed the observed coordinator bottlenecks. Full-corpus and fuzz evaluation remained required before acceptance."
+    },
+    {
+      "id": "2026-08-12-euf-combination-scan-fuzz-20c8db1",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz",
+      "scope": "Exact-binary isolated-workspace merge gate for EUF combination scan changes",
+      "commit": "20c8db1",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 20c8db1, CaDiCaL 3.0.0",
+        "references": "Z3 5.0.0 for generated and mutation cases; cvc5 1.3.4 additionally for finite-domain cases",
+        "scheduler": "Isolated-workspace generated/finite job 125222 completed four tasks in 27-28 seconds; mutation job 125223 task 0 completed in 90 seconds."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch tasks 0-3 with --model-equality-mutation-scope=care, 750 generated mixed cases, 125 finite QF_UF cases, and 125 finite QF_UFLRA cases per task; seed base 202607390; five-second timeout",
+        "finite_seeds": "QF_UF seeds 202707390 through 202707393 and QF_UFLRA seeds 202807390 through 202807393",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch task 0 with --model-equality-mutation-scope=care, 100 iterations per tracked seed, seed 2026080700, and eight-second solver timeout"
+      },
+      "results": {
+        "generated_mixed": "3000/3000 PASS.",
+        "finite_qf_uf": "500/500 PASS.",
+        "finite_qf_uflra": "500/500 PASS.",
+        "deterministic_seeds": "11/11 PASS.",
+        "mutation": "11 seeds processed, 11 valid, 0 invalid, 0 bug triggers, and 2074 solver calls.",
+        "failures": "Zero wrong answer, crash, parser/type error, unsupported result, timeout, or reference disagreement.",
+        "superseded_attempt": "Jobs 125185 and 125189 also passed, but another experiment changed their shared source checkout while they ran. Their exact 20c8db1 solver binary evidence is retained only as historical corroboration, not as the merge gate."
+      },
+      "artifacts": "remote:<isolated-workspace>/slurm-results/qf_uflra-fuzz-gate/ and remote:<isolated-workspace>/slurm-results/euf-combination-20c8db1-isolated/mutation/; local-only:/tmp/primo-euf-combination-20c8db1-isolated/generated/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The isolated exact-binary merge gate passed. The finite-fuzzer metadata says commit unknown because the prepared archive intentionally has no .git directory; the SLURM logs and binary --version report git 20c8db1."
+    },
+    {
+      "id": "2026-08-12-euf-combination-scan-benchmark-20c8db1",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Isolated-workspace five-second and 30-second full QF_UFLRA comparison of the accepted EUF combination scan implementation against the prior care-scoped result",
+      "commit": "20c8db1",
+      "baseline_commit": "30d9a26",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 20c8db1, CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; historical C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "reference_reuse": "Unchanged identical-corpus Z3 5.0.0 and Yices 2.7.0 results were not rerun. Z3 previously solved 1234 at five seconds; Yices solved 1275 at five seconds and 1276 at 30 seconds with zero wrong answers.",
+        "scheduler": "Isolated-workspace jobs 125243 and 125244 completed all eight shards."
+      },
+      "commands": {
+        "solver": "build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=care",
+        "five_seconds": "scripts/slurm_qf_uflra_model_mine.sbatch tasks 0-7, timeout 5",
+        "thirty_seconds": "scripts/slurm_qf_uflra_model_mine.sbatch tasks 0-7, timeout 30",
+        "summary": "scripts/summarize_benchmark_shards.py against the 30d9a26 care-scoped shard CSVs"
+      },
+      "results": {
+        "five_seconds": "Both revisions solved 1247/1284 (740 sat, 507 unsat), with 37 timeouts and zero error/unsupported/wrong rows. Common-solved time changed from 169.428890 to 159.986714 seconds and PAR2 from 539.428890 to 529.986714, with no recoveries or losses.",
+        "thirty_seconds": "The candidate solved 1268/1284 (757 sat, 511 unsat) versus 1267/1284 (756 sat, 511 unsat), with 16 versus 17 timeouts and zero error/unsupported/wrong rows. Common-solved time changed from 482.067240 to 437.144987 seconds and PAR2 from 1502.067240 to 1405.176392.",
+        "families_30_seconds": "Candidate solved FFT 10/10, CPAchecker BMC 7/15, CPAchecker induction 351/359, and MathSAT 900/900. The sole recovery was in CPAchecker induction; there were no losses or decisive-answer disagreements.",
+        "recovered_target": "cpachecker-induction.rekh_ctm_false-unreach-call.2.c.smt2 changed from timeout at 30.068995 seconds to sat in 8.031405 seconds while retaining 2 SAT solve calls, 1122 decisions, 353565 propagations, and 2 EUF care checks.",
+        "target_mechanism": "Across the two care checks, 846140832 diagnostic full definition pairs reduced to 2753870 within-class argument-pair iterations; final EUF class projections visited 59092 flat terms and pair-set filtering performed 110663 constant-time lookups.",
+        "remaining_reference_gap": "At 30 seconds the candidate is eight solves behind reused Yices and ahead of the reused five-second Z3 solved count at its five-second cutoff.",
+        "rejected_runs": "Jobs 125190/125191 accidentally added --model-equality-branching and were rejected as option-incomparable. Jobs 125206/125207 reproduced the accepted result but used a shared harness checkout and were superseded. Isolated jobs 125227/125228 failed before solver execution because a symlinked corpus resolved outside the harness repository; the corpus was hard-linked into the workspace before jobs 125243/125244."
+      },
+      "artifacts": "remote:<isolated-workspace>/slurm-results/euf-combination-20c8db1-isolated/full5-care-rerun/ and full30-care-rerun/; local-only:/tmp/primo-euf-combination-20c8db1-isolated/full5-summary.json and full30-summary.json",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accept the implementation on the opt-in care-scoped profile: it preserves the five-second solved set, gains one 30-second solve without losses, and removes the profiled care-scan bottleneck without changing the recovered target's SAT search."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-full-120s-six-solver-9061611",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "reference-benchmark",
+      "scope": "Full 120-second QF_UFLRA comparison of Primo all, Primo care, Z3, cvc5, OpenSMT, and Yices",
+      "commit": "9061611",
+      "implementation_commit": "20c8db1",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binaries": "Primo Release git 9061611 with CaDiCaL 3.0.0; Z3 5.0.0; cvc5 1.3.4; OpenSMT 2.9.2; Yices 2.7.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; C-locale relative-path/size manifest SHA-256 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "workspace": "Isolated prepared workspace; scripts/slurm_prepare_benchmark_workspace.py --check-only verified the exact Primo revision and all reference executables immediately before submission.",
+        "scheduler": "Eight shards per solver. Jobs 125259 through 125264 completed all 48 tasks with exit status zero; task elapsed times were 3:35-6:17 Primo all, 3:13-6:00 Primo care, 7:01-10:54 Z3, 3:13-6:34 cvc5, 4:13-13:01 OpenSMT, and 2:08-2:16 Yices."
+      },
+      "commands": {
+        "harness": "scripts/slurm_qf_uflra_model_mine.sbatch tasks 0-7, PRIMO_MINE_TIMEOUT=120, PRIMO_MINE_SHARDS=8, six-hour task allocation",
+        "primo_all": "build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=all",
+        "primo_care": "build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=care",
+        "z3": "contrib/local/bin/z3 -st",
+        "cvc5": "contrib/local/bin/cvc5 --lang smt2 --stats",
+        "opensmt": "contrib/local/bin/opensmt",
+        "yices": "contrib/local/bin/yices-smt2 --stats",
+        "summary": "scripts/summarize_benchmark_shards.py --timeout 120 plus structured pairwise analysis of the durable shard CSVs"
+      },
+      "results": {
+        "primo_all": "1272 solved (761 sat, 511 unsat), 12 timeout, 0 error/unsupported/wrong, solved-row time 805.384529 seconds, PAR2 3685.384529.",
+        "primo_care": "1271 solved (760 sat, 511 unsat), 13 timeout, 0 error/unsupported/wrong, solved-row time 660.975990 seconds, PAR2 3780.975990.",
+        "z3": "1254 solved (752 sat, 502 unsat), 30 timeout, 0 error/unsupported/wrong, solved-row time 617.388440 seconds, PAR2 7817.388440.",
+        "cvc5": "1273 solved (762 sat, 511 unsat), 11 timeout, 0 error/unsupported/wrong, solved-row time 966.152165 seconds, PAR2 3606.152165.",
+        "opensmt": "1265 solved (754 sat, 511 unsat), 19 timeout, 0 error/unsupported/wrong, solved-row time 1374.827663 seconds, PAR2 5934.827663.",
+        "yices": "1276 solved (765 sat, 511 unsat), 8 timeout, 0 error/unsupported/wrong, solved-row time 75.767448 seconds, PAR2 1995.767448.",
+        "families": "Solved FFT/BMC/induction/MathSAT: Primo all 10/7/355/900; Primo care 10/7/354/900; Z3 10/7/337/900; cvc5 10/7/356/900; OpenSMT 10/7/351/897; Yices 10/7/359/900.",
+        "all_vs_care": "Care had no recovery and lost cpachecker-induction.ddv_machzwd_outb_false-unreach-call.i.smt2 at the cutoff. Across 1271 common solves, all used 803.828272 seconds and care 660.975990 seconds; there was no answer disagreement.",
+        "primo_all_vs_references": "Against all, Z3 had 0 unique solves and missed 18; cvc5 had 3 unique solves and missed 2; OpenSMT had 3 unique solves and missed 10; Yices had 4 unique solves and missed 0. Common-solved times were all/reference: 456.737924/617.388440 Z3, 725.516596/792.641899 cvc5, 626.743651/1299.858345 OpenSMT, and 805.384529/60.167781 Yices.",
+        "yices_only_vs_primo_all": "Four CPAchecker induction SAT rows: 32_7_cilled_false-unreach-call_const_ok_linux-32_1-drivers--vhost--vhost_net.ko-ldv_main1_sequence_infinite_withcheck_stateful.cil.out.c.smt2, cs_fib_longer_false-unreach-call.i.smt2, cs_fib_longer_true-unreach-call.i.smt2, and cs_fib_true-unreach-call.i.smt2.",
+        "universal_timeouts": "All six profiles timed out on the same eight CPAchecker BMC rows: rekcba_ctm_false-unreach-call.2.c, rekcba_ctm_false-unreach-call.3.c, rekcba_ctm_true-unreach-call.1.c through .4.c, and rekh_ctm_true-unreach-call.3.c through .4.c.",
+        "portfolio": "The union solved 1276 files, exactly the Yices solved set. Yices was a solved-set superset of every other profile.",
+        "answer_validation": "All 1282 files with declared SMT-LIB status matched it. The two files without declared status were universal timeouts. There were zero pairwise decisive-answer disagreements on jointly solved files. The saved OpenSMT Boolean disagreement lies outside this corpus and is not contradicted by this result."
+      },
+      "artifacts": "remote:<isolated-workspace>/slurm-results/qfuflra-full-120s-9061611/{primo-all,primo-care,z3,cvc5,opensmt,yices}/; local-only:/tmp/primo-qfuflra-120s-9061611/summary.json and solver shard CSV copies",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "At 120 seconds, default all is the strongest Primo scope by solved count, while care is about 18 percent faster on common solves but loses one cutoff-sensitive row. Yices remains the performance target: four additional solves and roughly 13.4x lower aggregate time on the 1272 rows shared with Primo all."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-joint-z3-yices-gap-profile-0b40649",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "profiling",
+      "scope": "Rank QF_UFLRA rows where Primo is slower than both Z3 and Yices, then profile representative model-mutation paths",
+      "commit": "0b40649",
+      "benchmark_commit": "9061611",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "ranking": "Local analysis of the complete SLURM shard CSV copies from jobs 125259, 125260, 125261, and 125264; identical 1284-file corpus and 120-second cutoff.",
+        "profiling": "Local RelWithDebInfo build with CMAKE_CXX_FLAGS=-pg, git 0b40649, CaDiCaL 3.0.0; gprof flat and call-graph reports.",
+        "selection": "Require Primo, Z3, and Yices status ok; require Primo >= 2 seconds and >= 2x each reference. A second ranking uses the faster successful Primo all/care time per row under the same thresholds."
+      },
+      "commands": {
+        "ranking": "python3 csv.DictReader over /tmp/primo-qfuflra-120s-9061611/{primo-all,primo-care,z3,yices}/shard-[0-9].csv with the recorded selection predicate",
+        "build": "cmake -S . -B build-gprof-current -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-pg; cmake --build build-gprof-current -j2",
+        "profile": "build-gprof-current/primo --quiet --stats --model-equality-mutation-scope={all,care} TARGET; gprof -b -p build-gprof-current/primo gmon.out; gprof -b build-gprof-current/primo gmon.out",
+        "targets": "cpachecker-bmc.parport_false-unreach-call.i.cil.c.smt2 under all and care; cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--media--dvb--frontends--tda18271c2dd.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2 under all; cpachecker-induction.m0_false-unreach-call_sound-oss-opl3-ko--111_1a--42f9f8d-1.c.smt2 under all"
+      },
+      "results": {
+        "default_scope_candidates": "22 solved SAT rows met the joint-reference threshold: 21 CPAchecker induction and one CPAchecker BMC. Care was faster on 21 and slower on one.",
+        "best_profile_candidates": "Four rows still met the threshold after taking the faster Primo scope per row: tda18271c2dd 9.069368 care versus Z3 2.139755 and Yices 1.955185; m0 opl3 9.568418 all versus 2.292364 and 0.255088; mt20xx 19.104990 care versus 5.499450 and 2.730922; mem2mem_testdev 15.650901 care versus 5.726376 and 0.202270.",
+        "timeouts": "No Primo timeout was solved by both Z3 and Yices. The four Yices-only solves against Primo all were also Z3 timeouts.",
+        "profiles": "gprof attributed 70.3 percent of sampled cumulative time on parport all, 71.3 percent on tda18271c2dd all, and 78.3 percent on m0 opl3 all to LraTableau::diversify_shared_model below lra_model_equal_partition. Leading flat work was SOI breakpoint introsort plus hash-set insertion/rehash in model-value grouping, with about 16.7M, 63.4M, and 27.7M introsort calls.",
+        "scope_effect": "Care reduced parport from 5.735583 to 1.429197 seconds and tda18271c2dd from 20.298982 to 9.069368 in the SLURM artifacts. On m0 opl3 it regressed 9.568418 to 14.548173 seconds while SAT solve calls rose 6 to 13 and compatibility-projection terms rose 3182207 to 8398453."
+      },
+      "artifacts": "local-only:/tmp/primo-qfuflra-120s-9061611 solver shard CSV copies and /tmp/primo-profile-{parport-all,parport-care,tda-all,m0-all}/gmon.out",
+      "evidence_status": "local-profile-current-over-slurm-current",
+      "outcome": "Prioritize adaptive mixed-coordinator model-mutation scheduling over a blanket care-default promotion. The profiles identify the coordinator's repeated full/shared mutation work as the dominant cost without requiring an LRA implementation change."
+    },
+    {
       "id": "2026-08-11-qf-lra-full-division-after-flattening-repair",
       "started_at": "2026-08-11",
       "recorded_at": "2026-08-11",
@@ -26245,6 +26767,254 @@
           "false_start": "A first perturbation attempt used --cadical-option seed/restartint and looked like strong evidence of a systematic loss. It was invalid: --cadical-option seed is INERT under the external propagator (seeds 1/7/99 give identical decisions 8420 and conflicts 726), so three of five 'perturbations' perturbed nothing."
         }
       }
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-local-smoke-20c8db1-dirty",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "model-validation-smoke",
+      "scope": "Initial local smoke of the durable QF_UFLRA model validator before committing the harness",
+      "commit": "20c8db1 plus uncommitted validation-harness changes",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "local",
+        "generator": "the repository QF_UFLRA generator",
+        "validator": "Dolmen 0.10 direct model checking",
+        "count": 60,
+        "timeouts": "10 seconds per Primo invocation and 10 seconds per Dolmen invocation"
+      },
+      "commands": {
+        "gate": "scripts/validate_qfuf_models_with_dolmen.py over 60 generated mixed cases"
+      },
+      "results": {
+        "models": "37 SAT models passed direct Dolmen validation; 23 cases were UNSAT.",
+        "failures": "0 wrong answer, model error, crash, parser/type error, timeout, unsupported result, or fallback."
+      },
+      "artifacts": "local-only:/tmp/primo-qfuflra-model-gate-smoke.l5IaiZ",
+      "evidence_status": "historical-preliminary",
+      "outcome": "Useful smoke evidence for the harness only; the dirty source state is not merge evidence."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-discovery-ecba89f",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-model-validation",
+      "scope": "First exact-commit direct-Dolmen generated and real-sample gates; this run discovered symbolic-delta concretization model errors",
+      "commit": "ecba89f",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git ecba89f with CaDiCaL 3.0.0",
+        "jobs": "125311 generated array and 125312 real-sample array; four shards each",
+        "seed_base": 2026081210,
+        "corpus": "3000 generated general QF_UFLRA cases, 1000 generated finite-domain comparisons, and the deterministic 20-file five-per-family QF_UFLRA sample",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for generated-model Primo and Dolmen; 60 seconds for real-sample Primo and 30 seconds for real-sample Dolmen",
+        "setup_note": "Dependency setup job 125309 was canceled after attempting a network download from a compute node. Dolmen was instead built on the login node with the committed installer before these jobs were submitted."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3 with PRIMO_FUZZ_COUNT=750 and PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125",
+        "real_sample": "scripts/slurm_qf_uflra_model_validation.sbatch array 0-3 with benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "validator": "Dolmen 0.10 --check-model=true -r with --require-dolmen-pass"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general and 1000/1000 finite-domain comparisons passed with zero bug files.",
+        "generated_models": "3500 rows: 2117 SAT models passed direct Dolmen, 1380 were UNSAT, and 3 SAT models failed Dolmen because concrete delta=1 collapsed distinct symbolic shared Real values.",
+        "real_sample": "20 rows: 8 SAT models passed direct Dolmen and 3 were UNSAT; four SAT models evaluated false in Dolmen and five MathSAT rows hit Dolmen strict-linear-syntax reports. The limited Z3 constant fallback did not establish full model validity.",
+        "failures": "The three generated model errors and four real-sample false models are correctness blockers; answer differential remained clean."
+      },
+      "artifacts": "expired-remote:slurm-results/qf-uflra-dolmen-ecba89f and qf-uflra-real-models-ecba89f after later exact-workspace sync; saved generated witnesses local-only:/tmp/primo-model-bugs",
+      "evidence_status": "rejected-correctness-discovery",
+      "outcome": "Rejected as merge evidence. It led to commit 2b26aa6, which preserves the order of symbolic shared values when choosing concrete delta."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-followup-2b26aa6",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Exact-commit rerun after the concrete-delta order repair; generated models passed and the real sample exposed stale Real application table-row shadowing",
+      "commit": "2b26aa6",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 2b26aa6 with CaDiCaL 3.0.0",
+        "jobs": "125320 generated array and 125319 real-sample array; four shards each",
+        "seed_base": 2026081310,
+        "corpus": "Fresh 3000-case general generation, 1000 finite-domain comparisons, 3500 generated model rows, and the deterministic 20-file real sample",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for generated-model Primo and Dolmen; 60 seconds for real-sample Primo and 30 seconds for real-sample Dolmen"
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3",
+        "real_sample": "scripts/slurm_qf_uflra_model_validation.sbatch array 0-3",
+        "summary": "scripts/summarize_fuzz_results.py over each result root"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general and 1000/1000 finite-domain comparisons passed with zero bug files.",
+        "generated_models": "3500 rows: 2081 SAT models passed direct Dolmen and 1419 were UNSAT; zero generated model errors or fallbacks.",
+        "real_sample": "20 rows: 9 SAT models passed direct Dolmen and 3 were UNSAT. Three SAT models still evaluated false because a stale pre-rewrite Real application row shadowed the active purified row; five MathSAT rows needed Dolmen lenient parsing.",
+        "repair_delta": "The previously failing generated witnesses all passed, and one of the four prior real false models was repaired."
+      },
+      "artifacts": "expired-remote:slurm-results/qf-uflra-dolmen-2b26aa6 and qf-uflra-real-models-2b26aa6 after later exact-workspace sync; saved real witnesses local-only:/tmp/primo-real-model-bugs-2b26aa6",
+      "evidence_status": "rejected-correctness-discovery",
+      "outcome": "Generated gate accepted the delta repair, but real model correctness remained blocked. The failures led to commit 4dca518."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-merge-gate-4dca518",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Fresh exact-commit QF_UFLRA differential, finite-domain, generated-model, and real-corpus Dolmen gate after both model-composition repairs",
+      "commit": "4dca518",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 4dca518 with CaDiCaL 3.0.0",
+        "jobs": "125327 generated array and 125328 real-sample array; all eight tasks completed with exit status zero",
+        "seed_base": 2026081410,
+        "corpus": "Fresh 3000-case general generation, 1000 finite-domain comparisons, 3500 generated model rows, and benchmarks/qf_uflra-smtlib-sample-5-per-family.txt",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for generated-model Primo and Dolmen; 60 seconds for real-sample Primo and 30 seconds for real-sample Dolmen",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified git 4dca518, CaDiCaL, Z3, cvc5, and Dolmen immediately before submission."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, and PRIMO_FUZZ_SEED_BASE=2026081410",
+        "real_sample": "scripts/slurm_qf_uflra_model_validation.sbatch array 0-3; Dolmen receives --strict=false for accepted compound-linear MathSAT syntax",
+        "summary": "scripts/summarize_fuzz_results.py slurm-results/qf-uflra-dolmen-4dca518 and qf-uflra-real-models-4dca518"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general cases and 1000/1000 finite-domain cases passed; zero bug files.",
+        "generated_models": "3500/3500 rows completed: 2137 SAT models passed direct Dolmen and 1363 cases were UNSAT. No fallback, model error, crash, timeout, parser/type error, unsupported result, or reference disagreement.",
+        "real_sample": "20/20 rows completed: all 17 SAT models passed direct Dolmen and 3 cases were UNSAT. No fallback or model error.",
+        "metadata": "Generated model metadata 8/8 complete, finite-domain metadata 8/8 complete, real-sample metadata 4/4 complete; observed counts equal expected counts."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-dolmen-4dca518 and qf-uflra-real-models-4dca518; summary-only local copy:/tmp/qf-uflra-real-models-4dca518",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as the current QF_UFLRA answer and model-correctness merge gate for commit 4dca518. It does not claim full generic DPLL(T^M) or replace separate performance/QF_LRA regression evaluation."
+    },
+    {
+      "id": "2026-08-12-qf-lra-main-merge-stratified-ab-35ac160",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Representative pure-QF_LRA default-profile regression A/B before merging the QF_UFLRA branch into main",
+      "commit": "35ac160 candidate vs 626c7e5 main",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Isolated exact Release binaries with CaDiCaL 3.0.0",
+        "job": "125335, array 0-15; eight shards per arm, all tasks completed with exit status zero",
+        "corpus": "benchmarks/qf-lra-stratified-sample.txt; 237 files",
+        "timeout": "60 seconds per file",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified each remote binary against its matching local worktree immediately before submission."
+      },
+      "commands": {
+        "benchmark": "scripts/slurm_qf_lra_scrambled_compare.sbatch with main and candidate solver arms",
+        "summary": "scripts/compare_solver_answers.py <result-root> --timeout 60 plus a shared non-time-statistic comparison"
+      },
+      "results": {
+        "main": "202 solved (103 sat, 99 unsat), 35 timeouts, 0 errors, PAR2 4949.1",
+        "candidate": "202 solved (103 sat, 99 unsat), 35 timeouts, 0 errors, PAR2 4930.6",
+        "correctness": "Zero wrong answers, decisive-answer disagreements, nonstandard rows, or arm-only solves.",
+        "statistics": "All 202 commonly solved rows had identical shared non-time statistics. The 219 observed counter differences were confined to 28 already-timeout rows and reflect where the 60-second wall cutoff interrupted deterministic search.",
+        "timing": "Common-solved aggregate time changed from 749.135260 to 730.647705 seconds. For the 64 main rows taking at least one second, aggregate candidate/main was 0.9721, median ratio was 0.9960, and no candidate row was more than 4.9 percent slower."
+      },
+      "artifacts": "remote:<candidate-workspace>/results/qflra-main-vs-no-35ac160-sample; summary-only local copy:/tmp/qflra-main-vs-no-35ac160-sample",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as representative evidence that the merged branch preserves pure-QF_LRA search behavior and timing. The full-division comparison supplies the merge decision."
+    },
+    {
+      "id": "2026-08-12-qf-uflra-dolmen-merge-gate-35ac160",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Fresh exact-commit QF_UFLRA differential, finite-domain, and generated-model gate after merging current main into the branch",
+      "commit": "35ac160",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git 35ac160 with CaDiCaL 3.0.0",
+        "job": "125351, array 0-3; all tasks completed with exit status zero",
+        "seed_base": 2026081510,
+        "corpus": "3000 generated general QF_UFLRA cases, 500 finite-domain QF_UF cases, 500 finite-domain QF_UFLRA cases, and 3500 generated model rows",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for Primo model generation and Dolmen validation",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified git 35ac160, CaDiCaL, Z3, cvc5, and Dolmen immediately before submission."
+      },
+      "commands": {
+        "gate": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, and PRIMO_FUZZ_SEED_BASE=2026081510",
+        "summary": "scripts/summarize_fuzz_results.py slurm-results/qf-uflra-dolmen-35ac160"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general and 1000/1000 finite-domain comparisons passed with zero bug files.",
+        "models": "3500/3500 model rows completed: 2098 SAT models passed direct Dolmen validation and 1402 rows were UNSAT.",
+        "metadata": "All 20 summaries and all 16 metadata records were complete; observed counts equaled expected counts.",
+        "failures": "Zero wrong answer, model error, crash, timeout, unsupported result, parser/type error, reference disagreement, fallback, or saved bug."
+      },
+      "artifacts": "remote:<candidate-workspace>/slurm-results/qf-uflra-dolmen-35ac160",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as the exact merged-commit QF_UFLRA answer and generated-model correctness gate. The exact 4dca518 real-corpus Dolmen gate remains applicable because the intervening merge changed only comments and documentation in solver-owned files."
+    },
+    {
+      "id": "2026-08-12-qf-lra-full-main-merge-ab-35ac160",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "benchmark",
+      "scope": "Full pure-QF_LRA default-profile regression A/B before merging the QF_UFLRA branch into main",
+      "commit": "35ac160 candidate vs 626c7e5 main",
+      "branch": "qf-uf-structural-preprocessing",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Isolated exact Release binaries with CaDiCaL 3.0.0",
+        "job": "125355, array 0-79; 40 shards per arm, all 80 tasks completed with exit status zero",
+        "corpus": "benchmarks/qf-lra-full-division.txt; 1753 files across 17 families with declared statuses",
+        "timeout": "300 seconds per file",
+        "durability": "Each shard wrote one flushed JSONL row per completed instance before producing its final CSV.",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified both exact binaries immediately before submission."
+      },
+      "commands": {
+        "benchmark": "scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_SHARDS=40 and paired main/candidate solver arms",
+        "summary": "scripts/compare_solver_answers.py <result-root> --timeout 300 and scripts/summarize_benchmark_shards.py --timeout 300"
+      },
+      "results": {
+        "main": "1658 solved (996 sat, 662 unsat), 95 timeouts, 0 errors, 0 wrong answers, PAR2 78982.973210",
+        "candidate": "1657 solved (995 sat, 662 unsat), 96 timeouts, 0 errors, 0 wrong answers, PAR2 79084.779394",
+        "correctness": "Zero decisive-answer disagreements, nonstandard rows, errors, unsupported results, or wrong answers.",
+        "coverage_delta": "One main-only solve: LassoRanker/Ultimate/GcdNew.bpl_Iteration1_Lasso_7-phaseTemplate.smt2 completed on main in 297.210567 seconds and reached the candidate's 300.122395-second timeout. There were no candidate-only solves.",
+        "statistics": "All 1657 commonly solved rows had identical shared non-time statistics.",
+        "timing": "Common-solved aggregate time improved from 21685.762643 to 21484.779394 seconds (candidate/main 0.9907). Across the 590 rows where main took at least one second, the median ratio was 0.9965 and no row was 30 percent faster or slower."
+      },
+      "artifacts": "remote:<candidate-workspace>/results/qflra-main-vs-no-35ac160-full-300s; summary-only local copy:/tmp/qflra-main-vs-no-35ac160-full-300s",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted for merge. The sole solved-count loss is a 297-second result crossing a 300-second wall cutoff; exact search statistics on every commonly solved row and the aggregate timing comparison show no pure-QF_LRA behavior or material performance regression."
+    },
+    {
+      "id": "2026-08-12-preprocessing-option-rename-68313a8",
+      "started_at": "2026-08-12",
+      "recorded_at": "2026-08-12",
+      "kind": "fuzz-and-regression",
+      "scope": "Exact-commit differential fuzzing and default-behavior parity after replacing QF_UF-specific preprocessing option names with theory-neutral canonical names and retaining deprecated aliases",
+      "commit": "68313a8",
+      "branch": "preprocessing-option-names",
+      "environment": {
+        "type": "local",
+        "binary": "Debug git 68313a8 with CaDiCaL 3.0.0; parent comparison used Release git ca77b49 with the same CaDiCaL revision",
+        "generator": "scripts/qf_uflra_smoke_fuzz.py, mixed shape",
+        "reference": "repository-local pinned z3 on PATH via contrib/local/bin",
+        "seed": 20260812,
+        "corpus": "1000 fresh generated QF_UFLRA cases plus 14 tracked QF_LRA real seeds and 6 tracked QF_UF smoke instances",
+        "timeout": "5 seconds per generated solver invocation"
+      },
+      "commands": {
+        "fuzz": "PATH=$PWD/contrib/local/bin:$PATH python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--auto-preprocess-selector=structural --ref z3 --count 1000 --seed 20260812 --timeout 5 --shape mixed --out fuzz-results/preprocessing-option-names-68313a8",
+        "parity": "Run /tmp/primo-preprocessing-name-parent/build/primo and ./build/primo with --quiet --stats over benchmarks/seeds/qf_lra_real/*.smt2 and benchmarks/smoke/qf_uf/*.smt2, remove :time.* rows, and compare exit status, answer, and remaining statistics",
+        "verification": "make lint; make check; make docs; make asan-test; make tidy; make include-cleaner; git diff --check"
+      },
+      "results": {
+        "fuzz": "1000/1000 PASS: 618 SAT and 382 UNSAT in exact agreement with Z3",
+        "failures": "Zero wrong answer, crash, timeout, unsupported result, parser/type error, or reference disagreement",
+        "default_parity": "20/20 QF_LRA and QF_UF files had identical exit status, answer, and all non-time statistics before and after the rename",
+        "verification": "All unit, Python, CMake CLI, documentation, ASan, lint, and whole-tree clang-tidy checks passed. The advisory include-cleaner scan retained the known 138-warning baseline and added no warnings in changed translation units."
+      },
+      "artifacts": "local-only:fuzz-results/preprocessing-option-names-68313a8/summary.csv",
+      "evidence_status": "local-complete-current",
+      "outcome": "Accepted. The rename preserves default solver behavior while exposing --preprocessing-mode and --auto-preprocess-selector as canonical names; the former QF_UF-prefixed spellings remain warning-producing deprecated aliases."
     }
   ]
 }

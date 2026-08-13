@@ -16,7 +16,7 @@ TIMEOUT=${PRIMO_OPTION_TIMEOUT:-60}
 SHARDS=${PRIMO_OPTION_SHARDS:-8}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 MANIFESTS=${PRIMO_OPTION_MANIFESTS:-"benchmarks/qfuf-smac-mixed-train.txt benchmarks/qfuf-smac-mixed-validate.txt benchmarks/qfuf-smac-equality-guard.txt"}
-VARIANTS=${PRIMO_OPTION_VARIANTS:-"default= basic=--qf-uf-preprocess=basic basic-polarity=--qf-uf-preprocess=basic,--theory-phase=polarity"}
+VARIANTS=${PRIMO_OPTION_VARIANTS:-"default= basic=--preprocessing-mode=basic basic-polarity=--preprocessing-mode=basic,--theory-phase=polarity"}
 
 cd "$WORKDIR"
 mkdir -p logs "$OUT_ROOT"

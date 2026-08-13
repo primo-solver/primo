@@ -31,11 +31,11 @@ done
 ./build-slurm-rel/primo --version
 
 case "$TASK_ID" in
-  0) label=qf-uf-strong; logic=QF_UF; options=(--qf-uf-preprocess=strong); require_post=1 ;;
-  1) label=qf-uf-raw-only; logic=QF_UF; options=(--qf-uf-preprocess=strong --no-finite-domain-post-amo) ;;
+  0) label=qf-uf-strong; logic=QF_UF; options=(--preprocessing-mode=strong); require_post=1 ;;
+  1) label=qf-uf-raw-only; logic=QF_UF; options=(--preprocessing-mode=strong --no-finite-domain-post-amo) ;;
   2) label=qf-uflra-default; logic=QF_UFLRA; options=(); require_post=1 ;;
-  3) label=qf-uflra-strong; logic=QF_UFLRA; options=(--qf-uf-preprocess=strong); require_post=1 ;;
-  4) label=qf-uflra-raw-only; logic=QF_UFLRA; options=(--qf-uf-preprocess=strong --no-finite-domain-post-amo) ;;
+  3) label=qf-uflra-strong; logic=QF_UFLRA; options=(--preprocessing-mode=strong); require_post=1 ;;
+  4) label=qf-uflra-raw-only; logic=QF_UFLRA; options=(--preprocessing-mode=strong --no-finite-domain-post-amo) ;;
   *) echo "task $TASK_ID is outside the active profile matrix" >&2; exit 2 ;;
 esac
 

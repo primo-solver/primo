@@ -75,7 +75,7 @@ def solver_args(params: dict[str, str]) -> list[str]:
     args: list[str] = ["--quiet"]
     preprocess = params.get("preprocess", "auto")
     if preprocess != "default":
-        args.append(f"--qf-uf-preprocess={preprocess}")
+        args.append(f"--preprocessing-mode={preprocess}")
 
     args.append(f"--preprocessing-passes={params.get('passes', '4')}")
     args.append(

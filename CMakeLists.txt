@@ -264,6 +264,13 @@ target_include_directories(primo SYSTEM PRIVATE "${CLI11_INCLUDE_DIR}")
 
 enable_testing()
 add_test(NAME primo_version COMMAND primo --version)
+add_test(
+  NAME primo_preprocessing_cli_options
+  COMMAND ${CMAKE_COMMAND}
+    -DPRIMO_EXECUTABLE=$<TARGET_FILE:primo>
+    -DPRIMO_TEST_INPUT=${CMAKE_SOURCE_DIR}/benchmarks/smoke/qf_uf/sat_uninterpreted_constants.smt2
+    -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_preprocessing_cli_options.cmake
+)
 
 add_executable(primo_core_tests tests/unit/core_tests.cpp)
 primo_enable_warnings(primo_core_tests)

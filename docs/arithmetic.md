@@ -89,8 +89,13 @@ alternatives considered before/while implementing it.
   before theory solving is assigned from the final values of the terms it was
   rewritten to. The mixed QF_UFLRA path composes this nullary-Real model body
   with a QF_UF model for separable formulas, UF symbols with Real arguments, and
-  Real-valued UF applications after purification. Arrays, nonlinear arithmetic,
-  and full Nelson-Oppen model-guided combination remain unsupported.
+  Real-valued UF applications after purification. Its coordinator additionally
+  preserves the ordering of all distinct shared `DeltaRational` values while
+  choosing the concrete delta, using the adjacent-value form of Dutertre and de
+  Moura Section 3.3 in `O(S log S)` time. This prevents a concrete model from
+  collapsing Real arguments that the accepted EUF model distinguishes. Arrays,
+  nonlinear arithmetic, and full Nelson-Oppen model-guided combination remain
+  unsupported.
 - **Model-based SAT phase hints** (heuristics item H5, `check_sat.cpp`,
   **opt-in** via `CheckSatOptions::lra_model_phase` / `--lra-model-phase`):
   `OnlineLraPropagator` keeps the SAT backend's variable choice but refreshes

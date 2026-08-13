@@ -61,6 +61,9 @@ std::size_t FlatCongruenceClosure::push() {
 }
 
 void FlatCongruenceClosure::pop(std::size_t checkpoint) {
+  if (protected_checkpoint_.has_value() && checkpoint <= protected_checkpoint_.value()) {
+    throw std::logic_error("attempted to pop a protected flat congruence closure checkpoint");
+  }
   if (checkpoint >= checkpoints_.size()) {
     throw std::out_of_range("flat congruence closure checkpoint out of range");
   }
@@ -92,6 +95,20 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   conflict_ = std::move(state.conflict);
   stats_ = state.stats;
   ++stats_.backtracks;
+}
+
+void FlatCongruenceClosure::protect_checkpoint(std::size_t checkpoint) {
+  if (protected_checkpoint_.has_value() || checkpoint >= checkpoints_.size()) {
+    throw std::logic_error("invalid flat congruence closure checkpoint protection");
+  }
+  protected_checkpoint_ = checkpoint;
+}
+
+void FlatCongruenceClosure::release_protected_checkpoint(std::size_t checkpoint) {
+  if (!protected_checkpoint_.has_value() || protected_checkpoint_.value() != checkpoint) {
+    throw std::logic_error("mismatched flat congruence closure checkpoint protection");
+  }
+  protected_checkpoint_.reset();
 }
 
 void FlatCongruenceClosure::ensure_node_count(std::size_t node_count) {

@@ -253,6 +253,24 @@ CaDiCaL must either backtrack (which resets `conflict_`) or derive unsat at
 level 0 -- and `conflict()` is read after `solve()` returns, so clearing it
 early would break that reader.
 
+## Mixed EUF model-scope callbacks
+
+The default-off `--qf-uflra-online-euf` path borrows the callback-owned EUF
+closure after a SAT result. Clause insertion can make CaDiCaL synchronously
+call `notify_backtrack` before control returns to the coordinator. Applying that
+backtrack immediately would pop SAT-owned closure checkpoints through the
+temporary model checkpoint. `OnlineEufPropagator` therefore queues assignment,
+new-level, and backtrack callbacks received while the model scope is protected,
+then replays them in order before the next `solve()`. This is a scheduling
+adapter around the IPASIR-UP callback contract, not a second SAT trail.
+
+On repeated solves, ordinary trail notifications need not replay every observed
+value needed by the final model view. CaDiCaL passes the complete reconstructed
+observed-variable model to `cb_check_found_model`; the EUF child asserts missing
+values through the same assignment operation before approving that model. The
+live-scope, model-callback, deferred-callback, and fallback counters are
+documented in `docs/debugging.md`.
+
 ## References
 
 See `docs/papers/ipasir-up.md`.

@@ -1,8 +1,9 @@
 # QF_UFLRA Model-Guided Performance Plan
 
-Status stamp: 2026-08-10, branch `convex-no-qflra-integration`, after the
-convex model-reconciliation implementation, exact-commit fuzz gate, and full
-SLURM performance comparison.
+Status stamp: 2026-08-12, branch `qf-uf-structural-preprocessing`, after the
+convex model-reconciliation implementation, exact-commit fuzz and model gate,
+full 120-second QF_UFLRA reference comparison, and full 300-second pure-QF_LRA
+main-merge regression comparison.
 
 This note records the next performance plan for the mixed QF_UFLRA solver after
 the EUF-forbidden final-arrangement pruning change. It is an implementation
@@ -40,6 +41,67 @@ was stopped: cumulative mutations of a late Boolean seed made both Primo and Z3
 time out, so that run is additional partial coverage rather than evidence that
 every configured mutation completed. Local Dolmen validation accepted all 611
 SAT models among 1,000 generated cases; the other 389 cases were UNSAT.
+
+That 611-model run was the last external model gate before the later live-EUF,
+care-scope, and combination-scan work. The generated SLURM harness used for
+those later changes compared verdicts but did not request models, and the full
+1,284-file performance harness likewise ran without `get-model`. Consequently,
+those answer campaigns were not current-model evidence. The permanent mixed
+gate now validates its general and finite-domain QF_UFLRA cases with Dolmen,
+and `scripts/slurm_qf_uflra_model_validation.sbatch` supplies separate
+real-corpus coverage.
+
+The first exact direct-Dolmen cluster run of that permanent gate exposed a
+missing concrete-model invariant rather than a theory-answer disagreement.
+Three generated SAT witnesses had shared Real arguments that were distinct as
+symbolic `DeltaRational` values but equal again after model printing chose
+`delta = 1`. The accepted repair applies the Section 3.3 crossing bounds to
+adjacent sorted shared values in the mixed coordinator, without changing LRA
+solving. At exact commit `2b26aa6`, the fresh generated gate passed 3,000
+general answer comparisons, 1,000 finite-domain comparisons, and all 2,081
+satisfiable model checks directly with Dolmen; the other 1,419 generated cases
+were unsatisfiable. The companion 20-file real sample then found a separate
+printer defect in three SAT models: a stale pre-rewrite Real application table
+row could shadow the exact value of the active purified application with the
+same concrete arguments. The follow-up repair assigns every Real-valued
+application in a purified EUF class and gives exact application rows precedence
+during table deduplication. The five MathSAT sample rows require Dolmen's
+lenient parser for compound linear multiplication, so the real-corpus gate uses
+`--strict=false` while the generated gate remains strict.
+
+The fresh exact-commit rerun at `4dca518` supplies the model-correctness merge
+evidence. SLURM job `125327` passed 3,000 general answer comparisons and 1,000
+finite-domain comparisons, then checked all 2,137 satisfiable generated models
+directly with Dolmen; the other 1,363 generated cases were unsatisfiable.
+SLURM job `125328` completed the deterministic 20-file real-corpus sample: all
+17 satisfiable models passed direct Dolmen validation and the other three cases
+were unsatisfiable. Both jobs completed every shard with no fallback, model
+error, wrong answer, crash, timeout, parser/type error, unsupported result, or
+saved bug. These results validate the implemented convex QF_UFLRA path and its
+model composition; they do not claim the generic DPLL(T^M) transition system.
+
+**Main-merge validation, 2026-08-12.** Commit `35ac160` merges the then-current
+`main` revision `626c7e5` into the QF_UFLRA branch without a conflict or an LRA
+behavior change. A fresh exact-commit gate passed 3,000 generated mixed cases,
+500 finite-domain QF_UF cases, and 500 finite-domain QF_UFLRA cases. Dolmen
+directly accepted all 2,098 satisfiable models among the 3,500 model rows; the
+other 1,402 rows were unsatisfiable. Every shard and metadata record completed,
+with no wrong answer, model error, crash, timeout, unsupported result, reference
+disagreement, or saved bug.
+
+The pure-QF_LRA merge comparison used all 1,753 files in
+`benchmarks/qf-lra-full-division.txt`, a 300-second per-file timeout, and exact
+Release binaries for `626c7e5` and `35ac160` in one paired SLURM array. Main
+solved 1,658 files and the candidate solved 1,657, both with zero wrong answers,
+errors, or decisive-answer disagreements. The only loss was a LassoRanker row
+that main completed in 297.2 seconds while the candidate reached the 300-second
+cutoff. All 1,657 commonly solved rows have identical non-time statistics.
+Their aggregate runtime improved from 21,685.8 to 21,484.8 seconds; among the
+590 rows where main took at least one second, the median candidate/main ratio
+was 0.9965 and no row differed by 30 percent. This is accepted as cutoff churn,
+not reported as exact solved-count parity. A preceding 237-file stratified run
+had identical 202-file solved coverage, identical non-time statistics on every
+commonly solved row, and a 2.5 percent aggregate timing improvement.
 
 On the full 1,284-file QF_UFLRA corpus at 30 seconds per file, the new profile
 solved 1,257 files with 27 timeouts, zero errors, unsupported rows, or wrong
@@ -196,6 +258,71 @@ within the reconciliation and branching profiles, with
 `--no-model-equality-mutation` retained as an ablation. This result alone did
 not promote either profile; the later retained-epoch evidence promotes convex
 reconciliation while model-equality branching remains opt-in.
+
+**Care-scoped mutation result, 2026-08-12.** The default scratch sweep still
+receives every mapped shared Real variable. The opt-in
+`--model-equality-mutation-scope=care` specialization instead passes only
+current EUF care-pair endpoints to the unchanged LRA mutator. The coordinator
+then reconstructs the complete shared-value partition from the returned full
+assignment. It rejects an attempted mutation if that partition contains more
+candidate pairs than the original model, so the restricted sweep cannot trade
+a local care improvement for additional global candidate equalities.
+
+The exact implementation passed 3,000 generated mixed cases, 500 finite QF_UF
+cases, 500 finite QF_UFLRA cases, all 11 deterministic seeds, and 100 YinYang
+mutations per seed with no bug trigger or reference disagreement. At five
+seconds on all 1,284 QF_UFLRA files, care solved 1,247 versus 1,242 for the
+same-commit `all` scope, with six recoveries, one loss, no answer disagreement,
+and PAR2 539.428890 versus 592.164651. At 30 seconds both solved 1,267, with two
+recoveries and two losses; care reduced common-solved time from 564.657864 to
+451.026811 seconds and PAR2 from 1,593.277162 to 1,502.067240.
+
+The mechanism is not an unqualified search win. In the 30-second run, scoped
+mutation visits fell from 524,902 to 182,213 and attempted updates from 44,624
+to 19,482, but SAT decisions rose from 8,377,635 to 8,928,243 and compatibility
+projection terms from 71,369,784 to 87,447,114 because the model choices changed
+the subsequent search. Two attempted care mutations were rejected by the
+global pair guard. The option is retained as a validated performance mode; the
+default remains `all` because the solved-set exchanges and increased SAT work
+need broader policy evidence before promotion.
+
+The later 120-second full-corpus comparison at commit `9061611` confirms that
+policy. Default `all` solved 1,272 files and `care` solved 1,271. Care reduced
+aggregate time on the 1,271 common solves from 803.83 to 660.98 seconds, but
+timed out on one induction row solved by all. The same run solved 1,254 files
+with Z3, 1,273 with cvc5, 1,265 with OpenSMT, and 1,276 with Yices. All profiles
+had zero wrong answers, errors, unsupported results, or pairwise decisive-answer
+disagreements. The exact commands, job IDs, family counts, PAR2 values, and
+artifacts are recorded in `docs/run-log.json`.
+
+**Joint Z3/Yices gap triage, 2026-08-12.** The 120-second shard artifacts were
+also ranked by requiring both Z3 and Yices to solve a row. No Primo timeout met
+that condition: Z3 also timed out on all four rows solved only by Yices. Under
+the default `all` scope, 22 solved rows took at least two seconds and at least
+twice as long as each reference; 21 were CPAchecker induction rows, one was a
+CPAchecker BMC row, and every one was SAT. Taking the faster of `all` and `care`
+per row leaves four robust gaps:
+
+| row (CPAchecker induction) | best Primo | Z3 | Yices |
+| --- | ---: | ---: | ---: |
+| `...tda18271c2dd.ko...` | 9.07 (`care`) | 2.14 | 1.96 |
+| `m0_false...opl3...` | 9.57 (`all`) | 2.29 | 0.26 |
+| `...mt20xx.ko...` | 19.10 (`care`) | 5.50 | 2.73 |
+| `...mem2mem_testdev.ko...` | 15.65 (`care`) | 5.73 | 0.20 |
+
+Fresh `gprof` runs at commit `0b40649` covered the smaller `parport` row and
+the `tda18271c2dd` and `m0...opl3` rows. In those runs,
+`lra_model_equal_partition()` accounted for about 70--80 percent of sampled
+cumulative time, almost entirely below `LraTableau::diversify_shared_model()`.
+The leading flat-profile work was model-value grouping through repeated SOI
+breakpoint sorting and hash-set insertion. The all-scope runs made about 16.7
+million, 63.4 million, and 27.7 million such sorting calls respectively. This
+does not justify modifying the LRA implementation: the mixed coordinator chooses
+the mutation scope and invocation schedule. Care reduced runtime on 21 of the
+22 default-scope gaps, but regressed `m0...opl3` by increasing solve calls from
+6 to 13 and compatibility-projection visits from 3.18 million to 8.40 million.
+The next experiment therefore needs an adaptive coordinator policy, not a
+blanket switch of the default scope.
 
 **Shared-model reconciliation result, 2026-08-09.** The repaired opt-in
 `--qf-uflra-model-reconciliation` profile passed 3,000 generated mixed cases,
@@ -390,8 +517,8 @@ equality atoms are appended to the EUF child's atom table and registered in its
 flat assignment state before the fresh SAT variable is observed.
 
 This EUF child is enabled only by the explicit
-`--qf-uflra-online-euf` option together with
-`--nelson-oppen-prop=online`. It is default-off because the first 45-file,
+`--qf-uflra-online-euf` option. It can accompany either final or online
+Nelson-Oppen propagation. It is default-off because the first 45-file,
 3-second local ablation at commit `cbe1cfc` solved the same 43/45 instances with
 zero wrong answers and changed PAR2 only from 20.660 to 20.639. On the
 representative MathSAT `pb_real_40_80_60_36.smt2`, both paths solve in about one
@@ -413,13 +540,34 @@ performance regressions, not mutation seeds. Removing the scan requires a
 complete shared-model validation invariant rather than another activity-based
 skip condition.
 
-The final coordinator still rebuilds a flat EUF closure after SAT returns. The
-EUF component does not yet expose a safe live closure/model view, so care pairs,
-EUF-forbidden checks, and final equality explanations do not reuse callback
-state. Generated equality registration also does not extend the optional
+The final coordinator now acquires a protected `FlatEufModelView` from the
+callback state after SAT returns. A move-only scope rolls back candidate-model
+merges, and IPASIR-UP callbacks triggered synchronously by learned-clause
+insertion are queued until the scope ends. `cb_check_found_model` synchronizes
+ordinary callback omissions from IPASIR-UP's complete reconstructed model
+before acquisition. The coordinator falls back to the old rebuilt closure if
+the assignment or dynamic equality registration is incomplete. Generated
+equality registration still does not extend the optional
 dynamic Ackermann indexes. Dynamic Ackermann propagation therefore remains a
-separate mixed-mode ablation, and live closure reuse is the unfinished part of
-this milestone.
+separate mixed-mode ablation, and the live view remains opt-in.
+
+The commit-`540b847` gates are now complete. Three repeated-solve CPAchecker
+profiles reduced flat-definition insertions from 21,990 to 794 and replaced all
+76 final closure rebuilds with live-scope reuse. A fresh SLURM gate passed 3,000
+generated mixed QF_UFLRA cases, 500 finite QF_UF cases, 500 finite QF_UFLRA
+cases, all 11 deterministic mixed seeds, and 21,868 YinYang differential calls
+without a disagreement or bug trigger. On the 45-file, 60-second sample both
+profiles solved 45/45; PAR2 changed from 3.001 to 2.998 seconds.
+
+The five-second 1,284-file A/B was mixed rather than a clear promotion result.
+Default solved 1,243 files with PAR2 562.400; live reuse solved 1,244 with PAR2
+557.287, comprising two recoveries and one loss with no decisive-answer
+disagreement. Live reuse eliminated all 3,261 final closure rebuilds and reduced
+flat-definition work from 1,145,153 to 134,523. It also increased decisions from
+33,572,448 to 34,211,143 and common-solved time from 147.485 to 148.450 seconds.
+The option therefore remains default-off: it establishes the required EUF model
+state and removes a concrete implementation cost, but callback search policy is
+still the next performance question.
 
 ### 5. Tighten Candidate Scheduling And Preprocessing
 

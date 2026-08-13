@@ -3,6 +3,7 @@
 #endif
 
 #include <cassert>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -23,7 +24,7 @@ namespace {
 
 CheckSatOptions no_preprocessing() {
   CheckSatOptions options;
-  options.qf_uf_preprocess = primo::smt::QfUfPreprocessMode::Off;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   return options;
 }
 
@@ -543,6 +544,44 @@ void qf_uf_lra_model_reflects_real_valued_uf_equalities() {
   assert(result.model.find("(define-fun f ((x0 U)) Real ") != std::string::npos);
   assert(result.model.find("$primo_") == std::string::npos);
   assert(result.statistics.get(":no.purification.arithmetic-uf-definitions") >= 2);
+}
+
+void qf_uf_lra_model_prefers_active_purified_real_application() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun f (Real) Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (= (f x) 1))
+    (assert (= x y))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun f ((x0 Real)) Real (ite (= x0 0) 1 0))") !=
+         std::string::npos);
+  assert(result.statistics.get(":no.interface.model-real-terms-before-interface-filter") >= 3);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
+}
+
+void qf_uf_lra_model_preserves_nested_real_application_rows() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun g (Real) Real)
+    (declare-fun h (Real Real) Real)
+    (declare-fun x () Real)
+    (assert (= x 90))
+    (assert (= (g x) 1))
+    (assert (= (h (g x) 4) 250))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(ite (= x0 90) 1 0)") != std::string::npos);
+  assert(result.model.find("(and (= x0 1) (= x1 4)) 250") != std::string::npos);
+  assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
 }
 
 void qf_uf_lra_prints_shared_real_predicate_model() {
@@ -1795,6 +1834,18 @@ void qf_uf_lra_reports_euf_care_pair_diagnostics() {
   assert(result.statistics.get(":no.interface.euf-care-full-pairs") == 3);
   assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
   assert(result.statistics.get(":no.interface.euf-care-pruned-pairs") == 2);
+  const std::uint64_t care_checks = result.statistics.get(":no.interface.euf-care-checks");
+  const std::uint64_t cache_misses = result.statistics.get(":no.interface.euf-care-cache-misses");
+  assert(care_checks == result.statistics.get(":no.interface.euf-care-cache-hits") + cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-argument-definitions") == 3 * cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-function-classes") == 2 * cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-definition-pairs-full") == 3 * cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-definition-pairs-within-classes") ==
+         cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-argument-pairs-checked") == cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-definition-pairs-pruned") ==
+         2 * cache_misses);
+  assert(result.statistics.get(":no.interface.euf-care-duplicate-argument-pairs-pruned") == 0);
 }
 
 void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
@@ -1827,7 +1878,40 @@ void qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications() {
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-forced") >= 2);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-forbidden-forced") == 0);
   assert(result.statistics.get(":no.interface.lra-to-euf-equalities-euf-mergeable-skipped") == 0);
+  assert(result.statistics.get(":no.interface.lra-to-euf-pair-dedup-lookups") >= 2);
+  assert(result.statistics.get(":no.interface.euf-implied-class-projections") >= 1);
+  assert(result.statistics.get(":no.interface.euf-implied-class-projection-terms") >= 4);
   assert(result.statistics.get(":no.interface.euf-conflicts") >= 1);
+}
+
+void qf_uf_lra_deduplicates_equal_arguments_within_euf_function_classes() {
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
+  options.nelson_oppen_model_equality_branching = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun q (Real Real) Bool)
+    (assert (= x y))
+    (assert (<= 0 z))
+    (assert (q x z))
+    (assert (not (q y z)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  const std::uint64_t full = result.statistics.get(":no.interface.euf-care-definition-pairs-full");
+  const std::uint64_t within =
+      result.statistics.get(":no.interface.euf-care-definition-pairs-within-classes");
+  const std::uint64_t checked =
+      result.statistics.get(":no.interface.euf-care-argument-pairs-checked");
+  assert(full == within + result.statistics.get(":no.interface.euf-care-definition-pairs-pruned"));
+  assert(within ==
+         checked + result.statistics.get(":no.interface.euf-care-duplicate-argument-pairs-pruned"));
+  assert(result.statistics.get(":no.interface.euf-care-duplicate-argument-pairs-pruned") >= 1);
 }
 
 void qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation() {
@@ -1955,6 +2039,107 @@ void qf_uf_lra_shared_model_mutation_removes_accidental_value_equality() {
   assert(result.statistics.get(":no.interface.lra-model-mutation-pruned-pairs") == 1);
   assert(result.statistics.get(":no.shared-model.lra-value-classes") == 0);
   assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+}
+
+void qf_uf_lra_shared_model_mutation_can_use_strict_care_scope() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation_scope = primo::smt::ModelEqualityMutationScope::Care;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun w () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (declare-fun r (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (<= 0 z))
+    (assert (<= 0 w))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (assert (r w))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-scope-care") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-full-variables") == 4);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-scoped-variables") == 2);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-empty-scopes") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-attempted-updates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") >= 1);
+  assert(result.statistics.get(
+             ":no.interface.lra-model-mutation-rejected-global-pair-regressions") == 0);
+  assert(result.statistics.get(":no.shared-model.converged-rounds") >= 1);
+}
+
+void qf_uf_lra_shared_model_mutation_skips_empty_care_scope() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation_scope = primo::smt::ModelEqualityMutationScope::Care;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-full-variables") == 2);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-scoped-variables") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-empty-scopes") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-attempted-updates") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") == 0);
+  assert(result.statistics.get(":no.shared-model.converged-rounds") == 1);
+}
+
+void qf_uf_lra_shared_model_mutation_rejects_global_pair_regression() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation_scope = primo::smt::ModelEqualityMutationScope::Care;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun w () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (declare-fun r (Real) Bool)
+    (assert (<= x 10))
+    (assert (<= y 10))
+    (assert (= z (- 1)))
+    (assert (= w (- 1)))
+    (assert (p x))
+    (assert (not (p y)))
+    (assert (q z))
+    (assert (r w))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") == 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-full-variables") >
+         result.statistics.get(":no.interface.lra-model-mutation-scoped-variables"));
+  assert(result.statistics.get(":no.interface.lra-model-mutation-scoped-variables") >= 2);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-attempted-updates") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-updates") == 0);
+  assert(result.statistics.get(
+             ":no.interface.lra-model-mutation-rejected-global-pair-regressions") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-before") ==
+         result.statistics.get(":no.interface.lra-model-mutation-candidate-pairs-after"));
 }
 
 void qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split() {
@@ -2110,6 +2295,76 @@ void qf_uf_lra_shared_model_reconstructs_after_scratch_mutation() {
   assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") == 1);
   assert(result.statistics.get(":no.shared-model.reconstructed-models") == 1);
   assert(result.statistics.get(":no.shared-model.validation-failures") == 0);
+}
+
+// Dutertre-de Moura Section 3.3 requires a concrete delta small enough to
+// preserve the symbolic model's ordering. These three fuzz witnesses used to
+// choose delta=1 and collapse EUF-distinct arithmetic arguments again while
+// printing the model.
+void qf_uf_lra_model_concretization_preserves_shared_delta_order() {
+  const auto doubled = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real Real) Bool)
+    (assert (p 0))
+    (assert (not (p (* 2 x))))
+    (assert (not (<= (+ x 1) y)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(doubled.result == CheckSatResult::Sat);
+  assert(doubled.model.find("(define-fun x () Real (- (/ 1 2)))") != std::string::npos);
+  assert(doubled.statistics.get(":no.shared-model.concrete-delta-order-bounds") >= 1);
+  assert(doubled.statistics.get(":no.shared-model.concrete-delta-order-tightenings") >= 1);
+
+  const auto affine = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real Real) Bool)
+    (assert (not (q (+ x 1) y)))
+    (assert (p (* 2 x)))
+    (assert (p 0))
+    (assert (not (p (+ x 1))))
+    (assert (not (<= (+ x 1) y)))
+    (assert (not (< 0 x)))
+    (assert (not (< z 3)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(affine.result == CheckSatResult::Sat);
+  assert(affine.model.find("(define-fun x () Real (- (/ 3 2)))") != std::string::npos);
+  assert(affine.statistics.get(":no.shared-model.concrete-delta-order-bounds") >= 1);
+
+  const auto transitive = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real Real) Bool)
+    (assert (p (+ x 1)))
+    (assert (not (p (+ y 1))))
+    (assert (q (+ x 1) y))
+    (assert (< y 4))
+    (assert (not (<= (+ x 1) y)))
+    (assert (not (< (+ x y) 5)))
+    (assert (<= y (+ x 1)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(transitive.result == CheckSatResult::Sat);
+  assert(transitive.model.find("(define-fun x () Real (/ 9 4))") != std::string::npos);
+  assert(transitive.model.find("(define-fun y () Real (/ 11 4))") != std::string::npos);
+  assert(transitive.statistics.get(":no.shared-model.concrete-delta-order-bounds") >= 1);
 }
 
 void qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible() {
@@ -2313,6 +2568,60 @@ void qf_uf_lra_online_propagates_simple_lra_shared_equalities() {
   assert(result.statistics.get(":no.online.euf-generated-equality-observation-failures") == 0);
   assert(result.statistics.get(":no.interface.euf-prepared-atoms") >= 1);
   assert(result.statistics.get(":no.interface.euf-prepared-definitions") >= 1);
+}
+
+void qf_uf_lra_live_euf_model_reuses_trail_closure_in_final_mode() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )";
+
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
+  options.qf_uflra_online_euf = true;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.euf-online-enabled") == 1);
+  assert(result.statistics.get(":no.interface.euf-live-model-attempts") >= 1);
+  assert(result.statistics.get(":no.interface.euf-live-model-reuses") >= 1);
+  assert(result.statistics.get(":no.interface.euf-live-model-fallbacks") == 0);
+  assert(result.statistics.get(":no.interface.euf-final-closure-rebuilds") == 0);
+  assert(result.statistics.get(StatKey::EufIncrementalFlatDefinitions) >= 1);
+  assert(result.statistics.get(":no.online.lra-published-equalities") == 0);
+}
+
+void qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  options.qf_uflra_online_euf = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (assert (<= 0 x))
+    (assert (<= 0 y))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
+  assert(result.statistics.get(":no.shared-model.split-materializations") >= 1);
+  assert(result.statistics.get(":no.interface.euf-live-model-reuses") >= 2);
+  assert(result.statistics.get(":no.interface.euf-live-model-fallbacks") == 0);
+  assert(result.statistics.get(":no.interface.euf-live-model-incomplete") == 0);
+  assert(result.statistics.get(":no.interface.euf-live-model-callback-assignments") >= 1);
+  assert(result.statistics.get(":no.interface.euf-final-closure-rebuilds") == 0);
+  assert(result.statistics.get(":no.online.euf-generated-equality-registration-failures") == 0);
 }
 
 void qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs() {
@@ -4143,6 +4452,8 @@ int main() {
   qf_uf_lra_lra_routed_model_keeps_preprocessed_uf_equalities();
   qf_uf_lra_prints_real_valued_uf_application_model();
   qf_uf_lra_model_reflects_real_valued_uf_equalities();
+  qf_uf_lra_model_prefers_active_purified_real_application();
+  qf_uf_lra_model_preserves_nested_real_application_rows();
   qf_uf_lra_prints_shared_real_predicate_model();
   qf_uf_lra_validates_final_arrangement_without_model();
   qf_uf_lra_final_arrangement_skips_euf_mergeable_shared_pairs();
@@ -4190,16 +4501,21 @@ int main() {
   qf_uf_lra_adaptive_model_equality_branching_stops_after_bad_guesses();
   qf_uf_lra_reports_euf_care_pair_diagnostics();
   qf_uf_lra_uses_closure_aware_euf_care_pairs_for_nonunary_applications();
+  qf_uf_lra_deduplicates_equal_arguments_within_euf_function_classes();
   qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();
   qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities();
   qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom();
   qf_uf_lra_shared_model_mutation_removes_accidental_value_equality();
+  qf_uf_lra_shared_model_mutation_can_use_strict_care_scope();
+  qf_uf_lra_shared_model_mutation_skips_empty_care_scope();
+  qf_uf_lra_shared_model_mutation_rejects_global_pair_regression();
   qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split();
   qf_uf_lra_shared_model_batches_independent_rejected_merges();
   qf_uf_lra_shared_model_reuses_augmented_lra_epoch();
   qf_uf_lra_shared_model_reconciliation_can_be_disabled();
   qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence();
   qf_uf_lra_shared_model_reconstructs_after_scratch_mutation();
+  qf_uf_lra_model_concretization_preserves_shared_delta_order();
   qf_uf_lra_shared_model_keeps_forbidden_equality_sat_visible();
   qf_uf_lra_shared_model_builds_model_from_internal_equality();
   qf_uf_lra_shared_model_retains_transitive_merges_before_conflict();
@@ -4207,6 +4523,8 @@ int main() {
   qf_uf_lra_purifies_real_valued_applications_in_arithmetic();
   qf_uf_lra_shares_euf_implied_proxy_equalities_with_lra();
   qf_uf_lra_online_propagates_simple_lra_shared_equalities();
+  qf_uf_lra_live_euf_model_reuses_trail_closure_in_final_mode();
+  qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges();
   qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs();
   qf_uf_lra_online_skips_pairs_already_resolved_by_online_propagation();
   qf_uf_lra_online_scans_non_paired_final_equalities();
