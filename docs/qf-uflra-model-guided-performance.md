@@ -286,14 +286,32 @@ global pair guard. The option is retained as a validated performance mode; the
 default remains `all` because the solved-set exchanges and increased SAT work
 need broader policy evidence before promotion.
 
-The later 120-second full-corpus comparison at commit `9061611` confirms that
-policy. Default `all` solved 1,272 files and `care` solved 1,271. Care reduced
-aggregate time on the 1,271 common solves from 803.83 to 660.98 seconds, but
-timed out on one induction row solved by all. The same run solved 1,254 files
-with Z3, 1,273 with cvc5, 1,265 with OpenSMT, and 1,276 with Yices. All profiles
-had zero wrong answers, errors, unsupported results, or pairwise decisive-answer
-disagreements. The exact commands, job IDs, family counts, PAR2 values, and
-artifacts are recorded in `docs/run-log.json`.
+**Full reference comparison, 2026-08-12.** The 120-second full-corpus comparison
+at commit `9061611` confirms that policy. It ran all six profiles over the same
+1,284 QF_UFLRA files:
+
+| Solver/profile | Solved (sat/unsat) | Timeouts | Solved-row time (s) | PAR2 |
+| --- | ---: | ---: | ---: | ---: |
+| Primo `all` | 1,272 (761/511) | 12 | 805.38 | 3,685.38 |
+| Primo `care` | 1,271 (760/511) | 13 | 660.98 | 3,780.98 |
+| Z3 5.0.0 | 1,254 (752/502) | 30 | 617.39 | 7,817.39 |
+| cvc5 1.3.4 | 1,273 (762/511) | 11 | 966.15 | 3,606.15 |
+| OpenSMT 2.9.2 | 1,265 (754/511) | 19 | 1,374.83 | 5,934.83 |
+| Yices 2.7.0 | 1,276 (765/511) | 8 | 75.77 | 1,995.77 |
+
+This is the first recorded full-corpus QF_UFLRA evaluation in which Primo
+materially outperforms Z3 on both coverage and PAR2: default `all` solves 18
+more files and reduces PAR2 by 53 percent. It also solves seven more files than
+OpenSMT with a 38 percent lower PAR2. Primo is within one solve of cvc5, but
+Yices remains the performance target with four additional solves and roughly
+13.4 times lower aggregate time on the 1,272 rows shared with Primo `all`.
+
+Care reduced aggregate time on the 1,271 common Primo solves from 803.83 to
+660.98 seconds, but timed out on one induction row solved by `all`; this does
+not justify changing the default. All profiles had zero wrong answers, errors,
+unsupported results, or pairwise decisive-answer disagreements. The exact
+commands, job IDs, family counts, and artifacts are recorded in
+`docs/run-log.json`.
 
 **Joint Z3/Yices gap triage, 2026-08-12.** The 120-second shard artifacts were
 also ranked by requiring both Z3 and Yices to solve a row. No Primo timeout met

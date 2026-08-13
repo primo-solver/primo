@@ -2,13 +2,13 @@
 
 Survey of literature beyond Dutertre & de Moura's ["A Fast Linear-Arithmetic
 Solver for DPLL(T)"](fast-linear-arithmetic-dpllt.md), the paper Primo's
-future LRA theory solver is planned to be based on. Unlike the per-paper
-deep-study notes elsewhere in this directory, these entries are scoped from
-abstracts/search summaries only — read the source before relying on
+LRA theory solver is based on. Unlike the per-paper deep-study notes elsewhere
+in this directory, entries are scoped from abstracts and bibliographic metadata
+unless explicitly marked as read; read the source before relying on
 implementation details.
 
-**Scope: QF_LRA only.** Primo's near-term arithmetic target is the SMT-LIB
-`QF_LRA` logic (quantifier-free linear real arithmetic) — no integers, no
+**Scope: QF_LRA only.** This survey covers the SMT-LIB `QF_LRA` logic
+(quantifier-free linear real arithmetic) — no integers, no
 quantifiers. Entries below are ranked and grouped for that scope; LIA,
 mixed-integer, and quantified-arithmetic work is included only where it
 directly informs a QF_LRA decision procedure, and is marked as out of scope
@@ -17,6 +17,13 @@ otherwise so it doesn't get mistaken for near-term reading.
 ## Access status
 
 Checked by actually fetching each URL, not just search-result snippets.
+
+**DOI audit, 2026-08-13.** DOI records in this page were checked title-by-title
+against publisher metadata and the Crossref registry; suffixes were not inferred
+from proceedings volume or article numbers. Technical reports, theses, arXiv
+preprints, and the CEUR-published Bromberger--Weidenbach workshop paper are left
+without DOI links because no DOI was found for those editions. An open-copy URL
+is retained alongside the DOI where useful.
 
 Freely accessible (fetched and read the actual PDF):
 - Monniaux, "On using floating-point computations to help an exact linear
@@ -33,13 +40,17 @@ Freely accessible (fetched and read the actual PDF):
 - "Local Search For SMT On Linear and Multilinear Real Arithmetic" (arXiv 2303.06676)
 - Fast Cube Tests for LIA / New Techniques for Linear Arithmetic (MPI-hosted, same publisher pattern as the equalities paper above — not individually re-verified)
 
+Open author copies located during the DOI audit (access checked 2026-08-13,
+not yet read for this survey):
+- Korovin, Tsiskaridze, Voronkov, "Conflict Resolution" (CP 2009)
+- Korovin, Tsiskaridze, Voronkov, "Implementing Conflict Resolution"
+  (PSI 2011 proceedings, published 2012,
+  DOI [10.1007/978-3-642-29709-0_31](https://doi.org/10.1007/978-3-642-29709-0_31));
+  open author copy:
+  <https://korovin.gitlab.io/pub/implementing_cra_psi_2011.pdf>
+
 Paywalled, no open mirror found — need institutional access or the user to
 fetch a copy:
-- Korovin, Tsiskaridze, Voronkov, **"Conflict Resolution"** (CP 2009, Springer
-  LNCS 5732) — checked Manchester eScholar (dead link) and Semantic Scholar
-  (no PDF surfaced); the most important gap since it's the strongest
-  non-Simplex alternative listed. Its companion "Implementing Conflict
-  Resolution" (Ershov 2011) is equally paywalled.
 - Bland, "New Finite Pivoting Rules for the Simplex Method" (Math. of OR, 1977)
 - Harris, "Pivot Selection Methods of the Devex LP Code" (Math. Programming, 1973)
 - Forrest & Goldfarb, "Steepest-Edge Simplex Algorithms for Linear Programming" (Math. Programming, 1992)
@@ -62,6 +73,7 @@ fetch a copy:
 
 **David Monniaux. "On using floating-point computations to help an exact
 linear arithmetic decision procedure." CAV 2009 (arXiv:0904.3525).**
+DOI: <https://doi.org/10.1007/978-3-642-02658-4_42>.
 The paper's headline contribution is a floating-point preprocessing phase
 (run GLPK's dual simplex, then "force-pivot" the exact rational tableau to
 the basis it found) that is sound and complete because the numerical result
@@ -120,7 +132,7 @@ design, even though they are not what the paper is about:
 
 Clean-room note: implemented from this paper's prose (plus Knuth TAOCP Vol. 2
 Sec. 4.5.1 for the rational arithmetic itself), not from any solver's source.
-https://arxiv.org/abs/0904.3525
+Open version: <https://arxiv.org/abs/0904.3525>.
 
 ### Floating-point-guided exact simplex: the rest of the line
 
@@ -131,6 +143,7 @@ rest are cited from their descriptions in those two.
 
 **Tim King, Clark Barrett, Cesare Tinelli. "Leveraging Linear and Mixed
 Integer Programming for SMT." FMCAD 2014, 139-146.** *(read)*
+DOI: <https://doi.org/10.1109/FMCAD.2014.6987606>.
 <https://theory.stanford.edu/~barrett/pubs/KBT14.pdf>
 **The most relevant paper to D2, and a second independent implementation of
 Monniaux's idea** -- in CVC4, using GLPK 4.52. Its `SeedExact` procedure takes
@@ -174,7 +187,9 @@ KBT's contribution is precisely the balanced control structure that makes it
 pay at all.
 
 **Diego Caminha B. de Oliveira, David Monniaux. "Experiments on the
-feasibility of using a floating-point simplex in an SMT solver." PAAR 2012.**
+feasibility of using a floating-point simplex in an SMT solver." PAAR 2012,
+EPiC Series in Computing 21 (published 2013), 19-28.**
+DOI: <https://doi.org/10.29007/j7x4>.
 <https://easychair.org/publications/paper/NqS>
 The direct continuation of Monniaux CAV 2009, in OpenSMT: call the LP solver
 first and use the result to seed the exact search. Reported **14% faster
@@ -187,6 +202,7 @@ entries in section 6.5 offer.
 **Germain Faure, Robert Nieuwenhuis, Albert Oliveras, Enric
 Rodríguez-Carbonell. "SAT Modulo the Theory of Linear Arithmetic: Exact,
 Inexact and Commercial Solvers." SAT 2008, 77-90.**
+DOI: <https://doi.org/10.1007/978-3-540-79719-7_8>.
 <https://www.cs.upc.edu/~oliveras/sat08.pdf>
 Several LP solvers integrated into Barcelogic, with an exact solver lazily
 checking their results for soundness. Analyses why sophisticated LP solvers
@@ -196,9 +212,9 @@ checking plus error recovery. The earliest of this line to take unsoundness
 seriously.
 
 **Y. Yu, S. Malik. "Lemma Learning in SMT on Linear Constraints." SAT 2006,
-142-155.** The earliest use of an LP solver as an SMT theory solver, and
-noted by KBT as *not* addressing the possibility of incorrect LP results.
-Cited for provenance only.
+142-155.** DOI: <https://doi.org/10.1007/11814948_17>. The earliest use of an
+LP solver as an SMT theory solver, and noted by KBT as *not* addressing the
+possibility of incorrect LP results. Cited for provenance only.
 
 **Practical note, measured 2026-07-31.** The cvc5 1.3.4 binary this project
 benchmarks against reports `glpk : no` in `--show-config`. CVC4's LP
@@ -208,6 +224,7 @@ in either direction.
 
 **Tim King, Clark Barrett, Bruno Dutertre. "Simplex with Sum of
 Infeasibilities for SMT." FMCAD 2013.**
+DOI: <https://doi.org/10.1109/FMCAD.2013.6679409>.
 Addresses Dutertre-de Moura's weakest point: its Bland's-rule pivoting has no
 global progress criterion and can converge slowly on hard instances.
 SOI-Simplex minimizes a single objective — the sum of infeasibilities across
@@ -215,7 +232,6 @@ all out-of-bound basic variables — giving pivoting a global direction at the
 cost of extra per-pivot analysis. Reported more robust on large/hard
 examples. Directly relevant if Primo's tableau implementation later hits the
 same slow-convergence pathology Dutertre-de Moura is known for.
-https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf
 
 **Implemented (2026-07-25, `PivotingRule::Soi`, opt-in via
 `--lra-pivoting-rule soi`).** The full algorithm, not a scoped-down
@@ -233,15 +249,18 @@ testing, since fixed. A quick 17-file real-benchmark comparison found
 identical results to Bland (7/17 solved, same files) -- didn't move that
 particular narrow sample, matching this session's items 1-2 (solve-eqs,
 row-based propagation) each individually failing to close the same gap.
+Open version:
+<https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf>.
 
 **Tim King, Clark Barrett, Cesare Tinelli. "Leveraging Linear and Mixed
 Integer Programming for SMT." FMCAD 2014.**
+DOI: <https://doi.org/10.1109/FMCAD.2014.6987606>.
 Replaces/augments the incremental Simplex theory solver with calls to an
 external LP/MIP solver. The LP-only mode is in scope for QF_LRA (trades
 incrementality for the maturity of industrial LP engines, worth a look if a
 from-scratch tableau proves to be a maintenance burden); the MIP
 branch-and-cut half is LIA/mixed and out of scope for now (see below).
-https://theory.stanford.edu/~barrett/pubs/KBT14.pdf
+Open version: <https://theory.stanford.edu/~barrett/pubs/KBT14.pdf>.
 
 ## Standard Simplex heuristics (general LP, not SMT-specific)
 
@@ -251,17 +270,22 @@ engineering question, independent of the DPLL(T) integration questions
 above. Worth knowing before hand-rolling a pivoting rule from scratch:
 
 **Pivoting/pricing rules.** Robert Bland, "New Finite Pivoting Rules for the
-Simplex Method" (Math. of OR, 1977) — the anti-cycling rule (smallest-index
+Simplex Method" (Math. of OR, 1977,
+DOI [10.1287/moor.2.2.103](https://doi.org/10.1287/moor.2.2.103)) — the
+anti-cycling rule (smallest-index
 entering/leaving variable) that Dutertre-de Moura's own termination argument
 already relies on; worth reading directly rather than only through the SMT
 papers that cite it. Dantzig's original largest-coefficient rule is cheapest
 per pivot but weakest on degenerate/cycling-prone instances. Devex pricing
 (Paula Harris, "Pivot Selection Methods of the Devex LP Code," Math.
-Programming 1973) approximates steepest-edge pricing at much lower cost per
-pivot and is the de facto industry default (used in CPLEX, and reportedly in
-Yices' own Simplex). Forrest & Goldfarb, "Steepest-Edge Simplex Algorithms
-for Linear Programming" (Math. Programming 1992) covers the more expensive
-but iteration-minimal alternative. A recent comparative benchmark of six
+Programming 1973,
+DOI [10.1007/BF01580108](https://doi.org/10.1007/BF01580108)) approximates
+steepest-edge pricing at much lower cost per pivot and is the de facto industry
+default (used in CPLEX, and reportedly in Yices' own Simplex). Forrest &
+Goldfarb, "Steepest-Edge Simplex Algorithms for Linear Programming" (Math.
+Programming 1992,
+DOI [10.1007/BF01581089](https://doi.org/10.1007/BF01581089)) covers the more
+expensive but iteration-minimal alternative. A recent comparative benchmark of six
 rules (Bland, Dantzig, Greatest Increment, Least-Recently-Considered,
 Partial Pricing, Steepest Edge) found Dantzig fastest per-instance wall time
 but Steepest Edge fewest iterations, with Bland notably *not* the most
@@ -313,7 +337,7 @@ the reference that settles two questions for us.
 
 **Erling D. Andersen, Knud D. Andersen. "Presolving in linear programming."
 Mathematical Programming 71 (1995), 221-245.**
-<https://link.springer.com/article/10.1007/BF01586000>
+DOI: <https://doi.org/10.1007/BF01586000>.
 The canonical reference for LP presolve, including removal of fixed
 variables -- the prior art for heuristics-note item H7, whose header
 previously called it "the standard eliminate-fixed-variables step" with no
@@ -363,22 +387,22 @@ procedures**, which their introduction lists as a requirement: "Equality
 information derived by the inequality solver must be propagated to other
 inference procedures."
 
-**What Primo does instead, and where that stops working.** Primo implements
-none of this, deliberately. Real equalities are lowered to two inequalities
-in preprocessing (`lower_real_equalities`), so a disequality becomes ordinary
-Boolean structure and CDCL performs the case split -- no zero test needed.
-`assert_lra_atom_bound` keeps a guard that throws on a negated `Eq` atom, as
-a backstop for one arriving unlowered.
+**What Primo does instead.** Pure QF_LRA still lowers Real equalities to two
+inequalities in preprocessing (`lower_real_equalities`), so a disequality
+becomes ordinary Boolean structure and CDCL performs the case split without a
+Rueß--Shankar zero-tableau. `assert_lra_atom_bound` retains a defensive guard
+for a negated `Eq` atom arriving unlowered.
 
-That works because **QF_LRA is a single theory**. It stops working for
-QF_UFLRA, which `check_sat.cpp` currently rejects outright ("combined
-equality and arithmetic (QF_UFLRA) is not supported ... would need real
-Nelson-Oppen"). A Nelson-Oppen combination has to exchange *implied*
-equalities between the arithmetic and equality solvers, and Primo has no
-mechanism for deriving them -- there is no equality propagation out of
-`LraTableau` at all. **Chapter 6 is the algorithm that gap needs**, so this
-paper is worth reading against the Nelson-Oppen work rather than the QF_LRA
-work.
+The mixed path has moved beyond the limitation recorded by the original
+version of this survey. Primo now supports the documented convex QF_UFLRA
+subset: `LraTableau::entailed_equalities()` emits explained `FixedEq`, `EqRow`,
+`EqOffsetRows`, and `EqRows` consequences over shared Real variables, and the
+mixed coordinator supplements them with an exact unresolved-pair fallback.
+This is based on the de Moura--Bjørner model-combination rules, not an
+implementation of Rueß and Shankar's Chapter 6 algorithm. See
+[](../qf-lra-equality-sharing.md) and
+[](model-based-theory-combination.md) for the implemented ownership,
+invariants, and remaining generic-combination limitations.
 
 **One aside relevant to [H3](#h3).** On Hentenryck &
 Graf's SF2 normal form they observe that "lexicographic pivoting is an
@@ -388,13 +412,17 @@ a third anti-cycling option beside the Bland fallback Primo uses.
 
 **General engineering (presolve, scaling, degeneracy, refactorization).**
 Robert Bixby, "Solving Real-World Linear Programs: A Decade and More of
-Progress" (Operations Research 50(1), 2002) — a implementor's-eye survey of
+Progress" (Operations Research 50(1), 2002,
+DOI [10.1287/opre.50.1.3.17780](https://doi.org/10.1287/opre.50.1.3.17780)) —
+an implementor's-eye survey of
 what actually made Simplex fast in practice over ~15 years of commercial LP
 codes (presolve, scaling, LU refactorization, dual vs. primal Simplex,
 degeneracy handling), useful as an engineering checklist independent of any
 single algorithm choice. Istvan Maros, "Computational Techniques of the
-Simplex Method" (Springer, 2003) is the standard book-length reference for
-the same territory if a deeper dive is ever warranted.
+Simplex Method" (Springer, 2003,
+DOI [10.1007/978-1-4615-0257-9](https://doi.org/10.1007/978-1-4615-0257-9)) is
+the standard book-length reference for the same territory if a deeper dive is
+ever warranted.
 
 **Exact-arithmetic factorization and coefficient growth.** The reason a
 factored basis is not obviously a win in exact arithmetic: LU factors suffer
@@ -404,13 +432,15 @@ representation can still lose to a denser one. Integer-preserving
 in [](../qf-lra-heuristics.md) section 6.5 is ever pursued:
 
 - "Expediting exact linear programming solvers via integer preserving
-  factorization", Operations Research Letters (2025) --
-  <https://www.sciencedirect.com/science/article/abs/pii/S0167637725001646>.
+  factorization", Operations Research Letters 65 (March 2026), article 107403
+  (DOI [10.1016/j.orl.2025.107403](https://doi.org/10.1016/j.orl.2025.107403)).
   Reports SoPlex with faster exact integer factorizations at 3.33x (average)
   and 1.60x (geometric mean) over baseline. Not read in full; found while
   checking whether refactorization transfers.
 - Applegate, Cook, Dash, Espinoza, "Exact solutions to linear programming
-  problems" -- <https://www.math.uwaterloo.ca/~bico/papers/exact_simplex.pdf>.
+  problems", Operations Research Letters 35(6) (2007), 693-699
+  (DOI [10.1016/j.orl.2006.12.010](https://doi.org/10.1016/j.orl.2006.12.010));
+  open version: <https://www.math.uwaterloo.ca/~bico/papers/exact_simplex.pdf>.
   The QSopt_ex approach: use floating point for speed and confine exact
   rational work to what is needed for correctness. Same philosophy as
   Monniaux's CAV 2009 contribution, from the LP side.
@@ -434,7 +464,8 @@ latter makes refactorization meaningful.
 ## Alternative (non-Simplex) decision procedures
 
 **Konstantin Korovin, Nestan Tsiskaridze, Andrei Voronkov. "Conflict
-Resolution." CP 2009.**
+Resolution." CP 2009, 509-523.**
+DOI: <https://doi.org/10.1007/978-3-642-04244-7_41>.
 A fundamentally different approach to solving conjunctions of linear
 rational/real constraints: a conflict-driven method (in the CDCL sense, not
 Simplex pivoting) that resolves "conflicting" bound derivations directly,
@@ -443,52 +474,61 @@ Simplex tableau's implicit ones. Worth reading before committing to
 Simplex if proof/explanation quality (analogous to the
 [[fast-congruence-closure]] Explain machinery) turns out to matter for LRA
 the way it did for EUF.
-https://link.springer.com/chapter/10.1007/978-3-642-04244-7_41
+Open author copy: <https://korovin.gitlab.io/pub/cra09.pdf>.
 
 **Jasper Nalbach, Valentin Promies, Erika Ábrahám, Paul Kobialka. "FMplex: A
-Novel Method for Solving Linear Real Arithmetic Problems." 2023 (extended
-from GandALF 2023; also circulated as "FMplex: Exploring a Bridge between
-Fourier-Motzkin and Simplex," LMCS).**
+Novel Method for Solving Linear Real Arithmetic Problems." GandALF 2023,
+EPTCS 390, 16-32.**
+DOI: <https://doi.org/10.4204/EPTCS.390.2>. The extended article, "FMplex:
+Exploring a Bridge between Fourier-Motzkin and Simplex," appeared in LMCS
+21(2:6), 2025, DOI: <https://doi.org/10.46298/lmcs-21(2:6)2025>.
 Revisits Fourier-Motzkin elimination — usually dismissed as worse than
 Simplex — and shows that case-splitting during elimination drops its
 worst-case complexity from doubly to singly exponential, with a structural
 correspondence to Simplex pivoting close enough to motivate the name. Recent
 (2023) and not yet a mainstream SMT-solver default; a candidate to watch
 rather than to implement first.
-https://arxiv.org/abs/2310.00995
+Open preprint: <https://arxiv.org/abs/2310.00995>.
 
-**Local Search For SMT On Linear and Multilinear Real Arithmetic.
-arXiv:2303.06676 (2023).**
+**Bohan Li, Shaowei Cai. "Local Search For SMT On Linear and Multilinear Real
+Arithmetic." FMCAD 2023, 168-177.**
+DOI: <https://doi.org/10.34727/2023/isbn.978-3-85448-060-0_25>.
 A local-search theory solver for LRA, sitting outside the DPLL(T)/Simplex
 lineage entirely. Relevant primarily as a fallback/portfolio strategy for
 instances where systematic Simplex search struggles, not as a primary
 decision procedure.
-https://arxiv.org/pdf/2303.06676
+Open preprint: <https://arxiv.org/abs/2303.06676>.
 
 ## QF_LRA-relevant despite an LIA framing
 
-**Martin Bromberger, Christoph Weidenbach et al. "Computing a Complete Basis
+**Martin Bromberger, Christoph Weidenbach. "Computing a Complete Basis
 for Equalities Implied by a System of LRA Constraints" (SMT@IJCAR 2016
-workshop paper).**
+workshop paper, CEUR-WS 1617, 15-30; no DOI assigned).**
 LRA-specific (not the LIA cube-test papers by the same authors, which are
 out of scope below): derives all equalities implied by a system of LRA
 constraints. Could feed Primo's equality-propagation path (cf. `--euf-prop`
 / eq-bridge machinery) once arithmetic and EUF interact.
-https://pure.mpg.de/rest/items/item_2496284_6/component/file_2496283/content
+Open version:
+<https://pure.mpg.de/rest/items/item_2496284_6/component/file_2496283/content>.
 
 ## Out of scope for QF_LRA (LIA/mixed/quantified — for later, if ever)
 
 - Bromberger & Weidenbach, "Fast Cube Tests for LIA Constraint Solving"
-  (IJCAR 2016) / "New Techniques for Linear Arithmetic: Cubes and
-  Equalities" (FMSD 2017) — the cube-test method itself is for integer
-  points, not QF_LRA's rational/real domain.
+  (IJCAR 2016,
+  DOI [10.1007/978-3-319-40229-1_9](https://doi.org/10.1007/978-3-319-40229-1_9)) /
+  "New Techniques for Linear Arithmetic: Cubes and Equalities" (FMSD 2017,
+  DOI [10.1007/s10703-017-0278-7](https://doi.org/10.1007/s10703-017-0278-7)) —
+  the cube-test method itself is for integer points, not QF_LRA's
+  rational/real domain.
 - Jovanović & de Moura, "Cutting to the Chase: Solving Linear Integer
-  Arithmetic" (CADE 2011) — LIA successor line to the Simplex-for-DPLL(T)
-  family (used in Yices2); relevant only if scope ever extends to
-  mixed/integer.
+  Arithmetic" (CADE 2011,
+  DOI [10.1007/978-3-642-22438-6_26](https://doi.org/10.1007/978-3-642-22438-6_26)) —
+  LIA successor line to the Simplex-for-DPLL(T) family (used in Yices2);
+  relevant only if scope ever extends to mixed/integer.
 - King, Barrett, Tinelli's MIP branch-and-cut usage (see above) is only
   in scope for its pure-LP mode; its integer-programming half is LIA/mixed.
 - Cimatti, Griggio, Sebastiani, "Efficient Interpolant Generation in
-  Satisfiability Modulo Linear Arithmetic" (TACAS 2008) — only relevant if
-  Primo grows an interpolation feature, and would need re-checking against
-  the QF_LRA fragment specifically.
+  Satisfiability Modulo Theories" (TACAS 2008,
+  DOI [10.1007/978-3-540-78800-3_30](https://doi.org/10.1007/978-3-540-78800-3_30)) —
+  only relevant if Primo grows an interpolation feature, and would need
+  re-checking against the QF_LRA fragment specifically.
