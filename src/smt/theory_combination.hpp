@@ -216,6 +216,9 @@ class TheoryCombinationManager {
   static std::uint64_t equality_key(core::TermId lhs, core::TermId rhs);
   static std::uint32_t classification_bit(InterfaceEqualityClassification classification);
   void rebuild_equality_index();
+  // Clears the ModelInternal bit only for the pairs recorded in
+  // shared_model_.internal_equalities, instead of scanning the full registry.
+  void clear_model_internal_classifications();
 
   const core::TermManager& terms_;
   NelsonOppenInterfaceSummary summary_;

@@ -104,32 +104,51 @@ void append_purification_site(
   }
 }
 
+// Iterative, visited-node-memoized DAG walks. Recursion here would both risk
+// unbounded native-stack depth on deep terms and re-walk shared sub-DAGs once
+// per incoming path (the `seen` set below only dedupes *recorded sites*, not
+// traversal itself), which is exponential on the diamond-shaped sharing eager
+// definition compilation can produce (see docs/architecture.md).
 void collect_real_terms_in_euf_atom(
-    const core::TermManager& terms, core::TermId term_id, core::TermId atom_id,
+    const core::TermManager& terms, core::TermId root_id, core::TermId atom_id,
     NelsonOppenInterfaceSummary& summary,
     std::unordered_set<PurificationSiteKey, PurificationSiteKeyHash>& seen) {
-  const core::Term& term = terms.get(term_id);
-  if (term.sort == terms.symbols().real_sort()) {
-    append_purification_site(summary, seen, PurificationSiteKind::RealTermInEufAtom, term_id,
-                             atom_id, term.sort);
-  }
-  for (const core::TermId child : term.children) {
-    collect_real_terms_in_euf_atom(terms, child, atom_id, summary, seen);
+  std::unordered_set<core::TermId> visited;
+  std::vector<core::TermId> pending{root_id};
+  while (!pending.empty()) {
+    const core::TermId term_id = pending.back();
+    pending.pop_back();
+    if (!visited.insert(term_id).second) {
+      continue;
+    }
+    const core::Term& term = terms.get(term_id);
+    if (term.sort == terms.symbols().real_sort()) {
+      append_purification_site(summary, seen, PurificationSiteKind::RealTermInEufAtom, term_id,
+                               atom_id, term.sort);
+    }
+    pending.insert(pending.end(), term.children.begin(), term.children.end());
   }
 }
 
 void collect_uninterpreted_applications_in_arithmetic_atom(
-    const core::TermManager& terms, core::TermId term_id, core::TermId atom_id,
+    const core::TermManager& terms, core::TermId root_id, core::TermId atom_id,
     NelsonOppenInterfaceSummary& summary,
     std::unordered_set<PurificationSiteKey, PurificationSiteKeyHash>& seen) {
-  const core::Term& term = terms.get(term_id);
-  if (term.kind == core::TermKind::Application) {
-    append_purification_site(summary, seen,
-                             PurificationSiteKind::UninterpretedApplicationInArithmeticAtom,
-                             term_id, atom_id, term.sort);
-  }
-  for (const core::TermId child : term.children) {
-    collect_uninterpreted_applications_in_arithmetic_atom(terms, child, atom_id, summary, seen);
+  std::unordered_set<core::TermId> visited;
+  std::vector<core::TermId> pending{root_id};
+  while (!pending.empty()) {
+    const core::TermId term_id = pending.back();
+    pending.pop_back();
+    if (!visited.insert(term_id).second) {
+      continue;
+    }
+    const core::Term& term = terms.get(term_id);
+    if (term.kind == core::TermKind::Application) {
+      append_purification_site(summary, seen,
+                               PurificationSiteKind::UninterpretedApplicationInArithmeticAtom,
+                               term_id, atom_id, term.sort);
+    }
+    pending.insert(pending.end(), term.children.begin(), term.children.end());
   }
 }
 
@@ -208,6 +227,17 @@ void TheoryCombinationManager::rebuild_from_interface_terms(
   rebuild_equality_index();
 }
 
+void TheoryCombinationManager::clear_model_internal_classifications() {
+  const std::uint32_t model_internal_bit =
+      classification_bit(InterfaceEqualityClassification::ModelInternal);
+  for (const SharedModelEquality& equality : shared_model_.internal_equalities) {
+    const auto found = equality_index_.find(equality_key(equality.lhs, equality.rhs));
+    if (found != equality_index_.end()) {
+      summary_.equality_registry[found->second].classifications &= ~model_internal_bit;
+    }
+  }
+}
+
 void TheoryCombinationManager::begin_shared_model_round() {
   ++shared_model_.generation;
   shared_model_.valid = true;
@@ -229,11 +259,7 @@ void TheoryCombinationManager::begin_shared_model_iteration(
     begin_shared_model_round();
   }
   ++shared_model_.reconciliation_iteration;
-  const std::uint32_t model_internal_bit =
-      classification_bit(InterfaceEqualityClassification::ModelInternal);
-  for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
-    entry.classifications &= ~model_internal_bit;
-  }
+  clear_model_internal_classifications();
   shared_model_.lra_value_classes.clear();
   shared_model_.lra_class_by_term.clear();
   shared_model_.lra_mapped_terms.clear();
@@ -367,11 +393,7 @@ bool TheoryCombinationManager::record_lra_separation_atom(core::TermId atom) {
 }
 
 void TheoryCombinationManager::invalidate_shared_model() {
-  const std::uint32_t model_internal_bit =
-      classification_bit(InterfaceEqualityClassification::ModelInternal);
-  for (InterfaceEqualityRegistryEntry& entry : summary_.equality_registry) {
-    entry.classifications &= ~model_internal_bit;
-  }
+  clear_model_internal_classifications();
   shared_model_.valid = false;
   shared_model_.reconciliation_iteration = 0;
   shared_model_.lra_value_classes.clear();
